@@ -151,9 +151,10 @@ void Board::add_pawn_moves(int i, int j, int *iterator) {
 // Fonction qui ajoute les coups "cavaliers" dans la liste de coups
 void Board::add_knight_moves(int i, int j, int *iterator) {
     // les boucles for sont à modifier, car très lentes
+    int i2; int j2;
     for (int k : {-2, -1, 1, 2}) {
         for (int l : {-2, -1, 1, 2}) {
-            int i2 = i + k; int j2 = j + l;
+            i2 = i + k; j2 = j + l;
             if (_player) {
                 // Si le coup n'est ni hors du plateau, ni sur une case où une pièce alliée est placée
                 if (abs(k) + abs(l) == 3 & is_in(i2, 0, 7) & is_in (j2, 0, 7) & !is_in(_array[i2][j2], 1, 6))
@@ -180,15 +181,17 @@ void Board::add_diag_moves(int i, int j, int *iterator) {
     else {
         ally_min = 7; ally_max = 12;
     }
+
+    int i2; int j2; int p2;
         
     // Diagonale 1
     for (int k = 1; k < 7; k++) {
-        int i2 = i + k; int j2 = j + k;
+        i2 = i + k; j2 = j + k;
         // Si le coup n'est pas sur le plateau
         if (!is_in(i2, 0, 7) || !is_in(j2, 0, 7))
             k = 7;
         else {
-            int p2 = _array[i2][j2];
+            p2 = _array[i2][j2];
             // Si la case est occupée par une pièce alliée
             if (is_in(p2, ally_min, ally_max))
                 k = 7;
@@ -205,12 +208,12 @@ void Board::add_diag_moves(int i, int j, int *iterator) {
 
     // Diagonale 2
     for (int k = 1; k < 7; k++) {
-        int i2 = i - k; int j2 = j + k;
+        i2 = i - k; j2 = j + k;
         // Si le coup n'est pas sur le plateau
         if (!is_in(i2, 0, 7) || !is_in(j2, 0, 7))
             k = 7;
         else {
-            int p2 = _array[i2][j2];
+            p2 = _array[i2][j2];
             // Si la case est occupée par une pièce alliée
             if (is_in(p2, ally_min, ally_max))
                 k = 7;
@@ -227,12 +230,12 @@ void Board::add_diag_moves(int i, int j, int *iterator) {
 
     // Diagonale 3
     for (int k = 1; k < 7; k++) {
-        int i2 = i + k; int j2 = j - k;
+        i2 = i + k; j2 = j - k;
         // Si le coup n'est pas sur le plateau
         if (!is_in(i2, 0, 7) || !is_in(j2, 0, 7))
             k = 7;
         else {
-            int p2 = _array[i2][j2];
+            p2 = _array[i2][j2];
             // Si la case est occupée par une pièce alliée
             if (is_in(p2, ally_min, ally_max))
                 k = 7;
@@ -249,12 +252,12 @@ void Board::add_diag_moves(int i, int j, int *iterator) {
 
     // Diagonale 4
     for (int k = 1; k < 7; k++) {
-        int i2 = i - k; int j2 = j - k;
+        i2 = i - k; j2 = j - k;
         // Si le coup n'est pas sur le plateau
         if (!is_in(i2, 0, 7) || !is_in(j2, 0, 7))
             k = 7;
         else {
-            int p2 = _array[i2][j2];
+            p2 = _array[i2][j2];
             // Si la case est occupée par une pièce alliée
             if (is_in(p2, ally_min, ally_max))
                 k = 7;
@@ -282,14 +285,18 @@ void Board::add_rect_moves(int i, int j, int *iterator) {
     else {
         ally_min = 7; ally_max = 12;
     }
+
+    int i2; int j2;
+    int p2;
+
     // Horizontale 1
     for (int k = 1; k < 7; k++) {
-        int j2 = j - k;
+        j2 = j - k;
         // Si le coup n'est pas sur le plateau
         if (!is_in(i, 0, 7) || !is_in(j2, 0, 7))
             k = 7;
         else {
-            int p2 = _array[i][j2];
+            p2 = _array[i][j2];
             // Si la case est occupée par une pièce alliée
             if (is_in(p2, ally_min, ally_max))
                 k = 7;
@@ -306,12 +313,12 @@ void Board::add_rect_moves(int i, int j, int *iterator) {
 
     // Horizontale 2
     for (int k = 1; k < 7; k++) {
-        int j2 = j + k;
+        j2 = j + k;
         // Si le coup n'est pas sur le plateau
         if (!is_in(i, 0, 7) || !is_in(j2, 0, 7))
             k = 7;
         else {
-            int p2 = _array[i][j2];
+            p2 = _array[i][j2];
             // Si la case est occupée par une pièce alliée
             if (is_in(p2, ally_min, ally_max))
                 k = 7;
@@ -328,12 +335,12 @@ void Board::add_rect_moves(int i, int j, int *iterator) {
 
     // Verticale 1
     for (int k = 1; k < 7; k++) {
-        int i2 = i - k;
+        i2 = i - k;
         // Si le coup n'est pas sur le plateau
         if (!is_in(i2, 0, 7) || !is_in(j, 0, 7))
             k = 7;
         else {
-            int p2 = _array[i2][j];
+            p2 = _array[i2][j];
             // Si la case est occupée par une pièce alliée
             if (is_in(p2, ally_min, ally_max))
                 k = 7;
@@ -350,12 +357,12 @@ void Board::add_rect_moves(int i, int j, int *iterator) {
 
     // Verticale 2
     for (int k = 1; k < 7; k++) {
-        int i2 = i + k;
+        i2 = i + k;
         // Si le coup n'est pas sur le plateau
         if (!is_in(i2, 0, 7) || !is_in(j, 0, 7))
             k = 7;
         else {
-            int p2 = _array[i2][j];
+            p2 = _array[i2][j];
             // Si la case est occupée par une pièce alliée
             if (is_in(p2, ally_min, ally_max))
                 k = 7;
@@ -383,10 +390,12 @@ void Board::add_king_moves(int i, int j, int *iterator) {
     else {
         ally_min = 7; ally_max = 12;
     }
+
+    int i2; int j2;
     
     for (int k : {-1, 0, 1}) {
         for (int l : {-1, 0, 1}) {
-            int i2 = i + k; int j2 = j + l;
+            i2 = i + k; j2 = j + l;
             // Si le coup n'est ni hors du plateau, ni sur une case où une pièce alliée est placée
             if ((k | l != 0) & is_in(i2, 0, 7) & is_in (j2, 0, 7) & !is_in(_array[i2][j2], ally_min, ally_max)) {
                 add_move(i, j, i2, j2, iterator);
@@ -662,7 +671,6 @@ void Board::from_fen(string fen) {
     // Positionnement des pièces
     while (i >= 0) {
         c = fen[iterator];
-        cout << "char : " << c << endl;
         switch (c) {
             case '/' : case ' '  : i -= 1; j = 0; break;
             case 'P' : _array[i][j] = 1; j += 1; break;
