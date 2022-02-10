@@ -108,7 +108,7 @@ bool Board::add_move(int i, int j, int k, int l, int *iterator) {
 
 
 // Fonction qui ajoute les coups "pions" dans la liste de coups
-void Board::add_pawn_moves(int i, int j, int *iterator) {
+bool Board::add_pawn_moves(int i, int j, int *iterator) {
     // Joueur avec les pièces noires
     if (_player) {
         // Poussée (de 1)
@@ -130,11 +130,13 @@ void Board::add_pawn_moves(int i, int j, int *iterator) {
         // Prise (droite)
         (j < 7 & is_in(_array[i - 1][j + 1], 1, 6)) && add_move(i, j, i - 1, j - 1, iterator);
     }
+
+    return true;
 }
 
 
 // Fonction qui ajoute les coups "cavaliers" dans la liste de coups
-void Board::add_knight_moves(int i, int j, int *iterator) {
+bool Board::add_knight_moves(int i, int j, int *iterator) {
     // les boucles for sont à modifier, car très lentes
     int i2; int j2;
     for (int k = -2; k <= 2; k++) {
@@ -151,11 +153,14 @@ void Board::add_knight_moves(int i, int j, int *iterator) {
             
         }
     }
+
+    return true;
+
 }
 
 
 // Fonction qui ajoute les coups diagonaux dans la liste de coups
-void Board::add_diag_moves(int i, int j, int *iterator) {
+bool Board::add_diag_moves(int i, int j, int *iterator) {
     int ally_min; int ally_max;
     if (_player) {
         ally_min = 1; ally_max = 6;
@@ -253,12 +258,15 @@ void Board::add_diag_moves(int i, int j, int *iterator) {
             }
         }
     }
+
+    return true;
+
 }
 
 
 
 // Fonction qui ajoute les coups horizontaux et verticaux dans la liste de coups
-void Board::add_rect_moves(int i, int j, int *iterator) {
+bool Board::add_rect_moves(int i, int j, int *iterator) {
     int ally_min; int ally_max;
     if (_player) {
         ally_min = 1; ally_max = 6;
@@ -358,12 +366,15 @@ void Board::add_rect_moves(int i, int j, int *iterator) {
             }
         }
     }
+
+    return true;
+
 }
 
 
 
 // Fonction qui ajoute les coups "roi" dans la liste de coups
-void Board::add_king_moves(int i, int j, int *iterator) {
+bool Board::add_king_moves(int i, int j, int *iterator) {
     int ally_min; int ally_max;
     if (_player) {
         ally_min = 1; ally_max = 6;
@@ -382,6 +393,9 @@ void Board::add_king_moves(int i, int j, int *iterator) {
             ((k | l != 0) && is_in(i2, 0, 7) && is_in (j2, 0, 7) && !is_in(_array[i2][j2], ally_min, ally_max)) && add_move(i, j, i2, j2, iterator);
         }
     }
+
+    return true;
+
 }
 
 
@@ -402,67 +416,51 @@ int* Board::get_moves() {
                     break;
 
                 case 1: // Pion blanc
-                    if (_player)
-                        add_pawn_moves(i, j, &iterator);
+                    _player && add_pawn_moves(i, j, &iterator);
                     break;
 
                 case 2: // Cavalier blanc
-                    if (_player)
-                        add_knight_moves(i, j, &iterator);
+                    _player && add_knight_moves(i, j, &iterator);
                     break;
 
                 case 3: // Fou blanc   
-                    if (_player)           
-                        add_diag_moves(i, j, &iterator);
+                    _player && add_diag_moves(i, j, &iterator);
                     break;
 
                 case 4: // Tour blanche
-                    if (_player)
-                        add_rect_moves(i, j, &iterator);
+                    _player && add_rect_moves(i, j, &iterator);
                     break;
 
                 case 5: // Dame blanche
-                    if (_player) {
-                        add_diag_moves(i, j, &iterator);
-                        add_rect_moves(i, j, &iterator);
-                    }
+                    _player && add_diag_moves(i, j, &iterator) && add_rect_moves(i, j, &iterator);
                     break;
 
                 case 6: // Roi blanc
-                    if (_player)
-                        add_king_moves(i, j, &iterator);
+                    _player && add_king_moves(i, j, &iterator);
                     break;
 
                 case 7: // Pion noir
-                    if (!_player)
-                        add_pawn_moves(i, j, &iterator);
+                    !_player && add_pawn_moves(i, j, &iterator);
                     break;
 
                 case 8: // Cavalier noir
-                    if (!_player)
-                        add_knight_moves(i, j, &iterator);
+                    !_player && add_knight_moves(i, j, &iterator);
                     break;
 
                 case 9: // Fou noir
-                    if (!_player)           
-                        add_diag_moves(i, j, &iterator);
+                    !_player && add_diag_moves(i, j, &iterator);
                     break;
 
                 case 10: // Tour noire
-                    if (!_player)           
-                        add_rect_moves(i, j, &iterator);
+                    !_player && add_rect_moves(i, j, &iterator);
                     break;
 
                 case 11: // Dame noire
-                    if (!_player) {
-                        add_diag_moves(i, j, &iterator);
-                        add_rect_moves(i, j, &iterator);
-                    }           
+                    !_player && add_diag_moves(i, j, &iterator) && add_rect_moves(i, j, &iterator);        
                     break;
 
                 case 12: // Roi noir
-                    if (!_player)
-                        add_king_moves(i, j, &iterator);
+                    !_player && add_king_moves(i, j, &iterator);
                     break;
 
             }
@@ -510,12 +508,15 @@ void Board::make_move(int i, int j, int k, int l) {
 
 // Fonction qui joue le coup i
 void Board::make_index_move(int i) {
-    if (i < 0 | i >= _got_moves)
-        cout << "move index out of range" << endl;
-    else {
-        int k = 4 * i;
-        make_move(_moves[k], _moves[k + 1], _moves[k + 2], _moves[k + 3]);
-    }
+    // if (i < 0 | i >= _got_moves)
+    //     cout << "move index out of range" << endl;
+    // else {
+    //     int k = 4 * i;
+    //     make_move(_moves[k], _moves[k + 1], _moves[k + 2], _moves[k + 3]);
+    // }
+
+    int k = 4 * i;
+    make_move(_moves[k], _moves[k + 1], _moves[k + 2], _moves[k + 3]);
 }
 
 
