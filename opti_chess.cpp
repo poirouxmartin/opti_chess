@@ -114,21 +114,21 @@ bool Board::add_pawn_moves(int i, int j, int *iterator) {
         // Poussée (de 1)
         (_array[i + 1][j] == 0) && add_move(i, j, i + 1, j, iterator);
         // Poussée (de 2)
-        (i == 1 & _array[i + 2][j] == 0) && add_move(i, j, i + 2, j, iterator);
+        (i == 1 && _array[i + 2][j] == 0) && add_move(i, j, i + 2, j, iterator);
         // Prise (gauche)
-        (j > 0 & is_in(_array[i + 1][j - 1], 7, 12)) && add_move(i, j, i + 1, j - 1, iterator);
+        (j > 0 && is_in(_array[i + 1][j - 1], 7, 12)) && add_move(i, j, i + 1, j - 1, iterator);
         // Prise (droite)
-        (j < 7 & is_in(_array[i + 1][j + 1], 7, 12)) && add_move(i, j, i + 1, j + 1, iterator);
+        (j < 7 && is_in(_array[i + 1][j + 1], 7, 12)) && add_move(i, j, i + 1, j + 1, iterator);
     }
     else {
         // Poussée (de 1)
         (_array[i - 1][j] == 0) && add_move(i, j, i - 1, j, iterator);
         // Poussée (de 2)
-        (i == 6 & _array[i - 2][j] == 0) && add_move(i, j, i - 2, j, iterator);
+        (i == 6 && _array[i - 2][j] == 0) && add_move(i, j, i - 2, j, iterator);
         // Prise (gauche)
-        (j > 0 & is_in(_array[i - 1][j - 1], 1, 6)) && add_move(i, j, i - 1, j - 1, iterator);
+        (j > 0 && is_in(_array[i - 1][j - 1], 1, 6)) && add_move(i, j, i - 1, j - 1, iterator);
         // Prise (droite)
-        (j < 7 & is_in(_array[i - 1][j + 1], 1, 6)) && add_move(i, j, i - 1, j - 1, iterator);
+        (j < 7 && is_in(_array[i - 1][j + 1], 1, 6)) && add_move(i, j, i - 1, j - 1, iterator);
     }
 
     return true;
