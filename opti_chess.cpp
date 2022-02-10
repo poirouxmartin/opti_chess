@@ -96,12 +96,13 @@ void Board::display() {
 
 
 // Fonction qui ajoute un coup dans une liste de coups
-void Board::add_move(int i, int j, int k, int l, int *iterator) {
+bool Board::add_move(int i, int j, int k, int l, int *iterator) {
     _moves[*iterator] = i;
     _moves[*iterator + 1] = j;
     _moves[*iterator + 2] = k;
     _moves[*iterator + 3] = l;
     *iterator += 4;
+    return true;
 }
 
 
@@ -111,39 +112,23 @@ void Board::add_pawn_moves(int i, int j, int *iterator) {
     // Joueur avec les pièces noires
     if (_player) {
         // Poussée (de 1)
-        if (_array[i + 1][j] == 0) {
-            add_move(i, j, i + 1, j, iterator);
-        }
+        (_array[i + 1][j] == 0) && add_move(i, j, i + 1, j, iterator);
         // Poussée (de 2)
-        if (i == 1 & _array[i + 2][j] == 0) {
-            add_move(i, j, i + 2, j, iterator);
-        }
+        (i == 1 & _array[i + 2][j] == 0) && add_move(i, j, i + 2, j, iterator);
         // Prise (gauche)
-        if (j > 0 & is_in(_array[i + 1][j - 1], 7, 12)) {
-            add_move(i, j, i + 1, j - 1, iterator);
-        }
+        (j > 0 & is_in(_array[i + 1][j - 1], 7, 12)) && add_move(i, j, i + 1, j - 1, iterator);
         // Prise (droite)
-        if (j < 7 & is_in(_array[i + 1][j + 1], 7, 12)) {
-            add_move(i, j, i + 1, j + 1, iterator);
-        }
+        (j < 7 & is_in(_array[i + 1][j + 1], 7, 12)) && add_move(i, j, i + 1, j + 1, iterator);
     }
     else {
         // Poussée (de 1)
-        if (_array[i - 1][j] == 0) {
-            add_move(i, j, i - 1, j, iterator);
-        }
+        (_array[i - 1][j] == 0) && add_move(i, j, i - 1, j, iterator);
         // Poussée (de 2)
-        if (i == 6 & _array[i - 2][j] == 0) {
-            add_move(i, j, i - 2, j, iterator);
-        }
+        (i == 6 & _array[i - 2][j] == 0) && add_move(i, j, i - 2, j, iterator);
         // Prise (gauche)
-        if (j > 0 & is_in(_array[i - 1][j - 1], 1, 6)) {
-            add_move(i, j, i - 1, j - 1, iterator);
-        }
+        (j > 0 & is_in(_array[i - 1][j - 1], 1, 6)) && add_move(i, j, i - 1, j - 1, iterator);
         // Prise (droite)
-        if (j < 7 & is_in(_array[i - 1][j + 1], 1, 6)) {
-            add_move(i, j, i - 1, j - 1, iterator);
-        }
+        (j < 7 & is_in(_array[i - 1][j + 1], 1, 6)) && add_move(i, j, i - 1, j - 1, iterator);
     }
 }
 
