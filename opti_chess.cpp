@@ -137,18 +137,16 @@ void Board::add_pawn_moves(int i, int j, int *iterator) {
 void Board::add_knight_moves(int i, int j, int *iterator) {
     // les boucles for sont à modifier, car très lentes
     int i2; int j2;
-    for (int k : {-2, -1, 1, 2}) {
-        for (int l : {-2, -1, 1, 2}) {
+    for (int k = -2; k <= 2; k++) {
+        for (int l = -2; l <= 2; l++) {
             i2 = i + k; j2 = j + l;
             if (_player) {
                 // Si le coup n'est ni hors du plateau, ni sur une case où une pièce alliée est placée
-                if (abs(k) + abs(l) == 3 & is_in(i2, 0, 7) & is_in (j2, 0, 7) & !is_in(_array[i2][j2], 1, 6))
-                    add_move(i, j, i2, j2, iterator);
+                (k * l != 0 && abs(k) + abs(l) == 3 & is_in(i2, 0, 7) & is_in (j2, 0, 7) & !is_in(_array[i2][j2], 1, 6)) && add_move(i, j, i2, j2, iterator);
             }
             else {
                 // Si le coup n'est ni hors du plateau, ni sur une case où une pièce alliée est placée
-                if (abs(k) + abs(l) == 3 & is_in(i2, 0, 7) & is_in (j2, 0, 7) & !is_in(_array[i2][j2], 7, 12))
-                    add_move(i, j, i2, j2, iterator);
+                (k * l != 0 && abs(k) + abs(l) == 3 & is_in(i2, 0, 7) & is_in (j2, 0, 7) & !is_in(_array[i2][j2], 7, 12)) && add_move(i, j, i2, j2, iterator);
             }
             
         }
@@ -162,7 +160,6 @@ void Board::add_diag_moves(int i, int j, int *iterator) {
     if (_player) {
         ally_min = 1; ally_max = 6;
     }
-        
     else {
         ally_min = 7; ally_max = 12;
     }
