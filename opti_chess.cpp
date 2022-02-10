@@ -142,11 +142,11 @@ void Board::add_knight_moves(int i, int j, int *iterator) {
             i2 = i + k; j2 = j + l;
             if (_player) {
                 // Si le coup n'est ni hors du plateau, ni sur une case où une pièce alliée est placée
-                (k * l != 0 && abs(k) + abs(l) == 3 & is_in(i2, 0, 7) & is_in (j2, 0, 7) & !is_in(_array[i2][j2], 1, 6)) && add_move(i, j, i2, j2, iterator);
+                (k * l != 0 && abs(k) + abs(l) == 3 && is_in(i2, 0, 7) && is_in (j2, 0, 7) && !is_in(_array[i2][j2], 1, 6)) && add_move(i, j, i2, j2, iterator);
             }
             else {
                 // Si le coup n'est ni hors du plateau, ni sur une case où une pièce alliée est placée
-                (k * l != 0 && abs(k) + abs(l) == 3 & is_in(i2, 0, 7) & is_in (j2, 0, 7) & !is_in(_array[i2][j2], 7, 12)) && add_move(i, j, i2, j2, iterator);
+                (k * l != 0 && abs(k) + abs(l) == 3 && is_in(i2, 0, 7) && is_in (j2, 0, 7) && !is_in(_array[i2][j2], 7, 12)) && add_move(i, j, i2, j2, iterator);
             }
             
         }
@@ -375,13 +375,11 @@ void Board::add_king_moves(int i, int j, int *iterator) {
 
     int i2; int j2;
     
-    for (int k : {-1, 0, 1}) {
-        for (int l : {-1, 0, 1}) {
+    for (int k = -1; k < 2; k++) {
+        for (int l = -1; l < 2; l++) {
             i2 = i + k; j2 = j + l;
             // Si le coup n'est ni hors du plateau, ni sur une case où une pièce alliée est placée
-            if ((k | l != 0) & is_in(i2, 0, 7) & is_in (j2, 0, 7) & !is_in(_array[i2][j2], ally_min, ally_max)) {
-                add_move(i, j, i2, j2, iterator);
-            }
+            ((k | l != 0) && is_in(i2, 0, 7) && is_in (j2, 0, 7) && !is_in(_array[i2][j2], ally_min, ally_max)) && add_move(i, j, i2, j2, iterator);
         }
     }
 }
