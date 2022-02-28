@@ -29,14 +29,20 @@ Plateau :
 */
 
 
-class Board
-{
+class Board {
     public:
 
         // Attributs
 
         // Plateau
-        int _array[8][8] {{4, 2, 3, 5, 6, 3, 2, 4}, {1, 1, 1, 1, 1, 1, 1, 1}, {0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0}, {7, 7, 7, 7, 7, 7, 7, 7}, {10, 8, 9, 11, 12, 9, 8, 10}};
+        int _array[8][8]    {{4, 2, 3, 5, 6, 3, 2, 4}, 
+                            {1, 1, 1, 1, 1, 1, 1, 1}, 
+                            {0, 0, 0, 0, 0, 0, 0, 0}, 
+                            {0, 0, 0, 0, 0, 0, 0, 0}, 
+                            {0, 0, 0, 0, 0, 0, 0, 0}, 
+                            {0, 0, 0, 0, 0, 0, 0, 0}, 
+                            {7, 7, 7, 7, 7, 7, 7, 7}, 
+                            {10, 8, 9, 11, 12, 9, 8, 10}};
 
         // Coups possibles
         // (Augmenter si besoin)
@@ -44,6 +50,11 @@ class Board
         int _moves[1000];
         // Les coups sont-ils actualisés?
         int _got_moves = -1;
+
+        // Ordre des coups à jouer (pour l'optimisation)
+        int _move_order[250];
+        // Les coups sont-ils triés?
+        bool _sorted_moves = false;
 
         // Tour du joueur (true pour les blancs, false pour les noirs)
         bool _player = true;
@@ -73,6 +84,9 @@ class Board
         // FEN du plateau
         string _fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+        // PGN du plateau
+        string _pgn = "";
+
         
 
         // Constructeur par défaut
@@ -88,22 +102,22 @@ class Board
         void display();
 
         // Fonction qui ajoute un coup dans la liste de coups
-        void add_move(int, int, int, int, int *);
+        bool add_move(int, int, int, int, int *);
 
         // Fonction qui ajoute les coups "pions" dans la liste de coups
-        void add_pawn_moves(int, int, int *);
+        bool add_pawn_moves(int, int, int *);
 
         // Fonction qui ajoute les coups "cavaliers" dans la liste de coups
-        void add_knight_moves(int, int, int *);
+        bool add_knight_moves(int, int, int *);
 
         // Fonction qui ajoute les coups diagonaux dans la liste de coups
-        void add_diag_moves(int, int, int *);
+        bool add_diag_moves(int, int, int *);
 
         // Fonction qui ajoute les coups horizontaux et verticaux dans la liste de coups
-        void add_rect_moves(int, int, int *);
+        bool add_rect_moves(int, int, int *);
 
         // Fonction qui ajoute les coups "roi" dans la liste de coups
-        void add_king_moves(int, int, int *);
+        bool add_king_moves(int, int, int *);
 
         // Renvoie la liste des coups possibles
         int* get_moves();
@@ -121,13 +135,16 @@ class Board
         void evaluate();
 
         // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-        float negamax(int, float, float, int);
+        float negamax(int, float, float, int, bool);
 
         // Fonction qui utilise minimax pour déterminer quel est le "meilleur" coup et le joue
         void grogrosfish(int);
+
+        // Version un peu mieux optimisée de Grogrosfish
+        void grogrosfish2(int);
         
         // Fonction qui revient à la position précédente
-        void undo();
+        void undo(int, int, int, int, int, int, int);
 
         // Fonction qui arrange les coups de façon "logique", pour optimiser les algorithmes de calcul
         void sort_moves();
@@ -138,9 +155,27 @@ class Board
         // Fonction qui renvoie le FEN du tableau
         void to_fen();
 
+        // Fonction qui renvoie le gagnant si la partie est finie (-1/1), et 0 sinon
+        int game_over();
+
+        // Fonction qui renvoie le label d'un coup
+        string move_label(int, int, int, int);
+
+        // Fonction qui fait un coup à partir de son label
+        void make_label_move(string);
+
+        // Fonction qui renvoie un plateau à partir d'un PGN
+        void from_pgn();
+
+        // Fonction qui dessine le plateau
+        void draw();
+        
+
 };
 
 
+// Fonction qui obtient la case correspondante à la position sur la GUI
+pair<int, int> get_pos_from_gui(int, int);
 
 
 
