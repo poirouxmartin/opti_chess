@@ -764,17 +764,7 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
         b->copy_data(*this);
 
         b->make_index_move(i);
-        if (depth > 0) {
-            cout << "depth : " << depth << "move : " << move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]) << endl;
-            b->display();
-            b->to_fen();
-            cout << "FEN : " << b->_fen << endl;
-            cout << "PGN : " << b->_pgn << endl;
-            cout << "i : " << i << endl;
-            cout << "n moves : " << _got_moves << endl;
-            cout << "----------------" << endl;
-        }
-
+        
         tmp_value = -b->negamax(depth - 1, -beta, -alpha, -color, false);
 
         if (max_depth) {
@@ -788,26 +778,14 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
         // undo move
         // b.undo(i1, j1, p1, i2, j2, p2, h);
 
-        cout << "next" << endl;
-
-        if (alpha >= beta) {
-            cout << "break" << endl;
+        if (alpha >= beta)
             break;
-        }
 
-        cout << "next2" << endl;
     }
 
-    if (max_depth) {
-        cout << "attention" << endl;
+    if (max_depth)
         make_index_move(best_move);
-        cout << "ça fonctionne toujours" << endl;
-        display();
-        cout << "value : " << value << endl;
-        cout << "depth : " << depth << endl;
-    }
     
-    cout << "return stp" << endl;
     // delete b;
     return value;
     
