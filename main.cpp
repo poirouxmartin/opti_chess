@@ -24,6 +24,7 @@ Sort moves ?? fonctionne ? ---> alors utiliser optimisation vers negascout
 Transposition tables
 stoi et to_string très lents?
 Ajout de variables globales plutôt que les re définir lors des appels de fonction (valeur des pièces, positionnement...)
+Parallélisation -> std::for_each avec policy parallel?
 
 Au lieu de calculer l'évaluation à chaque coup, l'implémenter en fonction du coup
 
@@ -98,7 +99,7 @@ int main() {
     // Variables
     Board t;
     //t.from_fen("r2qkbnr/pp2ppp1/2b5/4p2p/4P3/P1N1B2P/1PP2PP1/R2QKB1R b KQkq - 1 10");
-    t.from_fen("r2qkbnr/pp2ppp1/3Q4/4pb2/2B1P2p/P1N1B2P/1PP2PP1/R3K2R w KQkq - 4 13");
+    //t.from_fen("r2qkbnr/pp2ppp1/3Q4/4pb2/2B1P2p/P1N1B2P/1PP2PP1/R3K2R w KQkq - 4 13");
     //t.from_fen("2rQkbnr/pp2ppp1/8/4pb2/2B1P2p/P1N1B2P/1PP2PP1/R3K2R w KQkq - 1 14"); ici, Rxd8 -> tableau buggé (affichage, une ligne en moins)
 
     // Calcul du temps de la fonction
@@ -109,7 +110,7 @@ int main() {
     while (!WindowShouldClose()) {
 
         if (IsKeyDown(KEY_SPACE)) {
-            t.grogrosfish2(2);
+            t.grogrosfish2(6);
             t.to_fen();
             cout << t._fen << endl;
             cout << t._pgn << endl;
@@ -122,12 +123,12 @@ int main() {
         //     cout << t._pgn << endl;
         // }
 
-        // if (t.game_over() == 0) {
-        //     t.grogrosfish2(6);
-        //     t.to_fen();
-        //     cout << t._fen << endl;
-        //     cout << t._pgn << endl;
-        // }
+        if (t.game_over() == 0) {
+            t.grogrosfish2(6);
+            t.to_fen();
+            cout << t._fen << endl;
+            cout << t._pgn << endl;
+        }
 
 
         // Dessins
