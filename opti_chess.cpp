@@ -714,7 +714,6 @@ void Board::evaluate() {
 
 
 
-
 // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
 float Board::negamax(int depth, float alpha, float beta, int color, bool max_depth) {
     // Sinon bugs possibles??
@@ -736,7 +735,7 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
         
 
     float value = -1e9;
-    Board b;
+    Board* b = new Board();
     int best_move = 0;
     float tmp_value;
 
@@ -762,21 +761,21 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
         // j2 = _moves[4 * i + 3];
         // p2 = _array[i2][j2];
         // h = _half_moves_count;
-        b.copy_data(*this);
+        b->copy_data(*this);
 
-        b.make_index_move(i);
+        b->make_index_move(i);
         if (depth > 0) {
             cout << "depth : " << depth << "move : " << move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]) << endl;
-            b.display();
-            b.to_fen();
-            cout << "FEN : " << b._fen << endl;
-            cout << "PGN : " << b._pgn << endl;
+            b->display();
+            b->to_fen();
+            cout << "FEN : " << b->_fen << endl;
+            cout << "PGN : " << b->_pgn << endl;
             cout << "i : " << i << endl;
             cout << "n moves : " << _got_moves << endl;
             cout << "----------------" << endl;
         }
 
-        tmp_value = -b.negamax(depth - 1, -beta, -alpha, -color, false);
+        tmp_value = -b->negamax(depth - 1, -beta, -alpha, -color, false);
 
         if (max_depth) {
             cout << "move : " << move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]) << endl;
@@ -807,8 +806,9 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
         cout << "value : " << value << endl;
         cout << "depth : " << depth << endl;
     }
-
+    
     cout << "return stp" << endl;
+    // delete b;
     return value;
     
 }
