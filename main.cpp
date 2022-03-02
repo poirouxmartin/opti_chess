@@ -108,8 +108,6 @@ int main() {
     // Variables
     Board t;
     //t.from_fen("r2qkbnr/pp2ppp1/2b5/4p2p/4P3/P1N1B2P/1PP2PP1/R2QKB1R b KQkq - 1 10");
-    //t.from_fen("r1b1kb1r/3n1pp1/p3p2p/1ppB4/N4B2/3P4/PPP2PPP/3RR1K1 b - - 1 18");
-    t.from_fen("r1b1kb1r/3n1pp1/p3p2p/1pp5/N1B2B2/3P4/PPP2PPP/3RR1K1 w - - 0 18");
 
 
     // Calcul du temps de la fonction
@@ -126,20 +124,20 @@ int main() {
             cout << t._pgn << endl;
         }
 
-        // if (!t._player) {
-        //     t.grogrosfish2(6);
-        //     t.to_fen();
-        //     cout << t._fen << endl;
-        //     cout << t._pgn << endl;
-        // }
-
-        if (IsKeyDown(KEY_T)) {
+        if (!t._player) {
+            t.grogrosfish2(6);
             t.to_fen();
             cout << t._fen << endl;
             cout << t._pgn << endl;
-            t.get_moves();
-            t.display_moves();
         }
+
+        // if (IsKeyDown(KEY_T)) {
+        //     t.to_fen();
+        //     cout << t._fen << endl;
+        //     cout << t._pgn << endl;
+        //     t.get_moves();
+        //     t.display_moves();
+        // }
 
         // if (t.game_over() == 0) {
         //     t.grogrosfish2(6);
