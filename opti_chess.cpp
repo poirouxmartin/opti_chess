@@ -850,7 +850,7 @@ void Board::grogrosfish(int depth) {
 // Version un peu mieux optimisée de Grogrosfish
 void Board::grogrosfish2(int depth) {
     negamax(depth, -1e9, 1e9, _color, true);
-    cout << "ça a marché" << endl;
+    PlaySound(move_1_sound);
 }
 
 
@@ -1267,6 +1267,12 @@ void Board::draw() {
         }
 
 
+
+        // Chargement du son
+        move_1_sound = LoadSound("../resources/move_1.mp3");
+        // UnloadSound(fxWav);
+
+
         loaded_textures = true;
     }
 
@@ -1286,8 +1292,10 @@ void Board::draw() {
     else {
         if (clicked && clicked_pos.first != -1 && _array[clicked_pos.first][clicked_pos.second] != 0) {
             pair<int, int> drop_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
-            if (is_in(drop_pos.first, 0, 7) && is_in(drop_pos.second, 0, 7))
+            if (is_in(drop_pos.first, 0, 7) && is_in(drop_pos.second, 0, 7)) {
                 make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
+                PlaySound(move_1_sound);
+            }
         }
 
         clicked = false;
