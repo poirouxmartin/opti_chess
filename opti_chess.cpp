@@ -24,6 +24,9 @@ Board::Board(Board &b) {
     _player = b._player;
     for (int i = 0; i < _got_moves * 4 + 1; i++) {
         _moves[i] = b._moves[i];
+        
+    }
+    for (int i = 0; i < _got_moves; i++) {
         _move_order[i] = b._move_order[i];
     }
     _sorted_moves = b._sorted_moves;
@@ -52,6 +55,9 @@ void Board::copy_data(Board &b) {
     _player = b._player;
     for (int i = 0; i < _got_moves * 4 + 1; i++) {
         _moves[i] = b._moves[i];
+        
+    }
+    for (int i = 0; i < _got_moves; i++) {
         _move_order[i] = b._move_order[i];
     }
     _sorted_moves = b._sorted_moves;
@@ -65,6 +71,15 @@ void Board::copy_data(Board &b) {
     _half_moves_count = b._half_moves_count;
     _moves_count = b._moves_count;
     _pgn = b._pgn;
+}
+
+
+// Fonction qui copie les coups d'un plateau
+void Board::copy_moves(Board &b) {
+    _got_moves = b._got_moves;
+    for (int i = 0; i < _got_moves * 4 + 1; i++) {
+        _moves[i] = b._moves[i];
+    } 
 }
 
 
@@ -735,7 +750,11 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
         
 
     float value = -1e9;
-    Board* b = new Board();
+    Board b;
+
+    // Pour voir si le bug vient de la copie de données
+    to_fen();
+
     int best_move = 0;
     float tmp_value;
 
@@ -761,11 +780,12 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
         // j2 = _moves[4 * i + 3];
         // p2 = _array[i2][j2];
         // h = _half_moves_count;
-        b->copy_data(*this);
 
-        b->make_index_move(i);
+        b.copy_data(*this);
+
+        b.make_index_move(i);
         
-        tmp_value = -b->negamax(depth - 1, -beta, -alpha, -color, false);
+        tmp_value = -b.negamax(depth - 1, -beta, -alpha, -color, false);
 
         if (max_depth) {
             cout << "move : " << move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]) << endl;
@@ -786,7 +806,6 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
     if (max_depth)
         make_index_move(best_move);
     
-    // delete b;
     return value;
     
 }
