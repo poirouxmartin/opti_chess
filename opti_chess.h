@@ -95,8 +95,11 @@ class Board {
         // Constructeur de copie
         Board(Board &);
 
-        // Fonction qui copie les attributs d'un tableau
+        // Fonction qui copie les attributs d'un plateau
         void copy_data(Board &);
+
+        // Fonction qui copie les coups d'un plateau
+        void copy_moves(Board &);
 
         // Affichage du plateau
         void display();
@@ -176,6 +179,3 @@ class Board {
 
 // Fonction qui obtient la case correspondante à la position sur la GUI
 pair<int, int> get_pos_from_gui(int, int);
-
-
-

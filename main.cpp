@@ -53,9 +53,15 @@ Ajouter les coups légaux pour en passant/roque/promotion (seulement dame pour l
 Stealmate à ajouter
 
 Chargement de FEN -> Modifier le PGN en FEN + ...
+[FEN "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w - - 0 2"]
+2. Nf3 Nc6 *
+
+
+[FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"]
 
 
 Changer Grogrosfish : depth -> temps (--> moteur d'analyse)
+Faire une profodeur -> trier les coups du meilleur au pire, puis continuer la recherche plus loin
 
 
 Afficher le nombre de noeuds calculés (et le temps pris / noeuds par seconde)
@@ -99,8 +105,7 @@ int main() {
     // Variables
     Board t;
     //t.from_fen("r2qkbnr/pp2ppp1/2b5/4p2p/4P3/P1N1B2P/1PP2PP1/R2QKB1R b KQkq - 1 10");
-    //t.from_fen("r2qkbnr/pp2ppp1/3Q4/4pb2/2B1P2p/P1N1B2P/1PP2PP1/R3K2R w KQkq - 4 13");
-    //t.from_fen("2rQkbnr/pp2ppp1/8/4pb2/2B1P2p/P1N1B2P/1PP2PP1/R3K2R w KQkq - 1 14"); ici, Rxd8 -> tableau buggé (affichage, une ligne en moins)
+
 
     // Calcul du temps de la fonction
     test_function(&test, 1);
@@ -116,19 +121,19 @@ int main() {
             cout << t._pgn << endl;
         }
 
-        // if (!t._player) {
-        //     t.grogrosfish(5);
-        //     t.to_fen();
-        //     cout << t._fen << endl;
-        //     cout << t._pgn << endl;
-        // }
-
-        if (t.game_over() == 0) {
+        if (!t._player) {
             t.grogrosfish2(6);
             t.to_fen();
             cout << t._fen << endl;
             cout << t._pgn << endl;
         }
+
+        // if (t.game_over() == 0) {
+        //     t.grogrosfish2(6);
+        //     t.to_fen();
+        //     cout << t._fen << endl;
+        //     cout << t._pgn << endl;
+        // }
 
 
         // Dessins
