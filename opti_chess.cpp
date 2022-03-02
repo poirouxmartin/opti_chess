@@ -1292,7 +1292,7 @@ void Board::draw() {
     else {
         if (clicked && clicked_pos.first != -1 && _array[clicked_pos.first][clicked_pos.second] != 0) {
             pair<int, int> drop_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
-            if (is_in(drop_pos.first, 0, 7) && is_in(drop_pos.second, 0, 7)) {
+            if (is_in(drop_pos.first, 0, 7) && is_in(drop_pos.second, 0, 7) && (clicked_pos.first != drop_pos.first || clicked_pos.second != drop_pos.second)) {
                 make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
                 PlaySound(move_1_sound);
             }
