@@ -196,7 +196,7 @@ bool Board::add_diag_moves(int i, int j, int *iterator) {
     int i2; int j2; int p2;
         
     // Diagonale 1
-    for (int k = 1; k < 7; k++) {
+    for (int k = 1; k < 8; k++) {
         i2 = i + k; j2 = j + k;
         // Si le coup n'est pas sur le plateau
         if (!is_in(i2, 0, 7) || !is_in(j2, 0, 7))
@@ -218,7 +218,7 @@ bool Board::add_diag_moves(int i, int j, int *iterator) {
     }
 
     // Diagonale 2
-    for (int k = 1; k < 7; k++) {
+    for (int k = 1; k < 8; k++) {
         i2 = i - k; j2 = j + k;
         // Si le coup n'est pas sur le plateau
         if (!is_in(i2, 0, 7) || !is_in(j2, 0, 7))
@@ -240,7 +240,7 @@ bool Board::add_diag_moves(int i, int j, int *iterator) {
     }
 
     // Diagonale 3
-    for (int k = 1; k < 7; k++) {
+    for (int k = 1; k < 8; k++) {
         i2 = i + k; j2 = j - k;
         // Si le coup n'est pas sur le plateau
         if (!is_in(i2, 0, 7) || !is_in(j2, 0, 7))
@@ -262,7 +262,7 @@ bool Board::add_diag_moves(int i, int j, int *iterator) {
     }
 
     // Diagonale 4
-    for (int k = 1; k < 7; k++) {
+    for (int k = 1; k < 8; k++) {
         i2 = i - k; j2 = j - k;
         // Si le coup n'est pas sur le plateau
         if (!is_in(i2, 0, 7) || !is_in(j2, 0, 7))
@@ -304,7 +304,7 @@ bool Board::add_rect_moves(int i, int j, int *iterator) {
     int p2;
 
     // Horizontale 1
-    for (int k = 1; k < 7; k++) {
+    for (int k = 1; k < 8; k++) {
         j2 = j - k;
         // Si le coup n'est pas sur le plateau
         if (!is_in(i, 0, 7) || !is_in(j2, 0, 7))
@@ -326,7 +326,7 @@ bool Board::add_rect_moves(int i, int j, int *iterator) {
     }
 
     // Horizontale 2
-    for (int k = 1; k < 7; k++) {
+    for (int k = 1; k < 8; k++) {
         j2 = j + k;
         // Si le coup n'est pas sur le plateau
         if (!is_in(i, 0, 7) || !is_in(j2, 0, 7))
@@ -348,7 +348,7 @@ bool Board::add_rect_moves(int i, int j, int *iterator) {
     }
 
     // Verticale 1
-    for (int k = 1; k < 7; k++) {
+    for (int k = 1; k < 8; k++) {
         i2 = i - k;
         // Si le coup n'est pas sur le plateau
         if (!is_in(i2, 0, 7) || !is_in(j, 0, 7))
@@ -370,7 +370,7 @@ bool Board::add_rect_moves(int i, int j, int *iterator) {
     }
 
     // Verticale 2
-    for (int k = 1; k < 7; k++) {
+    for (int k = 1; k < 8; k++) {
         i2 = i + k;
         // Si le coup n'est pas sur le plateau
         if (!is_in(i2, 0, 7) || !is_in(j, 0, 7))
@@ -788,7 +788,7 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
         tmp_value = -b.negamax(depth - 1, -beta, -alpha, -color, false);
 
         if (max_depth) {
-            cout << "move : " << move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]) << endl;
+            cout << "move : " << move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]) << ", value : " << tmp_value << endl;
             if (tmp_value > value)
                 best_move = i;
         }
