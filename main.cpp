@@ -79,9 +79,9 @@ void test() {
 
     Board t;
     //t.grogrosfish(6);
-    //t.negamax(6, -1e9, 1e9, -t._color, true);
     //t.grogrosfish2(6);
     //t.sort_moves();
+
 
 }
 
@@ -96,6 +96,9 @@ int main() {
 
     // Initialisation de la fenêtre
     InitWindow(screen_width, screen_height, "Opti chess");
+
+    // Initialisation de l'audio
+    InitAudioDevice();
 
     // Nombre d'images par secondes
     SetTargetFPS(fps);
@@ -147,6 +150,12 @@ int main() {
 
             // Dessin du plateau
             t.draw();
+            
+
+            // Sound fxWav = LoadSound("resources/sound.wav");
+            // PlaySound(fxWav);
+            // UnloadSound(fxWav);
+
 
         // Fin de la zone de dessin
         EndDrawing();

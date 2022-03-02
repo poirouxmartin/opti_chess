@@ -22,11 +22,12 @@ static Color text_color = {255, 100, 100, 255};
 static bool loaded_textures = false;
 
 
-// Textures
+// Textures et sons
 static Texture2D board_texture;
 static Image board_image;
 static Texture2D piece_textures[12];
 static Image piece_images[12];
+static Sound move_1_sound;
 
 
 // Taille du plateau par rapport à la fenêtre
