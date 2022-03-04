@@ -920,6 +920,9 @@ void Board::from_fen(string fen) {
     // Mise à jour du FEN
     _fen = fen;
 
+    // PGN
+    _pgn = "[FEN \"" + fen + "\"]";
+
     // Iterateur qui permet de parcourir la chaine de caractères
     int iterator = 0;
 
@@ -1169,10 +1172,10 @@ string Board::move_label(int i, int j, int k, int l) {
 
     switch (p1)
         {   
-            case 2: case 8: s += "N"; break;
-            case 3: case 9: s += "B"; break;
-            case 4: case 10: s += "R"; break;
-            case 5: case 11: s += "Q"; break;
+            case 2: case 8: s += "N"; s += abc[j]; s += char(i + 1 + 48); break;
+            case 3: case 9: s += "B"; s += abc[j]; s += char(i + 1 + 48); break;
+            case 4: case 10: s += "R"; s += abc[j]; s += char(i + 1 + 48); break;
+            case 5: case 11: s += "Q"; s += abc[j]; s += char(i + 1 + 48); break;
             case 6: case 12: 
             if (l - j == 2) {
                 s += "O-O"; return s;
