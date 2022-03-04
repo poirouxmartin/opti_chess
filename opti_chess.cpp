@@ -731,9 +731,15 @@ void Board::evaluate() {
 
 // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
 float Board::negamax(int depth, float alpha, float beta, int color, bool max_depth) {
-    // Sinon bugs possibles??
-    // if (depth == 4)
-    //     cout;
+
+    // Nombre de noeuds
+    if (max_depth) {
+        visited_nodes = 1;
+        begin_time = clock();
+    }
+    else {
+        visited_nodes++;
+    }
 
     if (depth == 0) {
         evaluate();
@@ -751,9 +757,6 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
 
     float value = -1e9;
     Board b;
-
-    // Pour voir si le bug vient de la copie de données
-    to_fen();
 
     int best_move = 0;
     float tmp_value;
@@ -803,13 +806,83 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
 
     }
 
-    if (max_depth)
+    if (max_depth) {
+        cout << "visited nodes : " << visited_nodes << endl;
+        double spent_time = (double)(clock() - begin_time);
+        cout << "time spend : " << spent_time << "ms"  << endl;
+        cout << "speed : " << visited_nodes / spent_time << "kN/s" << endl;
         make_index_move(best_move);
+    }
     
     return value;
     
 }
 
+
+
+// Mieux que negamax? tend à supprimer plus de coups
+float Board::negascout(int depth, float alpha, float beta, int color, bool max_depth) {
+    if (depth == 0) {
+        evaluate();
+        return color * _evaluation;
+    }
+
+    // à mettre avant depth == 0?
+    int g = game_over();
+    if (g == 2)
+        return 0;
+    if (g == -1 || g == 1)
+        return -1000 * (depth + 1);
+        
+    // Définition des variables
+    float value = -1e9; int best_move = 0; float tmp_value; Board b; float _a; float _b; int j;
+    
+    // Génération des coups
+    if (_got_moves == -1)
+        get_moves();
+
+    // Sort moves à faire
+    sort_moves();
+
+    _a = alpha;
+    _b = beta;
+
+    for (int i = 0; i < _got_moves; i++) {
+        // Pour le triage des coups
+        j = _move_order[i];
+        
+
+        b.copy_data(*this);
+        b.make_index_move(i);
+        tmp_value = -b.negascout(depth - 1, -beta, -alpha, -color, false);
+
+        if (max_depth) {
+            cout << "move : " << move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]) << ", value : " << tmp_value << endl;
+            if (tmp_value > value)
+                best_move = i;
+        }
+
+        if ((tmp_value > _a) && (tmp_value < beta) && (i > 1))
+            _a = -b.negascout(depth - 1, -beta, -tmp_value, -color, false);
+            
+        //value = max(value, tmp_value);
+        _a = max(_a, tmp_value);
+        //alpha = max(alpha, value);
+
+        if (_a >= beta) {
+            make_index_move(best_move);
+            return _a;
+        }
+
+        _b = _a + 1;
+
+    }
+
+    if (max_depth)
+        make_index_move(best_move);
+    
+    return _a;
+}
 
 
 // Fonction qui utilise minimax pour déterminer quel est le "meilleur" coup et le joue
@@ -850,6 +923,12 @@ void Board::grogrosfish(int depth) {
 // Version un peu mieux optimisée de Grogrosfish
 void Board::grogrosfish2(int depth) {
     negamax(depth, -1e9, 1e9, _color, true);
+    PlaySound(move_1_sound);
+}
+
+// Version un peu mieux optimisée de Grogrosfish
+void Board::grogrosfish3(int depth) {
+    negascout(depth, -1e9, 1e9, _color, true);
     PlaySound(move_1_sound);
 }
 

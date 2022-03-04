@@ -1,4 +1,5 @@
 #include "raylib.h"
+#include "time.h"
 
 
 // Définition des variables
@@ -49,3 +50,9 @@ static pair<int, int> clicked_pos = {-1, -1};
 
 // La souris est-elle cliquée
 static bool clicked = false;
+
+// Calcul du nombre de noeuds visités
+static int visited_nodes;
+
+// Calcul de temps
+static clock_t begin_time;
