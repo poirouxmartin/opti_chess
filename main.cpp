@@ -70,6 +70,9 @@ Afficher le nombre de noeuds calculés (et le temps pris / noeuds par seconde)
 
 Livres d'ouvertures, tables d'engame?
 
+
+Correction PGN -> fins de parties
+
 */
 
 
