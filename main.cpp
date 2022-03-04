@@ -35,15 +35,17 @@ Implémenter les fins de parties
 
 
 Améliorer les heuristiques pour l'évaluation d'une position
+- Positionnement du roi changeant au cours de la partie
+- Activité des pièces
+- Sécurité du roi
+- Espace
+- Structures de pions
 
 
-Ajout de sons
+Amélioration des sons
 
 
 Dans le minimax, si y'a un mat, ne plus regarder les autres coups?
-
-
-PGN -> coups ambigus (si plusieurs cavaliers peuvent faire la même chose)
 
 Quand on joue un coup, vérifie s'il est valide
 
@@ -65,6 +67,8 @@ Faire une profodeur -> trier les coups du meilleur au pire, puis continuer la re
 
 
 Afficher le nombre de noeuds calculés (et le temps pris / noeuds par seconde)
+
+Livres d'ouvertures, tables d'engame?
 
 */
 
@@ -107,7 +111,8 @@ int main() {
 
     // Variables
     Board t;
-    //t.from_fen("r2qkbnr/pp2ppp1/2b5/4p2p/4P3/P1N1B2P/1PP2PP1/R2QKB1R b KQkq - 1 10");
+    t.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1");
+    //t.from_fen("rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2");
 
 
     // Calcul du temps de la fonction
@@ -124,12 +129,12 @@ int main() {
             cout << t._pgn << endl;
         }
 
-        if (!t._player) {
-            t.grogrosfish2(6);
-            t.to_fen();
-            cout << t._fen << endl;
-            cout << t._pgn << endl;
-        }
+        // if (!t._player) {
+        //     t.grogrosfish2(6);
+        //     t.to_fen();
+        //     cout << t._fen << endl;
+        //     cout << t._pgn << endl;
+        // }
 
         // if (IsKeyDown(KEY_T)) {
         //     t.to_fen();
@@ -139,12 +144,12 @@ int main() {
         //     t.display_moves();
         // }
 
-        // if (t.game_over() == 0) {
-        //     t.grogrosfish2(6);
-        //     t.to_fen();
-        //     cout << t._fen << endl;
-        //     cout << t._pgn << endl;
-        // }
+        if (t.game_over() == 0) {
+            t.grogrosfish2(6);
+            t.to_fen();
+            cout << t._fen << endl;
+            cout << t._pgn << endl;
+        }
 
 
         // Dessins
