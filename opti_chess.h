@@ -140,12 +140,18 @@ class Board {
         // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
         float negamax(int, float, float, int, bool);
 
+        // Mieux que negamax? tend à supprimer plus de coups
+        float negascout(int, float, float, int, bool);
+
         // Fonction qui utilise minimax pour déterminer quel est le "meilleur" coup et le joue
         void grogrosfish(int);
 
         // Version un peu mieux optimisée de Grogrosfish
         void grogrosfish2(int);
         
+        // Version qui utilise negascout
+        void grogrosfish3(int);
+
         // Fonction qui revient à la position précédente
         void undo(int, int, int, int, int, int, int);
 
