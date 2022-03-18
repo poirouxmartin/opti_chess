@@ -618,13 +618,18 @@ void Board::make_index_move(int i) {
 }
 
 
+
+// Paramètres d'évaluation par défaut
+static float default_eval_parameters[3] = {1, 0.1, 0.025};
+
+
 // Fonction qui évalue la position à l'aide d'heuristiques
-void Board::evaluate() {
+void Board::evaluate(float eval_parameters[3] = default_eval_parameters) {
 
     // Coefficiants des heuristiques
-    float piece_value = 1;
-    float piece_activity = 0.1;
-    float piece_positioning = 0.01;
+    float piece_value = eval_parameters[0];
+    float piece_activity = eval_parameters[1];
+    float piece_positioning = eval_parameters[2];
 
     int pos_pawn[8][8]      {{0,   0,   0,   0,   0,   0,   0,   0},
                             {78,  83,  86,  73, 102,  82,  85,  90},
@@ -721,7 +726,7 @@ void Board::evaluate() {
     // _evaluation += _color * _got_moves * piece_activity;
         
 
-    // Pour éviter les répétitions
+    // Pour éviter les répétitions (ne fonctionne pas)
     _evaluation *= 1 - (float)(_half_moves_count + _moves_count) / 1000;
 
 
@@ -730,7 +735,7 @@ void Board::evaluate() {
 
 
 // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-float Board::negamax(int depth, float alpha, float beta, int color, bool max_depth) {
+float Board::negamax(int depth, float alpha, float beta, int color, bool max_depth, float eval_parameters[3] = default_eval_parameters, bool play = true, bool display = true) {
 
     // Nombre de noeuds
     if (max_depth) {
@@ -742,7 +747,8 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
     }
 
     if (depth == 0) {
-        evaluate();
+        evaluate(eval_parameters);
+        //evaluate();
         // ??
         return color * _evaluation;
     }
@@ -768,12 +774,12 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
     // int i1, j1, p1, i2, j2, p2, h;
 
     // Sort moves à faire
-    // sort_moves();
-    // int j;
+    sort_moves();
+    int i;
 
-    for (int i = 0; i < _got_moves; i++) {
+    for (int j = 0; j < _got_moves; j++) {
         // Pour le triage des coups
-        // j = _move_order[i];
+        i = _move_order[j];
         // Copie du plateau
         // Opti?? plutôt copier une fois au début, et undo les moves?
         // i1 = _moves[4 * i];
@@ -788,10 +794,11 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
 
         b.make_index_move(i);
         
-        tmp_value = -b.negamax(depth - 1, -beta, -alpha, -color, false);
+        tmp_value = -b.negamax(depth - 1, -beta, -alpha, -color, false, eval_parameters);
 
         if (max_depth) {
-            cout << "move : " << move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]) << ", value : " << tmp_value << endl;
+            if (display)
+                cout << "move : " << move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]) << ", value : " << tmp_value << endl;
             if (tmp_value > value)
                 best_move = i;
         }
@@ -807,11 +814,15 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
     }
 
     if (max_depth) {
-        cout << "visited nodes : " << visited_nodes << endl;
-        double spent_time = (double)(clock() - begin_time);
-        cout << "time spend : " << spent_time << "ms"  << endl;
-        cout << "speed : " << visited_nodes / spent_time << "kN/s" << endl;
-        make_index_move(best_move);
+        if (display) {
+            cout << "visited nodes : " << (float)(visited_nodes / 1000) << "k" << endl;
+            double spent_time = (double)(clock() - begin_time);
+            cout << "time spend : " << spent_time << "ms"  << endl;
+            cout << "speed : " << visited_nodes / spent_time << "kN/s" << endl;
+        }
+        if (play)
+            make_index_move(best_move);
+        return best_move;
     }
     
     return value;
@@ -820,8 +831,17 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
 
 
 
-// Mieux que negamax? tend à supprimer plus de coups
+// Mieux que negamax? tend à supprimer plus de coups (ne marche pas du tout)
 float Board::negascout(int depth, float alpha, float beta, int color, bool max_depth) {
+    // Nombre de noeuds
+    if (max_depth) {
+        visited_nodes = 1;
+        begin_time = clock();
+    }
+    else {
+        visited_nodes++;
+    }
+
     if (depth == 0) {
         evaluate();
         return color * _evaluation;
@@ -853,24 +873,24 @@ float Board::negascout(int depth, float alpha, float beta, int color, bool max_d
         
 
         b.copy_data(*this);
-        b.make_index_move(i);
-        tmp_value = -b.negascout(depth - 1, -beta, -alpha, -color, false);
+        b.make_index_move(j);
+        tmp_value = -b.negascout(depth - 1, -_b, -_a, -color, false);
 
         if (max_depth) {
-            cout << "move : " << move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]) << ", value : " << tmp_value << endl;
-            if (tmp_value > value)
-                best_move = i;
+            cout << "move : " << move_label(_moves[4 * j], _moves[4 * j + 1], _moves[4 * j + 2], _moves[4 * j + 3]) << ", value : " << tmp_value << endl;
+            // Pas sûr pour le choix du meilleur coup
+            if (tmp_value > _a)
+                best_move = j;
         }
 
-        if ((tmp_value > _a) && (tmp_value < beta) && (i > 1))
+        if ((tmp_value > _a) && (tmp_value < beta) && (i > 0) && (depth > 1)) 
             _a = -b.negascout(depth - 1, -beta, -tmp_value, -color, false);
             
-        //value = max(value, tmp_value);
         _a = max(_a, tmp_value);
-        //alpha = max(alpha, value);
 
         if (_a >= beta) {
-            make_index_move(best_move);
+            if (max_depth)
+                make_index_move(best_move);
             return _a;
         }
 
@@ -878,10 +898,99 @@ float Board::negascout(int depth, float alpha, float beta, int color, bool max_d
 
     }
 
-    if (max_depth)
+    if (max_depth) {
+        cout << "visited nodes : " << (float)(visited_nodes / 1000) << "k" << endl;
+        double spent_time = (double)(clock() - begin_time);
+        cout << "time spend : " << spent_time << "ms"  << endl;
+        cout << "speed : " << visited_nodes / spent_time << "kN/s" << endl;
         make_index_move(best_move);
+    }
     
     return _a;
+}
+
+
+
+
+
+
+// Algorithme PVS
+float Board::pvs(int depth, float alpha, float beta, int color, bool max_depth) {
+    // Nombre de noeuds
+    if (max_depth) {
+        visited_nodes = 1;
+        begin_time = clock();
+    }
+    else {
+        visited_nodes++;
+    }
+
+    if (depth == 0) {
+        evaluate();
+        return color * _evaluation;
+    }
+
+    // à mettre avant depth == 0?
+    int g = game_over();
+    if (g == 2)
+        return 0;
+    if (g == -1 || g == 1)
+        return -1000 * (depth + 1);
+        
+    // Définition des variables
+    float value = -1e9; int best_move = 0; float tmp_value; Board b; int j;
+    
+    // Génération des coups
+    if (_got_moves == -1)
+        get_moves();
+
+    // Sort moves à faire
+    sort_moves();
+
+
+    for (int i = 0; i < _got_moves; i++) {
+        // Pour le triage des coups
+        j = _move_order[i];
+        
+
+        b.copy_data(*this);
+        b.make_index_move(j);
+
+
+        if (i > 0) {
+            tmp_value = -b.pvs(depth - 1, -alpha - 1, -alpha, -color, false);
+
+            if ((alpha < tmp_value) && (tmp_value < beta)) 
+                tmp_value = -b.pvs(depth - 1, -beta, -tmp_value, -color, false);
+        }
+
+        else {
+            tmp_value = -b.pvs(depth - 1, -beta, -alpha, -color, false);
+        }
+
+
+        if (max_depth) {
+            cout << "move : " << move_label(_moves[4 * j], _moves[4 * j + 1], _moves[4 * j + 2], _moves[4 * j + 3]) << ", value : " << tmp_value << endl;
+            if (tmp_value > alpha)
+                best_move = j;
+        }
+            
+        alpha = max(alpha, tmp_value);
+
+        if (alpha >= beta)
+            break;
+
+    }
+
+    if (max_depth) {
+        cout << "visited nodes : " << (float)(visited_nodes / 1000) << "k" << endl;
+        double spent_time = (double)(clock() - begin_time);
+        cout << "time spend : " << spent_time << "ms"  << endl;
+        cout << "speed : " << visited_nodes / spent_time << "kN/s" << endl;
+        make_index_move(best_move);
+    }
+    
+    return alpha;
 }
 
 
@@ -921,8 +1030,8 @@ void Board::grogrosfish(int depth) {
 
 
 // Version un peu mieux optimisée de Grogrosfish
-void Board::grogrosfish2(int depth) {
-    negamax(depth, -1e9, 1e9, _color, true);
+void Board::grogrosfish2(int depth, float eval_parameters[3] = default_eval_parameters) {
+    negamax(depth, -1e9, 1e9, _color, true, eval_parameters);
     PlaySound(move_1_sound);
 }
 
@@ -931,6 +1040,62 @@ void Board::grogrosfish3(int depth) {
     negascout(depth, -1e9, 1e9, _color, true);
     PlaySound(move_1_sound);
 }
+
+// Test de Grogrofish
+void Board::grogrosfish4(int depth) {
+    pvs(depth, -1e9, 1e9, _color, true);
+    PlaySound(move_1_sound);
+}
+
+
+// Test de Grogrofish avec combinaison d'agents
+void Board::grogrosfish_multiagents(int depth, int n_agents, float begin_eval_parameters[3], float end_eval_parameters[3]) {
+    if (_got_moves == -1)
+        get_moves();
+
+    float eval_parameters[3];
+    int votes[250];
+
+    // Met la liste des votes à 0 pour chaque coup
+    for (int i = 0; i < _got_moves; i++) {
+        votes[i] = 0;
+    }
+    int move;
+
+    // Pour chaque agent
+    for (int i = 0; i < n_agents; i++) {
+        // Calcul des paramètres de l'agent
+        for (int j = 0; j < 3; j++) {
+            eval_parameters[j] = (float)(n_agents - i - 1) / (n_agents - 1) * begin_eval_parameters[j] + (float)i / (n_agents - 1) * end_eval_parameters[j];
+        }
+
+        // Ajoute à la liste de votes son coup
+        move = negamax(depth, -1e9, 1e9, _color, true, eval_parameters, false, false);
+        votes[move] += 1;
+
+    }
+
+    // Choix du coup en fonction du nombre de votes
+    int max_vote = 0;
+    int best_move = 0;
+
+    cout << "Votes : ";
+
+    for (int i = 0; i < _got_moves; i++) {
+        cout << votes[i] << "   ";
+        if (votes[i] > max_vote) {
+            max_vote = votes[i];
+            best_move = i;
+        }
+    }
+
+    cout << "->    Voted move : " << best_move << " (" << 100 * votes[best_move] / n_agents << "%)" << endl;
+
+    make_index_move(best_move);
+    
+    PlaySound(move_1_sound);
+}
+
 
 
 // Fonction qui revient à la position précédente (ne marchera pas avec les roques pour le moment)
@@ -962,23 +1127,31 @@ void Board::sort_moves() {
     if (_got_moves == -1)
         get_moves();
 
-    int* values = new int[_got_moves];
-    int value;
+    float* values = new float[_got_moves];
+    float value;
 
     // Création de la liste des valeurs des évaluations des positions après chaque coup
     // ...
     for (int i = 0; i < _got_moves; i++) {
+        // Mise à jour du plateau
         b.copy_data(*this);
         b.make_index_move(i);
+
+        // Evaluation
         b.evaluate();
         value = b._evaluation * _color;
+
+        // Place l'évaluation en i dans les valeurs
         values[i] = value;
+
         _move_order[i] = i;
+
+        // Insertion de la nouvelle valeur dans le tableau
         for (int j = 0; j < i; j++) {
             if (value > values[j]) {
                 for (int k = i; k > j; k--) {
                     values[k] = values[k - 1];
-                    
+                    _move_order[k] = _move_order[k - 1];
                 }
                 values[j] = value;
                 _move_order[j] = i;

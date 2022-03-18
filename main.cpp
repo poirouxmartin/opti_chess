@@ -7,6 +7,15 @@
 
 /* Projets
 
+
+6nk/4b3/5nKp/4N3/8/8/8/8 b - - 0 1
+FEN à garder, pour tester les règles de chess.com... que se passe t-il si les noirs tombent au temps? y'a t-il nulle?
+4n1nk/4b3/6Kp/8/6N1/8/8/8 b - - 0 1 -> Nef6 -> Ne5 -> ... time over -> draw on time + lack of material?
+
+6bk/2n5/6K1/8/5B2/8/8/8 b - - 0 1
+
+
+
 En passant
 Echecs?
 Promotions
@@ -22,6 +31,7 @@ Regarder quel compilateur est le plus rapide/opti
 Algo Negamax -> copies des tableaux -> undo moves? ---> finalement plus lent?
 Sort moves ?? fonctionne ? ---> alors utiliser optimisation vers negascout
 Transposition tables
+Algorithme MTD(f) <-> alphabeta with memory algorithm
 stoi et to_string très lents?
 Ajout de variables globales plutôt que les re définir lors des appels de fonction (valeur des pièces, positionnement...)
 Parallélisation -> std::for_each avec policy parallel?
@@ -45,7 +55,7 @@ Améliorer les heuristiques pour l'évaluation d'une position
 Amélioration des sons
 
 
-Dans le minimax, si y'a un mat, ne plus regarder les autres coups?
+Dans le negamax, si y'a un mat, ne plus regarder les autres coups?
 
 Quand on joue un coup, vérifie s'il est valide
 
@@ -66,12 +76,51 @@ Changer Grogrosfish : depth -> temps (--> moteur d'analyse)
 Faire une profodeur -> trier les coups du meilleur au pire, puis continuer la recherche plus loin
 
 
-Afficher le nombre de noeuds calculés (et le temps pris / noeuds par seconde)
 
 Livres d'ouvertures, tables d'engame?
 
 
 Correction PGN -> fins de parties
+
+Ne plus autoriser les coups illégaux dans la console?
+
+Optimiser le sort moves - l'améliorer (et l'évaluation?)
+
+Montrer en direct sur la GUI l'avancement de l'IA
+
+
+Evaluation dans le plateau -> incrémentation de l'évaluation lors de coups, plutôt que calcul de zéro
+
+Remplacer des if par des &&
+
+
+
+Vérifier que toutes les fonctions sont optimisées
+
+
+Faire le triage des coups grace aux itérations précédentes?
+
+Fonction pour stocker facilement un noeud, ou savoir s'il est similaire à un autre? -> transposition tables
+
+Iterative deeping
+
+
+Combiner plusieurs agents (avec des paramètres différents) pour les faire voter pour un meilleur coups (vote, moyenne, médiane...)
+
+
+Afficher le dernier coup joué (en surlignage)
+
+
+Augmenter la profondeur pour les finales
+
+Undo move dans l'interface, avec les flèches
+
+Colore le coup qu'il regarde
+
+
+Approche de Monte Carlo
+
+Faire un agent qui gagne toujours contre un autre
 
 */
 
@@ -115,6 +164,8 @@ int main() {
     // Variables
     Board t;
     t.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1");
+    //t.from_fen("rnbqkbnr/pppp1p1p/8/8/2B1Pp2/5Q2/PPPP2PP/RNB2RK1 b kq - 0 6");
+    //t.from_fen("r4rk1/p1p3pp/4qp2/1Rbpn2b/8/2P2N1P/P1P1BPP1/2BQR1K1 b - - 1 15");
     //t.from_fen("rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2");
 
 
@@ -122,22 +173,59 @@ int main() {
     test_function(&test, 1);
 
 
+    // Test de paramètres
+    float test_parameters[3] {1, 0.1, 0.025};
+    float test_begin_parameters[3] {1, 0.1, 0.01};
+    float test_end_parameters[3] {1, 0.1, 0.03};
+    int n_agents = 100;
+
+
     // Boucle principale (Quitter à l'aide de la croix, ou en faisant échap)
     while (!WindowShouldClose()) {
 
         if (IsKeyDown(KEY_SPACE)) {
-            t.grogrosfish2(6);
+            t.grogrosfish2(6, test_parameters);
             t.to_fen();
             cout << t._fen << endl;
             cout << t._pgn << endl;
         }
 
-        // if (!t._player) {
-        //     t.grogrosfish2(6);
-        //     t.to_fen();
-        //     cout << t._fen << endl;
-        //     cout << t._pgn << endl;
-        // }
+        if (IsKeyDown(KEY_B)) {
+            t.grogrosfish3(6);
+            t.to_fen();
+            cout << t._fen << endl;
+            cout << t._pgn << endl;
+        }
+
+        if (IsKeyDown(KEY_V)) {
+            t.grogrosfish4(6);
+            t.to_fen();
+            cout << t._fen << endl;
+            cout << t._pgn << endl;
+        }
+
+        if (IsKeyDown(KEY_T)) {
+            t.grogrosfish_multiagents(6, n_agents, test_begin_parameters, test_end_parameters);
+            t.to_fen();
+            cout << t._fen << endl;
+            cout << t._pgn << endl;
+        }
+
+
+
+        if (!t._player) {
+            t.grogrosfish2(6, test_parameters);
+            t.to_fen();
+            cout << t._fen << endl;
+            cout << t._pgn << endl;
+        }
+
+        else {
+            t.grogrosfish_multiagents(4, n_agents, test_begin_parameters, test_end_parameters);
+            t.to_fen();
+            cout << t._fen << endl;
+            cout << t._pgn << endl;
+        }
 
         // if (IsKeyDown(KEY_T)) {
         //     t.to_fen();
@@ -147,12 +235,13 @@ int main() {
         //     t.display_moves();
         // }
 
-        if (t.game_over() == 0) {
-            t.grogrosfish2(6);
-            t.to_fen();
-            cout << t._fen << endl;
-            cout << t._pgn << endl;
-        }
+        // if (t.game_over() == 0) {
+        //     //t.grogrosfish2(6);
+        //     t.grogrosfish_multiagents(4, n_agents, test_begin_parameters, test_end_parameters);
+        //     t.to_fen();
+        //     cout << t._fen << endl;
+        //     cout << t._pgn << endl;
+        // }
 
 
         // Dessins
