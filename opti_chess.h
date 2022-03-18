@@ -29,6 +29,11 @@ Plateau :
 */
 
 
+
+// Paramètres d'évaluation par défaut
+//static float default_eval_parameters[3] = {1, 0.1, 0.025};
+
+
 class Board {
     public:
 
@@ -64,6 +69,9 @@ class Board {
 
         // Peut-être utile pour les optimisations?
         float _evaluation = 0;
+
+        // Paramètres pour l'évaluation de la position
+        float _evaluation_parameters[3] = {1, 0.1, 0.025};
 
         // Roques disponibles
         bool _k_castle_w = true;
@@ -135,22 +143,31 @@ class Board {
         void make_index_move(int);
 
         // Fonction qui évalue la position à l'aide d'heuristiques
-        void evaluate();
+        void evaluate(float[]);
 
         // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-        float negamax(int, float, float, int, bool);
+        float negamax(int, float, float, int, bool, float[], bool, bool);
 
         // Mieux que negamax? tend à supprimer plus de coups
         float negascout(int, float, float, int, bool);
+
+        // Algorithme PVS
+        float pvs(int, float, float, int, bool);
 
         // Fonction qui utilise minimax pour déterminer quel est le "meilleur" coup et le joue
         void grogrosfish(int);
 
         // Version un peu mieux optimisée de Grogrosfish
-        void grogrosfish2(int);
+        void grogrosfish2(int, float[]);
         
         // Version qui utilise negascout
         void grogrosfish3(int);
+        
+        // Test de Grogrofish
+        void grogrosfish4(int);
+
+        // Test de Grogrofish avec combinaison d'agents
+        void grogrosfish_multiagents(int, int, float[], float[]);
 
         // Fonction qui revient à la position précédente
         void undo(int, int, int, int, int, int, int);
