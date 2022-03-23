@@ -95,6 +95,9 @@ class Board {
         // PGN du plateau
         string _pgn = "";
 
+        // Dernier coup joué
+        int _last_move[4] = {-1, -1, -1, -1};
+
         
 
         // Constructeur par défaut
@@ -132,6 +135,9 @@ class Board {
 
         // Renvoie la liste des coups possibles
         int* get_moves();
+
+        // Fonction qui dit si une case est attaqué
+        bool attacked(int, int);
 
         // Fonction qui affiche la liste des coups
         void display_moves();
@@ -192,6 +198,9 @@ class Board {
 
         // Fonction qui renvoie un plateau à partir d'un PGN
         void from_pgn();
+
+        // Fonction qui affiche un texte dans une zone donnée
+        void draw_text_rect(string, int, int, int, int, int);
 
         // Fonction qui dessine le plateau
         void draw();
