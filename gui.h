@@ -6,8 +6,8 @@
 
 
 // Paramètres d'initialisation
-static int screen_width = 1200;
-static int screen_height = 800;
+static int screen_width = 1800;
+static int screen_height = 900;
 
 // Nombre de FPS
 static int fps = 60;
@@ -17,6 +17,13 @@ static Color background_color = {25, 25, 25};
 
 // Couleur du texte
 static Color text_color = {255, 100, 100, 255};
+
+// Couleurs du plateau
+static Color board_color_light = {150, 150, 200, 255};
+static Color board_color_dark = {100, 100, 150, 255};
+
+// Couleur de surlignage de cases
+static Color highlight_color = {255, 100, 100, 150};
 
 
 // Variable qui indique si l'initialisation a été faite
@@ -39,7 +46,9 @@ static float board_padding_y;
 
 
 // Taille des pièces
+static int tile_size;
 static float piece_size;
+static float piece_scale = 0.8;
 
 
 // Position de la souris
