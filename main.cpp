@@ -105,22 +105,32 @@ Fonction pour stocker facilement un noeud, ou savoir s'il est similaire à un au
 Iterative deeping
 
 
-Combiner plusieurs agents (avec des paramètres différents) pour les faire voter pour un meilleur coups (vote, moyenne, médiane...)
-
-
-Afficher le dernier coup joué (en surlignage)
-
 
 Augmenter la profondeur pour les finales
 
 Undo move dans l'interface, avec les flèches
 
-Colore le coup qu'il regarde
-
 
 Approche de Monte Carlo
 
 Faire un agent qui gagne toujours contre un autre
+
+
+Tourner l'échiquier
+
+Nouveau sons/images
+
+Afficher quel coup l'ordinateur est en train de refléchir
+
+Afficher tous les coups possibles
+
+Surligner avec le clic droit
+
+Quand une tour ou le roi bouge, retire le roque
+
+Stealmates
+
+
 
 */
 
@@ -163,8 +173,8 @@ int main() {
 
     // Variables
     Board t;
-    t.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1");
-    //t.from_fen("rnbqkbnr/pppp1p1p/8/8/2B1Pp2/5Q2/PPPP2PP/RNB2RK1 b kq - 0 6");
+    //t.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    //t.from_fen("r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4");
     //t.from_fen("r4rk1/p1p3pp/4qp2/1Rbpn2b/8/2P2N1P/P1P1BPP1/2BQR1K1 b - - 1 15");
     //t.from_fen("rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2");
 
@@ -178,6 +188,10 @@ int main() {
     float test_begin_parameters[3] {1, 0.1, 0.01};
     float test_end_parameters[3] {1, 0.1, 0.03};
     int n_agents = 100;
+
+
+    // IA self play
+    bool self_play = false;
 
 
     // Boucle principale (Quitter à l'aide de la croix, ou en faisant échap)
@@ -212,20 +226,20 @@ int main() {
         }
 
 
+        // if (!t._player) {
+        //     t.grogrosfish2(6, test_parameters);
+        //     t.to_fen();
+        //     cout << "last move" << t._last_move[0] << ", " << t._last_move[1] << endl;
+        //     cout << t._fen << endl;
+        //     cout << t._pgn << endl;
+        // }
 
-        if (!t._player) {
-            t.grogrosfish2(6, test_parameters);
-            t.to_fen();
-            cout << t._fen << endl;
-            cout << t._pgn << endl;
-        }
-
-        else {
-            t.grogrosfish_multiagents(4, n_agents, test_begin_parameters, test_end_parameters);
-            t.to_fen();
-            cout << t._fen << endl;
-            cout << t._pgn << endl;
-        }
+        // else {
+        //     t.grogrosfish_multiagents(4, n_agents, test_begin_parameters, test_end_parameters);
+        //     t.to_fen();
+        //     cout << t._fen << endl;
+        //     cout << t._pgn << endl;
+        // }
 
         // if (IsKeyDown(KEY_T)) {
         //     t.to_fen();
@@ -235,33 +249,28 @@ int main() {
         //     t.display_moves();
         // }
 
-        // if (t.game_over() == 0) {
-        //     //t.grogrosfish2(6);
-        //     t.grogrosfish_multiagents(4, n_agents, test_begin_parameters, test_end_parameters);
-        //     t.to_fen();
-        //     cout << t._fen << endl;
-        //     cout << t._pgn << endl;
-        // }
+        if (IsKeyDown(KEY_G))
+            self_play = true;
+
+        if (self_play && t.game_over() == 0) {
+            t.grogrosfish2(6, test_parameters);
+            //t.grogrosfish_multiagents(4, n_agents, test_begin_parameters, test_end_parameters);
+            t.to_fen();
+            cout << t._fen << endl;
+            cout << t._pgn << endl;
+        }
+
+
+        /*if (!IsWindowFullscreen())
+            ToggleFullscreen();*/
 
 
         // Dessins
         BeginDrawing();
 
-            // Couleur de fond
-            ClearBackground(background_color);
-
-            // Texte
-            DrawText("Grogrosfish engine", 20, 20, 20, text_color);
-
             // Dessin du plateau
             t.draw();
             
-
-            // Sound fxWav = LoadSound("resources/sound.wav");
-            // PlaySound(fxWav);
-            // UnloadSound(fxWav);
-
-
         // Fin de la zone de dessin
         EndDrawing();
     

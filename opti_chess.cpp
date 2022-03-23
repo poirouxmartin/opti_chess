@@ -461,6 +461,13 @@ int* Board::get_moves() {
 
                 case 6: // Roi blanc
                     _player && add_king_moves(i, j, &iterator);
+                    // Roques
+                    // Grand
+                    if (_q_castle_w && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && !attacked(i, j) && !attacked(i, j - 1) && !attacked(i, j - 2))
+                        add_move(i, j, i, j - 2, &iterator);
+                    // Petit
+                    if (_k_castle_w && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && !attacked(i, j) && !attacked(i, j + 1) && !attacked(i, j + 2))
+                        add_move(i, j, i, j + 2, &iterator);
                     break;
 
                 case 7: // Pion noir
@@ -485,6 +492,13 @@ int* Board::get_moves() {
 
                 case 12: // Roi noir
                     !_player && add_king_moves(i, j, &iterator);
+                    // Roques
+                    // Grand
+                    if (_q_castle_b && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && !attacked(i, j) && !attacked(i, j - 1) && !attacked(i, j - 2))
+                        add_move(i, j, i, j - 2, &iterator);
+                    // Petit
+                    if (_k_castle_b && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && !attacked(i, j) && !attacked(i, j + 1) && !attacked(i, j + 2))
+                        add_move(i, j, i, j + 2, &iterator);
                     break;
 
             }
@@ -497,6 +511,119 @@ int* Board::get_moves() {
 
     return _moves;
 }
+
+
+
+// Fonction qui dit si une case est attaqué
+bool Board::attacked(int i, int j) {
+
+    // Pour accelérer les tests
+    if (i < 0 || i > 7 || j < 0 || j > 7)
+        return false;
+
+
+    // Attaque par un pion
+    if ((j > 0 && _array[i + _color][j - 1] == 1 + 6 * _player) || (j < 7 && _array[i + _color][j + 1] == 1 + 6 * _player))
+        return true;
+
+    // Attaque par un cavalier
+    for (int k = -2; k <= 2; k++) {
+        for (int l = -2; l <= 2; l++) {
+            if (_array[i + k][j + l] == 2 + 6 * _player && abs(k) + abs(l) == 3 && is_in(i + k, 0, 7) && is_in(j + l, 0, 7))
+                return true;
+        }
+    }
+
+    // Attaque par un mouvement rectiligne
+    int k;
+
+    // Verticale
+    k = -1;
+    // Bas
+    while (i + k >= 0) {
+        if (_array[i + k][j] == 4 + 6 * _player || _array[i + k][j] == 5 + 6 * _player)
+            return true;
+        if (_array[i + k][j] != 0)
+            break;
+        k--;
+    }
+    // Haut
+    k = 1;
+    while (i + k <= 7) {
+        if (_array[i + k][j] == 4 + 6 * _player || _array[i + k][j] == 5 + 6 * _player)
+            return true;
+        if (_array[i + k][j] != 0)
+            break;
+        k++;
+    }
+    // Horizontale
+    k = -1;
+    // Gauche
+    while (j + k >= 0) {
+        if (_array[i][j + k] == 4 + 6 * _player || _array[i][j + k] == 5 + 6 * _player)
+            return true;
+        if (_array[i][j + k] != 0)
+            break;
+        k--;
+    }
+    // Droite
+    k = 1;
+    while (j + k <= 7) {
+        if (_array[i][j + k] == 4 + 6 * _player || _array[i][j + k] == 5 + 6 * _player)
+            return true;
+        if (_array[i][j + k] != 0)
+            break;
+        k++;
+    }
+
+
+
+    // Attaque par diagonale
+
+    // Diagonale 1
+    // Bas gauche
+    k = -1;
+    while (i + k >= 0 && j + k >= 0) {
+        if (_array[i + k][j + k] == 3 + 6 * _player || _array[i + k][j + k] == 5 + 6 * _player)
+            return true;
+        if (_array[i + k][j + k] != 0)
+            break;
+        k--;
+    }
+    // Haut droite
+    k = +1;
+    while (i + k <= 7 && j + k <= 7) {
+        if (_array[i + k][j + k] == 3 + 6 * _player || _array[i + k][j + k] == 5 + 6 * _player)
+            return true;
+        if (_array[i + k][j + k] != 0)
+            break;
+        k++;
+    }
+    // Diagonale 2
+    // Bas droite
+    k = -1;
+    while (i + k >= 0 && j - k <= 7) {
+        if (_array[i + k][j - k] == 3 + 6 * _player || _array[i + k][j - k] == 5 + 6 * _player)
+            return true;
+        if (_array[i + k][j - k] != 0)
+            break;
+        k--;
+    }
+    // Haut gauche
+    k = 1;
+    while (i + k <= 7 && j - k >= 0) {
+        if (_array[i + k][j - k] == 3 + 6 * _player || _array[i + k][j - k] == 5 + 6 * _player)
+            return true;
+        if (_array[i + k][j - k] != 0)
+            break;
+        k++;
+    }
+
+
+    return false;
+
+}
+
 
 
 
@@ -544,6 +671,32 @@ void Board::make_move(int i, int j, int k, int l) {
         _array[k - 1][l] = 0;
     if (p == 7 && j != l && _array[k][l] == 0)
         _array[k + 1][l] = 0;
+
+    
+    // Si c'est le roi qui bouge, retire la permission de roque
+    if (p == 6) {
+        _q_castle_w = false;
+        _k_castle_w = false;
+    }
+    if (p == 12) {
+        _q_castle_b = false;
+        _k_castle_b = false;
+    }
+
+    // Si c'est une tour, peut retirer la permission de roque
+    if (p == 4) {
+        if (j == 0)
+            _q_castle_w = false;
+        if (j == 7)
+            _k_castle_w = false;
+    }
+    if (p == 10) {
+        if (j == 0)
+            _q_castle_b = false;
+        if (j == 7)
+            _k_castle_b = false;
+    }
+
 
     // Roque
     // Blanc
@@ -600,6 +753,13 @@ void Board::make_move(int i, int j, int k, int l) {
     //get_moves();
 
     _sorted_moves = -1;
+
+
+    _last_move[0] = i;
+    _last_move[1] = j;
+    _last_move[2] = k;
+    _last_move[3] = l;
+
 
 }
 
@@ -1485,6 +1645,32 @@ void Board::from_pgn() {
 
 }
 
+
+
+
+
+
+// Fonction qui affiche un texte dans une zone donnée
+void Board::draw_text_rect(string s, int pos_x, int pos_y, int width, int height, int size) {
+
+    Rectangle rect_text = {pos_x, pos_y, width, height};
+    DrawRectangleRec(rect_text, DARKGRAY);
+    // Division du texte
+    int sub_div = (1.5 * width) / size;
+    int string_size = s.length();
+    const char *c;
+    int i = 0;
+    while (sub_div * i <= string_size) {
+        c = s.substr(i * sub_div, sub_div).c_str();
+        DrawText(c, pos_x, pos_y + i * size, size, text_color);
+        i++;
+    }
+
+}
+
+
+
+
 // Fonction qui dessine le plateau
 void Board::draw() {
 
@@ -1497,8 +1683,8 @@ void Board::draw() {
         board_size = board_scale * min_screen;
         ImageResize(&board_image, board_size, board_size);
         board_texture = LoadTextureFromImage(board_image);
-        board_padding_x = (screen_width - board_size) / 2;
         board_padding_y = (screen_height - board_size) / 2;
+        board_padding_x = board_padding_y;
 
         // Pièces
         piece_images[0] = LoadImage("../resources/w_pawn.png");
@@ -1514,13 +1700,14 @@ void Board::draw() {
         piece_images[10] = LoadImage("../resources/b_queen.png");
         piece_images[11] = LoadImage("../resources/b_king.png");
 
-        piece_size = board_size / 8;
+        tile_size = board_size / 8;
+        piece_size = tile_size * piece_scale;
 
+        // Génération des textures
         for (int i = 0; i < 12; i++) {
             ImageResize(&piece_images[i], piece_size, piece_size);
             piece_textures[i] = LoadTextureFromImage(piece_images[i]);
         }
-
 
 
         // Chargement du son
@@ -1548,8 +1735,16 @@ void Board::draw() {
         if (clicked && clicked_pos.first != -1 && _array[clicked_pos.first][clicked_pos.second] != 0) {
             pair<int, int> drop_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
             if (is_in(drop_pos.first, 0, 7) && is_in(drop_pos.second, 0, 7) && (clicked_pos.first != drop_pos.first || clicked_pos.second != drop_pos.second)) {
-                make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
-                PlaySound(move_1_sound);
+                // Si le coup est légal
+                get_moves();
+                for (int i = 0; i < _got_moves; i++) {
+                    if (_moves[4 * i] == clicked_pos.first && _moves[4 * i + 1] == clicked_pos.second && _moves[4 * i + 2] == drop_pos.first && _moves[4 * i + 3] == drop_pos.second) {
+                        make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
+                        PlaySound(move_1_sound);
+                        break;
+                    }
+                }
+                
             }
         }
 
@@ -1562,8 +1757,31 @@ void Board::draw() {
     // Dessins
 
 
+    // Couleur de fond
+    ClearBackground(background_color);
+
+
     // Plateau
-    DrawTexture(board_texture, board_padding_x, board_padding_y, WHITE);
+    //DrawTexture(board_texture, board_padding_x, board_padding_y, WHITE);
+
+
+    // Plateau
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            if ((i + j) % 2 == 1)
+                DrawRectangle(board_padding_x + tile_size * j, board_padding_y + tile_size * i, tile_size, tile_size, board_color_dark);
+            else
+                DrawRectangle(board_padding_x + tile_size * j, board_padding_y + tile_size * i, tile_size, tile_size, board_color_light);
+        }
+    }
+
+
+    // Surligne du dernier coup joué
+    if (_last_move[0] != -1) {
+        DrawRectangle(board_padding_x + _last_move[1] * tile_size, board_padding_y + (7 - _last_move[0]) * tile_size, tile_size, tile_size, highlight_color);
+        DrawRectangle(board_padding_x + _last_move[3] * tile_size, board_padding_y + (7 - _last_move[2]) * tile_size, tile_size, tile_size, highlight_color);
+    }
+
 
     // Pièces
     int p;
@@ -1574,12 +1792,15 @@ void Board::draw() {
                 if (clicked && i == clicked_pos.first && j == clicked_pos.second)
                     DrawTexture(piece_textures[p - 1], mouse_pos.x - piece_size / 2, mouse_pos.y - piece_size / 2, WHITE);
                 else
-                    DrawTexture(piece_textures[p - 1], board_padding_x + piece_size * j, board_padding_y + piece_size * (7 - i), WHITE);
+                    DrawTexture(piece_textures[p - 1], board_padding_x + tile_size * j + (tile_size - piece_size) / 2, board_padding_y + tile_size * (7 - i) + (tile_size - piece_size) / 2, WHITE);
             }
 
         }
     }
 
+
+    // Texte
+    DrawText("Grogrosfish engine", board_padding_x, 10, 32, text_color);
 
     // FEN
     if (_fen == "")
@@ -1589,9 +1810,7 @@ void Board::draw() {
 
 
     // PGN
-    const char *pgn = _pgn.c_str();
-    DrawText(pgn, board_padding_x + board_size + 10, board_padding_y, 20, text_color);
-    DrawText(pgn, board_padding_x, 0, 10, text_color);
+    draw_text_rect(_pgn, board_padding_x + board_size + 20, board_padding_y, screen_width - (board_padding_x + board_size + 20) - 20, board_size, 20);
 
 }
 
@@ -1605,7 +1824,7 @@ pair<int, int> get_pos_from_gui(int x, int y) {
     if (!is_in(x, board_padding_x, board_padding_x + board_size) || !is_in(y, board_padding_y, board_padding_y + board_size))
         return {-1, -1};
     else
-        return {8 - (y - board_padding_y) / piece_size, (x - board_padding_x) / piece_size};
+        return {8 - (y - board_padding_y) / tile_size, (x - board_padding_x) / tile_size};
 
     return coord;
 }
