@@ -130,6 +130,8 @@ Quand une tour ou le roi bouge, retire le roque
 
 Stealmates
 
+Dans le negamax, renvoyer le coup à chaque fois, pour noter la ligne que l'ordi regarde?
+
 
 
 */
