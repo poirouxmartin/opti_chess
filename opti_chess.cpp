@@ -133,26 +133,29 @@ bool Board::add_move(int i, int j, int k, int l, int *iterator) {
 
 // Fonction qui ajoute les coups "pions" dans la liste de coups
 bool Board::add_pawn_moves(int i, int j, int *iterator) {
-    // Joueur avec les pièces noires
+    string abc = "abcdefgh";
+
+    // Joueur avec les pièces blanches
     if (_player) {
         // Poussée (de 1)
         (_array[i + 1][j] == 0) && add_move(i, j, i + 1, j, iterator);
         // Poussée (de 2)
         (i == 1 && _array[i + 1][j] == 0 && _array[i + 2][j] == 0) && add_move(i, j, i + 2, j, iterator);
         // Prise (gauche)
-        (j > 0 && is_in(_array[i + 1][j - 1], 7, 12)) && add_move(i, j, i + 1, j - 1, iterator);
+        (j > 0 && (is_in(_array[i + 1][j - 1], 7, 12) || _en_passant[0] == abc[j - 1])) && add_move(i, j, i + 1, j - 1, iterator);
         // Prise (droite)
-        (j < 7 && is_in(_array[i + 1][j + 1], 7, 12)) && add_move(i, j, i + 1, j + 1, iterator);
+        (j < 7 && (is_in(_array[i + 1][j + 1], 7, 12) || _en_passant[0] == abc[j + 1])) && add_move(i, j, i + 1, j + 1, iterator);
     }
+    // Joueur avec les pièces noires
     else {
         // Poussée (de 1)
         (_array[i - 1][j] == 0) && add_move(i, j, i - 1, j, iterator);
         // Poussée (de 2)
         (i == 6 && _array[i - 1][j] == 0 && _array[i - 2][j] == 0) && add_move(i, j, i - 2, j, iterator);
         // Prise (gauche)
-        (j > 0 && is_in(_array[i - 1][j - 1], 1, 6)) && add_move(i, j, i - 1, j - 1, iterator);
+        (j > 0 && (is_in(_array[i - 1][j - 1], 1, 6) || _en_passant[0] == abc[j - 1])) && add_move(i, j, i - 1, j - 1, iterator);
         // Prise (droite)
-        (j < 7 && is_in(_array[i - 1][j + 1], 1, 6)) && add_move(i, j, i - 1, j + 1, iterator);
+        (j < 7 && (is_in(_array[i - 1][j + 1], 1, 6) || _en_passant[0] == abc[j + 1])) && add_move(i, j, i - 1, j + 1, iterator);
     }
 
     return true;
@@ -665,6 +668,19 @@ void Board::make_move(int i, int j, int k, int l) {
     _half_moves_count += 1;
     (p == 1 || p == 7 || _array[k][l]) && (_half_moves_count = 0);
 
+
+    // Coups donnant la possibilité d'un en passant
+    _en_passant = "-";
+    if (p == 1 && k == i + 2 && (_array[k][l - 1] == 7||_array[k][l + 1] == 7)) {
+        string abc = "abcdefgh";
+        _en_passant = abc[j];
+        _en_passant += char(i + 1 + 1 + 48);
+    }
+    if (p == 7 && k == i - 2 && (_array[k][l - 1] == 1||_array[k][l + 1] == 1)) {
+        string abc = "abcdefgh";
+        _en_passant = abc[j];
+        _en_passant += char(i + 1 - 1 + 48);
+    }
 
     // En passant
     if (p == 1 && j != l && _array[k][l] == 0)
