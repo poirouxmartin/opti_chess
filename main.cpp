@@ -35,13 +35,14 @@
 -> stoi et to_string très lents?
 -> Ajout de variables globales plutôt que les re définir lors des appels de fonction (valeur des pièces, positionnement...)
 -> Parallélisation -> std::for_each avec policy parallel?
--> Au lieu de calculer l'évaluation à chaque coup, l'implémenter en fonction du coup
+-> Au lieu de calculer l'évaluation à chaque coup, l'imcrémenter en fonction du coup
 -> Dans le negamax, si y'a un mat, ne plus regarder les autres coups?
 -> Optimiser le sort moves - l'améliorer (et l'évaluation?)
 -> Remplacer des if par des &&
 -> Vérifier que toutes les fonctions sont optimisées
 -> Faire le triage des coups grâce aux itérations précédentes?
 -> Fonction pour stocker facilement un noeud, ou savoir s'il est similaire à un autre? -> transposition tables
+-> Incrémenter le game_over à chaque coup joué plutôt que de le regarder à chaque fois
 
 
 
@@ -88,6 +89,8 @@
 -> Dans le negamax, renvoyer le coup à chaque fois, pour noter la ligne que l'ordi regarde?
 -> Ajout de pre move
 -> Ajout de temps par joueur
+-> Pouvoir choisir contre quelle IA jouer
+-> Pouvoir faire des flèches
 
 
 
@@ -95,6 +98,7 @@
 
 -> Chargement de FEN -> Modifier le PGN en FEN + ... exemple : "[FEN "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w - - 0 2"] 2. Nf3 Nc6 *"
 -> Correction PGN -> fins de parties
+-> Importation depuis in PGN
 
 
 */
