@@ -1680,7 +1680,7 @@ void Board::from_pgn() {
 void Board::draw_text_rect(string s, float pos_x, float pos_y, float width, float height, int size) {
 
     Rectangle rect_text = {pos_x, pos_y, width, height};
-    DrawRectangleRec(rect_text, DARKGRAY);
+    DrawRectangleRec(rect_text, {50, 50, 50, 255});
     // Division du texte
     int sub_div = (1.5 * width) / size;
     int string_size = s.length();
@@ -1754,6 +1754,34 @@ void Board::draw() {
         if (!clicked) {
             clicked_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
             clicked = true;
+
+            // Sélection de pièces
+            // Si aucune pièce n'est sélectionnée, la sélectionne
+            if (selected_pos.first == -1 && ((_player && is_in(_array[clicked_pos.first][clicked_pos.second], 1, 6)) || (!_player && is_in(_array[clicked_pos.first][clicked_pos.second], 7, 12))))
+                selected_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
+            // Si une pièce est déjà sélectionnée
+            else if (selected_pos.first != -1) {
+
+                // Si le coup est légal, le joue
+                bool legal_move = false;
+                get_moves();
+                for (int i = 0; i < _got_moves; i++) {
+                    if (_moves[4 * i] == selected_pos.first && _moves[4 * i + 1] == selected_pos.second && _moves[4 * i + 2] == clicked_pos.first && _moves[4 * i + 3] == clicked_pos.second) {
+                        // Le joue
+                        make_move(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second);
+                        PlaySound(move_1_sound);
+                        legal_move = true;
+                        break;
+                    }
+                }
+
+                // Déselectionne
+                selected_pos = {-1, -1};
+
+                // Changement de sélection de pièce
+                if ((_player && is_in(_array[clicked_pos.first][clicked_pos.second], 1, 6)) || (!_player && is_in(_array[clicked_pos.first][clicked_pos.second], 7, 12)))
+                    selected_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
+            }
         }
         
     }
@@ -1767,6 +1795,8 @@ void Board::draw() {
                     if (_moves[4 * i] == clicked_pos.first && _moves[4 * i + 1] == clicked_pos.second && _moves[4 * i + 2] == drop_pos.first && _moves[4 * i + 3] == drop_pos.second) {
                         make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
                         PlaySound(move_1_sound);
+                        // Déselectionne
+                        selected_pos = {-1, -1};
                         break;
                     }
                 }
@@ -1806,6 +1836,20 @@ void Board::draw() {
     if (_last_move[0] != -1) {
         DrawRectangle(board_padding_x + orientation_index(_last_move[1]) * tile_size, board_padding_y + orientation_index(7 - _last_move[0]) * tile_size, tile_size, tile_size, highlight_color);
         DrawRectangle(board_padding_x + orientation_index(_last_move[3]) * tile_size, board_padding_y + orientation_index(7 - _last_move[2]) * tile_size, tile_size, tile_size, highlight_color);
+    }
+
+    // Sélection de cases et de pièces
+    if (selected_pos.first != -1) {
+        // Affiche la case séléctionnée
+        DrawRectangle(board_padding_x + orientation_index(selected_pos.second) * tile_size, board_padding_y + orientation_index(7 - selected_pos.first) * tile_size, tile_size, tile_size, select_color);
+        if (_got_moves == -1)
+            get_moves();
+        // Affiche les coups possibles pour la pièce séléctionnée
+        for (int i = 0; i < _got_moves; i++) {
+            if (_moves[4 * i] == selected_pos.first && _moves[4 * i + 1] == selected_pos.second) {
+                DrawRectangle(board_padding_x + orientation_index(_moves[4 * i + 3]) * tile_size, board_padding_y + orientation_index(7 - _moves[4 * i + 2]) * tile_size, tile_size, tile_size, select_color);
+            }
+        }
     }
 
 
@@ -1864,7 +1908,6 @@ void switch_orientation() {
 
 // Fonction aidant à l'affichage du plateau (renvoie i si board_orientation, et 7 - i sinon)
 int orientation_index(int i) {
-    cout << "board orientation : " << board_orientation << endl;
     if (board_orientation)
         return i;
     return 7 - i;
