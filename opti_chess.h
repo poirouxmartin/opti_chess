@@ -211,3 +211,9 @@ class Board {
 
 // Fonction qui obtient la case correspondante à la position sur la GUI
 pair<int, int> get_pos_from_gui(int, int);
+
+// Fonction qui permet de changer l'orientation du plateau
+void switch_orientation();
+
+// Fonction aidant à l'affichage du plateau (renvoie i si board_orientation, et 7 - i sinon)
+int orientation_index(int);
