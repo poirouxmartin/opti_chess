@@ -23,7 +23,10 @@ static Color board_color_light = {150, 150, 200, 255};
 static Color board_color_dark = {100, 100, 150, 255};
 
 // Couleur de surlignage de cases
-static Color highlight_color = {255, 100, 100, 150};
+static Color highlight_color = {255, 100, 100, 200};
+
+// Couleur de selection de cases
+static Color select_color = {100, 255, 100, 100};
 
 
 // Variable qui indique si l'initialisation a été faite
@@ -63,6 +66,9 @@ static pair<int, int> clicked_pos = {-1, -1};
 
 // La souris est-elle cliquée
 static bool clicked = false;
+
+// Pièce sélectionnée de la case cliquée
+static pair<int, int> selected_pos = {-1, -1};
 
 // Calcul du nombre de noeuds visités
 static int visited_nodes;
