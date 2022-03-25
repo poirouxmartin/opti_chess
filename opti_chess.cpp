@@ -417,7 +417,7 @@ bool Board::add_king_moves(int i, int j, int *iterator) {
         for (int l = -1; l < 2; l++) {
             i2 = i + k; j2 = j + l;
             // Si le coup n'est ni hors du plateau, ni sur une case où une pièce alliée est placée
-            ((k | l != 0) && is_in(i2, 0, 7) && is_in (j2, 0, 7) && !is_in(_array[i2][j2], ally_min, ally_max)) && add_move(i, j, i2, j2, iterator);
+            ((k != 0 || l != 0) && is_in(i2, 0, 7) && is_in (j2, 0, 7) && !is_in(_array[i2][j2], ally_min, ally_max)) && add_move(i, j, i2, j2, iterator);
         }
     }
 
@@ -878,27 +878,27 @@ void Board::evaluate(float eval_parameters[3] = default_eval_parameters) {
             switch (p)
             {   
                 case 0: break;
-                case 1: _evaluation += 1 + piece_positioning * pos_pawn[7 - i][j]; break;
-                case 2: _evaluation += 3.2 + piece_positioning * pos_knight[7 - i][j]; break;
-                case 3: _evaluation += 3.3 + piece_positioning * pos_bishop[7 - i][j]; break;
-                case 4: _evaluation += 4.8 + piece_positioning * pos_rook[7 - i][j]; break;
-                case 5: _evaluation += 8.8 + piece_positioning * pos_queen[7 - i][j]; break;
-                case 6: _evaluation += 100000 + piece_positioning * pos_king[7 - i][j]; break;
-                case 7: _evaluation -= 1 + piece_positioning * pos_pawn[i][j]; break;
-                case 8: _evaluation -= 3.2 + piece_positioning * pos_knight[i][j]; break;
-                case 9: _evaluation -= 3.3 + piece_positioning * pos_bishop[i][j]; break;
-                case 10: _evaluation -= 4.8 + piece_positioning * pos_rook[i][j]; break;
-                case 11: _evaluation -= 8.8 + piece_positioning * pos_queen[i][j]; break;
-                case 12: _evaluation -= 100000 + piece_positioning * pos_king[i][j]; break;
+                case 1: _evaluation += 1 * piece_value + piece_positioning * pos_pawn[7 - i][j]; break;
+                case 2: _evaluation += 3.2 * piece_value + piece_positioning * pos_knight[7 - i][j]; break;
+                case 3: _evaluation += 3.3 * piece_value + piece_positioning * pos_bishop[7 - i][j]; break;
+                case 4: _evaluation += 4.8 * piece_value + piece_positioning * pos_rook[7 - i][j]; break;
+                case 5: _evaluation += 8.8 * piece_value + piece_positioning * pos_queen[7 - i][j]; break;
+                case 6: _evaluation += 100000 * piece_value + piece_positioning * pos_king[7 - i][j]; break;
+                case 7: _evaluation -= 1 * piece_value + piece_positioning * pos_pawn[i][j]; break;
+                case 8: _evaluation -= 3.2 * piece_value + piece_positioning * pos_knight[i][j]; break;
+                case 9: _evaluation -= 3.3 * piece_value + piece_positioning * pos_bishop[i][j]; break;
+                case 10: _evaluation -= 4.8 * piece_value + piece_positioning * pos_rook[i][j]; break;
+                case 11: _evaluation -= 8.8 * piece_value + piece_positioning * pos_queen[i][j]; break;
+                case 12: _evaluation -= 100000 * piece_value + piece_positioning * pos_king[i][j]; break;
             }
 
         }
     }
 
-    // if (_got_moves == -1)
-    //     get_moves();
 
     // // Activité des pièces
+    // if (_got_moves == -1)
+    //     get_moves();
     // _evaluation += _color * _got_moves * piece_activity;
         
 
@@ -1031,7 +1031,7 @@ float Board::negascout(int depth, float alpha, float beta, int color, bool max_d
         return -1000 * (depth + 1);
         
     // Définition des variables
-    float value = -1e9; int best_move = 0; float tmp_value; Board b; float _a; float _b; int j;
+    int best_move = 0; float tmp_value; Board b; float _a; float _b; int j;
     
     // Génération des coups
     if (_got_moves == -1)
@@ -1114,7 +1114,7 @@ float Board::pvs(int depth, float alpha, float beta, int color, bool max_depth) 
         return -1000 * (depth + 1);
         
     // Définition des variables
-    float value = -1e9; int best_move = 0; float tmp_value; Board b; int j;
+    int best_move = 0; float tmp_value; Board b; int j;
     
     // Génération des coups
     if (_got_moves == -1)
@@ -1649,20 +1649,20 @@ string Board::move_label(int i, int j, int k, int l) {
 
 
 
-// Fonction qui fait un coup à partir de son label
+// Fonction qui fait un coup à partir de son label (pour permettre d'importer une partie à partir d'un PGN)
 void Board::make_label_move(string s) {
-    char c = s[0];
-    int iterator = 0;
-    int i; int j; int k; int l;
+    // char c = s[0];
+    // int iterator = 0;
+    // int i; int j; int k; int l;
 
-    if (isupper(c)) {
-    }
-    else {
-        j = c - 97;
-        iterator += 1;
-    }
+    // if (isupper(c)) {
+    // }
+    // else {
+    //     j = c - 97;
+    //     iterator += 1;
+    // }
 
-    //make_move(i, j, k, l);
+    // make_move(i, j, k, l);
 
 }
 
@@ -1677,7 +1677,7 @@ void Board::from_pgn() {
 
 
 // Fonction qui affiche un texte dans une zone donnée
-void Board::draw_text_rect(string s, int pos_x, int pos_y, int width, int height, int size) {
+void Board::draw_text_rect(string s, float pos_x, float pos_y, float width, float height, int size) {
 
     Rectangle rect_text = {pos_x, pos_y, width, height};
     DrawRectangleRec(rect_text, DARKGRAY);
