@@ -1804,8 +1804,8 @@ void Board::draw() {
 
     // Surligne du dernier coup joué
     if (_last_move[0] != -1) {
-        DrawRectangle(board_padding_x + _last_move[1] * tile_size, board_padding_y + (7 - _last_move[0]) * tile_size, tile_size, tile_size, highlight_color);
-        DrawRectangle(board_padding_x + _last_move[3] * tile_size, board_padding_y + (7 - _last_move[2]) * tile_size, tile_size, tile_size, highlight_color);
+        DrawRectangle(board_padding_x + orientation_index(_last_move[1]) * tile_size, board_padding_y + orientation_index(7 - _last_move[0]) * tile_size, tile_size, tile_size, highlight_color);
+        DrawRectangle(board_padding_x + orientation_index(_last_move[3]) * tile_size, board_padding_y + orientation_index(7 - _last_move[2]) * tile_size, tile_size, tile_size, highlight_color);
     }
 
 
@@ -1818,7 +1818,7 @@ void Board::draw() {
                 if (clicked && i == clicked_pos.first && j == clicked_pos.second)
                     DrawTexture(piece_textures[p - 1], mouse_pos.x - piece_size / 2, mouse_pos.y - piece_size / 2, WHITE);
                 else
-                    DrawTexture(piece_textures[p - 1], board_padding_x + tile_size * j + (tile_size - piece_size) / 2, board_padding_y + tile_size * (7 - i) + (tile_size - piece_size) / 2, WHITE);
+                    DrawTexture(piece_textures[p - 1], board_padding_x + tile_size * orientation_index(j) + (tile_size - piece_size) / 2, board_padding_y + tile_size * orientation_index(7 - i) + (tile_size - piece_size) / 2, WHITE);
             }
 
         }
@@ -1850,7 +1850,22 @@ pair<int, int> get_pos_from_gui(int x, int y) {
     if (!is_in(x, board_padding_x, board_padding_x + board_size) || !is_in(y, board_padding_y, board_padding_y + board_size))
         return {-1, -1};
     else
-        return {8 - (y - board_padding_y) / tile_size, (x - board_padding_x) / tile_size};
+        return {orientation_index(8 - (y - board_padding_y) / tile_size), orientation_index((x - board_padding_x) / tile_size)};
 
     return coord;
+}
+
+
+// Fonction qui permet de changer l'orientation du plateau
+void switch_orientation() {
+    board_orientation = !board_orientation;
+}
+
+
+// Fonction aidant à l'affichage du plateau (renvoie i si board_orientation, et 7 - i sinon)
+int orientation_index(int i) {
+    cout << "board orientation : " << board_orientation << endl;
+    if (board_orientation)
+        return i;
+    return 7 - i;
 }
