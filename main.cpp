@@ -5,136 +5,97 @@
 #include "gui.h"
 
 
-/* Projets
+/* TODO
 
 
-6nk/4b3/5nKp/4N3/8/8/8/8 b - - 0 1
-FEN à garder, pour tester les règles de chess.com... que se passe t-il si les noirs tombent au temps? y'a t-il nulle?
-4n1nk/4b3/6Kp/8/6N1/8/8/8 b - - 0 1 -> Nef6 -> Ne5 -> ... time over -> draw on time + lack of material?
+----- Jeu -----
 
-6bk/2n5/6K1/8/5B2/8/8/8 b - - 0 1
-
-
-
-En passant
-Echecs?
-Promotions
-Roque
-Rajouter des tests de validité de FEN
-
-Séparer les fonctions du fichier opti_chess dans d'autres fichiers (GUI, IA...)
-
-
-Optimisations à implémenter
-
-Regarder quel compilateur est le plus rapide/opti
-Algo Negamax -> copies des tableaux -> undo moves? ---> finalement plus lent?
-Sort moves ?? fonctionne ? ---> alors utiliser optimisation vers negascout
-Transposition tables
-Algorithme MTD(f) <-> alphabeta with memory algorithm
-stoi et to_string très lents?
-Ajout de variables globales plutôt que les re définir lors des appels de fonction (valeur des pièces, positionnement...)
-Parallélisation -> std::for_each avec policy parallel?
-
-Au lieu de calculer l'évaluation à chaque coup, l'implémenter en fonction du coup
-
-
-Implémenter les fins de parties
--> implémenter un agent basique (pas déterministe - qui peut jouer plusieurs coups par position)
--> implémenter un algorithme de Monte Carlo 
-
-
-Améliorer les heuristiques pour l'évaluation d'une position
-- Positionnement du roi changeant au cours de la partie
-- Activité des pièces
-- Sécurité du roi
-- Espace
-- Structures de pions
-
-
-Amélioration des sons
-
-
-Dans le negamax, si y'a un mat, ne plus regarder les autres coups?
-
-Quand on joue un coup, vérifie s'il est valide
-
-
-Ajouter les coups légaux pour en passant/roque/promotion (seulement dame pour le moment)
-
-Stealmate à ajouter
-
-Chargement de FEN -> Modifier le PGN en FEN + ...
-[FEN "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w - - 0 2"]
-2. Nf3 Nc6 *
-
-
-[FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"]
-
-
-Changer Grogrosfish : depth -> temps (--> moteur d'analyse)
-Faire une profodeur -> trier les coups du meilleur au pire, puis continuer la recherche plus loin
+-> Echecs?
+-> Promotions (de tous types plutôt que seulement dame)
+-> Rajouter des tests de validité de FEN
+-> Répétition de coups
+-> Pat à ajouter
 
 
 
-Livres d'ouvertures, tables d'engame?
+----- Structure globale du projet -----
 
-
-Correction PGN -> fins de parties
-
-Ne plus autoriser les coups illégaux dans la console?
-
-Optimiser le sort moves - l'améliorer (et l'évaluation?)
-
-Montrer en direct sur la GUI l'avancement de l'IA
-
-
-Evaluation dans le plateau -> incrémentation de l'évaluation lors de coups, plutôt que calcul de zéro
-
-Remplacer des if par des &&
+-> Séparer les fonctions du fichier opti_chess dans d'autres fichiers (GUI, IA...)
 
 
 
-Vérifier que toutes les fonctions sont optimisées
+----- Optimisations à implémenter -----
+
+-> Regarder quel compilateur est le plus rapide/opti
+-> Algo Negamax -> copies des tableaux -> undo moves? ---> finalement plus lent?
+-> Transposition tables
+-> Algorithme MTD(f) <-> alphabeta with memory algorithm
+-> stoi et to_string très lents?
+-> Ajout de variables globales plutôt que les re définir lors des appels de fonction (valeur des pièces, positionnement...)
+-> Parallélisation -> std::for_each avec policy parallel?
+-> Au lieu de calculer l'évaluation à chaque coup, l'implémenter en fonction du coup
+-> Dans le negamax, si y'a un mat, ne plus regarder les autres coups?
+-> Optimiser le sort moves - l'améliorer (et l'évaluation?)
+-> Remplacer des if par des &&
+-> Vérifier que toutes les fonctions sont optimisées
+-> Faire le triage des coups grâce aux itérations précédentes?
+-> Fonction pour stocker facilement un noeud, ou savoir s'il est similaire à un autre? -> transposition tables
 
 
-Faire le triage des coups grace aux itérations précédentes?
 
-Fonction pour stocker facilement un noeud, ou savoir s'il est similaire à un autre? -> transposition tables
-
-Iterative deeping
+----- Intelligences artificielles -----
 
 
+--- Nouveaux algorithmes ---
 
-Augmenter la profondeur pour les finales
+- Monter Carlo -
+-> Implémenter un agent basique (pas déterministe - qui peut jouer plusieurs coups par position)
+-> Implémenter un algorithme de Monte Carlo 
 
-Undo move dans l'interface, avec les flèches
+- Grogrofish_iterative_depth -
+-> Changer Grogrosfish : depth -> temps (--> moteur d'analyse)
+-> Faire une profodeur -> trier les coups du meilleur au pire, puis continuer la recherche plus loin
+
+- Agent_new = Agent_old++ -
+-> Faire un agent qui gagne toujours contre un autre : regarde tous les coups, et joue pour chacun la partie jusqu'au bout en utilisant agent_old -> puis joue les coups qui gagnent
 
 
-Approche de Monte Carlo
+--- Améliorations ---
 
-Faire un agent qui gagne toujours contre un autre
+-> Améliorer les heuristiques pour l'évaluation d'une position
+    - Positionnement du roi changeant au cours de la partie
+    - Activité des pièces
+    - Sécurité du roi
+    - Espace
+    - Structures de pions
+-> Livres d'ouvertures, tables d'engame?
+-> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
+-> Augmenter la profondeur pour les finales
 
 
-Tourner l'échiquier
 
-Nouveau sons/images
+----- Interface utilisateur -----
 
-Afficher quel coup l'ordinateur est en train de refléchir
+-> Amélioration des sons
+-> Afficher les coups jouables par l'utilisateur (et par pièce s'il en clique une)
+-> Montrer en direct sur la GUI l'avancement de l'IA -> quel coup il refléchit et évaluation de chaque coup
+-> Undo move dans l'interface, avec les flèches (il faut donc stocker l'ensemble de la partie - à l'aide du PGN -> from_pgn?)
+-> Tourner l'échiquier
+-> Nouveau sons/images
+-> Surligner avec le clic droit
+-> Dans le negamax, renvoyer le coup à chaque fois, pour noter la ligne que l'ordi regarde?
 
-Afficher tous les coups possibles
 
-Surligner avec le clic droit
 
-Quand une tour ou le roi bouge, retire le roque
+----- Fonctionnalités supplémentaires -----
 
-Stealmates
-
-Dans le negamax, renvoyer le coup à chaque fois, pour noter la ligne que l'ordi regarde?
-
+-> Chargement de FEN -> Modifier le PGN en FEN + ... exemple : "[FEN "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w - - 0 2"] 2. Nf3 Nc6 *"
+-> Correction PGN -> fins de parties
 
 
 */
+
+
 
 
 // Test function
@@ -194,6 +155,9 @@ int main() {
 
     // IA self play
     bool self_play = false;
+    bool play_white = false;
+    bool play_black = false;
+    int search_depth = 6;
 
 
     // Boucle principale (Quitter à l'aide de la croix, ou en faisant échap)
@@ -228,20 +192,6 @@ int main() {
         }
 
 
-        // if (!t._player) {
-        //     t.grogrosfish2(6, test_parameters);
-        //     t.to_fen();
-        //     cout << "last move" << t._last_move[0] << ", " << t._last_move[1] << endl;
-        //     cout << t._fen << endl;
-        //     cout << t._pgn << endl;
-        // }
-
-        // else {
-        //     t.grogrosfish_multiagents(4, n_agents, test_begin_parameters, test_end_parameters);
-        //     t.to_fen();
-        //     cout << t._fen << endl;
-        //     cout << t._pgn << endl;
-        // }
 
         // if (IsKeyDown(KEY_T)) {
         //     t.to_fen();
@@ -251,16 +201,39 @@ int main() {
         //     t.display_moves();
         // }
 
+
+        // Activations rapides de l'IA
         if (IsKeyDown(KEY_G))
             self_play = true;
 
-        if (self_play && t.game_over() == 0) {
-            t.grogrosfish2(6, test_parameters);
+        if (IsKeyDown(KEY_DOWN))
+            play_white = true;
+        
+        if (IsKeyDown(KEY_UP))
+            play_black = true;
+
+        if (t.game_over() == 0 && ((self_play) || (play_black && !t._player) || (play_white && t._player))) {
+            t.grogrosfish2(search_depth, test_parameters);
             //t.grogrosfish_multiagents(4, n_agents, test_begin_parameters, test_end_parameters);
             t.to_fen();
             cout << t._fen << endl;
             cout << t._pgn << endl;
         }
+
+        // if (play_black && !t._player) {
+        //     t.grogrosfish2(6, test_parameters);
+        //     t.to_fen();
+        //     cout << t._fen << endl;
+        //     cout << t._pgn << endl;
+        // }
+
+        // if (play_white && t._player) {
+        //     //t.grogrosfish_multiagents(4, n_agents, test_begin_parameters, test_end_parameters);
+        //     t.grogrosfish2(6, test_parameters);
+        //     t.to_fen();
+        //     cout << t._fen << endl;
+        //     cout << t._pgn << endl;
+        // }
 
 
         /*if (!IsWindowFullscreen())
