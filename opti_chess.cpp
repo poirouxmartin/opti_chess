@@ -1188,7 +1188,6 @@ void Board::grogrosfish(int depth) {
         b.copy_data(*this);
         b.make_index_move(i);
         value = -b.negamax(depth - 1, -1e9, 1e9, -_color, false);
-        //cout << "move : " << i << " | " << _moves[4 * i] << "," << _moves[4 * i + 1] << " -> " << _moves[4 * i + 2] << "," << _moves[4 * i + 3] << ", value : " << value << endl;
         cout << "move : " << move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]) << ", value : " << value << endl;
         if (value > best_value) {
             best_move = i;
@@ -1196,7 +1195,6 @@ void Board::grogrosfish(int depth) {
         }
     }
 
-    // cout << "best move : " << best_move << " | " << _moves[4 * best_move] << "," << _moves[4 * best_move + 1] << " -> " << _moves[4 * best_move + 2] << "," << _moves[4 * best_move + 3] << ", value : " << value << endl;
     cout << "best move : " << move_label(_moves[4 * best_move], _moves[4 * best_move + 1], _moves[4 * best_move + 2], _moves[4 * best_move + 3]) << ", value : " << best_value << endl;
 
     make_index_move(best_move);
@@ -1206,20 +1204,30 @@ void Board::grogrosfish(int depth) {
 
 
 // Version un peu mieux optimisée de Grogrosfish
-void Board::grogrosfish2(int depth, float eval_parameters[3] = default_eval_parameters) {
+bool Board::grogrosfish2(int depth, float eval_parameters[3] = default_eval_parameters) {
     negamax(depth, -1e9, 1e9, _color, true, eval_parameters);
+    to_fen();
+    cout << _fen << endl;
+    cout << _pgn << endl;
     PlaySound(move_1_sound);
+    return true;
 }
 
 // Version un peu mieux optimisée de Grogrosfish
 void Board::grogrosfish3(int depth) {
     negascout(depth, -1e9, 1e9, _color, true);
+    to_fen();
+    cout << _fen << endl;
+    cout << _pgn << endl;
     PlaySound(move_1_sound);
 }
 
 // Test de Grogrofish
 void Board::grogrosfish4(int depth) {
     pvs(depth, -1e9, 1e9, _color, true);
+    to_fen();
+    cout << _fen << endl;
+    cout << _pgn << endl;
     PlaySound(move_1_sound);
 }
 
@@ -1268,7 +1276,9 @@ void Board::grogrosfish_multiagents(int depth, int n_agents, float begin_eval_pa
     cout << "->    Voted move : " << best_move << " (" << 100 * votes[best_move] / n_agents << "%)" << endl;
 
     make_index_move(best_move);
-    
+    to_fen();
+    cout << _fen << endl;
+    cout << _pgn << endl;
     PlaySound(move_1_sound);
 }
 

@@ -164,7 +164,7 @@ class Board {
         void grogrosfish(int);
 
         // Version un peu mieux optimisée de Grogrosfish
-        void grogrosfish2(int, float[]);
+        bool grogrosfish2(int, float[]);
         
         // Version qui utilise negascout
         void grogrosfish3(int);

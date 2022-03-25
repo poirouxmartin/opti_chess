@@ -21,6 +21,8 @@
 ----- Structure globale du projet -----
 
 -> Séparer les fonctions du fichier opti_chess dans d'autres fichiers (GUI, IA...)
+-> Virer tous les warnings
+-> Faire du ménage dans les fonctions
 
 
 
@@ -84,6 +86,8 @@
 -> Nouveau sons/images
 -> Surligner avec le clic droit
 -> Dans le negamax, renvoyer le coup à chaque fois, pour noter la ligne que l'ordi regarde?
+-> Ajout de pre move
+-> Ajout de temps par joueur
 
 
 
@@ -98,7 +102,7 @@
 
 
 
-// Test function
+// Fonction qui permet de tester le temps que prend une fonction
 void test() {
 
 
@@ -119,8 +123,7 @@ void test() {
 
 
 
-
-
+// Main
 int main() {
 
     // Initialisation de la fenêtre
@@ -136,10 +139,7 @@ int main() {
 
     // Variables
     Board t;
-    //t.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     //t.from_fen("r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4");
-    //t.from_fen("r4rk1/p1p3pp/4qp2/1Rbpn2b/8/2P2N1P/P1P1BPP1/2BQR1K1 b - - 1 15");
-    //t.from_fen("rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2");
 
 
     // Calcul du temps de la fonction
@@ -163,43 +163,19 @@ int main() {
     // Boucle principale (Quitter à l'aide de la croix, ou en faisant échap)
     while (!WindowShouldClose()) {
 
-        if (IsKeyDown(KEY_SPACE)) {
-            t.grogrosfish2(6, test_parameters);
-            t.to_fen();
-            cout << t._fen << endl;
-            cout << t._pgn << endl;
-        }
+        // Fait jouer l'IA sur un coup
+        (IsKeyDown(KEY_SPACE)) && t.grogrosfish2(6, test_parameters);
 
-        if (IsKeyDown(KEY_B)) {
+        // ----- Tests d'agents -----
+        if (IsKeyDown(KEY_B))
             t.grogrosfish3(6);
-            t.to_fen();
-            cout << t._fen << endl;
-            cout << t._pgn << endl;
-        }
 
-        if (IsKeyDown(KEY_V)) {
+        if (IsKeyDown(KEY_V))
             t.grogrosfish4(6);
-            t.to_fen();
-            cout << t._fen << endl;
-            cout << t._pgn << endl;
-        }
 
-        if (IsKeyDown(KEY_T)) {
+        if (IsKeyDown(KEY_T))
             t.grogrosfish_multiagents(6, n_agents, test_begin_parameters, test_end_parameters);
-            t.to_fen();
-            cout << t._fen << endl;
-            cout << t._pgn << endl;
-        }
-
-
-
-        // if (IsKeyDown(KEY_T)) {
-        //     t.to_fen();
-        //     cout << t._fen << endl;
-        //     cout << t._pgn << endl;
-        //     t.get_moves();
-        //     t.display_moves();
-        // }
+        // ----- Fin des tests d'agents  -----
 
 
         // Activations rapides de l'IA
@@ -212,12 +188,16 @@ int main() {
         if (IsKeyDown(KEY_UP))
             play_black = true;
 
+        if (IsKeyDown(KEY_ENTER)) {
+            self_play = false;
+            play_white = false;
+            play_black = false;
+        }
+
+        // Fait jouer l'IA automatiquement en fonction des paramètres
         if (t.game_over() == 0 && ((self_play) || (play_black && !t._player) || (play_white && t._player))) {
             t.grogrosfish2(search_depth, test_parameters);
             //t.grogrosfish_multiagents(4, n_agents, test_begin_parameters, test_end_parameters);
-            t.to_fen();
-            cout << t._fen << endl;
-            cout << t._pgn << endl;
         }
 
         // if (play_black && !t._player) {
@@ -259,152 +239,3 @@ int main() {
     return 0;
 
 }
-
-
-
-
-
-
-
-
-
-/*
-
-
-// Main
-int main() {
-
-
-
-    Board t;
-    //t.from_fen("rnbqkbnr/pppp1ppp/8/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR b KQkq - 1 2");
-    //t._pgn = "1. e4 e5 2. Qh5";
-    //t.from_fen("3qkbnr/3n4/5p2/1B4p1/3B3p/4NQ2/P1PP1PPP/K6R w KQkq - 48 58");
-    t.display();
-    //t.grogrosfish(2);
-    //t.display();
-
-
-    // Calcul du temps de la fonction
-    test_function(&test, 1);
-
-    t.to_fen();
-
-    cout << "FEN : " << t._fen << endl;
-
-    //cout << "move : " << t.move_label(1, 4, 6, 5) << endl;
-
-
-    // for (int i = 0; i < 5; i++) {
-    //     t.grogrosfish(6);
-    //     t.display();
-    //     cout << "PGN : " << t._pgn << endl;
-    // }
-    
-
-    //cout << "PGN : " << t._pgn << endl;
-
-    // cout << "end : " << t.game_over() << endl;
-
-
-
-    // int iter = 0;
-
-    // while (t.game_over() == 0 && iter < 100) {
-    //     cout << "grogrosfish..." << endl;
-    //     if (t._color)
-    //         t.grogrosfish(6);
-    //     else
-    //         t.grogrosfish(6);
-
-    //     t.display();
-    //     t.evaluate();
-
-    //     t.to_fen();
-    //     cout << "FEN : " << t._fen << endl;
-    //     cout << "Evaluation : " << t._evaluation << endl;
-    //     cout << "End : " << t.game_over() << endl;
-    //     cout << "PGN : " << t._pgn << endl;
-
-    //     iter += 1;
-    // }
-
-
-
-
-    // t.get_moves();
-
-    // int i1, j1, p1, i2, j2, p2, h;
-    // int i = 0;
-
-    // i1 = t._moves[4 * i];
-    // j1 = t._moves[4 * i + 1];
-    // p1 = t._array[i1][j1];
-    // i2 = t._moves[4 * i + 2];
-    // j2 = t._moves[4 * i + 3];
-    // p2 = t._array[i2][j2];
-    // h = t._half_moves_count;
-
-    // t.make_index_move(i);
-
-    // t.display();
-
-    // t.undo(i1, j1, p1, i2, j2, p2, h);
-
-    // t.display();
-
-
-    // t.get_moves();
-    // t.display_moves();
-
-    // t.from_fen("rnbqkbnr/pppp1ppp/8/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR b KQkq - 1 2");
-    // t.display();
-
-    // t.to_fen();
-    // cout << "FEN : " << t._fen << endl;
-
-    // t.grogrosfish(6);
-    // t.display();
-
-
-    // for (int i = 0; i < 100; i++) {
-    //     t.grogrosfish(6);
-    //     t.display();
-    //     t.to_fen();
-    //     cout << "FEN : " << t._fen << endl;
-    // }
-
-    // Position finale : rnbqkbnr/1ppp1ppp/8/4p3/p7/N7/PPPPPPPP/R1BQKBNR w KQkq - 0 6
-
-
-
-    //Joue contre l'IA
-    //t.from_fen("rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2");
-    t.display();
-    int depth = -1;
-    int move[4];
-    while (depth != 0) {
-        cout << "your move : ";
-        cin >> move[0] >> move[1] >> move[2] >> move[3];
-        t.make_move(move[0], move[1], move[2], move[3]);
-        t.display();
-        cout << "depth : ";
-        cin >> depth;
-        if (depth == 0)
-            break;
-        t.grogrosfish(depth);
-        t.display();
-        t.to_fen();
-        cout << "FEN : " << t._fen << endl;
-        cout << "PGN : " << t._pgn << endl;
-    }
-
-
-    return 0;
-
-
-}
-
-
-
-*/
