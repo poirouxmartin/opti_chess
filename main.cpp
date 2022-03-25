@@ -83,7 +83,6 @@
 -> Afficher les coups jouables par l'utilisateur (et par pièce s'il en clique une)
 -> Montrer en direct sur la GUI l'avancement de l'IA -> quel coup il refléchit et évaluation de chaque coup
 -> Undo move dans l'interface, avec les flèches (il faut donc stocker l'ensemble de la partie - à l'aide du PGN -> from_pgn?)
--> Tourner l'échiquier
 -> Nouveau sons/images
 -> Surligner avec le clic droit
 -> Dans le negamax, renvoyer le coup à chaque fois, pour noter la ligne que l'ordi regarde?
@@ -91,6 +90,9 @@
 -> Ajout de temps par joueur
 -> Pouvoir choisir contre quelle IA jouer
 -> Pouvoir faire des flèches
+-> Afficher les coordonnées des cases
+-> Faire des boutons pour faire des actions (ex copier ou coller le FEN/PGN, activer l'IA ou la changer...)
+-> Revoir l'affichage du PGN (ne pas sauter à la ligne au milieu d'un mot)
 
 
 
@@ -166,6 +168,10 @@ int main() {
 
     // Boucle principale (Quitter à l'aide de la croix, ou en faisant échap)
     while (!WindowShouldClose()) {
+
+        // Orientation du plateau
+        if (IsKeyPressed(KEY_F))
+            switch_orientation();
 
         // Fait jouer l'IA sur un coup
         (IsKeyDown(KEY_SPACE)) && t.grogrosfish2(6, test_parameters);

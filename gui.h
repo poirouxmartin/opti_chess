@@ -51,6 +51,10 @@ static float piece_size;
 static float piece_scale = 0.8;
 
 
+// Orientation du plateau
+static bool board_orientation = true;
+
+
 // Position de la souris
 static Vector2 mouse_pos = GetMousePosition();
 
