@@ -10,7 +10,7 @@ static int screen_width = 1800;
 static int screen_height = 900;
 
 // Nombre de FPS
-static int fps = 60;
+static int fps = 144;
 
 // Couleur de fond
 static Color background_color = {25, 25, 25};
