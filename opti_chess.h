@@ -200,7 +200,7 @@ class Board {
         void from_pgn();
 
         // Fonction qui affiche un texte dans une zone donnée
-        void draw_text_rect(string, int, int, int, int, int);
+        void draw_text_rect(string, float, float, float, float, int);
 
         // Fonction qui dessine le plateau
         void draw();
