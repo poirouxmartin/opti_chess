@@ -831,6 +831,7 @@ void Board::evaluate(float eval_parameters[3] = default_eval_parameters) {
     float piece_value = eval_parameters[0];
     float piece_activity = eval_parameters[1];
     float piece_positioning = eval_parameters[2];
+    float bishop_pair = 0.5;
 
     int pos_pawn[8][8]      {{0,   0,   0,   0,   0,   0,   0,   0},
                             {78,  83,  86,  73, 102,  82,  85,  90},
@@ -895,6 +896,7 @@ void Board::evaluate(float eval_parameters[3] = default_eval_parameters) {
 
     // à tester: changer les boucles par des for (i : array) pour optimiser
     int p;
+    int bishop_w = 0; int bishop_b = 0;
     
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
@@ -905,13 +907,13 @@ void Board::evaluate(float eval_parameters[3] = default_eval_parameters) {
                 case 0: break;
                 case 1: _evaluation += 1 * piece_value + piece_positioning * pos_pawn[7 - i][j]; break;
                 case 2: _evaluation += 3.2 * piece_value + piece_positioning * pos_knight[7 - i][j]; break;
-                case 3: _evaluation += 3.3 * piece_value + piece_positioning * pos_bishop[7 - i][j]; break;
+                case 3: _evaluation += 3.3 * piece_value + piece_positioning * pos_bishop[7 - i][j]; bishop_w += 1; break;
                 case 4: _evaluation += 4.8 * piece_value + piece_positioning * pos_rook[7 - i][j]; break;
                 case 5: _evaluation += 8.8 * piece_value + piece_positioning * pos_queen[7 - i][j]; break;
                 case 6: _evaluation += 100000 * piece_value + piece_positioning * pos_king[7 - i][j]; break;
                 case 7: _evaluation -= 1 * piece_value + piece_positioning * pos_pawn[i][j]; break;
                 case 8: _evaluation -= 3.2 * piece_value + piece_positioning * pos_knight[i][j]; break;
-                case 9: _evaluation -= 3.3 * piece_value + piece_positioning * pos_bishop[i][j]; break;
+                case 9: _evaluation -= 3.3 * piece_value + piece_positioning * pos_bishop[i][j]; bishop_b += 1; break;
                 case 10: _evaluation -= 4.8 * piece_value + piece_positioning * pos_rook[i][j]; break;
                 case 11: _evaluation -= 8.8 * piece_value + piece_positioning * pos_queen[i][j]; break;
                 case 12: _evaluation -= 100000 * piece_value + piece_positioning * pos_king[i][j]; break;
@@ -919,6 +921,10 @@ void Board::evaluate(float eval_parameters[3] = default_eval_parameters) {
 
         }
     }
+
+
+    // Paire de oufs
+    _evaluation += bishop_pair * ((bishop_w >= 2) - (bishop_b >= 2));
 
 
     // // Activité des pièces
