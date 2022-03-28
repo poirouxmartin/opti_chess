@@ -23,6 +23,7 @@
 -> Séparer les fonctions du fichier opti_chess dans d'autres fichiers (GUI, IA...)
 -> Virer tous les warnings
 -> Faire du ménage dans les fonctions
+-> Faire une classe pour les IA?
 
 
 
@@ -71,6 +72,13 @@
     - Sécurité du roi
     - Espace
     - Structures de pions
+    - Diagonales ouvertes
+    - Lignes ouvertes, tours dessus
+    - Clouages
+    - Pièces attaquées?
+    - Paire de oufs
+    - Cases noires/blanches
+    - Contrôle de cases importantes
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Augmenter la profondeur pour les finales
@@ -80,7 +88,6 @@
 ----- Interface utilisateur -----
 
 -> Amélioration des sons
--> Afficher les coups jouables par l'utilisateur (et par pièce s'il en clique une)
 -> Montrer en direct sur la GUI l'avancement de l'IA -> quel coup il refléchit et évaluation de chaque coup
 -> Undo move dans l'interface, avec les flèches (il faut donc stocker l'ensemble de la partie - à l'aide du PGN -> from_pgn?)
 -> Nouveau sons/images
@@ -93,6 +100,9 @@
 -> Afficher les coordonnées des cases
 -> Faire des boutons pour faire des actions (ex copier ou coller le FEN/PGN, activer l'IA ou la changer...)
 -> Revoir l'affichage du PGN (ne pas sauter à la ligne au milieu d'un mot)
+-> Options : désactivation son, ...
+-> Pouvoir recommencer une partie
+-> Sons : ajouter checkmate, stealmate, promotion
 
 
 
