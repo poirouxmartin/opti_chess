@@ -630,6 +630,31 @@ bool Board::attacked(int i, int j) {
 
 
 
+// Fonction qui dit s'il y'a échec
+bool Board::in_check() {
+    int king = 9 - 3 * _color;
+    int pos_i = -1;
+    int pos_j = -1;
+    
+    // Trouve la case correspondante au roi
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            if (_array[i][j] == king) {
+                pos_i = i;
+                pos_j = j;
+                goto end_loops;
+            }
+        }
+    }
+    end_loops:
+
+    cout << "pos king : " << pos_i << ", " << pos_j << endl;
+
+    return attacked(pos_i, pos_j);
+}
+
+
+
 
 // Fonction qui affiche la liste des coups donnée en argument
 void Board::display_moves() {
@@ -996,8 +1021,11 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
             cout << "time spend : " << spent_time << "ms"  << endl;
             cout << "speed : " << visited_nodes / spent_time << "kN/s" << endl;
         }
-        if (play)
+        if (play) {
+            play_index_move_sound(best_move);
             make_index_move(best_move);
+        }
+            
         return best_move;
     }
     
@@ -1209,7 +1237,6 @@ bool Board::grogrosfish2(int depth, float eval_parameters[3] = default_eval_para
     to_fen();
     cout << _fen << endl;
     cout << _pgn << endl;
-    PlaySound(move_1_sound);
     return true;
 }
 
@@ -1680,7 +1707,7 @@ void Board::from_pgn() {
 void Board::draw_text_rect(string s, float pos_x, float pos_y, float width, float height, int size) {
 
     Rectangle rect_text = {pos_x, pos_y, width, height};
-    DrawRectangleRec(rect_text, {50, 50, 50, 255});
+    DrawRectangleRec(rect_text, {35, 35, 35, 255});
     // Division du texte
     int sub_div = (1.5 * width) / size;
     int string_size = s.length();
@@ -1738,7 +1765,21 @@ void Board::draw() {
 
         // Chargement du son
         move_1_sound = LoadSound("../resources/move_1.mp3");
+        move_2_sound = LoadSound("../resources/move_2.mp3");
+        castle_1_sound = LoadSound("../resources/castle_1.mp3");
+        castle_2_sound = LoadSound("../resources/castle_2.mp3");
+        check_1_sound = LoadSound("../resources/check_1.mp3");
+        check_2_sound = LoadSound("../resources/check_2.mp3");
+        capture_1_sound = LoadSound("../resources/capture_1.mp3");
+        capture_2_sound = LoadSound("../resources/capture_2.mp3");
+        checkmate_sound = LoadSound("../resources/checkmate.mp3");
+        stealmate_sound = LoadSound("../resources/stealmate.mp3");
+        game_begin_sound = LoadSound("../resources/game_begin.mp3");
+        game_end_sound = LoadSound("../resources/game_end.mp3");
         // UnloadSound(fxWav);
+
+
+        PlaySound(game_begin_sound);
 
 
         loaded_textures = true;
@@ -1751,6 +1792,7 @@ void Board::draw() {
 
     // Si on clique avec la souris
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        highlighted_pos = {-1, -1};
         if (!clicked) {
             clicked_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
             clicked = true;
@@ -1768,8 +1810,8 @@ void Board::draw() {
                 for (int i = 0; i < _got_moves; i++) {
                     if (_moves[4 * i] == selected_pos.first && _moves[4 * i + 1] == selected_pos.second && _moves[4 * i + 2] == clicked_pos.first && _moves[4 * i + 3] == clicked_pos.second) {
                         // Le joue
+                        play_move_sound(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second);
                         make_move(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second);
-                        PlaySound(move_1_sound);
                         legal_move = true;
                         break;
                     }
@@ -1793,8 +1835,8 @@ void Board::draw() {
                 get_moves();
                 for (int i = 0; i < _got_moves; i++) {
                     if (_moves[4 * i] == clicked_pos.first && _moves[4 * i + 1] == clicked_pos.second && _moves[4 * i + 2] == drop_pos.first && _moves[4 * i + 3] == drop_pos.second) {
+                        play_move_sound(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
                         make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
-                        PlaySound(move_1_sound);
                         // Déselectionne
                         selected_pos = {-1, -1};
                         break;
@@ -1807,7 +1849,10 @@ void Board::draw() {
         clicked = false;
     }
 
-
+    // Si on clique avec la souris
+    if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
+        highlighted_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
+    }
 
 
     // Dessins
@@ -1834,8 +1879,8 @@ void Board::draw() {
 
     // Surligne du dernier coup joué
     if (_last_move[0] != -1) {
-        DrawRectangle(board_padding_x + orientation_index(_last_move[1]) * tile_size, board_padding_y + orientation_index(7 - _last_move[0]) * tile_size, tile_size, tile_size, highlight_color);
-        DrawRectangle(board_padding_x + orientation_index(_last_move[3]) * tile_size, board_padding_y + orientation_index(7 - _last_move[2]) * tile_size, tile_size, tile_size, highlight_color);
+        DrawRectangle(board_padding_x + orientation_index(_last_move[1]) * tile_size, board_padding_y + orientation_index(7 - _last_move[0]) * tile_size, tile_size, tile_size, last_move_color);
+        DrawRectangle(board_padding_x + orientation_index(_last_move[3]) * tile_size, board_padding_y + orientation_index(7 - _last_move[2]) * tile_size, tile_size, tile_size, last_move_color);
     }
 
     // Sélection de cases et de pièces
@@ -1850,6 +1895,11 @@ void Board::draw() {
                 DrawRectangle(board_padding_x + orientation_index(_moves[4 * i + 3]) * tile_size, board_padding_y + orientation_index(7 - _moves[4 * i + 2]) * tile_size, tile_size, tile_size, select_color);
             }
         }
+    }
+
+    // Affichage de la case surlignée
+    if (highlighted_pos.first != -1) {
+        DrawRectangle(board_padding_x + orientation_index(highlighted_pos.second) * tile_size, board_padding_y + orientation_index(7 - highlighted_pos.first) * tile_size, tile_size, tile_size, highlight_color);
     }
 
 
@@ -1883,6 +1933,65 @@ void Board::draw() {
     draw_text_rect(_pgn, board_padding_x + board_size + 20, board_padding_y, screen_width - (board_padding_x + board_size + 20) - 20, board_size, 20);
 
 }
+
+
+
+// Fonction qui joue le son d'un coup
+void Board::play_move_sound(int i, int j, int k, int l) {
+    // Pièces
+    int p1 = _array[i][j];
+    int p2 = _array[k][l];
+
+
+    
+
+    // Prises
+    if (p2 != 0) {
+        if (_player)
+            PlaySound(capture_1_sound);
+        else
+            PlaySound(capture_2_sound);
+    }
+    
+    // Roques
+    if (p1 == 6 && abs(j - l) == 2)
+        PlaySound(castle_1_sound);
+    if (p1 == 12 && abs(j - l) == 2)
+        PlaySound(castle_2_sound);
+
+
+    // Echecs
+    Board b(*this);
+    b.make_move(i, j, k, l);
+
+    if (b.in_check()) {
+        if (_player)
+            PlaySound(check_1_sound);
+        else
+            PlaySound(check_2_sound);
+    }
+
+    // Coup "normal"
+    else if (p2 == 0) {
+        if (_player && (p1 != 6 || abs(j - l) != 2))
+            return PlaySound(move_1_sound);
+        if (!_player && (p1 != 12 || abs(j - l) != 2))
+            return PlaySound(move_2_sound);
+    }
+
+
+    // Mats à rajouter
+
+
+
+}
+
+
+// Fonction qui joue le son d'un coup à partir de son index
+void Board::play_index_move_sound(int i) {
+    play_move_sound(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]);
+}
+
 
 
 
