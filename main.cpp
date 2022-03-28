@@ -101,7 +101,6 @@
 -> Faire des boutons pour faire des actions (ex copier ou coller le FEN/PGN, activer l'IA ou la changer...)
 -> Revoir l'affichage du PGN (ne pas sauter à la ligne au milieu d'un mot)
 -> Options : désactivation son, ...
--> Pouvoir recommencer une partie
 -> Sons : ajouter checkmate, stealmate, promotion
 
 
@@ -111,6 +110,7 @@
 -> Chargement de FEN -> Modifier le PGN en FEN + ... exemple : "[FEN "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w - - 0 2"] 2. Nf3 Nc6 *"
 -> Correction PGN -> fins de parties
 -> Importation depuis in PGN
+-> Copie du FEN/PGN (dans le clipboard?)
 
 
 */
@@ -183,6 +183,10 @@ int main() {
         if (IsKeyPressed(KEY_F))
             switch_orientation();
 
+        // Recommencer une partie
+        if (IsKeyPressed(KEY_N))
+            t.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+
         // Fait jouer l'IA sur un coup
         (IsKeyDown(KEY_SPACE)) && t.grogrosfish2(6, test_parameters);
 
@@ -208,6 +212,7 @@ int main() {
         if (IsKeyDown(KEY_UP))
             play_black = true;
 
+        // Stoppe toutes les IA
         if (IsKeyDown(KEY_ENTER)) {
             self_play = false;
             play_white = false;
@@ -219,6 +224,10 @@ int main() {
             t.grogrosfish2(search_depth, test_parameters);
             //t.grogrosfish_multiagents(4, n_agents, test_begin_parameters, test_end_parameters);
         }
+
+
+
+
 
         // if (play_black && !t._player) {
         //     t.grogrosfish2(6, test_parameters);
