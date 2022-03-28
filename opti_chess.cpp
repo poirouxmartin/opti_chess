@@ -648,8 +648,6 @@ bool Board::in_check() {
     }
     end_loops:
 
-    cout << "pos king : " << pos_i << ", " << pos_j << endl;
-
     return attacked(pos_i, pos_j);
 }
 
@@ -820,6 +818,45 @@ void Board::make_index_move(int i) {
 
 
 
+// Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
+float Board::game_advancement() {
+    // Définition personnelle de l'avancement d'une partie : (p_tot - p) / p_tot, où p_tot = le total matériel (du joueur adverse? ou les deux?) en début de partie, et p = le total matériel (du joueur adverse? ou les deux?) actuellement
+    float adv_pawn = 0.1;
+    float adv_knight = 1.0;
+    float adv_bishop = 1.0;
+    float adv_rook = 1.0;
+    float adv_queen = 3.0;
+
+    float p_tot = 2 * (8 * adv_pawn + 2 * adv_knight + 2 * adv_bishop + 2 * adv_rook + 1 * adv_queen);
+    float p = 0;
+
+    int piece;
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            piece = _array[i][j];
+           
+            switch (piece)
+            {   
+                case 0: break;
+                case 1: case 7: p += adv_pawn; break;
+                case 2: case 8: p += adv_knight; break;
+                case 3: case 9: p += adv_bishop; break;
+                case 4: case 10: p += adv_rook; break;
+                case 5: case 11: p += adv_queen; break;
+            }
+
+        }
+    }
+
+
+    return (p_tot - p) / p_tot;
+
+}
+
+
+
+
+
 // Paramètres d'évaluation par défaut
 static float default_eval_parameters[3] = {1, 0.1, 0.025};
 
@@ -878,7 +915,7 @@ void Board::evaluate(float eval_parameters[3] = default_eval_parameters) {
                             {-36, -18,   0, -19, -15, -15, -21, -38},
                             {-39, -30, -31, -13, -31, -36, -34, -42}};
 
-    int pos_king[8][8]      {{4,  54,  47, -99, -99,  60,  83, -62},
+    int pos_king_begin[8][8]{{4,  54,  47, -99, -99,  60,  83, -62},
                             {-32,  10,  55,  56,  56,  55,  10,   3},
                             {-62,  12, -57,  44, -67,  28,  37, -31},
                             {-55,  50,  11,  -4, -19,  13,   0, -49},
@@ -886,6 +923,15 @@ void Board::evaluate(float eval_parameters[3] = default_eval_parameters) {
                             {-47, -42, -43, -79, -64, -32, -29, -32},
                             {-4,   3, -14, -50, -57, -18,  13,   4},
                             {17,  30,  -3, -14,   6,  -1,  40,  18}};
+
+    int pos_king_end[8][8]  {{15, 20,  25,  30,  30,  25,  20,  15},
+                            {20,  50,  50,  50,  50,  50,  50,  20},
+                            {25,  50,  50,  50,  50,  50,  37,  25},
+                            {20,  50,  50, 100, 100,  50,   0,  20},
+                            {15,  50,  50, 100, 100,  50,  50,  15},
+                            {10,  50,  50,  50,  50,  50, 50,   10},
+                            {5,   25,  25,  25,  25,  25,  25,   5},
+                            {0,   10,  10,  10,  10,  10,  10,  0}};                       
 
     _evaluation = 0;
 
@@ -897,6 +943,9 @@ void Board::evaluate(float eval_parameters[3] = default_eval_parameters) {
     // à tester: changer les boucles par des for (i : array) pour optimiser
     int p;
     int bishop_w = 0; int bishop_b = 0;
+
+    // Avancement de la partie
+    float adv = game_advancement();
     
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
@@ -910,13 +959,13 @@ void Board::evaluate(float eval_parameters[3] = default_eval_parameters) {
                 case 3: _evaluation += 3.3 * piece_value + piece_positioning * pos_bishop[7 - i][j]; bishop_w += 1; break;
                 case 4: _evaluation += 4.8 * piece_value + piece_positioning * pos_rook[7 - i][j]; break;
                 case 5: _evaluation += 8.8 * piece_value + piece_positioning * pos_queen[7 - i][j]; break;
-                case 6: _evaluation += 100000 * piece_value + piece_positioning * pos_king[7 - i][j]; break;
+                case 6: _evaluation += 100000 * piece_value + piece_positioning * (pos_king_begin[7 - i][j] * (1 - adv) + pos_king_end[7 - i][j] * adv); break;
                 case 7: _evaluation -= 1 * piece_value + piece_positioning * pos_pawn[i][j]; break;
                 case 8: _evaluation -= 3.2 * piece_value + piece_positioning * pos_knight[i][j]; break;
                 case 9: _evaluation -= 3.3 * piece_value + piece_positioning * pos_bishop[i][j]; bishop_b += 1; break;
                 case 10: _evaluation -= 4.8 * piece_value + piece_positioning * pos_rook[i][j]; break;
                 case 11: _evaluation -= 8.8 * piece_value + piece_positioning * pos_queen[i][j]; break;
-                case 12: _evaluation -= 100000 * piece_value + piece_positioning * pos_king[i][j]; break;
+                case 12: _evaluation -= 100000 * piece_value + piece_positioning * (pos_king_begin[i][j] * (1 - adv) + pos_king_end[i][j] * adv); break;
             }
 
         }
@@ -1948,24 +1997,6 @@ void Board::play_move_sound(int i, int j, int k, int l) {
     int p1 = _array[i][j];
     int p2 = _array[k][l];
 
-
-    
-
-    // Prises
-    if (p2 != 0) {
-        if (_player)
-            PlaySound(capture_1_sound);
-        else
-            PlaySound(capture_2_sound);
-    }
-    
-    // Roques
-    if (p1 == 6 && abs(j - l) == 2)
-        PlaySound(castle_1_sound);
-    if (p1 == 12 && abs(j - l) == 2)
-        PlaySound(castle_2_sound);
-
-
     // Echecs
     Board b(*this);
     b.make_move(i, j, k, l);
@@ -1977,12 +2008,29 @@ void Board::play_move_sound(int i, int j, int k, int l) {
             PlaySound(check_2_sound);
     }
 
-    // Coup "normal"
-    else if (p2 == 0) {
-        if (_player && (p1 != 6 || abs(j - l) != 2))
+    // Si pas d'échecs
+    else {
+
+        // Prises
+        if (p2 != 0) {
+            if (_player)
+                return PlaySound(capture_1_sound);
+            else
+                return PlaySound(capture_2_sound);
+        }
+        
+        // Roques
+        if (p1 == 6 && abs(j - l) == 2)
+            return PlaySound(castle_1_sound);
+        if (p1 == 12 && abs(j - l) == 2)
+            return PlaySound(castle_2_sound);
+
+        // Coup "normal"
+        if (_player)
             return PlaySound(move_1_sound);
-        if (!_player && (p1 != 12 || abs(j - l) != 2))
+        if (!_player)
             return PlaySound(move_2_sound);
+
     }
 
 

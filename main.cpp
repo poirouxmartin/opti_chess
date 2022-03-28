@@ -8,6 +8,13 @@
 /* TODO
 
 
+----- Documentation pour la suite -----
+
+https://cs229.stanford.edu/proj2012/DeSa-ClassifyingChessPositions.pdf
+
+
+
+
 ----- Jeu -----
 
 -> Echecs?
@@ -67,7 +74,7 @@
 --- Améliorations ---
 
 -> Améliorer les heuristiques pour l'évaluation d'une position
-    - Positionnement du roi changeant au cours de la partie
+    - Positionnement du roi, des pions, de la dame et des pièces changeant au cours de la partie (++ pièces mineures en début de partie, ++ le reste en fin de partie, ++ valeur des pions) (endgame = 13 points or below for each player? less than 4 pieces?)
     - Activité des pièces
     - Sécurité du roi
     - Espace
@@ -222,6 +229,7 @@ int main() {
         // Fait jouer l'IA automatiquement en fonction des paramètres
         if (t.game_over() == 0 && ((self_play) || (play_black && !t._player) || (play_white && t._player))) {
             t.grogrosfish2(search_depth, test_parameters);
+            cout << "Avancement de la partie : " << t.game_advancement() << endl;
             //t.grogrosfish_multiagents(4, n_agents, test_begin_parameters, test_end_parameters);
         }
 
