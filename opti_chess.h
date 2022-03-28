@@ -139,6 +139,9 @@ class Board {
         // Fonction qui dit si une case est attaqué
         bool attacked(int, int);
 
+        // Fonction qui dit s'il y'a échec
+        bool in_check();
+
         // Fonction qui affiche la liste des coups
         void display_moves();
 
@@ -205,6 +208,11 @@ class Board {
         // Fonction qui dessine le plateau
         void draw();
         
+        // Fonction qui joue le son d'un coup
+        void play_move_sound(int, int, int, int);
+
+        // Fonction qui joue le son d'un coup à partir de son index
+        void play_index_move_sound(int);
 
 };
 

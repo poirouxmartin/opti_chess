@@ -19,26 +19,43 @@ static Color background_color = {25, 25, 25};
 static Color text_color = {255, 100, 100, 255};
 
 // Couleurs du plateau
-static Color board_color_light = {150, 150, 200, 255};
-static Color board_color_dark = {100, 100, 150, 255};
+static Color board_color_light = {100, 100, 150, 255};
+static Color board_color_dark = {50, 50, 100, 255};
 
 // Couleur de surlignage de cases
-static Color highlight_color = {255, 100, 100, 200};
+static Color highlight_color = {255, 255, 100, 200};
 
 // Couleur de selection de cases
-static Color select_color = {100, 255, 100, 100};
+static Color select_color = {50, 200, 50, 100};
+
+// Couleur des cases du dernier coup joué
+static Color last_move_color = {200, 50, 50, 150};
 
 
 // Variable qui indique si l'initialisation a été faite
 static bool loaded_textures = false;
 
 
-// Textures et sons
+// Textures
 static Texture2D board_texture;
 static Image board_image;
 static Texture2D piece_textures[12];
 static Image piece_images[12];
+
+
+// Sons
 static Sound move_1_sound;
+static Sound move_2_sound;
+static Sound castle_1_sound;
+static Sound castle_2_sound;
+static Sound check_1_sound;
+static Sound check_2_sound;
+static Sound capture_1_sound;
+static Sound capture_2_sound;
+static Sound checkmate_sound;
+static Sound stealmate_sound;
+static Sound game_begin_sound;
+static Sound game_end_sound;
 
 
 // Taille du plateau par rapport à la fenêtre
@@ -51,7 +68,7 @@ static float board_padding_y;
 // Taille des pièces
 static int tile_size;
 static float piece_size;
-static float piece_scale = 0.8;
+static float piece_scale = 0.75;
 
 
 // Orientation du plateau
@@ -69,6 +86,9 @@ static bool clicked = false;
 
 // Pièce sélectionnée de la case cliquée
 static pair<int, int> selected_pos = {-1, -1};
+
+// Case surlignée
+static pair<int, int> highlighted_pos = {-1, -1};
 
 // Calcul du nombre de noeuds visités
 static int visited_nodes;
