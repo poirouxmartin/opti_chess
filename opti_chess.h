@@ -151,6 +151,9 @@ class Board {
         // Fonction qui joue le coup i de la liste des coups possibles
         void make_index_move(int);
 
+        // Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
+        float game_advancement();
+
         // Fonction qui évalue la position à l'aide d'heuristiques
         void evaluate(float[]);
 
