@@ -11,6 +11,8 @@
 ----- Documentation pour la suite -----
 
 https://cs229.stanford.edu/proj2012/DeSa-ClassifyingChessPositions.pdf
+https://www.wikiwand.com/en/Negamax
+https://thesai.org/Downloads/Volume5No5/Paper_10-A_Comparative_Study_of_Game_Tree_Searching_Methods.pdf
 
 
 
@@ -51,6 +53,8 @@ https://cs229.stanford.edu/proj2012/DeSa-ClassifyingChessPositions.pdf
 -> Faire le triage des coups grâce aux itérations précédentes?
 -> Fonction pour stocker facilement un noeud, ou savoir s'il est similaire à un autre? -> transposition tables
 -> Incrémenter le game_over à chaque coup joué plutôt que de le regarder à chaque fois
+-> Regarder si l'implémentation des échecs rend les calculs plus rapides
+-> Ne plus jouer les échecs?
 
 
 
@@ -89,6 +93,7 @@ https://cs229.stanford.edu/proj2012/DeSa-ClassifyingChessPositions.pdf
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Augmenter la profondeur pour les finales
+-> Negascout et PVS, problème (??) : cela doit utiliser l'ordre de coup de l'itération précédente. Cependant, l'évaluation d'un coup d'une itération sur l'autre varie beaucoup -> ordre de coups différent -> peu optimal
 
 
 
@@ -109,6 +114,8 @@ https://cs229.stanford.edu/proj2012/DeSa-ClassifyingChessPositions.pdf
 -> Revoir l'affichage du PGN (ne pas sauter à la ligne au milieu d'un mot)
 -> Options : désactivation son, ...
 -> Sons : ajouter checkmate, stealmate, promotion
+-> Chargement FEN -> "auto complétion" si le FEN est incorrect
+-> Afficher quelle IA joue
 
 
 
@@ -194,8 +201,15 @@ int main() {
         if (IsKeyPressed(KEY_N))
             t.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
-        // Fait jouer l'IA sur un coup
-        (IsKeyDown(KEY_SPACE)) && t.grogrosfish2(6, test_parameters);
+        // Charger une partie
+        if (IsKeyPressed(KEY_R))
+            t.from_fen("2K5/6p1/P2k3p/3p1b2/3P4/1q6/1P6/8 w - - 5 48");
+
+
+        // Fonction test pour les temps
+        if (IsKeyDown(KEY_T))
+            test_function(&test, 1);
+        
 
         // ----- Tests d'agents -----
         if (IsKeyDown(KEY_B))
@@ -204,12 +218,16 @@ int main() {
         if (IsKeyDown(KEY_V))
             t.grogrosfish4(6);
 
-        if (IsKeyDown(KEY_T))
+        if (IsKeyDown(KEY_C))
             t.grogrosfish_multiagents(6, n_agents, test_begin_parameters, test_end_parameters);
         // ----- Fin des tests d'agents  -----
 
 
         // Activations rapides de l'IA
+
+        // Fait jouer l'IA sur un coup
+        (IsKeyDown(KEY_SPACE)) && t.grogrosfish2(6, test_parameters);
+
         if (IsKeyDown(KEY_G))
             self_play = true;
 
@@ -227,11 +245,18 @@ int main() {
         }
 
         // Fait jouer l'IA automatiquement en fonction des paramètres
-        if (t.game_over() == 0 && ((self_play) || (play_black && !t._player) || (play_white && t._player))) {
+        if (((self_play) || (play_black && !t._player) || (play_white && t._player)) && t.game_over() == 0) {
             t.grogrosfish2(search_depth, test_parameters);
             cout << "Avancement de la partie : " << t.game_advancement() << endl;
+            cout << "game over : " << t.game_over();
             //t.grogrosfish_multiagents(4, n_agents, test_begin_parameters, test_end_parameters);
         }
+
+
+
+        // ----- Autres tests -----
+        if (IsKeyPressed(KEY_O))
+            cout << "is game over ?" << t.game_over() << endl;
 
 
 

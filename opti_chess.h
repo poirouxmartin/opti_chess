@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <execution>
 #include <array>
 #include <string>
 using namespace std;
@@ -134,10 +135,13 @@ class Board {
         bool add_king_moves(int, int, int *);
 
         // Renvoie la liste des coups possibles
-        int* get_moves();
+        int* get_moves(bool);
 
-        // Fonction qui dit si une case est attaqué
+        // Fonction qui dit si une case est attaquée
         bool attacked(int, int);
+
+        // Fonction qui donne la position du roi du joueur
+        pair<int, int> get_king_pos();
 
         // Fonction qui dit s'il y'a échec
         bool in_check();

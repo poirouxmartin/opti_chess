@@ -428,7 +428,7 @@ bool Board::add_king_moves(int i, int j, int *iterator) {
 
 
 // Renvoie la liste des coups possibles
-int* Board::get_moves() {
+int* Board::get_moves(bool pseudo = false) {
 
     int p;
     int iterator = 0;
@@ -466,10 +466,10 @@ int* Board::get_moves() {
                     _player && add_king_moves(i, j, &iterator);
                     // Roques
                     // Grand
-                    if (_q_castle_w && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && !attacked(i, j) && !attacked(i, j - 1) && !attacked(i, j - 2))
+                    if (_player && _q_castle_w && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j - 1) && !attacked(i, j - 2))))
                         add_move(i, j, i, j - 2, &iterator);
                     // Petit
-                    if (_k_castle_w && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && !attacked(i, j) && !attacked(i, j + 1) && !attacked(i, j + 2))
+                    if (_player && _k_castle_w && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j + 1) && !attacked(i, j + 2))))
                         add_move(i, j, i, j + 2, &iterator);
                     break;
 
@@ -497,10 +497,10 @@ int* Board::get_moves() {
                     !_player && add_king_moves(i, j, &iterator);
                     // Roques
                     // Grand
-                    if (_q_castle_b && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && !attacked(i, j) && !attacked(i, j - 1) && !attacked(i, j - 2))
+                    if (!_player && _q_castle_b && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j - 1) && !attacked(i, j - 2))))
                         add_move(i, j, i, j - 2, &iterator);
                     // Petit
-                    if (_k_castle_b && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && !attacked(i, j) && !attacked(i, j + 1) && !attacked(i, j + 2))
+                    if (!_player && _k_castle_b && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j + 1) && !attacked(i, j + 2))))
                         add_move(i, j, i, j + 2, &iterator);
                     break;
 
@@ -512,12 +512,17 @@ int* Board::get_moves() {
     _moves[iterator] = -1;
     _got_moves = iterator / 4;
 
+
+    // Vérification échecs
+
+
+
     return _moves;
 }
 
 
 
-// Fonction qui dit si une case est attaqué
+// Fonction qui dit si une case est attaquée
 bool Board::attacked(int i, int j) {
 
     // Pour accelérer les tests
@@ -525,103 +530,19 @@ bool Board::attacked(int i, int j) {
         return false;
 
 
-    // Attaque par un pion
-    if ((j > 0 && _array[i + _color][j - 1] == 1 + 6 * _player) || (j < 7 && _array[i + _color][j + 1] == 1 + 6 * _player))
-        return true;
-
-    // Attaque par un cavalier
-    for (int k = -2; k <= 2; k++) {
-        for (int l = -2; l <= 2; l++) {
-            if (_array[i + k][j + l] == 2 + 6 * _player && abs(k) + abs(l) == 3 && is_in(i + k, 0, 7) && is_in(j + l, 0, 7))
-                return true;
+    // Regarde tous les coups adverses dans cette position, puis renvoie si l'un d'entre eux a pour case finale, la case en argument
+    Board b;
+    b.copy_data(*this);
+    b._player = !b._player;
+    b.get_moves(true);
+    //b.display_moves();
+    for (int m = 0; m < b._got_moves; m++) {
+        //cout << "move : " << move_label(b._moves[4 * m], b._moves[4 * m + 1], b._moves[4 * m + 2], b._moves[4 * m + 3]) << endl;
+        if (i == b._moves[4 * m + 2] && j == b._moves[4 * m + 3]) {
+            //cout << "toto" << endl;
+            return true;
         }
     }
-
-    // Attaque par un mouvement rectiligne
-    int k;
-
-    // Verticale
-    k = -1;
-    // Bas
-    while (i + k >= 0) {
-        if (_array[i + k][j] == 4 + 6 * _player || _array[i + k][j] == 5 + 6 * _player)
-            return true;
-        if (_array[i + k][j] != 0)
-            break;
-        k--;
-    }
-    // Haut
-    k = 1;
-    while (i + k <= 7) {
-        if (_array[i + k][j] == 4 + 6 * _player || _array[i + k][j] == 5 + 6 * _player)
-            return true;
-        if (_array[i + k][j] != 0)
-            break;
-        k++;
-    }
-    // Horizontale
-    k = -1;
-    // Gauche
-    while (j + k >= 0) {
-        if (_array[i][j + k] == 4 + 6 * _player || _array[i][j + k] == 5 + 6 * _player)
-            return true;
-        if (_array[i][j + k] != 0)
-            break;
-        k--;
-    }
-    // Droite
-    k = 1;
-    while (j + k <= 7) {
-        if (_array[i][j + k] == 4 + 6 * _player || _array[i][j + k] == 5 + 6 * _player)
-            return true;
-        if (_array[i][j + k] != 0)
-            break;
-        k++;
-    }
-
-
-
-    // Attaque par diagonale
-
-    // Diagonale 1
-    // Bas gauche
-    k = -1;
-    while (i + k >= 0 && j + k >= 0) {
-        if (_array[i + k][j + k] == 3 + 6 * _player || _array[i + k][j + k] == 5 + 6 * _player)
-            return true;
-        if (_array[i + k][j + k] != 0)
-            break;
-        k--;
-    }
-    // Haut droite
-    k = +1;
-    while (i + k <= 7 && j + k <= 7) {
-        if (_array[i + k][j + k] == 3 + 6 * _player || _array[i + k][j + k] == 5 + 6 * _player)
-            return true;
-        if (_array[i + k][j + k] != 0)
-            break;
-        k++;
-    }
-    // Diagonale 2
-    // Bas droite
-    k = -1;
-    while (i + k >= 0 && j - k <= 7) {
-        if (_array[i + k][j - k] == 3 + 6 * _player || _array[i + k][j - k] == 5 + 6 * _player)
-            return true;
-        if (_array[i + k][j - k] != 0)
-            break;
-        k--;
-    }
-    // Haut gauche
-    k = 1;
-    while (i + k <= 7 && j - k >= 0) {
-        if (_array[i + k][j - k] == 3 + 6 * _player || _array[i + k][j - k] == 5 + 6 * _player)
-            return true;
-        if (_array[i + k][j - k] != 0)
-            break;
-        k++;
-    }
-
 
     return false;
 
@@ -653,10 +574,36 @@ bool Board::in_check() {
 
 
 
+// Fonction qui donne la position du roi du joueur
+pair<int, int> Board::get_king_pos() {
+    pair<int, int> pos = {-1, -1};
+
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            if (_array[i][j] == 6 * (2 - _player)) {
+                pos = {i, j};
+                goto end_loops;
+            }
+        }
+    }
+
+    end_loops:
+    
+    return pos;
+
+}
+
+
+
 
 // Fonction qui affiche la liste des coups donnée en argument
 void Board::display_moves() {
     
+    if (_got_moves == -1) {
+        cout << "no legal moves" << endl;
+        return;
+    }
+
     int i = 0;
     while (i < 1000) {
         if (_moves[i] == -1)
@@ -1014,7 +961,9 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
     if (g == 2)
         return 0;
     if (g == -1 || g == 1)
-        return -1000 * (depth + 1);
+        return -1e7 * (depth + 1);
+    if (g == -10 || g == 10)
+        return -1e8 * (depth + 1);
         
 
     float value = -1e9;
@@ -1033,7 +982,28 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
     sort_moves();
     int i;
 
+
+    // Parallélisation?
+
+    //parallel_for (0, _got_moves, [&](int j)) { ... }
+
+    // vector<int> moves_vector = {};
+    // for (int i = 0; i < _got_moves; i++) {
+    //     moves_vector.push_back(_move_order[i]);
+    // }
+
+
+    // for_each(execution::par_unseq, moves_vector.begin(), moves_vector.end(),
+    // [](auto&& i) {
+
+
+    // });
+
+
+
     for (int j = 0; j < _got_moves; j++) {
+
+        
         // Pour le triage des coups
         i = _move_order[j];
         // Copie du plateau
@@ -1555,6 +1525,8 @@ void Board::from_fen(string fen) {
     }
     _moves_count = stoi(s);
 
+    _got_moves = -1;
+
 }
 
 
@@ -1639,6 +1611,11 @@ int Board::game_over() {
     // Si un des rois est décédé
     bool king_w = false;
     bool king_b = false;
+
+    // Position du roi s'il existe (pour les mats et pats)
+    pair<int, int> king_pos;
+    pair<int, int> opponent_king_pos;
+
     int p;
 
     for (int i = 0; i < 8; i++) {
@@ -1646,12 +1623,20 @@ int Board::game_over() {
             p = _array[i][j];
             if (p == 6) {
                 king_w = true;
+                if (_player)
+                    king_pos = {i, j};
+                else
+                    opponent_king_pos = {i, j};
                 if (king_b) {
                     i = 8; j = 8; 
                 }
             }
             if (p == 12) {
                 king_b = true;
+                if (!_player)
+                    king_pos = {i, j};
+                else
+                    opponent_king_pos = {i, j};
                 if (king_w) {
                     i = 8; j = 8; 
                 }
@@ -1660,9 +1645,16 @@ int Board::game_over() {
     }
 
     if (!king_w)
-        return -1;
+        return -10;
     if (!king_b)
-        return 1;
+        return 10;
+
+
+    _player = !_player;
+    bool att = attacked(opponent_king_pos.first, opponent_king_pos.second);
+    _player = !_player;
+    // if (att)
+    //     return -10 * _color; 
 
     // Manque de matériel
 
@@ -1670,7 +1662,36 @@ int Board::game_over() {
     if (_half_moves_count >= 50)
         return 2;
 
-    // Pat? pas très utile...
+    // Pat? pas très utile... (et Mat...)
+    if (_got_moves == -1)
+        get_moves();
+
+    bool attacked_king = true;
+    Board b;
+    pair<int, int> new_king_pos;
+    for (int i = 0; i < _got_moves; i++) {
+        b.copy_data(*this);
+        b.make_index_move(i);
+        b._player = !b._player;
+        new_king_pos = b.get_king_pos();
+        if (!b.attacked(new_king_pos.first, new_king_pos.second)) {
+            attacked_king = false;
+            break;
+        }
+    }
+
+    if (attacked_king) {
+        // Echec et mat
+        if (attacked(king_pos.first, king_pos.second)) {
+            //return - _color;
+        }
+        // Pat
+        else {
+            return 2;
+        }
+    }
+
+    
 
     // Répétition de coups? chiant à faire...
 
