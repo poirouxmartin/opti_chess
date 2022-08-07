@@ -3,6 +3,7 @@
 #include <execution>
 #include <array>
 #include <string>
+#include "evaluation.h"
 using namespace std;
 
 
@@ -28,11 +29,6 @@ Plateau :
 
 
 */
-
-
-
-// Paramètres d'évaluation par défaut
-//static float default_eval_parameters[3] = {1, 0.1, 0.025};
 
 
 class Board {
@@ -106,6 +102,8 @@ class Board {
 
         // Temps pour les joueurs
         bool _time = false;
+
+        // 3 minutes par personne
         clock_t _time_player_1 = 180000;
         clock_t _time_player_2 = 180000;
 
@@ -173,28 +171,28 @@ class Board {
         float game_advancement();
 
         // Fonction qui évalue la position à l'aide d'heuristiques
-        void evaluate(float[]);
+        void evaluate(Evaluator);
 
         // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-        float negamax(int, float, float, int, bool, float[], bool, bool);
+        float negamax(int, float, float, int, bool, Evaluator, bool, bool);
 
         // Mieux que negamax? tend à supprimer plus de coups
-        float negascout(int, float, float, int, bool);
+        float negascout(int, float, float, int, bool, Evaluator);
 
         // Algorithme PVS
-        float pvs(int, float, float, int, bool);
+        float pvs(int, float, float, int, bool, Evaluator);
 
         // Fonction qui utilise minimax pour déterminer quel est le "meilleur" coup et le joue
-        void grogrosfish(int);
+        void grogrosfish(int, Evaluator);
 
         // Version un peu mieux optimisée de Grogrosfish
-        bool grogrosfish2(int, float[]);
+        bool grogrosfish2(int, Evaluator);
         
         // Version qui utilise negascout
-        void grogrosfish3(int);
+        void grogrosfish3(int, Evaluator);
         
         // Test de Grogrofish
-        void grogrosfish4(int);
+        void grogrosfish4(int, Evaluator);
 
         // Test de Grogrofish avec combinaison d'agents
         void grogrosfish_multiagents(int, int, float[], float[]);
@@ -203,7 +201,7 @@ class Board {
         void undo(int, int, int, int, int, int, int);
 
         // Fonction qui arrange les coups de façon "logique", pour optimiser les algorithmes de calcul
-        void sort_moves();
+        void sort_moves(Evaluator eval);
 
         // Fonction qui récupère le plateau d'un FEN
         void from_fen(string);
