@@ -3,6 +3,7 @@
 #include "useful_functions.h"
 #include "math.h"
 #include "gui.h"
+//#include <windows.h>
 
 
 /* TODO
@@ -13,7 +14,8 @@
 https://cs229.stanford.edu/proj2012/DeSa-ClassifyingChessPositions.pdf
 https://www.wikiwand.com/en/Negamax
 https://thesai.org/Downloads/Volume5No5/Paper_10-A_Comparative_Study_of_Game_Tree_Searching_Methods.pdf
-
+https://www.chessprogramming.org/Evaluation_of_Pieces
+https://www.chessprogramming.org/Evaluation
 
 
 
@@ -55,6 +57,7 @@ https://thesai.org/Downloads/Volume5No5/Paper_10-A_Comparative_Study_of_Game_Tre
 -> Incrémenter le game_over à chaque coup joué plutôt que de le regarder à chaque fois
 -> Regarder si l'implémentation des échecs rend les calculs plus rapides
 -> Ne plus jouer les échecs?
+-> Copie des plateaux : tout copier? ou seulement quelques informations importantes?
 
 
 
@@ -90,11 +93,26 @@ https://thesai.org/Downloads/Volume5No5/Paper_10-A_Comparative_Study_of_Game_Tre
     - Paire de oufs
     - Cases noires/blanches
     - Contrôle de cases importantes
+    - Cases faibles
+    - Pions arrierés/faibles
+    - Initiative
+    - Contrôle du centre
+    - Harmonie des pièces
+    - Pièces enfermées
+    - Bon/Mauvais fou
+    - Tours sur colonnes ouvertes
+    - Tours sur une même colonne qu'une dame ou un roi
+    - Tour sur la 7ème (-> voir piece_position)
+    - Droits de roque(s)
+    - Pions bloqués / Développement de pièces impossible
+    - Valeur des pièces changeante au cours du temps (tour mieux en endgame)
+    - f6
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Augmenter la profondeur pour les finales
 -> Negascout et PVS, problème (??) : cela doit utiliser l'ordre de coup de l'itération précédente. Cependant, l'évaluation d'un coup d'une itération sur l'autre varie beaucoup -> ordre de coups différent -> peu optimal
-
+-> Ajouter une part de random dans l'IA?
+-> Bug de temps quand les IA jouent entre elles?
 
 
 ----- Interface utilisateur -----
@@ -116,7 +134,16 @@ https://thesai.org/Downloads/Volume5No5/Paper_10-A_Comparative_Study_of_Game_Tre
 -> Sons : ajouter checkmate, stealmate, promotion
 -> Chargement FEN -> "auto complétion" si le FEN est incorrect
 -> Afficher quelle IA joue
-
+-> Parfois, l'affichage du PGN bug... à régler
+-> Régler le clic (quand IA va jouer), qui affiche mal la pièce
+-> Montrer les pièces qui on étaient prises pendant la partie, ainsi que la différence matérielle
+-> Pouvoir modifier les noms des joueurs
+-> PGN : ajout des noms et des temps par coup
+-> Modification du temps
+-> Interface qui ne freeze plus quand l'IA réfléchit
+-> Sons pour le temps
+-> Fonction qui affiche le temps en heures, minutes et secondes plutôt que secondes
+-> Ajout d'un carré de couleur avec le temps
 
 
 ----- Fonctionnalités supplémentaires -----
@@ -125,6 +152,8 @@ https://thesai.org/Downloads/Volume5No5/Paper_10-A_Comparative_Study_of_Game_Tre
 -> Correction PGN -> fins de parties
 -> Importation depuis in PGN
 -> Copie du FEN/PGN (dans le clipboard?)
+-> Afficher pour chaque coup auquel l'ordi réfléchit : la ligne correspondante, ainsi que la position finale avec son évaluation
+-> Ajouter les noms des joueurs ainsi que leurs temps par coups sur le PGN
 
 
 */
@@ -177,21 +206,42 @@ int main() {
 
 
     // Test de paramètres
-    float test_parameters[3] {1, 0.1, 0.025};
-    float test_begin_parameters[3] {1, 0.1, 0.01};
-    float test_end_parameters[3] {1, 0.1, 0.03};
-    int n_agents = 100;
+    float test_parameters_white[4] {1, 0.1, 0.02, 0.2};
+    float test_parameters_black[4] {1, 0.0, 0.025, 0.2};
+    float test_begin_parameters[4] {1, 0.1, 0.01, 1};
+    float test_end_parameters[4] {1, 0.1, 0.05, 1};
+    int n_agents = 10;
 
 
     // IA self play
     bool self_play = false;
-    bool play_white = false;
+    static bool play_white = false;
     bool play_black = false;
     int search_depth = 6;
 
 
+    // Temps
+    clock_t current_time;
+    bool previous_player = true;
+
+
+
     // Boucle principale (Quitter à l'aide de la croix, ou en faisant échap)
     while (!WindowShouldClose()) {
+
+        // Gestion du temps des joueurs
+        if (t._time) {
+
+            if (previous_player)
+            t._time_player_1 -= clock() - current_time;
+        else
+            t._time_player_2 -= clock() - current_time;
+        previous_player = t._player;
+        current_time = clock();
+
+        }
+
+
 
         // Orientation du plateau
         if (IsKeyPressed(KEY_F))
@@ -205,40 +255,77 @@ int main() {
         if (IsKeyPressed(KEY_R))
             t.from_fen("2K5/6p1/P2k3p/3p1b2/3P4/1q6/1P6/8 w - - 5 48");
 
+        if (IsKeyPressed(KEY_C)) {
+            // const char *copy = t._pgn.c_str();
+            // const size_t len = strlen(copy) + 1;
+            // HGLOBAL hMem =  GlobalAlloc(GMEM_MOVEABLE, len);
+            // memcpy(GlobalLock(hMem), copy, len);
+            // GlobalUnlock(hMem);
+            // OpenClipboard(0);
+            // EmptyClipboard();
+            // SetClipboardData(CF_TEXT, hMem);
+            // CloseClipboard();
+        }
+            
+
+
 
         // Fonction test pour les temps
         if (IsKeyDown(KEY_T))
             test_function(&test, 1);
+
+        
+        // Lancement du temps
+        if (IsKeyPressed(KEY_ENTER)) {
+            t._time = !t._time;
+            if (t._time) {
+                current_time = clock();
+            }
+        }
+        
         
 
         // ----- Tests d'agents -----
         if (IsKeyDown(KEY_B))
-            t.grogrosfish3(6);
+            t.grogrosfish3(search_depth);
 
         if (IsKeyDown(KEY_V))
-            t.grogrosfish4(6);
+            t.grogrosfish4(search_depth);
 
-        if (IsKeyDown(KEY_C))
-            t.grogrosfish_multiagents(6, n_agents, test_begin_parameters, test_end_parameters);
+        if (IsKeyDown(KEY_M))
+            t.grogrosfish_multiagents(search_depth, n_agents, test_begin_parameters, test_end_parameters);
         // ----- Fin des tests d'agents  -----
 
 
         // Activations rapides de l'IA
 
         // Fait jouer l'IA sur un coup
-        (IsKeyDown(KEY_SPACE)) && t.grogrosfish2(6, test_parameters);
+        (IsKeyDown(KEY_SPACE)) && t.grogrosfish2(search_depth, test_parameters_white);
 
         if (IsKeyDown(KEY_G))
             self_play = true;
 
-        if (IsKeyDown(KEY_DOWN))
-            play_white = true;
-        
-        if (IsKeyDown(KEY_UP))
-            play_black = true;
+        // Joueur des pièces blanches : IA/humain
+        if (IsKeyPressed(KEY_DOWN)) {
+            play_white = !play_white;
+            if (play_white)
+                t._player_1 = "IA";
+            else
+                t._player_1 = "Player 1";
+        }
+
+        // Joueur des pièces noires : IA/humain
+        if (IsKeyPressed(KEY_UP)) {
+            play_black = !play_black;
+            if (play_black)
+                t._player_2 = "IA";
+            else
+                t._player_2 = "Player 2";
+        }
+            
 
         // Stoppe toutes les IA
-        if (IsKeyDown(KEY_ENTER)) {
+        if (IsKeyDown(KEY_BACKSPACE)) {
             self_play = false;
             play_white = false;
             play_black = false;
@@ -246,10 +333,16 @@ int main() {
 
         // Fait jouer l'IA automatiquement en fonction des paramètres
         if (((self_play) || (play_black && !t._player) || (play_white && t._player)) && t.game_over() == 0) {
-            t.grogrosfish2(search_depth, test_parameters);
+            if (t._player)
+                t.grogrosfish2(search_depth, test_parameters_white);
+            else
+                t.grogrosfish2(search_depth, test_parameters_black);
+            // if (t._player)
+            //     t.grogrosfish2(search_depth, test_parameters);
+            // else
+            //     t.grogrosfish_multiagents(search_depth - 1, n_agents, test_begin_parameters, test_end_parameters);
             cout << "Avancement de la partie : " << t.game_advancement() << endl;
-            cout << "game over : " << t.game_over();
-            //t.grogrosfish_multiagents(4, n_agents, test_begin_parameters, test_end_parameters);
+            cout << "game over : " << t.game_over() << endl;
         }
 
 
@@ -280,6 +373,7 @@ int main() {
 
         /*if (!IsWindowFullscreen())
             ToggleFullscreen();*/
+
 
 
         // Dessins

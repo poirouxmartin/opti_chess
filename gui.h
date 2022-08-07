@@ -16,7 +16,7 @@ static int fps = 144;
 static Color background_color = {25, 25, 25};
 
 // Couleur du texte
-static Color text_color = {255, 100, 100, 255};
+static Color text_color = {255, 75, 75, 255};
 
 // Couleurs du plateau
 static Color board_color_light = {100, 100, 150, 255};
@@ -59,7 +59,7 @@ static Sound game_end_sound;
 
 
 // Taille du plateau par rapport à la fenêtre
-static float board_scale = 0.9;
+static float board_scale = 0.8;
 static float board_size;
 static float board_padding_x;
 static float board_padding_y;

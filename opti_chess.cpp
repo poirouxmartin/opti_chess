@@ -772,7 +772,7 @@ float Board::game_advancement() {
     float adv_knight = 1.0;
     float adv_bishop = 1.0;
     float adv_rook = 1.0;
-    float adv_queen = 3.0;
+    float adv_queen = 5.0;
 
     float p_tot = 2 * (8 * adv_pawn + 2 * adv_knight + 2 * adv_bishop + 2 * adv_rook + 1 * adv_queen);
     float p = 0;
@@ -805,35 +805,40 @@ float Board::game_advancement() {
 
 
 // Paramètres d'évaluation par défaut
-static float default_eval_parameters[3] = {1, 0.1, 0.025};
+static float default_eval_parameters[4] = {1, 0.1, 0.025, 0.25};
 
 
 // Fonction qui évalue la position à l'aide d'heuristiques
-void Board::evaluate(float eval_parameters[3] = default_eval_parameters) {
+void Board::evaluate(float eval_parameters[4] = default_eval_parameters) {
 
     // Coefficiants des heuristiques
     float piece_value = eval_parameters[0];
     float piece_activity = eval_parameters[1];
     float piece_positioning = eval_parameters[2];
-    float bishop_pair = 0.5;
+    float random_add = eval_parameters[3];
+
+    // Nouveaux autres coefficiants
+    float bishop_pair = 0.9;
+    float castling_rights = 0.5;
+    
 
     int pos_pawn[8][8]      {{0,   0,   0,   0,   0,   0,   0,   0},
                             {78,  83,  86,  73, 102,  82,  85,  90},
-                            {7,  29,  21,  44,  40,  31,  44,   7},
-                            {-17,  16,  -2,  15,  14,   0,  15, -13},
-                            {-26,   3,  10,   9,   6,   1,   0, -23},
-                            {-22,   9,   5, -11, -10,  -2,   3, -19},
-                            {-31,   8,  -7, -37, -36, -14,   3, -31},
+                            {7,  29,  21,  54,  50,  31,  44,   7},
+                            {-17,  16,  10,  45,  44,   30,  35, -13},
+                            {-26,   3,  15,   29,   30,   -10,   -20, -23},
+                            {-22,   9,   5,  10,  15,  -40,   3, -19},
+                            {-31,   8,  -7, -27, -26, 20,   3, -31},
                             {0,   0,   0,   0,   0,   0,   0,   0}};
 
     int pos_knight[8][8]    {{-66, -53, -75, -75, -10, -55, -58, -70},
                             {-3,  -6, 100, -36,   4,  62,  -4, -14},
                             {10,  67,   1,  74,  73,  27,  62,  -2},
-                            {24,  24,  45,  37,  33,  41,  25,  17},
+                            {24,  24,  45,  37,  43,  41,  25,  17},
                             {-1,   5,  31,  21,  22,  35,   2,   0},
-                            {-18,  10,  13,  22,  18,  15,  11, -14},
+                            {-18,  10,  13,  22,  18,  15,  14, -14},
                             {-23, -15,   2,   0,   2,   0, -23, -20},
-                            {-74, -23, -26, -24, -19, -35, -22, -69}};
+                            {-74, -25, -26, -24, -19, -30, -20, -69}};
 
     int pos_bishop[8][8]    {{-59, -78, -82, -76, -23,-107, -37, -50},
                             {-11,  20,  35, -42, -39,  31,   2, -22},
@@ -841,8 +846,8 @@ void Board::evaluate(float eval_parameters[3] = default_eval_parameters) {
                             {25,  17,  20,  34,  26,  25,  15,  10},
                             {13,  10,  17,  23,  17,  16,   0,   7},
                             {14,  25,  24,  15,   8,  25,  20,  15},
-                            {19,  20,  11,   6,   7,   6,  20,  16},
-                            {-7,   2, -15, -12, -14, -15, -10, -10}};
+                            {19,  25,  11,   6,   7,   6,  25,  16},
+                            {-7,   2, -15, -12, -14, -20, -10, -10}};
 
     int pos_rook[8][8]      {{35,  29,  33,   4,  37,  33,  56,  50},
                             {55,  29,  56,  67,  55,  62,  34,  60},
@@ -851,9 +856,19 @@ void Board::evaluate(float eval_parameters[3] = default_eval_parameters) {
                             {-28, -35, -16, -21, -13, -29, -46, -30},
                             {-42, -28, -42, -25, -25, -35, -26, -46},
                             {-53, -38, -31, -26, -29, -43, -44, -53},
-                            {-30, -24, -18,   5,  -2, -18, -31, -32}};
+                            {-30, -24, 5,   20,  30, 5, -31, -32}};
 
-    int pos_queen[8][8]     {{6,   1,  -8,-104,  69,  24,  88,  26},
+    // à changer... 
+    int pos_queen_begin[8][8]{{-50,  -50,  -50, -50,  -50,  -50,  -50,  -50},
+                            {0,  0,  0, 0,  0,  40,  40,  40},
+                            {-40,  -40,  -40, -40,  -40,  -40,  -40,  -40},
+                            {-20,  -40, -40, -60,  -60,  -40,  -40,  -20},
+                            {-40,  -40,  -40, -60,  -60,  -40,  -40,  -40},
+                            {0,  -40,  -20, 20,  -20,  0,  0,  0},
+                            {-40,  -20,  10, 0,  0,  0,  -20,  -40},
+                            {-60,  -40,  -20, 20,  10,  -40,  -40,  -60}};
+
+    int pos_queen_end[8][8] {{6,   1,  -8,-104,  69,  24,  88,  26},
                             {14,  32,  60, -10,  20,  76,  57,  24},
                             {-2,  43,  32,  60,  72,  63,  43,   2},
                             {1, -16,  22,  17,  25,  20, -13,  -6},
@@ -869,16 +884,16 @@ void Board::evaluate(float eval_parameters[3] = default_eval_parameters) {
                             {-55, -43, -52, -28, -51, -47,  -8, -50},
                             {-47, -42, -43, -79, -64, -32, -29, -32},
                             {-4,   3, -14, -50, -57, -18,  13,   4},
-                            {17,  30,  -3, -14,   6,  -1,  40,  18}};
+                            {37,  40,  10, -64, -50,  -10,  60,  48}};
 
     int pos_king_end[8][8]  {{15, 20,  25,  30,  30,  25,  20,  15},
                             {20,  50,  50,  50,  50,  50,  50,  20},
-                            {25,  50,  50,  50,  50,  50,  37,  25},
-                            {20,  50,  50, 100, 100,  50,   0,  20},
+                            {25,  50,  60,  75,  75,  60,  37,  25},
+                            {20,  50,  60, 100, 100,  60,   0,  20},
                             {15,  50,  50, 100, 100,  50,  50,  15},
                             {10,  50,  50,  50,  50,  50, 50,   10},
-                            {5,   25,  25,  25,  25,  25,  25,   5},
-                            {0,   10,  10,  10,  10,  10,  10,  0}};                       
+                            {5,   25,  25,  40,  40,  25,  25,   5},
+                            {-10,   0,  10,  10,  -30,  10,  0,  -10}};                       
 
     _evaluation = 0;
 
@@ -901,17 +916,17 @@ void Board::evaluate(float eval_parameters[3] = default_eval_parameters) {
             switch (p)
             {   
                 case 0: break;
-                case 1: _evaluation += 1 * piece_value + piece_positioning * pos_pawn[7 - i][j]; break;
-                case 2: _evaluation += 3.2 * piece_value + piece_positioning * pos_knight[7 - i][j]; break;
+                case 1: _evaluation += (0.95 * (1 - adv) + 1.25 * adv) * piece_value + piece_positioning * pos_pawn[7 - i][j]; break;
+                case 2: _evaluation += (3.25 * (1 - adv) + 2.6 * adv) * piece_value + piece_positioning * pos_knight[7 - i][j]; break;
                 case 3: _evaluation += 3.3 * piece_value + piece_positioning * pos_bishop[7 - i][j]; bishop_w += 1; break;
-                case 4: _evaluation += 4.8 * piece_value + piece_positioning * pos_rook[7 - i][j]; break;
-                case 5: _evaluation += 8.8 * piece_value + piece_positioning * pos_queen[7 - i][j]; break;
+                case 4: _evaluation += (4.6 * (1 - adv) + 5.8 * adv) * piece_value + piece_positioning * pos_rook[7 - i][j]; break;
+                case 5: _evaluation += 8.9 * piece_value + piece_positioning * (pos_queen_begin[7 - i][j] * (1 - adv) + pos_queen_end[7 - i][j] * adv); break;
                 case 6: _evaluation += 100000 * piece_value + piece_positioning * (pos_king_begin[7 - i][j] * (1 - adv) + pos_king_end[7 - i][j] * adv); break;
-                case 7: _evaluation -= 1 * piece_value + piece_positioning * pos_pawn[i][j]; break;
-                case 8: _evaluation -= 3.2 * piece_value + piece_positioning * pos_knight[i][j]; break;
+                case 7: _evaluation -= (0.95 * (1 - adv) + 1.25 * adv) * piece_value + piece_positioning * pos_pawn[i][j]; break;
+                case 8: _evaluation -= (3.25 * (1 - adv) + 2.6 * adv) * piece_value + piece_positioning * pos_knight[i][j]; break;
                 case 9: _evaluation -= 3.3 * piece_value + piece_positioning * pos_bishop[i][j]; bishop_b += 1; break;
-                case 10: _evaluation -= 4.8 * piece_value + piece_positioning * pos_rook[i][j]; break;
-                case 11: _evaluation -= 8.8 * piece_value + piece_positioning * pos_queen[i][j]; break;
+                case 10: _evaluation -= (4.6 * (1 - adv) + 5.8 * adv) * piece_value + piece_positioning * pos_rook[i][j]; break;
+                case 11: _evaluation -= 8.9 * piece_value + piece_positioning * (pos_queen_begin[i][j] * (1 - adv) + pos_queen_end[i][j] * adv); break;
                 case 12: _evaluation -= 100000 * piece_value + piece_positioning * (pos_king_begin[i][j] * (1 - adv) + pos_king_end[i][j] * adv); break;
             }
 
@@ -922,11 +937,18 @@ void Board::evaluate(float eval_parameters[3] = default_eval_parameters) {
     // Paire de oufs
     _evaluation += bishop_pair * ((bishop_w >= 2) - (bishop_b >= 2));
 
+    // Droits de roques
+    _evaluation += castling_rights * (_k_castle_w + _q_castle_w - _k_castle_b - _q_castle_b) * (1 - adv);
+
+    _evaluation += GetRandomValue(-50, 50) * random_add / 100;
 
     // // Activité des pièces
-    // if (_got_moves == -1)
-    //     get_moves();
-    // _evaluation += _color * _got_moves * piece_activity;
+    if (piece_activity != 0) {
+        if (_got_moves == -1)
+            get_moves();
+        _evaluation += _color * _got_moves * piece_activity;
+    }
+    
         
 
     // Pour éviter les répétitions (ne fonctionne pas)
@@ -938,7 +960,7 @@ void Board::evaluate(float eval_parameters[3] = default_eval_parameters) {
 
 
 // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-float Board::negamax(int depth, float alpha, float beta, int color, bool max_depth, float eval_parameters[3] = default_eval_parameters, bool play = true, bool display = true) {
+float Board::negamax(int depth, float alpha, float beta, int color, bool max_depth, float eval_parameters[3] = default_eval_parameters, bool play = false, bool display = false) {
 
     // Nombre de noeuds
     if (max_depth) {
@@ -1258,7 +1280,8 @@ void Board::grogrosfish(int depth) {
 
 // Version un peu mieux optimisée de Grogrosfish
 bool Board::grogrosfish2(int depth, float eval_parameters[3] = default_eval_parameters) {
-    negamax(depth, -1e9, 1e9, _color, true, eval_parameters);
+    negamax(depth, -1e9, 1e9, _color, true, eval_parameters, true, true);
+    evaluate();
     to_fen();
     cout << _fen << endl;
     cout << _pgn << endl;
@@ -1285,14 +1308,14 @@ void Board::grogrosfish4(int depth) {
 
 
 // Test de Grogrofish avec combinaison d'agents
-void Board::grogrosfish_multiagents(int depth, int n_agents, float begin_eval_parameters[3], float end_eval_parameters[3]) {
+void Board::grogrosfish_multiagents(int depth, int n_agents, float begin_eval_parameters[4], float end_eval_parameters[4]) {
     if (_got_moves == -1)
         get_moves();
 
-    float eval_parameters[3];
+    float eval_parameters[4];
     int votes[250];
 
-    // Met la liste des votes à 0 pour chaque coup
+    // Met la liste des votes à 0 pour tous les coups
     for (int i = 0; i < _got_moves; i++) {
         votes[i] = 0;
     }
@@ -1301,12 +1324,12 @@ void Board::grogrosfish_multiagents(int depth, int n_agents, float begin_eval_pa
     // Pour chaque agent
     for (int i = 0; i < n_agents; i++) {
         // Calcul des paramètres de l'agent
-        for (int j = 0; j < 3; j++) {
+        for (int j = 0; j < 4; j++) {
             eval_parameters[j] = (float)(n_agents - i - 1) / (n_agents - 1) * begin_eval_parameters[j] + (float)i / (n_agents - 1) * end_eval_parameters[j];
         }
 
         // Ajoute à la liste de votes son coup
-        move = negamax(depth, -1e9, 1e9, _color, true, eval_parameters, false, false);
+        move = negamax(depth, -1e9, 1e9, _color, true, eval_parameters);
         votes[move] += 1;
 
     }
@@ -1325,13 +1348,13 @@ void Board::grogrosfish_multiagents(int depth, int n_agents, float begin_eval_pa
         }
     }
 
-    cout << "->    Voted move : " << best_move << " (" << 100 * votes[best_move] / n_agents << "%)" << endl;
+    cout << "->    Voted move : " << move_label_from_index(best_move) << " (" << 100 * votes[best_move] / n_agents << "%)" << endl;
 
+    play_index_move_sound(best_move);
     make_index_move(best_move);
     to_fen();
     cout << _fen << endl;
     cout << _pgn << endl;
-    PlaySound(move_1_sound);
 }
 
 
@@ -1751,6 +1774,14 @@ string Board::move_label(int i, int j, int k, int l) {
 }
 
 
+// Fonction qui renvoie le label d'un coup en fonction de son index
+string Board::move_label_from_index(int i) {
+    if (_got_moves == -1)
+        get_moves();
+    return move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]);
+}
+
+
 
 // Fonction qui fait un coup à partir de son label (pour permettre d'importer une partie à partir d'un PGN)
 void Board::make_label_move(string s) {
@@ -1998,6 +2029,16 @@ void Board::draw() {
     // Texte
     DrawText("Grogrosfish engine", board_padding_x, 10, 32, text_color);
 
+    // Joueurs de la partie
+    DrawText(_player_2, board_padding_x, board_padding_y - 32 + (board_size + 40) * !board_orientation, 24, text_color);
+    DrawText(_player_1, board_padding_x, board_padding_y - 32 + (board_size + 40) * board_orientation, 24, text_color);
+
+
+    // Temps des joueurs
+    DrawText(to_string(_time_player_2 / 1000).c_str(), board_padding_x + board_size - 72, board_padding_y - 32 + (board_size + 40) * !board_orientation, 24, text_color);
+    DrawText(to_string(_time_player_1 / 1000).c_str(), board_padding_x + board_size - 72, board_padding_y - 32 + (board_size + 40) * board_orientation, 24, text_color);
+
+
     // FEN
     if (_fen == "")
         to_fen();
@@ -2006,7 +2047,12 @@ void Board::draw() {
 
 
     // PGN
-    draw_text_rect(_pgn, board_padding_x + board_size + 20, board_padding_y, screen_width - (board_padding_x + board_size + 20) - 20, board_size, 20);
+    draw_text_rect(_pgn, board_padding_x + board_size + 20, board_padding_y, screen_width - (board_padding_x + board_size + 20) - 100, board_size, 20);
+
+    // Evaluation
+
+    // Peut faire tout planter
+    DrawText(to_string(_evaluation).c_str(), screen_width - 200, screen_height - 30, 20, text_color);
 
 }
 

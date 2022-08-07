@@ -99,6 +99,20 @@ class Board {
         // Dernier coup joué
         int _last_move[4] = {-1, -1, -1, -1};
 
+
+        // Joueurs de la partie
+        char* _player_1 = "Player 1";
+        char* _player_2 = "Player 2";
+
+        // Temps pour les joueurs
+        bool _time = false;
+        clock_t _time_player_1 = 180000;
+        clock_t _time_player_2 = 180000;
+
+
+
+
+
         
 
         // Constructeur par défaut
@@ -202,6 +216,9 @@ class Board {
 
         // Fonction qui renvoie le label d'un coup
         string move_label(int, int, int, int);
+
+        // Fonction qui renvoie le label d'un coup en fonction de son index
+        string move_label_from_index(int);
 
         // Fonction qui fait un coup à partir de son label
         void make_label_move(string);
