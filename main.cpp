@@ -144,6 +144,7 @@ https://www.chessprogramming.org/Evaluation
 -> Sons pour le temps
 -> Fonction qui affiche le temps en heures, minutes et secondes plutôt que secondes
 -> Ajout d'un carré de couleur avec le temps
+-> Incrément de temps
 
 
 ----- Fonctionnalités supplémentaires -----
@@ -205,18 +206,17 @@ int main() {
     test_function(&test, 1);
 
 
-    // Test de paramètres
-    float test_parameters_white[4] {1, 0.1, 0.02, 0.2};
-    float test_parameters_black[4] {1, 0.0, 0.025, 0.2};
-    float test_begin_parameters[4] {1, 0.1, 0.01, 1};
-    float test_end_parameters[4] {1, 0.1, 0.05, 1};
-    int n_agents = 10;
+    // Evaluateur de position
+    Evaluator eval_white;
+    Evaluator eval_black;
 
 
     // IA self play
     bool self_play = false;
     static bool play_white = false;
     bool play_black = false;
+
+    // Paramètres pour l'IA
     int search_depth = 6;
 
 
@@ -253,7 +253,7 @@ int main() {
 
         // Charger une partie
         if (IsKeyPressed(KEY_R))
-            t.from_fen("2K5/6p1/P2k3p/3p1b2/3P4/1q6/1P6/8 w - - 5 48");
+            t.from_fen("4rk2/p1p1n1pr/5n1p/1pP1Nb2/2B4P/2B5/PK4P1/5R2 w - b6 0 26");
 
         if (IsKeyPressed(KEY_C)) {
             // const char *copy = t._pgn.c_str();
@@ -271,9 +271,15 @@ int main() {
 
 
         // Fonction test pour les temps
-        if (IsKeyDown(KEY_T))
-            test_function(&test, 1);
-
+        if (IsKeyDown(KEY_T)) {
+           //test_function(&test, 1);
+           t.get_moves(false);
+           t.display_moves();
+           cout << t._en_passant << endl;
+           cout << t._en_passant[1] << endl;
+           cout << (int)'0' << endl;
+        }
+            
         
         // Lancement du temps
         if (IsKeyPressed(KEY_ENTER)) {
@@ -287,20 +293,20 @@ int main() {
 
         // ----- Tests d'agents -----
         if (IsKeyDown(KEY_B))
-            t.grogrosfish3(search_depth);
+            t.grogrosfish3(search_depth, eval_white);
 
         if (IsKeyDown(KEY_V))
-            t.grogrosfish4(search_depth);
+            t.grogrosfish4(search_depth, eval_white);
 
-        if (IsKeyDown(KEY_M))
-            t.grogrosfish_multiagents(search_depth, n_agents, test_begin_parameters, test_end_parameters);
+        // if (IsKeyDown(KEY_M))
+        //     t.grogrosfish_multiagents(search_depth, n_agents, test_begin_parameters, test_end_parameters);
         // ----- Fin des tests d'agents  -----
 
 
         // Activations rapides de l'IA
 
         // Fait jouer l'IA sur un coup
-        (IsKeyDown(KEY_SPACE)) && t.grogrosfish2(search_depth, test_parameters_white);
+        (IsKeyDown(KEY_SPACE)) && t.grogrosfish2(search_depth, eval_white);
 
         if (IsKeyDown(KEY_G))
             self_play = true;
@@ -334,9 +340,9 @@ int main() {
         // Fait jouer l'IA automatiquement en fonction des paramètres
         if (((self_play) || (play_black && !t._player) || (play_white && t._player)) && t.game_over() == 0) {
             if (t._player)
-                t.grogrosfish2(search_depth, test_parameters_white);
+                t.grogrosfish2(search_depth, eval_white);
             else
-                t.grogrosfish2(search_depth, test_parameters_black);
+                t.grogrosfish2(search_depth, eval_black);
             // if (t._player)
             //     t.grogrosfish2(search_depth, test_parameters);
             // else

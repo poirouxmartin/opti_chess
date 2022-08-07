@@ -142,9 +142,9 @@ bool Board::add_pawn_moves(int i, int j, int *iterator) {
         // Poussée (de 2)
         (i == 1 && _array[i + 1][j] == 0 && _array[i + 2][j] == 0) && add_move(i, j, i + 2, j, iterator);
         // Prise (gauche)
-        (j > 0 && (is_in(_array[i + 1][j - 1], 7, 12) || _en_passant[0] == abc[j - 1])) && add_move(i, j, i + 1, j - 1, iterator);
+        (j > 0 && (is_in(_array[i + 1][j - 1], 7, 12) || (_en_passant[0] == abc[j - 1] && (int)_en_passant[1] - 48 - 1 == i + 1))) && add_move(i, j, i + 1, j - 1, iterator);
         // Prise (droite)
-        (j < 7 && (is_in(_array[i + 1][j + 1], 7, 12) || _en_passant[0] == abc[j + 1])) && add_move(i, j, i + 1, j + 1, iterator);
+        (j < 7 && (is_in(_array[i + 1][j + 1], 7, 12) || (_en_passant[0] == abc[j + 1] && _en_passant[1] - 48 - 1 == i + 1))) && add_move(i, j, i + 1, j + 1, iterator);
     }
     // Joueur avec les pièces noires
     else {
@@ -153,9 +153,9 @@ bool Board::add_pawn_moves(int i, int j, int *iterator) {
         // Poussée (de 2)
         (i == 6 && _array[i - 1][j] == 0 && _array[i - 2][j] == 0) && add_move(i, j, i - 2, j, iterator);
         // Prise (gauche)
-        (j > 0 && (is_in(_array[i - 1][j - 1], 1, 6) || _en_passant[0] == abc[j - 1])) && add_move(i, j, i - 1, j - 1, iterator);
+        (j > 0 && (is_in(_array[i - 1][j - 1], 1, 6) || (_en_passant[0] == abc[j - 1] && _en_passant[1] - 48 - 1 == i - 1))) && add_move(i, j, i - 1, j - 1, iterator);
         // Prise (droite)
-        (j < 7 && (is_in(_array[i - 1][j + 1], 1, 6) || _en_passant[0] == abc[j + 1])) && add_move(i, j, i - 1, j + 1, iterator);
+        (j < 7 && (is_in(_array[i - 1][j + 1], 1, 6) || (_en_passant[0] == abc[j + 1] && _en_passant[1] - 48 - 1 == i - 1))) && add_move(i, j, i - 1, j + 1, iterator);
     }
 
     return true;
@@ -802,98 +802,8 @@ float Board::game_advancement() {
 
 
 
-
-
-// Paramètres d'évaluation par défaut
-static float default_eval_parameters[4] = {1, 0.1, 0.025, 0.25};
-
-
 // Fonction qui évalue la position à l'aide d'heuristiques
-void Board::evaluate(float eval_parameters[4] = default_eval_parameters) {
-
-    // Coefficiants des heuristiques
-    float piece_value = eval_parameters[0];
-    float piece_activity = eval_parameters[1];
-    float piece_positioning = eval_parameters[2];
-    float random_add = eval_parameters[3];
-
-    // Nouveaux autres coefficiants
-    float bishop_pair = 0.9;
-    float castling_rights = 0.5;
-    
-
-    int pos_pawn[8][8]      {{0,   0,   0,   0,   0,   0,   0,   0},
-                            {78,  83,  86,  73, 102,  82,  85,  90},
-                            {7,  29,  21,  54,  50,  31,  44,   7},
-                            {-17,  16,  10,  45,  44,   30,  35, -13},
-                            {-26,   3,  15,   29,   30,   -10,   -20, -23},
-                            {-22,   9,   5,  10,  15,  -40,   3, -19},
-                            {-31,   8,  -7, -27, -26, 20,   3, -31},
-                            {0,   0,   0,   0,   0,   0,   0,   0}};
-
-    int pos_knight[8][8]    {{-66, -53, -75, -75, -10, -55, -58, -70},
-                            {-3,  -6, 100, -36,   4,  62,  -4, -14},
-                            {10,  67,   1,  74,  73,  27,  62,  -2},
-                            {24,  24,  45,  37,  43,  41,  25,  17},
-                            {-1,   5,  31,  21,  22,  35,   2,   0},
-                            {-18,  10,  13,  22,  18,  15,  14, -14},
-                            {-23, -15,   2,   0,   2,   0, -23, -20},
-                            {-74, -25, -26, -24, -19, -30, -20, -69}};
-
-    int pos_bishop[8][8]    {{-59, -78, -82, -76, -23,-107, -37, -50},
-                            {-11,  20,  35, -42, -39,  31,   2, -22},
-                            {-9,  39, -32,  41,  52, -10,  28, -14},
-                            {25,  17,  20,  34,  26,  25,  15,  10},
-                            {13,  10,  17,  23,  17,  16,   0,   7},
-                            {14,  25,  24,  15,   8,  25,  20,  15},
-                            {19,  25,  11,   6,   7,   6,  25,  16},
-                            {-7,   2, -15, -12, -14, -20, -10, -10}};
-
-    int pos_rook[8][8]      {{35,  29,  33,   4,  37,  33,  56,  50},
-                            {55,  29,  56,  67,  55,  62,  34,  60},
-                            {19,  35,  28,  33,  45,  27,  25,  15},
-                            {0,   5,  16,  13,  18,  -4,  -9,  -6},
-                            {-28, -35, -16, -21, -13, -29, -46, -30},
-                            {-42, -28, -42, -25, -25, -35, -26, -46},
-                            {-53, -38, -31, -26, -29, -43, -44, -53},
-                            {-30, -24, 5,   20,  30, 5, -31, -32}};
-
-    // à changer... 
-    int pos_queen_begin[8][8]{{-50,  -50,  -50, -50,  -50,  -50,  -50,  -50},
-                            {0,  0,  0, 0,  0,  40,  40,  40},
-                            {-40,  -40,  -40, -40,  -40,  -40,  -40,  -40},
-                            {-20,  -40, -40, -60,  -60,  -40,  -40,  -20},
-                            {-40,  -40,  -40, -60,  -60,  -40,  -40,  -40},
-                            {0,  -40,  -20, 20,  -20,  0,  0,  0},
-                            {-40,  -20,  10, 0,  0,  0,  -20,  -40},
-                            {-60,  -40,  -20, 20,  10,  -40,  -40,  -60}};
-
-    int pos_queen_end[8][8] {{6,   1,  -8,-104,  69,  24,  88,  26},
-                            {14,  32,  60, -10,  20,  76,  57,  24},
-                            {-2,  43,  32,  60,  72,  63,  43,   2},
-                            {1, -16,  22,  17,  25,  20, -13,  -6},
-                            {-14, -15,  -2,  -5,  -1, -10, -20, -22},
-                            {-30,  -6, -13, -11, -16, -11, -16, -27},
-                            {-36, -18,   0, -19, -15, -15, -21, -38},
-                            {-39, -30, -31, -13, -31, -36, -34, -42}};
-
-    int pos_king_begin[8][8]{{4,  54,  47, -99, -99,  60,  83, -62},
-                            {-32,  10,  55,  56,  56,  55,  10,   3},
-                            {-62,  12, -57,  44, -67,  28,  37, -31},
-                            {-55,  50,  11,  -4, -19,  13,   0, -49},
-                            {-55, -43, -52, -28, -51, -47,  -8, -50},
-                            {-47, -42, -43, -79, -64, -32, -29, -32},
-                            {-4,   3, -14, -50, -57, -18,  13,   4},
-                            {37,  40,  10, -64, -50,  -10,  60,  48}};
-
-    int pos_king_end[8][8]  {{15, 20,  25,  30,  30,  25,  20,  15},
-                            {20,  50,  50,  50,  50,  50,  50,  20},
-                            {25,  50,  60,  75,  75,  60,  37,  25},
-                            {20,  50,  60, 100, 100,  60,   0,  20},
-                            {15,  50,  50, 100, 100,  50,  50,  15},
-                            {10,  50,  50,  50,  50,  50, 50,   10},
-                            {5,   25,  25,  40,  40,  25,  25,   5},
-                            {-10,   0,  10,  10,  -30,  10,  0,  -10}};                       
+void Board::evaluate(Evaluator eval) {
 
     _evaluation = 0;
 
@@ -916,18 +826,18 @@ void Board::evaluate(float eval_parameters[4] = default_eval_parameters) {
             switch (p)
             {   
                 case 0: break;
-                case 1: _evaluation += (0.95 * (1 - adv) + 1.25 * adv) * piece_value + piece_positioning * pos_pawn[7 - i][j]; break;
-                case 2: _evaluation += (3.25 * (1 - adv) + 2.6 * adv) * piece_value + piece_positioning * pos_knight[7 - i][j]; break;
-                case 3: _evaluation += 3.3 * piece_value + piece_positioning * pos_bishop[7 - i][j]; bishop_w += 1; break;
-                case 4: _evaluation += (4.6 * (1 - adv) + 5.8 * adv) * piece_value + piece_positioning * pos_rook[7 - i][j]; break;
-                case 5: _evaluation += 8.9 * piece_value + piece_positioning * (pos_queen_begin[7 - i][j] * (1 - adv) + pos_queen_end[7 - i][j] * adv); break;
-                case 6: _evaluation += 100000 * piece_value + piece_positioning * (pos_king_begin[7 - i][j] * (1 - adv) + pos_king_end[7 - i][j] * adv); break;
-                case 7: _evaluation -= (0.95 * (1 - adv) + 1.25 * adv) * piece_value + piece_positioning * pos_pawn[i][j]; break;
-                case 8: _evaluation -= (3.25 * (1 - adv) + 2.6 * adv) * piece_value + piece_positioning * pos_knight[i][j]; break;
-                case 9: _evaluation -= 3.3 * piece_value + piece_positioning * pos_bishop[i][j]; bishop_b += 1; break;
-                case 10: _evaluation -= (4.6 * (1 - adv) + 5.8 * adv) * piece_value + piece_positioning * pos_rook[i][j]; break;
-                case 11: _evaluation -= 8.9 * piece_value + piece_positioning * (pos_queen_begin[i][j] * (1 - adv) + pos_queen_end[i][j] * adv); break;
-                case 12: _evaluation -= 100000 * piece_value + piece_positioning * (pos_king_begin[i][j] * (1 - adv) + pos_king_end[i][j] * adv); break;
+                case 1:  _evaluation += (eval._pawn_value_begin   * (1 - adv) + eval._pawn_value_end   * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_pawn_begin[7 - i][j]   * (1 - adv) + eval._pos_pawn_end[7 - i][j]   * adv); break;
+                case 2:  _evaluation += (eval._knight_value_begin * (1 - adv) + eval._knight_value_end * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_knight_begin[7 - i][j] * (1 - adv) + eval._pos_knight_end[7 - i][j] * adv); break;
+                case 3:  _evaluation += (eval._bishop_value_begin * (1 - adv) + eval._bishop_value_end * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_bishop_begin[7 - i][j] * (1 - adv) + eval._pos_bishop_end[7 - i][j] * adv); bishop_w += 1; break;
+                case 4:  _evaluation += (eval._rook_value_begin   * (1 - adv) + eval._rook_value_end   * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_rook_begin[7 - i][j]   * (1 - adv) + eval._pos_rook_end[7 - i][j]   * adv); break;
+                case 5:  _evaluation += (eval._queen_value_begin  * (1 - adv) + eval._queen_value_end  * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_queen_begin[7 - i][j]  * (1 - adv) + eval._pos_queen_end[7 - i][j]  * adv); break;
+                case 6:  _evaluation += (eval._king_value_begin   * (1 - adv) + eval._king_value_end   * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_king_begin[7 - i][j]   * (1 - adv) + eval._pos_king_end[7 - i][j]   * adv); break;
+                case 7:  _evaluation -= (eval._pawn_value_begin   * (1 - adv) + eval._pawn_value_end   * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_pawn_begin[i][j]       * (1 - adv) + eval._pos_pawn_end[i][j]       * adv); break;
+                case 8:  _evaluation -= (eval._knight_value_begin * (1 - adv) + eval._knight_value_end * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_bishop_begin[i][j]     * (1 - adv) + eval._pos_queen_end[i][j]      * adv); break;
+                case 9:  _evaluation -= (eval._bishop_value_begin * (1 - adv) + eval._bishop_value_end * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_bishop_begin[i][j]     * (1 - adv) + eval._pos_bishop_end[i][j]     * adv); bishop_b += 1; break;
+                case 10: _evaluation -= (eval._rook_value_begin   * (1 - adv) + eval._rook_value_end   * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_rook_begin[i][j]       * (1 - adv) + eval._pos_rook_end[i][j]       * adv); break;
+                case 11: _evaluation -= (eval._queen_value_begin  * (1 - adv) + eval._queen_value_end  * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_queen_begin[i][j]      * (1 - adv) + eval._pos_queen_end[i][j]      * adv); break;
+                case 12: _evaluation -= (eval._king_value_begin   * (1 - adv) + eval._king_value_end   * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_king_begin[i][j]       * (1 - adv) + eval._pos_king_end[i][j]       * adv); break;
             }
 
         }
@@ -935,18 +845,18 @@ void Board::evaluate(float eval_parameters[4] = default_eval_parameters) {
 
 
     // Paire de oufs
-    _evaluation += bishop_pair * ((bishop_w >= 2) - (bishop_b >= 2));
+    _evaluation += eval._bishop_pair * ((bishop_w >= 2) - (bishop_b >= 2));
 
     // Droits de roques
-    _evaluation += castling_rights * (_k_castle_w + _q_castle_w - _k_castle_b - _q_castle_b) * (1 - adv);
+    _evaluation += eval._castling_rights * (_k_castle_w + _q_castle_w - _k_castle_b - _q_castle_b) * (1 - adv);
 
-    _evaluation += GetRandomValue(-50, 50) * random_add / 100;
+    _evaluation += GetRandomValue(-50, 50) * eval._random_add / 100;
 
-    // // Activité des pièces
-    if (piece_activity != 0) {
+    // Activité des pièces
+    if (eval._piece_activity != 0) {
         if (_got_moves == -1)
             get_moves();
-        _evaluation += _color * _got_moves * piece_activity;
+        _evaluation += _color * _got_moves * eval._piece_activity;
     }
     
         
@@ -960,7 +870,7 @@ void Board::evaluate(float eval_parameters[4] = default_eval_parameters) {
 
 
 // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-float Board::negamax(int depth, float alpha, float beta, int color, bool max_depth, float eval_parameters[3] = default_eval_parameters, bool play = false, bool display = false) {
+float Board::negamax(int depth, float alpha, float beta, int color, bool max_depth, Evaluator eval, bool play = false, bool display = false) {
 
     // Nombre de noeuds
     if (max_depth) {
@@ -972,7 +882,7 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
     }
 
     if (depth == 0) {
-        evaluate(eval_parameters);
+        evaluate(eval);
         //evaluate();
         // ??
         return color * _evaluation;
@@ -1001,7 +911,7 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
     // int i1, j1, p1, i2, j2, p2, h;
 
     // Sort moves à faire
-    sort_moves();
+    sort_moves(eval);
     int i;
 
 
@@ -1042,7 +952,7 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
 
         b.make_index_move(i);
         
-        tmp_value = -b.negamax(depth - 1, -beta, -alpha, -color, false, eval_parameters);
+        tmp_value = -b.negamax(depth - 1, -beta, -alpha, -color, false, eval);
 
         if (max_depth) {
             if (display)
@@ -1083,7 +993,7 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
 
 
 // Mieux que negamax? tend à supprimer plus de coups (ne marche pas du tout)
-float Board::negascout(int depth, float alpha, float beta, int color, bool max_depth) {
+float Board::negascout(int depth, float alpha, float beta, int color, bool max_depth, Evaluator eval) {
     // Nombre de noeuds
     if (max_depth) {
         visited_nodes = 1;
@@ -1094,7 +1004,7 @@ float Board::negascout(int depth, float alpha, float beta, int color, bool max_d
     }
 
     if (depth == 0) {
-        evaluate();
+        evaluate(eval);
         return color * _evaluation;
     }
 
@@ -1113,7 +1023,7 @@ float Board::negascout(int depth, float alpha, float beta, int color, bool max_d
         get_moves();
 
     // Sort moves à faire
-    sort_moves();
+    sort_moves(eval);
 
     _a = alpha;
     _b = beta;
@@ -1125,7 +1035,7 @@ float Board::negascout(int depth, float alpha, float beta, int color, bool max_d
 
         b.copy_data(*this);
         b.make_index_move(j);
-        tmp_value = -b.negascout(depth - 1, -_b, -_a, -color, false);
+        tmp_value = -b.negascout(depth - 1, -_b, -_a, -color, false, eval);
 
         if (max_depth) {
             cout << "move : " << move_label(_moves[4 * j], _moves[4 * j + 1], _moves[4 * j + 2], _moves[4 * j + 3]) << ", value : " << tmp_value << endl;
@@ -1135,7 +1045,7 @@ float Board::negascout(int depth, float alpha, float beta, int color, bool max_d
         }
 
         if ((tmp_value > _a) && (tmp_value < beta) && (i > 0) && (depth > 1)) 
-            _a = -b.negascout(depth - 1, -beta, -tmp_value, -color, false);
+            _a = -b.negascout(depth - 1, -beta, -tmp_value, -color, false, eval);
             
         _a = max(_a, tmp_value);
 
@@ -1166,7 +1076,7 @@ float Board::negascout(int depth, float alpha, float beta, int color, bool max_d
 
 
 // Algorithme PVS
-float Board::pvs(int depth, float alpha, float beta, int color, bool max_depth) {
+float Board::pvs(int depth, float alpha, float beta, int color, bool max_depth, Evaluator eval) {
     // Nombre de noeuds
     if (max_depth) {
         visited_nodes = 1;
@@ -1177,7 +1087,7 @@ float Board::pvs(int depth, float alpha, float beta, int color, bool max_depth) 
     }
 
     if (depth == 0) {
-        evaluate();
+        evaluate(eval);
         return color * _evaluation;
     }
 
@@ -1196,7 +1106,7 @@ float Board::pvs(int depth, float alpha, float beta, int color, bool max_depth) 
         get_moves();
 
     // Sort moves à faire
-    sort_moves();
+    sort_moves(eval);
 
 
     for (int i = 0; i < _got_moves; i++) {
@@ -1209,14 +1119,14 @@ float Board::pvs(int depth, float alpha, float beta, int color, bool max_depth) 
 
 
         if (i > 0) {
-            tmp_value = -b.pvs(depth - 1, -alpha - 1, -alpha, -color, false);
+            tmp_value = -b.pvs(depth - 1, -alpha - 1, -alpha, -color, false, eval);
 
             if ((alpha < tmp_value) && (tmp_value < beta)) 
-                tmp_value = -b.pvs(depth - 1, -beta, -tmp_value, -color, false);
+                tmp_value = -b.pvs(depth - 1, -beta, -tmp_value, -color, false, eval);
         }
 
         else {
-            tmp_value = -b.pvs(depth - 1, -beta, -alpha, -color, false);
+            tmp_value = -b.pvs(depth - 1, -beta, -alpha, -color, false, eval);
         }
 
 
@@ -1246,7 +1156,7 @@ float Board::pvs(int depth, float alpha, float beta, int color, bool max_depth) 
 
 
 // Fonction qui utilise minimax pour déterminer quel est le "meilleur" coup et le joue
-void Board::grogrosfish(int depth) {
+void Board::grogrosfish(int depth, Evaluator eval) {
 
     int best_move = 0;
     float best_value = -1e9;
@@ -1262,7 +1172,7 @@ void Board::grogrosfish(int depth) {
     for (int i = 0; i < _got_moves; i++) {
         b.copy_data(*this);
         b.make_index_move(i);
-        value = -b.negamax(depth - 1, -1e9, 1e9, -_color, false);
+        value = -b.negamax(depth - 1, -1e9, 1e9, -_color, false, eval);
         cout << "move : " << move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]) << ", value : " << value << endl;
         if (value > best_value) {
             best_move = i;
@@ -1279,9 +1189,9 @@ void Board::grogrosfish(int depth) {
 
 
 // Version un peu mieux optimisée de Grogrosfish
-bool Board::grogrosfish2(int depth, float eval_parameters[3] = default_eval_parameters) {
-    negamax(depth, -1e9, 1e9, _color, true, eval_parameters, true, true);
-    evaluate();
+bool Board::grogrosfish2(int depth, Evaluator eval) {
+    negamax(depth, -1e9, 1e9, _color, true, eval, true, true);
+    evaluate(eval);
     to_fen();
     cout << _fen << endl;
     cout << _pgn << endl;
@@ -1289,73 +1199,71 @@ bool Board::grogrosfish2(int depth, float eval_parameters[3] = default_eval_para
 }
 
 // Version un peu mieux optimisée de Grogrosfish
-void Board::grogrosfish3(int depth) {
-    negascout(depth, -1e9, 1e9, _color, true);
+void Board::grogrosfish3(int depth, Evaluator eval) {
+    negascout(depth, -1e9, 1e9, _color, true, eval);
     to_fen();
     cout << _fen << endl;
     cout << _pgn << endl;
-    PlaySound(move_1_sound);
 }
 
 // Test de Grogrofish
-void Board::grogrosfish4(int depth) {
-    pvs(depth, -1e9, 1e9, _color, true);
+void Board::grogrosfish4(int depth, Evaluator eval) {
+    pvs(depth, -1e9, 1e9, _color, true, eval);
     to_fen();
     cout << _fen << endl;
     cout << _pgn << endl;
-    PlaySound(move_1_sound);
 }
 
 
 // Test de Grogrofish avec combinaison d'agents
-void Board::grogrosfish_multiagents(int depth, int n_agents, float begin_eval_parameters[4], float end_eval_parameters[4]) {
-    if (_got_moves == -1)
-        get_moves();
+// void Board::grogrosfish_multiagents(int depth, int n_agents, Evaluator eval_begin, Evaluator eval_end) {
+//     if (_got_moves == -1)
+//         get_moves();
 
-    float eval_parameters[4];
-    int votes[250];
+//     float eval_parameters[4];
+//     int votes[250];
 
-    // Met la liste des votes à 0 pour tous les coups
-    for (int i = 0; i < _got_moves; i++) {
-        votes[i] = 0;
-    }
-    int move;
+//     // Met la liste des votes à 0 pour tous les coups
+//     for (int i = 0; i < _got_moves; i++) {
+//         votes[i] = 0;
+//     }
+//     int move;
 
-    // Pour chaque agent
-    for (int i = 0; i < n_agents; i++) {
-        // Calcul des paramètres de l'agent
-        for (int j = 0; j < 4; j++) {
-            eval_parameters[j] = (float)(n_agents - i - 1) / (n_agents - 1) * begin_eval_parameters[j] + (float)i / (n_agents - 1) * end_eval_parameters[j];
-        }
+//     // Pour chaque agent
+//     for (int i = 0; i < n_agents; i++) {
+//         // Calcul des paramètres de l'agent
+//         for (int j = 0; j < 4; j++) {
+//             eval_parameters[j] = (float)(n_agents - i - 1) / (n_agents - 1) * begin_eval_parameters[j] + (float)i / (n_agents - 1) * end_eval_parameters[j];
+//         }
 
-        // Ajoute à la liste de votes son coup
-        move = negamax(depth, -1e9, 1e9, _color, true, eval_parameters);
-        votes[move] += 1;
+//         // Ajoute à la liste de votes son coup
+//         move = negamax(depth, -1e9, 1e9, _color, true, eval_parameters);
+//         votes[move] += 1;
 
-    }
+//     }
 
-    // Choix du coup en fonction du nombre de votes
-    int max_vote = 0;
-    int best_move = 0;
+//     // Choix du coup en fonction du nombre de votes
+//     int max_vote = 0;
+//     int best_move = 0;
 
-    cout << "Votes : ";
+//     cout << "Votes : ";
 
-    for (int i = 0; i < _got_moves; i++) {
-        cout << votes[i] << "   ";
-        if (votes[i] > max_vote) {
-            max_vote = votes[i];
-            best_move = i;
-        }
-    }
+//     for (int i = 0; i < _got_moves; i++) {
+//         cout << votes[i] << "   ";
+//         if (votes[i] > max_vote) {
+//             max_vote = votes[i];
+//             best_move = i;
+//         }
+//     }
 
-    cout << "->    Voted move : " << move_label_from_index(best_move) << " (" << 100 * votes[best_move] / n_agents << "%)" << endl;
+//     cout << "->    Voted move : " << move_label_from_index(best_move) << " (" << 100 * votes[best_move] / n_agents << "%)" << endl;
 
-    play_index_move_sound(best_move);
-    make_index_move(best_move);
-    to_fen();
-    cout << _fen << endl;
-    cout << _pgn << endl;
-}
+//     play_index_move_sound(best_move);
+//     make_index_move(best_move);
+//     to_fen();
+//     cout << _fen << endl;
+//     cout << _pgn << endl;
+// }
 
 
 
@@ -1380,7 +1288,7 @@ void Board::undo(int i1, int j1, int p1, int i2, int j2, int p2, int half_moves)
 
 
 // Fonction qui arrange les coups de façon "logique", pour optimiser les algorithmes de calcul
-void Board::sort_moves() {
+void Board::sort_moves(Evaluator eval) {
     // Modifier pour seulement garder le (ou les deux) meilleur(s) coups?
 
     Board b;
@@ -1399,7 +1307,7 @@ void Board::sort_moves() {
         b.make_index_move(i);
 
         // Evaluation
-        b.evaluate();
+        b.evaluate(eval);
         value = b._evaluation * _color;
 
         // Place l'évaluation en i dans les valeurs
