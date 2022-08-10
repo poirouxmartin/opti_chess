@@ -162,10 +162,10 @@ class Board {
         void display_moves();
 
         // Fonction qui joue un coup
-        void make_move(int, int, int, int);
+        void make_move(int, int, int, int, bool);
 
         // Fonction qui joue le coup i de la liste des coups possibles
-        void make_index_move(int);
+        void make_index_move(int, bool);
 
         // Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
         float game_advancement();
