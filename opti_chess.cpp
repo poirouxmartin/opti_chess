@@ -133,7 +133,7 @@ bool Board::add_move(int i, int j, int k, int l, int *iterator) {
 
 // Fonction qui ajoute les coups "pions" dans la liste de coups
 bool Board::add_pawn_moves(int i, int j, int *iterator) {
-    string abc = "abcdefgh";
+    static const string abc = "abcdefgh";
 
     // Joueur avec les pièces blanches
     if (_player) {
@@ -617,21 +617,20 @@ void Board::display_moves() {
 
 
 // Fonction qui joue un coup
-void Board::make_move(int i, int j, int k, int l) {
-
+void Board::make_move(int i, int j, int k, int l, bool pgn = false) {
     int p = _array[i][j];
-
-    _pgn += " ";
-    if (_player) {
-        stringstream ss;  
-        ss << _moves_count;
-        string s = "";
-        ss >> s;
-        _pgn += s;
-        _pgn += ". ";
+    if (pgn) {
+        _pgn += " ";
+        if (_player) {
+            stringstream ss;
+            ss << _moves_count;
+            string s = "";
+            ss >> s;
+            _pgn += s;
+            _pgn += ". ";
+        }
+        _pgn += move_label(i, j, k, l);
     }
-
-    _pgn += move_label(i, j, k, l);
 
 
     // Implémentation des demi-coups
@@ -751,7 +750,7 @@ void Board::make_move(int i, int j, int k, int l) {
 
 
 // Fonction qui joue le coup i
-void Board::make_index_move(int i) {
+void Board::make_index_move(int i, bool pgn = false) {
     // if (i < 0 | i >= _got_moves)
     //     cout << "move index out of range" << endl;
     // else {
@@ -760,7 +759,7 @@ void Board::make_index_move(int i) {
     // }
 
     int k = 4 * i;
-    make_move(_moves[k], _moves[k + 1], _moves[k + 2], _moves[k + 3]);
+    make_move(_moves[k], _moves[k + 1], _moves[k + 2], _moves[k + 3], pgn);
 }
 
 
@@ -772,7 +771,7 @@ float Board::game_advancement() {
     float adv_knight = 1.0;
     float adv_bishop = 1.0;
     float adv_rook = 1.0;
-    float adv_queen = 5.0;
+    float adv_queen = 3.0;
 
     float p_tot = 2 * (8 * adv_pawn + 2 * adv_knight + 2 * adv_bishop + 2 * adv_rook + 1 * adv_queen);
     float p = 0;
@@ -883,8 +882,6 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
 
     if (depth == 0) {
         evaluate(eval);
-        //evaluate();
-        // ??
         return color * _evaluation;
     }
 
@@ -911,7 +908,8 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
     // int i1, j1, p1, i2, j2, p2, h;
 
     // Sort moves à faire
-    sort_moves(eval);
+    if (depth > 1)
+        sort_moves(eval);
     int i;
 
 
@@ -932,12 +930,16 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
     // });
 
 
-
     for (int j = 0; j < _got_moves; j++) {
 
         
         // Pour le triage des coups
-        i = _move_order[j];
+        if (depth > 1)
+            i = _move_order[j];
+        else
+            i = j;
+
+
         // Copie du plateau
         // Opti?? plutôt copier une fois au début, et undo les moves?
         // i1 = _moves[4 * i];
@@ -971,6 +973,8 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
 
     }
 
+    
+
     if (max_depth) {
         if (display) {
             cout << "visited nodes : " << (float)(visited_nodes / 1000) << "k" << endl;
@@ -980,7 +984,7 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
         }
         if (play) {
             play_index_move_sound(best_move);
-            make_index_move(best_move);
+            make_index_move(best_move, true);
         }
             
         return best_move;
@@ -1722,7 +1726,7 @@ void Board::from_pgn() {
 void Board::draw_text_rect(string s, float pos_x, float pos_y, float width, float height, int size) {
 
     Rectangle rect_text = {pos_x, pos_y, width, height};
-    DrawRectangleRec(rect_text, {35, 35, 35, 255});
+    DrawRectangleRec(rect_text, background_text_color);
     // Division du texte
     int sub_div = (1.5 * width) / size;
     int string_size = s.length();

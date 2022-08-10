@@ -13,7 +13,10 @@ static int screen_height = 900;
 static int fps = 144;
 
 // Couleur de fond
-static Color background_color = {25, 25, 25};
+static Color background_color = {30, 30, 30, 255};
+
+// Couleur du rectangle de texte
+static Color background_text_color = {20, 20, 20, 255};
 
 // Couleur du texte
 static Color text_color = {255, 75, 75, 255};
@@ -23,7 +26,7 @@ static Color board_color_light = {100, 100, 150, 255};
 static Color board_color_dark = {50, 50, 100, 255};
 
 // Couleur de surlignage de cases
-static Color highlight_color = {255, 255, 100, 200};
+static Color highlight_color = {200, 200, 100, 200};
 
 // Couleur de selection de cases
 static Color select_color = {50, 200, 50, 100};
