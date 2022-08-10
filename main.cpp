@@ -77,6 +77,8 @@ https://www.chessprogramming.org/Evaluation
 - Agent_new = Agent_old++ -
 -> Faire un agent qui gagne toujours contre un autre : regarde tous les coups, et joue pour chacun la partie jusqu'au bout en utilisant agent_old -> puis joue les coups qui gagnent
 
+- RE : multi_agents
+
 
 --- Améliorations ---
 
@@ -90,7 +92,6 @@ https://www.chessprogramming.org/Evaluation
     - Lignes ouvertes, tours dessus
     - Clouages
     - Pièces attaquées?
-    - Paire de oufs
     - Cases noires/blanches
     - Contrôle de cases importantes
     - Cases faibles
@@ -145,6 +146,8 @@ https://www.chessprogramming.org/Evaluation
 -> Fonction qui affiche le temps en heures, minutes et secondes plutôt que secondes
 -> Ajout d'un carré de couleur avec le temps
 -> Incrément de temps
+-> Améliorer le surlignage
+-> Améliorer l'affichage du PGN
 
 
 ----- Fonctionnalités supplémentaires -----
@@ -211,13 +214,18 @@ int main() {
     Evaluator eval_black;
 
 
+    // Activité des pièces à 0, car pour le moment, cela ralentit beaucoup le calcul d'évaluation
+    eval_white._piece_activity = 0;
+    eval_black._piece_activity = 0;
+
+
     // IA self play
     bool self_play = false;
     static bool play_white = false;
     bool play_black = false;
 
     // Paramètres pour l'IA
-    int search_depth = 6;
+    int search_depth = 8;
 
 
     // Temps
