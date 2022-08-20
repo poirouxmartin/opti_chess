@@ -428,10 +428,35 @@ bool Board::add_king_moves(int i, int j, int *iterator) {
 
 
 // Renvoie la liste des coups possibles
-int* Board::get_moves(bool pseudo = false) {
+int* Board::get_moves(bool pseudo = false, bool forbide_check = false) {
 
     int p;
     int iterator = 0;
+
+    // Si un des rois est décédé, plus de coups possibles
+    bool king_w = false;
+    bool king_b = false;
+
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            p = _array[i][j];
+            if (p == 6) {
+                king_w = true;
+            }
+            if (p == 12) {
+                king_b = true;
+            }
+        }
+    }
+
+    if (!king_w || !king_b) {
+        _got_moves = 0;
+        return {};
+    }
+        
+
+
+
 
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
@@ -514,7 +539,31 @@ int* Board::get_moves(bool pseudo = false) {
 
 
     // Vérification échecs
+    if (forbide_check) {
+        int new_moves[1000];
+        int n_moves = 0;
+        Board b;
 
+
+        for (int i = 0; i < _got_moves; i++) {
+            b.copy_data(*this);
+            b.make_index_move(i, false);
+            b._color = - b._color;
+            b._player = !b._player;
+            if (!b.in_check()) {
+                for (int k = 4 * i; k < 4 * i + 4; k++) {
+                    new_moves[n_moves] = _moves[k];
+                    n_moves++;
+                }
+            }
+        }
+
+        for (int i = 0; i < n_moves; i++) {
+            _moves[i] = new_moves[i];
+        }
+
+        _got_moves = n_moves / 4;
+    }
 
 
     return _moves;
@@ -746,6 +795,8 @@ void Board::make_move(int i, int j, int k, int l, bool pgn = false) {
     _last_move[3] = l;
 
 
+    _new_board = true;
+
 }
 
 
@@ -844,14 +895,16 @@ void Board::evaluate(Evaluator eval) {
 
 
     // Paire de oufs
-    _evaluation += eval._bishop_pair * ((bishop_w >= 2) - (bishop_b >= 2));
+    if (eval._bishop_pair != 0)
+        _evaluation += eval._bishop_pair * ((bishop_w >= 2) - (bishop_b >= 2));
 
     // Droits de roques
-    _evaluation += eval._castling_rights * (_k_castle_w + _q_castle_w - _k_castle_b - _q_castle_b) * (1 - adv);
+    if (eval._castling_rights != 0)
+        _evaluation += eval._castling_rights * (_k_castle_w + _q_castle_w - _k_castle_b - _q_castle_b) * (1 - adv);
 
-    _evaluation += GetRandomValue(-50, 50) * eval._random_add / 100;
+    if (eval._random_add != 0)
+        _evaluation += GetRandomValue(-50, 50) * eval._random_add / 100;
 
-    // Activité des pièces
     if (eval._piece_activity != 0) {
         if (_got_moves == -1)
             get_moves();
@@ -861,15 +914,27 @@ void Board::evaluate(Evaluator eval) {
         
 
     // Pour éviter les répétitions (ne fonctionne pas)
-    _evaluation *= 1 - (float)(_half_moves_count + _moves_count) / 1000;
+    //_evaluation *= 1 - (float)(_half_moves_count + _moves_count) / 1000;
 
+    _evaluated = true;
+
+    return;
+}
+
+
+// Fonction qui évalue la position à l'aide d'heuristiques -> évaluation entière
+void Board::evaluate_int(Evaluator eval) {
+
+    evaluate(eval);
+    _evaluation = (int)(100 * _evaluation);
+
+    return;
 
 }
 
 
-
 // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-float Board::negamax(int depth, float alpha, float beta, int color, bool max_depth, Evaluator eval, bool play = false, bool display = false) {
+float Board::negamax(int depth, float alpha, float beta, int color, bool max_depth, Evaluator eval, Agent a, bool use_agent, bool play = false, bool display = false) {
 
     // Nombre de noeuds
     if (max_depth) {
@@ -881,7 +946,10 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
     }
 
     if (depth == 0) {
-        evaluate(eval);
+        if (use_agent)
+            evaluate(a);
+        else
+            evaluate(eval);
         return color * _evaluation;
     }
 
@@ -954,7 +1022,7 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
 
         b.make_index_move(i);
         
-        tmp_value = -b.negamax(depth - 1, -beta, -alpha, -color, false, eval);
+        tmp_value = -b.negamax(depth - 1, -beta, -alpha, -color, false, eval, a, use_agent);
 
         if (max_depth) {
             if (display)
@@ -984,7 +1052,8 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
         }
         if (play) {
             play_index_move_sound(best_move);
-            make_index_move(best_move, true);
+            if (display)
+                make_index_move(best_move, true);
         }
             
         return best_move;
@@ -1160,47 +1229,66 @@ float Board::pvs(int depth, float alpha, float beta, int color, bool max_depth, 
 
 
 // Fonction qui utilise minimax pour déterminer quel est le "meilleur" coup et le joue
-void Board::grogrosfish(int depth, Evaluator eval) {
+// void Board::grogrosfish(int depth, Evaluator eval) {
+//     int best_move = 0;
+//     float best_value = -1e9;
+//     float value;
+//     Board b;
 
-    int best_move = 0;
-    float best_value = -1e9;
-    float value;
-    Board b;
+//     if (_got_moves == -1)
+//         get_moves();
 
-    if (_got_moves == -1)
-        get_moves();
+//     // display_moves();
+//     // cout << "n moves : " << _got_moves << endl;
 
-    // display_moves();
-    // cout << "n moves : " << _got_moves << endl;
+//     for (int i = 0; i < _got_moves; i++) {
+//         b.copy_data(*this);
+//         b.make_index_move(i);
+//         value = -b.negamax(depth - 1, -1e9, 1e9, -_color, false, eval);
+//         cout << "move : " << move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]) << ", value : " << value << endl;
+//         if (value > best_value) {
+//             best_move = i;
+//             best_value = value;
+//         }
+//     }
 
-    for (int i = 0; i < _got_moves; i++) {
-        b.copy_data(*this);
-        b.make_index_move(i);
-        value = -b.negamax(depth - 1, -1e9, 1e9, -_color, false, eval);
-        cout << "move : " << move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]) << ", value : " << value << endl;
-        if (value > best_value) {
-            best_move = i;
-            best_value = value;
-        }
-    }
+//     cout << "best move : " << move_label(_moves[4 * best_move], _moves[4 * best_move + 1], _moves[4 * best_move + 2], _moves[4 * best_move + 3]) << ", value : " << best_value << endl;
 
-    cout << "best move : " << move_label(_moves[4 * best_move], _moves[4 * best_move + 1], _moves[4 * best_move + 2], _moves[4 * best_move + 3]) << ", value : " << best_value << endl;
-
-    make_index_move(best_move);
+//     make_index_move(best_move);
     
-}
+// }
 
 
 
 // Version un peu mieux optimisée de Grogrosfish
-bool Board::grogrosfish2(int depth, Evaluator eval) {
-    negamax(depth, -1e9, 1e9, _color, true, eval, true, true);
-    evaluate(eval);
-    to_fen();
-    cout << _fen << endl;
-    cout << _pgn << endl;
+bool Board::grogrosfish2(int depth, Evaluator eval, bool display = false) {
+    Agent a;
+    negamax(depth, -1e9, 1e9, _color, true, eval, a, false, true, display);
+    if (display) {
+        evaluate(eval);
+        to_fen();
+        cout << _fen << endl;
+        cout << _pgn << endl;
+    }
+    
     return true;
 }
+
+// Version un peu mieux optimisée de Grogrosfish
+bool Board::grogrosfish2(int depth, Agent a, bool display = false) {
+    Evaluator eval;
+    negamax(depth, -1e9, 1e9, _color, true, eval, a, true, true, display);
+    if (display) {
+        evaluate(a);
+        to_fen();
+        cout << _fen << endl;
+        cout << _pgn << endl;
+    }
+    
+    return true;
+}
+
+
 
 // Version un peu mieux optimisée de Grogrosfish
 void Board::grogrosfish3(int depth, Evaluator eval) {
@@ -1462,6 +1550,8 @@ void Board::from_fen(string fen) {
 
     _got_moves = -1;
 
+    _new_board = true;
+
 }
 
 
@@ -1543,6 +1633,10 @@ void Board::to_fen() {
 // Fonction qui renvoie le gagnant si la partie est finie (-1/1, et 2 pour nulle), et 0 sinon
 int Board::game_over() {
 
+    // Règle des 50 coups
+    if (_half_moves_count >= 50)
+        return 2;
+
     // Si un des rois est décédé
     bool king_w = false;
     bool king_b = false;
@@ -1558,33 +1652,33 @@ int Board::game_over() {
             p = _array[i][j];
             if (p == 6) {
                 king_w = true;
-                if (_player)
+                /*if (_player)
                     king_pos = {i, j};
                 else
                     opponent_king_pos = {i, j};
                 if (king_b) {
                     i = 8; j = 8; 
-                }
+                }*/
             }
             if (p == 12) {
                 king_b = true;
-                if (!_player)
+                /*if (!_player)
                     king_pos = {i, j};
                 else
                     opponent_king_pos = {i, j};
                 if (king_w) {
                     i = 8; j = 8; 
-                }
+                }*/
             }
         }
     }
 
     if (!king_w)
-        return -10;
+        return -1;
     if (!king_b)
-        return 10;
+        return 1;
 
-
+    /*
     _player = !_player;
     bool att = attacked(opponent_king_pos.first, opponent_king_pos.second);
     _player = !_player;
@@ -1592,10 +1686,6 @@ int Board::game_over() {
     //     return -10 * _color; 
 
     // Manque de matériel
-
-    // Règle des 50 coups
-    if (_half_moves_count >= 50)
-        return 2;
 
     // Pat? pas très utile... (et Mat...)
     if (_got_moves == -1)
@@ -1625,11 +1715,10 @@ int Board::game_over() {
             return 2;
         }
     }
-
+    */
     
 
     // Répétition de coups? chiant à faire...
-
 
 
     return 0;
@@ -1825,12 +1914,12 @@ void Board::draw() {
 
                 // Si le coup est légal, le joue
                 bool legal_move = false;
-                get_moves();
+                get_moves(false, true);
                 for (int i = 0; i < _got_moves; i++) {
                     if (_moves[4 * i] == selected_pos.first && _moves[4 * i + 1] == selected_pos.second && _moves[4 * i + 2] == clicked_pos.first && _moves[4 * i + 3] == clicked_pos.second) {
                         // Le joue
                         play_move_sound(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second);
-                        make_move(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second);
+                        make_move(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second, true);
                         legal_move = true;
                         break;
                     }
@@ -1851,11 +1940,11 @@ void Board::draw() {
             pair<int, int> drop_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
             if (is_in(drop_pos.first, 0, 7) && is_in(drop_pos.second, 0, 7) && (clicked_pos.first != drop_pos.first || clicked_pos.second != drop_pos.second)) {
                 // Si le coup est légal
-                get_moves();
+                get_moves(false, true);
                 for (int i = 0; i < _got_moves; i++) {
                     if (_moves[4 * i] == clicked_pos.first && _moves[4 * i + 1] == clicked_pos.second && _moves[4 * i + 2] == drop_pos.first && _moves[4 * i + 3] == drop_pos.second) {
                         play_move_sound(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
-                        make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
+                        make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second, true);
                         // Déselectionne
                         selected_pos = {-1, -1};
                         break;
@@ -1907,7 +1996,7 @@ void Board::draw() {
         // Affiche la case séléctionnée
         DrawRectangle(board_padding_x + orientation_index(selected_pos.second) * tile_size, board_padding_y + orientation_index(7 - selected_pos.first) * tile_size, tile_size, tile_size, select_color);
         if (_got_moves == -1)
-            get_moves();
+            get_moves(false, true);
         // Affiche les coups possibles pour la pièce séléctionnée
         for (int i = 0; i < _got_moves; i++) {
             if (_moves[4 * i] == selected_pos.first && _moves[4 * i + 1] == selected_pos.second) {
@@ -2053,4 +2142,393 @@ int orientation_index(int i) {
     if (board_orientation)
         return i;
     return 7 - i;
+}
+
+
+// Evaluation par un agent
+void Board::evaluate(Agent a) {
+
+    _evaluation = 0;
+    int p;
+
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            p = _array[i][j];
+            if (p)
+                _evaluation += a._input_layer[64 * _array[i][j] + 8 * i + j];
+        }
+    }
+
+    return;
+
+}
+
+ // Renvoie le meilleur coup selon l'agent, en utilisant l'algorithme de Monte-Carlo avec n noeuds, d'une profondeur depth
+void Board::monte_carlo(Agent a, int n, int depth_calc, int depth, bool display = false) {
+
+    if (game_over() != 0)
+        return;
+
+    if (_got_moves == -1) {
+        //get_moves(false, true);
+        get_moves();
+    }
+
+    // if (_got_moves == 0) {
+    //     cout << "the game is over." << endl;
+    //     return;
+    // }
+
+    // au départ, envoie les noeuds équitablement dans chaque branche
+
+    int i = 0;
+    int j;
+    int d;
+    Board b;
+    int move;
+    int evaluations[250][2];
+    int eval;
+
+
+    // Met toutes les évaluations des coups à 0
+    for (j = 0; j < _got_moves; j++) {
+        evaluations[j][0] = 0;
+        evaluations[j][1] = 0;
+    }
+
+
+    Evaluator evaluator;
+
+    while (i < n || i < _got_moves) {
+
+        // Joue un coup sur le plateau d'origine
+        // A faire : mettre plus de noeuds sur les meilleurs coups
+        move = i%_got_moves;
+        b.copy_data(*this);
+        b.make_index_move(move);
+
+        // Avec la profondeur donnée, joue de façon aléatoire
+        for (d = 0; d < depth; d++) {
+            if (b._got_moves == -1)
+                b.get_moves();
+            if (b._got_moves)
+                b.make_index_move(GetRandomValue(0, b._got_moves - 1));
+            else
+                break;
+        }
+
+        // Evalue le plateau après ces coups aléatoires
+        b.evaluate(a);
+
+        //b.evaluate(evaluator);
+
+        // Il faut raisonner un peu quand le roi décède, sinon, cela fausse un peu tout...
+        // if (eval > 10000)
+        //     eval = 10000;
+        // if (eval <= -10000)
+        //     eval = -10000;
+
+        // Stocke l'évaluation sur l'index du coup associé
+        evaluations[move][0] += b._evaluation;
+        evaluations[move][1] += 1;
+        i += 1;
+        
+    }
+
+    int e;
+
+    int best_move = 0;
+    int best_value = _color * 10e9;
+
+
+    for (j = 0; j < _got_moves; j++) {
+        e = evaluations[j][0] / evaluations[j][1];
+        if (display)
+            cout << e << " | ";
+        if (e * _color > best_value * _color) {
+            best_value = e;
+            best_move = j;
+        }
+        
+    }
+
+    make_index_move(best_move, true);
+    //make_index_move(best_move, display);
+    
+    if (display) {
+        cout << endl;
+        cout << _pgn << endl;
+    }
+
+
+    _evaluated = true;
+
+    return;
+
+}
+
+
+
+// Test iterative depth
+void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, int depth = 0) {
+
+    int g = game_over();
+
+    if (g == 2)
+        _evaluation = 0;
+    if (g == -1)
+        _evaluation = -1000000;
+    if (g == 1)
+        _evaluation = 1000000;
+    if (g != 0)
+        return;
+
+    // Obtention des coups jouables
+    if (_got_moves == -1)
+        get_moves();
+
+    if (_new_board) {
+
+        _eval_children = new int[_got_moves];
+        _nodes_children = new int[_got_moves];
+        for (int i = 0; i < _got_moves; i++) {
+            _nodes_children[i] = 0;
+            _eval_children[i] = 0;
+        }
+
+        // Liste des plateaux fils
+        _children = new Board[_got_moves];
+
+        _tested_moves = 0;
+        _current_move = 0;
+
+        _new_board = false;
+    }
+
+
+    // Tant qu'il reste des noeuds à calculer...
+    while (nodes > 0) {
+
+        // Choix du coup à jouer pour l'exploration
+
+        // Si tous les coups de la position ne sont pas encore testés
+        if (_tested_moves < _got_moves) {
+
+            // Joue un nouveau coup
+            Board b_child(*this); // Vérifier la copie...
+            _children[_current_move] = b_child;
+            _children[_current_move].make_index_move(_current_move);
+
+            // Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
+            _children[_current_move].evaluate_int(e);
+            _eval_children[_current_move] = _children[_current_move]._evaluation;
+            _nodes_children[_current_move]++;
+
+            // Actualise la valeur d'évaluation du plateau
+
+            // Première évaluation
+            if (!_evaluated) {
+                _evaluation = _eval_children[_current_move];
+                _evaluated = true;
+            }
+            
+            if (_player) {
+                if (_eval_children[_current_move] > _evaluation)
+                    _evaluation = _eval_children[_current_move];
+            }
+            else {
+                if (_eval_children[_current_move] < _evaluation)
+                    _evaluation = _eval_children[_current_move];
+            }
+
+            // Incrémentation des coups
+            _current_move++; 
+            _tested_moves++;
+
+        }
+
+        // Lorsque tous les coups de la position ont déjà été testés (et évalués)
+        else {
+            // Choisit aléatoirement un "bon" coup
+            _current_move = pick_random_good_move(_eval_children, _got_moves, _color, false);
+
+            // Va une profondeur plus loin... appel récursif sur Monte-Carlo
+            _children[_current_move].monte_carlo_2(a, e, 1, depth + 1);
+
+            // Actualise l'évaluation
+            _eval_children[_current_move] = _children[_current_move]._evaluation;
+            _nodes_children[_current_move]++;
+
+            if (_player)
+                _evaluation = max_value(_eval_children, _got_moves);
+            else
+                _evaluation = min_value(_eval_children, _got_moves);
+
+        }
+
+
+        // Décrémentation du nombre de noeuds restants
+        nodes--;
+        _nodes++;
+
+    }
+
+    if (depth == 0) {
+        cout << "Monte Carlo : " << _evaluation << endl;
+        cout << "evals : ", print_array(_eval_children, _got_moves);
+
+        int min_val; 
+        int *power = new int[_got_moves];
+
+        for (int i = 0; i < _got_moves; i++) {
+            power[i] = (_player - 0.5) * 2 * _eval_children[i];
+        }
+
+        softmax(power, _got_moves);
+
+        cout << "move power : ", print_array(power, _got_moves);
+
+        cout << "nodes : ", print_array(_nodes_children, _got_moves);
+
+        // make_index_move(max_index(_nodes_children, _got_moves), depth == 0);
+        // cout << _pgn << endl;
+        
+    }
+
+
+
+    // Attention à bien supprimer tous les tableaux pour éviter les problèmes mémoire...
+
+
+    return;
+    
+}
+
+
+// Fonction qui joue le coup après analyse par l'algo de Monte Carlo
+void Board::play_monte_carlo_move() {
+    make_index_move(max_index(_nodes_children, _tested_moves), true);
+    cout << _pgn << endl;
+}
+
+
+
+int match(Agent &agent_a, Agent &agent_b) {
+
+    Board b;
+    while (b.game_over() == 0) {
+        // if (b._player)
+        //     b.monte_carlo(agent_a, 1000, 0, 2, false);
+        // else
+        //     b.monte_carlo(agent_b, 1000, 0, 2, false);
+
+        // if (b._player)
+        //     b.grogrosfish2(2, agent_a);
+        // else
+        //     b.grogrosfish2(2, agent_b);
+
+        if (b._player)
+            b.monte_carlo(agent_a, 0, 0, 0, false);
+        else
+            b.monte_carlo(agent_b, 0, 0, 0, false);
+    }
+
+    //cout << b._pgn << endl;
+
+    agent_a._games += 1;
+    agent_b._games += 1;
+
+    int g = b.game_over();
+    float result;
+    if (g == 2)
+        result = 0.5;
+    else    
+        result = (g + 1) / 2;
+
+    calc_elo(agent_a, agent_b, result);
+
+
+    return g;
+
+}
+
+
+
+// Fonction qui fait un tournoi d'agents, et retourne la liste des scores
+int* tournament(Agent *agents, const int n_agents) {
+    // Regarder pourquoi les derniers rounds sont plus lents...
+
+    cout << "Tournament !" << endl;
+
+    int result;
+
+    // Points par victoire
+    int victory = 2;
+
+    // Points par nulle
+    int draw = 1;
+
+
+    for (int i = 0; i < n_agents; i++) {
+        agents[i]._victories = 0;
+        agents[i]._draws = 0;
+        agents[i]._losses = 0;
+        agents[i]._score = 0;
+    }
+        
+
+    for (int i = 0; i < n_agents; i++) {
+
+        cout << "Round " << i + 1 << "/" << n_agents << '\r';
+
+        for (int j = 0; j < n_agents & j != i; j++) {
+            // Match aller
+            result = match(agents[i], agents[j]);
+            if (result == 1) {
+                agents[i]._victories++;
+                agents[j]._losses++;
+            }
+            if (result == -1) {
+                agents[j]._victories++;
+                agents[i]._losses++;
+            }
+            if (result == 2) {
+                agents[i]._draws++;
+                agents[j]._draws++;
+            }
+
+            // Match retour
+            result = match(agents[j], agents[i]);
+            if (result == 1) {
+                agents[j]._victories++;
+                agents[i]._losses++;
+            }
+            if (result == -1) {
+                agents[i]._victories++;
+                agents[j]._losses++;
+            }
+            if (result == 2) {
+                agents[j]._draws++;
+                agents[i]._draws++;
+            }
+                
+        }
+    }
+
+    // Résultats du tournoi
+    int *scores;
+
+    // cout << "1 : " << agents[0]._score << endl;
+    // cout << "2 : " << agents[1]._score << endl;
+
+
+    for (int i = 0; i < n_agents; i++) {
+        agents[i]._score = victory * agents[i]._victories + draw * agents[i]._draws;
+        cout << "Agent " << i << ", Generation : " << agents[i]._generation << ", Score : " << agents[i]._score << "/" << victory * 2 * (n_agents - 1) << ", Ratio (V/D/L): " << agents[i]._victories << "/" << agents[i]._draws << "/" << agents[i]._losses << ", Elo : " << agents[i]._elo << endl;
+        //scores[i] = agents[i]._score;
+        //cout << "toto";
+    }
+
+    return scores;
+
 }

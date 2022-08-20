@@ -1,4 +1,3 @@
-
 // Evaluateur de position (heuristiques)
 class Evaluator {
     public:
@@ -8,24 +7,24 @@ class Evaluator {
 
     // Coefficiants des heuristiques
     float _piece_value = 1;
-    float _piece_activity = 0.1;
+    float _piece_activity = 0.0;
     float _piece_positioning = 0.025;
-    float _random_add = 0.25;
+    float _random_add = 0.0;
     float _bishop_pair = 0.9;
     float _castling_rights = 0.5;
 
 
     // Valeur des pièces
-    float _pawn_value_begin = 1;
-    float _pawn_value_end = 1.25;
+    float _pawn_value_begin = 0.95;
+    float _pawn_value_end = 1.2;
     float _knight_value_begin = 3.1;
-    float _knight_value_end = 2.6;
+    float _knight_value_end = 2.8;
     float _bishop_value_begin = 3.3;
     float _bishop_value_end = 3.1;
     float _rook_value_begin = 4.6;
     float _rook_value_end = 5.8;
-    float _queen_value_begin = 8.9;
-    float _queen_value_end = 8.9;
+    float _queen_value_begin = 9.5;
+    float _queen_value_end = 9.5;
     float _king_value_begin = 1000000;
     float _king_value_end = 1000000;
 
