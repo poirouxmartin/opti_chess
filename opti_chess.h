@@ -4,6 +4,7 @@
 #include <array>
 #include <string>
 #include "evaluation.h"
+#include "agent.h"
 using namespace std;
 
 
@@ -97,8 +98,8 @@ class Board {
 
 
         // Joueurs de la partie
-        char* _player_1 = "Player 1";
-        char* _player_2 = "Player 2";
+        char* _player_1 = (char*)"Player 1";
+        char* _player_2 = (char*)"Player 2";
 
         // Temps pour les joueurs
         bool _time = false;
@@ -108,7 +109,28 @@ class Board {
         clock_t _time_player_2 = 180000;
 
 
+        // Plateaux fils
+        Board *_children;
 
+        // Nombre de coups déjà testés
+        int _tested_moves = 0;
+
+        // Coup auquel il en est dans sa recherche
+        int _current_move = 0;
+
+        // Evaluation des fils
+        int *_eval_children;
+
+        // Nombre de noeuds
+        int _nodes = 0;
+
+        // Noeuds des enfants
+        int *_nodes_children;
+
+        //
+        bool _evaluated = false;
+
+        bool _new_board = true;
 
 
         
@@ -117,37 +139,37 @@ class Board {
         Board();
 
         // Constructeur de copie
-        Board(Board &);
+        Board(Board&);
 
         // Fonction qui copie les attributs d'un plateau
-        void copy_data(Board &);
+        void copy_data(Board&);
 
         // Fonction qui copie les coups d'un plateau
-        void copy_moves(Board &);
+        void copy_moves(Board&);
 
         // Affichage du plateau
         void display();
 
         // Fonction qui ajoute un coup dans la liste de coups
-        bool add_move(int, int, int, int, int *);
+        bool add_move(int, int, int, int, int*);
 
         // Fonction qui ajoute les coups "pions" dans la liste de coups
-        bool add_pawn_moves(int, int, int *);
+        bool add_pawn_moves(int, int, int*);
 
         // Fonction qui ajoute les coups "cavaliers" dans la liste de coups
-        bool add_knight_moves(int, int, int *);
+        bool add_knight_moves(int, int, int*);
 
         // Fonction qui ajoute les coups diagonaux dans la liste de coups
-        bool add_diag_moves(int, int, int *);
+        bool add_diag_moves(int, int, int*);
 
         // Fonction qui ajoute les coups horizontaux et verticaux dans la liste de coups
-        bool add_rect_moves(int, int, int *);
+        bool add_rect_moves(int, int, int*);
 
         // Fonction qui ajoute les coups "roi" dans la liste de coups
-        bool add_king_moves(int, int, int *);
+        bool add_king_moves(int, int, int*);
 
         // Renvoie la liste des coups possibles
-        int* get_moves(bool);
+        int* get_moves(bool, bool);
 
         // Fonction qui dit si une case est attaquée
         bool attacked(int, int);
@@ -173,8 +195,14 @@ class Board {
         // Fonction qui évalue la position à l'aide d'heuristiques
         void evaluate(Evaluator);
 
+        // Fonction qui évalue la position à l'aide d'heuristiques -> évaluation entière
+        void evaluate_int(Evaluator);
+
+        // Fonction qui évalue la position à l'aide d'un agent
+        void evaluate(Agent);
+
         // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-        float negamax(int, float, float, int, bool, Evaluator, bool, bool);
+        float negamax(int, float, float, int, bool, Evaluator, Agent, bool, bool, bool);
 
         // Mieux que negamax? tend à supprimer plus de coups
         float negascout(int, float, float, int, bool, Evaluator);
@@ -186,7 +214,10 @@ class Board {
         void grogrosfish(int, Evaluator);
 
         // Version un peu mieux optimisée de Grogrosfish
-        bool grogrosfish2(int, Evaluator);
+        bool grogrosfish2(int, Evaluator, bool);
+
+        // Version un peu mieux optimisée de Grogrosfish
+        bool grogrosfish2(int, Agent, bool);
         
         // Version qui utilise negascout
         void grogrosfish3(int, Evaluator);
@@ -236,6 +267,15 @@ class Board {
         // Fonction qui joue le son d'un coup à partir de son index
         void play_index_move_sound(int);
 
+        // Renvoie le meilleur coup selon l'agent, en utilisant l'algorithme de Monte-Carlo avec n noeuds, d'une profondeur depth
+        void monte_carlo(Agent, int, int, int, bool);
+
+        // Test iterative depth
+        void monte_carlo_2(Agent, Evaluator, int, int);
+
+        // Fonction qui joue le coup après analyse par l'algo de Monte Carlo
+        void play_monte_carlo_move();
+
 };
 
 
@@ -247,3 +287,9 @@ void switch_orientation();
 
 // Fonction aidant à l'affichage du plateau (renvoie i si board_orientation, et 7 - i sinon)
 int orientation_index(int);
+
+// Fonction qui joue un match entre deux agents, et donne du score à l'agent correspondant (le premier agent a les blancs)
+int match(Agent&, Agent&);
+
+// Fonction qui fait un tournoi d'agents, et retourne la liste des scores
+int* tournament(Agent*, int);

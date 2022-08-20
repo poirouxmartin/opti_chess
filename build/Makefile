@@ -1,12 +1,8 @@
 
 
 run:
-	# g++ ../*.cpp -Wall -o ./build/opti_chess -static -Ofast -march=native -std=c++20
-
 	# Windows
-	# g++ ../*.cpp -Wall -g -o opti_chess.exe -Ofast -static -I ../include/ -L ../lib/ -lraylib -lpthread -lopengl32 -lgdi32 -lwinmm -march=native -std=c++20
-	# g++ ../*.cpp -Wall -g -pg -fno-pie -o opti_chess.exe -Ofast -static -I ../include/ -L ../lib/ -lraylib -lpthread -lopengl32 -lgdi32 -lwinmm -march=native -std=c++20
-	 g++ ../*.cpp -Wall -o opti_chess.exe -Ofast -static -I ../include/ -L ../lib/ -lraylib -lpthread -lopengl32 -lgdi32 -lwinmm -march=native -std=c++20
+	g++ ../*.cpp -o opti_chess.exe -Ofast -static -I ../include/ -L ../lib/ -lraylib -lpthread -lopengl32 -lgdi32 -lwinmm -march=native -std=c++20
 	./opti_chess
 
 	# Linux after installing raylib
