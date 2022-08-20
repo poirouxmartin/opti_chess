@@ -16,6 +16,12 @@ https://www.wikiwand.com/en/Negamax
 https://thesai.org/Downloads/Volume5No5/Paper_10-A_Comparative_Study_of_Game_Tree_Searching_Methods.pdf
 https://www.chessprogramming.org/Evaluation_of_Pieces
 https://www.chessprogramming.org/Evaluation
+https://www.cs.cornell.edu/boom/2004sp/ProjectArch/Chess/algorithms.html#board
+https://www.chessprogramming.org/Main_Page
+https://towardsdatascience.com/building-a-chess-ai-that-learns-from-experience-5cff953b6784
+https://arxiv.org/pdf/1711.08337.pdf
+https://stackoverflow.com/questions/40137240/training-of-chess-evaluation-function
+https://arxiv.org/pdf/2007.02130.pdf
 
 
 
@@ -114,6 +120,7 @@ https://www.chessprogramming.org/Evaluation
 -> Negascout et PVS, problème (??) : cela doit utiliser l'ordre de coup de l'itération précédente. Cependant, l'évaluation d'un coup d'une itération sur l'autre varie beaucoup -> ordre de coups différent -> peu optimal
 -> Ajouter une part de random dans l'IA?
 -> Bug de temps quand les IA jouent entre elles?
+-> Système d'élo pour les tournois?
 
 
 ----- Interface utilisateur -----
@@ -148,6 +155,11 @@ https://www.chessprogramming.org/Evaluation
 -> Incrément de temps
 -> Améliorer le surlignage
 -> Améliorer l'affichage du PGN
+-> Choisir les crossover en fonction des meilleurs elos
+-> Elo : que faire quand on copie un agent? crossover? mutation? reset?
+-> Chercher pourquoi les rounds de fin sont plus lents que ceux du début...
+-> Coup illégal -> perte de la partie
+-> Gagner contre elo négatif = perdre elo?
 
 
 ----- Fonctionnalités supplémentaires -----
@@ -202,7 +214,7 @@ int main() {
 
     // Variables
     Board t;
-    //t.from_fen("r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4");
+    //t.from_fen("rnbq1bnr/pppp1kpp/8/4pp1Q/4PP2/8/PPPP2PP/RNB1KBNR b KQ - 2 4");
 
 
     // Calcul du temps de la fonction
@@ -225,13 +237,31 @@ int main() {
     bool play_black = false;
 
     // Paramètres pour l'IA
-    int search_depth = 8;
+    int search_depth = 7;
 
 
     // Temps
     clock_t current_time;
     bool previous_player = true;
 
+
+    // Test des agents GrogrosZero
+
+    // Liste d'agents
+    const int n_agents = 25;
+    Agent l_agents[n_agents];
+    int generation = 0;
+    int max_generations = 1000;
+    Agent final_agent;
+
+    // Initialisation des agents
+    for (int i = 0; i < n_agents; i++) {
+        Agent a;
+        l_agents[i] = a;
+    }
+
+    // Liste de scores pour les tournois
+    int *l_scores;
 
 
     // Boucle principale (Quitter à l'aide de la croix, ou en faisant échap)
@@ -261,7 +291,7 @@ int main() {
 
         // Charger une partie
         if (IsKeyPressed(KEY_R))
-            t.from_fen("4rk2/p1p1n1pr/5n1p/1pP1Nb2/2B4P/2B5/PK4P1/5R2 w - b6 0 26");
+            t.from_fen("rnbqkbnr/pp1p1ppp/8/2p1N3/2P1P3/8/PP1P1PPP/RNBQKB1R b KQkq - 0 4");
 
         if (IsKeyPressed(KEY_C)) {
             // const char *copy = t._pgn.c_str();
@@ -274,18 +304,38 @@ int main() {
             // SetClipboardData(CF_TEXT, hMem);
             // CloseClipboard();
         }
-            
 
+        if (IsKeyPressed(KEY_O)) {  
+            // int *l1 = new int[18] {-76, -94, -76, 100000, -132, -57, -94, -26, -88, -63, -113, -51, -194, -119, -119, -101, -113, -119 };
+            // cout << "______________________" << endl;
+            // softmax(l1, 18);
+            // print_array(l1, 18);
+            // cout << "______________________" << endl;
+        }
+            
+        // Evaluation de l'agent GrogrosZero
+        if (IsKeyPressed(KEY_A)) {
+            t.evaluate(l_agents[0]);
+            cout << "Evaluation de GrogrosZero : " << l_agents[0]._output << endl;
+        }
+
+        // Test de Monte-Carlo
+        if (IsKeyPressed(KEY_M)) {
+            //t.monte_carlo(l_agents[0], 1, 0, 0, true);
+            t.monte_carlo_2(l_agents[0], eval_white, 100000, 0);
+        }
+
+        // Test de Monte-Carlo
+        if (IsKeyPressed(KEY_P)) {
+            t.play_monte_carlo_move();
+        }
 
 
         // Fonction test pour les temps
         if (IsKeyDown(KEY_T)) {
            //test_function(&test, 1);
-           t.get_moves(false);
-           t.display_moves();
-           cout << t._en_passant << endl;
-           cout << t._en_passant[1] << endl;
-           cout << (int)'0' << endl;
+           //cout << "in check : " << t.in_check() << endl;
+           t.grogrosfish2(1, eval_white, true);
         }
             
         
@@ -314,7 +364,7 @@ int main() {
         // Activations rapides de l'IA
 
         // Fait jouer l'IA sur un coup
-        (IsKeyDown(KEY_SPACE)) && t.grogrosfish2(search_depth, eval_white);
+        (IsKeyDown(KEY_SPACE)) && t.grogrosfish2(search_depth, eval_white, true);
 
         if (IsKeyDown(KEY_G))
             self_play = true;
@@ -323,18 +373,18 @@ int main() {
         if (IsKeyPressed(KEY_DOWN)) {
             play_white = !play_white;
             if (play_white)
-                t._player_1 = "IA";
+                t._player_1 = (char*)"IA";
             else
-                t._player_1 = "Player 1";
+                t._player_1 = (char*)"Player 1";
         }
 
         // Joueur des pièces noires : IA/humain
         if (IsKeyPressed(KEY_UP)) {
             play_black = !play_black;
             if (play_black)
-                t._player_2 = "IA";
+                t._player_2 = (char*)"IA";
             else
-                t._player_2 = "Player 2";
+                t._player_2 = (char*)"Player 2";
         }
             
 
@@ -348,9 +398,9 @@ int main() {
         // Fait jouer l'IA automatiquement en fonction des paramètres
         if (((self_play) || (play_black && !t._player) || (play_white && t._player)) && t.game_over() == 0) {
             if (t._player)
-                t.grogrosfish2(search_depth, eval_white);
+                t.grogrosfish2(search_depth, eval_white, true);
             else
-                t.grogrosfish2(search_depth, eval_black);
+                t.grogrosfish2(search_depth, eval_black, true);
             // if (t._player)
             //     t.grogrosfish2(search_depth, test_parameters);
             // else
@@ -362,32 +412,80 @@ int main() {
 
 
         // ----- Autres tests -----
-        if (IsKeyPressed(KEY_O))
-            cout << "is game over ?" << t.game_over() << endl;
+        // if (IsKeyPressed(KEY_O))
+        //     cout << "is game over ?" << t.game_over() << endl;
 
 
 
+        // Entrainement d'agents
+        if (IsKeyPressed(KEY_KP_0)) {
+            while (t.game_over() == 0)
+                t.monte_carlo(l_agents[0], 100, 0, 2, false);
+            cout << t._pgn << endl;
+            cout << t.game_over() << endl;
+        }
+            
+                
+        if (IsKeyPressed(KEY_KP_1)) {
+            cout << match(l_agents[0], l_agents[1]) << endl;
+        }
 
 
-        // if (play_black && !t._player) {
-        //     t.grogrosfish2(6, test_parameters);
-        //     t.to_fen();
-        //     cout << t._fen << endl;
-        //     cout << t._pgn << endl;
-        // }
-
-        // if (play_white && t._player) {
-        //     //t.grogrosfish_multiagents(4, n_agents, test_begin_parameters, test_end_parameters);
-        //     t.grogrosfish2(6, test_parameters);
-        //     t.to_fen();
-        //     cout << t._fen << endl;
-        //     cout << t._pgn << endl;
-        // }
+        if (IsKeyPressed(KEY_KP_2)) {
+            tournament(l_agents, n_agents);
+            // cout << l_scores[0] << endl;
+            // cout << l_scores[1] << endl;
+        }
 
 
-        /*if (!IsWindowFullscreen())
-            ToggleFullscreen();*/
+        if (IsKeyPressed(KEY_KP_3)) {
+            next_generation(l_agents, n_agents, 0.1, 0.25, 0.2);
+            // cout << l_scores[0] << endl;
+            // cout << l_scores[1] << endl;
+        }
 
+
+        if (IsKeyPressed(KEY_KP_4)) {
+            l_agents[0].mutation(0.25);
+        }
+
+        if (IsKeyPressed(KEY_KP_5)) {
+            generation = 0;
+            cout << "Generation 0, launch until generation " << max_generations << "..." << endl;
+            tournament(l_agents, n_agents);
+            while (generation < max_generations) {
+                cout << "Generation " << generation << endl;
+                next_generation(l_agents, n_agents, 0.1, 0.25, 0.2);
+                tournament(l_agents, n_agents);
+                generation++;
+            }
+
+            // Copie du meilleur agent
+            int best_agent = 0;
+            int best_score = 0;
+        
+
+            for (int i = 0; i < n_agents; i++) {
+                if (l_agents[i]._score > best_score) {
+                    best_agent = i;
+                    best_score = l_agents[i]._score;
+                }
+            }
+
+
+            final_agent.copy_data(l_agents[best_agent], true);
+
+            cout << "Simulation done. Best agent has been copied (last score : " << best_score << ")" << endl;
+        }
+
+        if (IsKeyPressed(KEY_KP_6)) {
+            t.monte_carlo(final_agent, 100000, 0, 4, false);
+        }
+
+
+        if (IsKeyPressed(KEY_KP_7)) {
+            t.grogrosfish2(2, final_agent, true);
+        }
 
 
         // Dessins
