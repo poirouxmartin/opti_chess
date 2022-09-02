@@ -296,7 +296,7 @@ int main() {
             // t.from_fen("3kr3/PK1p4/B7/8/8/8/8/8 w - - 0 7");
             // t.from_fen("8/6k1/8/8/8/8/P7/K7 w - - 0 7");
             // t.from_fen("8/8/8/8/8/5K2/3R4/5k2 b - - 12 13");
-            t.from_fen("8/3K4/2p/8/8/8/8/k7 b - - 1 20");
+            t.from_fen("1r3rk1/2q2ppp/5b2/p2R4/Np2p3/PQ5P/1PP2PP1/4R1K1 w - - 1 21");
             // t.from_fen("r1b1r1k1/pp1p1pp1/2p3p1/q1P1P3/2PP4/3Q2P1/5PP1/2R1R1K1 b - - 2 22");
         }
 
@@ -319,6 +319,10 @@ int main() {
 
         // Monte-Carlo
         if (IsKeyDown(KEY_O))
+            t.monte_carlo_2(l_agents[0], monte_evaluator, 25000);
+
+        // Mont-Carlo, en regardant les mats/pats
+        if (IsKeyDown(KEY_I))
             t.monte_carlo_2(l_agents[0], monte_evaluator, 25000, false, true);
 
         if (IsKeyPressed(KEY_D)) {  
@@ -334,15 +338,19 @@ int main() {
 
 
         // Self play avec Monte-Carlo
-        if (IsKeyPressed(KEY_I)) {
+        if (IsKeyPressed(KEY_M)) {
             t.monte_carlo_2(l_agents[0], monte_evaluator, 1000);
             //t.play_monte_carlo_move();
         }
 
         // Evaluation de l'agent GrogrosZero
         if (IsKeyPressed(KEY_E)) {
-            t.evaluate(l_agents[0]);
-            cout << "Evaluation de GrogrosZero : " << l_agents[0]._output << endl;
+            // t.evaluate(l_agents[0]);
+            // cout << "Evaluation de GrogrosZero : " << l_agents[0]._output << endl;
+            t.evaluate(monte_evaluator, true);
+            cout << "eval with checkmates : " << t._evaluation << endl;
+            t.to_fen();
+            cout << t._fen << " : " << t.in_check() << endl;
         }
 
         // Affiche le FEN
