@@ -7,10 +7,17 @@ int max_int(int, int);
 // Fonction qui renvoie le minimum de deux entiers
 int min_int(int, int);
 
+// Fonction qui renvoie le maximum de deux flottants
+float max_float(float, float);
+
+// Fonction qui renvoie le minimum de deux flottans
+float min_float(float, float);
+
 // Fonction de détermination pour les probabilités des coups (exponentielle?)
 int move_power(float, float, float);
 
-void softmax(int*, int, double beta = 0.05);
+// Fonction qui permet de donner une puissance au coup afin de faciliter les choix
+void softmax(int*, int, double beta = 0.035, int k_add = 25); // beta = 0.05, k_add = 1
 
 // Fonction pour générer une seed
 int generate_seed();
