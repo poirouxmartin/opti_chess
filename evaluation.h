@@ -6,7 +6,7 @@ class Evaluator {
     // Paramètres d'évaluation
 
     // Coefficiants des heuristiques
-    float _piece_value = 1;
+    float _piece_value = 1.0;
     float _piece_activity = 0.0;
     float _piece_positioning = 0.02;
     float _random_add = 0.0;
@@ -25,8 +25,8 @@ class Evaluator {
     float _rook_value_end = 5.8;
     float _queen_value_begin = 9.5;
     float _queen_value_end = 9.5;
-    float _king_value_begin = 1000000;
-    float _king_value_end = 1000000;
+    float _king_value_begin = 1000.0;
+    float _king_value_end = 1000.0;
 
 
     // Positionnement des pièces
