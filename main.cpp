@@ -296,7 +296,7 @@ int main() {
             // t.from_fen("3kr3/PK1p4/B7/8/8/8/8/8 w - - 0 7");
             // t.from_fen("8/6k1/8/8/8/8/P7/K7 w - - 0 7");
             // t.from_fen("8/8/8/8/8/5K2/3R4/5k2 b - - 12 13");
-            t.from_fen("1r3rk1/2q2ppp/5b2/p2R4/Np2p3/PQ5P/1PP2PP1/4R1K1 w - - 1 21");
+            t.from_fen("r1b1k1r1/1ppqpp2/p4Q1n/3P2NB/1n6/2N4P/PP3PP1/R3R1K1 b q - 4 18");
             // t.from_fen("r1b1r1k1/pp1p1pp1/2p3p1/q1P1P3/2PP4/3Q2P1/5PP1/2R1R1K1 b - - 2 22");
         }
 
@@ -317,13 +317,15 @@ int main() {
             // CloseClipboard();
         }
 
-        // Monte-Carlo
-        if (IsKeyDown(KEY_O))
-            t.monte_carlo_2(l_agents[0], monte_evaluator, 25000);
+        
 
         // Mont-Carlo, en regardant les mats/pats
-        if (IsKeyDown(KEY_I))
+        if (IsKeyDown(KEY_O))
             t.monte_carlo_2(l_agents[0], monte_evaluator, 25000, false, true);
+
+        // Monte-Carlo, sans...
+        if (IsKeyDown(KEY_I))
+            t.monte_carlo_2(l_agents[0], monte_evaluator, 25000);
 
         if (IsKeyPressed(KEY_D)) {  
             t.display_moves(true);

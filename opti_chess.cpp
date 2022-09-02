@@ -910,6 +910,7 @@ void Board::evaluate(Evaluator eval, bool checkmates) {
            
             switch (p)
             {   
+                
                 case 0: break;
                 case 1:  _evaluation += (eval._pawn_value_begin   * (1 - adv) + eval._pawn_value_end   * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_pawn_begin[7 - i][j]   * (1 - adv) + eval._pos_pawn_end[7 - i][j]   * adv); break;
                 case 2:  _evaluation += (eval._knight_value_begin * (1 - adv) + eval._knight_value_end * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_knight_begin[7 - i][j] * (1 - adv) + eval._pos_knight_end[7 - i][j] * adv); break;
@@ -918,7 +919,7 @@ void Board::evaluate(Evaluator eval, bool checkmates) {
                 case 5:  _evaluation += (eval._queen_value_begin  * (1 - adv) + eval._queen_value_end  * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_queen_begin[7 - i][j]  * (1 - adv) + eval._pos_queen_end[7 - i][j]  * adv); break;
                 case 6:  _evaluation += (eval._king_value_begin   * (1 - adv) + eval._king_value_end   * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_king_begin[7 - i][j]   * (1 - adv) + eval._pos_king_end[7 - i][j]   * adv); break;
                 case 7:  _evaluation -= (eval._pawn_value_begin   * (1 - adv) + eval._pawn_value_end   * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_pawn_begin[i][j]       * (1 - adv) + eval._pos_pawn_end[i][j]       * adv); break;
-                case 8:  _evaluation -= (eval._knight_value_begin * (1 - adv) + eval._knight_value_end * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_bishop_begin[i][j]     * (1 - adv) + eval._pos_queen_end[i][j]      * adv); break;
+                case 8:  _evaluation -= (eval._knight_value_begin * (1 - adv) + eval._knight_value_end * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_knight_begin[i][j]     * (1 - adv) + eval._pos_knight_end[i][j]     * adv); break;
                 case 9:  _evaluation -= (eval._bishop_value_begin * (1 - adv) + eval._bishop_value_end * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_bishop_begin[i][j]     * (1 - adv) + eval._pos_bishop_end[i][j]     * adv); bishop_b += 1; break;
                 case 10: _evaluation -= (eval._rook_value_begin   * (1 - adv) + eval._rook_value_end   * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_rook_begin[i][j]       * (1 - adv) + eval._pos_rook_end[i][j]       * adv); break;
                 case 11: _evaluation -= (eval._queen_value_begin  * (1 - adv) + eval._queen_value_end  * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_queen_begin[i][j]      * (1 - adv) + eval._pos_queen_end[i][j]      * adv); break;
