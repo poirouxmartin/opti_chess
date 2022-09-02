@@ -64,6 +64,7 @@ https://arxiv.org/pdf/2007.02130.pdf
 -> Regarder si l'implémentation des échecs rend les calculs plus rapides
 -> Ne plus jouer les échecs?
 -> Copie des plateaux : tout copier? ou seulement quelques informations importantes?
+-> Liste des coups légaux, et une autre liste pour les coups pseudo-légaux... pour éviter de les recalculer à chaque fois...
 
 
 
@@ -160,6 +161,9 @@ https://arxiv.org/pdf/2007.02130.pdf
 -> Chercher pourquoi les rounds de fin sont plus lents que ceux du début...
 -> Coup illégal -> perte de la partie
 -> Gagner contre elo négatif = perdre elo?
+-> Ordonner les flèches de coups de Monte-Carlo pour que ça ne cache plus les autres
+-> Ajouter plus d'info sur les coups (ainsi que les positions résultantes et leur évaluation)
+-> Couleur des coups à fix... des modulos?? (quand ça arrive dans le bleu...)
 
 
 ----- Fonctionnalités supplémentaires -----
@@ -180,16 +184,8 @@ https://arxiv.org/pdf/2007.02130.pdf
 // Fonction qui permet de tester le temps que prend une fonction
 void test() {
 
-
-    // Board t1, t2;
-    // t2.copy_data(t1);
-
-
     Board t;
-    //t.grogrosfish(6);
-    //t.grogrosfish2(6);
     //t.sort_moves();
-
 
 }
 
@@ -202,7 +198,7 @@ void test() {
 int main() {
 
     // Initialisation de la fenêtre
-    InitWindow(screen_width, screen_height, "Opti chess");
+    InitWindow(screen_width, screen_height, "opti_chess");
 
     // Initialisation de l'audio
     InitAudioDevice();
@@ -214,7 +210,6 @@ int main() {
 
     // Variables
     Board t;
-    //t.from_fen("rnbq1bnr/pppp1kpp/8/4pp1Q/4PP2/8/PPPP2PP/RNB1KBNR b KQ - 2 4");
 
 
     // Calcul du temps de la fonction
@@ -225,19 +220,26 @@ int main() {
     Evaluator eval_white;
     Evaluator eval_black;
 
+    // Evaluateur pour Monte Carlo
+    Evaluator monte_evaluator;
+    // monte_evaluator._piece_activity = 0.1;
+    // monte_evaluator._piece_positioning = 0.025; // beta = 0.01
+    monte_evaluator._piece_activity = 0.05;
+    monte_evaluator._piece_positioning = 0.015; // beta = 0.035
+
 
     // Activité des pièces à 0, car pour le moment, cela ralentit beaucoup le calcul d'évaluation
     eval_white._piece_activity = 0;
     eval_black._piece_activity = 0;
 
 
+
     // IA self play
-    bool self_play = false;
-    static bool play_white = false;
+    bool play_white = false;
     bool play_black = false;
 
     // Paramètres pour l'IA
-    int search_depth = 7;
+    int search_depth = 8;
 
 
     // Temps
@@ -251,7 +253,7 @@ int main() {
     const int n_agents = 25;
     Agent l_agents[n_agents];
     int generation = 0;
-    int max_generations = 1000;
+    int max_generations = 100;
     Agent final_agent;
 
     // Initialisation des agents
@@ -290,9 +292,19 @@ int main() {
             t.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
         // Charger une partie
-        if (IsKeyPressed(KEY_R))
-            t.from_fen("rnbqkbnr/pp1p1ppp/8/2p1N3/2P1P3/8/PP1P1PPP/RNBQKB1R b KQkq - 0 4");
+        if (IsKeyPressed(KEY_R)) {
+            // t.from_fen("3kr3/PK1p4/B7/8/8/8/8/8 w - - 0 7");
+            // t.from_fen("8/6k1/8/8/8/8/P7/K7 w - - 0 7");
+            // t.from_fen("8/8/8/8/8/5K2/3R4/5k2 b - - 12 13");
+            t.from_fen("r2qr1k1/p1pn2b1/2p5/1p2pPpb/8/3PQNBP/PPPN2P1/R4RK1 b - - 1 20");
+            // t.from_fen("r1b1r1k1/pp1p1pp1/2p3p1/q1P1P3/2PP4/3Q2P1/5PP1/2R1R1K1 b - - 2 22");
+        }
 
+        // Suppression des plateaux
+        if (IsKeyPressed(KEY_DELETE))
+            t.delete_all();
+
+        // Copie dans le clipboard
         if (IsKeyPressed(KEY_C)) {
             // const char *copy = t._pgn.c_str();
             // const size_t len = strlen(copy) + 1;
@@ -305,39 +317,45 @@ int main() {
             // CloseClipboard();
         }
 
-        if (IsKeyPressed(KEY_O)) {  
-            // int *l1 = new int[18] {-76, -94, -76, 100000, -132, -57, -94, -26, -88, -63, -113, -51, -194, -119, -119, -101, -113, -119 };
-            // cout << "______________________" << endl;
-            // softmax(l1, 18);
-            // print_array(l1, 18);
-            // cout << "______________________" << endl;
+        // Monte-Carlo
+        if (IsKeyDown(KEY_O))
+            t.monte_carlo_2(l_agents[0], monte_evaluator, 25000, false, true);
+
+        if (IsKeyPressed(KEY_D)) {  
+            t.display_moves(true);
         }
-            
+
+
+        // Joue le coup recommandé par l'algorithme de Monte-Carlo
+        if (IsKeyPressed(KEY_P)) {
+            if (t._tested_moves > 0)
+                t.play_monte_carlo_move(true);
+        }
+
+
+        // Self play avec Monte-Carlo
+        if (IsKeyPressed(KEY_I)) {
+            t.monte_carlo_2(l_agents[0], monte_evaluator, 1000);
+            //t.play_monte_carlo_move();
+        }
+
         // Evaluation de l'agent GrogrosZero
-        if (IsKeyPressed(KEY_A)) {
+        if (IsKeyPressed(KEY_E)) {
             t.evaluate(l_agents[0]);
             cout << "Evaluation de GrogrosZero : " << l_agents[0]._output << endl;
         }
 
-        // Test de Monte-Carlo
-        if (IsKeyPressed(KEY_M)) {
-            //t.monte_carlo(l_agents[0], 1, 0, 0, true);
-            t.monte_carlo_2(l_agents[0], eval_white, 100000, 0);
+        // Affiche le FEN
+        if (IsKeyPressed(KEY_U)) {  
+            t.to_fen();
+            cout << t._fen << endl;
         }
-
-        // Test de Monte-Carlo
-        if (IsKeyPressed(KEY_P)) {
-            t.play_monte_carlo_move();
-        }
-
 
         // Fonction test pour les temps
         if (IsKeyDown(KEY_T)) {
            //test_function(&test, 1);
            //cout << "in check : " << t.in_check() << endl;
-           t.grogrosfish2(1, eval_white, true);
         }
-            
         
         // Lancement du temps
         if (IsKeyPressed(KEY_ENTER)) {
@@ -347,9 +365,7 @@ int main() {
             }
         }
         
-        
-
-        // ----- Tests d'agents -----
+        // ----- Tests d'algorithmes
         if (IsKeyDown(KEY_B))
             t.grogrosfish3(search_depth, eval_white);
 
@@ -365,9 +381,6 @@ int main() {
 
         // Fait jouer l'IA sur un coup
         (IsKeyDown(KEY_SPACE)) && t.grogrosfish2(search_depth, eval_white, true);
-
-        if (IsKeyDown(KEY_G))
-            self_play = true;
 
         // Joueur des pièces blanches : IA/humain
         if (IsKeyPressed(KEY_DOWN)) {
@@ -387,68 +400,48 @@ int main() {
                 t._player_2 = (char*)"Player 2";
         }
             
-
         // Stoppe toutes les IA
         if (IsKeyDown(KEY_BACKSPACE)) {
-            self_play = false;
             play_white = false;
             play_black = false;
         }
 
         // Fait jouer l'IA automatiquement en fonction des paramètres
-        if (((self_play) || (play_black && !t._player) || (play_white && t._player)) && t.game_over() == 0) {
+        if (((play_black && !t._player) || (play_white && t._player)) && t.game_over() == 0) {
             if (t._player)
                 t.grogrosfish2(search_depth, eval_white, true);
             else
                 t.grogrosfish2(search_depth, eval_black, true);
-            // if (t._player)
-            //     t.grogrosfish2(search_depth, test_parameters);
-            // else
-            //     t.grogrosfish_multiagents(search_depth - 1, n_agents, test_begin_parameters, test_end_parameters);
             cout << "Avancement de la partie : " << t.game_advancement() << endl;
             cout << "game over : " << t.game_over() << endl;
         }
 
-
-
-        // ----- Autres tests -----
-        // if (IsKeyPressed(KEY_O))
-        //     cout << "is game over ?" << t.game_over() << endl;
-
-
-
         // Entrainement d'agents
-        if (IsKeyPressed(KEY_KP_0)) {
-            while (t.game_over() == 0)
-                t.monte_carlo(l_agents[0], 100, 0, 2, false);
-            cout << t._pgn << endl;
-            cout << t.game_over() << endl;
+        if (IsKeyDown(KEY_KP_0)) {
+            t.monte_carlo_2(l_agents[0], monte_evaluator, 25000, true);
         }
             
-                
-        if (IsKeyPressed(KEY_KP_1)) {
+        // Match
+        if (IsKeyDown(KEY_KP_1)) {
             cout << match(l_agents[0], l_agents[1]) << endl;
         }
 
-
+        // Tournoi
         if (IsKeyPressed(KEY_KP_2)) {
             tournament(l_agents, n_agents);
-            // cout << l_scores[0] << endl;
-            // cout << l_scores[1] << endl;
         }
 
-
+        // Nouvelle génération
         if (IsKeyPressed(KEY_KP_3)) {
             next_generation(l_agents, n_agents, 0.1, 0.25, 0.2);
-            // cout << l_scores[0] << endl;
-            // cout << l_scores[1] << endl;
         }
 
-
+        // Mutation
         if (IsKeyPressed(KEY_KP_4)) {
             l_agents[0].mutation(0.25);
         }
 
+        // Lance plusieurs générations
         if (IsKeyPressed(KEY_KP_5)) {
             generation = 0;
             cout << "Generation 0, launch until generation " << max_generations << "..." << endl;
@@ -478,14 +471,15 @@ int main() {
             cout << "Simulation done. Best agent has been copied (last score : " << best_score << ")" << endl;
         }
 
-        if (IsKeyPressed(KEY_KP_6)) {
-            t.monte_carlo(final_agent, 100000, 0, 4, false);
+        // Joue avec le nouvel agent
+        if (IsKeyDown(KEY_KP_6)) {
+            t.monte_carlo_2(final_agent, monte_evaluator, 25000, true);
         }
 
-
-        if (IsKeyPressed(KEY_KP_7)) {
-            t.grogrosfish2(2, final_agent, true);
+        if (IsKeyDown(KEY_KP_7)) {
+            t.grogrosfish2(5, final_agent, true);
         }
+
 
 
         // Dessins

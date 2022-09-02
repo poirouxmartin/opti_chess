@@ -58,6 +58,8 @@ class Board {
         int _move_order[250];
         // Les coups sont-ils triés?
         bool _sorted_moves = false;
+        // Les coups sont-ils pseudo-légaux? (sinon, légaux...)
+        bool _pseudo_moves = false;
 
         // Tour du joueur (true pour les blancs, false pour les noirs)
         bool _player = true;
@@ -132,6 +134,8 @@ class Board {
 
         bool _new_board = true;
 
+        int _index_children;
+
 
         
 
@@ -169,7 +173,7 @@ class Board {
         bool add_king_moves(int, int, int*);
 
         // Renvoie la liste des coups possibles
-        int* get_moves(bool, bool);
+        bool get_moves(bool pseudo = false, bool forbide_check = false);
 
         // Fonction qui dit si une case est attaquée
         bool attacked(int, int);
@@ -181,22 +185,22 @@ class Board {
         bool in_check();
 
         // Fonction qui affiche la liste des coups
-        void display_moves();
+        void display_moves(bool pseudo = false);
 
         // Fonction qui joue un coup
-        void make_move(int, int, int, int, bool);
+        void make_move(int, int, int, int, bool pgn = false, bool new_board = false);
 
         // Fonction qui joue le coup i de la liste des coups possibles
-        void make_index_move(int, bool);
+        void make_index_move(int, bool pgn = false);
 
         // Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
         float game_advancement();
 
         // Fonction qui évalue la position à l'aide d'heuristiques
-        void evaluate(Evaluator);
+        void evaluate(Evaluator, bool check_all = false);
 
         // Fonction qui évalue la position à l'aide d'heuristiques -> évaluation entière
-        void evaluate_int(Evaluator);
+        void evaluate_int(Evaluator, bool check_all = false);
 
         // Fonction qui évalue la position à l'aide d'un agent
         void evaluate(Agent);
@@ -271,10 +275,16 @@ class Board {
         void monte_carlo(Agent, int, int, int, bool);
 
         // Test iterative depth
-        void monte_carlo_2(Agent, Evaluator, int, int);
+        void monte_carlo_2(Agent, Evaluator, int, bool use_agent = false, bool display = false, int depth = 0);
 
         // Fonction qui joue le coup après analyse par l'algo de Monte Carlo
-        void play_monte_carlo_move();
+        void play_monte_carlo_move(bool display = false);
+
+        // Fonction pour supprimer les allocation mémoire du tableau, et de tous ses enfants
+        void delete_all(bool self = true);
+
+        // Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo d'un plateau
+        void draw_monte_carlo_arrows();
 
 };
 

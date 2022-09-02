@@ -2,9 +2,9 @@
 
 
 
-void test_function(void (*f)(), double test_time) {
+void test_function(void (*f)(), double test_time, std::string func) {
 
-    cout << "Testing the function '" << "__func__" << "'" << endl;
+    cout << "Testing the function '" << func << "'" << endl;
 
     // Temps au début
     clock_t begin = clock();

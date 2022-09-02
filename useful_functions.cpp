@@ -24,6 +24,16 @@ int min_int(int a, int b) {
     return (a < b) ? a : b;
 }
 
+// Fonction qui renvoie le maximum de deux flottants
+float max_float(float a, float b) {
+    return (a > b) ? a : b;
+}
+
+// Fonction qui renvoie le maximum de deux flottans
+float min_float(float a, float b) {
+    return (a < b) ? a : b;
+}
+
 
 // Fonction de détermination pour les probabilités des coups (exponentielle?)
 int move_power(float n, float range, float min) {
@@ -38,7 +48,7 @@ int move_power(float n, float range, float min) {
 }
 
 
-void softmax(int* input, int size, double beta) {
+void softmax(int* input, int size, double beta, int k_add) {
     float r = 10000.0;
 
 	int i;
@@ -59,6 +69,7 @@ void softmax(int* input, int size, double beta) {
 	constant = beta * m + log(sum);
 	for (i = 0; i < size; ++i) {
 		input[i] = r * exp(beta * input[i] - constant);
+        input[i] += k_add; // Juste histoire de continuer à regarder un peu les coups (on sait jamais)
 	}
 
 }
@@ -89,7 +100,7 @@ int rand_int(int a, int b) {
 
     uniform_int_distribution<int> distribution(a, b);
 
-    // cout << a << ", " << b << " -> " << distribution(generator) << endl;
+    // cout << "random gen : " << a << ", " << b << "->" << distribution(generator) << endl;
 
     return distribution(generator);
 }
@@ -97,7 +108,7 @@ int rand_int(int a, int b) {
 
 // Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variantes, en fonction de la grandeur du nombre correspondant à cet index
 int pick_random_good_move(int* l, int n, int color, bool print) {
-    int sum;
+    int sum = 0;
     int min = 1000000;
 
     int range = max_value(l, n) - min_value(l, n);
@@ -114,6 +125,7 @@ int pick_random_good_move(int* l, int n, int color, bool print) {
         // l2[i] = move_power(color * l[i], range, color * min_val);
         l2[i] = color * l[i];
     }
+
 
     softmax(l2, n);
 
@@ -134,13 +146,18 @@ int pick_random_good_move(int* l, int n, int color, bool print) {
     // cout << sum << endl;
 
     int rand_val = rand_int(1, sum);
+    if (print)
+        cout << "rand : " << rand_val << endl;
 
     int cumul = 0;
 
     for (int i = 0; i < n; i++) {
         cumul += l2[i];
-        if (cumul >= rand_val)
+        if (cumul >= rand_val) {
+            if (print)
+                cout << "val : " << i << endl;
             return i;
+        }
     }
 
     return 0;
