@@ -197,10 +197,10 @@ class Board {
         float game_advancement();
 
         // Fonction qui évalue la position à l'aide d'heuristiques
-        void evaluate(Evaluator, bool check_all = false);
+        void evaluate(Evaluator, bool checkmates = false);
 
         // Fonction qui évalue la position à l'aide d'heuristiques -> évaluation entière
-        void evaluate_int(Evaluator, bool check_all = false);
+        void evaluate_int(Evaluator, bool checkmates = false);
 
         // Fonction qui évalue la position à l'aide d'un agent
         void evaluate(Agent);
@@ -275,7 +275,7 @@ class Board {
         void monte_carlo(Agent, int, int, int, bool);
 
         // Test iterative depth
-        void monte_carlo_2(Agent, Evaluator, int, bool use_agent = false, bool display = false, int depth = 0);
+        void monte_carlo_2(Agent, Evaluator, int, bool use_agent = false, bool checkmates = false, bool display = false, int depth = 0);
 
         // Fonction qui joue le coup après analyse par l'algo de Monte Carlo
         void play_monte_carlo_move(bool display = false);

@@ -591,7 +591,7 @@ bool Board::attacked(int i, int j) {
     Board b;
     b.copy_data(*this);
     b._player = !b._player;
-    (b._got_moves == -1 && b.get_moves(true));
+    b.get_moves(true);
     //b.display_moves();
     for (int m = 0; m < b._got_moves; m++) {
         //cout << "move : " << move_label(b._moves[4 * m], b._moves[4 * m + 1], b._moves[4 * m + 2], b._moves[4 * m + 3]) << endl;
@@ -867,9 +867,9 @@ float Board::game_advancement() {
 
 
 // Fonction qui évalue la position à l'aide d'heuristiques
-void Board::evaluate(Evaluator eval, bool check_all) {
+void Board::evaluate(Evaluator eval, bool checkmates) {
 
-    if (check_all) {
+    if (checkmates) {
         get_moves(false, true);
         if (_got_moves == 0) {
             if (in_check())
@@ -958,9 +958,9 @@ void Board::evaluate(Evaluator eval, bool check_all) {
 
 
 // Fonction qui évalue la position à l'aide d'heuristiques -> évaluation entière
-void Board::evaluate_int(Evaluator eval, bool check_all) {
+void Board::evaluate_int(Evaluator eval, bool checkmates) {
 
-    evaluate(eval, check_all);
+    evaluate(eval, checkmates);
     _evaluation = (int)(100 * _evaluation);
 
     return;
@@ -2324,10 +2324,7 @@ void Board::monte_carlo(Agent a, int n, int depth_calc, int depth, bool display 
 
 
 // Test iterative depth
-
-// Problème --> voir endgame.. une dame de plus, mais Monte Carlo donne toujours une eval bof bof
-// Complètement buggé...
-void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, bool use_agent, bool display, int depth) {
+void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, bool use_agent, bool checkmates, bool display, int depth) {
     // static Board children_list[100000];
     // static int index_children = 0;
     static int max_depth;
@@ -2350,8 +2347,13 @@ void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, bool use_agent, bool 
     // Obtention des coups jouables
     get_moves(false, true);
 
-    if (_got_moves == 0)
+    if (_got_moves == 0) {
+        // evaluate_int(e, checkmates);
+        // _evaluated = true;
+        // to_fen();
+        // cout << _fen << " : " << _evaluation << endl;
         return;
+    }
 
     if (_new_board) {
         _eval_children = new int[_got_moves];
@@ -2392,7 +2394,7 @@ void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, bool use_agent, bool 
             if (use_agent)
                 _children[_current_move].evaluate(a);
             else
-                _children[_current_move].evaluate_int(e, true);
+                _children[_current_move].evaluate_int(e, checkmates);
             // children_list[_index_children + _current_move].evaluate_int(e);
             _eval_children[_current_move] = _children[_current_move]._evaluation;
             // _eval_children[_current_move] = children_list[_index_children + _current_move]._evaluation;
@@ -2427,7 +2429,7 @@ void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, bool use_agent, bool 
             _current_move = pick_random_good_move(_eval_children, _got_moves, _color, false);
 
             // Va une profondeur plus loin... appel récursif sur Monte-Carlo
-            _children[_current_move].monte_carlo_2(a, e, 1, use_agent, display, depth + 1);
+            _children[_current_move].monte_carlo_2(a, e, 1, use_agent, checkmates, display, depth + 1);
             // children_list[_index_children + _current_move].monte_carlo_2(a, e, 1, depth + 1);
 
             // Actualise l'évaluation
