@@ -22,17 +22,27 @@ static Color background_text_color = {20, 20, 20, 255};
 static Color text_color = {255, 75, 75, 255};
 
 // Couleurs du plateau
-static Color board_color_light = {100, 100, 150, 255};
-static Color board_color_dark = {50, 50, 100, 255};
+static Color board_color_light = {180, 150, 120, 255};
+static Color board_color_dark = {100, 70, 50, 255};
 
 // Couleur de surlignage de cases
-static Color highlight_color = {200, 200, 100, 200};
+static Color highlight_color = {255, 255, 100, 150};
 
 // Couleur de selection de cases
-static Color select_color = {50, 200, 50, 100};
+static Color select_color = {50, 225, 50, 100};
 
 // Couleur des cases du dernier coup joué
-static Color last_move_color = {200, 50, 50, 150};
+static Color last_move_color = {250, 50, 50, 125};
+
+// Couleur des flèches
+static Color arrow_color = {225, 225, 50, 255};
+
+// Epaisseur des flèches (par rapport à la taille d'une case)
+static float arrow_scale = 0.125;
+static float arrow_thickness = 50;
+
+// Pourcentage de noeuds à partir duquel on montre le coup
+static float arrow_rate = 0.05;
 
 
 // Variable qui indique si l'initialisation a été faite
@@ -90,11 +100,27 @@ static bool clicked = false;
 // Pièce sélectionnée de la case cliquée
 static pair<int, int> selected_pos = {-1, -1};
 
-// Case surlignée
-static pair<int, int> highlighted_pos = {-1, -1};
+// Cases surlignées
+static int highlighted_array[8][8] {{0, 0, 0, 0, 0, 0, 0, 0}, 
+                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
+                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
+                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
+                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
+                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
+                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
+                                    {0, 0, 0, 0, 0, 0, 0, 0}};
 
 // Calcul du nombre de noeuds visités
 static int visited_nodes;
 
 // Calcul de temps
 static clock_t begin_time;
+
+// Fonction pour dessiner une flèche
+void draw_arrow(float, float, float, float, float thickness = arrow_thickness, Color c = arrow_color);
+
+// A partir de coordonnées sur le plateau (// Thickness = -1 -> default thickness)
+void draw_arrow_from_coord(int, int, int, int, float thickness = -1, Color c = arrow_color, bool use_value = false, int value = 0);
+
+// Couleur de la flèche en fonction du coup (de son nombre de noeuds)
+Color move_color(int, int);

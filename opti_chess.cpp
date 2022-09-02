@@ -427,8 +427,17 @@ bool Board::add_king_moves(int i, int j, int *iterator) {
 
 
 
-// Renvoie la liste des coups possibles
-int* Board::get_moves(bool pseudo = false, bool forbide_check = false) {
+// Calcule la liste des coups possibles. pseudo ici fait référence au droit de roquer en passant par une position illégale.
+bool Board::get_moves(bool pseudo, bool forbide_check) {
+
+    if (_got_moves != -1) {
+        // Si on souhaite calculer les autres types de coups (légaux plutôt qu'illégaux, ou inversement...)
+        if (_pseudo_moves == forbide_check)
+            _pseudo_moves = !forbide_check;
+        else
+            return true;
+    }
+
 
     int p;
     int iterator = 0;
@@ -451,7 +460,7 @@ int* Board::get_moves(bool pseudo = false, bool forbide_check = false) {
 
     if (!king_w || !king_b) {
         _got_moves = 0;
-        return {};
+        return true;
     }
         
 
@@ -565,8 +574,7 @@ int* Board::get_moves(bool pseudo = false, bool forbide_check = false) {
         _got_moves = n_moves / 4;
     }
 
-
-    return _moves;
+    return true;
 }
 
 
@@ -583,7 +591,7 @@ bool Board::attacked(int i, int j) {
     Board b;
     b.copy_data(*this);
     b._player = !b._player;
-    b.get_moves(true);
+    (b._got_moves == -1 && b.get_moves(true));
     //b.display_moves();
     for (int m = 0; m < b._got_moves; m++) {
         //cout << "move : " << move_label(b._moves[4 * m], b._moves[4 * m + 1], b._moves[4 * m + 2], b._moves[4 * m + 3]) << endl;
@@ -646,27 +654,25 @@ pair<int, int> Board::get_king_pos() {
 
 
 // Fonction qui affiche la liste des coups donnée en argument
-void Board::display_moves() {
+void Board::display_moves(bool pseudo) {
     
-    if (_got_moves == -1) {
+    get_moves(false, !pseudo);
+
+    if (_got_moves == 0) {
         cout << "no legal moves" << endl;
         return;
     }
 
-    int i = 0;
-    while (i < 1000) {
-        if (_moves[i] == -1)
-            break;
-        cout << _moves[i] << "," << _moves[i + 1] << " -> " << _moves[i + 2] << "," << _moves[i + 3] << endl;
-        i += 4;
-    }
+    cout << "[|";
+    for (int i = 0; i < _got_moves; i++)
+        cout << " " << move_label_from_index(i) << " |";
+    cout << "]" << endl;
 
-    
 }
 
 
 // Fonction qui joue un coup
-void Board::make_move(int i, int j, int k, int l, bool pgn = false) {
+void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board) {
     int p = _array[i][j];
     if (pgn) {
         _pgn += " ";
@@ -797,11 +803,19 @@ void Board::make_move(int i, int j, int k, int l, bool pgn = false) {
 
     _new_board = true;
 
+    if (new_board) {
+        delete_all();
+        _tested_moves = 0;
+        _current_move = 0;
+        _nodes = 0;
+        _evaluated = false;
+    }
+
 }
 
 
 // Fonction qui joue le coup i
-void Board::make_index_move(int i, bool pgn = false) {
+void Board::make_index_move(int i, bool pgn) {
     // if (i < 0 | i >= _got_moves)
     //     cout << "move index out of range" << endl;
     // else {
@@ -853,14 +867,35 @@ float Board::game_advancement() {
 
 
 // Fonction qui évalue la position à l'aide d'heuristiques
-void Board::evaluate(Evaluator eval) {
+void Board::evaluate(Evaluator eval, bool check_all) {
+
+    if (check_all) {
+        get_moves(false, true);
+        if (_got_moves == 0) {
+            if (in_check())
+                _evaluation = - _color * 1000000;
+            else
+                _evaluation = 0;
+            return;
+        }
+    }
+    
 
     _evaluation = 0;
 
-
-    // partie théoriquement nulle
-    // if (game_over() == 2)
+    // int g = game_over();
+    // if (g == -1) {
+    //     _evaluation = -10e7;
     //     return;
+    // }
+    // if (g == 1) {
+    //     _evaluation = 10e7;
+    //     return;
+    // }
+    // if (g == 2) {
+    //     _evaluation = 0;
+    //     return;
+    // }
 
     // à tester: changer les boucles par des for (i : array) pour optimiser
     int p;
@@ -923,9 +958,9 @@ void Board::evaluate(Evaluator eval) {
 
 
 // Fonction qui évalue la position à l'aide d'heuristiques -> évaluation entière
-void Board::evaluate_int(Evaluator eval) {
+void Board::evaluate_int(Evaluator eval, bool check_all) {
 
-    evaluate(eval);
+    evaluate(eval, check_all);
     _evaluation = (int)(100 * _evaluation);
 
     return;
@@ -969,8 +1004,7 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
     int best_move = 0;
     float tmp_value;
 
-    if (_got_moves == -1)
-        get_moves();
+    (_got_moves == -1 && get_moves());
 
     // b.copy_data(*this);
     // int i1, j1, p1, i2, j2, p2, h;
@@ -1092,8 +1126,7 @@ float Board::negascout(int depth, float alpha, float beta, int color, bool max_d
     int best_move = 0; float tmp_value; Board b; float _a; float _b; int j;
     
     // Génération des coups
-    if (_got_moves == -1)
-        get_moves();
+    get_moves();
 
     // Sort moves à faire
     sort_moves(eval);
@@ -1175,8 +1208,7 @@ float Board::pvs(int depth, float alpha, float beta, int color, bool max_depth, 
     int best_move = 0; float tmp_value; Board b; int j;
     
     // Génération des coups
-    if (_got_moves == -1)
-        get_moves();
+    get_moves();
 
     // Sort moves à faire
     sort_moves(eval);
@@ -1385,8 +1417,7 @@ void Board::sort_moves(Evaluator eval) {
 
     Board b;
 
-    if (_got_moves == -1)
-        get_moves();
+    (_got_moves == -1 && get_moves());
 
     float* values = new float[_got_moves];
     float value;
@@ -1777,6 +1808,7 @@ string Board::move_label(int i, int j, int k, int l) {
 
 // Fonction qui renvoie le label d'un coup en fonction de son index
 string Board::move_label_from_index(int i) {
+    // Pour pas qu'il re écrase les moves
     if (_got_moves == -1)
         get_moves();
     return move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]);
@@ -1863,6 +1895,7 @@ void Board::draw() {
 
         tile_size = board_size / 8;
         piece_size = tile_size * piece_scale;
+        arrow_thickness = tile_size * arrow_scale;
 
         // Génération des textures
         for (int i = 0; i < 12; i++) {
@@ -1900,7 +1933,12 @@ void Board::draw() {
 
     // Si on clique avec la souris
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-        highlighted_pos = {-1, -1};
+        // Retire les highlight
+        for (int i = 0; i < 8; i++)
+            for (int j = 0; j < 8; j++)
+                highlighted_array[i][j] = 0;
+
+        // Si on clique
         if (!clicked) {
             clicked_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
             clicked = true;
@@ -1911,7 +1949,7 @@ void Board::draw() {
                 selected_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
             // Si une pièce est déjà sélectionnée
             else if (selected_pos.first != -1) {
-
+                
                 // Si le coup est légal, le joue
                 bool legal_move = false;
                 get_moves(false, true);
@@ -1919,7 +1957,8 @@ void Board::draw() {
                     if (_moves[4 * i] == selected_pos.first && _moves[4 * i + 1] == selected_pos.second && _moves[4 * i + 2] == clicked_pos.first && _moves[4 * i + 3] == clicked_pos.second) {
                         // Le joue
                         play_move_sound(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second);
-                        make_move(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second, true);
+                        make_move(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second, true, true);
+                        cout << _pgn << endl;
                         legal_move = true;
                         break;
                     }
@@ -1931,6 +1970,7 @@ void Board::draw() {
                 // Changement de sélection de pièce
                 if ((_player && is_in(_array[clicked_pos.first][clicked_pos.second], 1, 6)) || (!_player && is_in(_array[clicked_pos.first][clicked_pos.second], 7, 12)))
                     selected_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
+                
             }
         }
         
@@ -1938,16 +1978,21 @@ void Board::draw() {
     else {
         if (clicked && clicked_pos.first != -1 && _array[clicked_pos.first][clicked_pos.second] != 0) {
             pair<int, int> drop_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
-            if (is_in(drop_pos.first, 0, 7) && is_in(drop_pos.second, 0, 7) && (clicked_pos.first != drop_pos.first || clicked_pos.second != drop_pos.second)) {
-                // Si le coup est légal
-                get_moves(false, true);
-                for (int i = 0; i < _got_moves; i++) {
-                    if (_moves[4 * i] == clicked_pos.first && _moves[4 * i + 1] == clicked_pos.second && _moves[4 * i + 2] == drop_pos.first && _moves[4 * i + 3] == drop_pos.second) {
-                        play_move_sound(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
-                        make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second, true);
-                        // Déselectionne
-                        selected_pos = {-1, -1};
-                        break;
+            if (is_in(drop_pos.first, 0, 7) && is_in(drop_pos.second, 0, 7)) {
+                // Déselection de la pièce si on reclique dessus
+                if (drop_pos.first == selected_pos.first && drop_pos.second == selected_pos.second) {
+                }
+                else {
+                    // Si le coup est légal
+                    get_moves(false, true);
+                    for (int i = 0; i < _got_moves; i++) {
+                        if (_moves[4 * i] == clicked_pos.first && _moves[4 * i + 1] == clicked_pos.second && _moves[4 * i + 2] == drop_pos.first && _moves[4 * i + 3] == drop_pos.second) {
+                            play_move_sound(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
+                            make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second, true, true);
+                            cout << _pgn << endl;
+                            selected_pos = {-1, -1};
+                            break;
+                        }
                     }
                 }
                 
@@ -1958,8 +2003,10 @@ void Board::draw() {
     }
 
     // Si on clique avec la souris
-    if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
-        highlighted_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
+    if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
+        int x_mouse = get_pos_from_gui(mouse_pos.x, mouse_pos.y).first;
+        int y_mouse = get_pos_from_gui(mouse_pos.x, mouse_pos.y).second;
+        highlighted_array[x_mouse][y_mouse] = 1 - highlighted_array[x_mouse][y_mouse];
     }
 
 
@@ -1991,23 +2038,24 @@ void Board::draw() {
         DrawRectangle(board_padding_x + orientation_index(_last_move[3]) * tile_size, board_padding_y + orientation_index(7 - _last_move[2]) * tile_size, tile_size, tile_size, last_move_color);
     }
 
+    // Cases surglignées
+    for (int i = 0; i < 8; i++)
+        for (int j = 0; j < 8; j++)
+            if (highlighted_array[i][j])
+                DrawRectangle(board_padding_x + tile_size * orientation_index(j), board_padding_y + tile_size * orientation_index(7 - i), tile_size, tile_size, highlight_color);
+
+
     // Sélection de cases et de pièces
     if (selected_pos.first != -1) {
         // Affiche la case séléctionnée
         DrawRectangle(board_padding_x + orientation_index(selected_pos.second) * tile_size, board_padding_y + orientation_index(7 - selected_pos.first) * tile_size, tile_size, tile_size, select_color);
-        if (_got_moves == -1)
-            get_moves(false, true);
+        get_moves(false, true);
         // Affiche les coups possibles pour la pièce séléctionnée
         for (int i = 0; i < _got_moves; i++) {
             if (_moves[4 * i] == selected_pos.first && _moves[4 * i + 1] == selected_pos.second) {
                 DrawRectangle(board_padding_x + orientation_index(_moves[4 * i + 3]) * tile_size, board_padding_y + orientation_index(7 - _moves[4 * i + 2]) * tile_size, tile_size, tile_size, select_color);
             }
         }
-    }
-
-    // Affichage de la case surlignée
-    if (highlighted_pos.first != -1) {
-        DrawRectangle(board_padding_x + orientation_index(highlighted_pos.second) * tile_size, board_padding_y + orientation_index(7 - highlighted_pos.first) * tile_size, tile_size, tile_size, highlight_color);
     }
 
 
@@ -2025,6 +2073,9 @@ void Board::draw() {
 
         }
     }
+
+    // Coups auquel l'IA réflechit...
+    draw_monte_carlo_arrows();
 
 
     // Texte
@@ -2169,10 +2220,7 @@ void Board::monte_carlo(Agent a, int n, int depth_calc, int depth, bool display 
     if (game_over() != 0)
         return;
 
-    if (_got_moves == -1) {
-        //get_moves(false, true);
-        get_moves();
-    }
+    get_moves();
 
     // if (_got_moves == 0) {
     //     cout << "the game is over." << endl;
@@ -2270,25 +2318,36 @@ void Board::monte_carlo(Agent a, int n, int depth_calc, int depth, bool display 
 
 
 // Test iterative depth
-void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, int depth = 0) {
 
-    int g = game_over();
+// Problème --> voir endgame.. une dame de plus, mais Monte Carlo donne toujours une eval bof bof
+// Complètement buggé...
+void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, bool use_agent, bool display, int depth) {
+    // static Board children_list[100000];
+    // static int index_children = 0;
+    static int max_depth;
 
-    if (g == 2)
-        _evaluation = 0;
-    if (g == -1)
-        _evaluation = -1000000;
-    if (g == 1)
-        _evaluation = 1000000;
-    if (g != 0)
-        return;
+    if (depth == 0 & _new_board) {
+        max_depth = 0;
+        // Stockage des plateaux --> à implémenter... gros stockage global, et utilisation des index pour partager
+        
+    }
+
+    if (depth > max_depth) {
+        max_depth = depth;
+        if (display) {
+            cout << "Monte-Carlo - depth : " << max_depth << '\r';
+            to_fen();
+            cout << _fen << endl;
+        }
+    }
 
     // Obtention des coups jouables
-    if (_got_moves == -1)
-        get_moves();
+    get_moves(false, true);
+
+    if (_got_moves == 0)
+        return;
 
     if (_new_board) {
-
         _eval_children = new int[_got_moves];
         _nodes_children = new int[_got_moves];
         for (int i = 0; i < _got_moves; i++) {
@@ -2298,6 +2357,8 @@ void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, int depth = 0) {
 
         // Liste des plateaux fils
         _children = new Board[_got_moves];
+        // _index_children = index_children; // Test de la nouvelle méthode d'allocation mémoire
+        // index_children += _got_moves;
 
         _tested_moves = 0;
         _current_move = 0;
@@ -2318,10 +2379,17 @@ void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, int depth = 0) {
             Board b_child(*this); // Vérifier la copie...
             _children[_current_move] = b_child;
             _children[_current_move].make_index_move(_current_move);
+            // children_list[_index_children + _current_move] = b_child;
+            // children_list[_index_children + _current_move].make_index_move(_current_move);
 
             // Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
-            _children[_current_move].evaluate_int(e);
+            if (use_agent)
+                _children[_current_move].evaluate(a);
+            else
+                _children[_current_move].evaluate_int(e, true);
+            // children_list[_index_children + _current_move].evaluate_int(e);
             _eval_children[_current_move] = _children[_current_move]._evaluation;
+            // _eval_children[_current_move] = children_list[_index_children + _current_move]._evaluation;
             _nodes_children[_current_move]++;
 
             // Actualise la valeur d'évaluation du plateau
@@ -2353,10 +2421,12 @@ void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, int depth = 0) {
             _current_move = pick_random_good_move(_eval_children, _got_moves, _color, false);
 
             // Va une profondeur plus loin... appel récursif sur Monte-Carlo
-            _children[_current_move].monte_carlo_2(a, e, 1, depth + 1);
+            _children[_current_move].monte_carlo_2(a, e, 1, use_agent, display, depth + 1);
+            // children_list[_index_children + _current_move].monte_carlo_2(a, e, 1, depth + 1);
 
             // Actualise l'évaluation
             _eval_children[_current_move] = _children[_current_move]._evaluation;
+            // _eval_children[_current_move] = children_list[_index_children + _current_move]._evaluation;
             _nodes_children[_current_move]++;
 
             if (_player)
@@ -2373,9 +2443,14 @@ void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, int depth = 0) {
 
     }
 
-    if (depth == 0) {
-        cout << "Monte Carlo : " << _evaluation << endl;
-        cout << "evals : ", print_array(_eval_children, _got_moves);
+    if (depth == 0 && display) {
+        
+        to_fen();
+        cout << "____________________________________________________________" << endl;
+        cout << "Position : " << _fen << endl;
+        cout << "Monte Carlo..." << endl;
+        cout << "depth : " << max_depth << endl;
+        cout << "Best evaluation : " << _evaluation << endl;
 
         int min_val; 
         int *power = new int[_got_moves];
@@ -2386,19 +2461,17 @@ void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, int depth = 0) {
 
         softmax(power, _got_moves);
 
-        cout << "move power : ", print_array(power, _got_moves);
-
-        cout << "nodes : ", print_array(_nodes_children, _got_moves);
+        cout << "[|";
+        for (int i = 0; i < _got_moves; i++)
+            cout << " " << move_label_from_index(i) << " (n:" << _nodes_children[i] << ", e: " << _eval_children[i] << ", p:" << power[i] << ") |";
+        cout << "]" << endl;
 
         // make_index_move(max_index(_nodes_children, _got_moves), depth == 0);
         // cout << _pgn << endl;
+
+        cout << "____________________________________________________________" << endl;
         
     }
-
-
-
-    // Attention à bien supprimer tous les tableaux pour éviter les problèmes mémoire...
-
 
     return;
     
@@ -2406,9 +2479,23 @@ void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, int depth = 0) {
 
 
 // Fonction qui joue le coup après analyse par l'algo de Monte Carlo
-void Board::play_monte_carlo_move() {
-    make_index_move(max_index(_nodes_children, _tested_moves), true);
-    cout << _pgn << endl;
+void Board::play_monte_carlo_move(bool display) {
+    
+    int move = max_index(_nodes_children, _tested_moves);
+    if (display)
+        play_index_move_sound(move);
+
+    make_index_move(move, true);
+
+    if (display) {
+        cout << _pgn << endl;
+        to_fen();
+        cout << _fen << endl;
+    }
+
+    // Deletes the children... should it be kept in order to lessen the incoming thinking?
+    delete_all();
+
 }
 
 
@@ -2531,4 +2618,109 @@ int* tournament(Agent *agents, const int n_agents) {
 
     return scores;
 
+}
+
+
+
+
+
+
+// Fonction pour supprimer les allocation mémoire du tableau, et de tous ses enfants
+void Board::delete_all(bool self) {
+    if (self)
+        cout << "removing tree from memory..." << endl;
+    for (int i = 0; i < _tested_moves; i++)
+        _children[i].delete_all(false);
+    if (!self) {
+        delete []_children;
+        delete []_nodes_children;
+        // delete []_eval_children; // bugge...
+    }
+    else {
+        _tested_moves = 0;
+        _current_move = 0;
+        _evaluated = false;
+        cout << "done cleaning" << endl;
+    }
+    
+    return;
+}
+
+
+// Fonction pour dessiner une flèche
+void draw_arrow(float x1, float y1, float x2, float y2, float thickness, Color c) {
+    DrawLineEx({x1, y1}, {x2, y2}, thickness, c);
+}
+
+// A partir de coordonnées sur le plateau
+void draw_arrow_from_coord(int i1, int j1, int i2, int j2, float thickness, Color c, bool use_value, int value) {
+    // cout << thickness << endl;
+    if (thickness == -1.0)
+        thickness = arrow_thickness;
+    float x1 = board_padding_x + tile_size * orientation_index(j1) + tile_size /2;
+    float y1 = board_padding_y + tile_size * orientation_index(7 - i1) + tile_size /2;
+    float x2 = board_padding_x + tile_size * orientation_index(j2) + tile_size /2;
+    float y2 = board_padding_y + tile_size * orientation_index(7 - i2) + tile_size /2;
+    DrawLineEx({x1, y1}, {x2, y2}, thickness, c);
+    DrawCircle(x1, y1, thickness, c);
+    DrawCircle(x2, y2, thickness * 2, c);
+
+    if (use_value) {
+        char v[4];
+        sprintf(v, "%d", value);
+        int size = thickness * 2;
+        int width = MeasureText(v, size);
+        DrawText(v, x2 - width / 2, y2 - size / 2, size, BLACK);
+        
+    }
+
+}
+
+
+// Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo d'un plateau
+void Board::draw_monte_carlo_arrows() {
+    get_moves(false, true);
+
+    int sum_nodes = 0;
+    for (int i = 0; i < _tested_moves; i++)
+        sum_nodes += _nodes_children[i];
+    int test = 0;
+
+    for (int i = 0; i < _tested_moves; i++) {
+        // Si une pièce est sélectionnée
+        if (selected_pos.first != -1 && selected_pos.second != -1) {
+            if (selected_pos.first == _moves[4 * i] && selected_pos.second == _moves[4 * i + 1]) {
+                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i]);
+            }
+        }
+        else {
+            // cout << move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]) << ", ";
+            // cout << (float)_nodes_children[i] << ", " << (float)_nodes_children[i] / (float)sum_nodes << endl;
+            float n = _nodes_children[i];
+            // cout << n << endl;
+            // cout << (n / (float)sum_nodes > arrow_rate) << endl;
+
+            // Bug ici... ça n'affiche pas toujours tous les noups (parfois si on ne cout pas, _nodes_children[i] -> 0??)
+            // Sinon
+            if (n / (float)sum_nodes > arrow_rate)
+                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i]);
+        }
+    }
+}
+
+
+// Couleur de la flèche en fonction du coup (de son nombre de noeuds)
+Color move_color(int nodes, int total_nodes) {
+    float Tmin = 0;
+    float Tmax = total_nodes;
+    float Tfmax = (Tmin + Tmax * 2) / 3;
+    float avg = (Tmin + Tfmax) / 2;
+    float range = Tfmax - Tmin;
+    float T = nodes;
+
+    unsigned char blue = min_float(255, max_float(0, 255 * (T - avg) / range * 2) * 2);
+    unsigned char green = min_float(255, min_float(255 * (T - Tmin) / range * 2, 255 * (Tfmax - T) / range * 2) * 2);
+    unsigned char red = min_float(255, max_float(0, 255 * (avg - T) / range * 2) * 2);
+
+    return {red, green, blue, 255};
 }
