@@ -50,10 +50,13 @@ static bool loaded_textures = false;
 
 
 // Textures
-static Texture2D board_texture;
-static Image board_image;
+// static Texture2D board_texture;
+// static Image board_image;
 static Texture2D piece_textures[12];
 static Image piece_images[12];
+
+// Icône
+static Image icon;
 
 
 // Sons
