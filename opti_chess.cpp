@@ -1871,11 +1871,11 @@ void Board::draw() {
     if (!loaded_textures) {
 
         // Plateau
-        board_image = LoadImage("../resources/board.png");
+        // board_image = LoadImage("../resources/board.png");
         float min_screen = min(screen_height, screen_width);
         board_size = board_scale * min_screen;
-        ImageResize(&board_image, board_size, board_size);
-        board_texture = LoadTextureFromImage(board_image);
+        // ImageResize(&board_image, board_size, board_size);
+        // board_texture = LoadTextureFromImage(board_image);
         board_padding_y = (screen_height - board_size) / 2;
         board_padding_x = board_padding_y;
 
@@ -1921,6 +1921,12 @@ void Board::draw() {
 
 
         PlaySound(game_begin_sound);
+
+
+        // Icône
+        icon = LoadImage("../resources/grogros_zero.png");
+
+        SetWindowIcon(icon);
 
 
         loaded_textures = true;

@@ -198,7 +198,7 @@ void test() {
 int main() {
 
     // Initialisation de la fenêtre
-    InitWindow(screen_width, screen_height, "opti_chess");
+    InitWindow(screen_width, screen_height, "Grogros Chess");
 
     // Initialisation de l'audio
     InitAudioDevice();
@@ -296,7 +296,7 @@ int main() {
             // t.from_fen("3kr3/PK1p4/B7/8/8/8/8/8 w - - 0 7");
             // t.from_fen("8/6k1/8/8/8/8/P7/K7 w - - 0 7");
             // t.from_fen("8/8/8/8/8/5K2/3R4/5k2 b - - 12 13");
-            t.from_fen("r2qr1k1/p1pn2b1/2p5/1p2pPpb/8/3PQNBP/PPPN2P1/R4RK1 b - - 1 20");
+            t.from_fen("8/3K4/2p/8/8/8/8/k7 b - - 1 20");
             // t.from_fen("r1b1r1k1/pp1p1pp1/2p3p1/q1P1P3/2PP4/3Q2P1/5PP1/2R1R1K1 b - - 2 22");
         }
 
