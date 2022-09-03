@@ -801,7 +801,10 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board) {
     _last_move[3] = l;
 
 
+    _activity = false;
+
     _new_board = true;
+    
 
     if (new_board) {
         delete_all();
@@ -810,6 +813,8 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board) {
         _nodes = 0;
         _evaluated = false;
     }
+
+    
 
 }
 
@@ -942,9 +947,8 @@ void Board::evaluate(Evaluator eval, bool checkmates) {
         _evaluation += GetRandomValue(-50, 50) * eval._random_add / 100;
 
     if (eval._piece_activity != 0) {
-        if (_got_moves == -1)
-            get_moves();
-        _evaluation += _color * _got_moves * eval._piece_activity;
+        get_piece_activity();
+        _evaluation += _piece_activity * eval._piece_activity;
     }
     
         
@@ -1583,6 +1587,8 @@ void Board::from_fen(string fen) {
     _got_moves = -1;
 
     _new_board = true;
+
+    _activity = false;
 
 }
 
@@ -2638,13 +2644,21 @@ int* tournament(Agent *agents, const int n_agents) {
 void Board::delete_all(bool self) {
     if (self)
         cout << "removing tree from memory..." << endl;
+    
     for (int i = 0; i < _tested_moves; i++)
         _children[i].delete_all(false);
+
     if (!self) {
-        delete []_children;
-        delete []_nodes_children;
-        // delete []_eval_children; // bugge...
+        if (!_new_board) {
+            delete []_children;
+            delete []_nodes_children;
+            delete []_eval_children;
+        }
+
+        // Peut t-on delete self?
+
     }
+
     else {
         _tested_moves = 0;
         _current_move = 0;
@@ -2716,6 +2730,40 @@ void Board::draw_monte_carlo_arrows() {
         }
     }
 }
+
+
+// Fonction qui calcule l'activité des pièces
+void Board::get_piece_activity(bool legal) {
+
+    if (_activity)
+        return;
+
+    Board b;
+    b.copy_data(*this);
+    _piece_activity = 0;
+
+    // Activité des pièces du joueur
+    b.get_moves(false, legal);
+    _piece_activity += b._got_moves;
+
+    // Activité des pièces de l'autre joueur
+    b._player = !b._player; b._got_moves = -1;
+    b.get_moves(false, legal);
+    _piece_activity -= b._got_moves;
+
+    _piece_activity *= _color;
+    _activity = true;
+
+    return;
+}
+
+
+
+
+
+
+
+
 
 
 // Couleur de la flèche en fonction du coup (de son nombre de noeuds)

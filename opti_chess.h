@@ -137,6 +137,9 @@ class Board {
         int _index_children;
 
 
+        // Activité des pièces
+        int _piece_activity = 0;
+        bool _activity = false;
         
 
         // Constructeur par défaut
@@ -285,6 +288,9 @@ class Board {
 
         // Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo d'un plateau
         void draw_monte_carlo_arrows();
+
+        // Fonction qui calcule l'activité des pièces
+        void get_piece_activity(bool legal = false);
 
 };
 
