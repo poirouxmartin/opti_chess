@@ -122,6 +122,7 @@ https://arxiv.org/pdf/2007.02130.pdf
 -> Ajouter une part de random dans l'IA?
 -> Bug de temps quand les IA jouent entre elles?
 -> Système d'élo pour les tournois?
+-> Activité des pièces à régler... (à mettre des deux côtés...)
 
 
 ----- Interface utilisateur -----
@@ -224,7 +225,7 @@ int main() {
     Evaluator monte_evaluator;
     // monte_evaluator._piece_activity = 0.1;
     // monte_evaluator._piece_positioning = 0.025; // beta = 0.01
-    monte_evaluator._piece_activity = 0.05;
+    monte_evaluator._piece_activity = 0.05; // à fix... (mettre l'activité pour les deux côtés.. fonction get_activity?)
     monte_evaluator._piece_positioning = 0.015; // beta = 0.035
 
 
@@ -296,7 +297,7 @@ int main() {
             // t.from_fen("3kr3/PK1p4/B7/8/8/8/8/8 w - - 0 7");
             // t.from_fen("8/6k1/8/8/8/8/P7/K7 w - - 0 7");
             // t.from_fen("8/8/8/8/8/5K2/3R4/5k2 b - - 12 13");
-            t.from_fen("r1b1k1r1/1ppqpp2/p4Q1n/3P2NB/1n6/2N4P/PP3PP1/R3R1K1 b q - 4 18");
+            t.from_fen("2k1r2r/pb3pp1/3b3p/8/N7/3p1N2/PP1B2PP/R6K w - - 4 23");
             // t.from_fen("r1b1r1k1/pp1p1pp1/2p3p1/q1P1P3/2PP4/3Q2P1/5PP1/2R1R1K1 b - - 2 22");
         }
 
@@ -324,8 +325,12 @@ int main() {
             t.monte_carlo_2(l_agents[0], monte_evaluator, 25000, false, true);
 
         // Monte-Carlo, sans...
-        if (IsKeyDown(KEY_I))
-            t.monte_carlo_2(l_agents[0], monte_evaluator, 25000);
+        if (IsKeyPressed(KEY_I)) {
+            // t.monte_carlo_2(l_agents[0], monte_evaluator, 25000);
+            // t.get_piece_activity();
+            // cout << t._piece_activity << endl;
+            t.monte_carlo_2(l_agents[0], monte_evaluator, 1);
+        }
 
         if (IsKeyPressed(KEY_D)) {  
             t.display_moves(true);
