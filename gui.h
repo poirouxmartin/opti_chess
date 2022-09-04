@@ -22,8 +22,8 @@ static Color background_text_color = {20, 20, 20, 255};
 static Color text_color = {255, 75, 75, 255};
 
 // Couleurs du plateau
-static Color board_color_light = {180, 150, 120, 255};
-static Color board_color_dark = {100, 70, 50, 255};
+static Color board_color_light = {190, 162, 127, 255};
+static Color board_color_dark = {109, 78, 54, 255};
 
 // Couleur de surlignage de cases
 static Color highlight_color = {255, 255, 100, 150};

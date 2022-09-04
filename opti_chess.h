@@ -284,13 +284,16 @@ class Board {
         void play_monte_carlo_move(bool display = false);
 
         // Fonction pour supprimer les allocation mémoire du tableau, et de tous ses enfants
-        void delete_all(bool self = true);
+        void delete_all(bool self = true, bool display = false);
 
         // Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo d'un plateau
         void draw_monte_carlo_arrows();
 
         // Fonction qui calcule l'activité des pièces
         void get_piece_activity(bool legal = false);
+
+        // Fonction qui joue le coup après analyse par l'algo de Monte Carlo, et qui garde en mémoire les infos du nouveau plateau
+        void play_monte_carlo_move_keep(bool display = false);
 
 };
 

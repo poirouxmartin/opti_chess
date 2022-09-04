@@ -297,7 +297,7 @@ int main() {
             // t.from_fen("3kr3/PK1p4/B7/8/8/8/8/8 w - - 0 7");
             // t.from_fen("8/6k1/8/8/8/8/P7/K7 w - - 0 7");
             // t.from_fen("8/8/8/8/8/5K2/3R4/5k2 b - - 12 13");
-            t.from_fen("2k1r2r/pb3pp1/3b3p/8/N7/3p1N2/PP1B2PP/R6K w - - 4 23");
+            t.from_fen("8/p5p1/1kp5/5B2/1p3B1R/8/P2P1P1P/6K1 b - - 0 32");
             // t.from_fen("r1b1r1k1/pp1p1pp1/2p3p1/q1P1P3/2PP4/3Q2P1/5PP1/2R1R1K1 b - - 2 22");
         }
 
@@ -343,6 +343,12 @@ int main() {
                 t.play_monte_carlo_move(true);
         }
 
+        // Joue le coup recommandé par l'algorithme de Monte-Carlo, en gardant tout en mémoire
+        if (IsKeyPressed(KEY_U)) {
+            if (t._tested_moves > 0)
+                t.play_monte_carlo_move_keep(true);
+        }
+
 
         // Self play avec Monte-Carlo
         if (IsKeyPressed(KEY_M)) {
@@ -358,12 +364,6 @@ int main() {
             cout << "eval with checkmates : " << t._evaluation << endl;
             t.to_fen();
             cout << t._fen << " : " << t.in_check() << endl;
-        }
-
-        // Affiche le FEN
-        if (IsKeyPressed(KEY_U)) {  
-            t.to_fen();
-            cout << t._fen << endl;
         }
 
         // Fonction test pour les temps
