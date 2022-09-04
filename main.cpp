@@ -165,6 +165,7 @@ https://arxiv.org/pdf/2007.02130.pdf
 -> Ordonner les flèches de coups de Monte-Carlo pour que ça ne cache plus les autres
 -> Ajouter plus d'info sur les coups (ainsi que les positions résultantes et leur évaluation)
 -> Couleur des coups à fix... des modulos?? (quand ça arrive dans le bleu...)
+-> Nouveau curseur
 
 
 ----- Fonctionnalités supplémentaires -----
@@ -198,11 +199,15 @@ void test() {
 // Main
 int main() {
 
+    // Faire une fonction Init pour raylib?
+
     // Initialisation de la fenêtre
     InitWindow(screen_width, screen_height, "Grogros Chess");
+    SetWindowIcon(icon);
 
     // Initialisation de l'audio
     InitAudioDevice();
+    SetMasterVolume(1.0);
 
     // Nombre d'images par secondes
     SetTargetFPS(fps);
@@ -297,7 +302,7 @@ int main() {
             // t.from_fen("3kr3/PK1p4/B7/8/8/8/8/8 w - - 0 7");
             // t.from_fen("8/6k1/8/8/8/8/P7/K7 w - - 0 7");
             // t.from_fen("8/8/8/8/8/5K2/3R4/5k2 b - - 12 13");
-            t.from_fen("8/p5p1/1kp5/5B2/1p3B1R/8/P2P1P1P/6K1 b - - 0 32");
+            t.from_fen("r1b2rk1/5ppp/p1n1pn2/1pqp4/8/P1N1PN2/1PP1BPPP/R2Q1RK1 w - - 0 13");
             // t.from_fen("r1b1r1k1/pp1p1pp1/2p3p1/q1P1P3/2PP4/3Q2P1/5PP1/2R1R1K1 b - - 2 22");
         }
 
@@ -305,17 +310,24 @@ int main() {
         if (IsKeyPressed(KEY_DELETE))
             t.delete_all();
 
-        // Copie dans le clipboard
+        // Copie dans le clipboard du PGN
         if (IsKeyPressed(KEY_C)) {
-            // const char *copy = t._pgn.c_str();
-            // const size_t len = strlen(copy) + 1;
-            // HGLOBAL hMem =  GlobalAlloc(GMEM_MOVEABLE, len);
-            // memcpy(GlobalLock(hMem), copy, len);
-            // GlobalUnlock(hMem);
-            // OpenClipboard(0);
-            // EmptyClipboard();
-            // SetClipboardData(CF_TEXT, hMem);
-            // CloseClipboard();
+            SetClipboardText(t._pgn.c_str());
+            cout << "copied PGN : " << t._pgn << endl;
+        }
+
+        // Copie dans le clipboard du FEN
+        if (IsKeyPressed(KEY_X)) {
+            t.to_fen();
+            SetClipboardText(t._fen.c_str());
+            cout << "copied FEN : " << t._fen << endl;
+        }
+
+        // Colle le FEN du clipboard (le charge)
+        if (IsKeyPressed(KEY_V)) {
+            string fen = GetClipboardText();
+            t.from_fen(fen);
+            cout << "loaded FEN : " << fen << endl;
         }
 
         
@@ -339,14 +351,12 @@ int main() {
 
         // Joue le coup recommandé par l'algorithme de Monte-Carlo
         if (IsKeyPressed(KEY_P)) {
-            if (t._tested_moves > 0)
-                t.play_monte_carlo_move(true);
-        }
-
-        // Joue le coup recommandé par l'algorithme de Monte-Carlo, en gardant tout en mémoire
-        if (IsKeyPressed(KEY_U)) {
-            if (t._tested_moves > 0)
-                t.play_monte_carlo_move_keep(true);
+            if (t._tested_moves > 0) {
+                t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true);
+            }
+            else {
+                cout << "no more moves are in memory" << endl;
+            }
         }
 
 
@@ -381,11 +391,11 @@ int main() {
         }
         
         // ----- Tests d'algorithmes
-        if (IsKeyDown(KEY_B))
-            t.grogrosfish3(search_depth, eval_white);
+        // if (IsKeyDown(KEY_B))
+        //     t.grogrosfish3(search_depth, eval_white);
 
-        if (IsKeyDown(KEY_V))
-            t.grogrosfish4(search_depth, eval_white);
+        // if (IsKeyDown(KEY_V))
+        //     t.grogrosfish4(search_depth, eval_white);
 
         // if (IsKeyDown(KEY_M))
         //     t.grogrosfish_multiagents(search_depth, n_agents, test_begin_parameters, test_end_parameters);
