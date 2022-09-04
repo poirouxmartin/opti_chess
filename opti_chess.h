@@ -136,10 +136,13 @@ class Board {
 
         int _index_children;
 
-
         // Activité des pièces
         int _piece_activity = 0;
         bool _activity = false;
+
+
+        // Pour l'affichage
+        int _static_evaluation = 0;
         
 
         // Constructeur par défaut
@@ -292,8 +295,14 @@ class Board {
         // Fonction qui calcule l'activité des pièces
         void get_piece_activity(bool legal = false);
 
-        // Fonction qui joue le coup après analyse par l'algo de Monte Carlo, et qui garde en mémoire les infos du nouveau plateau
-        void play_monte_carlo_move_keep(bool display = false);
+        // Fonction qui renvoie le meilleur coup selon l'analyse faite par l'algo de Monte-Carlo
+        int best_monte_carlo_move();
+
+        // Fonction qui joue le coup après analyse par l'algo de Monte-Carlo, et qui garde en mémoire les infos du nouveau plateau
+        void play_monte_carlo_move_keep(int, bool display = false);
+
+        // Pas très opti pour l'affichage, mais bon... Fonction qui cherche la profondeur la plus grande dans la recherche de Monté-Carlo
+        int max_monte_carlo_depth();
 
 };
 
