@@ -958,6 +958,7 @@ void Board::evaluate(Evaluator eval, bool checkmates) {
 
     _evaluated = true;
 
+
     return;
 }
 
@@ -967,6 +968,7 @@ void Board::evaluate_int(Evaluator eval, bool checkmates) {
 
     evaluate(eval, checkmates);
     _evaluation = (int)(100 * _evaluation);
+    _static_evaluation = _evaluation;
 
     return;
 
@@ -1933,8 +1935,6 @@ void Board::draw() {
         // Icône
         icon = LoadImage("../resources/grogros_zero.png");
 
-        SetWindowIcon(icon);
-
 
         loaded_textures = true;
     }
@@ -1970,7 +1970,8 @@ void Board::draw() {
                     if (_moves[4 * i] == selected_pos.first && _moves[4 * i + 1] == selected_pos.second && _moves[4 * i + 2] == clicked_pos.first && _moves[4 * i + 3] == clicked_pos.second) {
                         // Le joue
                         play_move_sound(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second);
-                        make_move(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second, true, true);
+                        // make_move(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second, true, true);
+                        play_monte_carlo_move_keep(i, true);
                         cout << _pgn << endl;
                         legal_move = true;
                         break;
@@ -2001,7 +2002,8 @@ void Board::draw() {
                     for (int i = 0; i < _got_moves; i++) {
                         if (_moves[4 * i] == clicked_pos.first && _moves[4 * i + 1] == clicked_pos.second && _moves[4 * i + 2] == drop_pos.first && _moves[4 * i + 3] == drop_pos.second) {
                             play_move_sound(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
-                            make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second, true, true);
+                            // make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second, true, true);
+                            play_monte_carlo_move_keep(i, true);
                             cout << _pgn << endl;
                             selected_pos = {-1, -1};
                             break;
@@ -2112,12 +2114,17 @@ void Board::draw() {
 
 
     // PGN
-    draw_text_rect(_pgn, board_padding_x + board_size + 20, board_padding_y, screen_width - (board_padding_x + board_size + 20) - 100, board_size, 20);
+    draw_text_rect(_pgn, board_padding_x + board_size + 20, board_padding_y, screen_width - (board_padding_x + board_size + 20) - 100, board_size / 2 - 10, 20);
 
-    // Evaluation
-
-    // Peut faire tout planter
-    DrawText(to_string(_evaluation).c_str(), screen_width - 200, screen_height - 30, 20, text_color);
+    // Analyse de Monte-Carlo
+    string monte_carlo_text = "";
+    if (_tested_moves) {
+        // int best_eval = (_player) ? max_value(_eval_children, _tested_moves) : min_value(_eval_children, _tested_moves);
+        int best_move = max_index(_nodes_children, _tested_moves);
+        int best_eval = _eval_children[best_move];
+        monte_carlo_text = "Monte-Carlo analysis\ndepth : " + to_string(max_monte_carlo_depth()) + "\neval "  + to_string(best_eval) + "\nmove "  + move_label_from_index(best_move) + "\nstatic eval "  + to_string(_static_evaluation);
+    }
+    draw_text_rect(monte_carlo_text, board_padding_x + board_size + 20, board_padding_y + board_size / 2 + 10, screen_width - (board_padding_x + board_size + 20) - 100, board_size / 2 - 10, 20);
 
 }
 
@@ -2693,7 +2700,12 @@ void draw_arrow_from_coord(int i1, int j1, int i2, int j2, float thickness, Colo
         char v[4];
         sprintf(v, "%d", value);
         int size = thickness * 2;
+        int max_size = thickness * 4;
         int width = MeasureText(v, size);
+        if (width > max_size) {
+            size = size * max_size / width;
+            width = MeasureText(v, size);
+        }
         DrawText(v, x2 - width / 2, y2 - size / 2, size, BLACK);
         
     }
@@ -2784,14 +2796,29 @@ Color move_color(int nodes, int total_nodes) {
 }
 
 
+// Fonction qui renvoie le meilleur coup selon l'analyse faite par l'algo de Monte-Carlo
+int Board::best_monte_carlo_move() {
+    return max_index(_nodes_children, _tested_moves);
+}
+
 
 
 // Fonction qui joue le coup après analyse par l'algo de Monte Carlo, et qui garde en mémoire les infos du nouveau plateau
-void Board::play_monte_carlo_move_keep(bool display) {
-    
-    int move = max_index(_nodes_children, _tested_moves);
-    if (display)
+void Board::play_monte_carlo_move_keep(int move, bool display) {
+
+    // Si le coup a été calculé par l'algo de Monte-Carlo
+    if (move < _tested_moves) {
+
+        if (display) {
         play_index_move_sound(move);
+        make_index_move(move, true);
+        cout << _pgn << endl;
+        to_fen();
+        cout << _fen << endl;
+        _children[move]._pgn = _pgn;
+
+        cout << "removing other trees from memory..." << endl;
+    }
 
 
     // Deletes all the children from the other boards
@@ -2803,4 +2830,35 @@ void Board::play_monte_carlo_move_keep(bool display) {
 
     *this = _children[move];
 
+    }
+
+
+
+    else {
+        get_moves(false, true);
+
+        if (move < _got_moves) {
+            // Sinon, joue simplement le coup
+            make_index_move(move, true);
+            delete_all();
+        }
+        else 
+            cout << "illegal move" << endl;
+    }
+
+
+}
+
+
+// Pas très opti pour l'affichage, mais bon... Fonction qui cherche la profondeur la plus grande dans la recherche de Monté-Carlo
+int Board::max_monte_carlo_depth() {
+    int max_depth = 0;
+    int depth;
+    for (int i = 0; i < _tested_moves; i++) {
+        depth = _children[i].max_monte_carlo_depth() + 1;
+        if (depth > max_depth)
+            max_depth = depth;
+    }
+
+    return max_depth;
 }
