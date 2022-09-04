@@ -2641,8 +2641,8 @@ int* tournament(Agent *agents, const int n_agents) {
 
 
 // Fonction pour supprimer les allocation mémoire du tableau, et de tous ses enfants
-void Board::delete_all(bool self) {
-    if (self)
+void Board::delete_all(bool self, bool display) {
+    if (self && display)
         cout << "removing tree from memory..." << endl;
     
     for (int i = 0; i < _tested_moves; i++)
@@ -2663,7 +2663,8 @@ void Board::delete_all(bool self) {
         _tested_moves = 0;
         _current_move = 0;
         _evaluated = false;
-        cout << "done cleaning" << endl;
+        if (display)
+            cout << "done cleaning" << endl;
     }
     
     return;
@@ -2780,4 +2781,26 @@ Color move_color(int nodes, int total_nodes) {
     unsigned char red = min_float(255, max_float(0, 255 * (avg - T) / range * 2) * 2);
 
     return {red, green, blue, 255};
+}
+
+
+
+
+// Fonction qui joue le coup après analyse par l'algo de Monte Carlo, et qui garde en mémoire les infos du nouveau plateau
+void Board::play_monte_carlo_move_keep(bool display) {
+    
+    int move = max_index(_nodes_children, _tested_moves);
+    if (display)
+        play_index_move_sound(move);
+
+
+    // Deletes all the children from the other boards
+    for (int i = 0; i < _tested_moves; i++)
+        if (i != move)
+            _children[i].delete_all();
+
+    // Il reste encore la liste des plateaux originaux à détruire...
+
+    *this = _children[move];
+
 }
