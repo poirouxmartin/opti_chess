@@ -33,6 +33,7 @@ Plateau :
 
 
 class Board {
+    
     public:
 
         // Attributs
@@ -69,6 +70,9 @@ class Board {
 
         // Peut-être utile pour les optimisations?
         float _evaluation = 0;
+
+        // Position mat (pour les calculs de mat plus rapides)
+        bool _mate = false;
 
         // Paramètres pour l'évaluation de la position
         float _evaluation_parameters[3] = {1, 0.1, 0.025};
@@ -114,6 +118,12 @@ class Board {
         // Plateaux fils
         Board *_children;
 
+        // Plateau libre ou actif? (pour le buffer)
+        bool _is_active = false;
+
+        // Liste des index des plateaux fils dans le buffer (changer la structure de données?)
+        int *_index_children;
+
         // Nombre de coups déjà testés
         int _tested_moves = 0;
 
@@ -133,8 +143,6 @@ class Board {
         bool _evaluated = false;
 
         bool _new_board = true;
-
-        int _index_children;
 
         // Activité des pièces
         int _piece_activity = 0;
@@ -159,6 +167,9 @@ class Board {
 
         // Affichage du plateau
         void display();
+
+        // Fonction qui à partir des coordonnées d'un coup renvoie le coup codé sur un entier (à 4 chiffres)
+        int move_to_int(int, int, int, int);
 
         // Fonction qui ajoute un coup dans la liste de coups
         bool add_move(int, int, int, int, int*);
@@ -281,7 +292,7 @@ class Board {
         void monte_carlo(Agent, int, int, int, bool);
 
         // Test iterative depth
-        void monte_carlo_2(Agent, Evaluator, int, bool use_agent = false, bool checkmates = false, bool display = false, int depth = 0);
+        void monte_carlo_2(Agent, Evaluator, int, bool use_agent = false, bool checkmates = false, double beta = 0.035, int k_add = 50, bool display = false, int depth = 0);
 
         // Fonction qui joue le coup après analyse par l'algo de Monte Carlo
         void play_monte_carlo_move(bool display = false);
@@ -304,6 +315,18 @@ class Board {
         // Pas très opti pour l'affichage, mais bon... Fonction qui cherche la profondeur la plus grande dans la recherche de Monté-Carlo
         int max_monte_carlo_depth();
 
+        // Algo de grogros_zero
+        void grogros_zero(Agent, Evaluator, int, bool use_agent = false, bool checkmates = false, double beta = 0.035, int k_add = 50, bool display = false, int depth = 0);
+
+        // Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
+        void reset_board(bool display = false);
+
+        // Fonction qui réinitialise tous les plateaux fils dans le buffer
+        void reset_all(bool self = true, bool display = false);
+
+        // Fonction qui renvoie le nombre de noeuds calculés par GrogrosZero
+        int total_nodes();
+
 };
 
 
@@ -321,3 +344,47 @@ int match(Agent&, Agent&);
 
 // Fonction qui fait un tournoi d'agents, et retourne la liste des scores
 int* tournament(Agent*, int);
+
+// Paramètres pour la recherche de Monte-Carlo
+extern double _beta;
+extern int _k_add; 
+
+
+
+class Buffer {
+    
+    public:
+
+        // Test stack allocation
+        // Board _static_boards[100];
+
+        bool _init = false;
+
+        // Heap allocation (slower?)
+        int _length = 0;
+        Board *_heap_boards;
+
+        // Itérateur pour rechercher moins longtemps un index de plateau libre
+        int _iterator = -1;
+
+
+        // Constructeur par défaut
+        Buffer();
+
+        // Constructeur utilisant la taille max (en bits) du buffer
+        Buffer(unsigned long int);
+
+        // Initialize l'allocation de n plateaux
+        void init(int length = 1000000);
+
+        // Fonction qui donne l'index du premier plateau de libre dans le buffer
+        int get_first_free_index();
+
+        // Fonction qui désalloue toute la mémoire
+        void remove();
+
+};
+
+
+// Buffer pour monte-carlo
+extern Buffer _monte_buffer;
