@@ -91,8 +91,7 @@ https://arxiv.org/pdf/2007.02130.pdf
 
 -> Améliorer les heuristiques pour l'évaluation d'une position
     - Positionnement du roi, des pions, de la dame et des pièces changeant au cours de la partie (++ pièces mineures en début de partie, ++ le reste en fin de partie, ++ valeur des pions) (endgame = 13 points or below for each player? less than 4 pieces?)
-    - Activité des pièces
-    - Sécurité du roi
+    - Sécurité du roi (TRES IMPORTANT !)
     - Espace
     - Structures de pions
     - Diagonales ouvertes
@@ -121,8 +120,25 @@ https://arxiv.org/pdf/2007.02130.pdf
 -> Negascout et PVS, problème (??) : cela doit utiliser l'ordre de coup de l'itération précédente. Cependant, l'évaluation d'un coup d'une itération sur l'autre varie beaucoup -> ordre de coups différent -> peu optimal
 -> Ajouter une part de random dans l'IA?
 -> Bug de temps quand les IA jouent entre elles?
--> Système d'élo pour les tournois?
+-> Système d'élo pour les tournois à fix (parfois elo négatif)
 -> Activité des pièces à régler... (à mettre des deux côtés...)
+-> Améliorations pour trouver les mats les plus rapides... arrêter la recherche dans une branche finie...
+-> Utiliser raylib pour le random? check la vitesse
+-> Création d'une base de données contenant des positions et des évaluations? (qui se remplit au cours des parties...)
+-> Allocations mémoires utilisant raylib?
+-> Faire un buffer pour créer un nombre statique de tableaux au départ, et seulement les ré utiliser plutôt que d'en faire des nouveaux.
+-> Faire aussi un énrome buffer pour les coups? Ils prennent 5000/5512 des bytes d'un board...
+-> Changer la structure de données des boards pour réduire leur taille
+-> On peut roquer après s'être fait bouffer une tour !!
+-> Bug?? e4 Nf6 e5... e6??
+-> Comportements bizarres dans la scandi
+-> Heuristics : check -- r2q1rk1/1pp2pp1/p1p1b3/7p/4P3/4NP2/PPPPK1P1/RNB2Q2 w - - 3 15     (sees it as bad, while it's completely winning)
+-> Trouve pas forcément les mats les plus rapides (dès qu'il en a trouvé un, il cherche plus vraiment sur les autres coups...)
+-> Get first index : très lent?
+-> Attention au cas ou le buffer est plein
+-> La mémoire se remplit malgré le buffer.. Verif les allocations
+-> Affichage des flèches buggées pour les mats?
+-> Tout supprimer les calculs quand on importe un FEN
 
 
 ----- Interface utilisateur -----
@@ -166,6 +182,8 @@ https://arxiv.org/pdf/2007.02130.pdf
 -> Ajouter plus d'info sur les coups (ainsi que les positions résultantes et leur évaluation)
 -> Couleur des coups à fix... des modulos?? (quand ça arrive dans le bleu...)
 -> Nouveau curseur
+-> Premettre de modifier les paramètres de recherche de l'IA : beta, k_add...
+-> Changements de taille de la fenêtre
 
 
 ----- Fonctionnalités supplémentaires -----
@@ -203,7 +221,6 @@ int main() {
 
     // Initialisation de la fenêtre
     InitWindow(screen_width, screen_height, "Grogros Chess");
-    SetWindowIcon(icon);
 
     // Initialisation de l'audio
     InitAudioDevice();
@@ -230,8 +247,8 @@ int main() {
     Evaluator monte_evaluator;
     // monte_evaluator._piece_activity = 0.1;
     // monte_evaluator._piece_positioning = 0.025; // beta = 0.01
-    monte_evaluator._piece_activity = 0.05; // à fix... (mettre l'activité pour les deux côtés.. fonction get_activity?)
-    monte_evaluator._piece_positioning = 0.015; // beta = 0.035
+    monte_evaluator._piece_activity = 0.04; // à fix... (mettre l'activité pour les deux côtés.. fonction get_activity?) // 0.05
+    monte_evaluator._piece_positioning = 0.013; // beta = 0.035 // Pos = 0.015
 
 
     // Activité des pièces à 0, car pour le moment, cela ralentit beaucoup le calcul d'évaluation
@@ -272,6 +289,7 @@ int main() {
     int *l_scores;
 
 
+
     // Boucle principale (Quitter à l'aide de la croix, ou en faisant échap)
     while (!WindowShouldClose()) {
 
@@ -287,6 +305,21 @@ int main() {
 
         }
 
+
+        // Save FEN
+        if (IsKeyPressed(KEY_S)) {
+            t.to_fen();
+            SaveFileText("data/test.txt", (char*)t._fen.c_str());
+            cout << "saved FEN : " << t._fen << endl;
+        }
+
+
+        // Load
+        if (IsKeyPressed(KEY_L)) {
+            string fen = LoadFileText("data/test.txt");
+            t.from_fen(fen);
+            cout << "loaded FEN : " << fen << endl;
+        }
 
 
         // Orientation du plateau
@@ -308,7 +341,7 @@ int main() {
 
         // Suppression des plateaux
         if (IsKeyPressed(KEY_DELETE))
-            t.delete_all();
+            t.delete_all(true, true);
 
         // Copie dans le clipboard du PGN
         if (IsKeyPressed(KEY_C)) {
@@ -331,10 +364,37 @@ int main() {
         }
 
         
+        if (IsKeyPressed(KEY_B)) {
+            cout << "Available memory : " << getTotalSystemMemory() << endl;
+            cout << "generating new buffer" << endl;
+            _monte_buffer.init();
+            // N'affiche pas la bonne taille
+            cout << "new buffer, size : "  << sizeof(_monte_buffer) << " bits, length : " << _monte_buffer._length << endl;
+            cout << "first free index : " << _monte_buffer.get_first_free_index() << endl;
+        }
+        
+
 
         // Mont-Carlo, en regardant les mats/pats
-        if (IsKeyDown(KEY_O))
-            t.monte_carlo_2(l_agents[0], monte_evaluator, 25000, false, true);
+        if (IsKeyDown(KEY_O)) {
+            t.monte_carlo_2(l_agents[0], monte_evaluator, 25000, false, true, _beta, _k_add);
+        }
+
+        // Grogros zero
+        if (IsKeyDown(KEY_G)) {
+            if (!_monte_buffer._init)
+                _monte_buffer.init();
+            t.grogros_zero(l_agents[0], monte_evaluator, 10000, false, true, _beta, _k_add);
+        }
+
+        if (IsKeyPressed(KEY_H)) {
+            t.reset_all(true, true);
+        }
+
+        // Mont-Carlo, en regardant les mats/pats
+        if (IsKeyDown(KEY_T)) {
+            cout << "move to int : " << t.move_to_int(1, 2, 3, 4) << endl;
+        }
 
         // Monte-Carlo, sans...
         if (IsKeyPressed(KEY_I)) {
@@ -344,7 +404,59 @@ int main() {
             t.monte_carlo_2(l_agents[0], monte_evaluator, 1);
         }
 
-        if (IsKeyPressed(KEY_D)) {  
+        // Modification des paramètres
+        if (IsKeyPressed(KEY_KP_ADD))
+            _beta *= 1.1;
+
+        if (IsKeyPressed(KEY_KP_SUBTRACT))
+            _beta /= 1.1;
+
+        if (IsKeyPressed(KEY_KP_MULTIPLY))
+            _k_add *= 1.25;
+
+        if (IsKeyPressed(KEY_KP_DIVIDE))
+            _k_add /= 1.25;
+
+        // Reset aux valeurs initiales
+        if (IsKeyPressed(KEY_KP_ENTER)) {
+            _beta = 0.05;
+            _k_add = 25;
+        }
+
+        // Recherche en profondeur extrême
+        if (IsKeyPressed(KEY_ONE)) {
+            _beta = 0.5;
+            _k_add = 0;
+        }
+
+        // Recherche en profondeur
+        if (IsKeyPressed(KEY_TWO)) {
+            _beta = 0.2;
+            _k_add = 10;
+        }
+
+        // Recherche large
+        if (IsKeyPressed(KEY_THREE)) {
+            _beta = 0.01;
+            _k_add = 100;
+        }
+
+        // Recherche de mat
+        if (IsKeyPressed(KEY_FOUR)) {
+            _beta = 0.005;
+            _k_add = 2500;
+        }
+
+        // Recherche de victoire en endgame
+        if (IsKeyPressed(KEY_FIVE)) {
+            _beta = 0.05;
+            _k_add = 5000;
+        }
+            
+
+
+
+        if (IsKeyPressed(KEY_D)) {
             t.display_moves(true);
         }
 
@@ -359,12 +471,6 @@ int main() {
             }
         }
 
-
-        // Self play avec Monte-Carlo
-        if (IsKeyPressed(KEY_M)) {
-            t.monte_carlo_2(l_agents[0], monte_evaluator, 1000);
-            //t.play_monte_carlo_move();
-        }
 
         // Evaluation de l'agent GrogrosZero
         if (IsKeyPressed(KEY_E)) {

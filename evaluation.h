@@ -10,14 +10,14 @@ class Evaluator {
     float _piece_activity = 0.0;
     float _piece_positioning = 0.02;
     float _random_add = 0.0;
-    float _bishop_pair = 0.75;
+    float _bishop_pair = 0.6;
     float _castling_rights = 0.5;
 
 
     // Valeur des pièces
     float _pawn_value_begin = 0.95;
-    float _pawn_value_end = 1.1;
-    float _knight_value_begin = 3.2;
+    float _pawn_value_end = 1.0;
+    float _knight_value_begin = 3.1;
     float _knight_value_end = 2.8;
     float _bishop_value_begin = 3.3;
     float _bishop_value_end = 3.1;
@@ -111,7 +111,7 @@ class Evaluator {
                                         { -20,    0,   10,  -20,  -60,   10,   20,    0},
                                         {   0,  -10,  -30,   20,  -70,   20,    0,    0},
                                         { -40,  -20,   10,  -10,   10,    0,  -20,  -40},
-                                        { -80,  -40,  -20,   30,   10,  -40,  -40,  -80}   };
+                                        { -80,  -40,  -20,   50,   10,  -40,  -40,  -80}   };
 
     int _pos_queen_end[8][8]        {   {   6,    1,   -8,  -20,   69,   24,   88,   26},
                                         {  14,   32,   60,  -10,   20,   76,   57,   24},
