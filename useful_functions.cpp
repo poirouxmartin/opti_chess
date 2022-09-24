@@ -4,6 +4,7 @@
 #include "math.h"
 #include <random>
 #include <chrono>
+//#include <windows.h>
 
 using namespace std;
 
@@ -107,9 +108,9 @@ int rand_int(int a, int b) {
 
 
 // Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variantes, en fonction de la grandeur du nombre correspondant à cet index
-int pick_random_good_move(int* l, int n, int color, bool print) {
+int pick_random_good_move(int* l, int n, int color, bool print, double beta, int k_add) {
     int sum = 0;
-    int min = 1000000;
+    int min = 2147483647;
 
     int range = max_value(l, n) - min_value(l, n);
     int min_val;
@@ -127,7 +128,7 @@ int pick_random_good_move(int* l, int n, int color, bool print) {
     }
 
 
-    softmax(l2, n);
+    softmax(l2, n, beta, k_add);
 
     if (print) {
         print_array(l, n);
@@ -168,7 +169,7 @@ int pick_random_good_move(int* l, int n, int color, bool print) {
 
 // Fonction qui renvoie la valeur maximum d'une liste d'entiers
 int max_value(int* l, int n) {
-    int max = -1000000;
+    int max = -2147483647;
 
     for (int i = 0; i < n; i++)
         if (l[i] > max)
@@ -180,7 +181,7 @@ int max_value(int* l, int n) {
 
 // Fonction qui renvoie la valeur minimum d'une liste d'entiers
 int min_value(int* l, int n) {
-    int min = 1000000;
+    int min = 2147483647;
 
     for (int i = 0; i < n; i++)
         if (l[i] < min)
@@ -240,4 +241,13 @@ int min_index(int* l, int n) {
 
     return min_i;
 
+}
+
+
+unsigned long long getTotalSystemMemory() {
+    // MEMORYSTATUSEX status;
+    // status.dwLength = sizeof(status);
+    // GlobalMemoryStatusEx(&status);
+    // return status.ullTotalPhys;
+    return 0;
 }

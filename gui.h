@@ -123,7 +123,7 @@ static clock_t begin_time;
 void draw_arrow(float, float, float, float, float thickness = arrow_thickness, Color c = arrow_color);
 
 // A partir de coordonnées sur le plateau (// Thickness = -1 -> default thickness)
-void draw_arrow_from_coord(int, int, int, int, float thickness = -1, Color c = arrow_color, bool use_value = false, int value = 0);
+void draw_arrow_from_coord(int, int, int, int, float thickness = -1, Color c = arrow_color, bool use_value = false, int value = 0, int mate = -1);
 
 // Couleur de la flèche en fonction du coup (de son nombre de noeuds)
 Color move_color(int, int);

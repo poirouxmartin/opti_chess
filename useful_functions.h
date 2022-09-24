@@ -10,14 +10,14 @@ int min_int(int, int);
 // Fonction qui renvoie le maximum de deux flottants
 float max_float(float, float);
 
-// Fonction qui renvoie le minimum de deux flottans
+// Fonction qui renvoie le minimum de deux flottants
 float min_float(float, float);
 
 // Fonction de détermination pour les probabilités des coups (exponentielle?)
 int move_power(float, float, float);
 
 // Fonction qui permet de donner une puissance au coup afin de faciliter les choix
-void softmax(int*, int, double beta = 0.035, int k_add = 25); // beta = 0.05, k_add = 1
+void softmax(int*, int, double beta = 0.035, int k_add = 50); // beta = 0.05, k_add = 1. k_add x => ~x/10000 (the bigger the larger, the smaller the deeper) 0.05, 250 pour les mats
 
 // Fonction pour générer une seed
 int generate_seed();
@@ -26,7 +26,7 @@ int generate_seed();
 int rand_int(int, int);
 
 // Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variante en fonction de la grandeur du nombre correspondant à cet index
-int pick_random_good_move(int[], int, int, bool);
+int pick_random_good_move(int[], int, int, bool, double beta = 0.035, int k_add = 50);
 
 // Fonction qui renvoie la valeur maximum d'une liste d'entiers
 int max_value(int[], int);
@@ -45,3 +45,6 @@ int max_index(int[], int);
 
 // Fonction qui renvoie l'index de la valeur minimale d'une liste d'entiers
 int min_index(int[], int);
+
+// Fonction qui renvoie la RAM disponible
+unsigned long long getTotalSystemMemory();

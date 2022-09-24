@@ -119,6 +119,13 @@ void Board::display() {
 
 
 
+// Fonction qui à partir des coordonnées d'un coup renvoie le coup codé sur un entier (à 4 chiffres) (base 10)
+int Board::move_to_int(int i, int j, int k, int l) {
+    return l + 10 * (k + 10 * (j + 10 * i));
+}
+
+
+
 // Fonction qui ajoute un coup dans une liste de coups
 bool Board::add_move(int i, int j, int k, int l, int *iterator) {
     _moves[*iterator] = i;
@@ -814,6 +821,7 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board) {
         _evaluated = false;
     }
 
+    _mate = false;
     
 
 }
@@ -877,8 +885,10 @@ void Board::evaluate(Evaluator eval, bool checkmates) {
     if (checkmates) {
         get_moves(false, true);
         if (_got_moves == 0) {
-            if (in_check())
-                _evaluation = - _color * 1000000;
+            if (in_check()) {
+                _mate = true;
+                _evaluation = - _color * (1000000 - 1000 * _moves_count);
+            }
             else
                 _evaluation = 0;
             return;
@@ -1094,7 +1104,10 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
         if (play) {
             play_index_move_sound(best_move);
             if (display)
-                make_index_move(best_move, true);
+                if (_tested_moves > 0)
+                    play_monte_carlo_move_keep(best_move, true);
+                else
+                    make_index_move(best_move, true);
         }
             
         return best_move;
@@ -1472,7 +1485,7 @@ void Board::from_fen(string fen) {
     _fen = fen;
 
     // PGN
-    _pgn = "[FEN \"" + fen + "\"]";
+    _pgn = "[FEN \"" + fen + "\"]\n";
 
     // Iterateur qui permet de parcourir la chaine de caractères
     int iterator = 0;
@@ -1934,6 +1947,7 @@ void Board::draw() {
 
         // Icône
         icon = LoadImage("../resources/grogros_zero.png");
+        SetWindowIcon(icon);
 
 
         loaded_textures = true;
@@ -2117,14 +2131,22 @@ void Board::draw() {
     draw_text_rect(_pgn, board_padding_x + board_size + 20, board_padding_y, screen_width - (board_padding_x + board_size + 20) - 100, board_size / 2 - 10, 20);
 
     // Analyse de Monte-Carlo
-    string monte_carlo_text = "";
+    string monte_carlo_text = "Monte-Carlo analysis\n\nresearch parameters :\nbeta : " + to_string(_beta) + "\nk_add : " + to_string(_k_add);
     if (_tested_moves) {
         // int best_eval = (_player) ? max_value(_eval_children, _tested_moves) : min_value(_eval_children, _tested_moves);
         int best_move = max_index(_nodes_children, _tested_moves);
         int best_eval = _eval_children[best_move];
-        monte_carlo_text = "Monte-Carlo analysis\ndepth : " + to_string(max_monte_carlo_depth()) + "\neval "  + to_string(best_eval) + "\nmove "  + move_label_from_index(best_move) + "\nstatic eval "  + to_string(_static_evaluation);
+        string eval;
+        if (best_eval > 100000)
+            eval = "M" + to_string((100000000 - best_eval) / 100000 - _moves_count + 1); // (Immonde) à changer...
+        else if (best_eval < -100000)
+            eval = "M" + to_string((100000000 + best_eval) / 100000 - _moves_count);
+        else
+            eval = to_string(best_eval);
+        
+        monte_carlo_text += "\n\nnodes : " + to_string(total_nodes()) + "\ndepth : " + to_string(max_monte_carlo_depth()) + "\neval : "  + eval + "\nmove : "  + move_label_from_index(best_move) + " (" + to_string(100 * _nodes_children[best_move] / total_nodes()) + "%)" + "\nstatic eval : "  + to_string(_static_evaluation);
     }
-    draw_text_rect(monte_carlo_text, board_padding_x + board_size + 20, board_padding_y + board_size / 2 + 10, screen_width - (board_padding_x + board_size + 20) - 100, board_size / 2 - 10, 20);
+    DrawText(monte_carlo_text.c_str(), board_padding_x + board_size + 20, board_padding_y + board_size / 2 + 10, 20, text_color);
 
 }
 
@@ -2338,15 +2360,12 @@ void Board::monte_carlo(Agent a, int n, int depth_calc, int depth, bool display 
 
 
 // Test iterative depth
-void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, bool use_agent, bool checkmates, bool display, int depth) {
-    // static Board children_list[100000];
-    // static int index_children = 0;
+void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, bool use_agent, bool checkmates, double beta, int k_add, bool display, int depth) {
     static int max_depth;
+    static int n_positions = 0;
 
     if (depth == 0 & _new_board) {
-        max_depth = 0;
-        // Stockage des plateaux --> à implémenter... gros stockage global, et utilisation des index pour partager
-        
+        max_depth = 0;    
     }
 
     if (depth > max_depth) {
@@ -2379,12 +2398,9 @@ void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, bool use_agent, bool 
 
         // Liste des plateaux fils
         _children = new Board[_got_moves];
-        // _index_children = index_children; // Test de la nouvelle méthode d'allocation mémoire
-        // index_children += _got_moves;
-
+        n_positions += _got_moves;
         _tested_moves = 0;
         _current_move = 0;
-
         _new_board = false;
     }
 
@@ -2401,17 +2417,13 @@ void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, bool use_agent, bool 
             Board b_child(*this); // Vérifier la copie...
             _children[_current_move] = b_child;
             _children[_current_move].make_index_move(_current_move);
-            // children_list[_index_children + _current_move] = b_child;
-            // children_list[_index_children + _current_move].make_index_move(_current_move);
 
             // Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
             if (use_agent)
                 _children[_current_move].evaluate(a);
             else
                 _children[_current_move].evaluate_int(e, checkmates);
-            // children_list[_index_children + _current_move].evaluate_int(e);
             _eval_children[_current_move] = _children[_current_move]._evaluation;
-            // _eval_children[_current_move] = children_list[_index_children + _current_move]._evaluation;
             _nodes_children[_current_move]++;
 
             // Actualise la valeur d'évaluation du plateau
@@ -2440,15 +2452,13 @@ void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, bool use_agent, bool 
         // Lorsque tous les coups de la position ont déjà été testés (et évalués)
         else {
             // Choisit aléatoirement un "bon" coup
-            _current_move = pick_random_good_move(_eval_children, _got_moves, _color, false);
+            _current_move = pick_random_good_move(_eval_children, _got_moves, _color, false, beta, k_add);
 
             // Va une profondeur plus loin... appel récursif sur Monte-Carlo
-            _children[_current_move].monte_carlo_2(a, e, 1, use_agent, checkmates, display, depth + 1);
-            // children_list[_index_children + _current_move].monte_carlo_2(a, e, 1, depth + 1);
+            _children[_current_move].monte_carlo_2(a, e, 1, use_agent, checkmates, beta, k_add, display, depth + 1);
 
             // Actualise l'évaluation
-            _eval_children[_current_move] = _children[_current_move]._evaluation;
-            // _eval_children[_current_move] = children_list[_index_children + _current_move]._evaluation;
+            _eval_children[_current_move] = _children[_current_move]._evaluation;;
             _nodes_children[_current_move]++;
 
             if (_player)
@@ -2488,8 +2498,7 @@ void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, bool use_agent, bool 
             cout << " " << move_label_from_index(i) << " (n:" << _nodes_children[i] << ", e: " << _eval_children[i] << ", p:" << power[i] << ") |";
         cout << "]" << endl;
 
-        // make_index_move(max_index(_nodes_children, _got_moves), depth == 0);
-        // cout << _pgn << endl;
+        cout << "positions : " << n_positions << endl;
 
         cout << "____________________________________________________________" << endl;
         
@@ -2652,6 +2661,7 @@ void Board::delete_all(bool self, bool display) {
     if (self && display)
         cout << "removing tree from memory..." << endl;
     
+
     for (int i = 0; i < _tested_moves; i++)
         _children[i].delete_all(false);
 
@@ -2684,7 +2694,7 @@ void draw_arrow(float x1, float y1, float x2, float y2, float thickness, Color c
 }
 
 // A partir de coordonnées sur le plateau
-void draw_arrow_from_coord(int i1, int j1, int i2, int j2, float thickness, Color c, bool use_value, int value) {
+void draw_arrow_from_coord(int i1, int j1, int i2, int j2, float thickness, Color c, bool use_value, int value, int mate) {
     // cout << thickness << endl;
     if (thickness == -1.0)
         thickness = arrow_thickness;
@@ -2698,7 +2708,10 @@ void draw_arrow_from_coord(int i1, int j1, int i2, int j2, float thickness, Colo
 
     if (use_value) {
         char v[4];
-        sprintf(v, "%d", value);
+        if (mate != -1)
+            sprintf(v, "M%d", mate);
+        else
+            sprintf(v, "%d", value);
         int size = thickness * 2;
         int max_size = thickness * 4;
         int width = MeasureText(v, size);
@@ -2706,6 +2719,7 @@ void draw_arrow_from_coord(int i1, int j1, int i2, int j2, float thickness, Colo
             size = size * max_size / width;
             width = MeasureText(v, size);
         }
+        Color t_c = ColorAlpha(BLACK, (float)c.a / 255.0);
         DrawText(v, x2 - width / 2, y2 - size / 2, size, BLACK);
         
     }
@@ -2720,13 +2734,19 @@ void Board::draw_monte_carlo_arrows() {
     int sum_nodes = 0;
     for (int i = 0; i < _tested_moves; i++)
         sum_nodes += _nodes_children[i];
-    int test = 0;
+    int mate;
 
     for (int i = 0; i < _tested_moves; i++) {
+        if (_eval_children[i] > 100000)
+            mate = (100000000 - _eval_children[i]) / 100000 - _moves_count + 1; // (Immonde) à changer...
+        else if (_eval_children[i] < -100000)
+            mate = (100000000 + _eval_children[i]) / 100000 - _moves_count;
+        else
+            mate = -1;
         // Si une pièce est sélectionnée
         if (selected_pos.first != -1 && selected_pos.second != -1) {
             if (selected_pos.first == _moves[4 * i] && selected_pos.second == _moves[4 * i + 1]) {
-                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i]);
+                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate);
             }
         }
         else {
@@ -2736,10 +2756,10 @@ void Board::draw_monte_carlo_arrows() {
             // cout << n << endl;
             // cout << (n / (float)sum_nodes > arrow_rate) << endl;
 
-            // Bug ici... ça n'affiche pas toujours tous les noups (parfois si on ne cout pas, _nodes_children[i] -> 0??)
+            // Bug ici... ça n'affiche pas toujours tous les coups (parfois si on ne cout pas, _nodes_children[i] -> 0??)
             // Sinon
             if (n / (float)sum_nodes > arrow_rate)
-                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i]);
+                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate);
         }
     }
 }
@@ -2781,18 +2801,16 @@ void Board::get_piece_activity(bool legal) {
 
 // Couleur de la flèche en fonction du coup (de son nombre de noeuds)
 Color move_color(int nodes, int total_nodes) {
-    float Tmin = 0;
-    float Tmax = total_nodes;
-    float Tfmax = (Tmin + Tmax * 2) / 3;
-    float avg = (Tmin + Tfmax) / 2;
-    float range = Tfmax - Tmin;
-    float T = nodes;
 
-    unsigned char blue = min_float(255, max_float(0, 255 * (T - avg) / range * 2) * 2);
-    unsigned char green = min_float(255, min_float(255 * (T - Tmin) / range * 2, 255 * (Tfmax - T) / range * 2) * 2);
-    unsigned char red = min_float(255, max_float(0, 255 * (avg - T) / range * 2) * 2);
+    float x = (float) nodes / total_nodes;
 
-    return {red, green, blue, 255};
+    unsigned char red = 255 * ((x <= 0.2) + (x > 0.2 && x < 0.4) * (0.4 - x) / 0.2 + (x > 0.8) * (x - 0.8) / 0.2);
+    unsigned char green = 255 * ((x < 0.2) * (x - 0.2) / 0.2 + (x >= 0.2 && x <= 0.6) + (x > 0.6 && x < 0.8) * (0.6 - x) / 0.2);
+    unsigned char blue = 255 * ((x > 0.4 && x < 0.6) * (x - 0.4) / 0.2 + (x >= 0.6));
+
+    unsigned char alpha = 100 + 155 * nodes / total_nodes;
+
+    return {red, green, blue, alpha};
 }
 
 
@@ -2810,25 +2828,36 @@ void Board::play_monte_carlo_move_keep(int move, bool display) {
     if (move < _tested_moves) {
 
         if (display) {
-        play_index_move_sound(move);
-        make_index_move(move, true);
-        cout << _pgn << endl;
-        to_fen();
-        cout << _fen << endl;
-        _children[move]._pgn = _pgn;
+            play_index_move_sound(move);
+            make_index_move(move, true);
+            cout << _pgn << endl;
+            to_fen();
+            cout << _fen << endl;
+            if (_is_active)
+                _monte_buffer._heap_boards[_index_children[move]]._pgn = _pgn;
+            else
+                _children[move]._pgn = _pgn;
 
-        cout << "removing other trees from memory..." << endl;
-    }
+            cout << "removing other trees from memory..." << endl;
+        }
 
 
-    // Deletes all the children from the other boards
-    for (int i = 0; i < _tested_moves; i++)
-        if (i != move)
-            _children[i].delete_all();
+        // Deletes all the children from the other boards
+        for (int i = 0; i < _tested_moves; i++)
+            if (i != move) {
+                if (_is_active)
+                    _monte_buffer._heap_boards[_index_children[i]].reset_all();
+                else
+                    _children[i].delete_all();
+            }
 
-    // Il reste encore la liste des plateaux originaux à détruire...
+        // Il reste encore la liste des plateaux originaux à détruire...
 
-    *this = _children[move];
+        if (_is_active)
+            *this = _monte_buffer._heap_boards[_index_children[move]];
+        else
+            *this = _children[move];
+    
 
     }
 
@@ -2840,7 +2869,10 @@ void Board::play_monte_carlo_move_keep(int move, bool display) {
         if (move < _got_moves) {
             // Sinon, joue simplement le coup
             make_index_move(move, true);
-            delete_all();
+            if (_is_active)
+                reset_all();
+            else
+                delete_all();
         }
         else 
             cout << "illegal move" << endl;
@@ -2855,10 +2887,278 @@ int Board::max_monte_carlo_depth() {
     int max_depth = 0;
     int depth;
     for (int i = 0; i < _tested_moves; i++) {
-        depth = _children[i].max_monte_carlo_depth() + 1;
+        if (!_is_active)
+            depth = _children[i].max_monte_carlo_depth() + 1;
+        else
+            depth = _monte_buffer._heap_boards[_index_children[i]].max_monte_carlo_depth() + 1;
         if (depth > max_depth)
             max_depth = depth;
     }
 
     return max_depth;
+}
+
+
+double _beta = 0.035;
+int _k_add = 50;
+
+
+
+
+
+// Constructeur par défaut
+Buffer::Buffer() {
+
+    // Crée un gros buffer, de 4GB
+    unsigned long int _size_buffer = 4000000000;
+    _length = _size_buffer / sizeof(Board);
+    _length = 0;
+
+    _heap_boards = new Board[_length];
+
+}
+
+
+// Constructeur utilisant la taille max (en bits) du buffer
+Buffer::Buffer(unsigned long int size) {
+
+    _length = size / sizeof(Board);
+    _heap_boards = new Board[_length];
+
+}
+
+
+// Initialize l'allocation de n plateaux
+void Buffer::init(int length) {
+
+
+    if (_init)
+        cout << "already initialized" << endl;
+    else {
+        cout << "initializing buffer..." << endl;
+
+        _length = length;
+        _heap_boards = new Board[_length];
+        _init = true;
+
+        cout << "buffer initialized !" << endl;
+    }
+    
+}
+
+
+// Fonction qui donne l'index du premier plateau de libre dans le buffer
+int Buffer::get_first_free_index() {
+    for (int i = 0; i < _length; i++) {
+        _iterator++;
+        if (_iterator >= _length)
+            _iterator -= _length;
+        if (!_heap_boards[_iterator]._is_active)
+            return _iterator;
+    }
+        
+    return -1;
+}
+
+
+// Fonction qui désalloue toute la mémoire
+void Buffer::remove() {
+    delete[] _heap_boards;
+}
+
+
+// Buffer pour l'algo de Monte-Carlo
+Buffer _monte_buffer;
+
+
+
+
+
+// Test iterative depth
+void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool checkmates, double beta, int k_add, bool display, int depth) {
+    static int max_depth;
+    static int n_positions = 0;
+
+    _is_active = true;
+
+    if (depth == 0 & _new_board) {
+        max_depth = 0;    
+    }
+
+    if (depth > max_depth) {
+        max_depth = depth;
+        if (display) {
+            cout << "GrogrosZero - depth : " << max_depth << '\r';
+            to_fen();
+            cout << _fen << endl;
+        }
+    }
+
+    // Obtention des coups jouables
+    get_moves(false, true);
+
+    if (_got_moves == 0) {
+        return;
+    }
+
+    if (_new_board) {
+        _eval_children = new int[_got_moves];
+        _nodes_children = new int[_got_moves];
+        _index_children = new int[_got_moves]; // à changer? cela prend du temps?
+
+        for (int i = 0; i < _got_moves; i++) {
+            _nodes_children[i] = 0;
+            _eval_children[i] = 0;
+        }
+
+        n_positions += _got_moves;
+        _tested_moves = 0;
+        _current_move = 0;
+        _new_board = false;
+    }
+
+
+    // Tant qu'il reste des noeuds à calculer...
+    while (nodes > 0) {
+
+        // Choix du coup à jouer pour l'exploration
+
+        // Si tous les coups de la position ne sont pas encore testés
+        if (_tested_moves < _got_moves) {
+
+            // Prend une nouvelle place dans le buffer
+            int index = _monte_buffer.get_first_free_index();
+            if (index == -1) {
+                cout << "buffer is full" << endl;
+            }
+            _index_children[_current_move] = index;
+            _monte_buffer._heap_boards[_index_children[_current_move]]._is_active = true;
+
+            // Joue un nouveau coup
+            _monte_buffer._heap_boards[_index_children[_current_move]].copy_data(*this);
+            _monte_buffer._heap_boards[_index_children[_current_move]].make_index_move(_current_move);
+            
+
+            // Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
+            if (use_agent)
+               _monte_buffer._heap_boards[_index_children[_current_move]].evaluate(a);
+            else
+                _monte_buffer._heap_boards[_index_children[_current_move]].evaluate_int(e, checkmates);
+            _eval_children[_current_move] = _monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
+            _nodes_children[_current_move]++;
+
+            // Actualise la valeur d'évaluation du plateau
+
+            // Première évaluation
+            if (!_evaluated) {
+                _evaluation = _eval_children[_current_move];
+                _evaluated = true;
+            }
+            
+            if (_player) {
+                if (_eval_children[_current_move] > _evaluation)
+                    _evaluation = _eval_children[_current_move];
+            }
+            else {
+                if (_eval_children[_current_move] < _evaluation)
+                    _evaluation = _eval_children[_current_move];
+            }
+
+            // Incrémentation des coups
+            _current_move++; 
+            _tested_moves++;
+
+        }
+
+        // Lorsque tous les coups de la position ont déjà été testés (et évalués)
+        else {
+            // Choisit aléatoirement un "bon" coup
+            _current_move = pick_random_good_move(_eval_children, _got_moves, _color, false, beta, k_add);
+
+            // Va une profondeur plus loin... appel récursif sur Monte-Carlo
+           _monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(a, e, 1, use_agent, checkmates, beta, k_add, display, depth + 1);
+
+            // Actualise l'évaluation
+            _eval_children[_current_move] = _monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
+            _nodes_children[_current_move]++;
+
+            if (_player)
+                _evaluation = max_value(_eval_children, _got_moves);
+            else
+                _evaluation = min_value(_eval_children, _got_moves);
+
+        }
+
+
+        // Décrémentation du nombre de noeuds restants
+        nodes--;
+        _nodes++;
+
+    }
+
+    return;
+    
+}
+
+
+
+
+
+// Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
+void Board::reset_board(bool display) {
+    if (display)
+        cout << "resetting board..." << endl;
+    
+    _is_active = false;
+    
+    _current_move = 0;
+    _evaluated = false;
+    _new_board = true;
+    if (_tested_moves > 0) {
+        _tested_moves = 0;
+        delete []_index_children;
+        delete []_children;
+        delete []_nodes_children;
+        delete []_eval_children;
+    }
+    
+
+    if (display)
+        cout << "done cleaning" << endl;
+    
+    return;
+}
+
+
+
+// Fonction qui réinitialise tous les plateaux fils dans le buffer
+void Board::reset_all(bool self, bool display) {
+    if (self && display)
+        cout << "resetting all children..." << endl;
+
+
+    for (int i = 0; i < _tested_moves; i++) {
+        _monte_buffer._heap_boards[_index_children[i]].reset_all(false);
+    }
+
+    reset_board();
+
+
+    if (self && display)
+        cout << "done cleaning" << endl;
+
+}
+
+
+
+
+// Fonction qui renvoie le nombre de noeuds calculés par GrogrosZero ou Monte-Carlo
+int Board::total_nodes() {
+
+    int nodes = 0;
+
+    for (int i = 0; i < _tested_moves; i++)
+        nodes += _nodes_children[i];
+
+    return nodes;
 }
