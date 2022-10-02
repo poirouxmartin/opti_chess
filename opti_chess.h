@@ -5,6 +5,7 @@
 #include <string>
 #include "evaluation.h"
 #include "agent.h"
+#include <vector>
 using namespace std;
 
 
@@ -32,6 +33,20 @@ Plateau :
 */
 
 
+
+// Liste de coups globale, pour les calculs, et éviter d'avoir des listes trop grosses pour chaque plateau
+extern uint_fast8_t _global_moves[1000];
+extern int _global_moves_size;
+
+
+struct int3
+{
+    unsigned int v1 : 1;
+    // unsigned int v2 : 4;
+};
+
+
+
 class Board {
     
     public:
@@ -39,24 +54,30 @@ class Board {
         // Attributs
 
         // Plateau
-        int _array[8][8]    {{4, 2, 3, 5, 6, 3, 2, 4}, 
-                            {1, 1, 1, 1, 1, 1, 1, 1}, 
-                            {0, 0, 0, 0, 0, 0, 0, 0}, 
-                            {0, 0, 0, 0, 0, 0, 0, 0}, 
-                            {0, 0, 0, 0, 0, 0, 0, 0}, 
-                            {0, 0, 0, 0, 0, 0, 0, 0}, 
-                            {7, 7, 7, 7, 7, 7, 7, 7}, 
-                            {10, 8, 9, 11, 12, 9, 8, 10}};
+        uint_fast8_t _array[8][8]  {{4, 2, 3, 5, 6, 3, 2, 4}, 
+                                    {1, 1, 1, 1, 1, 1, 1, 1}, 
+                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
+                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
+                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
+                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
+                                    {7, 7, 7, 7, 7, 7, 7, 7}, 
+                                    {10, 8, 9, 11, 12, 9, 8, 10}};
 
         // Coups possibles
         // (Augmenter si besoin)
         // On suppose ici que n_moves < 1000 / 4
-        int _moves[1000];
-        // Les coups sont-ils actualisés?
+        uint_fast8_t _moves[1000];
+        int3 _test_int_3;
+
+        // Liste des coups, sous forme de vecteur
+        vector<uint_fast8_t> _moves_vector;
+        
+
+        // Les coups sont-ils actualisés? Si non : -1, sinon, _got_moves représente le nombre de coups jouables
         int _got_moves = -1;
 
         // Ordre des coups à jouer (pour l'optimisation)
-        int _move_order[250];
+        uint_fast8_t _move_order[250];
         // Les coups sont-ils triés?
         bool _sorted_moves = false;
         // Les coups sont-ils pseudo-légaux? (sinon, légaux...)
@@ -100,7 +121,7 @@ class Board {
         string _pgn = "";
 
         // Dernier coup joué
-        int _last_move[4] = {-1, -1, -1, -1};
+        int_fast8_t _last_move[4] = {-1, -1, -1, -1};
 
 
         // Joueurs de la partie
@@ -117,6 +138,7 @@ class Board {
 
         // Plateaux fils
         Board *_children;
+        // vector<Board> _children;
 
         // Plateau libre ou actif? (pour le buffer)
         bool _is_active = false;
@@ -188,6 +210,9 @@ class Board {
 
         // Fonction qui ajoute les coups "roi" dans la liste de coups
         bool add_king_moves(int, int, int*);
+
+        // Fonction qui génère la liste des coups sous forme de vecteur
+        bool get_moves_vector();
 
         // Renvoie la liste des coups possibles
         bool get_moves(bool pseudo = false, bool forbide_check = false);
@@ -274,7 +299,7 @@ class Board {
         void make_label_move(string);
 
         // Fonction qui renvoie un plateau à partir d'un PGN
-        void from_pgn();
+        void from_pgn(string);
 
         // Fonction qui affiche un texte dans une zone donnée
         void draw_text_rect(string, float, float, float, float, int);
