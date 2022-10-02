@@ -6,6 +6,11 @@
 
 
 
+// Liste de coups globale, pour les calculs, et éviter d'avoir des listes trop grosses pour chaque plateau
+uint_fast8_t _global_moves[1000];
+int _global_moves_size = 0;
+
+
 // Constructeur par défaut
 Board::Board() {
 }
@@ -132,6 +137,14 @@ bool Board::add_move(int i, int j, int k, int l, int *iterator) {
     _moves[*iterator + 1] = j;
     _moves[*iterator + 2] = k;
     _moves[*iterator + 3] = l;
+
+
+    _global_moves[*iterator] = i;
+    _global_moves[*iterator + 1] = j;
+    _global_moves[*iterator + 2] = k;
+    _global_moves[*iterator + 3] = l;
+
+
     *iterator += 4;
     return true;
 }
@@ -433,6 +446,15 @@ bool Board::add_king_moves(int i, int j, int *iterator) {
 }
 
 
+// Fonction qui génère la liste des coups sous forme de vecteur
+bool Board::get_moves_vector() {
+    _moves_vector.resize(_got_moves * 4);
+    for (int i = 0; i < _got_moves * 4; i++)
+        _moves_vector[i] = _global_moves[i];
+
+    return true;
+}
+
 
 // Calcule la liste des coups possibles. pseudo ici fait référence au droit de roquer en passant par une position illégale.
 bool Board::get_moves(bool pseudo, bool forbide_check) {
@@ -553,10 +575,14 @@ bool Board::get_moves(bool pseudo, bool forbide_check) {
     _moves[iterator] = -1;
     _got_moves = iterator / 4;
 
+    // get_moves_vector();
+
+    
+
 
     // Vérification échecs
     if (forbide_check) {
-        int new_moves[1000];
+        int new_moves[1000]; // Est-ce que ça prend de la mémoire?
         int n_moves = 0;
         Board b;
 
@@ -579,6 +605,7 @@ bool Board::get_moves(bool pseudo, bool forbide_check) {
         }
 
         _got_moves = n_moves / 4;
+
     }
 
     return true;
@@ -960,6 +987,8 @@ void Board::evaluate(Evaluator eval, bool checkmates) {
         get_piece_activity();
         _evaluation += _piece_activity * eval._piece_activity;
     }
+
+    _evaluation += eval._player_trait * _color;
     
         
 
@@ -1439,7 +1468,7 @@ void Board::sort_moves(Evaluator eval) {
 
     (_got_moves == -1 && get_moves());
 
-    float* values = new float[_got_moves];
+    float* values = new float[_got_moves]; // A delete?
     float value;
 
     // Création de la liste des valeurs des évaluations des positions après chaque coup
@@ -1856,8 +1885,9 @@ void Board::make_label_move(string s) {
 }
 
 // Fonction qui renvoie un plateau à partir d'un PGN
-void Board::from_pgn() {
+void Board::from_pgn(string pgn) {
 
+    _pgn = pgn;
 }
 
 
@@ -2398,6 +2428,9 @@ void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, bool use_agent, bool 
 
         // Liste des plateaux fils
         _children = new Board[_got_moves];
+        // _children.resize(_got_moves);
+        // for (int i = 0; i < _got_moves; i++)
+        //     _children[i] = Board();
         n_positions += _got_moves;
         _tested_moves = 0;
         _current_move = 0;
@@ -2668,6 +2701,7 @@ void Board::delete_all(bool self, bool display) {
     if (!self) {
         if (!_new_board) {
             delete []_children;
+            // _children.clear();
             delete []_nodes_children;
             delete []_eval_children;
         }
@@ -2829,14 +2863,15 @@ void Board::play_monte_carlo_move_keep(int move, bool display) {
 
         if (display) {
             play_index_move_sound(move);
-            make_index_move(move, true);
-            cout << _pgn << endl;
-            to_fen();
-            cout << _fen << endl;
+            Board b(*this);
+            b.make_index_move(move, true);
+            cout << b._pgn << endl;
+            b.to_fen();
+            cout << b._fen << endl;
             if (_is_active)
-                _monte_buffer._heap_boards[_index_children[move]]._pgn = _pgn;
+                _monte_buffer._heap_boards[_index_children[move]]._pgn = b._pgn;
             else
-                _children[move]._pgn = _pgn;
+                _children[move]._pgn = b._pgn;
 
             cout << "removing other trees from memory..." << endl;
         }
@@ -2851,10 +2886,12 @@ void Board::play_monte_carlo_move_keep(int move, bool display) {
                     _children[i].delete_all();
             }
 
-        // Il reste encore la liste des plateaux originaux à détruire...
-
-        if (_is_active)
-            *this = _monte_buffer._heap_boards[_index_children[move]];
+        if (_is_active) {
+            Board *b = &_monte_buffer._heap_boards[_index_children[move]];
+            reset_board(true);
+            *this = *b;
+        }
+            
         else
             *this = _children[move];
     
@@ -2942,6 +2979,7 @@ void Buffer::init(int length) {
         _init = true;
 
         cout << "buffer initialized !" << endl;
+
     }
     
 }
@@ -3002,6 +3040,7 @@ void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool c
     }
 
     if (_new_board) {
+        // cout << sizeof(_eval_children) << endl;
         _eval_children = new int[_got_moves];
         _nodes_children = new int[_got_moves];
         _index_children = new int[_got_moves]; // à changer? cela prend du temps?
@@ -3029,7 +3068,7 @@ void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool c
             // Prend une nouvelle place dans le buffer
             int index = _monte_buffer.get_first_free_index();
             if (index == -1) {
-                cout << "buffer is full" << endl;
+                return;
             }
             _index_children[_current_move] = index;
             _monte_buffer._heap_boards[_index_children[_current_move]]._is_active = true;
@@ -3101,30 +3140,27 @@ void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool c
 }
 
 
-
-
-
 // Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
 void Board::reset_board(bool display) {
     if (display)
         cout << "resetting board..." << endl;
-    
+
     _is_active = false;
-    
     _current_move = 0;
     _evaluated = false;
-    _new_board = true;
-    if (_tested_moves > 0) {
+    
+    if (!_new_board) {
         _tested_moves = 0;
-        delete []_index_children;
-        delete []_children;
+        delete []_index_children; // Vérifier que tous les plateaux sont supprimés
         delete []_nodes_children;
         delete []_eval_children;
+        _new_board = true;
     }
-    
+   
 
     if (display)
         cout << "done cleaning" << endl;
+        
     
     return;
 }
@@ -3136,13 +3172,11 @@ void Board::reset_all(bool self, bool display) {
     if (self && display)
         cout << "resetting all children..." << endl;
 
-
     for (int i = 0; i < _tested_moves; i++) {
         _monte_buffer._heap_boards[_index_children[i]].reset_all(false);
     }
 
     reset_board();
-
 
     if (self && display)
         cout << "done cleaning" << endl;

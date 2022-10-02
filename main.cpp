@@ -3,6 +3,7 @@
 #include "useful_functions.h"
 #include "math.h"
 #include "gui.h"
+#include "neural_network.h"
 //#include <windows.h>
 
 
@@ -27,18 +28,15 @@ https://arxiv.org/pdf/2007.02130.pdf
 
 ----- Jeu -----
 
--> Echecs?
 -> Promotions (de tous types plutôt que seulement dame)
 -> Rajouter des tests de validité de FEN
 -> Répétition de coups
--> Pat à ajouter
 
 
 
 ----- Structure globale du projet -----
 
 -> Séparer les fonctions du fichier opti_chess dans d'autres fichiers (GUI, IA...)
--> Virer tous les warnings
 -> Faire du ménage dans les fonctions
 -> Faire une classe pour les IA?
 
@@ -73,10 +71,6 @@ https://arxiv.org/pdf/2007.02130.pdf
 
 --- Nouveaux algorithmes ---
 
-- Monter Carlo -
--> Implémenter un agent basique (pas déterministe - qui peut jouer plusieurs coups par position)
--> Implémenter un algorithme de Monte Carlo 
-
 - Grogrofish_iterative_depth -
 -> Changer Grogrosfish : depth -> temps (--> moteur d'analyse)
 -> Faire une profodeur -> trier les coups du meilleur au pire, puis continuer la recherche plus loin
@@ -92,7 +86,7 @@ https://arxiv.org/pdf/2007.02130.pdf
 -> Améliorer les heuristiques pour l'évaluation d'une position
     - Positionnement du roi, des pions, de la dame et des pièces changeant au cours de la partie (++ pièces mineures en début de partie, ++ le reste en fin de partie, ++ valeur des pions) (endgame = 13 points or below for each player? less than 4 pieces?)
     - Sécurité du roi (TRES IMPORTANT !)
-    - Espace
+    - Espace (dépend aussi du nombre de pièces restantes..)
     - Structures de pions
     - Diagonales ouvertes
     - Lignes ouvertes, tours dessus
@@ -109,14 +103,11 @@ https://arxiv.org/pdf/2007.02130.pdf
     - Bon/Mauvais fou
     - Tours sur colonnes ouvertes
     - Tours sur une même colonne qu'une dame ou un roi
-    - Tour sur la 7ème (-> voir piece_position)
-    - Droits de roque(s)
     - Pions bloqués / Développement de pièces impossible
-    - Valeur des pièces changeante au cours du temps (tour mieux en endgame)
-    - f6
+    -> Fous/Paire de fou meilleurs en position ouverte (cavalier : inverse)
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
--> Augmenter la profondeur pour les finales
+-> Augmenter la profondeur pour les finales (GrogrosFish)
 -> Negascout et PVS, problème (??) : cela doit utiliser l'ordre de coup de l'itération précédente. Cependant, l'évaluation d'un coup d'une itération sur l'autre varie beaucoup -> ordre de coups différent -> peu optimal
 -> Ajouter une part de random dans l'IA?
 -> Bug de temps quand les IA jouent entre elles?
@@ -126,7 +117,6 @@ https://arxiv.org/pdf/2007.02130.pdf
 -> Utiliser raylib pour le random? check la vitesse
 -> Création d'une base de données contenant des positions et des évaluations? (qui se remplit au cours des parties...)
 -> Allocations mémoires utilisant raylib?
--> Faire un buffer pour créer un nombre statique de tableaux au départ, et seulement les ré utiliser plutôt que d'en faire des nouveaux.
 -> Faire aussi un énrome buffer pour les coups? Ils prennent 5000/5512 des bytes d'un board...
 -> Changer la structure de données des boards pour réduire leur taille
 -> On peut roquer après s'être fait bouffer une tour !!
@@ -134,17 +124,31 @@ https://arxiv.org/pdf/2007.02130.pdf
 -> Comportements bizarres dans la scandi
 -> Heuristics : check -- r2q1rk1/1pp2pp1/p1p1b3/7p/4P3/4NP2/PPPPK1P1/RNB2Q2 w - - 3 15     (sees it as bad, while it's completely winning)
 -> Trouve pas forcément les mats les plus rapides (dès qu'il en a trouvé un, il cherche plus vraiment sur les autres coups...)
--> Get first index : très lent?
 -> Attention au cas ou le buffer est plein
 -> La mémoire se remplit malgré le buffer.. Verif les allocations
 -> Affichage des flèches buggées pour les mats?
 -> Tout supprimer les calculs quand on importe un FEN
+-> Bug de couleurs parfois : jaune, jaune, jaune... ROUGE, jaune? pareil avec cyan et bleu
+-> Heuristiques bof bof : r1b1kb1r/2p2ppp/p7/2pp4/3N4/8/PPP2PPP/RNB1K2R w KQkq - 0 11 : une pièce de moins en engame, et croit que c'est ok
+-> Pareil : r3r1k1/3q1p2/pb1p2p1/1p1p4/1P3n2/5N1P/1BQN1PP1/R3R1K1 w - - 0 31, 4r1k1/3q1p2/pb1p2p1/1p1p4/1P3n2/5N1P/1BQN1PP1/4R1K1 b - - 1 32, 6k1/2q2p2/pb1p2p1/1p1p4/1P3n2/5N1P/1BQN1PP1/5K2 w - - 5 36, r4rk1/2pqbppp/p2p4/1p3P2/Pn6/4B3/1PPQBPPP/R4RK1 b - - 2 15
+-> Bitboard
+-> Euh.. pourquoi Grogros a ralenti sans raisons? -> Redémarrer PC...
+-> Moves : plutôt que _moves[1000] -> *_moves + new _moves[_got_moves]. (avec les moves à 4 digits?). add_move utilise un array local (global?) de grande taille (stack) plutôt que les mettre direct dans _moves
+-> TESTER : vecteur de plateaux (plutôt que un new???)
+-> METTRE DES VECTEURS PARTOUUUUUT ! -> Buffer est-il inutile??? à tester!!!!
+-> Utiliser des int8/uint8/int8_t, uint16. créer des int3? struc "int : 3"
+-> Compression des entier : 8 * a + b? sinon shift bit avec << (plus rapide)
+-> Faire une nouvelle classe fille, pour optimiser et retirer les attributs inutiles, en fonction des algorithmes utilisés? (_moves_order est inutile si on utilise GrogrosZero)
+-> Faut-il du coup utiliser des uint8_t dans les arguments de fonction? ou int est ok?
+-> Dans le backpropagation de GrogrosZero... pour l'évaluation, prendre l'eval du meilleur fils seulement? ou faire une moyenne pondérée de tous les fils, avec leur policy/nodes?
+-> Quand on fait reset_all(), la mémoire ne descende pas, malgré la suppression de tous 'new array'
+-> Incrémentation de l'évaluation quand on joue les coups (make_move(keep))
+
 
 
 ----- Interface utilisateur -----
 
 -> Amélioration des sons
--> Montrer en direct sur la GUI l'avancement de l'IA -> quel coup il refléchit et évaluation de chaque coup
 -> Undo move dans l'interface, avec les flèches (il faut donc stocker l'ensemble de la partie - à l'aide du PGN -> from_pgn?)
 -> Nouveau sons/images
 -> Surligner avec le clic droit
@@ -182,18 +186,21 @@ https://arxiv.org/pdf/2007.02130.pdf
 -> Ajouter plus d'info sur les coups (ainsi que les positions résultantes et leur évaluation)
 -> Couleur des coups à fix... des modulos?? (quand ça arrive dans le bleu...)
 -> Nouveau curseur
--> Premettre de modifier les paramètres de recherche de l'IA : beta, k_add...
+-> Premettre de modifier les paramètres de recherche de l'IA : beta, k_add... (d'une meilleure manière)
 -> Changements de taille de la fenêtre
+-> Save : pgn + fen, load les deux aussi
+-> Ne plus afficher "INFO:" de raylib dans la console
+-> Comme Nibbler, faire un slider à droite, qui contient l'info de tous les coups possibles : variations, noeuds, éval, position finale...
+-> Resize la taille de la fenêtre
 
 
 ----- Fonctionnalités supplémentaires -----
 
--> Chargement de FEN -> Modifier le PGN en FEN + ... exemple : "[FEN "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w - - 0 2"] 2. Nf3 Nc6 *"
 -> Correction PGN -> fins de parties
 -> Importation depuis in PGN
--> Copie du FEN/PGN (dans le clipboard?)
 -> Afficher pour chaque coup auquel l'ordi réfléchit : la ligne correspondante, ainsi que la position finale avec son évaluation
 -> Ajouter les noms des joueurs ainsi que leurs temps par coups sur le PGN
+-> Afficher sur le PGN la reflexion de GrogrosZero
 
 
 */
@@ -204,8 +211,57 @@ https://arxiv.org/pdf/2007.02130.pdf
 // Fonction qui permet de tester le temps que prend une fonction
 void test() {
 
-    Board t;
-    //t.sort_moves();
+    static Board t_test;
+    //t_test.sort_moves();
+
+    if (t_test._got_moves == -1)
+        t_test.get_moves();
+
+    // for (int k: t_test._moves_vector)
+    //     cout << k << endl;
+
+
+    // string test = "";
+    // for (int i = 0; i < t_test._got_moves * 4; i++) {
+    //     test += to_string(t_test._moves[i]);
+    // }
+
+    // vector<int> test_2;
+    // for (int i = 0; i < t_test._got_moves * 4; i++) {
+    //     test_2.push_back(t_test._moves[i]);
+    //     // test_2 += t_test._moves[i];
+    // }
+
+    // Méthode la plus rapide
+    // test_2.resize(t_test._got_moves * 4);
+    // for (int i = 0; i < t_test._got_moves * 4; i++) {
+    //     // test_2.push_back(t_test._moves[i]);
+    //     test_2[i] = t_test._moves[i];
+    // }
+
+    // test_2.resize(t_test._got_moves);
+    // for (int i = 0; i < t_test._got_moves; i++) {
+    //     test_2[i] = t_test.move_to_int(4 * i, 4 * i + 1, 4 * i + 2, 4 * i + 3);
+    // }
+
+    // cout << test.size() << endl;
+
+
+    // char *toto_2 = new char[t_test._got_moves * 4];
+    // for (int i = 0; i < t_test._got_moves * 4; i++) {
+    //     toto_2[i] = '0' + t_test._moves[i];
+    // }
+
+    // for (int i = 0; i < t_test._got_moves * 4; i++)
+    //     cout << toto_2[i];
+
+    // cout << endl;
+    // cout << sizeof(toto_2) << endl;
+
+    // int *moves = new int[t_test._got_moves * 4];
+    // for (int i = 0; i < t_test._got_moves * 4; i++) {
+    //     moves[i] = t_test._moves[i];
+    // }
 
 }
 
@@ -224,7 +280,7 @@ int main() {
 
     // Initialisation de l'audio
     InitAudioDevice();
-    SetMasterVolume(1.0);
+    SetMasterVolume(1.0); // Trop faible...
 
     // Nombre d'images par secondes
     SetTargetFPS(fps);
@@ -234,6 +290,8 @@ int main() {
     // Variables
     Board t;
 
+
+    t.get_moves();
 
     // Calcul du temps de la fonction
     test_function(&test, 1);
@@ -250,6 +308,8 @@ int main() {
     monte_evaluator._piece_activity = 0.04; // à fix... (mettre l'activité pour les deux côtés.. fonction get_activity?) // 0.05
     monte_evaluator._piece_positioning = 0.013; // beta = 0.035 // Pos = 0.015
 
+
+    bool grogros_play = false;
 
     // Activité des pièces à 0, car pour le moment, cela ralentit beaucoup le calcul d'évaluation
     eval_white._piece_activity = 0;
@@ -363,6 +423,13 @@ int main() {
             cout << "loaded FEN : " << fen << endl;
         }
 
+        // // Colle le PGN du clipboard (le charge)
+        // if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_V)) {
+        //     string pgn = GetClipboardText();
+        //     t.from_pgn(pgn);
+        //     cout << "loaded PGN : " << pgn << endl;
+        // }
+
         
         if (IsKeyPressed(KEY_B)) {
             cout << "Available memory : " << getTotalSystemMemory() << endl;
@@ -381,19 +448,55 @@ int main() {
         }
 
         // Grogros zero
-        if (IsKeyDown(KEY_G)) {
+        if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyDown(KEY_G)) {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
             t.grogros_zero(l_agents[0], monte_evaluator, 10000, false, true, _beta, _k_add);
+            // cout << _global_moves_size << endl;
         }
 
+
+        // Grogros zero self play
+        if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_G)) {
+            if (!_monte_buffer._init)
+                _monte_buffer.init();
+            grogros_play = !grogros_play;            
+        }
+
+        if (grogros_play && t.game_over() == 0) {
+            t.grogros_zero(l_agents[0], monte_evaluator, 10000, false, true, _beta, _k_add);
+                if (t.total_nodes() > 900000)
+                    t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true);
+        }
+
+
+        // Supprime les reflexions de GrogrosZero
         if (IsKeyPressed(KEY_H)) {
             t.reset_all(true, true);
         }
 
         // Mont-Carlo, en regardant les mats/pats
-        if (IsKeyDown(KEY_T)) {
-            cout << "move to int : " << t.move_to_int(1, 2, 3, 4) << endl;
+        if (IsKeyPressed(KEY_T)) {
+            // cout << sizeof(Board) << endl;
+            // cout << sizeof(t._moves) << endl;
+            // cout << sizeof(t._array) << endl;
+            // cout << sizeof(t._test_int_3) << endl;
+            // cout << sizeof(t._player) << endl;
+            // cout << sizeof(_monte_buffer) << endl;
+
+            Network _test_network;
+            _test_network.generate_random_weights();
+
+            vector<string> positions_vector {"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"};
+            vector<int> evaluations_vector {60};
+
+            _test_network.input_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+            _test_network.calculate_output();
+            // On utilisera des évaluations allant de -100000 à +100000, en milipions.
+            // Pour le réseau, éval max : 64 * 100 * 100 = 640000
+            cout << _test_network._layers[2][0] << endl;
+            cout << _test_network.global_distance(positions_vector, evaluations_vector) << endl;
+
         }
 
         // Monte-Carlo, sans...
@@ -511,7 +614,10 @@ int main() {
         // Activations rapides de l'IA
 
         // Fait jouer l'IA sur un coup
-        (IsKeyDown(KEY_SPACE)) && t.grogrosfish2(search_depth, eval_white, true);
+        if (IsKeyDown(KEY_SPACE)) {
+            t.grogrosfish2(search_depth, eval_white, true);
+            // cout << _global_moves_size << endl;
+        }
 
         // Joueur des pièces blanches : IA/humain
         if (IsKeyPressed(KEY_DOWN)) {
