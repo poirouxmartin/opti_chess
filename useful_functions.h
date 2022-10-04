@@ -48,3 +48,9 @@ int min_index(int[], int);
 
 // Fonction qui renvoie la RAM disponible
 unsigned long long getTotalSystemMemory();
+
+// Fonction qui calcule une distance entre deux points
+float distance(int, int, int, int);
+
+// Fonction qui calcule la proximité entre deux points (pour l'évaluation de la sécurité du roi)
+int proximity(int, int, int, int, int k = 2);

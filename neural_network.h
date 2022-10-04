@@ -4,7 +4,7 @@ using namespace std;
 
 
 // Fonctions d'activation pour les weights? (pour les mettre entre 0 et 1??)
-// Passage en flottans à la place?
+// Passage en flottants à la place?
 
 
 class Network {
