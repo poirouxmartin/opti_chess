@@ -23,6 +23,10 @@ https://towardsdatascience.com/building-a-chess-ai-that-learns-from-experience-5
 https://arxiv.org/pdf/1711.08337.pdf
 https://stackoverflow.com/questions/40137240/training-of-chess-evaluation-function
 https://arxiv.org/pdf/2007.02130.pdf
+https://www.chessprogramming.org/Move_Generation
+https://www.chessprogramming.org/Checkmate
+https://www.chessprogramming.org/Bishop_versus_Knight#WinningPercantages
+https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 
 
 
@@ -105,6 +109,8 @@ https://arxiv.org/pdf/2007.02130.pdf
     - Tours sur une même colonne qu'une dame ou un roi
     - Pions bloqués / Développement de pièces impossible
     -> Fous/Paire de fou meilleurs en position ouverte (cavalier : inverse)
+    - Tours liées
+    - Garder matériel en position perdante?
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Augmenter la profondeur pour les finales (GrogrosFish)
@@ -129,20 +135,25 @@ https://arxiv.org/pdf/2007.02130.pdf
 -> Affichage des flèches buggées pour les mats?
 -> Tout supprimer les calculs quand on importe un FEN
 -> Bug de couleurs parfois : jaune, jaune, jaune... ROUGE, jaune? pareil avec cyan et bleu
--> Heuristiques bof bof : r1b1kb1r/2p2ppp/p7/2pp4/3N4/8/PPP2PPP/RNB1K2R w KQkq - 0 11 : une pièce de moins en engame, et croit que c'est ok
--> Pareil : r3r1k1/3q1p2/pb1p2p1/1p1p4/1P3n2/5N1P/1BQN1PP1/R3R1K1 w - - 0 31, 4r1k1/3q1p2/pb1p2p1/1p1p4/1P3n2/5N1P/1BQN1PP1/4R1K1 b - - 1 32, 6k1/2q2p2/pb1p2p1/1p1p4/1P3n2/5N1P/1BQN1PP1/5K2 w - - 5 36, r4rk1/2pqbppp/p2p4/1p3P2/Pn6/4B3/1PPQBPPP/R4RK1 b - - 2 15
+-> Heuristiques bof bof : r1b1kb1r/2p2ppp/p7/2pp4/3N4/8/PPP2PPP/RNB1K2R w KQkq - 0 11 : une pièce de moins en endgame, et croit que c'est ok
+-> Pareil : r3r1k1/3q1p2/pb1p2p1/1p1p4/1P3n2/5N1P/1BQN1PP1/R3R1K1 w - - 0 31, 4r1k1/3q1p2/pb1p2p1/1p1p4/1P3n2/5N1P/1BQN1PP1/4R1K1 b - - 1 32, 6k1/2q2p2/pb1p2p1/1p1p4/1P3n2/5N1P/1BQN1PP1/5K2 w - - 5 36, r4rk1/2pqbppp/p2p4/1p3P2/Pn6/4B3/1PPQBPPP/R4RK1 b - - 2 15, rnb1kb1r/ppp2ppp/5n2/q7/2P5/1P3B2/PB1P1PPP/RN1QK2R b KQkq - 0 8, 2r2rk1/1p2b3/p3pqp1/P3p2p/NP2p3/1N4P1/1P3P1P/2RQ1RK1 b - - 0 20, 
 -> Bitboard
 -> Euh.. pourquoi Grogros a ralenti sans raisons? -> Redémarrer PC...
 -> Moves : plutôt que _moves[1000] -> *_moves + new _moves[_got_moves]. (avec les moves à 4 digits?). add_move utilise un array local (global?) de grande taille (stack) plutôt que les mettre direct dans _moves
 -> TESTER : vecteur de plateaux (plutôt que un new???)
 -> METTRE DES VECTEURS PARTOUUUUUT ! -> Buffer est-il inutile??? à tester!!!!
--> Utiliser des int8/uint8/int8_t, uint16. créer des int3? struc "int : 3"
+-> Utiliser des int8/uint8/int8_t, uint16
 -> Compression des entier : 8 * a + b? sinon shift bit avec << (plus rapide)
 -> Faire une nouvelle classe fille, pour optimiser et retirer les attributs inutiles, en fonction des algorithmes utilisés? (_moves_order est inutile si on utilise GrogrosZero)
 -> Faut-il du coup utiliser des uint8_t dans les arguments de fonction? ou int est ok?
 -> Dans le backpropagation de GrogrosZero... pour l'évaluation, prendre l'eval du meilleur fils seulement? ou faire une moyenne pondérée de tous les fils, avec leur policy/nodes?
--> Quand on fait reset_all(), la mémoire ne descende pas, malgré la suppression de tous 'new array'
 -> Incrémentation de l'évaluation quand on joue les coups (make_move(keep))
+-> Utiliser la librairie boost
+-> Faire une liste séparée pour les legal et les pseudo-legal moves
+-> Améliorer king safety
+-> Génération des coups de façon ordonnée? (captures en premier?)
+-> Pourquoi il reste des coups illégaux dans GrogrosZero?? voir e4 e5 Qh5 Nc6 Bc4 : GrogrosZero -> Nf6, Qxh7 --> legal moves??? (in_check() bugge...)
+-> GrogrosZero bugge quand on joue alors que tous les coups ne sont pas calculés... à check
 
 
 
@@ -192,6 +203,9 @@ https://arxiv.org/pdf/2007.02130.pdf
 -> Ne plus afficher "INFO:" de raylib dans la console
 -> Comme Nibbler, faire un slider à droite, qui contient l'info de tous les coups possibles : variations, noeuds, éval, position finale...
 -> Resize la taille de la fenêtre
+-> Mettre une limite à l'utilisation des noeuds de GrogrosZero
+-> Musique de fond? (désactivable)
+-> Affichage de l'évaluation complète (avec toutes se composantes)
 
 
 ----- Fonctionnalités supplémentaires -----
@@ -465,7 +479,7 @@ int main() {
 
         if (grogros_play && t.game_over() == 0) {
             t.grogros_zero(l_agents[0], monte_evaluator, 10000, false, true, _beta, _k_add);
-                if (t.total_nodes() > 900000)
+                if (t.total_nodes() > 2000000)
                     t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true);
         }
 
@@ -484,18 +498,27 @@ int main() {
             // cout << sizeof(t._player) << endl;
             // cout << sizeof(_monte_buffer) << endl;
 
-            Network _test_network;
+            /*Network _test_network;
             _test_network.generate_random_weights();
 
-            vector<string> positions_vector {"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"};
-            vector<int> evaluations_vector {60};
+            vector<string> positions_vector {"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB1R w KQkq - 0 1"};
+            vector<int> evaluations_vector {60, 18000};
 
             _test_network.input_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
             _test_network.calculate_output();
             // On utilisera des évaluations allant de -100000 à +100000, en milipions.
             // Pour le réseau, éval max : 64 * 100 * 100 = 640000
             cout << _test_network._layers[2][0] << endl;
-            cout << _test_network.global_distance(positions_vector, evaluations_vector) << endl;
+            cout << _test_network.global_distance(positions_vector, evaluations_vector) << endl;*/
+
+            // t.evaluate(monte_evaluator);
+            // cout << t._king_safety << endl;
+
+            cout << t._evaluation << endl;
+            t.evaluate(monte_evaluator, true);
+            cout << t._evaluation << endl;
+
+            // r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 3 3
 
         }
 
@@ -616,6 +639,7 @@ int main() {
         // Fait jouer l'IA sur un coup
         if (IsKeyDown(KEY_SPACE)) {
             t.grogrosfish2(search_depth, eval_white, true);
+            // t.grogrosfish3(search_depth, eval_white);
             // cout << _global_moves_size << endl;
         }
 

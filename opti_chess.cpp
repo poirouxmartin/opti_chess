@@ -836,6 +836,7 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board) {
 
 
     _activity = false;
+    _safety = false;
 
     _new_board = true;
     
@@ -910,34 +911,22 @@ float Board::game_advancement() {
 void Board::evaluate(Evaluator eval, bool checkmates) {
 
     if (checkmates) {
-        get_moves(false, true);
-        if (_got_moves == 0) {
-            if (in_check()) {
-                _mate = true;
-                _evaluation = - _color * (1000000 - 1000 * _moves_count);
-            }
-            else
-                _evaluation = 0;
+
+        int _is_mate = is_mate();
+
+        if (_is_mate == 1) {
+            _mate = true;
+            _evaluation = - _color * (1000000 - 1000 * _moves_count);
             return;
         }
+        if (_is_mate == 0) {
+            _evaluation = 0;
+            return;
+        }
+        
     }
     
-
     _evaluation = 0;
-
-    // int g = game_over();
-    // if (g == -1) {
-    //     _evaluation = -10e7;
-    //     return;
-    // }
-    // if (g == 1) {
-    //     _evaluation = 10e7;
-    //     return;
-    // }
-    // if (g == 2) {
-    //     _evaluation = 0;
-    //     return;
-    // }
 
     // à tester: changer les boucles par des for (i : array) pour optimiser
     int p;
@@ -980,16 +969,24 @@ void Board::evaluate(Evaluator eval, bool checkmates) {
     if (eval._castling_rights != 0)
         _evaluation += eval._castling_rights * (_k_castle_w + _q_castle_w - _k_castle_b - _q_castle_b) * (1 - adv);
 
+    // Ajout random
     if (eval._random_add != 0)
         _evaluation += GetRandomValue(-50, 50) * eval._random_add / 100;
 
+    // Activité des pièces
     if (eval._piece_activity != 0) {
         get_piece_activity();
         _evaluation += _piece_activity * eval._piece_activity;
     }
 
+    // Trait du joueur
     _evaluation += eval._player_trait * _color;
     
+    // Sécurité du roi
+    if (eval._king_safety != 0) {
+        get_king_safety();
+        _evaluation += _king_safety * eval._king_safety * adv;
+    }
         
 
     // Pour éviter les répétitions (ne fonctionne pas)
@@ -1503,6 +1500,7 @@ void Board::sort_moves(Evaluator eval) {
 
     }
 
+    delete[] values;
     _sorted_moves = true;
     
 }
@@ -1633,6 +1631,7 @@ void Board::from_fen(string fen) {
     _new_board = true;
 
     _activity = false;
+    _safety = false;
 
 }
 
@@ -1971,7 +1970,6 @@ void Board::draw() {
         game_end_sound = LoadSound("../resources/game_end.mp3");
         // UnloadSound(fxWav);
 
-
         PlaySound(game_begin_sound);
 
 
@@ -2138,7 +2136,7 @@ void Board::draw() {
 
 
     // Texte
-    DrawText("Grogrosfish engine", board_padding_x, 10, 32, text_color);
+    DrawText("GrogrosZero", board_padding_x, 10, 32, text_color);
 
     // Joueurs de la partie
     DrawText(_player_2, board_padding_x, board_padding_y - 32 + (board_size + 40) * !board_orientation, 24, text_color);
@@ -2394,7 +2392,7 @@ void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, bool use_agent, bool 
     static int max_depth;
     static int n_positions = 0;
 
-    if (depth == 0 & _new_board) {
+    if (_new_board && depth == 0) {
         max_depth = 0;    
     }
 
@@ -2667,7 +2665,7 @@ int* tournament(Agent *agents, const int n_agents) {
     }
 
     // Résultats du tournoi
-    int *scores;
+    int *scores = new int[n_agents];
 
     // cout << "1 : " << agents[0]._score << endl;
     // cout << "2 : " << agents[1]._score << endl;
@@ -2676,7 +2674,7 @@ int* tournament(Agent *agents, const int n_agents) {
     for (int i = 0; i < n_agents; i++) {
         agents[i]._score = victory * agents[i]._victories + draw * agents[i]._draws;
         cout << "Agent " << i << ", Generation : " << agents[i]._generation << ", Score : " << agents[i]._score << "/" << victory * 2 * (n_agents - 1) << ", Ratio (V/D/L): " << agents[i]._victories << "/" << agents[i]._draws << "/" << agents[i]._losses << ", Elo : " << agents[i]._elo << endl;
-        //scores[i] = agents[i]._score;
+        scores[i] = agents[i]._score;
         //cout << "toto";
     }
 
@@ -2843,6 +2841,7 @@ Color move_color(int nodes, int total_nodes) {
     unsigned char blue = 255 * ((x > 0.4 && x < 0.6) * (x - 0.4) / 0.2 + (x >= 0.6));
 
     unsigned char alpha = 100 + 155 * nodes / total_nodes;
+    // cout << x << ", " << (int)red << ", " << (int)green << ", " << (int)blue << endl;
 
     return {red, green, blue, alpha};
 }
@@ -3019,7 +3018,7 @@ void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool c
 
     _is_active = true;
 
-    if (depth == 0 & _new_board) {
+    if (_new_board && depth == 0) {
         max_depth = 0;    
     }
 
@@ -3195,4 +3194,135 @@ int Board::total_nodes() {
         nodes += _nodes_children[i];
 
     return nodes;
+}
+
+
+
+
+// Fonction qui calcule la sécurité des rois
+void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack, int pawn_defense, int edge_defense) {
+
+    if (_safety)
+        return;
+
+    int w_king_i;
+    int w_king_j;
+    int b_king_i;
+    int b_king_j;
+
+    bool w_king = false;
+    bool b_king = false;
+
+    int p;
+
+    for (int i = 0; i < 8; i++)
+        for (int j = 0; j < 8; j++) {
+            p = _array[i][j];
+
+            if (!w_king && p == 6) {
+                w_king_i = i;
+                w_king_j = j;
+                w_king = true;
+            }
+
+            if (!b_king && p == 12) {
+                b_king_i = i;
+                b_king_j = j;
+                b_king = true;
+            }
+
+            if (w_king && b_king)
+                goto kings;
+        }
+
+    if (!b_king || !w_king)
+        cout << "a king is missing in the position" << endl;
+
+    kings:
+
+    _king_safety = 0;
+
+    for (int i = 0; i < 8; i++)
+        for (int j = 0; j < 8; j++) {
+            p = _array[i][j];
+            if (p > 0) {
+                if (p < 6) {
+                    if (p == 1) {
+                        _king_safety += pawn_defense * proximity(i, j, w_king_i, w_king_j);
+                        _king_safety += pawn_attack * proximity(i, j, b_king_i, b_king_j);
+                    }   
+                    else {
+                        _king_safety += piece_defense * proximity(i, j, w_king_i, w_king_j);
+                        _king_safety += piece_attack * proximity(i, j, b_king_i, b_king_j);
+                    }
+                    
+                } 
+                else if (p > 6 && p < 12) {
+                    if (p == 7) {
+                        _king_safety -= pawn_attack * proximity(i, j, w_king_i, w_king_j);
+                        _king_safety -= pawn_defense * proximity(i, j, b_king_i, b_king_j);
+                    }   
+                    else {
+                        _king_safety -= piece_attack * proximity(i, j, w_king_i, w_king_j);
+                        _king_safety -= piece_defense * proximity(i, j, b_king_i, b_king_j);
+                    }
+                }
+            }
+        }
+
+    _king_safety += edge_defense * ((w_king_i == 0 || w_king_i == 7) + (w_king_j == 0 || w_king_j == 7) - (b_king_i == 0 || b_king_i == 7) - (b_king_j == 0 || b_king_j == 7));
+
+    _safety = true;
+
+}
+
+
+
+// Fonction qui renvoie s'il y a échec et mat (ou pat) (-1, 1 ou 0)
+int Board::is_mate() {
+
+    // Vérifie s'il reste les rois sur l'échiquier (ne devrait pas être utile en théorie, mais il reste des bugs obscurs)
+    bool king_w = false;
+    bool king_b = false;
+
+    for (int i = 0; i < 8; i++)
+        for (int j = 0; j < 8; j++) {
+            if (!king_w && _array[i][j] == 6)
+                king_w = true;
+            if (!king_b && _array[i][j] == 12)
+                king_b = true;
+            if (king_w && king_b)
+                goto safe;
+        }
+
+    if ((!king_w && _player) || (!king_b && !_player))
+        return 1;
+
+    safe:
+
+    // Pour accélérer en ne re calculant pas forcément les coups (marche avec coups légaux OU illégaux)
+    if (_got_moves == -1)
+        get_moves();
+
+    Board b;
+
+    for (int i = 0; i < _got_moves; i++) {
+        b.copy_data(*this);
+        b.make_index_move(i);
+        b._player = _player;
+        b._color = _color;
+        if (!b.in_check()) {
+            _got_moves = -1;
+            return -1; 
+        }
+            
+    }
+
+    if (in_check()) {
+        _got_moves = -1;
+        return 1;  
+    }
+              
+    _got_moves = -1;
+    return 0;
 }

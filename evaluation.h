@@ -13,6 +13,7 @@ class Evaluator {
     float _bishop_pair = 0.6;
     float _castling_rights = 0.5;
     float _player_trait = 0.5;
+    float _king_safety = 0.005;
 
 
     // Valeur des pièces

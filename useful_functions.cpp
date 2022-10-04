@@ -120,7 +120,7 @@ int pick_random_good_move(int* l, int n, int color, bool print, double beta, int
     else
         min_val = max_value(l, n);
 
-    int *l2 = new int[n];
+    int l2[250];
 
     for (int i = 0; i < n; i++) {
         // l2[i] = move_power(color * l[i], range, color * min_val);
@@ -250,4 +250,18 @@ unsigned long long getTotalSystemMemory() {
     // GlobalMemoryStatusEx(&status);
     // return status.ullTotalPhys;
     return 0;
+}
+
+
+
+// Fonction qui calcule une distance entre deux points
+float distance(int i, int j, int x, int y) {
+    // return sqrtf((i - x) * (i - x) + (j - y) * (j - y));
+    return (i - x) * (i - x) + (j - y) * (j - y);
+}
+
+
+// Fonction qui calcule la proximité entre deux points (pour l'évaluation de la sécurité du roi)
+int proximity(int i, int j, int x, int y, int k) {
+    return k / distance(i, j, x, y);
 }

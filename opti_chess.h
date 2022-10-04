@@ -39,13 +39,6 @@ extern uint_fast8_t _global_moves[1000];
 extern int _global_moves_size;
 
 
-struct int3
-{
-    unsigned int v1 : 1;
-    // unsigned int v2 : 4;
-};
-
-
 
 class Board {
     
@@ -67,10 +60,9 @@ class Board {
         // (Augmenter si besoin)
         // On suppose ici que n_moves < 1000 / 4
         uint_fast8_t _moves[1000];
-        int3 _test_int_3;
 
         // Liste des coups, sous forme de vecteur
-        vector<uint_fast8_t> _moves_vector;
+        vector<uint_fast8_t> _moves_vector; // A changer par dynamic array? Peut-être pas car il faudrait delete
         
 
         // Les coups sont-ils actualisés? Si non : -1, sinon, _got_moves représente le nombre de coups jouables
@@ -173,6 +165,11 @@ class Board {
 
         // Pour l'affichage
         int _static_evaluation = 0;
+
+
+        // Sécurité du roi
+        int _king_safety = 0;
+        bool _safety = false;
         
 
         // Constructeur par défaut
@@ -352,6 +349,12 @@ class Board {
         // Fonction qui renvoie le nombre de noeuds calculés par GrogrosZero
         int total_nodes();
 
+        // Fonction qui calcule la sécurité des rois
+        void get_king_safety(int piece_attack = 30, int piece_defense = 10, int pawn_attack = 5, int pawn_defense = 50, int edge_defense = 100);
+
+        // Fonction qui renvoie s'il y a échec et mat (ou pat) (-1, 1 ou 0)
+        int is_mate();
+
 };
 
 
@@ -400,7 +403,7 @@ class Buffer {
         Buffer(unsigned long int);
 
         // Initialize l'allocation de n plateaux
-        void init(int length = 1000000);
+        void init(int length = 2500000);
 
         // Fonction qui donne l'index du premier plateau de libre dans le buffer
         int get_first_free_index();
