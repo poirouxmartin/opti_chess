@@ -708,6 +708,8 @@ void Board::display_moves(bool pseudo) {
 // Fonction qui joue un coup
 void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board) {
     int p = _array[i][j];
+    int p_last = _array[k][l];
+
     if (pgn) {
         _pgn += " ";
         if (_player) {
@@ -771,6 +773,20 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board) {
             _k_castle_b = false;
     }
 
+    // Si une tour se fait manger
+    if (p_last == 4) {
+        if (l == 0)
+            _q_castle_w = false;
+        if (l == 7)
+            _k_castle_w = false;
+    }
+    if (p_last == 10) {
+        if (l == 0)
+            _q_castle_b = false;
+        if (l == 7)
+            _k_castle_b = false;
+    }
+
 
     // Roque
     // Blanc
@@ -826,14 +842,18 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board) {
     // Actualise les coups possibles
     //get_moves();
 
-    _sorted_moves = -1;
-
 
     _last_move[0] = i;
     _last_move[1] = j;
     _last_move[2] = k;
     _last_move[3] = l;
+    _last_move[4] = p;
+    // if (_last_move[5] == -1) {
+    //     _last_move[5] =
+    // }
+    _last_move[9] = p_last;
 
+    _sorted_moves = -1;
 
     _activity = false;
     _safety = false;
@@ -842,7 +862,8 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board) {
     
 
     if (new_board) {
-        delete_all();
+        if (_is_active)
+            reset_all();
         _tested_moves = 0;
         _current_move = 0;
         _nodes = 0;
@@ -1049,9 +1070,6 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
 
     (_got_moves == -1 && get_moves());
 
-    // b.copy_data(*this);
-    // int i1, j1, p1, i2, j2, p2, h;
-
     // Sort moves à faire
     if (depth > 1)
         sort_moves(eval);
@@ -1084,19 +1102,7 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
         else
             i = j;
 
-
-        // Copie du plateau
-        // Opti?? plutôt copier une fois au début, et undo les moves?
-        // i1 = _moves[4 * i];
-        // j1 = _moves[4 * i + 1];
-        // p1 = _array[i1][j1];
-        // i2 = _moves[4 * i + 2];
-        // j2 = _moves[4 * i + 3];
-        // p2 = _array[i2][j2];
-        // h = _half_moves_count;
-
         b.copy_data(*this);
-
         b.make_index_move(i);
         
         tmp_value = -b.negamax(depth - 1, -beta, -alpha, -color, false, eval, a, use_agent);
@@ -1111,14 +1117,12 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
         value = max(value, tmp_value);
         alpha = max(alpha, value);
         // undo move
-        // b.undo(i1, j1, p1, i2, j2, p2, h);
+        // b.undo();
 
         if (alpha >= beta)
             break;
 
-    }
-
-    
+    }    
 
     if (max_depth) {
         if (display) {
@@ -1145,201 +1149,8 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
 
 
 
-// Mieux que negamax? tend à supprimer plus de coups (ne marche pas du tout)
-float Board::negascout(int depth, float alpha, float beta, int color, bool max_depth, Evaluator eval) {
-    // Nombre de noeuds
-    if (max_depth) {
-        visited_nodes = 1;
-        begin_time = clock();
-    }
-    else {
-        visited_nodes++;
-    }
-
-    if (depth == 0) {
-        evaluate(eval);
-        return color * _evaluation;
-    }
-
-    // à mettre avant depth == 0?
-    int g = game_over();
-    if (g == 2)
-        return 0;
-    if (g == -1 || g == 1)
-        return -1000 * (depth + 1);
-        
-    // Définition des variables
-    int best_move = 0; float tmp_value; Board b; float _a; float _b; int j;
-    
-    // Génération des coups
-    get_moves();
-
-    // Sort moves à faire
-    sort_moves(eval);
-
-    _a = alpha;
-    _b = beta;
-
-    for (int i = 0; i < _got_moves; i++) {
-        // Pour le triage des coups
-        j = _move_order[i];
-        
-
-        b.copy_data(*this);
-        b.make_index_move(j);
-        tmp_value = -b.negascout(depth - 1, -_b, -_a, -color, false, eval);
-
-        if (max_depth) {
-            cout << "move : " << move_label(_moves[4 * j], _moves[4 * j + 1], _moves[4 * j + 2], _moves[4 * j + 3]) << ", value : " << tmp_value << endl;
-            // Pas sûr pour le choix du meilleur coup
-            if (tmp_value > _a)
-                best_move = j;
-        }
-
-        if ((tmp_value > _a) && (tmp_value < beta) && (i > 0) && (depth > 1)) 
-            _a = -b.negascout(depth - 1, -beta, -tmp_value, -color, false, eval);
-            
-        _a = max(_a, tmp_value);
-
-        if (_a >= beta) {
-            if (max_depth)
-                make_index_move(best_move);
-            return _a;
-        }
-
-        _b = _a + 1;
-
-    }
-
-    if (max_depth) {
-        cout << "visited nodes : " << (float)(visited_nodes / 1000) << "k" << endl;
-        double spent_time = (double)(clock() - begin_time);
-        cout << "time spend : " << spent_time << "ms"  << endl;
-        cout << "speed : " << visited_nodes / spent_time << "kN/s" << endl;
-        make_index_move(best_move);
-    }
-    
-    return _a;
-}
-
-
-
-
-
-
-// Algorithme PVS
-float Board::pvs(int depth, float alpha, float beta, int color, bool max_depth, Evaluator eval) {
-    // Nombre de noeuds
-    if (max_depth) {
-        visited_nodes = 1;
-        begin_time = clock();
-    }
-    else {
-        visited_nodes++;
-    }
-
-    if (depth == 0) {
-        evaluate(eval);
-        return color * _evaluation;
-    }
-
-    // à mettre avant depth == 0?
-    int g = game_over();
-    if (g == 2)
-        return 0;
-    if (g == -1 || g == 1)
-        return -1000 * (depth + 1);
-        
-    // Définition des variables
-    int best_move = 0; float tmp_value; Board b; int j;
-    
-    // Génération des coups
-    get_moves();
-
-    // Sort moves à faire
-    sort_moves(eval);
-
-
-    for (int i = 0; i < _got_moves; i++) {
-        // Pour le triage des coups
-        j = _move_order[i];
-        
-
-        b.copy_data(*this);
-        b.make_index_move(j);
-
-
-        if (i > 0) {
-            tmp_value = -b.pvs(depth - 1, -alpha - 1, -alpha, -color, false, eval);
-
-            if ((alpha < tmp_value) && (tmp_value < beta)) 
-                tmp_value = -b.pvs(depth - 1, -beta, -tmp_value, -color, false, eval);
-        }
-
-        else {
-            tmp_value = -b.pvs(depth - 1, -beta, -alpha, -color, false, eval);
-        }
-
-
-        if (max_depth) {
-            cout << "move : " << move_label(_moves[4 * j], _moves[4 * j + 1], _moves[4 * j + 2], _moves[4 * j + 3]) << ", value : " << tmp_value << endl;
-            if (tmp_value > alpha)
-                best_move = j;
-        }
-            
-        alpha = max(alpha, tmp_value);
-
-        if (alpha >= beta)
-            break;
-
-    }
-
-    if (max_depth) {
-        cout << "visited nodes : " << (float)(visited_nodes / 1000) << "k" << endl;
-        double spent_time = (double)(clock() - begin_time);
-        cout << "time spend : " << spent_time << "ms"  << endl;
-        cout << "speed : " << visited_nodes / spent_time << "kN/s" << endl;
-        make_index_move(best_move);
-    }
-    
-    return alpha;
-}
-
-
-// Fonction qui utilise minimax pour déterminer quel est le "meilleur" coup et le joue
-// void Board::grogrosfish(int depth, Evaluator eval) {
-//     int best_move = 0;
-//     float best_value = -1e9;
-//     float value;
-//     Board b;
-
-//     if (_got_moves == -1)
-//         get_moves();
-
-//     // display_moves();
-//     // cout << "n moves : " << _got_moves << endl;
-
-//     for (int i = 0; i < _got_moves; i++) {
-//         b.copy_data(*this);
-//         b.make_index_move(i);
-//         value = -b.negamax(depth - 1, -1e9, 1e9, -_color, false, eval);
-//         cout << "move : " << move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]) << ", value : " << value << endl;
-//         if (value > best_value) {
-//             best_move = i;
-//             best_value = value;
-//         }
-//     }
-
-//     cout << "best move : " << move_label(_moves[4 * best_move], _moves[4 * best_move + 1], _moves[4 * best_move + 2], _moves[4 * best_move + 3]) << ", value : " << best_value << endl;
-
-//     make_index_move(best_move);
-    
-// }
-
-
-
 // Version un peu mieux optimisée de Grogrosfish
-bool Board::grogrosfish2(int depth, Evaluator eval, bool display = false) {
+bool Board::grogrosfish(int depth, Evaluator eval, bool display = false) {
     Agent a;
     negamax(depth, -1e9, 1e9, _color, true, eval, a, false, true, display);
     if (display) {
@@ -1352,8 +1163,8 @@ bool Board::grogrosfish2(int depth, Evaluator eval, bool display = false) {
     return true;
 }
 
-// Version un peu mieux optimisée de Grogrosfish
-bool Board::grogrosfish2(int depth, Agent a, bool display = false) {
+// Version un peu mieux optimisée de Grogrosfish (utilisant un agent)
+bool Board::grogrosfish(int depth, Agent a, bool display = false) {
     Evaluator eval;
     negamax(depth, -1e9, 1e9, _color, true, eval, a, true, true, display);
     if (display) {
@@ -1367,81 +1178,12 @@ bool Board::grogrosfish2(int depth, Agent a, bool display = false) {
 }
 
 
-
-// Version un peu mieux optimisée de Grogrosfish
-void Board::grogrosfish3(int depth, Evaluator eval) {
-    negascout(depth, -1e9, 1e9, _color, true, eval);
-    to_fen();
-    cout << _fen << endl;
-    cout << _pgn << endl;
-}
-
-// Test de Grogrofish
-void Board::grogrosfish4(int depth, Evaluator eval) {
-    pvs(depth, -1e9, 1e9, _color, true, eval);
-    to_fen();
-    cout << _fen << endl;
-    cout << _pgn << endl;
-}
-
-
-// Test de Grogrofish avec combinaison d'agents
-// void Board::grogrosfish_multiagents(int depth, int n_agents, Evaluator eval_begin, Evaluator eval_end) {
-//     if (_got_moves == -1)
-//         get_moves();
-
-//     float eval_parameters[4];
-//     int votes[250];
-
-//     // Met la liste des votes à 0 pour tous les coups
-//     for (int i = 0; i < _got_moves; i++) {
-//         votes[i] = 0;
-//     }
-//     int move;
-
-//     // Pour chaque agent
-//     for (int i = 0; i < n_agents; i++) {
-//         // Calcul des paramètres de l'agent
-//         for (int j = 0; j < 4; j++) {
-//             eval_parameters[j] = (float)(n_agents - i - 1) / (n_agents - 1) * begin_eval_parameters[j] + (float)i / (n_agents - 1) * end_eval_parameters[j];
-//         }
-
-//         // Ajoute à la liste de votes son coup
-//         move = negamax(depth, -1e9, 1e9, _color, true, eval_parameters);
-//         votes[move] += 1;
-
-//     }
-
-//     // Choix du coup en fonction du nombre de votes
-//     int max_vote = 0;
-//     int best_move = 0;
-
-//     cout << "Votes : ";
-
-//     for (int i = 0; i < _got_moves; i++) {
-//         cout << votes[i] << "   ";
-//         if (votes[i] > max_vote) {
-//             max_vote = votes[i];
-//             best_move = i;
-//         }
-//     }
-
-//     cout << "->    Voted move : " << move_label_from_index(best_move) << " (" << 100 * votes[best_move] / n_agents << "%)" << endl;
-
-//     play_index_move_sound(best_move);
-//     make_index_move(best_move);
-//     to_fen();
-//     cout << _fen << endl;
-//     cout << _pgn << endl;
-// }
-
-
-
 // Fonction qui revient à la position précédente (ne marchera pas avec les roques pour le moment)
-void Board::undo(int i1, int j1, int p1, int i2, int j2, int p2, int half_moves) {
+bool Board::undo(int i1, int j1, int p1, int i2, int j2, int p2, int half_moves) {
     _array[i1][j1] = p1;
     _array[i2][j2] = p2;
-    // // Implémentation des demi-coups
+
+    // Incrémentation des demi-coups
     _half_moves_count = half_moves;
 
     _player = !_player;
@@ -1451,8 +1193,85 @@ void Board::undo(int i1, int j1, int p1, int i2, int j2, int p2, int half_moves)
     // Implémentation du FEN possible?
     _fen = "";
 
-    // Implémentation des coups
+    // Incrémentation des coups
     !_player && (_moves_count -= 1);
+
+    return true;
+}
+
+
+// Une surcharge
+bool Board::undo() {
+    // Il faut rétablir les droits de roque, les en passant........
+
+    print_array(_last_move, 10);
+    int i1 = _last_move[0];
+    int j1 = _last_move[1];
+    int k1 = _last_move[2];
+    int l1 = _last_move[3];
+    int p1 = _last_move[4];
+
+    int i2 = _last_move[5];
+    int j2 = _last_move[6];
+    int k2 = _last_move[7];
+    int l2 = _last_move[8];
+    int p2 = _last_move[9];
+
+    if (i1 == -1 || j1 == -1 || k1 == -1 || l1 == -1 || p1 == -1)
+        return true;
+
+    // Replace les piècse leur place initiale
+    _array[k1][l1] = 0;
+    _array[i1][j1] = p1;
+    
+
+    if (i2 != -1 && j2 != -1 && k2 != -1 && l2 != -1 && p2 != -1) {
+        _array[k2][l2] = 0;
+        _array[i2][j2] = p2;
+    }
+
+    _player = !_player;
+    _got_moves = -1;
+    _color = - _color;
+    _fen = "";
+
+    // Incrémentation des coups
+    !_player && (_moves_count -= 1);
+
+    _last_move[0] = -1;
+    _last_move[1] = -1;
+    _last_move[2] = -1;
+    _last_move[3] = -1;
+    _last_move[4] = -1;
+    _last_move[5] = -1;
+    _last_move[6] = -1;
+    _last_move[7] = -1;
+    _last_move[8] = -1;
+    _last_move[9] = -1;
+
+    _sorted_moves = -1;
+
+    _activity = false;
+    _safety = false;
+
+    _new_board = true;
+    
+    bool new_board = true;
+    if (new_board) {
+        if (_is_active)
+            reset_all();
+        _tested_moves = 0;
+        _current_move = 0;
+        _nodes = 0;
+        _evaluated = false;
+    }
+
+    _mate = false;
+
+
+    // Reste à changer le PGN, gérer les roques, en passant, demi-coups...
+
+    return true;
 }
 
 
@@ -1633,6 +1452,11 @@ void Board::from_fen(string fen) {
     _activity = false;
     _safety = false;
 
+    _last_move[0] = -1;
+    _last_move[1] = -1;
+    _last_move[2] = -1;
+    _last_move[3] = -1;
+
 }
 
 
@@ -1722,35 +1546,15 @@ int Board::game_over() {
     bool king_w = false;
     bool king_b = false;
 
-    // Position du roi s'il existe (pour les mats et pats)
-    pair<int, int> king_pos;
-    pair<int, int> opponent_king_pos;
-
     int p;
 
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             p = _array[i][j];
-            if (p == 6) {
+            if (p == 6)
                 king_w = true;
-                /*if (_player)
-                    king_pos = {i, j};
-                else
-                    opponent_king_pos = {i, j};
-                if (king_b) {
-                    i = 8; j = 8; 
-                }*/
-            }
-            if (p == 12) {
+            if (p == 12)
                 king_b = true;
-                /*if (!_player)
-                    king_pos = {i, j};
-                else
-                    opponent_king_pos = {i, j};
-                if (king_w) {
-                    i = 8; j = 8; 
-                }*/
-            }
         }
     }
 
@@ -1759,47 +1563,12 @@ int Board::game_over() {
     if (!king_b)
         return 1;
 
-    /*
-    _player = !_player;
-    bool att = attacked(opponent_king_pos.first, opponent_king_pos.second);
-    _player = !_player;
-    // if (att)
-    //     return -10 * _color; 
-
-    // Manque de matériel
-
-    // Pat? pas très utile... (et Mat...)
-    if (_got_moves == -1)
-        get_moves();
-
-    bool attacked_king = true;
-    Board b;
-    pair<int, int> new_king_pos;
-    for (int i = 0; i < _got_moves; i++) {
-        b.copy_data(*this);
-        b.make_index_move(i);
-        b._player = !b._player;
-        new_king_pos = b.get_king_pos();
-        if (!b.attacked(new_king_pos.first, new_king_pos.second)) {
-            attacked_king = false;
-            break;
-        }
-    }
-
-    if (attacked_king) {
-        // Echec et mat
-        if (attacked(king_pos.first, king_pos.second)) {
-            //return - _color;
-        }
-        // Pat
-        else {
-            return 2;
-        }
-    }
-    */
     
-
-    // Répétition de coups? chiant à faire...
+    // int m = is_mate();
+    // if (m == 1)
+    //     return 1;
+    // if (m == 0)
+    //     return 2;
 
 
     return 0;
@@ -1913,22 +1682,8 @@ void Board::draw_text_rect(string s, float pos_x, float pos_y, float width, floa
 }
 
 
-
-
-// Fonction qui dessine le plateau
-void Board::draw() {
-
-    // Chargement des textures, si pas déjà fait
-    if (!loaded_textures) {
-
-        // Plateau
-        // board_image = LoadImage("../resources/board.png");
-        float min_screen = min(screen_height, screen_width);
-        board_size = board_scale * min_screen;
-        // ImageResize(&board_image, board_size, board_size);
-        // board_texture = LoadTextureFromImage(board_image);
-        board_padding_y = (screen_height - board_size) / 2;
-        board_padding_x = board_padding_y;
+// Fonction qui charge les textures
+void load_resources() {
 
         // Pièces
         piece_images[0] = LoadImage("../resources/w_pawn.png");
@@ -1944,17 +1699,6 @@ void Board::draw() {
         piece_images[10] = LoadImage("../resources/b_queen.png");
         piece_images[11] = LoadImage("../resources/b_king.png");
 
-        tile_size = board_size / 8;
-        piece_size = tile_size * piece_scale;
-        arrow_thickness = tile_size * arrow_scale;
-
-        // Génération des textures
-        for (int i = 0; i < 12; i++) {
-            ImageResize(&piece_images[i], piece_size, piece_size);
-            piece_textures[i] = LoadTextureFromImage(piece_images[i]);
-        }
-
-
         // Chargement du son
         move_1_sound = LoadSound("../resources/move_1.mp3");
         move_2_sound = LoadSound("../resources/move_2.mp3");
@@ -1968,17 +1712,50 @@ void Board::draw() {
         stealmate_sound = LoadSound("../resources/stealmate.mp3");
         game_begin_sound = LoadSound("../resources/game_begin.mp3");
         game_end_sound = LoadSound("../resources/game_end.mp3");
-        // UnloadSound(fxWav);
-
-        PlaySound(game_begin_sound);
-
 
         // Icône
         icon = LoadImage("../resources/grogros_zero.png");
         SetWindowIcon(icon);
 
+        loaded_resources = true;
+}
 
-        loaded_textures = true;
+
+// Fonction qui met à la bonne taille les images et les textes de la GUI
+void resize_gui() {
+        float min_screen = min(screen_height, screen_width);
+        board_size = board_scale * min_screen;
+        board_padding_y = (screen_height - board_size) / 2;
+        board_padding_x = board_padding_y;
+
+        tile_size = board_size / 8;
+        piece_size = tile_size * piece_scale;
+        arrow_thickness = tile_size * arrow_scale;
+
+        // Génération des textures
+        for (int i = 0; i < 12; i++) {
+            ImageResize(&piece_images[i], piece_size, piece_size);
+            piece_textures[i] = LoadTextureFromImage(piece_images[i]);
+        }
+
+        text_size = board_size / 16;
+}
+
+
+// Fonction qui actualise les nouvelles dimensions de la fenêtre
+void get_window_size() {
+    screen_width = GetScreenWidth();
+    screen_height = GetScreenHeight();
+}
+
+// Fonction qui dessine le plateau
+void Board::draw() {
+
+    // Chargement des textures, si pas déjà fait
+    if (!loaded_resources) {
+        load_resources();
+        resize_gui();
+        PlaySound(game_begin_sound);
     }
 
 
@@ -2069,14 +1846,8 @@ void Board::draw() {
 
     // Dessins
 
-
     // Couleur de fond
     ClearBackground(background_color);
-
-
-    // Plateau
-    //DrawTexture(board_texture, board_padding_x, board_padding_y, WHITE);
-
 
     // Plateau
     for (int i = 0; i < 8; i++) {
@@ -2136,27 +1907,27 @@ void Board::draw() {
 
 
     // Texte
-    DrawText("GrogrosZero", board_padding_x, 10, 32, text_color);
+    DrawText("GrogrosZero", board_padding_x, text_size / 4, text_size, text_color);
 
     // Joueurs de la partie
-    DrawText(_player_2, board_padding_x, board_padding_y - 32 + (board_size + 40) * !board_orientation, 24, text_color);
-    DrawText(_player_1, board_padding_x, board_padding_y - 32 + (board_size + 40) * board_orientation, 24, text_color);
+    DrawText(_player_2, board_padding_x, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation, text_size / 2, text_color);
+    DrawText(_player_1, board_padding_x, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation, text_size / 2, text_color);
 
 
     // Temps des joueurs
-    DrawText(to_string(_time_player_2 / 1000).c_str(), board_padding_x + board_size - 72, board_padding_y - 32 + (board_size + 40) * !board_orientation, 24, text_color);
-    DrawText(to_string(_time_player_1 / 1000).c_str(), board_padding_x + board_size - 72, board_padding_y - 32 + (board_size + 40) * board_orientation, 24, text_color);
+    DrawText(to_string(_time_player_2 / 1000).c_str(), board_padding_x + board_size - text_size, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation, text_size / 2, text_color);
+    DrawText(to_string(_time_player_1 / 1000).c_str(), board_padding_x + board_size - text_size, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation, text_size / 2, text_color);
 
 
     // FEN
     if (_fen == "")
         to_fen();
     const char *fen = _fen.c_str();
-    DrawText(fen, board_padding_x, screen_height - 30, 20, text_color);
+    DrawText(fen, board_padding_x, screen_height - text_size, text_size / 2, text_color);
 
 
     // PGN
-    draw_text_rect(_pgn, board_padding_x + board_size + 20, board_padding_y, screen_width - (board_padding_x + board_size + 20) - 100, board_size / 2 - 10, 20);
+    draw_text_rect(_pgn, board_padding_x + board_size + 20, board_padding_y, screen_width - (board_padding_x + board_size + 20) - 100, board_size / 2 - 10, text_size / 2);
 
     // Analyse de Monte-Carlo
     string monte_carlo_text = "Monte-Carlo analysis\n\nresearch parameters :\nbeta : " + to_string(_beta) + "\nk_add : " + to_string(_k_add);
@@ -2172,9 +1943,9 @@ void Board::draw() {
         else
             eval = to_string(best_eval);
         
-        monte_carlo_text += "\n\nnodes : " + to_string(total_nodes()) + "\ndepth : " + to_string(max_monte_carlo_depth()) + "\neval : "  + eval + "\nmove : "  + move_label_from_index(best_move) + " (" + to_string(100 * _nodes_children[best_move] / total_nodes()) + "%)" + "\nstatic eval : "  + to_string(_static_evaluation);
+        monte_carlo_text += "\n\nnodes : " + int_to_round_string(total_nodes()) + "/" + int_to_round_string(_monte_buffer._length) + "\ndepth : " + to_string(max_monte_carlo_depth()) + "\neval : "  + eval + "\nmove : "  + move_label_from_index(best_move) + " (" + to_string(100 * _nodes_children[best_move] / total_nodes()) + "%)" + "\nstatic eval : "  + to_string(_static_evaluation);
     }
-    DrawText(monte_carlo_text.c_str(), board_padding_x + board_size + 20, board_padding_y + board_size / 2 + 10, 20, text_color);
+    DrawText(monte_carlo_text.c_str(), board_padding_x + board_size + text_size / 2, board_padding_y + board_size / 2 + text_size / 4, text_size / 2, text_color);
 
 }
 
@@ -2284,302 +2055,12 @@ void Board::evaluate(Agent a) {
 
 }
 
- // Renvoie le meilleur coup selon l'agent, en utilisant l'algorithme de Monte-Carlo avec n noeuds, d'une profondeur depth
-void Board::monte_carlo(Agent a, int n, int depth_calc, int depth, bool display = false) {
-
-    if (game_over() != 0)
-        return;
-
-    get_moves();
-
-    // if (_got_moves == 0) {
-    //     cout << "the game is over." << endl;
-    //     return;
-    // }
-
-    // au départ, envoie les noeuds équitablement dans chaque branche
-
-    int i = 0;
-    int j;
-    int d;
-    Board b;
-    int move;
-    int evaluations[250][2];
-    int eval;
-
-
-    // Met toutes les évaluations des coups à 0
-    for (j = 0; j < _got_moves; j++) {
-        evaluations[j][0] = 0;
-        evaluations[j][1] = 0;
-    }
-
-
-    Evaluator evaluator;
-
-    while (i < n || i < _got_moves) {
-
-        // Joue un coup sur le plateau d'origine
-        // A faire : mettre plus de noeuds sur les meilleurs coups
-        move = i%_got_moves;
-        b.copy_data(*this);
-        b.make_index_move(move);
-
-        // Avec la profondeur donnée, joue de façon aléatoire
-        for (d = 0; d < depth; d++) {
-            if (b._got_moves == -1)
-                b.get_moves();
-            if (b._got_moves)
-                b.make_index_move(GetRandomValue(0, b._got_moves - 1));
-            else
-                break;
-        }
-
-        // Evalue le plateau après ces coups aléatoires
-        b.evaluate(a);
-
-        //b.evaluate(evaluator);
-
-        // Il faut raisonner un peu quand le roi décède, sinon, cela fausse un peu tout...
-        // if (eval > 10000)
-        //     eval = 10000;
-        // if (eval <= -10000)
-        //     eval = -10000;
-
-        // Stocke l'évaluation sur l'index du coup associé
-        evaluations[move][0] += b._evaluation;
-        evaluations[move][1] += 1;
-        i += 1;
-        
-    }
-
-    int e;
-
-    int best_move = 0;
-    int best_value = _color * 10e9;
-
-
-    for (j = 0; j < _got_moves; j++) {
-        e = evaluations[j][0] / evaluations[j][1];
-        if (display)
-            cout << e << " | ";
-        if (e * _color > best_value * _color) {
-            best_value = e;
-            best_move = j;
-        }
-        
-    }
-
-    make_index_move(best_move, true);
-    //make_index_move(best_move, display);
-    
-    if (display) {
-        cout << endl;
-        cout << _pgn << endl;
-    }
-
-
-    _evaluated = true;
-
-    return;
-
-}
-
-
-
-// Test iterative depth
-void Board::monte_carlo_2(Agent a, Evaluator e, int nodes, bool use_agent, bool checkmates, double beta, int k_add, bool display, int depth) {
-    static int max_depth;
-    static int n_positions = 0;
-
-    if (_new_board && depth == 0) {
-        max_depth = 0;    
-    }
-
-    if (depth > max_depth) {
-        max_depth = depth;
-        if (display) {
-            cout << "Monte-Carlo - depth : " << max_depth << '\r';
-            to_fen();
-            cout << _fen << endl;
-        }
-    }
-
-    // Obtention des coups jouables
-    get_moves(false, true);
-
-    if (_got_moves == 0) {
-        // evaluate_int(e, checkmates);
-        // _evaluated = true;
-        // to_fen();
-        // cout << _fen << " : " << _evaluation << endl;
-        return;
-    }
-
-    if (_new_board) {
-        _eval_children = new int[_got_moves];
-        _nodes_children = new int[_got_moves];
-        for (int i = 0; i < _got_moves; i++) {
-            _nodes_children[i] = 0;
-            _eval_children[i] = 0;
-        }
-
-        // Liste des plateaux fils
-        _children = new Board[_got_moves];
-        // _children.resize(_got_moves);
-        // for (int i = 0; i < _got_moves; i++)
-        //     _children[i] = Board();
-        n_positions += _got_moves;
-        _tested_moves = 0;
-        _current_move = 0;
-        _new_board = false;
-    }
-
-
-    // Tant qu'il reste des noeuds à calculer...
-    while (nodes > 0) {
-
-        // Choix du coup à jouer pour l'exploration
-
-        // Si tous les coups de la position ne sont pas encore testés
-        if (_tested_moves < _got_moves) {
-
-            // Joue un nouveau coup
-            Board b_child(*this); // Vérifier la copie...
-            _children[_current_move] = b_child;
-            _children[_current_move].make_index_move(_current_move);
-
-            // Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
-            if (use_agent)
-                _children[_current_move].evaluate(a);
-            else
-                _children[_current_move].evaluate_int(e, checkmates);
-            _eval_children[_current_move] = _children[_current_move]._evaluation;
-            _nodes_children[_current_move]++;
-
-            // Actualise la valeur d'évaluation du plateau
-
-            // Première évaluation
-            if (!_evaluated) {
-                _evaluation = _eval_children[_current_move];
-                _evaluated = true;
-            }
-            
-            if (_player) {
-                if (_eval_children[_current_move] > _evaluation)
-                    _evaluation = _eval_children[_current_move];
-            }
-            else {
-                if (_eval_children[_current_move] < _evaluation)
-                    _evaluation = _eval_children[_current_move];
-            }
-
-            // Incrémentation des coups
-            _current_move++; 
-            _tested_moves++;
-
-        }
-
-        // Lorsque tous les coups de la position ont déjà été testés (et évalués)
-        else {
-            // Choisit aléatoirement un "bon" coup
-            _current_move = pick_random_good_move(_eval_children, _got_moves, _color, false, beta, k_add);
-
-            // Va une profondeur plus loin... appel récursif sur Monte-Carlo
-            _children[_current_move].monte_carlo_2(a, e, 1, use_agent, checkmates, beta, k_add, display, depth + 1);
-
-            // Actualise l'évaluation
-            _eval_children[_current_move] = _children[_current_move]._evaluation;;
-            _nodes_children[_current_move]++;
-
-            if (_player)
-                _evaluation = max_value(_eval_children, _got_moves);
-            else
-                _evaluation = min_value(_eval_children, _got_moves);
-
-        }
-
-
-        // Décrémentation du nombre de noeuds restants
-        nodes--;
-        _nodes++;
-
-    }
-
-    if (depth == 0 && display) {
-        
-        to_fen();
-        cout << "____________________________________________________________" << endl;
-        cout << "Position : " << _fen << endl;
-        cout << "Monte Carlo..." << endl;
-        cout << "depth : " << max_depth << endl;
-        cout << "Best evaluation : " << _evaluation << endl;
-
-        int min_val; 
-        int *power = new int[_got_moves];
-
-        for (int i = 0; i < _got_moves; i++) {
-            power[i] = (_player - 0.5) * 2 * _eval_children[i];
-        }
-
-        softmax(power, _got_moves);
-
-        cout << "[|";
-        for (int i = 0; i < _got_moves; i++)
-            cout << " " << move_label_from_index(i) << " (n:" << _nodes_children[i] << ", e: " << _eval_children[i] << ", p:" << power[i] << ") |";
-        cout << "]" << endl;
-
-        cout << "positions : " << n_positions << endl;
-
-        cout << "____________________________________________________________" << endl;
-        
-    }
-
-    return;
-    
-}
-
-
-// Fonction qui joue le coup après analyse par l'algo de Monte Carlo
-void Board::play_monte_carlo_move(bool display) {
-    
-    int move = max_index(_nodes_children, _tested_moves);
-    if (display)
-        play_index_move_sound(move);
-
-    make_index_move(move, true);
-
-    if (display) {
-        cout << _pgn << endl;
-        to_fen();
-        cout << _fen << endl;
-    }
-
-    // Deletes the children... should it be kept in order to lessen the incoming thinking?
-    delete_all();
-
-}
-
-
 
 int match(Agent &agent_a, Agent &agent_b) {
 
     Board b;
     while (b.game_over() == 0) {
-        // if (b._player)
-        //     b.monte_carlo(agent_a, 1000, 0, 2, false);
-        // else
-        //     b.monte_carlo(agent_b, 1000, 0, 2, false);
-
-        // if (b._player)
-        //     b.grogrosfish2(2, agent_a);
-        // else
-        //     b.grogrosfish2(2, agent_b);
-
-        if (b._player)
-            b.monte_carlo(agent_a, 0, 0, 0, false);
-        else
-            b.monte_carlo(agent_b, 0, 0, 0, false);
+        cout << "check function match" << endl;
     }
 
     //cout << b._pgn << endl;
@@ -2684,42 +2165,6 @@ int* tournament(Agent *agents, const int n_agents) {
 
 
 
-
-
-
-// Fonction pour supprimer les allocation mémoire du tableau, et de tous ses enfants
-void Board::delete_all(bool self, bool display) {
-    if (self && display)
-        cout << "removing tree from memory..." << endl;
-    
-
-    for (int i = 0; i < _tested_moves; i++)
-        _children[i].delete_all(false);
-
-    if (!self) {
-        if (!_new_board) {
-            delete []_children;
-            // _children.clear();
-            delete []_nodes_children;
-            delete []_eval_children;
-        }
-
-        // Peut t-on delete self?
-
-    }
-
-    else {
-        _tested_moves = 0;
-        _current_move = 0;
-        _evaluated = false;
-        if (display)
-            cout << "done cleaning" << endl;
-    }
-    
-    return;
-}
-
-
 // Fonction pour dessiner une flèche
 void draw_arrow(float x1, float y1, float x2, float y2, float thickness, Color c) {
     DrawLineEx({x1, y1}, {x2, y2}, thickness, c);
@@ -2782,14 +2227,7 @@ void Board::draw_monte_carlo_arrows() {
             }
         }
         else {
-            // cout << move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]) << ", ";
-            // cout << (float)_nodes_children[i] << ", " << (float)_nodes_children[i] / (float)sum_nodes << endl;
             float n = _nodes_children[i];
-            // cout << n << endl;
-            // cout << (n / (float)sum_nodes > arrow_rate) << endl;
-
-            // Bug ici... ça n'affiche pas toujours tous les coups (parfois si on ne cout pas, _nodes_children[i] -> 0??)
-            // Sinon
             if (n / (float)sum_nodes > arrow_rate)
                 draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate);
         }
@@ -2869,10 +2307,6 @@ void Board::play_monte_carlo_move_keep(int move, bool display) {
             cout << b._fen << endl;
             if (_is_active)
                 _monte_buffer._heap_boards[_index_children[move]]._pgn = b._pgn;
-            else
-                _children[move]._pgn = b._pgn;
-
-            cout << "removing other trees from memory..." << endl;
         }
 
 
@@ -2881,8 +2315,6 @@ void Board::play_monte_carlo_move_keep(int move, bool display) {
             if (i != move) {
                 if (_is_active)
                     _monte_buffer._heap_boards[_index_children[i]].reset_all();
-                else
-                    _children[i].delete_all();
             }
 
         if (_is_active) {
@@ -2890,25 +2322,21 @@ void Board::play_monte_carlo_move_keep(int move, bool display) {
             reset_board(true);
             *this = *b;
         }
-            
-        else
-            *this = _children[move];
     
 
     }
 
 
-
+    // Sinon, joue simplement le coup
     else {
-        get_moves(false, true);
+        if (_got_moves == -1)
+            get_moves(false, true);
 
         if (move < _got_moves) {
-            // Sinon, joue simplement le coup
-            make_index_move(move, true);
             if (_is_active)
                 reset_all();
-            else
-                delete_all();
+            
+            make_index_move(move, true);
         }
         else 
             cout << "illegal move" << endl;
@@ -2923,10 +2351,7 @@ int Board::max_monte_carlo_depth() {
     int max_depth = 0;
     int depth;
     for (int i = 0; i < _tested_moves; i++) {
-        if (!_is_active)
-            depth = _children[i].max_monte_carlo_depth() + 1;
-        else
-            depth = _monte_buffer._heap_boards[_index_children[i]].max_monte_carlo_depth() + 1;
+        depth = _monte_buffer._heap_boards[_index_children[i]].max_monte_carlo_depth() + 1;
         if (depth > max_depth)
             max_depth = depth;
     }
@@ -2967,18 +2392,14 @@ Buffer::Buffer(unsigned long int size) {
 // Initialize l'allocation de n plateaux
 void Buffer::init(int length) {
 
-
     if (_init)
         cout << "already initialized" << endl;
     else {
         cout << "initializing buffer..." << endl;
-
         _length = length;
         _heap_boards = new Board[_length];
         _init = true;
-
-        cout << "buffer initialized !" << endl;
-
+        cout << "buffer initialized ! length : " << int_to_round_string(_length) << endl;
     }
     
 }
@@ -3011,7 +2432,7 @@ Buffer _monte_buffer;
 
 
 
-// Test iterative depth
+// Algo de grogros_zero
 void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool checkmates, double beta, int k_add, bool display, int depth) {
     static int max_depth;
     static int n_positions = 0;
@@ -3021,6 +2442,16 @@ void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool c
     if (_new_board && depth == 0) {
         max_depth = 0;    
     }
+
+    if (depth == 0) {
+        int n = total_nodes();
+        if (_monte_buffer._length - n < nodes) {
+            if (display)
+                cout << "buffer is full" << endl;
+            nodes = _monte_buffer._length - n;
+        }
+    }
+        
 
     if (depth > max_depth) {
         max_depth = depth;
@@ -3039,7 +2470,6 @@ void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool c
     }
 
     if (_new_board) {
-        // cout << sizeof(_eval_children) << endl;
         _eval_children = new int[_got_moves];
         _nodes_children = new int[_got_moves];
         _index_children = new int[_got_moves]; // à changer? cela prend du temps?
@@ -3127,7 +2557,6 @@ void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool c
 
         }
 
-
         // Décrémentation du nombre de noeuds restants
         nodes--;
         _nodes++;
@@ -3141,8 +2570,6 @@ void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool c
 
 // Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
 void Board::reset_board(bool display) {
-    if (display)
-        cout << "resetting board..." << endl;
 
     _is_active = false;
     _current_move = 0;
@@ -3154,12 +2581,7 @@ void Board::reset_board(bool display) {
         delete []_nodes_children;
         delete []_eval_children;
         _new_board = true;
-    }
-   
-
-    if (display)
-        cout << "done cleaning" << endl;
-        
+    }      
     
     return;
 }
@@ -3168,18 +2590,10 @@ void Board::reset_board(bool display) {
 
 // Fonction qui réinitialise tous les plateaux fils dans le buffer
 void Board::reset_all(bool self, bool display) {
-    if (self && display)
-        cout << "resetting all children..." << endl;
-
-    for (int i = 0; i < _tested_moves; i++) {
+    for (int i = 0; i < _tested_moves; i++)
         _monte_buffer._heap_boards[_index_children[i]].reset_all(false);
-    }
 
     reset_board();
-
-    if (self && display)
-        cout << "done cleaning" << endl;
-
 }
 
 
@@ -3235,8 +2649,8 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
                 goto kings;
         }
 
-    if (!b_king || !w_king)
-        cout << "a king is missing in the position" << endl;
+    // if (!b_king || !w_king)
+    //     cout << "a king is missing in the position" << endl;
 
     kings:
 
@@ -3281,25 +2695,6 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
 // Fonction qui renvoie s'il y a échec et mat (ou pat) (-1, 1 ou 0)
 int Board::is_mate() {
 
-    // Vérifie s'il reste les rois sur l'échiquier (ne devrait pas être utile en théorie, mais il reste des bugs obscurs)
-    bool king_w = false;
-    bool king_b = false;
-
-    for (int i = 0; i < 8; i++)
-        for (int j = 0; j < 8; j++) {
-            if (!king_w && _array[i][j] == 6)
-                king_w = true;
-            if (!king_b && _array[i][j] == 12)
-                king_b = true;
-            if (king_w && king_b)
-                goto safe;
-        }
-
-    if ((!king_w && _player) || (!king_b && !_player))
-        return 1;
-
-    safe:
-
     // Pour accélérer en ne re calculant pas forcément les coups (marche avec coups légaux OU illégaux)
     if (_got_moves == -1)
         get_moves();
@@ -3325,4 +2720,5 @@ int Board::is_mate() {
               
     _got_moves = -1;
     return 0;
+    
 }

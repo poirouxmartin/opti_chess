@@ -44,20 +44,15 @@ static float arrow_thickness = 50;
 // Pourcentage de noeuds à partir duquel on montre le coup
 static float arrow_rate = 0.05;
 
-
 // Variable qui indique si l'initialisation a été faite
-static bool loaded_textures = false;
-
+static bool loaded_resources = false;
 
 // Textures
-// static Texture2D board_texture;
-// static Image board_image;
 static Texture2D piece_textures[12];
 static Image piece_images[12];
 
 // Icône
 static Image icon;
-
 
 // Sons
 static Sound move_1_sound;
@@ -73,18 +68,19 @@ static Sound stealmate_sound;
 static Sound game_begin_sound;
 static Sound game_end_sound;
 
-
 // Taille du plateau par rapport à la fenêtre
 static float board_scale = 0.8;
 static float board_size;
 static float board_padding_x;
 static float board_padding_y;
 
-
 // Taille des pièces
 static int tile_size;
 static float piece_size;
 static float piece_scale = 0.75;
+
+// Taille standard du texte
+static float text_size;
 
 
 // Orientation du plateau
@@ -127,3 +123,12 @@ void draw_arrow_from_coord(int, int, int, int, float thickness = -1, Color c = a
 
 // Couleur de la flèche en fonction du coup (de son nombre de noeuds)
 Color move_color(int, int);
+
+// Fonction qui charge les textures
+void load_resources();
+
+// Fonction qui met à la bonne taille les images
+void resize_gui();
+
+// Fonction qui actualise les nouvelles dimensions de la fenêtre
+void get_window_size();
