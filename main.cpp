@@ -89,7 +89,7 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 
 -> Améliorer les heuristiques pour l'évaluation d'une position
     - Positionnement du roi, des pions, de la dame et des pièces changeant au cours de la partie (++ pièces mineures en début de partie, ++ le reste en fin de partie, ++ valeur des pions) (endgame = 13 points or below for each player? less than 4 pieces?)
-    - Sécurité du roi (TRES IMPORTANT !)
+    - Sécurité du roi (TRES IMPORTANT !) --> A améliorer, car là c'est pourri... comment calculer? !(pion protégeant le roi) *  pieces ennemies proches du roi = !king_safety ? 
     - Espace (dépend aussi du nombre de pièces restantes..)
     - Structures de pions
     - Diagonales ouvertes
@@ -100,7 +100,7 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
     - Contrôle de cases importantes
     - Cases faibles
     - Pions arrierés/faibles
-    - Initiative
+    - Initiative -> A améliorer : fort dans les positions d'attaque?
     - Contrôle du centre
     - Harmonie des pièces
     - Pièces enfermées
@@ -108,41 +108,34 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
     - Tours sur colonnes ouvertes
     - Tours sur une même colonne qu'une dame ou un roi
     - Pions bloqués / Développement de pièces impossible
-    -> Fous/Paire de fou meilleurs en position ouverte (cavalier : inverse)
+    - Fous/Paire de fou meilleurs en position ouverte (cavalier : inverse)
     - Tours liées
     - Garder matériel en position perdante?
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Augmenter la profondeur pour les finales (GrogrosFish)
--> Negascout et PVS, problème (??) : cela doit utiliser l'ordre de coup de l'itération précédente. Cependant, l'évaluation d'un coup d'une itération sur l'autre varie beaucoup -> ordre de coups différent -> peu optimal
--> Ajouter une part de random dans l'IA?
 -> Bug de temps quand les IA jouent entre elles?
 -> Système d'élo pour les tournois à fix (parfois elo négatif)
--> Activité des pièces à régler... (à mettre des deux côtés...)
 -> Améliorations pour trouver les mats les plus rapides... arrêter la recherche dans une branche finie...
 -> Utiliser raylib pour le random? check la vitesse
 -> Création d'une base de données contenant des positions et des évaluations? (qui se remplit au cours des parties...)
 -> Allocations mémoires utilisant raylib?
 -> Faire aussi un énrome buffer pour les coups? Ils prennent 5000/5512 des bytes d'un board...
 -> Changer la structure de données des boards pour réduire leur taille
--> On peut roquer après s'être fait bouffer une tour !!
 -> Bug?? e4 Nf6 e5... e6??
 -> Comportements bizarres dans la scandi
 -> Heuristics : check -- r2q1rk1/1pp2pp1/p1p1b3/7p/4P3/4NP2/PPPPK1P1/RNB2Q2 w - - 3 15     (sees it as bad, while it's completely winning)
 -> Trouve pas forcément les mats les plus rapides (dès qu'il en a trouvé un, il cherche plus vraiment sur les autres coups...)
 -> Attention au cas ou le buffer est plein
--> La mémoire se remplit malgré le buffer.. Verif les allocations
 -> Affichage des flèches buggées pour les mats?
 -> Tout supprimer les calculs quand on importe un FEN
--> Bug de couleurs parfois : jaune, jaune, jaune... ROUGE, jaune? pareil avec cyan et bleu
+-> Bug de couleurs parfois : jaune, jaune, jaune... ROUGE, jaune? (vers noeuds = 19%) pareil avec cyan et bleu
 -> Heuristiques bof bof : r1b1kb1r/2p2ppp/p7/2pp4/3N4/8/PPP2PPP/RNB1K2R w KQkq - 0 11 : une pièce de moins en endgame, et croit que c'est ok
 -> Pareil : r3r1k1/3q1p2/pb1p2p1/1p1p4/1P3n2/5N1P/1BQN1PP1/R3R1K1 w - - 0 31, 4r1k1/3q1p2/pb1p2p1/1p1p4/1P3n2/5N1P/1BQN1PP1/4R1K1 b - - 1 32, 6k1/2q2p2/pb1p2p1/1p1p4/1P3n2/5N1P/1BQN1PP1/5K2 w - - 5 36, r4rk1/2pqbppp/p2p4/1p3P2/Pn6/4B3/1PPQBPPP/R4RK1 b - - 2 15, rnb1kb1r/ppp2ppp/5n2/q7/2P5/1P3B2/PB1P1PPP/RN1QK2R b KQkq - 0 8, 2r2rk1/1p2b3/p3pqp1/P3p2p/NP2p3/1N4P1/1P3P1P/2RQ1RK1 b - - 0 20, 
 -> Bitboard
 -> Euh.. pourquoi Grogros a ralenti sans raisons? -> Redémarrer PC...
 -> Moves : plutôt que _moves[1000] -> *_moves + new _moves[_got_moves]. (avec les moves à 4 digits?). add_move utilise un array local (global?) de grande taille (stack) plutôt que les mettre direct dans _moves
 -> TESTER : vecteur de plateaux (plutôt que un new???)
--> METTRE DES VECTEURS PARTOUUUUUT ! -> Buffer est-il inutile??? à tester!!!!
--> Utiliser des int8/uint8/int8_t, uint16
 -> Compression des entier : 8 * a + b? sinon shift bit avec << (plus rapide)
 -> Faire une nouvelle classe fille, pour optimiser et retirer les attributs inutiles, en fonction des algorithmes utilisés? (_moves_order est inutile si on utilise GrogrosZero)
 -> Faut-il du coup utiliser des uint8_t dans les arguments de fonction? ou int est ok?
@@ -150,10 +143,12 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 -> Incrémentation de l'évaluation quand on joue les coups (make_move(keep))
 -> Utiliser la librairie boost
 -> Faire une liste séparée pour les legal et les pseudo-legal moves
--> Améliorer king safety
 -> Génération des coups de façon ordonnée? (captures en premier?)
--> Pourquoi il reste des coups illégaux dans GrogrosZero?? voir e4 e5 Qh5 Nc6 Bc4 : GrogrosZero -> Nf6, Qxh7 --> legal moves??? (in_check() bugge...)
--> GrogrosZero bugge quand on joue alors que tous les coups ne sont pas calculés... à check
+-> Finir les undo
+-> Mettre des options pour certaines fonctions pour ne pas faire les étapes inutiles (_last_move dans make_move??)
+-> Self play pour GrogrosZero (blancs/noirs)
+-> Faire une fonction pour initialiser un plateau (plutôt que le from_fen)
+-> Promotions en autre chose que dame?
 
 
 
@@ -186,7 +181,6 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 -> Fonction qui affiche le temps en heures, minutes et secondes plutôt que secondes
 -> Ajout d'un carré de couleur avec le temps
 -> Incrément de temps
--> Améliorer le surlignage
 -> Améliorer l'affichage du PGN
 -> Choisir les crossover en fonction des meilleurs elos
 -> Elo : que faire quand on copie un agent? crossover? mutation? reset?
@@ -206,6 +200,8 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 -> Mettre une limite à l'utilisation des noeuds de GrogrosZero
 -> Musique de fond? (désactivable)
 -> Affichage de l'évaluation complète (avec toutes se composantes)
+-> Montrer les noeuds par seconde pour GrogrosZero, et le nombre de noeuds total dans le buffer. Ainsi que le nom de l'IA en self play, et son nombre de noeuds en self play
+-> Resize trop petit de la fenêtre = crash... (quand plus haut que large?)
 
 
 ----- Fonctionnalités supplémentaires -----
@@ -226,56 +222,9 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 void test() {
 
     static Board t_test;
-    //t_test.sort_moves();
 
     if (t_test._got_moves == -1)
         t_test.get_moves();
-
-    // for (int k: t_test._moves_vector)
-    //     cout << k << endl;
-
-
-    // string test = "";
-    // for (int i = 0; i < t_test._got_moves * 4; i++) {
-    //     test += to_string(t_test._moves[i]);
-    // }
-
-    // vector<int> test_2;
-    // for (int i = 0; i < t_test._got_moves * 4; i++) {
-    //     test_2.push_back(t_test._moves[i]);
-    //     // test_2 += t_test._moves[i];
-    // }
-
-    // Méthode la plus rapide
-    // test_2.resize(t_test._got_moves * 4);
-    // for (int i = 0; i < t_test._got_moves * 4; i++) {
-    //     // test_2.push_back(t_test._moves[i]);
-    //     test_2[i] = t_test._moves[i];
-    // }
-
-    // test_2.resize(t_test._got_moves);
-    // for (int i = 0; i < t_test._got_moves; i++) {
-    //     test_2[i] = t_test.move_to_int(4 * i, 4 * i + 1, 4 * i + 2, 4 * i + 3);
-    // }
-
-    // cout << test.size() << endl;
-
-
-    // char *toto_2 = new char[t_test._got_moves * 4];
-    // for (int i = 0; i < t_test._got_moves * 4; i++) {
-    //     toto_2[i] = '0' + t_test._moves[i];
-    // }
-
-    // for (int i = 0; i < t_test._got_moves * 4; i++)
-    //     cout << toto_2[i];
-
-    // cout << endl;
-    // cout << sizeof(toto_2) << endl;
-
-    // int *moves = new int[t_test._got_moves * 4];
-    // for (int i = 0; i < t_test._got_moves * 4; i++) {
-    //     moves[i] = t_test._moves[i];
-    // }
 
 }
 
@@ -288,6 +237,9 @@ void test() {
 int main() {
 
     // Faire une fonction Init pour raylib?
+
+    // Fenêtre resizable
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);       
 
     // Initialisation de la fenêtre
     InitWindow(screen_width, screen_height, "Grogros Chess");
@@ -304,23 +256,15 @@ int main() {
     // Variables
     Board t;
 
-
-    t.get_moves();
-
-    // Calcul du temps de la fonction
-    test_function(&test, 1);
-
-
     // Evaluateur de position
     Evaluator eval_white;
     Evaluator eval_black;
 
     // Evaluateur pour Monte Carlo
     Evaluator monte_evaluator;
-    // monte_evaluator._piece_activity = 0.1;
-    // monte_evaluator._piece_positioning = 0.025; // beta = 0.01
     monte_evaluator._piece_activity = 0.04; // à fix... (mettre l'activité pour les deux côtés.. fonction get_activity?) // 0.05
     monte_evaluator._piece_positioning = 0.013; // beta = 0.035 // Pos = 0.015
+    // monte_evaluator._king_safety = 0;
 
 
     bool grogros_play = false;
@@ -328,7 +272,8 @@ int main() {
     // Activité des pièces à 0, car pour le moment, cela ralentit beaucoup le calcul d'évaluation
     eval_white._piece_activity = 0;
     eval_black._piece_activity = 0;
-
+    eval_white._king_safety = 0;
+    eval_black._king_safety = 0;
 
 
     // IA self play
@@ -367,6 +312,14 @@ int main() {
     // Boucle principale (Quitter à l'aide de la croix, ou en faisant échap)
     while (!WindowShouldClose()) {
 
+        // Changements de la taille de la fenêtre
+        if (IsWindowResized()) {
+            get_window_size();
+            load_resources(); // Sinon ça devient flou
+            resize_gui();
+        }
+
+
         // Gestion du temps des joueurs
         if (t._time) {
 
@@ -387,7 +340,6 @@ int main() {
             cout << "saved FEN : " << t._fen << endl;
         }
 
-
         // Load
         if (IsKeyPressed(KEY_L)) {
             string fen = LoadFileText("data/test.txt");
@@ -395,8 +347,7 @@ int main() {
             cout << "loaded FEN : " << fen << endl;
         }
 
-
-        // Orientation du plateau
+        // Retourne le plateau
         if (IsKeyPressed(KEY_F))
             switch_orientation();
 
@@ -405,17 +356,8 @@ int main() {
             t.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
         // Charger une partie
-        if (IsKeyPressed(KEY_R)) {
-            // t.from_fen("3kr3/PK1p4/B7/8/8/8/8/8 w - - 0 7");
-            // t.from_fen("8/6k1/8/8/8/8/P7/K7 w - - 0 7");
-            // t.from_fen("8/8/8/8/8/5K2/3R4/5k2 b - - 12 13");
+        if (IsKeyPressed(KEY_R))
             t.from_fen("r1b2rk1/5ppp/p1n1pn2/1pqp4/8/P1N1PN2/1PP1BPPP/R2Q1RK1 w - - 0 13");
-            // t.from_fen("r1b1r1k1/pp1p1pp1/2p3p1/q1P1P3/2PP4/3Q2P1/5PP1/2R1R1K1 b - - 2 22");
-        }
-
-        // Suppression des plateaux
-        if (IsKeyPressed(KEY_DELETE))
-            t.delete_all(true, true);
 
         // Copie dans le clipboard du PGN
         if (IsKeyPressed(KEY_C)) {
@@ -455,18 +397,11 @@ int main() {
         }
         
 
-
-        // Mont-Carlo, en regardant les mats/pats
-        if (IsKeyDown(KEY_O)) {
-            t.monte_carlo_2(l_agents[0], monte_evaluator, 25000, false, true, _beta, _k_add);
-        }
-
         // Grogros zero
         if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyDown(KEY_G)) {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
-            t.grogros_zero(l_agents[0], monte_evaluator, 10000, false, true, _beta, _k_add);
-            // cout << _global_moves_size << endl;
+            t.grogros_zero(l_agents[0], monte_evaluator, 25000, false, true, _beta, _k_add);
         }
 
 
@@ -478,25 +413,20 @@ int main() {
         }
 
         if (grogros_play && t.game_over() == 0) {
-            t.grogros_zero(l_agents[0], monte_evaluator, 10000, false, true, _beta, _k_add);
+            t.grogros_zero(l_agents[0], monte_evaluator, 25000, false, true, _beta, _k_add);
                 if (t.total_nodes() > 2000000)
                     t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true);
         }
 
 
         // Supprime les reflexions de GrogrosZero
-        if (IsKeyPressed(KEY_H)) {
+        if (IsKeyPressed(KEY_DELETE)) {
             t.reset_all(true, true);
         }
 
         // Mont-Carlo, en regardant les mats/pats
         if (IsKeyPressed(KEY_T)) {
-            // cout << sizeof(Board) << endl;
-            // cout << sizeof(t._moves) << endl;
-            // cout << sizeof(t._array) << endl;
-            // cout << sizeof(t._test_int_3) << endl;
-            // cout << sizeof(t._player) << endl;
-            // cout << sizeof(_monte_buffer) << endl;
+            // test_function(&test, 1);
 
             /*Network _test_network;
             _test_network.generate_random_weights();
@@ -514,21 +444,11 @@ int main() {
             // t.evaluate(monte_evaluator);
             // cout << t._king_safety << endl;
 
-            cout << t._evaluation << endl;
-            t.evaluate(monte_evaluator, true);
-            cout << t._evaluation << endl;
-
-            // r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 3 3
-
         }
 
-        // Monte-Carlo, sans...
-        if (IsKeyPressed(KEY_I)) {
-            // t.monte_carlo_2(l_agents[0], monte_evaluator, 25000);
-            // t.get_piece_activity();
-            // cout << t._piece_activity << endl;
-            t.monte_carlo_2(l_agents[0], monte_evaluator, 1);
-        }
+
+        // Undo
+        IsKeyPressed(KEY_U) && t.undo(); 
 
         // Modification des paramètres
         if (IsKeyPressed(KEY_KP_ADD))
@@ -578,13 +498,6 @@ int main() {
             _beta = 0.05;
             _k_add = 5000;
         }
-            
-
-
-
-        if (IsKeyPressed(KEY_D)) {
-            t.display_moves(true);
-        }
 
 
         // Joue le coup recommandé par l'algorithme de Monte-Carlo
@@ -596,23 +509,6 @@ int main() {
                 cout << "no more moves are in memory" << endl;
             }
         }
-
-
-        // Evaluation de l'agent GrogrosZero
-        if (IsKeyPressed(KEY_E)) {
-            // t.evaluate(l_agents[0]);
-            // cout << "Evaluation de GrogrosZero : " << l_agents[0]._output << endl;
-            t.evaluate(monte_evaluator, true);
-            cout << "eval with checkmates : " << t._evaluation << endl;
-            t.to_fen();
-            cout << t._fen << " : " << t.in_check() << endl;
-        }
-
-        // Fonction test pour les temps
-        if (IsKeyDown(KEY_T)) {
-           //test_function(&test, 1);
-           //cout << "in check : " << t.in_check() << endl;
-        }
         
         // Lancement du temps
         if (IsKeyPressed(KEY_ENTER)) {
@@ -622,32 +518,22 @@ int main() {
             }
         }
         
-        // ----- Tests d'algorithmes
-        // if (IsKeyDown(KEY_B))
-        //     t.grogrosfish3(search_depth, eval_white);
-
-        // if (IsKeyDown(KEY_V))
-        //     t.grogrosfish4(search_depth, eval_white);
-
-        // if (IsKeyDown(KEY_M))
-        //     t.grogrosfish_multiagents(search_depth, n_agents, test_begin_parameters, test_end_parameters);
-        // ----- Fin des tests d'agents  -----
-
 
         // Activations rapides de l'IA
 
         // Fait jouer l'IA sur un coup
         if (IsKeyDown(KEY_SPACE)) {
-            t.grogrosfish2(search_depth, eval_white, true);
-            // t.grogrosfish3(search_depth, eval_white);
-            // cout << _global_moves_size << endl;
+            if (t._player)
+                t.grogrosfish(search_depth, eval_white, true);
+            else
+                t.grogrosfish(search_depth, eval_black, true);
         }
 
         // Joueur des pièces blanches : IA/humain
         if (IsKeyPressed(KEY_DOWN)) {
             play_white = !play_white;
             if (play_white)
-                t._player_1 = (char*)"IA";
+                t._player_1 = (char*)"GrogrosFish";
             else
                 t._player_1 = (char*)"Player 1";
         }
@@ -656,7 +542,7 @@ int main() {
         if (IsKeyPressed(KEY_UP)) {
             play_black = !play_black;
             if (play_black)
-                t._player_2 = (char*)"IA";
+                t._player_2 = (char*)"GrogrosFish";
             else
                 t._player_2 = (char*)"Player 2";
         }
@@ -670,16 +556,16 @@ int main() {
         // Fait jouer l'IA automatiquement en fonction des paramètres
         if (((play_black && !t._player) || (play_white && t._player)) && t.game_over() == 0) {
             if (t._player)
-                t.grogrosfish2(search_depth, eval_white, true);
+                t.grogrosfish(search_depth, eval_white, true);
             else
-                t.grogrosfish2(search_depth, eval_black, true);
+                t.grogrosfish(search_depth, eval_black, true);
             cout << "Avancement de la partie : " << t.game_advancement() << endl;
             cout << "game over : " << t.game_over() << endl;
         }
 
         // Entrainement d'agents
         if (IsKeyDown(KEY_KP_0)) {
-            t.monte_carlo_2(l_agents[0], monte_evaluator, 25000, true);
+            t.grogros_zero(l_agents[0], monte_evaluator, 25000, true);
         }
             
         // Match
@@ -734,11 +620,11 @@ int main() {
 
         // Joue avec le nouvel agent
         if (IsKeyDown(KEY_KP_6)) {
-            t.monte_carlo_2(final_agent, monte_evaluator, 25000, true);
+            t.grogros_zero(final_agent, monte_evaluator, 25000, true);
         }
 
         if (IsKeyDown(KEY_KP_7)) {
-            t.grogrosfish2(5, final_agent, true);
+            t.grogrosfish(5, final_agent, true);
         }
 
 
