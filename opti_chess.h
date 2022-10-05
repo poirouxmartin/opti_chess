@@ -87,9 +87,6 @@ class Board {
         // Position mat (pour les calculs de mat plus rapides)
         bool _mate = false;
 
-        // Paramètres pour l'évaluation de la position
-        float _evaluation_parameters[3] = {1, 0.1, 0.025};
-
         // Roques disponibles
         bool _k_castle_w = true;
         bool _q_castle_w = true;
@@ -112,8 +109,8 @@ class Board {
         // PGN du plateau
         string _pgn = "";
 
-        // Dernier coup joué
-        int_fast8_t _last_move[4] = {-1, -1, -1, -1};
+        // Dernier coup joué (coordonnées, pièce) ( *2 pour les roques...)
+        int_fast8_t _last_move[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 
 
         // Joueurs de la partie
@@ -126,11 +123,6 @@ class Board {
         // 3 minutes par personne
         clock_t _time_player_1 = 180000;
         clock_t _time_player_2 = 180000;
-
-
-        // Plateaux fils
-        Board *_children;
-        // vector<Board> _children;
 
         // Plateau libre ou actif? (pour le buffer)
         bool _is_active = false;
@@ -153,19 +145,18 @@ class Board {
         // Noeuds des enfants
         int *_nodes_children;
 
-        //
+        // Est-ce que le plateau a été évalué?
         bool _evaluated = false;
 
+        // Le plateau a t-il été initialisé?
         bool _new_board = true;
 
         // Activité des pièces
         int _piece_activity = 0;
         bool _activity = false;
 
-
         // Pour l'affichage
         int _static_evaluation = 0;
-
 
         // Sécurité du roi
         int _king_safety = 0;
@@ -247,32 +238,17 @@ class Board {
         // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
         float negamax(int, float, float, int, bool, Evaluator, Agent, bool, bool, bool);
 
-        // Mieux que negamax? tend à supprimer plus de coups
-        float negascout(int, float, float, int, bool, Evaluator);
-
-        // Algorithme PVS
-        float pvs(int, float, float, int, bool, Evaluator);
-
-        // Fonction qui utilise minimax pour déterminer quel est le "meilleur" coup et le joue
-        void grogrosfish(int, Evaluator);
-
         // Version un peu mieux optimisée de Grogrosfish
-        bool grogrosfish2(int, Evaluator, bool);
+        bool grogrosfish(int, Evaluator, bool);
 
-        // Version un peu mieux optimisée de Grogrosfish
-        bool grogrosfish2(int, Agent, bool);
-        
-        // Version qui utilise negascout
-        void grogrosfish3(int, Evaluator);
-        
-        // Test de Grogrofish
-        void grogrosfish4(int, Evaluator);
-
-        // Test de Grogrofish avec combinaison d'agents
-        void grogrosfish_multiagents(int, int, float[], float[]);
+        // Version un peu mieux optimisée de Grogrosfish (utilisant un agent)
+        bool grogrosfish(int, Agent, bool);
 
         // Fonction qui revient à la position précédente
-        void undo(int, int, int, int, int, int, int);
+        bool undo(int, int, int, int, int, int, int);
+
+        // Une surcharge
+        bool undo();
 
         // Fonction qui arrange les coups de façon "logique", pour optimiser les algorithmes de calcul
         void sort_moves(Evaluator eval);
@@ -310,17 +286,8 @@ class Board {
         // Fonction qui joue le son d'un coup à partir de son index
         void play_index_move_sound(int);
 
-        // Renvoie le meilleur coup selon l'agent, en utilisant l'algorithme de Monte-Carlo avec n noeuds, d'une profondeur depth
-        void monte_carlo(Agent, int, int, int, bool);
-
-        // Test iterative depth
-        void monte_carlo_2(Agent, Evaluator, int, bool use_agent = false, bool checkmates = false, double beta = 0.035, int k_add = 50, bool display = false, int depth = 0);
-
         // Fonction qui joue le coup après analyse par l'algo de Monte Carlo
         void play_monte_carlo_move(bool display = false);
-
-        // Fonction pour supprimer les allocation mémoire du tableau, et de tous ses enfants
-        void delete_all(bool self = true, bool display = false);
 
         // Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo d'un plateau
         void draw_monte_carlo_arrows();
@@ -383,12 +350,7 @@ class Buffer {
     
     public:
 
-        // Test stack allocation
-        // Board _static_boards[100];
-
         bool _init = false;
-
-        // Heap allocation (slower?)
         int _length = 0;
         Board *_heap_boards;
 

@@ -1,3 +1,8 @@
+#include <execution>
+#include <string>
+
+using namespace std;
+
 // Fonction qui renvoie si un entier appartient à un intervalle
 bool is_in(int, int, int);
 
@@ -37,6 +42,9 @@ int min_value(int[], int);
 // Fonction qui affiche une liste d'entiers (array)
 void print_array(int[], int);
 
+// Fonction qui affiche une liste d'entiers 8 bits fast (array)
+void print_array(int_fast8_t[], int);
+
 // Fonction qui affiche une liste de flottans (array)
 void print_array(float[], int);
 
@@ -54,3 +62,6 @@ float distance(int, int, int, int);
 
 // Fonction qui calcule la proximité entre deux points (pour l'évaluation de la sécurité du roi)
 int proximity(int, int, int, int, int k = 2);
+
+// Fonction qui transforme un entier en string (et arrondit s'il est supérieur à 1000)
+string int_to_round_string(int);

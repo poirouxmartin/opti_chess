@@ -6,8 +6,6 @@
 #include <chrono>
 //#include <windows.h>
 
-using namespace std;
-
 
 
 // Fonction qui renvoie si un entier appartient à un intervalle
@@ -201,6 +199,15 @@ void print_array(int* l, int n) {
 }
 
 
+// Fonction qui affiche une liste d'entiers 8 bits fast (array)
+void print_array(int_fast8_t* l, int n) {
+    cout << "[|";
+    for (int i = 0; i < n; i++)
+        cout << " " << (int)l[i] << " |";
+    cout << "]" << endl;
+}
+
+
 // Fonction qui affiche une liste de flottans (array)
 void print_array(float* l, int n) {
     cout << "[|";
@@ -264,4 +271,18 @@ float distance(int i, int j, int x, int y) {
 // Fonction qui calcule la proximité entre deux points (pour l'évaluation de la sécurité du roi)
 int proximity(int i, int j, int x, int y, int k) {
     return k / distance(i, j, x, y);
+}
+
+// Fonction qui transforme un entier en string (et arrondit s'il est supérieur à 1000)
+string int_to_round_string(int k) {
+    if (k < 1000)
+        return to_string(k);
+    if (k < 10000)
+        return to_string((float)k / 1000).substr(0, 3) + "k";
+    if (k < 100000)
+        return to_string((float)k / 1000).substr(0, 4) + "k";
+    if (k < 1000000)
+        return to_string((float)k / 1000).substr(0, 3) + "k";
+    
+    return to_string((float)k / 1000000).substr(0, 3) + "M";
 }
