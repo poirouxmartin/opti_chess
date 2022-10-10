@@ -10,9 +10,9 @@ class Evaluator {
     float _piece_activity = 0.0;
     float _piece_positioning = 0.02;
     float _random_add = 0.0;
-    float _bishop_pair = 0.6;
+    float _bishop_pair = 0.4;
     float _castling_rights = 0.5;
-    float _player_trait = 0.5;
+    float _player_trait = 0.2;
     float _king_safety = 0.005;
 
 

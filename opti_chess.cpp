@@ -929,7 +929,7 @@ float Board::game_advancement() {
 
 
 // Fonction qui évalue la position à l'aide d'heuristiques
-void Board::evaluate(Evaluator eval, bool checkmates) {
+void Board::evaluate(Evaluator eval, bool checkmates, bool display) {
 
     if (checkmates) {
 
@@ -981,37 +981,79 @@ void Board::evaluate(Evaluator eval, bool checkmates) {
         }
     }
 
+    if (display) {
+        cout << "*** EVALUATION ***" << endl;
+        cout << "pieces and their position : " << _evaluation << endl;
+    }
+
 
     // Paire de oufs
-    if (eval._bishop_pair != 0)
-        _evaluation += eval._bishop_pair * ((bishop_w >= 2) - (bishop_b >= 2));
+    float bishop_pair = 0;
+    if (eval._bishop_pair != 0) {
+        bishop_pair = eval._bishop_pair * ((bishop_w >= 2) - (bishop_b >= 2));
+        if (display)
+            cout << "bishop pair : " << bishop_pair << endl;
+        _evaluation += bishop_pair;
+    }
+        
 
     // Droits de roques
-    if (eval._castling_rights != 0)
-        _evaluation += eval._castling_rights * (_k_castle_w + _q_castle_w - _k_castle_b - _q_castle_b) * (1 - adv);
+    float castling_rights = 0;
+    if (eval._castling_rights != 0) {
+        castling_rights += eval._castling_rights * (_k_castle_w + _q_castle_w - _k_castle_b - _q_castle_b) * (1 - adv);
+        if (display)
+            cout << "castling rights : " << castling_rights << endl;
+        _evaluation += castling_rights;
+    }
+        
 
     // Ajout random
-    if (eval._random_add != 0)
-        _evaluation += GetRandomValue(-50, 50) * eval._random_add / 100;
+    float random_add = 0;
+    if (eval._random_add != 0) {
+        random_add += GetRandomValue(-50, 50) * eval._random_add / 100;
+        if (display)
+            cout << "random add : " << random_add << endl;
+        _evaluation += random_add;
+    }
+        
 
     // Activité des pièces
+    float piece_activity = 0;
     if (eval._piece_activity != 0) {
         get_piece_activity();
-        _evaluation += _piece_activity * eval._piece_activity;
+        piece_activity = _piece_activity * eval._piece_activity;
+        if (display)
+            cout << "piece activity : " << piece_activity << endl;
+        _evaluation += piece_activity;
     }
 
     // Trait du joueur
-    _evaluation += eval._player_trait * _color;
+    float player_trait = 0;
+    if (eval._player_trait != 0) {
+        player_trait = eval._player_trait * _color;
+        if (display)
+            cout << "player trait : " << player_trait << endl;
+        _evaluation += player_trait;
+    }
     
     // Sécurité du roi
+    float king_safety = 0;
     if (eval._king_safety != 0) {
         get_king_safety();
-        _evaluation += _king_safety * eval._king_safety * adv;
+        king_safety = _king_safety * eval._king_safety * (1 - adv);
+        if (display)
+            cout << "king safety : " << king_safety << endl;
+        _evaluation += king_safety;
     }
         
 
     // Pour éviter les répétitions (ne fonctionne pas)
     //_evaluation *= 1 - (float)(_half_moves_count + _moves_count) / 1000;
+
+
+    if (display) {
+        cout << "*** TOTAL : " << _evaluation << " ***" << endl;
+    }
 
     _evaluated = true;
 
@@ -1666,16 +1708,21 @@ void Board::from_pgn(string pgn) {
 // Fonction qui affiche un texte dans une zone donnée
 void Board::draw_text_rect(string s, float pos_x, float pos_y, float width, float height, int size) {
 
-    Rectangle rect_text = {pos_x, pos_y, width, height};
-    DrawRectangleRec(rect_text, background_text_color);
     // Division du texte
     int sub_div = (1.5 * width) / size;
+
+    if (width <= 0 || height <= 0 || sub_div <= 0)
+        return;
+
+    Rectangle rect_text = {pos_x, pos_y, width, height};
+    DrawRectangleRec(rect_text, background_text_color);
+    
     int string_size = s.length();
     const char *c;
     int i = 0;
     while (sub_div * i <= string_size) {
         c = s.substr(i * sub_div, sub_div).c_str();
-        DrawText(c, pos_x, pos_y + i * size, size, text_color);
+        DrawTextEx(text_font, c, {pos_x, pos_y + i * size}, size, font_spacing * size, text_color);
         i++;
     }
 
@@ -1686,35 +1733,39 @@ void Board::draw_text_rect(string s, float pos_x, float pos_y, float width, floa
 void load_resources() {
 
         // Pièces
-        piece_images[0] = LoadImage("../resources/w_pawn.png");
-        piece_images[1] = LoadImage("../resources/w_knight.png");
-        piece_images[2] = LoadImage("../resources/w_bishop.png");
-        piece_images[3] = LoadImage("../resources/w_rook.png");
-        piece_images[4] = LoadImage("../resources/w_queen.png");
-        piece_images[5] = LoadImage("../resources/w_king.png");
-        piece_images[6] = LoadImage("../resources/b_pawn.png");
-        piece_images[7] = LoadImage("../resources/b_knight.png");
-        piece_images[8] = LoadImage("../resources/b_bishop.png");
-        piece_images[9] = LoadImage("../resources/b_rook.png");
-        piece_images[10] = LoadImage("../resources/b_queen.png");
-        piece_images[11] = LoadImage("../resources/b_king.png");
+        piece_images[0] = LoadImage("../resources/images/w_pawn.png");
+        piece_images[1] = LoadImage("../resources/images/w_knight.png");
+        piece_images[2] = LoadImage("../resources/images/w_bishop.png");
+        piece_images[3] = LoadImage("../resources/images/w_rook.png");
+        piece_images[4] = LoadImage("../resources/images/w_queen.png");
+        piece_images[5] = LoadImage("../resources/images/w_king.png");
+        piece_images[6] = LoadImage("../resources/images/b_pawn.png");
+        piece_images[7] = LoadImage("../resources/images/b_knight.png");
+        piece_images[8] = LoadImage("../resources/images/b_bishop.png");
+        piece_images[9] = LoadImage("../resources/images/b_rook.png");
+        piece_images[10] = LoadImage("../resources/images/b_queen.png");
+        piece_images[11] = LoadImage("../resources/images/b_king.png");
 
         // Chargement du son
-        move_1_sound = LoadSound("../resources/move_1.mp3");
-        move_2_sound = LoadSound("../resources/move_2.mp3");
-        castle_1_sound = LoadSound("../resources/castle_1.mp3");
-        castle_2_sound = LoadSound("../resources/castle_2.mp3");
-        check_1_sound = LoadSound("../resources/check_1.mp3");
-        check_2_sound = LoadSound("../resources/check_2.mp3");
-        capture_1_sound = LoadSound("../resources/capture_1.mp3");
-        capture_2_sound = LoadSound("../resources/capture_2.mp3");
-        checkmate_sound = LoadSound("../resources/checkmate.mp3");
-        stealmate_sound = LoadSound("../resources/stealmate.mp3");
-        game_begin_sound = LoadSound("../resources/game_begin.mp3");
-        game_end_sound = LoadSound("../resources/game_end.mp3");
+        move_1_sound = LoadSound("../resources/sounds/move_1.mp3");
+        move_2_sound = LoadSound("../resources/sounds/move_2.mp3");
+        castle_1_sound = LoadSound("../resources/sounds/castle_1.mp3");
+        castle_2_sound = LoadSound("../resources/sounds/castle_2.mp3");
+        check_1_sound = LoadSound("../resources/sounds/check_1.mp3");
+        check_2_sound = LoadSound("../resources/sounds/check_2.mp3");
+        capture_1_sound = LoadSound("../resources/sounds/capture_1.mp3");
+        capture_2_sound = LoadSound("../resources/sounds/capture_2.mp3");
+        checkmate_sound = LoadSound("../resources/sounds/checkmate.mp3");
+        stealmate_sound = LoadSound("../resources/sounds/stealmate.mp3");
+        game_begin_sound = LoadSound("../resources/sounds/game_begin.mp3");
+        game_end_sound = LoadSound("../resources/sounds/game_end.mp3");
+
+        // Police de l'écriture
+        text_font = LoadFont("../resources/fonts/RobotReaversItalic-4aa4.ttf");
+        // text_font = GetFontDefault();
 
         // Icône
-        icon = LoadImage("../resources/grogros_zero.png");
+        icon = LoadImage("../resources/images/grogros_zero.png");
         SetWindowIcon(icon);
 
         loaded_resources = true;
@@ -1723,10 +1774,11 @@ void load_resources() {
 
 // Fonction qui met à la bonne taille les images et les textes de la GUI
 void resize_gui() {
+        cout << screen_width << ", " << screen_height << endl;
         float min_screen = min(screen_height, screen_width);
         board_size = board_scale * min_screen;
         board_padding_y = (screen_height - board_size) / 2;
-        board_padding_x = board_padding_y;
+        board_padding_x = (screen_height - board_size) / 4;
 
         tile_size = board_size / 8;
         piece_size = tile_size * piece_scale;
@@ -1737,7 +1789,6 @@ void resize_gui() {
             ImageResize(&piece_images[i], piece_size, piece_size);
             piece_textures[i] = LoadTextureFromImage(piece_images[i]);
         }
-
         text_size = board_size / 16;
 }
 
@@ -1887,47 +1938,63 @@ void Board::draw() {
     }
 
 
-    // Pièces
+    // Pièces capturables
     int p;
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             p = _array[i][j];
             if (p > 0) {
-                if (clicked && i == clicked_pos.first && j == clicked_pos.second)
-                    DrawTexture(piece_textures[p - 1], mouse_pos.x - piece_size / 2, mouse_pos.y - piece_size / 2, WHITE);
-                else
-                    DrawTexture(piece_textures[p - 1], board_padding_x + tile_size * orientation_index(j) + (tile_size - piece_size) / 2, board_padding_y + tile_size * orientation_index(7 - i) + (tile_size - piece_size) / 2, WHITE);
+                if (is_capturable(i, j)) {
+                    if (clicked && i == clicked_pos.first && j == clicked_pos.second)
+                        DrawTexture(piece_textures[p - 1], mouse_pos.x - piece_size / 2, mouse_pos.y - piece_size / 2, WHITE);
+                    else
+                        DrawTexture(piece_textures[p - 1], board_padding_x + tile_size * orientation_index(j) + (tile_size - piece_size) / 2, board_padding_y + tile_size * orientation_index(7 - i) + (tile_size - piece_size) / 2, WHITE);
+                }
             }
-
         }
     }
 
     // Coups auquel l'IA réflechit...
-    draw_monte_carlo_arrows();
+    if (drawing_arrows)
+        draw_monte_carlo_arrows();
+
+    // Pièces non-capturables
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            p = _array[i][j];
+            if (p > 0) {
+                if (!is_capturable(i, j)) {
+                    if (clicked && i == clicked_pos.first && j == clicked_pos.second)
+                        DrawTexture(piece_textures[p - 1], mouse_pos.x - piece_size / 2, mouse_pos.y - piece_size / 2, WHITE);
+                    else
+                        DrawTexture(piece_textures[p - 1], board_padding_x + tile_size * orientation_index(j) + (tile_size - piece_size) / 2, board_padding_y + tile_size * orientation_index(7 - i) + (tile_size - piece_size) / 2, WHITE);
+                }
+            }
+        }
+    }
 
 
     // Texte
-    DrawText("GrogrosZero", board_padding_x, text_size / 4, text_size, text_color);
+    DrawTextEx(text_font, "GrogrosZero", {board_padding_x, text_size / 4}, text_size, font_spacing * text_size, text_color);
 
     // Joueurs de la partie
-    DrawText(_player_2, board_padding_x, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation, text_size / 2, text_color);
-    DrawText(_player_1, board_padding_x, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation, text_size / 2, text_color);
+    DrawTextEx(text_font, _player_2.c_str(), {board_padding_x, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
+    DrawTextEx(text_font, _player_1.c_str(), {board_padding_x, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
 
 
     // Temps des joueurs
-    DrawText(to_string(_time_player_2 / 1000).c_str(), board_padding_x + board_size - text_size, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation, text_size / 2, text_color);
-    DrawText(to_string(_time_player_1 / 1000).c_str(), board_padding_x + board_size - text_size, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation, text_size / 2, text_color);
-
+    DrawTextEx(text_font, to_string(_time_player_2 / 1000).c_str(), {board_padding_x + board_size - text_size, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
+    DrawTextEx(text_font, to_string(_time_player_1 / 1000).c_str(), {board_padding_x + board_size - text_size, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
 
     // FEN
     if (_fen == "")
         to_fen();
     const char *fen = _fen.c_str();
-    DrawText(fen, board_padding_x, screen_height - text_size, text_size / 2, text_color);
+    DrawTextEx(text_font, fen, {board_padding_x, screen_height - text_size}, text_size / 2, font_spacing * text_size / 2, text_color);
 
 
     // PGN
-    draw_text_rect(_pgn, board_padding_x + board_size + 20, board_padding_y, screen_width - (board_padding_x + board_size + 20) - 100, board_size / 2 - 10, text_size / 2);
+    draw_text_rect(_pgn, board_padding_x + board_size + text_size / 2, board_padding_y, screen_width - (board_padding_x + board_size + text_size / 2) - text_size / 2, board_size / 2 - text_size / 2, text_size / 2);
 
     // Analyse de Monte-Carlo
     string monte_carlo_text = "Monte-Carlo analysis\n\nresearch parameters :\nbeta : " + to_string(_beta) + "\nk_add : " + to_string(_k_add);
@@ -1945,7 +2012,7 @@ void Board::draw() {
         
         monte_carlo_text += "\n\nnodes : " + int_to_round_string(total_nodes()) + "/" + int_to_round_string(_monte_buffer._length) + "\ndepth : " + to_string(max_monte_carlo_depth()) + "\neval : "  + eval + "\nmove : "  + move_label_from_index(best_move) + " (" + to_string(100 * _nodes_children[best_move] / total_nodes()) + "%)" + "\nstatic eval : "  + to_string(_static_evaluation);
     }
-    DrawText(monte_carlo_text.c_str(), board_padding_x + board_size + text_size / 2, board_padding_y + board_size / 2 + text_size / 4, text_size / 2, text_color);
+    DrawTextEx(text_font, monte_carlo_text.c_str(), {board_padding_x + board_size + text_size / 2, board_padding_y + board_size / 2 + text_size / 4}, text_size / 2, font_spacing * text_size / 2, text_color);
 
 }
 
@@ -2180,7 +2247,7 @@ void draw_arrow_from_coord(int i1, int j1, int i2, int j2, float thickness, Colo
     float x2 = board_padding_x + tile_size * orientation_index(j2) + tile_size /2;
     float y2 = board_padding_y + tile_size * orientation_index(7 - i2) + tile_size /2;
     DrawLineEx({x1, y1}, {x2, y2}, thickness, c);
-    DrawCircle(x1, y1, thickness, c);
+    // DrawCircle(x1, y1, thickness, c);
     DrawCircle(x2, y2, thickness * 2, c);
 
     if (use_value) {
@@ -2189,15 +2256,15 @@ void draw_arrow_from_coord(int i1, int j1, int i2, int j2, float thickness, Colo
             sprintf(v, "M%d", mate);
         else
             sprintf(v, "%d", value);
-        int size = thickness * 2;
+        int size = thickness * 1.85;
         int max_size = thickness * 4;
-        int width = MeasureText(v, size);
+        int width = MeasureTextEx(text_font, v, size, font_spacing * size).x;
         if (width > max_size) {
             size = size * max_size / width;
-            width = MeasureText(v, size);
+            width = MeasureTextEx(text_font, v, size, font_spacing * size).x;
         }
         Color t_c = ColorAlpha(BLACK, (float)c.a / 255.0);
-        DrawText(v, x2 - width / 2, y2 - size / 2, size, BLACK);
+        DrawTextEx(text_font, v,  {x2 - width / 2, y2 - size / 2}, size, font_spacing * size, BLACK);
         
     }
 
@@ -2305,8 +2372,15 @@ void Board::play_monte_carlo_move_keep(int move, bool display) {
             cout << b._pgn << endl;
             b.to_fen();
             cout << b._fen << endl;
-            if (_is_active)
+            if (_is_active) {
                 _monte_buffer._heap_boards[_index_children[move]]._pgn = b._pgn;
+                _monte_buffer._heap_boards[_index_children[move]]._player_1 = _player_1;
+                _monte_buffer._heap_boards[_index_children[move]]._player_2 = _player_2;
+                _monte_buffer._heap_boards[_index_children[move]]._time_player_1 = _time_player_1;
+                _monte_buffer._heap_boards[_index_children[move]]._time_player_2 = _time_player_2;
+                _monte_buffer._heap_boards[_index_children[move]]._time = _time;
+            }
+                
         }
 
 
@@ -2721,4 +2795,29 @@ int Board::is_mate() {
     _got_moves = -1;
     return 0;
     
+}
+
+
+
+// Fonction qui dit si une pièce est capturable par l'ennemi (pour les affichages GUI)
+bool Board::is_capturable(int i, int j) {
+    _got_moves == -1 && get_moves(false, true);
+
+    for (int k = 0; k < _got_moves; k++)
+        if (_moves[4 * k + 2] == i && _moves[4 * k + 3] == j)
+            return true;
+
+    return false;
+}
+
+
+// Fonction qui renvoie si le joueur est en train de jouer (pour que l'IA arrête de réflechir à ce moment sinon ça lagge)
+bool is_playing() {
+    return selected_pos.first != -1;
+}
+
+
+// Fonction qui change le mode d'affichage des flèches (oui/non)
+void switch_arrow_drawing() {
+    drawing_arrows = !drawing_arrows;
 }

@@ -114,8 +114,8 @@ class Board {
 
 
         // Joueurs de la partie
-        char* _player_1 = (char*)"Player 1";
-        char* _player_2 = (char*)"Player 2";
+        string _player_1 = "Player 1";
+        string _player_2 = "Player 2";
 
         // Temps pour les joueurs
         bool _time = false;
@@ -227,7 +227,7 @@ class Board {
         float game_advancement();
 
         // Fonction qui évalue la position à l'aide d'heuristiques
-        void evaluate(Evaluator, bool checkmates = false);
+        void evaluate(Evaluator, bool checkmates = false, bool display = false);
 
         // Fonction qui évalue la position à l'aide d'heuristiques -> évaluation entière
         void evaluate_int(Evaluator, bool checkmates = false);
@@ -322,6 +322,9 @@ class Board {
         // Fonction qui renvoie s'il y a échec et mat (ou pat) (-1, 1 ou 0)
         int is_mate();
 
+        // Fonction qui dit si une pièce est capturable par l'ennemi (pour les affichages GUI)
+        bool is_capturable(int, int);
+
 };
 
 
@@ -365,7 +368,7 @@ class Buffer {
         Buffer(unsigned long int);
 
         // Initialize l'allocation de n plateaux
-        void init(int length = 2500000);
+        void init(int length = 3000000);
 
         // Fonction qui donne l'index du premier plateau de libre dans le buffer
         int get_first_free_index();
