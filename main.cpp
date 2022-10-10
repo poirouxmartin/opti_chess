@@ -149,6 +149,8 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 -> Self play pour GrogrosZero (blancs/noirs)
 -> Faire une fonction pour initialiser un plateau (plutôt que le from_fen)
 -> Promotions en autre chose que dame?
+-> 4rrk1/p5p1/b3p2p/2p1Bp1Q/P7/1q1P4/5PPP/2KRR3 w - - 0 25 -> Il faut que roi faible
+-> Faire que les undo gardent les calculs de GrogrosZero sur la position
 
 
 
@@ -196,12 +198,23 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 -> Save : pgn + fen, load les deux aussi
 -> Ne plus afficher "INFO:" de raylib dans la console
 -> Comme Nibbler, faire un slider à droite, qui contient l'info de tous les coups possibles : variations, noeuds, éval, position finale...
--> Resize la taille de la fenêtre
 -> Mettre une limite à l'utilisation des noeuds de GrogrosZero
 -> Musique de fond? (désactivable)
 -> Affichage de l'évaluation complète (avec toutes se composantes)
 -> Montrer les noeuds par seconde pour GrogrosZero, et le nombre de noeuds total dans le buffer. Ainsi que le nom de l'IA en self play, et son nombre de noeuds en self play
--> Resize trop petit de la fenêtre = crash... (quand plus haut que large?)
+-> Mettre une aura autour du coup qui sera joué pour qu'on puisse le voir directement
+-> (changer épaisseur des flèches en fonction de leur importance? garder la transparence?)
+-> Affichage : pièces non-bougeables, flèches, pièces bougeables
+-> Combiner les formes (cercles et rectangles) pour faire une flèche unie
+-> Ordonner l'affichage des flèches (pour un fou, mettre le coup le plus court en dernier) (pour deux coups qui vont au même endroit, mettre le meilleur en dernier)
+-> Ajouter un éditeur de positions (ajouter/supprimer les pièces)
+-> Montrer les pièces qui ont déjà été capturées
+-> Sons parfois mauvais (en passant par exemple...) -- à fix + rajouter bruits de mats...
+-> Modes de jeu : contre humain etc...
+-> Binding pour jouer tout seul en ligne
+-> Fix le temps des joueurs (quand les IA jouent)
+-> Ajout d'une gestion du temps par les IA
+-> Bugs de texte (PGN) dus à c_str()? à vérifier
 
 
 ----- Fonctionnalités supplémentaires -----
@@ -262,12 +275,26 @@ int main() {
 
     // Evaluateur pour Monte Carlo
     Evaluator monte_evaluator;
-    monte_evaluator._piece_activity = 0.04; // à fix... (mettre l'activité pour les deux côtés.. fonction get_activity?) // 0.05
-    monte_evaluator._piece_positioning = 0.013; // beta = 0.035 // Pos = 0.015
-    // monte_evaluator._king_safety = 0;
+    monte_evaluator._piece_activity = 0.03; // 0.04
+    monte_evaluator._piece_positioning = 0.007; // beta = 0.035 // Pos = 0.013
+    monte_evaluator._king_safety = 0.0025; // Il faut régler la fonction... avec les pièces autour, s'il est au milieu du plateau...
+    monte_evaluator._castling_rights = 0.2;
+
+    // Nombre de noeuds pour le jeu automatique de GrogrosZero
+    int grogros_nodes = 250000;
+
+    // Nombre de noeuds calculés par frame
+    // Si c'est sur son tour
+    int nodes_per_frame = 25000;
+
+    // Sur le tour de l'autre (pour que ça plante moins)
+    int nodes_per_user_frame = 1000;
 
 
+    bool grogros_auto = false;
     bool grogros_play = false;
+    bool grogroszero_play_black = false;
+    bool grogroszero_play_white = false;
 
     // Activité des pièces à 0, car pour le moment, cela ralentit beaucoup le calcul d'évaluation
     eval_white._piece_activity = 0;
@@ -277,11 +304,11 @@ int main() {
 
 
     // IA self play
-    bool play_white = false;
-    bool play_black = false;
+    bool grogrosfish_play_white = false;
+    bool grogrosfish_play_black = false;
 
     // Paramètres pour l'IA
-    int search_depth = 8;
+    int search_depth = 7;
 
 
     // Temps
@@ -397,27 +424,71 @@ int main() {
         }
         
 
-        // Grogros zero
+        // GrogrosZero
         if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyDown(KEY_G)) {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
-            t.grogros_zero(l_agents[0], monte_evaluator, 25000, false, true, _beta, _k_add);
+            t.grogros_zero(l_agents[0], monte_evaluator, nodes_per_frame, false, true, _beta, _k_add);
+        }
+
+        // GrogrosZero recherche automatique
+        if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_G)) {
+            if (!_monte_buffer._init)
+                _monte_buffer.init();
+            grogros_auto = !grogros_auto;            
         }
 
 
         // Grogros zero self play
-        if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_G)) {
+        if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_P)) {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
             grogros_play = !grogros_play;            
         }
 
-        if (grogros_play && t.game_over() == 0) {
-            t.grogros_zero(l_agents[0], monte_evaluator, 25000, false, true, _beta, _k_add);
-                if (t.total_nodes() > 2000000)
-                    t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true);
+
+        // Affichage des flèches
+        if (IsKeyPressed(KEY_H)) {
+            switch_arrow_drawing();
         }
 
+        // Calcul en mode auto
+        if (grogros_auto && t.game_over() == 0) {
+            if (!_monte_buffer._init)
+                _monte_buffer.init();
+            if (!is_playing()) // Pour que ça ne lag pas pour l'utilisateur
+                t.grogros_zero(l_agents[0], monte_evaluator, nodes_per_frame, false, true, _beta, _k_add);     
+        }
+
+        // Calcul pour les pièces blanches
+        if (grogroszero_play_white && t.game_over() == 0) {
+            if (!_monte_buffer._init)
+                _monte_buffer.init();
+            if (t._player)
+                t.grogros_zero(l_agents[0], monte_evaluator, nodes_per_frame, false, true, _beta, _k_add);
+            else
+                if (!is_playing() || true) // Pour que ça ne lag pas pour l'utilisateur 
+                    t.grogros_zero(l_agents[0], monte_evaluator, nodes_per_user_frame, false, true, _beta, _k_add);     
+        }
+
+        // Calcul pour les pièces noires
+        if (grogroszero_play_black && t.game_over() == 0) {
+            if (!_monte_buffer._init)
+                _monte_buffer.init();
+            if (!t._player)
+                t.grogros_zero(l_agents[0], monte_evaluator, nodes_per_frame, false, true, _beta, _k_add);
+            else
+                if (!is_playing() || true) // Pour que ça ne lag pas pour l'utilisateur
+                    t.grogros_zero(l_agents[0], monte_evaluator, nodes_per_user_frame, false, true, _beta, _k_add);     
+        }
+
+
+        // Joue les coups selon grogros en fonction de la reflexion actuelle
+        if (grogros_play && t.game_over() == 0) {
+            if (t.total_nodes() > grogros_nodes)
+                t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true);
+        }
+            
 
         // Supprime les reflexions de GrogrosZero
         if (IsKeyPressed(KEY_DELETE)) {
@@ -445,6 +516,9 @@ int main() {
             // cout << t._king_safety << endl;
 
         }
+
+        if (IsKeyPressed(KEY_E))
+            t.evaluate(monte_evaluator, true, true);
 
 
         // Undo
@@ -530,37 +604,65 @@ int main() {
         }
 
         // Joueur des pièces blanches : IA/humain
-        if (IsKeyPressed(KEY_DOWN)) {
-            play_white = !play_white;
-            if (play_white)
-                t._player_1 = (char*)"GrogrosFish";
+        if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_DOWN)) {
+            grogrosfish_play_white = !grogrosfish_play_white;
+            if (grogrosfish_play_white)
+                t._player_1 = "GrogrosFish (depth " + to_string(search_depth) + ")";
             else
                 t._player_1 = (char*)"Player 1";
         }
 
         // Joueur des pièces noires : IA/humain
-        if (IsKeyPressed(KEY_UP)) {
-            play_black = !play_black;
-            if (play_black)
-                t._player_2 = (char*)"GrogrosFish";
+        if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_UP)) {
+            grogrosfish_play_black = !grogrosfish_play_black;
+            if (grogrosfish_play_black)
+                t._player_2 = "GrogrosFish (depth " + to_string(search_depth) + ")";
+            else
+                t._player_2 = (char*)"Player 2";
+        }
+
+        // Joueur des pièces blanches : IA/humain
+        if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_DOWN)) {
+            grogroszero_play_white = !grogroszero_play_white;
+            if (grogroszero_play_white)
+                t._player_1 = "GrogrosZero (" + int_to_round_string(grogros_nodes) + " nodes)";
+            else
+                t._player_1 = (char*)"Player 1";
+        }
+
+        // Joueur des pièces noires : IA/humain
+        if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_UP)) {
+            grogroszero_play_black = !grogroszero_play_black;
+            if (grogroszero_play_black)
+                t._player_2 = "GrogrosZero (" + int_to_round_string(grogros_nodes) + " nodes)";
             else
                 t._player_2 = (char*)"Player 2";
         }
             
         // Stoppe toutes les IA
         if (IsKeyDown(KEY_BACKSPACE)) {
-            play_white = false;
-            play_black = false;
+            grogroszero_play_white = false;
+            grogroszero_play_black = false;
+            grogrosfish_play_white = false;
+            grogrosfish_play_black = false;
         }
 
         // Fait jouer l'IA automatiquement en fonction des paramètres
-        if (((play_black && !t._player) || (play_white && t._player)) && t.game_over() == 0) {
-            if (t._player)
-                t.grogrosfish(search_depth, eval_white, true);
-            else
-                t.grogrosfish(search_depth, eval_black, true);
-            cout << "Avancement de la partie : " << t.game_advancement() << endl;
-            cout << "game over : " << t.game_over() << endl;
+        if (t.game_over() == 0) {
+            if (t._player) {
+                if (grogrosfish_play_white)
+                    t.grogrosfish(search_depth, eval_white, true);
+                if (grogroszero_play_white)
+                   if (t.total_nodes() > grogros_nodes)
+                        t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true); 
+            }
+            else {
+                if (grogrosfish_play_black)
+                    t.grogrosfish(search_depth, eval_black, true);
+                if (grogroszero_play_black)
+                   if (t.total_nodes() > grogros_nodes)
+                        t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true); 
+            }
         }
 
         // Entrainement d'agents
