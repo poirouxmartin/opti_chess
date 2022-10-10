@@ -13,13 +13,13 @@ static int screen_height = 900;
 static int fps = 144;
 
 // Couleur de fond
-static Color background_color = {30, 30, 30, 255};
+static Color background_color = {20, 20, 20, 255};
 
 // Couleur du rectangle de texte
-static Color background_text_color = {20, 20, 20, 255};
+static Color background_text_color = {0, 0, 0, 255};
 
 // Couleur du texte
-static Color text_color = {255, 75, 75, 255};
+static Color text_color = {255, 50, 50, 255};
 
 // Couleurs du plateau
 static Color board_color_light = {190, 162, 127, 255};
@@ -40,6 +40,9 @@ static Color arrow_color = {225, 225, 50, 255};
 // Epaisseur des flèches (par rapport à la taille d'une case)
 static float arrow_scale = 0.125;
 static float arrow_thickness = 50;
+
+// Est-ce qu'on affiche les flèches (non par exemple si l'utilisateur veut jouer contre l'IA)
+static bool drawing_arrows = true;
 
 // Pourcentage de noeuds à partir duquel on montre le coup
 static float arrow_rate = 0.05;
@@ -81,6 +84,12 @@ static float piece_scale = 0.75;
 
 // Taille standard du texte
 static float text_size;
+
+// Police du texte
+static Font text_font;
+
+// Espacement entre les caractères
+static float font_spacing = 0.00;
 
 
 // Orientation du plateau
@@ -132,3 +141,9 @@ void resize_gui();
 
 // Fonction qui actualise les nouvelles dimensions de la fenêtre
 void get_window_size();
+
+// Fonction qui renvoie si le joueur est en train de jouer (pour que l'IA arrête de réflechir à ce moment sinon ça lagge)
+bool is_playing();
+
+// Fonction qui change le mode d'affichage des flèches (oui/non)
+void switch_arrow_drawing();
