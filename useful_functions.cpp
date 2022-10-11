@@ -286,3 +286,39 @@ string int_to_round_string(int k) {
     
     return to_string((float)k / 1000000).substr(0, 3) + "M";
 }
+
+// Fonction qui transforme un clock en string (pour les timestamps dans les PGN)
+string clock_to_string(clock_t t, bool full) {
+    int ms = t % 1000;
+    int s = t / 1000;
+    int m = (s / 60) % 60;
+    int h = s / 3600;
+    s = s % 60;
+
+    string time = "";
+
+    if (h || full) {
+        string hours = to_string(h);
+        if (hours.length() == 1)
+            hours = "0" + hours;
+        time += hours + ":";
+    }
+
+    if (m || full) {
+        string minutes = to_string(m);
+        if (minutes.length() == 1)
+            minutes = "0" + minutes;
+        time += minutes + ":";
+    }
+
+    string seconds = to_string(s);
+    if (seconds.length() == 1)
+        seconds = "0" + seconds;
+    time += seconds;
+
+    if (full || (!h && !m))
+        time += "." + to_string(ms);
+    
+
+    return time;
+}

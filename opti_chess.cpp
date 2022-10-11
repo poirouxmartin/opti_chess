@@ -721,6 +721,14 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board) {
             _pgn += ". ";
         }
         _pgn += move_label(i, j, k, l);
+
+        if (_time) {
+            if (_player)
+                _pgn += " {[%clk " + clock_to_string(_time_white) + " ]}";
+            else
+                _pgn += " {[%clk " + clock_to_string(_time_black) + " ]}";
+        }
+
     }
 
 
@@ -1373,7 +1381,7 @@ void Board::from_fen(string fen) {
     _fen = fen;
 
     // PGN
-    _pgn = "[FEN \"" + fen + "\"]\n";
+    _pgn = "[FEN \"" + fen + "\"]\n\n";
 
     // Iterateur qui permet de parcourir la chaine de caractères
     int iterator = 0;
@@ -1498,6 +1506,9 @@ void Board::from_fen(string fen) {
     _last_move[1] = -1;
     _last_move[2] = -1;
     _last_move[3] = -1;
+
+    _named_pgn = false;
+    _timed_pgn = false;
 
 }
 
@@ -1842,7 +1853,7 @@ void Board::draw() {
                         play_move_sound(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second);
                         // make_move(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second, true, true);
                         play_monte_carlo_move_keep(i, true);
-                        cout << _pgn << endl;
+                        display_pgn();
                         legal_move = true;
                         break;
                     }
@@ -1874,7 +1885,7 @@ void Board::draw() {
                             play_move_sound(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
                             // make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second, true, true);
                             play_monte_carlo_move_keep(i, true);
-                            cout << _pgn << endl;
+                            display_pgn();
                             selected_pos = {-1, -1};
                             break;
                         }
@@ -1978,13 +1989,13 @@ void Board::draw() {
     DrawTextEx(text_font, "GrogrosZero", {board_padding_x, text_size / 4}, text_size, font_spacing * text_size, text_color);
 
     // Joueurs de la partie
-    DrawTextEx(text_font, _player_2.c_str(), {board_padding_x, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
-    DrawTextEx(text_font, _player_1.c_str(), {board_padding_x, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
+    DrawTextEx(text_font, _black_player.c_str(), {board_padding_x, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
+    DrawTextEx(text_font, _white_player.c_str(), {board_padding_x, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
 
 
     // Temps des joueurs
-    DrawTextEx(text_font, to_string(_time_player_2 / 1000).c_str(), {board_padding_x + board_size - text_size, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
-    DrawTextEx(text_font, to_string(_time_player_1 / 1000).c_str(), {board_padding_x + board_size - text_size, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
+    DrawTextEx(text_font, clock_to_string(_time_black, false).c_str(), {board_padding_x + board_size - text_size * 2, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
+    DrawTextEx(text_font, clock_to_string(_time_white, false).c_str(), {board_padding_x + board_size - text_size * 2, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
 
     // FEN
     if (_fen == "")
@@ -2368,16 +2379,19 @@ void Board::play_monte_carlo_move_keep(int move, bool display) {
         if (display) {
             play_index_move_sound(move);
             Board b(*this);
+            b._time_white = _time_white;
+            b._time_black = _time_black;
+            b._time = _time;
             b.make_index_move(move, true);
-            cout << b._pgn << endl;
+            b.display_pgn();
             b.to_fen();
             cout << b._fen << endl;
             if (_is_active) {
                 _monte_buffer._heap_boards[_index_children[move]]._pgn = b._pgn;
-                _monte_buffer._heap_boards[_index_children[move]]._player_1 = _player_1;
-                _monte_buffer._heap_boards[_index_children[move]]._player_2 = _player_2;
-                _monte_buffer._heap_boards[_index_children[move]]._time_player_1 = _time_player_1;
-                _monte_buffer._heap_boards[_index_children[move]]._time_player_2 = _time_player_2;
+                _monte_buffer._heap_boards[_index_children[move]]._white_player = _white_player;
+                _monte_buffer._heap_boards[_index_children[move]]._black_player = _black_player;
+                _monte_buffer._heap_boards[_index_children[move]]._time_white = _time_white;
+                _monte_buffer._heap_boards[_index_children[move]]._time_black = _time_black;
                 _monte_buffer._heap_boards[_index_children[move]]._time = _time;
             }
                 
@@ -2820,4 +2834,52 @@ bool is_playing() {
 // Fonction qui change le mode d'affichage des flèches (oui/non)
 void switch_arrow_drawing() {
     drawing_arrows = !drawing_arrows;
+}
+
+
+// Fonction qui affiche le PGN
+void Board::display_pgn() {
+    cout << "\n***** PGN *****\n" << _pgn << "\n***** PGN *****" << endl;
+}
+
+// Fonction qui ajoute les noms des gens au PGN
+void Board::add_names_to_pgn() {
+    if (_named_pgn) {
+        // Change le nom du joueur aux pièces blanches
+        int p_white = _pgn.find("[White ") + 8;
+        int p_white_2 = _pgn.find("\"]");
+        _pgn = _pgn.substr(0, p_white) + _white_player + _pgn.substr(p_white_2);
+
+        // Change le nom du joueur aux pièces noires
+        int p_black = _pgn.find("[Black ") + 8;
+        int p_black_2 = _pgn.find("\"]", p_black);
+        _pgn = _pgn.substr(0, p_black) + _black_player + _pgn.substr(p_black_2);
+    }
+
+    else {
+        int p = _pgn.find_last_of("\"]\n");
+        if (p == -1)
+            _pgn = "[White \"" + _white_player + "\"]\n" + "[Black \"" + _black_player + "\"]\n\n" + _pgn;
+        else
+            _pgn = "[White \"" + _white_player + "\"]\n" + "[Black \"" + _black_player + "\"]\n" + _pgn;        
+        _named_pgn = true;
+    }
+}
+
+
+// Fonction qui ajoute le time control au PGN
+void Board::add_time_to_pgn() {
+    if (_timed_pgn) {
+        cout << "déjà fait !" << endl;
+    }
+    else {
+        int p = _pgn.find_last_of("\"]\n");
+        if (p == -1)
+            _pgn = "[TimeControl \"" + to_string((int)(max(_time_white, _time_black) / 1000)) + " + 0\"]\n\n" + _pgn;
+        else
+            _pgn = _pgn.substr(0, p) + "[TimeControl \"" + to_string((int)(max(_time_white, _time_black) / 1000)) + " + 0\"]\n" + _pgn.substr(p);
+        
+
+        _timed_pgn = true;
+    }
 }

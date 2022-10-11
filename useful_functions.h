@@ -65,3 +65,6 @@ int proximity(int, int, int, int, int k = 2);
 
 // Fonction qui transforme un entier en string (et arrondit s'il est supérieur à 1000)
 string int_to_round_string(int);
+
+// Fonction qui transforme un clock en string (pour les timestamps dans les PGN)
+string clock_to_string(clock_t, bool full = true);
