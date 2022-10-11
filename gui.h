@@ -6,8 +6,10 @@
 
 
 // Paramètres d'initialisation
-static int screen_width = 1800;
-static int screen_height = 900;
+// static int screen_width = 1800;
+// static int screen_height = 900;
+static int screen_width = 600;
+static int screen_height = 400;
 
 // Nombre de FPS
 static int fps = 144;

@@ -114,15 +114,15 @@ class Board {
 
 
         // Joueurs de la partie
-        string _player_1 = "Player 1";
-        string _player_2 = "Player 2";
+        string _white_player = "Player 1";
+        string _black_player = "Player 2";
 
         // Temps pour les joueurs
         bool _time = false;
 
-        // 3 minutes par personne
-        clock_t _time_player_1 = 180000;
-        clock_t _time_player_2 = 180000;
+        // 30 minutes par personne
+        clock_t _time_white = 180000;
+        clock_t _time_black = 180000;
 
         // Plateau libre ou actif? (pour le buffer)
         bool _is_active = false;
@@ -161,6 +161,10 @@ class Board {
         // Sécurité du roi
         int _king_safety = 0;
         bool _safety = false;
+
+        // Est-ce que les noms des joueurs ont été ajoutés au PGN
+        bool _named_pgn = false;
+        bool _timed_pgn = false;
         
 
         // Constructeur par défaut
@@ -324,6 +328,15 @@ class Board {
 
         // Fonction qui dit si une pièce est capturable par l'ennemi (pour les affichages GUI)
         bool is_capturable(int, int);
+
+        // Fonction qui affiche le PGN
+        void display_pgn();
+
+        // Fonction qui ajoute les noms des gens au PGN
+        void add_names_to_pgn();
+
+        // Fonction qui ajoute le time control au PGN
+        void add_time_to_pgn();
 
 };
 

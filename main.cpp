@@ -91,7 +91,7 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
     - Positionnement du roi, des pions, de la dame et des pièces changeant au cours de la partie (++ pièces mineures en début de partie, ++ le reste en fin de partie, ++ valeur des pions) (endgame = 13 points or below for each player? less than 4 pieces?)
     - Sécurité du roi (TRES IMPORTANT !) --> A améliorer, car là c'est pourri... comment calculer? !(pion protégeant le roi) *  pieces ennemies proches du roi = !king_safety ? 
     - Espace (dépend aussi du nombre de pièces restantes..)
-    - Structures de pions
+    - Structures de pions (IMPORTANT)
     - Diagonales ouvertes
     - Lignes ouvertes, tours dessus
     - Clouages
@@ -204,17 +204,21 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 -> Montrer les noeuds par seconde pour GrogrosZero, et le nombre de noeuds total dans le buffer. Ainsi que le nom de l'IA en self play, et son nombre de noeuds en self play
 -> Mettre une aura autour du coup qui sera joué pour qu'on puisse le voir directement
 -> (changer épaisseur des flèches en fonction de leur importance? garder la transparence?)
--> Affichage : pièces non-bougeables, flèches, pièces bougeables
 -> Combiner les formes (cercles et rectangles) pour faire une flèche unie
 -> Ordonner l'affichage des flèches (pour un fou, mettre le coup le plus court en dernier) (pour deux coups qui vont au même endroit, mettre le meilleur en dernier)
 -> Ajouter un éditeur de positions (ajouter/supprimer les pièces)
 -> Montrer les pièces qui ont déjà été capturées
 -> Sons parfois mauvais (en passant par exemple...) -- à fix + rajouter bruits de mats...
--> Modes de jeu : contre humain etc...
 -> Binding pour jouer tout seul en ligne
--> Fix le temps des joueurs (quand les IA jouent)
 -> Ajout d'une gestion du temps par les IA
 -> Bugs de texte (PGN) dus à c_str()? à vérifier
+-> Rajouter le nom des joueurs dans le PGN, ainsi que le temps par coup
+-> Pourquoi GrogrosZero ne s'arrête plus? CTRL-G...
+-> Temps au départ dans le PGN un peu buggé? Comment dire que ça commence avec un temps t?
+-> Rajouter les "1-0" dans le PGN? victoires au temps?
+-> Bon.. PGN à fix, car les attributs peuvent bugger...
+-> Problème au niveau des temps (dans grogrosfish : premier coup à temps max -> le temps n'est actualisé que après son coup...)
+-> Quand on ferme la fenêtre, GrogrosZero arrête de réflechir... (voir application en arrière plan)
 
 
 ----- Fonctionnalités supplémentaires -----
@@ -224,6 +228,7 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 -> Afficher pour chaque coup auquel l'ordi réfléchit : la ligne correspondante, ainsi que la position finale avec son évaluation
 -> Ajouter les noms des joueurs ainsi que leurs temps par coups sur le PGN
 -> Afficher sur le PGN la reflexion de GrogrosZero
+-> Il y a un espace avant "1. e4" dans le PGN
 
 
 */
@@ -281,7 +286,7 @@ int main() {
     monte_evaluator._castling_rights = 0.2;
 
     // Nombre de noeuds pour le jeu automatique de GrogrosZero
-    int grogros_nodes = 250000;
+    int grogros_nodes = 100000;
 
     // Nombre de noeuds calculés par frame
     // Si c'est sur son tour
@@ -351,9 +356,9 @@ int main() {
         if (t._time) {
 
             if (previous_player)
-            t._time_player_1 -= clock() - current_time;
+            t._time_white -= clock() - current_time;
         else
-            t._time_player_2 -= clock() - current_time;
+            t._time_black -= clock() - current_time;
         previous_player = t._player;
         current_time = clock();
 
@@ -389,7 +394,7 @@ int main() {
         // Copie dans le clipboard du PGN
         if (IsKeyPressed(KEY_C)) {
             SetClipboardText(t._pgn.c_str());
-            cout << "copied PGN : " << t._pgn << endl;
+            cout << "copied PGN : \n" << t._pgn << endl;
         }
 
         // Copie dans le clipboard du FEN
@@ -587,10 +592,15 @@ int main() {
         // Lancement du temps
         if (IsKeyPressed(KEY_ENTER)) {
             t._time = !t._time;
+            t.add_time_to_pgn();
             if (t._time) {
                 current_time = clock();
             }
         }
+
+        // Ajout des noms au PGN
+        if (IsKeyPressed(KEY_Q)) // A
+            t.add_names_to_pgn();
         
 
         // Activations rapides de l'IA
@@ -606,37 +616,58 @@ int main() {
         // Joueur des pièces blanches : IA/humain
         if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_DOWN)) {
             grogrosfish_play_white = !grogrosfish_play_white;
-            if (grogrosfish_play_white)
-                t._player_1 = "GrogrosFish (depth " + to_string(search_depth) + ")";
-            else
-                t._player_1 = (char*)"Player 1";
+            if (grogrosfish_play_white) {
+                t._white_player = "GrogrosFish (depth " + to_string(search_depth) + ")";
+                t.add_names_to_pgn();
+            }  
+            else {
+                t._white_player = (char*)"Player 1";
+                t.add_names_to_pgn();
+            }
+                
         }
 
         // Joueur des pièces noires : IA/humain
         if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_UP)) {
             grogrosfish_play_black = !grogrosfish_play_black;
-            if (grogrosfish_play_black)
-                t._player_2 = "GrogrosFish (depth " + to_string(search_depth) + ")";
-            else
-                t._player_2 = (char*)"Player 2";
+            if (grogrosfish_play_black) {
+                t._black_player = "GrogrosFish (depth " + to_string(search_depth) + ")";
+                t.add_names_to_pgn();
+            }        
+            else {
+                t._black_player = (char*)"Player 2";
+                t.add_names_to_pgn();
+            }
+                
         }
 
         // Joueur des pièces blanches : IA/humain
         if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_DOWN)) {
             grogroszero_play_white = !grogroszero_play_white;
-            if (grogroszero_play_white)
-                t._player_1 = "GrogrosZero (" + int_to_round_string(grogros_nodes) + " nodes)";
-            else
-                t._player_1 = (char*)"Player 1";
+            if (grogroszero_play_white) {
+                t._white_player = "GrogrosZero (" + int_to_round_string(grogros_nodes) + " nodes)";
+                t.add_names_to_pgn();
+            }
+            else {
+                t._white_player = (char*)"Player 1";
+                t.add_names_to_pgn();
+            }
+                
         }
 
         // Joueur des pièces noires : IA/humain
         if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_UP)) {
             grogroszero_play_black = !grogroszero_play_black;
-            if (grogroszero_play_black)
-                t._player_2 = "GrogrosZero (" + int_to_round_string(grogros_nodes) + " nodes)";
-            else
-                t._player_2 = (char*)"Player 2";
+            if (grogroszero_play_black) {
+                t._black_player = "GrogrosZero (" + int_to_round_string(grogros_nodes) + " nodes)";
+                t.add_names_to_pgn();
+            }
+                
+            else {
+                t._black_player = (char*)"Player 2";
+                t.add_names_to_pgn();
+            }
+
         }
             
         // Stoppe toutes les IA
