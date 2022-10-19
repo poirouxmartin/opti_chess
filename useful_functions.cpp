@@ -234,6 +234,33 @@ int max_index(int* l, int n) {
 }
 
 
+// Fonction qui renvoie l'index de la valeur maximale de deux listes d'entiers (la seconde est là pour départager en cas d'égalité)
+int max_index(int* l, int n, int* l_annex, int sign) {
+    int max = -2147483648;
+    int max_annex = -2147483648;
+    int max_i = 0;
+
+    for (int i = 0; i < n; i++) {
+        if (l[i] > max) {
+            max = l[i];
+            max_annex = l_annex[i] * sign;
+            max_i = i;
+        }
+        if (l[i] == max) {
+            if (l_annex[i] * sign > max_annex) {
+                max_annex = l_annex[i] * sign;
+                max_i = i;
+            }
+        }
+    }
+        
+            
+
+    return max_i;
+
+}
+
+
 // Fonction qui renvoie l'index de la valeur minimale d'une liste d'entiers
 int min_index(int* l, int n) {
     int min = 1000000;

@@ -51,6 +51,9 @@ void print_array(float[], int);
 // Fonction qui renvoie l'index de la valeur maximale d'une liste d'entiers
 int max_index(int[], int);
 
+// Fonction qui renvoie l'index de la valeur maximale de deux listes d'entiers (la seconde est là pour départager en cas d'égalité)
+int max_index(int*, int, int*, int);
+
 // Fonction qui renvoie l'index de la valeur minimale d'une liste d'entiers
 int min_index(int[], int);
 
