@@ -120,9 +120,9 @@ class Board {
         // Temps pour les joueurs
         bool _time = false;
 
-        // 30 minutes par personne
-        clock_t _time_white = 180000;
-        clock_t _time_black = 180000;
+        // 10 minutes par personne
+        clock_t _time_white = 600000;
+        clock_t _time_black = 600000;
 
         // Plateau libre ou actif? (pour le buffer)
         bool _is_active = false;
@@ -165,6 +165,9 @@ class Board {
         // Est-ce que les noms des joueurs ont été ajoutés au PGN
         bool _named_pgn = false;
         bool _timed_pgn = false;
+
+        // Paramètres pour éviter de tout recalculer pour le draw() avec les stats de Monte-Carlo
+        bool _monte_called = false;
         
 
         // Constructeur par défaut
@@ -321,7 +324,7 @@ class Board {
         int total_nodes();
 
         // Fonction qui calcule la sécurité des rois
-        void get_king_safety(int piece_attack = 30, int piece_defense = 10, int pawn_attack = 5, int pawn_defense = 50, int edge_defense = 100);
+        void get_king_safety(int piece_attack = 30, int piece_defense = 10, int pawn_attack = 5, int pawn_defense = 25, int edge_defense = 100);
 
         // Fonction qui renvoie s'il y a échec et mat (ou pat) (-1, 1 ou 0)
         int is_mate();
@@ -337,6 +340,12 @@ class Board {
 
         // Fonction qui ajoute le time control au PGN
         void add_time_to_pgn();
+
+        // Fonction qui renvoie en chaîne de caractères la meilleure variante selon monte carlo
+        string get_monte_carlo_variant(bool evaluate_final_pos = false);
+
+        // Fonction qui trie les index des coups par nombre de noeuds décroissant
+        vector<int> sort_by_nodes();
 
 };
 

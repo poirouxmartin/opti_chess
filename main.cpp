@@ -67,6 +67,7 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 -> Ne plus jouer les échecs?
 -> Copie des plateaux : tout copier? ou seulement quelques informations importantes?
 -> Liste des coups légaux, et une autre liste pour les coups pseudo-légaux... pour éviter de les recalculer à chaque fois...
+-> Utiliser les threads.. voir cours ProgrammationConcurrente
 
 
 
@@ -89,7 +90,7 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 
 -> Améliorer les heuristiques pour l'évaluation d'une position
     - Positionnement du roi, des pions, de la dame et des pièces changeant au cours de la partie (++ pièces mineures en début de partie, ++ le reste en fin de partie, ++ valeur des pions) (endgame = 13 points or below for each player? less than 4 pieces?)
-    - Sécurité du roi (TRES IMPORTANT !) --> A améliorer, car là c'est pourri... comment calculer? !(pion protégeant le roi) *  pieces ennemies proches du roi = !king_safety ? 
+    - Sécurité du roi (TRES IMPORTANT !) --> A améliorer, car là c'est pourri... comment calculer? !(pion protégeant le roi) *  pieces ennemies proches du roi = !king_safety ?  -> https://www.chessprogramming.org/King_Safety
     - Espace (dépend aussi du nombre de pièces restantes..)
     - Structures de pions (IMPORTANT)
     - Diagonales ouvertes
@@ -111,6 +112,7 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
     - Fous/Paire de fou meilleurs en position ouverte (cavalier : inverse)
     - Tours liées
     - Garder matériel en position perdante?
+    - Opposition des rois en finale
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Augmenter la profondeur pour les finales (GrogrosFish)
@@ -151,7 +153,13 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 -> Promotions en autre chose que dame?
 -> 4rrk1/p5p1/b3p2p/2p1Bp1Q/P7/1q1P4/5PPP/2KRR3 w - - 0 25 -> Il faut que roi faible
 -> Faire que les undo gardent les calculs de GrogrosZero sur la position
-
+-> Utiliser type "auto"?
+-> Utiliser des shared pointers (pour qu'ils se détruisent automatiquement?)
+-> Puzzle : 5kbK/1p1p1p1p/pPpPpPpP/P1P1P1P1/8/pppp4/8/1Q6 w - - 0 1
+-> 7K/8/7k/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/8 w - - 0 1
+-> Forteresses?
+-> ATTENTION : quand il y'a des grosses évaluations, Grogros ne fait plus la différence dans les mauvaises évaluations... que ça soit un mauvais coup, et un coup qui donne mat en 1 (les deux coups sont à 0?) (à cause du k_add?)
+-> Retirer les Agents (ou mettre des paramètres facultatifs?)
 
 
 ----- Interface utilisateur -----
@@ -181,7 +189,6 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 -> Interface qui ne freeze plus quand l'IA réfléchit
 -> Sons pour le temps
 -> Fonction qui affiche le temps en heures, minutes et secondes plutôt que secondes
--> Ajout d'un carré de couleur avec le temps
 -> Incrément de temps
 -> Améliorer l'affichage du PGN
 -> Choisir les crossover en fonction des meilleurs elos
@@ -194,16 +201,12 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 -> Couleur des coups à fix... des modulos?? (quand ça arrive dans le bleu...)
 -> Nouveau curseur
 -> Premettre de modifier les paramètres de recherche de l'IA : beta, k_add... (d'une meilleure manière)
--> Changements de taille de la fenêtre
 -> Save : pgn + fen, load les deux aussi
 -> Ne plus afficher "INFO:" de raylib dans la console
 -> Comme Nibbler, faire un slider à droite, qui contient l'info de tous les coups possibles : variations, noeuds, éval, position finale...
--> Mettre une limite à l'utilisation des noeuds de GrogrosZero
 -> Musique de fond? (désactivable)
--> Affichage de l'évaluation complète (avec toutes se composantes)
 -> Montrer les noeuds par seconde pour GrogrosZero, et le nombre de noeuds total dans le buffer. Ainsi que le nom de l'IA en self play, et son nombre de noeuds en self play
--> Mettre une aura autour du coup qui sera joué pour qu'on puisse le voir directement
--> (changer épaisseur des flèches en fonction de leur importance? garder la transparence?)
+-> (changer épaisseur des flèches en fonction de leur importance?)
 -> Combiner les formes (cercles et rectangles) pour faire une flèche unie
 -> Ordonner l'affichage des flèches (pour un fou, mettre le coup le plus court en dernier) (pour deux coups qui vont au même endroit, mettre le meilleur en dernier)
 -> Ajouter un éditeur de positions (ajouter/supprimer les pièces)
@@ -212,13 +215,22 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 -> Binding pour jouer tout seul en ligne
 -> Ajout d'une gestion du temps par les IA
 -> Bugs de texte (PGN) dus à c_str()? à vérifier
--> Rajouter le nom des joueurs dans le PGN, ainsi que le temps par coup
 -> Pourquoi GrogrosZero ne s'arrête plus? CTRL-G...
 -> Temps au départ dans le PGN un peu buggé? Comment dire que ça commence avec un temps t?
 -> Rajouter les "1-0" dans le PGN? victoires au temps?
--> Bon.. PGN à fix, car les attributs peuvent bugger...
 -> Problème au niveau des temps (dans grogrosfish : premier coup à temps max -> le temps n'est actualisé que après son coup...)
 -> Quand on ferme la fenêtre, GrogrosZero arrête de réflechir... (voir application en arrière plan)
+-> Affichage du PGN dégueulasse dans la fenêtre de droite.. le simplifier?
+-> Affichage : vérifier les distances (parfois ça n'est pas très équilibré...) (faut faire en fonction de la taille de la police)
+-> Utiliser 1 thread pour gérer l'affichage tout seul
+-> Undo doit retirer le coup du PGN aussi
+-> Créer un slider pour les variantes des coups
+-> Afficher les textes avec des différentes couleurs pour que ça soit plus facile à lire
+-> Affichage de "M1" plutôt que des gros nombres dans les lignes d'analyse. Aussi faire une fonction pour transformer 9960000 en M4 etc... (eval_to_string?)
+-> Défiler la variante quand on met la souris dessus
+-> Eviter de recalculer les flèches à chaque fois (et les paramètres de Monte-Carlo)
+-> Afficher quand Grogros est lancé dans sa réflexion
+-> Comme Nibbler, quand on clique sur le bout d'une flèche de Monte-Carlo, joue le coup
 
 
 ----- Fonctionnalités supplémentaires -----
@@ -226,9 +238,7 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 -> Correction PGN -> fins de parties
 -> Importation depuis in PGN
 -> Afficher pour chaque coup auquel l'ordi réfléchit : la ligne correspondante, ainsi que la position finale avec son évaluation
--> Ajouter les noms des joueurs ainsi que leurs temps par coups sur le PGN
 -> Afficher sur le PGN la reflexion de GrogrosZero
--> Il y a un espace avant "1. e4" dans le PGN
 
 
 */
@@ -257,7 +267,9 @@ int main() {
     // Faire une fonction Init pour raylib?
 
     // Fenêtre resizable
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE);       
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    SetConfigFlags(FLAG_MSAA_4X_HINT);
+      
 
     // Initialisation de la fenêtre
     InitWindow(screen_width, screen_height, "Grogros Chess");
@@ -286,7 +298,7 @@ int main() {
     monte_evaluator._castling_rights = 0.2;
 
     // Nombre de noeuds pour le jeu automatique de GrogrosZero
-    int grogros_nodes = 100000;
+    int grogros_nodes = 500000;
 
     // Nombre de noeuds calculés par frame
     // Si c'est sur son tour
@@ -384,8 +396,9 @@ int main() {
             switch_orientation();
 
         // Recommencer une partie
-        if (IsKeyPressed(KEY_N))
+        if (IsKeyPressed(KEY_N)) {
             t.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        }
 
         // Charger une partie
         if (IsKeyPressed(KEY_R))
@@ -458,7 +471,7 @@ int main() {
         }
 
         // Calcul en mode auto
-        if (grogros_auto && t.game_over() == 0) {
+        if (grogros_auto && t.is_mate() == -1 && t.game_over() == 0) {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
             if (!is_playing()) // Pour que ça ne lag pas pour l'utilisateur
@@ -466,7 +479,7 @@ int main() {
         }
 
         // Calcul pour les pièces blanches
-        if (grogroszero_play_white && t.game_over() == 0) {
+        if (grogroszero_play_white && t.is_mate() == -1 && t.game_over() == 0) {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
             if (t._player)
@@ -477,7 +490,7 @@ int main() {
         }
 
         // Calcul pour les pièces noires
-        if (grogroszero_play_black && t.game_over() == 0) {
+        if (grogroszero_play_black && t.is_mate() == -1 && t.game_over() == 0) {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
             if (!t._player)
@@ -489,7 +502,7 @@ int main() {
 
 
         // Joue les coups selon grogros en fonction de la reflexion actuelle
-        if (grogros_play && t.game_over() == 0) {
+        if (grogros_play && t.is_mate() == -1 && t.game_over() == 0) {
             if (t.total_nodes() > grogros_nodes)
                 t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true);
         }
@@ -499,6 +512,11 @@ int main() {
         if (IsKeyPressed(KEY_DELETE)) {
             t.reset_all(true, true);
         }
+
+        if (IsKeyPressed(KEY_D)) {
+            t.display_moves(true);
+        }
+
 
         // Mont-Carlo, en regardant les mats/pats
         if (IsKeyPressed(KEY_T)) {
@@ -519,7 +537,11 @@ int main() {
 
             // t.evaluate(monte_evaluator);
             // cout << t._king_safety << endl;
+            
 
+            vector<int> v(t.sort_by_nodes());
+            for (int i : v)
+                cout << t.move_label_from_index(i) + _monte_buffer._heap_boards[t._index_children[i]].get_monte_carlo_variant(true) << endl;
         }
 
         if (IsKeyPressed(KEY_E))
@@ -679,7 +701,7 @@ int main() {
         }
 
         // Fait jouer l'IA automatiquement en fonction des paramètres
-        if (t.game_over() == 0) {
+        if (t.is_mate() == -1 && t.game_over() == 0) { // le is_mate cause des bugs sur le PGN...
             if (t._player) {
                 if (grogrosfish_play_white)
                     t.grogrosfish(search_depth, eval_white, true);
