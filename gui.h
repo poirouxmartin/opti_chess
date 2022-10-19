@@ -6,10 +6,10 @@
 
 
 // Paramètres d'initialisation
-// static int screen_width = 1800;
-// static int screen_height = 900;
-static int screen_width = 600;
-static int screen_height = 400;
+static int screen_width = 1800;
+static int screen_height = 945;
+// static int screen_width = 761;
+// static int screen_height = 400;
 
 // Nombre de FPS
 static int fps = 144;
@@ -74,7 +74,7 @@ static Sound game_begin_sound;
 static Sound game_end_sound;
 
 // Taille du plateau par rapport à la fenêtre
-static float board_scale = 0.8;
+static float board_scale = 0.7;
 static float board_size;
 static float board_padding_x;
 static float board_padding_y;
@@ -130,7 +130,7 @@ static clock_t begin_time;
 void draw_arrow(float, float, float, float, float thickness = arrow_thickness, Color c = arrow_color);
 
 // A partir de coordonnées sur le plateau (// Thickness = -1 -> default thickness)
-void draw_arrow_from_coord(int, int, int, int, float thickness = -1, Color c = arrow_color, bool use_value = false, int value = 0, int mate = -1);
+void draw_arrow_from_coord(int, int, int, int, float thickness = -1, Color c = arrow_color, bool use_value = false, int value = 0, int mate = -1, bool outline = false);
 
 // Couleur de la flèche en fonction du coup (de son nombre de noeuds)
 Color move_color(int, int);

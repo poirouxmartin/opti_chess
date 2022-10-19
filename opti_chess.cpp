@@ -3,6 +3,7 @@
 #include "gui.h"
 #include <string>
 #include <sstream>
+#include <thread>
 
 
 
@@ -711,7 +712,8 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board) {
     int p_last = _array[k][l];
 
     if (pgn) {
-        _pgn += " ";
+        if (_moves_count != 0 || _half_moves_count != 0)
+            _pgn += " ";
         if (_player) {
             stringstream ss;
             ss << _moves_count;
@@ -1005,16 +1007,6 @@ void Board::evaluate(Evaluator eval, bool checkmates, bool display) {
     }
         
 
-    // Droits de roques
-    float castling_rights = 0;
-    if (eval._castling_rights != 0) {
-        castling_rights += eval._castling_rights * (_k_castle_w + _q_castle_w - _k_castle_b - _q_castle_b) * (1 - adv);
-        if (display)
-            cout << "castling rights : " << castling_rights << endl;
-        _evaluation += castling_rights;
-    }
-        
-
     // Ajout random
     float random_add = 0;
     if (eval._random_add != 0) {
@@ -1043,14 +1035,27 @@ void Board::evaluate(Evaluator eval, bool checkmates, bool display) {
             cout << "player trait : " << player_trait << endl;
         _evaluation += player_trait;
     }
+
+
+    // Droits de roques
+    float castling_rights = 0;
+    if (eval._castling_rights != 0) {
+        castling_rights += eval._castling_rights * (_k_castle_w + _q_castle_w - _k_castle_b - _q_castle_b) * (1 - adv);
+        if (display)
+            cout << "castling rights : " << castling_rights << endl;
+        _evaluation += castling_rights;
+    }
     
     // Sécurité du roi
     float king_safety = 0;
     if (eval._king_safety != 0) {
         get_king_safety();
         king_safety = _king_safety * eval._king_safety * (1 - adv);
-        if (display)
+        if (display) {
             cout << "king safety : " << king_safety << endl;
+            if (eval._castling_rights != 0)
+                cout << "total king safety : " << king_safety + castling_rights << endl;
+        }
         _evaluation += king_safety;
     }
         
@@ -1074,7 +1079,9 @@ void Board::evaluate(Evaluator eval, bool checkmates, bool display) {
 void Board::evaluate_int(Evaluator eval, bool checkmates) {
 
     evaluate(eval, checkmates);
-    _evaluation = (int)(100 * _evaluation);
+    _evaluation *= 100;
+    _evaluation = _evaluation + 0.5 - (_evaluation < 0); // pour l'arrondi
+    _evaluation = (int)(_evaluation);
     _static_evaluation = _evaluation;
 
     return;
@@ -1118,30 +1125,17 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
     int best_move = 0;
     float tmp_value;
 
-    (_got_moves == -1 && get_moves());
+    if (_got_moves == -1) {
+        if (max_depth)
+            get_moves(false, true);
+        else
+            get_moves();
+    }
 
     // Sort moves à faire
     if (depth > 1)
         sort_moves(eval);
     int i;
-
-
-    // Parallélisation?
-
-    //parallel_for (0, _got_moves, [&](int j)) { ... }
-
-    // vector<int> moves_vector = {};
-    // for (int i = 0; i < _got_moves; i++) {
-    //     moves_vector.push_back(_move_order[i]);
-    // }
-
-
-    // for_each(execution::par_unseq, moves_vector.begin(), moves_vector.end(),
-    // [](auto&& i) {
-
-
-    // });
-
 
     for (int j = 0; j < _got_moves; j++) {
 
@@ -1423,7 +1417,7 @@ void Board::from_fen(string fen) {
 
                 else {
                     cout << "invalid FEN" << endl;
-                    break;
+                    return;
                 }
         }
 
@@ -1788,8 +1782,8 @@ void resize_gui() {
         cout << screen_width << ", " << screen_height << endl;
         float min_screen = min(screen_height, screen_width);
         board_size = board_scale * min_screen;
-        board_padding_y = (screen_height - board_size) / 2;
-        board_padding_x = (screen_height - board_size) / 4;
+        board_padding_y = (screen_height - board_size) / 4;
+        board_padding_x = (screen_height - board_size) / 8;
 
         tile_size = board_size / 8;
         piece_size = tile_size * piece_scale;
@@ -1986,11 +1980,13 @@ void Board::draw() {
 
 
     // Texte
-    DrawTextEx(text_font, "GrogrosZero", {board_padding_x, text_size / 4}, text_size, font_spacing * text_size, text_color);
+    DrawTextEx(text_font, "Grogros Chess", {board_padding_x, text_size / 4}, text_size / 1.4, font_spacing * text_size / 1.4, text_color);
 
     // Joueurs de la partie
-    DrawTextEx(text_font, _black_player.c_str(), {board_padding_x, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
-    DrawTextEx(text_font, _white_player.c_str(), {board_padding_x, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
+    DrawCircle(board_padding_x + text_size / 4, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation + text_size / 4, text_size / 6, board_color_dark);
+    DrawTextEx(text_font, _black_player.c_str(), {board_padding_x + text_size / 2, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
+    DrawCircle(board_padding_x + text_size / 4, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation + text_size / 4, text_size / 6, board_color_light);
+    DrawTextEx(text_font, _white_player.c_str(), {board_padding_x + text_size / 2, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
 
 
     // Temps des joueurs
@@ -2001,14 +1997,14 @@ void Board::draw() {
     if (_fen == "")
         to_fen();
     const char *fen = _fen.c_str();
-    DrawTextEx(text_font, fen, {board_padding_x, screen_height - text_size}, text_size / 2, font_spacing * text_size / 2, text_color);
+    DrawTextEx(text_font, fen, {board_padding_x, board_padding_y + board_size + text_size}, text_size / 3, font_spacing * text_size / 3, text_color);
 
 
     // PGN
-    draw_text_rect(_pgn, board_padding_x + board_size + text_size / 2, board_padding_y, screen_width - (board_padding_x + board_size + text_size / 2) - text_size / 2, board_size / 2 - text_size / 2, text_size / 2);
+    draw_text_rect(_pgn, board_padding_x, board_padding_y + board_size + text_size * 3 / 2, screen_width - board_padding_x - text_size / 2, screen_height - (board_padding_y + board_size + text_size * 3 / 2) - text_size / 3, text_size / 3);
 
     // Analyse de Monte-Carlo
-    string monte_carlo_text = "Monte-Carlo analysis\n\nresearch parameters :\nbeta : " + to_string(_beta) + "\nk_add : " + to_string(_k_add);
+    string monte_carlo_text = "Monte-Carlo analysis\n\nresearch parameters :\nbeta : " + to_string(_beta) + " | k_add : " + to_string(_k_add);
     if (_tested_moves) {
         // int best_eval = (_player) ? max_value(_eval_children, _tested_moves) : min_value(_eval_children, _tested_moves);
         int best_move = max_index(_nodes_children, _tested_moves);
@@ -2020,10 +2016,29 @@ void Board::draw() {
             eval = "M" + to_string((100000000 + best_eval) / 100000 - _moves_count);
         else
             eval = to_string(best_eval);
-        
-        monte_carlo_text += "\n\nnodes : " + int_to_round_string(total_nodes()) + "/" + int_to_round_string(_monte_buffer._length) + "\ndepth : " + to_string(max_monte_carlo_depth()) + "\neval : "  + eval + "\nmove : "  + move_label_from_index(best_move) + " (" + to_string(100 * _nodes_children[best_move] / total_nodes()) + "%)" + "\nstatic eval : "  + to_string(_static_evaluation);
+
+        monte_carlo_text += "\nstatic eval : "  + to_string(_static_evaluation) + " | nodes : " + int_to_round_string(total_nodes()) + "/" + int_to_round_string(_monte_buffer._length) + " | depth : " + to_string(max_monte_carlo_depth()) + " | eval : "  + eval;
     }
-    DrawTextEx(text_font, monte_carlo_text.c_str(), {board_padding_x + board_size + text_size / 2, board_padding_y + board_size / 2 + text_size / 4}, text_size / 2, font_spacing * text_size / 2, text_color);
+
+    // Affichage des paramètres d'analyse de Monte-Carlo
+    DrawTextEx(text_font, monte_carlo_text.c_str(), {board_padding_x + board_size + text_size / 2, board_padding_y + text_size / 4}, text_size / 3, font_spacing * text_size / 3, text_color);
+
+
+    // Lignes d'analyse de Monte-Carlo
+    static string monte_carlo_variants;
+
+    // Calcul des variantes
+    if (_monte_called) {
+        monte_carlo_variants = "";
+        vector<int> v(sort_by_nodes());
+        for (int i : v)
+            monte_carlo_variants += "eval : " + to_string(_eval_children[i]) + " | " + move_label_from_index(i) + _monte_buffer._heap_boards[_index_children[i]].get_monte_carlo_variant(true) + " (" + to_string(100.0 * _nodes_children[i] / total_nodes()).substr(0, 5) + "% - " + int_to_round_string(_nodes_children[i]) + ")\n";
+        _monte_called = false;
+    }
+
+    // Affichage des variantes
+    DrawTextEx(text_font, monte_carlo_variants.c_str(), {board_padding_x + board_size + text_size / 2, board_padding_y + board_size / 4 + text_size / 4}, text_size / 3, font_spacing * text_size / 3, text_color);
+    
 
 }
 
@@ -2249,7 +2264,7 @@ void draw_arrow(float x1, float y1, float x2, float y2, float thickness, Color c
 }
 
 // A partir de coordonnées sur le plateau
-void draw_arrow_from_coord(int i1, int j1, int i2, int j2, float thickness, Color c, bool use_value, int value, int mate) {
+void draw_arrow_from_coord(int i1, int j1, int i2, int j2, float thickness, Color c, bool use_value, int value, int mate, bool outline) {
     // cout << thickness << endl;
     if (thickness == -1.0)
         thickness = arrow_thickness;
@@ -2257,8 +2272,27 @@ void draw_arrow_from_coord(int i1, int j1, int i2, int j2, float thickness, Colo
     float y1 = board_padding_y + tile_size * orientation_index(7 - i1) + tile_size /2;
     float x2 = board_padding_x + tile_size * orientation_index(j2) + tile_size /2;
     float y2 = board_padding_y + tile_size * orientation_index(7 - i2) + tile_size /2;
-    DrawLineEx({x1, y1}, {x2, y2}, thickness, c);
-    // DrawCircle(x1, y1, thickness, c);
+
+
+    // Transparence nulle
+    c.a = 255;
+
+    // Outline pour le coup choisi
+    if (outline) {
+        if (abs(y2 - y1) != abs(x2 - x1))
+            DrawLineBezier({x1, y1}, {x2, y2}, thickness * 1.4, BLACK);
+        else
+            DrawLineEx({x1, y1}, {x2, y2}, thickness * 1.4, BLACK);
+        DrawCircle(x1, y1, thickness * 1.2, BLACK);
+        DrawCircle(x2, y2, thickness * 2 * 1.1, BLACK);
+    }
+    
+    // "Flèche"
+    if (abs(y2 - y1) != abs(x2 - x1))
+        DrawLineBezier({x1, y1}, {x2, y2}, thickness, c);
+    else
+        DrawLineEx({x1, y1}, {x2, y2}, thickness, c);
+    DrawCircle(x1, y1, thickness, c);
     DrawCircle(x2, y2, thickness * 2, c);
 
     if (use_value) {
@@ -2286,6 +2320,8 @@ void draw_arrow_from_coord(int i1, int j1, int i2, int j2, float thickness, Colo
 void Board::draw_monte_carlo_arrows() {
     get_moves(false, true);
 
+    int best_move = best_monte_carlo_move();
+
     int sum_nodes = 0;
     for (int i = 0; i < _tested_moves; i++)
         sum_nodes += _nodes_children[i];
@@ -2301,13 +2337,13 @@ void Board::draw_monte_carlo_arrows() {
         // Si une pièce est sélectionnée
         if (selected_pos.first != -1 && selected_pos.second != -1) {
             if (selected_pos.first == _moves[4 * i] && selected_pos.second == _moves[4 * i + 1]) {
-                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate);
+                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate, i == best_move);
             }
         }
         else {
             float n = _nodes_children[i];
             if (n / (float)sum_nodes > arrow_rate)
-                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate);
+                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate, i == best_move);
         }
     }
 }
@@ -2365,13 +2401,16 @@ Color move_color(int nodes, int total_nodes) {
 
 // Fonction qui renvoie le meilleur coup selon l'analyse faite par l'algo de Monte-Carlo
 int Board::best_monte_carlo_move() {
-    return max_index(_nodes_children, _tested_moves);
+    return max_index(_nodes_children, _tested_moves, _eval_children, _color);
 }
 
 
 
 // Fonction qui joue le coup après analyse par l'algo de Monte Carlo, et qui garde en mémoire les infos du nouveau plateau
 void Board::play_monte_carlo_move_keep(int move, bool display) {
+
+    if (_got_moves == -1)
+        get_moves(false, true);
 
     // Si le coup a été calculé par l'algo de Monte-Carlo
     if (move < _tested_moves) {
@@ -2393,6 +2432,8 @@ void Board::play_monte_carlo_move_keep(int move, bool display) {
                 _monte_buffer._heap_boards[_index_children[move]]._time_white = _time_white;
                 _monte_buffer._heap_boards[_index_children[move]]._time_black = _time_black;
                 _monte_buffer._heap_boards[_index_children[move]]._time = _time;
+                _monte_buffer._heap_boards[_index_children[move]]._timed_pgn = _timed_pgn;
+                _monte_buffer._heap_boards[_index_children[move]]._named_pgn = _named_pgn;
             }
                 
         }
@@ -2448,6 +2489,7 @@ int Board::max_monte_carlo_depth() {
 }
 
 
+// Valeurs de base pour Grogros
 double _beta = 0.035;
 int _k_add = 50;
 
@@ -2524,11 +2566,18 @@ Buffer _monte_buffer;
 void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool checkmates, double beta, int k_add, bool display, int depth) {
     static int max_depth;
     static int n_positions = 0;
+    
+    _monte_called = true;
 
     _is_active = true;
 
     if (_new_board && depth == 0) {
-        max_depth = 0;    
+        max_depth = 0;
+        if (!_evaluated) {
+            evaluate_int(e, true); 
+            _evaluated = true;
+        }
+               
     }
 
     if (depth == 0) {
@@ -2554,6 +2603,7 @@ void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool c
     get_moves(false, true);
 
     if (_got_moves == 0) {
+        _nodes++; // un peu bizarre mais bon... revoir les cas où y'a des mats
         return;
     }
 
@@ -2717,6 +2767,7 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
 
     int p;
 
+    // Recherche la position des rois
     for (int i = 0; i < 8; i++)
         for (int j = 0; j < 8; j++) {
             p = _array[i][j];
@@ -2750,7 +2801,7 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
             if (p > 0) {
                 if (p < 6) {
                     if (p == 1) {
-                        _king_safety += pawn_defense * proximity(i, j, w_king_i, w_king_j);
+                        _king_safety += pawn_defense * proximity(i, j, w_king_i, w_king_j) * (0.5 + !_k_castle_w + !_q_castle_w);
                         _king_safety += pawn_attack * proximity(i, j, b_king_i, b_king_j);
                     }   
                     else {
@@ -2762,7 +2813,7 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
                 else if (p > 6 && p < 12) {
                     if (p == 7) {
                         _king_safety -= pawn_attack * proximity(i, j, w_king_i, w_king_j);
-                        _king_safety -= pawn_defense * proximity(i, j, b_king_i, b_king_j);
+                        _king_safety -= pawn_defense * proximity(i, j, b_king_i, b_king_j) * (0.5 + !_k_castle_b + !_q_castle_b);
                     }   
                     else {
                         _king_safety -= piece_attack * proximity(i, j, w_king_i, w_king_j);
@@ -2882,4 +2933,59 @@ void Board::add_time_to_pgn() {
 
         _timed_pgn = true;
     }
+}
+
+
+
+// Fonction qui renvoie en chaîne de caractères la meilleure variante selon monte carlo
+string Board::get_monte_carlo_variant(bool evaluate_final_pos) {
+    string s = "";
+
+    while (true) {
+        if (_got_moves == -1)
+            return s;
+        if (_got_moves == 0) {
+            if (in_check())
+                return s + "#";
+            else
+                return s + "@";
+        }
+        if (_tested_moves == _got_moves) {
+            int move = best_monte_carlo_move();
+            return s + " " + move_label_from_index(move) + _monte_buffer._heap_boards[_index_children[best_monte_carlo_move()]].get_monte_carlo_variant(evaluate_final_pos);
+        }
+        int move = best_monte_carlo_move();
+        s += " " + move_label_from_index(move);
+        if (evaluate_final_pos) {
+            s += " | " + to_string(_monte_buffer._heap_boards[_index_children[best_monte_carlo_move()]]._static_evaluation);
+        }
+        return s;
+    }
+
+
+    return s;
+}
+
+// Fonction qui trie les index des coups par nombre de noeuds décroissant
+vector<int> Board::sort_by_nodes() {
+    // Tri assez moche, et lent (tri par insertion)
+    vector<int> sorted_indexes;
+    vector<int> sorted_nodes;
+
+    for (int i = 0; i < _tested_moves; i++) {
+        for (int j = 0; j <= sorted_indexes.size(); j++) {
+            if (j == sorted_indexes.size()) {
+                sorted_indexes.push_back(i);
+                sorted_nodes.push_back(_monte_buffer._heap_boards[_index_children[i]]._nodes);
+                break;
+            }
+            if (_monte_buffer._heap_boards[_index_children[i]]._nodes > sorted_nodes[j]) {
+                sorted_indexes.insert(sorted_indexes.begin() + j, i);
+                sorted_nodes.insert(sorted_nodes.begin() + j, _monte_buffer._heap_boards[_index_children[i]]._nodes);
+                break;
+            }
+        }
+    }
+
+    return sorted_indexes;
 }
