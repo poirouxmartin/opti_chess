@@ -6,10 +6,10 @@
 
 
 // Paramètres d'initialisation
-static int screen_width = 1800;
-static int screen_height = 945;
-// static int screen_width = 761;
-// static int screen_height = 400;
+static float screen_width = 1800;
+static float screen_height = 945;
+// static float screen_width = 761;
+// static float screen_height = 400;
 
 // Nombre de FPS
 static int fps = 144;
@@ -26,6 +26,8 @@ static Color text_color = {255, 50, 50, 255};
 // Couleurs du plateau
 static Color board_color_light = {190, 162, 127, 255};
 static Color board_color_dark = {109, 78, 54, 255};
+// static Color board_color_light = {149, 110, 83, 255};
+// static Color board_color_dark = {90, 54, 36, 255}; // Couleur Grogros
 
 // Couleur de surlignage de cases
 static Color highlight_color = {255, 255, 100, 150};
@@ -38,6 +40,10 @@ static Color last_move_color = {250, 50, 50, 125};
 
 // Couleur des flèches
 static Color arrow_color = {225, 225, 50, 255};
+
+// Couleur des sliders
+static Color slider_color = {200, 200, 200, 100};
+static Color slider_backgrond_color = {100, 100, 100, 75};
 
 // Epaisseur des flèches (par rapport à la taille d'une case)
 static float arrow_scale = 0.125;
@@ -53,11 +59,16 @@ static float arrow_rate = 0.05;
 static bool loaded_resources = false;
 
 // Textures
-static Texture2D piece_textures[12];
 static Image piece_images[12];
+static Texture2D piece_textures[12];
 
 // Icône
 static Image icon;
+
+// Tête de Grogros
+static Image grogros_image;
+static Texture2D grogros_texture;
+static float grogros_size;
 
 // Sons
 static Sound move_1_sound;
@@ -80,7 +91,7 @@ static float board_padding_x;
 static float board_padding_y;
 
 // Taille des pièces
-static int tile_size;
+static float tile_size;
 static float piece_size;
 static float piece_scale = 0.75;
 
@@ -91,7 +102,7 @@ static float text_size;
 static Font text_font;
 
 // Espacement entre les caractères
-static float font_spacing = 0.00;
+static float font_spacing = 0.0f;
 
 
 // Orientation du plateau
@@ -126,11 +137,20 @@ static int visited_nodes;
 // Calcul de temps
 static clock_t begin_time;
 
+// Valeurs des sliders
+static float pgn_slider = 0.0f;
+static float monte_carlo_slider = 0.0f;
+static float variants_slider = 0.0f;
+
+
+
+
+
 // Fonction pour dessiner une flèche
 void draw_arrow(float, float, float, float, float thickness = arrow_thickness, Color c = arrow_color);
 
 // A partir de coordonnées sur le plateau (// Thickness = -1 -> default thickness)
-void draw_arrow_from_coord(int, int, int, int, float thickness = -1, Color c = arrow_color, bool use_value = false, int value = 0, int mate = -1, bool outline = false);
+void draw_arrow_from_coord(int, int, int, int, int, float thickness = -1, Color c = arrow_color, bool use_value = false, int value = 0, int mate = -1, bool outline = false);
 
 // Couleur de la flèche en fonction du coup (de son nombre de noeuds)
 Color move_color(int, int);
@@ -149,3 +169,27 @@ bool is_playing();
 
 // Fonction qui change le mode d'affichage des flèches (oui/non)
 void switch_arrow_drawing();
+
+// Fonction qui affiche un texte dans une zone donnée avec un slider
+void slider_text(string, float, float, float, float, int size = text_size, float *slider_value = nullptr, float slider_width = board_size * 0.025, float slider_height = board_size * 0.1);
+
+// Fonction pour obtenir l'orientation du plateau
+bool get_board_orientation();
+
+// Fonction qui renvoie si le curseur de la souris se trouve dans le rectangle
+bool is_cursor_in_rect(Rectangle);
+
+// Fonction qui dessine un rectangle à partir de coordonnées flottantes
+void DrawRectangle(float, float, float, float, Color);
+
+// Fonction qui dessine un cercle à partir de coordonnées flottantes
+void DrawCircle(float, float, float, Color);
+
+// Fonction qui dessine une ligne à partir de coordonnées flottantes
+void DrawLineEx(float, float, float, float, float, Color);
+
+// Fonction qui dessine une ligne de Bézier à partir de coordonnées flottantes
+void DrawLineBezier(float, float, float, float, float, Color);
+
+// Fonction qui dessine une texture à partir de coordonnées flottantes
+void DrawTexture(Texture, float, float, Color);

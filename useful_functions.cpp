@@ -13,6 +13,11 @@ bool is_in(int x, int min, int max) {
     return (x >= min && x <= max);
 }
 
+// Fonction qui renvoie si un flottant appartient à un intervalle
+bool is_in(float x, float min, float max) {
+    return (x >= min && x <= max);
+}
+
 // Fonction qui renvoie le maximum de deux entiers
 int max_int(int a, int b) {
     return (a > b) ? a : b;
@@ -190,6 +195,18 @@ int min_value(int* l, int n) {
 }
 
 
+// Fonction qui renvoie la valeur minimum d'une liste de flottans
+int min_value(float* l, int n) {
+    float min = 2147483647;
+
+    for (int i = 0; i < n; i++)
+        if (l[i] < min)
+            min = l[i];
+
+    return min;
+}
+
+
 // Fonction qui affiche une liste d'entiers (array)
 void print_array(int* l, int n) {
     cout << "[|";
@@ -296,7 +313,7 @@ float distance(int i, int j, int x, int y) {
 
 
 // Fonction qui calcule la proximité entre deux points (pour l'évaluation de la sécurité du roi)
-int proximity(int i, int j, int x, int y, int k) {
+float proximity(int i, int j, int x, int y, float k) {
     return k / distance(i, j, x, y);
 }
 
@@ -348,4 +365,9 @@ string clock_to_string(clock_t t, bool full) {
     
 
     return time;
+}
+
+// Fonction qui arrondit un flottant en entier
+int float_to_int(float x) {
+    return (int)x + (x - (int)x > 0.5);
 }

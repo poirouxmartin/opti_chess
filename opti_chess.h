@@ -102,6 +102,9 @@ class Board {
         // Nombre de coups
         int _moves_count = 1;
 
+        // La partie est-elle finie
+        bool _is_game_over = false;
+
 
         // FEN du plateau
         string _fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -120,9 +123,13 @@ class Board {
         // Temps pour les joueurs
         bool _time = false;
 
-        // 10 minutes par personne
-        clock_t _time_white = 600000;
-        clock_t _time_black = 600000;
+        // 15 minutes par personne
+        clock_t _time_white = 900000;
+        clock_t _time_black = 900000;
+
+        // Incrément (5s/coup)
+        clock_t _time_increment_white = 5000;
+        clock_t _time_increment_black = 5000;
 
         // Plateau libre ou actif? (pour le buffer)
         bool _is_active = false;
@@ -234,10 +241,10 @@ class Board {
         float game_advancement();
 
         // Fonction qui évalue la position à l'aide d'heuristiques
-        void evaluate(Evaluator, bool checkmates = false, bool display = false);
+        bool evaluate(Evaluator, bool checkmates = false, bool display = false);
 
         // Fonction qui évalue la position à l'aide d'heuristiques -> évaluation entière
-        void evaluate_int(Evaluator, bool checkmates = false);
+        bool evaluate_int(Evaluator, bool checkmates = false);
 
         // Fonction qui évalue la position à l'aide d'un agent
         void evaluate(Agent);
@@ -324,7 +331,7 @@ class Board {
         int total_nodes();
 
         // Fonction qui calcule la sécurité des rois
-        void get_king_safety(int piece_attack = 30, int piece_defense = 10, int pawn_attack = 5, int pawn_defense = 25, int edge_defense = 100);
+        void get_king_safety(float game_adv, int piece_attack = 50, int piece_defense = 15, int pawn_attack = 10, int pawn_defense = 50, int edge_defense = 100);
 
         // Fonction qui renvoie s'il y a échec et mat (ou pat) (-1, 1 ou 0)
         int is_mate();
@@ -347,11 +354,14 @@ class Board {
         // Fonction qui trie les index des coups par nombre de noeuds décroissant
         vector<int> sort_by_nodes();
 
+        // Fonction qui renvoie selon l'évaluation si c'est un mat ou non
+        int is_eval_mate(int);
+
 };
 
 
 // Fonction qui obtient la case correspondante à la position sur la GUI
-pair<int, int> get_pos_from_gui(int, int);
+pair<int, int> get_pos_from_gui(float, float);
 
 // Fonction qui permet de changer l'orientation du plateau
 void switch_orientation();
