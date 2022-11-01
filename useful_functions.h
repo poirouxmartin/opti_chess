@@ -6,6 +6,9 @@ using namespace std;
 // Fonction qui renvoie si un entier appartient à un intervalle
 bool is_in(int, int, int);
 
+// Fonction qui renvoie si un flottant appartient à un intervalle
+bool is_in(float, float, float);
+
 // Fonction qui renvoie le maximum de deux entiers
 int max_int(int, int);
 
@@ -39,6 +42,9 @@ int max_value(int[], int);
 // Fonction qui renvoie la valeur minimum d'une liste d'entiers
 int min_value(int[], int);
 
+// Fonction qui renvoie la valeur minimum d'une liste de flottans
+int min_value(float[], int);
+
 // Fonction qui affiche une liste d'entiers (array)
 void print_array(int[], int);
 
@@ -64,10 +70,13 @@ unsigned long long getTotalSystemMemory();
 float distance(int, int, int, int);
 
 // Fonction qui calcule la proximité entre deux points (pour l'évaluation de la sécurité du roi)
-int proximity(int, int, int, int, int k = 2);
+float proximity(int, int, int, int, float k = 2);
 
 // Fonction qui transforme un entier en string (et arrondit s'il est supérieur à 1000)
 string int_to_round_string(int);
 
 // Fonction qui transforme un clock en string (pour les timestamps dans les PGN)
 string clock_to_string(clock_t, bool full = true);
+
+// Fonction qui arrondit un flottant en entier
+int float_to_int(float);

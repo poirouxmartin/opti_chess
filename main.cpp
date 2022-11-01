@@ -155,11 +155,12 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 -> Faire que les undo gardent les calculs de GrogrosZero sur la position
 -> Utiliser type "auto"?
 -> Utiliser des shared pointers (pour qu'ils se détruisent automatiquement?)
--> Puzzle : 5kbK/1p1p1p1p/pPpPpPpP/P1P1P1P1/8/pppp4/8/1Q6 w - - 0 1
+-> Puzzle : 5kbK/1p1p1p1p/pPpPpPpP/P1P1P1P1/8/pppp4/8/1Q6 w - - 0 1, 6q1/8/4PPPP/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/kBK5 b - - 0 1
 -> 7K/8/7k/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/8 w - - 0 1
 -> Forteresses?
 -> ATTENTION : quand il y'a des grosses évaluations, Grogros ne fait plus la différence dans les mauvaises évaluations... que ça soit un mauvais coup, et un coup qui donne mat en 1 (les deux coups sont à 0?) (à cause du k_add?)
 -> Retirer les Agents (ou mettre des paramètres facultatifs?)
+-> Fonction de king safety complètement bugguée, faire des vérification
 
 
 ----- Interface utilisateur -----
@@ -167,20 +168,14 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 -> Amélioration des sons
 -> Undo move dans l'interface, avec les flèches (il faut donc stocker l'ensemble de la partie - à l'aide du PGN -> from_pgn?)
 -> Nouveau sons/images
--> Surligner avec le clic droit
 -> Dans le negamax, renvoyer le coup à chaque fois, pour noter la ligne que l'ordi regarde?
 -> Ajout de pre move
--> Ajout de temps par joueur
--> Pouvoir choisir contre quelle IA jouer
 -> Pouvoir faire des flèches
 -> Afficher les coordonnées des cases
 -> Faire des boutons pour faire des actions (ex copier ou coller le FEN/PGN, activer l'IA ou la changer...)
--> Revoir l'affichage du PGN (ne pas sauter à la ligne au milieu d'un mot)
 -> Options : désactivation son, ...
 -> Sons : ajouter checkmate, stealmate, promotion
 -> Chargement FEN -> "auto complétion" si le FEN est incorrect
--> Afficher quelle IA joue
--> Parfois, l'affichage du PGN bug... à régler
 -> Régler le clic (quand IA va jouer), qui affiche mal la pièce
 -> Montrer les pièces qui on étaient prises pendant la partie, ainsi que la différence matérielle
 -> Pouvoir modifier les noms des joueurs
@@ -188,13 +183,9 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 -> Modification du temps
 -> Interface qui ne freeze plus quand l'IA réfléchit
 -> Sons pour le temps
--> Fonction qui affiche le temps en heures, minutes et secondes plutôt que secondes
--> Incrément de temps
--> Améliorer l'affichage du PGN
 -> Choisir les crossover en fonction des meilleurs elos
 -> Elo : que faire quand on copie un agent? crossover? mutation? reset?
 -> Chercher pourquoi les rounds de fin sont plus lents que ceux du début...
--> Coup illégal -> perte de la partie
 -> Gagner contre elo négatif = perdre elo?
 -> Ordonner les flèches de coups de Monte-Carlo pour que ça ne cache plus les autres
 -> Ajouter plus d'info sur les coups (ainsi que les positions résultantes et leur évaluation)
@@ -214,8 +205,6 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 -> Sons parfois mauvais (en passant par exemple...) -- à fix + rajouter bruits de mats...
 -> Binding pour jouer tout seul en ligne
 -> Ajout d'une gestion du temps par les IA
--> Bugs de texte (PGN) dus à c_str()? à vérifier
--> Pourquoi GrogrosZero ne s'arrête plus? CTRL-G...
 -> Temps au départ dans le PGN un peu buggé? Comment dire que ça commence avec un temps t?
 -> Rajouter les "1-0" dans le PGN? victoires au temps?
 -> Problème au niveau des temps (dans grogrosfish : premier coup à temps max -> le temps n'est actualisé que après son coup...)
@@ -226,11 +215,30 @@ https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 -> Undo doit retirer le coup du PGN aussi
 -> Créer un slider pour les variantes des coups
 -> Afficher les textes avec des différentes couleurs pour que ça soit plus facile à lire
--> Affichage de "M1" plutôt que des gros nombres dans les lignes d'analyse. Aussi faire une fonction pour transformer 9960000 en M4 etc... (eval_to_string?)
 -> Défiler la variante quand on met la souris dessus
 -> Eviter de recalculer les flèches à chaque fois (et les paramètres de Monte-Carlo)
 -> Afficher quand Grogros est lancé dans sa réflexion
 -> Comme Nibbler, quand on clique sur le bout d'une flèche de Monte-Carlo, joue le coup
+-> Montrer sur l'échiquier quand la position est mate (ou pate, ou autre condition de fin de partie)
+-> Affichage des coups dans le PGN : Ng1f3 -> Nf3 si c'est le seul cavalier qui peut aller en f3
+-> Faire un reconnaisseur de position automatique
+-> Afficher les composantes de l'évaluation sur la GUI
+-> PGN : ajouter les + pour les échecs
+-> Unload les images, textures etc... pour vider la RAM?
+-> Pouvoir changer les paramètres de l'IA dans l'UI
+-> Ajouter des options/menus
+-> Pouvoir changer le temps des joueurs
+-> Pour le temps, faire une fonction update time pour régler tous les bugs?
+-> Pouvoir sauvegarder les parties entières dans un fichier (qui s'incrémente), pour garder une trace de toutes les parties jouées
+-> Attention, il calcule les variantes à chaque frame pour les analyses de Monte-Carlo de la GUI...........
+-> Test pour les slider : 8/8/8/4PR2/4K1k1/8/3r4/8 w - - 43 84
+-> Affichage des textes encore buggués... parfois ça dépasse en hauteur
+-> Pareil : pourquoi le rectangle dépasse le board?...
+-> Analyses de MC : montrer le chemin qui mène à la meilleure éval, puis celle qui mène au jeu qui va être joué
+-> Importation de position/ nouvelle position -> update les noms et temps
+-> Affichage parfois bizarre du plateau... lignes noires entre les cases
+-> Passer le temps dans la GUI plutôt que dans les plateaux?
+-> Pouvoir grab le slider, ou cliquer pour changer sa place
 
 
 ----- Fonctionnalités supplémentaires -----
@@ -295,10 +303,11 @@ int main() {
     monte_evaluator._piece_activity = 0.03; // 0.04
     monte_evaluator._piece_positioning = 0.007; // beta = 0.035 // Pos = 0.013
     monte_evaluator._king_safety = 0.0025; // Il faut régler la fonction... avec les pièces autour, s'il est au milieu du plateau...
-    monte_evaluator._castling_rights = 0.2;
+    monte_evaluator._castling_rights = 0.3;
 
     // Nombre de noeuds pour le jeu automatique de GrogrosZero
-    int grogros_nodes = 500000;
+    int grogros_nodes = 750000;
+    grogros_nodes = 1000;
 
     // Nombre de noeuds calculés par frame
     // Si c'est sur son tour
@@ -319,18 +328,30 @@ int main() {
     eval_white._king_safety = 0;
     eval_black._king_safety = 0;
 
+    // _beta = 0.1;
+    // _k_add = 100;
+
 
     // IA self play
     bool grogrosfish_play_white = false;
     bool grogrosfish_play_black = false;
 
     // Paramètres pour l'IA
-    int search_depth = 7;
+    int search_depth = 8;
+    search_depth = 2;
 
-
+    
     // Temps
     clock_t current_time;
     bool previous_player = true;
+
+    // Temps par joueur
+    t._time_white = 30000;
+    t._time_black = 30000;
+
+    // Incrément
+    t._time_increment_white = 0;
+    t._time_increment_black = 0;
 
 
     // Test des agents GrogrosZero
@@ -366,14 +387,18 @@ int main() {
 
         // Gestion du temps des joueurs
         if (t._time) {
-
             if (previous_player)
-            t._time_white -= clock() - current_time;
-        else
-            t._time_black -= clock() - current_time;
-        previous_player = t._player;
-        current_time = clock();
-
+                t._time_white -= clock() - current_time;
+            else
+                t._time_black -= clock() - current_time;
+            current_time = clock();
+            if (t._player != previous_player) {
+                if (previous_player)
+                    t._time_white += t._time_increment_white;
+                else
+                    t._time_black += t._time_increment_black;
+                previous_player = t._player;   
+            }
         }
 
 
@@ -483,7 +508,7 @@ int main() {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
             if (t._player)
-                t.grogros_zero(l_agents[0], monte_evaluator, nodes_per_frame, false, true, _beta, _k_add);
+                t.grogros_zero(l_agents[0], monte_evaluator, min(nodes_per_frame, grogros_nodes - t.total_nodes()), false, true, _beta, _k_add);
             else
                 if (!is_playing() || true) // Pour que ça ne lag pas pour l'utilisateur 
                     t.grogros_zero(l_agents[0], monte_evaluator, nodes_per_user_frame, false, true, _beta, _k_add);     
@@ -494,7 +519,7 @@ int main() {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
             if (!t._player)
-                t.grogros_zero(l_agents[0], monte_evaluator, nodes_per_frame, false, true, _beta, _k_add);
+                t.grogros_zero(l_agents[0], monte_evaluator, min(nodes_per_frame, grogros_nodes - t.total_nodes()), false, true, _beta, _k_add);
             else
                 if (!is_playing() || true) // Pour que ça ne lag pas pour l'utilisateur
                     t.grogros_zero(l_agents[0], monte_evaluator, nodes_per_user_frame, false, true, _beta, _k_add);     
@@ -535,13 +560,10 @@ int main() {
             cout << _test_network._layers[2][0] << endl;
             cout << _test_network.global_distance(positions_vector, evaluations_vector) << endl;*/
 
-            // t.evaluate(monte_evaluator);
-            // cout << t._king_safety << endl;
-            
+            const char c[10] = "a";
+            int s = MeasureText(c, 16);
 
-            vector<int> v(t.sort_by_nodes());
-            for (int i : v)
-                cout << t.move_label_from_index(i) + _monte_buffer._heap_boards[t._index_children[i]].get_monte_carlo_variant(true) << endl;
+            cout << "size : " << s << endl;
         }
 
         if (IsKeyPressed(KEY_E))
@@ -636,8 +658,9 @@ int main() {
         }
 
         // Joueur des pièces blanches : IA/humain
-        if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_DOWN)) {
+        if (!IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && get_board_orientation()) || (IsKeyPressed(KEY_UP) && !get_board_orientation()))) {
             grogrosfish_play_white = !grogrosfish_play_white;
+            grogroszero_play_white = false;
             if (grogrosfish_play_white) {
                 t._white_player = "GrogrosFish (depth " + to_string(search_depth) + ")";
                 t.add_names_to_pgn();
@@ -650,8 +673,9 @@ int main() {
         }
 
         // Joueur des pièces noires : IA/humain
-        if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_UP)) {
+        if (!IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && !get_board_orientation()) || (IsKeyPressed(KEY_UP) && get_board_orientation()))) {
             grogrosfish_play_black = !grogrosfish_play_black;
+            grogroszero_play_black = false;
             if (grogrosfish_play_black) {
                 t._black_player = "GrogrosFish (depth " + to_string(search_depth) + ")";
                 t.add_names_to_pgn();
@@ -664,8 +688,9 @@ int main() {
         }
 
         // Joueur des pièces blanches : IA/humain
-        if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_DOWN)) {
+        if (IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && get_board_orientation()) || (IsKeyPressed(KEY_UP) && !get_board_orientation()))) {
             grogroszero_play_white = !grogroszero_play_white;
+            grogrosfish_play_white = false;
             if (grogroszero_play_white) {
                 t._white_player = "GrogrosZero (" + int_to_round_string(grogros_nodes) + " nodes)";
                 t.add_names_to_pgn();
@@ -678,8 +703,9 @@ int main() {
         }
 
         // Joueur des pièces noires : IA/humain
-        if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_UP)) {
+        if (IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && !get_board_orientation()) || (IsKeyPressed(KEY_UP) && get_board_orientation()))) {
             grogroszero_play_black = !grogroszero_play_black;
+            grogrosfish_play_black = false;
             if (grogroszero_play_black) {
                 t._black_player = "GrogrosZero (" + int_to_round_string(grogros_nodes) + " nodes)";
                 t.add_names_to_pgn();
@@ -706,14 +732,14 @@ int main() {
                 if (grogrosfish_play_white)
                     t.grogrosfish(search_depth, eval_white, true);
                 if (grogroszero_play_white)
-                   if (t.total_nodes() > grogros_nodes)
+                   if (t.total_nodes() >= grogros_nodes)
                         t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true); 
             }
             else {
                 if (grogrosfish_play_black)
                     t.grogrosfish(search_depth, eval_black, true);
                 if (grogroszero_play_black)
-                   if (t.total_nodes() > grogros_nodes)
+                   if (t.total_nodes() >= grogros_nodes)
                         t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true); 
             }
         }

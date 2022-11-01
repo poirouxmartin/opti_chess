@@ -4,6 +4,7 @@
 #include <string>
 #include <sstream>
 #include <thread>
+#include "math.h"
 
 
 
@@ -460,6 +461,15 @@ bool Board::get_moves_vector() {
 // Calcule la liste des coups possibles. pseudo ici fait référence au droit de roquer en passant par une position illégale.
 bool Board::get_moves(bool pseudo, bool forbide_check) {
 
+    // Si la partie est finie
+
+    // Règle des 50 coups
+    if (_half_moves_count >= 50) {
+        _got_moves = 0;
+        return false;
+    }
+        
+
     if (_got_moves != -1) {
         // Si on souhaite calculer les autres types de coups (légaux plutôt qu'illégaux, ou inversement...)
         if (_pseudo_moves == forbide_check)
@@ -734,8 +744,8 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board) {
     }
 
 
-    // Implémentation des demi-coups
-    _half_moves_count += 1;
+    // Incrémentation des demi-coups
+    _half_moves_count++;
     (p == 1 || p == 7 || _array[k][l]) && (_half_moves_count = 0);
 
 
@@ -939,7 +949,7 @@ float Board::game_advancement() {
 
 
 // Fonction qui évalue la position à l'aide d'heuristiques
-void Board::evaluate(Evaluator eval, bool checkmates, bool display) {
+bool Board::evaluate(Evaluator eval, bool checkmates, bool display) {
 
     if (checkmates) {
 
@@ -948,14 +958,35 @@ void Board::evaluate(Evaluator eval, bool checkmates, bool display) {
         if (_is_mate == 1) {
             _mate = true;
             _evaluation = - _color * (1000000 - 1000 * _moves_count);
-            return;
+            _is_game_over = true;
+            if (display)
+                cout << "Checkmate" << endl;
+            return true;
         }
         if (_is_mate == 0) {
             _evaluation = 0;
-            return;
+            _is_game_over = true;
+            if (display)
+                cout << "Stealmate" << endl;
+            return true;
         }
         
     }
+
+
+    // Répétitions
+
+    // Règle des 50 coups
+    if (_half_moves_count >= 50) {
+        _evaluation = 0;
+        _is_game_over = true;
+        if (display)
+                cout << "Draw by 50 moves rule" << endl;
+        return true;
+    }
+
+    // Matériel insuffisant
+
     
     _evaluation = 0;
 
@@ -1049,8 +1080,8 @@ void Board::evaluate(Evaluator eval, bool checkmates, bool display) {
     // Sécurité du roi
     float king_safety = 0;
     if (eval._king_safety != 0) {
-        get_king_safety();
-        king_safety = _king_safety * eval._king_safety * (1 - adv);
+        get_king_safety(adv);
+        king_safety = _king_safety * eval._king_safety;
         if (display) {
             cout << "king safety : " << king_safety << endl;
             if (eval._castling_rights != 0)
@@ -1070,21 +1101,21 @@ void Board::evaluate(Evaluator eval, bool checkmates, bool display) {
 
     _evaluated = true;
 
-
-    return;
+    // Partie non finie
+    return false;
 }
 
 
 // Fonction qui évalue la position à l'aide d'heuristiques -> évaluation entière
-void Board::evaluate_int(Evaluator eval, bool checkmates) {
+bool Board::evaluate_int(Evaluator eval, bool checkmates) {
 
-    evaluate(eval, checkmates);
+    bool is_game_over = evaluate(eval, checkmates);
     _evaluation *= 100;
     _evaluation = _evaluation + 0.5 - (_evaluation < 0); // pour l'arrondi
     _evaluation = (int)(_evaluation);
     _static_evaluation = _evaluation;
 
-    return;
+    return is_game_over;
 
 }
 
@@ -1132,14 +1163,12 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
             get_moves();
     }
 
-    // Sort moves à faire
     if (depth > 1)
         sort_moves(eval);
     int i;
 
     for (int j = 0; j < _got_moves; j++) {
 
-        
         // Pour le triage des coups
         if (depth > 1)
             i = _move_order[j];
@@ -1371,6 +1400,8 @@ void Board::sort_moves(Evaluator eval) {
 
 // Fonction qui récupère le plateau d'un FEN
 void Board::from_fen(string fen) {
+    reset_all();
+
     // Mise à jour du FEN
     _fen = fen;
 
@@ -1503,6 +1534,8 @@ void Board::from_fen(string fen) {
 
     _named_pgn = false;
     _timed_pgn = false;
+
+    _is_game_over = false;
 
 }
 
@@ -1719,6 +1752,8 @@ void Board::draw_text_rect(string s, float pos_x, float pos_y, float width, floa
     if (width <= 0 || height <= 0 || sub_div <= 0)
         return;
 
+    // cout << "text size : " << MeasureTextEx(text_font, s.c_str(), size, font_spacing * size).x << ", " << MeasureTextEx(text_font, s.c_str(), size, font_spacing * size).y << endl;
+
     Rectangle rect_text = {pos_x, pos_y, width, height};
     DrawRectangleRec(rect_text, background_text_color);
     
@@ -1773,19 +1808,21 @@ void load_resources() {
         icon = LoadImage("../resources/images/grogros_zero.png");
         SetWindowIcon(icon);
 
+        // Grogros
+        grogros_image = LoadImage("../resources/images/grogros_zero.png");
+
         loaded_resources = true;
 }
 
 
 // Fonction qui met à la bonne taille les images et les textes de la GUI
 void resize_gui() {
-        cout << screen_width << ", " << screen_height << endl;
         float min_screen = min(screen_height, screen_width);
         board_size = board_scale * min_screen;
-        board_padding_y = (screen_height - board_size) / 4;
-        board_padding_x = (screen_height - board_size) / 8;
+        board_padding_y = (screen_height - board_size) / 4.0f;
+        board_padding_x = (screen_height - board_size) / 8.0f;
 
-        tile_size = board_size / 8;
+        tile_size = board_size / 8.0f;
         piece_size = tile_size * piece_scale;
         arrow_thickness = tile_size * arrow_scale;
 
@@ -1794,7 +1831,12 @@ void resize_gui() {
             ImageResize(&piece_images[i], piece_size, piece_size);
             piece_textures[i] = LoadTextureFromImage(piece_images[i]);
         }
-        text_size = board_size / 16;
+        text_size = board_size / 16.0f;
+
+        // Grogros
+        grogros_size = board_size / 16.0f;
+        ImageResize(&grogros_image, grogros_size, grogros_size);
+        grogros_texture = LoadTextureFromImage(grogros_image);
 }
 
 
@@ -1970,22 +2012,25 @@ void Board::draw() {
             if (p > 0) {
                 if (!is_capturable(i, j)) {
                     if (clicked && i == clicked_pos.first && j == clicked_pos.second)
-                        DrawTexture(piece_textures[p - 1], mouse_pos.x - piece_size / 2, mouse_pos.y - piece_size / 2, WHITE);
+                        DrawTexture(piece_textures[p - 1], mouse_pos.x - piece_size / 2.0f, mouse_pos.y - piece_size / 2.0f, WHITE);
                     else
-                        DrawTexture(piece_textures[p - 1], board_padding_x + tile_size * orientation_index(j) + (tile_size - piece_size) / 2, board_padding_y + tile_size * orientation_index(7 - i) + (tile_size - piece_size) / 2, WHITE);
+                        DrawTexture(piece_textures[p - 1], board_padding_x + tile_size * (float)orientation_index(j) + (tile_size - piece_size) / 2.0f, board_padding_y + tile_size * (float)orientation_index(7 - i) + (tile_size - piece_size) / 2.0f, WHITE);
                 }
             }
         }
     }
 
 
-    // Texte
-    DrawTextEx(text_font, "Grogros Chess", {board_padding_x, text_size / 4}, text_size / 1.4, font_spacing * text_size / 1.4, text_color);
+    // Titre
+    DrawTextEx(text_font, "Grogros Chess", {board_padding_x + grogros_size / 2 + text_size / 2.8f, text_size / 4.0f}, text_size / 1.4f, font_spacing * text_size / 1.4f, text_color);
+
+    // Grogros
+    DrawTexture(grogros_texture, board_padding_x, text_size / 4.0f - text_size / 5.6f, WHITE);
 
     // Joueurs de la partie
-    DrawCircle(board_padding_x + text_size / 4, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation + text_size / 4, text_size / 6, board_color_dark);
+    DrawCircle(board_padding_x + text_size / 4, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation + text_size / 4, text_size / 6.0f, board_color_dark);
     DrawTextEx(text_font, _black_player.c_str(), {board_padding_x + text_size / 2, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
-    DrawCircle(board_padding_x + text_size / 4, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation + text_size / 4, text_size / 6, board_color_light);
+    DrawCircle(board_padding_x + text_size / 4, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation + text_size / 4, text_size / 6.0f, board_color_light);
     DrawTextEx(text_font, _white_player.c_str(), {board_padding_x + text_size / 2, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
 
 
@@ -2001,7 +2046,8 @@ void Board::draw() {
 
 
     // PGN
-    draw_text_rect(_pgn, board_padding_x, board_padding_y + board_size + text_size * 3 / 2, screen_width - board_padding_x - text_size / 2, screen_height - (board_padding_y + board_size + text_size * 3 / 2) - text_size / 3, text_size / 3);
+    slider_text(_pgn, board_padding_x, board_padding_y + board_size + text_size * 3 / 2, screen_width - board_padding_x - text_size / 2, screen_height - (board_padding_y + board_size + text_size * 3 / 2) - text_size / 3, text_size / 3, &pgn_slider);
+
 
     // Analyse de Monte-Carlo
     string monte_carlo_text = "Monte-Carlo analysis\n\nresearch parameters :\nbeta : " + to_string(_beta) + " | k_add : " + to_string(_k_add);
@@ -2010,10 +2056,16 @@ void Board::draw() {
         int best_move = max_index(_nodes_children, _tested_moves);
         int best_eval = _eval_children[best_move];
         string eval;
-        if (best_eval > 100000)
-            eval = "M" + to_string((100000000 - best_eval) / 100000 - _moves_count + 1); // (Immonde) à changer...
-        else if (best_eval < -100000)
-            eval = "M" + to_string((100000000 + best_eval) / 100000 - _moves_count);
+        int mate = is_eval_mate(best_eval);
+        if (mate != 0) {
+            if (mate * _color > 0)
+                eval = "+";
+            else
+                eval = "-";
+            eval += "M";
+            eval += to_string(abs(mate));
+        }
+            
         else
             eval = to_string(best_eval);
 
@@ -2021,24 +2073,39 @@ void Board::draw() {
     }
 
     // Affichage des paramètres d'analyse de Monte-Carlo
-    DrawTextEx(text_font, monte_carlo_text.c_str(), {board_padding_x + board_size + text_size / 2, board_padding_y + text_size / 4}, text_size / 3, font_spacing * text_size / 3, text_color);
-
+    slider_text(monte_carlo_text.c_str(), board_padding_x + board_size + text_size / 2, board_padding_y, screen_width - text_size - board_padding_x - board_size, board_size / 4,  text_size / 3, &monte_carlo_slider);
 
     // Lignes d'analyse de Monte-Carlo
     static string monte_carlo_variants;
 
     // Calcul des variantes
     if (_monte_called) {
+        bool next = false;
         monte_carlo_variants = "";
         vector<int> v(sort_by_nodes());
-        for (int i : v)
-            monte_carlo_variants += "eval : " + to_string(_eval_children[i]) + " | " + move_label_from_index(i) + _monte_buffer._heap_boards[_index_children[i]].get_monte_carlo_variant(true) + " (" + to_string(100.0 * _nodes_children[i] / total_nodes()).substr(0, 5) + "% - " + int_to_round_string(_nodes_children[i]) + ")\n";
+        for (int i : v) {
+            if (next)
+                monte_carlo_variants += "\n\n";
+            next = true;
+            int mate = is_eval_mate(_eval_children[i]);
+            string eval;
+            if (mate != 0) {
+                if (mate * _color > 0)
+                    eval = "+";
+                else
+                    eval = "-";
+                eval += "M";
+                eval += to_string(abs(mate));
+            }
+            else
+                eval = to_string(_eval_children[i]);
+            monte_carlo_variants += "eval : " + eval + " | " + move_label_from_index(i) + _monte_buffer._heap_boards[_index_children[i]].get_monte_carlo_variant(true) + " (" + to_string(100.0 * _nodes_children[i] / total_nodes()).substr(0, 5) + "% - " + int_to_round_string(_nodes_children[i]) + ")";
+        }
         _monte_called = false;
     }
 
     // Affichage des variantes
-    DrawTextEx(text_font, monte_carlo_variants.c_str(), {board_padding_x + board_size + text_size / 2, board_padding_y + board_size / 4 + text_size / 4}, text_size / 3, font_spacing * text_size / 3, text_color);
-    
+    slider_text(monte_carlo_variants.c_str(), board_padding_x + board_size + text_size / 2, board_padding_y + board_size / 3 , screen_width - text_size - board_padding_x - board_size, board_size * 2 / 3,  text_size / 3, &variants_slider);
 
 }
 
@@ -2103,16 +2170,11 @@ void Board::play_index_move_sound(int i) {
 
 
 // Fonction qui obtient la case correspondante à la position sur la GUI
-pair<int, int> get_pos_from_gui(int x, int y) {
-    pair<int, int> coord;
-
-
+pair<int, int> get_pos_from_gui(float x, float y) {
     if (!is_in(x, board_padding_x, board_padding_x + board_size) || !is_in(y, board_padding_y, board_padding_y + board_size))
         return {-1, -1};
     else
         return {orientation_index(8 - (y - board_padding_y) / tile_size), orientation_index((x - board_padding_x) / tile_size)};
-
-    return coord;
 }
 
 
@@ -2260,11 +2322,11 @@ int* tournament(Agent *agents, const int n_agents) {
 
 // Fonction pour dessiner une flèche
 void draw_arrow(float x1, float y1, float x2, float y2, float thickness, Color c) {
-    DrawLineEx({x1, y1}, {x2, y2}, thickness, c);
+    DrawLineEx(x1, y1, x2, y2, thickness, c);
 }
 
 // A partir de coordonnées sur le plateau
-void draw_arrow_from_coord(int i1, int j1, int i2, int j2, float thickness, Color c, bool use_value, int value, int mate, bool outline) {
+void draw_arrow_from_coord(int i1, int j1, int i2, int j2, int color, float thickness, Color c, bool use_value, int value, int mate, bool outline) {
     // cout << thickness << endl;
     if (thickness == -1.0)
         thickness = arrow_thickness;
@@ -2279,37 +2341,45 @@ void draw_arrow_from_coord(int i1, int j1, int i2, int j2, float thickness, Colo
 
     // Outline pour le coup choisi
     if (outline) {
-        if (abs(y2 - y1) != abs(x2 - x1))
-            DrawLineBezier({x1, y1}, {x2, y2}, thickness * 1.4, BLACK);
+        if (abs(j2 - j1) != abs(i2 - i1))
+            DrawLineBezier(x1, y1, x2, y2, thickness * 1.4f, BLACK);
         else
-            DrawLineEx({x1, y1}, {x2, y2}, thickness * 1.4, BLACK);
-        DrawCircle(x1, y1, thickness * 1.2, BLACK);
-        DrawCircle(x2, y2, thickness * 2 * 1.1, BLACK);
+            DrawLineEx(x1, y1, x2, y2, thickness * 1.4f, BLACK);
+        DrawCircle(x1, y1, thickness * 1.2f, BLACK);
+        DrawCircle(x2, y2, thickness * 2.0f * 1.1f, BLACK);
     }
     
     // "Flèche"
-    if (abs(y2 - y1) != abs(x2 - x1))
-        DrawLineBezier({x1, y1}, {x2, y2}, thickness, c);
+    if (abs(j2 - j1) != abs(i2 - i1))
+        DrawLineBezier(x1, y1, x2, y2, thickness, c);
     else
-        DrawLineEx({x1, y1}, {x2, y2}, thickness, c);
+        DrawLineEx(x1, y1, x2, y2, thickness, c);
     DrawCircle(x1, y1, thickness, c);
-    DrawCircle(x2, y2, thickness * 2, c);
+    DrawCircle(x2, y2, thickness * 2.0f, c);
 
     if (use_value) {
         char v[4];
-        if (mate != -1)
-            sprintf(v, "M%d", mate);
+        string eval;
+        if (mate != 0) {
+            if (mate * color > 0)
+                eval = "+";
+            else
+                eval = "-";
+            eval += "M";
+            eval += to_string(abs(mate));
+            sprintf(v, eval.c_str());
+        }
         else
             sprintf(v, "%d", value);
-        int size = thickness * 1.85;
-        int max_size = thickness * 4;
-        int width = MeasureTextEx(text_font, v, size, font_spacing * size).x;
+        float size = thickness * 1.85f;
+        float max_size = thickness * 4.0f;
+        float width = MeasureTextEx(text_font, v, size, font_spacing * size).x;
         if (width > max_size) {
             size = size * max_size / width;
             width = MeasureTextEx(text_font, v, size, font_spacing * size).x;
         }
         Color t_c = ColorAlpha(BLACK, (float)c.a / 255.0);
-        DrawTextEx(text_font, v,  {x2 - width / 2, y2 - size / 2}, size, font_spacing * size, BLACK);
+        DrawTextEx(text_font, v, {x2 - width / 2.0f, y2 - size / 2.0f}, size, font_spacing * size, BLACK);
         
     }
 
@@ -2328,22 +2398,17 @@ void Board::draw_monte_carlo_arrows() {
     int mate;
 
     for (int i = 0; i < _tested_moves; i++) {
-        if (_eval_children[i] > 100000)
-            mate = (100000000 - _eval_children[i]) / 100000 - _moves_count + 1; // (Immonde) à changer...
-        else if (_eval_children[i] < -100000)
-            mate = (100000000 + _eval_children[i]) / 100000 - _moves_count;
-        else
-            mate = -1;
+        mate = is_eval_mate(_eval_children[i]);
         // Si une pièce est sélectionnée
         if (selected_pos.first != -1 && selected_pos.second != -1) {
             if (selected_pos.first == _moves[4 * i] && selected_pos.second == _moves[4 * i + 1]) {
-                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate, i == best_move);
+                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], _color, -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate, i == best_move);
             }
         }
         else {
             float n = _nodes_children[i];
             if (n / (float)sum_nodes > arrow_rate)
-                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate, i == best_move);
+                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], _color, -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate, i == best_move);
         }
     }
 }
@@ -2386,11 +2451,19 @@ void Board::get_piece_activity(bool legal) {
 // Couleur de la flèche en fonction du coup (de son nombre de noeuds)
 Color move_color(int nodes, int total_nodes) {
 
+    // A cause de mauvais arrondis de float, les couleurs parfois bugguent?
+
     float x = (float) nodes / total_nodes;
 
     unsigned char red = 255 * ((x <= 0.2) + (x > 0.2 && x < 0.4) * (0.4 - x) / 0.2 + (x > 0.8) * (x - 0.8) / 0.2);
     unsigned char green = 255 * ((x < 0.2) * (x - 0.2) / 0.2 + (x >= 0.2 && x <= 0.6) + (x > 0.6 && x < 0.8) * (0.6 - x) / 0.2);
     unsigned char blue = 255 * ((x > 0.4 && x < 0.6) * (x - 0.4) / 0.2 + (x >= 0.6));
+
+    if (255 * ((x < 0.2) * (x - 0.2) / 0.2 + (x >= 0.2 && x <= 0.6) + (x > 0.6 && x < 0.8) * (0.6 - x) / 0.2) > 255)
+        cout << "toto !!x = " << x << endl;
+
+    if (255 * ((x < 0.2) * (x - 0.2) / 0.2 + (x >= 0.2 && x <= 0.6) + (x > 0.6 && x < 0.8) * (0.6 - x) / 0.2) > 255)
+        cout << "0???  x = " << x << endl;
 
     unsigned char alpha = 100 + 155 * nodes / total_nodes;
     // cout << x << ", " << (int)red << ", " << (int)green << ", " << (int)blue << endl;
@@ -2420,6 +2493,8 @@ void Board::play_monte_carlo_move_keep(int move, bool display) {
             Board b(*this);
             b._time_white = _time_white;
             b._time_black = _time_black;
+            b._time_increment_white = _time_increment_white;
+            b._time_increment_black = _time_increment_black;
             b._time = _time;
             b.make_index_move(move, true);
             b.display_pgn();
@@ -2431,6 +2506,8 @@ void Board::play_monte_carlo_move_keep(int move, bool display) {
                 _monte_buffer._heap_boards[_index_children[move]]._black_player = _black_player;
                 _monte_buffer._heap_boards[_index_children[move]]._time_white = _time_white;
                 _monte_buffer._heap_boards[_index_children[move]]._time_black = _time_black;
+                _monte_buffer._heap_boards[_index_children[move]]._time_increment_white = _time_increment_white;
+                _monte_buffer._heap_boards[_index_children[move]]._time_increment_black = _time_increment_black;
                 _monte_buffer._heap_boards[_index_children[move]]._time = _time;
                 _monte_buffer._heap_boards[_index_children[move]]._timed_pgn = _timed_pgn;
                 _monte_buffer._heap_boards[_index_children[move]]._named_pgn = _named_pgn;
@@ -2599,6 +2676,13 @@ void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool c
         }
     }
 
+    // Si la partie est finie, évite le calcul des coups... bizarre aussi : ne plus rentrer dans cette ligne?
+    if (_is_game_over) {
+        _nodes++; // un peu bizarre mais bon... revoir les cas où y'a des mats
+        return;
+    }
+
+
     // Obtention des coups jouables
     get_moves(false, true);
 
@@ -2712,6 +2796,8 @@ void Board::reset_board(bool display) {
     _is_active = false;
     _current_move = 0;
     _evaluated = false;
+    _monte_called = true;
+    _is_game_over = false;
     
     if (!_new_board) {
         _tested_moves = 0;
@@ -2732,6 +2818,7 @@ void Board::reset_all(bool self, bool display) {
         _monte_buffer._heap_boards[_index_children[i]].reset_all(false);
 
     reset_board();
+    
 }
 
 
@@ -2752,7 +2839,7 @@ int Board::total_nodes() {
 
 
 // Fonction qui calcule la sécurité des rois
-void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack, int pawn_defense, int edge_defense) {
+void Board::get_king_safety(float game_adv, int piece_attack, int piece_defense, int pawn_attack, int pawn_defense, int edge_defense) {
 
     if (_safety)
         return;
@@ -2795,35 +2882,44 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
 
     _king_safety = 0;
 
+    float proximity_pawn_defense = 2;
+
     for (int i = 0; i < 8; i++)
         for (int j = 0; j < 8; j++) {
             p = _array[i][j];
             if (p > 0) {
                 if (p < 6) {
                     if (p == 1) {
-                        _king_safety += pawn_defense * proximity(i, j, w_king_i, w_king_j) * (0.5 + !_k_castle_w + !_q_castle_w);
-                        _king_safety += pawn_attack * proximity(i, j, b_king_i, b_king_j);
+                        _king_safety += pawn_defense * proximity(i, j, w_king_i, w_king_j, proximity_pawn_defense) * (0.5 + !_k_castle_w + !_q_castle_w);
+                        _king_safety += pawn_attack * proximity(i, j, b_king_i, b_king_j, 3);
                     }   
                     else {
-                        _king_safety += piece_defense * proximity(i, j, w_king_i, w_king_j);
-                        _king_safety += piece_attack * proximity(i, j, b_king_i, b_king_j);
+                        _king_safety += piece_defense * proximity(i, j, w_king_i, w_king_j, 3);
+                        _king_safety += piece_attack * proximity(i, j, b_king_i, b_king_j, 4);
                     }
                     
                 } 
                 else if (p > 6 && p < 12) {
                     if (p == 7) {
-                        _king_safety -= pawn_attack * proximity(i, j, w_king_i, w_king_j);
-                        _king_safety -= pawn_defense * proximity(i, j, b_king_i, b_king_j) * (0.5 + !_k_castle_b + !_q_castle_b);
+                        _king_safety -= pawn_attack * proximity(i, j, w_king_i, w_king_j, 3);
+                        _king_safety -= pawn_defense * proximity(i, j, b_king_i, b_king_j, proximity_pawn_defense) * (0.5 + !_k_castle_b + !_q_castle_b);
                     }   
                     else {
-                        _king_safety -= piece_attack * proximity(i, j, w_king_i, w_king_j);
-                        _king_safety -= piece_defense * proximity(i, j, b_king_i, b_king_j);
+                        _king_safety -= piece_attack * proximity(i, j, w_king_i, w_king_j, 4);
+                        _king_safety -= piece_defense * proximity(i, j, b_king_i, b_king_j, 3);
                     }
                 }
             }
         }
 
-    _king_safety += edge_defense * ((w_king_i == 0 || w_king_i == 7) + (w_king_j == 0 || w_king_j == 7) - (b_king_i == 0 || b_king_i == 7) - (b_king_j == 0 || b_king_j == 7));
+    // Droits de roque
+    _king_safety += pawn_defense * (_k_castle_w + _q_castle_w) * 2 * proximity_pawn_defense;
+    _king_safety -= pawn_defense * (_k_castle_b + _q_castle_b) * 2 * proximity_pawn_defense;
+
+    _king_safety -= edge_defense * min(abs(w_king_i - (-1)), abs((w_king_i) - 8)) * min(abs(w_king_j - (-1)), abs((w_king_j) - 8)) * (1 - 2 * game_adv);
+    _king_safety += edge_defense * min(abs(b_king_i - (-1)), abs((b_king_i) - 8)) * min(abs(b_king_j - (-1)), abs((b_king_j) - 8)) * (1 - 2 * game_adv);
+
+    // _king_safety += edge_defense * ((w_king_i == 0 || w_king_i == 7) + (w_king_j == 0 || w_king_j == 7) - (b_king_i == 0 || b_king_i == 7) - (b_king_j == 0 || b_king_j == 7));
 
     _safety = true;
 
@@ -2926,9 +3022,9 @@ void Board::add_time_to_pgn() {
     else {
         int p = _pgn.find_last_of("\"]\n");
         if (p == -1)
-            _pgn = "[TimeControl \"" + to_string((int)(max(_time_white, _time_black) / 1000)) + " + 0\"]\n\n" + _pgn;
+            _pgn = "[TimeControl \"" + to_string((int)(max(_time_white, _time_black) / 1000)) + " + " + to_string((int)(max(_time_increment_white, _time_increment_black) / 1000)) +"\"]\n\n" + _pgn;
         else
-            _pgn = _pgn.substr(0, p) + "[TimeControl \"" + to_string((int)(max(_time_white, _time_black) / 1000)) + " + 0\"]\n" + _pgn.substr(p);
+            _pgn = _pgn.substr(0, p) + "[TimeControl \"" + to_string((int)(max(_time_white, _time_black) / 1000)) + " + " + to_string((int)(max(_time_increment_white, _time_increment_black) / 1000)) +"\"]\n" + _pgn.substr(p);
         
 
         _timed_pgn = true;
@@ -2942,13 +3038,13 @@ string Board::get_monte_carlo_variant(bool evaluate_final_pos) {
     string s = "";
 
     while (true) {
-        if (_got_moves == -1)
+        if (_got_moves == -1 && !_is_game_over)
             return s;
-        if (_got_moves == 0) {
+        if (_got_moves == 0 || _is_game_over) {
             if (in_check())
                 return s + "#";
             else
-                return s + "@";
+                return s + " 1/2-1/2";
         }
         if (_tested_moves == _got_moves) {
             int move = best_monte_carlo_move();
@@ -2988,4 +3084,172 @@ vector<int> Board::sort_by_nodes() {
     }
 
     return sorted_indexes;
+}
+
+
+// Fonction qui renvoie selon l'évaluation si c'est un mat ou non
+int Board::is_eval_mate(int e) {
+    if (e > 100000)
+        return (100000000 - e) / 100000 - _moves_count + _player; // (Immonde) à changer...
+    if (e < -100000)
+        return - ((100000000 + e) / 100000 - _moves_count);
+    else
+        return 0;
+}
+
+
+
+
+// Fonction qui affiche un texte dans une zone donnée avec un slider
+void slider_text(string s, float pos_x, float pos_y, float width, float height, int size, float *slider_value, float slider_width, float slider_height) {
+
+    Rectangle rect_text = {pos_x, pos_y, width, height};
+    DrawRectangleRec(rect_text, background_text_color);
+
+    string new_string = "";
+
+    int k = 0;
+
+    bool cut_words = false;
+
+    for (int i = 0; i < s.length(); i++) {
+        // Cherche une démarquation entre les mots pour ne pas couper en plein milieu
+        if (cut_words || s[i] == ' ' || i == s.length() - 1) {
+            if (MeasureTextEx(text_font, (new_string + s.substr(k, i - k + 1)).c_str(), size, font_spacing * size).x < width - slider_width) {
+                new_string += s.substr(k, i - k + 1);
+            }
+            else {
+                new_string += "\n";
+                new_string += s.substr(k, i - k + 1);
+            }
+            k = i + 1;
+        }
+    }
+    
+    
+    // Tadaaaa... mais avant.. prendre en compte le slider
+
+    // Taille verticale totale du texte
+    float vertical_text_size = MeasureTextEx(text_font, new_string.c_str(), size, font_spacing * size).y;
+    // cout << vertical_text_size << "/" << height << endl;
+
+    // Si le texte prend plus de place verticalement que l'espace alloué
+    if (vertical_text_size > height) {
+
+        int n_lines;
+        bool n = false;
+
+        // Nombre de lignes total
+        int total_lines = 1;
+        for (int i = 0; i < new_string.length() - 1; i++) {
+            if (new_string.substr(i, 1) == "\n")
+                total_lines++;
+            // if (!n && MeasureTextEx(text_font, new_string.substr(0, i).c_str(), size, font_spacing * size).y >= height) {
+            //     n_lines = total_lines; // Parfois c'est 23, parfois 24... pourquoi?
+            //     n = true;
+            // }
+                
+        }
+
+        n_lines = total_lines * height / MeasureTextEx(text_font, new_string.c_str(), size, font_spacing * size).y;
+
+        int starting_line = (total_lines - n_lines) * *slider_value;
+
+        string final_text = "";
+        int current_line = 0;
+
+        for (int i = 0; i < new_string.length(); i++) {
+            if (new_string.substr(i, 1) == "\n") {
+                current_line++;
+                // if (MeasureTextEx(text_font, (final_text + new_string[i]).c_str(), size, font_spacing * size).y > height)
+                //     break;
+                if (current_line >= n_lines + starting_line)
+                    break;
+            }
+            
+
+            if (current_line >= starting_line) {
+                final_text += new_string[i];
+            }
+        }
+
+        new_string = final_text;
+        // cout << total_lines << ", " << n_lines << endl;
+        // cout << new_string << "--" << endl;
+        // cout << "measure : " << MeasureTextEx(text_font, new_string.c_str(), size, font_spacing * size).y << endl;
+        // cout << size << "/" << height << " : " << height / size << endl;
+        // cout << "text : " << MeasureTextEx(text_font, new_string.c_str(), size, font_spacing * size).y << ", lines : " << n_lines << endl;
+        slider_height = height / sqrtf(total_lines - n_lines + 1);
+
+
+        // Background
+        Rectangle slider_background_rect = {pos_x + width - slider_width, pos_y, slider_width, height};
+        DrawRectangleRec(slider_background_rect, slider_backgrond_color);
+
+        // Slider
+        Rectangle slider_rect = {pos_x + width - slider_width, pos_y + *slider_value * (height - slider_height), slider_width, slider_height};
+        DrawRectangleRec(slider_rect, slider_color);
+
+
+
+        // Slide
+
+        // Avec la molette
+        if (is_cursor_in_rect({pos_x, pos_y, width, height})) {
+            *slider_value -= GetMouseWheelMove() * GetFrameTime() * 100 / (total_lines - n_lines);
+            if (*slider_value < 0.0f)
+                *slider_value = 0.0f;
+            if (*slider_value > 1.0f)
+                *slider_value = 1.0f;
+        }
+    }
+        
+
+
+    // Texte total
+    const char *c = new_string.c_str();
+
+    DrawTextEx(text_font, c, {pos_x, pos_y}, size, font_spacing * size, text_color);
+    
+    
+
+}
+
+
+// Fonction pour obtenir l'orientation du plateau
+bool get_board_orientation() {
+    return board_orientation;
+}
+
+
+// Fonction qui renvoie si le curseur de la souris se trouve dans le rectangle
+bool is_cursor_in_rect(Rectangle rec) {
+    mouse_pos = GetMousePosition();
+    return (is_in(mouse_pos.x, rec.x, rec.x + rec.width) && is_in(mouse_pos.y, rec.y, rec.y + rec.height));
+}
+
+
+// Fonction qui dessine un rectangle à partir de coordonnées flottantes
+void DrawRectangle(float posX, float posY, float width, float height, Color color) {
+    DrawRectangle(float_to_int(posX), float_to_int(posY), float_to_int(width), float_to_int(height), color);
+}
+
+// Fonction qui dessine un cercle à partir de coordonnées flottantes
+void DrawCircle(float posX, float posY, float radius, Color color) {
+    DrawCircle(float_to_int(posX), float_to_int(posY), radius, color);
+}
+
+// Fonction qui dessine une ligne à partir de coordonnées flottantes
+void DrawLineEx(float x1, float y1, float x2, float y2, float thick, Color color) {
+    DrawLineEx({(float)float_to_int(x1), (float)float_to_int(y1)}, {(float)float_to_int(x2), (float)float_to_int(y2)}, thick, color);
+}
+
+// Fonction qui dessine une ligne de Bézier à partir de coordonnées flottantes
+void DrawLineBezier(float x1, float y1, float x2, float y2, float thick, Color color) {
+    DrawLineBezier({(float)float_to_int(x1), (float)float_to_int(y1)}, {(float)float_to_int(x2), (float)float_to_int(y2)}, thick, color);
+}
+
+// Fonction qui dessine une texture à partir de coordonnées flottantes
+void DrawTexture(Texture texture, float posX, float posY, Color color) {
+    DrawTexture(texture, float_to_int(posX), float_to_int(posY), color);
 }
