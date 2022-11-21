@@ -55,6 +55,9 @@ void Network::calculate_output() {
         }
     }
 
+    // Division par 1000 pour éviter les évaluations garguantuesques
+    _output = _layers[_layers_dimensions.size() - 1][0] / 100;
+
 }
 
 
@@ -69,6 +72,10 @@ void Network::input_from_fen(string fen) {
     int k = 0;
 
     int digit;
+
+    // Remise à zéro des inputs
+    for (int i = 0; i < 768; i++)
+        _layers[0][i] = 0;
 
 
     for (char c : fen) {
@@ -95,14 +102,13 @@ void Network::input_from_fen(string fen) {
                 }
 
                 else {
-                    // cout << "invalid character in FEN : " << c << endl;
                     return;
                 }
         }        
 
     }
 
-    
+    return;
 
 }
 
@@ -152,4 +158,12 @@ int Network::global_distance(vector<string> positions_vector, vector<int> evalua
 
     return vector_norm(distances);
 
+}
+
+
+// Fonctions d'activation pour les calculs du réseau de neurones
+
+// Fonction d'activation linéaire
+int linear_activation(int k, float alpha, float beta) {
+    return alpha + k * beta;
 }

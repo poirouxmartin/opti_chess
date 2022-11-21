@@ -949,7 +949,10 @@ float Board::game_advancement() {
 
 
 // Fonction qui évalue la position à l'aide d'heuristiques
-bool Board::evaluate(Evaluator eval, bool checkmates, bool display) {
+bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n) {
+
+    _evaluated = true;
+    _mate = false;
 
     if (checkmates) {
 
@@ -987,7 +990,19 @@ bool Board::evaluate(Evaluator eval, bool checkmates, bool display) {
 
     // Matériel insuffisant
 
-    
+
+    // Réseau de neurones
+    if (n != nullptr) {
+        to_fen();
+        n->input_from_fen(_fen);
+        n->calculate_output();
+        _evaluation = n->_output;
+        return true;
+    }
+
+
+
+
     _evaluation = 0;
 
     // à tester: changer les boucles par des for (i : array) pour optimiser
@@ -1005,18 +1020,18 @@ bool Board::evaluate(Evaluator eval, bool checkmates, bool display) {
             {   
                 
                 case 0: break;
-                case 1:  _evaluation += (eval._pawn_value_begin   * (1 - adv) + eval._pawn_value_end   * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_pawn_begin[7 - i][j]   * (1 - adv) + eval._pos_pawn_end[7 - i][j]   * adv); break;
-                case 2:  _evaluation += (eval._knight_value_begin * (1 - adv) + eval._knight_value_end * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_knight_begin[7 - i][j] * (1 - adv) + eval._pos_knight_end[7 - i][j] * adv); break;
-                case 3:  _evaluation += (eval._bishop_value_begin * (1 - adv) + eval._bishop_value_end * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_bishop_begin[7 - i][j] * (1 - adv) + eval._pos_bishop_end[7 - i][j] * adv); bishop_w += 1; break;
-                case 4:  _evaluation += (eval._rook_value_begin   * (1 - adv) + eval._rook_value_end   * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_rook_begin[7 - i][j]   * (1 - adv) + eval._pos_rook_end[7 - i][j]   * adv); break;
-                case 5:  _evaluation += (eval._queen_value_begin  * (1 - adv) + eval._queen_value_end  * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_queen_begin[7 - i][j]  * (1 - adv) + eval._pos_queen_end[7 - i][j]  * adv); break;
-                case 6:  _evaluation += (eval._king_value_begin   * (1 - adv) + eval._king_value_end   * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_king_begin[7 - i][j]   * (1 - adv) + eval._pos_king_end[7 - i][j]   * adv); break;
-                case 7:  _evaluation -= (eval._pawn_value_begin   * (1 - adv) + eval._pawn_value_end   * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_pawn_begin[i][j]       * (1 - adv) + eval._pos_pawn_end[i][j]       * adv); break;
-                case 8:  _evaluation -= (eval._knight_value_begin * (1 - adv) + eval._knight_value_end * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_knight_begin[i][j]     * (1 - adv) + eval._pos_knight_end[i][j]     * adv); break;
-                case 9:  _evaluation -= (eval._bishop_value_begin * (1 - adv) + eval._bishop_value_end * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_bishop_begin[i][j]     * (1 - adv) + eval._pos_bishop_end[i][j]     * adv); bishop_b += 1; break;
-                case 10: _evaluation -= (eval._rook_value_begin   * (1 - adv) + eval._rook_value_end   * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_rook_begin[i][j]       * (1 - adv) + eval._pos_rook_end[i][j]       * adv); break;
-                case 11: _evaluation -= (eval._queen_value_begin  * (1 - adv) + eval._queen_value_end  * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_queen_begin[i][j]      * (1 - adv) + eval._pos_queen_end[i][j]      * adv); break;
-                case 12: _evaluation -= (eval._king_value_begin   * (1 - adv) + eval._king_value_end   * adv) * eval._piece_value + eval._piece_positioning * (eval._pos_king_begin[i][j]       * (1 - adv) + eval._pos_king_end[i][j]       * adv); break;
+                case 1:  _evaluation += (eval->_pawn_value_begin   * (1 - adv) + eval->_pawn_value_end   * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_pawn_begin[7 - i][j]   * (1 - adv) + eval->_pos_pawn_end[7 - i][j]   * adv); break;
+                case 2:  _evaluation += (eval->_knight_value_begin * (1 - adv) + eval->_knight_value_end * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_knight_begin[7 - i][j] * (1 - adv) + eval->_pos_knight_end[7 - i][j] * adv); break;
+                case 3:  _evaluation += (eval->_bishop_value_begin * (1 - adv) + eval->_bishop_value_end * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_bishop_begin[7 - i][j] * (1 - adv) + eval->_pos_bishop_end[7 - i][j] * adv); bishop_w += 1; break;
+                case 4:  _evaluation += (eval->_rook_value_begin   * (1 - adv) + eval->_rook_value_end   * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_rook_begin[7 - i][j]   * (1 - adv) + eval->_pos_rook_end[7 - i][j]   * adv); break;
+                case 5:  _evaluation += (eval->_queen_value_begin  * (1 - adv) + eval->_queen_value_end  * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_queen_begin[7 - i][j]  * (1 - adv) + eval->_pos_queen_end[7 - i][j]  * adv); break;
+                case 6:  _evaluation += (eval->_king_value_begin   * (1 - adv) + eval->_king_value_end   * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_king_begin[7 - i][j]   * (1 - adv) + eval->_pos_king_end[7 - i][j]   * adv); break;
+                case 7:  _evaluation -= (eval->_pawn_value_begin   * (1 - adv) + eval->_pawn_value_end   * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_pawn_begin[i][j]       * (1 - adv) + eval->_pos_pawn_end[i][j]       * adv); break;
+                case 8:  _evaluation -= (eval->_knight_value_begin * (1 - adv) + eval->_knight_value_end * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_knight_begin[i][j]     * (1 - adv) + eval->_pos_knight_end[i][j]     * adv); break;
+                case 9:  _evaluation -= (eval->_bishop_value_begin * (1 - adv) + eval->_bishop_value_end * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_bishop_begin[i][j]     * (1 - adv) + eval->_pos_bishop_end[i][j]     * adv); bishop_b += 1; break;
+                case 10: _evaluation -= (eval->_rook_value_begin   * (1 - adv) + eval->_rook_value_end   * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_rook_begin[i][j]       * (1 - adv) + eval->_pos_rook_end[i][j]       * adv); break;
+                case 11: _evaluation -= (eval->_queen_value_begin  * (1 - adv) + eval->_queen_value_end  * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_queen_begin[i][j]      * (1 - adv) + eval->_pos_queen_end[i][j]      * adv); break;
+                case 12: _evaluation -= (eval->_king_value_begin   * (1 - adv) + eval->_king_value_end   * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_king_begin[i][j]       * (1 - adv) + eval->_pos_king_end[i][j]       * adv); break;
             }
 
         }
@@ -1030,8 +1045,8 @@ bool Board::evaluate(Evaluator eval, bool checkmates, bool display) {
 
     // Paire de oufs
     float bishop_pair = 0;
-    if (eval._bishop_pair != 0) {
-        bishop_pair = eval._bishop_pair * ((bishop_w >= 2) - (bishop_b >= 2));
+    if (eval->_bishop_pair != 0) {
+        bishop_pair = eval->_bishop_pair * ((bishop_w >= 2) - (bishop_b >= 2));
         if (display)
             cout << "bishop pair : " << bishop_pair << endl;
         _evaluation += bishop_pair;
@@ -1040,8 +1055,8 @@ bool Board::evaluate(Evaluator eval, bool checkmates, bool display) {
 
     // Ajout random
     float random_add = 0;
-    if (eval._random_add != 0) {
-        random_add += GetRandomValue(-50, 50) * eval._random_add / 100;
+    if (eval->_random_add != 0) {
+        random_add += GetRandomValue(-50, 50) * eval->_random_add / 100;
         if (display)
             cout << "random add : " << random_add << endl;
         _evaluation += random_add;
@@ -1050,9 +1065,9 @@ bool Board::evaluate(Evaluator eval, bool checkmates, bool display) {
 
     // Activité des pièces
     float piece_activity = 0;
-    if (eval._piece_activity != 0) {
+    if (eval->_piece_activity != 0) {
         get_piece_activity();
-        piece_activity = _piece_activity * eval._piece_activity;
+        piece_activity = _piece_activity * eval->_piece_activity;
         if (display)
             cout << "piece activity : " << piece_activity << endl;
         _evaluation += piece_activity;
@@ -1060,8 +1075,8 @@ bool Board::evaluate(Evaluator eval, bool checkmates, bool display) {
 
     // Trait du joueur
     float player_trait = 0;
-    if (eval._player_trait != 0) {
-        player_trait = eval._player_trait * _color;
+    if (eval->_player_trait != 0) {
+        player_trait = eval->_player_trait * _color;
         if (display)
             cout << "player trait : " << player_trait << endl;
         _evaluation += player_trait;
@@ -1070,8 +1085,8 @@ bool Board::evaluate(Evaluator eval, bool checkmates, bool display) {
 
     // Droits de roques
     float castling_rights = 0;
-    if (eval._castling_rights != 0) {
-        castling_rights += eval._castling_rights * (_k_castle_w + _q_castle_w - _k_castle_b - _q_castle_b) * (1 - adv);
+    if (eval->_castling_rights != 0) {
+        castling_rights += eval->_castling_rights * (_k_castle_w + _q_castle_w - _k_castle_b - _q_castle_b) * (1 - adv);
         if (display)
             cout << "castling rights : " << castling_rights << endl;
         _evaluation += castling_rights;
@@ -1079,12 +1094,12 @@ bool Board::evaluate(Evaluator eval, bool checkmates, bool display) {
     
     // Sécurité du roi
     float king_safety = 0;
-    if (eval._king_safety != 0) {
+    if (eval->_king_safety != 0) {
         get_king_safety(adv);
-        king_safety = _king_safety * eval._king_safety;
+        king_safety = _king_safety * eval->_king_safety;
         if (display) {
             cout << "king safety : " << king_safety << endl;
-            if (eval._castling_rights != 0)
+            if (eval->_castling_rights != 0)
                 cout << "total king safety : " << king_safety + castling_rights << endl;
         }
         _evaluation += king_safety;
@@ -1099,18 +1114,17 @@ bool Board::evaluate(Evaluator eval, bool checkmates, bool display) {
         cout << "*** TOTAL : " << _evaluation << " ***" << endl;
     }
 
-    _evaluated = true;
-
     // Partie non finie
     return false;
 }
 
 
 // Fonction qui évalue la position à l'aide d'heuristiques -> évaluation entière
-bool Board::evaluate_int(Evaluator eval, bool checkmates) {
+bool Board::evaluate_int(Evaluator *eval, bool checkmates, bool display, Network *n) {
 
-    bool is_game_over = evaluate(eval, checkmates);
-    _evaluation *= 100;
+    bool is_game_over = evaluate(eval, checkmates, display, n);
+    if (n == nullptr || _mate)
+        _evaluation *= 100;
     _evaluation = _evaluation + 0.5 - (_evaluation < 0); // pour l'arrondi
     _evaluation = (int)(_evaluation);
     _static_evaluation = _evaluation;
@@ -1121,7 +1135,7 @@ bool Board::evaluate_int(Evaluator eval, bool checkmates) {
 
 
 // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-float Board::negamax(int depth, float alpha, float beta, int color, bool max_depth, Evaluator eval, Agent a, bool use_agent, bool play = false, bool display = false) {
+float Board::negamax(int depth, float alpha, float beta, int color, bool max_depth, Evaluator *eval, Agent a, bool use_agent, bool play = false, bool display = false) {
 
     // Nombre de noeuds
     if (max_depth) {
@@ -1208,7 +1222,7 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
             play_index_move_sound(best_move);
             if (display)
                 if (_tested_moves > 0)
-                    play_monte_carlo_move_keep(best_move, true);
+                    play_monte_carlo_move_keep(best_move, true, true, true);
                 else
                     make_index_move(best_move, true);
         }
@@ -1223,25 +1237,11 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
 
 
 // Version un peu mieux optimisée de Grogrosfish
-bool Board::grogrosfish(int depth, Evaluator eval, bool display = false) {
+bool Board::grogrosfish(int depth, Evaluator *eval, bool display = false) {
     Agent a;
     negamax(depth, -1e9, 1e9, _color, true, eval, a, false, true, display);
     if (display) {
         evaluate(eval);
-        to_fen();
-        cout << _fen << endl;
-        cout << _pgn << endl;
-    }
-    
-    return true;
-}
-
-// Version un peu mieux optimisée de Grogrosfish (utilisant un agent)
-bool Board::grogrosfish(int depth, Agent a, bool display = false) {
-    Evaluator eval;
-    negamax(depth, -1e9, 1e9, _color, true, eval, a, true, true, display);
-    if (display) {
-        evaluate(a);
         to_fen();
         cout << _fen << endl;
         cout << _pgn << endl;
@@ -1350,7 +1350,7 @@ bool Board::undo() {
 
 
 // Fonction qui arrange les coups de façon "logique", pour optimiser les algorithmes de calcul
-void Board::sort_moves(Evaluator eval) {
+void Board::sort_moves(Evaluator *eval) {
     // Modifier pour seulement garder le (ou les deux) meilleur(s) coups?
 
     Board b;
@@ -1811,6 +1811,9 @@ void load_resources() {
         // Grogros
         grogros_image = LoadImage("../resources/images/grogros_zero.png");
 
+        // Curseur
+        cursor_image = LoadImage("../resources/images/cursor.png");
+
         loaded_resources = true;
 }
 
@@ -1837,6 +1840,10 @@ void resize_gui() {
         grogros_size = board_size / 16.0f;
         ImageResize(&grogros_image, grogros_size, grogros_size);
         grogros_texture = LoadTextureFromImage(grogros_image);
+
+        // Curseur
+        ImageResize(&cursor_image, cursor_size, cursor_size);
+        cursor_texture = LoadTextureFromImage(cursor_image);
 }
 
 
@@ -1888,7 +1895,7 @@ void Board::draw() {
                         // Le joue
                         play_move_sound(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second);
                         // make_move(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second, true, true);
-                        play_monte_carlo_move_keep(i, true);
+                        play_monte_carlo_move_keep(i, true, true, true);
                         display_pgn();
                         legal_move = true;
                         break;
@@ -1920,7 +1927,7 @@ void Board::draw() {
                         if (_moves[4 * i] == clicked_pos.first && _moves[4 * i + 1] == clicked_pos.second && _moves[4 * i + 2] == drop_pos.first && _moves[4 * i + 3] == drop_pos.second) {
                             play_move_sound(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
                             // make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second, true, true);
-                            play_monte_carlo_move_keep(i, true);
+                            play_monte_carlo_move_keep(i, true, true, true);
                             display_pgn();
                             selected_pos = {-1, -1};
                             break;
@@ -2050,7 +2057,7 @@ void Board::draw() {
 
 
     // Analyse de Monte-Carlo
-    string monte_carlo_text = "Monte-Carlo analysis\n\nresearch parameters :\nbeta : " + to_string(_beta) + " | k_add : " + to_string(_k_add);
+    string monte_carlo_text = "Monte-Carlo research parameters :\nbeta : " + to_string(_beta) + " | k_add : " + to_string(_k_add);
     if (_tested_moves) {
         // int best_eval = (_player) ? max_value(_eval_children, _tested_moves) : min_value(_eval_children, _tested_moves);
         int best_move = max_index(_nodes_children, _tested_moves);
@@ -2069,43 +2076,52 @@ void Board::draw() {
         else
             eval = to_string(best_eval);
 
-        monte_carlo_text += "\nstatic eval : "  + to_string(_static_evaluation) + " | nodes : " + int_to_round_string(total_nodes()) + "/" + int_to_round_string(_monte_buffer._length) + " | depth : " + to_string(max_monte_carlo_depth()) + " | eval : "  + eval;
+        monte_carlo_text += "\n\nstatic eval : "  + to_string(_static_evaluation) + "\nnodes : " + int_to_round_string(total_nodes()) + "/" + int_to_round_string(_monte_buffer._length) + " | time : " + clock_to_string(_time_monte_carlo) + " | speed : " + int_to_round_string(total_nodes() / (_time_monte_carlo + 1) * 1000) + "N/s" + "\ndepth : " + to_string(max_monte_carlo_depth()) + "\neval : "  + eval;
     }
 
     // Affichage des paramètres d'analyse de Monte-Carlo
     slider_text(monte_carlo_text.c_str(), board_padding_x + board_size + text_size / 2, board_padding_y, screen_width - text_size - board_padding_x - board_size, board_size / 4,  text_size / 3, &monte_carlo_slider);
 
-    // Lignes d'analyse de Monte-Carlo
-    static string monte_carlo_variants;
+    if (drawing_arrows) {
+        // Lignes d'analyse de Monte-Carlo
+        static string monte_carlo_variants;
 
-    // Calcul des variantes
-    if (_monte_called) {
-        bool next = false;
-        monte_carlo_variants = "";
-        vector<int> v(sort_by_nodes());
-        for (int i : v) {
-            if (next)
-                monte_carlo_variants += "\n\n";
-            next = true;
-            int mate = is_eval_mate(_eval_children[i]);
-            string eval;
-            if (mate != 0) {
-                if (mate * _color > 0)
-                    eval = "+";
+        // Calcul des variantes
+        if (_monte_called) {
+            bool next = false;
+            monte_carlo_variants = "";
+            vector<int> v(sort_by_nodes());
+            for (int i : v) {
+                if (next)
+                    monte_carlo_variants += "\n\n";
+                next = true;
+                int mate = is_eval_mate(_eval_children[i]);
+                string eval;
+                if (mate != 0) {
+                    if (mate * _color > 0)
+                        eval = "+";
+                    else
+                        eval = "-";
+                    eval += "M";
+                    eval += to_string(abs(mate));
+                }
                 else
-                    eval = "-";
-                eval += "M";
-                eval += to_string(abs(mate));
+                    eval = to_string(_eval_children[i]);
+                monte_carlo_variants += "eval : " + eval + " | " + move_label_from_index(i) + _monte_buffer._heap_boards[_index_children[i]].get_monte_carlo_variant(true) + " (" + to_string(100.0 * _nodes_children[i] / total_nodes()).substr(0, 5) + "% - " + int_to_round_string(_nodes_children[i]) + ")";
             }
-            else
-                eval = to_string(_eval_children[i]);
-            monte_carlo_variants += "eval : " + eval + " | " + move_label_from_index(i) + _monte_buffer._heap_boards[_index_children[i]].get_monte_carlo_variant(true) + " (" + to_string(100.0 * _nodes_children[i] / total_nodes()).substr(0, 5) + "% - " + int_to_round_string(_nodes_children[i]) + ")";
+            _monte_called = false;
         }
-        _monte_called = false;
+
+        // Affichage des variantes
+        slider_text(monte_carlo_variants.c_str(), board_padding_x + board_size + text_size / 2, board_padding_y + board_size / 3 , screen_width - text_size - board_padding_x - board_size, board_size * 2 / 3,  text_size / 3, &variants_slider);
+
     }
 
-    // Affichage des variantes
-    slider_text(monte_carlo_variants.c_str(), board_padding_x + board_size + text_size / 2, board_padding_y + board_size / 3 , screen_width - text_size - board_padding_x - board_size, board_size * 2 / 3,  text_size / 3, &variants_slider);
+    
+
+
+    // Affichage du curseur
+    DrawTexture(cursor_texture, mouse_pos.x - cursor_size / 2, mouse_pos.y - cursor_size / 2, WHITE);
 
 }
 
@@ -2397,7 +2413,12 @@ void Board::draw_monte_carlo_arrows() {
         sum_nodes += _nodes_children[i];
     int mate;
 
-    for (int i = 0; i < _tested_moves; i++) {
+    // Ordonnancement des coups pour le dessin des flèches
+    vector<int> ordered_moves = sort_by_nodes(true);
+    int i;
+
+    for (int j = 0; j < _tested_moves; j++) {
+        i = ordered_moves[j];
         mate = is_eval_mate(_eval_children[i]);
         // Si une pièce est sélectionnée
         if (selected_pos.first != -1 && selected_pos.second != -1) {
@@ -2450,23 +2471,13 @@ void Board::get_piece_activity(bool legal) {
 
 // Couleur de la flèche en fonction du coup (de son nombre de noeuds)
 Color move_color(int nodes, int total_nodes) {
+    float x = (float)nodes / (float)total_nodes;
 
-    // A cause de mauvais arrondis de float, les couleurs parfois bugguent?
-
-    float x = (float) nodes / total_nodes;
-
-    unsigned char red = 255 * ((x <= 0.2) + (x > 0.2 && x < 0.4) * (0.4 - x) / 0.2 + (x > 0.8) * (x - 0.8) / 0.2);
-    unsigned char green = 255 * ((x < 0.2) * (x - 0.2) / 0.2 + (x >= 0.2 && x <= 0.6) + (x > 0.6 && x < 0.8) * (0.6 - x) / 0.2);
-    unsigned char blue = 255 * ((x > 0.4 && x < 0.6) * (x - 0.4) / 0.2 + (x >= 0.6));
-
-    if (255 * ((x < 0.2) * (x - 0.2) / 0.2 + (x >= 0.2 && x <= 0.6) + (x > 0.6 && x < 0.8) * (0.6 - x) / 0.2) > 255)
-        cout << "toto !!x = " << x << endl;
-
-    if (255 * ((x < 0.2) * (x - 0.2) / 0.2 + (x >= 0.2 && x <= 0.6) + (x > 0.6 && x < 0.8) * (0.6 - x) / 0.2) > 255)
-        cout << "0???  x = " << x << endl;
+    unsigned char red = 255.0 * ((x <= 0.2) + (x > 0.2 && x < 0.4) * (0.4 - x) / 0.2 + (x > 0.8) * (x - 0.8) / 0.2);
+    unsigned char green = 255.0 * ((x < 0.2) * x / 0.2 + (x >= 0.2 && x <= 0.6) + (x > 0.6 && x < 0.8) * (0.8 - x) / 0.2);
+    unsigned char blue = 255.0 * ((x > 0.4 && x < 0.6) * (x - 0.4) / 0.2 + (x >= 0.6));
 
     unsigned char alpha = 100 + 155 * nodes / total_nodes;
-    // cout << x << ", " << (int)red << ", " << (int)green << ", " << (int)blue << endl;
 
     return {red, green, blue, alpha};
 }
@@ -2480,7 +2491,7 @@ int Board::best_monte_carlo_move() {
 
 
 // Fonction qui joue le coup après analyse par l'algo de Monte Carlo, et qui garde en mémoire les infos du nouveau plateau
-void Board::play_monte_carlo_move_keep(int move, bool display) {
+void Board::play_monte_carlo_move_keep(int move, bool keep, bool keep_display, bool display) {
 
     if (_got_moves == -1)
         get_moves(false, true);
@@ -2488,7 +2499,7 @@ void Board::play_monte_carlo_move_keep(int move, bool display) {
     // Si le coup a été calculé par l'algo de Monte-Carlo
     if (move < _tested_moves) {
 
-        if (display) {
+        if (keep_display) {
             play_index_move_sound(move);
             Board b(*this);
             b._time_white = _time_white;
@@ -2497,9 +2508,11 @@ void Board::play_monte_carlo_move_keep(int move, bool display) {
             b._time_increment_black = _time_increment_black;
             b._time = _time;
             b.make_index_move(move, true);
-            b.display_pgn();
-            b.to_fen();
-            cout << b._fen << endl;
+            if (display) {
+                b.display_pgn();
+                b.to_fen();
+                cout << b._fen << endl;
+            }
             if (_is_active) {
                 _monte_buffer._heap_boards[_index_children[move]]._pgn = b._pgn;
                 _monte_buffer._heap_boards[_index_children[move]]._white_player = _white_player;
@@ -2515,7 +2528,6 @@ void Board::play_monte_carlo_move_keep(int move, bool display) {
                 
         }
 
-
         // Deletes all the children from the other boards
         for (int i = 0; i < _tested_moves; i++)
             if (i != move) {
@@ -2528,6 +2540,9 @@ void Board::play_monte_carlo_move_keep(int move, bool display) {
             reset_board(true);
             *this = *b;
         }
+
+        if (!keep)
+            reset_all();  
     
 
     }
@@ -2640,7 +2655,7 @@ Buffer _monte_buffer;
 
 
 // Algo de grogros_zero
-void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool checkmates, double beta, int k_add, bool display, int depth) {
+void Board::grogros_zero(Evaluator *e, int nodes, bool checkmates, double beta, int k_add, bool display, int depth, Network *n) {
     static int max_depth;
     static int n_positions = 0;
     
@@ -2648,12 +2663,12 @@ void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool c
 
     _is_active = true;
 
+    clock_t begin_monte_time = clock();
+
     if (_new_board && depth == 0) {
         max_depth = 0;
-        if (!_evaluated) {
-            evaluate_int(e, true); 
-            _evaluated = true;
-        }
+        if (!_evaluated)
+            evaluate_int(e, true, false, n); 
                
     }
 
@@ -2679,6 +2694,7 @@ void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool c
     // Si la partie est finie, évite le calcul des coups... bizarre aussi : ne plus rentrer dans cette ligne?
     if (_is_game_over) {
         _nodes++; // un peu bizarre mais bon... revoir les cas où y'a des mats
+        _time_monte_carlo += clock() - begin_monte_time;
         return;
     }
 
@@ -2688,6 +2704,7 @@ void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool c
 
     if (_got_moves == 0) {
         _nodes++; // un peu bizarre mais bon... revoir les cas où y'a des mats
+        _time_monte_carlo += clock() - begin_monte_time;
         return;
     }
 
@@ -2728,12 +2745,9 @@ void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool c
             _monte_buffer._heap_boards[_index_children[_current_move]].copy_data(*this);
             _monte_buffer._heap_boards[_index_children[_current_move]].make_index_move(_current_move);
             
-
             // Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
-            if (use_agent)
-               _monte_buffer._heap_boards[_index_children[_current_move]].evaluate(a);
-            else
-                _monte_buffer._heap_boards[_index_children[_current_move]].evaluate_int(e, checkmates);
+            _monte_buffer._heap_boards[_index_children[_current_move]].evaluate_int(e, checkmates, false, n);
+                
             _eval_children[_current_move] = _monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
             _nodes_children[_current_move]++;
 
@@ -2766,7 +2780,7 @@ void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool c
             _current_move = pick_random_good_move(_eval_children, _got_moves, _color, false, beta, k_add);
 
             // Va une profondeur plus loin... appel récursif sur Monte-Carlo
-           _monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(a, e, 1, use_agent, checkmates, beta, k_add, display, depth + 1);
+           _monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(e, 1, checkmates, beta, k_add, display, depth + 1, n);
 
             // Actualise l'évaluation
             _eval_children[_current_move] = _monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
@@ -2785,6 +2799,8 @@ void Board::grogros_zero(Agent a, Evaluator e, int nodes, bool use_agent, bool c
 
     }
 
+    _time_monte_carlo += clock() - begin_monte_time;
+
     return;
     
 }
@@ -2798,6 +2814,9 @@ void Board::reset_board(bool display) {
     _evaluated = false;
     _monte_called = true;
     _is_game_over = false;
+    _time_monte_carlo = 0;
+    _static_evaluation = 0;
+    _evaluation = 0;
     
     if (!_new_board) {
         _tested_moves = 0;
@@ -2927,7 +2946,7 @@ void Board::get_king_safety(float game_adv, int piece_attack, int piece_defense,
 
 
 
-// Fonction qui renvoie s'il y a échec et mat (ou pat) (-1, 1 ou 0)
+// Fonction qui renvoie s'il y a échec et mat, pat, ou rien (1 pour mat, 0 pour pat, -1 sinon)
 int Board::is_mate() {
 
     // Pour accélérer en ne re calculant pas forcément les coups (marche avec coups légaux OU illégaux)
@@ -3063,7 +3082,7 @@ string Board::get_monte_carlo_variant(bool evaluate_final_pos) {
 }
 
 // Fonction qui trie les index des coups par nombre de noeuds décroissant
-vector<int> Board::sort_by_nodes() {
+vector<int> Board::sort_by_nodes(bool ascending) {
     // Tri assez moche, et lent (tri par insertion)
     vector<int> sorted_indexes;
     vector<int> sorted_nodes;
@@ -3075,7 +3094,7 @@ vector<int> Board::sort_by_nodes() {
                 sorted_nodes.push_back(_monte_buffer._heap_boards[_index_children[i]]._nodes);
                 break;
             }
-            if (_monte_buffer._heap_boards[_index_children[i]]._nodes > sorted_nodes[j]) {
+            if ((!ascending && _monte_buffer._heap_boards[_index_children[i]]._nodes > sorted_nodes[j]) || (ascending && _monte_buffer._heap_boards[_index_children[i]]._nodes < sorted_nodes[j])) {
                 sorted_indexes.insert(sorted_indexes.begin() + j, i);
                 sorted_nodes.insert(sorted_nodes.begin() + j, _monte_buffer._heap_boards[_index_children[i]]._nodes);
                 break;
@@ -3252,4 +3271,81 @@ void DrawLineBezier(float x1, float y1, float x2, float y2, float thick, Color c
 // Fonction qui dessine une texture à partir de coordonnées flottantes
 void DrawTexture(Texture texture, float posX, float posY, Color color) {
     DrawTexture(texture, float_to_int(posX), float_to_int(posY), color);
+}
+
+
+// Fonction qui joue un match entre deux IA utilisant GrogrosZero, et une évaluation par réseau de neurones et renvoie le résultat de la partie (1/-1/0)
+int match(Evaluator *e_white, Evaluator *e_black, Network *n_white, Network *n_black, int nodes, bool display) {
+
+    if (display)
+        cout << "match..." << endl;
+
+    Board b;
+
+    // Jeu
+    while ((b.is_mate() == -1 && b.game_over() == 0)) {
+        cout << "toto" << endl;
+        cout << n_white->_layers[0][0] << endl;
+        if (b._player)
+            b.grogros_zero(e_white, nodes, true, _beta, _k_add, false, 0, n_white);
+        else
+            b.grogros_zero(e_black, nodes, true, _beta, _k_add, false, 0, n_black);
+        cout << "cool" << endl;
+        b.play_monte_carlo_move_keep(b.best_monte_carlo_move(), false, true);
+    }
+
+    if (display)
+        cout << b._pgn << endl;
+
+    int g = b.is_mate();
+    if (g == -1)
+        g = b.game_over();
+    else
+        return -g * b._color;
+    if (g == 2)
+        return 0;
+    return g;
+    
+
+    return g;
+
+}
+
+
+// Fonction qui organise un tournoi entre les IA utilisant évaluateurs et réseaux de neurones des listes et renvoie la liste des scores
+int* tournament(Evaluator **evaluators, Network **networks, int n_players, int nodes, int victory, int draw, bool display_full) {
+
+    cout << "Tournament !! " << n_players << " players" << endl;
+    cout << networks[0]->_layers[0][0] << endl;
+
+    // Liste des scores
+    int *scores = new int[n_players];
+    for (int i = 0; i < n_players; i++)
+        scores[i] = 0;
+
+
+    int result;
+    for (int i = 0; i < n_players; i++) {
+
+        cout << "Round : " << i + 1 << "/" << n_players << endl;
+
+        for (int j = 0; j < n_players; j++) {
+            if (i != j) {
+                result = match(evaluators[i], evaluators[j], networks[i], networks[j], nodes, display_full);
+                if (result == 1)
+                    scores[i] += victory;
+                if (result == -1)
+                    scores[j] += victory;
+                else {
+                    scores[i] += draw;
+                    scores[j] += draw;
+                }
+            }
+        }
+        
+
+    }
+
+    return scores;
+
 }
