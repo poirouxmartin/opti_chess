@@ -70,6 +70,11 @@ static Image grogros_image;
 static Texture2D grogros_texture;
 static float grogros_size;
 
+// Curseur
+static Image cursor_image;
+static Texture2D cursor_texture;
+static float cursor_size = 32.0f;
+
 // Sons
 static Sound move_1_sound;
 static Sound move_2_sound;

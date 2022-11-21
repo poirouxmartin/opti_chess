@@ -7,6 +7,11 @@ using namespace std;
 // Passage en flottants à la place?
 
 
+// Documentation
+// https://www.v7labs.com/blog/neural-networks-activation-functions
+// https://en.wikipedia.org/wiki/Activation_function
+
+
 class Network {
     
     public:
@@ -21,6 +26,9 @@ class Network {
         // Weights
         vector<int> _weights_dimensions;
         vector<vector<int>> _weights;
+
+        // Output (si y'a une seule valeur) -> pour simplifier
+        int _output = 0;
 
 
         // Constructeurs
@@ -57,4 +65,11 @@ unsigned int evaluation_distance(int, int);
 
 // Fonction qui renvoie une norme d'un vecteur d'entiers
 unsigned int vector_norm(vector<int>);
+
+
+// Fonctions d'activation pour les calculs du réseau de neurones
+
+// Fonction d'activation linéaire
+int linear_activation(int, float alpha = 0, float beta = 1);
+
 

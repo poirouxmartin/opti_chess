@@ -5,6 +5,7 @@
 #include <string>
 #include "evaluation.h"
 #include "agent.h"
+#include "neural_network.h"
 #include <vector>
 using namespace std;
 
@@ -175,6 +176,9 @@ class Board {
 
         // Paramètres pour éviter de tout recalculer pour le draw() avec les stats de Monte-Carlo
         bool _monte_called = false;
+
+        // Temps passé sur l'anayse de Monte-Carlo
+        clock_t _time_monte_carlo = 0;
         
 
         // Constructeur par défaut
@@ -241,22 +245,19 @@ class Board {
         float game_advancement();
 
         // Fonction qui évalue la position à l'aide d'heuristiques
-        bool evaluate(Evaluator, bool checkmates = false, bool display = false);
+        bool evaluate(Evaluator *e = nullptr, bool checkmates = false, bool display = false, Network *n = nullptr);
 
         // Fonction qui évalue la position à l'aide d'heuristiques -> évaluation entière
-        bool evaluate_int(Evaluator, bool checkmates = false);
+        bool evaluate_int(Evaluator *e = nullptr, bool checkmates = false, bool display = false, Network *n = nullptr);
 
         // Fonction qui évalue la position à l'aide d'un agent
         void evaluate(Agent);
 
         // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-        float negamax(int, float, float, int, bool, Evaluator, Agent, bool, bool, bool);
+        float negamax(int, float, float, int, bool, Evaluator *, Agent, bool, bool, bool);
 
         // Version un peu mieux optimisée de Grogrosfish
-        bool grogrosfish(int, Evaluator, bool);
-
-        // Version un peu mieux optimisée de Grogrosfish (utilisant un agent)
-        bool grogrosfish(int, Agent, bool);
+        bool grogrosfish(int, Evaluator *, bool);
 
         // Fonction qui revient à la position précédente
         bool undo(int, int, int, int, int, int, int);
@@ -265,7 +266,7 @@ class Board {
         bool undo();
 
         // Fonction qui arrange les coups de façon "logique", pour optimiser les algorithmes de calcul
-        void sort_moves(Evaluator eval);
+        void sort_moves(Evaluator *);
 
         // Fonction qui récupère le plateau d'un FEN
         void from_fen(string);
@@ -313,13 +314,13 @@ class Board {
         int best_monte_carlo_move();
 
         // Fonction qui joue le coup après analyse par l'algo de Monte-Carlo, et qui garde en mémoire les infos du nouveau plateau
-        void play_monte_carlo_move_keep(int, bool display = false);
+        void play_monte_carlo_move_keep(int, bool keep = true, bool keep_display = false, bool display = false);
 
         // Pas très opti pour l'affichage, mais bon... Fonction qui cherche la profondeur la plus grande dans la recherche de Monté-Carlo
         int max_monte_carlo_depth();
 
         // Algo de grogros_zero
-        void grogros_zero(Agent, Evaluator, int, bool use_agent = false, bool checkmates = false, double beta = 0.035, int k_add = 50, bool display = false, int depth = 0);
+        void grogros_zero(Evaluator *e = nullptr, int nodes = 1, bool checkmates = false, double beta = 0.035, int k_add = 50, bool display = false, int depth = 0, Network *n = nullptr);
 
         // Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
         void reset_board(bool display = false);
@@ -352,7 +353,7 @@ class Board {
         string get_monte_carlo_variant(bool evaluate_final_pos = false);
 
         // Fonction qui trie les index des coups par nombre de noeuds décroissant
-        vector<int> sort_by_nodes();
+        vector<int> sort_by_nodes(bool ascending = false);
 
         // Fonction qui renvoie selon l'évaluation si c'est un mat ou non
         int is_eval_mate(int);
@@ -413,3 +414,10 @@ class Buffer {
 
 // Buffer pour monte-carlo
 extern Buffer _monte_buffer;
+
+
+// Fonction qui joue un match entre deux IA utilisant GrogrosZero, et une évaluation par réseau de neurones ou des évaluateurs, avec un certain nombre de noeuds de calcul
+int match(Evaluator *e_white = nullptr, Evaluator *e_black = nullptr, Network *n_white = nullptr, Network *n_black = nullptr, int nodes = 1000, bool display = false);
+
+// Fonction qui organise un tournoi entre les IA utilisant évaluateurs et réseaux de neurones des listes et renvoie la liste des scores (dépendant des nombres par victoires/nulles, et leur valeur)
+int* tournament(Evaluator **, Network **, int, int nodes = 1000, int victory = 3, int draw = 1, bool display_full = false);
