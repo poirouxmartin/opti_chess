@@ -2655,7 +2655,7 @@ Buffer _monte_buffer;
 
 
 // Algo de grogros_zero
-void Board::grogros_zero(Evaluator *e, int nodes, bool checkmates, double beta, int k_add, bool display, int depth, Network *n) {
+void Board::grogros_zero(Evaluator *eval, int nodes, bool checkmates, double beta, int k_add, bool display, int depth, Network *net) {
     static int max_depth;
     static int n_positions = 0;
     
@@ -2668,7 +2668,7 @@ void Board::grogros_zero(Evaluator *e, int nodes, bool checkmates, double beta, 
     if (_new_board && depth == 0) {
         max_depth = 0;
         if (!_evaluated)
-            evaluate_int(e, true, false, n); 
+            evaluate_int(eval, true, false, net); 
                
     }
 
@@ -2746,7 +2746,7 @@ void Board::grogros_zero(Evaluator *e, int nodes, bool checkmates, double beta, 
             _monte_buffer._heap_boards[_index_children[_current_move]].make_index_move(_current_move);
             
             // Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
-            _monte_buffer._heap_boards[_index_children[_current_move]].evaluate_int(e, checkmates, false, n);
+            _monte_buffer._heap_boards[_index_children[_current_move]].evaluate_int(eval, checkmates, false, net);
                 
             _eval_children[_current_move] = _monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
             _nodes_children[_current_move]++;
@@ -2780,7 +2780,7 @@ void Board::grogros_zero(Evaluator *e, int nodes, bool checkmates, double beta, 
             _current_move = pick_random_good_move(_eval_children, _got_moves, _color, false, beta, k_add);
 
             // Va une profondeur plus loin... appel récursif sur Monte-Carlo
-           _monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(e, 1, checkmates, beta, k_add, display, depth + 1, n);
+           _monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(eval, 1, checkmates, beta, k_add, display, depth + 1, net);
 
             // Actualise l'évaluation
             _eval_children[_current_move] = _monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
@@ -3275,23 +3275,24 @@ void DrawTexture(Texture texture, float posX, float posY, Color color) {
 
 
 // Fonction qui joue un match entre deux IA utilisant GrogrosZero, et une évaluation par réseau de neurones et renvoie le résultat de la partie (1/-1/0)
-int match(Evaluator *e_white, Evaluator *e_black, Network *n_white, Network *n_black, int nodes, bool display) {
+int match(Evaluator *e_white, Evaluator *e_black, Network *n_white, Network *n_black, int nodes, bool display, int max_moves) {
 
     if (display)
-        cout << "match..." << endl;
+        cout << "Match (" << max_moves << " moves max)" << endl;
 
     Board b;
 
     // Jeu
     while ((b.is_mate() == -1 && b.game_over() == 0)) {
-        cout << "toto" << endl;
-        cout << n_white->_layers[0][0] << endl;
         if (b._player)
             b.grogros_zero(e_white, nodes, true, _beta, _k_add, false, 0, n_white);
         else
             b.grogros_zero(e_black, nodes, true, _beta, _k_add, false, 0, n_black);
-        cout << "cool" << endl;
         b.play_monte_carlo_move_keep(b.best_monte_carlo_move(), false, true);
+
+        // Limite de coups
+        if (max_moves && b._player && b._moves_count > max_moves)
+            break;
     }
 
     if (display)
@@ -3313,10 +3314,9 @@ int match(Evaluator *e_white, Evaluator *e_black, Network *n_white, Network *n_b
 
 
 // Fonction qui organise un tournoi entre les IA utilisant évaluateurs et réseaux de neurones des listes et renvoie la liste des scores
-int* tournament(Evaluator **evaluators, Network **networks, int n_players, int nodes, int victory, int draw, bool display_full) {
+int* tournament(Evaluator **evaluators, Network **networks, int n_players, int nodes, int victory, int draw, bool display_full, int max_moves) {
 
-    cout << "Tournament !! " << n_players << " players" << endl;
-    cout << networks[0]->_layers[0][0] << endl;
+    cout << "***** Tournament !! " << n_players << " players *****" << endl;
 
     // Liste des scores
     int *scores = new int[n_players];
@@ -3327,16 +3327,27 @@ int* tournament(Evaluator **evaluators, Network **networks, int n_players, int n
     int result;
     for (int i = 0; i < n_players; i++) {
 
-        cout << "Round : " << i + 1 << "/" << n_players << endl;
+        if (display_full)
+            cout << "\n***** Round : " << i + 1 << "/" << n_players << " *****" << endl;
 
         for (int j = 0; j < n_players; j++) {
             if (i != j) {
-                result = match(evaluators[i], evaluators[j], networks[i], networks[j], nodes, display_full);
-                if (result == 1)
+                if (display_full)
+                    cout << "\nPlayer " << i << " vs Player " << j << endl;
+                result = match(evaluators[i], evaluators[j], networks[i], networks[j], nodes, display_full, max_moves);
+                if (result == 1) {
+                    if (display_full)
+                        cout << "1-0" << endl;
                     scores[i] += victory;
-                if (result == -1)
+                }
+                else if (result == -1) {
+                    if (display_full)
+                        cout << "0-1" << endl;
                     scores[j] += victory;
+                }  
                 else {
+                    if (display_full)
+                        cout << "1/2-1/2" << endl;
                     scores[i] += draw;
                     scores[j] += draw;
                 }
@@ -3345,6 +3356,10 @@ int* tournament(Evaluator **evaluators, Network **networks, int n_players, int n
         
 
     }
+
+    // Afficher les scores
+    cout << "Scores : " << endl;
+    print_array(scores, n_players);
 
     return scores;
 
