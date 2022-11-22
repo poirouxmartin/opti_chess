@@ -320,7 +320,7 @@ class Board {
         int max_monte_carlo_depth();
 
         // Algo de grogros_zero
-        void grogros_zero(Evaluator *e = nullptr, int nodes = 1, bool checkmates = false, double beta = 0.035, int k_add = 50, bool display = false, int depth = 0, Network *n = nullptr);
+        void grogros_zero(Evaluator *eval = nullptr, int nodes = 1, bool checkmates = false, double beta = 0.035, int k_add = 50, bool display = false, int depth = 0, Network *net = nullptr);
 
         // Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
         void reset_board(bool display = false);
@@ -417,7 +417,7 @@ extern Buffer _monte_buffer;
 
 
 // Fonction qui joue un match entre deux IA utilisant GrogrosZero, et une évaluation par réseau de neurones ou des évaluateurs, avec un certain nombre de noeuds de calcul
-int match(Evaluator *e_white = nullptr, Evaluator *e_black = nullptr, Network *n_white = nullptr, Network *n_black = nullptr, int nodes = 1000, bool display = false);
+int match(Evaluator *e_white = nullptr, Evaluator *e_black = nullptr, Network *n_white = nullptr, Network *n_black = nullptr, int nodes = 1000, bool display = false, int max_moves = 100);
 
 // Fonction qui organise un tournoi entre les IA utilisant évaluateurs et réseaux de neurones des listes et renvoie la liste des scores (dépendant des nombres par victoires/nulles, et leur valeur)
-int* tournament(Evaluator **, Network **, int, int nodes = 1000, int victory = 3, int draw = 1, bool display_full = false);
+int* tournament(Evaluator **, Network **, int, int nodes = 1000, int victory = 3, int draw = 1, bool display_full = false, int max_moves = 100);

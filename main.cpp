@@ -154,6 +154,11 @@ https://hxim.github.io/Stockfish-Evaluation-Guide/
 -> Implémenter les triples répétitions !!
 -> Ajouter une valeur de policy -> pas forcement reflechir sur les meilleurs coups, mais sur ceux qui sont les plus probables
 -> Utiliser une db en ligne pour les livres d'ouverture et tables de finales
+-> Faire une IA qui apprend tout seul? : update l'évaluation d'une position en fonction de la refléxion sur cette même position
+-> En endgame il faut pousser !!
+-> Mettre une limite de coups pour les matches entre les IA
+-> Parfois ne pas calculer les PGN dans les matches et tournois? pour aller plus vite
+-> Faire les tournois avec une valeur de beta élevée et k_add faible? (pour une recherche restreinte et intuitive)
 
 
 ----- Interface utilisateur -----
@@ -231,7 +236,9 @@ https://hxim.github.io/Stockfish-Evaluation-Guide/
 -> Afficher sur le PGN la reflexion de GrogrosZero
 -> Pouvoir changer le nombre de noeuds de l'IA dans la GUI... ou la profondeur de Grogrosfish
 -> Pouvoir reset le temps
--> Problème avec les noms quand on les change
+-> Problème avec les noms quand on les change : parfois ils ne s'affichent plus
+-> Parfois l'utilisation des réseaux de neurones bug
+-> Faire un éditeur de position
 
 
 
@@ -286,31 +293,7 @@ int main() {
 
 
     // Variables
-    Board t;
-
-    // Réseau de neurones
-    Network grogros_network;
-    grogros_network.generate_random_weights();
-    bool use_neural_network = false;
-
-
-    // Liste de réseaux de neurones pour les tournois
-    int n_networks = 2;
-    Evaluator **evaluators = new Evaluator*[n_networks];
-    for (int i = 0; i < n_networks; i++)
-        evaluators[i] = nullptr;
-    Network **neural_networks = new Network*[n_networks];
-    for (int i = 0; i < n_networks; i++) {
-        Network n;
-        cout << "toto" << endl;
-        cout << n._layers[0][0] << endl;
-        neural_networks[i] = &n;
-        neural_networks[i]->generate_random_weights();
-        cout << neural_networks[i]->_layers[0][0] << endl;
-        cout << neural_networks[0]->_layers[0][0] << endl;
-    }
-        
-    cout << "test : " << neural_networks[0]->_layers[0][0] << endl; // Bizarre : pourquoi la valeur change? -> Car n est désalloué?
+    Board t;        
 
 
     // Evaluateur de position
@@ -358,6 +341,34 @@ int main() {
     // Paramètres pour l'IA
     int search_depth = 8;
     search_depth = 5;
+
+
+
+    // Réseau de neurones
+    Network grogros_network;
+    grogros_network.generate_random_weights();
+    bool use_neural_network = false;
+
+
+    // Liste de réseaux de neurones pour les tournois
+    int n_networks = 5;
+    Evaluator **evaluators = new Evaluator*[n_networks];
+    for (int i = 0; i < n_networks; i++)
+        evaluators[i] = nullptr;
+    Network **neural_networks = new Network*[n_networks];
+    Network *neural_networks_test = new Network[n_networks];
+    for (int i = 0; i < n_networks; i++) {
+        neural_networks[i] = &neural_networks_test[i];
+        neural_networks[i]->generate_random_weights();
+    }
+
+    neural_networks[0] = nullptr;
+    evaluators[0] = &monte_evaluator;
+
+
+
+
+
 
     
     // Temps
@@ -615,8 +626,7 @@ int main() {
             // cout << match(nullptr, nullptr, &grogros_network, &grogros_network, 100, true) << endl;
             // cout << match(&monte_evaluator, nullptr, nullptr, &grogros_network, 1000, true) << endl;
             // cout << match(&monte_evaluator, &eval_black, nullptr, nullptr, 1000, true) << endl;
-            cout << neural_networks[0]->_layers[0][0] << endl;
-            int *tournament_results = tournament(evaluators, neural_networks, n_networks, 100, 3, 1, true);
+            int *tournament_results = tournament(evaluators, neural_networks, n_networks, 500, 3, 1, true);
         }
 
         if (IsKeyPressed(KEY_E)) {
