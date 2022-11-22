@@ -637,13 +637,9 @@ bool Board::attacked(int i, int j) {
     b.copy_data(*this);
     b._player = !b._player;
     b.get_moves(true);
-    //b.display_moves();
     for (int m = 0; m < b._got_moves; m++) {
-        //cout << "move : " << move_label(b._moves[4 * m], b._moves[4 * m + 1], b._moves[4 * m + 2], b._moves[4 * m + 3]) << endl;
-        if (i == b._moves[4 * m + 2] && j == b._moves[4 * m + 3]) {
-            //cout << "toto" << endl;
+        if (i == b._moves[4 * m + 2] && j == b._moves[4 * m + 3])
             return true;
-        }
     }
 
     return false;
@@ -1657,29 +1653,53 @@ int Board::game_over() {
 
 
 // Fonction qui renvoie le label d'un coup
-// En passant manquant... échecs aussi, puis roques et promotions
+// En passant manquant... échecs aussi, puis roques, promotions, mats/pats
 string Board::move_label(int i, int j, int k, int l) {
-    int p1 = _array[i][j];
+    int p1 = _array[i][j]; // Pièce qui bouge
     int p2 = _array[k][l];
     string abc = "abcdefgh";
+
+    // Pour savoir si une autre pièce similaire peut aller sur la même case
+    bool spec_col = false;
+    bool spec_line = false;
+    if (_got_moves == -1)
+        get_moves(false, true);
+
+    int i1; int j1; int k1; int l1; int p11;
+    for (int m = 0; m < _got_moves; m++) {
+        i1 = _moves[4 * m];
+        j1 = _moves[4 * m + 1];
+        k1 = _moves[4 * m + 2];
+        l1 = _moves[4 * m + 3];
+        p11 = _array[i1][j1];
+        // Si c'est une pièce différente que celle à bouger, mais du même type, et peut aller sur la même case
+        if ((i1 != i || j1 != j) && p11 == p1 && k1 == k && l1 == l) {
+            if (i1 != i)
+                spec_col = true;
+            if (j1 != j)
+                spec_line = true;
+        }
+    }
+
+
 
     string s = "";
 
     switch (p1)
-        {   
-            case 2: case 8: s += "N"; s += abc[j]; s += char(i + 1 + 48); break;
-            case 3: case 9: s += "B"; s += abc[j]; s += char(i + 1 + 48); break;
-            case 4: case 10: s += "R"; s += abc[j]; s += char(i + 1 + 48); break;
-            case 5: case 11: s += "Q"; s += abc[j]; s += char(i + 1 + 48); break;
-            case 6: case 12: 
-            if (l - j == 2) {
-                s += "O-O"; return s;
-            }
-            if (j - l == 2) {
-                s += "O-O-O"; return s;
-            }
-            s += "K"; break;
+    {   
+        case 2: case 8: s += "N"; if (spec_line) s += abc[j]; if (spec_col) s += char(i + 1 + 48); break;
+        case 3: case 9: s += "B"; if (spec_line) s += abc[j]; if (spec_col) s += char(i + 1 + 48); break;
+        case 4: case 10: s += "R"; if (spec_line) s += abc[j]; if (spec_col) s += char(i + 1 + 48); break;
+        case 5: case 11: s += "Q"; if (spec_line) s += abc[j]; if (spec_col) s += char(i + 1 + 48); break;
+        case 6: case 12: 
+        if (l - j == 2) {
+            s += "O-O"; return s;
         }
+        if (j - l == 2) {
+            s += "O-O-O"; return s;
+        }
+        s += "K"; break;
+    }
 
 
 
@@ -1696,7 +1716,7 @@ string Board::move_label(int i, int j, int k, int l) {
         s += char(k + 1 + 48);
     }
 
-    // Promotion (en dame seulement pour le moment)
+    // Promotion (seulement en dame pour le moment)
     if ((p1 == 1 && k == 7) || (p1 == 7 && k == 0))
         s += "=Q";
     
