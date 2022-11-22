@@ -181,20 +181,13 @@ https://hxim.github.io/Stockfish-Evaluation-Guide/
 -> Interface qui ne freeze plus quand l'IA réfléchit
 -> Sons pour le temps
 -> Choisir les crossover en fonction des meilleurs elos
--> Elo : que faire quand on copie un agent? crossover? mutation? reset?
--> Chercher pourquoi les rounds de fin sont plus lents que ceux du début...
 -> Gagner contre elo négatif = perdre elo?
--> Ordonner les flèches de coups de Monte-Carlo pour que ça ne cache plus les autres
 -> Ajouter plus d'info sur les coups (ainsi que les positions résultantes et leur évaluation)
--> Couleur des coups à fix... des modulos?? (quand ça arrive dans le bleu...)
 -> Premettre de modifier les paramètres de recherche de l'IA : beta, k_add... (d'une meilleure manière)
 -> Save : pgn + fen, load les deux aussi
 -> Ne plus afficher "INFO:" de raylib dans la console
--> Comme Nibbler, faire un slider à droite, qui contient l'info de tous les coups possibles : variations, noeuds, éval, position finale...
 -> Musique de fond? (désactivable)
--> Montrer les noeuds par seconde pour GrogrosZero, et le nombre de noeuds total dans le buffer. Ainsi que le nom de l'IA en self play, et son nombre de noeuds en self play
 -> (changer épaisseur des flèches en fonction de leur importance?)
--> Combiner les formes (cercles et rectangles) pour faire une flèche unie
 -> Ordonner l'affichage des flèches (pour un fou, mettre le coup le plus court en dernier) (pour deux coups qui vont au même endroit, mettre le meilleur en dernier)
 -> Ajouter un éditeur de positions (ajouter/supprimer les pièces)
 -> Montrer les pièces qui ont déjà été capturées
@@ -214,7 +207,6 @@ https://hxim.github.io/Stockfish-Evaluation-Guide/
 -> Afficher quand Grogros est lancé dans sa réflexion
 -> Comme Nibbler, quand on clique sur le bout d'une flèche de Monte-Carlo, joue le coup
 -> Montrer sur l'échiquier quand la position est mate (ou pate, ou autre condition de fin de partie)
--> Affichage des coups dans le PGN : Ng1f3 -> Nf3 si c'est le seul cavalier qui peut aller en f3
 -> Faire un reconnaisseur de position automatique
 -> Afficher les composantes de l'évaluation sur la GUI
 -> PGN : ajouter les + pour les échecs
@@ -239,6 +231,7 @@ https://hxim.github.io/Stockfish-Evaluation-Guide/
 -> Problème avec les noms quand on les change : parfois ils ne s'affichent plus
 -> Parfois l'utilisation des réseaux de neurones bug
 -> Faire un éditeur de position
+-> Nd2f3 -> Ndf3? pas facile à faire
 
 
 
