@@ -159,6 +159,13 @@ https://hxim.github.io/Stockfish-Evaluation-Guide/
 -> Mettre une limite de coups pour les matches entre les IA
 -> Parfois ne pas calculer les PGN dans les matches et tournois? pour aller plus vite
 -> Faire les tournois avec une valeur de beta élevée et k_add faible? (pour une recherche restreinte et intuitive)
+-> Ajouter une gestion du temps !!
+-> Générer un arbre d'ouvertures !! :DDDD
+-> Evaluation des pièces : prendre en compte les pièces protégées / attaquées? Pièces prenables?
+-> Certains coups restent trop sous-estimés par GrogrosZero
+-> Ramener les pièces sur le roi adverse quand il est ouvert, et ne pas échanger les pièces
+-> Tests : closed position (rnbqkbnr/8/p1p1p1p1/PpPpPpPp/1P1P1P1P/8/8/RNBQKBNR w KQkq - 1 13, r1bqkb1r/3nn3/p1p1p1p1/PpPpPpPp/1P1P1P1P/6N1/4B3/RNBQK2R b KQkq - 6 15)
+-> Format du livre d'ouvertures : {(e4, static_eval, dynamic_eval, nodes, {(e5, ...), (...), ...}), (d4, ...), ...}
 
 
 ----- Interface utilisateur -----
@@ -302,7 +309,7 @@ int main() {
 
     // Nombre de noeuds pour le jeu automatique de GrogrosZero
     int grogros_nodes = 750000;
-    grogros_nodes = 50000;
+    grogros_nodes = 500000;
 
     // Nombre de noeuds calculés par frame
     // Si c'est sur son tour
@@ -333,7 +340,7 @@ int main() {
 
     // Paramètres pour l'IA
     int search_depth = 8;
-    search_depth = 5;
+    // search_depth = 7;
 
 
 
@@ -369,8 +376,8 @@ int main() {
     bool previous_player = true;
 
     // Temps par joueur
-    t._time_white = 30000;
-    t._time_black = 30000;
+    t._time_white = 600000;
+    t._time_black = 600000;
 
     // Incrément
     t._time_increment_white = 0;
