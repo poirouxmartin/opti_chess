@@ -51,8 +51,11 @@ void print_array(int[], int);
 // Fonction qui affiche une liste d'entiers 8 bits fast (array)
 void print_array(int_fast8_t[], int);
 
-// Fonction qui affiche une liste de flottans (array)
+// Fonction qui affiche une liste de flottants (array)
 void print_array(float[], int);
+
+// Fonction qui affiche une liste de chaines de caractères (array)
+void print_array(string[], int);
 
 // Fonction qui renvoie l'index de la valeur maximale d'une liste d'entiers
 int max_index(int[], int);
@@ -80,3 +83,6 @@ string clock_to_string(clock_t, bool full = false);
 
 // Fonction qui arrondit un flottant en entier
 int float_to_int(float);
+
+// Fonction qui renvoie si une chaine de caractères est présente dans un tableau de taille n
+bool is_in(string, string[], int);

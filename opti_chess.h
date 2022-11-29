@@ -236,10 +236,10 @@ class Board {
         void display_moves(bool pseudo = false);
 
         // Fonction qui joue un coup
-        void make_move(int, int, int, int, bool pgn = false, bool new_board = false);
+        void make_move(int, int, int, int, bool pgn = false, bool new_board = false, bool add_to_list = false);
 
         // Fonction qui joue le coup i de la liste des coups possibles
-        void make_index_move(int, bool pgn = false);
+        void make_index_move(int, bool pgn = false, bool add_to_list = false);
 
         // Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
         float game_advancement();
@@ -314,7 +314,7 @@ class Board {
         int best_monte_carlo_move();
 
         // Fonction qui joue le coup après analyse par l'algo de Monte-Carlo, et qui garde en mémoire les infos du nouveau plateau
-        void play_monte_carlo_move_keep(int, bool keep = true, bool keep_display = false, bool display = false);
+        void play_monte_carlo_move_keep(int, bool keep = true, bool keep_display = false, bool display = false, bool add_to_list = false);
 
         // Pas très opti pour l'affichage, mais bon... Fonction qui cherche la profondeur la plus grande dans la recherche de Monté-Carlo
         int max_monte_carlo_depth();
@@ -357,6 +357,12 @@ class Board {
 
         // Fonction qui renvoie selon l'évaluation si c'est un mat ou non
         int is_eval_mate(int);
+
+        // Fonction qui génère le livre d'ouvertures
+        void generate_opening_book(int nodes = 100000);
+
+        // Fonction qui renvoie une représentation simple et rapide de la position
+        string simple_position();
 
 };
 
@@ -408,7 +414,6 @@ class Buffer {
 
         // Fonction qui désalloue toute la mémoire
         void remove();
-
 };
 
 
@@ -421,3 +426,13 @@ int match(Evaluator *e_white = nullptr, Evaluator *e_black = nullptr, Network *n
 
 // Fonction qui organise un tournoi entre les IA utilisant évaluateurs et réseaux de neurones des listes et renvoie la liste des scores (dépendant des nombres par victoires/nulles, et leur valeur)
 int* tournament(Evaluator **, Network **, int, int nodes = 1000, int victory = 3, int draw = 1, bool display_full = false, int max_moves = 100);
+
+// Fonction qui renvoie si deux positions (en format FEN) sont les mêmes
+bool equal_fen(string, string);
+
+// Fonction qui renvoie si deux positions (en format FEN) sont les mêmes (pour les répétitions)
+bool equal_positions(Board, Board);
+
+// Test de liste des positions (taille 50, pour la règle des 50 coups.. si on joue une prise ou un coup de pion, on peut reset la liste)
+extern string _all_positions[50];
+extern int _total_positions;
