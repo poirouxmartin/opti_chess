@@ -713,7 +713,7 @@ void Board::display_moves(bool pseudo) {
 
 
 // Fonction qui joue un coup
-void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board) {
+void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board, bool add_to_list) {
     int p = _array[i][j];
     int p_last = _array[k][l];
 
@@ -889,20 +889,19 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board) {
     _mate = false;
     
 
+    if (add_to_list) {
+        _all_positions[_total_positions] = simple_position();
+        _total_positions++;
+    }
+
+
 }
 
 
 // Fonction qui joue le coup i
-void Board::make_index_move(int i, bool pgn) {
-    // if (i < 0 | i >= _got_moves)
-    //     cout << "move index out of range" << endl;
-    // else {
-    //     int k = 4 * i;
-    //     make_move(_moves[k], _moves[k + 1], _moves[k + 2], _moves[k + 3]);
-    // }
-
+void Board::make_index_move(int i, bool pgn, bool add_to_list) {
     int k = 4 * i;
-    make_move(_moves[k], _moves[k + 1], _moves[k + 2], _moves[k + 3], pgn);
+    make_move(_moves[k], _moves[k + 1], _moves[k + 2], _moves[k + 3], pgn, false, add_to_list);
 }
 
 
@@ -983,6 +982,17 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
                 cout << "Draw by 50 moves rule" << endl;
         return true;
     }
+
+
+    // Répétition de coups
+    // if (is_in(simple_position(), _all_positions, _total_positions - 1)) {
+    //     _evaluation = 0;
+    //     _is_game_over = true;
+    //     if (display)
+    //             cout << "Draw by repetition" << endl;
+    //     return true;
+    // }
+
 
     // Matériel insuffisant
 
@@ -1915,7 +1925,7 @@ void Board::draw() {
                         // Le joue
                         play_move_sound(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second);
                         // make_move(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second, true, true);
-                        play_monte_carlo_move_keep(i, true, true, true);
+                        play_monte_carlo_move_keep(i, true, true, true, true);
                         display_pgn();
                         legal_move = true;
                         break;
@@ -1947,7 +1957,7 @@ void Board::draw() {
                         if (_moves[4 * i] == clicked_pos.first && _moves[4 * i + 1] == clicked_pos.second && _moves[4 * i + 2] == drop_pos.first && _moves[4 * i + 3] == drop_pos.second) {
                             play_move_sound(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
                             // make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second, true, true);
-                            play_monte_carlo_move_keep(i, true, true, true);
+                            play_monte_carlo_move_keep(i, true, true, true, true);
                             display_pgn();
                             selected_pos = {-1, -1};
                             break;
@@ -2511,7 +2521,7 @@ int Board::best_monte_carlo_move() {
 
 
 // Fonction qui joue le coup après analyse par l'algo de Monte Carlo, et qui garde en mémoire les infos du nouveau plateau
-void Board::play_monte_carlo_move_keep(int move, bool keep, bool keep_display, bool display) {
+void Board::play_monte_carlo_move_keep(int move, bool keep, bool keep_display, bool display, bool add_to_list) {
 
     if (_got_moves == -1)
         get_moves(false, true);
@@ -2527,7 +2537,7 @@ void Board::play_monte_carlo_move_keep(int move, bool keep, bool keep_display, b
             b._time_increment_white = _time_increment_white;
             b._time_increment_black = _time_increment_black;
             b._time = _time;
-            b.make_index_move(move, true);
+            b.make_index_move(move, true, add_to_list);
             if (display) {
                 b.display_pgn();
                 b.to_fen();
@@ -2577,7 +2587,7 @@ void Board::play_monte_carlo_move_keep(int move, bool keep, bool keep_display, b
             if (_is_active)
                 reset_all();
             
-            make_index_move(move, true);
+            make_index_move(move, true, add_to_list);
         }
         else 
             cout << "illegal move" << endl;
@@ -3384,3 +3394,79 @@ int* tournament(Evaluator **evaluators, Network **networks, int n_players, int n
     return scores;
 
 }
+
+
+// Fonction qui génère le livre d'ouvertures
+void Board::generate_opening_book(int nodes) {
+
+    // Lit le livre d'ouvertures actuel
+    string book = LoadFileText("../resources/data/opening_book.txt");
+    cout << "Book : " << book << endl;
+
+    // Se place à l'endroit concerné dans le livre ----> mettre des FEN dans le livre et chercher?
+    to_fen();
+    int pos = book.find(_fen); // Que faire si y'en a plusieurs? Fabriquer un tableau avec les positions puis diviser le livre en plus de parties? puis insérer au milieu...
+    string book_part_1 = "";
+    string book_part_2 = "";
+
+    string add_to_book = "()";
+
+
+    // Regarde si tous les coups ont été testés. Sinon, teste un des coups restants -> avec nodes noeuds
+
+
+    string new_book = book_part_1 + add_to_book + book_part_2;
+
+    SaveFileText("../resources/data/opening_book.txt", (char*)new_book.c_str());
+}
+
+
+// Fonction qui renvoie si deux positions (en format FEN) sont les mêmes
+bool equal_fen(string fen_a, string fen_b) {
+
+    size_t k;
+
+    k = fen_a.find(" ");
+    k = fen_a.find(" ", k + 1);
+    k = fen_a.find(" ", k + 1);
+    k = fen_a.find(" ", k + 1);
+    string simple_fen_a = fen_a.substr(0, k);
+    
+    k = fen_b.find(" ");
+    k = fen_b.find(" ", k + 1);
+    k = fen_b.find(" ", k + 1);
+    k = fen_b.find(" ", k + 1);
+    string simple_fen_b = fen_b.substr(0, k);
+
+    return (simple_fen_a == simple_fen_b);
+}
+
+
+// Fonction qui renvoie si deux positions (en format FEN) sont les mêmes (pour les répétitions)
+bool equal_positions(Board a, Board b) {
+    for (int i = 0; i < 8; i++)
+        for (int j = 0; j < 8; j++)
+            if (a._array[i][j] != b._array[i][j])
+                return false;
+
+    return (a._player == b._player && a._k_castle_b == b._k_castle_b && a._k_castle_w == b._k_castle_w && a._q_castle_b == b._q_castle_b && a._q_castle_w == b._q_castle_w && a._en_passant == b._en_passant);
+}
+
+
+// Fonction qui renvoie une représentation simple et rapide de la position
+string Board::simple_position() {
+    
+    string s = "";
+    for (int i = 0; i < 8; i++)
+        for (int j = 0; j < 8; j++)
+            s += _array[i][j];
+
+    s += _player + _k_castle_b + _k_castle_w + _q_castle_b + _q_castle_w;
+    s += _en_passant;
+
+    return s;
+}
+
+
+int _total_positions = 0;
+string _all_positions[50];

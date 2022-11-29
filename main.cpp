@@ -27,6 +27,7 @@ https://www.chessprogramming.org/Checkmate
 https://www.chessprogramming.org/Bishop_versus_Knight#WinningPercantages
 https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 https://hxim.github.io/Stockfish-Evaluation-Guide/
+https://www.chessprogramming.org/Repetitions
 
 
 
@@ -165,7 +166,11 @@ https://hxim.github.io/Stockfish-Evaluation-Guide/
 -> Certains coups restent trop sous-estimés par GrogrosZero
 -> Ramener les pièces sur le roi adverse quand il est ouvert, et ne pas échanger les pièces
 -> Tests : closed position (rnbqkbnr/8/p1p1p1p1/PpPpPpPp/1P1P1P1P/8/8/RNBQKBNR w KQkq - 1 13, r1bqkb1r/3nn3/p1p1p1p1/PpPpPpPp/1P1P1P1P/6N1/4B3/RNBQK2R b KQkq - 6 15)
--> Format du livre d'ouvertures : {(e4, static_eval, dynamic_eval, nodes, {(e5, ...), (...), ...}), (d4, ...), ...}
+-> Format du livre d'ouvertures : {(e4, fen, static_eval, dynamic_eval, nodes, {(e5, ...), (...), ...}), (d4, ...), ...}. où e4 = 1, 4, 3, 4
+-> Pour l'utilisation du livre, re fabriquer un arbre?
+-> Faire une table de hachage pour simplifier (et accélérer) la recherche des positions répétées
+-> Pour l'historique des positions, on peut le reset à chaque coup de pion ou capture
+-> Pour les transpositions, on peut peut-être renvoyer au même indice de plateau fils...?
 
 
 ----- Interface utilisateur -----
@@ -293,7 +298,9 @@ int main() {
 
 
     // Variables
-    Board t;        
+    Board t;
+    _all_positions[0] = t.simple_position();
+    _total_positions = 1;
 
 
     // Evaluateur de position
@@ -621,12 +628,17 @@ int main() {
             // cout << _test_network._output << endl;
             // cout << _test_network.global_distance(positions_vector, evaluations_vector) << endl;
 
-            if (!_monte_buffer._init)
+            /*if (!_monte_buffer._init)
                 _monte_buffer.init();
             // cout << match(nullptr, nullptr, &grogros_network, &grogros_network, 100, true) << endl;
             // cout << match(&monte_evaluator, nullptr, nullptr, &grogros_network, 1000, true) << endl;
             // cout << match(&monte_evaluator, &eval_black, nullptr, nullptr, 1000, true) << endl;
-            int *tournament_results = tournament(evaluators, neural_networks, n_networks, 500, 3, 1, true);
+            int *tournament_results = tournament(evaluators, neural_networks, n_networks, 500, 3, 1, true);*/
+
+            // t.generate_opening_book();
+
+            // print_array(_all_positions, _total_positions);
+            // cout << "repetition : " << (is_in(t.simple_position(), _all_positions, _total_positions - 1)) << endl;
         }
 
         if (IsKeyPressed(KEY_E)) {
