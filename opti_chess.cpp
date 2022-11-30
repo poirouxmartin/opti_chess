@@ -873,6 +873,7 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board, bool
 
     _activity = false;
     _safety = false;
+    _structure = false;
 
     _new_board = true;
     
@@ -1110,10 +1111,16 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         }
         _evaluation += king_safety;
     }
-        
 
-    // Pour éviter les répétitions (ne fonctionne pas)
-    //_evaluation *= 1 - (float)(_half_moves_count + _moves_count) / 1000;
+    // Structure de pions
+    float pawn_structure = 0;
+    if (eval->_pawn_structure != 0) {
+        get_pawn_structure();
+        pawn_structure = _pawn_structure * eval->_pawn_structure;
+        if (display)
+            cout << "pawn structure : " << pawn_structure << endl;
+        _evaluation += pawn_structure;
+    }
 
 
     if (display) {
@@ -1332,6 +1339,7 @@ bool Board::undo() {
 
     _activity = false;
     _safety = false;
+    _structure = false;
 
     _new_board = true;
     
@@ -1532,6 +1540,7 @@ void Board::from_fen(string fen) {
 
     _activity = false;
     _safety = false;
+    _structure = false;
 
     _last_move[0] = -1;
     _last_move[1] = -1;
@@ -3470,3 +3479,57 @@ string Board::simple_position() {
 
 int _total_positions = 0;
 string _all_positions[50];
+
+
+// Fonction qui calcule la structure de pions
+void Board::get_pawn_structure() {
+    // Améliorations : 
+    // Nombre d'ilots de pions
+    // Doit dépendre de l'avancement de la partie
+    // Pions faibles
+    // Contrôle des cases
+    // Pions passés
+
+
+    _pawn_structure = 0;
+
+    // Liste des pions par colonne
+    int s_white[8];
+    int s_black[8];
+
+    for (int i = 0; i < 8; i++) {
+        s_white[i] = 0;
+        s_black[i] = 0;
+    }
+
+
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            s_white[j] += (_array[i][j] == 1);
+            s_black[j] += (_array[i][j] == 7);
+        }
+    }
+
+    // print_array(s_white, 8);
+
+    // Pions isolés
+    int isolated_pawn = -50;
+
+    for (int i = 0; i < 8; i++) {
+        if (s_white[i] > 0 && (i == 0 || s_white[i - 1] == 0) && (i == 7 || s_white[i + 1] == 0))
+            _pawn_structure += isolated_pawn * s_white[i];
+        if (s_black[i] > 0 && (i == 0 || s_black[i - 1] == 0) && (i == 7 || s_black[i + 1] == 0))
+            _pawn_structure -= isolated_pawn * s_black[i];
+    }
+
+    // Pions doublés (ou triplés...)
+    int doubled_pawn = -25;
+    for (int i = 0; i < 8; i++) {
+        _pawn_structure += (s_white[i] >= 2) * doubled_pawn * (s_white[i] - 1);
+        _pawn_structure -= (s_black[i] >= 2) * doubled_pawn * (s_black[i] - 1);
+    }
+
+
+
+    return;
+}
