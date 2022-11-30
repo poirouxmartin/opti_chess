@@ -179,6 +179,10 @@ class Board {
 
         // Temps passé sur l'anayse de Monte-Carlo
         clock_t _time_monte_carlo = 0;
+
+        // Structure de pions
+        int _pawn_structure = 0;
+        bool _structure = false;
         
 
         // Constructeur par défaut
@@ -363,6 +367,9 @@ class Board {
 
         // Fonction qui renvoie une représentation simple et rapide de la position
         string simple_position();
+
+        // Fonction qui calcule la structure de pions
+        void get_pawn_structure();
 
 };
 

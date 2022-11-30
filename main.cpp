@@ -28,6 +28,9 @@ https://www.chessprogramming.org/Bishop_versus_Knight#WinningPercantages
 https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
 https://hxim.github.io/Stockfish-Evaluation-Guide/
 https://www.chessprogramming.org/Repetitions
+https://en.wikipedia.org/wiki/Threefold_repetition
+https://www.chessprogramming.org/Opening_Book
+https://www.chessprogramming.org/Pawn_Structure
 
 
 
@@ -69,6 +72,7 @@ https://www.chessprogramming.org/Repetitions
 -> Copie des plateaux : tout copier? ou seulement quelques informations importantes?
 -> Liste des coups légaux, et une autre liste pour les coups pseudo-légaux... pour éviter de les recalculer à chaque fois...
 -> Utiliser les threads.. voir cours ProgrammationConcurrente
+-> Checker SIMD code (pour optimiser)
 
 
 
@@ -171,11 +175,13 @@ https://www.chessprogramming.org/Repetitions
 -> Faire une table de hachage pour simplifier (et accélérer) la recherche des positions répétées
 -> Pour l'historique des positions, on peut le reset à chaque coup de pion ou capture
 -> Pour les transpositions, on peut peut-être renvoyer au même indice de plateau fils...?
+-> Pour chaque plateau, générer et stocker la representation simpliste du plateau? Pour ensuite pouvoir aider les fils à comparer?
+-> Pourquoi king safety != 0 sur la position de base??? 
 
 
 ----- Interface utilisateur -----
 
--> Amélioration des sons
+-> Amélioration des sons (en faire des maison?)
 -> Undo move dans l'interface, avec les flèches (il faut donc stocker l'ensemble de la partie - à l'aide du PGN -> from_pgn?)
 -> Nouveau sons/images
 -> Dans le negamax, renvoyer le coup à chaque fois, pour noter la ligne que l'ordi regarde?
@@ -643,8 +649,9 @@ int main() {
 
         if (IsKeyPressed(KEY_E)) {
             // t.evaluate(monte_evaluator, true, true);
-            t.evaluate_int(&monte_evaluator, true, false, &grogros_network);
-            cout << t._evaluation << endl;
+            // t.evaluate_int(&monte_evaluator, true, false, &grogros_network);
+            t.evaluate_int(&monte_evaluator, true, true);
+            // cout << t._evaluation << endl;
         }
             
 
