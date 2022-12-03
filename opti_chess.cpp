@@ -732,9 +732,9 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board, bool
 
         if (_time) {
             if (_player)
-                _pgn += " {[%clk " + clock_to_string(_time_white) + " ]}";
+                _pgn += " {[%clk " + clock_to_string(_time_white, true) + "]}";
             else
-                _pgn += " {[%clk " + clock_to_string(_time_black) + " ]}";
+                _pgn += " {[%clk " + clock_to_string(_time_black, true) + "]}";
         }
 
     }
@@ -891,8 +891,9 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board, bool
     
 
     if (add_to_list) {
-        _all_positions[_total_positions] = simple_position();
+        _all_positions[_half_moves_count] = simple_position();
         _total_positions++;
+        _total_positions = _half_moves_count;
     }
 
 
@@ -996,6 +997,42 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
 
 
     // Matériel insuffisant
+    int count_w_knight = 0;
+    int count_w_bishop = 0;
+    int count_b_knight = 0;
+    int count_b_bishop = 0;
+    int p;
+    bool might_draw = true;
+
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            p = _array[i][j];
+            if (p == 2)
+                count_w_knight++;
+            else if (p == 3)
+                count_w_bishop++;
+            else if (p == 8)
+                count_b_knight++;
+            else if (p == 9)
+                count_b_bishop++;
+            else if (p != 6 && p != 12 && p != 0) {
+                might_draw = false;
+                break;
+            }
+            if (count_w_knight + count_w_bishop > 1 || count_b_knight > 1 + count_b_bishop > 1) {
+                break;
+            }
+                
+        }
+    }
+
+    if (might_draw && count_w_knight + count_w_bishop < 2 && count_b_knight + count_b_bishop < 2) {
+        _evaluation = 0;
+        _is_game_over = true;
+        if (display)
+                cout << "Draw by insufficient material" << endl;
+        return true;
+    }
 
 
     // Réseau de neurones
@@ -1013,7 +1050,6 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     _evaluation = 0;
 
     // à tester: changer les boucles par des for (i : array) pour optimiser
-    int p;
     int bishop_w = 0; int bishop_b = 0;
 
     // Avancement de la partie
@@ -2938,7 +2974,8 @@ void Board::get_king_safety(float game_adv, int piece_attack, int piece_defense,
 
     kings:
 
-    _king_safety = 0;
+    // _king_safety = 0;
+    float king_safety_float = 0.0;
 
     float proximity_pawn_defense = 2;
 
@@ -2948,36 +2985,40 @@ void Board::get_king_safety(float game_adv, int piece_attack, int piece_defense,
             if (p > 0) {
                 if (p < 6) {
                     if (p == 1) {
-                        _king_safety += pawn_defense * proximity(i, j, w_king_i, w_king_j, proximity_pawn_defense) * (0.5 + !_k_castle_w + !_q_castle_w);
-                        _king_safety += pawn_attack * proximity(i, j, b_king_i, b_king_j, 3);
+                        king_safety_float += pawn_defense * proximity(i, j, w_king_i, w_king_j, proximity_pawn_defense) * (0.5 + !_k_castle_w + !_q_castle_w);
+                        king_safety_float += pawn_attack * proximity(i, j, b_king_i, b_king_j, 3);
                     }   
                     else {
-                        _king_safety += piece_defense * proximity(i, j, w_king_i, w_king_j, 3);
-                        _king_safety += piece_attack * proximity(i, j, b_king_i, b_king_j, 4);
+                        king_safety_float += piece_defense * proximity(i, j, w_king_i, w_king_j, 3);
+                        king_safety_float += piece_attack * proximity(i, j, b_king_i, b_king_j, 4);
                     }
                     
                 } 
                 else if (p > 6 && p < 12) {
                     if (p == 7) {
-                        _king_safety -= pawn_attack * proximity(i, j, w_king_i, w_king_j, 3);
-                        _king_safety -= pawn_defense * proximity(i, j, b_king_i, b_king_j, proximity_pawn_defense) * (0.5 + !_k_castle_b + !_q_castle_b);
+                        king_safety_float -= pawn_attack * proximity(i, j, w_king_i, w_king_j, 3);
+                        king_safety_float -= pawn_defense * proximity(i, j, b_king_i, b_king_j, proximity_pawn_defense) * (0.5 + !_k_castle_b + !_q_castle_b);
                     }   
                     else {
-                        _king_safety -= piece_attack * proximity(i, j, w_king_i, w_king_j, 4);
-                        _king_safety -= piece_defense * proximity(i, j, b_king_i, b_king_j, 3);
+                        king_safety_float -= piece_attack * proximity(i, j, w_king_i, w_king_j, 4);
+                        king_safety_float -= piece_defense * proximity(i, j, b_king_i, b_king_j, 3);
                     }
                 }
             }
         }
 
-    // Droits de roque
-    _king_safety += pawn_defense * (_k_castle_w + _q_castle_w) * 2 * proximity_pawn_defense;
-    _king_safety -= pawn_defense * (_k_castle_b + _q_castle_b) * 2 * proximity_pawn_defense;
 
-    _king_safety -= edge_defense * min(abs(w_king_i - (-1)), abs((w_king_i) - 8)) * min(abs(w_king_j - (-1)), abs((w_king_j) - 8)) * (1 - 2 * game_adv);
-    _king_safety += edge_defense * min(abs(b_king_i - (-1)), abs((b_king_i) - 8)) * min(abs(b_king_j - (-1)), abs((b_king_j) - 8)) * (1 - 2 * game_adv);
+    // Droits de roque
+    king_safety_float += pawn_defense * (_k_castle_w + _q_castle_w) * 2 * proximity_pawn_defense;
+    king_safety_float -= pawn_defense * (_k_castle_b + _q_castle_b) * 2 * proximity_pawn_defense;
+
+    king_safety_float -= edge_defense * min(abs(w_king_i - (-1)), abs((w_king_i) - 8)) * min(abs(w_king_j - (-1)), abs((w_king_j) - 8)) * (1 - 2 * game_adv);
+    king_safety_float += edge_defense * min(abs(b_king_i - (-1)), abs((b_king_i) - 8)) * min(abs(b_king_j - (-1)), abs((b_king_j) - 8)) * (1 - 2 * game_adv);
 
     // _king_safety += edge_defense * ((w_king_i == 0 || w_king_i == 7) + (w_king_j == 0 || w_king_j == 7) - (b_king_i == 0 || b_king_i == 7) - (b_king_j == 0 || b_king_j == 7));
+
+
+    _king_safety = king_safety_float;
 
     _safety = true;
 
@@ -3478,7 +3519,7 @@ string Board::simple_position() {
 
 
 int _total_positions = 0;
-string _all_positions[50];
+string _all_positions[52];
 
 
 // Fonction qui calcule la structure de pions
@@ -3517,9 +3558,9 @@ void Board::get_pawn_structure() {
 
     for (int i = 0; i < 8; i++) {
         if (s_white[i] > 0 && (i == 0 || s_white[i - 1] == 0) && (i == 7 || s_white[i + 1] == 0))
-            _pawn_structure += isolated_pawn * s_white[i];
+            _pawn_structure += isolated_pawn * s_white[i] / (1 + (i == 0 || i == 7));
         if (s_black[i] > 0 && (i == 0 || s_black[i - 1] == 0) && (i == 7 || s_black[i + 1] == 0))
-            _pawn_structure -= isolated_pawn * s_black[i];
+            _pawn_structure -= isolated_pawn * s_black[i] / (1 + (i == 0 || i == 7));
     }
 
     // Pions doublés (ou triplés...)
@@ -3532,4 +3573,17 @@ void Board::get_pawn_structure() {
 
 
     return;
+}
+
+
+// Fonction qui renvoie le temps que l'IA doit passer sur le prochain coup (en ms), en fonction d'un facteur k, et des temps restant
+int time_to_play_move(int t1, int t2, float k) {
+    return t1 * k;
+
+    // A améliorer :
+    // Prendre en compte le temps de l'adversaire
+    // Prendre en compte le nombre de coups restants dans la partie (ou une approximation) -> Si on va mater ou si on est quasi foutu -> passer plus de temps
+    // Prendre en compte les variations d'évaluation, ou les coups montants
+    // Reste à gérer les incréments
+    // Nombre de noeuds min avant de jouer?
 }

@@ -440,6 +440,9 @@ bool equal_fen(string, string);
 // Fonction qui renvoie si deux positions (en format FEN) sont les mêmes (pour les répétitions)
 bool equal_positions(Board, Board);
 
-// Test de liste des positions (taille 50, pour la règle des 50 coups.. si on joue une prise ou un coup de pion, on peut reset la liste)
-extern string _all_positions[50];
+// Test de liste des positions (taille 50, pour la règle des 50 coups.. si on joue une prise ou un coup de pion, on peut reset la liste -> 52 : +1 pour la position de départ, +1 quand on joue exactement le 50ème coup)
+extern string _all_positions[52];
 extern int _total_positions;
+
+// Fonction qui renvoie le temps que l'IA doit passer sur le prochain coup (en ms), en fonction d'un facteur k, et des temps restant
+int time_to_play_move(int t1, int t2, float k = 0.05);
