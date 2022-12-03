@@ -31,6 +31,7 @@ https://www.chessprogramming.org/Repetitions
 https://en.wikipedia.org/wiki/Threefold_repetition
 https://www.chessprogramming.org/Opening_Book
 https://www.chessprogramming.org/Pawn_Structure
+https://www.chessprogramming.org/Time_Management
 
 
 
@@ -73,6 +74,7 @@ https://www.chessprogramming.org/Pawn_Structure
 -> Liste des coups légaux, et une autre liste pour les coups pseudo-légaux... pour éviter de les recalculer à chaque fois...
 -> Utiliser les threads.. voir cours ProgrammationConcurrente
 -> Checker SIMD code (pour optimiser)
+-> Calcul de distance à un bord : simplement faire une matrice globale des distance pour chaque case, et regarder dedans -> https://www.chessprogramming.org/Center_Manhattan-Distance
 
 
 
@@ -94,16 +96,17 @@ https://www.chessprogramming.org/Pawn_Structure
 --- Améliorations ---
 
 -> Améliorer les heuristiques pour l'évaluation d'une position
+-> https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
     - Positionnement du roi, des pions, de la dame et des pièces changeant au cours de la partie (++ pièces mineures en début de partie, ++ le reste en fin de partie, ++ valeur des pions) (endgame = 13 points or below for each player? less than 4 pieces?)
     - Sécurité du roi (TRES IMPORTANT !) --> A améliorer, car là c'est pourri... comment calculer? !(pion protégeant le roi) *  pieces ennemies proches du roi = !king_safety ?  -> https://www.chessprogramming.org/King_Safety
     - Espace (dépend aussi du nombre de pièces restantes..)
-    - Structures de pions (IMPORTANT)
+    - Structures de pions (IMPORTANT) -> A améliorer
     - Diagonales ouvertes
     - Lignes ouvertes, tours dessus
     - Clouages
     - Pièces attaquées?
     - Cases noires/blanches
-    - Contrôle de cases importantes
+    - Contrôle des cases
     - Cases faibles
     - Pions arrierés/faibles
     - Initiative -> A améliorer : fort dans les positions d'attaque?
@@ -118,6 +121,8 @@ https://www.chessprogramming.org/Pawn_Structure
     - Tours liées
     - Garder matériel en position perdante?
     - Opposition des rois en finale
+    - Attaques et défenses
+    - Faiblesse sur une couleur
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Augmenter la profondeur pour les finales (GrogrosFish)
@@ -177,6 +182,12 @@ https://www.chessprogramming.org/Pawn_Structure
 -> Pour les transpositions, on peut peut-être renvoyer au même indice de plateau fils...?
 -> Pour chaque plateau, générer et stocker la representation simpliste du plateau? Pour ensuite pouvoir aider les fils à comparer?
 -> Pourquoi king safety != 0 sur la position de base??? 
+-> 8/8/2b1k2N/p5p1/P1p2p2/5P2/1PP2KPP/8 w - - 1 37 deux pions de plus mais se croit quasi perdant?
+-> ATTENTION aux conversions int et float dans les calculs d'évaluations...
+-> 3k3r/2p1b1pp/p1p2p2/3bp3/8/2P1BNP1/PPP2PKP/R7 w - - 3 16 -> king safety 1.25??.. structure 1.25? -> +2.5...
+-> Mettre les règles de parties nulles et mat en dehors de l'évaluation?
+-> Ajouter les pièces protégées lors de l'évaluation pour simplifier les calculs de l'IA
+-> Gestion du temps : faire en fonction des lignes montantes? Si ça stagne, jouer vite? Si y'a un seul coup -> Jouer instant?
 
 
 ----- Interface utilisateur -----
@@ -250,6 +261,8 @@ https://www.chessprogramming.org/Pawn_Structure
 -> Parfois l'utilisation des réseaux de neurones bug
 -> Faire un éditeur de position
 -> Nd2f3 -> Ndf3? pas facile à faire
+-> A REGLER : Parfois ça crash quand on joue un coup
+-> Alerte de temps (10% du time control?)
 
 
 
@@ -317,19 +330,20 @@ int main() {
     Evaluator monte_evaluator;
     monte_evaluator._piece_activity = 0.03; // 0.04
     monte_evaluator._piece_positioning = 0.007; // beta = 0.035 // Pos = 0.013
+    // monte_evaluator._piece_positioning = 0.01; // Pour tester http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
     monte_evaluator._king_safety = 0.0025; // Il faut régler la fonction... avec les pièces autour, s'il est au milieu du plateau...
     monte_evaluator._castling_rights = 0.3;
 
     // Nombre de noeuds pour le jeu automatique de GrogrosZero
     int grogros_nodes = 750000;
-    grogros_nodes = 500000;
+    grogros_nodes = 3000000;
 
     // Nombre de noeuds calculés par frame
     // Si c'est sur son tour
-    int nodes_per_frame = 25000;
+    int nodes_per_frame = 2500;
 
     // Sur le tour de l'autre (pour que ça plante moins)
-    int nodes_per_user_frame = 1000;
+    int nodes_per_user_frame = 250;
 
 
     bool grogros_auto = false;
@@ -352,8 +366,8 @@ int main() {
     bool grogrosfish_play_black = false;
 
     // Paramètres pour l'IA
-    int search_depth = 8;
-    // search_depth = 7;
+    int search_depth = 7;
+    // search_depth = 5;
 
 
 
@@ -389,8 +403,8 @@ int main() {
     bool previous_player = true;
 
     // Temps par joueur
-    t._time_white = 600000;
-    t._time_black = 600000;
+    t._time_white = 180000;
+    t._time_black = 180000;
 
     // Incrément
     t._time_increment_white = 0;
@@ -601,9 +615,21 @@ int main() {
 
 
         // Joue les coups selon grogros en fonction de la reflexion actuelle
-        if (grogros_play && t.is_mate() == -1 && t.game_over() == 0) {
-            if (t.total_nodes() > grogros_nodes)
-                t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true);
+        if ((grogros_play || (grogroszero_play_white && t._player) || (grogroszero_play_black && !t._player)) && t.is_mate() == -1 && t.game_over() == 0) {
+            if (t._time) {
+                int max_move_time;
+                float best_move_percentage = (float)t._nodes_children[t.best_monte_carlo_move()] / (float)t.total_nodes();
+                if (t._player)
+                    max_move_time = time_to_play_move(t._time_white, t._time_black, 0.05 * (1 - best_move_percentage));
+                else
+                    max_move_time = time_to_play_move(t._time_black, t._time_white, 0.05 * (1 - best_move_percentage));
+                if (t._time_monte_carlo >= max_move_time || t.total_nodes() > grogros_nodes)
+                    t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true);
+            }
+                
+            else
+                if (t.total_nodes() > grogros_nodes)
+                    t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true);
         }
             
 
@@ -817,16 +843,16 @@ int main() {
             if (t._player) {
                 if (grogrosfish_play_white)
                     t.grogrosfish(search_depth, &eval_white, true);
-                if (grogroszero_play_white)
-                   if (t.total_nodes() >= grogros_nodes)
-                        t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true); 
+                // if (grogroszero_play_white)
+                //    if (t.total_nodes() >= grogros_nodes)
+                //         t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true); 
             }
             else {
                 if (grogrosfish_play_black)
                     t.grogrosfish(search_depth, &eval_black, true);
-                if (grogroszero_play_black)
-                   if (t.total_nodes() >= grogros_nodes)
-                        t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true); 
+                // if (grogroszero_play_black)
+                //    if (t.total_nodes() >= grogros_nodes)
+                //         t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true); 
             }
         }
 
