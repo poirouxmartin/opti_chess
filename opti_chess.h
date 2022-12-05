@@ -183,6 +183,9 @@ class Board {
         // Structure de pions
         int _pawn_structure = 0;
         bool _structure = false;
+
+        // Pour la gestion du temps
+        clock_t _last_move_clock;
         
 
         // Constructeur par défaut
@@ -370,6 +373,15 @@ class Board {
 
         // Fonction qui calcule la structure de pions
         void get_pawn_structure();
+
+        // Fonction qui met à jour le temps des joueurs
+        void update_time();
+
+        // Fonction qui lance le temps
+        void start_time();
+
+        // Fonction qui stoppe le temps
+        void stop_time();
 
 };
 

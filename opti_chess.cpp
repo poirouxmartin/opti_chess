@@ -729,14 +729,6 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board, bool
             _pgn += ". ";
         }
         _pgn += move_label(i, j, k, l);
-
-        if (_time) {
-            if (_player)
-                _pgn += " {[%clk " + clock_to_string(_time_white, true) + "]}";
-            else
-                _pgn += " {[%clk " + clock_to_string(_time_black, true) + "]}";
-        }
-
     }
 
 
@@ -896,6 +888,20 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board, bool
         _total_positions = _half_moves_count;
     }
 
+
+    // Gestion du temps
+    if (_time) {
+        if (_player) {
+            _time_black -= clock() - _last_move_clock - _time_increment_black;
+            _pgn += " {[%clk " + clock_to_string(_time_black, true) + "]}";
+        }  
+        else {
+            _time_white -= clock() - _last_move_clock - _time_increment_white;
+            _pgn += " {[%clk " + clock_to_string(_time_white, true) + "]}";
+        }
+            
+        _last_move_clock = clock();
+    }
 
 }
 
@@ -2117,6 +2123,8 @@ void Board::draw() {
 
 
     // Temps des joueurs
+    // Update du temps
+    update_time();
     DrawTextEx(text_font, clock_to_string(_time_black, false).c_str(), {board_padding_x + board_size - text_size * 2, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
     DrawTextEx(text_font, clock_to_string(_time_white, false).c_str(), {board_padding_x + board_size - text_size * 2, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
 
@@ -2582,6 +2590,7 @@ void Board::play_monte_carlo_move_keep(int move, bool keep, bool keep_display, b
             b._time_increment_white = _time_increment_white;
             b._time_increment_black = _time_increment_black;
             b._time = _time;
+            b._last_move_clock = _last_move_clock;
             b.make_index_move(move, true, add_to_list);
             if (display) {
                 b.display_pgn();
@@ -2592,13 +2601,14 @@ void Board::play_monte_carlo_move_keep(int move, bool keep, bool keep_display, b
                 _monte_buffer._heap_boards[_index_children[move]]._pgn = b._pgn;
                 _monte_buffer._heap_boards[_index_children[move]]._white_player = _white_player;
                 _monte_buffer._heap_boards[_index_children[move]]._black_player = _black_player;
-                _monte_buffer._heap_boards[_index_children[move]]._time_white = _time_white;
-                _monte_buffer._heap_boards[_index_children[move]]._time_black = _time_black;
-                _monte_buffer._heap_boards[_index_children[move]]._time_increment_white = _time_increment_white;
-                _monte_buffer._heap_boards[_index_children[move]]._time_increment_black = _time_increment_black;
-                _monte_buffer._heap_boards[_index_children[move]]._time = _time;
-                _monte_buffer._heap_boards[_index_children[move]]._timed_pgn = _timed_pgn;
-                _monte_buffer._heap_boards[_index_children[move]]._named_pgn = _named_pgn;
+                _monte_buffer._heap_boards[_index_children[move]]._time_white = b._time_white;
+                _monte_buffer._heap_boards[_index_children[move]]._time_black = b._time_black;
+                _monte_buffer._heap_boards[_index_children[move]]._time_increment_white = b._time_increment_white;
+                _monte_buffer._heap_boards[_index_children[move]]._time_increment_black = b._time_increment_black;
+                _monte_buffer._heap_boards[_index_children[move]]._time = b._time;
+                _monte_buffer._heap_boards[_index_children[move]]._timed_pgn = b._timed_pgn;
+                _monte_buffer._heap_boards[_index_children[move]]._named_pgn = b._named_pgn;
+                _monte_buffer._heap_boards[_index_children[move]]._last_move_clock = b._last_move_clock;
             }
                 
         }
@@ -3116,8 +3126,10 @@ void Board::add_names_to_pgn() {
 // Fonction qui ajoute le time control au PGN
 void Board::add_time_to_pgn() {
     if (_timed_pgn) {
-        cout << "déjà fait !" << endl;
+        // cout << "déjà fait !" << endl;
+        true;
     }
+    
     else {
         int p = _pgn.find_last_of("\"]\n");
         if (p == -1)
@@ -3586,4 +3598,32 @@ int time_to_play_move(int t1, int t2, float k) {
     // Prendre en compte les variations d'évaluation, ou les coups montants
     // Reste à gérer les incréments
     // Nombre de noeuds min avant de jouer?
+}
+
+
+// Fonction qui met à jour le temps des joueurs
+void Board::update_time() {
+    // Faut-il quand même mettre à jour le temps quand il est désactivé?
+    if (!_time)
+        return;
+    if (_player)
+        _time_white -= clock() - _last_move_clock;
+    else
+        _time_black -= clock() - _last_move_clock;
+    _last_move_clock = clock();
+}
+
+
+// Fonction qui lance le temps
+void Board::start_time() {
+    add_time_to_pgn();
+    _time = true;
+    _last_move_clock = clock();
+}
+
+// Fonction qui stoppe le temps
+void Board::stop_time() {
+    add_time_to_pgn();
+    update_time();
+    _time = false;
 }
