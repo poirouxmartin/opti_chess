@@ -264,6 +264,7 @@ https://www.chessprogramming.org/Time_Management
 -> Alerte de temps (10% du time control?)
 -> Nombre de noeuds par frame à changer en fonction du temps prévisionnel de réflexion de l'IA
 -> Faire des fonctions start_time() et stop_time()
+-> Faire une deselection de pre_moves
 
 
 
@@ -423,6 +424,7 @@ int main() {
 
     // Boucle principale (Quitter à l'aide de la croix, ou en faisant échap)
     while (!WindowShouldClose()) {
+
 
         // Changements de la taille de la fenêtre
         if (IsWindowResized()) {
