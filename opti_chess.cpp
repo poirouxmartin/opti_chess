@@ -1963,13 +1963,20 @@ void Board::draw() {
 
             // Sélection de pièces
             // Si aucune pièce n'est sélectionnée, la sélectionne
-            if (selected_pos.first == -1 && ((_player && is_in(_array[clicked_pos.first][clicked_pos.second], 1, 6)) || (!_player && is_in(_array[clicked_pos.first][clicked_pos.second], 7, 12))))
+            if ((selected_pos.first == -1 || true) && _array[clicked_pos.first][clicked_pos.second] != 0 && (true || ((_player && is_in(_array[clicked_pos.first][clicked_pos.second], 1, 6)) || (!_player && is_in(_array[clicked_pos.first][clicked_pos.second], 7, 12)))))
                 selected_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
             // Si une pièce est déjà sélectionnée
             else if (selected_pos.first != -1) {
+                int selected_piece = _array[selected_pos.first][selected_pos.second];
+                if (selected_piece > 0 && (selected_piece < 7 && !_player) || (selected_piece >= 7 && _player)) {
+                    // Si c'est pas ton tour, pre-move
+                    pre_move[0] = selected_pos.first;
+                    pre_move[1] = selected_pos.second;
+                    pre_move[2] = clicked_pos.first;
+                    pre_move[3] = clicked_pos.second;
+                }
                 
                 // Si le coup est légal, le joue
-                bool legal_move = false;
                 get_moves(false, true);
                 for (int i = 0; i < _got_moves; i++) {
                     if (_moves[4 * i] == selected_pos.first && _moves[4 * i + 1] == selected_pos.second && _moves[4 * i + 2] == clicked_pos.first && _moves[4 * i + 3] == clicked_pos.second) {
@@ -1978,7 +1985,6 @@ void Board::draw() {
                         // make_move(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second, true, true);
                         play_monte_carlo_move_keep(i, true, true, true, true);
                         display_pgn();
-                        legal_move = true;
                         break;
                     }
                 }
@@ -2002,18 +2008,31 @@ void Board::draw() {
                 if (drop_pos.first == selected_pos.first && drop_pos.second == selected_pos.second) {
                 }
                 else {
-                    // Si le coup est légal
-                    get_moves(false, true);
-                    for (int i = 0; i < _got_moves; i++) {
-                        if (_moves[4 * i] == clicked_pos.first && _moves[4 * i + 1] == clicked_pos.second && _moves[4 * i + 2] == drop_pos.first && _moves[4 * i + 3] == drop_pos.second) {
-                            play_move_sound(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
-                            // make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second, true, true);
-                            play_monte_carlo_move_keep(i, true, true, true, true);
-                            display_pgn();
-                            selected_pos = {-1, -1};
-                            break;
+                    int selected_piece = _array[selected_pos.first][selected_pos.second];
+                    if (selected_piece > 0 && (selected_piece < 7 && !_player) || (selected_piece >= 7 && _player)) {
+                        // Si c'est pas ton tour, pre-move
+                        pre_move[0] = selected_pos.first;
+                        pre_move[1] = selected_pos.second;
+                        pre_move[2] = drop_pos.first;
+                        pre_move[3] = drop_pos.second;
+                    }
+
+
+                    else {
+                        // Si le coup est légal
+                        get_moves(false, true);
+                        for (int i = 0; i < _got_moves; i++) {
+                            if (_moves[4 * i] == clicked_pos.first && _moves[4 * i + 1] == clicked_pos.second && _moves[4 * i + 2] == drop_pos.first && _moves[4 * i + 3] == drop_pos.second) {
+                                play_move_sound(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
+                                // make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second, true, true);
+                                play_monte_carlo_move_keep(i, true, true, true, true);
+                                display_pgn();
+                                selected_pos = {-1, -1};
+                                break;
+                            }
                         }
                     }
+                    
                 }
                 
             }
@@ -2022,11 +2041,38 @@ void Board::draw() {
         clicked = false;
     }
 
+    // Pre-moves
+    if (pre_move[0] != -1 && pre_move[1] != -1 && pre_move[2] != -1 && pre_move[3] != -1) {
+        if ((!_player && is_in(_array[pre_move[0]][pre_move[1]], 7, 12)) || (_player && is_in(_array[pre_move[0]][pre_move[1]], 1, 6))) {
+            if (_got_moves == -1)
+                get_moves(false, true);
+            for (int i = 0; i < _got_moves; i++) {
+                if (_moves[4 * i] == pre_move[0] && _moves[4 * i + 1] == pre_move[1] && _moves[4 * i + 2] == pre_move[2] && _moves[4 * i + 3] == pre_move[3]) {
+                    play_move_sound(pre_move[0], pre_move[1], pre_move[2], pre_move[3]);
+                    play_monte_carlo_move_keep(i, true, true, true, true);
+                    display_pgn();
+                    break;
+                }
+            }
+            pre_move[0] = -1;
+            pre_move[1] = -1;
+            pre_move[2] = -1;
+            pre_move[3] = -1;
+        }
+        
+        
+    }
+
+
     // Si on clique avec la souris
     if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
         int x_mouse = get_pos_from_gui(mouse_pos.x, mouse_pos.y).first;
         int y_mouse = get_pos_from_gui(mouse_pos.x, mouse_pos.y).second;
         highlighted_array[x_mouse][y_mouse] = 1 - highlighted_array[x_mouse][y_mouse];
+        pre_move[0] = -1;
+        pre_move[1] = -1;
+        pre_move[2] = -1;
+        pre_move[3] = -1;
     }
 
 
@@ -2070,6 +2116,12 @@ void Board::draw() {
                 DrawRectangle(board_padding_x + orientation_index(_moves[4 * i + 3]) * tile_size, board_padding_y + orientation_index(7 - _moves[4 * i + 2]) * tile_size, tile_size, tile_size, select_color);
             }
         }
+    }
+
+    // Pre-move
+    if (pre_move[0] != -1 && pre_move[1] != -1 && pre_move[2] != -1 && pre_move[3] != -1) {
+        DrawRectangle(board_padding_x + orientation_index(pre_move[1]) * tile_size, board_padding_y + orientation_index(7 - pre_move[0]) * tile_size, tile_size, tile_size, pre_move_color);
+        DrawRectangle(board_padding_x + orientation_index(pre_move[3]) * tile_size, board_padding_y + orientation_index(7 - pre_move[2]) * tile_size, tile_size, tile_size, pre_move_color);
     }
 
 

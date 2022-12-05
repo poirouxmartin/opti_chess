@@ -36,7 +36,10 @@ static Color highlight_color = {255, 255, 100, 150};
 static Color select_color = {50, 225, 50, 100};
 
 // Couleur des cases du dernier coup joué
-static Color last_move_color = {250, 50, 50, 125};
+static Color last_move_color = {220, 150, 50, 125};
+
+// Couleur de la case de pre-move
+static Color pre_move_color = {250, 50, 50, 150};
 
 // Couleur des flèches
 static Color arrow_color = {225, 225, 50, 255};
@@ -146,6 +149,9 @@ static clock_t begin_time;
 static float pgn_slider = 0.0f;
 static float monte_carlo_slider = 0.0f;
 static float variants_slider = 0.0f;
+
+// Pre-move
+static int pre_move[4] = {-1, -1, -1, -1};
 
 
 
