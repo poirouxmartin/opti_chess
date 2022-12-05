@@ -261,8 +261,9 @@ https://www.chessprogramming.org/Time_Management
 -> Parfois l'utilisation des réseaux de neurones bug
 -> Faire un éditeur de position
 -> Nd2f3 -> Ndf3? pas facile à faire
--> A REGLER : Parfois ça crash quand on joue un coup
 -> Alerte de temps (10% du time control?)
+-> Nombre de noeuds par frame à changer en fonction du temps prévisionnel de réflexion de l'IA
+-> Faire des fonctions start_time() et stop_time()
 
 
 
@@ -357,10 +358,6 @@ int main() {
     eval_white._king_safety = 0;
     eval_black._king_safety = 0;
 
-    // _beta = 0.1;
-    // _k_add = 100;
-
-
     // IA self play
     bool grogrosfish_play_white = false;
     bool grogrosfish_play_black = false;
@@ -394,13 +391,6 @@ int main() {
 
 
 
-
-
-
-    
-    // Temps
-    clock_t current_time;
-    bool previous_player = true;
 
     // Temps par joueur
     t._time_white = 180000;
@@ -440,24 +430,6 @@ int main() {
             load_resources(); // Sinon ça devient flou
             resize_gui();
         }
-
-
-        // Gestion du temps des joueurs
-        if (t._time) {
-            if (previous_player)
-                t._time_white -= clock() - current_time;
-            else
-                t._time_black -= clock() - current_time;
-            current_time = clock();
-            if (t._player != previous_player) {
-                if (previous_player)
-                    t._time_white += t._time_increment_white;
-                else
-                    t._time_black += t._time_increment_black;
-                previous_player = t._player;   
-            }
-        }
-
 
         // Save FEN
         if (IsKeyPressed(KEY_S)) {
@@ -745,13 +717,12 @@ int main() {
             }
         }
         
-        // Lancement du temps
+        // Lancement et arrêt du temps
         if (IsKeyPressed(KEY_ENTER)) {
-            t._time = !t._time;
-            t.add_time_to_pgn();
-            if (t._time) {
-                current_time = clock();
-            }
+            if (t._time)
+                t.stop_time();
+            else
+                t.start_time();
         }
 
         // Ajout des noms au PGN
@@ -843,83 +814,20 @@ int main() {
             if (t._player) {
                 if (grogrosfish_play_white)
                     t.grogrosfish(search_depth, &eval_white, true);
-                // if (grogroszero_play_white)
-                //    if (t.total_nodes() >= grogros_nodes)
-                //         t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true); 
-            }
+            } 
             else {
                 if (grogrosfish_play_black)
                     t.grogrosfish(search_depth, &eval_black, true);
-                // if (grogroszero_play_black)
-                //    if (t.total_nodes() >= grogros_nodes)
-                //         t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true); 
             }
+                
         }
 
-        // // Entrainement d'agents
-        // if (IsKeyDown(KEY_KP_0)) {
-        //     t.grogros_zero(l_agents[0], monte_evaluator, 25000, true);
-        // }
-            
-        // // Match
-        // if (IsKeyDown(KEY_KP_1)) {
-        //     cout << match(l_agents[0], l_agents[1]) << endl;
-        // }
+        // Si la partie est terminée
+        else {
+            t._time = false;
+        }
 
-        // // Tournoi
-        // if (IsKeyPressed(KEY_KP_2)) {
-        //     tournament(l_agents, n_agents);
-        // }
-
-        // // Nouvelle génération
-        // if (IsKeyPressed(KEY_KP_3)) {
-        //     next_generation(l_agents, n_agents, 0.1, 0.25, 0.2);
-        // }
-
-        // // Mutation
-        // if (IsKeyPressed(KEY_KP_4)) {
-        //     l_agents[0].mutation(0.25);
-        // }
-
-        // // Lance plusieurs générations
-        // if (IsKeyPressed(KEY_KP_5)) {
-        //     generation = 0;
-        //     cout << "Generation 0, launch until generation " << max_generations << "..." << endl;
-        //     tournament(l_agents, n_agents);
-        //     while (generation < max_generations) {
-        //         cout << "Generation " << generation << endl;
-        //         next_generation(l_agents, n_agents, 0.1, 0.25, 0.2);
-        //         tournament(l_agents, n_agents);
-        //         generation++;
-        //     }
-
-        //     // Copie du meilleur agent
-        //     int best_agent = 0;
-        //     int best_score = 0;
         
-
-        //     for (int i = 0; i < n_agents; i++) {
-        //         if (l_agents[i]._score > best_score) {
-        //             best_agent = i;
-        //             best_score = l_agents[i]._score;
-        //         }
-        //     }
-
-
-        //     final_agent.copy_data(l_agents[best_agent], true);
-
-        //     cout << "Simulation done. Best agent has been copied (last score : " << best_score << ")" << endl;
-        // }
-
-        // // Joue avec le nouvel agent
-        // if (IsKeyDown(KEY_KP_6)) {
-        //     t.grogros_zero(final_agent, monte_evaluator, 25000, true);
-        // }
-
-        // if (IsKeyDown(KEY_KP_7)) {
-        //     t.grogrosfish(5, final_agent, true);
-        // }
-
 
 
         // Dessins
