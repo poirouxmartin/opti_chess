@@ -866,6 +866,7 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board, bool
     _activity = false;
     _safety = false;
     _structure = false;
+    _attacks = false;
 
     _new_board = true;
     
@@ -1157,11 +1158,31 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     // Structure de pions
     float pawn_structure = 0;
     if (eval->_pawn_structure != 0) {
-        get_pawn_structure();
+        get_pawn_structure(adv);
         pawn_structure = _pawn_structure * eval->_pawn_structure;
         if (display)
             cout << "pawn structure : " << pawn_structure << endl;
         _evaluation += pawn_structure;
+    }
+
+    // Attaques de pièces
+    float pieces_attacks = 0;
+    if (eval->_attacks != 0) {
+        get_attacks();
+        pieces_attacks = _attacks_eval * eval->_attacks;
+        if (display)
+            cout << "attacks : " << pieces_attacks << endl;
+        _evaluation += pieces_attacks;
+    }
+
+    // Opposition des rois
+    float kings_opposition = 0;
+    if (eval->_kings_opposition != 0) {
+        get_kings_opposition();
+        kings_opposition = _kings_opposition * eval->_kings_opposition;
+        if (display)
+            cout << "kings opposition : " << kings_opposition << endl;
+        _evaluation += kings_opposition;
     }
 
 
@@ -1382,6 +1403,7 @@ bool Board::undo() {
     _activity = false;
     _safety = false;
     _structure = false;
+    _attacks = false;
 
     _new_board = true;
     
@@ -1583,6 +1605,7 @@ void Board::from_fen(string fen) {
     _activity = false;
     _safety = false;
     _structure = false;
+    _attacks = false;
 
     _last_move[0] = -1;
     _last_move[1] = -1;
@@ -1974,6 +1997,7 @@ void Board::draw() {
                     pre_move[1] = selected_pos.second;
                     pre_move[2] = clicked_pos.first;
                     pre_move[3] = clicked_pos.second;
+                    selected_pos = {-1, -1};
                 }
                 
                 // Si le coup est légal, le joue
@@ -2015,6 +2039,7 @@ void Board::draw() {
                         pre_move[1] = selected_pos.second;
                         pre_move[2] = drop_pos.first;
                         pre_move[3] = drop_pos.second;
+                        selected_pos = {-1, -1};
                     }
 
 
@@ -2211,13 +2236,18 @@ void Board::draw() {
         else
             eval = to_string(best_eval);
 
+        // Des choses à optimiser par là...
+        global_eval = best_eval;
+        global_eval_text = eval;
+
         monte_carlo_text += "\n\nstatic eval : "  + to_string(_static_evaluation) + "\nnodes : " + int_to_round_string(total_nodes()) + "/" + int_to_round_string(_monte_buffer._length) + " | time : " + clock_to_string(_time_monte_carlo) + " | speed : " + int_to_round_string(total_nodes() / (_time_monte_carlo + 1) * 1000) + "N/s" + "\ndepth : " + to_string(max_monte_carlo_depth()) + "\neval : "  + eval;
     }
 
-    // Affichage des paramètres d'analyse de Monte-Carlo
-    slider_text(monte_carlo_text.c_str(), board_padding_x + board_size + text_size / 2, board_padding_y, screen_width - text_size - board_padding_x - board_size, board_size / 4,  text_size / 3, &monte_carlo_slider);
-
+    
     if (drawing_arrows) {
+        // Affichage des paramètres d'analyse de Monte-Carlo
+        slider_text(monte_carlo_text.c_str(), board_padding_x + board_size + text_size / 2, board_padding_y, screen_width - text_size - board_padding_x - board_size, board_size / 4,  text_size / 3, &monte_carlo_slider);
+
         // Lignes d'analyse de Monte-Carlo
         static string monte_carlo_variants;
 
@@ -2250,6 +2280,8 @@ void Board::draw() {
         // Affichage des variantes
         slider_text(monte_carlo_variants.c_str(), board_padding_x + board_size + text_size / 2, board_padding_y + board_size / 3 , screen_width - text_size - board_padding_x - board_size, board_size * 2 / 3,  text_size / 3, &variants_slider);
 
+        // Affichage de la barre d'évaluation
+        draw_eval_bar(global_eval, global_eval_text, board_padding_x / 6, board_padding_y, 2 * board_padding_x / 3, board_size);
     }
 
     
@@ -3587,7 +3619,7 @@ string _all_positions[52];
 
 
 // Fonction qui calcule la structure de pions
-void Board::get_pawn_structure() {
+void Board::get_pawn_structure(float adv) {
     // Améliorations : 
     // Nombre d'ilots de pions
     // Doit dépendre de l'avancement de la partie
@@ -3615,26 +3647,36 @@ void Board::get_pawn_structure() {
         }
     }
 
-    // print_array(s_white, 8);
-
     // Pions isolés
     int isolated_pawn = -50;
+    float isolated_adv_factor = 0.3; // En fonction de l'advancement de la partie
+    float isolated_adv = 1 * (1 + (isolated_adv_factor - 1) * adv);
 
     for (int i = 0; i < 8; i++) {
         if (s_white[i] > 0 && (i == 0 || s_white[i - 1] == 0) && (i == 7 || s_white[i + 1] == 0))
-            _pawn_structure += isolated_pawn * s_white[i] / (1 + (i == 0 || i == 7));
+            _pawn_structure += isolated_pawn * s_white[i] / (1 + (i == 0 || i == 7)) * isolated_adv;
         if (s_black[i] > 0 && (i == 0 || s_black[i - 1] == 0) && (i == 7 || s_black[i + 1] == 0))
-            _pawn_structure -= isolated_pawn * s_black[i] / (1 + (i == 0 || i == 7));
+            _pawn_structure -= isolated_pawn * s_black[i] / (1 + (i == 0 || i == 7)) * isolated_adv;
     }
 
     // Pions doublés (ou triplés...)
     int doubled_pawn = -25;
+    float doubled_adv_factor = 0.6; // En fonction de l'advancement de la partie
+    float doubled_adv = 1 * (1 + (doubled_adv_factor - 1) * adv);
     for (int i = 0; i < 8; i++) {
-        _pawn_structure += (s_white[i] >= 2) * doubled_pawn * (s_white[i] - 1);
-        _pawn_structure -= (s_black[i] >= 2) * doubled_pawn * (s_black[i] - 1);
+        _pawn_structure += (s_white[i] >= 2) * doubled_pawn * (s_white[i] - 1) * doubled_adv;
+        _pawn_structure -= (s_black[i] >= 2) * doubled_pawn * (s_black[i] - 1) * doubled_adv;
     }
 
-
+    // Pions passés
+    int passed_pawn = 50;
+    float passed_adv_factor = 3; // En fonction de l'advancement de la partie
+    float passed_adv = 1 * (1 + (passed_adv_factor - 1) * adv);
+    for (int i = 0; i < 8; i++) {
+        _pawn_structure += (s_white[i] >= 1) * passed_pawn * (s_black[i] == 0 && (i == 0 || s_black[i - 1] == 0) && (i == 7 || s_black[i + 1] == 0)) * passed_adv;
+        _pawn_structure -= (s_black[i] >= 1) * passed_pawn * (s_white[i] == 0 && (i == 0 || s_white[i - 1] == 0) && (i == 7 || s_white[i + 1] == 0)) * passed_adv;
+    }
+    // Doit aussi dépendre de l'avancement du pion... On doit vérifier si le pion adverse est devant ou derrière l'autre pion...
 
     return;
 }
@@ -3678,4 +3720,101 @@ void Board::stop_time() {
     add_time_to_pgn();
     update_time();
     _time = false;
+}
+
+
+// Fonction qui calcule la résultante des attaques
+void Board::get_attacks() {
+    _attacks_eval = 0;
+
+    int p;
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            p = _array[i][j];
+
+
+
+        }
+    }
+
+
+
+
+
+
+    _attacks = true;
+    return;
+}
+
+
+// Fonction qui calcule l'opposition des rois (en finales de pions)
+void Board::get_kings_opposition() {
+    _kings_opposition = 0;
+
+    // Regarde si on est dans une finale de pions
+    int w_king_i; int w_king_j; int b_king_i; int b_king_j;
+    bool w_king = false; bool b_king = false;
+    int p;
+    bool pawns_only = true;
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            p = _array[i][j];
+            if (pawns_only && p != 0 && p != 1 && p != 6 && p != 7 && p != 12)
+                pawns_only = false;
+            if (!w_king && p == 6) {
+                w_king_i = i;
+                w_king_j = j;
+                w_king = true;
+            }
+            if (!b_king && p == 12) {
+                b_king_i = i;
+                b_king_j = j;
+                b_king = true;
+            }
+            if (w_king && b_king)
+                if (pawns_only)
+                    goto end_loop;
+                else
+                    return;
+        }
+    }
+
+
+    end_loop:
+
+    // Les rois sont-ils opposés?
+    int di = abs(w_king_i - b_king_i);
+    int dj = abs(w_king_j - b_king_j);
+    if (!((di == 0 || di == 2) && (dj == 0 || dj == 2)))
+        return;
+
+    // S'ils sont opposés, le joueur qui a l'opposition, est celui qui n'a pas le trait
+    _kings_opposition = -_color;
+    _opposition = true;
+    return;
+}
+
+
+
+// Fonction qui affiche la barre d'evaluation
+void draw_eval_bar(float eval, string text_eval, float x, float y, float width, float height, float max_eval, Color white, Color black, float max_height) {
+    float switch_color = min(max_height * height, max((1 - max_height) * height, height / 2 - eval / max_eval * height / 2));
+    bool orientation = get_board_orientation();
+    if (orientation) {
+        DrawRectangle(x, y, width, height, black);
+        DrawRectangle(x, y + switch_color, width, height - switch_color, white);
+    }
+    else {
+        DrawRectangle(x, y, width, height, black);
+        DrawRectangle(x, y, width, height - switch_color, white);
+    }
+
+    float y_margin = (1 - max_height) / 4;
+    bool text_pos = (orientation ^ (eval < 0));
+    float text_size = width / 2;
+    Vector2 text_dimensions = MeasureTextEx(text_font, text_eval.c_str(), text_size, font_spacing);
+    if (text_dimensions.x > width)
+        text_size = text_size * width / text_dimensions.x;
+    text_dimensions = MeasureTextEx(text_font, text_eval.c_str(), text_size, font_spacing);
+    DrawTextEx(text_font, text_eval.c_str(), {x + (width - text_dimensions.x) / 2.0f, y + (y_margin + text_pos * (1.0f - y_margin * 2.0f)) * height - text_dimensions.y * text_pos}, text_size, font_spacing, (eval < 0) ? white : black);
 }
