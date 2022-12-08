@@ -1,5 +1,6 @@
 #include "raylib.h"
 #include "time.h"
+#include <string>
 
 
 // Définition des variables
@@ -39,7 +40,7 @@ static Color select_color = {50, 225, 50, 100};
 static Color last_move_color = {220, 150, 50, 125};
 
 // Couleur de la case de pre-move
-static Color pre_move_color = {250, 50, 50, 150};
+static Color pre_move_color = {220, 30, 30, 150};
 
 // Couleur des flèches
 static Color arrow_color = {225, 225, 50, 255};
@@ -47,6 +48,10 @@ static Color arrow_color = {225, 225, 50, 255};
 // Couleur des sliders
 static Color slider_color = {200, 200, 200, 100};
 static Color slider_backgrond_color = {100, 100, 100, 75};
+
+// Couleurs de la barre d'évaluation
+static Color eval_bar_color_light = {224, 206, 186, 255};
+static Color eval_bar_color_dark = {57, 50, 47, 255};
 
 // Epaisseur des flèches (par rapport à la taille d'une case)
 static float arrow_scale = 0.125;
@@ -153,6 +158,10 @@ static float variants_slider = 0.0f;
 // Pre-move
 static int pre_move[4] = {-1, -1, -1, -1};
 
+// Eval à montrer pour la barre d'éval
+static float global_eval = 0.0f;
+static string global_eval_text = "+0.0";
+
 
 
 
@@ -204,3 +213,6 @@ void DrawLineBezier(float, float, float, float, float, Color);
 
 // Fonction qui dessine une texture à partir de coordonnées flottantes
 void DrawTexture(Texture, float, float, Color);
+
+// Fonction qui affiche la barre d'evaluation
+void draw_eval_bar(float, string, float, float, float, float, float max_eval = 1000, Color = eval_bar_color_light, Color = eval_bar_color_dark, float max_height = 0.95);

@@ -15,6 +15,8 @@ class Evaluator {
     float _player_trait = 0.15;
     float _king_safety = 0.005;
     float _pawn_structure = 0.01;
+    float _attacks = 0.1;
+    float _kings_opposition = 0.75;
 
 
     // Valeur des pièces
