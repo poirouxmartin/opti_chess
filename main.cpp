@@ -102,7 +102,7 @@ https://www.chessprogramming.org/Time_Management
     - Espace (dépend aussi du nombre de pièces restantes..)
     - Structures de pions (IMPORTANT) -> A améliorer
     - Diagonales ouvertes
-    - Lignes ouvertes, tours dessus
+    - Contrôle des colonnes ouvertes
     - Clouages
     - Pièces attaquées?
     - Cases noires/blanches
@@ -123,6 +123,8 @@ https://www.chessprogramming.org/Time_Management
     - Opposition des rois en finale
     - Attaques et défenses
     - Faiblesse sur une couleur
+    - Ne pas trade les dames en déficit matériel?
+    - Vis-à-vis
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Augmenter la profondeur pour les finales (GrogrosFish)
@@ -181,13 +183,14 @@ https://www.chessprogramming.org/Time_Management
 -> Pour l'historique des positions, on peut le reset à chaque coup de pion ou capture
 -> Pour les transpositions, on peut peut-être renvoyer au même indice de plateau fils...?
 -> Pour chaque plateau, générer et stocker la representation simpliste du plateau? Pour ensuite pouvoir aider les fils à comparer?
--> Pourquoi king safety != 0 sur la position de base??? 
 -> 8/8/2b1k2N/p5p1/P1p2p2/5P2/1PP2KPP/8 w - - 1 37 deux pions de plus mais se croit quasi perdant?
 -> ATTENTION aux conversions int et float dans les calculs d'évaluations...
--> 3k3r/2p1b1pp/p1p2p2/3bp3/8/2P1BNP1/PPP2PKP/R7 w - - 3 16 -> king safety 1.25??.. structure 1.25? -> +2.5...
+-> 3k3r/2p1b1pp/p1p2p2/3bp3/8/2P1BNP1/PPP2PKP/R7 w - - 3 16 -> king safety 1.25??.. structure 0.71? -> +1.6...
 -> Mettre les règles de parties nulles et mat en dehors de l'évaluation?
--> Ajouter les pièces protégées lors de l'évaluation pour simplifier les calculs de l'IA
+-> Ajouter les pièces protégées/attaquées lors de l'évaluation pour simplifier les calculs de l'IA
 -> Gestion du temps : faire en fonction des lignes montantes? Si ça stagne, jouer vite? Si y'a un seul coup -> Jouer instant?
+-> Carré du pion en finales
+-> Ne comprend pas les finales de bases (du au fait qu'il répète les coups?)
 
 
 ----- Interface utilisateur -----
@@ -196,7 +199,6 @@ https://www.chessprogramming.org/Time_Management
 -> Undo move dans l'interface, avec les flèches (il faut donc stocker l'ensemble de la partie - à l'aide du PGN -> from_pgn?)
 -> Nouveau sons/images
 -> Dans le negamax, renvoyer le coup à chaque fois, pour noter la ligne que l'ordi regarde?
--> Ajout de pre move
 -> Pouvoir faire des flèches
 -> Afficher les coordonnées des cases
 -> Faire des boutons pour faire des actions (ex copier ou coller le FEN/PGN, activer l'IA ou la changer...)
@@ -243,7 +245,6 @@ https://www.chessprogramming.org/Time_Management
 -> Pouvoir changer les paramètres de l'IA dans l'UI
 -> Ajouter des options/menus
 -> Pouvoir changer le temps des joueurs
--> Pour le temps, faire une fonction update time pour régler tous les bugs?
 -> Pouvoir sauvegarder les parties entières dans un fichier (qui s'incrémente), pour garder une trace de toutes les parties jouées
 -> Analyses de MC : montrer le chemin qui mène à la meilleure éval, puis celle qui mène au jeu qui va être joué
 -> Importation de position/ nouvelle position -> update les noms et temps
@@ -263,9 +264,15 @@ https://www.chessprogramming.org/Time_Management
 -> Nd2f3 -> Ndf3? pas facile à faire
 -> Alerte de temps (10% du time control?)
 -> Nombre de noeuds par frame à changer en fonction du temps prévisionnel de réflexion de l'IA
--> Faire des fonctions start_time() et stop_time()
--> Faire une deselection de pre_moves
-
+-> GUI : mieux afficher les cases (parfois y'a des lignes de pixel en trop)
+-> Quand les flèches ne sont pas affichées, afficher les touches?
+-> Ajouter la possibilité de faire plusieurs pre-move
+-> Rajouter la date dans les PGN
+-> Faire du smooth sur la barre d'évaluation
+-> Faire un graphe d'éval en fin de partie?
+-> Mettre des + sur les flèches (comme il y'a des -...)
+-> Faire un fonction pour tranformer une éval en son text (mat ou non)
+-> Certains calculs sont peut-être en double dans l'affichage
 
 
 ----- Réseaux de neurones -----
@@ -337,8 +344,7 @@ int main() {
     monte_evaluator._castling_rights = 0.3;
 
     // Nombre de noeuds pour le jeu automatique de GrogrosZero
-    int grogros_nodes = 750000;
-    grogros_nodes = 3000000;
+    int grogros_nodes = 3000000;
 
     // Nombre de noeuds calculés par frame
     // Si c'est sur son tour
@@ -398,8 +404,8 @@ int main() {
     t._time_black = 180000;
 
     // Incrément
-    t._time_increment_white = 0;
-    t._time_increment_black = 0;
+    t._time_increment_white = 0000;
+    t._time_increment_black = 0000;
 
 
     // Test des agents GrogrosZero
@@ -461,10 +467,6 @@ int main() {
             use_neural_network = !use_neural_network;
         }
 
-        // Charger une partie
-        if (IsKeyPressed(KEY_R))
-            t.from_fen("r1b2rk1/5ppp/p1n1pn2/1pqp4/8/P1N1PN2/1PP1BPPP/R2Q1RK1 w - - 0 13");
-
         // Copie dans le clipboard du PGN
         if (IsKeyPressed(KEY_C)) {
             SetClipboardText(t._pgn.c_str());
@@ -493,7 +495,7 @@ int main() {
         // }
 
 
-        // Analyse de partie (A)
+        // Analyse de partie sur chess.com (A)
         if (IsKeyPressed(KEY_Q)) {
             OpenURL("https://www.chess.com/analysis");
         }
@@ -561,7 +563,7 @@ int main() {
         if (grogros_auto && t.is_mate() == -1 && t.game_over() == 0) {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
-            if (!is_playing()) // Pour que ça ne lag pas pour l'utilisateur
+            if (true || !is_playing()) // Pour que ça ne lag pas pour l'utilisateur
                 t.grogros_zero(&monte_evaluator, nodes_per_frame, true, _beta, _k_add);     
         }
 
@@ -735,12 +737,12 @@ int main() {
         // Activations rapides de l'IA
 
         // Fait jouer l'IA sur un coup
-        if (IsKeyDown(KEY_SPACE)) {
-            if (t._player)
-                t.grogrosfish(search_depth, &eval_white, true);
-            else
-                t.grogrosfish(search_depth, &eval_black, true);
-        }
+        // if (IsKeyDown(KEY_SPACE)) {
+        //     if (t._player)
+        //         t.grogrosfish(search_depth, &eval_white, true);
+        //     else
+        //         t.grogrosfish(search_depth, &eval_black, true);
+        // }
 
         // Joueur des pièces blanches : IA/humain
         if (!IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && get_board_orientation()) || (IsKeyPressed(KEY_UP) && !get_board_orientation()))) {
@@ -751,7 +753,7 @@ int main() {
                 t.add_names_to_pgn();
             }  
             else {
-                t._white_player = (char*)"Player 1";
+                t._white_player = (char*)"White";
                 t.add_names_to_pgn();
             }
                 
@@ -766,7 +768,7 @@ int main() {
                 t.add_names_to_pgn();
             }        
             else {
-                t._black_player = (char*)"Player 2";
+                t._black_player = (char*)"Black";
                 t.add_names_to_pgn();
             }
                 
@@ -781,7 +783,7 @@ int main() {
                 t.add_names_to_pgn();
             }
             else {
-                t._white_player = (char*)"Player 1";
+                t._white_player = (char*)"White";
                 t.add_names_to_pgn();
             }
                 
@@ -797,7 +799,7 @@ int main() {
             }
                 
             else {
-                t._black_player = (char*)"Player 2";
+                t._black_player = (char*)"Black";
                 t.add_names_to_pgn();
             }
 

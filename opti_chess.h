@@ -7,6 +7,7 @@
 #include "agent.h"
 #include "neural_network.h"
 #include <vector>
+#include <map>
 using namespace std;
 
 
@@ -118,8 +119,8 @@ class Board {
 
 
         // Joueurs de la partie
-        string _white_player = "Player 1";
-        string _black_player = "Player 2";
+        string _white_player = "White";
+        string _black_player = "Black";
 
         // Temps pour les joueurs
         bool _time = false;
@@ -183,6 +184,14 @@ class Board {
         // Structure de pions
         int _pawn_structure = 0;
         bool _structure = false;
+
+        // Attaque des pièces
+        int _attacks_eval = 0;
+        bool _attacks = false;
+
+        // Opposition des rois en finale
+        int _kings_opposition = 0;
+        bool _opposition = false;
 
         // Pour la gestion du temps
         clock_t _last_move_clock;
@@ -372,7 +381,7 @@ class Board {
         string simple_position();
 
         // Fonction qui calcule la structure de pions
-        void get_pawn_structure();
+        void get_pawn_structure(float adv);
 
         // Fonction qui met à jour le temps des joueurs
         void update_time();
@@ -382,6 +391,12 @@ class Board {
 
         // Fonction qui stoppe le temps
         void stop_time();
+
+        // Fonction qui calcule la résultante des attaques
+        void get_attacks();
+
+        // Fonction qui calcule l'opposition des rois (en finales de pions)
+        void get_kings_opposition();
 
 };
 
@@ -456,5 +471,14 @@ bool equal_positions(Board, Board);
 extern string _all_positions[52];
 extern int _total_positions;
 
+
 // Fonction qui renvoie le temps que l'IA doit passer sur le prochain coup (en ms), en fonction d'un facteur k, et des temps restant
 int time_to_play_move(int t1, int t2, float k = 0.05);
+
+
+
+// std::map<string, int> _positions_history = {
+//     { "A", 1 },
+//     { "B", 1 },
+//     { "C", 2 }
+// };
