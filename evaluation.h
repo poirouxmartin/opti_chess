@@ -5,7 +5,7 @@ class Evaluator {
 
     // Paramètres d'évaluation
 
-    // Coefficiants des heuristiques
+    // Coefficients des heuristiques
     float _piece_value = 1.0;
     float _piece_activity = 0.0;
     float _piece_positioning = 0.02;
@@ -15,20 +15,20 @@ class Evaluator {
     float _player_trait = 0.15;
     float _king_safety = 0.005;
     float _pawn_structure = 0.01;
-    float _attacks = 0.1;
+    float _attacks = 0.01;
     float _kings_opposition = 0.75;
 
 
     // Valeur des pièces
-    // Valeurs faites à la main
+    // Valeurs faites à la main (à revoir, surtout pour les endgame)
     float _pawn_value_begin = 0.92;
-    float _pawn_value_end = 0.98;
+    float _pawn_value_end = 0.95;
     float _knight_value_begin = 3.2;
-    float _knight_value_end = 2.9;
+    float _knight_value_end = 3.1;
     float _bishop_value_begin = 3.4;
-    float _bishop_value_end = 3.1;
+    float _bishop_value_end = 3.5;
     float _rook_value_begin = 4.8;
-    float _rook_value_end = 5.4;
+    float _rook_value_end = 5.8;
     float _queen_value_begin = 9.8;
     float _queen_value_end = 9.5;
     float _king_value_begin = 1000.0;
@@ -57,9 +57,9 @@ class Evaluator {
                                         {  78,   83,   86,  130,  130,   82,   85,   90},
                                         {  37,   29,   21,  110,  110,   60,   44,   57},
                                         { -17,   16,   20,   95,  100,   30,   35,   33},
-                                        { -25,    0,   50,   65,   75,   10,  -10,  -23},
+                                        { -25,    0,   50,   75,   75,   10,  -10,  -23},
                                         { -25,    0,   20,   25,   25,  -25,   20,  -19},
-                                        { -30,  -10,    0,    0,   0,    20,   20,  -20},
+                                        { -30,  -10,    0,   10,  -10,   20,   20,  -20},
                                         {   0,    0,    0,    0,    0,    0,    0,    0}   };
 
     int _pos_pawn_end[8][8]         {   {   0,    0,    0,    0,    0,    0,    0,    0},

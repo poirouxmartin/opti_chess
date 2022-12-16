@@ -4,6 +4,7 @@
 #include "math.h"
 #include <random>
 #include <chrono>
+#include <cstdlib>
 //#include <windows.h>
 
 
@@ -82,7 +83,6 @@ void softmax(int* input, int size, double beta, int k_add) {
 
 // Fonction pour générer une seed
 int generate_seed() {
-    
     chrono::high_resolution_clock::duration d = chrono::high_resolution_clock::now().time_since_epoch();
     static unsigned seed = d.count();
 
@@ -107,6 +107,8 @@ int rand_int(int a, int b) {
     // cout << "random gen : " << a << ", " << b << "->" << distribution(generator) << endl;
 
     return distribution(generator);
+
+    // return rand() % (b - a) + a;
 }
 
 
@@ -224,6 +226,14 @@ void print_array(int_fast8_t l[], int n) {
     cout << "]" << endl;
 }
 
+// Fonction qui affiche une liste d'entiers 8 bits fast (array)
+void print_array(uint_fast8_t l[], int n) {
+    cout << "[|";
+    for (int i = 0; i < n; i++)
+        cout << " " << (int)l[i] << " |";
+    cout << "]" << endl;
+}
+
 
 // Fonction qui affiche une liste de flottants (array)
 void print_array(float l[], int n) {
@@ -316,7 +326,6 @@ unsigned long long getTotalSystemMemory() {
 
 // Fonction qui calcule une distance entre deux points
 float distance(int i, int j, int x, int y) {
-    // return sqrtf((i - x) * (i - x) + (j - y) * (j - y));
     return (i - x) * (i - x) + (j - y) * (j - y);
 }
 
