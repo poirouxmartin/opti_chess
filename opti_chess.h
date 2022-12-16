@@ -61,11 +61,7 @@ class Board {
         // Coups possibles
         // (Augmenter si besoin)
         // On suppose ici que n_moves < 1000 / 4
-        uint_fast8_t _moves[1000];
-
-        // Liste des coups, sous forme de vecteur
-        vector<uint_fast8_t> _moves_vector; // A changer par dynamic array? Peut-être pas car il faudrait delete
-        
+        uint_fast8_t _moves[1000];        
 
         // Les coups sont-ils actualisés? Si non : -1, sinon, _got_moves représente le nombre de coups jouables
         int _got_moves = -1;
@@ -216,25 +212,25 @@ class Board {
         int move_to_int(int, int, int, int);
 
         // Fonction qui ajoute un coup dans la liste de coups
-        bool add_move(int, int, int, int, int*);
+        bool add_move(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, int*);
+
+        // Fonction qui ajoute un coup dans la liste de coups
+        // bool add_move(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, int*);
 
         // Fonction qui ajoute les coups "pions" dans la liste de coups
-        bool add_pawn_moves(int, int, int*);
+        bool add_pawn_moves(uint_fast8_t, uint_fast8_t, int*);
 
         // Fonction qui ajoute les coups "cavaliers" dans la liste de coups
-        bool add_knight_moves(int, int, int*);
+        bool add_knight_moves(uint_fast8_t, uint_fast8_t, int*);
 
         // Fonction qui ajoute les coups diagonaux dans la liste de coups
-        bool add_diag_moves(int, int, int*);
+        bool add_diag_moves(uint_fast8_t, uint_fast8_t, int*);
 
         // Fonction qui ajoute les coups horizontaux et verticaux dans la liste de coups
-        bool add_rect_moves(int, int, int*);
+        bool add_rect_moves(uint_fast8_t, uint_fast8_t, int*);
 
         // Fonction qui ajoute les coups "roi" dans la liste de coups
-        bool add_king_moves(int, int, int*);
-
-        // Fonction qui génère la liste des coups sous forme de vecteur
-        bool get_moves_vector();
+        bool add_king_moves(uint_fast8_t, uint_fast8_t, int*);
 
         // Renvoie la liste des coups possibles
         bool get_moves(bool pseudo = false, bool forbide_check = false);

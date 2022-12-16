@@ -3,6 +3,7 @@
 #include "useful_functions.h"
 #include "math.h"
 #include "gui.h"
+#include <thread>
 //#include <windows.h>
 
 
@@ -75,7 +76,7 @@ https://www.chessprogramming.org/Time_Management
 -> Utiliser les threads.. voir cours ProgrammationConcurrente
 -> Checker SIMD code (pour optimiser)
 -> Calcul de distance à un bord : simplement faire une matrice globale des distance pour chaque case, et regarder dedans -> https://www.chessprogramming.org/Center_Manhattan-Distance
-
+-> Faut-il stocker les positions de certaines pièces (les rois par exemple), pour accélérer certains calculs?
 
 
 ----- Intelligences artificielles -----
@@ -97,7 +98,6 @@ https://www.chessprogramming.org/Time_Management
 
 -> Améliorer les heuristiques pour l'évaluation d'une position
 -> https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
-    - Positionnement du roi, des pions, de la dame et des pièces changeant au cours de la partie (++ pièces mineures en début de partie, ++ le reste en fin de partie, ++ valeur des pions) (endgame = 13 points or below for each player? less than 4 pieces?)
     - Sécurité du roi (TRES IMPORTANT !) --> A améliorer, car là c'est pourri... comment calculer? !(pion protégeant le roi) *  pieces ennemies proches du roi = !king_safety ?  -> https://www.chessprogramming.org/King_Safety
     - Espace (dépend aussi du nombre de pièces restantes..)
     - Structures de pions (IMPORTANT) -> A améliorer
@@ -125,6 +125,7 @@ https://www.chessprogramming.org/Time_Management
     - Faiblesse sur une couleur
     - Ne pas trade les dames en déficit matériel?
     - Vis-à-vis
+    - Focales
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Augmenter la profondeur pour les finales (GrogrosFish)
@@ -168,10 +169,8 @@ https://www.chessprogramming.org/Time_Management
 -> Utiliser une db en ligne pour les livres d'ouverture et tables de finales
 -> Faire une IA qui apprend tout seul? : update l'évaluation d'une position en fonction de la refléxion sur cette même position
 -> En endgame il faut pousser !!
--> Mettre une limite de coups pour les matches entre les IA
 -> Parfois ne pas calculer les PGN dans les matches et tournois? pour aller plus vite
 -> Faire les tournois avec une valeur de beta élevée et k_add faible? (pour une recherche restreinte et intuitive)
--> Ajouter une gestion du temps !!
 -> Générer un arbre d'ouvertures !! :DDDD
 -> Evaluation des pièces : prendre en compte les pièces protégées / attaquées? Pièces prenables?
 -> Certains coups restent trop sous-estimés par GrogrosZero
@@ -185,12 +184,26 @@ https://www.chessprogramming.org/Time_Management
 -> Pour chaque plateau, générer et stocker la representation simpliste du plateau? Pour ensuite pouvoir aider les fils à comparer?
 -> 8/8/2b1k2N/p5p1/P1p2p2/5P2/1PP2KPP/8 w - - 1 37 deux pions de plus mais se croit quasi perdant?
 -> ATTENTION aux conversions int et float dans les calculs d'évaluations...
--> 3k3r/2p1b1pp/p1p2p2/3bp3/8/2P1BNP1/PPP2PKP/R7 w - - 3 16 -> king safety 1.25??.. structure 0.71? -> +1.6...
+-> 3k3r/2p1b1pp/p1p2p2/3bp3/8/2P1BNP1/PPP2PKP/R7 w - - 3 16 -> +0.75?
 -> Mettre les règles de parties nulles et mat en dehors de l'évaluation?
 -> Ajouter les pièces protégées/attaquées lors de l'évaluation pour simplifier les calculs de l'IA
 -> Gestion du temps : faire en fonction des lignes montantes? Si ça stagne, jouer vite? Si y'a un seul coup -> Jouer instant?
 -> Carré du pion en finales
 -> Ne comprend pas les finales de bases (du au fait qu'il répète les coups?)
+-> Regarder dag chess?
+-> Faire un readme pour les contrôles
+-> Pour les finales : donner ce qui ne peut pas gagner (seulement une pièce...), les finales théoriques etc..
+-> Est-ce normal que l'évaluation soit si instable?
+-> Vérifier de partout que j'ai pas confondu les lignes et les colonnes
+-> Faire une map des cases attaquées (ça peut rendre plus rapide les tests d'échecs)
+-> Tester de re augmenter l'activité des pièces?
+-> 3q3k/2p4p/p2pB3/7P/1n1PPQP1/r1p5/8/1K1R2R1 b - - 0 2 -> Il ne faut plus regarder les coups qui donnent mat à l'adversaire...
+-> Il faut accompagner les pions avec le roi
+-> OpenAI propose un diviser pour reigner pour paralléliser GrogrosZero
+-> Stocker les roques dans un tableau plutôt que 4 valeurs séparées
+-> Est-ce plus rapide de mettre des boucles simples plutôt que double? while plutôt que for?
+-> 8/7p/2k5/8/1pPKP1P1/5r1P/PP3r2/3R4 w - - 0 5 : une tour de moins et égal?...
+-> Structures de pions en endgame à revoir? Quand y'a des grosses diff de pions, fait des trucs bizarres? Pareil, pions passés, doivent être poussés
 
 
 ----- Interface utilisateur -----
@@ -273,6 +286,12 @@ https://www.chessprogramming.org/Time_Management
 -> Mettre des + sur les flèches (comme il y'a des -...)
 -> Faire un fonction pour tranformer une éval en son text (mat ou non)
 -> Certains calculs sont peut-être en double dans l'affichage
+-> Bug quand on clique sur une pièce qu'on veut prendre
+-> Echelle logarithmique pour la barre d'éval?
+-> Pourquoi quand y'a plus que des rois, ça continue?
+-> Gestion du temps bizarre? Car le temps affiché par GrogrosZero n'est pas vraiment le vrai (ni sa vitesse)
+-> Clean l'implémentation de la GUI -> Faire des nouvelles fonctions pour tout simplifier
+-> Faire un vecteur pour les pre moves et les flèches
 
 
 ----- Réseaux de neurones -----
@@ -286,12 +305,16 @@ https://www.chessprogramming.org/Time_Management
 
 // Fonction qui permet de tester le temps que prend une fonction
 void test() {
+    for (int i = 0; i < 10000; i++)
+        cout << "test" << i << endl;
+}
 
-    static Board t_test;
 
-    if (t_test._got_moves == -1)
-        t_test.get_moves();
-
+// Fonction qui permet de tester le temps que prend une fonction
+void testB() {
+    cout << "2" << endl;
+    for (int i = 0; i < 10000; i++)
+        cout << "testB" << i << endl;
 }
 
 
@@ -340,8 +363,10 @@ int main() {
     monte_evaluator._piece_activity = 0.03; // 0.04
     monte_evaluator._piece_positioning = 0.007; // beta = 0.035 // Pos = 0.013
     // monte_evaluator._piece_positioning = 0.01; // Pour tester http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
-    monte_evaluator._king_safety = 0.0025; // Il faut régler la fonction... avec les pièces autour, s'il est au milieu du plateau...
+    monte_evaluator._king_safety = 0.004; // Il faut régler la fonction... avec les pièces autour, s'il est au milieu du plateau...
     monte_evaluator._castling_rights = 0.3;
+    monte_evaluator._attacks = 0.0;
+    // monte_evaluator._piece_activity = 0.10; // En test pour la NJV
 
     // Nombre de noeuds pour le jeu automatique de GrogrosZero
     int grogros_nodes = 3000000;
@@ -359,18 +384,21 @@ int main() {
     bool grogroszero_play_black = false;
     bool grogroszero_play_white = false;
 
-    // Activité des pièces à 0, car pour le moment, cela ralentit beaucoup le calcul d'évaluation
+    // Valeurs à 0 pour augmenter la vitesse de calcul. A tester vs grogrosfish avec tout d'activé
     eval_white._piece_activity = 0;
-    eval_black._piece_activity = 0;
+    eval_white._attacks = 0;
     eval_white._king_safety = 0;
-    eval_black._king_safety = 0;
+    eval_white._kings_opposition = 0;
+    eval_white._pawn_structure = 0;
+
+
 
     // IA self play
     bool grogrosfish_play_white = false;
     bool grogrosfish_play_black = false;
 
     // Paramètres pour l'IA
-    int search_depth = 7;
+    int search_depth = 8;
     // search_depth = 5;
 
 
@@ -400,8 +428,8 @@ int main() {
 
 
     // Temps par joueur
-    t._time_white = 180000;
-    t._time_black = 180000;
+    t._time_white = 600000;
+    t._time_black = 600000;
 
     // Incrément
     t._time_increment_white = 0000;
@@ -830,18 +858,28 @@ int main() {
         else {
             t._time = false;
         }
-
         
-
 
         // Dessins
         BeginDrawing();
 
             // Dessin du plateau
             t.draw();
+            // thread threadDraw(&Board::draw, &t);
+            // threadDraw.join();
             
         // Fin de la zone de dessin
         EndDrawing();
+
+
+        // Create two threads
+        // thread thread1(test);
+        // thread thread2(testB);
+        // thread threadDraw(&Board::draw, &t);
+
+        // // Wait for the threads to finish
+        // thread1.join();
+        // thread2.join();
     
 
     }

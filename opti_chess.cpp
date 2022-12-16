@@ -5,6 +5,7 @@
 #include <sstream>
 #include <thread>
 #include "math.h"
+vector<thread> threads;
 
 
 
@@ -21,21 +22,12 @@ Board::Board() {
 // Constructeur de copie
 Board::Board(Board &b) {
     // Copie du plateau
-    for (int i = 0; i < 8; i++) {
-        for (int j = 0; j < 8; j++) {
-            _array[i][j] = b._array[i][j];
-        }
-    }
+    memcpy(_array, b._array, sizeof(_array));
 
     _got_moves = b._got_moves;
     _player = b._player;
-    for (int i = 0; i < _got_moves * 4 + 1; i++) {
-        _moves[i] = b._moves[i];
-        
-    }
-    for (int i = 0; i < _got_moves; i++) {
-        _move_order[i] = b._move_order[i];
-    }
+    memcpy(_moves, b._moves, sizeof(_moves));
+    memcpy(_move_order, b._move_order, sizeof(_move_order));
     _sorted_moves = b._sorted_moves;
     _evaluation = b._evaluation;
     _color = b._color;
@@ -52,21 +44,12 @@ Board::Board(Board &b) {
 // Fonction qui copie les attributs d'un tableau
 void Board::copy_data(Board &b) {
     // Copie du plateau
-    for (int i = 0; i < 8; i++) {
-        for (int j = 0; j < 8; j++) {
-            _array[i][j] = b._array[i][j];
-        }
-    }
+    memcpy(_array, b._array, sizeof(_array));
 
     _got_moves = b._got_moves;
     _player = b._player;
-    for (int i = 0; i < _got_moves * 4 + 1; i++) {
-        _moves[i] = b._moves[i];
-        
-    }
-    for (int i = 0; i < _got_moves; i++) {
-        _move_order[i] = b._move_order[i];
-    }
+    memcpy(_moves, b._moves, sizeof(_moves));
+    memcpy(_move_order, b._move_order, sizeof(_move_order));
     _sorted_moves = b._sorted_moves;
     _evaluation = b._evaluation;
     _color = b._color;
@@ -84,9 +67,7 @@ void Board::copy_data(Board &b) {
 // Fonction qui copie les coups d'un plateau
 void Board::copy_moves(Board &b) {
     _got_moves = b._got_moves;
-    for (int i = 0; i < _got_moves * 4 + 1; i++) {
-        _moves[i] = b._moves[i];
-    } 
+    memcpy(_moves, b._moves, sizeof(_moves));
 }
 
 
@@ -117,7 +98,6 @@ void Board::display() {
             }
 
         }
-        //s += char(i + 48);
         s += "|\n--------------------------------\n";
     }
 
@@ -134,27 +114,29 @@ int Board::move_to_int(int i, int j, int k, int l) {
 
 
 // Fonction qui ajoute un coup dans une liste de coups
-bool Board::add_move(int i, int j, int k, int l, int *iterator) {
+bool Board::add_move(uint_fast8_t i, uint_fast8_t j, uint_fast8_t k, uint_fast8_t l, int *iterator) {
     _moves[*iterator] = i;
     _moves[*iterator + 1] = j;
     _moves[*iterator + 2] = k;
     _moves[*iterator + 3] = l;
 
-
-    _global_moves[*iterator] = i;
-    _global_moves[*iterator + 1] = j;
-    _global_moves[*iterator + 2] = k;
-    _global_moves[*iterator + 3] = l;
-
-
     *iterator += 4;
     return true;
 }
 
+// Suggestion de OpenAI (mais cela ne semble pas vraiment plus rapide)
+// bool Board::add_move(uint_fast8_t i, uint_fast8_t j, uint_fast8_t k, uint_fast8_t l, int *iterator) {
+//     uint_fast8_t moves[4] = {i, j, k, l};
+//     memcpy(_moves + *iterator, moves, sizeof(moves));
+//     *iterator += 4;
+
+//     return true;
+// }
+
 
 
 // Fonction qui ajoute les coups "pions" dans la liste de coups
-bool Board::add_pawn_moves(int i, int j, int *iterator) {
+bool Board::add_pawn_moves(uint_fast8_t i, uint_fast8_t j, int *iterator) {
     static const string abc = "abcdefgh";
 
     // Joueur avec les pièces blanches
@@ -164,7 +146,7 @@ bool Board::add_pawn_moves(int i, int j, int *iterator) {
         // Poussée (de 2)
         (i == 1 && _array[i + 1][j] == 0 && _array[i + 2][j] == 0) && add_move(i, j, i + 2, j, iterator);
         // Prise (gauche)
-        (j > 0 && (is_in(_array[i + 1][j - 1], 7, 12) || (_en_passant[0] == abc[j - 1] && (int)_en_passant[1] - 48 - 1 == i + 1))) && add_move(i, j, i + 1, j - 1, iterator);
+        (j > 0 && (is_in(_array[i + 1][j - 1], 7, 12) || (_en_passant[0] == abc[j - 1] && _en_passant[1] - 48 - 1 == i + 1))) && add_move(i, j, i + 1, j - 1, iterator);
         // Prise (droite)
         (j < 7 && (is_in(_array[i + 1][j + 1], 7, 12) || (_en_passant[0] == abc[j + 1] && _en_passant[1] - 48 - 1 == i + 1))) && add_move(i, j, i + 1, j + 1, iterator);
     }
@@ -185,31 +167,27 @@ bool Board::add_pawn_moves(int i, int j, int *iterator) {
 
 
 // Fonction qui ajoute les coups "cavaliers" dans la liste de coups
-bool Board::add_knight_moves(int i, int j, int *iterator) {
-    // les boucles for sont à modifier, car très lentes
-    int i2; int j2;
-    for (int k = -2; k <= 2; k++) {
-        for (int l = -2; l <= 2; l++) {
-            i2 = i + k; j2 = j + l;
-            if (_player) {
-                // Si le coup n'est ni hors du plateau, ni sur une case où une pièce alliée est placée
-                (k * l != 0 && abs(k) + abs(l) == 3 && is_in(i2, 0, 7) && is_in (j2, 0, 7) && !is_in(_array[i2][j2], 1, 6)) && add_move(i, j, i2, j2, iterator);
-            }
-            else {
-                // Si le coup n'est ni hors du plateau, ni sur une case où une pièce alliée est placée
-                (k * l != 0 && abs(k) + abs(l) == 3 && is_in(i2, 0, 7) && is_in (j2, 0, 7) && !is_in(_array[i2][j2], 7, 12)) && add_move(i, j, i2, j2, iterator);
-            }
-            
-        }
+bool Board::add_knight_moves(uint_fast8_t i, uint_fast8_t j, int *iterator) {
+    int i2, j2;
+    // On va utiliser un tableau pour stocker les déplacements possibles du cavalier
+    int knight_moves[8][2] = {{-2, -1}, {-2, 1}, {-1, -2}, {-1, 2}, {1, -2}, {1, 2}, {2, -1}, {2, 1}};
+    // On parcourt ce tableau
+    for (int m = 0; m < 8; m++) {
+        i2 = i + knight_moves[m][0];
+        j2 = j + knight_moves[m][1];
+        if (_player)
+            (is_in(i2, 0, 7) && is_in (j2, 0, 7) && !is_in(_array[i2][j2], 1, 6)) && add_move(i, j, i2, j2, iterator);
+        else
+            (is_in(i2, 0, 7) && is_in (j2, 0, 7) && !is_in(_array[i2][j2], 7, 12)) && add_move(i, j, i2, j2, iterator);
     }
 
     return true;
-
 }
 
 
+
 // Fonction qui ajoute les coups diagonaux dans la liste de coups
-bool Board::add_diag_moves(int i, int j, int *iterator) {
+bool Board::add_diag_moves(uint_fast8_t i, uint_fast8_t j, int *iterator) {
     int ally_min; int ally_max;
     if (_player) {
         ally_min = 1; ally_max = 6;
@@ -315,7 +293,7 @@ bool Board::add_diag_moves(int i, int j, int *iterator) {
 
 
 // Fonction qui ajoute les coups horizontaux et verticaux dans la liste de coups
-bool Board::add_rect_moves(int i, int j, int *iterator) {
+bool Board::add_rect_moves(uint_fast8_t i, uint_fast8_t j, int *iterator) {
     int ally_min; int ally_max;
     if (_player) {
         ally_min = 1; ally_max = 6;
@@ -423,7 +401,7 @@ bool Board::add_rect_moves(int i, int j, int *iterator) {
 
 
 // Fonction qui ajoute les coups "roi" dans la liste de coups
-bool Board::add_king_moves(int i, int j, int *iterator) {
+bool Board::add_king_moves(uint_fast8_t i, uint_fast8_t j, int *iterator) {
     int ally_min; int ally_max;
     if (_player) {
         ally_min = 1; ally_max = 6;
@@ -445,16 +423,6 @@ bool Board::add_king_moves(int i, int j, int *iterator) {
 
     return true;
 
-}
-
-
-// Fonction qui génère la liste des coups sous forme de vecteur
-bool Board::get_moves_vector() {
-    _moves_vector.resize(_got_moves * 4);
-    for (int i = 0; i < _got_moves * 4; i++)
-        _moves_vector[i] = _global_moves[i];
-
-    return true;
 }
 
 
@@ -491,12 +459,18 @@ bool Board::get_moves(bool pseudo, bool forbide_check) {
             p = _array[i][j];
             if (p == 6) {
                 king_w = true;
+                if (king_b)
+                    goto kings;
             }
             if (p == 12) {
                 king_b = true;
+                if (king_w)
+                    goto kings;
             }
         }
     }
+
+    kings:
 
     if (!king_w || !king_b) {
         _got_moves = 0;
@@ -584,11 +558,7 @@ bool Board::get_moves(bool pseudo, bool forbide_check) {
     }
 
     _moves[iterator] = -1;
-    _got_moves = iterator / 4;
-
-    // get_moves_vector();
-
-    
+    _got_moves = iterator / 4;    
 
 
     // Vérification échecs
@@ -601,7 +571,7 @@ bool Board::get_moves(bool pseudo, bool forbide_check) {
         for (int i = 0; i < _got_moves; i++) {
             b.copy_data(*this);
             b.make_index_move(i, false);
-            b._color = - b._color;
+            b._color = -b._color;
             b._player = !b._player;
             if (!b.in_check()) {
                 for (int k = 4 * i; k < 4 * i + 4; k++) {
@@ -918,35 +888,26 @@ void Board::make_index_move(int i, bool pgn, bool add_to_list) {
 // Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
 float Board::game_advancement() {
     // Définition personnelle de l'avancement d'une partie : (p_tot - p) / p_tot, où p_tot = le total matériel (du joueur adverse? ou les deux?) en début de partie, et p = le total matériel (du joueur adverse? ou les deux?) actuellement
-    float adv_pawn = 0.1;
-    float adv_knight = 1.0;
-    float adv_bishop = 1.0;
-    float adv_rook = 1.0;
-    float adv_queen = 3.0;
+    const int adv_pawn = 1;
+    const int adv_knight = 10;
+    const int adv_bishop = 10;
+    const int adv_rook = 10;
+    const int adv_queen = 30;
 
-    float p_tot = 2 * (8 * adv_pawn + 2 * adv_knight + 2 * adv_bishop + 2 * adv_rook + 1 * adv_queen);
-    float p = 0;
+    int p_tot = 2 * (8 * adv_pawn + 2 * adv_knight + 2 * adv_bishop + 2 * adv_rook + 1 * adv_queen);
+    int p = 0;
 
     int piece;
+    int values[6] = {0, adv_pawn, adv_knight, adv_bishop, adv_rook, adv_queen};
+
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
-            piece = _array[i][j];
-           
-            switch (piece)
-            {   
-                case 0: break;
-                case 1: case 7: p += adv_pawn; break;
-                case 2: case 8: p += adv_knight; break;
-                case 3: case 9: p += adv_bishop; break;
-                case 4: case 10: p += adv_rook; break;
-                case 5: case 11: p += adv_queen; break;
-            }
-
+            int piece = _array[i][j];
+            p += values[piece % 6];
         }
     }
 
-
-    return (p_tot - p) / p_tot;
+    return ((float)p_tot - (float)p) / (float)p_tot;
 
 }
 
@@ -1258,7 +1219,7 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
     int i;
 
     for (int j = 0; j < _got_moves; j++) {
-
+            
         // Pour le triage des coups
         if (depth > 1)
             i = _move_order[j];
@@ -1269,6 +1230,9 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
         b.make_index_move(i);
         
         tmp_value = -b.negamax(depth - 1, -beta, -alpha, -color, false, eval, a, use_agent);
+        // threads.emplace_back(std::thread([&]() {
+        //     tmp_value = -b.negamax(depth - 1, -beta, -alpha, -color, false, eval, a, use_agent);
+        // })); // Test de OpenAI
 
         if (max_depth) {
             if (display)
@@ -1285,7 +1249,12 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
         if (alpha >= beta)
             break;
 
-    }    
+    }
+
+    // Attendre la fin des threads
+    // for (auto &thread : threads) {
+    //     thread.join();
+    // } // Test de OpenAI
 
     if (max_depth) {
         if (display) {
@@ -1711,24 +1680,25 @@ int Board::game_over() {
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             p = _array[i][j];
-            if (p == 6)
+            if (p == 6) {
                 king_w = true;
-            if (p == 12)
+                if (king_b)
+                    goto kings;
+            }
+            if (p == 12) {
                 king_b = true;
+                if (king_w)
+                    goto kings;
+            }
         }
     }
+
+    kings:
 
     if (!king_w)
         return -1;
     if (!king_b)
         return 1;
-
-    
-    // int m = is_mate();
-    // if (m == 1)
-    //     return 1;
-    // if (m == 0)
-    //     return 2;
 
 
     return 0;
@@ -1838,7 +1808,6 @@ void Board::make_label_move(string s) {
 
 // Fonction qui renvoie un plateau à partir d'un PGN
 void Board::from_pgn(string pgn) {
-
     _pgn = pgn;
 }
 
@@ -2869,14 +2838,9 @@ void Board::grogros_zero(Evaluator *eval, int nodes, bool checkmates, double bet
 
 
     // Obtention des coups jouables
-    get_moves(false, true);
+    (true || _got_moves == -1) && get_moves(false, true); // A faire à chaque fois? (sinon, mettre à false) -> à mettre seulement si new_board??
 
-    if (_got_moves == 0) {
-        _nodes++; // un peu bizarre mais bon... revoir les cas où y'a des mats
-        _time_monte_carlo += clock() - begin_monte_time;
-        return;
-    }
-
+    
     if (_new_board) {
         _eval_children = new int[_got_moves];
         _nodes_children = new int[_got_moves];
@@ -2891,6 +2855,12 @@ void Board::grogros_zero(Evaluator *eval, int nodes, bool checkmates, double bet
         _tested_moves = 0;
         _current_move = 0;
         _new_board = false;
+    }
+
+    if (_got_moves == 0) {
+        _nodes++; // un peu bizarre mais bon... revoir les cas où y'a des mats
+        _time_monte_carlo += clock() - begin_monte_time;
+        return;
     }
 
 
@@ -3063,15 +3033,14 @@ void Board::get_king_safety(float game_adv, int piece_attack, int piece_defense,
                 goto kings;
         }
 
-    // if (!b_king || !w_king)
-    //     cout << "a king is missing in the position" << endl;
-
     kings:
 
-    // _king_safety = 0;
-    float king_safety_float = 0.0;
-
     float proximity_pawn_defense = 2;
+
+    // Faiblesses des rois
+    float w_king_weakness = 0.0;
+    float b_king_weakness = 0.0;
+
 
     for (int i = 0; i < 8; i++)
         for (int j = 0; j < 8; j++) {
@@ -3079,23 +3048,23 @@ void Board::get_king_safety(float game_adv, int piece_attack, int piece_defense,
             if (p > 0) {
                 if (p < 6) {
                     if (p == 1) {
-                        king_safety_float += pawn_defense * proximity(i, j, w_king_i, w_king_j, proximity_pawn_defense) * (0.5 + !_k_castle_w + !_q_castle_w);
-                        king_safety_float += pawn_attack * proximity(i, j, b_king_i, b_king_j, 3);
+                        w_king_weakness -= pawn_defense * proximity(i, j, w_king_i, w_king_j, proximity_pawn_defense) * (0.5 + !_k_castle_w + !_q_castle_w);
+                        b_king_weakness += pawn_attack * proximity(i, j, b_king_i, b_king_j, 3);
                     }   
                     else {
-                        king_safety_float += piece_defense * proximity(i, j, w_king_i, w_king_j, 3);
-                        king_safety_float += piece_attack * proximity(i, j, b_king_i, b_king_j, 4);
+                        w_king_weakness -= piece_defense * proximity(i, j, w_king_i, w_king_j, 3);
+                        b_king_weakness += piece_attack * proximity(i, j, b_king_i, b_king_j, 4);
                     }
                     
                 } 
                 else if (p > 6 && p < 12) {
                     if (p == 7) {
-                        king_safety_float -= pawn_attack * proximity(i, j, w_king_i, w_king_j, 3);
-                        king_safety_float -= pawn_defense * proximity(i, j, b_king_i, b_king_j, proximity_pawn_defense) * (0.5 + !_k_castle_b + !_q_castle_b);
+                        w_king_weakness += pawn_attack * proximity(i, j, w_king_i, w_king_j, 3);
+                        b_king_weakness -= pawn_defense * proximity(i, j, b_king_i, b_king_j, proximity_pawn_defense) * (0.5 + !_k_castle_b + !_q_castle_b);
                     }   
                     else {
-                        king_safety_float -= piece_attack * proximity(i, j, w_king_i, w_king_j, 4);
-                        king_safety_float -= piece_defense * proximity(i, j, b_king_i, b_king_j, 3);
+                        w_king_weakness += piece_attack * proximity(i, j, w_king_i, w_king_j, 4);
+                        b_king_weakness -= piece_defense * proximity(i, j, b_king_i, b_king_j, 3);
                     }
                 }
             }
@@ -3103,16 +3072,30 @@ void Board::get_king_safety(float game_adv, int piece_attack, int piece_defense,
 
 
     // Droits de roque
-    king_safety_float += pawn_defense * (_k_castle_w + _q_castle_w) * 2 * proximity_pawn_defense;
-    king_safety_float -= pawn_defense * (_k_castle_b + _q_castle_b) * 2 * proximity_pawn_defense;
+    w_king_weakness -= pawn_defense * (_k_castle_w + _q_castle_w) * 2 * proximity_pawn_defense;
+    b_king_weakness -= pawn_defense * (_k_castle_b + _q_castle_b) * 2 * proximity_pawn_defense;
 
-    king_safety_float -= edge_defense * min(abs(w_king_i - (-1)), abs((w_king_i) - 8)) * min(abs(w_king_j - (-1)), abs((w_king_j) - 8)) * (1 - 2 * game_adv);
-    king_safety_float += edge_defense * min(abs(b_king_i - (-1)), abs((b_king_i) - 8)) * min(abs(b_king_j - (-1)), abs((b_king_j) - 8)) * (1 - 2 * game_adv);
-
-    // _king_safety += edge_defense * ((w_king_i == 0 || w_king_i == 7) + (w_king_j == 0 || w_king_j == 7) - (b_king_i == 0 || b_king_i == 7) - (b_king_j == 0 || b_king_j == 7));
+    w_king_weakness += edge_defense * min(abs(w_king_i - (-1)), abs((w_king_i) - 8)) * min(abs(w_king_j - (-1)), abs((w_king_j) - 8)) * (1 - 2 * game_adv);
+    b_king_weakness += edge_defense * min(abs(b_king_i - (-1)), abs((b_king_i) - 8)) * min(abs(b_king_j - (-1)), abs((b_king_j) - 8)) * (1 - 2 * game_adv);
 
 
-    _king_safety = king_safety_float;
+    // Potentiel d'attaque de chaque pièce (pion, caval, fou, tour, dame)
+    int attack_potentials[6] = {1, 25, 20, 30, 100, 0};
+    int reference_potential = 258;
+    int w_total_potential = 0;
+    int b_total_potential = 0;
+
+    for (int i = 0; i < 8; i++)
+        for (int j = 0; j < 8; j++) {
+            p = _array[i][j];
+            if (p > 0)
+                if (p < 7)
+                    w_total_potential += attack_potentials[p - 1];
+                else
+                    b_total_potential += attack_potentials[(p - 1) % 6];
+        }
+
+    _king_safety = b_king_weakness * w_total_potential / reference_potential - w_king_weakness * b_total_potential / reference_potential;
 
     _safety = true;
 
@@ -3727,18 +3710,102 @@ void Board::stop_time() {
 void Board::get_attacks() {
     _attacks_eval = 0;
 
-    int p;
+    // Tableau des valeurs d'attaques des pièces (0 = pion, 1 = caval, 2 = fou, 3 = tour, 4 = dame, 5 = roi)
+    int attacks_array[6][6] = {
+        {5,   25,  25,  30,  50,  70},
+        {5,   5,   10,  20, 100,  80},
+        {5,   5,   5,   15,  60,  40},
+        {5,   5,   5,   10,  60,  40},
+        {1,   2,   2,   5,   5,   50},
+        {10,  10,  10,  10,  0,   0},
+    };
+
+    // Implémenter les fourchettes?
+    // Tant pis pour le en passant...
+    // Prendre en compte les pièces défendues?
+
+    int p; int p2;
+    int i2; int j2;
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             p = _array[i][j];
-
-
+            switch(p) {
+                case 1:
+                    if (j > 0) {
+                        p2 = _array[i + 1][j - 1]; // Case haut-gauche du pion blanc
+                        if (p2 >= 7)
+                            _attacks_eval += attacks_array[0][p2 - 7];
+                    }
+                    if (j < 7) {
+                        p2 = _array[i + 1][j + 1]; // Case haut-droit du pion blanc
+                        if (p2 >= 7)
+                            _attacks_eval += attacks_array[0][p2 - 7];
+                    }
+                    break;
+                case 2:
+                    for (int k = -2; k <= 2; k++) {
+                        for (int l = -2; l <= 2; l++) {
+                            i2 = i + k; j2 = j + l;
+                            p2 = _array[i2][j2];
+                            if (k * l != 0 && abs(k) + abs(l) == 3 && is_in(i2, 0, 7) && is_in (j2, 0, 7) && (p2 >= 7))
+                                _attacks_eval += attacks_array[1][p2 - 7];
+                        }
+                    }
+                    break;
+                case 3:
+                    // Diagonale 1
+                    for (int k = 1; k < min(i, j); k++) {
+                        if (k > i || k > j)
+                            goto diag2;
+                        p2 = _array[i - k][j - k];
+                        if (p2 != 0) {
+                            if (p2 >= 7)
+                                _attacks_eval += attacks_array[2][p2 - 7];
+                            goto diag2;
+                        }
+                    }
+                    diag2:
+                    break;
+                case 4:
+                    break;
+                case 5:
+                    break;
+                case 6:
+                    break;
+                case 7:
+                    if (j > 0) {
+                        p2 = _array[i - 1][j - 1]; // Case bas-gauche du pion noir
+                        if (p2 >= 1 && p2 <= 6)
+                            _attacks_eval -= attacks_array[0][p2 - 1];
+                    }
+                    if (j < 7) {
+                        p2 = _array[i - 1][j + 1]; // Case bas-droit du pion noir
+                        if (p2 >= 1 && p2 <= 6)
+                            _attacks_eval -= attacks_array[0][p2 - 1];
+                    }
+                    break;
+                case 8:
+                    // for (int k = -2; k <= 2; k++) {
+                    //     for (int l = -2; l <= 2; l++) {
+                    //         i2 = i + k; j2 = j + l;
+                    //         p2 = _array[i2][j2];
+                    //         if (k * l != 0 && abs(k) + abs(l) == 3 && is_in(i2, 0, 7) && is_in (j2, 0, 7) && (p2 >= 1 && p2 <= 6))
+                    //             _attacks_eval -= attacks_array[1][p2 - 1];
+                    //     }
+                    // }
+                    break;
+                case 9:
+                    break;
+                case 10:
+                    break;
+                case 11:
+                    break;
+                case 12:
+                    break;
+            }
 
         }
     }
-
-
-
 
 
 
