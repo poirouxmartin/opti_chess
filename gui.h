@@ -22,7 +22,7 @@ static Color background_color = {20, 20, 20, 255};
 static Color background_text_color = {0, 0, 0, 255};
 
 // Couleur du texte
-static Color text_color = {255, 50, 50, 255};
+static Color text_color = {255, 75, 75, 255};
 
 // Couleurs du plateau
 static Color board_color_light = {190, 162, 127, 255};
