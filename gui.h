@@ -216,3 +216,12 @@ void DrawTexture(Texture, float, float, Color);
 
 // Fonction qui affiche la barre d'evaluation
 void draw_eval_bar(float, string, float, float, float, float, float max_eval = 1000, Color = eval_bar_color_light, Color = eval_bar_color_dark, float max_height = 0.95);
+
+// Fonction qui retire les surlignages de toutes les cases
+void remove_hilighted_tiles();
+
+// Fonction qui selectionne une case
+void select_tile(int, int);
+
+// Fonction qui surligne une case (ou la de-surligne)
+void highlight_tile(int, int);

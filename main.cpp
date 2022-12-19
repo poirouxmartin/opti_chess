@@ -126,6 +126,7 @@ https://www.chessprogramming.org/Time_Management
     - Ne pas trade les dames en déficit matériel?
     - Vis-à-vis
     - Focales
+    - Cavaliers bloqueurs
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Augmenter la profondeur pour les finales (GrogrosFish)
@@ -204,6 +205,12 @@ https://www.chessprogramming.org/Time_Management
 -> Est-ce plus rapide de mettre des boucles simples plutôt que double? while plutôt que for?
 -> 8/7p/2k5/8/1pPKP1P1/5r1P/PP3r2/3R4 w - - 0 5 : une tour de moins et égal?...
 -> Structures de pions en endgame à revoir? Quand y'a des grosses diff de pions, fait des trucs bizarres? Pareil, pions passés, doivent être poussés
+-> Endgame : la force des pièces dépend du potentiel des pions (pièces seules = bof)
+-> r2q1rk1/1pp5/p1nppn2/2b1p1B1/P3P3/2NP4/1PP2PPP/R2Q1RK1 w - - 0 13 : structure de pions +1.5????? Pions passés peut-être trop forts pour le moment...
+-> Pourquoi parfois le regarde pas assez les bons coups?
+-> GrogrosZero, développe tes pièces !!!
+
+
 
 
 ----- Interface utilisateur -----
@@ -292,6 +299,8 @@ https://www.chessprogramming.org/Time_Management
 -> Gestion du temps bizarre? Car le temps affiché par GrogrosZero n'est pas vraiment le vrai (ni sa vitesse)
 -> Clean l'implémentation de la GUI -> Faire des nouvelles fonctions pour tout simplifier
 -> Faire un vecteur pour les pre moves et les flèches
+-> +/- mats : en fonction des couleurs, ou du joueur qui joue??
+-> Se débrouiller pour que les cases s'affichent bien (avec les flottants)
 
 
 ----- Réseaux de neurones -----
@@ -399,7 +408,7 @@ int main() {
 
     // Paramètres pour l'IA
     int search_depth = 8;
-    // search_depth = 5;
+    // search_depth = 6;
 
 
 
