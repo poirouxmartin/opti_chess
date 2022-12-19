@@ -394,6 +394,18 @@ class Board {
         // Fonction qui calcule l'opposition des rois (en finales de pions)
         void get_kings_opposition();
 
+        // Fonction qui renvoie le type de pièce sélectionnée
+        int selected_piece();
+
+        // Fonction qui renvoie le type de pièce où la souris vient de cliquer
+        int clicked_piece();
+
+        // Fonction qui renvoie si la pièce sélectionnée est au joueur ayant trait ou non
+        bool selected_piece_has_trait();
+
+        // Fonction qui renvoie si la pièce cliquée est au joueur ayant trait ou non
+        bool clicked_piece_has_trait();
+
 };
 
 
