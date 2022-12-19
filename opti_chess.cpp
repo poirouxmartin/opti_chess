@@ -1944,18 +1944,17 @@ void Board::draw() {
     // Si on clique avec la souris
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         // Retire les highlight
-        for (int i = 0; i < 8; i++)
-            for (int j = 0; j < 8; j++)
-                highlighted_array[i][j] = 0;
+        remove_hilighted_tiles();
 
-        // Si on clique
+        // Si on commence le clic
         if (!clicked) {
+            // Stocke la position cliquée sur le plateau
             clicked_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
             clicked = true;
 
             // Sélection de pièces
-            // Si aucune pièce n'est sélectionnée, la sélectionne
-            if ((selected_pos.first == -1 || true) && _array[clicked_pos.first][clicked_pos.second] != 0 && (true || ((_player && is_in(_array[clicked_pos.first][clicked_pos.second], 1, 6)) || (!_player && is_in(_array[clicked_pos.first][clicked_pos.second], 7, 12)))))
+            // Si aucune pièce n'est sélectionnée et que l'on clique sur une pièce, la sélectionne
+            if ((selected_pos.first == -1 || true) && clicked_piece() && (true || clicked_piece_has_trait()))
                 selected_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
             // Si une pièce est déjà sélectionnée
             else if (selected_pos.first != -1) {
@@ -2058,7 +2057,7 @@ void Board::draw() {
     }
 
 
-    // Si on clique avec la souris
+    // Si on fait un clic droit
     if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
         int x_mouse = get_pos_from_gui(mouse_pos.x, mouse_pos.y).first;
         int y_mouse = get_pos_from_gui(mouse_pos.x, mouse_pos.y).second;
@@ -3884,4 +3883,50 @@ void draw_eval_bar(float eval, string text_eval, float x, float y, float width, 
         text_size = text_size * width / text_dimensions.x;
     text_dimensions = MeasureTextEx(text_font, text_eval.c_str(), text_size, font_spacing);
     DrawTextEx(text_font, text_eval.c_str(), {x + (width - text_dimensions.x) / 2.0f, y + (y_margin + text_pos * (1.0f - y_margin * 2.0f)) * height - text_dimensions.y * text_pos}, text_size, font_spacing, (eval < 0) ? white : black);
+}
+
+
+// Fonction qui retire les surlignages de toutes les cases
+void remove_hilighted_tiles() {
+    for (int i = 0; i < 8; i++)
+        for (int j = 0; j < 8; j++)
+            highlighted_array[i][j] = 0;
+}
+
+// Fonction qui selectionne une case
+void select_tile(int a, int b) {
+    selected_pos = {a, b};
+}
+
+// Fonction qui surligne une case (ou la de-surligne)
+void highlight_tile(int a, int b) {
+    highlighted_array[a][b] = 1 - highlighted_array[a][b];
+}
+
+// Fonction qui renvoie le type de pièce sélectionnée
+int Board::selected_piece() {
+    // Faut-il stocker cela pour éviter de le re-calculer?
+    if (selected_pos.first == -1 || selected_pos.second == -1)
+        return 0;
+    return _array[selected_pos.first][selected_pos.second];
+}
+
+
+// Fonction qui renvoie le type de pièce où la souris vient de cliquer
+int Board::clicked_piece() {
+    if (clicked_pos.first == -1 || clicked_pos.second == -1)
+        return 0;
+    return _array[clicked_pos.first][clicked_pos.second];
+}
+
+
+// Fonction qui renvoie si la pièce sélectionnée est au joueur ayant trait ou non
+bool Board::selected_piece_has_trait() {
+    return ((_player && is_in(selected_piece(), 1, 6)) || (!_player && is_in(selected_piece(), 7, 12)));
+}
+
+
+// Fonction qui renvoie si la pièce cliquée est au joueur ayant trait ou non
+bool Board::clicked_piece_has_trait() {
+    return ((_player && is_in(clicked_piece(), 1, 6)) || (!_player && is_in(clicked_piece(), 7, 12)));
 }

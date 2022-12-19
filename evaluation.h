@@ -30,7 +30,7 @@ class Evaluator {
     float _rook_value_begin = 4.8;
     float _rook_value_end = 5.8;
     float _queen_value_begin = 9.8;
-    float _queen_value_end = 9.5;
+    float _queen_value_end = 10.2;
     float _king_value_begin = 1000.0;
     float _king_value_end = 1000.0;
 
