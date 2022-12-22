@@ -6,6 +6,11 @@
 // Définition des variables
 
 
+// Définition des couleurs
+#define VDARKGRAY CLITERAL(Color){50, 50, 50, 255}
+
+
+
 // Paramètres d'initialisation
 static float screen_width = 1800;
 static float screen_height = 945;
@@ -16,13 +21,17 @@ static float screen_height = 945;
 static int fps = 144;
 
 // Couleur de fond
-static Color background_color = {20, 20, 20, 255};
+static Color background_color = {25, 25, 25, 255};
 
 // Couleur du rectangle de texte
 static Color background_text_color = {0, 0, 0, 255};
 
-// Couleur du texte
+// Couleurs du texte
 static Color text_color = {255, 75, 75, 255};
+static Color text_color_dark = {200, 50, 50, 255};
+static Color text_color_light = {200, 200, 200, 255};
+static Color text_color_blue = {150, 150, 200, 255};
+static Color text_color_info = {140, 140, 140, 255};
 
 // Couleurs du plateau
 static Color board_color_light = {190, 162, 127, 255};
@@ -40,7 +49,7 @@ static Color select_color = {50, 225, 50, 100};
 static Color last_move_color = {220, 150, 50, 125};
 
 // Couleur de la case de pre-move
-static Color pre_move_color = {220, 30, 30, 150};
+static Color pre_move_color = {220, 30, 30, 125};
 
 // Couleur des flèches
 static Color arrow_color = {225, 225, 50, 255};
@@ -162,8 +171,21 @@ static int pre_move[4] = {-1, -1, -1, -1};
 static float global_eval = 0.0f;
 static string global_eval_text = "+0.0";
 
+// Temps de base pour les joueurs (en ms)
+static int base_time_white = 60000;
+static int base_time_black = 60000;
 
+// Incrément (en ms)
+static int base_time_increment_white = 0000;
+static int base_time_increment_black = 0000;
 
+// Valeur des pièces pour l'affichage sur la GUI (rien/roi, pion, cavalier, fou, tour, dame)
+static int piece_gui_values[6] = {0, 1, 3, 3, 5, 9};
+
+// Matériel manquant
+static int base_material[6] = {0, 8, 2, 2, 2, 1};
+static int missing_w_material[6] = {0, 0, 0, 0, 0, 0};
+static int missing_b_material[6] = {0, 0, 0, 0, 0, 0};
 
 
 // Fonction pour dessiner une flèche
@@ -191,7 +213,7 @@ bool is_playing();
 void switch_arrow_drawing();
 
 // Fonction qui affiche un texte dans une zone donnée avec un slider
-void slider_text(string, float, float, float, float, int size = text_size, float *slider_value = nullptr, float slider_width = board_size * 0.025, float slider_height = board_size * 0.1);
+void slider_text(string, float, float, float, float, int size = text_size, float *slider_value = nullptr, Color t_color = text_color, float slider_width = board_size * 0.025, float slider_height = board_size * 0.1);
 
 // Fonction pour obtenir l'orientation du plateau
 bool get_board_orientation();
@@ -225,3 +247,6 @@ void select_tile(int, int);
 
 // Fonction qui surligne une case (ou la de-surligne)
 void highlight_tile(int, int);
+
+// Fonction qui déselectionne
+void unselect();
