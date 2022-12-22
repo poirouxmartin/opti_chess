@@ -1002,6 +1002,12 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         return true;
     }
 
+    // On ne peut pas mater avec seulement 2 cavaliers
+    if (might_draw && count_w_knight == 2) {
+        _evaluation = 0;
+        return true;
+    }
+
 
     // Réseau de neurones
     if (n != nullptr) {
@@ -1446,14 +1452,59 @@ void Board::sort_moves(Evaluator *eval) {
 
 
 // Fonction qui récupère le plateau d'un FEN
-void Board::from_fen(string fen) {
+void Board::from_fen(string fen, bool fen_in_pgn, bool keep_headings) {
+    bool named;
+    bool timed;
+    if (keep_headings) {
+        named = _named_pgn;
+        timed = _timed_pgn;
+    }
+    
     reset_all();
+
 
     // Mise à jour du FEN
     _fen = fen;
 
     // PGN
-    _pgn = "[FEN \"" + fen + "\"]\n\n";
+
+    // keep_headings ne sert à rien pour le moment (ni fen_in_pgn)
+    int headings;
+    while(true) {
+        headings = _pgn.find_last_of("]");
+
+        if (headings == -1)
+            goto no_headings;
+
+        if (_pgn[headings + 1] != '\n')
+            _pgn = _pgn.substr(0, headings);
+            
+        else
+            break;
+    }
+
+    headings = _pgn.find_last_of("]");
+    _pgn = _pgn.substr(0, headings + 3);
+
+    no_headings:
+
+    if (fen_in_pgn) {
+
+        // Retire l'ancien FEN du PGN s'il y'en avait déjà un
+        int fen_begin = _pgn.find("[FEN \"");
+        if (fen_begin != -1) {
+            int fen_end = _pgn.find_first_of("]", fen_begin);
+            _pgn.replace(fen_begin + 6, fen_end - fen_begin - 7, fen);
+        }
+        else {
+            if (headings != -1)
+                _pgn.append("\n"); // Append ou += est plus rapide?
+
+            _pgn.append("[FEN \"" + fen + "\"]\n\n");
+        }
+        
+    }
+    
 
     // Iterateur qui permet de parcourir la chaine de caractères
     int iterator = 0;
@@ -1581,8 +1632,15 @@ void Board::from_fen(string fen) {
     _last_move[2] = -1;
     _last_move[3] = -1;
 
-    _named_pgn = false;
-    _timed_pgn = false;
+    
+    if (keep_headings) {
+        _named_pgn = named;
+        _timed_pgn = timed; 
+    }
+    else {
+        _named_pgn = false;
+        _timed_pgn = false;
+    }
 
     _is_game_over = false;
 
@@ -1943,38 +2001,42 @@ void Board::draw() {
 
     // Si on clique avec la souris
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-        // Retire les highlight
+        // Retire toute les cases surlignées
         remove_hilighted_tiles();
 
-        // Si on commence le clic
+        // Si on était pas déjà en train de cliquer
         if (!clicked) {
-            // Stocke la position cliquée sur le plateau
+
+            // Stocke la case cliquée sur le plateau
             clicked_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
             clicked = true;
 
-            // Sélection de pièces
             // Si aucune pièce n'est sélectionnée et que l'on clique sur une pièce, la sélectionne
-            if ((selected_pos.first == -1 || true) && clicked_piece() && (true || clicked_piece_has_trait()))
-                selected_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
+            if (!selected_piece() && clicked_piece()) {
+                if (true || clicked_piece_has_trait())
+                    selected_pos = clicked_pos;
+            }
+                
+            // Si le coup est l'un des mouvements possible de la pièce (diagonale pour le fou...)
+            // Quand cette pièce est sélectionnée, il faut afficher ces coups
+            // Il faut de même déplacer la pièce virtuellement quand on fait les pre-move
+
             // Si une pièce est déjà sélectionnée
-            else if (selected_pos.first != -1) {
-                int selected_piece = _array[selected_pos.first][selected_pos.second];
-                if (selected_piece > 0 && (selected_piece < 7 && !_player) || (selected_piece >= 7 && _player)) {
-                    // Si c'est pas ton tour, pre-move
+            else if (selected_piece()) {
+                // Si c'est pas ton tour, pre-move, et déselectionne la pièce
+                if (selected_piece() > 0 && (selected_piece() < 7 && !_player) || (selected_piece() >= 7 && _player)) {
                     pre_move[0] = selected_pos.first;
                     pre_move[1] = selected_pos.second;
                     pre_move[2] = clicked_pos.first;
                     pre_move[3] = clicked_pos.second;
-                    selected_pos = {-1, -1};
+                    unselect();
                 }
                 
                 // Si le coup est légal, le joue
                 get_moves(false, true);
                 for (int i = 0; i < _got_moves; i++) {
                     if (_moves[4 * i] == selected_pos.first && _moves[4 * i + 1] == selected_pos.second && _moves[4 * i + 2] == clicked_pos.first && _moves[4 * i + 3] == clicked_pos.second) {
-                        // Le joue
                         play_move_sound(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second);
-                        // make_move(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second, true, true);
                         play_monte_carlo_move_keep(i, true, true, true, true);
                         display_pgn();
                         break;
@@ -1982,7 +2044,7 @@ void Board::draw() {
                 }
 
                 // Déselectionne
-                selected_pos = {-1, -1};
+                unselect();
 
                 // Changement de sélection de pièce
                 if ((_player && is_in(_array[clicked_pos.first][clicked_pos.second], 1, 6)) || (!_player && is_in(_array[clicked_pos.first][clicked_pos.second], 7, 12)))
@@ -2057,7 +2119,7 @@ void Board::draw() {
     }
 
 
-    // Si on fait un clic droit
+    // Si on fait un clic droit (en le relachant)
     if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
         int x_mouse = get_pos_from_gui(mouse_pos.x, mouse_pos.y).first;
         int y_mouse = get_pos_from_gui(mouse_pos.x, mouse_pos.y).second;
@@ -2097,6 +2159,11 @@ void Board::draw() {
             if (highlighted_array[i][j])
                 DrawRectangle(board_padding_x + tile_size * orientation_index(j), board_padding_y + tile_size * orientation_index(7 - i), tile_size, tile_size, highlight_color);
 
+    // Pre-move
+    if (pre_move[0] != -1 && pre_move[1] != -1 && pre_move[2] != -1 && pre_move[3] != -1) {
+        DrawRectangle(board_padding_x + orientation_index(pre_move[1]) * tile_size, board_padding_y + orientation_index(7 - pre_move[0]) * tile_size, tile_size, tile_size, pre_move_color);
+        DrawRectangle(board_padding_x + orientation_index(pre_move[3]) * tile_size, board_padding_y + orientation_index(7 - pre_move[2]) * tile_size, tile_size, tile_size, pre_move_color);
+    }
 
     // Sélection de cases et de pièces
     if (selected_pos.first != -1) {
@@ -2110,12 +2177,7 @@ void Board::draw() {
             }
         }
     }
-
-    // Pre-move
-    if (pre_move[0] != -1 && pre_move[1] != -1 && pre_move[2] != -1 && pre_move[3] != -1) {
-        DrawRectangle(board_padding_x + orientation_index(pre_move[1]) * tile_size, board_padding_y + orientation_index(7 - pre_move[0]) * tile_size, tile_size, tile_size, pre_move_color);
-        DrawRectangle(board_padding_x + orientation_index(pre_move[3]) * tile_size, board_padding_y + orientation_index(7 - pre_move[2]) * tile_size, tile_size, tile_size, pre_move_color);
-    }
+    
 
 
     // Pièces capturables
@@ -2161,27 +2223,42 @@ void Board::draw() {
     DrawTexture(grogros_texture, board_padding_x, text_size / 4.0f - text_size / 5.6f, WHITE);
 
     // Joueurs de la partie
-    DrawCircle(board_padding_x + text_size / 4, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation + text_size / 4, text_size / 6.0f, board_color_dark);
-    DrawTextEx(text_font, _black_player.c_str(), {board_padding_x + text_size / 2, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
-    DrawCircle(board_padding_x + text_size / 4, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation + text_size / 4, text_size / 6.0f, board_color_light);
-    DrawTextEx(text_font, _white_player.c_str(), {board_padding_x + text_size / 2, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
+    int material = material_difference();
+    string black_material = (material < 0) ? ("+" + to_string(-material)) : "";
+    string white_material = (material > 0) ? ("+" + to_string(material)) : "";
 
+    int t_size = text_size / 3;
+
+    // Noirs
+    DrawCircle(board_padding_x + t_size, board_padding_y - t_size * board_orientation + (board_size + t_size) * !board_orientation, t_size * 0.6f, board_color_dark);
+    DrawTextEx(text_font, _black_player.c_str(), {board_padding_x + t_size * 2, board_padding_y - t_size * 2 * board_orientation + board_size * !board_orientation}, t_size, font_spacing * t_size, text_color);
+    DrawTextEx(text_font, black_material.c_str(), {board_padding_x + t_size * 2, board_padding_y - t_size * board_orientation + (board_size + t_size) * !board_orientation}, t_size, font_spacing * t_size, text_color_info);
+    
+    // Blancs
+    DrawCircle(board_padding_x + t_size, board_padding_y - t_size * !board_orientation + (board_size + t_size) * board_orientation, t_size * 0.6f, board_color_light);
+    DrawTextEx(text_font, _white_player.c_str(), {board_padding_x + t_size * 2, board_padding_y - t_size * 2 * !board_orientation + board_size * board_orientation}, t_size, font_spacing * t_size, text_color);
+    DrawTextEx(text_font, white_material.c_str(), {board_padding_x + t_size * 2, board_padding_y - t_size * !board_orientation + (board_size + t_size) * board_orientation}, t_size, font_spacing * t_size, text_color_info);
+    // print_array(missing_w_material, 6);
 
     // Temps des joueurs
     // Update du temps
     update_time();
-    DrawTextEx(text_font, clock_to_string(_time_black, false).c_str(), {board_padding_x + board_size - text_size * 2, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
-    DrawTextEx(text_font, clock_to_string(_time_white, false).c_str(), {board_padding_x + board_size - text_size * 2, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation}, text_size / 2, font_spacing * text_size / 2, text_color);
+    float x_pad = board_padding_x + board_size - text_size * 2;
+    Color time_colors[4] = {(_time && !_player) ? BLACK : VDARKGRAY, (_time && !_player) ? WHITE : LIGHTGRAY, (_time && _player) ? WHITE : LIGHTGRAY, (_time && _player) ? BLACK : VDARKGRAY};
+    DrawRectangle(x_pad, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation, board_padding_x + board_size - x_pad, text_size / 2, time_colors[0]);
+    DrawTextEx(text_font, clock_to_string(_time_black, false).c_str(), {x_pad + text_size / 6, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation + text_size / 12}, text_size / 3, font_spacing * text_size / 3, time_colors[1]);
+    DrawRectangle(x_pad, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation, board_padding_x + board_size - x_pad, text_size / 2, time_colors[2]);
+    DrawTextEx(text_font, clock_to_string(_time_white, false).c_str(), {x_pad + text_size / 6, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation + text_size / 12}, text_size / 3, font_spacing * text_size / 3, time_colors[3]);
 
     // FEN
     if (_fen == "")
         to_fen();
     const char *fen = _fen.c_str();
-    DrawTextEx(text_font, fen, {board_padding_x, board_padding_y + board_size + text_size}, text_size / 3, font_spacing * text_size / 3, text_color);
+    DrawTextEx(text_font, fen, {text_size / 2, board_padding_y + board_size + text_size * 3 / 2}, text_size / 3, font_spacing * text_size / 3, text_color_blue);
 
 
     // PGN
-    slider_text(_pgn, board_padding_x, board_padding_y + board_size + text_size * 3 / 2, screen_width - board_padding_x - text_size / 2, screen_height - (board_padding_y + board_size + text_size * 3 / 2) - text_size / 3, text_size / 3, &pgn_slider);
+    slider_text(_pgn, text_size / 2, board_padding_y + board_size + text_size * 2, screen_width - text_size, screen_height - (board_padding_y + board_size + text_size * 2) - text_size / 3, text_size / 3, &pgn_slider, text_color);
 
 
     // Analyse de Monte-Carlo
@@ -2214,7 +2291,7 @@ void Board::draw() {
     
     if (drawing_arrows) {
         // Affichage des paramètres d'analyse de Monte-Carlo
-        slider_text(monte_carlo_text.c_str(), board_padding_x + board_size + text_size / 2, board_padding_y, screen_width - text_size - board_padding_x - board_size, board_size / 4,  text_size / 3, &monte_carlo_slider);
+        slider_text(monte_carlo_text.c_str(), board_padding_x + board_size + text_size / 2, board_padding_y, screen_width - text_size - board_padding_x - board_size, board_size / 4,  text_size / 3, &monte_carlo_slider, text_color);
 
         // Lignes d'analyse de Monte-Carlo
         static string monte_carlo_variants;
@@ -2658,8 +2735,8 @@ void Board::play_monte_carlo_move_keep(int move, bool keep, bool keep_display, b
                 _monte_buffer._heap_boards[_index_children[move]]._time_increment_white = b._time_increment_white;
                 _monte_buffer._heap_boards[_index_children[move]]._time_increment_black = b._time_increment_black;
                 _monte_buffer._heap_boards[_index_children[move]]._time = b._time;
-                _monte_buffer._heap_boards[_index_children[move]]._timed_pgn = b._timed_pgn;
-                _monte_buffer._heap_boards[_index_children[move]]._named_pgn = b._named_pgn;
+                _monte_buffer._heap_boards[_index_children[move]]._timed_pgn = _timed_pgn;
+                _monte_buffer._heap_boards[_index_children[move]]._named_pgn = _named_pgn;
                 _monte_buffer._heap_boards[_index_children[move]]._last_move_clock = b._last_move_clock;
             }
                 
@@ -2806,7 +2883,6 @@ void Board::grogros_zero(Evaluator *eval, int nodes, bool checkmates, double bet
         max_depth = 0;
         if (!_evaluated)
             evaluate_int(eval, true, false, net); 
-               
     }
 
     if (depth == 0) {
@@ -3278,7 +3354,7 @@ int Board::is_eval_mate(int e) {
 
 
 // Fonction qui affiche un texte dans une zone donnée avec un slider
-void slider_text(string s, float pos_x, float pos_y, float width, float height, int size, float *slider_value, float slider_width, float slider_height) {
+void slider_text(string s, float pos_x, float pos_y, float width, float height, int size, float *slider_value, Color t_color, float slider_width, float slider_height) {
 
     Rectangle rect_text = {pos_x, pos_y, width, height};
     DrawRectangleRec(rect_text, background_text_color);
@@ -3386,7 +3462,7 @@ void slider_text(string s, float pos_x, float pos_y, float width, float height, 
     // Texte total
     const char *c = new_string.c_str();
 
-    DrawTextEx(text_font, c, {pos_x, pos_y}, size, font_spacing * size, text_color);
+    DrawTextEx(text_font, c, {pos_x, pos_y}, size, font_spacing * size, t_color);
     
     
 
@@ -3864,7 +3940,9 @@ void Board::get_kings_opposition() {
 
 // Fonction qui affiche la barre d'evaluation
 void draw_eval_bar(float eval, string text_eval, float x, float y, float width, float height, float max_eval, Color white, Color black, float max_height) {
-    float switch_color = min(max_height * height, max((1 - max_height) * height, height / 2 - eval / max_eval * height / 2));
+    bool is_mate = text_eval.find("M") != -1;
+    float max_bar = is_mate ? 1 : max_height;
+    float switch_color = min(max_bar * height, max((1 - max_bar) * height, height / 2 - eval / max_eval * height / 2));
     bool orientation = get_board_orientation();
     if (orientation) {
         DrawRectangle(x, y, width, height, black);
@@ -3929,4 +4007,62 @@ bool Board::selected_piece_has_trait() {
 // Fonction qui renvoie si la pièce cliquée est au joueur ayant trait ou non
 bool Board::clicked_piece_has_trait() {
     return ((_player && is_in(clicked_piece(), 1, 6)) || (!_player && is_in(clicked_piece(), 7, 12)));
+}
+
+
+// Fonction qui déselectionne
+void unselect() {
+    selected_pos = {-1, -1};
+}
+
+
+// Fonction qui remet les compteurs de temps "à zéro" (temps de base)
+void Board::reset_timers() {
+    // Temps par joueur (en ms)
+    _time_white = base_time_white;
+    _time_black = base_time_white;
+
+    // Incrément (en ms)
+    _time_increment_white = base_time_increment_white;
+    _time_increment_black = base_time_increment_black;
+}
+
+// Fonction qui remet le plateau dans sa position initiale
+void Board::restart() {
+    // Fonction largement optimisable
+    from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    // _pgn = "";
+    reset_timers();
+}
+
+
+// Fonction qui renvoie la différence matérielle entre les deux camps
+int Board::material_difference() {
+    int mat = 0;
+    int p;
+    int w_material[6] = {0, 0, 0, 0, 0, 0};
+    int b_material[6] = {0, 0, 0, 0, 0, 0};
+
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            p = _array[i][j];
+            if (p > 0) {
+                if (p < 6)
+                    w_material[p]++;
+                else
+                    b_material[p / 6]++;
+            }
+
+            mat += piece_gui_values[p % 6] * (1 - (p / 6) * 2);
+        }
+    }
+    // print_array(w_material, 6);
+
+    for (int i = 0; i < 6; i++) {
+        // cout << max(0, base_material[i] - w_material[i]) << endl;
+        missing_w_material[i] = max(0, base_material[i] - w_material[i]);
+        missing_b_material[i] = max(0, base_material[i] - b_material[i]);
+    }
+
+    return mat;
 }

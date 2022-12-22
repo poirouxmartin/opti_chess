@@ -209,7 +209,10 @@ https://www.chessprogramming.org/Time_Management
 -> r2q1rk1/1pp5/p1nppn2/2b1p1B1/P3P3/2NP4/1PP2PPP/R2Q1RK1 w - - 0 13 : structure de pions +1.5????? Pions passés peut-être trop forts pour le moment...
 -> Pourquoi parfois le regarde pas assez les bons coups?
 -> GrogrosZero, développe tes pièces !!!
-
+-> Ramener les pièces sur le roi pour l'attaque !! -> revoir king_safety()
+-> à tester : 2kr4/2p2R2/2p5/1pq5/4P3/p1P2PP1/PP1B4/R3KB2 w Q - 0 14
+-> 2k4r/2p5/2p2R2/1p6/4PB2/pPP2PP1/Pq6/2R1KB2 w - - 7 18 : c'est une nulle, et Grogros met +8. EDIT : sûrement car les perpet n'ont pas encore été implémentées
+-> Refaire les game_over() de façon plus propre, et dire quand la partie est finie dans la GUI (+ son de fin)
 
 
 
@@ -301,6 +304,8 @@ https://www.chessprogramming.org/Time_Management
 -> Faire un vecteur pour les pre moves et les flèches
 -> +/- mats : en fonction des couleurs, ou du joueur qui joue??
 -> Se débrouiller pour que les cases s'affichent bien (avec les flottants)
+-> Trouver une meilleure police de texte, qui prenne en compte les minuscules et majuscules (et soit un peu plus petite)
+-> Rajouter les petites pièces pour la différence de matériel
 
 
 ----- Réseaux de neurones -----
@@ -408,7 +413,7 @@ int main() {
 
     // Paramètres pour l'IA
     int search_depth = 8;
-    // search_depth = 6;
+    search_depth = 7;
 
 
 
@@ -434,15 +439,10 @@ int main() {
     evaluators[0] = &monte_evaluator;
 
 
+    // Met les timers en place
+    t.reset_timers();
 
-
-    // Temps par joueur
-    t._time_white = 600000;
-    t._time_black = 600000;
-
-    // Incrément
-    t._time_increment_white = 0000;
-    t._time_increment_black = 0000;
+    t._pgn = "[FEN \"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\"]\n\n";
 
 
     // Test des agents GrogrosZero
@@ -496,7 +496,7 @@ int main() {
 
         // Recommencer une partie
         if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_N)) {
-            t.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+            t.restart();
         }
 
         // Utilisation du réseau de neurones
@@ -597,7 +597,7 @@ int main() {
         }
 
         // Calcul en mode auto
-        if (grogros_auto && t.is_mate() == -1 && t.game_over() == 0) {
+        if (grogros_auto && !t._is_game_over && t.is_mate() == -1 && t.game_over() == 0) {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
             if (true || !is_playing()) // Pour que ça ne lag pas pour l'utilisateur
@@ -605,7 +605,7 @@ int main() {
         }
 
         // Calcul pour les pièces blanches
-        if (grogroszero_play_white && t.is_mate() == -1 && t.game_over() == 0) {
+        if (grogroszero_play_white && !t._is_game_over && t.is_mate() == -1 && t.game_over() == 0) {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
             if (t._player)
@@ -616,7 +616,7 @@ int main() {
         }
 
         // Calcul pour les pièces noires
-        if (grogroszero_play_black && t.is_mate() == -1 && t.game_over() == 0) {
+        if (grogroszero_play_black && !t._is_game_over && t.is_mate() == -1 && t.game_over() == 0) {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
             if (!t._player)
@@ -628,7 +628,7 @@ int main() {
 
 
         // Joue les coups selon grogros en fonction de la reflexion actuelle
-        if ((grogros_play || (grogroszero_play_white && t._player) || (grogroszero_play_black && !t._player)) && t.is_mate() == -1 && t.game_over() == 0) {
+        if (!t._is_game_over && t.is_mate() == -1 && t.game_over() == 0 && (grogros_play || (grogroszero_play_white && t._player) || (grogroszero_play_black && !t._player))) {
             if (t._time) {
                 int max_move_time;
                 float best_move_percentage = (float)t._nodes_children[t.best_monte_carlo_move()] / (float)t.total_nodes();
@@ -636,13 +636,13 @@ int main() {
                     max_move_time = time_to_play_move(t._time_white, t._time_black, 0.05 * (1 - best_move_percentage));
                 else
                     max_move_time = time_to_play_move(t._time_black, t._time_white, 0.05 * (1 - best_move_percentage));
-                if (t._time_monte_carlo >= max_move_time || t.total_nodes() > grogros_nodes)
+                if (t._time_monte_carlo >= max_move_time)
                     t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true);
             }
                 
-            else
-                if (t.total_nodes() > grogros_nodes)
-                    t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true);
+            if (t.total_nodes() >= grogros_nodes)
+                t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true);
+
         }
             
 
@@ -781,6 +781,8 @@ int main() {
         //         t.grogrosfish(search_depth, &eval_black, true);
         // }
 
+
+
         // Joueur des pièces blanches : IA/humain
         if (!IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && get_board_orientation()) || (IsKeyPressed(KEY_UP) && !get_board_orientation()))) {
             grogrosfish_play_white = !grogrosfish_play_white;
@@ -816,7 +818,7 @@ int main() {
             grogroszero_play_white = !grogroszero_play_white;
             grogrosfish_play_white = false;
             if (grogroszero_play_white) {
-                t._white_player = "GrogrosZero (" + int_to_round_string(grogros_nodes) + " nodes)";
+                t._white_player = "GrogrosZero (max " + int_to_round_string(grogros_nodes) + " nodes)";
                 t.add_names_to_pgn();
             }
             else {
@@ -831,7 +833,7 @@ int main() {
             grogroszero_play_black = !grogroszero_play_black;
             grogrosfish_play_black = false;
             if (grogroszero_play_black) {
-                t._black_player = "GrogrosZero (" + int_to_round_string(grogros_nodes) + " nodes)";
+                t._black_player = "GrogrosZero (max " + int_to_round_string(grogros_nodes) + " nodes)";
                 t.add_names_to_pgn();
             }
                 
@@ -851,7 +853,7 @@ int main() {
         }
 
         // Fait jouer l'IA automatiquement en fonction des paramètres
-        if (t.is_mate() == -1 && t.game_over() == 0) {
+        if (!t._is_game_over && t.is_mate() == -1 && t.game_over() == 0) {
             if (t._player) {
                 if (grogrosfish_play_white)
                     t.grogrosfish(search_depth, &eval_white, true);
@@ -872,10 +874,10 @@ int main() {
         // Dessins
         BeginDrawing();
 
-            // Dessin du plateau
-            t.draw();
-            // thread threadDraw(&Board::draw, &t);
-            // threadDraw.join();
+        // Dessin du plateau
+        t.draw();
+        // thread threadDraw(&Board::draw, &t);
+        // threadDraw.join();
             
         // Fin de la zone de dessin
         EndDrawing();
