@@ -281,7 +281,7 @@ class Board {
         void sort_moves(Evaluator *);
 
         // Fonction qui récupère le plateau d'un FEN
-        void from_fen(string);
+        void from_fen(string, bool fen_in_pgn = true, bool keep_headings = true);
 
         // Fonction qui renvoie le FEN du tableau
         void to_fen();
@@ -405,6 +405,15 @@ class Board {
 
         // Fonction qui renvoie si la pièce cliquée est au joueur ayant trait ou non
         bool clicked_piece_has_trait();
+
+        // Fonction qui remet les compteurs de temps "à zéro" (temps de base)
+        void reset_timers();
+
+        // Fonction qui remet le plateau dans sa position initiale
+        void restart();
+
+        // Fonction qui renvoie la différence matérielle entre les deux camps
+        int material_difference();
 
 };
 
