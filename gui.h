@@ -115,7 +115,7 @@ static float board_padding_y;
 // Taille des pièces
 static float tile_size;
 static float piece_size;
-static float piece_scale = 0.75;
+static float piece_scale = 0.85;
 
 // Taille standard du texte
 static float text_size;
