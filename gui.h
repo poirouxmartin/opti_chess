@@ -75,7 +75,7 @@ static float arrow_rate = 0.05;
 // Variable qui indique si l'initialisation a été faite
 static bool loaded_resources = false;
 
-// Textures
+// Textures et images
 static Image piece_images[12];
 static Texture2D piece_textures[12];
 
@@ -91,6 +91,11 @@ static float grogros_size;
 static Image cursor_image;
 static Texture2D cursor_texture;
 static float cursor_size = 32.0f;
+
+// Mini-pièces
+static Image mini_piece_images[12];
+static Texture2D mini_piece_textures[12];
+static int mini_piece_size;
 
 // Sons
 static Sound move_1_sound;
