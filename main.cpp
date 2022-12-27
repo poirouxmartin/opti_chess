@@ -127,6 +127,7 @@ https://www.chessprogramming.org/Time_Management
     - Vis-à-vis
     - Focales
     - Cavaliers bloqueurs
+    - Mating nets
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Augmenter la profondeur pour les finales (GrogrosFish)
@@ -213,6 +214,7 @@ https://www.chessprogramming.org/Time_Management
 -> à tester : 2kr4/2p2R2/2p5/1pq5/4P3/p1P2PP1/PP1B4/R3KB2 w Q - 0 14
 -> 2k4r/2p5/2p2R2/1p6/4PB2/pPP2PP1/Pq6/2R1KB2 w - - 7 18 : c'est une nulle, et Grogros met +8. EDIT : sûrement car les perpet n'ont pas encore été implémentées
 -> Refaire les game_over() de façon plus propre, et dire quand la partie est finie dans la GUI (+ son de fin)
+-> Plein de calculs en double (voir appels de fonctions... is_mate()?)
 
 
 
@@ -306,6 +308,8 @@ https://www.chessprogramming.org/Time_Management
 -> Se débrouiller pour que les cases s'affichent bien (avec les flottants)
 -> Trouver une meilleure police de texte, qui prenne en compte les minuscules et majuscules (et soit un peu plus petite)
 -> Rajouter les petites pièces pour la différence de matériel
+-> Mauvais son pour le en passant
+-> Fins de parties : message + son
 
 
 ----- Réseaux de neurones -----
@@ -405,6 +409,8 @@ int main() {
     eval_white._kings_opposition = 0;
     eval_white._pawn_structure = 0;
 
+    eval_black._attacks = 0;
+
 
 
     // IA self play
@@ -413,7 +419,7 @@ int main() {
 
     // Paramètres pour l'IA
     int search_depth = 8;
-    search_depth = 7;
+    search_depth = 6;
 
 
 
@@ -595,6 +601,12 @@ int main() {
         if (IsKeyPressed(KEY_H)) {
             switch_arrow_drawing();
         }
+
+
+
+        // Fin de partie (à reset aussi...) (le son ne se lance pas...)
+        // Calculer la fin de la partie ici une fois, pour éviter de la refaire?
+
 
         // Calcul en mode auto
         if (grogros_auto && !t._is_game_over && t.is_mate() == -1 && t.game_over() == 0) {
