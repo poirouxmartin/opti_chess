@@ -1917,6 +1917,20 @@ void load_resources() {
         piece_images[10] = LoadImage("../resources/images/b_queen.png");
         piece_images[11] = LoadImage("../resources/images/b_king.png");
 
+        // Mini-Pièces
+        mini_piece_images[0] = LoadImage("../resources/images/mini_pieces/w_pawn.png");
+        mini_piece_images[1] = LoadImage("../resources/images/mini_pieces/w_knight.png");
+        mini_piece_images[2] = LoadImage("../resources/images/mini_pieces/w_bishop.png");
+        mini_piece_images[3] = LoadImage("../resources/images/mini_pieces/w_rook.png");
+        mini_piece_images[4] = LoadImage("../resources/images/mini_pieces/w_queen.png");
+        mini_piece_images[5] = LoadImage("../resources/images/mini_pieces/w_king.png");
+        mini_piece_images[6] = LoadImage("../resources/images/mini_pieces/b_pawn.png");
+        mini_piece_images[7] = LoadImage("../resources/images/mini_pieces/b_knight.png");
+        mini_piece_images[8] = LoadImage("../resources/images/mini_pieces/b_bishop.png");
+        mini_piece_images[9] = LoadImage("../resources/images/mini_pieces/b_rook.png");
+        mini_piece_images[10] = LoadImage("../resources/images/mini_pieces/b_queen.png");
+        mini_piece_images[11] = LoadImage("../resources/images/mini_pieces/b_king.png");
+
         // Chargement du son
         move_1_sound = LoadSound("../resources/sounds/move_1.mp3");
         move_2_sound = LoadSound("../resources/sounds/move_2.mp3");
@@ -1961,6 +1975,8 @@ void resize_gui() {
         arrow_thickness = tile_size * arrow_scale;
 
         // Génération des textures
+
+        // Pièces
         for (int i = 0; i < 12; i++) {
             ImageResize(&piece_images[i], piece_size, piece_size);
             piece_textures[i] = LoadTextureFromImage(piece_images[i]);
@@ -1975,6 +1991,13 @@ void resize_gui() {
         // Curseur
         ImageResize(&cursor_image, cursor_size, cursor_size);
         cursor_texture = LoadTextureFromImage(cursor_image);
+
+        // Mini-pièces (pour le compte des pièces prises durant la partie)
+        mini_piece_size = text_size / 3;
+        for (int i = 0; i < 12; i++) {
+            ImageResize(&mini_piece_images[i], mini_piece_size, mini_piece_size);
+            mini_piece_textures[i] = LoadTextureFromImage(mini_piece_images[i]);
+        }
 }
 
 
@@ -2233,12 +2256,36 @@ void Board::draw() {
     DrawCircle(board_padding_x + t_size, board_padding_y - t_size * board_orientation + (board_size + t_size) * !board_orientation, t_size * 0.6f, board_color_dark);
     DrawTextEx(text_font, _black_player.c_str(), {board_padding_x + t_size * 2, board_padding_y - t_size * 2 * board_orientation + board_size * !board_orientation}, t_size, font_spacing * t_size, text_color);
     DrawTextEx(text_font, black_material.c_str(), {board_padding_x + t_size * 2, board_padding_y - t_size * board_orientation + (board_size + t_size) * !board_orientation}, t_size, font_spacing * t_size, text_color_info);
-    
+    int x_mini_piece = board_padding_x + t_size * 5;
+    int y_mini_piece = board_padding_y - t_size * board_orientation + (board_size + t_size) * !board_orientation;
+    bool next = false;
+    for (int i = 1; i < 6; i++) {
+        for (int j = 0; j < missing_w_material[i]; j++) {
+            DrawTexture(mini_piece_textures[i - 1], x_mini_piece, y_mini_piece, WHITE);
+            x_mini_piece += mini_piece_size / 2;
+            next = true;
+        }
+        if (next)
+            x_mini_piece += mini_piece_size;
+        next = false;
+    }
+
     // Blancs
     DrawCircle(board_padding_x + t_size, board_padding_y - t_size * !board_orientation + (board_size + t_size) * board_orientation, t_size * 0.6f, board_color_light);
     DrawTextEx(text_font, _white_player.c_str(), {board_padding_x + t_size * 2, board_padding_y - t_size * 2 * !board_orientation + board_size * board_orientation}, t_size, font_spacing * t_size, text_color);
     DrawTextEx(text_font, white_material.c_str(), {board_padding_x + t_size * 2, board_padding_y - t_size * !board_orientation + (board_size + t_size) * board_orientation}, t_size, font_spacing * t_size, text_color_info);
-    // print_array(missing_w_material, 6);
+    x_mini_piece = board_padding_x + t_size * 5;
+    y_mini_piece = board_padding_y - t_size * !board_orientation + (board_size + t_size) * board_orientation;
+    for (int i = 1; i < 6; i++) {
+        for (int j = 0; j < missing_b_material[i]; j++) {
+            DrawTexture(mini_piece_textures[i - 1 + 6], x_mini_piece, y_mini_piece, WHITE);
+            x_mini_piece += mini_piece_size / 2;
+            next = true;
+        }
+        if (next)
+            x_mini_piece += mini_piece_size;
+        next = false;
+    }
 
     // Temps des joueurs
     // Update du temps
@@ -2349,6 +2396,14 @@ void Board::play_move_sound(int i, int j, int k, int l) {
     Board b(*this);
     b.make_move(i, j, k, l);
 
+    int mate = b.is_mate();
+
+    if (mate == 0)
+        return PlaySound(stealmate_sound);
+    if (mate == 1)
+        return PlaySound(checkmate_sound);
+
+
     if (b.in_check()) {
         if (_player)
             PlaySound(check_1_sound);
@@ -2359,8 +2414,8 @@ void Board::play_move_sound(int i, int j, int k, int l) {
     // Si pas d'échecs
     else {
 
-        // Prises
-        if (p2 != 0) {
+        // Prises (ou en passant)
+        if (p2 != 0 || ((p1 == 1 || p1 == 7) && j != l)) {
             if (_player)
                 return PlaySound(capture_1_sound);
             else
@@ -4050,16 +4105,14 @@ int Board::material_difference() {
                 if (p < 6)
                     w_material[p]++;
                 else
-                    b_material[p / 6]++;
+                    b_material[p % 6]++;
             }
 
             mat += piece_gui_values[p % 6] * (1 - (p / 6) * 2);
         }
     }
-    // print_array(w_material, 6);
 
     for (int i = 0; i < 6; i++) {
-        // cout << max(0, base_material[i] - w_material[i]) << endl;
         missing_w_material[i] = max(0, base_material[i] - w_material[i]);
         missing_b_material[i] = max(0, base_material[i] - b_material[i]);
     }
