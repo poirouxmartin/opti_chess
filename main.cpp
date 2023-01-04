@@ -209,9 +209,7 @@ https://www.chessprogramming.org/Encoding_Moves#MoveIndex
 -> Stocker les roques dans un tableau plutôt que 4 valeurs séparées
 -> Est-ce plus rapide de mettre des boucles simples plutôt que double? while plutôt que for?
 -> 8/7p/2k5/8/1pPKP1P1/5r1P/PP3r2/3R4 w - - 0 5 : une tour de moins et égal?...
--> Structures de pions en endgame à revoir? Quand y'a des grosses diff de pions, fait des trucs bizarres? Pareil, pions passés, doivent être poussés
 -> Endgame : la force des pièces dépend du potentiel des pions (pièces seules = bof)
--> r2q1rk1/1pp5/p1nppn2/2b1p1B1/P3P3/2NP4/1PP2PPP/R2Q1RK1 w - - 0 13 : structure de pions +1.5????? Pions passés peut-être trop forts pour le moment...
 -> Pourquoi parfois le regarde pas assez les bons coups?
 -> GrogrosZero, développe tes pièces !!!
 -> Ramener les pièces sur le roi pour l'attaque !! -> revoir king_safety()
@@ -220,16 +218,12 @@ https://www.chessprogramming.org/Encoding_Moves#MoveIndex
 -> Refaire les game_over() de façon plus propre, et dire quand la partie est finie dans la GUI (+ son de fin)
 -> Plein de calculs en double (voir appels de fonctions... is_mate()?)
 -> Faire des tables d'attaque (par exemple entre roi et dame, cavalier...)
--> 8/8/4k3/6p1/p1p1Kp2/2P2P2/1P4PP/8 b - - 0 45 : eval statique bof. pion de moins et donne -2 dans les positionnements des pions
--> BUG AU 50ème !!! 6k1/5pp1/Q1p3q1/6B1/P4K2/1p2r3/8/5R2 b - - 49 92 : Df5 = mat??????
--> 4r1k1/5pp1/Q1p3q1/8/P7/1p5K/8/2B2R2 b - - 47 91 : Faut que ça regarde d'autres coups que les draw (genre b2) (le trouve mais met du temps)
 -> Notations : 6k1/5pp1/Q1p3q1/6B1/P6K/1p2r3/8/5R2 b - - 49 92 : De4#???
 -> q5k1/2p2pp1/8/7p/3RP3/5K2/P1P2PPP/8 w - - 0 4 = seulement -0.62??? ... king safety bizarre
 -> Refaire toute l'architecture avec les get_moves(), pour que ça prenne tout en compte (sans le faire dans l'évaluation)
 -> Améliorer la recherche des coups... quand c'est dans les coups mauvais, ça ne fait plus la différence... recherche -> 0% rapidement, et le k_add prend le dessus
 -> Ne voit plus le Dxh7 mat en 7 de Lasker :((( (ou un peu trop tard)
 -> 5rk1/p4qb1/1p1p3p/3Ppp2/PRP1P3/2N1BnPb/2Q4P/1R5K w - - 0 5 : noirs mieux, car roi très faible. 5rk1/p4qb1/1p1p3p/3Ppp2/PRP1P3/2N1BnPb/2Q4P/1R5K w - - 0 5... 5rk1/p5b1/1p1p3p/1N1P3q/PRP1Pp2/5n1b/2Q4P/2BR3K b - - 3 8
-
 
 
 ----- Interface utilisateur -----
@@ -322,6 +316,8 @@ https://www.chessprogramming.org/Encoding_Moves#MoveIndex
 -> Fins de parties : message + son
 -> +M7 -> #-7 pour les noirs? .. bof
 -> Barre d'éval : barre pour l'évaluation du coup le plus recherché par l'IA? ou éval du "meilleur coup"?
+-> Mettre le screenshot dans le presse-papier?
+-> Faire un readme
 
 
 ----- Réseaux de neurones -----
@@ -564,6 +560,7 @@ int main() {
             cout << "Screenshot : " << screenshot_name << endl;
             TakeScreenshot(screenshot_name.c_str());
 
+            // Mettre le screenshot dans le presse-papier?
         }
             
         // Création du buffer

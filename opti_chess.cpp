@@ -3845,7 +3845,7 @@ void Board::get_pawn_structure(float adv) {
         if (s_black[i] >= 1) {
             for (int j = 1; j < 7; j++) {
                 if (pawns_black[j][i]) {
-                    _pawn_structure += passed_pawns[7 - j] * (s_white[i] == 0 && (i == 0 || s_white[i - 1] == 0) && (i == 7 || s_white[i + 1] == 0)) * passed_adv;
+                    _pawn_structure -= passed_pawns[7 - j] * (s_white[i] == 0 && (i == 0 || s_white[i - 1] == 0) && (i == 7 || s_white[i + 1] == 0)) * passed_adv;
                     break;
                 }
             }
