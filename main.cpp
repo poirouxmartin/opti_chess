@@ -4,7 +4,7 @@
 #include "math.h"
 #include "gui.h"
 #include <thread>
-//#include <windows.h>
+// #include <Windows.h>
 
 
 /* TODO
@@ -33,6 +33,7 @@ https://en.wikipedia.org/wiki/Threefold_repetition
 https://www.chessprogramming.org/Opening_Book
 https://www.chessprogramming.org/Pawn_Structure
 https://www.chessprogramming.org/Time_Management
+https://www.chessprogramming.org/Encoding_Moves#MoveIndex
 
 
 
@@ -98,7 +99,8 @@ https://www.chessprogramming.org/Time_Management
 
 -> Améliorer les heuristiques pour l'évaluation d'une position
 -> https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
-    - Sécurité du roi (TRES IMPORTANT !) --> A améliorer, car là c'est pourri... comment calculer? !(pion protégeant le roi) *  pieces ennemies proches du roi = !king_safety ?  -> https://www.chessprogramming.org/King_Safety
+-> A ajouter :
+    - Sécurité du roi (TRES IMPORTANT !) --> A améliorer (laaaargement améliorable), car là c'est pourri... comment calculer? !(pion protégeant le roi) *  pieces ennemies proches du roi = !king_safety ?  -> https://www.chessprogramming.org/King_Safety
     - Espace (dépend aussi du nombre de pièces restantes..)
     - Structures de pions (IMPORTANT) -> A améliorer
     - Diagonales ouvertes
@@ -110,8 +112,9 @@ https://www.chessprogramming.org/Time_Management
     - Cases faibles
     - Pions arrierés/faibles
     - Initiative -> A améliorer : fort dans les positions d'attaque?
+    - Fous de couleurs opposées : favorisent l'attaque, mais en finale -> draw
     - Contrôle du centre
-    - Harmonie des pièces
+    - Harmonie des pièces (qui se défendent entre elles)
     - Pièces enfermées
     - Bon/Mauvais fou
     - Tours sur colonnes ouvertes
@@ -120,14 +123,15 @@ https://www.chessprogramming.org/Time_Management
     - Fous/Paire de fou meilleurs en position ouverte (cavalier : inverse)
     - Tours liées
     - Garder matériel en position perdante?
-    - Opposition des rois en finale
     - Attaques et défenses
     - Faiblesse sur une couleur
     - Ne pas trade les dames en déficit matériel?
     - Vis-à-vis
     - Focales
     - Cavaliers bloqueurs
-    - Mating nets
+    - "Mating nets" -> tables d'attaques / contrôles des pièces adverses?
+    - Finales de pions : Roi dans le carré
+    - Garder les tours pour faire nulle
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Augmenter la profondeur pour les finales (GrogrosFish)
@@ -215,6 +219,16 @@ https://www.chessprogramming.org/Time_Management
 -> 2k4r/2p5/2p2R2/1p6/4PB2/pPP2PP1/Pq6/2R1KB2 w - - 7 18 : c'est une nulle, et Grogros met +8. EDIT : sûrement car les perpet n'ont pas encore été implémentées
 -> Refaire les game_over() de façon plus propre, et dire quand la partie est finie dans la GUI (+ son de fin)
 -> Plein de calculs en double (voir appels de fonctions... is_mate()?)
+-> Faire des tables d'attaque (par exemple entre roi et dame, cavalier...)
+-> 8/8/4k3/6p1/p1p1Kp2/2P2P2/1P4PP/8 b - - 0 45 : eval statique bof. pion de moins et donne -2 dans les positionnements des pions
+-> BUG AU 50ème !!! 6k1/5pp1/Q1p3q1/6B1/P4K2/1p2r3/8/5R2 b - - 49 92 : Df5 = mat??????
+-> 4r1k1/5pp1/Q1p3q1/8/P7/1p5K/8/2B2R2 b - - 47 91 : Faut que ça regarde d'autres coups que les draw (genre b2) (le trouve mais met du temps)
+-> Notations : 6k1/5pp1/Q1p3q1/6B1/P6K/1p2r3/8/5R2 b - - 49 92 : De4#???
+-> q5k1/2p2pp1/8/7p/3RP3/5K2/P1P2PPP/8 w - - 0 4 = seulement -0.62??? ... king safety bizarre
+-> Refaire toute l'architecture avec les get_moves(), pour que ça prenne tout en compte (sans le faire dans l'évaluation)
+-> Améliorer la recherche des coups... quand c'est dans les coups mauvais, ça ne fait plus la différence... recherche -> 0% rapidement, et le k_add prend le dessus
+-> Ne voit plus le Dxh7 mat en 7 de Lasker :((( (ou un peu trop tard)
+-> 5rk1/p4qb1/1p1p3p/3Ppp2/PRP1P3/2N1BnPb/2Q4P/1R5K w - - 0 5 : noirs mieux, car roi très faible. 5rk1/p4qb1/1p1p3p/3Ppp2/PRP1P3/2N1BnPb/2Q4P/1R5K w - - 0 5... 5rk1/p5b1/1p1p3p/1N1P3q/PRP1Pp2/5n1b/2Q4P/2BR3K b - - 3 8
 
 
 
@@ -225,10 +239,9 @@ https://www.chessprogramming.org/Time_Management
 -> Nouveau sons/images
 -> Dans le negamax, renvoyer le coup à chaque fois, pour noter la ligne que l'ordi regarde?
 -> Pouvoir faire des flèches
--> Afficher les coordonnées des cases
 -> Faire des boutons pour faire des actions (ex copier ou coller le FEN/PGN, activer l'IA ou la changer...)
 -> Options : désactivation son, ...
--> Sons : ajouter checkmate, stealmate, promotion
+-> Sons : ajouter promotion
 -> Chargement FEN -> "auto complétion" si le FEN est incorrect
 -> Régler le clic (quand IA va jouer), qui affiche mal la pièce
 -> Montrer les pièces qui on étaient prises pendant la partie, ainsi que la différence matérielle
@@ -246,7 +259,6 @@ https://www.chessprogramming.org/Time_Management
 -> (changer épaisseur des flèches en fonction de leur importance?)
 -> Ordonner l'affichage des flèches (pour un fou, mettre le coup le plus court en dernier) (pour deux coups qui vont au même endroit, mettre le meilleur en dernier)
 -> Ajouter un éditeur de positions (ajouter/supprimer les pièces)
--> Montrer les pièces qui ont déjà été capturées
 -> Sons parfois mauvais (en passant par exemple...) -- à fix + rajouter bruits de mats...
 -> Binding pour jouer tout seul en ligne
 -> Ajout d'une gestion du temps par les IA
@@ -295,10 +307,9 @@ https://www.chessprogramming.org/Time_Management
 -> Rajouter la date dans les PGN
 -> Faire du smooth sur la barre d'évaluation
 -> Faire un graphe d'éval en fin de partie?
--> Mettre des + sur les flèches (comme il y'a des -...)
--> Faire un fonction pour tranformer une éval en son text (mat ou non)
+-> Mettre des + sur les flèches (comme il y'a des -...)?
+-> Faire un fonction pour tranformer une éval en son texte (mat ou non)
 -> Certains calculs sont peut-être en double dans l'affichage
--> Bug quand on clique sur une pièce qu'on veut prendre
 -> Echelle logarithmique pour la barre d'éval?
 -> Pourquoi quand y'a plus que des rois, ça continue?
 -> Gestion du temps bizarre? Car le temps affiché par GrogrosZero n'est pas vraiment le vrai (ni sa vitesse)
@@ -307,9 +318,10 @@ https://www.chessprogramming.org/Time_Management
 -> +/- mats : en fonction des couleurs, ou du joueur qui joue??
 -> Se débrouiller pour que les cases s'affichent bien (avec les flottants)
 -> Trouver une meilleure police de texte, qui prenne en compte les minuscules et majuscules (et soit un peu plus petite)
--> Rajouter les petites pièces pour la différence de matériel
--> Mauvais son pour le en passant
+-> Mauvais son pour le "en passant"
 -> Fins de parties : message + son
+-> +M7 -> #-7 pour les noirs? .. bof
+-> Barre d'éval : barre pour l'évaluation du coup le plus recherché par l'IA? ou éval du "meilleur coup"?
 
 
 ----- Réseaux de neurones -----
@@ -343,6 +355,7 @@ void testB() {
 // Main
 int main() {
 
+
     // Faire une fonction Init pour raylib?
 
     // Fenêtre resizable
@@ -355,7 +368,7 @@ int main() {
 
     // Initialisation de l'audio
     InitAudioDevice();
-    SetMasterVolume(1.0); // Trop faible...
+    SetMasterVolume(1.0);
 
     // Nombre d'images par secondes
     SetTargetFPS(fps);
@@ -386,7 +399,7 @@ int main() {
     monte_evaluator._attacks = 0.0;
     // monte_evaluator._piece_activity = 0.10; // En test pour la NJV
 
-    // Nombre de noeuds pour le jeu automatique de GrogrosZero
+    // Nombre de noeuds max pour le jeu automatique de GrogrosZero
     int grogros_nodes = 3000000;
 
     // Nombre de noeuds calculés par frame
@@ -607,6 +620,26 @@ int main() {
         // Fin de partie (à reset aussi...) (le son ne se lance pas...)
         // Calculer la fin de la partie ici une fois, pour éviter de la refaire?
 
+        // Plus de temps... (en faire une fonction)
+        if (t._time) {
+            if (t._time_black < 0) {
+                t._time = false;
+                t._time_black = 0;
+                play_end_sound();
+                t._is_game_over = true;
+                cout << "White won on time" << endl; // Pas toujours vrai car il peut y avoir des manques de matériel
+            }
+            if (t._time_white < 0) {
+                t._time = false;
+                t._time_white = 0;
+                play_end_sound();
+                t._is_game_over = true;
+                cout << "Black won on time" << endl;
+            }
+
+           
+        }
+
 
         // Calcul en mode auto
         if (grogros_auto && !t._is_game_over && t.is_mate() == -1 && t.game_over() == 0) {
@@ -616,23 +649,48 @@ int main() {
                 t.grogros_zero(&monte_evaluator, nodes_per_frame, true, _beta, _k_add);     
         }
 
+        
+        
+        
+        
+
         // Calcul pour les pièces blanches
+
+        // Nombre de noeuds que Grogros doit calculer (en fonction des contraintes de temps)
+        // En supposant que Grogros va à plus de 10k noeuds par seconde
+        int supposed_grogros_speed = 10000;
+        
+        
         if (grogroszero_play_white && !t._is_game_over && t.is_mate() == -1 && t.game_over() == 0) {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
-            if (t._player)
-                t.grogros_zero(&monte_evaluator, min(nodes_per_frame, grogros_nodes - t.total_nodes()), true, _beta, _k_add);
+            if (t._player) {
+                float tot_nodes = t.total_nodes();
+                float best_move_percentage_white = tot_nodes == 0 ? 0.05 :(float)t._nodes_children[t.best_monte_carlo_move()] / (float)t.total_nodes();
+                int max_move_time_white = time_to_play_move(t._time_white, t._time_black, 0.05 * (1 - best_move_percentage_white));
+                int grogros_timed_nodes_white = min(nodes_per_frame, supposed_grogros_speed * max_move_time_white / 1000);
+                t.grogros_zero(&monte_evaluator, min(!t._time ? nodes_per_frame : grogros_timed_nodes_white, grogros_nodes - t.total_nodes()), true, _beta, _k_add);
+            }
+                
             else
                 if (!is_playing() || true) // Pour que ça ne lag pas pour l'utilisateur 
                     t.grogros_zero(&monte_evaluator, nodes_per_user_frame, true, _beta, _k_add);     
         }
 
+        
+
         // Calcul pour les pièces noires
         if (grogroszero_play_black && !t._is_game_over && t.is_mate() == -1 && t.game_over() == 0) {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
-            if (!t._player)
-                t.grogros_zero(&monte_evaluator, min(nodes_per_frame, grogros_nodes - t.total_nodes()), true, _beta, _k_add);
+            if (!t._player) {
+                float tot_nodes = t.total_nodes();
+                float best_move_percentage_black = tot_nodes == 0 ? 0.05 :(float)t._nodes_children[t.best_monte_carlo_move()] / (float)t.total_nodes();
+                int max_move_time_black = time_to_play_move(t._time_black, t._time_white, 0.05 * (1 - best_move_percentage_black));
+                int grogros_timed_nodes_black = min(nodes_per_frame, supposed_grogros_speed * max_move_time_black / 1000);
+                t.grogros_zero(&monte_evaluator, min(!t._time ? nodes_per_frame : grogros_timed_nodes_black, grogros_nodes - t.total_nodes()), true, _beta, _k_add);
+            }
+                
             else
                 if (!is_playing() || true) // Pour que ça ne lag pas pour l'utilisateur
                     t.grogros_zero(&monte_evaluator, nodes_per_user_frame, true, _beta, _k_add);     
@@ -648,6 +706,8 @@ int main() {
                     max_move_time = time_to_play_move(t._time_white, t._time_black, 0.05 * (1 - best_move_percentage));
                 else
                     max_move_time = time_to_play_move(t._time_black, t._time_white, 0.05 * (1 - best_move_percentage));
+                // Temps que Grogros a pris pour ce tour là
+                // clock_t grogros_time = clock();
                 if (t._time_monte_carlo >= max_move_time)
                     t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true);
             }
@@ -883,27 +943,21 @@ int main() {
         }
         
 
-        // Dessins
-        BeginDrawing();
+        if (true || clock() - last_drawing_time > 1000 / max_drawing_fps) {
+            // Dessins
+            BeginDrawing();
 
-        // Dessin du plateau
-        t.draw();
-        // thread threadDraw(&Board::draw, &t);
-        // threadDraw.join();
-            
-        // Fin de la zone de dessin
-        EndDrawing();
+            // Dessin du plateau
+            t.draw();
+            // thread threadDraw(&Board::draw, &t);
+            // threadDraw.join();
+                
+            // Fin de la zone de dessin
+            EndDrawing();
 
+            last_drawing_time = clock();
+        }
 
-        // Create two threads
-        // thread thread1(test);
-        // thread thread2(testB);
-        // thread threadDraw(&Board::draw, &t);
-
-        // // Wait for the threads to finish
-        // thread1.join();
-        // thread2.join();
-    
 
     }
 

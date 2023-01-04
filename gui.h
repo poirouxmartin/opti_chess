@@ -19,6 +19,8 @@ static float screen_height = 945;
 
 // Nombre de FPS
 static int fps = 144;
+static int max_drawing_fps = 144; // Nombre d'updates max par secondes pour ces fonctions
+static clock_t last_drawing_time = 0;
 
 // Couleur de fond
 static Color background_color = {25, 25, 25, 255};
@@ -110,6 +112,7 @@ static Sound checkmate_sound;
 static Sound stealmate_sound;
 static Sound game_begin_sound;
 static Sound game_end_sound;
+static Sound promotion_sound;
 
 // Taille du plateau par rapport à la fenêtre
 static float board_scale = 0.7;
@@ -177,8 +180,8 @@ static float global_eval = 0.0f;
 static string global_eval_text = "+0.0";
 
 // Temps de base pour les joueurs (en ms)
-static int base_time_white = 60000;
-static int base_time_black = 60000;
+static int base_time_white = 600000;
+static int base_time_black = 600000;
 
 // Incrément (en ms)
 static int base_time_increment_white = 0000;
@@ -191,6 +194,9 @@ static int piece_gui_values[6] = {0, 1, 3, 3, 5, 9};
 static int base_material[6] = {0, 8, 2, 2, 2, 1};
 static int missing_w_material[6] = {0, 0, 0, 0, 0, 0};
 static int missing_b_material[6] = {0, 0, 0, 0, 0, 0};
+
+// Alphabet de taille 8
+static string abc8 = "abcdefgh";
 
 
 // Fonction pour dessiner une flèche
@@ -255,3 +261,6 @@ void highlight_tile(int, int);
 
 // Fonction qui déselectionne
 void unselect();
+
+// Fonction qui joue le son de fin de partie
+void play_end_sound();

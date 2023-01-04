@@ -115,6 +115,13 @@ int Board::move_to_int(int i, int j, int k, int l) {
 
 // Fonction qui ajoute un coup dans une liste de coups
 bool Board::add_move(uint_fast8_t i, uint_fast8_t j, uint_fast8_t k, uint_fast8_t l, int *iterator) {
+    // Si on dépasse le nombre de coups que l'on pensait possible dans une position
+    if (*iterator + 4 > _max_moves * 4) {
+        // cout << "Too many moves in the position : " << *iterator / 4 + 1 << "+" << endl;
+        return false;
+    }
+
+
     _moves[*iterator] = i;
     _moves[*iterator + 1] = j;
     _moves[*iterator + 2] = k;
@@ -484,6 +491,13 @@ bool Board::get_moves(bool pseudo, bool forbide_check) {
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             p = _array[i][j];
+
+            // Si on dépasse le nombre de coups que l'on pensait possible dans une position
+            if (iterator >= _max_moves * 4) {
+                cout << "Too many moves in the position : " << iterator / 4 + 1 << "+" << endl;
+                goto end_loops;
+            }
+                
             
             switch (p)
             {   
@@ -557,6 +571,8 @@ bool Board::get_moves(bool pseudo, bool forbide_check) {
         }
     }
 
+    end_loops:
+
     _moves[iterator] = -1;
     _got_moves = iterator / 4;    
 
@@ -606,6 +622,7 @@ bool Board::attacked(int i, int j) {
     Board b;
     b.copy_data(*this);
     b._player = !b._player;
+    b._half_moves_count = 0;
     b.get_moves(true);
     for (int m = 0; m < b._got_moves; m++) {
         if (i == b._moves[4 * m + 2] && j == b._moves[4 * m + 3])
@@ -1944,6 +1961,7 @@ void load_resources() {
         stealmate_sound = LoadSound("../resources/sounds/stealmate.mp3");
         game_begin_sound = LoadSound("../resources/sounds/game_begin.mp3");
         game_end_sound = LoadSound("../resources/sounds/game_end.mp3");
+        promotion_sound = LoadSound("../resources/sounds/promotion.mp3");
 
         // Police de l'écriture
         text_font = LoadFont("../resources/fonts/RobotReaversItalic-4aa4.ttf");
@@ -2160,14 +2178,18 @@ void Board::draw() {
     ClearBackground(background_color);
 
     // Plateau
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 8; i++)
+        for (int j = 0; j < 8; j++)
+            DrawRectangle(board_padding_x + tile_size * j, board_padding_y + tile_size * i, tile_size, tile_size, ((i + j) % 2 == 1) ? board_color_dark : board_color_light);
+
+
+    for (int i = 0; i < 8; i++)
         for (int j = 0; j < 8; j++) {
-            if ((i + j) % 2 == 1)
-                DrawRectangle(board_padding_x + tile_size * j, board_padding_y + tile_size * i, tile_size, tile_size, board_color_dark);
-            else
-                DrawRectangle(board_padding_x + tile_size * j, board_padding_y + tile_size * i, tile_size, tile_size, board_color_light);
-        }
-    }
+            if (j == 0 + 7 * board_orientation)
+                DrawTextEx(text_font, to_string(i + 1).c_str(), {board_padding_x, board_padding_y + tile_size * orientation_index(7 - i)}, text_size / 2, font_spacing, ((i + j) % 2 == 1) ? board_color_light : board_color_dark);
+            if (i == 0 + 7 * board_orientation)
+                DrawTextEx(text_font, abc8.substr(j, 1).c_str(), {board_padding_x + tile_size * (orientation_index(j) + 1) - text_size / 2, board_padding_y + tile_size * 8 - text_size / 2}, text_size / 2, font_spacing, ((i + j) % 2 == 1) ? board_color_light : board_color_dark);
+        }    
 
 
     // Surligne du dernier coup joué
@@ -2413,6 +2435,9 @@ void Board::play_move_sound(int i, int j, int k, int l) {
 
     // Si pas d'échecs
     else {
+        // Promotions
+        if ((p1 == 1 || p1 == 7) && (k == 0 || k == 7))
+            return PlaySound(promotion_sound);
 
         // Prises (ou en passant)
         if (p2 != 0 || ((p1 == 1 || p1 == 7) && j != l)) {
@@ -3237,6 +3262,8 @@ void Board::get_king_safety(float game_adv, int piece_attack, int piece_defense,
 int Board::is_mate() {
 
     // Pour accélérer en ne re calculant pas forcément les coups (marche avec coups légaux OU illégaux)
+    int half_moves = _half_moves_count;
+    _half_moves_count = 0;
     if (_got_moves == -1)
         get_moves();
 
@@ -3248,6 +3275,7 @@ int Board::is_mate() {
         b._player = _player;
         b._color = _color;
         if (!b.in_check()) {
+            _half_moves_count = half_moves;
             _got_moves = -1;
             return -1; 
         }
@@ -3255,11 +3283,13 @@ int Board::is_mate() {
     }
 
     if (in_check()) {
+        _half_moves_count = half_moves;
         _got_moves = -1;
         return 1;  
     }
               
     _got_moves = -1;
+    _half_moves_count = half_moves;
     return 0;
     
 }
@@ -3747,9 +3777,20 @@ void Board::get_pawn_structure(float adv) {
     int s_white[8];
     int s_black[8];
 
+    // Placement des pions (6 lignes suffiraient théoriquement... car on ne peut pas avoir de pions sur la première ou la dernière rangée...)
+    int pawns_white[8][8];
+    int pawns_black[8][8];
+
     for (int i = 0; i < 8; i++) {
         s_white[i] = 0;
         s_black[i] = 0;
+    }
+
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            pawns_white[i][j] = 0;
+            pawns_black[i][j] = 0;
+        }
     }
 
 
@@ -3757,6 +3798,8 @@ void Board::get_pawn_structure(float adv) {
         for (int j = 0; j < 8; j++) {
             s_white[j] += (_array[i][j] == 1);
             s_black[j] += (_array[i][j] == 7);
+            pawns_white[i][j] = (_array[i][j] == 1);
+            pawns_black[i][j] = (_array[i][j] == 7);
         }
     }
 
@@ -3783,13 +3826,33 @@ void Board::get_pawn_structure(float adv) {
 
     // Pions passés
     int passed_pawn = 50;
+    // Table de valeur des pions passés en fonction de leur avancement sur le plateau
+    int passed_pawns[8] = {0, 10, 15, 20, 25, 35, 50, 0};
     float passed_adv_factor = 3; // En fonction de l'advancement de la partie
     float passed_adv = 1 * (1 + (passed_adv_factor - 1) * adv);
+    
     for (int i = 0; i < 8; i++) {
-        _pawn_structure += (s_white[i] >= 1) * passed_pawn * (s_black[i] == 0 && (i == 0 || s_black[i - 1] == 0) && (i == 7 || s_black[i + 1] == 0)) * passed_adv;
-        _pawn_structure -= (s_black[i] >= 1) * passed_pawn * (s_white[i] == 0 && (i == 0 || s_white[i - 1] == 0) && (i == 7 || s_white[i + 1] == 0)) * passed_adv;
+        // On prend en compte seulement le pion le plus avancé de la colonne (car les autre seraient bloqués derrière)
+        if (s_white[i] >= 1) {
+            for (int j = 6; j > 0; j--) {
+                if (pawns_white[j][i]) {
+                    _pawn_structure += passed_pawns[j] * (s_black[i] == 0 && (i == 0 || s_black[i - 1] == 0) && (i == 7 || s_black[i + 1] == 0)) * passed_adv;
+                    break;
+                }
+            }
+        }
+
+        if (s_black[i] >= 1) {
+            for (int j = 1; j < 7; j++) {
+                if (pawns_black[j][i]) {
+                    _pawn_structure += passed_pawns[7 - j] * (s_white[i] == 0 && (i == 0 || s_white[i - 1] == 0) && (i == 7 || s_white[i + 1] == 0)) * passed_adv;
+                    break;
+                }
+            }
+        }
+        
     }
-    // Doit aussi dépendre de l'avancement du pion... On doit vérifier si le pion adverse est devant ou derrière l'autre pion...
+    // On doit encore vérifier si le pion adverse est devant ou derrière l'autre pion...
 
     return;
 }
@@ -4075,12 +4138,13 @@ void unselect() {
 void Board::reset_timers() {
     // Temps par joueur (en ms)
     _time_white = base_time_white;
-    _time_black = base_time_white;
+    _time_black = base_time_black;
 
     // Incrément (en ms)
     _time_increment_white = base_time_increment_white;
     _time_increment_black = base_time_increment_black;
 }
+
 
 // Fonction qui remet le plateau dans sa position initiale
 void Board::restart() {
@@ -4118,4 +4182,9 @@ int Board::material_difference() {
     }
 
     return mat;
+}
+
+// Fonction qui joue le son de fin de partie
+void play_end_sound() {
+    PlaySound(game_end_sound);
 }
