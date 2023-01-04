@@ -6,6 +6,7 @@ run:
 	# g++ ../*.cpp -o opti_chess.exe -O3 -flto -static -I ../include/ -L ../lib/ -lraylib -lpthread -lopengl32 -lgdi32 -lwinmm -march=native -mtune=native -std=c++20
 	g++ ../*.cpp -o opti_chess.exe -Ofast -flto -static -I ../include/ -L ../lib/ -lraylib -lpthread -lopengl32 -lgdi32 -lwinmm -march=native -mtune=native -march=skylake -std=c++20 -fopenmp -mavx2 -fstrict-aliasing
 	# -fopenmp -march=skylake -mavx2 -funroll-loops -fstrict-aliasing
+	# -fprofile-generate -fprofile-use
 
 
 	./opti_chess
