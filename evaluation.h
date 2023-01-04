@@ -21,8 +21,8 @@ class Evaluator {
 
     // Valeur des pièces
     // Valeurs faites à la main (à revoir, surtout pour les endgame)
-    float _pawn_value_begin = 0.92;
-    float _pawn_value_end = 0.95;
+    float _pawn_value_begin = 0.85;
+    float _pawn_value_end = 0.92;
     float _knight_value_begin = 3.2;
     float _knight_value_end = 3.1;
     float _bishop_value_begin = 3.4;
@@ -63,10 +63,10 @@ class Evaluator {
                                         {   0,    0,    0,    0,    0,    0,    0,    0}   };
 
     int _pos_pawn_end[8][8]         {   {   0,    0,    0,    0,    0,    0,    0,    0},
-                                        { 200,  150,  150,  150,  150,  150,  150,  200},
-                                        { 150,  125,  125,  125,  125,  125,  125,  150},
                                         { 100,  100,  100,  100,  100,  100,  100,  100},
                                         {  50,   50,   50,   50,   50,   50,   50,   50},
+                                        {  25,   25,   25,   25,   25,   25,   25,   25},
+                                        {  20,   20,   20,   20,   20,   20,   20,   20},
                                         {  10,   10,   10,   10,   10,   10,   10,   10},
                                         { -20,  -40,  -30,    0,    0,  -30,  -40,  -20},
                                         {   0,    0,    0,    0,    0,    0,    0,    0}   };

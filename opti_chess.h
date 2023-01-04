@@ -8,6 +8,7 @@
 #include "neural_network.h"
 #include <vector>
 #include <map>
+#include <cstdint>
 using namespace std;
 
 
@@ -41,6 +42,12 @@ extern uint_fast8_t _global_moves[1000];
 extern int _global_moves_size;
 
 
+// Nombre maximum de coups légaux par position estimé
+// const int _max_moves = 218;
+const int _max_moves = 100; // ça n'arrivera quasi jamais que ça dépasse ce nombre
+
+
+// uint_fast4_t test_int_4;
 
 class Board {
     
@@ -59,15 +66,16 @@ class Board {
                                     {10, 8, 9, 11, 12, 9, 8, 10}};
 
         // Coups possibles
-        // (Augmenter si besoin)
-        // On suppose ici que n_moves < 1000 / 4
-        uint_fast8_t _moves[1000];        
+        // Nombre max de coups légaux dans une position : 218 -> 872 (car 1 moves = 4 coord)
+        uint_fast8_t _moves[_max_moves * 4];        
 
         // Les coups sont-ils actualisés? Si non : -1, sinon, _got_moves représente le nombre de coups jouables
         int _got_moves = -1;
 
         // Ordre des coups à jouer (pour l'optimisation)
-        uint_fast8_t _move_order[250];
+        // uint_fast8_t _move_order[_max_moves];
+        uint_fast8_t _move_order[1]; // Car inutile si on utilise pas negamax
+
         // Les coups sont-ils triés?
         bool _sorted_moves = false;
         // Les coups sont-ils pseudo-légaux? (sinon, légaux...)
