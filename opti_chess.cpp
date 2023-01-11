@@ -854,6 +854,9 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board, bool
     _safety = false;
     _structure = false;
     _attacks = false;
+    _opposition = false;
+    _material = false;
+    _advancement = false;
 
     _new_board = true;
     
@@ -903,7 +906,12 @@ void Board::make_index_move(int i, bool pgn, bool add_to_list) {
 
 
 // Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
-float Board::game_advancement() {
+void Board::game_advancement() {
+    if (_advancement)
+        return;
+
+    _adv = 0;
+    
     // Définition personnelle de l'avancement d'une partie : (p_tot - p) / p_tot, où p_tot = le total matériel (du joueur adverse? ou les deux?) en début de partie, et p = le total matériel (du joueur adverse? ou les deux?) actuellement
     const int adv_pawn = 1;
     const int adv_knight = 10;
@@ -924,10 +932,34 @@ float Board::game_advancement() {
         }
     }
 
-    return ((float)p_tot - (float)p) / (float)p_tot;
+    _adv = (p_tot - p) / p_tot;
+
+    return;
 
 }
 
+// Fonction qui compte le matériel sur l'échiquier
+void Board::count_material(Evaluator *eval) {
+    if (_material)
+        return;
+
+    _material_count = 0;
+
+    int piece;
+    int value;
+
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            int piece = _array[i][j];
+            if (piece) {
+                value = eval->_pieces_value_begin[(piece - 1) % 6] * (1 - _adv) + eval->_pieces_value_end[(piece - 1) % 6] * _adv;
+                _material_count += (piece < 7) ? value : -value;
+            }
+        }
+    }
+
+    _material = true;
+}
 
 
 // Fonction qui évalue la position à l'aide d'heuristiques
@@ -1044,36 +1076,51 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     int bishop_w = 0; int bishop_b = 0;
 
     // Avancement de la partie
-    float adv = game_advancement();
-    
+    game_advancement();
+
+
+    if (display) {
+        cout << "*** EVALUATION ***" << endl;
+    }
+
+
+    // Matériel
+    float material = 0;
+    if (eval->_piece_activity != 0) {
+        count_material(eval);
+        material = _material_count * eval->_piece_value / 100;
+        if (display)
+            cout << "material : " << material << endl;
+        _evaluation += material;
+    }
+
+
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             p = _array[i][j];
            
             switch (p)
             {   
-                
                 case 0: break;
-                case 1:  _evaluation += (eval->_pawn_value_begin   * (1 - adv) + eval->_pawn_value_end   * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_pawn_begin[7 - i][j]   * (1 - adv) + eval->_pos_pawn_end[7 - i][j]   * adv); break;
-                case 2:  _evaluation += (eval->_knight_value_begin * (1 - adv) + eval->_knight_value_end * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_knight_begin[7 - i][j] * (1 - adv) + eval->_pos_knight_end[7 - i][j] * adv); break;
-                case 3:  _evaluation += (eval->_bishop_value_begin * (1 - adv) + eval->_bishop_value_end * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_bishop_begin[7 - i][j] * (1 - adv) + eval->_pos_bishop_end[7 - i][j] * adv); bishop_w += 1; break;
-                case 4:  _evaluation += (eval->_rook_value_begin   * (1 - adv) + eval->_rook_value_end   * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_rook_begin[7 - i][j]   * (1 - adv) + eval->_pos_rook_end[7 - i][j]   * adv); break;
-                case 5:  _evaluation += (eval->_queen_value_begin  * (1 - adv) + eval->_queen_value_end  * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_queen_begin[7 - i][j]  * (1 - adv) + eval->_pos_queen_end[7 - i][j]  * adv); break;
-                case 6:  _evaluation += (eval->_king_value_begin   * (1 - adv) + eval->_king_value_end   * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_king_begin[7 - i][j]   * (1 - adv) + eval->_pos_king_end[7 - i][j]   * adv); break;
-                case 7:  _evaluation -= (eval->_pawn_value_begin   * (1 - adv) + eval->_pawn_value_end   * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_pawn_begin[i][j]       * (1 - adv) + eval->_pos_pawn_end[i][j]       * adv); break;
-                case 8:  _evaluation -= (eval->_knight_value_begin * (1 - adv) + eval->_knight_value_end * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_knight_begin[i][j]     * (1 - adv) + eval->_pos_knight_end[i][j]     * adv); break;
-                case 9:  _evaluation -= (eval->_bishop_value_begin * (1 - adv) + eval->_bishop_value_end * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_bishop_begin[i][j]     * (1 - adv) + eval->_pos_bishop_end[i][j]     * adv); bishop_b += 1; break;
-                case 10: _evaluation -= (eval->_rook_value_begin   * (1 - adv) + eval->_rook_value_end   * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_rook_begin[i][j]       * (1 - adv) + eval->_pos_rook_end[i][j]       * adv); break;
-                case 11: _evaluation -= (eval->_queen_value_begin  * (1 - adv) + eval->_queen_value_end  * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_queen_begin[i][j]      * (1 - adv) + eval->_pos_queen_end[i][j]      * adv); break;
-                case 12: _evaluation -= (eval->_king_value_begin   * (1 - adv) + eval->_king_value_end   * adv) * eval->_piece_value + eval->_piece_positioning * (eval->_pos_king_begin[i][j]       * (1 - adv) + eval->_pos_king_end[i][j]       * adv); break;
+                case 1:  _evaluation += eval->_piece_positioning * (eval->_pos_pawn_begin[7 - i][j]   * (1 - _adv) + eval->_pos_pawn_end[7 - i][j]   * _adv); break;
+                case 2:  _evaluation += eval->_piece_positioning * (eval->_pos_knight_begin[7 - i][j] * (1 - _adv) + eval->_pos_knight_end[7 - i][j] * _adv); break;
+                case 3:  _evaluation += eval->_piece_positioning * (eval->_pos_bishop_begin[7 - i][j] * (1 - _adv) + eval->_pos_bishop_end[7 - i][j] * _adv); bishop_w += 1; break;
+                case 4:  _evaluation += eval->_piece_positioning * (eval->_pos_rook_begin[7 - i][j]   * (1 - _adv) + eval->_pos_rook_end[7 - i][j]   * _adv); break;
+                case 5:  _evaluation += eval->_piece_positioning * (eval->_pos_queen_begin[7 - i][j]  * (1 - _adv) + eval->_pos_queen_end[7 - i][j]  * _adv); break;
+                case 6:  _evaluation += eval->_piece_positioning * (eval->_pos_king_begin[7 - i][j]   * (1 - _adv) + eval->_pos_king_end[7 - i][j]   * _adv); break;
+                case 7:  _evaluation -= eval->_piece_positioning * (eval->_pos_pawn_begin[i][j]       * (1 - _adv) + eval->_pos_pawn_end[i][j]       * _adv); break;
+                case 8:  _evaluation -= eval->_piece_positioning * (eval->_pos_knight_begin[i][j]     * (1 - _adv) + eval->_pos_knight_end[i][j]     * _adv); break;
+                case 9:  _evaluation -= eval->_piece_positioning * (eval->_pos_bishop_begin[i][j]     * (1 - _adv) + eval->_pos_bishop_end[i][j]     * _adv); bishop_b += 1; break;
+                case 10: _evaluation -= eval->_piece_positioning * (eval->_pos_rook_begin[i][j]       * (1 - _adv) + eval->_pos_rook_end[i][j]       * _adv); break;
+                case 11: _evaluation -= eval->_piece_positioning * (eval->_pos_queen_begin[i][j]      * (1 - _adv) + eval->_pos_queen_end[i][j]      * _adv); break;
+                case 12: _evaluation -= eval->_piece_positioning * (eval->_pos_king_begin[i][j]       * (1 - _adv) + eval->_pos_king_end[i][j]       * _adv); break;
             }
 
         }
     }
 
     if (display) {
-        cout << "*** EVALUATION ***" << endl;
-        cout << "pieces and their position : " << _evaluation << endl;
+        cout << "pieces positionning : " << _evaluation - material << endl;
     }
 
 
@@ -1120,7 +1167,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     // Droits de roques
     float castling_rights = 0;
     if (eval->_castling_rights != 0) {
-        castling_rights += eval->_castling_rights * (_k_castle_w + _q_castle_w - _k_castle_b - _q_castle_b) * (1 - adv);
+        castling_rights += eval->_castling_rights * (_k_castle_w + _q_castle_w - _k_castle_b - _q_castle_b) * (1 - _adv);
         if (display)
             cout << "castling rights : " << castling_rights << endl;
         _evaluation += castling_rights;
@@ -1129,7 +1176,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     // Sécurité du roi
     float king_safety = 0;
     if (eval->_king_safety != 0) {
-        get_king_safety(adv);
+        get_king_safety();
         king_safety = _king_safety * eval->_king_safety;
         if (display) {
             cout << "king safety : " << king_safety << endl;
@@ -1142,7 +1189,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     // Structure de pions
     float pawn_structure = 0;
     if (eval->_pawn_structure != 0) {
-        get_pawn_structure(adv);
+        get_pawn_structure();
         pawn_structure = _pawn_structure * eval->_pawn_structure;
         if (display)
             cout << "pawn structure : " << pawn_structure << endl;
@@ -1396,6 +1443,9 @@ bool Board::undo() {
     _safety = false;
     _structure = false;
     _attacks = false;
+    _opposition = false;
+    _material = false;
+    _advancement = false;
 
     _new_board = true;
     
@@ -1643,6 +1693,9 @@ void Board::from_fen(string fen, bool fen_in_pgn, bool keep_headings) {
     _safety = false;
     _structure = false;
     _attacks = false;
+    _opposition = false;
+    _material = false;
+    _advancement = false;
 
     _last_move[0] = -1;
     _last_move[1] = -1;
@@ -1661,6 +1714,9 @@ void Board::from_fen(string fen, bool fen_in_pgn, bool keep_headings) {
 
     _is_game_over = false;
 
+    // Oriente le plateau dans pour le joueur qui joue
+    board_orientation = _player;
+
 }
 
 
@@ -1671,6 +1727,8 @@ void Board::to_fen() {
     string s = "";
     int p;
     int it = 0;
+
+    const char *piece_letters = "PNBRQKpnbrqk";
 
     for (int i = 7; i >= 0; i--) {
         for (int j = 0; j < 8; j++) {
@@ -1684,21 +1742,7 @@ void Board::to_fen() {
                     it = 0;
                 }
 
-                switch (p)
-                {   
-                    case 1: s += "P"; break;
-                    case 2: s += "N"; break;
-                    case 3: s += "B"; break;
-                    case 4: s += "R"; break;
-                    case 5: s += "Q"; break;
-                    case 6: s += "K"; break;
-                    case 7: s += "p"; break;
-                    case 8: s += "n"; break;
-                    case 9: s += "b"; break;
-                    case 10: s += "r"; break;
-                    case 11: s += "q"; break;
-                    case 12: s += "k"; break;
-                }
+                s += piece_letters[p - 1];
 
             }
 
@@ -1734,6 +1778,8 @@ void Board::to_fen() {
 
 
     _fen = s;
+
+    return;
     
 }
 
@@ -3152,7 +3198,7 @@ int Board::total_nodes() {
 
 
 // Fonction qui calcule la sécurité des rois
-void Board::get_king_safety(float game_adv, int piece_attack, int piece_defense, int pawn_attack, int pawn_defense, int edge_defense) {
+void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack, int pawn_defense, int edge_defense) {
 
     if (_safety)
         return;
@@ -3230,8 +3276,8 @@ void Board::get_king_safety(float game_adv, int piece_attack, int piece_defense,
     w_king_weakness -= pawn_defense * (_k_castle_w + _q_castle_w) * 2 * proximity_pawn_defense;
     b_king_weakness -= pawn_defense * (_k_castle_b + _q_castle_b) * 2 * proximity_pawn_defense;
 
-    w_king_weakness += edge_defense * min(abs(w_king_i - (-1)), abs((w_king_i) - 8)) * min(abs(w_king_j - (-1)), abs((w_king_j) - 8)) * (1 - 2 * game_adv);
-    b_king_weakness += edge_defense * min(abs(b_king_i - (-1)), abs((b_king_i) - 8)) * min(abs(b_king_j - (-1)), abs((b_king_j) - 8)) * (1 - 2 * game_adv);
+    w_king_weakness += edge_defense * min(abs(w_king_i - (-1)), abs((w_king_i) - 8)) * min(abs(w_king_j - (-1)), abs((w_king_j) - 8)) * (1 - 2 * _adv);
+    b_king_weakness += edge_defense * min(abs(b_king_i - (-1)), abs((b_king_i) - 8)) * min(abs(b_king_j - (-1)), abs((b_king_j) - 8)) * (1 - 2 * _adv);
 
 
     // Potentiel d'attaque de chaque pièce (pion, caval, fou, tour, dame)
@@ -3762,13 +3808,17 @@ string _all_positions[52];
 
 
 // Fonction qui calcule la structure de pions
-void Board::get_pawn_structure(float adv) {
+void Board::get_pawn_structure() {
     // Améliorations : 
     // Nombre d'ilots de pions
     // Doit dépendre de l'avancement de la partie
     // Pions faibles
     // Contrôle des cases
     // Pions passés
+
+
+    if (_structure)
+        return;
 
 
     _pawn_structure = 0;
@@ -3806,7 +3856,7 @@ void Board::get_pawn_structure(float adv) {
     // Pions isolés
     int isolated_pawn = -50;
     float isolated_adv_factor = 0.3; // En fonction de l'advancement de la partie
-    float isolated_adv = 1 * (1 + (isolated_adv_factor - 1) * adv);
+    float isolated_adv = 1 * (1 + (isolated_adv_factor - 1) * _adv);
 
     for (int i = 0; i < 8; i++) {
         if (s_white[i] > 0 && (i == 0 || s_white[i - 1] == 0) && (i == 7 || s_white[i + 1] == 0))
@@ -3818,7 +3868,7 @@ void Board::get_pawn_structure(float adv) {
     // Pions doublés (ou triplés...)
     int doubled_pawn = -25;
     float doubled_adv_factor = 0.6; // En fonction de l'advancement de la partie
-    float doubled_adv = 1 * (1 + (doubled_adv_factor - 1) * adv);
+    float doubled_adv = 1 * (1 + (doubled_adv_factor - 1) * _adv);
     for (int i = 0; i < 8; i++) {
         _pawn_structure += (s_white[i] >= 2) * doubled_pawn * (s_white[i] - 1) * doubled_adv;
         _pawn_structure -= (s_black[i] >= 2) * doubled_pawn * (s_black[i] - 1) * doubled_adv;
@@ -3829,7 +3879,7 @@ void Board::get_pawn_structure(float adv) {
     // Table de valeur des pions passés en fonction de leur avancement sur le plateau
     int passed_pawns[8] = {0, 10, 15, 20, 25, 35, 50, 0};
     float passed_adv_factor = 3; // En fonction de l'advancement de la partie
-    float passed_adv = 1 * (1 + (passed_adv_factor - 1) * adv);
+    float passed_adv = 1 * (1 + (passed_adv_factor - 1) * _adv);
     
     for (int i = 0; i < 8; i++) {
         // On prend en compte seulement le pion le plus avancé de la colonne (car les autre seraient bloqués derrière)
