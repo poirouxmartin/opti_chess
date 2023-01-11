@@ -19,35 +19,11 @@ class Evaluator {
     float _kings_opposition = 0.75;
 
 
-    // Valeur des pièces
-    // Valeurs faites à la main (à revoir, surtout pour les endgame)
-    float _pawn_value_begin = 0.85;
-    float _pawn_value_end = 0.92;
-    float _knight_value_begin = 3.2;
-    float _knight_value_end = 3.1;
-    float _bishop_value_begin = 3.4;
-    float _bishop_value_end = 3.5;
-    float _rook_value_begin = 4.8;
-    float _rook_value_end = 5.8;
-    float _queen_value_begin = 9.8;
-    float _queen_value_end = 10.2;
-    float _king_value_begin = 1000.0;
-    float _king_value_end = 1000.0;
+    // Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
+    int _pieces_value_begin[6] = {85, 320, 340, 480, 980, 100000};
 
-    // http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
-    // float _pawn_value_begin = 0.82;
-    // float _pawn_value_end = 0.94;
-    // float _knight_value_begin = 3.37;
-    // float _knight_value_end = 2.81;
-    // float _bishop_value_begin = 3.65;
-    // float _bishop_value_end = 2.97;
-    // float _rook_value_begin = 4.77;
-    // float _rook_value_end = 5.12;
-    // float _queen_value_begin = 10.25;
-    // float _queen_value_end = 9.36;
-    // float _king_value_begin = 120.0;
-    // float _king_value_end = 120.0;
-
+    // Valeurs en fin de partie
+    int _pieces_value_end[6] = {92, 310, 350, 580, 1020, 100000};
 
     // Positionnement des pièces
     
