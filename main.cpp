@@ -7,6 +7,9 @@
 // #include <Windows.h>
 
 
+// Répertoire git : Documents/Info/Echecs/opti_chess/c++_git
+
+
 /* TODO
 
 
@@ -35,6 +38,7 @@ https://www.chessprogramming.org/Pawn_Structure
 https://www.chessprogramming.org/Time_Management
 https://www.chessprogramming.org/Encoding_Moves#MoveIndex
 https://lichess.org/page/accuracy
+http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
 
 
 
@@ -209,7 +213,6 @@ https://lichess.org/page/accuracy
 -> OpenAI propose un diviser pour reigner pour paralléliser GrogrosZero
 -> Stocker les roques dans un tableau plutôt que 4 valeurs séparées
 -> Est-ce plus rapide de mettre des boucles simples plutôt que double? while plutôt que for?
--> 8/7p/2k5/8/1pPKP1P1/5r1P/PP3r2/3R4 w - - 0 5 : une tour de moins et égal?...
 -> Endgame : la force des pièces dépend du potentiel des pions (pièces seules = bof)
 -> Pourquoi parfois le regarde pas assez les bons coups?
 -> GrogrosZero, développe tes pièces !!!
@@ -219,8 +222,7 @@ https://lichess.org/page/accuracy
 -> Refaire les game_over() de façon plus propre, et dire quand la partie est finie dans la GUI (+ son de fin)
 -> Plein de calculs en double (voir appels de fonctions... is_mate()?)
 -> Faire des tables d'attaque (par exemple entre roi et dame, cavalier...)
--> Notations : 6k1/5pp1/Q1p3q1/6B1/P6K/1p2r3/8/5R2 b - - 49 92 : De4#???
--> q5k1/2p2pp1/8/7p/3RP3/5K2/P1P2PPP/8 w - - 0 4 = seulement -0.62??? ... king safety bizarre
+-> Notations : 6k1/5pp1/Q1p3q1/6B1/P6K/1p2r3/8/5R2 b - - 99 92 : De4#???
 -> Refaire toute l'architecture avec les get_moves(), pour que ça prenne tout en compte (sans le faire dans l'évaluation)
 -> Améliorer la recherche des coups... quand c'est dans les coups mauvais, ça ne fait plus la différence... recherche -> 0% rapidement, et le k_add prend le dessus
 -> 5rk1/p4qb1/1p1p3p/3Ppp2/PRP1P3/2N1BnPb/2Q4P/1R5K w - - 0 5 : noirs mieux, car roi très faible. 5rk1/p4qb1/1p1p3p/3Ppp2/PRP1P3/2N1BnPb/2Q4P/1R5K w - - 0 5... 5rk1/p5b1/1p1p3p/1N1P3q/PRP1Pp2/5n1b/2Q4P/2BR3K b - - 3 8
@@ -232,6 +234,8 @@ https://lichess.org/page/accuracy
 -> Fonction pour le positionnement des pièces
 -> Positionnement des pièces trop éxagéré?
 -> Retirer tous les switch
+-> Position des pièces : ajouter le middle game? sinon il mettra pas sa dame au milieu?
+-> q5k1/2p2pp1/8/7p/2BRP3/5K2/P1P2PPP/8 w - - 0 4
 
 
 ----- Interface utilisateur -----
@@ -327,6 +331,7 @@ https://lichess.org/page/accuracy
 -> Mettre le screenshot dans le presse-papier?
 -> Faire un readme
 -> Faire un truc pour montrer la menace (changer le trait du joueur)
+-> Cliquer pour jouer quand le moteur est allumé
 
 
 ----- Réseaux de neurones -----
@@ -515,8 +520,9 @@ int main() {
         }
 
         // Retourne le plateau
-        if (IsKeyPressed(KEY_F))
+        if (IsKeyPressed(KEY_F)) {
             switch_orientation();
+        }
 
         // Recommencer une partie
         if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_N)) {
@@ -555,14 +561,11 @@ int main() {
         //     cout << "loaded PGN : " << pgn << endl;
         // }
 
-
         // Analyse de partie sur chess.com (A)
         if (IsKeyPressed(KEY_Q)) {
             OpenURL("https://www.chess.com/analysis");
         }
             
-
-
         // Screenshot
         if (IsKeyPressed(KEY_TAB)) {
             string screenshot_name = "../resources/screenshots/" + to_string(time(0)) + ".png";
@@ -582,7 +585,6 @@ int main() {
             cout << "first free index : " << _monte_buffer.get_first_free_index() << endl;
         }
         
-
         // GrogrosZero
         if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyDown(KEY_G)) {
             if (!_monte_buffer._init)
@@ -607,14 +609,12 @@ int main() {
             grogros_auto = !grogros_auto;            
         }
 
-
         // Grogros zero self play
         if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_P)) {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
             grogros_play = !grogros_play;            
         }
-
 
         // Affichage des flèches
         if (IsKeyPressed(KEY_H)) {
@@ -655,9 +655,6 @@ int main() {
                 t.grogros_zero(&monte_evaluator, nodes_per_frame, true, _beta, _k_add);     
         }
 
-        
-        
-        
         
 
         // Calcul pour les pièces blanches
@@ -729,10 +726,10 @@ int main() {
             t.reset_all(true, true);
         }
 
+        // Affichage des coups légaux
         if (IsKeyPressed(KEY_D)) {
             t.display_moves(true);
         }
-
 
         // Mont-Carlo, en regardant les mats/pats
         if (IsKeyPressed(KEY_T)) {
@@ -764,6 +761,7 @@ int main() {
             // cout << "repetition : " << (is_in(t.simple_position(), _all_positions, _total_positions - 1)) << endl;
         }
 
+        // Evalue la position et renvoie les composantes
         if (IsKeyPressed(KEY_E)) {
             // t.evaluate(monte_evaluator, true, true);
             // t.evaluate_int(&monte_evaluator, true, false, &grogros_network);
@@ -771,12 +769,10 @@ int main() {
             // cout << t._evaluation << endl;
         }
             
-
-
         // Undo
         IsKeyPressed(KEY_U) && t.undo(); 
 
-        // Modification des paramètres
+        // Modification des paramètres de recherche de GrogrosZero
         if (IsKeyPressed(KEY_KP_ADD))
             _beta *= 1.1;
 
@@ -825,8 +821,7 @@ int main() {
             _k_add = 5000;
         }
 
-
-        // Joue le coup recommandé par l'algorithme de Monte-Carlo
+        // Joue le coup recommandé par l'algorithme de GrogrosZero
         if (IsKeyPressed(KEY_P)) {
             if (t._tested_moves > 0) {
                 t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true);

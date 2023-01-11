@@ -8,7 +8,6 @@
 //#include <windows.h>
 
 
-
 // Fonction qui renvoie si un entier appartient à un intervalle
 bool is_in(int x, int min, int max) {
     return (x >= min && x <= max);
@@ -52,7 +51,7 @@ int move_power(float n, float range, float min) {
     return k * pow(r, (float)(n / range));
 }
 
-
+// Fonction qui fait un softmax
 void softmax(int* input, int size, double beta, int k_add) {
     float r = 10000.0;
 
@@ -80,7 +79,6 @@ void softmax(int* input, int size, double beta, int k_add) {
 }
 
 
-
 // Fonction pour générer une seed
 int generate_seed() {
     chrono::high_resolution_clock::duration d = chrono::high_resolution_clock::now().time_since_epoch();
@@ -88,7 +86,6 @@ int generate_seed() {
 
     return seed;
 }
-
 
 
 // Fonction qui renvoie un entier aléatoire entre deux entiers (le second non inclus)
@@ -171,7 +168,6 @@ int pick_random_good_move(int* l, int n, int color, bool print, double beta, int
 }
 
 
-
 // Fonction qui renvoie la valeur maximum d'une liste d'entiers
 int max_value(int* l, int n) {
     int max = -2147483647;
@@ -196,7 +192,6 @@ int min_value(int* l, int n) {
 
 }
 
-
 // Fonction qui renvoie la valeur minimum d'une liste de flottans
 int min_value(float* l, int n) {
     float min = 2147483647;
@@ -217,7 +212,6 @@ void print_array(int l[], int n) {
     cout << "]" << endl;
 }
 
-
 // Fonction qui affiche une liste d'entiers 8 bits fast (array)
 void print_array(int_fast8_t l[], int n) {
     cout << "[|";
@@ -234,7 +228,6 @@ void print_array(uint_fast8_t l[], int n) {
     cout << "]" << endl;
 }
 
-
 // Fonction qui affiche une liste de flottants (array)
 void print_array(float l[], int n) {
     cout << "[|";
@@ -242,7 +235,6 @@ void print_array(float l[], int n) {
         cout << " " << l[i] << " |";
     cout << "]" << endl;
 }
-
 
 // Fonction qui affiche une liste de chaines de caractères (array)
 void print_array(string l[], int n) {
@@ -268,7 +260,6 @@ int max_index(int* l, int n) {
     return max_i;
 
 }
-
 
 // Fonction qui renvoie l'index de la valeur maximale de deux listes d'entiers (la seconde est là pour départager en cas d'égalité)
 int max_index(int* l, int n, int* l_annex, int sign) {
@@ -296,7 +287,6 @@ int max_index(int* l, int n, int* l_annex, int sign) {
 
 }
 
-
 // Fonction qui renvoie l'index de la valeur minimale d'une liste d'entiers
 int min_index(int* l, int n) {
     int min = 1000000;
@@ -323,17 +313,16 @@ unsigned long long getTotalSystemMemory() {
 }
 
 
-
 // Fonction qui calcule une distance entre deux points
 float distance(int i, int j, int x, int y) {
     return (i - x) * (i - x) + (j - y) * (j - y);
 }
 
-
 // Fonction qui calcule la proximité entre deux points (pour l'évaluation de la sécurité du roi)
 float proximity(int i, int j, int x, int y, float k) {
     return k / distance(i, j, x, y);
 }
+
 
 // Fonction qui transforme un entier en string (et arrondit s'il est supérieur à 1000)
 string int_to_round_string(int k) {
@@ -384,6 +373,7 @@ string clock_to_string(clock_t t, bool full) {
 
     return time;
 }
+
 
 // Fonction qui arrondit un flottant en entier
 int float_to_int(float x) {

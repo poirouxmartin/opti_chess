@@ -28,14 +28,11 @@ Network::Network() {
 }
 
 
-
 // Constructeur par copie
 Network::Network(Network &n) {
 
     // Copie les poids
 }
-
-
 
 
 // Fonction qui calcule l'output (mettre tout le réseau à 0 au départ)
@@ -59,8 +56,6 @@ void Network::calculate_output() {
     _output = _layers[_layers_dimensions.size() - 1][0] / 100;
 
 }
-
-
 
 
 // Fonction qui remplit l'input à l'aide d'une position d'échec sous forme FEN
@@ -113,8 +108,6 @@ void Network::input_from_fen(string fen) {
 }
 
 
-
-
 // Fonction qui génère des poids aléatoires dans le réseau de neurones
 void Network::generate_random_weights(int min, int max) {
     for (int i = 0; i < _weights.size(); i++) {
@@ -129,6 +122,7 @@ void Network::generate_random_weights(int min, int max) {
 unsigned int evaluation_distance(int a, int b) {
     return abs(a - b);
 }
+
 
 // Fonction qui renvoie une norme d'un vecteur d'entiers positifs
 unsigned int vector_norm(vector<int> v) {

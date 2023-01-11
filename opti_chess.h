@@ -32,7 +32,6 @@ Plateau :
             Dame = 11
             Roi = 12
 
-
 */
 
 
@@ -166,7 +165,7 @@ class Board {
 
         // Activité des pièces
         int _piece_activity = 0;
-        bool _activity = false;
+        bool _activity = false; // à renommer pour plus de lisibilité
 
         // Pour l'affichage
         int _static_evaluation = 0;
@@ -204,6 +203,10 @@ class Board {
         // Avancement de la partie
         float _adv = 0;
         bool _advancement = false;
+
+        // Positionnement des pièces
+        int _pos = 0;
+        bool _positioning = false;
 
         // Pour la gestion du temps
         clock_t _last_move_clock;
@@ -274,6 +277,9 @@ class Board {
 
         // Fonction qui compte le matériel sur l'échiquier
         void count_material(Evaluator *e = nullptr);
+
+        // Fonction qui calcule les valeurs de positionnement des pièces sur l'échiquier
+        void pieces_positionning(Evaluator *e = nullptr);
 
         // Fonction qui évalue la position à l'aide d'heuristiques
         bool evaluate(Evaluator *e = nullptr, bool checkmates = false, bool display = false, Network *n = nullptr);
@@ -363,7 +369,7 @@ class Board {
         int total_nodes();
 
         // Fonction qui calcule la sécurité des rois
-        void get_king_safety(int piece_attack = 50, int piece_defense = 15, int pawn_attack = 10, int pawn_defense = 50, int edge_defense = 100);
+        void get_king_safety(int piece_attack = 50, int piece_defense = 35, int pawn_attack = 10, int pawn_defense = 75, int edge_defense = 50);
 
         // Fonction qui renvoie s'il y a échec et mat (ou pat) (-1, 1 ou 0)
         int is_mate();
@@ -503,8 +509,8 @@ bool equal_fen(string, string);
 // Fonction qui renvoie si deux positions (en format FEN) sont les mêmes (pour les répétitions)
 bool equal_positions(Board, Board);
 
-// Test de liste des positions (taille 50, pour la règle des 50 coups.. si on joue une prise ou un coup de pion, on peut reset la liste -> 52 : +1 pour la position de départ, +1 quand on joue exactement le 50ème coup)
-extern string _all_positions[52];
+// Test de liste des positions (taille 100, pour la règle des 50 coups.. si on joue une prise ou un coup de pion, on peut reset la liste -> 52 : +1 pour la position de départ, +1 quand on joue exactement le 50ème coup)
+extern string _all_positions[102];
 extern int _total_positions;
 
 
