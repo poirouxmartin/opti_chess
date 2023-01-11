@@ -15,7 +15,6 @@ Agent::Agent() {
 }
 
 
-
 // Constructeur par copie
 Agent::Agent(Agent &a) {
 
@@ -49,7 +48,6 @@ void Agent::init() {
 }
 
 
-
 // Copie les données d'un agent
 void Agent::copy_data(Agent &a, bool self = false) {
 
@@ -78,8 +76,6 @@ void Agent::copy_data(Agent &a, bool self = false) {
 }
 
 
-
-
 // Fonction qui applique une mutation à un agent
 void Agent::mutation(float rate) {
     int mutation_size = _input_size * rate;
@@ -98,7 +94,6 @@ void Agent::mutation(float rate) {
     }
 
 }
-
 
 
 // Fonction qui fait un crossover entre deux agents pour former cet agent
@@ -137,7 +132,6 @@ void calc_elo(Agent &agent_a, Agent &agent_b, float result) {
 
     return;
 }
-
 
 
 // Fonction qui renvoie parmi une liste d'entiers, renvoie deux index aléatoires, avec des probabilité variantes, en fonction de la grandeur des nombre correspondant à ces index
@@ -192,8 +186,6 @@ void pick_random_parents(int* l, int n, int parents[]) {
     return;
 
 }
-
-
 
 
 // Fonction qui crée la prochaine génération d'agents, en fonctions de leurs scores, un taux de nouveau random, un taux de mutation, un taux de crossover... (et on garde le premier agent)
