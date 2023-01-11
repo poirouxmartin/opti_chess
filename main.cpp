@@ -34,6 +34,7 @@ https://www.chessprogramming.org/Opening_Book
 https://www.chessprogramming.org/Pawn_Structure
 https://www.chessprogramming.org/Time_Management
 https://www.chessprogramming.org/Encoding_Moves#MoveIndex
+https://lichess.org/page/accuracy
 
 
 
@@ -132,6 +133,7 @@ https://www.chessprogramming.org/Encoding_Moves#MoveIndex
     - "Mating nets" -> tables d'attaques / contrôles des pièces adverses?
     - Finales de pions : Roi dans le carré
     - Garder les tours pour faire nulle
+    - Clouage infini
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Augmenter la profondeur pour les finales (GrogrosFish)
@@ -188,7 +190,6 @@ https://www.chessprogramming.org/Encoding_Moves#MoveIndex
 -> Pour l'historique des positions, on peut le reset à chaque coup de pion ou capture
 -> Pour les transpositions, on peut peut-être renvoyer au même indice de plateau fils...?
 -> Pour chaque plateau, générer et stocker la representation simpliste du plateau? Pour ensuite pouvoir aider les fils à comparer?
--> 8/8/2b1k2N/p5p1/P1p2p2/5P2/1PP2KPP/8 w - - 1 37 deux pions de plus mais se croit quasi perdant?
 -> ATTENTION aux conversions int et float dans les calculs d'évaluations...
 -> 3k3r/2p1b1pp/p1p2p2/3bp3/8/2P1BNP1/PPP2PKP/R7 w - - 3 16 -> +0.75?
 -> Mettre les règles de parties nulles et mat en dehors de l'évaluation?
@@ -222,8 +223,15 @@ https://www.chessprogramming.org/Encoding_Moves#MoveIndex
 -> q5k1/2p2pp1/8/7p/3RP3/5K2/P1P2PPP/8 w - - 0 4 = seulement -0.62??? ... king safety bizarre
 -> Refaire toute l'architecture avec les get_moves(), pour que ça prenne tout en compte (sans le faire dans l'évaluation)
 -> Améliorer la recherche des coups... quand c'est dans les coups mauvais, ça ne fait plus la différence... recherche -> 0% rapidement, et le k_add prend le dessus
--> Ne voit plus le Dxh7 mat en 7 de Lasker :((( (ou un peu trop tard)
 -> 5rk1/p4qb1/1p1p3p/3Ppp2/PRP1P3/2N1BnPb/2Q4P/1R5K w - - 0 5 : noirs mieux, car roi très faible. 5rk1/p4qb1/1p1p3p/3Ppp2/PRP1P3/2N1BnPb/2Q4P/1R5K w - - 0 5... 5rk1/p5b1/1p1p3p/1N1P3q/PRP1Pp2/5n1b/2Q4P/2BR3K b - - 3 8
+-> r2qr1k1/ppp2pbp/1n6/3p1PPR/5P1Q/8/PpP1N1B1/1K1R4 w - - 2 22 : roi noir très faible, Grogros pense que les noirs sont mieux, alors que ça devrait être +15
+-> Faire le compte du matériel dans une autre fonction que la position des pièces...
+-> Pour negamax (pour GrogrosZero aussi?) continuer le calcul jusqu'à ce qu'il n y ait plus de pièces en prise pour le calcul??
+-> Calculer l'avancement de la partie au fur et à mesure de la partie (au lieu de le faire à chaque fois)
+-> Faire une fonction qui reset les paramètres d'évaluation (_material = false...)
+-> Fonction pour le positionnement des pièces
+-> Positionnement des pièces trop éxagéré?
+-> Retirer tous les switch
 
 
 ----- Interface utilisateur -----
@@ -318,6 +326,7 @@ https://www.chessprogramming.org/Encoding_Moves#MoveIndex
 -> Barre d'éval : barre pour l'évaluation du coup le plus recherché par l'IA? ou éval du "meilleur coup"?
 -> Mettre le screenshot dans le presse-papier?
 -> Faire un readme
+-> Faire un truc pour montrer la menace (changer le trait du joueur)
 
 
 ----- Réseaux de neurones -----

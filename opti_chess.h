@@ -197,6 +197,14 @@ class Board {
         int _kings_opposition = 0;
         bool _opposition = false;
 
+        // Matériel
+        int _material_count = 0;
+        bool _material = false;
+
+        // Avancement de la partie
+        float _adv = 0;
+        bool _advancement = false;
+
         // Pour la gestion du temps
         clock_t _last_move_clock;
         
@@ -262,7 +270,10 @@ class Board {
         void make_index_move(int, bool pgn = false, bool add_to_list = false);
 
         // Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
-        float game_advancement();
+        void game_advancement();
+
+        // Fonction qui compte le matériel sur l'échiquier
+        void count_material(Evaluator *e = nullptr);
 
         // Fonction qui évalue la position à l'aide d'heuristiques
         bool evaluate(Evaluator *e = nullptr, bool checkmates = false, bool display = false, Network *n = nullptr);
@@ -352,7 +363,7 @@ class Board {
         int total_nodes();
 
         // Fonction qui calcule la sécurité des rois
-        void get_king_safety(float game_adv, int piece_attack = 50, int piece_defense = 15, int pawn_attack = 10, int pawn_defense = 50, int edge_defense = 100);
+        void get_king_safety(int piece_attack = 50, int piece_defense = 15, int pawn_attack = 10, int pawn_defense = 50, int edge_defense = 100);
 
         // Fonction qui renvoie s'il y a échec et mat (ou pat) (-1, 1 ou 0)
         int is_mate();
@@ -385,7 +396,7 @@ class Board {
         string simple_position();
 
         // Fonction qui calcule la structure de pions
-        void get_pawn_structure(float adv);
+        void get_pawn_structure();
 
         // Fonction qui met à jour le temps des joueurs
         void update_time();
