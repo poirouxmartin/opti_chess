@@ -180,12 +180,12 @@ static float global_eval = 0.0f;
 static string global_eval_text = "+0.0";
 
 // Temps de base pour les joueurs (en ms)
-static int base_time_white = 60000;
-static int base_time_black = 60000;
+static int base_time_white = 180000;
+static int base_time_black = 180000;
 
 // Incrément (en ms)
-static int base_time_increment_white = 0000;
-static int base_time_increment_black = 0000;
+static int base_time_increment_white = 1000;
+static int base_time_increment_black = 1000;
 
 // Valeur des pièces pour l'affichage sur la GUI (rien/roi, pion, cavalier, fou, tour, dame)
 static int piece_gui_values[6] = {0, 1, 3, 3, 5, 9};
