@@ -138,6 +138,7 @@ http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
     - Finales de pions : Roi dans le carré
     - Garder les tours pour faire nulle
     - Clouage infini
+    - Pression sur les cases et points faibles
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Augmenter la profondeur pour les finales (GrogrosFish)
@@ -195,7 +196,7 @@ http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
 -> Pour les transpositions, on peut peut-être renvoyer au même indice de plateau fils...?
 -> Pour chaque plateau, générer et stocker la representation simpliste du plateau? Pour ensuite pouvoir aider les fils à comparer?
 -> ATTENTION aux conversions int et float dans les calculs d'évaluations...
--> 3k3r/2p1b1pp/p1p2p2/3bp3/8/2P1BNP1/PPP2PKP/R7 w - - 3 16 -> +0.75?
+-> 3k3r/2p1b1pp/p1p2p2/3bp3/8/2P1BNP1/PPP2PKP/R7 w - - 3 16 -> +1.15?
 -> Mettre les règles de parties nulles et mat en dehors de l'évaluation?
 -> Ajouter les pièces protégées/attaquées lors de l'évaluation pour simplifier les calculs de l'IA
 -> Gestion du temps : faire en fonction des lignes montantes? Si ça stagne, jouer vite? Si y'a un seul coup -> Jouer instant?
@@ -222,10 +223,10 @@ http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
 -> Refaire les game_over() de façon plus propre, et dire quand la partie est finie dans la GUI (+ son de fin)
 -> Plein de calculs en double (voir appels de fonctions... is_mate()?)
 -> Faire des tables d'attaque (par exemple entre roi et dame, cavalier...)
--> Notations : 6k1/5pp1/Q1p3q1/6B1/P6K/1p2r3/8/5R2 b - - 99 92 : De4#???
+-> 6k1/5pp1/Q1p3q1/6B1/P6K/1p2r3/8/5R2 b - - 99 92
 -> Refaire toute l'architecture avec les get_moves(), pour que ça prenne tout en compte (sans le faire dans l'évaluation)
 -> Améliorer la recherche des coups... quand c'est dans les coups mauvais, ça ne fait plus la différence... recherche -> 0% rapidement, et le k_add prend le dessus
--> 5rk1/p4qb1/1p1p3p/3Ppp2/PRP1P3/2N1BnPb/2Q4P/1R5K w - - 0 5 : noirs mieux, car roi très faible. 5rk1/p4qb1/1p1p3p/3Ppp2/PRP1P3/2N1BnPb/2Q4P/1R5K w - - 0 5... 5rk1/p5b1/1p1p3p/1N1P3q/PRP1Pp2/5n1b/2Q4P/2BR3K b - - 3 8
+-> 5rk1/p4qb1/1p1p3p/3Ppp2/PRP1P3/2N1BnPb/2Q4P/1R5K w - - 0 5 : noirs mieux, car roi très faible... 5rk1/p5b1/1p1p3p/1N1P3q/PRP1Pp2/5n1b/2Q4P/2BR3K b - - 3 8
 -> r2qr1k1/ppp2pbp/1n6/3p1PPR/5P1Q/8/PpP1N1B1/1K1R4 w - - 2 22 : roi noir très faible, Grogros pense que les noirs sont mieux, alors que ça devrait être +15
 -> Faire le compte du matériel dans une autre fonction que la position des pièces...
 -> Pour negamax (pour GrogrosZero aussi?) continuer le calcul jusqu'à ce qu'il n y ait plus de pièces en prise pour le calcul??
@@ -236,6 +237,28 @@ http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
 -> Retirer tous les switch
 -> Position des pièces : ajouter le middle game? sinon il mettra pas sa dame au milieu?
 -> q5k1/2p2pp1/8/7p/2BRP3/5K2/P1P2PPP/8 w - - 0 4
+-> 8/2R5/k1p5/1p6/4PB2/p1Pr1PP1/PP6/R3KBq1 b Q - 8 19 : faut regarder axb2......
+-> r3r1k1/ppp4q/1n3Q2/3p1P2/5P2/2q5/PpPqN1B1/1K5R w - - 0 26 : NE PLUS REGARDER LES COUPS POURRIS
+-> Voir si move_label ralentit tout... (en regardant des mats etc...)
+-> r1b2kn1/1p1p1p1r/1p1P3p/1N1N1R2/6p1/8/PP4PP/5RK1 b - - 3 21 : +25, statiquement faut faire qq chose pour le comprendre dans l'évaluation de Grogros (+1.38)
+-> GrogrosZero ralentit beaucoup quand les variantes deviennent longues
+-> rn1r3k/pp4p1/1b2B3/5Qp1/3P4/P4b2/1P3PPP/6K1 b - - 1 3 : ici après Rxd4, tous les calculs sont perturbés par le fou en l'air en f3... ce qui ralentit la recherche de mat
+-> ----> Faire une recherche spécialement de mat, où on prend plus en compte le matériel??
+-> Au fil de la réflexion, retirer les coups pourris?? pour augmenter la capacité de stockage...
+-> 8/7p/4k1p1/p2Nrp2/2P5/2KB3P/8/8 b - - 2 45
+-> utiliser half_moves_count dans l'évaluation pour la faire tendre vers la nulle quand ça augmente??
+-> 8/8/7k/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/1K6 w - - 0 1
+-> Mettre une variable globale pour la règle des 50 coups (pour la passer à moins, si besoin)
+-> Rechercher large au début, puis serré après??
+-> 5rk1/pp4pp/2pb4/3p3q/B2Pp1bP/2N1B3/PPP3P1/R3Q1K1 b - - 0 2 : regarder les coups les plus offensifs, pas Fe6...
+-> Re augmenter l'activité? car à elle seule, elle dépasse rarement 0.25...
+-> Ajouter les colonnes ouvertes sur le roi... : attention aux fishing poles (r1bq1rk1/ppppnpp1/2n4p/2bNp1N1/2B1P2P/2P5/PP1P1PP1/R1BQK2R b KQ - 0 1)
+-> r2qr1k1/ppp2ppp/1n1pb3/4P3/3P4/1BN5/PP3PPP/R2QR1K1 w - - 6 9 : d5 doit être évident
+-> Sait pas faire les greek gifts : r1bq1rk1/ppppbppp/2n1p3/3nP3/3P3P/3B1N2/PPP2PP1/RNBQK2R w KQ - 1 7
+-> Echanger les pièces quand on est matériellement gagnant
+-> Echanger les pièces quand on a le roi faible, ou les pièces moins actives
+-> r4rk1/p2nbpp1/1qp4p/1p1pPB2/3P1B2/1P3P2/2Q2P1P/R4RK1 w - - 1 17 : pourquoi il regarde pas Fxd7?...
+
 
 
 ----- Interface utilisateur -----
@@ -324,7 +347,6 @@ http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
 -> +/- mats : en fonction des couleurs, ou du joueur qui joue??
 -> Se débrouiller pour que les cases s'affichent bien (avec les flottants)
 -> Trouver une meilleure police de texte, qui prenne en compte les minuscules et majuscules (et soit un peu plus petite)
--> Mauvais son pour le "en passant"
 -> Fins de parties : message + son
 -> +M7 -> #-7 pour les noirs? .. bof
 -> Barre d'éval : barre pour l'évaluation du coup le plus recherché par l'IA? ou éval du "meilleur coup"?
@@ -332,6 +354,12 @@ http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
 -> Faire un readme
 -> Faire un truc pour montrer la menace (changer le trait du joueur)
 -> Cliquer pour jouer quand le moteur est allumé
+-> CtrlN doit effacer tout le PGN... parfois ça bug
+-> Mieux voir les mini-pièces...
+-> Pouvoir éditer les positions
+-> Police avec des minuscules...
+-> PARALLELISER L'AFFICHAGE !! ça lag beaucoup trop  !
+-> Refaire les pre-moves depuis zero (et ajouter la possibilité d'en faire plusieurs)
 
 
 ----- Réseaux de neurones -----
@@ -388,7 +416,6 @@ int main() {
     SetMouseCursor(3);
 
 
-
     // Variables
     Board t;
     _all_positions[0] = t.simple_position();
@@ -414,7 +441,7 @@ int main() {
 
     // Nombre de noeuds calculés par frame
     // Si c'est sur son tour
-    int nodes_per_frame = 2500;
+    int nodes_per_frame = 10000;
 
     // Sur le tour de l'autre (pour que ça plante moins)
     int nodes_per_user_frame = 250;
@@ -651,8 +678,11 @@ int main() {
         if (grogros_auto && !t._is_game_over && t.is_mate() == -1 && t.game_over() == 0) {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
-            if (true || !is_playing()) // Pour que ça ne lag pas pour l'utilisateur
-                t.grogros_zero(&monte_evaluator, nodes_per_frame, true, _beta, _k_add);     
+
+            if (!is_playing()) // Pour que ça ne lag pas pour l'utilisateur
+                t.grogros_zero(&monte_evaluator, nodes_per_frame, true, _beta, _k_add);
+            else
+                t.grogros_zero(&monte_evaluator, nodes_per_user_frame, true, _beta, _k_add);
         }
 
         
@@ -958,6 +988,8 @@ int main() {
 
             last_drawing_time = clock();
         }
+
+
 
 
     }
