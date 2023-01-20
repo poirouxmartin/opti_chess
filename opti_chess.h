@@ -369,7 +369,7 @@ class Board {
         int total_nodes();
 
         // Fonction qui calcule la sécurité des rois
-        void get_king_safety(int piece_attack = 50, int piece_defense = 35, int pawn_attack = 10, int pawn_defense = 75, int edge_defense = 50);
+        void get_king_safety(int piece_attack = 50, int piece_defense = 35, int pawn_attack = 15, int pawn_defense = 75, int edge_defense = 50);
 
         // Fonction qui renvoie s'il y a échec et mat (ou pat) (-1, 1 ou 0)
         int is_mate();

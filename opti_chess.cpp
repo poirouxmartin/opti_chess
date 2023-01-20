@@ -1086,14 +1086,14 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
 
 
     if (display) {
-        cout << "*** EVALUATION ***" << endl;
+        cout << "\n*** EVALUATION ***" << endl;
     }
 
 
     // Avancement de la partie
     game_advancement();
     if (display)
-        cout << "game advancement : " << _adv << endl;
+        cout << "-- game advancement : " << _adv << " --" << endl;
         
 
     // Matériel
@@ -1222,6 +1222,17 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
             cout << "kings opposition : " << kings_opposition << endl;
         _evaluation += kings_opposition;
     }
+
+
+    // Forteresse
+    if (eval->_push != 0) {
+        float push = 1 - _half_moves_count * eval->_push / 100;
+        if (display)
+            cout << "0 - fortress / push - 1 : " << push << endl;
+        _evaluation *= push;
+    }
+    
+
 
 
     if (display) {
@@ -1898,7 +1909,40 @@ string Board::move_label(int i, int j, int k, int l) {
     // Promotion (seulement en dame pour le moment)
     if ((p1 == 1 && k == 7) || (p1 == 7 && k == 0))
         s += "=Q";
+
     
+    
+    // Mats, pats, échecs...
+    Board b(*this);
+    b.make_move(i, j, k, l);
+    int m = b.is_mate();
+
+    // mat
+    if (m == 1) {
+        s += "#";
+        if (_player)
+            s += " 1-0";
+        else
+            s += " 0-1";
+        return s;
+    }
+
+    // pat
+    else if (m == 0) {
+        s += "@ 1/2-1/2";
+        return s;
+    }
+        
+    // échec
+    else if (b.in_check())
+        s += "+";
+
+    // sinon... plus de coups = draw? règles des 50 coups, nul par manque de matériel... 
+    // Ne fonctionne pas -> A FIX
+    if (b._got_moves == 0 || b._is_game_over)
+        s += "@ 1/2-1/2";
+    
+
 
     return s;
 }
@@ -2689,6 +2733,7 @@ void draw_arrow_from_coord(int i1, int j1, int i2, int j2, int color, float thic
 
     // Transparence nulle
     c.a = 255;
+    
 
     // Outline pour le coup choisi
     if (outline) {
@@ -3331,7 +3376,8 @@ bool Board::is_capturable(int i, int j) {
 
 // Fonction qui renvoie si le joueur est en train de jouer (pour que l'IA arrête de réflechir à ce moment sinon ça lagge)
 bool is_playing() {
-    return selected_pos.first != -1;
+    Vector2 new_mouse_pos = GetMousePosition();
+    return (selected_pos.first != -1 || new_mouse_pos.x != mouse_pos.x || new_mouse_pos.y != mouse_pos.y);
 }
 
 
@@ -3396,13 +3442,10 @@ string Board::get_monte_carlo_variant(bool evaluate_final_pos) {
     string s = "";
 
     while (true) {
-        if (_got_moves == -1 && !_is_game_over)
+        if ((_got_moves == -1 && !_is_game_over) || _got_moves == 0)
             return s;
-        if (_got_moves == 0 || _is_game_over) {
-            if (in_check())
-                return s + "#";
-            else
-                return s + " 1/2-1/2";
+        if (_is_game_over) {
+            return s;
         }
         if (_tested_moves == _got_moves) {
             int move = best_monte_carlo_move();
