@@ -73,7 +73,7 @@ class Board {
 
         // Ordre des coups à jouer (pour l'optimisation)
         // uint_fast8_t _move_order[_max_moves];
-        uint_fast8_t _move_order[1]; // Car inutile si on utilise pas negamax
+        uint_fast8_t _move_order[_max_moves]; // Car inutile si on utilise pas negamax
 
         // Les coups sont-ils triés?
         bool _sorted_moves = false;
