@@ -3972,28 +3972,46 @@ void Board::stop_time() {
 
 // Fonction qui calcule la résultante des attaques
 void Board::get_attacks() {
+    if (_attacks)
+        return;
+
+
     _attacks_eval = 0;
 
     // Tableau des valeurs d'attaques des pièces (0 = pion, 1 = caval, 2 = fou, 3 = tour, 4 = dame, 5 = roi)
     int attacks_array[6][6] = {
-        {5,   25,  25,  30,  50,  70},
-        {5,   5,   10,  20, 100,  80},
-        {5,   5,   5,   15,  60,  40},
-        {5,   5,   5,   10,  60,  40},
-        {1,   2,   2,   5,   5,   50},
-        {10,  10,  10,  10,  0,   0},
-    };
+        {0,   25,  25,  30,  50,  70},
+        {5,   0,   20,  30, 100,  80},
+        {5,   5,   0,   15,  60,  40},
+        {5,   5,   5,   0,   60,  40},
+        {5,   5,   5,   10,  0,   60},
+        {10,  20,  20,  25,  0,    0},
+    }; // à définir autre part, puis à améliorer
 
-    // Implémenter les fourchettes?
+    // Implémenter les fourchettes? (= double attaques)
     // Tant pis pour le en passant...
     // Prendre en compte les pièces défendues?
 
     int p; int p2;
     int i2; int j2;
+
+    // Diagonales
+    const int dx[] = {-1, -1, 1, 1};
+    const int dy[] = {-1, 1, -1, 1}; // à définir en dehors de la fonction pour gagner du temps, et pour le réutiliser autre part
+
+    // Mouvements rectilignes
+    const int vx[] = {-1, 1, 0, 0}; // vertical
+    const int hy[] = {0, 0, -1, 1}; // horizontal
+
+
+    // Switch à changer, car c'est lent
+
+
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             p = _array[i][j];
             switch(p) {
+                // Pion blanc
                 case 1:
                     if (j > 0) {
                         p2 = _array[i + 1][j - 1]; // Case haut-gauche du pion blanc
@@ -4006,36 +4024,118 @@ void Board::get_attacks() {
                             _attacks_eval += attacks_array[0][p2 - 7];
                     }
                     break;
+                // Cavalier blanc
                 case 2:
                     for (int k = -2; k <= 2; k++) {
                         for (int l = -2; l <= 2; l++) {
                             i2 = i + k; j2 = j + l;
-                            p2 = _array[i2][j2];
-                            if (k * l != 0 && abs(k) + abs(l) == 3 && is_in(i2, 0, 7) && is_in (j2, 0, 7) && (p2 >= 7))
+                            if (k * l != 0 && abs(k) + abs(l) == 3 && is_in(i2, 0, 7) && is_in (j2, 0, 7)) {
+                                p2 = _array[i2][j2];
+                                if (p2 >= 7)
                                 _attacks_eval += attacks_array[1][p2 - 7];
+                            }   
                         }
                     }
                     break;
+                // Fou blanc
                 case 3:
-                    // Diagonale 1
-                    for (int k = 1; k < min(i, j); k++) {
-                        if (k > i || k > j)
-                            goto diag2;
-                        p2 = _array[i - k][j - k];
-                        if (p2 != 0) {
-                            if (p2 >= 7)
-                                _attacks_eval += attacks_array[2][p2 - 7];
-                            goto diag2;
+                    // Pour chaque diagonale
+                    for (int idx = 0; idx < 4; ++idx) {
+                        int i2 = i;
+                        int j2 = j;
+                        int lim = min(dx[idx] == 1 ? 7 - i : i, dy[idx] == 1 ? 7 - j : j);
+
+                        while (lim > 0) {
+                            i2 += dx[idx];
+                            j2 += dy[idx];
+                            p2 = _array[i2][j2];
+                            if (p2 != 0) {
+                                if (p2 >= 7)
+                                    _attacks_eval += attacks_array[2][p2 - 7];
+                                break;
+                            }
+                            lim--;
                         }
                     }
-                    diag2:
                     break;
+                // Tour blanche
                 case 4:
+                    // Pour chaque mouvement rectiligne
+                    for (int idx = 0; idx < 4; ++idx) {
+                        int i2 = i;
+                        int j2 = j;
+                        int lim = vx[idx] == -1 ? i : (vx[idx] == 1 ? 7 - i : (hy[idx] == -1 ? j : 7 - j));
+
+                        while (lim > 0) {
+                            i2 += vx[idx];
+                            j2 += hy[idx];
+                            p2 = _array[i2][j2];
+                            if (p2 != 0) {
+                                if (p2 >= 7)
+                                    _attacks_eval += attacks_array[3][p2 - 7];
+                                break;
+                            }
+                            lim--;
+                        }
+                    }
                     break;
+                // Dame blanche
                 case 5:
+                    // Pour chaque diagonale
+                    for (int idx = 0; idx < 4; ++idx) {
+                        int i2 = i;
+                        int j2 = j;
+                        int lim = min(dx[idx] == 1 ? 7 - i : i, dy[idx] == 1 ? 7 - j : j);
+
+                        while (lim > 0) {
+                            i2 += dx[idx];
+                            j2 += dy[idx];
+                            p2 = _array[i2][j2];
+                            if (p2 != 0) {
+                                if (p2 >= 7)
+                                    _attacks_eval += attacks_array[4][p2 - 7];
+                                break;
+                            }
+                            lim--;
+                        }
+                    }
+
+                    // Pour chaque mouvement rectiligne
+                    for (int idx = 0; idx < 4; ++idx) {
+                        int i2 = i;
+                        int j2 = j;
+                        int lim = vx[idx] == -1 ? i : (vx[idx] == 1 ? 7 - i : (hy[idx] == -1 ? j : 7 - j));
+
+                        while (lim > 0) {
+                            i2 += vx[idx];
+                            j2 += hy[idx];
+                            p2 = _array[i2][j2];
+                            if (p2 != 0) {
+                                if (p2 >= 7)
+                                    _attacks_eval += attacks_array[4][p2 - 7];
+                                break;
+                            }
+                            lim--;
+                        }
+                    }
                     break;
+                // Roi blanc
                 case 6:
+                    for (int k = -1; k < 2; k++) {
+                        for (int l = -1; l < 2; l++) {
+                            if (k || l) {
+                                i2 = i + k; j2 = j + l;
+                                if (is_in(i2, 0, 7) && is_in (j2, 0, 7)) {
+                                    p2 = _array[i2][j2];
+                                    if (p2 >= 7)
+                                        _attacks_eval += attacks_array[5][p2 - 7];
+                                }     
+                            }
+                        }
+                    }
                     break;
+
+                // Pion noir
                 case 7:
                     if (j > 0) {
                         p2 = _array[i - 1][j - 1]; // Case bas-gauche du pion noir
@@ -4048,23 +4148,115 @@ void Board::get_attacks() {
                             _attacks_eval -= attacks_array[0][p2 - 1];
                     }
                     break;
+                // Cavalier noir
                 case 8:
-                    // for (int k = -2; k <= 2; k++) {
-                    //     for (int l = -2; l <= 2; l++) {
-                    //         i2 = i + k; j2 = j + l;
-                    //         p2 = _array[i2][j2];
-                    //         if (k * l != 0 && abs(k) + abs(l) == 3 && is_in(i2, 0, 7) && is_in (j2, 0, 7) && (p2 >= 1 && p2 <= 6))
-                    //             _attacks_eval -= attacks_array[1][p2 - 1];
-                    //     }
-                    // }
+                    for (int k = -2; k <= 2; k++) {
+                        for (int l = -2; l <= 2; l++) {
+                            i2 = i + k; j2 = j + l;
+                            if (k * l != 0 && abs(k) + abs(l) == 3 && is_in(i2, 0, 7) && is_in (j2, 0, 7)) {
+                                p2 = _array[i2][j2];
+                                if (p2 >= 1 && p2 <= 6)
+                                _attacks_eval -= attacks_array[1][p2 - 1];
+                            }  
+                        }
+                    }
                     break;
+                // Fou noir
                 case 9:
+                    // Pour chaque diagonale
+                    for (int idx = 0; idx < 4; ++idx) {
+                        int i2 = i;
+                        int j2 = j;
+                        int lim = min(dx[idx] == 1 ? 7 - i : i, dy[idx] == 1 ? 7 - j : j);
+
+                        while (lim > 0) {
+                            i2 += dx[idx];
+                            j2 += dy[idx];
+                            p2 = _array[i2][j2];
+                            if (p2 != 0) {
+                                if (p2 >= 1 && p2 <= 6)
+                                    _attacks_eval -= attacks_array[2][p2 - 1];
+                                break;
+                            }
+                            lim--;
+                        }
+                    }
                     break;
+                // Tour noire
                 case 10:
+                    // Pour chaque mouvement rectiligne
+                    for (int idx = 0; idx < 4; ++idx) {
+                        int i2 = i;
+                        int j2 = j;
+                        int lim = vx[idx] == -1 ? i : (vx[idx] == 1 ? 7 - i : (hy[idx] == -1 ? j : 7 - j));
+
+                        while (lim > 0) {
+                            i2 += vx[idx];
+                            j2 += hy[idx];
+                            p2 = _array[i2][j2];
+                            if (p2 != 0) {
+                                if (p2 >= 1 && p2 <= 6)
+                                    _attacks_eval -= attacks_array[3][p2 - 1];
+                                break;
+                            }
+                            lim--;
+                        }
+                    }
                     break;
+                // Dame noire
                 case 11:
+                    // Pour chaque diagonale
+                    for (int idx = 0; idx < 4; ++idx) {
+                        int i2 = i;
+                        int j2 = j;
+                        int lim = min(dx[idx] == 1 ? 7 - i : i, dy[idx] == 1 ? 7 - j : j);
+
+                        while (lim > 0) {
+                            i2 += dx[idx];
+                            j2 += dy[idx];
+                            p2 = _array[i2][j2];
+                            if (p2 != 0) {
+                                if (p2 >= 1 && p2 <= 6)
+                                    _attacks_eval -= attacks_array[4][p2 - 1];
+                                break;
+                            }
+                            lim--;
+                        }
+                    }
+
+                    // Pour chaque mouvement rectiligne
+                    for (int idx = 0; idx < 4; ++idx) {
+                        int i2 = i;
+                        int j2 = j;
+                        int lim = vx[idx] == -1 ? i : (vx[idx] == 1 ? 7 - i : (hy[idx] == -1 ? j : 7 - j));
+
+                        while (lim > 0) {
+                            i2 += vx[idx];
+                            j2 += hy[idx];
+                            p2 = _array[i2][j2];
+                            if (p2 != 0) {
+                                if (p2 >= 1 && p2 <= 6)
+                                    _attacks_eval -= attacks_array[4][p2 - 1];
+                                break;
+                            }
+                            lim--;
+                        }
+                    }
                     break;
+                // Roi noir
                 case 12:
+                    for (int k = -1; k < 2; k++) {
+                        for (int l = -1; l < 2; l++) {
+                            if (k || l) {
+                                i2 = i + k; j2 = j + l;
+                                if (is_in(i2, 0, 7) && is_in (j2, 0, 7)) {
+                                    p2 = _array[i2][j2];
+                                    if (p2 >= 1 && p2 <= 6)
+                                        _attacks_eval -= attacks_array[5][p2 - 1];
+                                }    
+                            }
+                        }
+                    }
                     break;
             }
 

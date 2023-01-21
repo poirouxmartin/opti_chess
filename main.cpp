@@ -237,7 +237,6 @@ http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
 -> Retirer tous les switch
 -> Position des pièces : ajouter le middle game? sinon il mettra pas sa dame au milieu?
 -> q5k1/2p2pp1/8/7p/2BRP3/5K2/P1P2PPP/8 w - - 0 4
--> 8/2R5/k1p5/1p6/4PB2/p1Pr1PP1/PP6/R3KBq1 b Q - 8 19 : faut regarder axb2......
 -> r3r1k1/ppp4q/1n3Q2/3p1P2/5P2/2q5/PpPqN1B1/1K5R w - - 0 26 : NE PLUS REGARDER LES COUPS POURRIS
 -> Voir si move_label ralentit tout... (en regardant des mats etc...)
 -> r1b2kn1/1p1p1p1r/1p1P3p/1N1N1R2/6p1/8/PP4PP/5RK1 b - - 3 21 : +25, statiquement faut faire qq chose pour le comprendre dans l'évaluation de Grogros (+1.38)
@@ -258,6 +257,12 @@ http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
 -> Echanger les pièces quand on est matériellement gagnant
 -> Echanger les pièces quand on a le roi faible, ou les pièces moins actives
 -> r4rk1/p2nbpp1/1qp4p/1p1pPB2/3P1B2/1P3P2/2Q2P1P/R4RK1 w - - 1 17 : pourquoi il regarde pas Fxd7?...
+-> Changer un peu l'algo, pour que ça ne joue pas forcément le coup auquel il a le plus réflechi, mais un autre si il semble être meilleur (quand c'est mat, facile, mais sinon, comment savoir?)
+-> switch() = lent : à changer
+-> 2r2rk1/pp1q1pp1/2np1b1p/3NpN2/4P2P/P7/1PP2PP1/R2QK2R b KQ - 2 18 : Positionnement des pièces mieux pour les noirs??? ça va pas... (sûrement à cause du roi?)
+-> rnbqkb1r/ppp2ppp/4p3/4P3/3Pp3/8/PPP2PPP/R1BQKBNR w KQkq - 0 6 : le pion e4 est pourri
+-> Attaquer les faiblesses
+-> 2r1r1k1/p2n1ppp/1p6/2pP4/1bP2P2/2N3N1/PB6/R4RK1 w - - 0 23 = égal????? un pièce de moins...
 
 
 
@@ -433,7 +438,7 @@ int main() {
     // monte_evaluator._piece_positioning = 0.01; // Pour tester http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
     monte_evaluator._king_safety = 0.004; // Il faut régler la fonction... avec les pièces autour, s'il est au milieu du plateau...
     monte_evaluator._castling_rights = 0.3;
-    monte_evaluator._attacks = 0.0;
+    // monte_evaluator._attacks = 0.0;
     // monte_evaluator._piece_activity = 0.10; // En test pour la NJV
 
     // Nombre de noeuds max pour le jeu automatique de GrogrosZero
@@ -441,7 +446,7 @@ int main() {
 
     // Nombre de noeuds calculés par frame
     // Si c'est sur son tour
-    int nodes_per_frame = 10000;
+    int nodes_per_frame = 2500;
 
     // Sur le tour de l'autre (pour que ça plante moins)
     int nodes_per_user_frame = 250;
@@ -469,7 +474,7 @@ int main() {
 
     // Paramètres pour l'IA
     int search_depth = 8;
-    search_depth = 6;
+    search_depth = 7;
 
 
 
@@ -974,21 +979,29 @@ int main() {
         }
         
 
-        if (true || clock() - last_drawing_time > 1000 / max_drawing_fps) {
-            // Dessins
-            BeginDrawing();
+        // if (true || clock() - last_drawing_time > 1000 / max_drawing_fps) {
+        //     // Dessins
+        //     BeginDrawing();
 
-            // Dessin du plateau
-            t.draw();
-            // thread threadDraw(&Board::draw, &t);
-            // threadDraw.join();
+        //     // Dessin du plateau
+        //     t.draw();
+        //     // thread threadDraw(&Board::draw, &t);
+        //     // threadDraw.join();
                 
-            // Fin de la zone de dessin
-            EndDrawing();
+        //     // Fin de la zone de dessin
+        //     EndDrawing();
 
-            last_drawing_time = clock();
-        }
+        //     last_drawing_time = clock();
+        // }
 
+        // Dessins
+        BeginDrawing();
+
+        // Dessin du plateau
+        t.draw();
+            
+        // Fin de la zone de dessin
+        EndDrawing();
 
 
 
