@@ -667,7 +667,6 @@ pair<int, int> Board::get_king_pos() {
 }
 
 
-
 // Fonction qui affiche la liste des coups donnée en argument
 void Board::display_moves(bool pseudo) {
     
@@ -1098,7 +1097,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
 
     // Matériel
     float material = 0;
-    if (eval->_piece_activity != 0) {
+    if (eval->_piece_value != 0) {
         count_material(eval);
         material = _material_count * eval->_piece_value / 100; // à changer (le /100)
         if (display)
@@ -1228,7 +1227,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     if (eval->_push != 0) {
         float push = 1 - _half_moves_count * eval->_push / 100;
         if (display)
-            cout << "0 - fortress / push - 1 : " << push << endl;
+            cout << "-- fortress : " << 100 - push * 100 << "/100 --" << endl;
         _evaluation *= push;
     }
     
@@ -2054,7 +2053,7 @@ void load_resources() {
         promotion_sound = LoadSound("../resources/sounds/promotion.mp3");
 
         // Police de l'écriture
-        text_font = LoadFont("../resources/fonts/RobotReaversItalic-4aa4.ttf");
+        text_font = LoadFontEx("../resources/fonts/RobotReaversItalic-4aa4.ttf", 32, 0, 250);
         // text_font = GetFontDefault();
 
         // Icône
@@ -2136,6 +2135,9 @@ void Board::draw() {
         // Retire toute les cases surlignées
         remove_hilighted_tiles();
 
+        // Retire toutes les flèches
+        arrows_array = {};
+
         // Si on était pas déjà en train de cliquer
         if (!clicked) {
 
@@ -2145,7 +2147,7 @@ void Board::draw() {
 
             // Si aucune pièce n'est sélectionnée et que l'on clique sur une pièce, la sélectionne
             if (!selected_piece() && clicked_piece()) {
-                if (true || clicked_piece_has_trait())
+                if (false || clicked_piece_has_trait())
                     selected_pos = clicked_pos;
             }
                 
@@ -2170,7 +2172,6 @@ void Board::draw() {
                     if (_moves[4 * i] == selected_pos.first && _moves[4 * i + 1] == selected_pos.second && _moves[4 * i + 2] == clicked_pos.first && _moves[4 * i + 3] == clicked_pos.second) {
                         play_move_sound(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second);
                         play_monte_carlo_move_keep(i, true, true, true, true);
-                        display_pgn();
                         break;
                     }
                 }
@@ -2213,7 +2214,6 @@ void Board::draw() {
                                 play_move_sound(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
                                 // make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second, true, true);
                                 play_monte_carlo_move_keep(i, true, true, true, true);
-                                display_pgn();
                                 selected_pos = {-1, -1};
                                 break;
                             }
@@ -2237,7 +2237,6 @@ void Board::draw() {
                 if (_moves[4 * i] == pre_move[0] && _moves[4 * i + 1] == pre_move[1] && _moves[4 * i + 2] == pre_move[2] && _moves[4 * i + 3] == pre_move[3]) {
                     play_move_sound(pre_move[0], pre_move[1], pre_move[2], pre_move[3]);
                     play_monte_carlo_move_keep(i, true, true, true, true);
-                    display_pgn();
                     break;
                 }
             }
@@ -2251,15 +2250,43 @@ void Board::draw() {
     }
 
 
-    // Si on fait un clic droit (en le relachant)
-    if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
+    // Si on fait un clic droit
+    if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
         int x_mouse = get_pos_from_gui(mouse_pos.x, mouse_pos.y).first;
         int y_mouse = get_pos_from_gui(mouse_pos.x, mouse_pos.y).second;
-        highlighted_array[x_mouse][y_mouse] = 1 - highlighted_array[x_mouse][y_mouse];
+        right_clicked_pos = {x_mouse, y_mouse};
+
+        // Retire les pre-moves
         pre_move[0] = -1;
         pre_move[1] = -1;
         pre_move[2] = -1;
         pre_move[3] = -1;
+    }
+
+
+    // Si on fait un clic droit (en le relachant)
+    if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
+        int x_mouse = get_pos_from_gui(mouse_pos.x, mouse_pos.y).first;
+        int y_mouse = get_pos_from_gui(mouse_pos.x, mouse_pos.y).second;
+
+        if (x_mouse != -1) {
+            // Surlignage d'une case
+            if (pair{x_mouse, y_mouse} == right_clicked_pos)
+                highlighted_array[x_mouse][y_mouse] = 1 - highlighted_array[x_mouse][y_mouse];
+            
+            // Flèche
+            else {
+                // Si la flèche n'existe pas déjà
+                vector<int> arrow = {right_clicked_pos.first, right_clicked_pos.second, x_mouse, y_mouse};
+                // ça marche pas !!!
+                if (find(arrows_array.begin(), arrows_array.end(), arrow) != arrows_array.end())
+                    remove(arrows_array.begin(), arrows_array.end(), arrow);
+                else
+                    arrows_array.push_back(arrow);
+            }
+        }
+
+        
     }
 
 
@@ -2269,11 +2296,18 @@ void Board::draw() {
     ClearBackground(background_color);
 
     // Plateau
+    // for (int i = 0; i < 8; i++)
+    //     for (int j = 0; j < 8; j++)
+    //         DrawRectangle(board_padding_x + tile_size * j, board_padding_y + tile_size * i, tile_size, tile_size, ((i + j) % 2 == 1) ? board_color_dark : board_color_light);
+
+    DrawRectangle(board_padding_x, board_padding_y, tile_size * 8, tile_size * 8, board_color_light);
+
     for (int i = 0; i < 8; i++)
         for (int j = 0; j < 8; j++)
-            DrawRectangle(board_padding_x + tile_size * j, board_padding_y + tile_size * i, tile_size, tile_size, ((i + j) % 2 == 1) ? board_color_dark : board_color_light);
+            ((i + j) % 2 == 1) && DrawRectangle(board_padding_x + tile_size * j, board_padding_y + tile_size * i, tile_size, tile_size, board_color_dark);
 
 
+    // Coordonnées sur le plateau
     for (int i = 0; i < 8; i++)
         for (int j = 0; j < 8; j++) {
             if (j == 0 + 7 * board_orientation)
@@ -2351,6 +2385,11 @@ void Board::draw() {
         }
     }
 
+    // Flèches déssinées
+    for (vector<int> arrow : arrows_array)
+        draw_simple_arrow_from_coord(arrow[0], arrow[1], arrow[2], arrow[3], -1, arrow_color);
+
+
 
     // Titre
     DrawTextEx(text_font, "Grogros Chess", {board_padding_x + grogros_size / 2 + text_size / 2.8f, text_size / 4.0f}, text_size / 1.4f, font_spacing * text_size / 1.4f, text_color);
@@ -2422,7 +2461,7 @@ void Board::draw() {
 
 
     // Analyse de Monte-Carlo
-    string monte_carlo_text = "Monte-Carlo research parameters :\nbeta : " + to_string(_beta) + " | k_add : " + to_string(_k_add);
+    string monte_carlo_text = "Monte-Carlo research parameters :\nbeta : " + to_string(_beta) + " | k_add : " + to_string(_k_add) + (!grogros_auto ? "\nrun GrogrosZero-Auto (CTRL-G)" : "\nstop GrogrosZero-Auto (CTRL-H)");
     if (_tested_moves) {
         // int best_eval = (_player) ? max_value(_eval_children, _tested_moves) : min_value(_eval_children, _tested_moves);
         int best_move = max_index(_nodes_children, _tested_moves);
@@ -2445,7 +2484,7 @@ void Board::draw() {
         global_eval = best_eval;
         global_eval_text = eval;
 
-        monte_carlo_text += "\n\nstatic eval : "  + to_string(_static_evaluation) + "\nnodes : " + int_to_round_string(total_nodes()) + "/" + int_to_round_string(_monte_buffer._length) + " | time : " + clock_to_string(_time_monte_carlo) + " | speed : " + int_to_round_string(total_nodes() / (_time_monte_carlo + 1) * 1000) + "N/s" + "\ndepth : " + to_string(max_monte_carlo_depth()) + "\neval : "  + eval;
+        monte_carlo_text += "\n\nstatic eval : "  + to_string(_static_evaluation) + "\nnodes : " + int_to_round_string(total_nodes()) + "/" + int_to_round_string(_monte_buffer._length) + " | time : " + clock_to_string(_time_monte_carlo) + " | speed : " + int_to_round_string(total_nodes() / (_time_monte_carlo + 1) * 1000) + "N/s" + "\ndepth : " + to_string(max_monte_carlo_depth()) + " | dynamic eval : "  + eval;
     }
 
     
@@ -2487,6 +2526,11 @@ void Board::draw() {
 
         // Affichage de la barre d'évaluation
         draw_eval_bar(global_eval, global_eval_text, board_padding_x / 6, board_padding_y, 2 * board_padding_x / 3, board_size);
+    }
+
+    // Affichage des contrôles
+    else {
+        DrawTextEx(text_font, "Controls :", {board_padding_x + board_size + text_size / 2, board_padding_y}, text_size / 2, font_spacing * text_size / 2, text_color_info);
     }
 
     
@@ -2714,12 +2758,6 @@ int* tournament(Agent *agents, const int n_agents) {
 }
 
 
-// Fonction pour dessiner une flèche
-void draw_arrow(float x1, float y1, float x2, float y2, float thickness, Color c) {
-    DrawLineEx(x1, y1, x2, y2, thickness, c);
-}
-
-
 // A partir de coordonnées sur le plateau
 void draw_arrow_from_coord(int i1, int j1, int i2, int j2, int color, float thickness, Color c, bool use_value, int value, int mate, bool outline) {
     // cout << thickness << endl;
@@ -2883,7 +2921,7 @@ void Board::play_monte_carlo_move_keep(int move, bool keep, bool keep_display, b
             if (display) {
                 b.display_pgn();
                 b.to_fen();
-                cout << b._fen << endl;
+                cout << "***** FEN : " << b._fen << " *****" << endl;
             }
             if (_is_active) {
                 _monte_buffer._heap_boards[_index_children[move]]._pgn = b._pgn;
@@ -3630,10 +3668,17 @@ bool is_cursor_in_rect(Rectangle rec) {
 
 
 // Fonction qui dessine un rectangle à partir de coordonnées flottantes
-void DrawRectangle(float posX, float posY, float width, float height, Color color) {
-    DrawRectangle(float_to_int(posX), float_to_int(posY), float_to_int(width), float_to_int(height), color);
+bool DrawRectangle(float posX, float posY, float width, float height, Color color) {
+    DrawRectangle(float_to_int(posX), float_to_int(posY), float_to_int(width + posX) - float_to_int(posX), float_to_int(height + posY) - float_to_int(posY), color);
+    return true;
 }
 
+
+// Fonction qui dessine un rectangle à partir de coordonnées flottantes, en fonction des coordonnées de début et de fin
+bool DrawRectangleFromPos(float posX1, float posY1, float posX2, float posY2, Color color) {
+    DrawRectangle(float_to_int(posX1), float_to_int(posY1), float_to_int(posX2) - float_to_int(posX1), float_to_int(posY2) - float_to_int(posY1), color);
+    return true;
+}
 
 // Fonction qui dessine un cercle à partir de coordonnées flottantes
 void DrawCircle(float posX, float posY, float radius, Color color) {
@@ -4453,4 +4498,28 @@ int Board::material_difference() {
 // Fonction qui joue le son de fin de partie
 void play_end_sound() {
     PlaySound(game_end_sound);
+}
+
+
+// A partir de coordonnées sur le plateau
+void draw_simple_arrow_from_coord(int i1, int j1, int i2, int j2, float thickness, Color c) {
+    // cout << thickness << endl;
+    if (thickness == -1.0)
+        thickness = arrow_thickness;
+    float x1 = board_padding_x + tile_size * orientation_index(j1) + tile_size /2;
+    float y1 = board_padding_y + tile_size * orientation_index(7 - i1) + tile_size /2;
+    float x2 = board_padding_x + tile_size * orientation_index(j2) + tile_size /2;
+    float y2 = board_padding_y + tile_size * orientation_index(7 - i2) + tile_size /2;
+    
+    // "Flèche"
+    if (abs(j2 - j1) != abs(i2 - i1) && abs(j2 - j1) + abs(i2 - i1) == 3)
+        DrawLineBezier(x1, y1, x2, y2, thickness, c);
+    else
+        DrawLineEx(x1, y1, x2, y2, thickness, c);
+
+    c.a = 255;
+    
+    DrawCircle(x1, y1, thickness, c);
+    DrawCircle(x2, y2, thickness * 2.0f, c);
+
 }

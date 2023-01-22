@@ -54,7 +54,7 @@ static Color last_move_color = {220, 150, 50, 125};
 static Color pre_move_color = {220, 30, 30, 125};
 
 // Couleur des flèches
-static Color arrow_color = {225, 225, 50, 255};
+static Color arrow_color = {255, 225, 0, 150};
 
 // Couleur des sliders
 static Color slider_color = {200, 200, 200, 100};
@@ -132,7 +132,7 @@ static float text_size;
 static Font text_font;
 
 // Espacement entre les caractères
-static float font_spacing = 0.0f;
+static float font_spacing = 0.00f;
 
 
 // Orientation du plateau
@@ -144,6 +144,9 @@ static Vector2 mouse_pos = GetMousePosition();
 
 // Position de la case cliquée
 static pair<int, int> clicked_pos = {-1, -1};
+
+// Position de la case cliquée (droit)
+static pair<int, int> right_clicked_pos = {-1, -1};
 
 // La souris est-elle cliquée
 static bool clicked = false;
@@ -180,8 +183,8 @@ static float global_eval = 0.0f;
 static string global_eval_text = "+0.0";
 
 // Temps de base pour les joueurs (en ms)
-static int base_time_white = 180000;
-static int base_time_black = 180000;
+static int base_time_white = 600000;
+static int base_time_black = 600000;
 
 // Incrément (en ms)
 static int base_time_increment_white = 1000;
@@ -198,9 +201,15 @@ static int missing_b_material[6] = {0, 0, 0, 0, 0, 0};
 // Alphabet de taille 8
 static string abc8 = "abcdefgh";
 
+// Lancement des IA
+static bool grogros_auto = false;
+static bool grogroszero_play_black = false;
+static bool grogroszero_play_white = false;
 
-// Fonction pour dessiner une flèche
-void draw_arrow(float, float, float, float, float thickness = arrow_thickness, Color c = arrow_color);
+// Flèches sur l'échiquier
+static vector<vector<int>> arrows_array;
+
+
 
 // A partir de coordonnées sur le plateau (// Thickness = -1 -> default thickness)
 void draw_arrow_from_coord(int, int, int, int, int, float thickness = -1, Color c = arrow_color, bool use_value = false, int value = 0, int mate = -1, bool outline = false);
@@ -233,7 +242,10 @@ bool get_board_orientation();
 bool is_cursor_in_rect(Rectangle);
 
 // Fonction qui dessine un rectangle à partir de coordonnées flottantes
-void DrawRectangle(float, float, float, float, Color);
+bool DrawRectangle(float, float, float, float, Color);
+
+// Fonction qui dessine un rectangle à partir de coordonnées flottantes, en fonction des coordonnées de début et de fin
+bool DrawRectangleFromPos(float, float, float, float, Color);
 
 // Fonction qui dessine un cercle à partir de coordonnées flottantes
 void DrawCircle(float, float, float, Color);
@@ -264,3 +276,6 @@ void unselect();
 
 // Fonction qui joue le son de fin de partie
 void play_end_sound();
+
+// A partir de coordonnées sur le plateau
+void draw_simple_arrow_from_coord(int, int, int, int, float, Color);
