@@ -836,14 +836,7 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board, bool
 
     _sorted_moves = -1;
 
-    _activity = false;
-    _safety = false;
-    _structure = false;
-    _attacks = false;
-    _opposition = false;
-    _material = false;
-    _advancement = false;
-    _positioning = false;
+    reset_eval();
 
     _new_board = true;
     
@@ -1223,6 +1216,22 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     }
 
 
+    // Tours sur les colonnes ouvertes / semi-ouvertes
+    float rook_open = 0; float rook_semi = 0;
+    if (eval->_rook_open != 0 || eval->_rook_semi != 0) {
+        get_rook_on_open_file();
+        rook_open = _rook_open * eval->_rook_open;
+        rook_semi = _rook_semi * eval->_rook_semi;
+        if (display) {
+            cout << "rook on open file(s) : " << rook_open << endl;
+            cout << "rook on semi-open file(s) : " << rook_semi << endl;
+        }
+        _evaluation += rook_open;
+        _evaluation += rook_semi;
+    }
+
+
+
     // Forteresse
     if (eval->_push != 0) {
         float push = 1 - _half_moves_count * eval->_push / 100;
@@ -1231,8 +1240,6 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         _evaluation *= push;
     }
     
-
-
 
     if (display) {
         cout << "*** TOTAL : " << _evaluation << " ***" << endl;
@@ -1455,14 +1462,7 @@ bool Board::undo() {
 
     _sorted_moves = -1;
 
-    _activity = false;
-    _safety = false;
-    _structure = false;
-    _attacks = false;
-    _opposition = false;
-    _material = false;
-    _advancement = false;
-    _positioning = false;
+    reset_eval();
 
     _new_board = true;
     
@@ -1705,14 +1705,7 @@ void Board::from_fen(string fen, bool fen_in_pgn, bool keep_headings) {
 
     _new_board = true;
 
-    _activity = false;
-    _safety = false;
-    _structure = false;
-    _attacks = false;
-    _opposition = false;
-    _material = false;
-    _advancement = false;
-    _positioning = false;
+    reset_eval();
 
     _last_move[0] = -1;
     _last_move[1] = -1;
@@ -3331,18 +3324,24 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
             }
         }
 
+    // cout << w_king_weakness << ", " << b_king_weakness << endl;
 
     // Droits de roque
     w_king_weakness -= pawn_defense * (_k_castle_w + _q_castle_w) * 2 * proximity_pawn_defense;
     b_king_weakness -= pawn_defense * (_k_castle_b + _q_castle_b) * 2 * proximity_pawn_defense;
 
-    w_king_weakness += edge_defense * min(abs(w_king_i - (-1)), abs((w_king_i) - 8)) * min(abs(w_king_j - (-1)), abs((w_king_j) - 8));
-    b_king_weakness += edge_defense * min(abs(b_king_i - (-1)), abs((b_king_i) - 8)) * min(abs(b_king_j - (-1)), abs((b_king_j) - 8));
+    // Proximité avec le bord
+    // Avancement à partir duquel il est plus dangereux d'être sur un bord
+    float edge_adv = 0.75; float mult_endgame = 3;
+    // Calcul de safety du roi
+    w_king_weakness += edge_defense * min(abs(w_king_i - (-1)), abs((w_king_i) - 8)) * min(abs(w_king_j - (-1)), abs((w_king_j) - 8)) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv));
+    b_king_weakness += edge_defense * min(abs(b_king_i - (-1)), abs((b_king_i) - 8)) * min(abs(b_king_j - (-1)), abs((b_king_j) - 8)) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv));
 
+    // cout << w_king_weakness << ", " << b_king_weakness << endl;
 
     // Potentiel d'attaque de chaque pièce (pion, caval, fou, tour, dame)
     int attack_potentials[6] = {1, 25, 20, 30, 100, 0};
-    int reference_potential = 258;
+    int reference_potential = 258; // Si y'a toutes les pièces de base sur l'échiquier
     int w_total_potential = 0;
     int b_total_potential = 0;
 
@@ -4522,4 +4521,73 @@ void draw_simple_arrow_from_coord(int i1, int j1, int i2, int j2, float thicknes
     DrawCircle(x1, y1, thickness, c);
     DrawCircle(x2, y2, thickness * 2.0f, c);
 
+}
+
+
+// Fonction qui réinitialise les composantes de l'évaluation
+void Board::reset_eval() {
+    _evaluated = false; _evaluation = 0;
+    _activity = false; _piece_activity = 0;
+    _safety = false; _king_safety = 0;
+    _structure = false; _pawn_structure = 0;
+    _attacks = false; _attacks_eval = 0;
+    _opposition = false; _kings_opposition = 0;
+    _material = false; _material_count = 0;
+    _advancement = false; _adv = 0;
+    _positioning = false; _pos = 0;
+    _rook_open_file = false; _rook_open = 0;
+    _rook_semi_open_file = false; _rook_semi = 0;
+}
+
+
+// Fonction qui compte les tours sur les colonnes ouvertes et semi-ouvertes
+void Board::get_rook_on_open_file() {
+    if (_rook_open_file && _rook_semi_open_file)
+        return;
+
+    // Pions sur les colonnes, tours sur les colonnes
+    int w_pawns[8];
+    int b_pawns[8];
+    int w_rooks[8];
+    int b_rooks[8];
+
+    for (int i = 0; i < 8; i++) {
+        w_pawns[i] = 0;
+        b_pawns[i] = 0;
+        w_rooks[i] = 0;
+        b_rooks[i] = 0;
+    }
+
+    int p;
+
+    // Calcul du nombre de pions et tours par colonne
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            p = _array[i][j];
+            (p == 1) ? w_pawns[j]++ : ((p == 4) ? w_rooks[j]++ : ((p == 7) ? b_pawns[j]++ : (p == 10) && b_rooks[j]++));
+        }
+    }
+
+
+    // Tour sur les colonnes ouvertes
+    if (!_rook_open_file) {
+        _rook_open = 0;
+        int open_value = 50;
+
+        for (int i = 0; i < 8; i++)
+            (w_rooks[i] && !w_pawns[i] && !b_pawns[i]) ? _rook_open += w_rooks[i] * open_value : (b_rooks[i] && !b_pawns[i] && !w_pawns[i]) && (_rook_open -= b_rooks[i] * open_value);
+    }
+
+
+    // Tour sur les colonnes semi-ouvertes
+    if (!_rook_semi_open_file) {
+        _rook_semi = 0;
+        int semi_open_value = 25;
+
+        for (int i = 0; i < 8; i++)
+            (w_rooks[i] && !w_pawns[i] && b_pawns[i]) ? _rook_semi += w_rooks[i] * semi_open_value : (b_rooks[i] && !b_pawns[i] && w_pawns[i]) && (_rook_semi -= b_rooks[i] * semi_open_value);
+    }
+
+
+    return;
 }
