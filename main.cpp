@@ -109,7 +109,6 @@ http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
     - Espace (dépend aussi du nombre de pièces restantes..)
     - Structures de pions (IMPORTANT) -> A améliorer
     - Diagonales ouvertes
-    - Contrôle des colonnes ouvertes
     - Clouages
     - Cases noires/blanches
     - Contrôle des cases
@@ -264,6 +263,9 @@ http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
 -> 2r1r1k1/p2n1ppp/1p6/2pP4/1bP2P2/2N3N1/PB6/R4RK1 w - - 0 23 = égal????? un pièce de moins...
 -> rnbq3r/pppp1kpp/5n2/6N1/3PP3/6b1/PPP4p/RNBQ1R1K b - - 2 10 : incompréhension de la position
 -> Quand Grogros joue un coup auquel il n'avait pas pensé.. les évaluations déscendent pour les coups, 1 par 1... comment faire pour que tout descende en même temps?
+-> Equilibrer les tours sur les colonnes ouvertes. Moins fortes en endgame? Plus forte si y'a qu'une seule colonne ouverte
+-> GrogrosZero sait plus mater roi + tour vs roi, ou roi + dame vs roi
+-> 8/6R1/8/8/8/8/5K1k/8 w - - 38 20 : roi noir + safe? XDD ----> Beaucoup de choses à revoir dans cette fonction get_king_safety()...
 
 
 ----- Interface utilisateur -----
@@ -443,8 +445,10 @@ int main() {
     eval_white._pawn_structure = 0;
     eval_white._player_trait = 0;
     eval_white._push = 0;
+    eval_white._rook_open = 0;
+    eval_white._rook_semi = 0;
     // eval_white._piece_positioning = 0;
-    // eval_white._castling_rights = 0;
+    eval_white._castling_rights = 0;
 
     eval_black._piece_activity = 0.03;
 

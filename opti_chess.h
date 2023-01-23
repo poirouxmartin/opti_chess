@@ -208,6 +208,14 @@ class Board {
         int _pos = 0;
         bool _positioning = false;
 
+        // Tour sur colonne ouverte
+        int _rook_open = 0;
+        bool _rook_open_file = false;
+
+        // Tour sur colonne semi-ouverte
+        int _rook_semi = 0;
+        bool _rook_semi_open_file = false;
+
         // Pour la gestion du temps
         clock_t _last_move_clock;
         
@@ -439,6 +447,12 @@ class Board {
 
         // Fonction qui renvoie la différence matérielle entre les deux camps
         int material_difference();
+
+        // Fonction qui réinitialise les composantes de l'évaluation
+        void reset_eval();
+
+        // Fonction qui compte les tours sur les colonnes ouvertes et semi-ouvertes
+        void get_rook_on_open_file();
 
 };
 
