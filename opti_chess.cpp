@@ -932,12 +932,14 @@ void Board::count_material(Evaluator *eval) {
         for (int j = 0; j < 8; j++) {
             int piece = _array[i][j];
             if (piece) {
-                value = eval->_pieces_value_begin[(piece - 1) % 6] * (1 - _adv) + eval->_pieces_value_end[(piece - 1) % 6] * _adv;
+                value = eval->_pieces_value_begin[(piece - 1) % 6] * (1.0 - _adv) + eval->_pieces_value_end[(piece - 1) % 6] * _adv;
+                // cout << value << endl;
                 _material_count += (piece < 7) ? value : -value;
             }
         }
     }
 
+    // cout << _material_count << endl;
     _material = true;
 }
 
@@ -972,6 +974,9 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     _evaluated = true;
     _mate = false;
 
+    eval_components = "";
+    _evaluator = eval;
+
     if (checkmates) {
 
         int _is_mate = is_mate();
@@ -981,19 +986,18 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
             _evaluation = - _color * (1000000 - 1000 * _moves_count);
             _is_game_over = true;
             if (display)
-                cout << "Checkmate" << endl;
+                eval_components += "Checkmate\n";
             return true;
         }
-        if (_is_mate == 0) {
+        else if (_is_mate == 0) {
             _evaluation = 0;
             _is_game_over = true;
             if (display)
-                cout << "Stealmate" << endl;
+                eval_components += "Stealmate\n";
             return true;
         }
         
     }
-
 
     // Répétitions
 
@@ -1002,7 +1006,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         _evaluation = 0;
         _is_game_over = true;
         if (display)
-                cout << "Draw by 50 moves rule" << endl;
+            eval_components += "Draw by 50 moves rule\n";
         return true;
     }
 
@@ -1036,30 +1040,35 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
                 count_b_knight++;
             else if (p == 9)
                 count_b_bishop++;
-            else if (p != 6 && p != 12 && p != 0) {
-                might_draw = false;
-                break;
-            }
-            if (count_w_knight + count_w_bishop > 1 || count_b_knight > 1 + count_b_bishop > 1) {
-                break;
-            }
-                
+            // Pièces majeures ou pion -> possibilité de mater
+            else if (p != 6 && p != 12 && p != 0)
+                goto no_draw;
+
+            // Si on a au moins 1 fou, et un cheval/fou ou plus -> plus de nulle par manque de matériel
+            if ((count_w_knight + count_w_bishop > 1 && count_w_bishop) || (count_b_knight > 1 + count_b_bishop > 1 && count_b_bishop))
+                goto no_draw;
         }
     }
 
-    if (might_draw && count_w_knight + count_w_bishop < 2 && count_b_knight + count_b_bishop < 2) {
+    // Possibilités de nulles par manque de matériel
+    if (count_w_knight + count_w_bishop < 2 && count_b_knight + count_b_bishop < 2) {
         _evaluation = 0;
         _is_game_over = true;
         if (display)
-            cout << "Draw by insufficient material" << endl;
+            eval_components += "Draw by insufficient material";
         return true;
     }
 
     // On ne peut pas mater avec seulement 2 cavaliers
-    if (might_draw && count_w_knight == 2) {
+    if (count_w_knight == 2) {
         _evaluation = 0;
         return true;
     }
+
+
+    // Sinon
+    no_draw:
+
 
 
     // Réseau de neurones
@@ -1076,16 +1085,10 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     // Reset l'évaluation
     _evaluation = 0;
 
-
-    if (display) {
-        cout << "\n*** EVALUATION ***" << endl;
-    }
-
-
     // Avancement de la partie
     game_advancement();
     if (display)
-        cout << "-- game advancement : " << _adv << " --" << endl;
+        eval_components += "game advancement : " + to_string((int)(100 * _adv)) + "\%\n";
         
 
     // Matériel
@@ -1094,7 +1097,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         count_material(eval);
         material = _material_count * eval->_piece_value / 100; // à changer (le /100)
         if (display)
-            cout << "material : " << material << endl;
+            eval_components += "material : " + to_string((int)(100 * material)) + "\n";
         _evaluation += material;
     }
 
@@ -1105,7 +1108,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         pieces_positionning(eval);
         positioning = _pos * eval->_piece_positioning;
         if (display)
-            cout << "piece positionning : " << positioning << endl;
+            eval_components += "positionning : " + to_string((int)(100 * positioning)) + "\n";
         _evaluation += positioning;
     }
 
@@ -1128,7 +1131,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     if (eval->_bishop_pair != 0) {
         bishop_pair = eval->_bishop_pair * ((bishop_w >= 2) - (bishop_b >= 2));
         if (display)
-            cout << "bishop pair : " << bishop_pair << endl;
+            eval_components += "bishop pair : " + to_string((int)(100 * bishop_pair)) + "\n";
         _evaluation += bishop_pair;
     }
         
@@ -1138,7 +1141,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     if (eval->_random_add != 0) {
         random_add += GetRandomValue(-50, 50) * eval->_random_add / 100;
         if (display)
-            cout << "random add : " << random_add << endl;
+            eval_components += "random add : " + to_string((int)(100 * random_add)) + "\n";
         _evaluation += random_add;
     }
         
@@ -1149,7 +1152,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         get_piece_activity();
         piece_activity = _piece_activity * eval->_piece_activity;
         if (display)
-            cout << "piece activity : " << piece_activity << endl;
+            eval_components += "piece activity : " + to_string((int)(100 * piece_activity)) + "\n";
         _evaluation += piece_activity;
     }
 
@@ -1158,7 +1161,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     if (eval->_player_trait != 0) {
         player_trait = eval->_player_trait * _color;
         if (display)
-            cout << "player trait : " << player_trait << endl;
+            eval_components += "player trait : " + to_string((int)(100 * player_trait)) + "\n";
         _evaluation += player_trait;
     }
 
@@ -1168,7 +1171,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     if (eval->_castling_rights != 0) {
         castling_rights += eval->_castling_rights * (_k_castle_w + _q_castle_w - _k_castle_b - _q_castle_b) * (1 - _adv);
         if (display)
-            cout << "castling rights : " << castling_rights << endl;
+            eval_components += "castling rights : " + to_string((int)(100 * castling_rights)) + "\n";
         _evaluation += castling_rights;
     }
     
@@ -1177,11 +1180,8 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     if (eval->_king_safety != 0) {
         get_king_safety();
         king_safety = _king_safety * eval->_king_safety;
-        if (display) {
-            cout << "king safety : " << king_safety << endl;
-            if (eval->_castling_rights != 0)
-                cout << "total king safety : " << king_safety + castling_rights << endl;
-        }
+        if (display)
+            eval_components += "king safety : " + to_string((int)(100 * king_safety)) + "\n";
         _evaluation += king_safety;
     }
 
@@ -1191,18 +1191,24 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         get_pawn_structure();
         pawn_structure = _pawn_structure * eval->_pawn_structure;
         if (display)
-            cout << "pawn structure : " << pawn_structure << endl;
+            eval_components += "pawn structure : " + to_string((int)(100 * pawn_structure)) + "\n";
         _evaluation += pawn_structure;
     }
 
-    // Attaques de pièces
-    float pieces_attacks = 0;
-    if (eval->_attacks != 0) {
-        get_attacks();
+    // Attaques et défenses de pièces
+    float pieces_attacks = 0; float pieces_defenses = 0;
+    if (eval->_attacks != 0 || eval->_defenses != 0) {
+        get_attacks_and_defenses();
         pieces_attacks = _attacks_eval * eval->_attacks;
-        if (display)
-            cout << "attacks : " << pieces_attacks << endl;
+        pieces_defenses = _defenses_eval * eval->_defenses;
+        if (display) {
+            if (eval->_attacks)
+                eval_components += "attacks : " + to_string((int)(100 * pieces_attacks)) + "\n";
+            if (eval->_defenses)
+                eval_components += "defenses : " + to_string((int)(100 * pieces_defenses)) + "\n";
+        }
         _evaluation += pieces_attacks;
+        _evaluation += pieces_defenses;
     }
 
     // Opposition des rois
@@ -1211,7 +1217,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         get_kings_opposition();
         kings_opposition = _kings_opposition * eval->_kings_opposition;
         if (display)
-            cout << "kings opposition : " << kings_opposition << endl;
+            eval_components += "opposition : " + to_string((int)(100 * kings_opposition)) + "\n";
         _evaluation += kings_opposition;
     }
 
@@ -1223,8 +1229,8 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         rook_open = _rook_open * eval->_rook_open;
         rook_semi = _rook_semi * eval->_rook_semi;
         if (display) {
-            cout << "rook on open file(s) : " << rook_open << endl;
-            cout << "rook on semi-open file(s) : " << rook_semi << endl;
+            eval_components += "rooks on open files : " + to_string((int)(100 * rook_open)) + "\n";
+            eval_components += "rooks on semi-open files : " + to_string((int)(100 * rook_semi)) + "\n";
         }
         _evaluation += rook_open;
         _evaluation += rook_semi;
@@ -1236,13 +1242,8 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     if (eval->_push != 0) {
         float push = 1 - _half_moves_count * eval->_push / 100;
         if (display)
-            cout << "-- fortress : " << 100 - push * 100 << "/100 --" << endl;
+            eval_components += "forteress : " + to_string(int(100 - push * 100)) + "\%\n";
         _evaluation *= push;
-    }
-    
-
-    if (display) {
-        cout << "*** TOTAL : " << _evaluation << " ***" << endl;
     }
 
     // Partie non finie
@@ -1944,7 +1945,7 @@ string Board::move_label(int i, int j, int k, int l) {
 string Board::move_label_from_index(int i) {
     // Pour pas qu'il re écrase les moves
     if (_got_moves == -1)
-        get_moves();
+        get_moves(false, true);
     return move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]);
 }
 
@@ -2131,12 +2132,29 @@ void Board::draw() {
         // Retire toutes les flèches
         arrows_array = {};
 
-        // Si on était pas déjà en train de cliquer
+        // Si on était pas déjà en train de cliquer (début de clic)
         if (!clicked) {
 
             // Stocke la case cliquée sur le plateau
             clicked_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
             clicked = true;
+
+            // S'il y'a les flèches de réflexion de GrogrosZero, et qu'aucune pièce n'est sélectionnée
+            if (drawing_arrows && !selected_piece()) {
+                // On regarde dans le sens inverse pour jouer la flèche la plus récente (donc celle visible en cas de superposition)
+                for (auto it = grogros_arrows.rbegin(); it != grogros_arrows.rend(); ++it) {
+                    vector<int> arrow = *it;
+                    if (arrow[2] == clicked_pos.first && arrow[3] == clicked_pos.second) {
+                        // Retrouve le coup correspondant
+                        play_move_sound(arrow[0], arrow[1], arrow[2], arrow[3]);
+                        play_monte_carlo_move_keep(arrow[4], true, true, true, true);
+                        goto piece_selection;
+                    }
+                }
+            }
+
+
+            piece_selection:
 
             // Si aucune pièce n'est sélectionnée et que l'on clique sur une pièce, la sélectionne
             if (!selected_piece() && clicked_piece()) {
@@ -2287,6 +2305,10 @@ void Board::draw() {
 
     // Couleur de fond
     ClearBackground(background_color);
+
+
+    // Nombre de FPS
+    DrawTextEx(text_font, ("FPS : " + to_string(GetFPS())).c_str(), {screen_width - 3 * text_size, text_size / 3}, text_size / 3, font_spacing, text_color);
 
     // Plateau
     // for (int i = 0; i < 8; i++)
@@ -2454,8 +2476,8 @@ void Board::draw() {
 
 
     // Analyse de Monte-Carlo
-    string monte_carlo_text = "Monte-Carlo research parameters :\nbeta : " + to_string(_beta) + " | k_add : " + to_string(_k_add) + (!grogros_auto ? "\nrun GrogrosZero-Auto (CTRL-G)" : "\nstop GrogrosZero-Auto (CTRL-H)");
-    if (_tested_moves) {
+    string monte_carlo_text = "Monte-Carlo research parameters : beta : " + to_string(_beta) + " | k_add : " + to_string(_k_add) + (!grogros_auto ? "\nrun GrogrosZero-Auto (CTRL-G)" : "\nstop GrogrosZero-Auto (CTRL-H)");
+    if (_tested_moves && drawing_arrows) {
         // int best_eval = (_player) ? max_value(_eval_children, _tested_moves) : min_value(_eval_children, _tested_moves);
         int best_move = max_index(_nodes_children, _tested_moves);
         int best_eval = _eval_children[best_move];
@@ -2477,13 +2499,14 @@ void Board::draw() {
         global_eval = best_eval;
         global_eval_text = eval;
 
-        monte_carlo_text += "\n\nstatic eval : "  + to_string(_static_evaluation) + "\nnodes : " + int_to_round_string(total_nodes()) + "/" + int_to_round_string(_monte_buffer._length) + " | time : " + clock_to_string(_time_monte_carlo) + " | speed : " + int_to_round_string(total_nodes() / (_time_monte_carlo + 1) * 1000) + "N/s" + "\ndepth : " + to_string(max_monte_carlo_depth()) + " | dynamic eval : "  + eval;
+        evaluate_int(_evaluator, true, true);
+        monte_carlo_text += "\n\n--- static eval : "  + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval : "  + eval + " ---" + "\nnodes : " + int_to_round_string(total_nodes()) + "/" + int_to_round_string(_monte_buffer._length) + " | time : " + clock_to_string(_time_monte_carlo) + " | speed : " + int_to_round_string(total_nodes() / (_time_monte_carlo + 1) * 1000) + "N/s" + " | depth : " + to_string(max_monte_carlo_depth());
     }
 
     
     if (drawing_arrows) {
         // Affichage des paramètres d'analyse de Monte-Carlo
-        slider_text(monte_carlo_text.c_str(), board_padding_x + board_size + text_size / 2, board_padding_y, screen_width - text_size - board_padding_x - board_size, board_size / 4,  text_size / 3, &monte_carlo_slider, text_color);
+        slider_text(monte_carlo_text.c_str(), board_padding_x + board_size + text_size / 2, text_size, screen_width - text_size - board_padding_x - board_size, board_size * 9 / 16,  text_size / 3, &monte_carlo_slider, text_color);
 
         // Lignes d'analyse de Monte-Carlo
         static string monte_carlo_variants;
@@ -2515,7 +2538,7 @@ void Board::draw() {
         }
 
         // Affichage des variantes
-        slider_text(monte_carlo_variants.c_str(), board_padding_x + board_size + text_size / 2, board_padding_y + board_size / 3 , screen_width - text_size - board_padding_x - board_size, board_size * 2 / 3,  text_size / 3, &variants_slider);
+        slider_text(monte_carlo_variants.c_str(), board_padding_x + board_size + text_size / 2, board_padding_y + board_size * 9 / 16 , screen_width - text_size - board_padding_x - board_size, board_size / 2,  text_size / 3, &variants_slider);
 
         // Affichage de la barre d'évaluation
         draw_eval_bar(global_eval, global_eval_text, board_padding_x / 6, board_padding_y, 2 * board_padding_x / 3, board_size);
@@ -2752,7 +2775,7 @@ int* tournament(Agent *agents, const int n_agents) {
 
 
 // A partir de coordonnées sur le plateau
-void draw_arrow_from_coord(int i1, int j1, int i2, int j2, int color, float thickness, Color c, bool use_value, int value, int mate, bool outline) {
+void draw_arrow_from_coord(int i1, int j1, int i2, int j2, int index, int color, float thickness, Color c, bool use_value, int value, int mate, bool outline) {
     // cout << thickness << endl;
     if (thickness == -1.0)
         thickness = arrow_thickness;
@@ -2761,10 +2784,8 @@ void draw_arrow_from_coord(int i1, int j1, int i2, int j2, int color, float thic
     float x2 = board_padding_x + tile_size * orientation_index(j2) + tile_size /2;
     float y2 = board_padding_y + tile_size * orientation_index(7 - i2) + tile_size /2;
 
-
     // Transparence nulle
     c.a = 255;
-    
 
     // Outline pour le coup choisi
     if (outline) {
@@ -2810,12 +2831,19 @@ void draw_arrow_from_coord(int i1, int j1, int i2, int j2, int color, float thic
         
     }
 
+    // Ajoute la flèche au vecteur
+    grogros_arrows.push_back({i1, j1, i2, j2, index});
+
+    return;
+
 }
 
 
 // Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo d'un plateau
 void Board::draw_monte_carlo_arrows() {
-    get_moves(false, true);
+    // get_moves(false, true);
+
+    grogros_arrows = {};
 
     int best_move = best_monte_carlo_move();
 
@@ -2828,19 +2856,22 @@ void Board::draw_monte_carlo_arrows() {
     vector<int> ordered_moves = sort_by_nodes(true);
     int i;
 
+    // Une pièce est-elle sélectionnée?
+    bool is_selected = selected_pos.first != -1 && selected_pos.second != -1;
+
     for (int j = 0; j < _tested_moves; j++) {
         i = ordered_moves[j];
         mate = is_eval_mate(_eval_children[i]);
         // Si une pièce est sélectionnée
-        if (selected_pos.first != -1 && selected_pos.second != -1) {
-            if (selected_pos.first == _moves[4 * i] && selected_pos.second == _moves[4 * i + 1]) {
-                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], _color, -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate, i == best_move);
-            }
+        if (is_selected) {
+            // Dessine pour la pièce sélectionnée
+            if (selected_pos.first == _moves[4 * i] && selected_pos.second == _moves[4 * i + 1])
+                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], i, _color, -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate, i == best_move);
         }
         else {
             float n = _nodes_children[i];
             if (n / (float)sum_nodes > arrow_rate)
-                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], _color, -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate, i == best_move);
+                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], i, _color, -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate, i == best_move);
         }
     }
 }
@@ -4014,27 +4045,42 @@ void Board::stop_time() {
 }
 
 
-// Fonction qui calcule la résultante des attaques
-void Board::get_attacks() {
-    if (_attacks)
+// Fonction qui calcule la résultante des attaques et des défenses
+void Board::get_attacks_and_defenses() {
+    if (_attacks && _defenses)
         return;
 
-
+    // TODO faire en sorte que l'on puisse calculer les attaques seules ou les défenses seules
     _attacks_eval = 0;
+    _defenses_eval = 0;
 
     // Tableau des valeurs d'attaques des pièces (0 = pion, 1 = caval, 2 = fou, 3 = tour, 4 = dame, 5 = roi)
     int attacks_array[6][6] = {
-        {0,   25,  25,  30,  50,  70},
-        {5,   0,   20,  30, 100,  80},
-        {5,   5,   0,   15,  60,  40},
-        {5,   5,   5,   0,   60,  40},
-        {5,   5,   5,   10,  0,   60},
-        {10,  20,  20,  25,  0,    0},
-    }; // à définir autre part, puis à améliorer
+    //   P    N    B     R    Q    K
+        {0,   25,  25,  30,  50,  70}, // P
+        {5,   0,   20,  30, 100,  80}, // N
+        {5,   10,  0,   20,  60,  40}, // B
+        {5,   5,   5,   0,   60,  40}, // R
+        {5,   5,   5,   10,  0,   60}, // Q
+        {10,  20,  20,  25,  0,    0}, // K
+    }; // TODO à définir autre part, puis à améliorer
 
-    // Implémenter les fourchettes? (= double attaques)
+    // Tableau des valeurs de défenses des pièces (0 = pion, 1 = caval, 2 = fou, 3 = tour, 4 = dame, 5 = roi)
+    int defenses_array[6][6] = {
+    //   P    N    B     R    Q    K
+        {15,   5,  10,   5,    5,  0}, // P
+        {5,   10,  10,  15,   20,  0}, // N
+        {5,   10,  10,   5,   15,  0}, // B
+        {10,  10,  10,  50,   25,  0}, // R
+        {2,    5,   5,  10,   20,  0}, // Q
+        {15,   5,   5,   5,   10,  0}, // K
+    }; // TODO à définir autre part, puis à améliorer
+
+    // TODO ne pas additionner la défense de toutes les pièces? seulement regarder les pièces non-défendues? (sinon devient pleutre)
+
+    // TODO Contrôle des cases importantes
+
     // Tant pis pour le en passant...
-    // Prendre en compte les pièces défendues?
 
     int p; int p2;
     int i2; int j2;
@@ -4048,7 +4094,8 @@ void Board::get_attacks() {
     const int hy[] = {0, 0, -1, 1}; // horizontal
 
 
-    // Switch à changer, car c'est lent
+    // TODO Switch à changer, car c'est lent
+    // TODO changer les if par des &&
 
 
     for (int i = 0; i < 8; i++) {
@@ -4061,11 +4108,15 @@ void Board::get_attacks() {
                         p2 = _array[i + 1][j - 1]; // Case haut-gauche du pion blanc
                         if (p2 >= 7)
                             _attacks_eval += attacks_array[0][p2 - 7];
+                        else
+                            p2 && (_defenses_eval += defenses_array[0][p2 - 1]);
                     }
                     if (j < 7) {
                         p2 = _array[i + 1][j + 1]; // Case haut-droit du pion blanc
                         if (p2 >= 7)
                             _attacks_eval += attacks_array[0][p2 - 7];
+                        else
+                            p2 && (_defenses_eval += defenses_array[0][p2 - 1]);
                     }
                     break;
                 // Cavalier blanc
@@ -4076,7 +4127,9 @@ void Board::get_attacks() {
                             if (k * l != 0 && abs(k) + abs(l) == 3 && is_in(i2, 0, 7) && is_in (j2, 0, 7)) {
                                 p2 = _array[i2][j2];
                                 if (p2 >= 7)
-                                _attacks_eval += attacks_array[1][p2 - 7];
+                                    _attacks_eval += attacks_array[1][p2 - 7];
+                                else
+                                    p2 && (_defenses_eval += defenses_array[1][p2 - 1]);
                             }   
                         }
                     }
@@ -4096,6 +4149,8 @@ void Board::get_attacks() {
                             if (p2 != 0) {
                                 if (p2 >= 7)
                                     _attacks_eval += attacks_array[2][p2 - 7];
+                                else
+                                    p2 && (_defenses_eval += defenses_array[2][p2 - 1]);
                                 break;
                             }
                             lim--;
@@ -4117,6 +4172,8 @@ void Board::get_attacks() {
                             if (p2 != 0) {
                                 if (p2 >= 7)
                                     _attacks_eval += attacks_array[3][p2 - 7];
+                                else
+                                    p2 && (_defenses_eval += defenses_array[3][p2 - 1]);
                                 break;
                             }
                             lim--;
@@ -4138,6 +4195,8 @@ void Board::get_attacks() {
                             if (p2 != 0) {
                                 if (p2 >= 7)
                                     _attacks_eval += attacks_array[4][p2 - 7];
+                                else
+                                    p2 && (_defenses_eval += defenses_array[4][p2 - 1]);
                                 break;
                             }
                             lim--;
@@ -4157,6 +4216,8 @@ void Board::get_attacks() {
                             if (p2 != 0) {
                                 if (p2 >= 7)
                                     _attacks_eval += attacks_array[4][p2 - 7];
+                                else
+                                    p2 && (_defenses_eval += defenses_array[4][p2 - 1]);
                                 break;
                             }
                             lim--;
@@ -4173,6 +4234,8 @@ void Board::get_attacks() {
                                     p2 = _array[i2][j2];
                                     if (p2 >= 7)
                                         _attacks_eval += attacks_array[5][p2 - 7];
+                                    else
+                                        p2 && (_defenses_eval += defenses_array[5][p2 - 1]);
                                 }     
                             }
                         }
@@ -4185,11 +4248,15 @@ void Board::get_attacks() {
                         p2 = _array[i - 1][j - 1]; // Case bas-gauche du pion noir
                         if (p2 >= 1 && p2 <= 6)
                             _attacks_eval -= attacks_array[0][p2 - 1];
+                        else
+                            p2 && (_defenses_eval -= defenses_array[0][p2 - 7]);
                     }
                     if (j < 7) {
                         p2 = _array[i - 1][j + 1]; // Case bas-droit du pion noir
                         if (p2 >= 1 && p2 <= 6)
                             _attacks_eval -= attacks_array[0][p2 - 1];
+                        else
+                            p2 && (_defenses_eval -= defenses_array[0][p2 - 7]);
                     }
                     break;
                 // Cavalier noir
@@ -4200,7 +4267,9 @@ void Board::get_attacks() {
                             if (k * l != 0 && abs(k) + abs(l) == 3 && is_in(i2, 0, 7) && is_in (j2, 0, 7)) {
                                 p2 = _array[i2][j2];
                                 if (p2 >= 1 && p2 <= 6)
-                                _attacks_eval -= attacks_array[1][p2 - 1];
+                                    _attacks_eval -= attacks_array[1][p2 - 1];
+                                else
+                                    p2 && (_defenses_eval -= defenses_array[1][p2 - 7]);
                             }  
                         }
                     }
@@ -4220,6 +4289,8 @@ void Board::get_attacks() {
                             if (p2 != 0) {
                                 if (p2 >= 1 && p2 <= 6)
                                     _attacks_eval -= attacks_array[2][p2 - 1];
+                                else
+                                    p2 && (_defenses_eval -= defenses_array[2][p2 - 7]);
                                 break;
                             }
                             lim--;
@@ -4241,6 +4312,8 @@ void Board::get_attacks() {
                             if (p2 != 0) {
                                 if (p2 >= 1 && p2 <= 6)
                                     _attacks_eval -= attacks_array[3][p2 - 1];
+                                else
+                                    p2 && (_defenses_eval -= defenses_array[3][p2 - 7]);
                                 break;
                             }
                             lim--;
@@ -4262,6 +4335,8 @@ void Board::get_attacks() {
                             if (p2 != 0) {
                                 if (p2 >= 1 && p2 <= 6)
                                     _attacks_eval -= attacks_array[4][p2 - 1];
+                                else
+                                    p2 && (_defenses_eval -= defenses_array[4][p2 - 7]);
                                 break;
                             }
                             lim--;
@@ -4281,6 +4356,8 @@ void Board::get_attacks() {
                             if (p2 != 0) {
                                 if (p2 >= 1 && p2 <= 6)
                                     _attacks_eval -= attacks_array[4][p2 - 1];
+                                else
+                                    p2 && (_defenses_eval -= defenses_array[4][p2 - 7]);
                                 break;
                             }
                             lim--;
@@ -4297,6 +4374,8 @@ void Board::get_attacks() {
                                     p2 = _array[i2][j2];
                                     if (p2 >= 1 && p2 <= 6)
                                         _attacks_eval -= attacks_array[5][p2 - 1];
+                                    else
+                                        p2 && (_defenses_eval -= defenses_array[5][p2 - 7]);
                                 }    
                             }
                         }
@@ -4310,6 +4389,7 @@ void Board::get_attacks() {
 
 
     _attacks = true;
+    _defenses = true;
     return;
 }
 
@@ -4531,6 +4611,7 @@ void Board::reset_eval() {
     _safety = false; _king_safety = 0;
     _structure = false; _pawn_structure = 0;
     _attacks = false; _attacks_eval = 0;
+    _defenses = false; _defenses_eval = 0;
     _opposition = false; _kings_opposition = 0;
     _material = false; _material_count = 0;
     _advancement = false; _adv = 0;
@@ -4559,6 +4640,8 @@ void Board::get_rook_on_open_file() {
     }
 
     int p;
+
+    // TODO Calculer le nombre de colonnes ouvertes et semi-ouvertes -> diviser le résultat par ce nombre...
 
     // Calcul du nombre de pions et tours par colonne
     for (int i = 0; i < 8; i++) {
@@ -4590,4 +4673,10 @@ void Board::get_rook_on_open_file() {
 
 
     return;
+}
+
+// Met le booleen grogros_auto a true
+bool set_grogros_auto(bool b) {
+    grogros_auto = b;
+    return b;
 }
