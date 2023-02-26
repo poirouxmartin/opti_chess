@@ -7,7 +7,8 @@
 // #include <Windows.h>
 
 
-// Répertoire git : Documents/Info/Echecs/opti_chess/c++_git
+// *** Répertoire git ***
+// Documents/Info/Echecs/opti_chess/c++_git
 
 
 /* TODO
@@ -120,7 +121,6 @@ http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
     - Harmonie des pièces (qui se défendent entre elles)
     - Pièces enfermées
     - Bon/Mauvais fou
-    - Tours sur colonnes ouvertes
     - Tours sur une même colonne qu'une dame ou un roi
     - Pions bloqués / Développement de pièces impossible
     - Fous/Paire de fou meilleurs en position ouverte (cavalier : inverse)
@@ -137,6 +137,10 @@ http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
     - Garder les tours pour faire nulle
     - Clouage infini
     - Pression sur les cases et points faibles
+    - Occupation des diagonales
+    - Colonnes occupées par une dame
+    - Pions passés liés !
+    - Tours liées
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Augmenter la profondeur pour les finales (GrogrosFish)
@@ -266,6 +270,14 @@ http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
 -> Equilibrer les tours sur les colonnes ouvertes. Moins fortes en endgame? Plus forte si y'a qu'une seule colonne ouverte
 -> GrogrosZero sait plus mater roi + tour vs roi, ou roi + dame vs roi
 -> 8/6R1/8/8/8/8/5K1k/8 w - - 38 20 : roi noir + safe? XDD ----> Beaucoup de choses à revoir dans cette fonction get_king_safety()...
+-> r2qr1k1/1pp2ppp/pbnpbn2/4p3/3PP3/2P2N2/PPB2PPP/RNBQR1K1 w - - 1 13 : d5???!!
+-> Pour king_safety, il faut absolument prendre en compte les pièces qui peuvent l'attaquer, sinon... r1bq4/ppp2kpp/2np1n2/2b1p3/4P3/3P4/PPP2PPP/RNBQ1RK1 w - - 0 9 = +1.1 en king_safety
+-> Vérifier que le matériel fonctionne bien (pas d'erreurs de calcul??)
+-> 5r2/3R1k1b/1Bp4p/1p2p2P/7P/b1N2KN1/8/8 b - - 7 66 : ça n'évalue pas la position???
+-> Regler tous les *100 et les /100 dans les évaluations
+-> L'éval statique en position symétrique sera toujours nulle ?? (modulo le trait du joueur)
+-> Distinguer positionnement (-> espace?) et développement des pièces (pour améliorer king_safety())
+-> Puissance de la paire de fou qui dépend du moment de la partie? Qui dépend si y'a encore les dames pour compenser?
 
 
 ----- Interface utilisateur -----
@@ -338,7 +350,6 @@ http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
 -> Mettre le screenshot dans le presse-papier?
 -> Faire un readme
 -> Faire un truc pour montrer la menace (changer le trait du joueur)
--> Cliquer pour jouer quand le moteur est allumé
 -> CtrlN doit effacer tout le PGN... parfois ça bug
 -> Mieux voir les mini-pièces...
 -> Pouvoir éditer les positions
@@ -347,10 +358,16 @@ http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
 -> Refaire les pre-moves depuis zero (et ajouter la possibilité d'en faire plusieurs)
 -> Mettre la couleur de la fenête en sombre
 -> Faire un arbre pour la partie actuelle analysée, pour pouvoir avancer ou reculer dedans, faire une nouvelle variante...
--> Montrer les paramètres d'évaluation de GrogrosZero dans la GUI
 -> Revoir les font_spacing etc... en faire des fonctions pour rendre le code plus lisible
 -> Trop de flèches = crash
 -> On ne peut pas retirer les flèches
+-> Lignes de bézier et cercles pas très beaux
+-> Nouveaux bruits de pièces plus "soft" + bruit d'ambiance?
+-> Montrer toute la variante calculée avec des flèches (d'une couleur spéciale)
+-> Temps buggé? parfois lancé que d'un côté? ou alors c'est juste GrogrosFish qui bugge
+-> La GUI lag à cause du calcul de variantes??
+-> Thread : bug... parfois les coups joués ne sont pas les bons
+-> Re foncer le noir des pièces?
 
 
 ----- Réseaux de neurones -----
@@ -363,7 +380,7 @@ http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
 
 
 // Fonction qui permet de tester le temps que prend une fonction
-void test() {
+void testA() {
     for (int i = 0; i < 10000; i++)
         cout << "test" << i << endl;
 }
@@ -377,7 +394,13 @@ void testB() {
 }
 
 
-
+// Fonction qui fait le dessin de la GUI
+void gui_draw(bool d) {
+    BeginDrawing();
+    if (d)
+        t.draw();
+    EndDrawing();
+}
 
 
 
@@ -408,7 +431,7 @@ int main() {
 
 
     // Variables
-    Board t;
+    // Board t;
     _all_positions[0] = t.simple_position();
     _total_positions = 1;
 
@@ -419,7 +442,7 @@ int main() {
 
     // Evaluateur pour Monte Carlo
     Evaluator monte_evaluator;
-    monte_evaluator._piece_activity = 0.03; // 0.04
+    monte_evaluator._piece_activity = 0.05; // 0.04
     monte_evaluator._piece_positioning = 0.007; // beta = 0.035 // Pos = 0.013
     // monte_evaluator._piece_positioning = 0.01; // Pour tester http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
     monte_evaluator._king_safety = 0.004; // Il faut régler la fonction... avec les pièces autour, s'il est au milieu du plateau...
@@ -440,6 +463,7 @@ int main() {
     // Valeurs à 0 pour augmenter la vitesse de calcul. A tester vs grogrosfish avec tout d'activé
     eval_white._piece_activity = 0;
     eval_white._attacks = 0;
+    eval_white._defenses = 0;
     eval_white._king_safety = 0;
     eval_white._kings_opposition = 0;
     eval_white._pawn_structure = 0;
@@ -447,7 +471,7 @@ int main() {
     eval_white._push = 0;
     eval_white._rook_open = 0;
     eval_white._rook_semi = 0;
-    // eval_white._piece_positioning = 0;
+    eval_white._piece_positioning = 0;
     eval_white._castling_rights = 0;
 
     eval_black._piece_activity = 0.03;
@@ -511,12 +535,23 @@ int main() {
     int *l_scores;
 
 
+    bool draws = true;
+
+
 
     // Boucle principale (Quitter à l'aide de la croix, ou en faisant échap)
     while (!WindowShouldClose()) {
 
 
         // INPUTS
+
+
+        // Test de thread
+        if (IsKeyPressed(KEY_T)) {
+            thread th_test(&Board::grogros_zero, &t, &monte_evaluator, 5000000, true, _beta, _k_add, false, 0, nullptr); // Marche presque... !
+            th_test.detach();
+        }
+
 
         // Changements de la taille de la fenêtre
         if (IsWindowResized()) {
@@ -594,6 +629,11 @@ int main() {
 
             // Mettre le screenshot dans le presse-papier?
         }
+
+        // D - Dessine ou non
+        if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_D)) {
+            draws = false;
+        }
             
         // B - Création du buffer
         if (IsKeyPressed(KEY_B)) {
@@ -626,12 +666,12 @@ int main() {
         if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_G)) {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
-            grogros_auto = true;         
+            grogros_auto = set_grogros_auto(true); // C'est vraiment immonde, mais j'ai pas trouvé comment mieux faire... 
         }
 
         // LCTRL-H - Arrêt de la recherche automatique de GrogrosZero 
         if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_H)) {
-            grogros_auto = false;            
+            grogros_auto = set_grogros_auto(false);         
         }
 
         // H - Déffichage/Affichage des flèches, Affichage/Désaffichage des contrôles
@@ -651,7 +691,8 @@ int main() {
         }
 
         // D - Affichage dans la console de tous les coups légaux de la position
-        if (IsKeyPressed(KEY_D)) {
+        if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_D)) {
+            draws = true;
             t.display_moves(true);
         }
 
@@ -662,6 +703,7 @@ int main() {
         // E - Évalue la position et renvoie les composantes dans la console
         if (IsKeyPressed(KEY_E)) {
             t.evaluate_int(&monte_evaluator, true, true);
+            cout << "Evaluation : \n" << eval_components << endl;
         }
             
         // U - Undo de dernier coup joué
@@ -793,6 +835,8 @@ int main() {
 
         // Plus de temps... (en faire une fonction)
         if (t._time) {
+
+
             if (t._time_black < 0) {
                 t._time = false;
                 t._time_black = 0;
@@ -913,14 +957,17 @@ int main() {
             
         }
 
-        // Dessins
-        BeginDrawing();
+        // // Dessins
+        // BeginDrawing();
 
-        // Dessin du plateau
-        t.draw();
+        // // Dessin du plateau
+        // t.draw();
             
-        // Fin de la zone de dessin
-        EndDrawing();
+        // // Fin de la zone de dessin
+        // EndDrawing();
+
+        gui_draw(draws);
+        // cout << GetFPS() << endl;
 
 
 
