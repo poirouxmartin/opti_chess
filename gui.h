@@ -167,6 +167,9 @@ static int highlighted_array[8][8] {{0, 0, 0, 0, 0, 0, 0, 0},
 // Calcul du nombre de noeuds visités
 static int visited_nodes;
 
+// Vecteur des flèches de GrogrosZero : coordonnées du coup + indice du coup
+static vector<vector<int>> grogros_arrows;
+
 // Calcul de temps
 static clock_t begin_time;
 
@@ -183,12 +186,12 @@ static float global_eval = 0.0f;
 static string global_eval_text = "+0.0";
 
 // Temps de base pour les joueurs (en ms)
-static int base_time_white = 600000;
-static int base_time_black = 600000;
+static int base_time_white = 180000;
+static int base_time_black = 180000;
 
 // Incrément (en ms)
-static int base_time_increment_white = 1000;
-static int base_time_increment_black = 1000;
+static int base_time_increment_white = 2000;
+static int base_time_increment_black = 2000;
 
 // Valeur des pièces pour l'affichage sur la GUI (rien/roi, pion, cavalier, fou, tour, dame)
 static int piece_gui_values[6] = {0, 1, 3, 3, 5, 9};
@@ -209,10 +212,15 @@ static bool grogroszero_play_white = false;
 // Flèches sur l'échiquier
 static vector<vector<int>> arrows_array;
 
+// Plateau affiché sur la GUI
+static Board t;
+
+// Composantes de l'évaluation à afficher sur la GUI
+static string eval_components = "";
 
 
 // A partir de coordonnées sur le plateau (// Thickness = -1 -> default thickness)
-void draw_arrow_from_coord(int, int, int, int, int, float thickness = -1, Color c = arrow_color, bool use_value = false, int value = 0, int mate = -1, bool outline = false);
+void draw_arrow_from_coord(int, int, int, int, int, int, float thickness = -1, Color c = arrow_color, bool use_value = false, int value = 0, int mate = -1, bool outline = false);
 
 // Couleur de la flèche en fonction du coup (de son nombre de noeuds)
 Color move_color(int, int);
@@ -279,3 +287,6 @@ void play_end_sound();
 
 // A partir de coordonnées sur le plateau
 void draw_simple_arrow_from_coord(int, int, int, int, float, Color);
+
+// Met le booleen grogros_auto a true
+bool set_grogros_auto(bool);

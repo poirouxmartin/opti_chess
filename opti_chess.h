@@ -160,6 +160,9 @@ class Board {
         // Est-ce que le plateau a été évalué?
         bool _evaluated = false;
 
+        // Adresse de l'évaluateur
+        Evaluator *_evaluator = nullptr;
+
         // Le plateau a t-il été initialisé?
         bool _new_board = true;
 
@@ -191,6 +194,10 @@ class Board {
         // Attaque des pièces
         int _attacks_eval = 0;
         bool _attacks = false;
+
+        // Defense des pièces
+        int _defenses_eval = 0;
+        bool _defenses = false;
 
         // Opposition des rois en finale
         int _kings_opposition = 0;
@@ -421,8 +428,8 @@ class Board {
         // Fonction qui stoppe le temps
         void stop_time();
 
-        // Fonction qui calcule la résultante des attaques
-        void get_attacks();
+        // Fonction qui calcule la résultante des attaques et des défenses
+        void get_attacks_and_defenses();
 
         // Fonction qui calcule l'opposition des rois (en finales de pions)
         void get_kings_opposition();
