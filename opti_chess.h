@@ -384,7 +384,7 @@ class Board {
         int total_nodes();
 
         // Fonction qui calcule la sécurité des rois
-        void get_king_safety(int piece_attack = 50, int piece_defense = 35, int pawn_attack = 15, int pawn_defense = 75, int edge_defense = 50);
+        void get_king_safety(int piece_attack = 50, int piece_defense = 15, int pawn_attack = 25, int pawn_defense = 100, int edge_defense = 100);
 
         // Fonction qui renvoie s'il y a échec et mat (ou pat) (-1, 1 ou 0)
         int is_mate();
@@ -460,6 +460,9 @@ class Board {
 
         // Fonction qui compte les tours sur les colonnes ouvertes et semi-ouvertes
         void get_rook_on_open_file();
+
+        // Fonction qui renvoie la profondeur de calcul de la variante principale
+        int grogros_main_depth();
 
 };
 

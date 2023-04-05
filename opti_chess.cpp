@@ -1405,8 +1405,8 @@ bool Board::undo(int i1, int j1, int p1, int i2, int j2, int p2, int half_moves)
     // Implémentation du FEN possible?
     _fen = "";
 
-    // Incrémentation des coups
-    !_player && (_moves_count -= 1);
+    // Decrémentation des coups
+    !_player && _moves_count--;
 
     return true;
 }
@@ -1479,6 +1479,9 @@ bool Board::undo() {
 
     _mate = false;
 
+    // Decrémentation des coups
+    !_player && _moves_count--;
+    // TODO : remettre le compteur des half_move à ce qu'il était auparavent...
 
     // Reste à changer le PGN, gérer les roques, en passant, demi-coups...
 
@@ -2477,7 +2480,7 @@ void Board::draw() {
 
     // Analyse de Monte-Carlo
     string monte_carlo_text = "Monte-Carlo research parameters : beta : " + to_string(_beta) + " | k_add : " + to_string(_k_add) + (!grogros_auto ? "\nrun GrogrosZero-Auto (CTRL-G)" : "\nstop GrogrosZero-Auto (CTRL-H)");
-    if (_tested_moves && drawing_arrows) {
+    if (_tested_moves && drawing_arrows && _monte_called) {
         // int best_eval = (_player) ? max_value(_eval_children, _tested_moves) : min_value(_eval_children, _tested_moves);
         int best_move = max_index(_nodes_children, _tested_moves);
         int best_eval = _eval_children[best_move];
@@ -2495,16 +2498,15 @@ void Board::draw() {
         else
             eval = to_string(best_eval);
 
-        // Des choses à optimiser par là...
         global_eval = best_eval;
         global_eval_text = eval;
 
         evaluate_int(_evaluator, true, true);
-        monte_carlo_text += "\n\n--- static eval : "  + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval : "  + eval + " ---" + "\nnodes : " + int_to_round_string(total_nodes()) + "/" + int_to_round_string(_monte_buffer._length) + " | time : " + clock_to_string(_time_monte_carlo) + " | speed : " + int_to_round_string(total_nodes() / (_time_monte_carlo + 1) * 1000) + "N/s" + " | depth : " + to_string(max_monte_carlo_depth());
-    }
+        int max_depth = grogros_main_depth();
+        int n_nodes = total_nodes();
+        monte_carlo_text += "\n\n--- static eval : "  + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval : "  + eval + " ---" + "\nnodes : " + int_to_round_string(n_nodes) + "/" + int_to_round_string(_monte_buffer._length) + " | time : " + clock_to_string(_time_monte_carlo) + " | speed : " + int_to_round_string(total_nodes() / (_time_monte_carlo + 1) * 1000) + "N/s" + " | depth : " + to_string(max_depth);
 
-    
-    if (drawing_arrows) {
+
         // Affichage des paramètres d'analyse de Monte-Carlo
         slider_text(monte_carlo_text.c_str(), board_padding_x + board_size + text_size / 2, text_size, screen_width - text_size - board_padding_x - board_size, board_size * 9 / 16,  text_size / 3, &monte_carlo_slider, text_color);
 
@@ -2532,7 +2534,10 @@ void Board::draw() {
                 }
                 else
                     eval = to_string(_eval_children[i]);
-                monte_carlo_variants += "eval : " + eval + " | " + move_label_from_index(i) + _monte_buffer._heap_boards[_index_children[i]].get_monte_carlo_variant(true) + " (" + to_string(100.0 * _nodes_children[i] / total_nodes()).substr(0, 5) + "% - " + int_to_round_string(_nodes_children[i]) + ")";
+                
+                string variant_i = _monte_buffer._heap_boards[_index_children[i]].get_monte_carlo_variant(true); // Peut être plus rapide
+                // Ici aussi y'a qq chose qui ralentit, mais quoi?...
+                monte_carlo_variants += "eval : " + eval + " | " + move_label_from_index(i) + variant_i + " (" + to_string(100.0 * _nodes_children[i] / n_nodes).substr(0, 5) + "% - " + int_to_round_string(_nodes_children[i]) + ")";
             }
             _monte_called = false;
         }
@@ -3320,12 +3325,16 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
 
     kings:
 
+    // TODO : piece_attack/defense depending on the piece
+
     float proximity_pawn_defense = 2;
 
     // Faiblesses des rois
     float w_king_weakness = 0.0;
     float b_king_weakness = 0.0;
 
+    float w_king_protection = 0.0;
+    float b_king_protection = 0.0;
 
     for (int i = 0; i < 8; i++)
         for (int j = 0; j < 8; j++) {
@@ -3333,11 +3342,11 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
             if (p > 0) {
                 if (p < 6) {
                     if (p == 1) {
-                        w_king_weakness -= pawn_defense * proximity(i, j, w_king_i, w_king_j, proximity_pawn_defense) * (0.5 + !_k_castle_w + !_q_castle_w);
+                        w_king_protection += pawn_defense * proximity(i, j, w_king_i, w_king_j, proximity_pawn_defense) * (0.25 + !_k_castle_w + !_q_castle_w);
                         b_king_weakness += pawn_attack * proximity(i, j, b_king_i, b_king_j, 3);
                     }   
                     else {
-                        w_king_weakness -= piece_defense * proximity(i, j, w_king_i, w_king_j, 3);
+                        w_king_protection += piece_defense * proximity(i, j, w_king_i, w_king_j, 4) * (0.25 + !_k_castle_w + !_q_castle_w);
                         b_king_weakness += piece_attack * proximity(i, j, b_king_i, b_king_j, 4);
                     }
                     
@@ -3345,30 +3354,70 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
                 else if (p > 6 && p < 12) {
                     if (p == 7) {
                         w_king_weakness += pawn_attack * proximity(i, j, w_king_i, w_king_j, 3);
-                        b_king_weakness -= pawn_defense * proximity(i, j, b_king_i, b_king_j, proximity_pawn_defense) * (0.5 + !_k_castle_b + !_q_castle_b);
+                        b_king_protection += pawn_defense * proximity(i, j, b_king_i, b_king_j, proximity_pawn_defense) * (0.25 + !_k_castle_b + !_q_castle_b);
                     }   
                     else {
                         w_king_weakness += piece_attack * proximity(i, j, w_king_i, w_king_j, 4);
-                        b_king_weakness -= piece_defense * proximity(i, j, b_king_i, b_king_j, 3);
+                        b_king_protection += piece_defense * proximity(i, j, b_king_i, b_king_j, 4) * (0.25 + !_k_castle_b + !_q_castle_b);
                     }
                 }
             }
         }
 
+    // Il faut compter les cases vides (non-pion) autour de lui
+    
+
     // cout << w_king_weakness << ", " << b_king_weakness << endl;
 
     // Droits de roque
-    w_king_weakness -= pawn_defense * (_k_castle_w + _q_castle_w) * 2 * proximity_pawn_defense;
-    b_king_weakness -= pawn_defense * (_k_castle_b + _q_castle_b) * 2 * proximity_pawn_defense;
+    w_king_protection += pawn_defense * (_k_castle_w + _q_castle_w) * proximity_pawn_defense * 2;
+    b_king_protection += pawn_defense * (_k_castle_b + _q_castle_b) * proximity_pawn_defense * 2;
+
+    // cout << pawn_defense * (_k_castle_w + _q_castle_w) / 2 * proximity_pawn_defense << endl;
+
+    // Niveau de protection auquel on peut considérer que le roi est safe
+    float king_base_protection = pawn_defense * 4 * proximity_pawn_defense;
+    // king_base_protection = 0;
+    // cout << king_base_protection << ", " << w_king_protection << ", " << b_king_protection << endl;
+    w_king_protection -= king_base_protection;
+    b_king_protection -= king_base_protection;
+    
+
+    // cout << w_king_weakness << ", " << b_king_weakness << endl;
 
     // Proximité avec le bord
     // Avancement à partir duquel il est plus dangereux d'être sur un bord
     float edge_adv = 0.75; float mult_endgame = 3;
+    
+    
     // Calcul de safety du roi
-    w_king_weakness += edge_defense * min(abs(w_king_i - (-1)), abs((w_king_i) - 8)) * min(abs(w_king_j - (-1)), abs((w_king_j) - 8)) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv));
-    b_king_weakness += edge_defense * min(abs(b_king_i - (-1)), abs((b_king_i) - 8)) * min(abs(b_king_j - (-1)), abs((b_king_j) - 8)) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv));
+    // Facteur additif pour les multiplications (pour rendre ça plus linéaire)
+    int mult_add = 0;
+
+    // cout << "toto : " << edge_defense / (mult_add + 1) / (mult_add + 1) * (min(abs(w_king_i - (-1)), abs((w_king_i) - 8)) + mult_add) * (min(abs(w_king_j - (-1)), abs((w_king_j) - 8)) + mult_add) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv)) << endl;
+    // cout << "toto : " << edge_defense * (min(w_king_i, 7 - w_king_i) + min(w_king_j, 7 - w_king_j)) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv)) << endl;
+    // Version multiplicative
+    // w_king_weakness += edge_defense / (mult_add + 1) / (mult_add + 1) * (min(abs(w_king_i - (-1)), abs((w_king_i) - 8)) + mult_add) * (min(abs(w_king_j - (-1)), abs((w_king_j) - 8)) + mult_add) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv));
+    // b_king_weakness += edge_defense / (mult_add + 1) / (mult_add + 1) * (min(abs(b_king_i - (-1)), abs((b_king_i) - 8)) + mult_add) * (min(abs(b_king_j - (-1)), abs((b_king_j) - 8)) + mult_add) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv));
+
+    // Version additive
+    w_king_weakness += edge_defense * (min(w_king_i, 7 - w_king_i) + min(w_king_j, 7 - w_king_j)) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv));
+    b_king_weakness += edge_defense * (min(b_king_i, 7 - b_king_i) + min(b_king_j, 7 - b_king_j)) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv));
 
     // cout << w_king_weakness << ", " << b_king_weakness << endl;
+
+
+    // Ajout de la protection du roi... la faiblesse du roi ne peut pas être négative (potentiellement à revoir, mais parfois la surprotection donne des valeurs délirantes)
+    float w_king_over_protection = max_float(0.0, w_king_protection - w_king_weakness);
+    float b_king_over_protection = max_float(0.0, b_king_protection - b_king_weakness);
+    // cout << w_king_weakness << " - " << w_king_protection << endl;
+    w_king_weakness = max_float(0.0, w_king_weakness - w_king_protection);
+    b_king_weakness = max_float(0.0, b_king_weakness - b_king_protection);
+
+    // cout << w_king_weakness << ", " << b_king_weakness << endl;
+
+    // Force de la surprotection du roi
+    float overprotection = 0.25;
 
     // Potentiel d'attaque de chaque pièce (pion, caval, fou, tour, dame)
     int attack_potentials[6] = {1, 25, 20, 30, 100, 0};
@@ -3386,7 +3435,15 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
                     b_total_potential += attack_potentials[(p - 1) % 6];
         }
 
+    // cout << "w : " << w_king_weakness << ", " << (float)w_total_potential / reference_potential << endl;
+    // cout << "b : " << b_king_weakness << ", " << (float)b_total_potential / reference_potential << endl;
+
     _king_safety = b_king_weakness * w_total_potential / reference_potential - w_king_weakness * b_total_potential / reference_potential;
+
+    // cout << _king_safety << endl;
+    _king_safety += overprotection * (w_king_over_protection - b_king_over_protection);
+
+    // cout << _king_safety << endl;
 
     _safety = true;
 
@@ -3399,6 +3456,9 @@ int Board::is_mate() {
     // Pour accélérer en ne re calculant pas forcément les coups (marche avec coups légaux OU illégaux)
     int half_moves = _half_moves_count;
     _half_moves_count = 0;
+
+    int moves = _got_moves;
+
     if (_got_moves == -1)
         get_moves();
 
@@ -3411,7 +3471,7 @@ int Board::is_mate() {
         b._color = _color;
         if (!b.in_check()) {
             _half_moves_count = half_moves;
-            _got_moves = -1;
+            _got_moves = moves;
             return -1; 
         }
             
@@ -3419,11 +3479,11 @@ int Board::is_mate() {
 
     if (in_check()) {
         _half_moves_count = half_moves;
-        _got_moves = -1;
+        _got_moves = moves;
         return 1;  
     }
               
-    _got_moves = -1;
+    _got_moves = moves;
     _half_moves_count = half_moves;
     return 0;
     
@@ -3509,26 +3569,22 @@ void Board::add_time_to_pgn() {
 string Board::get_monte_carlo_variant(bool evaluate_final_pos) {
     string s = "";
 
-    while (true) {
-        if ((_got_moves == -1 && !_is_game_over) || _got_moves == 0)
-            return s;
-        if (_is_game_over) {
-            return s;
-        }
-        if (_tested_moves == _got_moves) {
-            int move = best_monte_carlo_move();
-            return s + " " + move_label_from_index(move) + _monte_buffer._heap_boards[_index_children[best_monte_carlo_move()]].get_monte_carlo_variant(evaluate_final_pos);
-        }
-        int move = best_monte_carlo_move();
-        s += " " + move_label_from_index(move);
-        if (evaluate_final_pos) {
-            s += " | " + to_string(_monte_buffer._heap_boards[_index_children[best_monte_carlo_move()]]._static_evaluation);
-        }
+    if ((_got_moves == -1 && !_is_game_over) || _got_moves == 0)
         return s;
-    }
+    if (_is_game_over)
+        return s;
 
+    int move = best_monte_carlo_move();
+    s += " " + move_label_from_index(move);
+
+    if (_tested_moves == _got_moves)
+        return s + _monte_buffer._heap_boards[_index_children[move]].get_monte_carlo_variant(evaluate_final_pos);
+
+    if (evaluate_final_pos)
+        s += " | " + to_string(_monte_buffer._heap_boards[_index_children[move]]._static_evaluation);
 
     return s;
+
 }
 
 
@@ -4651,16 +4707,19 @@ void Board::get_rook_on_open_file() {
         }
     }
 
+    // Nombre de colonnes ouvertes
+    int open_files = 0;
 
     // Tour sur les colonnes ouvertes
     if (!_rook_open_file) {
         _rook_open = 0;
         int open_value = 50;
 
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < 8; i++) {
             (w_rooks[i] && !w_pawns[i] && !b_pawns[i]) ? _rook_open += w_rooks[i] * open_value : (b_rooks[i] && !b_pawns[i] && !w_pawns[i]) && (_rook_open -= b_rooks[i] * open_value);
+            !w_pawns[i] && !b_pawns[i] && open_files++;
+        }       
     }
-
 
     // Tour sur les colonnes semi-ouvertes
     if (!_rook_semi_open_file) {
@@ -4671,6 +4730,9 @@ void Board::get_rook_on_open_file() {
             (w_rooks[i] && !w_pawns[i] && b_pawns[i]) ? _rook_semi += w_rooks[i] * semi_open_value : (b_rooks[i] && !b_pawns[i] && w_pawns[i]) && (_rook_semi -= b_rooks[i] * semi_open_value);
     }
 
+    // L'importance est moindre s'il y a plusieurs colonnes ouvertes
+    if (_rook_open)
+        _rook_open /= open_files; 
 
     return;
 }
@@ -4679,4 +4741,22 @@ void Board::get_rook_on_open_file() {
 bool set_grogros_auto(bool b) {
     grogros_auto = b;
     return b;
+}
+
+// Fonction qui renvoie la profondeur de calcul de la variante principale
+int Board::grogros_main_depth() {
+
+    if ((_got_moves == -1 && !_is_game_over) || _got_moves == 0)
+        return 0;
+
+    if (_is_game_over)
+        return 0;
+    
+    if (_tested_moves == _got_moves) {
+        int move = best_monte_carlo_move();
+        return 1 + _monte_buffer._heap_boards[_index_children[move]].grogros_main_depth();
+    }
+        
+    return 1;
+
 }

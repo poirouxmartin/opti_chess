@@ -40,6 +40,7 @@ https://www.chessprogramming.org/Time_Management
 https://www.chessprogramming.org/Encoding_Moves#MoveIndex
 https://lichess.org/page/accuracy
 http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
+https://www.chessprogramming.org/UCT
 
 
 
@@ -198,7 +199,7 @@ http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
 -> Pour les transpositions, on peut peut-être renvoyer au même indice de plateau fils...?
 -> Pour chaque plateau, générer et stocker la representation simpliste du plateau? Pour ensuite pouvoir aider les fils à comparer?
 -> ATTENTION aux conversions int et float dans les calculs d'évaluations...
--> 3k3r/2p1b1pp/p1p2p2/3bp3/8/2P1BNP1/PPP2PKP/R7 w - - 3 16 -> +1.15?
+-> 3k3r/2p1b1pp/p1p2p2/3bp3/8/2P1BNP1/PPP2PKP/R7 w - - 3 16 -> +1.20?
 -> Mettre les règles de parties nulles et mat en dehors de l'évaluation?
 -> Ajouter les pièces protégées/attaquées lors de l'évaluation pour simplifier les calculs de l'IA
 -> Gestion du temps : faire en fonction des lignes montantes? Si ça stagne, jouer vite? Si y'a un seul coup -> Jouer instant?
@@ -241,13 +242,12 @@ http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
 -> q5k1/2p2pp1/8/7p/2BRP3/5K2/P1P2PPP/8 w - - 0 4
 -> r3r1k1/ppp4q/1n3Q2/3p1P2/5P2/2q5/PpPqN1B1/1K5R w - - 0 26 : NE PLUS REGARDER LES COUPS POURRIS
 -> Voir si move_label ralentit tout... (en regardant des mats etc...)
--> r1b2kn1/1p1p1p1r/1p1P3p/1N1N1R2/6p1/8/PP4PP/5RK1 b - - 3 21 : +25, statiquement faut faire qq chose pour le comprendre dans l'évaluation de Grogros (+1.38)
+-> r1b2kn1/1p1p1p1r/1p1P3p/1N1N1R2/6p1/8/PP4PP/5RK1 b - - 3 21 : +25, statiquement faut faire qq chose pour le comprendre dans l'évaluation de Grogros (+2.15)
 -> GrogrosZero ralentit beaucoup quand les variantes deviennent longues
 -> rn1r3k/pp4p1/1b2B3/5Qp1/3P4/P4b2/1P3PPP/6K1 b - - 1 3 : ici après Rxd4, tous les calculs sont perturbés par le fou en l'air en f3... ce qui ralentit la recherche de mat
 -> ----> Faire une recherche spécialement de mat, où on prend plus en compte le matériel??
 -> Au fil de la réflexion, retirer les coups pourris?? pour augmenter la capacité de stockage...
 -> 8/7p/4k1p1/p2Nrp2/2P5/2KB3P/8/8 b - - 2 45
--> utiliser half_moves_count dans l'évaluation pour la faire tendre vers la nulle quand ça augmente??
 -> 8/8/7k/8/1p1p1p1p/pPpPpPpP/P1P1P1P1/1K6 w - - 0 1
 -> Mettre une variable globale pour la règle des 50 coups (pour la passer à moins, si besoin)
 -> Rechercher large au début, puis serré après??
@@ -267,17 +267,19 @@ http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
 -> 2r1r1k1/p2n1ppp/1p6/2pP4/1bP2P2/2N3N1/PB6/R4RK1 w - - 0 23 = égal????? un pièce de moins...
 -> rnbq3r/pppp1kpp/5n2/6N1/3PP3/6b1/PPP4p/RNBQ1R1K b - - 2 10 : incompréhension de la position
 -> Quand Grogros joue un coup auquel il n'avait pas pensé.. les évaluations déscendent pour les coups, 1 par 1... comment faire pour que tout descende en même temps?
--> Equilibrer les tours sur les colonnes ouvertes. Moins fortes en endgame? Plus forte si y'a qu'une seule colonne ouverte
--> GrogrosZero sait plus mater roi + tour vs roi, ou roi + dame vs roi
--> 8/6R1/8/8/8/8/5K1k/8 w - - 38 20 : roi noir + safe? XDD ----> Beaucoup de choses à revoir dans cette fonction get_king_safety()...
 -> r2qr1k1/1pp2ppp/pbnpbn2/4p3/3PP3/2P2N2/PPB2PPP/RNBQR1K1 w - - 1 13 : d5???!!
--> Pour king_safety, il faut absolument prendre en compte les pièces qui peuvent l'attaquer, sinon... r1bq4/ppp2kpp/2np1n2/2b1p3/4P3/3P4/PPP2PPP/RNBQ1RK1 w - - 0 9 = +1.1 en king_safety
+-> Pour king_safety, il faut absolument prendre en compte les pièces qui peuvent l'attaquer
 -> Vérifier que le matériel fonctionne bien (pas d'erreurs de calcul??)
--> 5r2/3R1k1b/1Bp4p/1p2p2P/7P/b1N2KN1/8/8 b - - 7 66 : ça n'évalue pas la position???
 -> Regler tous les *100 et les /100 dans les évaluations
 -> L'éval statique en position symétrique sera toujours nulle ?? (modulo le trait du joueur)
 -> Distinguer positionnement (-> espace?) et développement des pièces (pour améliorer king_safety())
 -> Puissance de la paire de fou qui dépend du moment de la partie? Qui dépend si y'a encore les dames pour compenser?
+-> Découper la foncion draw en plein de sous-fonctions?
+-> Quand Grogros est stoppé, je veux quand même voir l'affichage de l'analyse...
+-> Chercher ce qui prend le plus de temps dans la GUI
+-> Recherche de Grogros : utiliser UCT
+-> Trouver un profiler pour VS code
+-> Tester Grogros sur les leçons stratégiques de chess.com
 
 
 ----- Interface utilisateur -----
@@ -446,7 +448,7 @@ int main() {
     monte_evaluator._piece_positioning = 0.007; // beta = 0.035 // Pos = 0.013
     // monte_evaluator._piece_positioning = 0.01; // Pour tester http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
     monte_evaluator._king_safety = 0.004; // Il faut régler la fonction... avec les pièces autour, s'il est au milieu du plateau...
-    monte_evaluator._castling_rights = 0.3;
+    monte_evaluator._castling_rights = 0.2;
     // monte_evaluator._attacks = 0.0;
     // monte_evaluator._piece_activity = 0.10; // En test pour la NJV
 
@@ -834,26 +836,26 @@ int main() {
         // Calculer la fin de la partie ici une fois, pour éviter de la refaire?
 
         // Plus de temps... (en faire une fonction)
-        if (t._time) {
+        // if (t._time) {
 
 
-            if (t._time_black < 0) {
-                t._time = false;
-                t._time_black = 0;
-                play_end_sound();
-                t._is_game_over = true;
-                cout << "White won on time" << endl; // Pas toujours vrai car il peut y avoir des manques de matériel
-            }
-            if (t._time_white < 0) {
-                t._time = false;
-                t._time_white = 0;
-                play_end_sound();
-                t._is_game_over = true;
-                cout << "Black won on time" << endl;
-            }
+        //     if (t._time_black < 0) {
+        //         t._time = false;
+        //         t._time_black = 0;
+        //         play_end_sound();
+        //         t._is_game_over = true;
+        //         cout << "White won on time" << endl; // Pas toujours vrai car il peut y avoir des manques de matériel
+        //     }
+        //     if (t._time_white < 0) {
+        //         t._time = false;
+        //         t._time_white = 0;
+        //         play_end_sound();
+        //         t._is_game_over = true;
+        //         cout << "Black won on time" << endl;
+        //     }
 
            
-        }
+        // }
 
 
         // Calcul en mode auto
