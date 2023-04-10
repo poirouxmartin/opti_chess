@@ -112,13 +112,11 @@ https://www.chessprogramming.org/UCT
     - Structures de pions (IMPORTANT) -> A améliorer
     - Diagonales ouvertes
     - Clouages
-    - Cases noires/blanches
-    - Contrôle des cases
+    - Cases noires/blanches -> faiblesse sur une couleur
     - Cases faibles
     - Pions arrierés/faibles
     - Initiative -> A améliorer : fort dans les positions d'attaque?
     - Fous de couleurs opposées : favorisent l'attaque, mais en finale -> draw
-    - Contrôle du centre
     - Harmonie des pièces (qui se défendent entre elles)
     - Pièces enfermées
     - Bon/Mauvais fou
@@ -280,6 +278,8 @@ https://www.chessprogramming.org/UCT
 -> Recherche de Grogros : utiliser UCT
 -> Trouver un profiler pour VS code
 -> Tester Grogros sur les leçons stratégiques de chess.com
+-> r1b1k2r/pp1p1ppp/1qn2n2/2b1p3/2P1P3/2N4P/PP3PP1/R1BQKBNR w KQkq - 1 7 : arrête de bongcloud stp
+-> mettre des static const un peu partout pour éviter les re définitions inutiles
 
 
 ----- Interface utilisateur -----
@@ -370,6 +370,8 @@ https://www.chessprogramming.org/UCT
 -> La GUI lag à cause du calcul de variantes??
 -> Thread : bug... parfois les coups joués ne sont pas les bons
 -> Re foncer le noir des pièces?
+-> Ajout du titre BOT : [WhiteTitle "BOT"]
+-> Afficher quand-même la barre d'éval même si GrogrosZero est arrêté?
 
 
 ----- Réseaux de neurones -----
@@ -475,6 +477,7 @@ int main() {
     eval_white._rook_semi = 0;
     eval_white._piece_positioning = 0;
     eval_white._castling_rights = 0;
+    eval_white._square_controls = 0;
 
     eval_black._piece_activity = 0.03;
 
