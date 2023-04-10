@@ -223,6 +223,10 @@ class Board {
         int _rook_semi = 0;
         bool _rook_semi_open_file = false;
 
+        // Contrôle des cases
+        int _control = 0;
+        int _square_controls = false;
+
         // Pour la gestion du temps
         clock_t _last_move_clock;
         
@@ -384,7 +388,7 @@ class Board {
         int total_nodes();
 
         // Fonction qui calcule la sécurité des rois
-        void get_king_safety(int piece_attack = 50, int piece_defense = 15, int pawn_attack = 25, int pawn_defense = 100, int edge_defense = 100);
+        void get_king_safety(int piece_attack = 50, int piece_defense = 5, int pawn_attack = 25, int pawn_defense = 100, int edge_defense = 125);
 
         // Fonction qui renvoie s'il y a échec et mat (ou pat) (-1, 1 ou 0)
         int is_mate();
@@ -464,6 +468,8 @@ class Board {
         // Fonction qui renvoie la profondeur de calcul de la variante principale
         int grogros_main_depth();
 
+        // Fonction qui calcule la valeur des cases controllées sur l'échiquier
+        void get_square_controls();
 };
 
 

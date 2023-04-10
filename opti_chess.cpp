@@ -1088,7 +1088,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     // Avancement de la partie
     game_advancement();
     if (display)
-        eval_components += "game advancement : " + to_string((int)(100 * _adv)) + "\%\n";
+        eval_components += "game advancement : " + to_string((int)round(100 * _adv)) + "\%\n";
         
 
     // Matériel
@@ -1097,7 +1097,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         count_material(eval);
         material = _material_count * eval->_piece_value / 100; // à changer (le /100)
         if (display)
-            eval_components += "material : " + to_string((int)(100 * material)) + "\n";
+            eval_components += "material : " + to_string((int)round(100 * material)) + "\n";
         _evaluation += material;
     }
 
@@ -1108,7 +1108,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         pieces_positionning(eval);
         positioning = _pos * eval->_piece_positioning;
         if (display)
-            eval_components += "positionning : " + to_string((int)(100 * positioning)) + "\n";
+            eval_components += "positionning : " + to_string((int)round(100 * positioning)) + "\n";
         _evaluation += positioning;
     }
 
@@ -1131,7 +1131,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     if (eval->_bishop_pair != 0) {
         bishop_pair = eval->_bishop_pair * ((bishop_w >= 2) - (bishop_b >= 2));
         if (display)
-            eval_components += "bishop pair : " + to_string((int)(100 * bishop_pair)) + "\n";
+            eval_components += "bishop pair : " + to_string((int)round(100 * bishop_pair)) + "\n";
         _evaluation += bishop_pair;
     }
         
@@ -1141,7 +1141,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     if (eval->_random_add != 0) {
         random_add += GetRandomValue(-50, 50) * eval->_random_add / 100;
         if (display)
-            eval_components += "random add : " + to_string((int)(100 * random_add)) + "\n";
+            eval_components += "random add : " + to_string((int)round(100 * random_add)) + "\n";
         _evaluation += random_add;
     }
         
@@ -1152,7 +1152,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         get_piece_activity();
         piece_activity = _piece_activity * eval->_piece_activity;
         if (display)
-            eval_components += "piece activity : " + to_string((int)(100 * piece_activity)) + "\n";
+            eval_components += "piece activity : " + to_string((int)round(100 * piece_activity)) + "\n";
         _evaluation += piece_activity;
     }
 
@@ -1161,7 +1161,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     if (eval->_player_trait != 0) {
         player_trait = eval->_player_trait * _color;
         if (display)
-            eval_components += "player trait : " + to_string((int)(100 * player_trait)) + "\n";
+            eval_components += "player trait : " + to_string((int)round(100 * player_trait)) + "\n";
         _evaluation += player_trait;
     }
 
@@ -1171,7 +1171,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     if (eval->_castling_rights != 0) {
         castling_rights += eval->_castling_rights * (_k_castle_w + _q_castle_w - _k_castle_b - _q_castle_b) * (1 - _adv);
         if (display)
-            eval_components += "castling rights : " + to_string((int)(100 * castling_rights)) + "\n";
+            eval_components += "castling rights : " + to_string((int)round(100 * castling_rights)) + "\n";
         _evaluation += castling_rights;
     }
     
@@ -1181,7 +1181,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         get_king_safety();
         king_safety = _king_safety * eval->_king_safety;
         if (display)
-            eval_components += "king safety : " + to_string((int)(100 * king_safety)) + "\n";
+            eval_components += "king safety : " + to_string((int)round(100 * king_safety)) + "\n";
         _evaluation += king_safety;
     }
 
@@ -1191,7 +1191,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         get_pawn_structure();
         pawn_structure = _pawn_structure * eval->_pawn_structure;
         if (display)
-            eval_components += "pawn structure : " + to_string((int)(100 * pawn_structure)) + "\n";
+            eval_components += "pawn structure : " + to_string((int)round(100 * pawn_structure)) + "\n";
         _evaluation += pawn_structure;
     }
 
@@ -1203,9 +1203,9 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         pieces_defenses = _defenses_eval * eval->_defenses;
         if (display) {
             if (eval->_attacks)
-                eval_components += "attacks : " + to_string((int)(100 * pieces_attacks)) + "\n";
+                eval_components += "attacks : " + to_string((int)round(100 * pieces_attacks)) + "\n";
             if (eval->_defenses)
-                eval_components += "defenses : " + to_string((int)(100 * pieces_defenses)) + "\n";
+                eval_components += "defenses : " + to_string((int)round(100 * pieces_defenses)) + "\n";
         }
         _evaluation += pieces_attacks;
         _evaluation += pieces_defenses;
@@ -1217,7 +1217,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         get_kings_opposition();
         kings_opposition = _kings_opposition * eval->_kings_opposition;
         if (display)
-            eval_components += "opposition : " + to_string((int)(100 * kings_opposition)) + "\n";
+            eval_components += "opposition : " + to_string((int)round(100 * kings_opposition)) + "\n";
         _evaluation += kings_opposition;
     }
 
@@ -1229,13 +1229,23 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         rook_open = _rook_open * eval->_rook_open;
         rook_semi = _rook_semi * eval->_rook_semi;
         if (display) {
-            eval_components += "rooks on open files : " + to_string((int)(100 * rook_open)) + "\n";
-            eval_components += "rooks on semi-open files : " + to_string((int)(100 * rook_semi)) + "\n";
+            eval_components += "rooks on open files : " + to_string((int)round(100 * rook_open)) + "\n";
+            eval_components += "rooks on semi-open files : " + to_string((int)round(100 * rook_semi)) + "\n";
         }
         _evaluation += rook_open;
         _evaluation += rook_semi;
     }
 
+
+    // Contrôle des cases
+    float square_controls = 0;
+    if (eval->_square_controls != 0) {
+        get_square_controls();
+        square_controls = _control * eval->_square_controls;
+        if (display)
+            eval_components += "square controls : " + to_string((int)round(100 * square_controls)) + "\n";
+        _evaluation += square_controls;
+    }
 
 
     // Forteresse
@@ -3288,10 +3298,13 @@ int Board::total_nodes() {
 
 // Fonction qui calcule la sécurité des rois
 void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack, int pawn_defense, int edge_defense) {
+    // TODO est cassé
+
 
     if (_safety)
         return;
 
+    // Position des rois
     int w_king_i;
     int w_king_j;
     int b_king_i;
@@ -3327,6 +3340,20 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
 
     // TODO : piece_attack/defense depending on the piece
 
+    // Valeurs de protection et attaque envers un roi en fonction de la position relative entre la pièce et le roi
+
+    // Protection d'un pion (le roi se situe en 2, 1)
+    // TODO vérifier la symétrie horizontale dans le cas où on a les noirs
+    static const int pawn_protection_map[3][3] = {
+        {75, 125, 75},
+        {150, 250, 150},
+        {100,  0, 100}
+    };
+
+    // TODO : faire une fonction qui en fonction de la pièce et le roi, renvoie la valeur de relation entre les deux
+
+
+
     float proximity_pawn_defense = 2;
 
     // Faiblesses des rois
@@ -3342,11 +3369,13 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
             if (p > 0) {
                 if (p < 6) {
                     if (p == 1) {
-                        w_king_protection += pawn_defense * proximity(i, j, w_king_i, w_king_j, proximity_pawn_defense) * (0.25 + !_k_castle_w + !_q_castle_w);
+                        // w_king_protection += pawn_defense * proximity(i, j, w_king_i, w_king_j, proximity_pawn_defense);
+                        abs(i - w_king_i - 1) <= 1 && abs(j - w_king_j) <= 1 && (w_king_protection += pawn_protection_map[2 - (i - w_king_i)][j - w_king_j + 1]);
+                        // abs(i - w_king_i - 1) <= 1 && abs(j - w_king_j) <= 1 && cout << "w pawn : +" << pawn_protection_map[2 - (i - w_king_i)][j - w_king_j + 1] << endl;
                         b_king_weakness += pawn_attack * proximity(i, j, b_king_i, b_king_j, 3);
                     }   
                     else {
-                        w_king_protection += piece_defense * proximity(i, j, w_king_i, w_king_j, 4) * (0.25 + !_k_castle_w + !_q_castle_w);
+                        w_king_protection += piece_defense * proximity(i, j, w_king_i, w_king_j, 4);
                         b_king_weakness += piece_attack * proximity(i, j, b_king_i, b_king_j, 4);
                     }
                     
@@ -3354,36 +3383,39 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
                 else if (p > 6 && p < 12) {
                     if (p == 7) {
                         w_king_weakness += pawn_attack * proximity(i, j, w_king_i, w_king_j, 3);
-                        b_king_protection += pawn_defense * proximity(i, j, b_king_i, b_king_j, proximity_pawn_defense) * (0.25 + !_k_castle_b + !_q_castle_b);
+                        // b_king_protection += pawn_defense * proximity(i, j, b_king_i, b_king_j, proximity_pawn_defense);
+                        abs(b_king_i - i - 1) <= 1 && abs(j - b_king_j) <= 1 && (b_king_protection += pawn_protection_map[2 - (b_king_i - i)][j - b_king_j + 1]);
+                        // abs(b_king_i - i - 1) <= 1 && abs(j - b_king_j) <= 1 && cout << "b_pawn : " << pawn_protection_map[2 - (b_king_i - i)][j - b_king_j + 1] << endl;
                     }   
                     else {
                         w_king_weakness += piece_attack * proximity(i, j, w_king_i, w_king_j, 4);
-                        b_king_protection += piece_defense * proximity(i, j, b_king_i, b_king_j, 4) * (0.25 + !_k_castle_b + !_q_castle_b);
+                        b_king_protection += piece_defense * proximity(i, j, b_king_i, b_king_j, 4);
                     }
                 }
             }
         }
 
     // Il faut compter les cases vides (non-pion) autour de lui
-    
 
-    // cout << w_king_weakness << ", " << b_king_weakness << endl;
+    // cout << w_king_protection << ", " << b_king_protection << endl;
+    
+    // cout << "w weakness from opponent pieces = " << w_king_weakness << endl;
+    // cout << "w protection from pieces = " << w_king_protection << endl;
 
     // Droits de roque
-    w_king_protection += pawn_defense * (_k_castle_w + _q_castle_w) * proximity_pawn_defense * 2;
-    b_king_protection += pawn_defense * (_k_castle_b + _q_castle_b) * proximity_pawn_defense * 2;
+    w_king_protection += (_k_castle_w + _q_castle_w) * 100;
+    b_king_protection += (_k_castle_b + _q_castle_b) * 100;
 
-    // cout << pawn_defense * (_k_castle_w + _q_castle_w) / 2 * proximity_pawn_defense << endl;
+    // cout << "+ castling protection (+" << (_k_castle_w + _q_castle_w) * 50 << ") = " << w_king_protection << endl;
 
     // Niveau de protection auquel on peut considérer que le roi est safe
-    float king_base_protection = pawn_defense * 4 * proximity_pawn_defense;
+    float king_base_protection = 200;
     // king_base_protection = 0;
-    // cout << king_base_protection << ", " << w_king_protection << ", " << b_king_protection << endl;
+    // cout << "base protection : " << king_base_protection << endl;
     w_king_protection -= king_base_protection;
     b_king_protection -= king_base_protection;
     
-
-    // cout << w_king_weakness << ", " << b_king_weakness << endl;
+    // cout << "w protection (- base protection) = " << w_king_protection << endl;
 
     // Proximité avec le bord
     // Avancement à partir duquel il est plus dangereux d'être sur un bord
@@ -3401,20 +3433,20 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
     // b_king_weakness += edge_defense / (mult_add + 1) / (mult_add + 1) * (min(abs(b_king_i - (-1)), abs((b_king_i) - 8)) + mult_add) * (min(abs(b_king_j - (-1)), abs((b_king_j) - 8)) + mult_add) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv));
 
     // Version additive
-    w_king_weakness += edge_defense * (min(w_king_i, 7 - w_king_i) + min(w_king_j, 7 - w_king_j)) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv));
-    b_king_weakness += edge_defense * (min(b_king_i, 7 - b_king_i) + min(b_king_j, 7 - b_king_j)) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv));
+    w_king_weakness += max_int(150, edge_defense * (min(w_king_i, 7 - w_king_i) + min(w_king_j, 7 - w_king_j)) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv))) - 150;
+    b_king_weakness += max_int(150, edge_defense * (min(b_king_i, 7 - b_king_i) + min(b_king_j, 7 - b_king_j)) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv))) - 150;
 
-    // cout << w_king_weakness << ", " << b_king_weakness << endl;
+    // cout << "w weakness from king position (+ opponents pieces) = " << w_king_weakness << endl;
 
 
     // Ajout de la protection du roi... la faiblesse du roi ne peut pas être négative (potentiellement à revoir, mais parfois la surprotection donne des valeurs délirantes)
     float w_king_over_protection = max_float(0.0, w_king_protection - w_king_weakness);
     float b_king_over_protection = max_float(0.0, b_king_protection - b_king_weakness);
-    // cout << w_king_weakness << " - " << w_king_protection << endl;
+    // cout << "w overprotection : " << w_king_protection << " - " << w_king_weakness << " = " << w_king_over_protection << endl;
     w_king_weakness = max_float(0.0, w_king_weakness - w_king_protection);
     b_king_weakness = max_float(0.0, b_king_weakness - b_king_protection);
 
-    // cout << w_king_weakness << ", " << b_king_weakness << endl;
+    // cout << "w final weakness (including protection) = " << w_king_weakness << endl;
 
     // Force de la surprotection du roi
     float overprotection = 0.25;
@@ -3435,13 +3467,15 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
                     b_total_potential += attack_potentials[(p - 1) % 6];
         }
 
-    // cout << "w : " << w_king_weakness << ", " << (float)w_total_potential / reference_potential << endl;
-    // cout << "b : " << b_king_weakness << ", " << (float)b_total_potential / reference_potential << endl;
+    // cout << "b attacking potential = " << (float)b_total_potential / reference_potential << endl;
+    // cout << "w final weakness = " << w_king_weakness * (float)b_total_potential / reference_potential << endl;
 
     _king_safety = b_king_weakness * w_total_potential / reference_potential - w_king_weakness * b_total_potential / reference_potential;
 
     // cout << _king_safety << endl;
     _king_safety += overprotection * (w_king_over_protection - b_king_over_protection);
+
+    // cout << "w potential overprotection = " << overprotection * w_king_over_protection << endl;
 
     // cout << _king_safety << endl;
 
@@ -4111,7 +4145,7 @@ void Board::get_attacks_and_defenses() {
     _defenses_eval = 0;
 
     // Tableau des valeurs d'attaques des pièces (0 = pion, 1 = caval, 2 = fou, 3 = tour, 4 = dame, 5 = roi)
-    int attacks_array[6][6] = {
+    static const int attacks_array[6][6] = {
     //   P    N    B     R    Q    K
         {0,   25,  25,  30,  50,  70}, // P
         {5,   0,   20,  30, 100,  80}, // N
@@ -4122,7 +4156,7 @@ void Board::get_attacks_and_defenses() {
     }; // TODO à définir autre part, puis à améliorer
 
     // Tableau des valeurs de défenses des pièces (0 = pion, 1 = caval, 2 = fou, 3 = tour, 4 = dame, 5 = roi)
-    int defenses_array[6][6] = {
+    static const int defenses_array[6][6] = {
     //   P    N    B     R    Q    K
         {15,   5,  10,   5,    5,  0}, // P
         {5,   10,  10,  15,   20,  0}, // N
@@ -4674,6 +4708,7 @@ void Board::reset_eval() {
     _positioning = false; _pos = 0;
     _rook_open_file = false; _rook_open = 0;
     _rook_semi_open_file = false; _rook_semi = 0;
+    _square_controls = false; _control = 0;
 }
 
 
@@ -4759,4 +4794,59 @@ int Board::grogros_main_depth() {
         
     return 1;
 
+}
+
+
+// Fonction qui calcule la valeur des cases controllées sur l'échiquier
+void Board::get_square_controls() {
+    // TODO ajouter des valeurs pour le contrôle des cases par les pièces?
+
+    if (_square_controls)
+        return;
+
+    _control = 0;
+
+    // Valeur du contrôle de chaque case (pour les pions)
+    static const int square_controls[8][8] = {
+        {20,  20,  20,  20,  20,  20,  20,  20},
+        {50,  50,  50,  50,  50,  50,  50,  50},
+        {10,  20,  30,  40,  40,  30,  20,  10},
+        {5,   10,  20,  30,  30,  20,  10,   5},
+        {0,    0,   0,  20,  20,   0,   0,   0},
+        {5,   -5, -10,   0,   0, -10,  -5,   5},
+        {0,    0,   0,   0,   0,   0,   0,   0},
+        {0,    0,   0,   0,   0,   0,   0,   0}
+    };
+
+    int p;
+    int total_control = 0;
+
+    // Calcul des cases controllées par les pions de chaque camp
+    // TODO Regarder si avoir un double contrôle c'est important
+    bool white_controls[8][8] = {false};
+    bool black_controls[8][8] = {false};
+
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            p = _array[i][j];
+            if (p == 1) {
+                white_controls[7 - i - 1][j - 1] = true;
+                white_controls[7 - i - 1][j + 1] = true;
+            }
+            if (p == 7) {
+                black_controls[i - 1][j - 1] = true;
+                black_controls[i - 1][j + 1] = true;
+            }    
+        }
+    }
+
+    for (int i = 0; i < 8; i++)
+        for (int j = 0; j < 8; j++)
+            total_control += (white_controls[i][j] - black_controls[i][j]) * square_controls[i][j];
+
+    // L'importance de ce paramètre dépend de l'avancement de la partie : l'espace est d'autant plus important que le nombre de pièces est grand
+    _control = total_control * (1 - _adv);
+    _square_controls = true;
+
+    return;
 }
