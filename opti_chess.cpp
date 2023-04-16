@@ -2060,7 +2060,7 @@ void load_resources() {
         promotion_sound = LoadSound("../resources/sounds/promotion.mp3");
 
         // Police de l'écriture
-        text_font = LoadFontEx("../resources/fonts/RobotReaversItalic-4aa4.ttf", 32, 0, 250);
+        text_font = LoadFontEx("../resources/fonts/SF TransRobotics.ttf", 32, 0, 250);
         // text_font = GetFontDefault();
 
         // Icône
@@ -2834,8 +2834,8 @@ void draw_arrow_from_coord(int i1, int j1, int i2, int j2, int index, int color,
         }
         else
             sprintf(v, "%d", value);
-        float size = thickness * 1.85f;
-        float max_size = thickness * 4.0f;
+        float size = thickness * 1.5f;
+        float max_size = thickness * 3.25f;
         float width = MeasureTextEx(text_font, v, size, font_spacing * size).x;
         if (width > max_size) {
             size = size * max_size / width;
@@ -3376,7 +3376,7 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
                     }   
                     else {
                         w_king_protection += piece_defense * proximity(i, j, w_king_i, w_king_j, 4);
-                        b_king_weakness += piece_attack * proximity(i, j, b_king_i, b_king_j, 4);
+                        b_king_weakness += piece_attack * proximity(i, j, b_king_i, b_king_j, 7);
                     }
                     
                 } 
@@ -3388,7 +3388,7 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
                         // abs(b_king_i - i - 1) <= 1 && abs(j - b_king_j) <= 1 && cout << "b_pawn : " << pawn_protection_map[2 - (b_king_i - i)][j - b_king_j + 1] << endl;
                     }   
                     else {
-                        w_king_weakness += piece_attack * proximity(i, j, w_king_i, w_king_j, 4);
+                        w_king_weakness += piece_attack * proximity(i, j, w_king_i, w_king_j, 7);
                         b_king_protection += piece_defense * proximity(i, j, b_king_i, b_king_j, 4);
                     }
                 }
