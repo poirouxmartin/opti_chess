@@ -132,7 +132,7 @@ static float text_size;
 static Font text_font;
 
 // Espacement entre les caractères
-static float font_spacing = 0.00f;
+static float font_spacing = 0.1f;
 
 
 // Orientation du plateau
@@ -186,12 +186,12 @@ static float global_eval = 0.0f;
 static string global_eval_text = "+0.0";
 
 // Temps de base pour les joueurs (en ms)
-static int base_time_white = 300000;
-static int base_time_black = 300000;
+static int base_time_white = 60000;
+static int base_time_black = 60000;
 
 // Incrément (en ms)
-static int base_time_increment_white = 2000;
-static int base_time_increment_black = 2000;
+static int base_time_increment_white = 0000;
+static int base_time_increment_black = 0000;
 
 // Valeur des pièces pour l'affichage sur la GUI (rien/roi, pion, cavalier, fou, tour, dame)
 static int piece_gui_values[6] = {0, 1, 3, 3, 5, 9};

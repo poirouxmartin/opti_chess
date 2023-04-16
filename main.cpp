@@ -279,7 +279,10 @@ https://www.chessprogramming.org/UCT
 -> Trouver un profiler pour VS code
 -> Tester Grogros sur les leçons stratégiques de chess.com
 -> r1b1k2r/pp1p1ppp/1qn2n2/2b1p3/2P1P3/2N4P/PP3PP1/R1BQKBNR w KQkq - 1 7 : arrête de bongcloud stp
--> mettre des static const un peu partout pour éviter les re définitions inutiles
+-> Mettre des static const un peu partout pour éviter les re définitions inutiles
+-> Comparer eval stockfish et Grogros sur : 1r4k1/5pp1/3p1q1p/1pb2P1P/2p1Q3/2P2N2/1P2RPP1/6K1 w - - 5 33
+-> Vérifier l'en passant sur le FEN : on dirait que les colonnes sont inversées
+-> Pouvoir changer le temps des joueurs à volonté
 
 
 ----- Interface utilisateur -----
@@ -487,7 +490,7 @@ int main() {
 
     // Paramètres pour l'IA
     int search_depth = 8;
-    search_depth = 7;
+    search_depth = 6;
 
 
     // Fin de partie
