@@ -229,7 +229,13 @@ class Board {
 
         // Pour la gestion du temps
         clock_t _last_move_clock;
-        
+
+        // Chances de gain/nulle/perte
+        float _white_winning_chance = 0.0;
+        float _drawing_chance = 0.0;
+        float _black_winning_chance = 0.0;
+        bool _winning_chances = false;
+
 
         // Constructeur par défaut
         Board();
@@ -470,6 +476,14 @@ class Board {
 
         // Fonction qui calcule la valeur des cases controllées sur l'échiquier
         void get_square_controls();
+
+        // Fonction qui calcule les chances de gain/nulle/perte
+        void get_winning_chances();
+
+        // Fonction qui calcule les chances de gain/nulle/perte
+        void get_winning_chances_from_eval(float);
+
+        // Fonction qui renvoie la valeur UCT
 };
 
 
