@@ -255,7 +255,7 @@ https://www.chessprogramming.org/UCT
 -> r2qr1k1/ppp2ppp/1n1pb3/4P3/3P4/1BN5/PP3PPP/R2QR1K1 w - - 6 9 : d5 doit être évident
 -> Sait pas faire les greek gifts : r1bq1rk1/ppppbppp/2n1p3/3nP3/3P3P/3B1N2/PPP2PP1/RNBQK2R w KQ - 1 7
 -> Echanger les pièces quand on est matériellement gagnant
--> Echanger les pièces quand on a le roi faible, ou les pièces moins actives
+-> Echanger les pièces quand on a le roi faible, ou les pièces moins actives, ou moins d'espace
 -> r4rk1/p2nbpp1/1qp4p/1p1pPB2/3P1B2/1P3P2/2Q2P1P/R4RK1 w - - 1 17 : pourquoi il regarde pas Fxd7?...
 -> Changer un peu l'algo, pour que ça ne joue pas forcément le coup auquel il a le plus réflechi, mais un autre si il semble être meilleur (quand c'est mat, facile, mais sinon, comment savoir?)
 -> switch() = lent : à changer
@@ -263,7 +263,7 @@ https://www.chessprogramming.org/UCT
 -> rnbqkb1r/ppp2ppp/4p3/4P3/3Pp3/8/PPP2PPP/R1BQKBNR w KQkq - 0 6 : le pion e4 est pourri
 -> Attaquer les faiblesses
 -> 2r1r1k1/p2n1ppp/1p6/2pP4/1bP2P2/2N3N1/PB6/R4RK1 w - - 0 23 = égal????? un pièce de moins...
--> rnbq3r/pppp1kpp/5n2/6N1/3PP3/6b1/PPP4p/RNBQ1R1K b - - 2 10 : incompréhension de la position
+-> rnbq3r/pppp1kpp/5n2/6N1/3PP3/6b1/PPP4p/RNBQ1R1K b - - 2 10 : incompréhension de la position -> r4k1r/pbpp1Pp1/1p6/2nP4/2P3Q1/8/Pb1N3p/4RR1K w - - 0 22
 -> Quand Grogros joue un coup auquel il n'avait pas pensé.. les évaluations déscendent pour les coups, 1 par 1... comment faire pour que tout descende en même temps?
 -> r2qr1k1/1pp2ppp/pbnpbn2/4p3/3PP3/2P2N2/PPB2PPP/RNBQR1K1 w - - 1 13 : d5???!!
 -> Pour king_safety, il faut absolument prendre en compte les pièces qui peuvent l'attaquer
@@ -760,7 +760,15 @@ int main() {
         }
 
         // P - Joue le coup recommandé par l'algorithme de GrogrosZero
-        if (IsKeyPressed(KEY_P)) {
+        if (!IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_P)) {
+            if (t._tested_moves > 0)
+                t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true);
+            else
+                cout << "no more moves are in memory" << endl;
+        }
+
+        // LShift-P - Joue les coups recommandés par l'algorithme de GrogrosZero
+        if (IsKeyDown(KEY_LEFT_SHIFT) && IsKeyDown(KEY_P)) {
             if (t._tested_moves > 0)
                 t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true);
             else

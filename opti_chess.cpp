@@ -172,7 +172,7 @@ bool Board::add_pawn_moves(uint_fast8_t i, uint_fast8_t j, int *iterator) {
 bool Board::add_knight_moves(uint_fast8_t i, uint_fast8_t j, int *iterator) {
     int i2, j2;
     // On va utiliser un tableau pour stocker les déplacements possibles du cavalier
-    int knight_moves[8][2] = {{-2, -1}, {-2, 1}, {-1, -2}, {-1, 2}, {1, -2}, {1, 2}, {2, -1}, {2, 1}};
+    static const int knight_moves[8][2] = {{-2, -1}, {-2, 1}, {-1, -2}, {-1, 2}, {1, -2}, {1, 2}, {2, -1}, {2, 1}};
     // On parcourt ce tableau
     for (int m = 0; m < 8; m++) {
         i2 = i + knight_moves[m][0];
@@ -189,13 +189,8 @@ bool Board::add_knight_moves(uint_fast8_t i, uint_fast8_t j, int *iterator) {
 
 // Fonction qui ajoute les coups diagonaux dans la liste de coups
 bool Board::add_diag_moves(uint_fast8_t i, uint_fast8_t j, int *iterator) {
-    int ally_min; int ally_max;
-    if (_player) {
-        ally_min = 1; ally_max = 6;
-    }
-    else {
-        ally_min = 7; ally_max = 12;
-    }
+    int ally_min = _player ? 1 : 7;
+    int ally_max = _player ? 6 : 12;
 
     int i2; int j2; int p2;
         
@@ -294,14 +289,8 @@ bool Board::add_diag_moves(uint_fast8_t i, uint_fast8_t j, int *iterator) {
 
 // Fonction qui ajoute les coups horizontaux et verticaux dans la liste de coups
 bool Board::add_rect_moves(uint_fast8_t i, uint_fast8_t j, int *iterator) {
-    int ally_min; int ally_max;
-    if (_player) {
-        ally_min = 1; ally_max = 6;
-    }
-        
-    else {
-        ally_min = 7; ally_max = 12;
-    }
+    int ally_min = _player ? 1 : 7;
+    int ally_max = _player ? 6 : 12;
 
     int i2; int j2;
     int p2;
@@ -401,14 +390,8 @@ bool Board::add_rect_moves(uint_fast8_t i, uint_fast8_t j, int *iterator) {
 
 // Fonction qui ajoute les coups "roi" dans la liste de coups
 bool Board::add_king_moves(uint_fast8_t i, uint_fast8_t j, int *iterator) {
-    int ally_min; int ally_max;
-    if (_player) {
-        ally_min = 1; ally_max = 6;
-    }
-        
-    else {
-        ally_min = 7; ally_max = 12;
-    }
+    int ally_min = _player ? 1 : 7;
+    int ally_max = _player ? 6 : 12;
 
     int i2; int j2;
     
@@ -476,9 +459,6 @@ bool Board::get_moves(bool pseudo, bool forbide_check) {
         return true;
     }
         
-
-
-
 
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
@@ -892,24 +872,29 @@ void Board::game_advancement() {
     _adv = 0;
 
     // Définition personnelle de l'avancement d'une partie : (p_tot - p) / p_tot, où p_tot = le total matériel (du joueur adverse? ou les deux?) en début de partie, et p = le total matériel (du joueur adverse? ou les deux?) actuellement
-    const int adv_pawn = 1;
-    const int adv_knight = 10;
-    const int adv_bishop = 10;
-    const int adv_rook = 10;
-    const int adv_queen = 30;
+    static const int adv_pawn = 1;
+    static const int adv_knight = 10;
+    static const int adv_bishop = 10;
+    static const int adv_rook = 10;
+    static const int adv_queen = 30;
+    static const int adv_castle = 5;
 
-    int p_tot = 2 * (8 * adv_pawn + 2 * adv_knight + 2 * adv_bishop + 2 * adv_rook + 1 * adv_queen);
+    static const int p_tot = 2 * (8 * adv_pawn + 2 * adv_knight + 2 * adv_bishop + 2 * adv_rook + 1 * adv_queen + 2 * adv_castle);
     int p = 0;
 
     int piece;
-    int values[6] = {0, adv_pawn, adv_knight, adv_bishop, adv_rook, adv_queen};
+    static const int values[6] = {0, adv_pawn, adv_knight, adv_bishop, adv_rook, adv_queen};
 
+    // Pièces
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             int piece = _array[i][j];
             p += values[piece % 6];
         }
     }
+
+    // Roques
+    p += (_k_castle_w + _q_castle_w + _k_castle_b + _q_castle_b) * adv_castle;
 
     _adv = (float)(p_tot - p) / p_tot;
 
@@ -933,18 +918,17 @@ void Board::count_material(Evaluator *eval) {
             int piece = _array[i][j];
             if (piece) {
                 value = eval->_pieces_value_begin[(piece - 1) % 6] * (1.0 - _adv) + eval->_pieces_value_end[(piece - 1) % 6] * _adv;
-                // cout << value << endl;
                 _material_count += (piece < 7) ? value : -value;
             }
         }
     }
 
-    // cout << _material_count << endl;
     _material = true;
 }
 
 
 // Fonction qui calcule les valeurs de positionnement des pièces sur l'échiquier
+// TODO : fusion avec material
 void Board::pieces_positionning(Evaluator *eval) {
     if (_positioning)
         return;
@@ -1252,9 +1236,16 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     if (eval->_push != 0) {
         float push = 1 - _half_moves_count * eval->_push / 100;
         if (display)
-            eval_components += "forteress : " + to_string(int(100 - push * 100)) + "\%\n";
+            eval_components += "forteress : " + to_string((int)(100 - push * 100)) + "\%\n";
         _evaluation *= push;
     }
+
+
+    // Chances de gain
+    get_winning_chances();
+    if (display)
+        eval_components += "W/D/L : " + to_string((int)(100 * _white_winning_chance)) + "/" + to_string((int)(100 * _drawing_chance)) + "/" + to_string((int)(100 * _black_winning_chance)) + "\%\n";
+
 
     // Partie non finie
     return false;
@@ -1853,7 +1844,7 @@ int Board::game_over() {
 string Board::move_label(int i, int j, int k, int l) {
     int p1 = _array[i][j]; // Pièce qui bouge
     int p2 = _array[k][l];
-    string abc = "abcdefgh";
+    static const string abc = "abcdefgh";
 
     // Pour savoir si une autre pièce similaire peut aller sur la même case
     bool spec_col = false;
@@ -1996,8 +1987,6 @@ void Board::draw_text_rect(string s, float pos_x, float pos_y, float width, floa
     if (width <= 0 || height <= 0 || sub_div <= 0)
         return;
 
-    // cout << "text size : " << MeasureTextEx(text_font, s.c_str(), size, font_spacing * size).x << ", " << MeasureTextEx(text_font, s.c_str(), size, font_spacing * size).y << endl;
-
     Rectangle rect_text = {pos_x, pos_y, width, height};
     DrawRectangleRec(rect_text, background_text_color);
     
@@ -2060,7 +2049,7 @@ void load_resources() {
         promotion_sound = LoadSound("../resources/sounds/promotion.mp3");
 
         // Police de l'écriture
-        text_font = LoadFontEx("../resources/fonts/SF TransRobotics.ttf", 32, 0, 250);
+        text_font = LoadFontEx("../resources/fonts/SF TransRobotics.ttf", 64, 0, 250);
         // text_font = GetFontDefault();
 
         // Icône
@@ -2511,10 +2500,15 @@ void Board::draw() {
         global_eval = best_eval;
         global_eval_text = eval;
 
+        // get_winning_chances();
+        // eval += "\nW/D/L : " + to_string((int)(100 * _white_winning_chance)) + "/" + to_string((int)(100 * _drawing_chance)) + "/" + to_string((int)(100 * _black_winning_chance)) + "\%\n";
+
+
+        // Pour l'évaluation statique
         evaluate_int(_evaluator, true, true);
         int max_depth = grogros_main_depth();
         int n_nodes = total_nodes();
-        monte_carlo_text += "\n\n--- static eval : "  + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval : "  + eval + " ---" + "\nnodes : " + int_to_round_string(n_nodes) + "/" + int_to_round_string(_monte_buffer._length) + " | time : " + clock_to_string(_time_monte_carlo) + " | speed : " + int_to_round_string(total_nodes() / (_time_monte_carlo + 1) * 1000) + "N/s" + " | depth : " + to_string(max_depth);
+        monte_carlo_text += "\n\n--- static eval : "  + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval : "  + eval + "---" + "\nnodes : " + int_to_round_string(n_nodes) + "/" + int_to_round_string(_monte_buffer._length) + " | time : " + clock_to_string(_time_monte_carlo) + " | speed : " + int_to_round_string(total_nodes() / (_time_monte_carlo + 1) * 1000) + "N/s" + " | depth : " + to_string(max_depth);
 
 
         // Affichage des paramètres d'analyse de Monte-Carlo
@@ -2563,9 +2557,6 @@ void Board::draw() {
     else {
         DrawTextEx(text_font, "Controls :", {board_padding_x + board_size + text_size / 2, board_padding_y}, text_size / 2, font_spacing * text_size / 2, text_color_info);
     }
-
-    
-
 
     // Affichage du curseur
     DrawTexture(cursor_texture, mouse_pos.x - cursor_size / 2, mouse_pos.y - cursor_size / 2, WHITE);
@@ -2841,8 +2832,10 @@ void draw_arrow_from_coord(int i1, int j1, int i2, int j2, int index, int color,
             size = size * max_size / width;
             width = MeasureTextEx(text_font, v, size, font_spacing * size).x;
         }
+        float height = MeasureTextEx(text_font, v, size, font_spacing * size).y;
+
         Color t_c = ColorAlpha(BLACK, (float)c.a / 255.0);
-        DrawTextEx(text_font, v, {x2 - width / 2.0f, y2 - size / 2.0f}, size, font_spacing * size, BLACK);
+        DrawTextEx(text_font, v, {x2 - width / 2.0f, y2 - height / 2.0f}, size, font_spacing * size, BLACK);
         
     }
 
@@ -4709,6 +4702,7 @@ void Board::reset_eval() {
     _rook_open_file = false; _rook_open = 0;
     _rook_semi_open_file = false; _rook_semi = 0;
     _square_controls = false; _control = 0;
+    _winning_chances = false; _white_winning_chance = 0; _drawing_chance = 0; _black_winning_chance = 0;
 }
 
 
@@ -4849,4 +4843,33 @@ void Board::get_square_controls() {
     _square_controls = true;
 
     return;
+}
+
+
+// Fonction qui calcule les chances de gain/nulle/perte
+void Board::get_winning_chances() {
+    if (_winning_chances)
+        return;
+
+    // float a = 1;
+    // float b = 1;
+    // float c = 1;
+    // float d = 1;
+    // float e = 1;
+    // float f = 1;
+
+
+    _white_winning_chance = 0.5 * (1 + (2 / (1 + exp(-0.4 * _evaluation)) - 1));
+    // _drawing_chance = 1 / (1 + exp(-c * _evaluation + d));
+    _drawing_chance = 0;
+    _black_winning_chance = 1 - _white_winning_chance;
+
+    _winning_chances = true;
+    return;
+}
+
+
+// Fonction qui calcule les chances de gain/nulle/perte
+void Board::get_winning_chances_from_eval(float eval) {
+    
 }
