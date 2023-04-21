@@ -2895,20 +2895,56 @@ void Board::get_piece_activity(bool legal) {
     b.copy_data(*this);
     _piece_activity = 0;
 
+    static const int activity_values[21] = {-200, 100, 142, 183, 223, 261, 298, 332, 364, 393, 419, 442, 461, 478, 492, 504, 513, 520, 525, 528, 529};
+
+    // Fait un tableau de toutes les pièces : position, valeur
+    int piece_move_count[64] = {0};
+    int index = 0;
+
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            if (_array[i][j] != 0) {
+                piece_move_count[index] = 0;
+                index++;
+            }
+        }
+    }
+
     // Activité des pièces du joueur
+    // TODO : ça doit être très lent : on re-calcule tous les coups à chaque fois... (et on les garde même pas en mémoire pour après, car c'est sur un plateau virtuel)
+    // En plus ça calcule aussi les coups de l'autre
     b.get_moves(false, legal);
-    _piece_activity += b._got_moves;
+
+    // Pour chaque coup, incrémente dans le tableau le nombre de coup à la position correspondante
+    for (int i = 0; i < b._got_moves; i++) {
+        int pos = b._moves[4 * i] * 8 + b._moves[4 * i + 1];
+        piece_move_count[pos]++;
+    }
 
     // Activité des pièces de l'autre joueur
     b._player = !b._player; b._got_moves = -1;
     b.get_moves(false, legal);
-    _piece_activity -= b._got_moves;
 
-    _piece_activity *= _color;
+    for (int i = 0; i < b._got_moves; i++) {
+        int pos = b._moves[4 * i] * 8 + b._moves[4 * i + 1];
+        piece_move_count[pos]++;
+    }
+
+    // Pour chaque pièce : ajoute la valeur correspondante à l'activité
+    index = 0;
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            if (_array[i][j] != 0) {
+                int pos = i * 8 + j;
+                _piece_activity += (_array[i][j] < 7 ? 1 : -1) * activity_values[min(20, piece_move_count[pos])];
+                index++;
+            }
+        }
+    }
+
     _activity = true;
-
-    return;
 }
+
 
 
 // Couleur de la flèche en fonction du coup (de son nombre de noeuds)

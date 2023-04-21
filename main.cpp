@@ -283,6 +283,7 @@ https://www.chessprogramming.org/UCT
 -> Comparer eval stockfish et Grogros sur : 1r4k1/5pp1/3p1q1p/1pb2P1P/2p1Q3/2P2N2/1P2RPP1/6K1 w - - 5 33
 -> Vérifier l'en passant sur le FEN : on dirait que les colonnes sont inversées
 -> Pouvoir changer le temps des joueurs à volonté
+-> Si un tableau de valeurs est trop 'important', genre placement de la tour, demander à chatGPT de le re adapter
 
 
 ----- Interface utilisateur -----
@@ -449,7 +450,7 @@ int main() {
 
     // Evaluateur pour Monte Carlo
     Evaluator monte_evaluator;
-    monte_evaluator._piece_activity = 0.05; // 0.04
+    // monte_evaluator._piece_activity = 0.05; // 0.04
     monte_evaluator._piece_positioning = 0.007; // beta = 0.035 // Pos = 0.013
     // monte_evaluator._piece_positioning = 0.01; // Pour tester http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
     monte_evaluator._king_safety = 0.004; // Il faut régler la fonction... avec les pièces autour, s'il est au milieu du plateau...
@@ -482,7 +483,7 @@ int main() {
     eval_white._castling_rights = 0;
     eval_white._square_controls = 0;
 
-    eval_black._piece_activity = 0.03;
+    // eval_black._piece_activity = 0.03;
 
     // IA self play
     bool grogrosfish_play_white = false;

@@ -7,7 +7,7 @@ class Evaluator {
 
     // Coefficients des heuristiques
     float _piece_value = 1.0;
-    float _piece_activity = 0.0;
+    float _piece_activity = 0.001;
     float _piece_positioning = 0.02;
     float _random_add = 0.0;
     float _bishop_pair = 0.4;
@@ -62,7 +62,7 @@ class Evaluator {
             {  25,   20,   20,   34,   26,   25,   20,   10},
             {  13,   10,   35,   23,   17,   30,    0,   17},
             {  14,   25,   24,   30,   25,   25,   20,   15},
-            {  19,   30,   11,   10,   20,    6,   35,   16},
+            {  19,   40,   11,   10,   20,    6,   45,   16},
             { -30,    2,  -15,  -12,  -14,  -40,  -20,  -20}   },
 
         // tour
