@@ -77,8 +77,13 @@ void softmax(int* input, int size, double beta, int k_add) {
         // TODO prendre en compte les mats
         win_chance = get_winning_chances_from_eval(input[i] * evaluation_softener, false, true);
 		input[i] = r * exp(beta * input[i] - constant);
-        adding = win_chance / best_win_chance * 2;
+        adding = (win_chance == 0) ? 0 : win_chance / best_win_chance * 2;
+        // cout << win_chance << ", " << best_win_chance << endl;
+        // adding = 1;
+        // cout << input[i] << endl;
+        // adding = -inf???
         input[i] += k_add * adding; // Juste histoire de continuer à regarder un peu les coups (on sait jamais)
+        // cout << input[i] << endl;
 	}
 
 }
@@ -128,7 +133,10 @@ int pick_random_good_move(int* l, int n, int color, bool print, int nodes, int* 
     for (int i = 0; i < n; i++)
         l2[i] = color * l[i];
 
+    // cout << " ___ " << endl;
+    // print_array(l2, n);
     softmax(l2, n, beta, k_add);
+    // print_array(l2, n);
 
     // Liste de pondération en fonction de l'exploration de chaque noeud
     float pond[100];
@@ -137,6 +145,8 @@ int pick_random_good_move(int* l, int n, int color, bool print, int nodes, int* 
     }
 
     nodes_ponderation(l2, pond, n);
+
+    // print_array(l2, n);
 
     // Somme de toutes les valeurs
     for (int i = 0; i < n; i++) {

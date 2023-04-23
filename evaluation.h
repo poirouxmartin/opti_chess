@@ -8,12 +8,12 @@ class Evaluator {
     // Coefficients des heuristiques
     float _piece_value = 1.0;
     float _piece_activity = 0.0006;
-    float _piece_positioning = 0.02;
+    float _piece_positioning = 0.007;
     float _random_add = 0.0;
     float _bishop_pair = 0.4;
-    float _castling_rights = 0.5;
+    float _castling_rights = 0.2;
     float _player_trait = 0.15;
-    float _king_safety = 0.005;
+    float _king_safety = 0.006;
     float _pawn_structure = 0.01;
     float _attacks = 0.01;
     float _defenses = 0.0025;
