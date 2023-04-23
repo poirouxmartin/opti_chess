@@ -10,8 +10,8 @@ vector<thread> threads;
 
 
 // Liste de coups globale, pour les calculs, et éviter d'avoir des listes trop grosses pour chaque plateau
-uint_fast8_t _global_moves[1000];
-int _global_moves_size = 0;
+// uint_fast8_t _global_moves[1000];
+// int _global_moves_size = 0;
 
 
 // Constructeur par défaut
@@ -3061,8 +3061,8 @@ int Board::max_monte_carlo_depth() {
 
 
 // Valeurs de base pour Grogros
-double _beta = 0.035;
-int _k_add = 50;
+double _beta = 0.05;
+int _k_add = 150;
 
 
 // Constructeur par défaut
@@ -3250,7 +3250,8 @@ void Board::grogros_zero(Evaluator *eval, int nodes, bool checkmates, double bet
         // Lorsque tous les coups de la position ont déjà été testés (et évalués)
         else {
             // Choisit aléatoirement un "bon" coup
-            _current_move = pick_random_good_move(_eval_children, _got_moves, _color, false, beta, k_add);
+            _current_move = pick_random_good_move(_eval_children, _got_moves, _color, false, _nodes, _nodes_children, beta, k_add);
+            // _current_move = select_uct();
 
             // Va une profondeur plus loin... appel récursif sur Monte-Carlo
            _monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(eval, 1, checkmates, beta, k_add, display, depth + 1, net);
@@ -3462,11 +3463,22 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
     // b_king_weakness += edge_defense / (mult_add + 1) / (mult_add + 1) * (min(abs(b_king_i - (-1)), abs((b_king_i) - 8)) + mult_add) * (min(abs(b_king_j - (-1)), abs((b_king_j) - 8)) + mult_add) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv));
 
     // Version additive
-    w_king_weakness += max_int(150, edge_defense * (min(w_king_i, 7 - w_king_i) + min(w_king_j, 7 - w_king_j)) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv))) - 150;
-    b_king_weakness += max_int(150, edge_defense * (min(b_king_i, 7 - b_king_i) + min(b_king_j, 7 - b_king_j)) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv))) - 150;
+    // w_king_weakness += max_int(150, edge_defense * (min(w_king_i, 7 - w_king_i) + min(w_king_j, 7 - w_king_j)) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : - mult_endgame / (1 - edge_adv))) - 150;
+    // b_king_weakness += max_int(150, edge_defense * (min(b_king_i, 7 - b_king_i) + min(b_king_j, 7 - b_king_j)) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : - mult_endgame / (1 - edge_adv))) - 150;
+
+    // Version additive, adaptée pour l'endgame
+    const int endgame_safe_zone = 9; // Si le "i * j" du roi en endgame est supérieur, alors il n'est pas en danger : s'il est en c4 (2, 3 -> 2 * 3 = 6 < 9 -> danger)
+    w_king_weakness += max_int(150, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? min(w_king_i, 7 - w_king_i) + min(w_king_j, 7 - w_king_j) : endgame_safe_zone - (min(w_king_i, 7 - w_king_i) * min(w_king_j, 7 - w_king_j))) * mult_endgame / (edge_adv - 1)) - 150;
+    b_king_weakness += max_int(150, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? min(b_king_i, 7 - b_king_i) + min(b_king_j, 7 - b_king_j) : endgame_safe_zone - (min(b_king_i, 7 - b_king_i) * min(b_king_j, 7 - b_king_j))) * mult_endgame / (edge_adv - 1)) - 150;
 
     // cout << "w weakness from king position (+ opponents pieces) = " << w_king_weakness << endl;
+    // cout << "b weakness from king position (+ opponents pieces) = " << b_king_weakness << endl;
+    // if (_adv < edge_adv)
+    //     cout << edge_defense * (min(b_king_i, 7 - b_king_i) + min(b_king_j, 7 - b_king_j)) * (edge_adv - _adv) << endl;
+    // else
+    //     cout << edge_defense * (10 - (min(b_king_i, 7 - b_king_i) * min(b_king_j, 7 - b_king_j))) * (edge_adv - _adv) * -mult_endgame / (1 - edge_adv) << endl;
 
+    // cout << edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? min(b_king_i, 7 - b_king_i) + min(b_king_j, 7 - b_king_j) : 10 - (min(b_king_i, 7 - b_king_i) * min(b_king_j, 7 - b_king_j))) * mult_endgame / (edge_adv - 1) << endl;
 
     // Ajout de la protection du roi... la faiblesse du roi ne peut pas être négative (potentiellement à revoir, mais parfois la surprotection donne des valeurs délirantes)
     float w_king_over_protection = max_float(0.0, w_king_protection - w_king_weakness);
@@ -4894,7 +4906,8 @@ void Board::get_winning_chances() {
     // float e = 1;
     // float f = 1;
 
-
+    // TODO y'a des trucs vraiment bizarres dans _evaluation... parfois des *100.. parfois c'est des eniters, parfois des float... bizarre
+    // cout << _evaluation << endl;
     _white_winning_chance = 0.5 * (1 + (2 / (1 + exp(-0.4 * _evaluation)) - 1));
     // _drawing_chance = 1 / (1 + exp(-c * _evaluation + d));
     _drawing_chance = 0;
@@ -4905,7 +4918,29 @@ void Board::get_winning_chances() {
 }
 
 
-// Fonction qui calcule les chances de gain/nulle/perte
-void Board::get_winning_chances_from_eval(float eval) {
+// Fonction qui renvoie la valeur UCT
+float uct(float win_chance, float c, int nodes_parent, int nodes_child) {
+    // cout << win_chance << ", " << nodes_parent << ", " << nodes_child << " = " << win_chance + c * sqrt(log(nodes_parent) / nodes_child) << endl;
+    return win_chance + c * sqrt(log(nodes_parent) / nodes_child);
+}
+
+// Fonction qui sélectionne et renvoie le coup avec le meilleur UCT
+int Board::select_uct(float c) {
     
+    float max_uct = 0;
+    int uct_move = 0;
+    float uct_value;
+    float win_chance;
+
+    // Pour chaque noeud fils
+    for (int i = 0; i < _got_moves; i++) {
+        win_chance = get_winning_chances_from_eval(_monte_buffer._heap_boards[_index_children[i]]._evaluation, _monte_buffer._heap_boards[_index_children[i]]._mate, _player);
+        uct_value = uct(win_chance, c, _nodes, _nodes_children[i]);
+        if (uct_value > max_uct) {
+            max_uct = uct_value;
+            uct_move = i;
+        }
+    }
+
+    return uct_move;
 }
