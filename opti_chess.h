@@ -37,8 +37,8 @@ Plateau :
 
 
 // Liste de coups globale, pour les calculs, et éviter d'avoir des listes trop grosses pour chaque plateau
-extern uint_fast8_t _global_moves[1000];
-extern int _global_moves_size;
+// extern uint_fast8_t _global_moves[1000];
+// extern int _global_moves_size;
 
 
 // Nombre maximum de coups légaux par position estimé
@@ -55,14 +55,14 @@ class Board {
         // Attributs
 
         // Plateau
-        uint_fast8_t _array[8][8]  {{4, 2, 3, 5, 6, 3, 2, 4}, 
-                                    {1, 1, 1, 1, 1, 1, 1, 1}, 
-                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
-                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
-                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
-                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
-                                    {7, 7, 7, 7, 7, 7, 7, 7}, 
-                                    {10, 8, 9, 11, 12, 9, 8, 10}};
+        uint_fast8_t _array[8][8]  {{ 4, 2, 3, 5, 6, 3, 2, 4 },
+                                    { 1, 1, 1, 1, 1, 1, 1, 1 },
+                                    { 0, 0, 0, 0, 0, 0, 0, 0 },
+                                    { 0, 0, 0, 0, 0, 0, 0, 0 },
+                                    { 0, 0, 0, 0, 0, 0, 0, 0 },
+                                    { 0, 0, 0, 0, 0, 0, 0, 0 },
+                                    { 7, 7, 7, 7, 7, 7, 7, 7 },
+                                    {10, 8, 9,11,12, 9, 8,10 }};
 
         // Coups possibles
         // Nombre max de coups légaux dans une position : 218 -> 872 (car 1 moves = 4 coord)
@@ -235,6 +235,8 @@ class Board {
         float _drawing_chance = 0.0;
         float _black_winning_chance = 0.0;
         bool _winning_chances = false;
+
+        // Chances de gain des fils
 
 
         // Constructeur par défaut
@@ -480,10 +482,9 @@ class Board {
         // Fonction qui calcule les chances de gain/nulle/perte
         void get_winning_chances();
 
-        // Fonction qui calcule les chances de gain/nulle/perte
-        void get_winning_chances_from_eval(float);
+        // Fonction qui sélectionne et renvoie le coup avec le meilleur UCT
+        int select_uct(float c = 0.1);
 
-        // Fonction qui renvoie la valeur UCT
 };
 
 
@@ -568,3 +569,6 @@ int time_to_play_move(int t1, int t2, float k = 0.05);
 //     { "B", 1 },
 //     { "C", 2 }
 // };
+
+// Fonction qui renvoie la valeur UCT
+float uct(float, float, int, int);

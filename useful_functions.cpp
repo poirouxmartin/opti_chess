@@ -58,22 +58,27 @@ void softmax(int* input, int size, double beta, int k_add) {
 	int i;
 	double m, sum, constant;
 
-	m = -INFINITY;
-	for (i = 0; i < size; ++i) {
-		if (m < input[i]) {
+	m = -inf_int;
+	for (i = 0; i < size; ++i)
+		if (m < input[i])
 			m = input[i];
-		}
-	}
 
 	sum = 0.0;
-	for (i = 0; i < size; ++i) {
+	for (i = 0; i < size; ++i)
 		sum += exp(beta * (input[i] - m));
-	}
+
+    static const float evaluation_softener = 0.25; // Pour que ça regarde un peu plus des coups en dessous (plus la valeur est faible, plus ça applanit le k_add)
+    float win_chance;
+    float best_win_chance = get_winning_chances_from_eval(m * evaluation_softener, false, true);
+    float adding;
 
 	constant = beta * m + log(sum);
 	for (i = 0; i < size; ++i) {
+        // TODO prendre en compte les mats
+        win_chance = get_winning_chances_from_eval(input[i] * evaluation_softener, false, true);
 		input[i] = r * exp(beta * input[i] - constant);
-        input[i] += k_add; // Juste histoire de continuer à regarder un peu les coups (on sait jamais)
+        adding = win_chance / best_win_chance * 2;
+        input[i] += k_add * adding; // Juste histoire de continuer à regarder un peu les coups (on sait jamais)
 	}
 
 }
@@ -110,57 +115,44 @@ int rand_int(int a, int b) {
 
 
 // Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variantes, en fonction de la grandeur du nombre correspondant à cet index
-int pick_random_good_move(int* l, int n, int color, bool print, double beta, int k_add) {
+int pick_random_good_move(int* l, int n, int color, bool print, int nodes, int* nodes_children, double beta, int k_add) {
     int sum = 0;
-    int min = 2147483647;
+    int min = inf_int;
 
     int range = max_value(l, n) - min_value(l, n);
-    int min_val;
+    int min_val = (color == 1) ? min_value(l, n) : max_value(l, n);
 
-    if (color == 1)
-        min_val = min_value(l, n);
-    else
-        min_val = max_value(l, n);
 
-    int l2[250];
+    int l2[100];
 
-    for (int i = 0; i < n; i++) {
-        // l2[i] = move_power(color * l[i], range, color * min_val);
+    for (int i = 0; i < n; i++)
         l2[i] = color * l[i];
-    }
-
 
     softmax(l2, n, beta, k_add);
 
-    if (print) {
-        print_array(l, n);
-        print_array(l2, n);
+    // Liste de pondération en fonction de l'exploration de chaque noeud
+    float pond[100];
+    for (int i = 0; i < n; i++) {
+        pond[i] = 1 - nodes_children[i] / nodes;
     }
 
+    nodes_ponderation(l2, pond, n);
 
-    // Fonctionne pas? à vérifier... les derniers coups n'ont plus de noeuds...
-
+    // Somme de toutes les valeurs
     for (int i = 0; i < n; i++) {
         if (l2[i] < min)
             min = l2[i];
         sum += l2[i];
     }
 
-    // cout << sum << endl;
-
+    // Choix du coup en fonction d'une valeur aléatoire
     int rand_val = rand_int(1, sum);
-    if (print)
-        cout << "rand : " << rand_val << endl;
-
     int cumul = 0;
 
     for (int i = 0; i < n; i++) {
         cumul += l2[i];
-        if (cumul >= rand_val) {
-            if (print)
-                cout << "val : " << i << endl;
+        if (cumul >= rand_val)
             return i;
-        }
     }
 
     return 0;
@@ -388,4 +380,19 @@ bool is_in(string s, string string_array[], int n) {
             return true;
 
     return false;
+}
+
+// Fonction qui calcule les chances de gain/nulle/perte
+float get_winning_chances_from_eval(float eval, bool mate, bool player) {
+    if (mate)
+        return 1;
+    // cout << eval << " : " << 0.5 * (1 + (2 / (1 + exp(-0.4 * (player ? 1 : -1) * eval)) - 1)) << endl;
+    return 0.5 * (1 + (2 / (1 + exp(-0.4 * (player ? 1 : -1) * eval / 100)) - 1));
+}
+
+// Fonction qui pondère les valeurs de la liste, en fonction d'un taux d'exploration par valeur
+void nodes_ponderation(int *l, float *pond, int size) {
+    for (int i = 0; i < size; i++) {
+        l[i] *= pond[i];
+    }
 }
