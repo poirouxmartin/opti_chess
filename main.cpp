@@ -287,6 +287,7 @@ https://www.chessprogramming.org/UCT
 -> Utiliser CUDA (GPU) pour paralléliser des calculs
 -> Faut-il prendre en compte le nombre de noeuds dans un fils pour déterminer s'il faut regarder dedans?
 -> Ordonnencement des coups : checks/captures/attacks
+-> 8/8/4q3/8/Q7/4kp1P/P1n1p2P/7K w - - 16 66 : il préfère le mat en 1?..., 1B6/8/4q3/8/8/4kp1P/P1n1p2P/7K w - - 16 66
 
 ----- Interface utilisateur -----
 
@@ -377,6 +378,8 @@ https://www.chessprogramming.org/UCT
 -> Re foncer le noir des pièces?
 -> Ajout du titre BOT : [WhiteTitle "BOT"]
 -> Afficher quand-même la barre d'éval même si GrogrosZero est arrêté?
+-> Pourquoi dans certaines variantes, l'éval ne s'affiche pas à la fin??
+-> Faut-il être plus sûr sur les re-captures?
 
 
 ----- Réseaux de neurones -----
@@ -451,13 +454,6 @@ int main() {
 
     // Evaluateur pour Monte Carlo
     Evaluator monte_evaluator;
-    // monte_evaluator._piece_activity = 0.05; // 0.04
-    monte_evaluator._piece_positioning = 0.007; // beta = 0.035 // Pos = 0.013
-    // monte_evaluator._piece_positioning = 0.01; // Pour tester http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
-    monte_evaluator._king_safety = 0.004; // Il faut régler la fonction... avec les pièces autour, s'il est au milieu du plateau...
-    monte_evaluator._castling_rights = 0.2;
-    // monte_evaluator._attacks = 0.0;
-    // monte_evaluator._piece_activity = 0.10; // En test pour la NJV
 
     // Nombre de noeuds max pour le jeu automatique de GrogrosZero
     int grogros_nodes = 3000000;
@@ -483,8 +479,6 @@ int main() {
     eval_white._piece_positioning = 0;
     eval_white._castling_rights = 0;
     eval_white._square_controls = 0;
-
-    // eval_black._piece_activity = 0.03;
 
     // IA self play
     bool grogrosfish_play_white = false;
@@ -677,6 +671,13 @@ int main() {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
             grogros_auto = set_grogros_auto(true); // C'est vraiment immonde, mais j'ai pas trouvé comment mieux faire... 
+        }
+
+        // Espace - GrogrosZero 1 noeud : DEBUG
+        if (IsKeyPressed(KEY_SPACE)) {
+            if (!_monte_buffer._init)
+                _monte_buffer.init();
+            t.grogros_zero(&monte_evaluator, 100, true, _beta, _k_add);
         }
 
         // LCTRL-H - Arrêt de la recherche automatique de GrogrosZero 
