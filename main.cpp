@@ -284,7 +284,9 @@ https://www.chessprogramming.org/UCT
 -> Vérifier l'en passant sur le FEN : on dirait que les colonnes sont inversées
 -> Pouvoir changer le temps des joueurs à volonté
 -> Si un tableau de valeurs est trop 'important', genre placement de la tour, demander à chatGPT de le re adapter
-
+-> Utiliser CUDA (GPU) pour paralléliser des calculs
+-> Faut-il prendre en compte le nombre de noeuds dans un fils pour déterminer s'il faut regarder dedans?
+-> Ordonnencement des coups : checks/captures/attacks
 
 ----- Interface utilisateur -----
 
@@ -317,7 +319,6 @@ https://www.chessprogramming.org/UCT
 -> Comme Nibbler, quand on clique sur le bout d'une flèche de Monte-Carlo, joue le coup
 -> Montrer sur l'échiquier quand la position est mate (ou pate, ou autre condition de fin de partie)
 -> Faire un reconnaisseur de position automatique
--> Afficher les composantes de l'évaluation sur la GUI
 -> Unload les images, textures etc... pour vider la RAM?
 -> Pouvoir changer les paramètres de l'IA dans l'UI
 -> Ajouter des options/menus

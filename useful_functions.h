@@ -3,6 +3,8 @@
 
 using namespace std;
 
+#define inf_int 2147483647;
+
 // Fonction qui renvoie si un entier appartient à un intervalle
 bool is_in(int, int, int);
 
@@ -34,7 +36,7 @@ int generate_seed();
 int rand_int(int, int);
 
 // Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variante en fonction de la grandeur du nombre correspondant à cet index
-int pick_random_good_move(int[], int, int, bool, double beta = 0.035, int k_add = 50);
+int pick_random_good_move(int[], int, int, bool, int, int[], double beta = 0.035, int k_add = 50);
 
 // Fonction qui renvoie la valeur maximum d'une liste d'entiers
 int max_value(int[], int);
@@ -89,3 +91,9 @@ int float_to_int(float);
 
 // Fonction qui renvoie si une chaine de caractères est présente dans un tableau de taille n
 bool is_in(string, string[], int);
+
+// Fonction qui calcule les chances de gain/nulle/perte
+float get_winning_chances_from_eval(float, bool, bool);
+
+// Fonction qui pondère les valeurs de la liste, en fonction d'un taux d'exploration par valeur
+void nodes_ponderation(int *, float *, int);
