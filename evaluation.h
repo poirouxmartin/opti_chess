@@ -25,7 +25,7 @@ class Evaluator {
 
 
     // Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
-    int _pieces_value_begin[6] = {95, 320, 340, 460, 980, 0};
+    int _pieces_value_begin[6] = {95, 335, 340, 460, 980, 0};
 
     // Valeurs en fin de partie
     int _pieces_value_end[6] = {95, 310, 350, 585, 1020, 0};

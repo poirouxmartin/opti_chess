@@ -3061,8 +3061,8 @@ int Board::max_monte_carlo_depth() {
 
 
 // Valeurs de base pour Grogros
-double _beta = 0.05;
-int _k_add = 150;
+double _beta = 0.075;
+int _k_add = 100;
 
 
 // Constructeur par défaut
