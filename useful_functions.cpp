@@ -139,6 +139,7 @@ int pick_random_good_move(int* l, int n, int color, bool print, int nodes, int* 
     // print_array(l2, n);
 
     // Liste de pondération en fonction de l'exploration de chaque noeud
+    // Pour que ça explore les noeuds les moins regardés
     float pond[100];
     for (int i = 0; i < n; i++) {
         pond[i] = 1 - nodes_children[i] / nodes;

@@ -288,6 +288,7 @@ https://www.chessprogramming.org/UCT
 -> Faut-il prendre en compte le nombre de noeuds dans un fils pour déterminer s'il faut regarder dedans?
 -> Ordonnencement des coups : checks/captures/attacks
 -> 8/8/4q3/8/Q7/4kp1P/P1n1p2P/7K w - - 16 66 : il préfère le mat en 1?..., 1B6/8/4q3/8/8/4kp1P/P1n1p2P/7K w - - 16 66
+-> Il faut dire que nulle, c'est environ 0% de chances de gain x) en gros
 
 ----- Interface utilisateur -----
 
