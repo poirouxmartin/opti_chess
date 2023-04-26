@@ -200,7 +200,6 @@ https://www.chessprogramming.org/UCT
 -> 3k3r/2p1b1pp/p1p2p2/3bp3/8/2P1BNP1/PPP2PKP/R7 w - - 3 16 -> +1.20?
 -> Mettre les règles de parties nulles et mat en dehors de l'évaluation?
 -> Ajouter les pièces protégées/attaquées lors de l'évaluation pour simplifier les calculs de l'IA
--> Gestion du temps : faire en fonction des lignes montantes? Si ça stagne, jouer vite? Si y'a un seul coup -> Jouer instant?
 -> Carré du pion en finales
 -> Ne comprend pas les finales de bases (du au fait qu'il répète les coups?)
 -> Regarder dag chess?
@@ -209,7 +208,6 @@ https://www.chessprogramming.org/UCT
 -> Est-ce normal que l'évaluation soit si instable?
 -> Vérifier de partout que j'ai pas confondu les lignes et les colonnes
 -> Faire une map des cases attaquées (ça peut rendre plus rapide les tests d'échecs)
--> Tester de re augmenter l'activité des pièces?
 -> 3q3k/2p4p/p2pB3/7P/1n1PPQP1/r1p5/8/1K1R2R1 b - - 0 2 -> Il ne faut plus regarder les coups qui donnent mat à l'adversaire...
 -> Il faut accompagner les pions avec le roi
 -> OpenAI propose un diviser pour reigner pour paralléliser GrogrosZero
@@ -226,7 +224,6 @@ https://www.chessprogramming.org/UCT
 -> Faire des tables d'attaque (par exemple entre roi et dame, cavalier...)
 -> 6k1/5pp1/Q1p3q1/6B1/P6K/1p2r3/8/5R2 b - - 99 92
 -> Refaire toute l'architecture avec les get_moves(), pour que ça prenne tout en compte (sans le faire dans l'évaluation)
--> Améliorer la recherche des coups... quand c'est dans les coups mauvais, ça ne fait plus la différence... recherche -> 0% rapidement, et le k_add prend le dessus
 -> 5rk1/p4qb1/1p1p3p/3Ppp2/PRP1P3/2N1BnPb/2Q4P/1R5K w - - 0 5 : noirs mieux, car roi très faible... 5rk1/p5b1/1p1p3p/1N1P3q/PRP1Pp2/5n1b/2Q4P/2BR3K b - - 3 8
 -> r2qr1k1/ppp2pbp/1n6/3p1PPR/5P1Q/8/PpP1N1B1/1K1R4 w - - 2 22 : roi noir très faible, Grogros pense que les noirs sont mieux, alors que ça devrait être +15
 -> Faire le compte du matériel dans une autre fonction que la position des pièces...
@@ -238,9 +235,9 @@ https://www.chessprogramming.org/UCT
 -> Retirer tous les switch
 -> Position des pièces : ajouter le middle game? sinon il mettra pas sa dame au milieu?
 -> q5k1/2p2pp1/8/7p/2BRP3/5K2/P1P2PPP/8 w - - 0 4
--> r3r1k1/ppp4q/1n3Q2/3p1P2/5P2/2q5/PpPqN1B1/1K5R w - - 0 26 : NE PLUS REGARDER LES COUPS POURRIS
+-> r3r1k1/ppp4q/1n3Q2/3p1P2/5P2/2q5/PpPqN1B1/1K5R w - - 0 26
 -> Voir si move_label ralentit tout... (en regardant des mats etc...)
--> r1b2kn1/1p1p1p1r/1p1P3p/1N1N1R2/6p1/8/PP4PP/5RK1 b - - 3 21 : +25, statiquement faut faire qq chose pour le comprendre dans l'évaluation de Grogros (+2.15)
+-> r1b2kn1/1p1p1p1r/1p1P3p/1N1N1R2/6p1/8/PP4PP/5RK1 b - - 3 21 : +25, statiquement faut faire qq chose pour le comprendre dans l'évaluation de Grogros (+1.06)
 -> GrogrosZero ralentit beaucoup quand les variantes deviennent longues
 -> rn1r3k/pp4p1/1b2B3/5Qp1/3P4/P4b2/1P3PPP/6K1 b - - 1 3 : ici après Rxd4, tous les calculs sont perturbés par le fou en l'air en f3... ce qui ralentit la recherche de mat
 -> ----> Faire une recherche spécialement de mat, où on prend plus en compte le matériel??
@@ -278,7 +275,7 @@ https://www.chessprogramming.org/UCT
 -> Recherche de Grogros : utiliser UCT
 -> Trouver un profiler pour VS code
 -> Tester Grogros sur les leçons stratégiques de chess.com
--> r1b1k2r/pp1p1ppp/1qn2n2/2b1p3/2P1P3/2N4P/PP3PP1/R1BQKBNR w KQkq - 1 7 : arrête de bongcloud stp
+-> r1b1k2r/pp1p1ppp/1qn2n2/2b1p3/2P1P3/2N4P/PP3PP1/R1BQKBNR w KQkq - 1 7 : arrête de bongcloud stp... y'a juste Dd2
 -> Mettre des static const un peu partout pour éviter les re définitions inutiles
 -> Comparer eval stockfish et Grogros sur : 1r4k1/5pp1/3p1q1p/1pb2P1P/2p1Q3/2P2N2/1P2RPP1/6K1 w - - 5 33
 -> Vérifier l'en passant sur le FEN : on dirait que les colonnes sont inversées
@@ -287,8 +284,11 @@ https://www.chessprogramming.org/UCT
 -> Utiliser CUDA (GPU) pour paralléliser des calculs
 -> Faut-il prendre en compte le nombre de noeuds dans un fils pour déterminer s'il faut regarder dedans?
 -> Ordonnencement des coups : checks/captures/attacks
--> 8/8/4q3/8/Q7/4kp1P/P1n1p2P/7K w - - 16 66 : il préfère le mat en 1?..., 1B6/8/4q3/8/8/4kp1P/P1n1p2P/7K w - - 16 66
 -> Il faut dire que nulle, c'est environ 0% de chances de gain x) en gros
+-> Vérifier que j'ai pas fait de connerie dans la backprogpagation? (ce qui expliquerait les grosses oscillations?)
+-> Dans les positions ou des pièces peuvent être capturées, Grogros évalue très mal
+-> Retirer les espace dans les parsing de FEN (ou autres caractères non désirés)
+
 
 ----- Interface utilisateur -----
 
