@@ -173,7 +173,7 @@ int pick_random_good_move(int* l, int n, int color, bool print, int nodes, int* 
 
 // Fonction qui renvoie la valeur maximum d'une liste d'entiers
 int max_value(int* l, int n) {
-    int max = -2147483647;
+    int max = -inf_int;
 
     for (int i = 0; i < n; i++)
         if (l[i] > max)
@@ -185,7 +185,7 @@ int max_value(int* l, int n) {
 
 // Fonction qui renvoie la valeur minimum d'une liste d'entiers
 int min_value(int* l, int n) {
-    int min = 2147483647;
+    int min = inf_int;
 
     for (int i = 0; i < n; i++)
         if (l[i] < min)
@@ -398,7 +398,7 @@ float get_winning_chances_from_eval(float eval, bool mate, bool player) {
     if (mate)
         return 1;
     // cout << eval << " : " << 0.5 * (1 + (2 / (1 + exp(-0.4 * (player ? 1 : -1) * eval)) - 1)) << endl;
-    return 0.5 * (1 + (2 / (1 + exp(-0.4 * (player ? 1 : -1) * eval / 100)) - 1));
+    return 0.5 * (1 + (2 / (1 + exp(-0.75 * (player ? 1 : -1) * eval / 100)) - 1));
 }
 
 // Fonction qui pondère les valeurs de la liste, en fonction d'un taux d'exploration par valeur

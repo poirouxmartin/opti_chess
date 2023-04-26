@@ -3061,8 +3061,8 @@ int Board::max_monte_carlo_depth() {
 
 
 // Valeurs de base pour Grogros
-double _beta = 0.075;
-int _k_add = 100;
+double _beta = 0.05;
+int _k_add = 50;
 
 
 // Constructeur par défaut
@@ -3449,7 +3449,7 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
 
     // Proximité avec le bord
     // Avancement à partir duquel il est plus dangereux d'être sur un bord
-    float edge_adv = 0.75; float mult_endgame = 3;
+    float edge_adv = 0.75; float mult_endgame = 2;
     
     
     // Calcul de safety du roi
@@ -3467,11 +3467,12 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
     // b_king_weakness += max_int(150, edge_defense * (min(b_king_i, 7 - b_king_i) + min(b_king_j, 7 - b_king_j)) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : - mult_endgame / (1 - edge_adv))) - 150;
 
     // Version additive, adaptée pour l'endgame
-    const int endgame_safe_zone = 9; // Si le "i * j" du roi en endgame est supérieur, alors il n'est pas en danger : s'il est en c4 (2, 3 -> 2 * 3 = 6 < 9 -> danger)
-    w_king_weakness += max_int(150, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? min(w_king_i, 7 - w_king_i) + min(w_king_j, 7 - w_king_j) : endgame_safe_zone - (min(w_king_i, 7 - w_king_i) * min(w_king_j, 7 - w_king_j))) * mult_endgame / (edge_adv - 1)) - 150;
-    b_king_weakness += max_int(150, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? min(b_king_i, 7 - b_king_i) + min(b_king_j, 7 - b_king_j) : endgame_safe_zone - (min(b_king_i, 7 - b_king_i) * min(b_king_j, 7 - b_king_j))) * mult_endgame / (edge_adv - 1)) - 150;
+    const int endgame_safe_zone = 16; // Si le "i * j" du roi en endgame est supérieur, alors il n'est pas en danger : s'il est en c4 (2, 3 -> (2 + 1) * (3 + 1) = 12 < 16 -> danger)
+    w_king_weakness += max_int(150, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? min(w_king_i, 7 - w_king_i) + min(w_king_j, 7 - w_king_j) : endgame_safe_zone - ((min(w_king_i, 7 - w_king_i) + 1) * (min(w_king_j, 7 - w_king_j) + 1))) * mult_endgame / (edge_adv - 1)) - 150;
+    b_king_weakness += max_int(150, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? min(b_king_i, 7 - b_king_i) + min(b_king_j, 7 - b_king_j) : endgame_safe_zone - ((min(b_king_i, 7 - b_king_i) + 1) * (min(b_king_j, 7 - b_king_j) + 1))) * mult_endgame / (edge_adv - 1)) - 150;
 
-    // cout << "w weakness from king position (+ opponents pieces) = " << w_king_weakness << endl;
+    // cout << "b weakness from king position (+ opponents pieces) = " << b_king_weakness << endl;
+    // cout << endgame_safe_zone - ((min(b_king_i, 7 - b_king_i) + 1) * (min(b_king_j, 7 - b_king_j) + 1)) << endl;
     // cout << "b weakness from king position (+ opponents pieces) = " << b_king_weakness << endl;
     // if (_adv < edge_adv)
     //     cout << edge_defense * (min(b_king_i, 7 - b_king_i) + min(b_king_j, 7 - b_king_j)) * (edge_adv - _adv) << endl;
@@ -3490,10 +3491,10 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
     // cout << "w final weakness (including protection) = " << w_king_weakness << endl;
 
     // Force de la surprotection du roi
-    float overprotection = 0.25;
+    float overprotection = 0.10;
 
     // Potentiel d'attaque de chaque pièce (pion, caval, fou, tour, dame)
-    int attack_potentials[6] = {1, 25, 20, 30, 100, 0};
+    int attack_potentials[6] = {1, 25, 28, 30, 100, 0};
     int reference_potential = 258; // Si y'a toutes les pièces de base sur l'échiquier
     int w_total_potential = 0;
     int b_total_potential = 0;
@@ -4101,7 +4102,7 @@ void Board::get_pawn_structure() {
     }
 
     // Pions passés
-    int passed_pawn = 50;
+    int passed_pawn = 100;
     // Table de valeur des pions passés en fonction de leur avancement sur le plateau
     int passed_pawns[8] = {0, 10, 15, 20, 25, 35, 50, 0};
     float passed_adv_factor = 3; // En fonction de l'advancement de la partie
@@ -4908,7 +4909,7 @@ void Board::get_winning_chances() {
 
     // TODO y'a des trucs vraiment bizarres dans _evaluation... parfois des *100.. parfois c'est des eniters, parfois des float... bizarre
     // cout << _evaluation << endl;
-    _white_winning_chance = 0.5 * (1 + (2 / (1 + exp(-0.4 * _evaluation)) - 1));
+    _white_winning_chance = 0.5 * (1 + (2 / (1 + exp(-0.75 * _evaluation)) - 1));
     // _drawing_chance = 1 / (1 + exp(-c * _evaluation + d));
     _drawing_chance = 0;
     _black_winning_chance = 1 - _white_winning_chance;

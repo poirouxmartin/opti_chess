@@ -6,29 +6,29 @@ class Evaluator {
     // Paramètres d'évaluation
 
     // Coefficients des heuristiques
-    float _piece_value = 1.0;
-    float _piece_activity = 0.0006;
-    float _piece_positioning = 0.007;
+    float _piece_value = 1.2;
+    float _piece_activity = 0.0004;
+    float _piece_positioning = 0.004;
     float _random_add = 0.0;
     float _bishop_pair = 0.4;
-    float _castling_rights = 0.2;
-    float _player_trait = 0.15;
-    float _king_safety = 0.006;
-    float _pawn_structure = 0.01;
+    float _castling_rights = 0.0;
+    float _player_trait = 0.12;
+    float _king_safety = 0.008;
+    float _pawn_structure = 0.006;
     float _attacks = 0.01;
     float _defenses = 0.0025;
     float _kings_opposition = 0.75;
     float _push = 1.00;
-    float _rook_open = 0.01;
-    float _rook_semi = 0.01;
-    float _square_controls = 0.01;
+    float _rook_open = 0.005;
+    float _rook_semi = 0.008;
+    float _square_controls = 0.0075;
 
 
     // Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
-    int _pieces_value_begin[6] = {95, 335, 340, 460, 980, 0};
+    int _pieces_value_begin[6] = {72, 335, 340, 460, 980, 0};
 
     // Valeurs en fin de partie
-    int _pieces_value_end[6] = {95, 310, 350, 585, 1020, 0};
+    int _pieces_value_end[6] = {105, 310, 350, 585, 1020, 0};
 
     // Positionnement des pièces
 
@@ -49,9 +49,9 @@ class Evaluator {
         {   { -80,  -53,  -75,  -75,  -10,  -55,  -58,  -70},
             {  -3,   -6,   50,  -36,    4,   62,   -4,  -14},
             { -10,   67,   25,   74,   73,   60,   62,   40},
-            { -10,   24,   40,   55,   50,   70,   15,   20},
-            { -10,    5,   31,   45,   40,   30,    2,    0},
-            { -18,   10,   25,   22,   18,   35,   20,  -14},
+            { -10,   24,   40,   65,   60,   70,   15,   20},
+            { -10,    5,   31,   55,   50,   30,    2,    0},
+            { -18,   10,   25,   22,   18,   45,   20,  -14},
             { -40,  -30,    2,    5,    2,    0,  -23,  -25},
             { -74,  -40,  -46,  -34,  -19,  -25,  -60,  -59}   },
 
