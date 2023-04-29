@@ -3494,7 +3494,7 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
     float overprotection = 0.10;
 
     // Potentiel d'attaque de chaque pièce (pion, caval, fou, tour, dame)
-    int attack_potentials[6] = {1, 25, 28, 30, 100, 0};
+    static const int attack_potentials[6] = {1, 25, 28, 30, 100, 0};
     int reference_potential = 258; // Si y'a toutes les pièces de base sur l'échiquier
     int w_total_potential = 0;
     int b_total_potential = 0;
@@ -4102,20 +4102,38 @@ void Board::get_pawn_structure() {
     }
 
     // Pions passés
-    int passed_pawn = 100;
     // Table de valeur des pions passés en fonction de leur avancement sur le plateau
-    int passed_pawns[8] = {0, 10, 15, 20, 25, 35, 50, 0};
-    float passed_adv_factor = 3; // En fonction de l'advancement de la partie
+    static const int passed_pawns[8] = {0, 50, 65, 90, 125, 200, 250, 0}; // TODO à vérif
+    float passed_adv_factor = 2; // En fonction de l'advancement de la partie
     float passed_adv = 1 * (1 + (passed_adv_factor - 1) * _adv);
     
+    // Pour chaque colonne
     for (int i = 0; i < 8; i++) {
+
         // On prend en compte seulement le pion le plus avancé de la colonne (car les autre seraient bloqués derrière)
         if (s_white[i] >= 1) {
+
+            // On regarde de la rangée la plus proche de la promotion, jusqu'a la première
             for (int j = 6; j > 0; j--) {
+                // S'il y a un pion potentiellement passé
                 if (pawns_white[j][i]) {
-                    _pawn_structure += passed_pawns[j] * (s_black[i] == 0 && (i == 0 || s_black[i - 1] == 0) && (i == 7 || s_black[i + 1] == 0)) * passed_adv;
-                    break;
+                    // TODO prendre en compte s'il est passé devant les pions des colonnes adjacentes
+                    // Conditions à réunir : 
+                    // - pas de pion devant
+                    // - pas de pion sur une colonne adjacente avec une lattitude supérieure (strictement)
+                    // _pawn_structure += passed_pawns[j] * (s_black[i] == 0 && (i == 0 || s_black[i - 1] == 0) && (i == 7 || s_black[i + 1] == 0)) * passed_adv;
+
+                    // Pas de pion sur une colonne adjacente avec une lattitude supérieure (strictement)
+                    for (int k = j + 1; k < 7; k++)
+                        if (_array[k][i - 1] == 7 || _array[k][i] == 7 || _array[k][i + 1] == 7)
+                            goto next_pawn;
+
+                    _pawn_structure += passed_pawns[j] * passed_adv;
+
                 }
+
+                next_pawn:
+                true;
             }
         }
 
