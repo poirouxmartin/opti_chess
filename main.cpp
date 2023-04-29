@@ -288,6 +288,8 @@ https://www.chessprogramming.org/UCT
 -> Vérifier que j'ai pas fait de connerie dans la backprogpagation? (ce qui expliquerait les grosses oscillations?)
 -> Dans les positions ou des pièces peuvent être capturées, Grogros évalue très mal
 -> Retirer les espace dans les parsing de FEN (ou autres caractères non désirés)
+-> Dissocier les paramètres structure de pions et pions passés? (pour aider au debug)
+-> Passer tous les commentaires en anglais et clean le code?
 
 
 ----- Interface utilisateur -----
