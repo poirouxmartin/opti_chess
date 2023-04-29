@@ -4112,37 +4112,37 @@ void Board::get_pawn_structure() {
 
         // On prend en compte seulement le pion le plus avancé de la colonne (car les autre seraient bloqués derrière)
         if (s_white[i] >= 1) {
+            // TODO : 8/1p6/p1p5/2P3K1/1P1k3P/P7/8/8 w - - 0 11 : pion non passé??
 
             // On regarde de la rangée la plus proche de la promotion, jusqu'a la première
             for (int j = 6; j > 0; j--) {
                 // S'il y a un pion potentiellement passé
                 if (pawns_white[j][i]) {
-                    // TODO prendre en compte s'il est passé devant les pions des colonnes adjacentes
-                    // Conditions à réunir : 
-                    // - pas de pion devant
-                    // - pas de pion sur une colonne adjacente avec une lattitude supérieure (strictement)
-                    // _pawn_structure += passed_pawns[j] * (s_black[i] == 0 && (i == 0 || s_black[i - 1] == 0) && (i == 7 || s_black[i + 1] == 0)) * passed_adv;
-
-                    // Pas de pion sur une colonne adjacente avec une lattitude supérieure (strictement)
+                    // Pas de pion sur une colonne adjacente ou pareille avec une lattitude supérieure (strictement)
                     for (int k = j + 1; k < 7; k++)
-                        if (_array[k][i - 1] == 7 || _array[k][i] == 7 || _array[k][i + 1] == 7)
-                            goto next_pawn;
-
+                        if ((i > 0 && _array[k][i - 1] == 7) || _array[k][i] == 7 || (i < 7 && _array[k][i + 1] == 7))
+                            goto next_white_pawn;
                     _pawn_structure += passed_pawns[j] * passed_adv;
-
+                    // cout << "toto" << endl;
                 }
 
-                next_pawn:
+                next_white_pawn:
                 true;
             }
         }
 
         if (s_black[i] >= 1) {
             for (int j = 1; j < 7; j++) {
+                // Pas de pion sur une colonne adjacente ou pareille avec une lattitude inférieure (strictement)
                 if (pawns_black[j][i]) {
-                    _pawn_structure -= passed_pawns[7 - j] * (s_white[i] == 0 && (i == 0 || s_white[i - 1] == 0) && (i == 7 || s_white[i + 1] == 0)) * passed_adv;
-                    break;
+                    for (int k = j - 1; k > 0; k--)
+                        if ((i > 0 && _array[k][i - 1] == 1) || _array[k][i] == 1 || (i < 7 && _array[k][i + 1] == 1))
+                            goto next_black_pawn;
+                    _pawn_structure -= passed_pawns[7 - j] * passed_adv;
                 }
+
+                next_black_pawn:
+                true;
             }
         }
         
