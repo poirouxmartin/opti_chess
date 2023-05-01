@@ -54,7 +54,7 @@ void print_array(int[], int);
 void print_array(int_fast8_t[], int);
 
 // Fonction qui affiche une liste d'entiers positifs 8 bits fast (array)
-void print_array(uint_fast8_t [], int);
+void print_array(uint_fast8_t[], int);
 
 // Fonction qui affiche une liste de flottants (array)
 void print_array(float[], int);

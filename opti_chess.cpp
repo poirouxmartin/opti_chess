@@ -114,7 +114,6 @@ int Board::move_to_int(int i, int j, int k, int l) {
 bool Board::add_move(uint_fast8_t i, uint_fast8_t j, uint_fast8_t k, uint_fast8_t l, int *iterator) {
     // Si on dépasse le nombre de coups que l'on pensait possible dans une position
     if (*iterator + 4 > _max_moves * 4) {
-        // cout << "Too many moves in the position : " << *iterator / 4 + 1 << "+" << endl;
         return false;
     }
 
@@ -459,7 +458,6 @@ bool Board::get_moves(bool pseudo, bool forbide_check) {
         return true;
     }
         
-
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             p = _array[i][j];
@@ -831,6 +829,8 @@ void Board::make_move(int i, int j, int k, int l, bool pgn, bool new_board, bool
     }
 
     _mate = false;
+    _mate_checked = false;
+    _game_over_checked = false;
     
 
     if (add_to_list) {
@@ -1479,6 +1479,8 @@ bool Board::undo() {
     }
 
     _mate = false;
+    _mate_checked = false;
+    _game_over_checked = false;
 
     // Decrémentation des coups
     !_player && _moves_count--;
@@ -1800,9 +1802,16 @@ void Board::to_fen() {
 // Fonction qui renvoie le gagnant si la partie est finie (-1/1, et 2 pour nulle), et 0 sinon
 int Board::game_over() {
 
+    if (_game_over_checked)
+        return _game_over_value;
+
+    _game_over_checked = true;
+
     // Règle des 50 coups
-    if (_half_moves_count >= 100)
+    if (_half_moves_count >= 100) {
+        _game_over_value = 2;
         return 2;
+    }
 
     // Si un des rois est décédé
     bool king_w = false;
@@ -1828,12 +1837,16 @@ int Board::game_over() {
 
     kings:
 
-    if (!king_w)
+    if (!king_w) {
+        _game_over_value = -1;
         return -1;
-    if (!king_b)
+    }
+    if (!king_b) {
+        _game_over_value = 1;
         return 1;
+    }
 
-
+    _game_over_value = 0;
     return 0;
 
 }
@@ -1938,8 +1951,6 @@ string Board::move_label(int i, int j, int k, int l) {
     // Ne fonctionne pas -> A FIX
     if (b._got_moves == 0 || b._is_game_over)
         s += "@ 1/2-1/2";
-    
-
 
     return s;
 }
@@ -2201,6 +2212,7 @@ void Board::draw() {
         
     }
     else {
+        // Si on clique
         if (clicked && clicked_pos.first != -1 && _array[clicked_pos.first][clicked_pos.second] != 0) {
             pair<int, int> drop_pos = get_pos_from_gui(mouse_pos.x, mouse_pos.y);
             if (is_in(drop_pos.first, 0, 7) && is_in(drop_pos.second, 0, 7)) {
@@ -2356,7 +2368,7 @@ void Board::draw() {
     if (selected_pos.first != -1) {
         // Affiche la case séléctionnée
         DrawRectangle(board_padding_x + orientation_index(selected_pos.second) * tile_size, board_padding_y + orientation_index(7 - selected_pos.first) * tile_size, tile_size, tile_size, select_color);
-        get_moves(false, true);
+        // get_moves(false, true);
         // Affiche les coups possibles pour la pièce séléctionnée
         for (int i = 0; i < _got_moves; i++) {
             if (_moves[4 * i] == selected_pos.first && _moves[4 * i + 1] == selected_pos.second) {
@@ -2764,15 +2776,11 @@ int* tournament(Agent *agents, const int n_agents) {
     // Résultats du tournoi
     int *scores = new int[n_agents];
 
-    // cout << "1 : " << agents[0]._score << endl;
-    // cout << "2 : " << agents[1]._score << endl;
-
 
     for (int i = 0; i < n_agents; i++) {
         agents[i]._score = victory * agents[i]._victories + draw * agents[i]._draws;
         cout << "Agent " << i << ", Generation : " << agents[i]._generation << ", Score : " << agents[i]._score << "/" << victory * 2 * (n_agents - 1) << ", Ratio (V/D/L): " << agents[i]._victories << "/" << agents[i]._draws << "/" << agents[i]._losses << ", Elo : " << agents[i]._elo << endl;
         scores[i] = agents[i]._score;
-        //cout << "toto";
     }
 
     return scores;
@@ -2782,7 +2790,6 @@ int* tournament(Agent *agents, const int n_agents) {
 
 // A partir de coordonnées sur le plateau
 void draw_arrow_from_coord(int i1, int j1, int i2, int j2, int index, int color, float thickness, Color c, bool use_value, int value, int mate, bool outline) {
-    // cout << thickness << endl;
     if (thickness == -1.0)
         thickness = arrow_thickness;
     float x1 = board_padding_x + tile_size * orientation_index(j1) + tile_size /2;
@@ -3172,8 +3179,9 @@ void Board::grogros_zero(Evaluator *eval, int nodes, bool checkmates, double bet
 
 
     // Obtention des coups jouables
-    (true || _got_moves == -1) && get_moves(false, true); // A faire à chaque fois? (sinon, mettre à false) -> à mettre seulement si new_board??
+    (false || _got_moves == -1) && _new_board && get_moves(false, true) && quick_moves_sort(); // A faire à chaque fois? (sinon, mettre à false) -> à mettre seulement si new_board??
 
+    // TODO
     
     if (_new_board) {
         _eval_children = new int[_got_moves];
@@ -3286,6 +3294,8 @@ void Board::reset_board(bool display) {
     _is_active = false;
     _current_move = 0;
     _evaluated = false;
+    _mate_checked = false;
+    _game_over_checked = false;
     _monte_called = true;
     _is_game_over = false;
     _time_monte_carlo = 0;
@@ -3399,9 +3409,7 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
             if (p > 0) {
                 if (p < 6) {
                     if (p == 1) {
-                        // w_king_protection += pawn_defense * proximity(i, j, w_king_i, w_king_j, proximity_pawn_defense);
                         abs(i - w_king_i - 1) <= 1 && abs(j - w_king_j) <= 1 && (w_king_protection += pawn_protection_map[2 - (i - w_king_i)][j - w_king_j + 1]);
-                        // abs(i - w_king_i - 1) <= 1 && abs(j - w_king_j) <= 1 && cout << "w pawn : +" << pawn_protection_map[2 - (i - w_king_i)][j - w_king_j + 1] << endl;
                         b_king_weakness += pawn_attack * proximity(i, j, b_king_i, b_king_j, 3);
                     }   
                     else {
@@ -3413,9 +3421,7 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
                 else if (p > 6 && p < 12) {
                     if (p == 7) {
                         w_king_weakness += pawn_attack * proximity(i, j, w_king_i, w_king_j, 3);
-                        // b_king_protection += pawn_defense * proximity(i, j, b_king_i, b_king_j, proximity_pawn_defense);
                         abs(b_king_i - i - 1) <= 1 && abs(j - b_king_j) <= 1 && (b_king_protection += pawn_protection_map[2 - (b_king_i - i)][j - b_king_j + 1]);
-                        // abs(b_king_i - i - 1) <= 1 && abs(j - b_king_j) <= 1 && cout << "b_pawn : " << pawn_protection_map[2 - (b_king_i - i)][j - b_king_j + 1] << endl;
                     }   
                     else {
                         w_king_weakness += piece_attack * proximity(i, j, w_king_i, w_king_j, 7);
@@ -3427,25 +3433,16 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
 
     // Il faut compter les cases vides (non-pion) autour de lui
 
-    // cout << w_king_protection << ", " << b_king_protection << endl;
-    
-    // cout << "w weakness from opponent pieces = " << w_king_weakness << endl;
-    // cout << "w protection from pieces = " << w_king_protection << endl;
-
     // Droits de roque
     w_king_protection += (_k_castle_w + _q_castle_w) * 100;
     b_king_protection += (_k_castle_b + _q_castle_b) * 100;
 
-    // cout << "+ castling protection (+" << (_k_castle_w + _q_castle_w) * 50 << ") = " << w_king_protection << endl;
-
     // Niveau de protection auquel on peut considérer que le roi est safe
     float king_base_protection = 200;
     // king_base_protection = 0;
-    // cout << "base protection : " << king_base_protection << endl;
     w_king_protection -= king_base_protection;
     b_king_protection -= king_base_protection;
     
-    // cout << "w protection (- base protection) = " << w_king_protection << endl;
 
     // Proximité avec le bord
     // Avancement à partir duquel il est plus dangereux d'être sur un bord
@@ -3456,8 +3453,6 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
     // Facteur additif pour les multiplications (pour rendre ça plus linéaire)
     int mult_add = 0;
 
-    // cout << "toto : " << edge_defense / (mult_add + 1) / (mult_add + 1) * (min(abs(w_king_i - (-1)), abs((w_king_i) - 8)) + mult_add) * (min(abs(w_king_j - (-1)), abs((w_king_j) - 8)) + mult_add) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv)) << endl;
-    // cout << "toto : " << edge_defense * (min(w_king_i, 7 - w_king_i) + min(w_king_j, 7 - w_king_j)) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv)) << endl;
     // Version multiplicative
     // w_king_weakness += edge_defense / (mult_add + 1) / (mult_add + 1) * (min(abs(w_king_i - (-1)), abs((w_king_i) - 8)) + mult_add) * (min(abs(w_king_j - (-1)), abs((w_king_j) - 8)) + mult_add) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv));
     // b_king_weakness += edge_defense / (mult_add + 1) / (mult_add + 1) * (min(abs(b_king_i - (-1)), abs((b_king_i) - 8)) + mult_add) * (min(abs(b_king_j - (-1)), abs((b_king_j) - 8)) + mult_add) * (edge_adv - _adv) * (_adv < edge_adv ? 1 / edge_adv : mult_endgame / (1 - edge_adv));
@@ -3471,24 +3466,13 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
     w_king_weakness += max_int(150, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? min(w_king_i, 7 - w_king_i) + min(w_king_j, 7 - w_king_j) : endgame_safe_zone - ((min(w_king_i, 7 - w_king_i) + 1) * (min(w_king_j, 7 - w_king_j) + 1))) * mult_endgame / (edge_adv - 1)) - 150;
     b_king_weakness += max_int(150, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? min(b_king_i, 7 - b_king_i) + min(b_king_j, 7 - b_king_j) : endgame_safe_zone - ((min(b_king_i, 7 - b_king_i) + 1) * (min(b_king_j, 7 - b_king_j) + 1))) * mult_endgame / (edge_adv - 1)) - 150;
 
-    // cout << "b weakness from king position (+ opponents pieces) = " << b_king_weakness << endl;
-    // cout << endgame_safe_zone - ((min(b_king_i, 7 - b_king_i) + 1) * (min(b_king_j, 7 - b_king_j) + 1)) << endl;
-    // cout << "b weakness from king position (+ opponents pieces) = " << b_king_weakness << endl;
-    // if (_adv < edge_adv)
-    //     cout << edge_defense * (min(b_king_i, 7 - b_king_i) + min(b_king_j, 7 - b_king_j)) * (edge_adv - _adv) << endl;
-    // else
-    //     cout << edge_defense * (10 - (min(b_king_i, 7 - b_king_i) * min(b_king_j, 7 - b_king_j))) * (edge_adv - _adv) * -mult_endgame / (1 - edge_adv) << endl;
-
-    // cout << edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? min(b_king_i, 7 - b_king_i) + min(b_king_j, 7 - b_king_j) : 10 - (min(b_king_i, 7 - b_king_i) * min(b_king_j, 7 - b_king_j))) * mult_endgame / (edge_adv - 1) << endl;
-
+    
     // Ajout de la protection du roi... la faiblesse du roi ne peut pas être négative (potentiellement à revoir, mais parfois la surprotection donne des valeurs délirantes)
     float w_king_over_protection = max_float(0.0, w_king_protection - w_king_weakness);
     float b_king_over_protection = max_float(0.0, b_king_protection - b_king_weakness);
-    // cout << "w overprotection : " << w_king_protection << " - " << w_king_weakness << " = " << w_king_over_protection << endl;
     w_king_weakness = max_float(0.0, w_king_weakness - w_king_protection);
     b_king_weakness = max_float(0.0, b_king_weakness - b_king_protection);
 
-    // cout << "w final weakness (including protection) = " << w_king_weakness << endl;
 
     // Force de la surprotection du roi
     float overprotection = 0.10;
@@ -3509,17 +3493,9 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
                     b_total_potential += attack_potentials[(p - 1) % 6];
         }
 
-    // cout << "b attacking potential = " << (float)b_total_potential / reference_potential << endl;
-    // cout << "w final weakness = " << w_king_weakness * (float)b_total_potential / reference_potential << endl;
-
     _king_safety = b_king_weakness * w_total_potential / reference_potential - w_king_weakness * b_total_potential / reference_potential;
 
-    // cout << _king_safety << endl;
     _king_safety += overprotection * (w_king_over_protection - b_king_over_protection);
-
-    // cout << "w potential overprotection = " << overprotection * w_king_over_protection << endl;
-
-    // cout << _king_safety << endl;
 
     _safety = true;
 
@@ -3528,6 +3504,11 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
 
 // Fonction qui renvoie s'il y a échec et mat, pat, ou rien (1 pour mat, 0 pour pat, -1 sinon)
 int Board::is_mate() {
+
+    if (_mate_checked)
+        return _mate_value;
+
+    _mate_checked = true;
 
     // Pour accélérer en ne re calculant pas forcément les coups (marche avec coups légaux OU illégaux)
     int half_moves = _half_moves_count;
@@ -3548,6 +3529,7 @@ int Board::is_mate() {
         if (!b.in_check()) {
             _half_moves_count = half_moves;
             _got_moves = moves;
+            _mate_value = -1;
             return -1; 
         }
             
@@ -3556,11 +3538,13 @@ int Board::is_mate() {
     if (in_check()) {
         _half_moves_count = half_moves;
         _got_moves = moves;
+        _mate_value = 1;
         return 1;  
     }
               
     _got_moves = moves;
     _half_moves_count = half_moves;
+    _mate_value = 0;
     return 0;
     
 }
@@ -4756,6 +4740,8 @@ void draw_simple_arrow_from_coord(int i1, int j1, int i2, int j2, float thicknes
 
 // Fonction qui réinitialise les composantes de l'évaluation
 void Board::reset_eval() {
+    _mate_checked = false;
+    _game_over_checked = false;
     _evaluated = false; _evaluation = 0;
     _activity = false; _piece_activity = 0;
     _safety = false; _king_safety = 0;
@@ -4962,4 +4948,67 @@ int Board::select_uct(float c) {
     }
 
     return uct_move;
+}
+
+
+// Fonction qui fait un tri rapide des coups (en plaçant les captures en premier)
+// TODO : à faire lors de la génération de coups?
+bool Board::quick_moves_sort() {
+    // Captures, promotions.. échecs?
+    // TODO : ajouter les échecs? les mats?
+    // TODO : faire en fonction de la pièce qui prend?
+
+    // Liste des valeurs de chaque coup
+    int *moves_values = new int[_got_moves];
+
+    // Valeurs assignées
+
+    // Prises
+    static const int captures_values[13] = {0, 100, 300, 300, 500, 900, 0, 100, 300, 300, 500, 900, 0}; // rien,   |pion, cavalier, fou, tour, dame, roi| (blancs, puis noirs)
+    
+    // Promotions
+    static const int promotion_value = 500;
+
+    // Pour chaque coup
+    for (int i = 0; i < _got_moves; i++) {
+        // Assigne une valeur au coup (valeur de la prise ou de la promotion)
+
+        // Prise
+        moves_values[i] = captures_values[_array[_moves[4 * i + 2]][_moves[4 * i + 3]]];
+
+        // Promotion
+        // Blancs
+        moves_values[i] += (_array[_moves[4 * i]][_moves[4 * i + 1]] == 1 && _moves[4 * i + 2] == 7) * promotion_value;
+
+        // Noirs
+        moves_values[i] += (_array[_moves[4 * i]][_moves[4 * i + 1]] == 7 && _moves[4 * i + 2] == 0) * promotion_value;
+    }
+
+
+    // Construction des nouveaux coups
+
+    // Liste des index des coups triés par ordre décroissant de valeur
+    int *moves_indexes = new int[_got_moves];
+    int max_ind;
+
+    for (int i = 0; i < _got_moves; i++) {
+        max_ind = max_index(moves_values, _got_moves);
+        moves_indexes[i] = max_index(moves_values, _got_moves);
+        moves_values[max_ind] = -1;
+    }
+
+    // Génération de la list de coups de façon ordonnée
+    int *new_moves = new int[_got_moves * 4];
+    copy(_moves, _moves + _got_moves * 4, new_moves);
+    int j;
+
+    for (int i = 0; i < _got_moves; i++) {
+        j = moves_indexes[i];
+        _moves[4 * i] = new_moves[4 * j];
+        _moves[4 * i + 1] = new_moves[4 * j + 1];
+        _moves[4 * i + 2] = new_moves[4 * j + 2];
+        _moves[4 * i + 3] = new_moves[4 * j + 3];
+    }
+
+    return true;
 }

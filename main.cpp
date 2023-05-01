@@ -290,6 +290,10 @@ https://www.chessprogramming.org/UCT
 -> Retirer les espace dans les parsing de FEN (ou autres caractères non désirés)
 -> Dissocier les paramètres structure de pions et pions passés? (pour aider au debug)
 -> Passer tous les commentaires en anglais et clean le code?
+-> r1bq1rk1/p1pn1pbp/1p1p1np1/4p3/3PP1PP/2N1BP2/PPPQ4/2KR1BNR b - - 0 9 : différence d'évaluation entre stockfish et grogros : sous-estimation de l'attaque de pions sur le roi noir? activité des pièces aussi (mieux pour les noirs selon grogros...)
+-> Mettre des proba de gain négatives sur les mats??
+-> r1b1nrk1/p3npbp/2p3p1/4p3/4P1P1/2N1BP2/PPP4P/2KR1BNR b - - 2 13 : activité à revoir, ca c'est carrément mieux pour les blancs là (devrait rajouter 0.75, pas 0.15)
+-> Evaluations en finales : un cavalier seul sans pions ni rien = nul
 
 
 ----- Interface utilisateur -----
@@ -388,6 +392,20 @@ https://www.chessprogramming.org/UCT
 ----- Réseaux de neurones -----
 
 -> Faut t-il de la symétrie dans le réseau de neurone? (car sinon il évalue pas de la même manière les blancs et les noirs)
+
+
+
+----- Evaluations incorrectes + corections à ajouter -----
+
+-> 5rk1/r3npbp/2p2np1/2N1p3/2B1P1P1/1P2BP2/b1P4P/2KR2NR b - - 2 19 : mobility+ / outpost
+
+
+
+----- Problèmes -----
+
+-> r3k2r/ppp2pp1/2p1bq2/2b4p/3PP1n1/2P2BP1/PP3P1P/RNBQK2R w KQkq - 3 11
+-> 3rk2r/ppp2pp1/2p1bq2/2P4p/4P1B1/2P3P1/PP3P1P/RNBQK2R b KQk - 0 12
+
 
 */
 
@@ -489,7 +507,7 @@ int main() {
 
     // Paramètres pour l'IA
     int search_depth = 8;
-    search_depth = 6;
+    search_depth = 7;
 
 
     // Fin de partie
@@ -555,8 +573,9 @@ int main() {
 
         // Test de thread
         if (IsKeyPressed(KEY_T)) {
-            thread th_test(&Board::grogros_zero, &t, &monte_evaluator, 5000000, true, _beta, _k_add, false, 0, nullptr); // Marche presque... !
-            th_test.detach();
+            // thread th_test(&Board::grogros_zero, &t, &monte_evaluator, 5000000, true, _beta, _k_add, false, 0, nullptr); // Marche presque... !
+            // th_test.detach();
+            t.quick_moves_sort();
         }
 
 
