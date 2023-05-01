@@ -238,6 +238,14 @@ class Board {
 
         // Chances de gain des fils
 
+        // Est-ce que la vérification de mat a déjà été faite?
+        bool _mate_checked = false;
+        int _mate_value = -1;
+
+        // Est-ce que le calcul de game over a déjà été fait?
+        bool _game_over_checked = false;
+        bool _game_over_value = 0;
+
 
         // Constructeur par défaut
         Board();
@@ -485,6 +493,8 @@ class Board {
         // Fonction qui sélectionne et renvoie le coup avec le meilleur UCT
         int select_uct(float c = 0.1);
 
+        // Fonction qui fait un tri rapide des coups (en plaçant les captures en premier)
+        bool quick_moves_sort();
 };
 
 
