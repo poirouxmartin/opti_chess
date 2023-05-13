@@ -4,7 +4,7 @@
 #include "math.h"
 #include "gui.h"
 #include <thread>
-// #include <Windows.h>
+#include "windows_tests.h"
 
 
 // *** Répertoire git ***
@@ -85,6 +85,8 @@ https://www.chessprogramming.org/UCT
 -> Checker SIMD code (pour optimiser)
 -> Calcul de distance à un bord : simplement faire une matrice globale des distance pour chaque case, et regarder dedans -> https://www.chessprogramming.org/Center_Manhattan-Distance
 -> Faut-il stocker les positions de certaines pièces (les rois par exemple), pour accélérer certains calculs?
+-> Regarder dans les copies de tableau si on peut ne pas copier des choses, ou en copier plus...
+-> GrogrosZero casse Grogrosfish... ça fait jouer des coups bizarres à grogrosfish
 
 
 ----- Intelligences artificielles -----
@@ -294,6 +296,16 @@ https://www.chessprogramming.org/UCT
 -> Mettre des proba de gain négatives sur les mats??
 -> r1b1nrk1/p3npbp/2p3p1/4p3/4P1P1/2N1BP2/PPP4P/2KR1BNR b - - 2 13 : activité à revoir, ca c'est carrément mieux pour les blancs là (devrait rajouter 0.75, pas 0.15)
 -> Evaluations en finales : un cavalier seul sans pions ni rien = nul
+-> Mettre les noms de version sur le nom de Grogros
+-> Utiliser toutes les améliorations/optimisations possibles sur VisualStudio
+-> Mettre des uint_fast8_t partout
+-> Negamax : utiliser les plateaux tout faits du buffer?
+-> Extension TODO
+-> Mettre des variables globales partout !
+-> Il faut peut-être supprimer les string?
+-> Faire une classe "coup"? -> cela simplifierait sûrement beaucoup de choses...
+-> Faire une fonction qui regarde si un coup est légal
+-> Regarder et virer toutes les conversions de int à float, et opérations entre int et floats
 
 
 ----- Interface utilisateur -----
@@ -368,7 +380,6 @@ https://www.chessprogramming.org/UCT
 -> CtrlN doit effacer tout le PGN... parfois ça bug
 -> Mieux voir les mini-pièces...
 -> Pouvoir éditer les positions
--> Police avec des minuscules...
 -> PARALLELISER L'AFFICHAGE !! ça lag beaucoup trop !!!
 -> Refaire les pre-moves depuis zero (et ajouter la possibilité d'en faire plusieurs)
 -> Mettre la couleur de la fenête en sombre
@@ -380,13 +391,16 @@ https://www.chessprogramming.org/UCT
 -> Nouveaux bruits de pièces plus "soft" + bruit d'ambiance?
 -> Montrer toute la variante calculée avec des flèches (d'une couleur spéciale)
 -> Temps buggé? parfois lancé que d'un côté? ou alors c'est juste GrogrosFish qui bugge
--> La GUI lag à cause du calcul de variantes??
 -> Thread : bug... parfois les coups joués ne sont pas les bons
 -> Re foncer le noir des pièces?
 -> Ajout du titre BOT : [WhiteTitle "BOT"]
 -> Afficher quand-même la barre d'éval même si GrogrosZero est arrêté?
 -> Pourquoi dans certaines variantes, l'éval ne s'affiche pas à la fin??
 -> Faut-il être plus sûr sur les re-captures?
+-> Il va sûrement manquer des delete quelque part?
+-> Dans les .h, remetre les noms des arguments?
+-> Rajouter des pre-moves pour Grogros si c'est un coup forcé en face
+-> Pourquoi c'est lent de changer  la taille de la GUI?
 
 
 ----- Réseaux de neurones -----
@@ -398,14 +412,105 @@ https://www.chessprogramming.org/UCT
 ----- Evaluations incorrectes + corections à ajouter -----
 
 -> 5rk1/r3npbp/2p2np1/2N1p3/2B1P1P1/1P2BP2/b1P4P/2KR2NR b - - 2 19 : mobility+ / outpost
+-> 2rqr1k1/p2n1ppp/1p3n2/2pP4/1bP2Pb1/2NQ2PP/PB2N1B1/R4RK1 b - - 0 16 : préfère 2rqr1k1/p2n1ppp/1p6/2pP4/1bP2Pb1/2NQ4/PB2N1B1/R4RK1 w - - 0 19 que 2rqr1k1/p2n1ppp/1p3n2/2pP4/1bP2P2/3Q2PP/PB2N1B1/R4RK1 b - - 0 17
 
 
 
 ----- Problèmes -----
 
--> r3k2r/ppp2pp1/2p1bq2/2b4p/3PP1n1/2P2BP1/PP3P1P/RNBQK2R w KQkq - 3 11
--> 3rk2r/ppp2pp1/2p1bq2/2P4p/4P1B1/2P3P1/PP3P1P/RNBQK2R b KQk - 0 12
+r3k2r/ppp2pp1/2p1bq2/2b4p/3PP1n1/2P2BP1/PP3P1P/RNBQK2R w KQkq - 3 11 : h3 (+4.50)
+3rk3/ppp2pp1/2p2q1r/2P1n3/4P2p/1QP3Pb/PP1NBP1P/R1B1R1K1 b - - 5 16
+3rk2r/ppp2pp1/2p1bq2/2P4p/4P1B1/2P3P1/PP3P1P/RNBQK2R b KQk - 0 12
+1rkb4/pNp5/8/2N4p/8/5B2/4K3/8 w - - 0 1
+2k1r1r1/p1p4p/1qpb4/3PN3/2Q3b1/4B3/PP3PP1/2R2RK1 b - - 0 1
+2kr2nr/1pp2ppp/3b4/1P3q2/2Pp1B2/5Q1P/RP3PP1/R5K1 w - - 0 1
+4r1k1/5pP1/2q2Q1p/1p1RP3/p7/5RP1/5P1K/7r w - - 0 1
+6bk/7p/2q1PP2/2Pp4/3R4/5K2/8/B7 w - - 0 1
+8/6Q1/2r1p3/2rkr3/2rrr2Q/8/7K/8 w - - 0 1
+5rk1/pp4pp/4p2r/4R1Q1/3n4/2q4B/P1P2PPP/5RK1 b - - 0 1
+2b1q1r1/r3np1k/4pQpP/p2pP1B1/1ppP4/2P5/PPB2PP1/2KR3R w - - 0 1
+1r1r3k/2q1b2p/p2pB1pB/3Pp2n/1pn5/1N3P2/PPP4Q/1K4RR w - - 0 1
+bK3kq1/PPNppp1p/1b1n3P/n1R5/1p1Q3r/8/2R4p/r7 w - - 0 1
+r3Rk2/1pB2ppp/6b1/1P6/p1nN4/2P4P/1P3PP1/4R1K1 b - - 0 1
+rnbqkbnr/pppppppp/8/PPPPPPPP/PPPPPPPP/PPPPPPPP/PPPPPPPP/4K3 w kq - 0 1
+r1b1k2r/pp1nqpp1/4p2p/3pP1N1/8/3BQ3/PP3PPP/2R2RK1 w kq - 0 1
+1B3B1B/2B5/p6B/8/8/8/8/1k1K4 w - - 0 1
+r1n2b1r/pN2kppp/1pQ1pq2/3p4/5B2/5B2/P4PPP/1R3RK1 w - - 0 1
+3rr1k1/1p1b1pnp/pqpPn1p1/8/8/1PQ2N2/PBB2PP1/3RR1K1 w - - 0 1
+Q7/4pP1p/7k/4q2b/1B1r2PK/7n/8/6r1 w - - 0 1
+2q5/ppr3k1/3p4/P1pPp1bB/2P4n/1P5P/3Q1P1K/6R1 b - - 0 1
+8/8/4p3/8/8/1P6/7P/2K3k1 w - - 0 1
+1RR3Q1/8/5p2/4p3/P3B3/5ppp/K3prqk/4Nbrn w - - 0 1
+8/3pp1p1/4B3/1N1Pp3/2k5/5p1p/4prpr/4Kbnq w - - 0 1
+7k/4Q3/8/4p3/4p3/4pppp/4prpr/4Kbnq w - - 26 27
+8/8/5Q2/4p3/4p1k1/4pppp/4prpr/4Kbnq w - - 40 34
+8/7k/8/4p3/4p1Q1/4pppp/4prpr/4Kbnq w - - 48 38
+rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 0 1
+8/5k2/8/6Kp/6P1/8/8/8 w - - 40 69
+8/8/5p1P/8/4Pk2/2bP4/2B5/5K2 w - - 0 1
+K1k5/P1Pp4/1p1P4/8/p7/P2P4/8/8 w - - 0 1
+4rk2/1rR2ppp/pq6/8/Q7/8/PP3PPP/5RK1 w - - 0 1
+5k1r/pR3p2/5P1p/3bq3/7Q/P7/5PPP/6K1 w - - 0 1
+kb5Q/p7/Pp6/1P6/4p3/4R3/4P1p1/6K1 w - - 0 1
+2kr4/1pp1R3/p1b2Q1p/7B/8/P7/5PrP/2B4K b - - 0 1
+r4rk1/pp1qb1pp/2p1b3/1B3p2/3Pp3/8/PPP1Q1PP/RNB2RK1 w - - 0 1
+5rk1/pp4pp/2pb4/3p1q2/B2Pp1b1/2N1B3/PPP3PP/R3Q1K1 b - - 0 1
+3brrk1/p2q3p/2pnb3/1p1pBp2/3P1Pp1/2PBN3/PP2Q1PP/3R1RK1 w - - 0 1
+3brrk1/p2q4/2p1b3/4Bp2/2pP1Ppp/P1P1N3/2Q3PP/3R1RK1 w - - 0 1
+3k4/8/7p/2p1p1pP/1pPpPpP1/1P1P1P2/N7/2K5 w - - 0 1
+r3r1k1/pp3pbp/1qp3p1/2B5/2BP2b1/Q1n2N2/P4PPP/3R1K1R b - - 0 1
+r1bq1rk1/ppppnpp1/2n4p/2bNp1N1/2B1P2P/2P5/PP1P1PP1/R1BQK2R b KQ - 0 1
+r4rk1/pnpb2p1/3p3q/1pbP1p1Q/7P/2B2N2/PpB2PP1/4RRK1 w - - 0 1
+6k1/5p2/2Qp2p1/1p3b1p/2nB1P2/2P3PP/q3r1BK/2R5 w - - 0 1
+1Q6/p1p1kp2/3q1b2/2p1p3/1B6/8/PP3r1P/K2R4 w - - 0 1
+8/1rpK2k1/7p/3P2pP/8/6P1/1p6/1R6 b - - 0 1
+8/6k1/7p/2p1p1pP/1pPpPpP1/1P1P1P1K/6N1/8 w - - 52 27
+8/1r4k1/2K4p/2pP2pP/8/6P1/1p6/1R6 b - - 1 2
+3r1r1k/pb1pq1pp/1pnR1pn1/4p1BQ/2B1P3/2N5/PPP2PPP/3R2K1 w - - 0 1
+r2r1knR/6p1/1p1q2P1/2b3Q1/5pP1/pP2pP1R/7P/1K6 w - - 0 1
+5rk1/RP1R4/8/8/8/8/5pr1/5K2 w - - 0 1
+8/3k4/5P1p/1p1B1P2/2p2n2/8/1P1K3P/8 w - - 0 1
+r1b2k1N/pppp1B1Q/2n2qp1/4p3/4n3/3P4/PPP2bPP/RNB2K1R b - - 0 1
+8/8/2RQP3/2PKB3/3RP3/8/1q6/5k2 b - - 0 1
+6rk/3PbRp1/6Qp/8/3p4/q2P4/6KP/8 w - - 0 1
+2r3k1/5pp1/4p1P1/p2n4/q2P4/Pp1B1P2/1PrQ2P1/1K1R3R w - - 0 1
+1b6/4P3/1P2PN2/8/8/P1k5/P1p2P2/K5B1 w - - 0 1
+r3rqk1/pp3p1p/5Pp1/4p1N1/1P2P1bP/P2Q4/1K3P2/3R3R w - - 0 1
+4r1k1/ppp2ppp/2n1qp2/2b5/7P/2P1NQ2/PBPP1PP1/R5K1 w - - 0 1
+3q1b2/7k/5p1p/1Q3N2/5Pp1/3p2P1/P1r4P/2R2RK1 b - - 0 1
+1rQ2b1k/3PBq1p/5N2/p5p1/R5P1/7P/5PK1/1q6 w - - 0 1
+r5r1/p4p2/2ppb1kp/7N/qp2RPB1/7P/PPnQ1B2/R5K1 w - - 0 1
+6k1/p1p2p1p/4q1p1/8/P4P2/2Q4b/1P2rP1P/2R3KR b - - 0 1
+3rr1k1/1pq1bppp/p4n2/2P1n2b/PP1N4/BBN1PP2/4Q2P/R4RK1 b - - 0 1
+8/8/6k1/1p5p/5K2/5P2/PPP5/8 w - - 0 1
+8/5pk1/3p1n1p/R1r4P/p5p1/6P1/1B3P1K/8 w - - 0 4
+8/3k4/6pP/2p5/rpP5/8/PK6/4R3 w - - 0 1
+7k/6p1/5p1p/8/2p1r3/1P1p2P1/P2R2KP/8 b - - 1 1
+8/8/7p/p4B1P/PbK2p2/1P2kPp1/6P1/8 w - - 77 112
+8/8/7p/p1p4P/P3Kp2/1P3PpB/3b1kP1/8 w - - 63 66
+8/8/6Kp/p1p4P/P4p2/1Pb1kPpB/6P1/8 w - - 67 68 vs 8/8/7K/p1p4P
+1q5k/5K2/2p4b/8/8/8/1n4p1/RQ6 w - - 0 1
+1k6/2q5/8/7p/5Q1P/5PK1/8/8 b - - 0 1
+7k/7P/6P1/2b1PK2/8/p7/8/8 w - - 0 1
+r3r1k1/3b1p2/p1pp3p/3Pp1q1/1p1bQP2/3P2B1/PPP1N1P1/2KR3R b - - 0 1
+8/8/pp6/kp6/1R6/PK6/8/8 w - - 0 1
+6q1/3r1p2/2N1nk1K/3rp3/8/5PP1/2Q5/3N4 w - - 0 1
+8/8/8/3k4/8/1PK5/8/8 w - - 5 17 : finales à revoir
+7Q/8/B4pp1/p5k1/3P2r1/q1PKP3/1r6/6R1 w - - 4 52
 
+
+
+----- BINDING chess.com -----
+
+coordonnées du plateau : 
+
+108, 219
+851, 962
+
+
+-> Faire une fonction qui detecte automatiquement les coordonnées du plateau
+-> Prendre en considération l'orientation du plateau
+-> Tester les coups dans les deux sens? (ou regarder sur quelle case il n'y a plus de pièce)
 
 */
 
@@ -428,10 +533,11 @@ void testB() {
 
 
 // Fonction qui fait le dessin de la GUI
-void gui_draw(bool d) {
+void gui_draw() {
+    if (!_GUI._draw)
+        return;
     BeginDrawing();
-    if (d)
-        t.draw();
+    t.draw();
     EndDrawing();
 }
 
@@ -446,10 +552,14 @@ int main() {
     // Fenêtre resizable
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     SetConfigFlags(FLAG_MSAA_4X_HINT);
+    SetConfigFlags(FLAG_WINDOW_ALWAYS_RUN);
+
+    // Pour ne pas afficher toutes les infos (on peut mettre le log level de 0 à 7 -> 7 = rien)
+    SetTraceLogLevel(LOG_WARNING);
       
 
     // Initialisation de la fenêtre
-    InitWindow(screen_width, screen_height, "Grogros Chess");
+    InitWindow(_GUI._screen_width, _GUI._screen_height, "Grogros Chess");
 
     // Initialisation de l'audio
     InitAudioDevice();
@@ -459,7 +569,7 @@ int main() {
     SetTargetFPS(fps);
 
     // Curseur
-    // HideCursor();
+    //HideCursor();
     SetMouseCursor(3);
 
 
@@ -487,19 +597,19 @@ int main() {
     int nodes_per_user_frame = 250;
 
     // Valeurs à 0 pour augmenter la vitesse de calcul. A tester vs grogrosfish avec tout d'activé
-    eval_white._piece_activity = 0;
-    eval_white._attacks = 0;
-    eval_white._defenses = 0;
-    eval_white._king_safety = 0;
-    eval_white._kings_opposition = 0;
-    eval_white._pawn_structure = 0;
-    eval_white._player_trait = 0;
-    eval_white._push = 0;
-    eval_white._rook_open = 0;
-    eval_white._rook_semi = 0;
-    eval_white._piece_positioning = 0;
-    eval_white._castling_rights = 0;
-    eval_white._square_controls = 0;
+    eval_white._piece_activity = 0.0f;
+    eval_white._attacks = 0.0f;
+    eval_white._defenses = 0.0f;
+    eval_white._king_safety = 0.0f;
+    eval_white._kings_opposition = 0.0f;
+    eval_white._pawn_structure = 0.0f;
+    eval_white._player_trait = 0.0f;
+    eval_white._push = 0.0f;
+    eval_white._rook_open = 0.0f;
+    eval_white._rook_semi = 0.0f;
+    eval_white._piece_positioning = 0.0f;
+    eval_white._castling_rights = 0.0f;
+    eval_white._square_controls = 0.0f;
 
     // IA self play
     bool grogrosfish_play_white = false;
@@ -513,26 +623,26 @@ int main() {
     // Fin de partie
     bool main_game_over = false;
 
-    // Réseau de neurones
-    Network grogros_network;
-    grogros_network.generate_random_weights();
-    bool use_neural_network = false;
+    //// Réseau de neurones
+    //Network grogros_network;
+    //grogros_network.generate_random_weights();
+    //bool use_neural_network = false;
 
 
-    // Liste de réseaux de neurones pour les tournois
-    int n_networks = 5;
-    Evaluator **evaluators = new Evaluator*[n_networks];
-    for (int i = 0; i < n_networks; i++)
-        evaluators[i] = nullptr;
-    Network **neural_networks = new Network*[n_networks];
-    Network *neural_networks_test = new Network[n_networks];
-    for (int i = 0; i < n_networks; i++) {
-        neural_networks[i] = &neural_networks_test[i];
-        neural_networks[i]->generate_random_weights();
-    }
+    //// Liste de réseaux de neurones pour les tournois
+    //int n_networks = 5;
+    //Evaluator **evaluators = new Evaluator*[n_networks];
+    //for (int i = 0; i < n_networks; i++)
+    //    evaluators[i] = nullptr;
+    //Network **neural_networks = new Network*[n_networks];
+    //Network *neural_networks_test = new Network[n_networks];
+    //for (int i = 0; i < n_networks; i++) {
+    //    neural_networks[i] = &neural_networks_test[i];
+    //    neural_networks[i]->generate_random_weights();
+    //}
 
-    neural_networks[0] = nullptr;
-    evaluators[0] = &monte_evaluator;
+    //neural_networks[0] = nullptr;
+    //evaluators[0] = &monte_evaluator;
 
 
     // Met les timers en place
@@ -541,26 +651,23 @@ int main() {
     t._pgn = "[FEN \"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\"]\n\n";
 
 
-    // Test des agents GrogrosZero
-
-    // Liste d'agents
-    const int n_agents = 25;
-    Agent l_agents[n_agents];
-    int generation = 0;
-    int max_generations = 100;
-    Agent final_agent;
-
-    // Initialisation des agents
-    for (int i = 0; i < n_agents; i++) {
-        Agent a;
-        l_agents[i] = a;
-    }
-
-    // Liste de scores pour les tournois
-    int *l_scores;
+    // Intervalle de tmeps pour check chess.com
+    int binding_interval_check = 100;
+    clock_t last_binding_check = clock();
+    int* binding_move = new int[4];
 
 
-    bool draws = true;
+    // Test de structure 'coup'
+
+    /*uint_fast8_t array_moves[_max_moves * 4];
+    cout << sizeof(array_moves) << endl;
+
+    Move array_compact_moves[_max_moves];
+    cout << sizeof(array_compact_moves) << endl;
+
+    cout << sizeof(t) << endl;
+    cout << sizeof(t._moves) << endl;
+    cout << sizeof(t._array) << endl;*/
 
 
 
@@ -568,14 +675,29 @@ int main() {
     while (!WindowShouldClose()) {
 
 
-        // INPUTS
+        // INPUTS      
 
 
-        // Test de thread
+
+        // T - Test de thread
         if (IsKeyPressed(KEY_T)) {
             // thread th_test(&Board::grogros_zero, &t, &monte_evaluator, 5000000, true, _beta, _k_add, false, 0, nullptr); // Marche presque... !
             // th_test.detach();
-            t.quick_moves_sort();
+
+            //print_array(get_board_move(x_left_binding_board, y_top_binding_board, x_right_binding_board, y_bottom_binding_board, get_board_orientation(), true), 4);
+            //click_move(1, 4, 3, 4, x_left_binding_board, y_top_binding_board, x_right_binding_board, y_bottom_binding_board, get_board_orientation());
+            //click_move(6, 2, 4, 2, x_left_binding_board, y_top_binding_board, x_right_binding_board, y_bottom_binding_board, get_board_orientation());
+        }
+
+        // LCTRL-A - BInding full (binding chess.com)
+        if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_Q)) {
+            _GUI._binding_full = !_GUI._binding_full;
+        }
+
+        // LCTRL-Q - Mode de jeu automatique (binding chess.com) -> Check le binding seulement sur les coups de l'adversaire
+        if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_A)) {
+            _GUI._binding_solo = !_GUI._binding_solo;
+            _GUI._click_bind = !_GUI._click_bind;
         }
 
 
@@ -643,13 +765,13 @@ int main() {
         // }
 
         // A - Analyse de partie sur chess.com (A)
-        if (IsKeyPressed(KEY_Q)) {
+        if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_Q)) {
             OpenURL("https://www.chess.com/analysis");
         }
             
         // TAB - Screenshot
         if (IsKeyPressed(KEY_TAB)) {
-            string screenshot_name = "../resources/screenshots/" + to_string(time(0)) + ".png";
+            string screenshot_name = "resources/screenshots/" + to_string(time(0)) + ".png";
             cout << "Screenshot : " << screenshot_name << endl;
             TakeScreenshot(screenshot_name.c_str());
 
@@ -658,17 +780,13 @@ int main() {
 
         // D - Dessine ou non
         if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_D)) {
-            draws = false;
+            _GUI._draw = false;
         }
             
         // B - Création du buffer
         if (IsKeyPressed(KEY_B)) {
-            cout << "Available memory : " << getTotalSystemMemory() << endl;
-            cout << "generating new buffer" << endl;
+            cout << "available memory : " << long_int_to_round_string(get_total_system_memory()) << endl;
             _monte_buffer.init();
-            // N'affiche pas la bonne taille
-            cout << "new buffer, size : "  << sizeof(_monte_buffer) << " bits, length : " << _monte_buffer._length << endl;
-            cout << "first free index : " << _monte_buffer.get_first_free_index() << endl;
         }
         
         // G - GrogrosZero
@@ -681,7 +799,8 @@ int main() {
             else {
                 // LSHIFT - Utilisation du réseau de neurones
                 if (IsKeyDown(KEY_LEFT_SHIFT))
-                    t.grogros_zero(nullptr, nodes_per_frame, true, _beta, _k_add, false, 0, &grogros_network);
+                    //t.grogros_zero(nullptr, nodes_per_frame, true, _beta, _k_add, false, 0, &grogros_network);
+                    false;
                 else
                     t.grogros_zero(&monte_evaluator, nodes_per_frame, true, _beta, _k_add);
             }
@@ -725,7 +844,7 @@ int main() {
 
         // D - Affichage dans la console de tous les coups légaux de la position
         if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_D)) {
-            draws = true;
+            _GUI._draw = true;
             t.display_moves(true);
         }
 
@@ -743,51 +862,51 @@ int main() {
         IsKeyPressed(KEY_U) && t.undo(); 
 
         // Modification des paramètres de recherche de GrogrosZero
-        IsKeyPressed(KEY_KP_ADD) && (_beta *= 1.1);
-        IsKeyPressed(KEY_KP_SUBTRACT) && (_beta /= 1.1);
-        IsKeyPressed(KEY_KP_MULTIPLY) && (_k_add *= 1.25);
-        IsKeyPressed(KEY_KP_DIVIDE) && (_k_add /= 1.25);
+        IsKeyPressed(KEY_KP_ADD) && (_beta *= 1.1f);
+        IsKeyPressed(KEY_KP_SUBTRACT) && (_beta /= 1.1f);
+        IsKeyPressed(KEY_KP_MULTIPLY) && (_k_add *= 1.25f);
+        IsKeyPressed(KEY_KP_DIVIDE) && (_k_add /= 1.25f);
 
         // R-Return - Reset aux valeurs initiales
         if (IsKeyPressed(KEY_KP_ENTER)) {
-            _beta = 0.05;
-            _k_add = 25;
+            _beta = 0.05f;
+            _k_add = 25.0f;
         }
 
         // 1 - Recherche en profondeur extrême
         if (IsKeyPressed(KEY_ONE)) {
-            _beta = 0.5;
-            _k_add = 0;
+            _beta = 0.5f;
+            _k_add = 0.0f;
         }
 
         // 2 - Recherche en profondeur
         if (IsKeyPressed(KEY_TWO)) {
-            _beta = 0.2;
-            _k_add = 10;
+            _beta = 0.2f;
+            _k_add = 10.0f;
         }
 
         // 3 - Recherche large
         if (IsKeyPressed(KEY_THREE)) {
-            _beta = 0.01;
-            _k_add = 100;
+            _beta = 0.01f;
+            _k_add = 100.0f;
         }
 
         // 4 - Recherche de mat
         if (IsKeyPressed(KEY_FOUR)) {
-            _beta = 0.005;
-            _k_add = 2500;
+            _beta = 0.005f;
+            _k_add = 2500.0f;
         }
 
         // 5 - Recherche de victoire en endgame
         if (IsKeyPressed(KEY_FIVE)) {
-            _beta = 0.05;
-            _k_add = 5000;
+            _beta = 0.05f;
+            _k_add = 5000.0f;
         }
 
         // P - Joue le coup recommandé par l'algorithme de GrogrosZero
         if (!IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_P)) {
             if (t._tested_moves > 0)
-                t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true);
+                ((_GUI._click_bind && t.click_i_move(t.best_monte_carlo_move(), get_board_orientation())) || true) && t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true, false, false);
             else
                 cout << "no more moves are in memory" << endl;
         }
@@ -795,7 +914,7 @@ int main() {
         // LShift-P - Joue les coups recommandés par l'algorithme de GrogrosZero
         if (IsKeyDown(KEY_LEFT_SHIFT) && IsKeyDown(KEY_P)) {
             if (t._tested_moves > 0)
-                t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true);
+                ((_GUI._click_bind && t.click_i_move(t.best_monte_carlo_move(), get_board_orientation())) || true) && t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true, false, false);
             else
                 cout << "no more moves are in memory" << endl;
         }
@@ -965,11 +1084,11 @@ int main() {
                 // Temps que Grogros a pris pour ce tour là
                 // clock_t grogros_time = clock();
                 if (t._time_monte_carlo >= max_move_time)
-                    t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true);
+                    ((_GUI._click_bind && t.click_i_move(t.best_monte_carlo_move(), get_board_orientation())) || true) && t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true, false, false);
             }
                 
             if (t.total_nodes() >= grogros_nodes)
-                t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true);
+                ((_GUI._click_bind && t.click_i_move(t.best_monte_carlo_move(), get_board_orientation())) || true) && t.play_monte_carlo_move_keep(t.best_monte_carlo_move(), true, true, false, false);
 
         }
             
@@ -998,17 +1117,33 @@ int main() {
             
         }
 
-        // // Dessins
-        // BeginDrawing();
 
-        // // Dessin du plateau
-        // t.draw();
+        // Jeu automatique sur chess.com
+        if (_GUI._binding_full || (_GUI._binding_solo && get_board_orientation() != t._player)) {
+
+            // Le fait à chaque intervalle de temps 'binding_interval_check'
+            if (clock() - last_binding_check > binding_interval_check) {
+
+                // Coup joué sur le plateau
+                binding_move = get_board_move(x_left_binding_board, y_top_binding_board, x_right_binding_board, y_bottom_binding_board, get_board_orientation());
+
+                // Vérifie que le coup est légal avant de le jouer
+                for (int i = 0; i < t._got_moves; i++) {
+                    if (t._moves[4 * i] == binding_move[0] && t._moves[4 * i + 1] == binding_move[1] && t._moves[4 * i + 2] == binding_move[2] && t._moves[4 * i + 3] == binding_move[3]) {
+                        t.play_move_sound(binding_move[0], binding_move[1], binding_move[2], binding_move[3]);
+                        t.play_monte_carlo_move_keep(i, true, true, true, true);
+                        break;
+                    }
+                }
+
+                last_binding_check = clock();
+            }
+
             
-        // // Fin de la zone de dessin
-        // EndDrawing();
+        }
 
-        gui_draw(draws);
-        // cout << GetFPS() << endl;
+        
+        gui_draw();
 
 
 

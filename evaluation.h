@@ -6,22 +6,22 @@ class Evaluator {
     // Paramètres d'évaluation
 
     // Coefficients des heuristiques
-    float _piece_value = 1.2;
-    float _piece_activity = 0.0004;
-    float _piece_positioning = 0.004;
-    float _random_add = 0.0;
-    float _bishop_pair = 0.4;
-    float _castling_rights = 0.0;
-    float _player_trait = 0.12;
-    float _king_safety = 0.008;
-    float _pawn_structure = 0.006;
-    float _attacks = 0.01;
-    float _defenses = 0.0025;
-    float _kings_opposition = 0.75;
-    float _push = 1.00;
-    float _rook_open = 0.005;
-    float _rook_semi = 0.008;
-    float _square_controls = 0.0075;
+    float _piece_value = 1.2f;
+    float _piece_activity = 0.0004f;
+    float _piece_positioning = 0.004f;
+    float _random_add = 0.0f;
+    float _bishop_pair = 0.4f;
+    float _castling_rights = 0.0f;
+    float _player_trait = 0.12f;
+    float _king_safety = 0.008f;
+    float _pawn_structure = 0.006f;
+    float _attacks = 0.01f;
+    float _defenses = 0.0025f;
+    float _kings_opposition = 0.75f;
+    float _push = 1.00f;
+    float _rook_open = 0.005f;
+    float _rook_semi = 0.008f;
+    float _square_controls = 0.0075f;
 
 
     // Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)

@@ -1,5 +1,6 @@
 #include <execution>
 #include <string>
+#include "time.h"
 
 using namespace std;
 
@@ -7,6 +8,9 @@ using namespace std;
 
 // Fonction qui renvoie si un entier appartient à un intervalle
 bool is_in(int, int, int);
+
+// Fonction qui renvoie si un entier uint_fast8_t appartient à un intervalle
+bool is_in_fast(uint_fast8_t, uint_fast8_t, uint_fast8_t);
 
 // Fonction qui renvoie si un flottant appartient à un intervalle
 bool is_in(float, float, float);
@@ -27,7 +31,7 @@ float min_float(float, float);
 int move_power(float, float, float);
 
 // Fonction qui permet de donner une puissance au coup afin de faciliter les choix
-void softmax(int*, int, double beta = 0.035, int k_add = 50); // beta = 0.05, k_add = 1. k_add x => ~x/10000 (the bigger the larger, the smaller the deeper) 0.05, 250 pour les mats
+void softmax(int*, int, float beta = 0.035f, float k_add = 50.0f); // beta = 0.05, k_add = 1. k_add x => ~x/10000 (the bigger the larger, the smaller the deeper) 0.05, 250 pour les mats
 
 // Fonction pour générer une seed
 int generate_seed();
@@ -36,7 +40,7 @@ int generate_seed();
 int rand_int(int, int);
 
 // Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variante en fonction de la grandeur du nombre correspondant à cet index
-int pick_random_good_move(int[], int, int, bool, int, int[], double beta = 0.035, int k_add = 50);
+int pick_random_good_move(int[], int, int, bool, int, int[], float beta = 0.035f, float k_add = 50.0f);
 
 // Fonction qui renvoie la valeur maximum d'une liste d'entiers
 int max_value(int[], int);
@@ -65,14 +69,17 @@ void print_array(string[], int);
 // Fonction qui renvoie l'index de la valeur maximale d'une liste d'entiers
 int max_index(int[], int);
 
+// Fonction qui renvoie l'index de la valeur maximale d'une liste de flottants
+int max_index(float[], int);
+
+// Fonction qui renvoie l'index de la valeur maximale d'une liste d'entiers uint_fast8_t
+int max_index(uint_fast8_t[], int);
+
 // Fonction qui renvoie l'index de la valeur maximale de deux listes d'entiers (la seconde est là pour départager en cas d'égalité)
 int max_index(int*, int, int*, int);
 
 // Fonction qui renvoie l'index de la valeur minimale d'une liste d'entiers
 int min_index(int[], int);
-
-// Fonction qui renvoie la RAM disponible
-unsigned long long getTotalSystemMemory();
 
 // Fonction qui calcule une distance entre deux points
 float distance(int, int, int, int);
@@ -82,6 +89,9 @@ float proximity(int, int, int, int, float k = 2);
 
 // Fonction qui transforme un entier en string (et arrondit s'il est supérieur à 1000)
 string int_to_round_string(int);
+
+// Fonction qui transforme un entier en string (et arrondit s'il est supérieur à 1000)
+string long_int_to_round_string(unsigned long long);
 
 // Fonction qui transforme un clock en string (pour les timestamps dans les PGN)
 string clock_to_string(clock_t, bool full = false);
