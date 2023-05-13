@@ -4,7 +4,6 @@
 #include <array>
 #include <string>
 #include "evaluation.h"
-#include "agent.h"
 #include "neural_network.h"
 #include <vector>
 #include <map>
@@ -46,8 +45,17 @@ Plateau :
 const int _max_moves = 100; // ça n'arrivera quasi jamais que ça dépasse ce nombre
 
 
-// uint_fast4_t test_int_4;
+// Coup (défini par ses coordonnées)
+// TODO : l'utiliser !!
+typedef struct Move {
+    uint_fast8_t x1 : 3;
+    uint_fast8_t y1 : 3;
+    uint_fast8_t x2 : 3;
+    uint_fast8_t y2 : 3;
+};
 
+
+// Plateau
 class Board {
     
     public:
@@ -66,17 +74,19 @@ class Board {
 
         // Coups possibles
         // Nombre max de coups légaux dans une position : 218 -> 872 (car 1 moves = 4 coord)
-        uint_fast8_t _moves[_max_moves * 4];        
+        uint_fast8_t _moves[_max_moves * 4]; 
+
+        //Move _moves_test[_max_moves];
 
         // Les coups sont-ils actualisés? Si non : -1, sinon, _got_moves représente le nombre de coups jouables
         int _got_moves = -1;
 
-        // Ordre des coups à jouer (pour l'optimisation)
-        // uint_fast8_t _move_order[_max_moves];
-        uint_fast8_t _move_order[_max_moves]; // Car inutile si on utilise pas negamax
-
         // Les coups sont-ils triés?
         bool _sorted_moves = false;
+
+        // Tri rapide
+        bool _quick_sorted_moves = false;
+
         // Les coups sont-ils pseudo-légaux? (sinon, légaux...)
         bool _pseudo_moves = false;
 
@@ -87,7 +97,7 @@ class Board {
         int _color = 1;
 
         // Peut-être utile pour les optimisations?
-        float _evaluation = 0;
+        float _evaluation = 0.0f;
 
         // Position mat (pour les calculs de mat plus rapides)
         bool _mate = false;
@@ -104,7 +114,7 @@ class Board {
         // Nombre de demi-coups (depuis le dernier déplacement de pion, ou la dernière capture, et reste nul à chacun de ces coups)
         int _half_moves_count = 0;
 
-        // Nombre de coups
+        // Nombre de coups de la partie
         int _moves_count = 1;
 
         // La partie est-elle finie
@@ -140,7 +150,7 @@ class Board {
         bool _is_active = false;
 
         // Liste des index des plateaux fils dans le buffer (changer la structure de données?)
-        int *_index_children;
+        int *_index_children = nullptr;
 
         // Nombre de coups déjà testés
         int _tested_moves = 0;
@@ -149,13 +159,13 @@ class Board {
         int _current_move = 0;
 
         // Evaluation des fils
-        int *_eval_children;
+        int *_eval_children = nullptr;
 
         // Nombre de noeuds
         int _nodes = 0;
 
         // Noeuds des enfants
-        int *_nodes_children;
+        int *_nodes_children = nullptr;
 
         // Est-ce que le plateau a été évalué?
         bool _evaluated = false;
@@ -231,9 +241,9 @@ class Board {
         clock_t _last_move_clock;
 
         // Chances de gain/nulle/perte
-        float _white_winning_chance = 0.0;
-        float _drawing_chance = 0.0;
-        float _black_winning_chance = 0.0;
+        float _white_winning_chance = 0.0f;
+        float _drawing_chance = 0.0f;
+        float _black_winning_chance = 0.0f;
         bool _winning_chances = false;
 
         // Chances de gain des fils
@@ -322,11 +332,8 @@ class Board {
         // Fonction qui évalue la position à l'aide d'heuristiques -> évaluation entière
         bool evaluate_int(Evaluator *e = nullptr, bool checkmates = false, bool display = false, Network *n = nullptr);
 
-        // Fonction qui évalue la position à l'aide d'un agent
-        void evaluate(Agent);
-
         // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-        float negamax(int, float, float, int, bool, Evaluator *, Agent, bool, bool, bool);
+        float negamax(int, float, float, int, bool, Evaluator *, bool, bool);
 
         // Version un peu mieux optimisée de Grogrosfish
         bool grogrosfish(int, Evaluator *, bool);
@@ -365,7 +372,7 @@ class Board {
         void draw_text_rect(string, float, float, float, float, int);
 
         // Fonction qui dessine le plateau
-        void draw();
+        bool draw();
         
         // Fonction qui joue le son d'un coup
         void play_move_sound(int, int, int, int);
@@ -386,13 +393,13 @@ class Board {
         int best_monte_carlo_move();
 
         // Fonction qui joue le coup après analyse par l'algo de Monte-Carlo, et qui garde en mémoire les infos du nouveau plateau
-        void play_monte_carlo_move_keep(int, bool keep = true, bool keep_display = false, bool display = false, bool add_to_list = false);
+        bool play_monte_carlo_move_keep(int, bool keep = true, bool keep_display = false, bool display = false, bool add_to_list = false);
 
         // Pas très opti pour l'affichage, mais bon... Fonction qui cherche la profondeur la plus grande dans la recherche de Monté-Carlo
         int max_monte_carlo_depth();
 
         // Algo de grogros_zero
-        void grogros_zero(Evaluator *eval = nullptr, int nodes = 1, bool checkmates = false, double beta = 0.035, int k_add = 50, bool display = false, int depth = 0, Network *net = nullptr);
+        void grogros_zero(Evaluator *eval = nullptr, int nodes = 1, bool checkmates = false, float beta = 0.035f, float k_add = 50.0f, bool display = false, int depth = 0, Network *net = nullptr);
 
         // Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
         void reset_board(bool display = false);
@@ -495,6 +502,15 @@ class Board {
 
         // Fonction qui fait un tri rapide des coups (en plaçant les captures en premier)
         bool quick_moves_sort();
+
+        // Fonction qui fait un quiescence search
+        int quiescence(int, int);
+
+        // Fonction qui renvoie le i-ème coup
+        int* get_i_move(int);
+
+        // Fonction qui fait cliquer le i-ème coup
+        bool click_i_move(int i, bool orientation);
 };
 
 
@@ -507,15 +523,9 @@ void switch_orientation();
 // Fonction aidant à l'affichage du plateau (renvoie i si board_orientation, et 7 - i sinon)
 int orientation_index(int);
 
-// Fonction qui joue un match entre deux agents, et donne du score à l'agent correspondant (le premier agent a les blancs)
-int match(Agent&, Agent&);
-
-// Fonction qui fait un tournoi d'agents, et retourne la liste des scores
-int* tournament(Agent*, int);
-
 // Paramètres pour la recherche de Monte-Carlo
-extern double _beta;
-extern int _k_add; 
+extern float _beta;
+extern float _k_add; 
 
 
 
@@ -582,3 +592,35 @@ int time_to_play_move(int t1, int t2, float k = 0.05);
 
 // Fonction qui renvoie la valeur UCT
 float uct(float, float, int, int);
+
+
+// GUI
+class GUI {
+    public:
+        // Variables
+
+
+        // Dimensions de la fenêtre
+        int _screen_width = 1800;
+        int _screen_height = 945;
+
+
+
+
+        // Faut-il faire l'affichage?
+        bool _draw = true;
+        
+        // Faut-il que les coups soient cliqués en binding chess.com?
+        bool _click_bind = false;
+
+        // Mode de jeu automatique en binding avec chess.com
+        bool _binding_full = false; // Pour récupérer tous les coups de la partie
+        bool _binding_solo = false; // Pour récupérer seulement les coups de la couleur du joueur du bas
+
+
+        // Constructeur
+        GUI();
+};
+
+// instantiation de la GUI globale
+extern GUI _GUI;
