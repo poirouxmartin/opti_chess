@@ -1,7 +1,10 @@
-#include "raylib.h"
 #include "time.h"
 #include <string>
+#include "raylib.h"
+#include <iostream>
+#include <vector>
 
+using namespace std;
 
 // Définition des variables
 
@@ -10,69 +13,62 @@
 #define VDARKGRAY CLITERAL(Color){50, 50, 50, 255}
 
 
-
-// Paramètres d'initialisation
-static float screen_width = 1800;
-static float screen_height = 945;
-// static float screen_width = 761;
-// static float screen_height = 400;
-
 // Nombre de FPS
-static int fps = 144;
-static int max_drawing_fps = 144; // Nombre d'updates max par secondes pour ces fonctions
-static clock_t last_drawing_time = 0;
+static const int fps = 144;
+static const int max_drawing_fps = 144; // Nombre d'updates max par secondes pour ces fonctions
+static const clock_t last_drawing_time = 0;
 
 // Couleur de fond
-static Color background_color = {25, 25, 25, 255};
+static const Color background_color = {25, 25, 25, 255};
 
 // Couleur du rectangle de texte
-static Color background_text_color = {0, 0, 0, 255};
+static const Color background_text_color = {0, 0, 0, 255};
 
 // Couleurs du texte
-static Color text_color = {255, 75, 75, 255};
-static Color text_color_dark = {200, 50, 50, 255};
-static Color text_color_light = {200, 200, 200, 255};
-static Color text_color_blue = {150, 150, 200, 255};
-static Color text_color_info = {140, 140, 140, 255};
+static const Color text_color = {255, 75, 75, 255};
+static const Color text_color_dark = {200, 50, 50, 255};
+static const Color text_color_light = {200, 200, 200, 255};
+static const Color text_color_blue = {150, 150, 200, 255};
+static const Color text_color_info = {140, 140, 140, 255};
 
 // Couleurs du plateau
-static Color board_color_light = {190, 162, 127, 255};
-static Color board_color_dark = {109, 78, 54, 255};
+static const Color board_color_light = {190, 162, 127, 255};
+static const Color board_color_dark = {109, 78, 54, 255};
 // static Color board_color_light = {149, 110, 83, 255};
 // static Color board_color_dark = {90, 54, 36, 255}; // Couleur Grogros
 
 // Couleur de surlignage de cases
-static Color highlight_color = {255, 255, 100, 150};
+static const Color highlight_color = {255, 255, 100, 150};
 
 // Couleur de selection de cases
-static Color select_color = {50, 225, 50, 100};
+static const Color select_color = {50, 225, 50, 100};
 
 // Couleur des cases du dernier coup joué
-static Color last_move_color = {220, 150, 50, 125};
+static const Color last_move_color = {220, 150, 50, 125};
 
 // Couleur de la case de pre-move
-static Color pre_move_color = {220, 30, 30, 125};
+static const Color pre_move_color = {220, 30, 30, 125};
 
 // Couleur des flèches
-static Color arrow_color = {255, 225, 0, 150};
+static const Color arrow_color = {255, 225, 0, 150};
 
 // Couleur des sliders
-static Color slider_color = {200, 200, 200, 100};
-static Color slider_backgrond_color = {100, 100, 100, 75};
+static const Color slider_color = {200, 200, 200, 100};
+static const Color slider_backgrond_color = {100, 100, 100, 75};
 
 // Couleurs de la barre d'évaluation
-static Color eval_bar_color_light = {224, 206, 186, 255};
-static Color eval_bar_color_dark = {57, 50, 47, 255};
+static const Color eval_bar_color_light = {224, 206, 186, 255};
+static const Color eval_bar_color_dark = {57, 50, 47, 255};
 
 // Epaisseur des flèches (par rapport à la taille d'une case)
-static float arrow_scale = 0.125;
-static float arrow_thickness = 50;
+static float arrow_scale = 0.125f;
+static float arrow_thickness = 50.0f;
 
 // Est-ce qu'on affiche les flèches (non par exemple si l'utilisateur veut jouer contre l'IA)
 static bool drawing_arrows = true;
 
 // Pourcentage de noeuds à partir duquel on montre le coup
-static float arrow_rate = 0.05;
+static float arrow_rate = 0.05f;
 
 // Variable qui indique si l'initialisation a été faite
 static bool loaded_resources = false;
@@ -115,7 +111,7 @@ static Sound game_end_sound;
 static Sound promotion_sound;
 
 // Taille du plateau par rapport à la fenêtre
-static float board_scale = 0.7;
+static float board_scale = 0.7f;
 static float board_size;
 static float board_padding_x;
 static float board_padding_y;
@@ -123,7 +119,7 @@ static float board_padding_y;
 // Taille des pièces
 static float tile_size;
 static float piece_size;
-static float piece_scale = 0.85;
+static float piece_scale = 0.85f;
 
 // Taille standard du texte
 static float text_size;
@@ -140,7 +136,7 @@ static bool board_orientation = true;
 
 
 // Position de la souris
-static Vector2 mouse_pos = GetMousePosition();
+static Vector2 mouse_pos;
 
 // Position de la case cliquée
 static pair<int, int> clicked_pos = {-1, -1};
@@ -186,23 +182,23 @@ static float global_eval = 0.0f;
 static string global_eval_text = "+0.0";
 
 // Temps de base pour les joueurs (en ms)
-static int base_time_white = 180000;
-static int base_time_black = 180000;
+static int base_time_white = 20000;
+static int base_time_black = 20000;
 
 // Incrément (en ms)
-static int base_time_increment_white = 2000;
-static int base_time_increment_black = 2000;
+static int base_time_increment_white = 0000;
+static int base_time_increment_black = 0000;
 
 // Valeur des pièces pour l'affichage sur la GUI (rien/roi, pion, cavalier, fou, tour, dame)
-static int piece_gui_values[6] = {0, 1, 3, 3, 5, 9};
+static const int piece_gui_values[6] = {0, 1, 3, 3, 5, 9};
 
 // Matériel manquant
-static int base_material[6] = {0, 8, 2, 2, 2, 1};
+static const int base_material[6] = {0, 8, 2, 2, 2, 1};
 static int missing_w_material[6] = {0, 0, 0, 0, 0, 0};
 static int missing_b_material[6] = {0, 0, 0, 0, 0, 0};
 
 // Alphabet de taille 8
-static string abc8 = "abcdefgh";
+static const string abc8 = "abcdefgh";
 
 // Lancement des IA
 static bool grogros_auto = false;
@@ -217,6 +213,20 @@ static Board t;
 
 // Composantes de l'évaluation à afficher sur la GUI
 static string eval_components = "";
+
+// Coordonnées du binding
+// // Half
+static int x_left_binding_board = 108; // (+10 si barre d'éval)
+static int y_top_binding_board = 219;
+static int x_right_binding_board = 851;
+static int y_bottom_binding_board = 962;
+
+// Full
+//static int x_left_binding_board = 300;
+//static int y_top_binding_board = 179;
+//static int x_right_binding_board = 1083;
+//static int y_bottom_binding_board = 962;
+
 
 
 // A partir de coordonnées sur le plateau (// Thickness = -1 -> default thickness)
