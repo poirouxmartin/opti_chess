@@ -52,7 +52,32 @@ typedef struct Move {
     uint_fast8_t y1 : 3;
     uint_fast8_t x2 : 3;
     uint_fast8_t y2 : 3;
+
+    bool operator== (const Move& other) const {
+        return (x1 == other.x1) && (y1 == other.y1) && (x2 == other.x2) && (y2 == other.y2);
+    }
 };
+
+
+// Droits de roque (pour optimiser la place mémoire)
+struct CastlingRights {
+    bool k_w : 1; // Kingside - White
+    bool q_w : 1; // Queenside - White
+    bool k_b : 1; // Kingside - Black
+    bool q_b : 1; // Queenside - Black
+
+    CastlingRights() :
+        k_w(true),
+        q_w(true),
+        k_b(true),
+        q_b(true)
+    {}
+
+    bool operator== (const CastlingRights& other) const {
+        return (k_w == other.k_w) && (q_w == other.q_w) && (k_b == other.k_b) && (q_b == other.q_b);
+    }
+};
+
 
 
 // Plateau
@@ -102,11 +127,8 @@ class Board {
         // Position mat (pour les calculs de mat plus rapides)
         bool _mate = false;
 
-        // Roques disponibles
-        bool _k_castle_w = true;
-        bool _q_castle_w = true;
-        bool _k_castle_b = true;
-        bool _q_castle_b = true;
+        // Droits de roque
+        CastlingRights _castling_rights;
 
         // En passant possible (se note par exemple "d6" -> coordonnée de la case)
         string _en_passant = "-";
@@ -120,31 +142,14 @@ class Board {
         // La partie est-elle finie
         bool _is_game_over = false;
 
-
         // FEN du plateau
-        string _fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        string _fen = "";
 
         // PGN du plateau
         string _pgn = "";
 
         // Dernier coup joué (coordonnées, pièce) ( *2 pour les roques...)
         int_fast8_t _last_move[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
-
-
-        // Joueurs de la partie
-        string _white_player = "White";
-        string _black_player = "Black";
-
-        // Temps pour les joueurs
-        bool _time = false;
-
-        // 15 minutes par personne
-        clock_t _time_white = 900000;
-        clock_t _time_black = 900000;
-
-        // Incrément (5s/coup)
-        clock_t _time_increment_white = 5000;
-        clock_t _time_increment_black = 5000;
 
         // Plateau libre ou actif? (pour le buffer)
         bool _is_active = false;
@@ -235,10 +240,7 @@ class Board {
 
         // Contrôle des cases
         int _control = 0;
-        int _square_controls = false;
-
-        // Pour la gestion du temps
-        clock_t _last_move_clock;
+        bool _square_controls = false;
 
         // Chances de gain/nulle/perte
         float _white_winning_chance = 0.0f;
@@ -254,7 +256,7 @@ class Board {
 
         // Est-ce que le calcul de game over a déjà été fait?
         bool _game_over_checked = false;
-        bool _game_over_value = 0;
+        int _game_over_value = 0;
 
 
         // Constructeur par défaut
@@ -312,7 +314,7 @@ class Board {
         void display_moves(bool pseudo = false);
 
         // Fonction qui joue un coup
-        void make_move(int, int, int, int, bool pgn = false, bool new_board = false, bool add_to_list = false);
+        void make_move(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, bool pgn = false, bool new_board = false, bool add_to_list = false);
 
         // Fonction qui joue le coup i de la liste des coups possibles
         void make_index_move(int, bool pgn = false, bool add_to_list = false);
@@ -339,7 +341,7 @@ class Board {
         bool grogrosfish(int, Evaluator *, bool);
 
         // Fonction qui revient à la position précédente
-        bool undo(int, int, int, int, int, int, int);
+        bool undo(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, int);
 
         // Une surcharge
         bool undo();
@@ -357,7 +359,7 @@ class Board {
         int game_over();
 
         // Fonction qui renvoie le label d'un coup
-        string move_label(int, int, int, int);
+        string move_label(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t);
 
         // Fonction qui renvoie le label d'un coup en fonction de son index
         string move_label_from_index(int);
@@ -462,10 +464,10 @@ class Board {
         void get_kings_opposition();
 
         // Fonction qui renvoie le type de pièce sélectionnée
-        int selected_piece();
+        uint_fast8_t selected_piece();
 
         // Fonction qui renvoie le type de pièce où la souris vient de cliquer
-        int clicked_piece();
+        uint_fast8_t clicked_piece();
 
         // Fonction qui renvoie si la pièce sélectionnée est au joueur ayant trait ou non
         bool selected_piece_has_trait();
@@ -604,8 +606,8 @@ class GUI {
         int _screen_width = 1800;
         int _screen_height = 945;
 
-
-
+        // Plateau affiché
+        Board _board;
 
         // Faut-il faire l'affichage?
         bool _draw = true;
@@ -617,9 +619,62 @@ class GUI {
         bool _binding_full = false; // Pour récupérer tous les coups de la partie
         bool _binding_solo = false; // Pour récupérer seulement les coups de la couleur du joueur du bas
 
+        // Intervalle de tmeps pour check chess.com
+        int _binding_interval_check = 100;
 
-        // Constructeur
+        // Moment du dernier check
+        clock_t _last_binding_check = clock();
+
+        // Coup récupéré par le binding
+        int* _binding_move = new int[4];
+
+        // Coordonnées du plateau sur chess.com
+        int _binding_left = 108; // (+10 si barre d'éval)
+        int _binding_top = 219;
+        int _binding_right = 851;
+        int _binding_bottom = 962;
+
+        // Coordonées du plateau pour le binding
+        //SimpleRectangle _binding_coord;
+
+        // Joueurs
+        string _white_player = "White";
+        string _black_player = "Black";
+
+        // Temps des joueurs
+        clock_t _time_white = 900000;
+        clock_t _time_black = 900000;
+
+        // Incrément (5s/coup)
+        clock_t _time_increment_white = 5000;
+        clock_t _time_increment_black = 5000;
+
+        // Mode analyse de Grogros
+        bool _grogros_analysis = false;
+
+        // Le temps est-il activé?
+        bool _time = false;
+
+        // Pour la gestion du temps
+        clock_t _last_move_clock;
+
+        // Joueur au trait lors du dernier check (pour les temps
+        bool _last_player = true;
+
+
+        // Constructeurs
+
+        // Par défaut
         GUI();
+
+
+        // Fonctions
+
+        // Fonction qui met en place le binding avec chess.com pour une nouvelle partie (et se prépare à jouer avec GrogrosZero)
+        bool new_bind_game();
+
+        // Fonction qui met en place le binding avec chess.com pour une nouvelle analyse de partie
+        bool new_bind_analysis();
 };
 
 // instantiation de la GUI globale
