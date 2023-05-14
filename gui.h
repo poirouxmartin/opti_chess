@@ -182,12 +182,12 @@ static float global_eval = 0.0f;
 static string global_eval_text = "+0.0";
 
 // Temps de base pour les joueurs (en ms)
-static int base_time_white = 20000;
-static int base_time_black = 20000;
+static int base_time_white = 180000;
+static int base_time_black = 180000;
 
 // Incrément (en ms)
-static int base_time_increment_white = 0000;
-static int base_time_increment_black = 0000;
+static int base_time_increment_white = -100;
+static int base_time_increment_black = -100;
 
 // Valeur des pièces pour l'affichage sur la GUI (rien/roi, pion, cavalier, fou, tour, dame)
 static const int piece_gui_values[6] = {0, 1, 3, 3, 5, 9};
@@ -200,32 +200,11 @@ static int missing_b_material[6] = {0, 0, 0, 0, 0, 0};
 // Alphabet de taille 8
 static const string abc8 = "abcdefgh";
 
-// Lancement des IA
-static bool grogros_auto = false;
-static bool grogroszero_play_black = false;
-static bool grogroszero_play_white = false;
-
 // Flèches sur l'échiquier
 static vector<vector<int>> arrows_array;
 
-// Plateau affiché sur la GUI
-static Board t;
-
 // Composantes de l'évaluation à afficher sur la GUI
 static string eval_components = "";
-
-// Coordonnées du binding
-// // Half
-static int x_left_binding_board = 108; // (+10 si barre d'éval)
-static int y_top_binding_board = 219;
-static int x_right_binding_board = 851;
-static int y_bottom_binding_board = 962;
-
-// Full
-//static int x_left_binding_board = 300;
-//static int y_top_binding_board = 179;
-//static int x_right_binding_board = 1083;
-//static int y_bottom_binding_board = 962;
 
 
 
@@ -297,6 +276,3 @@ void play_end_sound();
 
 // A partir de coordonnées sur le plateau
 void draw_simple_arrow_from_coord(int, int, int, int, float, Color);
-
-// Met le booleen grogros_auto a true
-bool set_grogros_auto(bool);
