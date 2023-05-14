@@ -1,6 +1,7 @@
 #include <execution>
 #include <string>
 #include "time.h"
+#include <cfloat>
 
 using namespace std;
 
@@ -107,3 +108,10 @@ float get_winning_chances_from_eval(float, bool, bool);
 
 // Fonction qui pondère les valeurs de la liste, en fonction d'un taux d'exploration par valeur
 void nodes_ponderation(int *, float *, int);
+
+// Fonction qui affiche chaque attribut d'une classe ainsi que sa taille
+template <typename T>
+void printAttributeSizes(const T& obj);
+
+template <typename T>
+void testFunc(const T& obj);

@@ -110,9 +110,9 @@ int* get_board_move(int x1, int y1, int x2, int y2, bool orientation, bool displ
     // Taille d'une case
     float tile_size = (x2 - x1) / 8.0f;
 
-    // Couleur de la case à 10% en haut
+    // Couleur de la case à 85%, 85% (haut-droite)
     float tile_corner_x = 0.85f;
-    float tile_corner_y = 0.85f; // 50% en largeur
+    float tile_corner_y = 0.85f;
 
     // Fait un screenshot en bmp
     HDC hdc = GetDC(0);
@@ -220,27 +220,147 @@ void click_move(int j1, int i1, int j2, int i2, int x1, int y1, int x2, int y2, 
 
     simulate_mouse_click(cx1, cy1);
     simulate_mouse_click(cx2, cy2);
-    //simulate_mouse_click(cx2, cy2);
-    //cout << i1 << ", " << orientation <<  (orientation ? 7 - i1 : i1) << endl;
-    //cout << cx1 << ", " << cy1 << " -> " << cx2 << ", " << cy2 << endl;
+
+    return;
+}
+
+
+// Fonction qui récupère l'orientation du plateau. Renvoie 1 si les blancs sont en bas, 0 si c'est les noirs, -1 sinon
+int bind_board_orientation(int x1, int y1, int x2, int y2) {
+
+    // Couleur des pièces sur le plateau
+    SimpleColor white_color(248, 248, 248);
+    SimpleColor black_color(86, 83, 82);
+
+    // Taille d'une case
+    float tile_size = (x2 - x1) / 8.0f;
+
+    // Couleur de la case à :
+    float tile_corner_x = 0.15f; // 15% en bas
+    float tile_corner_y = 0.50f; // 50% au milieu
+
+    // Couleur de la case
+    SimpleColor color;
+
+
+    // Fait un screenshot en bmp
+    HDC hdc = GetDC(0);
+    HBITMAP hBitmap = get_screen_bmp(hdc, x1, y1, x2, y2);
+    BITMAPINFO MyBMInfo = { 0 };
+    MyBMInfo.bmiHeader.biSize = sizeof(MyBMInfo.bmiHeader);
+
+    if (0 == GetDIBits(hdc, hBitmap, 0, 0, NULL, &MyBMInfo, DIB_RGB_COLORS))
+        cout << "error" << endl;
+
+    BYTE* lpPixels = new BYTE[MyBMInfo.bmiHeader.biSizeImage];
+    MyBMInfo.bmiHeader.biCompression = BI_RGB;
+
+    if (0 == GetDIBits(hdc, hBitmap, 0, MyBMInfo.bmiHeader.biHeight, (LPVOID)lpPixels, &MyBMInfo, DIB_RGB_COLORS))
+        cout << "error2" << endl;
+
+    BYTE* pixelAddress;
+    BYTE blue;
+    BYTE green;
+    BYTE red;
+    int x = tile_corner_x * tile_size;
+    int y = tile_corner_y * tile_size;
+    int pixelOffset;
+    
+    pixelOffset = x * MyBMInfo.bmiHeader.biWidth + y;
+    pixelAddress = lpPixels + pixelOffset * (MyBMInfo.bmiHeader.biBitCount / 8);
+    color = SimpleColor((int)pixelAddress[2], (int)pixelAddress[1], (int)pixelAddress[0]);
+
+
+    return color.Equals(white_color, 0.98f) ? 1 : color.Equals(black_color, 0.98f) ? 0 : -1;
+}
+
+
+
+// Fonction qui cherche la position du plateau de chess.com sur l'écran
+void locate_chessboard(int& topLeftX, int& topLeftY, int& bottomRightX, int& bottomRightY) {
+    SimpleColor dark_square_color(118, 150, 86);
+    SimpleColor light_square_color(238, 238, 210);
+
+    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+
+    // Fait un screenshot en bmp
+    HDC hdc = GetDC(0);
+    HBITMAP hBitmap = get_screen_bmp(hdc, 0, 0, screenWidth, screenHeight);
+    BITMAPINFO MyBMInfo = { 0 };
+    MyBMInfo.bmiHeader.biSize = sizeof(MyBMInfo.bmiHeader);
+
+    if (0 == GetDIBits(hdc, hBitmap, 0, 0, NULL, &MyBMInfo, DIB_RGB_COLORS))
+        cout << "error" << endl;
+
+    BYTE* lpPixels = new BYTE[MyBMInfo.bmiHeader.biSizeImage];
+    MyBMInfo.bmiHeader.biCompression = BI_RGB;
+
+    if (0 == GetDIBits(hdc, hBitmap, 0, MyBMInfo.bmiHeader.biHeight, (LPVOID)lpPixels, &MyBMInfo, DIB_RGB_COLORS))
+        cout << "error2" << endl;
+
+    BYTE* pixelAddress;
+    BYTE blue;
+    BYTE green;
+    BYTE red;
+    int x; // distance au bas
+    int y; // distance à gauche
+    int pixelOffset;
+    SimpleColor color;
+
+
+    // Cherche au milieu de l'écran, mais on peut faire un cadrillage si besoin...
+
+    // Cherche la gauche du plateau
+    x = screenHeight / 2;
+    for (y = 0; y < screenWidth; y++) {
+        pixelOffset = x * MyBMInfo.bmiHeader.biWidth + y;
+        pixelAddress = lpPixels + pixelOffset * (MyBMInfo.bmiHeader.biBitCount / 8);
+        color = SimpleColor((int)pixelAddress[2], (int)pixelAddress[1], (int)pixelAddress[0]);
+        if (color.Equals(dark_square_color, 0.98f) || color.Equals(light_square_color, 0.98f)) {
+            topLeftX = y;
+            break;
+        }
+    }
+
+    // Cherche le bas du plateau
+    y = topLeftX + 10;
+    for (x = 0; x < screenHeight; x++) {
+        pixelOffset = x * MyBMInfo.bmiHeader.biWidth + y;
+        pixelAddress = lpPixels + pixelOffset * (MyBMInfo.bmiHeader.biBitCount / 8);
+        color = SimpleColor((int)pixelAddress[2], (int)pixelAddress[1], (int)pixelAddress[0]);
+        if (color.Equals(dark_square_color, 0.98f) || color.Equals(light_square_color, 0.98f)) {
+            bottomRightY = screenHeight - x;
+            break;
+        }
+    }
+
+    // Cherche le haut du plateau
+    y = topLeftX + 10;
+    for (x = screenHeight; x > 0; x--) {
+        pixelOffset = x * MyBMInfo.bmiHeader.biWidth + y;
+        pixelAddress = lpPixels + pixelOffset * (MyBMInfo.bmiHeader.biBitCount / 8);
+        color = SimpleColor((int)pixelAddress[2], (int)pixelAddress[1], (int)pixelAddress[0]);
+        if (color.Equals(dark_square_color, 0.98f) || color.Equals(light_square_color, 0.98f)) {
+            topLeftY = screenHeight - x;
+            break;
+        }
+    }
+
+    // Droite du plateau (normalement il est carré)
+    bottomRightX = topLeftX + bottomRightY - topLeftY;
 
     return;
 }
 
 
 
+
 // TODO : clean
-// -> Regarder que du côté de l'adversaire pour le binding ? On peut jouer à la place de Grogros Sinon -> Laisser le binding tout le temps peut-être
 // -> Clean les fonctions
-// -> Vérifier en fonction de l'orientation du plateau
-// -> Récupérer automatiquement la taille du plateau
-// -> Pouvoir changer les couleurs
+// -> Pouvoir changer les couleurs du plateau
 // -> Optimiser encore les fonctions pour get les pixels
-// -> Obtenir automatiquement l'orientation du plateau
-// -> Afficher quand Grogros utilise le binding
-// -> Quand on séléctionne une pièce, ça fait la même couleur qu'au mouvement, donc ça joue le coup... (ça peut) -> Du coup, faut cliquer VITE
-// -> S'assurer que le plateau est dans le même sens pour Grogros que pour le site
-// -> Promotions à gérer
-// -> Faire un getter/setter pour la variable en GUI click_bind + afficher dans la GUI
+// -> Promotions à gérer (pour vs les bots, car c'est pas automatique)
 // -> Gérer le temps de Grogros
+// -> Faire une fonction qui récupère le plateau automatiquement?
 

@@ -5,7 +5,7 @@
 #include <random>
 #include <chrono>
 #include <cstdlib>
-//#include <windows.h>
+#include <type_traits>
 
 
 // Fonction qui renvoie si un entier appartient à un intervalle
@@ -436,4 +436,25 @@ void nodes_ponderation(int *l, float *pond, int size) {
     for (int i = 0; i < size; i++) {
         l[i] *= pond[i];
     }
+}
+
+// Fonction qui affiche la taille d'un attribut
+template <typename T>
+void printAttributeSize(const std::string& attributeName, const T& attribute) {
+    std::cout << attributeName << "\t" << sizeof(attribute) << " bytes\n";
+}
+
+// Fonction qui affiche chaque attribut d'une classe ainsi que sa taille
+// TODO : à fix, car ça bug quand on l'appelle
+template <typename T>
+void printAttributeSizes(const T& obj) {
+    cout << "Attribute sizes for class " << typeid(T).name() << ":\n";
+    cout << "----------------------------------------\n";
+    printAttributeSize("Attribute  ", obj);
+    cout << "----------------------------------------\n";
+}
+
+
+template <typename T>
+void testFunc(const T& obj) {
 }
