@@ -1250,8 +1250,9 @@ float Board::negamax(int depth, float alpha, float beta, int color, bool max_dep
     }
 
     if (depth == 0) {
-        evaluate(eval);
-        return color * _evaluation;
+        //evaluate(eval);
+        return quiescence(eval, -10000000, 10000000);
+        //return color * _evaluation;
     }
 
     // à mettre avant depth == 0?
@@ -2958,8 +2959,8 @@ int Board::max_monte_carlo_depth() {
 
 
 // Valeurs de base pour Grogros
-float _beta = 0.06f;
-float _k_add = 50.0f;
+float _beta = 0.05f;
+float _k_add = 25.0f;
 
 
 // Constructeur par défaut
@@ -3073,7 +3074,8 @@ void Board::grogros_zero(Evaluator *eval, int nodes, bool checkmates, float beta
 
 
     // Obtention des coups jouables
-    (false || _got_moves == -1) && _new_board && get_moves(false, true) && quick_moves_sort(); // A faire à chaque fois? (sinon, mettre à false) -> à mettre seulement si new_board??
+    (false || _got_moves == -1) && _new_board && get_moves(false, true); // A faire à chaque fois? (sinon, mettre à false) -> à mettre seulement si new_board??
+    (!_quick_sorted_moves) && quick_moves_sort();
 
     // TODO
     
@@ -3136,14 +3138,17 @@ void Board::grogros_zero(Evaluator *eval, int nodes, bool checkmates, float beta
             _monte_buffer._heap_boards[_index_children[_current_move]].make_index_move(_current_move);
             
             // Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
-            _monte_buffer._heap_boards[_index_children[_current_move]].evaluate_int(eval, checkmates, false, net);
-                
+            //_monte_buffer._heap_boards[_index_children[_current_move]].evaluate_int(eval, checkmates, false, net);
+            
+            _monte_buffer._heap_boards[_index_children[_current_move]]._evaluation = _monte_buffer._heap_boards[_index_children[_current_move]].quiescence(eval, -2147483647, 2147483647) * -_color;
+            _monte_buffer._heap_boards[_index_children[_current_move]]._got_moves = -1; // FIXME euuuuh pourquoi ça bug sinon?
+
             _eval_children[_current_move] = _monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
             _nodes_children[_current_move]++;
 
             // Actualise la valeur d'évaluation du plateau
 
-            // Première évaluation
+            // Première évaluation // FIXME? ça ne devrait jamais aller ici...
             if (!_evaluated) {
                 _evaluation = _eval_children[_current_move];
                 _evaluated = true;
@@ -3168,7 +3173,7 @@ void Board::grogros_zero(Evaluator *eval, int nodes, bool checkmates, float beta
         else {
             // Choisit aléatoirement un "bon" coup
             _current_move = pick_random_good_move(_eval_children, _got_moves, _color, false, _nodes, _nodes_children, beta, k_add);
-            // _current_move = select_uct();
+            //_current_move = select_uct();
 
             // Va une profondeur plus loin... appel récursif sur Monte-Carlo
            _monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(eval, 1, checkmates, beta, k_add, display, depth + 1, net);
@@ -3233,8 +3238,8 @@ void Board::reset_board(bool display) {
         _new_board = true;
     }
 
-    if (display)
-        cout << "board reset done" << endl;
+    /*if (display)
+        cout << "board reset done" << endl;*/
     
     return;
 }
@@ -3247,8 +3252,8 @@ void Board::reset_all(bool self, bool display) {
 
     reset_board();
 
-    if (self && display)
-        cout << "boarsd reset done" << endl;
+    /*if (self && display)
+        cout << "boards reset done" << endl;*/
 
     return;
 }
@@ -4917,17 +4922,24 @@ bool Board::quick_moves_sort() {
     // Valeurs assignées
 
     // Prises
-    static const int captures_values[13] = {0, 100, 300, 300, 500, 900, 0, 100, 300, 300, 500, 900, 0}; // rien,   |pion, cavalier, fou, tour, dame, roi| (blancs, puis noirs)
-    
+    static const int captures_values[13] = {0, 100, 300, 300, 500, 900, 10000, 100, 300, 300, 500, 900, 10000}; // rien,   |pion, cavalier, fou, tour, dame, roi| (blancs, puis noirs)
+
     // Promotions
     static const int promotion_value = 500;
+
+    // Valeur des pièces en jeu
+    int captured_value;
+    int capturer_value;
 
     // Pour chaque coup
     for (int i = 0; i < _got_moves; i++) {
         // Assigne une valeur au coup (valeur de la prise ou de la promotion)
 
         // Prise
-        moves_values[i] = captures_values[_array[_moves[4 * i + 2]][_moves[4 * i + 3]]];
+        captured_value = captures_values[_array[_moves[4 * i + 2]][_moves[4 * i + 3]]];
+        capturer_value = captures_values[_array[_moves[4 * i]][_moves[4 * i + 1]]];
+
+        moves_values[i] = captured_value == 0 ? 0 : captured_value / capturer_value;
 
         // Promotion
         // Blancs
@@ -4974,25 +4986,53 @@ bool Board::quick_moves_sort() {
 }
 
 
-// TODO
 // Fonction qui fait un quiescence search
-int Board::quiescence(int alpha, int beta) {
-    /*int stand_pat = Evaluate();
+// TODO : mettre une profondeur max?
+int Board::quiescence(Evaluator *eval, int alpha, int beta, int depth) { 
+
+    // Evalue la position initiale
+    evaluate_int(eval, true);
+    int stand_pat = _evaluation * _color;
+    
+    if (depth <= 0)
+        return stand_pat;
+
+    // Beta cut-off
     if (stand_pat >= beta)
         return beta;
+
+    // Mise à jour de alpha si l'éval statique est plus grande
     if (alpha < stand_pat)
         alpha = stand_pat;
 
-    until(every_capture_has_been_examined) {
-        MakeCapture();
-        score = -quiescence(-beta, -alpha);
-        TakeBackMove();
+    
+    (_got_moves == -1) && get_moves(false, true);
+    quick_moves_sort();
 
-        if (score >= beta)
-            return beta;
-        if (score > alpha)
-            alpha = score;
-    }*/
+
+    // Evaluate all capturing moves and promotions
+    for (int i = 0; i < _got_moves; i++) {
+        // TODO : ajouter promotions et échecs
+        // TODO : utiliser des flags
+
+        // Si c'est une capture
+        if (_array[_moves[4 * i + 2]][_moves[4 * i + 3]] != 0) {
+            Board b;
+            b.copy_data(*this);
+            b.make_move(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]);
+
+            int score = -b.quiescence(eval, -beta, -alpha, depth - 1);
+
+            if (score >= beta)
+                return beta;
+
+            if (score > alpha)
+                alpha = score;
+        }
+
+        
+    }
+
     return alpha;
 }
 

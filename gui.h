@@ -186,8 +186,8 @@ static int base_time_white = 180000;
 static int base_time_black = 180000;
 
 // Incrément (en ms)
-static int base_time_increment_white = -100;
-static int base_time_increment_black = -100;
+static int base_time_increment_white = 2000;
+static int base_time_increment_black = 2000;
 
 // Valeur des pièces pour l'affichage sur la GUI (rien/roi, pion, cavalier, fou, tour, dame)
 static const int piece_gui_values[6] = {0, 1, 3, 3, 5, 9};

@@ -310,6 +310,9 @@ https://www.chessprogramming.org/UCT
 -> Beaucoup d'informations sont inutiles dans les plateaux (genre le temps, ou infos de GUI)
 -> Nouveau gros bug : quand on fait réfléchir grogros, qu'on supprime et qu'on lance grogrosfish, ça crash (ça peut crasher)
 -> GrogrosFish a joué un coup après être mat... pourquoi?
+-> Faire des pre-calculs dans des constantes (genre des divisions), pour éviter de les faire à chaque fois
+-> Mettre des flags pour les coups (capture, check, promotion -> caval possible??)
+-> Bug d'affichage sur les mats
 
 
 
@@ -584,10 +587,10 @@ int main() {
 
     // Nombre de noeuds calculés par frame
     // Si c'est sur son tour
-    int nodes_per_frame = 2500;
+    int nodes_per_frame = 250;
 
     // Sur le tour de l'autre (pour que ça plante moins)
-    int nodes_per_user_frame = 250;
+    int nodes_per_user_frame = 50;
 
     // Valeurs à 0 pour augmenter la vitesse de calcul. A tester vs grogrosfish avec tout d'activé
     eval_white._piece_activity = 0.0f;
@@ -606,7 +609,7 @@ int main() {
 
     // Paramètres pour l'IA
     int search_depth = 8;
-    search_depth = 7;
+    search_depth = 1;
 
 
     // Fin de partie
@@ -656,12 +659,9 @@ int main() {
             // thread th_test(&Board::grogros_zero, &t, &monte_evaluator, 5000000, true, _beta, _k_add, false, 0, nullptr); // Marche presque... !
             // th_test.detach();
 
-            //print_array(get_board_move(x_left_binding_board, y_top_binding_board, x_right_binding_board, y_bottom_binding_board, get_board_orientation(), true), 4);
-            //click_move(1, 4, 3, 4, x_left_binding_board, y_top_binding_board, x_right_binding_board, y_bottom_binding_board, get_board_orientation());
-            //click_move(6, 2, 4, 2, x_left_binding_board, y_top_binding_board, x_right_binding_board, y_bottom_binding_board, get_board_orientation());
-            //cout << bind_board_orientation(x_left_binding_board, y_top_binding_board, x_right_binding_board, y_bottom_binding_board) << endl;
             _GUI.new_bind_game();
-            //cout << grogroszero_play_white << endl;
+            /*cout << _GUI._board.quiescence(&monte_evaluator, -10000000, +10000000) * _GUI._board._color << endl;
+            cout << _GUI._board._evaluation << endl;*/
         }
 
         // CTRL-T - Cherche le plateau de chess.com sur l'écran
@@ -806,7 +806,7 @@ int main() {
         if (IsKeyPressed(KEY_SPACE)) {
             if (!_monte_buffer._init)
                 _monte_buffer.init();
-            _GUI._board.grogros_zero(&monte_evaluator, 100, true, _beta, _k_add);
+            _GUI._board.grogros_zero(&monte_evaluator, 1, true, _beta, _k_add);
         }
 
         // LCTRL-H - Arrêt de la recherche automatique de GrogrosZero 
@@ -998,7 +998,7 @@ int main() {
                 // Grogros doit gérer son temps
                 if (_GUI._time) {
                     // Nombre de noeuds que Grogros doit calculer (en fonction des contraintes de temps)
-                    static const int supposed_grogros_speed = 20000; // En supposant que Grogros va à plus de 20k noeuds par seconde
+                    static const int supposed_grogros_speed = 2500; // En supposant que Grogros va à plus de 20k noeuds par seconde
                     int tot_nodes = _GUI._board.total_nodes();
                     float best_move_percentage = tot_nodes == 0 ? 0.05f : (float)_GUI._board._nodes_children[_GUI._board.best_monte_carlo_move()] / (float)_GUI._board.total_nodes();
                     int max_move_time = _GUI._board._player ? 
