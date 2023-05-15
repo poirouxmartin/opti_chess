@@ -500,13 +500,13 @@ class Board {
         void get_winning_chances();
 
         // Fonction qui sélectionne et renvoie le coup avec le meilleur UCT
-        int select_uct(float c = 0.1);
+        int select_uct(float c = 1.0f);
 
         // Fonction qui fait un tri rapide des coups (en plaçant les captures en premier)
         bool quick_moves_sort();
 
         // Fonction qui fait un quiescence search
-        int quiescence(int, int);
+        int quiescence(Evaluator *, int, int, int depth = 2);
 
         // Fonction qui renvoie le i-ème coup
         int* get_i_move(int);
