@@ -119,7 +119,7 @@ static float board_padding_y;
 // Taille des pièces
 static float tile_size;
 static float piece_size;
-static float piece_scale = 0.85f;
+static float piece_scale = 0.8f;
 
 // Taille standard du texte
 static float text_size;
@@ -182,12 +182,12 @@ static float global_eval = 0.0f;
 static string global_eval_text = "+0.0";
 
 // Temps de base pour les joueurs (en ms)
-static int base_time_white = 180000;
-static int base_time_black = 180000;
+static int base_time_white = 600000;
+static int base_time_black = 600000;
 
 // Incrément (en ms)
-static int base_time_increment_white = 2000;
-static int base_time_increment_black = 2000;
+static int base_time_increment_white = 5000;
+static int base_time_increment_black = 5000;
 
 // Valeur des pièces pour l'affichage sur la GUI (rien/roi, pion, cavalier, fou, tour, dame)
 static const int piece_gui_values[6] = {0, 1, 3, 3, 5, 9};
@@ -257,7 +257,7 @@ void DrawLineBezier(float, float, float, float, float, Color);
 void DrawTexture(Texture, float, float, Color);
 
 // Fonction qui affiche la barre d'evaluation
-void draw_eval_bar(float, string, float, float, float, float, float max_eval = 1000, Color = eval_bar_color_light, Color = eval_bar_color_dark, float max_height = 0.95);
+void draw_eval_bar(float, string, float, float, float, float, float max_eval = 500, Color = eval_bar_color_light, Color = eval_bar_color_dark, float max_height = 0.95);
 
 // Fonction qui retire les surlignages de toutes les cases
 void remove_hilighted_tiles();
