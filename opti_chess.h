@@ -258,6 +258,9 @@ class Board {
         bool _game_over_checked = false;
         int _game_over_value = 0;
 
+        // Nombre de noeuds regardés par le quiescence search
+        int _quiescence_nodes = 0;
+
 
         // Constructeur par défaut
         Board();
@@ -401,7 +404,7 @@ class Board {
         int max_monte_carlo_depth();
 
         // Algo de grogros_zero
-        void grogros_zero(Evaluator *eval = nullptr, int nodes = 1, bool checkmates = false, float beta = 0.035f, float k_add = 50.0f, bool display = false, int depth = 0, Network *net = nullptr);
+        void grogros_zero(Evaluator *eval = nullptr, int nodes = 1, bool checkmates = false, float beta = 0.035f, float k_add = 50.0f, bool display = false, int depth = 0, Network *net = nullptr, int quiescence_depth = 4);
 
         // Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
         void reset_board(bool display = false);
@@ -506,7 +509,10 @@ class Board {
         bool quick_moves_sort();
 
         // Fonction qui fait un quiescence search
-        int quiescence(Evaluator *, int, int, int depth = 2);
+        int quiescence(Evaluator *, int, int, int depth = 4);
+
+        // Fonction qui fait un quiescence search, avec des méthodes de pruning avancées
+        int quiescence_improved(Evaluator*, int, int, int depth = 4);
 
         // Fonction qui renvoie le i-ème coup
         int* get_i_move(int);
@@ -660,6 +666,9 @@ class GUI {
 
         // Joueur au trait lors du dernier check (pour les temps
         bool _last_player = true;
+
+        // Affichage des flèches : affiche les chances de gain (true), l'évaluation (false)
+        bool _display_win_chances = true;
 
 
         // Constructeurs
