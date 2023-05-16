@@ -312,7 +312,8 @@ https://www.chessprogramming.org/UCT
 -> GrogrosFish a joué un coup après être mat... pourquoi?
 -> Faire des pre-calculs dans des constantes (genre des divisions), pour éviter de les faire à chaque fois
 -> Mettre des flags pour les coups (capture, check, promotion -> caval possible??)
--> Bug d'affichage sur les mats
+-> Montrer le nombre de noeuds regardés par le quiescence search?
+-> Mettre dans le nom de grogros les paramètres de recherche...
 
 
 
@@ -410,6 +411,8 @@ https://www.chessprogramming.org/UCT
 -> Dans les .h, remetre les noms des arguments?
 -> Rajouter des pre-moves pour Grogros si c'est un coup forcé en face
 -> Pourquoi c'est lent de changer  la taille de la GUI?
+-> Pour la barre d'éval, on utiise le winrate?
+
 
 
 ----- Réseaux de neurones -----
@@ -423,7 +426,12 @@ https://www.chessprogramming.org/UCT
 -> 5rk1/r3npbp/2p2np1/2N1p3/2B1P1P1/1P2BP2/b1P4P/2KR2NR b - - 2 19 : mobility+ / outpost
 -> 2rqr1k1/p2n1ppp/1p3n2/2pP4/1bP2Pb1/2NQ2PP/PB2N1B1/R4RK1 b - - 0 16 : préfère 2rqr1k1/p2n1ppp/1p6/2pP4/1bP2Pb1/2NQ4/PB2N1B1/R4RK1 w - - 0 19 que 2rqr1k1/p2n1ppp/1p3n2/2pP4/1bP2P2/3Q2PP/PB2N1B1/R4RK1 b - - 0 17
 -> 8/pppbn2r/3p4/4k1p1/1P2P3/P1P1RP2/6P1/3R2K1 b - - 1 27
-
+-> r1b2rk1/pp5p/4p2p/q2pQ3/8/P1p4R/2P1NPP1/R3K3 b Q - 1 18 : king safety++
+-> r1b5/pp3k1p/4p3/3p2Q1/8/q1p5/2P1NPP1/3RK3 w - - 1 23 :  king safety++
+-> r1b5/ppQ4p/4k3/3pp3/8/2R5/1qP2PP1/2NK4 w - - 2 30 : king safety++
+-> r1b5/ppQ4p/4k3/3p4/4p3/2RN4/2PK1PP1/1q6 w - - 0 32 : king safety++
+-> 6k1/3q1p2/3p2p1/bp1p4/5n2/7P/1BQN1PP1/4N1K1 w - - 0 35 : structure de pion--
+-> r2qrbk1/5ppp/pn3n2/4N3/1ppP1P2/4PQ2/PB2N1PP/2R2RK1 b - - 1 20
 
 ----- Problèmes -----
 
@@ -609,7 +617,7 @@ int main() {
 
     // Paramètres pour l'IA
     int search_depth = 8;
-    search_depth = 1;
+    search_depth = 4;
 
 
     // Fin de partie

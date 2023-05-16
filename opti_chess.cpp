@@ -7,6 +7,7 @@
 #include "math.h"
 #include "windows_tests.h"
 #include <utility>
+#include <iomanip>
 
 
 // Tests pour la parallélisation
@@ -1519,9 +1520,11 @@ void Board::sort_moves(Evaluator *eval) {
 void Board::from_fen(string fen, bool fen_in_pgn, bool keep_headings) {
     bool named;
     bool timed;
+    string pgn;
     if (keep_headings) {
         named = _named_pgn;
         timed = _timed_pgn;
+        pgn = _pgn;
     }
     
     reset_all();
@@ -1531,44 +1534,36 @@ void Board::from_fen(string fen, bool fen_in_pgn, bool keep_headings) {
     _fen = fen;
 
     // PGN
-
-    // keep_headings ne sert à rien pour le moment (ni fen_in_pgn)
-    size_t headings;
-    while(true) {
-        headings = _pgn.find_last_of("]");
-
-        if (headings == -1)
-            goto no_headings;
-
-        if (_pgn[headings + 1] != '\n')
-            _pgn = _pgn.substr(0, headings);
-            
+    _pgn = pgn;
+    string searchToken = "[FEN \"";
+    string closingQuote = "\"]\n";
+    size_t end_headings = 0;
+    size_t tmp_end;
+    while (true) {
+        tmp_end = _pgn.substr(end_headings).rfind("]\n");
+        if (tmp_end != string::npos)
+            end_headings += tmp_end + 2;
         else
             break;
     }
 
-    headings = _pgn.find_last_of("]");
-    _pgn = _pgn.substr(0, headings + 3);
+    _pgn = _pgn.substr(0, end_headings + 1);
 
-    no_headings:
-
-    if (fen_in_pgn) {
-
-        // Retire l'ancien FEN du PGN s'il y'en avait déjà un
-        size_t fen_begin = _pgn.find("[FEN \"");
-        if (fen_begin != -1) {
-            size_t fen_end = _pgn.find_first_of("]", fen_begin);
-            _pgn.replace(fen_begin + 6, fen_end - fen_begin - 7, fen);
+    // Trouve la position du FEN dans le PGN
+    size_t startPos = _pgn.find(searchToken);
+    if (startPos != string::npos) {
+        size_t endPos = _pgn.find(closingQuote, startPos + searchToken.length());
+        if (endPos != string::npos) {
+            // Remplace le FEN par sa nouvelle valeur
+            _pgn.replace(startPos + searchToken.length(), endPos - startPos - searchToken.length(), fen);
         }
-        else {
-            if (headings != -1)
-                _pgn.append("\n"); // Append ou += est plus rapide?
-
-            _pgn.append("[FEN \"" + fen + "\"]\n\n");
-        }
-        
     }
-    
+    else {
+        // Si y'a pas de FEN : en ajoute un
+        _pgn += "\n[FEN \"" + fen + "\"]";
+    }
+
+
 
     // Iterateur qui permet de parcourir la chaine de caractères
     int iterator = 0;
@@ -2136,7 +2131,7 @@ bool Board::draw() {
                     if (arrow[2] == clicked_pos.first && arrow[3] == clicked_pos.second) {
                         // Retrouve le coup correspondant
                         play_move_sound(arrow[0], arrow[1], arrow[2], arrow[3]);
-                        ((_GUI._click_bind && _GUI._board.click_i_move(_GUI._board.best_monte_carlo_move(), get_board_orientation())) || true) && play_monte_carlo_move_keep(arrow[4], true, true, true, true);
+                        ((_GUI._click_bind && _GUI._board.click_i_move(arrow[4], get_board_orientation())) || true) && play_monte_carlo_move_keep(arrow[4], true, true, true, true);
                         goto piece_selection;
                     }
                 }
@@ -2171,7 +2166,7 @@ bool Board::draw() {
                 for (int i = 0; i < _got_moves; i++) {
                     if (_moves[4 * i] == selected_pos.first && _moves[4 * i + 1] == selected_pos.second && _moves[4 * i + 2] == clicked_pos.first && _moves[4 * i + 3] == clicked_pos.second) {
                         play_move_sound(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second);
-                        ((_GUI._click_bind && _GUI._board.click_i_move(_GUI._board.best_monte_carlo_move(), get_board_orientation())) || true) && play_monte_carlo_move_keep(i, true, true, true, true);
+                        ((_GUI._click_bind && _GUI._board.click_i_move(i, get_board_orientation())) || true) && play_monte_carlo_move_keep(i, true, true, true, true);
                         break;
                     }
                 }
@@ -2214,7 +2209,7 @@ bool Board::draw() {
                             if (_moves[4 * i] == clicked_pos.first && _moves[4 * i + 1] == clicked_pos.second && _moves[4 * i + 2] == drop_pos.first && _moves[4 * i + 3] == drop_pos.second) {
                                 play_move_sound(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
                                 // make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second, true, true);
-                                ((_GUI._click_bind && _GUI._board.click_i_move(_GUI._board.best_monte_carlo_move(), get_board_orientation())) || true) && play_monte_carlo_move_keep(i, true, true, true, true);
+                                ((_GUI._click_bind && _GUI._board.click_i_move(i, get_board_orientation())) || true) && play_monte_carlo_move_keep(i, true, true, true, true);
                                 selected_pos = {-1, -1};
                                 break;
                             }
@@ -2237,7 +2232,7 @@ bool Board::draw() {
             for (int i = 0; i < _got_moves; i++) {
                 if (_moves[4 * i] == pre_move[0] && _moves[4 * i + 1] == pre_move[1] && _moves[4 * i + 2] == pre_move[2] && _moves[4 * i + 3] == pre_move[3]) {
                     play_move_sound(pre_move[0], pre_move[1], pre_move[2], pre_move[3]);
-                    ((_GUI._click_bind && _GUI._board.click_i_move(_GUI._board.best_monte_carlo_move(), get_board_orientation())) || true) && play_monte_carlo_move_keep(i, true, true, true, true);
+                    ((_GUI._click_bind && _GUI._board.click_i_move(i, get_board_orientation())) || true) && play_monte_carlo_move_keep(i, true, true, true, true);
                     break;
                 }
             }
@@ -2489,7 +2484,11 @@ bool Board::draw() {
             eval = to_string(best_eval);
 
         global_eval = best_eval;
-        global_eval_text = eval;
+        //global_eval_text = mate ? eval : to_string(best_eval / 100.0f);
+        
+        stringstream stream;
+        stream << fixed << setprecision(2) << best_eval / 100.0f;
+        global_eval_text = mate ? eval : (best_eval > 0) ? "+" + stream.str() : stream.str();
 
         // get_winning_chances();
         // eval += "\nW/D/L : " + to_string((int)(100 * _white_winning_chance)) + "/" + to_string((int)(100 * _drawing_chance)) + "/" + to_string((int)(100 * _black_winning_chance)) + "\%\n";
@@ -2705,7 +2704,9 @@ void draw_arrow_from_coord(int i1, int j1, int i2, int j2, int index, int color,
         }
         else {
             #pragma warning(suppress : 4996)
-            sprintf(v, "%d", value);
+            if (_GUI._display_win_chances)
+                value = float_to_int(100.0f * get_winning_chances_from_eval(value, false, _GUI._board._player));
+            sprintf_s(v, "%d", value);
         }
             
         float size = thickness * 1.5f;
@@ -2960,7 +2961,7 @@ int Board::max_monte_carlo_depth() {
 
 // Valeurs de base pour Grogros
 float _beta = 0.05f;
-float _k_add = 25.0f;
+float _k_add = 20.0f;
 
 
 // Constructeur par défaut
@@ -3030,7 +3031,7 @@ Buffer _monte_buffer;
 
 
 // Algo de grogros_zero
-void Board::grogros_zero(Evaluator *eval, int nodes, bool checkmates, float beta, float k_add, bool display, int depth, Network *net) {
+void Board::grogros_zero(Evaluator *eval, int nodes, bool checkmates, float beta, float k_add, bool display, int depth, Network *net, int quiescence_depth) {
     static int max_depth;
     static int n_positions = 0;
     
@@ -3140,11 +3141,14 @@ void Board::grogros_zero(Evaluator *eval, int nodes, bool checkmates, float beta
             // Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
             //_monte_buffer._heap_boards[_index_children[_current_move]].evaluate_int(eval, checkmates, false, net);
             
-            _monte_buffer._heap_boards[_index_children[_current_move]]._evaluation = _monte_buffer._heap_boards[_index_children[_current_move]].quiescence(eval, -2147483647, 2147483647) * -_color;
+            _monte_buffer._heap_boards[_index_children[_current_move]]._evaluation = _monte_buffer._heap_boards[_index_children[_current_move]].quiescence(eval, -2147483647, 2147483647, quiescence_depth) * -_color;
+            //_monte_buffer._heap_boards[_index_children[_current_move]]._evaluation = _monte_buffer._heap_boards[_index_children[_current_move]].quiescence_improved(eval, -2147483647, 2147483647, quiescence_depth) * -_color;
             _monte_buffer._heap_boards[_index_children[_current_move]]._got_moves = -1; // FIXME euuuuh pourquoi ça bug sinon?
 
             _eval_children[_current_move] = _monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
             _nodes_children[_current_move]++;
+            //_nodes_children[_current_move] += _monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes;
+            //_monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes = 0;
 
             // Actualise la valeur d'évaluation du plateau
 
@@ -3176,11 +3180,12 @@ void Board::grogros_zero(Evaluator *eval, int nodes, bool checkmates, float beta
             //_current_move = select_uct();
 
             // Va une profondeur plus loin... appel récursif sur Monte-Carlo
-           _monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(eval, 1, checkmates, beta, k_add, display, depth + 1, net);
+           _monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(eval, 1, checkmates, beta, k_add, display, depth + 1, net, quiescence_depth);
 
             // Actualise l'évaluation
             _eval_children[_current_move] = _monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
             _nodes_children[_current_move]++;
+            //_quiescence_nodes += _monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes;
 
             if (_player)
                 _evaluation = max_value(_eval_children, _got_moves);
@@ -3519,8 +3524,11 @@ void Board::display_pgn() {
 void Board::add_names_to_pgn() {
     if (_named_pgn) {
         // Change le nom du joueur aux pièces blanches
+        cout << "toto PGN : " << _pgn << endl;
         size_t p_white = _pgn.find("[White ") + 8;
         size_t p_white_2 = _pgn.find("\"]");
+        cout << "toto1 : " << _pgn.substr(0, p_white) << endl;
+        cout << "toto2 : " << _pgn.substr(p_white_2) << endl;
         _pgn = _pgn.substr(0, p_white) + _GUI._white_player + _pgn.substr(p_white_2);
 
         // Change le nom du joueur aux pièces noires
@@ -4522,14 +4530,17 @@ void draw_eval_bar(float eval, string text_eval, float x, float y, float width, 
     bool is_mate = text_eval.find("M") != -1;
     float max_bar = is_mate ? 1 : max_height;
     float switch_color = min(max_bar * height, max((1 - max_bar) * height, height / 2 - eval / max_eval * height / 2));
+    float static_eval_switch = min(max_bar * height, max((1 - max_bar) * height, height / 2 - _GUI._board._static_evaluation / max_eval * height / 2));
     bool orientation = get_board_orientation();
     if (orientation) {
         DrawRectangle(x, y, width, height, black);
         DrawRectangle(x, y + switch_color, width, height - switch_color, white);
+        DrawRectangle(x, y + static_eval_switch - 1.0f, width, 2.0f, RED);
     }
     else {
         DrawRectangle(x, y, width, height, black);
         DrawRectangle(x, y, width, height - switch_color, white);
+        DrawRectangle(x, y + height - static_eval_switch - 1.0f, width, 2.0f, RED);
     }
 
     float y_margin = (1 - max_height) / 4;
@@ -4613,7 +4624,7 @@ void Board::reset_timers() {
 // Fonction qui remet le plateau dans sa position initiale
 void Board::restart() {
     // Fonction largement optimisable
-    from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", true, true);
     // _pgn = "";
     reset_timers();
 }
@@ -4990,6 +5001,8 @@ bool Board::quick_moves_sort() {
 // TODO : mettre une profondeur max?
 int Board::quiescence(Evaluator *eval, int alpha, int beta, int depth) { 
 
+    //_quiescence_nodes = 0;
+
     // Evalue la position initiale
     evaluate_int(eval, true);
     int stand_pat = _evaluation * _color;
@@ -5022,6 +5035,7 @@ int Board::quiescence(Evaluator *eval, int alpha, int beta, int depth) {
             b.make_move(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]);
 
             int score = -b.quiescence(eval, -beta, -alpha, depth - 1);
+            //_quiescence_nodes += b._quiescence_nodes + 1;
 
             if (score >= beta)
                 return beta;
@@ -5035,6 +5049,55 @@ int Board::quiescence(Evaluator *eval, int alpha, int beta, int depth) {
 
     return alpha;
 }
+
+
+int Board::quiescence_improved(Evaluator* eval, int alpha, int beta, int depth) {
+    // Evalue la position initiale
+    evaluate_int(eval, true);
+    int stand_pat = _evaluation * _color;
+
+    if (depth <= 0)
+        return stand_pat;
+
+    // Beta cut-off
+    if (stand_pat >= beta)
+        return beta;
+
+    // Mise à jour de alpha si l'éval statique est plus grande
+    if (alpha < stand_pat)
+        alpha = stand_pat;
+
+    (_got_moves == -1) && get_moves(false, true);
+    quick_moves_sort();
+    static const int captures_values[13] = { 0, 100, 300, 300, 500, 900, 10000, 100, 300, 300, 500, 900, 10000 };
+
+    // Delta pruning
+    const int delta = 100; // Delta value for pruning
+    for (int i = 0; i < _got_moves; i++) {
+        if (_array[_moves[4 * i + 2]][_moves[4 * i + 3]] != 0) {
+            const int captureValue = captures_values[_array[_moves[4 * i + 2]][_moves[4 * i + 3]]];
+            const int capturerValue = captures_values[_array[_moves[4 * i]][_moves[4 * i + 1]]];
+            const int deltaEval = captureValue - capturerValue + delta;
+            if (stand_pat + deltaEval < alpha)
+                continue; // Delta pruning
+        }
+
+        // Make the move and evaluate the position
+        Board b;
+        b.copy_data(*this);
+        b.make_move(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]);
+        int score = -b.quiescence(eval, -beta, -alpha, depth - 1);
+
+        // Update the alpha value and perform beta cutoff
+        if (score >= beta)
+            return beta;
+        if (score > alpha)
+            alpha = score;
+    }
+
+    return alpha;
+}
+
 
 
 // Constructeur GUI
