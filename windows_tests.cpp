@@ -31,7 +31,7 @@ bool SimpleColor::Equals(SimpleColor c) {
 
 // Fonction qui renvoie si deux couleurs sont assez proches
 bool SimpleColor::Equals(SimpleColor c, float alike) {
-    return (abs((int)_r - (int)c._r) + abs((int)_g - (int)c._g) + abs((int)_b - (int)c._b)) / 255.0f / 3.0f <= 1 - alike;
+    return (abs(static_cast<int>(_r) - static_cast<int>(c._r)) + abs(static_cast<int>(_g) - static_cast<int>(c._g)) + abs(static_cast<int>(_b) - static_cast<int>(c._b))) / 255.0f / 3.0f <= 1 - alike;
 }
 
 
@@ -146,7 +146,7 @@ int* get_board_move(int x1, int y1, int x2, int y2, bool orientation, bool displ
             y = (j + tile_corner_y) * tile_size;
             pixelOffset = x * MyBMInfo.bmiHeader.biWidth + y;
             pixelAddress = lpPixels + pixelOffset * (MyBMInfo.bmiHeader.biBitCount / 8);
-            color = SimpleColor((int)pixelAddress[2], (int)pixelAddress[1], (int)pixelAddress[0]);
+            color = SimpleColor(static_cast<int>(pixelAddress[2]), static_cast<int>(pixelAddress[1]), static_cast<int>(pixelAddress[0]));
             if (display) {
                 cout << x << ", " << y << "(" << i << ", " << j << ") -> ";
                 color.Print();
@@ -165,7 +165,7 @@ int* get_board_move(int x1, int y1, int x2, int y2, bool orientation, bool displ
                 y = (j + 0.5f) * tile_size;
                 pixelOffset = x * MyBMInfo.bmiHeader.biWidth + y;
                 pixelAddress = lpPixels + pixelOffset * (MyBMInfo.bmiHeader.biBitCount / 8);
-                color = SimpleColor((int)pixelAddress[2], (int)pixelAddress[1], (int)pixelAddress[0]);
+                color = SimpleColor(static_cast<int>(pixelAddress[2]), static_cast<int>(pixelAddress[1]), static_cast<int>(pixelAddress[0]));
                 if (display) {
                     cout << x << ", " << y << "(" << i << ", " << j << ") -> ";
                     color.Print();
@@ -268,7 +268,7 @@ int bind_board_orientation(int x1, int y1, int x2, int y2) {
     
     pixelOffset = x * MyBMInfo.bmiHeader.biWidth + y;
     pixelAddress = lpPixels + pixelOffset * (MyBMInfo.bmiHeader.biBitCount / 8);
-    color = SimpleColor((int)pixelAddress[2], (int)pixelAddress[1], (int)pixelAddress[0]);
+    color = SimpleColor(static_cast<int>(pixelAddress[2]), static_cast<int>(pixelAddress[1]), static_cast<int>(pixelAddress[0]));
 
 
     return color.Equals(white_color, 0.98f) ? 1 : color.Equals(black_color, 0.98f) ? 0 : -1;
@@ -316,7 +316,7 @@ void locate_chessboard(int& topLeftX, int& topLeftY, int& bottomRightX, int& bot
     for (y = 0; y < screenWidth; y++) {
         pixelOffset = x * MyBMInfo.bmiHeader.biWidth + y;
         pixelAddress = lpPixels + pixelOffset * (MyBMInfo.bmiHeader.biBitCount / 8);
-        color = SimpleColor((int)pixelAddress[2], (int)pixelAddress[1], (int)pixelAddress[0]);
+        color = SimpleColor(static_cast<int>(pixelAddress[2]), static_cast<int>(pixelAddress[1]), static_cast<int>(pixelAddress[0]));
         if (color.Equals(dark_square_color, 0.98f) || color.Equals(light_square_color, 0.98f)) {
             topLeftX = y;
             break;
@@ -328,7 +328,7 @@ void locate_chessboard(int& topLeftX, int& topLeftY, int& bottomRightX, int& bot
     for (x = 0; x < screenHeight; x++) {
         pixelOffset = x * MyBMInfo.bmiHeader.biWidth + y;
         pixelAddress = lpPixels + pixelOffset * (MyBMInfo.bmiHeader.biBitCount / 8);
-        color = SimpleColor((int)pixelAddress[2], (int)pixelAddress[1], (int)pixelAddress[0]);
+        color = SimpleColor(static_cast<int>(pixelAddress[2]), static_cast<int>(pixelAddress[1]), static_cast<int>(pixelAddress[0]));
         if (color.Equals(dark_square_color, 0.98f) || color.Equals(light_square_color, 0.98f)) {
             bottomRightY = screenHeight - x;
             break;
@@ -340,7 +340,7 @@ void locate_chessboard(int& topLeftX, int& topLeftY, int& bottomRightX, int& bot
     for (x = screenHeight; x > 0; x--) {
         pixelOffset = x * MyBMInfo.bmiHeader.biWidth + y;
         pixelAddress = lpPixels + pixelOffset * (MyBMInfo.bmiHeader.biBitCount / 8);
-        color = SimpleColor((int)pixelAddress[2], (int)pixelAddress[1], (int)pixelAddress[0]);
+        color = SimpleColor(static_cast<int>(pixelAddress[2]), static_cast<int>(pixelAddress[1]), static_cast<int>(pixelAddress[0]));
         if (color.Equals(dark_square_color, 0.98f) || color.Equals(light_square_color, 0.98f)) {
             topLeftY = screenHeight - x;
             break;
