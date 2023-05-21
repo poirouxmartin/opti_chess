@@ -8,6 +8,7 @@
 #include <vector>
 #include <map>
 #include <cstdint>
+#include "raylib.h"
 using namespace std;
 
 
@@ -52,6 +53,8 @@ typedef struct Move {
     uint_fast8_t y1 : 3;
     uint_fast8_t x2 : 3;
     uint_fast8_t y2 : 3;
+    bool capture_flag : 1;
+    bool promotion_flag : 1;
 
     bool operator== (const Move& other) const {
         return (x1 == other.x1) && (y1 == other.y1) && (x2 == other.x2) && (y2 == other.y2);
@@ -374,7 +377,7 @@ class Board {
         void from_pgn(string);
 
         // Fonction qui affiche un texte dans une zone donnée
-        void draw_text_rect(string, float, float, float, float, int);
+        void draw_text_rect(string, float, float, float, float, float);
 
         // Fonction qui dessine le plateau
         bool draw();
@@ -416,7 +419,7 @@ class Board {
         int total_nodes();
 
         // Fonction qui calcule la sécurité des rois
-        void get_king_safety(int piece_attack = 50, int piece_defense = 5, int pawn_attack = 25, int pawn_defense = 100, int edge_defense = 125);
+        void get_king_safety(int piece_attack = 40, int piece_defense = 20, int pawn_attack = 25, int pawn_defense = 100, int edge_defense = 125);
 
         // Fonction qui renvoie s'il y a échec et mat (ou pat) (-1, 1 ou 0)
         int is_mate();
@@ -602,6 +605,49 @@ int time_to_play_move(int t1, int t2, float k = 0.05);
 float uct(float, float, int, int);
 
 
+// Text box
+struct TextBox {
+    float x;
+    float y;
+    float width;
+    float height;
+    string text;
+    int value;
+    bool active;
+    float text_size;
+    Color main_color;
+    Color text_color;
+    Font text_font;
+
+    // Constructeur par défaut
+    TextBox() {}
+
+    TextBox(float posX, float posY, float boxWidth, float boxHeight, const string& initialText, int initialValue) :
+        x(posX),
+        y(posY),
+        width(boxWidth),
+        height(boxHeight),
+        text(initialText),
+        value(initialValue),
+        active(false) {}
+
+    void set_rect(float posX, float posY, float boxWidth, float boxHeight) {
+        x = posX;
+        y = posY;
+        width = boxWidth;
+        height = boxHeight;
+    }
+};
+
+
+// Fonction qui met à jour une text box
+void update_text_box(TextBox& textBox);
+
+// Fonction qui dessine une text box
+void draw_text_box(const TextBox& textBox);
+
+
+
 // GUI
 class GUI {
     public:
@@ -670,6 +716,10 @@ class GUI {
         // Affichage des flèches : affiche les chances de gain (true), l'évaluation (false)
         bool _display_win_chances = true;
 
+        // Texte pour les timers
+        TextBox _white_time_text_box;
+        TextBox _black_time_text_box;
+
 
         // Constructeurs
 
@@ -686,5 +736,9 @@ class GUI {
         bool new_bind_analysis();
 };
 
-// instantiation de la GUI globale
+// Instantiation de la GUI globale
 extern GUI _GUI;
+
+
+// Fonction qui compare deux coups pour savoir lequel afficher en premier
+bool compare_move_arrows(int m1, int m2);
