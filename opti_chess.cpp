@@ -849,7 +849,7 @@ void Board::game_advancement() {
     static const int adv_knight = 10;
     static const int adv_bishop = 10;
     static const int adv_rook = 10;
-    static const int adv_queen = 30;
+    static const int adv_queen = 50;
     static const int adv_castle = 5;
 
     static const int p_tot = 2 * (8 * adv_pawn + 2 * adv_knight + 2 * adv_bishop + 2 * adv_rook + 1 * adv_queen + 2 * adv_castle);
@@ -1039,7 +1039,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
 
 
     // Reset l'évaluation
-    _evaluation = 0;
+    _evaluation = 0.0f;
 
     // Avancement de la partie
     game_advancement();
@@ -1048,8 +1048,8 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         
 
     // Matériel
-    float material = 0;
-    if (eval->_piece_value != 0) {
+    float material = 0.0f;
+    if (eval->_piece_value != 0.0f) {
         count_material(eval);
         material = _material_count * eval->_piece_value / 100; // à changer (le /100)
         if (display)
@@ -1059,8 +1059,8 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
 
 
     // Positionnement des pièces
-    float positioning = 0;
-    if (eval->_piece_positioning != 0) {
+    float positioning = 0.0f;
+    if (eval->_piece_positioning != 0.0f) {
         pieces_positionning(eval);
         positioning = _pos * eval->_piece_positioning;
         if (display)
@@ -1083,8 +1083,8 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     }
 
     // Paire de oufs
-    float bishop_pair = 0;
-    if (eval->_bishop_pair != 0) {
+    float bishop_pair = 0.0f;
+    if (eval->_bishop_pair != 0.0f) {
         bishop_pair = eval->_bishop_pair * ((bishop_w >= 2) - (bishop_b >= 2));
         if (display)
             eval_components += "bishop pair : " + to_string((int)round(100 * bishop_pair)) + "\n";
@@ -1093,8 +1093,8 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         
 
     // Ajout random
-    float random_add = 0;
-    if (eval->_random_add != 0) {
+    float random_add = 0.0f;
+    if (eval->_random_add != 0.0f) {
         random_add += GetRandomValue(-50, 50) * eval->_random_add / 100;
         if (display)
             eval_components += "random add : " + to_string((int)round(100 * random_add)) + "\n";
@@ -1103,8 +1103,8 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
         
 
     // Activité des pièces
-    float piece_activity = 0;
-    if (eval->_piece_activity != 0) {
+    float piece_activity = 0.0f;
+    if (eval->_piece_activity != 0.0f) {
         get_piece_activity();
         piece_activity = _piece_activity * eval->_piece_activity;
         if (display)
@@ -1113,8 +1113,8 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     }
 
     // Trait du joueur
-    float player_trait = 0;
-    if (eval->_player_trait != 0) {
+    float player_trait = 0.0f;
+    if (eval->_player_trait != 0.0f) {
         player_trait = eval->_player_trait * _color;
         if (display)
             eval_components += "player trait : " + to_string((int)round(100 * player_trait)) + "\n";
@@ -1123,8 +1123,8 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
 
 
     // Droits de roques
-    float castling_rights = 0;
-    if (eval->_castling_rights != 0) {
+    float castling_rights = 0.0f;
+    if (eval->_castling_rights != 0.0f) {
         castling_rights += eval->_castling_rights * (_castling_rights.k_w + _castling_rights.q_w - _castling_rights.k_b - _castling_rights.q_b) * (1 - _adv);
         if (display)
             eval_components += "castling rights : " + to_string((int)round(100 * castling_rights)) + "\n";
@@ -1132,8 +1132,8 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     }
     
     // Sécurité du roi
-    float king_safety = 0;
-    if (eval->_king_safety != 0) {
+    float king_safety = 0.0f;
+    if (eval->_king_safety != 0.0f) {
         get_king_safety();
         king_safety = _king_safety * eval->_king_safety;
         if (display)
@@ -1142,8 +1142,8 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     }
 
     // Structure de pions
-    float pawn_structure = 0;
-    if (eval->_pawn_structure != 0) {
+    float pawn_structure = 0.0f;
+    if (eval->_pawn_structure != 0.0f) {
         get_pawn_structure();
         pawn_structure = _pawn_structure * eval->_pawn_structure;
         if (display)
@@ -1152,8 +1152,8 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     }
 
     // Attaques et défenses de pièces
-    float pieces_attacks = 0; float pieces_defenses = 0;
-    if (eval->_attacks != 0 || eval->_defenses != 0) {
+    float pieces_attacks = 0.0f; float pieces_defenses = 0.0f;
+    if (eval->_attacks != 0.0f || eval->_defenses != 0.0f) {
         get_attacks_and_defenses();
         pieces_attacks = _attacks_eval * eval->_attacks;
         pieces_defenses = _defenses_eval * eval->_defenses;
@@ -1168,8 +1168,8 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
     }
 
     // Opposition des rois
-    float kings_opposition = 0;
-    if (eval->_kings_opposition != 0) {
+    float kings_opposition = 0.0f;
+    if (eval->_kings_opposition != 0.0f) {
         get_kings_opposition();
         kings_opposition = _kings_opposition * eval->_kings_opposition;
         if (display)
@@ -1179,8 +1179,8 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
 
 
     // Tours sur les colonnes ouvertes / semi-ouvertes
-    float rook_open = 0; float rook_semi = 0;
-    if (eval->_rook_open != 0 || eval->_rook_semi != 0) {
+    float rook_open = 0.0f; float rook_semi = 0.0f;
+    if (eval->_rook_open != 0.0f || eval->_rook_semi != 0.0f) {
         get_rook_on_open_file();
         rook_open = _rook_open * eval->_rook_open;
         rook_semi = _rook_semi * eval->_rook_semi;
@@ -1194,8 +1194,8 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
 
 
     // Contrôle des cases
-    float square_controls = 0;
-    if (eval->_square_controls != 0) {
+    float square_controls = 0.0f;
+    if (eval->_square_controls != 0.0f) {
         get_square_controls();
         square_controls = _control * eval->_square_controls;
         if (display)
@@ -1205,7 +1205,7 @@ bool Board::evaluate(Evaluator *eval, bool checkmates, bool display, Network *n)
 
 
     // Forteresse
-    if (eval->_push != 0) {
+    if (eval->_push != 0.0f) {
         float push = 1 - _half_moves_count * eval->_push / 100;
         if (display)
             eval_components += "forteress : " + to_string((int)(100 - push * 100)) + "%\n";
@@ -1959,7 +1959,7 @@ void Board::from_pgn(string pgn) {
 
 
 // Fonction qui affiche un texte dans une zone donnée
-void Board::draw_text_rect(string s, float pos_x, float pos_y, float width, float height, int size) {
+void Board::draw_text_rect(string s, float pos_x, float pos_y, float width, float height, float size) {
 
     // Division du texte
     int sub_div = (1.5f * width) / size;
@@ -2447,10 +2447,48 @@ bool Board::draw() {
     update_time();
     float x_pad = board_padding_x + board_size - text_size * 2;
     Color time_colors[4] = {(_GUI._time && !_player) ? BLACK : VDARKGRAY, (_GUI._time && !_player) ? WHITE : LIGHTGRAY, (_GUI._time && _player) ? WHITE : LIGHTGRAY, (_GUI._time && _player) ? BLACK : VDARKGRAY};
-    DrawRectangle(x_pad, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation, board_padding_x + board_size - x_pad, text_size / 2, time_colors[0]);
-    DrawTextEx(text_font, clock_to_string(_GUI._time_black, false).c_str(), {x_pad + text_size / 6, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation + text_size / 12}, text_size / 3, font_spacing * text_size / 3, time_colors[1]);
-    DrawRectangle(x_pad, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation, board_padding_x + board_size - x_pad, text_size / 2, time_colors[2]);
-    DrawTextEx(text_font, clock_to_string(_GUI._time_white, false).c_str(), {x_pad + text_size / 6, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation + text_size / 12}, text_size / 3, font_spacing * text_size / 3, time_colors[3]);
+    
+    // Temps des blancs
+    if (!_GUI._white_time_text_box.active) {
+        _GUI._white_time_text_box.value = _GUI._time_white;
+        _GUI._white_time_text_box.text = clock_to_string(_GUI._white_time_text_box.value, false);
+    }
+    update_text_box(_GUI._white_time_text_box);  
+    if (!_GUI._white_time_text_box.active) {
+        _GUI._time_white = _GUI._white_time_text_box.value;
+        _GUI._white_time_text_box.text = clock_to_string(_GUI._white_time_text_box.value, false);
+    }
+
+    // Position du texte
+    _GUI._white_time_text_box.set_rect(x_pad, board_padding_y - text_size / 2 * !board_orientation + board_size * board_orientation, board_padding_x + board_size - x_pad, text_size / 2);
+    _GUI._white_time_text_box.text_size = text_size / 3;
+    _GUI._white_time_text_box.text_color = time_colors[3];
+    _GUI._white_time_text_box.text_font = text_font;
+    _GUI._white_time_text_box.main_color = time_colors[2];
+    draw_text_box(_GUI._white_time_text_box);
+
+
+    // Temps des noirs
+    if (!_GUI._black_time_text_box.active) {
+        _GUI._black_time_text_box.value = _GUI._time_black;
+        _GUI._black_time_text_box.text = clock_to_string(_GUI._black_time_text_box.value, false);
+    }
+    update_text_box(_GUI._black_time_text_box);
+    if (!_GUI._black_time_text_box.active) {
+        _GUI._time_black = _GUI._black_time_text_box.value;
+        _GUI._black_time_text_box.text = clock_to_string(_GUI._black_time_text_box.value, false);
+    }
+
+    // Position du texte
+    _GUI._black_time_text_box.set_rect(x_pad, board_padding_y - text_size / 2 * board_orientation + board_size * !board_orientation, board_padding_x + board_size - x_pad, text_size / 2);
+    _GUI._black_time_text_box.text_size = text_size / 3;
+    _GUI._black_time_text_box.text_color = time_colors[1];
+    _GUI._black_time_text_box.text_font = text_font;
+    _GUI._black_time_text_box.main_color = time_colors[0];
+    draw_text_box(_GUI._black_time_text_box);
+
+
+
 
     // FEN
     if (_fen == "")
@@ -2465,7 +2503,7 @@ bool Board::draw() {
 
     // Analyse de Monte-Carlo
     string monte_carlo_text = "Monte-Carlo research parameters : beta : " + to_string(_beta) + " | k_add : " + to_string(_k_add) + (!_GUI._grogros_analysis ? "\nrun GrogrosZero-Auto (CTRL-G)" : "\nstop GrogrosZero-Auto (CTRL-H)");
-    if (_tested_moves && drawing_arrows && _monte_called) {
+    if (_tested_moves && drawing_arrows && (_monte_called || true)) {
         // int best_eval = (_player) ? max_value(_eval_children, _tested_moves) : min_value(_eval_children, _tested_moves);
         int best_move = max_index(_nodes_children, _tested_moves);
         int best_eval = _eval_children[best_move];
@@ -2498,7 +2536,7 @@ bool Board::draw() {
         evaluate_int(_evaluator, true, true);
         int max_depth = grogros_main_depth();
         int n_nodes = total_nodes();
-        monte_carlo_text += "\n\n--- static eval : "  + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval : "  + eval + "---" + "\nnodes : " + int_to_round_string(n_nodes) + "/" + int_to_round_string(_monte_buffer._length) + " | time : " + clock_to_string(_time_monte_carlo) + " | speed : " + int_to_round_string(total_nodes() / (_time_monte_carlo + 1) * 1000) + "N/s" + " | depth : " + to_string(max_depth);
+        monte_carlo_text += "\n\n--- static eval : "  + ((_static_evaluation > 0)  ? (string)"+" : (string)"") + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval : " + ((best_eval > 0) ? (string)"+" : (string)"") + eval + " ---" + "\nnodes : " + int_to_round_string(n_nodes) + "/" + int_to_round_string(_monte_buffer._length) + " | time : " + clock_to_string(_time_monte_carlo) + " | speed : " + int_to_round_string(total_nodes() / (_time_monte_carlo + 1) * 1000) + "N/s" + " | depth : " + to_string(max_depth);
 
 
         // Affichage des paramètres d'analyse de Monte-Carlo
@@ -2519,19 +2557,21 @@ bool Board::draw() {
                 mate = is_eval_mate(_eval_children[i]);
                 string eval;
                 if (mate != 0) {
-                    if (mate * _color > 0)
+                    if (mate > 0)
                         eval = "+";
                     else
                         eval = "-";
                     eval += "M";
                     eval += to_string(abs(mate));
                 }
-                else
-                    eval = to_string(_eval_children[i]);
+                else {
+                    eval = _eval_children[i] > 0 ? "+" + to_string(_eval_children[i]) : to_string(_eval_children[i]);
+                }
+                    
                 
                 string variant_i = _monte_buffer._heap_boards[_index_children[i]].get_monte_carlo_variant(true); // Peut être plus rapide
                 // Ici aussi y'a qq chose qui ralentit, mais quoi?...
-                monte_carlo_variants += "eval : " + eval + " | " + move_label_from_index(i) + variant_i + " (" + to_string(100.0 * _nodes_children[i] / n_nodes).substr(0, 5) + "% - " + int_to_round_string(_nodes_children[i]) + ")";
+                monte_carlo_variants += "eval : " + eval + " | " + move_label_from_index(i) + variant_i + " | (" + int_to_round_string(_nodes_children[i]) + "N - " + to_string(100.0 * _nodes_children[i] / n_nodes).substr(0, 5) + "%)";
             }
             _monte_called = false;
         }
@@ -2541,6 +2581,7 @@ bool Board::draw() {
 
         // Affichage de la barre d'évaluation
         draw_eval_bar(global_eval, global_eval_text, board_padding_x / 6, board_padding_y, 2 * board_padding_x / 3, board_size);
+
     }
 
     // Affichage des contrôles et autres informations
@@ -2744,27 +2785,33 @@ void Board::draw_monte_carlo_arrows() {
         sum_nodes += _nodes_children[i];
     int mate;
 
-    // Ordonnancement des coups pour le dessin des flèches
-    vector<int> ordered_moves = sort_by_nodes(true);
-    int i;
 
     // Une pièce est-elle sélectionnée?
     bool is_selected = selected_pos.first != -1 && selected_pos.second != -1;
 
-    for (int j = 0; j < _tested_moves; j++) {
-        i = ordered_moves[j];
-        mate = is_eval_mate(_eval_children[i]);
-        // Si une pièce est sélectionnée
+    // Crée un vecteur avec les coups visibles
+    vector<int> moves_vector;
+    for (int i = 0; i < _tested_moves; i++) {
+
         if (is_selected) {
             // Dessine pour la pièce sélectionnée
             if (selected_pos.first == _moves[4 * i] && selected_pos.second == _moves[4 * i + 1])
-                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], i, _color, -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate, i == best_move);
+                moves_vector.push_back(i);
         }
+
         else {
-            float n = _nodes_children[i];
-            if (n / (float)sum_nodes > arrow_rate)
-                draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], i, _color, -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate, i == best_move);
+            if (_nodes_children[i] / (float)sum_nodes > arrow_rate)
+                moves_vector.push_back(i);
         }
+    }
+        
+    sort(moves_vector.begin(), moves_vector.end(), compare_move_arrows);
+
+    
+
+    for (int i : moves_vector) {
+        mate = is_eval_mate(_eval_children[i]);
+        draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], i, _color, -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate, i == best_move);
     }
 }
 
@@ -2779,7 +2826,7 @@ void Board::get_piece_activity(bool legal) {
     b.copy_data(*this);
     _piece_activity = 0;
 
-    static const int activity_values[21] = {-200, 100, 142, 183, 223, 261, 298, 332, 364, 393, 419, 442, 461, 478, 492, 504, 513, 520, 525, 528, 529};
+    static const int activity_values[21] = {-150, 100, 152, 193, 228, 261, 298, 332, 364, 393, 419, 442, 461, 478, 492, 504, 513, 520, 525, 528, 529};
 
     // Fait un tableau de toutes les pièces : position, valeur
     int piece_move_count[64] = {0};
@@ -2960,8 +3007,8 @@ int Board::max_monte_carlo_depth() {
 
 
 // Valeurs de base pour Grogros
-float _beta = 0.05f;
-float _k_add = 20.0f;
+float _beta = 0.035f;
+float _k_add = 25.0f;
 
 
 // Constructeur par défaut
@@ -3023,6 +3070,7 @@ int Buffer::get_first_free_index() {
 // Fonction qui désalloue toute la mémoire
 void Buffer::remove() {
     delete[] _heap_boards;
+    _init = false;
 }
 
 
@@ -3325,8 +3373,8 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
     // Protection d'un pion (le roi se situe en 2, 1)
     // TODO vérifier la symétrie horizontale dans le cas où on a les noirs
     static const int pawn_protection_map[3][3] = {
-        {75, 125, 75},
-        {150, 250, 150},
+        {45, 150, 100},
+        {175, 225, 175},
         {100,  0, 100}
     };
 
@@ -3350,22 +3398,22 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
                 if (p < 6) {
                     if (p == 1) {
                         abs(i - w_king_i - 1) <= 1 && abs(j - w_king_j) <= 1 && (w_king_protection += pawn_protection_map[2 - (i - w_king_i)][j - w_king_j + 1]);
-                        b_king_weakness += pawn_attack * proximity(i, j, b_king_i, b_king_j, 3);
+                        b_king_weakness += pawn_attack * proximity(i, j, b_king_i, b_king_j, 4);
                     }   
                     else {
-                        w_king_protection += piece_defense * proximity(i, j, w_king_i, w_king_j, 4);
-                        b_king_weakness += piece_attack * proximity(i, j, b_king_i, b_king_j, 7);
+                        w_king_protection += piece_defense * proximity(i, j, w_king_i, w_king_j, 8);
+                        b_king_weakness += piece_attack * proximity(i, j, b_king_i, b_king_j, 8);
                     }
                     
                 } 
                 else if (p > 6 && p < 12) {
                     if (p == 7) {
-                        w_king_weakness += pawn_attack * proximity(i, j, w_king_i, w_king_j, 3);
+                        w_king_weakness += pawn_attack * proximity(i, j, w_king_i, w_king_j, 4);
                         abs(b_king_i - i - 1) <= 1 && abs(j - b_king_j) <= 1 && (b_king_protection += pawn_protection_map[2 - (b_king_i - i)][j - b_king_j + 1]);
                     }   
                     else {
-                        w_king_weakness += piece_attack * proximity(i, j, w_king_i, w_king_j, 7);
-                        b_king_protection += piece_defense * proximity(i, j, b_king_i, b_king_j, 4);
+                        w_king_weakness += piece_attack * proximity(i, j, w_king_i, w_king_j, 8);
+                        b_king_protection += piece_defense * proximity(i, j, b_king_i, b_king_j, 8);
                     }
                 }
             }
@@ -3378,7 +3426,7 @@ void Board::get_king_safety(int piece_attack, int piece_defense, int pawn_attack
     b_king_protection += (_castling_rights.k_b + _castling_rights.q_b) * 100;
 
     // Niveau de protection auquel on peut considérer que le roi est safe
-    float king_base_protection = 200;
+    float king_base_protection = 500;
     // king_base_protection = 0;
     w_king_protection -= king_base_protection;
     b_king_protection -= king_base_protection;
@@ -3524,11 +3572,8 @@ void Board::display_pgn() {
 void Board::add_names_to_pgn() {
     if (_named_pgn) {
         // Change le nom du joueur aux pièces blanches
-        cout << "toto PGN : " << _pgn << endl;
         size_t p_white = _pgn.find("[White ") + 8;
         size_t p_white_2 = _pgn.find("\"]");
-        cout << "toto1 : " << _pgn.substr(0, p_white) << endl;
-        cout << "toto2 : " << _pgn.substr(p_white_2) << endl;
         _pgn = _pgn.substr(0, p_white) + _GUI._white_player + _pgn.substr(p_white_2);
 
         // Change le nom du joueur aux pièces noires
@@ -3579,12 +3624,13 @@ string Board::get_monte_carlo_variant(bool evaluate_final_pos) {
 
     int move = best_monte_carlo_move();
     s += " " + move_label_from_index(move);
+    //cout << _tested_moves << ", " << _got_moves << endl;
 
     if (_tested_moves == _got_moves)
         return s + _monte_buffer._heap_boards[_index_children[move]].get_monte_carlo_variant(evaluate_final_pos);
 
     if (evaluate_final_pos)
-        s += " | " + to_string(_monte_buffer._heap_boards[_index_children[move]]._static_evaluation);
+        s += " (" + ((_monte_buffer._heap_boards[_index_children[move]]._evaluation > 0) ? "+" + to_string((int)_monte_buffer._heap_boards[_index_children[move]]._evaluation) : to_string((int)_monte_buffer._heap_boards[_index_children[move]]._evaluation)) + ")";
 
     return s;
 
@@ -3628,7 +3674,7 @@ int Board::is_eval_mate(int e) {
 
 
 // Fonction qui affiche un texte dans une zone donnée avec un slider
-void slider_text(string s, float pos_x, float pos_y, float width, float height, int size, float *slider_value, Color t_color, float slider_width, float slider_height) {
+void slider_text(string s, float pos_x, float pos_y, float width, float height, float size, float *slider_value, Color t_color, float slider_width, float slider_height) {
 
     Rectangle rect_text = {pos_x, pos_y, width, height};
     DrawRectangleRec(rect_text, background_text_color);
@@ -4009,7 +4055,7 @@ void Board::get_pawn_structure() {
 
     // Pions doublés (ou triplés...)
     int doubled_pawn = -25;
-    float doubled_adv_factor = 0.6f; // En fonction de l'advancement de la partie
+    float doubled_adv_factor = 0.5f; // En fonction de l'advancement de la partie
     float doubled_adv = 1 * (1 + (doubled_adv_factor - 1) * _adv);
     for (int i = 0; i < 8; i++) {
         _pawn_structure += (s_white[i] >= 2) * doubled_pawn * (s_white[i] - 1) * doubled_adv;
@@ -4018,8 +4064,8 @@ void Board::get_pawn_structure() {
 
     // Pions passés
     // Table de valeur des pions passés en fonction de leur avancement sur le plateau
-    static const int passed_pawns[8] = {0, 50, 65, 90, 125, 200, 250, 0}; // TODO à vérif
-    float passed_adv_factor = 2; // En fonction de l'advancement de la partie
+    static const int passed_pawns[8] = {0, 25, 35, 50, 70, 95, 135, 0}; // TODO à vérif
+    float passed_adv_factor = 2.0f; // En fonction de l'advancement de la partie
     float passed_adv = 1 * (1 + (passed_adv_factor - 1) * _adv);
     
     // Pour chaque colonne
@@ -4027,8 +4073,6 @@ void Board::get_pawn_structure() {
 
         // On prend en compte seulement le pion le plus avancé de la colonne (car les autre seraient bloqués derrière)
         if (s_white[i] >= 1) {
-            // TODO : 8/1p6/p1p5/2P3K1/1P1k3P/P7/8/8 w - - 0 11 : pion non passé??
-
             // On regarde de la rangée la plus proche de la promotion, jusqu'a la première
             for (int j = 6; j > 0; j--) {
                 // S'il y a un pion potentiellement passé
@@ -4038,7 +4082,6 @@ void Board::get_pawn_structure() {
                         if ((i > 0 && _array[k][i - 1] == 7) || _array[k][i] == 7 || (i < 7 && _array[k][i + 1] == 7))
                             goto next_white_pawn;
                     _pawn_structure += passed_pawns[j] * passed_adv;
-                    // cout << "toto" << endl;
                 }
 
                 next_white_pawn:
@@ -4806,10 +4849,10 @@ void Board::get_square_controls() {
     static const int square_controls[8][8] = {
         {20,  20,  20,  20,  20,  20,  20,  20},
         {50,  50,  50,  50,  50,  50,  50,  50},
-        {10,  20,  30,  40,  40,  30,  20,  10},
-        {5,   10,  20,  30,  30,  20,  10,   5},
-        {0,    0,   0,  20,  20,   0,   0,   0},
-        {5,   -5, -10,   0,   0, -10,  -5,   5},
+        {10,  20,  40,  60,  60,  50,  20,  10},
+        {5,   10,  20,  50,  50,  20,  10,   5},
+        {0,    5,  10,  40,  40,  10,   5,   0},
+        {5,   -5,   5,  10,  10,   5,  -5,   5},
         {0,    0,   0,   0,   0,   0,   0,   0},
         {0,    0,   0,   0,   0,   0,   0,   0}
     };
@@ -4861,7 +4904,9 @@ void Board::get_square_controls() {
             total_control += (white_controls[i][j] - black_controls[i][j]) * square_controls[i][j];
 
     // L'importance de ce paramètre dépend de l'avancement de la partie : l'espace est d'autant plus important que le nombre de pièces est grand
-    _control = total_control * (1.0f - _adv);
+    float control_adv_factor = 0.0f; // En fonction de l'advancement de la partie
+    _control = total_control * (1 + (control_adv_factor - 1) * _adv);
+    //_control = total_control * (1.0f - _adv);
     _square_controls = true;
 
     return;
@@ -5205,3 +5250,92 @@ bool GUI::new_bind_analysis() {
 
     return true;
 }
+
+
+// Fonction qui compare deux coups pour savoir lequel afficher en premier
+bool compare_move_arrows(int m1, int m2) {
+
+    // Si deux flèches finissent en un même point, affiche en dernier (au dessus), le "meilleur" coup
+    if (_GUI._board._moves[4 * m1 + 2] == _GUI._board._moves[4 * m2 + 2] && _GUI._board._moves[4 * m1 + 3] == _GUI._board._moves[4 * m2 + 3])
+        return _GUI._board._nodes_children[m1] > _GUI._board._nodes_children[m1];
+
+    // Si les deux flèches partent d'un même point (et vont dans la même direction - TODO), alors affiche par dessus la flèche la plus courte
+    if (_GUI._board._moves[4 * m1] == _GUI._board._moves[4 * m2] && _GUI._board._moves[4 * m1 + 1] == _GUI._board._moves[4 * m2 + 1]) {
+        int d1 = (_GUI._board._moves[4 * m1] - _GUI._board._moves[4 * m1 + 2]) * (_GUI._board._moves[4 * m1] - _GUI._board._moves[4 * m1 + 2]) + (_GUI._board._moves[4 * m1 + 1] - _GUI._board._moves[4 * m1 + 3]) * (_GUI._board._moves[4 * m1 + 1] - _GUI._board._moves[4 * m1 + 3]);
+        int d2 = (_GUI._board._moves[4 * m2] - _GUI._board._moves[4 * m2 + 2]) * (_GUI._board._moves[4 * m2] - _GUI._board._moves[4 * m2 + 2]) + (_GUI._board._moves[4 * m2 + 1] - _GUI._board._moves[4 * m2 + 3]) * (_GUI._board._moves[4 * m2 + 1] - _GUI._board._moves[4 * m2 + 3]);
+        return d1 > d2;
+    }
+
+    return true;
+}
+
+
+// Fonction qui met à jour une text box
+void update_text_box(TextBox& textBox) {
+
+    // Si on clique
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        Vector2 mousePos = GetMousePosition();
+        Rectangle rect = { textBox.x, textBox.y, textBox.width, textBox.height };
+
+        // Sur la text box
+        if (CheckCollisionPointRec(mousePos, rect)) {
+
+            // Active, et montre la valeur
+            if (!textBox.active) {
+                textBox.active = true;
+                textBox.text = to_string(textBox.value);
+            }
+            
+        }
+
+        else {
+
+            // Désactive, et met à jour la valeur
+            if (textBox.active) {
+                textBox.value = stoi(textBox.text);
+                textBox.active = false;
+            }
+            
+        }
+            
+    }
+
+    // Si elle est active
+    if (textBox.active) {
+
+        // Prend les input du clavier
+        int key = GetKeyPressed();
+
+        // Regarde seulement les touches importantes (numériques)
+        if ((key >= 320 && key <= 329) || (key == KEY_BACKSPACE) || (key == KEY_ENTER)) {
+            if (key == KEY_BACKSPACE) {
+                if (!textBox.text.empty())
+                    textBox.text.pop_back();
+            }
+            else if (key == KEY_ENTER) {
+                textBox.value = stoi(textBox.text);
+                textBox.active = false;
+            }
+                
+            else {
+                int pressed_value = key - 320;
+                textBox.text += static_cast<char>(pressed_value + 48);
+            }
+                
+        }
+    }
+}
+
+
+// Fonction qui dessine une text box
+void draw_text_box(const TextBox& textBox) {
+    Rectangle rect = { textBox.x, textBox.y, textBox.width, textBox.height };
+    DrawRectangleRec(rect, textBox.main_color);
+
+    //Vector2 text_dimensions = MeasureTextEx(textBox.text_font, textBox.text.c_str(), textBox.text_size, font_spacing * textBox.text_size); // C'est pour dessiner au milieu
+    float textX = textBox.x + textBox.text_size / 2;
+    float textY = textBox.y + textBox.text_size / 4;
+    DrawTextEx(textBox.text_font, textBox.text.c_str(), { textX, textY }, textBox.text_size, font_spacing * textBox.text_size, textBox.text_color);
+}
+
