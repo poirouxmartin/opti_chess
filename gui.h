@@ -14,51 +14,51 @@ using namespace std;
 
 
 // Nombre de FPS
-static const int fps = 144;
-static const int max_drawing_fps = 144; // Nombre d'updates max par secondes pour ces fonctions
-static const clock_t last_drawing_time = 0;
+static constexpr  int fps = 144;
+static constexpr int max_drawing_fps = 144; // Nombre d'updates max par secondes pour ces fonctions
+static constexpr clock_t last_drawing_time = 0;
 
 // Couleur de fond
-static const Color background_color = {25, 25, 25, 255};
+static constexpr Color background_color = {25, 25, 25, 255};
 
 // Couleur du rectangle de texte
-static const Color background_text_color = {0, 0, 0, 255};
+static constexpr Color background_text_color = {0, 0, 0, 255};
 
 // Couleurs du texte
-static const Color text_color = {255, 75, 75, 255};
-static const Color text_color_dark = {200, 50, 50, 255};
-static const Color text_color_light = {200, 200, 200, 255};
-static const Color text_color_blue = {150, 150, 200, 255};
-static const Color text_color_info = {140, 140, 140, 255};
+static constexpr Color text_color = {255, 75, 75, 255};
+static constexpr Color text_color_dark = {200, 50, 50, 255};
+static constexpr Color text_color_light = {200, 200, 200, 255};
+static constexpr Color text_color_blue = {150, 150, 200, 255};
+static constexpr Color text_color_info = {140, 140, 140, 255};
 
 // Couleurs du plateau
-static const Color board_color_light = {190, 162, 127, 255};
-static const Color board_color_dark = {109, 78, 54, 255};
+static constexpr Color board_color_light = {190, 162, 127, 255};
+static constexpr Color board_color_dark = {109, 78, 54, 255};
 // static Color board_color_light = {149, 110, 83, 255};
 // static Color board_color_dark = {90, 54, 36, 255}; // Couleur Grogros
 
 // Couleur de surlignage de cases
-static const Color highlight_color = {255, 255, 100, 150};
+static constexpr Color highlight_color = {255, 255, 100, 150};
 
 // Couleur de selection de cases
-static const Color select_color = {50, 225, 50, 100};
+static constexpr Color select_color = {50, 225, 50, 100};
 
 // Couleur des cases du dernier coup joué
-static const Color last_move_color = {220, 150, 50, 125};
+static constexpr Color last_move_color = {220, 150, 50, 125};
 
 // Couleur de la case de pre-move
-static const Color pre_move_color = {220, 30, 30, 125};
+static constexpr Color pre_move_color = {220, 30, 30, 125};
 
 // Couleur des flèches
-static const Color arrow_color = {255, 225, 0, 150};
+static constexpr Color arrow_color = {255, 225, 0, 150};
 
 // Couleur des sliders
-static const Color slider_color = {200, 200, 200, 100};
-static const Color slider_backgrond_color = {100, 100, 100, 75};
+static constexpr Color slider_color = {200, 200, 200, 100};
+static constexpr Color slider_background_color = {100, 100, 100, 75};
 
 // Couleurs de la barre d'évaluation
-static const Color eval_bar_color_light = {224, 206, 186, 255};
-static const Color eval_bar_color_dark = {57, 50, 47, 255};
+static constexpr Color eval_bar_color_light = {224, 206, 186, 255};
+static constexpr Color eval_bar_color_dark = {57, 50, 47, 255};
 
 // Epaisseur des flèches (par rapport à la taille d'une case)
 static float arrow_scale = 0.125f;
@@ -190,7 +190,7 @@ static int base_time_increment_white = -50;
 static int base_time_increment_black = -50;
 
 // Valeur des pièces pour l'affichage sur la GUI (rien/roi, pion, cavalier, fou, tour, dame)
-static const int piece_gui_values[6] = {0, 1, 3, 3, 5, 9};
+static const int piecemain_GUI_values[6] = {0, 1, 3, 3, 5, 9};
 
 // Matériel manquant
 static const int base_material[6] = {0, 8, 2, 2, 2, 1};
@@ -218,7 +218,7 @@ Color move_color(int, int);
 void load_resources();
 
 // Fonction qui met à la bonne taille les images
-void resize_gui();
+void resize_GUI();
 
 // Fonction qui actualise les nouvelles dimensions de la fenêtre
 void get_window_size();

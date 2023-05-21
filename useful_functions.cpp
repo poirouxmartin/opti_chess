@@ -50,10 +50,10 @@ int move_power(float n, float range, float min) {
     float r = 10000.0;
 
     // Normalisation : plus petit coup à 10.0 (pas 1.0 car sinon ça peut devenir 0 en int) (pas très efficace... niveau temps de calcul...)
-    float k = 10.0 / pow(r, (float)(min / range));
-    // cout << "min : " << min << ", range : " << range << ", pow : " << pow(r, (float)(min / range)) << ", k : " << k << endl;
+    float k = 10.0 / pow(r, static_cast<float>(min / range));
+    // cout << "min : " << min << ", range : " << range << ", pow : " << pow(r, static_cast<float>(min / range)) << ", k : " << k << endl;
 
-    return k * pow(r, (float)(n / range));
+    return k * pow(r, static_cast<float>(n / range));
 }
 
 // Fonction qui fait un softmax
@@ -134,10 +134,10 @@ int pick_random_good_move(int* l, int n, int color, bool print, int nodes, int* 
     // Liste de pondération en fonction de l'exploration de chaque noeud
     // Pour que ça explore les noeuds les moins regardés
     float pond[100];
-    float inv_nodes = 1.0f / (float)nodes;
+    float inv_nodes = 1.0f / static_cast<float>(nodes);
 
     for (int i = 0; i < n; i++)
-        pond[i] = 1.0f - (float)nodes_children[i] * inv_nodes;
+        pond[i] = 1.0f - static_cast<float>(nodes_children[i] * inv_nodes);
 
     nodes_ponderation(l2, pond, n);
 
@@ -213,7 +213,7 @@ void print_array(int l[], int n) {
 void print_array(int_fast8_t l[], int n) {
     cout << "[|";
     for (int i = 0; i < n; i++)
-        cout << " " << (int)l[i] << " |";
+        cout << " " << static_cast<int>(l[i]) << " |";
     cout << "]" << endl;
 }
 
@@ -221,7 +221,7 @@ void print_array(int_fast8_t l[], int n) {
 void print_array(uint_fast8_t l[], int n) {
     cout << "[|";
     for (int i = 0; i < n; i++)
-        cout << " " << (int)l[i] << " |";
+        cout << " " << static_cast<int>(l[i]) << " |";
     cout << "]" << endl;
 }
 
@@ -346,13 +346,13 @@ string int_to_round_string(int k) {
     if (k < 1000)
         return to_string(k);
     if (k < 10000)
-        return to_string((float)k / 1000).substr(0, 3) + "k";
+        return to_string(static_cast<float>(k) / 1000).substr(0, 3) + "k";
     if (k < 100000)
-        return to_string((float)k / 1000).substr(0, 4) + "k";
+        return to_string(static_cast<float>(k) / 1000).substr(0, 4) + "k";
     if (k < 1000000)
-        return to_string((float)k / 1000).substr(0, 3) + "k";
+        return to_string(static_cast<float>(k) / 1000).substr(0, 3) + "k";
     
-    return to_string((float)k / 1000000).substr(0, 3) + "M";
+    return to_string(static_cast<float>(k) / 1000000).substr(0, 3) + "M";
 }
 
 // Fonction qui transforme un entier en string (et arrondit s'il est supérieur à 1000)
@@ -360,15 +360,15 @@ string long_int_to_round_string(unsigned long long k) {
     if (k < 1000)
         return to_string(k);
     if (k < 10000)
-        return to_string((float)k / 1000).substr(0, 3) + "k";
+        return to_string(static_cast<float>(k) / 1000).substr(0, 3) + "k";
     if (k < 100000)
-        return to_string((float)k / 1000).substr(0, 4) + "k";
+        return to_string(static_cast<float>(k) / 1000).substr(0, 4) + "k";
     if (k < 1000000)
-        return to_string((float)k / 1000).substr(0, 3) + "k";
+        return to_string(static_cast<float>(k) / 1000).substr(0, 3) + "k";
     if (k < 1000000000)
-        return to_string((float)k / 1000000).substr(0, 3) + "M";
+        return to_string(static_cast<float>(k) / 1000000).substr(0, 3) + "M";
 
-    return to_string((float)k / 1000000000).substr(0, 4) + "G";
+    return to_string(static_cast<float>(k) / 1000000000).substr(0, 4) + "G";
 }
 
 // Fonction qui transforme un clock en string (pour les timestamps dans les PGN)
@@ -410,7 +410,7 @@ string clock_to_string(clock_t t, bool full) {
 
 // Fonction qui arrondit un flottant en entier
 int float_to_int(float x) {
-    return (int)x + (x - (int)x > 0.5);
+    return static_cast<int>(x) + (x - static_cast<int>(x) > 0.5);
 }
 
 
