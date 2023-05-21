@@ -86,7 +86,7 @@ https://www.chessprogramming.org/UCT
 -> Calcul de distance à un bord : simplement faire une matrice globale des distance pour chaque case, et regarder dedans -> https://www.chessprogramming.org/Center_Manhattan-Distance
 -> Faut-il stocker les positions de certaines pièces (les rois par exemple), pour accélérer certains calculs?
 -> Regarder dans les copies de tableau si on peut ne pas copier des choses, ou en copier plus...
--> GrogrosZero casse Grogrosfish... ça fait jouer des coups bizarres à grogrosfish
+-> Défense : bizarre parfois? Tours liées surestimées?
 
 
 ----- Intelligences artificielles -----
@@ -142,6 +142,7 @@ https://www.chessprogramming.org/UCT
     - Colonnes occupées par une dame
     - Pions passés liés !
     - Tours liées
+    - Outpost
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Augmenter la profondeur pour les finales (GrogrosFish)
@@ -280,8 +281,6 @@ https://www.chessprogramming.org/UCT
 -> r1b1k2r/pp1p1ppp/1qn2n2/2b1p3/2P1P3/2N4P/PP3PP1/R1BQKBNR w KQkq - 1 7 : arrête de bongcloud stp... y'a juste Dd2
 -> Mettre des static const un peu partout pour éviter les re définitions inutiles
 -> Comparer eval stockfish et Grogros sur : 1r4k1/5pp1/3p1q1p/1pb2P1P/2p1Q3/2P2N2/1P2RPP1/6K1 w - - 5 33
--> Vérifier l'en passant sur le FEN : on dirait que les colonnes sont inversées
--> Pouvoir changer le temps des joueurs à volonté
 -> Si un tableau de valeurs est trop 'important', genre placement de la tour, demander à chatGPT de le re adapter
 -> Utiliser CUDA (GPU) pour paralléliser des calculs
 -> Faut-il prendre en compte le nombre de noeuds dans un fils pour déterminer s'il faut regarder dedans?
@@ -314,8 +313,24 @@ https://www.chessprogramming.org/UCT
 -> Mettre des flags pour les coups (capture, check, promotion -> caval possible??)
 -> Montrer le nombre de noeuds regardés par le quiescence search?
 -> Mettre dans le nom de grogros les paramètres de recherche...
-
-
+-> Descendre un peu le winrate par éval?
+-> Quels paramètres sont meilleurs pour GrogrosZero? k_add? beta? quiescence_depth?
+-> Utiliser std:sort pour trier les coups plus rapidement?
+-> De la mémoire est allouée quelque part, et non désallouée... (elle ne fait pas partie du buffer) -> A cause d'initialisation de variables? faut-il les supprimer à la fin des fonctions?
+-> Evaluation middle game? pour faire les ouvertures en développement, puis middle game en activité et placement...
+-> Alignement de pièces (tour/roi, tour/dame...)
+-> Taper les faiblesses (notions de pression)
+-> Réduire la puissance des fous : un cavalier bien placé peut être tout aussi bon
+-> Créer une map des contrôles des cases, puis l'utiliser pour les différentes composantes de l'évaluation
+-> Quand l'arbre est trop plein : élaguer les branches pourries, pour se concentrer sur les plus prometteuses
+-> Faut-il vraiment regarder tous les coups d'une position avant de chercher plus loin??
+-> Changer l'aspect des flèches
+-> Evaluer les finales différemment : faires des fonctions exprès pour (carré du pion, mat fou cavalier : il faut aller dans le bon coin)
+-> Optimiser la mémoire de Grogros
+-> Ajouter la nature de la position : ouverte, fermée... pour savoir à quel point les fous/cavaliers sont meilleurs, si y'a des chances de gain, si le développement des pièces compte beaucoup... l'espace aussi, la sécurité des rois...
+-> 1qr3k1/5p2/6pQ/p1RpPpB1/P2n4/7P/5PP1/6K1 w - - 0 32 : il faudra combien de temps pour voir Ff6?...
+-> Améliorer l'implémentation de l'activité des pièces : peuvent pas vraiment se déplacer sur des cases pourries...
+-> Mettre des 'const' à la fin des nom de fonction? (ça peut peut-être les accélérer...)
 
 
 
@@ -330,29 +345,20 @@ https://www.chessprogramming.org/UCT
 -> Chargement FEN -> "auto-complétion" si le FEN est incorrect
 -> Régler le clic (quand IA va jouer), qui affiche mal la pièce
 -> Modification du temps
--> Interface qui ne freeze plus quand l'IA réfléchit
+-> Interface qui ne freeze plus quand l'IA réfléchit -> Paralléliser
 -> Sons pour le temps
 -> Premettre de modifier les paramètres de recherche de l'IA : beta, k_add... (d'une meilleure manière)
 -> Musique de fond? (désactivable)
--> (changer épaisseur des flèches en fonction de leur importance?)
--> Ordonner l'affichage des flèches (pour un fou, mettre le coup le plus court en dernier) (pour deux coups qui vont au même endroit, mettre le meilleur en dernier)
 -> Ajouter un éditeur de positions (ajouter/supprimer les pièces)
--> Binding pour jouer tout seul en ligne
--> Problème au niveau des temps (dans grogrosfish : premier coup à temps max -> le temps n'est actualisé que après son coup...)
--> Quand on ferme la fenêtre, GrogrosZero arrête de réflechir... (voir application en arrière plan)
 -> Utiliser 1 thread pour gérer l'affichage tout seul
 -> Undo doit retirer le coup du PGN aussi
 -> Afficher les textes avec des différentes couleurs pour que ça soit plus facile à lire
 -> Défiler la variante quand on met la souris dessus
--> Eviter de recalculer les flèches à chaque fois (et les paramètres de Monte-Carlo)
--> Afficher quand Grogros est lancé dans sa réflexion
--> Comme Nibbler, quand on clique sur le bout d'une flèche de Monte-Carlo, joue le coup
 -> Montrer sur l'échiquier quand la position est mate (ou pate, ou autre condition de fin de partie)
 -> Faire un reconnaisseur de position automatique
 -> Unload les images, textures etc... pour vider la RAM?
 -> Pouvoir changer les paramètres de l'IA dans l'UI
 -> Ajouter des options/menus
--> Pouvoir changer le temps des joueurs
 -> Pouvoir sauvegarder les parties entières dans un fichier (qui s'incrémente), pour garder une trace de toutes les parties jouées
 -> Analyses de MC : montrer le chemin qui mène à la meilleure éval, puis celle qui mène au jeu qui va être joué
 -> Importation de position / nouvelle position -> update les noms et temps
@@ -360,14 +366,12 @@ https://www.chessprogramming.org/UCT
 -> Pouvoir grab le slider, ou cliquer pour changer sa place
 -> Faire des batailles entre différents paramètres d'évaluation pour voir la meilleure config -> Retour des batailles de NN?
 -> Importation depuis un PGN
--> Afficher pour chaque coup auquel l'ordi réfléchit : la ligne correspondante, ainsi que la position finale avec son évaluation
 -> Afficher sur le PGN la reflexion de GrogrosZero
 -> Pouvoir changer le nombre de noeuds de l'IA dans la GUI... ou la profondeur de Grogrosfish
 -> Pouvoir reset le temps
 -> Problème avec les noms quand on les change : parfois ils ne s'affichent plus
 -> Parfois l'utilisation des réseaux de neurones bug
 -> Nd2f3 -> Ndf3? pas facile à faire
--> Quand les flèches ne sont pas affichées, afficher les touches?
 -> Ajouter la possibilité de faire plusieurs pre-move
 -> Rajouter la date dans les PGN
 -> Faire du smooth sur la barre d'évaluation
@@ -379,8 +383,6 @@ https://www.chessprogramming.org/UCT
 -> Gestion du temps bizarre? Car le temps affiché par GrogrosZero n'est pas vraiment le vrai (ni sa vitesse)
 -> Clean l'implémentation de la GUI -> Faire des nouvelles fonctions pour tout simplifier
 -> Faire un vecteur pour les pre moves et les flèches
--> +/- mats : en fonction des couleurs, ou du joueur qui joue??
--> Trouver une meilleure police de texte, qui prenne en compte les minuscules et majuscules (et soit un peu plus petite)
 -> Fins de parties : message + son
 -> +M7 -> #-7 pour les noirs? .. bof
 -> Barre d'éval : barre pour l'évaluation du coup le plus recherché par l'IA? ou éval du "meilleur coup"?
@@ -388,7 +390,6 @@ https://www.chessprogramming.org/UCT
 -> Faire un readme
 -> Faire un truc pour montrer la menace (changer le trait du joueur)
 -> CtrlN doit effacer tout le PGN... parfois ça bug
--> Mieux voir les mini-pièces...
 -> Pouvoir éditer les positions
 -> PARALLELISER L'AFFICHAGE !! ça lag beaucoup trop !!!
 -> Refaire les pre-moves depuis zero (et ajouter la possibilité d'en faire plusieurs)
@@ -396,22 +397,28 @@ https://www.chessprogramming.org/UCT
 -> Faire un arbre pour la partie actuelle analysée, pour pouvoir avancer ou reculer dedans, faire une nouvelle variante...
 -> Revoir les font_spacing etc... en faire des fonctions pour rendre le code plus lisible
 -> Trop de flèches = crash
--> On ne peut pas retirer les flèches
 -> Lignes de bézier et cercles pas très beaux
 -> Nouveaux bruits de pièces plus "soft" + bruit d'ambiance?
 -> Montrer toute la variante calculée avec des flèches (d'une couleur spéciale)
--> Temps buggé? parfois lancé que d'un côté? ou alors c'est juste GrogrosFish qui bugge
 -> Thread : bug... parfois les coups joués ne sont pas les bons
 -> Re foncer le noir des pièces?
 -> Ajout du titre BOT : [WhiteTitle "BOT"]
 -> Afficher quand-même la barre d'éval même si GrogrosZero est arrêté?
 -> Pourquoi dans certaines variantes, l'éval ne s'affiche pas à la fin??
--> Faut-il être plus sûr sur les re-captures?
--> Il va sûrement manquer des delete quelque part?
+-> Il doit sûrement manquer des delete quelque part?
 -> Dans les .h, remetre les noms des arguments?
 -> Rajouter des pre-moves pour Grogros si c'est un coup forcé en face
 -> Pourquoi c'est lent de changer  la taille de la GUI?
 -> Pour la barre d'éval, on utiise le winrate?
+-> Faire des maps pour afficher les paramètres d'évaluation (genre afficher les cases controllées, avec une couleur plus ou moins prononcée...)
+-> Pouvoir facilement changer les paramètres de Grogros (quiescence depth, beta, k_add, paramètres d'évaluation...)
+-> Pouvoir changer l'affichage de la GUI (winrate/eval)
+-> Faire des menus
+-> Désélectionner les pièces lors d'un chargement de position
+-> Mettre une évaluation de grogrosZero pour _GUI._board pour pas que grogrosFish prenne le dessus
+-> Utiliser des checkCollision de raylib pour la GUI
+-> Afficher l'incrément de temps sur la GUI, et pouvoir le modifier
+
 
 
 
@@ -432,6 +439,29 @@ https://www.chessprogramming.org/UCT
 -> r1b5/ppQ4p/4k3/3p4/4p3/2RN4/2PK1PP1/1q6 w - - 0 32 : king safety++
 -> 6k1/3q1p2/3p2p1/bp1p4/5n2/7P/1BQN1PP1/4N1K1 w - - 0 35 : structure de pion--
 -> r2qrbk1/5ppp/pn3n2/4N3/1ppP1P2/4PQ2/PB2N1PP/2R2RK1 b - - 1 20
+-> 4rrk1/1pp1qnpp/p3b3/P3Pp2/1bP2B2/1N6/1P2B1PP/R2Q1RK1 b - - 0 20
+-> r4rk1/ppp2ppp/2n5/1QQpp3/8/2NPbq1b/PPP2P1P/R3R1K1 b - - 3 18
+-> 2kr2r1/ppp2p1p/5Q2/8/1b2q3/4BN1b/PP3PPP/R4K1R w - - 3 19
+-> r1b1k2r/pp2qpp1/3p3p/2pPn3/2P1P3/4P1P1/PP2B2P/R1BQ1RK1 w kq - 1 16
+-> 2r2rk1/pp1b1pp1/1q1p3p/3P4/1P2P3/5QP1/1B4KP/R1R5 w - - 1 25 -> square controls--
+-> q4rk1/3bbppp/2n1pn2/1BPp4/P7/1Q2P3/3N1PPP/2R2RK1 w - - 3 17 -> passed pawn-- (squares are controlled)
+-> q1r3k1/3bbppp/2n1pn2/1BP5/P7/4PN2/2Q3PP/1R3RK1 b - - 0 20 -> passed pawn--, center control-, positioning-
+-> q1r3k1/4bpp1/2b1pn1p/nBP5/P7/3QPN2/6PP/2R2RK1 w - - 4 23 -> 'slider on queen'+, imbalance+?
+-> 1r4k1/4bpp1/2n1pn1p/2P5/q7/3QPN2/6PP/2R2RK1 w - - 0 26 -> (material + imbalance)+, passed pawn--, connected pawns (defense)+
+-> 2rr2k1/pp3ppp/5b2/n7/2p2P2/P3P1P1/1PbNBK1P/R1B2R2 w - - 0 20 -> piece activity+
+-> r7/1pp2kpp/5p2/1Pbr4/4p3/2B1P1P1/5P1P/1R3RK1 w - - 1 25 -> king safety... ???
+-> 6k1/1p3ppp/r7/3p1b2/1P6/2BpPP2/3P1KPP/5R2 w - - 5 29 -> king safety...
+-> 1r2kb1r/1q3pp1/p2p1n2/Pp1Pn1Bp/2bNP3/Q4B2/1P2N1PP/2R2RK1 b k - 2 24 : Stockfish dit +1.... Grogros +4
+-> 1r2k2r/1q2b1p1/p2p1p2/Pp1Pn3/2bNP1p1/4B1Q1/1P2N1PP/2R2RK1 w k - 4 30
+-> r3r1k1/ppp3p1/3q1n1p/3P4/2P5/1P3P2/P2Q2PP/4RRK1 w - - 1 27 : king danger ??
+-> r6r/ppq2pk1/2p1bN1p/2P1p3/1P2P3/P2P3P/3QN1P1/5R1K w - - 3 6 : ici il se sent plus safe en g1... changer king safety : mur = ionp++
+-> q4rk1/p3bppp/1p6/8/b1PP4/3QPP2/P4KPP/1R5R b - - 2 22
+-> 8/2p1k1pp/p1Qb4/3P3q/4p3/N1P1BnPb/P4P2/5R1K w - - 1 25 : king danger
+-> r4r1k/2p2ppB/pb6/n3R1B1/Pp1q4/5Q2/1P3PPP/RN4K1 w - - 1 20 :  king danger - (fou seul...)
+-> 2k2r2/pp1n1N2/2nPppQ1/2Pb4/8/4B1P1/P4P1P/r4BK1 w - - 3 26 : Grogros dit +3, et Leela -1 (et seulement après Fh6, Fc4, Grogros voit la douille)
+-> 2k2r2/pp1n1N2/3PppQB/2P5/2bn4/6PP/P4P2/r4BK1 w - - 1 28 : Grogros met beaucoup de temps à comprendre
+
+
 
 ----- Problèmes -----
 
@@ -514,7 +544,11 @@ r3r1k1/3b1p2/p1pp3p/3Pp1q1/1p1bQP2/3P2B1/PPP1N1P1/2KR3R b - - 0 1
 6q1/3r1p2/2N1nk1K/3rp3/8/5PP1/2Q5/3N4 w - - 0 1
 8/8/8/3k4/8/1PK5/8/8 w - - 5 17 : finales à revoir
 7Q/8/B4pp1/p5k1/3P2r1/q1PKP3/1r6/6R1 w - - 4 52
-
+rn2k1nr/pp3ppp/2p5/3pN3/1b1P4/2NQP1P1/PP1B1PqP/R3K2R w KQkq - 7 12
+8/8/5p2/5P2/k1B5/2K5/8/2n5 w - - 7 72
+3r4/bP5p/5kp1/2N2p2/4pP2/1R4PP/6K1/8 w - - 5 45
+r6k/p1p3pp/6n1/3Bp3/4P3/5r1q/PB1PNP2/R3QRK1 b - - 2 15 : ... mat en 3 pour les noirs
+2k2r2/pp1n1NQ1/2nPpp2/2Pb4/1r6/4B1P1/P4P1P/5BK1 b - - 0 24
 
 */
 
@@ -557,6 +591,7 @@ int main() {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     SetConfigFlags(FLAG_MSAA_4X_HINT);
     SetConfigFlags(FLAG_WINDOW_ALWAYS_RUN);
+    SetConfigFlags(FLAG_VSYNC_HINT);
 
     // Pour ne pas afficher toutes les infos (on peut mettre le log level de 0 à 7 -> 7 = rien)
     SetTraceLogLevel(LOG_WARNING);
@@ -654,6 +689,10 @@ int main() {
     //testFunc(_GUI._board);
 
 
+    // Nombre de threads pour la parallélisation
+    int n_threads = 1;
+
+
     // Boucle principale (Quitter à l'aide de la croix, ou en faisant échap)
     while (!WindowShouldClose()) {
 
@@ -661,15 +700,44 @@ int main() {
         // INPUTS      
 
 
+        // Full screen
+        if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_F11)) {
+            if (!IsWindowMaximized())
+                SetWindowState(FLAG_WINDOW_MAXIMIZED);
+            else
+                ClearWindowState(FLAG_WINDOW_MAXIMIZED);
+            if (!IsWindowFullscreen())
+                SetWindowState(FLAG_FULLSCREEN_MODE);
+            else
+                ClearWindowState(FLAG_FULLSCREEN_MODE);
+        }
+
+
 
         // T - Test de thread
         if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_T)) {
-            // thread th_test(&Board::grogros_zero, &t, &monte_evaluator, 5000000, true, _beta, _k_add, false, 0, nullptr); // Marche presque... !
-            // th_test.detach();
+
+            // Vecteur de threads
+            //vector<thread> threads;
+            //mutex boardMutex; // Mutex for synchronizing access to _GUI._board
+
+            //for (int i = 0; i < n_threads; i++) {
+            //    //threads.emplace_back([&]() {
+            //    //    // Lock the mutex before modifying _GUI._board
+            //    //    lock_guard<mutex> lock(boardMutex);
+            //    //    _GUI._board.grogros_zero(&monte_evaluator, 50000, true, _beta, _k_add, false, 0, nullptr, 4);
+            //    //    });
+
+            //    threads.push_back(thread(&Board::grogros_zero, &_GUI._board, &monte_evaluator, 50000, true, _beta, _k_add, false, 0, nullptr, 4));
+            //}
+
+            //for (auto& thread : threads) {
+            //    //thread.join();
+            //    thread.detach();
+            //}
+
 
             _GUI.new_bind_game();
-            /*cout << _GUI._board.quiescence(&monte_evaluator, -10000000, +10000000) * _GUI._board._color << endl;
-            cout << _GUI._board._evaluation << endl;*/
         }
 
         // CTRL-T - Cherche le plateau de chess.com sur l'écran
@@ -812,9 +880,9 @@ int main() {
 
         // Espace - GrogrosZero 1 noeud : DEBUG
         if (IsKeyPressed(KEY_SPACE)) {
-            if (!_monte_buffer._init)
+            /*if (!_monte_buffer._init)
                 _monte_buffer.init();
-            _GUI._board.grogros_zero(&monte_evaluator, 1, true, _beta, _k_add);
+            _GUI._board.grogros_zero(&monte_evaluator, 1, true, _beta, _k_add);*/
         }
 
         // LCTRL-H - Arrêt de la recherche automatique de GrogrosZero 
@@ -834,8 +902,14 @@ int main() {
         }
 
         // Suppr. - Supprime les reflexions de GrogrosZero
-        if (IsKeyPressed(KEY_DELETE)) {
+        if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_DELETE)) {
             _GUI._board.reset_all(true, true);
+        }
+
+        // CTRL - Suppr. - Supprime le buffer de Monte-Carlo
+        if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_DELETE)) {
+            _GUI._board.reset_all(true, true);
+            _monte_buffer.remove();
         }
 
         // D - Affichage dans la console de tous les coups légaux de la position
@@ -916,7 +990,7 @@ int main() {
         }
         
         // Return - Lancement et arrêt du temps
-        if (IsKeyPressed(KEY_ENTER)) {
+        if (IsKeyPressed(KEY_SPACE)) {
             if (_GUI._time)
                 _GUI._board.stop_time();
             else
