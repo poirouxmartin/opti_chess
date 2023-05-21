@@ -42,8 +42,8 @@ Plateau :
 
 
 // Nombre maximum de coups légaux par position estimé
-// const int _max_moves = 218;
-const int _max_moves = 100; // ça n'arrivera quasi jamais que ça dépasse ce nombre
+// const int max_moves = 218;
+constexpr int max_moves = 100; // ça n'arrivera quasi jamais que ça dépasse ce nombre
 
 
 // Coup (défini par ses coordonnées)
@@ -102,9 +102,9 @@ class Board {
 
         // Coups possibles
         // Nombre max de coups légaux dans une position : 218 -> 872 (car 1 moves = 4 coord)
-        uint_fast8_t _moves[_max_moves * 4]; 
+        uint_fast8_t _moves[max_moves * 4]; 
 
-        //Move _moves_test[_max_moves];
+        //Move _moves_test[max_moves];
 
         // Les coups sont-ils actualisés? Si non : -1, sinon, _got_moves représente le nombre de coups jouables
         int _got_moves = -1;
@@ -305,7 +305,7 @@ class Board {
         bool add_king_moves(uint_fast8_t, uint_fast8_t, int*);
 
         // Renvoie la liste des coups possibles
-        bool get_moves(bool pseudo = false, bool forbide_check = false);
+        bool get_moves(const bool pseudo = false, const bool forbide_check = false);
 
         // Fonction qui dit si une case est attaquée
         bool attacked(int, int);
@@ -341,7 +341,7 @@ class Board {
         bool evaluate_int(Evaluator *e = nullptr, bool checkmates = false, bool display = false, Network *n = nullptr);
 
         // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-        float negamax(int, float, float, int, bool, Evaluator *, bool, bool);
+        float negamax(int, float, float, int, bool, Evaluator *, bool play = false, bool display = false, int quiescence_depth = 4);
 
         // Version un peu mieux optimisée de Grogrosfish
         bool grogrosfish(int, Evaluator *, bool);
@@ -383,13 +383,10 @@ class Board {
         bool draw();
         
         // Fonction qui joue le son d'un coup
-        void play_move_sound(int, int, int, int);
+        void play_move_sound(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t);
 
         // Fonction qui joue le son d'un coup à partir de son index
         void play_index_move_sound(int);
-
-        // Fonction qui joue le coup après analyse par l'algo de Monte Carlo
-        void play_monte_carlo_move(bool display = false);
 
         // Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo d'un plateau
         void draw_monte_carlo_arrows();
@@ -407,7 +404,7 @@ class Board {
         int max_monte_carlo_depth();
 
         // Algo de grogros_zero
-        void grogros_zero(Evaluator *eval = nullptr, int nodes = 1, bool checkmates = false, float beta = 0.035f, float k_add = 50.0f, bool display = false, int depth = 0, Network *net = nullptr, int quiescence_depth = 4);
+        void grogros_zero(Evaluator *eval = nullptr, int nodes = 1, bool checkmates = false, float beta = 0.035f, float k_add = 50.0f, int quiescence_depth = 4, bool display = false, int depth = 0, Network *net = nullptr);
 
         // Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
         void reset_board(bool display = false);
@@ -512,7 +509,7 @@ class Board {
         bool quick_moves_sort();
 
         // Fonction qui fait un quiescence search
-        int quiescence(Evaluator *, int, int, int depth = 4);
+        int quiescence(Evaluator *eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool checkmates_check = true, bool main_call = true);
 
         // Fonction qui fait un quiescence search, avec des méthodes de pruning avancées
         int quiescence_improved(Evaluator*, int, int, int depth = 4);
@@ -526,18 +523,13 @@ class Board {
 
 
 // Fonction qui obtient la case correspondante à la position sur la GUI
-pair<int, int> get_pos_from_gui(float, float);
+pair<int, int> get_pos_from_GUI(float, float);
 
 // Fonction qui permet de changer l'orientation du plateau
 void switch_orientation();
 
 // Fonction aidant à l'affichage du plateau (renvoie i si board_orientation, et 7 - i sinon)
 int orientation_index(int);
-
-// Paramètres pour la recherche de Monte-Carlo
-extern float _beta;
-extern float _k_add; 
-
 
 
 class Buffer {
@@ -570,7 +562,7 @@ class Buffer {
 
 
 // Buffer pour monte-carlo
-extern Buffer _monte_buffer;
+extern Buffer monte_buffer;
 
 
 // Fonction qui joue un match entre deux IA utilisant GrogrosZero, et une évaluation par réseau de neurones ou des évaluateurs, avec un certain nombre de noeuds de calcul
@@ -586,12 +578,12 @@ bool equal_fen(string, string);
 bool equal_positions(Board, Board);
 
 // Test de liste des positions (taille 100, pour la règle des 50 coups.. si on joue une prise ou un coup de pion, on peut reset la liste -> 52 : +1 pour la position de départ, +1 quand on joue exactement le 50ème coup)
-extern string _all_positions[102];
-extern int _total_positions;
+extern string all_positions[102];
+extern int total_positions;
 
 
 // Fonction qui renvoie le temps que l'IA doit passer sur le prochain coup (en ms), en fonction d'un facteur k, et des temps restant
-int time_to_play_move(int t1, int t2, float k = 0.05);
+int time_to_play_move(int t1, int t2, float k = 0.05f);
 
 
 
@@ -720,6 +712,11 @@ class GUI {
         TextBox _white_time_text_box;
         TextBox _black_time_text_box;
 
+        // Paramètres pour la recherche de Monte-Carlo
+        float _beta = 0.035f;
+        float _k_add = 25.0f;
+        int _quiescence_depth = 4;
+
 
         // Constructeurs
 
@@ -737,7 +734,7 @@ class GUI {
 };
 
 // Instantiation de la GUI globale
-extern GUI _GUI;
+extern GUI main_GUI;
 
 
 // Fonction qui compare deux coups pour savoir lequel afficher en premier

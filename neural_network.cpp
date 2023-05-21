@@ -91,7 +91,7 @@ void Network::input_from_fen(string fen) {
             case 'k' : _layers[0][k + 11] = 1; k += 12; break;
             default :
                 if (isdigit(c)) {
-                    digit = ((int)c) - ((int)'0');
+                    digit = (static_cast<int>(c)) - (static_cast<int>('0'));
                     k += 12 * digit;
                     break;
                 }
@@ -133,7 +133,7 @@ unsigned int vector_norm(vector<int> v) {
     for (int k : v)
         sum += pow(k, length);
 
-    return (pow(sum, 1.0 / (float)length));
+    return (pow(sum, 1.0f / static_cast<float>(length)));
 
 }
 
