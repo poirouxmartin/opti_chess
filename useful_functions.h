@@ -1,11 +1,10 @@
+#pragma once
 #include <execution>
 #include <string>
 #include "time.h"
 #include <cfloat>
 
 using namespace std;
-
-#define inf_int 2147483647;
 
 // Fonction qui renvoie si un entier appartient à un intervalle
 bool is_in(int, int, int);
@@ -35,7 +34,7 @@ int move_power(float, float, float);
 void softmax(int*, int, float beta = 0.035f, float k_add = 50.0f); // beta = 0.05, k_add = 1. k_add x => ~x/10000 (the bigger the larger, the smaller the deeper) 0.05, 250 pour les mats
 
 // Fonction pour générer une seed
-int generate_seed();
+unsigned long long generate_seed();
 
 // Fonction qui renvoie un entier aléatoire entre deux entiers (le second non inclus)
 int rand_int(int, int);
@@ -107,7 +106,7 @@ bool is_in(string, string[], int);
 float get_winning_chances_from_eval(float, bool, bool);
 
 // Fonction qui pondère les valeurs de la liste, en fonction d'un taux d'exploration par valeur
-void nodes_ponderation(int *, float *, int);
+void nodes_weighting(int *, const float *, int);
 
 // Fonction qui affiche chaque attribut d'une classe ainsi que sa taille
 template <typename T>

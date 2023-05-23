@@ -1,3 +1,4 @@
+#pragma once
 #include <vector>
 #include <string>
 using namespace std;
@@ -47,13 +48,13 @@ class Network {
         void calculate_output();
 
         // Fonction qui remplit l'input à l'aide d'une position d'échec sous forme FEN
-        void input_from_fen(string);
+        void input_from_fen(const string&);
 
         // Fonction qui génère des poids aléatoires dans le réseau de neurones
         void generate_random_weights(int min = -100, int max = 100);
 
         // Fonction qui prend un vecteur de positions et le vecteur des évaluations associées, et renvoie la distance globale des évaluations des positions selon le réseau de neurones, comparées aux évaluations en argument
-        int global_distance(vector<string>, vector<int>);
+        int global_distance(const vector<string>&, const vector<int>&);
 
 
 
@@ -64,12 +65,11 @@ class Network {
 unsigned int evaluation_distance(int, int);
 
 // Fonction qui renvoie une norme d'un vecteur d'entiers
-unsigned int vector_norm(vector<int>);
+unsigned int vector_norm(const vector<int>&);
 
 
 // Fonctions d'activation pour les calculs du réseau de neurones
 
 // Fonction d'activation linéaire
 int linear_activation(int, float alpha = 0, float beta = 1);
-
 
