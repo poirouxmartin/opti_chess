@@ -1,3 +1,4 @@
+#pragma once
 #include "time.h"
 #include <string>
 #include "raylib.h"
@@ -34,8 +35,6 @@ static constexpr Color text_color_info = {140, 140, 140, 255};
 // Couleurs du plateau
 static constexpr Color board_color_light = {190, 162, 127, 255};
 static constexpr Color board_color_dark = {109, 78, 54, 255};
-// static Color board_color_light = {149, 110, 83, 255};
-// static Color board_color_dark = {90, 54, 36, 255}; // Couleur Grogros
 
 // Couleur de surlignage de cases
 static constexpr Color highlight_color = {255, 255, 100, 150};
@@ -190,7 +189,7 @@ static int base_time_increment_white = -50;
 static int base_time_increment_black = -50;
 
 // Valeur des pièces pour l'affichage sur la GUI (rien/roi, pion, cavalier, fou, tour, dame)
-static const int piecemain_GUI_values[6] = {0, 1, 3, 3, 5, 9};
+static const int piece_GUI_values[6] = {0, 1, 3, 3, 5, 9};
 
 // Matériel manquant
 static const int base_material[6] = {0, 8, 2, 2, 2, 1};
@@ -204,9 +203,7 @@ static const string abc8 = "abcdefgh";
 static vector<vector<int>> arrows_array;
 
 // Composantes de l'évaluation à afficher sur la GUI
-static string eval_components = "";
-
-
+static string eval_components;
 
 // A partir de coordonnées sur le plateau (// Thickness = -1 -> default thickness)
 void draw_arrow_from_coord(int, int, int, int, int, int, float thickness = -1, Color c = arrow_color, bool use_value = false, int value = 0, int mate = -1, bool outline = false);
@@ -239,28 +236,28 @@ bool get_board_orientation();
 bool is_cursor_in_rect(Rectangle);
 
 // Fonction qui dessine un rectangle à partir de coordonnées flottantes
-bool DrawRectangle(float, float, float, float, Color);
+bool draw_rectangle(float, float, float, float, Color);
 
 // Fonction qui dessine un rectangle à partir de coordonnées flottantes, en fonction des coordonnées de début et de fin
-bool DrawRectangleFromPos(float, float, float, float, Color);
+bool draw_rectangle_from_pos(float, float, float, float, Color);
 
 // Fonction qui dessine un cercle à partir de coordonnées flottantes
-void DrawCircle(float, float, float, Color);
+void draw_circle(float, float, float, Color);
 
 // Fonction qui dessine une ligne à partir de coordonnées flottantes
-void DrawLineEx(float, float, float, float, float, Color);
+void draw_line_ex(float, float, float, float, float, Color);
 
 // Fonction qui dessine une ligne de Bézier à partir de coordonnées flottantes
-void DrawLineBezier(float, float, float, float, float, Color);
+void draw_line_bezier(float, float, float, float, float, Color);
 
 // Fonction qui dessine une texture à partir de coordonnées flottantes
-void DrawTexture(Texture, float, float, Color);
+void draw_texture(Texture, float, float, Color);
 
 // Fonction qui affiche la barre d'evaluation
 void draw_eval_bar(float, string, float, float, float, float, float max_eval = 500, Color = eval_bar_color_light, Color = eval_bar_color_dark, float max_height = 0.95f);
 
 // Fonction qui retire les surlignages de toutes les cases
-void remove_hilighted_tiles();
+void remove_highlighted_tiles();
 
 // Fonction qui selectionne une case
 void select_tile(int, int);

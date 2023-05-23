@@ -1,15 +1,16 @@
 // Color
+#pragma once
 class SimpleColor {
 	public:
-		int _r; // Red
-		int _g; // Green
-		int _b; // Blue
+		int _r = 0; // Red
+		int _g = 0; // Green
+		int _b = 0; // Blue
 
 		SimpleColor();
 		SimpleColor(int r, int g, int b);
-		void Print();
-		bool Equals(SimpleColor c);
-		bool Equals(SimpleColor c, float alike);
+		void print() const;
+		bool equals(SimpleColor c) const;
+		bool equals(SimpleColor c, float alike) const;
 };
 
 
@@ -32,7 +33,7 @@ void set_mouse_pos(int x, int y);
 unsigned long long  get_total_system_memory();
 
 // Fonction qui affiche la couleur de chacune des cases de l'échiquier sur l'écran, en donnant ses coordonnées (top-left, bottom-right)
-int* get_board_move(int x1, int y1, int x2, int y2, bool orientation = false, bool display = false);
+uint_fast8_t* get_board_move(int x1, int y1, int x2, int y2, bool orientation = false, bool display = false);
 
 // Fonction qui clique un coup en fonction de l'orientation du plateau
 void click_move(int j1, int i1, int j2, int i2, int x1, int y1, int x2, int y2, bool orientation = false);

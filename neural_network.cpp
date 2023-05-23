@@ -1,6 +1,6 @@
 #include "neural_network.h"
 #include "raylib.h"
-#include "math.h"
+#include <cmath>
 #include <iostream>
 
 
@@ -59,21 +59,19 @@ void Network::calculate_output() {
 
 
 // Fonction qui remplit l'input à l'aide d'une position d'échec sous forme FEN
-void Network::input_from_fen(string fen) {
+void Network::input_from_fen(const string& fen) {
 
     // rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 
     // Itérateur dans la couche d'input du réseau de neurones
     int k = 0;
 
-    int digit;
-
     // Remise à zéro des inputs
     for (int i = 0; i < 768; i++)
         _layers[0][i] = 0;
 
 
-    for (char c : fen) {
+    for (const char c : fen) {
 
         switch (c) {
             case '/' : case ' ' : break;
@@ -91,7 +89,7 @@ void Network::input_from_fen(string fen) {
             case 'k' : _layers[0][k + 11] = 1; k += 12; break;
             default :
                 if (isdigit(c)) {
-                    digit = (static_cast<int>(c)) - (static_cast<int>('0'));
+	                const int digit = (static_cast<int>(c)) - (static_cast<int>('0'));
                     k += 12 * digit;
                     break;
                 }
@@ -109,7 +107,7 @@ void Network::input_from_fen(string fen) {
 
 
 // Fonction qui génère des poids aléatoires dans le réseau de neurones
-void Network::generate_random_weights(int min, int max) {
+void Network::generate_random_weights(const int min, const int max) {
     for (int i = 0; i < _weights.size(); i++) {
         for (int j = 0; j < _weights[i].size(); j++) {
             _weights[i][j] = GetRandomValue(min, max);
@@ -119,18 +117,18 @@ void Network::generate_random_weights(int min, int max) {
 
 
 // Fonction qui renvoie la distance entre deux évaluations
-unsigned int evaluation_distance(int a, int b) {
+unsigned int evaluation_distance(const int a, const int b) {
     return abs(a - b);
 }
 
 
 // Fonction qui renvoie une norme d'un vecteur d'entiers positifs
-unsigned int vector_norm(vector<int> v) {
+unsigned int vector_norm(const vector<int>& v) {
     // On pourra choisir une autre manière de la calculer selon les besoins
     unsigned int sum = 0;
-    int length = v.size();
+    const int length = v.size();
 
-    for (int k : v)
+    for (const int k : v)
         sum += pow(k, length);
 
     return (pow(sum, 1.0f / static_cast<float>(length)));
@@ -139,9 +137,8 @@ unsigned int vector_norm(vector<int> v) {
 
 
 // Fonction qui prend un vecteur de positions et le vecteur des évaluations associées, et renvoie la distance globale des évaluations des positions selon le réseau de neurones, comparées aux évaluations en argument
-int Network::global_distance(vector<string> positions_vector, vector<int> evaluations_vector) {
-
-    int length = positions_vector.size();
+int Network::global_distance(const vector<string>& positions_vector, const vector<int>& evaluations_vector) {
+	const int length = positions_vector.size();
     vector<int> distances (length, 0);
 
     for (int i = 0; i < length; i++) {
@@ -158,6 +155,6 @@ int Network::global_distance(vector<string> positions_vector, vector<int> evalua
 // Fonctions d'activation pour les calculs du réseau de neurones
 
 // Fonction d'activation linéaire
-int linear_activation(int k, float alpha, float beta) {
+int linear_activation(const int k, const float alpha, const float beta) {
     return alpha + k * beta;
 }
