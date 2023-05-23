@@ -1,9 +1,7 @@
 #include "opti_chess.h"
 #include "time_tests.h"
 #include "useful_functions.h"
-#include "math.h"
 #include "gui.h"
-#include <thread>
 #include "windows_tests.h"
 
 
@@ -299,7 +297,6 @@ https://www.chessprogramming.org/UCT
 -> Utiliser toutes les améliorations/optimisations possibles sur VisualStudio
 -> Mettre des uint_fast8_t partout
 -> Negamax : utiliser les plateaux tout faits du buffer?
--> Extension TODO
 -> Mettre des variables globales partout !
 -> Il faut peut-être supprimer les string?
 -> Faire une classe "coup"? -> cela simplifierait sûrement beaucoup de choses...
@@ -331,6 +328,9 @@ https://www.chessprogramming.org/UCT
 -> 1qr3k1/5p2/6pQ/p1RpPpB1/P2n4/7P/5PP1/6K1 w - - 0 32 : il faudra combien de temps pour voir Ff6?...
 -> Améliorer l'implémentation de l'activité des pièces : peuvent pas vraiment se déplacer sur des cases pourries...
 -> Mettre des 'const' à la fin des nom de fonction? (ça peut peut-être les accélérer...)
+-> Pour mieux évaluer la sécurité du roi, il faut regarder le surnombre de pièces sur le roi adverse (+2, c'est généralement mat)
+-> Pourquoi dans les Caro-Kann, il fait Fd3 pour reprendre du pion c plutôt que de la dame?
+-> Faire que Grogros reclique sur la fenêtre principale après jouer son coup sur chess.com pour reprendre la main? ou alors faire un focus sur la fenêtre?
 
 
 
@@ -555,22 +555,6 @@ r6k/p1p3pp/6n1/3Bp3/4P3/5r1q/PB1PNP2/R3QRK1 b - - 2 15 : ... mat en 3 pour les n
 
 
 
-
-// Fonction qui permet de tester le temps que prend une fonction
-void testA() {
-    for (int i = 0; i < 10000; i++)
-        cout << "test" << i << endl;
-}
-
-
-// Fonction qui permet de tester le temps que prend une fonction
-void testB() {
-    cout << "2" << endl;
-    for (int i = 0; i < 10000; i++)
-        cout << "testB" << i << endl;
-}
-
-
 // Fonction qui fait le dessin de la GUI
 void gui_draw() {
     if (!main_GUI._draw)
@@ -603,7 +587,7 @@ int main() {
 
     // Initialisation de l'audio
     InitAudioDevice();
-    SetMasterVolume(1.0);
+    SetMasterVolume(1.0f);
 
     // Nombre d'images par secondes
     SetTargetFPS(fps);
@@ -1083,7 +1067,7 @@ int main() {
                 // Grogros doit gérer son temps
                 if (main_GUI._time) {
                     // Nombre de noeuds que Grogros doit calculer (en fonction des contraintes de temps)
-                    static const int supposed_grogros_speed = 2500; // En supposant que Grogros va à plus de 20k noeuds par seconde
+                    static constexpr int supposed_grogros_speed = 2500; // En supposant que Grogros va à plus de 20k noeuds par seconde
                     int tot_nodes = main_GUI._board.total_nodes();
                     float best_move_percentage = tot_nodes == 0 ? 0.05f : static_cast<float>(main_GUI._board._nodes_children[main_GUI._board.best_monte_carlo_move()]) / static_cast<float>(main_GUI._board.total_nodes());
                     int max_move_time = main_GUI._board._player ? 

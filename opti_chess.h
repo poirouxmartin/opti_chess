@@ -1,3 +1,4 @@
+#pragma once
 #include <iostream>
 #include <vector>
 #include <execution>
@@ -9,6 +10,7 @@
 #include <map>
 #include <cstdint>
 #include "raylib.h"
+
 using namespace std;
 
 
@@ -146,10 +148,10 @@ class Board {
         bool _is_game_over = false;
 
         // FEN du plateau
-        string _fen = "";
+        string _fen;
 
         // PGN du plateau
-        string _pgn = "";
+        string _pgn;
 
         // Dernier coup joué (coordonnées, pièce) ( *2 pour les roques...)
         int_fast8_t _last_move[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
@@ -286,9 +288,6 @@ class Board {
         // Fonction qui ajoute un coup dans la liste de coups
         bool add_move(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, int*);
 
-        // Fonction qui ajoute un coup dans la liste de coups
-        // bool add_move(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, int*);
-
         // Fonction qui ajoute les coups "pions" dans la liste de coups
         bool add_pawn_moves(uint_fast8_t, uint_fast8_t, int*);
 
@@ -332,7 +331,7 @@ class Board {
         void count_material(Evaluator *e = nullptr);
 
         // Fonction qui calcule les valeurs de positionnement des pièces sur l'échiquier
-        void pieces_positionning(Evaluator *e = nullptr);
+        void pieces_positioning(Evaluator *e = nullptr);
 
         // Fonction qui évalue la position à l'aide d'heuristiques
         bool evaluate(Evaluator *e = nullptr, bool checkmates = false, bool display = false, Network *n = nullptr);
@@ -614,29 +613,29 @@ struct TextBox {
     // Constructeur par défaut
     TextBox() {}
 
-    TextBox(float posX, float posY, float boxWidth, float boxHeight, const string& initialText, int initialValue) :
-        x(posX),
-        y(posY),
-        width(boxWidth),
-        height(boxHeight),
-        text(initialText),
-        value(initialValue),
+    TextBox(const float pos_x, const float pos_y, const float box_width, const float box_height, string initial_text, const int initial_value) :
+        x(pos_x),
+        y(pos_y),
+        width(box_width),
+        height(box_height),
+        text(std::move(initial_text)),
+        value(initial_value),
         active(false) {}
 
-    void set_rect(float posX, float posY, float boxWidth, float boxHeight) {
-        x = posX;
-        y = posY;
-        width = boxWidth;
-        height = boxHeight;
+    void set_rect(const float pos_x, const float pos_y, const float box_width, const float box_height) {
+        x = pos_x;
+        y = pos_y;
+        width = box_width;
+        height = box_height;
     }
 };
 
 
 // Fonction qui met à jour une text box
-void update_text_box(TextBox& textBox);
+void update_text_box(TextBox& text_box);
 
 // Fonction qui dessine une text box
-void draw_text_box(const TextBox& textBox);
+void draw_text_box(const TextBox& text_box);
 
 
 
@@ -670,7 +669,7 @@ class GUI {
         clock_t _last_binding_check = clock();
 
         // Coup récupéré par le binding
-        int* _binding_move = new int[4];
+        uint_fast8_t* _binding_move = new uint_fast8_t[4];
 
         // Coordonnées du plateau sur chess.com
         int _binding_left = 108; // (+10 si barre d'éval)
