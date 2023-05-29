@@ -227,7 +227,7 @@ bool is_playing();
 void switch_arrow_drawing();
 
 // Fonction qui affiche un texte dans une zone donnée avec un slider
-void slider_text(string, float, float, float, float, float size = text_size, float *slider_value = nullptr, Color t_color = text_color, float slider_width = board_size * 0.025f, float slider_height = board_size * 0.1f);
+void slider_text(const string&, float, float, float, float, float size = text_size, float *slider_value = nullptr, Color t_color = text_color, float slider_width = board_size * 0.025f, float slider_height = board_size * 0.1f);
 
 // Fonction pour obtenir l'orientation du plateau
 bool get_board_orientation();
@@ -251,10 +251,10 @@ void draw_line_ex(float, float, float, float, float, Color);
 void draw_line_bezier(float, float, float, float, float, Color);
 
 // Fonction qui dessine une texture à partir de coordonnées flottantes
-void draw_texture(Texture, float, float, Color);
+void draw_texture(const Texture&, float, float, Color);
 
 // Fonction qui affiche la barre d'evaluation
-void draw_eval_bar(float, string, float, float, float, float, float max_eval = 500, Color = eval_bar_color_light, Color = eval_bar_color_dark, float max_height = 0.95f);
+void draw_eval_bar(float, const string&, float, float, float, float, float max_eval = 500, Color = eval_bar_color_light, Color = eval_bar_color_dark, float max_height = 0.95f);
 
 // Fonction qui retire les surlignages de toutes les cases
 void remove_highlighted_tiles();

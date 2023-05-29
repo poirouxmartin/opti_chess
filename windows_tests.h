@@ -9,8 +9,8 @@ class SimpleColor {
 		SimpleColor();
 		SimpleColor(int r, int g, int b);
 		void print() const;
-		bool equals(SimpleColor c) const;
-		bool equals(SimpleColor c, float alike) const;
+		[[nodiscard]] bool equals(SimpleColor c) const;
+		[[nodiscard]] bool equals(SimpleColor c, float alike) const;
 };
 
 
