@@ -1,4 +1,6 @@
-.vscode
-/x64
-/Release
-*.vcxproj*
+.vs
+*.sln.*
+x64
+opti_chess/x64
+opti_chess/Release
+opti_chess.vcxproj.*
