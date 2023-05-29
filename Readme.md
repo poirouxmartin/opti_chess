@@ -1,3 +1,19 @@
-![Project Logo](./opti_chess/resources/images/grogros_zero.png)
-**Grogros Chess**
-A simple chess GUI and AI using MCTS and Negamax
+# Grogros Chess
+![Project Logo](./opti_chess/resources/readme/grogros_zero.svg)
+
+## A simple chess GUI and AI using MCTS and Negamax
+![Project Logo](./opti_chess/resources/readme/lasker_queen_sacrifice.png)
+
+## Table of contents
+
+## Description
+
+## Features
+### GUI
+### AI
+
+## Installation
+
+## Usage
+
+## Future improvements
