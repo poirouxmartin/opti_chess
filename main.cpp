@@ -39,6 +39,7 @@ https://www.chessprogramming.org/Encoding_Moves#MoveIndex
 https://lichess.org/page/accuracy
 http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
 https://www.chessprogramming.org/UCT
+https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Movegenerator
 
 
 
@@ -331,6 +332,9 @@ https://www.chessprogramming.org/UCT
 -> Pour mieux évaluer la sécurité du roi, il faut regarder le surnombre de pièces sur le roi adverse (+2, c'est généralement mat)
 -> Pourquoi dans les Caro-Kann, il fait Fd3 pour reprendre du pion c plutôt que de la dame?
 -> Faire que Grogros reclique sur la fenêtre principale après jouer son coup sur chess.com pour reprendre la main? ou alors faire un focus sur la fenêtre?
+-> Utiliser des static constexpr pour éviter des calculs redondants dans certaines fonctions
+-> Il faut plus de g3 Fg2 -> revoir king safety?
+-> Grogros préfère le pion e au c car il pense que son roi est plus safe avec
 
 
 
@@ -418,6 +422,8 @@ https://www.chessprogramming.org/UCT
 -> Mettre une évaluation de grogrosZero pour main_GUI._board pour pas que grogrosFish prenne le dessus
 -> Utiliser des checkCollision de raylib pour la GUI
 -> Afficher l'incrément de temps sur la GUI, et pouvoir le modifier
+-> O-O+ dans les move label à prendre en compte
+-> Revoir les update du temps quand on le change pendant que ça joue
 
 
 
@@ -461,6 +467,8 @@ https://www.chessprogramming.org/UCT
 -> 2k2r2/pp1n1N2/2nPppQ1/2Pb4/8/4B1P1/P4P1P/r4BK1 w - - 3 26 : Grogros dit +3, et Leela -1 (et seulement après Fh6, Fc4, Grogros voit la douille)
 -> 2k2r2/pp1n1N2/3PppQB/2P5/2bn4/6PP/P4P2/r4BK1 w - - 1 28 : Grogros met beaucoup de temps à comprendre
 -> r3rn2/b1q2ppk/3p1n1p/pp3P2/P2Pp3/4B2P/1PBQ1PPN/3RR1K1 b - - 1 22 : king safety : le roi noir n'est pas vraiment en danger ici
+-> r1bqkb1r/ppp2pp1/5n2/3pn2P/8/4P3/PPP2PBP/RNBQK1NR w KQkq - 0 7 : king danger + psqt
+-> 8/4k2p/2pNb3/2P1P1pP/r7/8/1P3r2/1K1R3R w - - 0 35 : king safety ??
 
 
 
@@ -615,10 +623,10 @@ int main() {
 
     // Nombre de noeuds calculés par frame
     // Si c'est sur son tour
-    int nodes_per_frame = 250;
+    int nodes_per_frame = 500;
 
     // Sur le tour de l'autre (pour que ça plante moins)
-    int nodes_per_user_frame = 50;
+    int nodes_per_user_frame = 100;
 
     // Valeurs à 0 pour augmenter la vitesse de calcul. A tester vs grogrosfish avec tout d'activé
     eval_white._piece_activity = 0.0f;
@@ -723,8 +731,21 @@ int main() {
 
 
             main_GUI.new_bind_game();
+            //cout << main_GUI._board.in_check() << endl;
             //main_GUI._board.quiescence(&eval_white);
             //cout << main_GUI._board._quiescence_nodes << endl;
+
+            /*Array test_array;
+            cout << sizeof(test_array) << endl;
+            cout << test_array.pieces[0][0].type << endl;*/
+
+            //cout << main_GUI._board._white_king_pos.i << ", " << main_GUI._board._white_king_pos.j << endl;
+        	//cout << main_GUI._board._black_king_pos.i << ", " << main_GUI._board._black_king_pos.j << endl;
+
+            //main_GUI._board.quick_moves_sort();
+            //main_GUI._board.grogros_zero(&monte_evaluator, 1, true);
+            //cout << main_GUI._board._quick_sorted_moves << endl;
+            //main_GUI._board.display_moves();
         }
 
         // CTRL-T - Cherche le plateau de chess.com sur l'écran
@@ -1067,7 +1088,7 @@ int main() {
                 // Grogros doit gérer son temps
                 if (main_GUI._time) {
                     // Nombre de noeuds que Grogros doit calculer (en fonction des contraintes de temps)
-                    static constexpr int supposed_grogros_speed = 2500; // En supposant que Grogros va à plus de 20k noeuds par seconde
+                    static constexpr int supposed_grogros_speed = 5000; // En supposant que Grogros va à plus de 20k noeuds par seconde
                     int tot_nodes = main_GUI._board.total_nodes();
                     float best_move_percentage = tot_nodes == 0 ? 0.05f : static_cast<float>(main_GUI._board._nodes_children[main_GUI._board.best_monte_carlo_move()]) / static_cast<float>(main_GUI._board.total_nodes());
                     int max_move_time = main_GUI._board._player ? 
