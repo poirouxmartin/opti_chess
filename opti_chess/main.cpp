@@ -335,6 +335,9 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Utiliser des static constexpr pour éviter des calculs redondants dans certaines fonctions
 -> Il faut plus de g3 Fg2 -> revoir king safety?
 -> Grogros préfère le pion e au c car il pense que son roi est plus safe avec
+-> Re utiliser la réflexion de la quiescence search pour la recherche normale
+-> Faire des groupes de variables pour savoir lesquelles réinitialiser lors d'un coup...
+-> Grogros fait des Fxh7 -> g6/Rg7 et perd le fou... (à cause de king safety?)
 
 
 
@@ -424,6 +427,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Afficher l'incrément de temps sur la GUI, et pouvoir le modifier
 -> O-O+ dans les move label à prendre en compte
 -> Revoir les update du temps quand on le change pendant que ça joue
+-> Afficher des traits autour du plateau chess.com?
 
 
 
@@ -469,6 +473,8 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> r3rn2/b1q2ppk/3p1n1p/pp3P2/P2Pp3/4B2P/1PBQ1PPN/3RR1K1 b - - 1 22 : king safety : le roi noir n'est pas vraiment en danger ici
 -> r1bqkb1r/ppp2pp1/5n2/3pn2P/8/4P3/PPP2PBP/RNBQK1NR w KQkq - 0 7 : king danger + psqt
 -> 8/4k2p/2pNb3/2P1P1pP/r7/8/1P3r2/1K1R3R w - - 0 35 : king safety ??
+-> 2b2rk1/1p4p1/2n4p/2P1p3/8/2PP1pPq/3B1P2/3Q1RKB b - - 1 23
+-> r4rk1/1b4p1/pqp4p/bp6/P1pPN2Q/4BP2/1n4PP/RB3RK1 w - - 2 26
 
 
 
@@ -560,6 +566,48 @@ r6k/p1p3pp/6n1/3Bp3/4P3/5r1q/PB1PNP2/R3QRK1 b - - 2 15 : ... mat en 3 pour les n
 2k2r2/pp1n1NQ1/2nPpp2/2Pb4/1r6/4B1P1/P4P1P/5BK1 b - - 0 24
 
 */
+
+
+
+
+
+// Test de fonction
+void testA() {
+    int x = 0;
+    for (int index = 0; index < 64; index++) {
+        const uint_fast8_t i = index / 8;
+        const uint_fast8_t j = index % 8;
+        x += main_GUI._board._array[i][j];
+    }
+    cout << x << endl;
+}
+
+void testB() {
+    int x = 0;
+    for (uint_fast8_t i = 0; i < 8; i++) {
+        for (uint_fast8_t j = 0; j < 8; j++) {
+            x += main_GUI._board._array[i][j];
+        }
+    }
+    cout << x << endl;
+}
+
+void testC() {
+    int x = 0;
+    for (auto& i : main_GUI._board._array)
+    {
+        for (const unsigned char j : i)
+        {
+            x += j;
+        }
+    }
+    cout << x << endl;
+}
+
+
+
+
+
 
 
 
@@ -730,7 +778,7 @@ int main() {
             //}
 
 
-            main_GUI.new_bind_game();
+            
             //cout << main_GUI._board.in_check() << endl;
             //main_GUI._board.quiescence(&eval_white);
             //cout << main_GUI._board._quiescence_nodes << endl;
@@ -746,6 +794,11 @@ int main() {
             //main_GUI._board.grogros_zero(&monte_evaluator, 1, true);
             //cout << main_GUI._board._quick_sorted_moves << endl;
             //main_GUI._board.display_moves();
+            main_GUI.new_bind_game();
+            /*test_function(testA, 0.001, "testA");
+            test_function(testB, 0.001, "testB");
+            test_function(testB, 0.001, "testC");*/
+
         }
 
         // CTRL-T - Cherche le plateau de chess.com sur l'écran
@@ -754,6 +807,7 @@ int main() {
             locate_chessboard(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom);
             printf("Top-Left: (%d, %d)\n", main_GUI._binding_left, main_GUI._binding_top);
             printf("Bottom-Right: (%d, %d)\n", main_GUI._binding_right, main_GUI._binding_bottom);
+            cout << "chess.com chessboard has been located" << endl;
         }
 
         // LCTRL-A - BInding full (binding chess.com)

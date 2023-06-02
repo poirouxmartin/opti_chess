@@ -165,8 +165,8 @@ class Board {
     // Droits de roque
     CastlingRights _castling_rights;
 
-    // En passant possible (se note par exemple "d6" -> coordonnée de la case)
-    string _en_passant = "-";
+    // Colonne d'en passant
+    int_fast8_t _en_passant_col = -1;
 
     // Nombre de demi-coups (depuis le dernier déplacement de pion, ou la dernière capture, et reste nul à chacun de ces coups)
     uint_fast8_t _half_moves_count = 0;
@@ -178,8 +178,10 @@ class Board {
     bool _is_game_over = false;
 
     // FEN du plateau
+    // 32 bytes?
     string _fen;
 
+    // 32 bytes
     // PGN du plateau
     string _pgn;
 
@@ -408,7 +410,7 @@ class Board {
     void from_pgn(string);
 
     // Fonction qui affiche un texte dans une zone donnée
-    void draw_text_rect(const string&, float, float, float, float, float);
+    static void draw_text_rect(const string&, float, float, float, float, float);
 
     // Fonction qui dessine le plateau
     bool draw();
@@ -554,6 +556,8 @@ class Board {
     // Fonction qui récupère et renvoie la couleur du joueur au trait (1 pour les blancs, -1 pour les noirs)
     [[nodiscard]] int get_color() const;
 
+    // Fonction qui génère et renvoie la clé de Zobrist de la position
+    [[nodiscard]] uint_fast64_t get_zobrist_key() const;
 
 };
 
