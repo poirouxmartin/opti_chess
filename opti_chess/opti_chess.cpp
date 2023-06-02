@@ -32,7 +32,6 @@ Board::Board(const Board &b) {
     _quick_sorted_moves = b._quick_sorted_moves;
     _evaluation = b._evaluation;
     _castling_rights = b._castling_rights;
-    _en_passant = b._en_passant;
     _half_moves_count = b._half_moves_count;
     _moves_count = b._moves_count;
     _pgn = b._pgn;
@@ -51,7 +50,6 @@ void Board::copy_data(const Board &b) {
     _quick_sorted_moves = b._quick_sorted_moves;
     _evaluation = b._evaluation;
     _castling_rights = b._castling_rights;
-    _en_passant = b._en_passant;
     _half_moves_count = b._half_moves_count;
     _moves_count = b._moves_count;
     _pgn = b._pgn;
@@ -133,9 +131,9 @@ bool Board::add_pawn_moves(const uint_fast8_t i, const uint_fast8_t j, int *iter
         // Poussée (de 2)
         (i == 1 && _array[i + 1][j] == 0 && _array[i + 2][j] == 0) && add_move(i, j, i + 2, j, iterator);
         // Prise (gauche)
-        (j > 0 && (is_in_fast(_array[i + 1][j - 1], 7, 12) || (_en_passant[0] == abc8[j - 1] && _en_passant[1] - 48 - 1 == i + 1))) && add_move(i, j, i + 1, j - 1, iterator);
+        (j > 0 && (is_in_fast(_array[i + 1][j - 1], 7, 12) || _en_passant_col == j - 1)) && add_move(i, j, i + 1, j - 1, iterator);
         // Prise (droite)
-        (j < 7 && (is_in_fast(_array[i + 1][j + 1], 7, 12) || (_en_passant[0] == abc8[j + 1] && _en_passant[1] - 48 - 1 == i + 1))) && add_move(i, j, i + 1, j + 1, iterator);
+        (j < 7 && (is_in_fast(_array[i + 1][j + 1], 7, 12) || _en_passant_col == j + 1)) && add_move(i, j, i + 1, j + 1, iterator);
     }
     // Joueur avec les pièces noires
     else {
@@ -144,9 +142,9 @@ bool Board::add_pawn_moves(const uint_fast8_t i, const uint_fast8_t j, int *iter
         // Poussée (de 2)
         (i == 6 && _array[i - 1][j] == 0 && _array[i - 2][j] == 0) && add_move(i, j, i - 2, j, iterator);
         // Prise (gauche)
-        (j > 0 && (is_in_fast(_array[i - 1][j - 1], 1, 6) || (_en_passant[0] == abc8[j - 1] && _en_passant[1] - 48 - 1 == i - 1))) && add_move(i, j, i - 1, j - 1, iterator);
+        (j > 0 && (is_in_fast(_array[i - 1][j - 1], 1, 6) || _en_passant_col == j - 1)) && add_move(i, j, i - 1, j - 1, iterator);
         // Prise (droite)
-        (j < 7 && (is_in_fast(_array[i - 1][j + 1], 1, 6) || (_en_passant[0] == abc8[j + 1] && _en_passant[1] - 48 - 1 == i - 1))) && add_move(i, j, i - 1, j + 1, iterator);
+        (j < 7 && (is_in_fast(_array[i - 1][j + 1], 1, 6) || _en_passant_col == j + 1)) && add_move(i, j, i - 1, j + 1, iterator);
     }
 
     return true;
@@ -413,122 +411,94 @@ bool Board::get_moves(const bool pseudo, const bool forbide_check) {
 
 
     int iterator = 0;
-
-    // Si un des rois est décédé, plus de coups possibles
-    bool king_w = false;
-    bool king_b = false;
-
-    for (int i = 0; i < 8; i++) {
-        for (int j = 0; j < 8; j++) {
-            const uint_fast8_t p = _array[i][j];
-            if (p == 6) {
-                king_w = true;
-                if (king_b)
-                    goto kings;
-            }
-            if (p == 12) {
-                king_b = true;
-                if (king_w)
-                    goto kings;
-            }
-        }
-    }
-
-    kings:
-
-    if (!king_w || !king_b) {
-        _got_moves = 0;
-        return true;
-    }
+    
         
-    for (uint_fast8_t i = 0; i < 8; i++) {
-        for (uint_fast8_t j = 0; j < 8; j++) {
-            const uint_fast8_t p = _array[i][j];
+    for (int index = 0; index < 64; index++) {
+        const uint_fast8_t i = index / 8;
+        const uint_fast8_t j = index % 8;
+        const uint_fast8_t p = _array[i][j];
 
-            // Si on dépasse le nombre de coups que l'on pensait possible dans une position
-            if (iterator >= max_moves * 4) {
-                cout << "Too many moves in the position : " << iterator / 4 + 1 << "+" << endl;
-                goto end_loops;
-            }
-                
-            
-            switch (p)
-            {   
-                case 0: // Case vide
-                    break;
+        // Si on dépasse le nombre de coups que l'on pensait possible dans une position
+        if (iterator >= max_moves * 4) {
+            cout << "Too many moves in the position : " << iterator / 4 + 1 << "+" << endl;
+            //goto end_loops;
+            return false;
+        }
 
-                case 1: // Pion blanc
-                    _player && add_pawn_moves(i, j, &iterator);
-                    break;
+        //(p == 1) && _player && add_pawn_moves(i, j, &iterator);
+        //(p == 2) && _player && add_knight_moves(i, j, &iterator);
 
-                case 2: // Cavalier blanc
-                    _player && add_knight_moves(i, j, &iterator);
-                    break;
+        
+        switch (p)
+        {   
+            case 0: // Case vide
+                break;
 
-                case 3: // Fou blanc   
-                    _player && add_diag_moves(i, j, &iterator);
-                    break;
+            case 1: // Pion blanc
+                _player && add_pawn_moves(i, j, &iterator);
+                break;
 
-                case 4: // Tour blanche
-                    _player && add_rect_moves(i, j, &iterator);
-                    break;
+            case 2: // Cavalier blanc
+                _player && add_knight_moves(i, j, &iterator);
+                break;
 
-                case 5: // Dame blanche
-                    _player && add_diag_moves(i, j, &iterator) && add_rect_moves(i, j, &iterator);
-                    break;
+            case 3: // Fou blanc   
+                _player && add_diag_moves(i, j, &iterator);
+                break;
 
-                case 6: // Roi blanc
-                    _player && add_king_moves(i, j, &iterator);
-                    // Roques
-                    // Grand
-                    if (_player && _castling_rights.q_w && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j - 1) && !attacked(i, j - 2))))
-                        add_move(i, j, i, j - 2, &iterator);
-                    // Petit
-                    if (_player && _castling_rights.k_w && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j + 1) && !attacked(i, j + 2))))
-                        add_move(i, j, i, j + 2, &iterator);
-                    break;
+            case 4: // Tour blanche
+                _player && add_rect_moves(i, j, &iterator);
+                break;
 
-                case 7: // Pion noir
-                    !_player && add_pawn_moves(i, j, &iterator);
-                    break;
+            case 5: // Dame blanche
+                _player && add_diag_moves(i, j, &iterator) && add_rect_moves(i, j, &iterator);
+                break;
 
-                case 8: // Cavalier noir
-                    !_player && add_knight_moves(i, j, &iterator);
-                    break;
+            case 6: // Roi blanc
+                _player && add_king_moves(i, j, &iterator);
+                // Roques
+                // Grand
+                if (_player && _castling_rights.q_w && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j - 1) && !attacked(i, j - 2))))
+                    add_move(i, j, i, j - 2, &iterator);
+                // Petit
+                if (_player && _castling_rights.k_w && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j + 1) && !attacked(i, j + 2))))
+                    add_move(i, j, i, j + 2, &iterator);
+                break;
 
-                case 9: // Fou noir
-                    !_player && add_diag_moves(i, j, &iterator);
-                    break;
+            case 7: // Pion noir
+                !_player && add_pawn_moves(i, j, &iterator);
+                break;
 
-                case 10: // Tour noire
-                    !_player && add_rect_moves(i, j, &iterator);
-                    break;
+            case 8: // Cavalier noir
+                !_player && add_knight_moves(i, j, &iterator);
+                break;
 
-                case 11: // Dame noire
-                    !_player && add_diag_moves(i, j, &iterator) && add_rect_moves(i, j, &iterator);        
-                    break;
+            case 9: // Fou noir
+                !_player && add_diag_moves(i, j, &iterator);
+                break;
 
-                case 12: // Roi noir
-                    !_player && add_king_moves(i, j, &iterator);
-                    // Roques
-                    // Grand
-                    if (!_player && _castling_rights.q_b && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j - 1) && !attacked(i, j - 2))))
-                        add_move(i, j, i, j - 2, &iterator);
-                    // Petit
-                    if (!_player && _castling_rights.k_b && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j + 1) && !attacked(i, j + 2))))
-                        add_move(i, j, i, j + 2, &iterator);
-                    break;
+            case 10: // Tour noire
+                !_player && add_rect_moves(i, j, &iterator);
+                break;
 
-	            default:
-                    cout << "Invalid piece !" << endl;
-	                break;
+            case 11: // Dame noire
+                !_player && add_diag_moves(i, j, &iterator) && add_rect_moves(i, j, &iterator);        
+                break;
 
-            }
-
+            case 12: // Roi noir
+                !_player && add_king_moves(i, j, &iterator);
+                // Roques
+                // Grand
+                if (!_player && _castling_rights.q_b && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j - 1) && !attacked(i, j - 2))))
+                    add_move(i, j, i, j - 2, &iterator);
+                // Petit
+                if (!_player && _castling_rights.k_b && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j + 1) && !attacked(i, j + 2))))
+                    add_move(i, j, i, j + 2, &iterator);
+                break;
         }
     }
 
-    end_loops:
+    //end_loops:
 
 
     _got_moves = static_cast<int_fast8_t>(iterator / 4);    
@@ -539,7 +509,6 @@ bool Board::get_moves(const bool pseudo, const bool forbide_check) {
         uint_fast8_t new_moves[400]; // Est-ce que ça prend de la mémoire?
         int n_moves = 0;
         Board b;
-
 
         for (int i = 0; i < _got_moves; i++) {
             b.copy_data(*this);
@@ -553,9 +522,8 @@ bool Board::get_moves(const bool pseudo, const bool forbide_check) {
             }
         }
 
-        for (int i = 0; i < n_moves; i++) {
+        for (int i = 0; i < n_moves; i++)
             _moves[i] = new_moves[i];
-        }
 
         _got_moves = static_cast<int_fast8_t>(n_moves / 4);
 
@@ -859,15 +827,13 @@ void Board::make_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fas
 
 
     // Coups donnant la possibilité d'un en passant
-    _en_passant = "-";
-    if (p == 1 && k == i + 2 && (_array[k][l - 1] == 7||_array[k][l + 1] == 7)) {
-        _en_passant = abc8[j];
-        _en_passant += static_cast<char>(i + 1 + 1 + 48);
-    }
-    if (p == 7 && k == i - 2 && (_array[k][l - 1] == 1||_array[k][l + 1] == 1)) {
-        _en_passant = abc8[j];
-        _en_passant += static_cast<char>(i + 1 - 1 + 48);
-    }
+    _en_passant_col = -1;
+
+    // Pour les blancs : pion qui avance de 2 cases, et pion noir à gauche ou à droite
+    if (p == 1 && k == i + 2 && (_array[k][l - 1] == 7 || _array[k][l + 1] == 7))
+        _en_passant_col = j;
+    if (p == 7 && k == i - 2 && (_array[k][l - 1] == 1 || _array[k][l + 1] == 1))
+        _en_passant_col = j;
 
     // En passant
     (p == 1 && j != l && _array[k][l] == 0) && ((_array[k - 1][l] = 0));
@@ -1804,10 +1770,9 @@ void Board::from_fen(string fen, bool fen_in_pgn, bool keep_headings) {
 
     // En passant
     if (c == '-')
-        _en_passant = "-";
+        _en_passant_col = -1;
     else {
-        _en_passant = fen[iterator];
-        _en_passant += fen[iterator + 1];
+        _en_passant_col = fen[iterator] - 'a';
         iterator += 1;
     }
 
@@ -1863,16 +1828,14 @@ void Board::to_fen() {
     string s;
     int it = 0;
 
-    const auto piece_letters = "PNBRQKpnbrqk";
-
     for (int i = 7; i >= 0; i--) {
         for (int j = 0; j < 8; j++) {
-	        const int p = _array[i][j];
-            if (p == 0)
+	        if (const int p = _array[i][j]; p == 0)
                 it += 1;
             else {
+	            constexpr auto piece_letters = "PNBRQKpnbrqk";
 
-                if (it > 0) {
+	            if (it > 0) {
                     s += static_cast<char>(it + 48);
                     it = 0;
                 }
@@ -1909,7 +1872,11 @@ void Board::to_fen() {
     if (!(_castling_rights.k_w || _castling_rights.q_w || _castling_rights.k_b || _castling_rights.q_b))
         s += "-";
 
-    s += " " + _en_passant + " " + to_string(_half_moves_count) + " " + to_string(_moves_count);
+    string en_passant = "-";
+	if (_en_passant_col != -1)
+        en_passant = abc8[_en_passant_col] + static_cast<string>(_player ? "6" : "3");
+
+    s += " " + en_passant + " " + to_string(_half_moves_count) + " " + to_string(_moves_count);
 
 
     _fen = s;
@@ -1975,7 +1942,6 @@ int Board::game_over() {
 string Board::move_label(uint_fast8_t i, uint_fast8_t j, uint_fast8_t k, uint_fast8_t l) {
     uint_fast8_t p1 = _array[i][j]; // Pièce qui bouge
     uint_fast8_t p2 = _array[k][l];
-    static const string abc = "abcdefgh";
 
     // Pour savoir si une autre pièce similaire peut aller sur la même case
     bool spec_col = false;
@@ -2005,10 +1971,10 @@ string Board::move_label(uint_fast8_t i, uint_fast8_t j, uint_fast8_t k, uint_fa
 
     switch (p1)
     {   
-        case 2: case 8: s += "N"; if (spec_line) s += abc[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
-        case 3: case 9: s += "B"; if (spec_line) s += abc[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
-        case 4: case 10: s += "R"; if (spec_line) s += abc[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
-        case 5: case 11: s += "Q"; if (spec_line) s += abc[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
+        case 2: case 8: s += "N"; if (spec_line) s += abc8[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
+        case 3: case 9: s += "B"; if (spec_line) s += abc8[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
+        case 4: case 10: s += "R"; if (spec_line) s += abc8[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
+        case 5: case 11: s += "Q"; if (spec_line) s += abc8[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
         case 6: case 12: 
         if (l - j == 2) {
             s += "O-O"; return s;
@@ -2023,14 +1989,14 @@ string Board::move_label(uint_fast8_t i, uint_fast8_t j, uint_fast8_t k, uint_fa
 
     if (p2 || ((p1 == 1 || p1 == 7 ) && j != l)) {
         if (p1 == 1 || p1 == 7)
-            s += abc[j];
+            s += abc8[j];
         s += "x";
-        s += abc[l];
+        s += abc8[l];
         s += static_cast<char>(k + 1 + 48);
     }
 
     else {
-        s += abc[l];
+        s += abc8[l];
         s += static_cast<char>(k + 1 + 48);
     }
 
@@ -2043,10 +2009,9 @@ string Board::move_label(uint_fast8_t i, uint_fast8_t j, uint_fast8_t k, uint_fa
     // Mats, pats, échecs...
     Board b(*this);
     b.make_move(i, j, k, l);
-    int m = b.is_mate();
 
     // mat
-    if (m == 1) {
+    if (int m = b.is_mate(); m == 1) {
         s += "#";
         if (_player)
             s += " 1-0";
@@ -2062,7 +2027,7 @@ string Board::move_label(uint_fast8_t i, uint_fast8_t j, uint_fast8_t k, uint_fa
     }
         
     // échec
-    else if (b.in_check())
+    if (b.in_check())
         s += "+";
 
     // sinon... plus de coups = draw? règles des 50 coups, nul par manque de matériel... 
@@ -3470,12 +3435,11 @@ void Board::get_king_safety(const int piece_attack, const int piece_defense, con
     int b_king_i = -1;
     int b_king_j = -1;
 
-    bool w_king = false;
-    bool b_king = false;
-
     if (_array[_white_king_pos.i][_white_king_pos.j] != 6 || _array[_black_king_pos.i][_black_king_pos.j] != 12)
     {
-        // Trouve la case correspondante au roi
+	    bool b_king = false;
+	    bool w_king = false;
+	    // Trouve la case correspondante au roi
         for (uint_fast8_t i = 0; i < 8; i++) {
             for (uint_fast8_t j = 0; j < 8; j++) {
                 const uint_fast8_t p = _array[i][j];
@@ -4120,7 +4084,7 @@ bool equal_positions(const Board& a, const Board& b) {
             if (a._array[i][j] != b._array[i][j])
                 return false;
 
-    return (a._player == b._player && a._castling_rights == b._castling_rights && a._en_passant == b._en_passant);
+    return (a._player == b._player && a._castling_rights == b._castling_rights && a._en_passant_col == b._en_passant_col);
 }
 
 
@@ -4134,7 +4098,7 @@ string Board::simple_position() const
             s += _array[i][j];
 
     s += _player + _castling_rights.k_b + _castling_rights.k_w + _castling_rights.q_b + _castling_rights.q_w;
-    s += _en_passant;
+    s += _en_passant_col;
 
     return s;
 }
@@ -4330,7 +4294,7 @@ void Board::get_attacks_and_defenses() {
     _defenses_eval = 0;
 
     // Tableau des valeurs d'attaques des pièces (0 = pion, 1 = caval, 2 = fou, 3 = tour, 4 = dame, 5 = roi)
-    static const int attacks_array[6][6] = {
+    static constexpr int attacks_array[6][6] = {
     //   P    N    B     R    Q    K
         {0,   25,  25,  30,  50,  70}, // P
         {5,   0,   20,  30, 100,  80}, // N
@@ -4341,7 +4305,7 @@ void Board::get_attacks_and_defenses() {
     }; // TODO à définir autre part, puis à améliorer
 
     // Tableau des valeurs de défenses des pièces (0 = pion, 1 = caval, 2 = fou, 3 = tour, 4 = dame, 5 = roi)
-    static const int defenses_array[6][6] = {
+    static constexpr int defenses_array[6][6] = {
     //   P    N    B     R    Q    K
         {15,   5,  10,   5,    5,  0}, // P
         {5,   10,  10,  15,   20,  0}, // N
@@ -5198,7 +5162,7 @@ int Board::quiescence(Evaluator *eval, int alpha, const int beta, const int dept
 
     // Evalue la position initiale
     evaluate_int(eval, checkmates_check);
-    const int stand_pat = _evaluation * get_color();
+    const int stand_pat = static_cast<int>(_evaluation) * get_color();
     
     if (depth <= 0)
         return stand_pat;
@@ -5219,8 +5183,6 @@ int Board::quiescence(Evaluator *eval, int alpha, const int beta, const int dept
     }
     quick_moves_sort();
 
-
-    // Evaluate all capturing moves and promotions
     for (int i = 0; i < _got_moves; i++) {
         // TODO : ajouter promotions et échecs
         // TODO : utiliser des flags
@@ -5243,6 +5205,7 @@ int Board::quiescence(Evaluator *eval, int alpha, const int beta, const int dept
 
         
     }
+
 
     return alpha;
 }
@@ -5497,4 +5460,19 @@ void draw_text_box(const TextBox& text_box) {
 int Board::get_color() const
 {
     return _player ? 1 : -1;
+}
+
+
+// Fonction qui génère et renvoie la clé de Zobrist de la position
+uint_fast64_t Board::get_zobrist_key() const
+{
+    uint_fast64_t key = 0;
+
+	/*for (int i = 0; i < 64; i++)
+		if (_board[i] != 0)
+			key ^= _zobrist_keys[i][_board[i] + 1];
+	if (_player)
+		key ^= _zobrist_keys[64][0];*/
+
+	return key;
 }
