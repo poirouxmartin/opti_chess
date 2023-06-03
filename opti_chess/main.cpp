@@ -338,6 +338,10 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Re utiliser la réflexion de la quiescence search pour la recherche normale
 -> Faire des groupes de variables pour savoir lesquelles réinitialiser lors d'un coup...
 -> Grogros fait des Fxh7 -> g6/Rg7 et perd le fou... (à cause de king safety?)
+-> Faire evaluation.cpp? gui.cpp?
+-> Comme pour le roi, garder en mémoire l'emplacement des pièces (utiliserait 256 bytes)
+-> Virer toutes les variables d'évaluation dans le plateau
+-> On dirait que la position est évaluée à chaque frame... à regarder
 
 
 
@@ -428,6 +432,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> O-O+ dans les move label à prendre en compte
 -> Revoir les update du temps quand on le change pendant que ça joue
 -> Afficher des traits autour du plateau chess.com?
+-> Affichage de la réflexion de Grogros sur le PGN : {N: 10.29% of 544}
 
 
 
@@ -475,6 +480,16 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> 8/4k2p/2pNb3/2P1P1pP/r7/8/1P3r2/1K1R3R w - - 0 35 : king safety ??
 -> 2b2rk1/1p4p1/2n4p/2P1p3/8/2PP1pPq/3B1P2/3Q1RKB b - - 1 23
 -> r4rk1/1b4p1/pqp4p/bp6/P1pPN2Q/4BP2/1n4PP/RB3RK1 w - - 2 26
+-> rnb2bnr/ppp4k/3p3p/6BQ/2BPP3/2N5/PPP2K1P/q7 w - - 0 15
+-> r1bqkb1r/1p3pp1/p1np3p/3Np3/4P3/N7/PPP2PPP/R2QKB1R w KQkq - 2 11 : gros trou en d5
+-> 2rq1rk1/1p2bpp1/p1np3p/3Np2Q/4P1BP/2P5/PP3PP1/R4RK1 b - - 4 20
+-> 1r1q1rk1/4bpp1/2np3p/pp1NpQ2/P3P1BP/2P3P1/1P3P2/R4RK1 b - - 1 23
+-> r4b1r/pp3k1p/2p1bp2/3n4/2BP1B2/P7/1PP2PPP/R4RK1 w - - 0 17 : king safety??
+-> r1bq1rk1/ppp2ppp/2np4/2b5/2PNPPn1/2N5/PP4PP/R1BQKB1R w KQ - 1 9 : king safety??
+-> r3r1k1/p1p2ppp/2p5/2b1P3/2Pq2b1/2N3Q1/PP3nPP/R1B1KBR1 w Q - 1 15 : king safety -> -11 selon stockfish
+-> r1b1k2r/pp1n3p/4p3/3pP1Q1/q2p4/3B4/P2N2PP/R4RK1 b - - 2 19 : king safety..............
+-> b1rr2k1/4bpp1/pq3n2/1p3P1p/3P4/P1NQB1P1/4B2P/R1R3K1 w - - 0 24 -> slider on queen
+-> b2r2k1/5pp1/p7/1p3P2/3Pq1p1/P1Q3P1/5B1P/R5K1 w - - 1 31 : king safety
 
 
 
@@ -690,6 +705,7 @@ int main() {
     eval_white._piece_positioning = 0.0f;
     eval_white._castling_rights = 0.0f;
     eval_white._square_controls = 0.0f;
+    eval_white._space_advantage = 0.0f;
 
     // Paramètres pour l'IA
     int search_depth = 8;
@@ -791,13 +807,11 @@ int main() {
         	//cout << main_GUI._board._black_king_pos.i << ", " << main_GUI._board._black_king_pos.j << endl;
 
             //main_GUI._board.quick_moves_sort();
-            //main_GUI._board.grogros_zero(&monte_evaluator, 1, true);
+            main_GUI._board.grogros_zero(&monte_evaluator, 1, true);
             //cout << main_GUI._board._quick_sorted_moves << endl;
             //main_GUI._board.display_moves();
-            main_GUI.new_bind_game();
-            /*test_function(testA, 0.001, "testA");
-            test_function(testB, 0.001, "testB");
-            test_function(testB, 0.001, "testC");*/
+            //main_GUI.new_bind_game();
+            //main_GUI._board.evaluate(&monte_evaluator);
 
         }
 

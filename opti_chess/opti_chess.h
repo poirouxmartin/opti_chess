@@ -280,6 +280,10 @@ class Board {
     int _control = 0;
     bool _square_controls = false;
 
+    // Avantage d'espace
+    int _space = 0;
+    bool _space_adv = false;
+
     // Chances de gain/nulle/perte (4 bytes / 4 bytes / 4 bytes)
     float _white_winning_chance = 0.0f;
     float _drawing_chance = 0.0f;
@@ -302,6 +306,9 @@ class Board {
     // On stocke les positions des rois
     Pos _white_king_pos = {0, 4};
     Pos _black_king_pos = {6, 4};
+
+    // Est-ce qu'on a affiché les composantes du plateau?
+    bool _displayed_components = false;
 
 
     // Constructeur par défaut
@@ -416,13 +423,13 @@ class Board {
     bool draw();
     
     // Fonction qui joue le son d'un coup
-    void play_move_sound(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t);
+    void play_move_sound(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t) const;
 
     // Fonction qui joue le son d'un coup à partir de son index
-    void play_index_move_sound(int);
+    void play_index_move_sound(int) const;
 
     // Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo d'un plateau
-    void draw_monte_carlo_arrows();
+    void draw_monte_carlo_arrows() const;
 
     // Fonction qui calcule l'activité des pièces
     void get_piece_activity(bool legal = false);
@@ -558,6 +565,12 @@ class Board {
 
     // Fonction qui génère et renvoie la clé de Zobrist de la position
     [[nodiscard]] uint_fast64_t get_zobrist_key() const;
+
+    // Fonction qui calcule l'avantage d'espace
+    bool get_space();
+
+    // Fonction qui calcule et renvoie une évaluation des vis-à-vis
+	[[nodiscard]] int get_alignments() const;
 
 };
 
@@ -782,3 +795,29 @@ extern GUI main_GUI;
 
 // Fonction qui compare deux coups pour savoir lequel afficher en premier
 bool compare_move_arrows(int m1, int m2);
+
+
+// Classe qui gère les clés de Zobrist
+class Zobrist
+{
+	public:
+		// Variables
+
+		// Clés du plateau
+		uint_fast64_t _board_keys[64][12];
+
+		// Clé du trait
+		uint_fast64_t _player_key;
+
+		// Clés des roques
+		uint_fast64_t _castling_keys[16];
+
+		// Clés du en-passant
+		uint_fast64_t _en_passant_keys[8];
+
+		// Fonctions
+
+		// Fonction qui génère les clés du plateau
+		uint_fast64_t generate_board_keys();
+
+};
