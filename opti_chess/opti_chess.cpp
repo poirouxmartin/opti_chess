@@ -2,6 +2,7 @@
 #include <algorithm>
 #include "useful_functions.h"
 #include "gui.h"
+#include <ranges>
 #include <string>
 #include <sstream>
 #include <thread>
@@ -1064,12 +1065,25 @@ void Board::pieces_positioning(const Evaluator *eval) {
 
 
 // Fonction qui évalue la position à l'aide d'heuristiques
-bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display, Network *n) {
+bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display, Network *n)
+{
+    /*if (_evaluated)
+		return _is_game_over;*/
 
     _evaluated = true;
     _mate = false;
 
-    eval_components = "";
+    if (display)
+    {
+        eval_components = "";
+        _displayed_components = true;
+    }
+    else
+    {
+		_displayed_components = false;
+    }
+		
+
     _evaluator = eval;
 
     if (checkmates) {
@@ -1329,6 +1343,27 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
             eval_components += "square controls : " + to_string(static_cast<int>(round(100 * square_controls))) + "\n";
         _evaluation += square_controls;
     }
+
+
+    // Avantage d'espace
+    if (eval->_space_advantage != 0.0f)
+    {
+    	get_space();
+	    const float space = _space * eval->_space_advantage;
+		if (display)
+			eval_components += "space : " + to_string(static_cast<int>(round(100 * space))) + "\n";
+		_evaluation += space;
+	}
+
+
+    // Alignement des pièces (fou-tour/dame-roi)
+    if (eval->_alignments != 0.0f)
+    {
+	    const float pieces_alignment = get_alignments() * eval->_alignments;
+		if (display)
+			eval_components += "pieces alignment : " + to_string(static_cast<int>(round(100 * pieces_alignment))) + "\n";
+		_evaluation += pieces_alignment;
+	}
 
 
     // Forteresse
@@ -2239,9 +2274,9 @@ bool Board::draw() {
             // S'il y'a les flèches de réflexion de GrogrosZero, et qu'aucune pièce n'est sélectionnée
             if (drawing_arrows && !selected_piece()) {
                 // On regarde dans le sens inverse pour jouer la flèche la plus récente (donc celle visible en cas de superposition)
-                for (auto it = grogros_arrows.rbegin(); it != grogros_arrows.rend(); ++it) {
-                    vector<int> arrow = *it;
-                    if (arrow[2] == clicked_pos.first && arrow[3] == clicked_pos.second) {
+                for (auto arrow : std::ranges::reverse_view(grogros_arrows))
+                {
+	                if (arrow[2] == clicked_pos.first && arrow[3] == clicked_pos.second) {
                         // Retrouve le coup correspondant
                         play_move_sound(arrow[0], arrow[1], arrow[2], arrow[3]);
                         ((main_GUI._click_bind && main_GUI._board.click_i_move(arrow[4], get_board_orientation())) || true) && play_monte_carlo_move_keep(arrow[4], true, true, true, true);
@@ -2304,8 +2339,7 @@ bool Board::draw() {
                 if (drop_pos.first == selected_pos.first && drop_pos.second == selected_pos.second) {
                 }
                 else {
-                    int selected_piece = _array[selected_pos.first][selected_pos.second];
-                    if (selected_piece > 0 && (selected_piece < 7 && !_player) || (selected_piece >= 7 && _player)) {
+	                if (int selected_piece = _array[selected_pos.first][selected_pos.second]; selected_piece > 0 && (selected_piece < 7 && !_player) || (selected_piece >= 7 && _player)) {
                         // Si c'est pas ton tour, pre-move
                         pre_move[0] = selected_pos.first;
                         pre_move[1] = selected_pos.second;
@@ -2387,10 +2421,9 @@ bool Board::draw() {
             else {
 
                 vector<int> arrow = {right_clicked_pos.first, right_clicked_pos.second, x_mouse, y_mouse};
-                auto found_arrow = find(arrows_array.begin(), arrows_array.end(), arrow);
 
                 // Si la flèche existe, la supprime
-                if (found_arrow != arrows_array.end())
+                if (auto found_arrow = find(arrows_array.begin(), arrows_array.end(), arrow); found_arrow != arrows_array.end())
                     arrows_array.erase(found_arrow);
 
                 // Sinon, la rajoute
@@ -2604,7 +2637,7 @@ bool Board::draw() {
 
 
     // FEN
-    if (_fen == "")
+    if (_fen.empty())
         to_fen();
     const char *fen = _fen.c_str();
     DrawTextEx(text_font, fen, {text_size / 2, board_padding_y + board_size + text_size * 3 / 2}, text_size / 3, font_spacing * text_size / 3, text_color_blue);
@@ -2641,12 +2674,15 @@ bool Board::draw() {
         stream << fixed << setprecision(2) << best_eval / 100.0f;
         global_eval_text = mate ? eval : (best_eval > 0) ? "+" + stream.str() : stream.str();
 
-        // get_winning_chances();
-        // eval += "\nW/D/L : " + to_string(static_cast<int>(100 * _white_winning_chance)) + "/" + to_string(static_cast<int>(100 * _drawing_chance)) + "/" + to_string(static_cast<int>(100 * _black_winning_chance)) + "\%\n";
+    	float win_chance = get_winning_chances_from_eval(best_eval, mate != 0, _player);
+        if (!_player)
+        	win_chance = 1 - win_chance;
+    	eval += "\nW/D/L : " + to_string(static_cast<int>(100 * win_chance)) + "/0/" + to_string(static_cast<int>(100 * (1 - win_chance))) + "\%\n";
 
 
         // Pour l'évaluation statique
-        evaluate_int(_evaluator, true, true);
+        if (!_displayed_components)
+            evaluate_int(_evaluator, true, true);
         int max_depth = grogros_main_depth();
         int n_nodes = total_nodes();
         monte_carlo_text += "\n\n--- static eval : "  + ((_static_evaluation > 0)  ? static_cast<string>("+") : static_cast<string>("")) + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval : " + ((best_eval > 0) ? static_cast<string>("+") : static_cast<string>("")) + eval + " ---" + "\nnodes : " + int_to_round_string(n_nodes) + "/" + int_to_round_string(monte_buffer._length) + " | time : " + clock_to_string(_time_monte_carlo) + " | speed : " + int_to_round_string(total_nodes() / (_time_monte_carlo + 1) * 1000) + "N/s" + " | depth : " + to_string(max_depth);
@@ -2724,7 +2760,7 @@ bool Board::draw() {
 
 
 // Fonction qui joue le son d'un coup
-void Board::play_move_sound(const uint_fast8_t i, const uint_fast8_t j, const uint_fast8_t k, const uint_fast8_t l)
+void Board::play_move_sound(const uint_fast8_t i, const uint_fast8_t j, const uint_fast8_t k, const uint_fast8_t l) const
 {
 
     // Pièces
@@ -2787,7 +2823,8 @@ void Board::play_move_sound(const uint_fast8_t i, const uint_fast8_t j, const ui
 
 
 // Fonction qui joue le son d'un coup à partir de son index
-void Board::play_index_move_sound(const int i) {
+void Board::play_index_move_sound(const int i) const
+{
     play_move_sound(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]);
 }
 
@@ -2889,7 +2926,8 @@ void draw_arrow_from_coord(int i1, int j1, int i2, int j2, int index, const int 
 
 
 // Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo d'un plateau
-void Board::draw_monte_carlo_arrows() {
+void Board::draw_monte_carlo_arrows() const
+{
     // get_moves(false, true);
 
     grogros_arrows = {};
@@ -2951,7 +2989,7 @@ void Board::get_piece_activity(const bool legal) {
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             if (_array[i][j] != 0) {
-                piece_move_count[index] = 0;
+                piece_move_count[index] = 0; // Utile?
                 index++;
             }
         }
@@ -3195,8 +3233,7 @@ void Board::grogros_zero(Evaluator *eval, int nodes, const bool checkmates, cons
     // Si c'est le premier appel, sur le plateau principal
     if (_new_board && depth == 0) {
         max_depth = 0;
-        if (!_evaluated)
-            evaluate_int(eval, true, false, net); 
+		evaluate_int(eval, true, false, net); 
     }
 
     // Si c'est le plateau principal
@@ -3402,11 +3439,6 @@ void Board::reset_all(bool self, bool display) {
         monte_buffer._heap_boards[_index_children[i]].reset_all(false);
 
     reset_board();
-
-    /*if (self && display)
-        cout << "boards reset done" << endl;*/
-
-    return;
 }
 
 
@@ -3806,10 +3838,9 @@ void slider_text(const string& s, float pos_x, float pos_y, float width, float h
     while (getline(ss, line, '\n')) {
 
         // Taille horizontale du texte
-        float horizontal_text_size = MeasureTextEx(text_font, line.c_str(), size, font_spacing * size).x;
 
         // Split le texte en parties égales
-        if (horizontal_text_size > new_width) {
+        if (float horizontal_text_size = MeasureTextEx(text_font, line.c_str(), size, font_spacing * size).x; horizontal_text_size > new_width) {
             int split_length = line.length() * new_width / horizontal_text_size;
             for (int i = split_length - 1; i < line.length() - 1; i += split_length)
                 line.insert(i, "\n");
@@ -3821,10 +3852,9 @@ void slider_text(const string& s, float pos_x, float pos_y, float width, float h
 
 
     // Taille verticale totale du texte
-    float vertical_text_size = MeasureTextEx(text_font, new_string.c_str(), size, font_spacing * size).y;
 
     // Si le texte prend plus de place verticalement que l'espace alloué
-    if (vertical_text_size > height) {
+    if (float vertical_text_size = MeasureTextEx(text_font, new_string.c_str(), size, font_spacing * size).y; vertical_text_size > height) {
 
         int n_lines;
 
@@ -4061,16 +4091,16 @@ void Board::generate_opening_book(int nodes) {
 
 // Fonction qui renvoie si deux positions (en format FEN) sont les mêmes
 bool equal_fen(const string& fen_a, const string& fen_b) {
-	size_t k = fen_a.find(" ");
-    k = fen_a.find(" ", k + 1);
-    k = fen_a.find(" ", k + 1);
-    k = fen_a.find(" ", k + 1);
+	size_t k = fen_a.find(' ');
+    k = fen_a.find(' ', k + 1);
+    k = fen_a.find(' ', k + 1);
+    k = fen_a.find(' ', k + 1);
 	const string simple_fen_a = fen_a.substr(0, k);
     
-    k = fen_b.find(" ");
-    k = fen_b.find(" ", k + 1);
-    k = fen_b.find(" ", k + 1);
-    k = fen_b.find(" ", k + 1);
+    k = fen_b.find(' ');
+    k = fen_b.find(' ', k + 1);
+    k = fen_b.find(' ', k + 1);
+    k = fen_b.find(' ', k + 1);
 	const string simple_fen_b = fen_b.substr(0, k);
 
     return (simple_fen_a == simple_fen_b);
@@ -4091,7 +4121,6 @@ bool equal_positions(const Board& a, const Board& b) {
 // Fonction qui renvoie une représentation simple et rapide de la position
 string Board::simple_position() const
 {
-    
     string s;
     for (int i = 0; i < 8; i++)
         for (int j = 0; j < 8; j++)
@@ -4828,7 +4857,7 @@ void play_end_sound() {
 // A partir de coordonnées sur le plateau
 void draw_simple_arrow_from_coord(const int i1, const int j1, const int i2, const int j2, float thickness, Color c) {
     // cout << thickness << endl;
-    if (thickness == -1.0)
+    if (thickness == -1.0f)
         thickness = arrow_thickness;
     const float x1 = board_padding_x + tile_size * orientation_index(j1) + tile_size /2;
     const float y1 = board_padding_y + tile_size * orientation_index(7 - i1) + tile_size /2;
@@ -4853,6 +4882,7 @@ void draw_simple_arrow_from_coord(const int i1, const int j1, const int i2, cons
 
 // Fonction qui réinitialise les composantes de l'évaluation
 void Board::reset_eval() {
+    _displayed_components = false;
     _mate_checked = false;
     _game_over_checked = false;
     _evaluated = false; _evaluation = 0;
@@ -4868,6 +4898,7 @@ void Board::reset_eval() {
     _rook_open_file = false; _rook_open = 0;
     _rook_semi_open_file = false; _rook_semi = 0;
     _square_controls = false; _control = 0;
+    _space_adv = false; _space = 0;
     _winning_chances = false; _white_winning_chance = 0; _drawing_chance = 0; _black_winning_chance = 0;
 }
 
@@ -5067,8 +5098,7 @@ int Board::select_uct(const float c) const
     for (int i = 0; i < _got_moves; i++) {
 	    const float win_chance = get_winning_chances_from_eval(monte_buffer._heap_boards[_index_children[i]]._evaluation,
 	                                                           monte_buffer._heap_boards[_index_children[i]]._mate, _player);
-	    const float uct_value = uct(win_chance, c, _nodes, _nodes_children[i]);
-        if (uct_value > max_uct) {
+	    if (const float uct_value = uct(win_chance, c, _nodes, _nodes_children[i]); uct_value > max_uct) {
             max_uct = uct_value;
             uct_move = i;
         }
@@ -5463,6 +5493,23 @@ int Board::get_color() const
 }
 
 
+
+// Fonction qui génère la clé du plateau
+uint_fast64_t generate_board_key(const Board& b)
+{
+	uint_fast64_t key = 0;
+
+	/*for (int i = 0; i < 64; i++)
+		if (b._board[i] != 0)
+			key ^= _zobrist_keys[i][b._board[i] + 1];
+	if (b._player)
+		key ^= _zobrist_keys[64][0];*/
+
+	return key;
+}
+
+
+
 // Fonction qui génère et renvoie la clé de Zobrist de la position
 uint_fast64_t Board::get_zobrist_key() const
 {
@@ -5475,4 +5522,235 @@ uint_fast64_t Board::get_zobrist_key() const
 		key ^= _zobrist_keys[64][0];*/
 
 	return key;
+}
+
+
+// Fonction qui calcule l'avantage d'espace
+// TODO
+bool Board::get_space()
+{
+
+    if (_space_adv)
+		return true;
+
+
+    // Multiplication par un poids
+    // L'avantage d'espace dépend du nombre de pièces restantes
+
+    int w_pieces = 0; int b_pieces = 0;
+
+    for (uint_fast8_t i = 0; i < 8; i++)
+        for (uint_fast8_t j = 0; j < 8; j++)
+            if (is_in(_array[i][j], 2, 6))
+                w_pieces++;
+            else if (is_in(_array[i][j], 8, 12))
+                b_pieces++;
+
+    // Nombre de colonnes ouvertes
+    int open_rows = 0;
+    for (uint_fast8_t j = 0; j < 8; j++)
+    {
+        bool open = true;
+        for (uint_fast8_t i = 0; i < 8; i++)
+        {
+            if (_array[i][j] == 1 || _array[i][j] == 7)
+            {
+                open = false;
+                break;
+            }
+        }
+        if (open)
+            open_rows++;
+    }
+
+    // Poids
+    const int w_weight = max(0, w_pieces - 2 * open_rows);
+    const int b_weight = max(0, b_pieces - 2 * open_rows);
+    
+
+
+    // Avantage d'espace
+    int space_area = 0;
+
+    // Valeur de l'avantage d'espace pour chaque case centrale
+    int w_space[3][4];
+    int b_space[3][4];
+
+    // Assigne les valeurs pour chaque case
+    for (uint_fast8_t j = 2; j < 6; j++)
+    {
+        // Inutile de calculer si le poids est nul
+        if (w_weight != 0)
+        {
+            // Blancs
+            for (uint_fast8_t i = 1; i <= 3; i++)
+            {
+                // S'il y a un pion allié sur la case, ou qu'elle est contrôlée par un pion adverse, met la valeur 0
+                if (_array[i][j] == 1 || (_array[i + 1][j - 1] == 7) || (_array[i + 1][j + 1] == 7))
+                    w_space[i - 1][j - 2] = 0;
+                // Sinon, s'il y a un pion allié à moins de 3 cases devant, met la valeur à 2
+                else if (_array[i + 1][j] == 1 || _array[i + 2][j] == 1 || _array[i + 3][j] == 1)
+                    w_space[i - 1][j - 2] = 2;
+                else
+                    w_space[i - 1][j - 2] = 1;
+            }
+        }
+
+        
+        if (b_weight != 0)
+        {
+            // Noirs
+            for (uint_fast8_t i = 6; i >= 4; i--)
+            {
+                // S'il y a un pion allié sur la case, ou qu'elle est contrôlée par un pion adverse, met la valeur 0
+                if (_array[i][j] == 7 || (_array[i - 1][j - 1] == 1) || (_array[i - 1][j + 1] == 1))
+                    b_space[6 - i][j - 2] = 0;
+                // Sinon, s'il y a un pion allié à moins de 3 cases devant, met la valeur à 2
+                else if (_array[i - 1][j] == 7 || _array[i - 2][j] == 7 || _array[i - 3][j] == 7)
+                    b_space[6 - i][j - 2] = 2;
+                else
+                    b_space[6 - i][j - 2] = 1;
+            }
+        }
+        
+	}
+
+
+    if (w_weight != 0 || b_weight != 0)
+    {
+        // Calcule l'avantage d'espace
+        for (uint_fast8_t i = 0; i < 3; i++)
+        {
+            for (uint_fast8_t j = 0; j < 4; j++)
+            {
+                space_area += w_space[i][j] * w_weight - b_space[i][j] * b_weight;
+            }
+        }
+    }
+    
+
+
+    _space = space_area;
+    _space_adv = true;
+
+    return true;
+}
+
+
+
+// Fonction qui calcule et renvoie une évaluation des vis-à-vis
+// TODO : à finir
+int Board::get_alignments() const
+{
+
+    // Il faut prendre en compte le nombre de pions/pieces au milieu du vis-à-vis
+
+    // Puissance de base des vis-à-vis
+    constexpr int rook_queen = 30;
+    constexpr int bishop_queen = 25;
+    constexpr int rook_king = 50;
+    constexpr int bishop_king = 35;
+    constexpr int queen_king_rect = 60;
+    constexpr int queen_king_diag = 50;
+
+    // Protection contre les vis-à-vis
+    constexpr int ally_pawn_rect = 15;
+    constexpr int enemy_pawn_rect = 10;
+    constexpr int ally_pawn_diag = 5;
+    constexpr int enemy_pawn_diag = 10;
+
+    // Valeur totale des vis-à-vis
+    int alignments = 0;
+
+
+    // Regarde toutes les pièces du plateau
+    for (uint_fast8_t i = 0; i < 8; i++)
+    {
+	    for (uint_fast8_t j = 0; j < 8; j++)
+	    {
+		    const uint_fast8_t piece = _array[i][j];
+
+            // Dame blanche
+            if (piece == 5)
+            {
+	            // Cherche les tours noires sur la même ligne ou colonne
+	            constexpr int directions[4][2] = { {-1, 0}, {1, 0}, {0, -1}, {0, 1} };  // Bas, haut, gauche, droite
+
+                for (int direction = 0; direction < 4; direction++) {
+                    int count = 0;
+                    const int step_i = directions[direction][0];
+                    const int step_j = directions[direction][1];
+
+                    int row = (step_i == 0) ? i : (step_i == 1) ? 0 : 7;
+                    int col = (step_j == 0) ? j : (step_j == 1) ? 0 : 7;
+
+                    // Parcourir les cases dans la direction sélectionnée
+                    while (row != i || col != j) {
+                        const int piece_b = _array[row][col];
+
+                        if (piece_b == 10)
+                            count += rook_queen;
+                        else if (count > 0 && piece_b == 1)
+                            count -= enemy_pawn_rect;
+                        else if (count > 0 && piece_b == 7)
+                            count -= ally_pawn_rect;
+
+                        row += step_i;
+                        col += step_j;
+                    }
+
+                    alignments -= max(count, 0);
+                }
+
+                // Cherche les fous noirs sur la même diagonale
+                constexpr int directions_diag[4][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1} };  // Bas gauche, bas droite, haut gauche, haut droite
+
+                for (int direction = 0; direction < 4; direction++)
+                {
+                	int count = 0;
+					const int step_i = directions_diag[direction][0];
+					const int step_j = directions_diag[direction][1];
+
+                    // Commence sur la même diagonale que la dame, au bout de l'échiquier
+                    int row = i - step_i;
+                    int col = j - step_j;
+                    if (row < 0 || row > 7 || col < 0 || col > 7)
+						continue;
+                    while (row != 0 && row != 7 && col != 0 && col != 7) {
+                        row -= step_i, col -= step_j;
+                    }
+
+
+					// Parcourir les cases dans la direction sélectionnée
+					while (row != i || col != j)
+					{
+						const int piece_b = _array[row][col];
+
+						if (piece_b == 9)
+							count += bishop_queen;
+						else if (count > 0 && piece_b == 1)
+							count -= enemy_pawn_diag;
+						else if (count > 0 && piece_b == 7)
+							count -= ally_pawn_diag;
+
+						row += step_i;
+						col += step_j;
+					}
+
+					alignments -= max(count, 0);
+				}
+
+            }
+	    }
+    }
+
+
+
+
+
+
+
+
+
+    return alignments;
 }
