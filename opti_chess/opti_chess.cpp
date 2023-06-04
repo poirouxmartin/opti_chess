@@ -5057,10 +5057,10 @@ int* Board::get_i_move(const int i) const
     }
 
     const auto coord = new int[4];
-    coord[0] = _moves[4].i1;
-    coord[1] = _moves[4].j1;
-    coord[2] = _moves[4].i2;
-    coord[3] = _moves[4].j2;
+    coord[0] = _moves[i].i1;
+    coord[1] = _moves[i].j1;
+    coord[2] = _moves[i].i2;
+    coord[3] = _moves[i].j2;
 
     return coord;
 }
