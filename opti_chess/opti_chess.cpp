@@ -1337,8 +1337,7 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
 
     // Contrôle des cases
     if (eval->_square_controls != 0.0f) {
-	    get_square_controls();
-	    const float square_controls = _control * eval->_square_controls;
+	    const float square_controls = get_square_controls() * eval->_square_controls;
         if (display)
             eval_components += "square controls : " + to_string(static_cast<int>(round(100 * square_controls))) + "\n";
         _evaluation += square_controls;
@@ -1348,8 +1347,7 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
     // Avantage d'espace
     if (eval->_space_advantage != 0.0f)
     {
-    	get_space();
-	    const float space = _space * eval->_space_advantage;
+	    const float space = get_space() * eval->_space_advantage;
 		if (display)
 			eval_components += "space : " + to_string(static_cast<int>(round(100 * space))) + "\n";
 		_evaluation += space;
@@ -4897,8 +4895,6 @@ void Board::reset_eval() {
     _positioning = false; _pos = 0;
     _rook_open_file = false; _rook_open = 0;
     _rook_semi_open_file = false; _rook_semi = 0;
-    _square_controls = false; _control = 0;
-    _space_adv = false; _space = 0;
     _winning_chances = false; _white_winning_chance = 0; _drawing_chance = 0; _black_winning_chance = 0;
 }
 
@@ -4983,13 +4979,9 @@ int Board::grogros_main_depth() const
 
 
 // Fonction qui calcule la valeur des cases controllées sur l'échiquier
-void Board::get_square_controls() {
+int Board::get_square_controls() const
+{
     // TODO ajouter des valeurs pour le contrôle des cases par les pièces?
-
-    if (_square_controls)
-        return;
-
-    _control = 0;
 
     // Valeur du contrôle de chaque case (pour les pions)
     static constexpr int square_controls[8][8] = {
@@ -5010,51 +5002,26 @@ void Board::get_square_controls() {
     bool white_controls[8][8] = {{false}};
     bool black_controls[8][8] = {{false}};
 
-    for (int i = 0; i < 8; i++) {
-        for (int j = 0; j < 8; j++) {
+
+    // Ajoute le contrôle des cases par les pions
+    for (uint_fast8_t i = 0; i < 8; i++) {
+        for (uint_fast8_t j = 0; j < 8; j++) {
 	        const int p = _array[i][j];
-            if (p == 1) {
-                white_controls[7 - i - 1][j - 1] = true;
-                white_controls[7 - i - 1][j + 1] = true;
-            }
-            if (p == 7) {
-                black_controls[i - 1][j - 1] = true;
-                black_controls[i - 1][j + 1] = true;
-            }    
+            (j - 1 >= 0 && 7 - i - 1 >= 0) && (white_controls[7 - i - 1][j - 1] |= (p == 1));
+            (j + 1 < 8 && 7 - i - 1 >= 0) && (white_controls[7 - i - 1][j + 1] |= (p == 1));
+            (j - 1 >= 0 && i - 1 >= 0) && (black_controls[i - 1][j - 1] |= (p == 7));
+            (j + 1 < 8 && i - 1 >= 0) && (black_controls[i - 1][j + 1] |= (p == 7));
         }
     }
 
-
-    // Proposition de ChatGPT : 
-    /*const uint_fast8_t numRows = 8;
-    const uint_fast8_t numCols = 8;
-
-    for (int i = 1; i < numRows - 1; i++) {
-        for (int j = 1; j < numCols - 1; j++) {
-            p = _array[i][j];
-
-            white_controls[i - 1][j - 1] |= (p == 1) ? true : false;
-            white_controls[i - 1][j + 1] |= (p == 1) ? true : false;
-            black_controls[i + 1][j - 1] |= (p == 7) ? true : false;
-            black_controls[i + 1][j + 1] |= (p == 7) ? true : false;
-        }
-    }*/
-
-
-
-
-
-    for (int i = 0; i < 8; i++)
-        for (int j = 0; j < 8; j++)
+    // Somme les contrôles des cases par les pions
+    for (uint_fast8_t i = 0; i < 8; i++)
+        for (uint_fast8_t j = 0; j < 8; j++)
             total_control += (white_controls[i][j] - black_controls[i][j]) * square_controls[i][j];
 
     // L'importance de ce paramètre dépend de l'avancement de la partie : l'espace est d'autant plus important que le nombre de pièces est grand
     constexpr float control_adv_factor = 0.0f; // En fonction de l'advancement de la partie
-    _control = total_control * (1 + (control_adv_factor - 1) * _adv);
-    //_control = total_control * (1.0f - _adv);
-    _square_controls = true;
-
-    return;
+    return total_control * (1 + (control_adv_factor - 1) * _adv);
 }
 
 
@@ -5526,13 +5493,8 @@ uint_fast64_t Board::get_zobrist_key() const
 
 
 // Fonction qui calcule l'avantage d'espace
-// TODO
-bool Board::get_space()
+int Board::get_space() const
 {
-
-    if (_space_adv)
-		return true;
-
 
     // Multiplication par un poids
     // L'avantage d'espace dépend du nombre de pièces restantes
@@ -5629,11 +5591,7 @@ bool Board::get_space()
     }
     
 
-
-    _space = space_area;
-    _space_adv = true;
-
-    return true;
+	return space_area;
 }
 
 
