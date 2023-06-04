@@ -1,7 +1,7 @@
 #include "time_tests.h"
 
 
-void test_function(void (*f)(), const double test_time, std::string func) {
+void test_function(void (*f)(), const double test_time, const std::string& func) {
 
     cout << "Testing the function '" << func << "'" << endl;
 
