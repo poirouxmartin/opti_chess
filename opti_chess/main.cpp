@@ -341,8 +341,9 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Faire evaluation.cpp? gui.cpp?
 -> Comme pour le roi, garder en mémoire l'emplacement des pièces (utiliserait 256 bytes)
 -> Virer toutes les variables d'évaluation dans le plateau
--> On dirait que la position est évaluée à chaque frame... à regarder
 -> Activité des pièces = contrôle des cases dans le camp adverse??
+-> Afficher seulement les paramètres d'évaluation qui font sens? (par exemple king opposition seulement lorsque c'est une finale de pions)
+-> Tout foutre dans la classe GUI? les variables globales et fonctions globales en particulier -> par exemple eval_components
 
 
 
@@ -702,7 +703,6 @@ int main() {
     eval_white._player_trait = 0.0f;
     eval_white._push = 0.0f;
     eval_white._rook_open = 0.0f;
-    eval_white._rook_semi = 0.0f;
     eval_white._piece_positioning = 0.0f;
     eval_white._castling_rights = 0.0f;
     eval_white._square_controls = 0.0f;

@@ -441,7 +441,7 @@ int float_to_int(const float x)
 
 
 // Fonction qui renvoie si une chaine de caractères est présente dans un tableau de taille n
-bool is_in(string s, string string_array[], const int n)
+bool is_in(const string& s, string string_array[], const int n)
 {
 	for (int i = 0; i < n; i++)
 		if (s == string_array[i])

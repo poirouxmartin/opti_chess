@@ -219,18 +219,11 @@ class Board {
     // Le plateau a t-il été initialisé?
     bool _new_board = true;
 
-    // Activité des pièces
-    int _piece_activity = 0;
-    bool _activity = false; // à renommer pour plus de lisibilité
-
     // Pour l'affichage
     int _static_evaluation = 0;
 
-    // Sécurité du roi
-    int _king_safety = 0;
-    bool _safety = false;
-
     // Est-ce que les noms des joueurs ont été ajoutés au PGN
+    // TODO : à mettre dans la GUI
     bool _named_pgn = false;
     bool _timed_pgn = false;
 
@@ -240,41 +233,9 @@ class Board {
     // Temps passé sur l'anayse de Monte-Carlo
     clock_t _time_monte_carlo = 0;
 
-    // Structure de pions
-    int _pawn_structure = 0;
-    bool _structure = false;
-
-    // Attaque des pièces
-    int _attacks_eval = 0;
-    bool _attacks = false;
-
-    // Defense des pièces
-    int _defenses_eval = 0;
-    bool _defenses = false;
-
-    // Opposition des rois en finale
-    int _kings_opposition = 0;
-    bool _opposition = false;
-
-    // Matériel
-    int _material_count = 0;
-    bool _material = false;
-
     // Avancement de la partie
     float _adv = 0.0f;
     bool _advancement = false;
-
-    // Positionnement des pièces
-    int _pos = 0;
-    bool _positioning = false;
-
-    // Tour sur colonne ouverte
-    int _rook_open = 0;
-    bool _rook_open_file = false;
-
-    // Tour sur colonne semi-ouverte
-    int _rook_semi = 0;
-    bool _rook_semi_open_file = false;
 
     // Chances de gain/nulle/perte (4 bytes / 4 bytes / 4 bytes)
     float _white_winning_chance = 0.0f;
@@ -360,11 +321,11 @@ class Board {
     // Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
     void game_advancement();
 
-    // Fonction qui compte le matériel sur l'échiquier
-    void count_material(const Evaluator *e = nullptr);
+    // Fonction qui compte le matériel sur l'échiquier et renvoie sa valeur
+    int count_material(const Evaluator *e = nullptr) const;
 
-    // Fonction qui calcule les valeurs de positionnement des pièces sur l'échiquier
-    void pieces_positioning(const Evaluator *eval = nullptr);
+    // Fonction qui calcule et renvoie la valeur de positionnement des pièces sur l'échiquier
+    int pieces_positioning(const Evaluator *eval = nullptr) const;
 
     // Fonction qui évalue la position à l'aide d'heuristiques
     bool evaluate(Evaluator *eval = nullptr, bool checkmates = false, bool display = false, Network *n = nullptr);
@@ -423,8 +384,8 @@ class Board {
     // Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo d'un plateau
     void draw_monte_carlo_arrows() const;
 
-    // Fonction qui calcule l'activité des pièces
-    void get_piece_activity(bool legal = false);
+    // Fonction qui calcule et renvoie l'activité des pièces
+    int get_piece_activity(bool legal = false) const;
 
     // Fonction qui renvoie le meilleur coup selon l'analyse faite par l'algo de Monte-Carlo
     [[nodiscard]] int best_monte_carlo_move() const;
@@ -447,8 +408,8 @@ class Board {
     // Fonction qui renvoie le nombre de noeuds calculés par GrogrosZero
     [[nodiscard]] int total_nodes() const;
 
-    // Fonction qui calcule la sécurité des rois
-    void get_king_safety(int piece_attack = 40, int piece_defense = 20, int pawn_attack = 25, int pawn_defense = 100, int edge_defense = 125);
+    // Fonction qui calcule et renvoie la valeur correspondante à la sécurité des rois
+    int get_king_safety(int piece_attack = 40, int piece_defense = 20, int pawn_attack = 25, int pawn_defense = 100, int edge_defense = 125);
 
     // Fonction qui renvoie s'il y a échec et mat (ou pat) (-1, 1 ou 0)
     int is_mate();
@@ -480,8 +441,8 @@ class Board {
     // Fonction qui renvoie une représentation simple et rapide de la position
     [[nodiscard]] string simple_position() const;
 
-    // Fonction qui calcule la structure de pions
-    void get_pawn_structure();
+    // Fonction qui calcule la structure de pions et renvoie sa valeur
+    int get_pawn_structure() const;
 
     // Fonction qui met à jour le temps des joueurs
     void update_time();
@@ -492,11 +453,11 @@ class Board {
     // Fonction qui stoppe le temps
     void stop_time();
 
-    // Fonction qui calcule la résultante des attaques et des défenses
-    void get_attacks_and_defenses();
+    // Fonction qui calcule la résultante des attaques et des défenses et la renvoie
+    float get_attacks_and_defenses(float attack_scale = 1.0f, float defense_scale = 1.0f) const;
 
-    // Fonction qui calcule l'opposition des rois (en finales de pions)
-    void get_kings_opposition();
+    // Fonction qui calcule et renvoie l'opposition des rois (en finales de pions)
+    int get_kings_opposition();
 
     // Fonction qui renvoie le type de pièce sélectionnée
     [[nodiscard]] uint_fast8_t selected_piece() const;
@@ -522,8 +483,8 @@ class Board {
     // Fonction qui réinitialise les composantes de l'évaluation
     void reset_eval();
 
-    // Fonction qui compte les tours sur les colonnes ouvertes et semi-ouvertes
-    void get_rook_on_open_file();
+    // Fonction qui compte les tours sur les colonnes ouvertes et semi-ouvertes et renvoie la valeur
+    int get_rooks_on_open_file() const;
 
     // Fonction qui renvoie la profondeur de calcul de la variante principale
     [[nodiscard]] int grogros_main_depth() const;
@@ -563,6 +524,9 @@ class Board {
 
     // Fonction qui calcule et renvoie une évaluation des vis-à-vis
 	[[nodiscard]] int get_alignments() const;
+
+    // Fonction qui met à jour la position des rois
+    bool update_kings_pos();
 
 };
 
