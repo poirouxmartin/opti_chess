@@ -241,7 +241,7 @@ class Board {
     float _adv = 0.0f;
     bool _advancement = false;
 
-    // Chances de gain/nulle/perte (4 bytes / 4 bytes / 4 bytes)
+    // Chances de gain/nulle/perte (4 bytes / 4 bytes / 4 bytes) -> 12 bytes
     float _white_winning_chance = 0.0f;
     float _drawing_chance = 0.0f;
     float _black_winning_chance = 0.0f;
