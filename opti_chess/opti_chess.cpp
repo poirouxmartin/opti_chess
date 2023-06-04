@@ -99,25 +99,21 @@ void Board::display() const
 }
 
 
-// Fonction qui à partir des coordonnées d'un coup renvoie le coup codé sur un entier (à 4 chiffres) (base 10)
-int move_to_int(const int i, const int j, const int k, const int l) {
-    return l + 10 * (k + 10 * (j + 10 * i));
-}
-
-
 // Fonction qui ajoute un coup dans une liste de coups
 bool Board::add_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fast8_t k, const uint_fast8_t l, int *iterator) {
 
     // Si on dépasse le nombre de coups que l'on pensait possible dans une position
-    if (*iterator + 4 > max_moves * 4)
+    if (*iterator >= max_moves)
         return false;
 
-    _moves[*iterator] = i;
-    _moves[*iterator + 1] = j;
-    _moves[*iterator + 2] = k;
-    _moves[*iterator + 3] = l;
+    _moves[*iterator].i1 = i;
+    _moves[*iterator].j1 = j;
+    _moves[*iterator].i2 = k;
+    _moves[*iterator].j2 = l;
 
-    *iterator += 4;
+    // Incrémentation du nombre de coups
+	(*iterator)++;
+
     return true;
 }
 
@@ -420,14 +416,10 @@ bool Board::get_moves(const bool pseudo, const bool forbide_check) {
         const uint_fast8_t p = _array[i][j];
 
         // Si on dépasse le nombre de coups que l'on pensait possible dans une position
-        if (iterator >= max_moves * 4) {
+        if (iterator >= max_moves) {
             cout << "Too many moves in the position : " << iterator / 4 + 1 << "+" << endl;
-            //goto end_loops;
             return false;
         }
-
-        //(p == 1) && _player && add_pawn_moves(i, j, &iterator);
-        //(p == 2) && _player && add_knight_moves(i, j, &iterator);
 
         
         switch (p)
@@ -499,16 +491,15 @@ bool Board::get_moves(const bool pseudo, const bool forbide_check) {
         }
     }
 
-    //end_loops:
 
 
-    _got_moves = static_cast<int_fast8_t>(iterator / 4);    
+    _got_moves = static_cast<int_fast8_t>(iterator);
 
 
     // Vérification échecs
     if (forbide_check) {
-        uint_fast8_t new_moves[400]; // Est-ce que ça prend de la mémoire?
-        int n_moves = 0;
+        Move new_moves[100]; // Est-ce que ça prend de la mémoire?
+        int_fast8_t n_moves = 0;
         Board b;
 
         for (int i = 0; i < _got_moves; i++) {
@@ -516,17 +507,15 @@ bool Board::get_moves(const bool pseudo, const bool forbide_check) {
             b.make_index_move(i, false);
             b._player = !b._player;
             if (!b.in_check()) {
-                for (int k = 4 * i; k < 4 * i + 4; k++) {
-                    new_moves[n_moves] = _moves[k];
-                    n_moves++;
-                }
+                new_moves[n_moves] = _moves[i];
+                n_moves++;
             }
         }
 
         for (int i = 0; i < n_moves; i++)
             _moves[i] = new_moves[i];
 
-        _got_moves = static_cast<int_fast8_t>(n_moves / 4);
+        _got_moves = n_moves;
 
     }
 
@@ -547,8 +536,8 @@ bool Board::attacked(const int i, const int j) const
     b._player = !b._player;
     b._half_moves_count = 0;
     b.get_moves(true);
-    for (int m = 0; m < b._got_moves * 4; m += 4) {
-        if (i == b._moves[m + 2] && j == b._moves[m + 3])
+    for (int m = 0; m < b._got_moves; m++) {
+        if (i == b._moves[m].i2 && j == b._moves[m].j2)
             return true;
     }
 
@@ -980,8 +969,7 @@ void Board::make_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fas
 
 // Fonction qui joue le coup i
 void Board::make_index_move(const int i, const bool pgn, const bool add_to_list) {
-	const int k = 4 * i;
-    make_move(_moves[k], _moves[k + 1], _moves[k + 2], _moves[k + 3], pgn, false, add_to_list);
+    make_move(_moves[i].i1, _moves[i].j1, _moves[i].i2, _moves[i].j2, pgn, false, add_to_list);
 }
 
 
@@ -1422,7 +1410,6 @@ float Board::negamax(const int depth, float alpha, const float beta, const bool 
         display_moves();
 
     for (int i = 0; i < _got_moves; i++) {
-
         b.copy_data(*this);
         b.make_index_move(i);
         
@@ -1433,7 +1420,7 @@ float Board::negamax(const int depth, float alpha, const float beta, const bool 
 
         if (max_depth) {
             if (display)
-                cout << "move : " << move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]) << ", value : " << tmp_value << endl;
+                cout << "move : " << move_label_from_index(i) << ", value : " << tmp_value << endl;
             if (tmp_value > value)
                 best_move = i;
         }
@@ -1628,15 +1615,11 @@ void Board::sort_moves(Evaluator *eval) {
     }
 
     // Génération de la list de coups de façon ordonnée
-    auto* new_moves = new uint_fast8_t[_got_moves * 4];
-    copy(_moves, _moves + _got_moves * 4, new_moves);
+    auto* new_moves = new Move[_got_moves];
+    copy(_moves, _moves + _got_moves, new_moves);
 
     for (int i = 0; i < _got_moves; i++) {
-	    const int j = moves_indexes[i];
-        _moves[4 * i] = new_moves[4 * j];
-        _moves[4 * i + 1] = new_moves[4 * j + 1];
-        _moves[4 * i + 2] = new_moves[4 * j + 2];
-        _moves[4 * i + 3] = new_moves[4 * j + 3];
+        _moves[i] = new_moves[moves_indexes[i]];
     }
 
     // Suppression des tableaux
@@ -1962,11 +1945,11 @@ string Board::move_label(uint_fast8_t i, uint_fast8_t j, uint_fast8_t k, uint_fa
         get_moves(false, true);
 
     uint_fast8_t i1; uint_fast8_t j1; uint_fast8_t k1; uint_fast8_t l1; uint_fast8_t p11;
-    for (int m = 0; m < _got_moves * 4; m += 4) {
-        i1 = _moves[m];
-        j1 = _moves[m + 1];
-        k1 = _moves[m + 2];
-        l1 = _moves[m + 3];
+    for (int m = 0; m < _got_moves; m++) {
+        i1 = _moves[m].i1;
+        j1 = _moves[m].j1;
+        k1 = _moves[m].i2;
+        l1 = _moves[m].j2;
         p11 = _array[i1][j1];
         // Si c'est une pièce différente que celle à bouger, mais du même type, et peut aller sur la même case
         if ((i1 != i || j1 != j) && p11 == p1 && k1 == k && l1 == l) {
@@ -2056,25 +2039,7 @@ string Board::move_label_from_index(const int i) {
     // Pour pas qu'il re écrase les moves
     if (_got_moves == -1)
         get_moves(false, true);
-    return move_label(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]);
-}
-
-
-// Fonction qui fait un coup à partir de son label (pour permettre d'importer une partie à partir d'un PGN)
-void Board::make_label_move(const string& s) {
-    // char c = s[0];
-    // int iterator = 0;
-    // int i; int j; int k; int l;
-
-    // if (isupper(c)) {
-    // }
-    // else {
-    //     j = c - 97;
-    //     iterator += 1;
-    // }
-
-    // make_move(i, j, k, l);
-
+    return move_label(_moves[i].i1, _moves[i].j1, _moves[i].i2, _moves[i].j2);
 }
 
 
@@ -2289,7 +2254,7 @@ bool Board::draw() {
                 // Si le coup est légal, le joue
                 get_moves(false, true);
                 for (int i = 0; i < _got_moves; i++) {
-                    if (_moves[4 * i] == selected_pos.first && _moves[4 * i + 1] == selected_pos.second && _moves[4 * i + 2] == clicked_pos.first && _moves[4 * i + 3] == clicked_pos.second) {
+                    if (_moves[i].i1 == selected_pos.first && _moves[i].j1 == selected_pos.second && _moves[i].i2 == clicked_pos.first && _moves[i].j2 == clicked_pos.second) {
                         play_move_sound(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second);
                         ((main_GUI._click_bind && main_GUI._board.click_i_move(i, get_board_orientation())) || true) && play_monte_carlo_move_keep(i, true, true, true, true);
                         break;
@@ -2330,9 +2295,8 @@ bool Board::draw() {
                         // Si le coup est légal
                         get_moves(false, true);
                         for (int i = 0; i < _got_moves; i++) {
-                            if (_moves[4 * i] == clicked_pos.first && _moves[4 * i + 1] == clicked_pos.second && _moves[4 * i + 2] == drop_pos.first && _moves[4 * i + 3] == drop_pos.second) {
+                            if (_moves[i].i1 == selected_pos.first && _moves[i].j1 == selected_pos.second && _moves[i].i2 == drop_pos.first && _moves[i].j2 == drop_pos.second) {
                                 play_move_sound(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
-                                // make_move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second, true, true);
                                 ((main_GUI._click_bind && main_GUI._board.click_i_move(i, get_board_orientation())) || true) && play_monte_carlo_move_keep(i, true, true, true, true);
                                 selected_pos = {-1, -1};
                                 break;
@@ -2354,7 +2318,7 @@ bool Board::draw() {
             if (_got_moves == -1)
                 get_moves(false, true);
             for (int i = 0; i < _got_moves; i++) {
-                if (_moves[4 * i] == pre_move[0] && _moves[4 * i + 1] == pre_move[1] && _moves[4 * i + 2] == pre_move[2] && _moves[4 * i + 3] == pre_move[3]) {
+                if (_moves[i].i1 == pre_move[0] && _moves[i].j1 == pre_move[1] && _moves[i].i2 == pre_move[2] && _moves[i].j2 == pre_move[3]) {
                     play_move_sound(pre_move[0], pre_move[1], pre_move[2], pre_move[3]);
                     ((main_GUI._click_bind && main_GUI._board.click_i_move(i, get_board_orientation())) || true) && play_monte_carlo_move_keep(i, true, true, true, true);
                     break;
@@ -2464,8 +2428,8 @@ bool Board::draw() {
         draw_rectangle(board_padding_x + orientation_index(selected_pos.second) * tile_size, board_padding_y + orientation_index(7 - selected_pos.first) * tile_size, tile_size, tile_size, select_color);
         // Affiche les coups possibles pour la pièce séléctionnée
         for (int i = 0; i < _got_moves; i++) {
-            if (_moves[4 * i] == selected_pos.first && _moves[4 * i + 1] == selected_pos.second) {
-                draw_rectangle(board_padding_x + orientation_index(_moves[4 * i + 3]) * tile_size, board_padding_y + orientation_index(7 - _moves[4 * i + 2]) * tile_size, tile_size, tile_size, select_color);
+            if (_moves[i].i1 == selected_pos.first && _moves[i].j1 == selected_pos.second) {
+                draw_rectangle(board_padding_x + orientation_index(_moves[i].j2) * tile_size, board_padding_y + orientation_index(7 - _moves[i].i2) * tile_size, tile_size, tile_size, select_color);
             }
         }
     }
@@ -2802,7 +2766,7 @@ void Board::play_move_sound(const uint_fast8_t i, const uint_fast8_t j, const ui
 // Fonction qui joue le son d'un coup à partir de son index
 void Board::play_index_move_sound(const int i) const
 {
-    play_move_sound(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]);
+    play_move_sound(_moves[i].i1, _moves[i].j1, _moves[i].i2, _moves[i].j2);
 }
 
 
@@ -2925,7 +2889,7 @@ void Board::draw_monte_carlo_arrows() const
 
         if (is_selected) {
             // Dessine pour la pièce sélectionnée
-            if (selected_pos.first == _moves[4 * i] && selected_pos.second == _moves[4 * i + 1])
+            if (selected_pos.first == _moves[i].i1 && selected_pos.second == _moves[i].j1)
                 moves_vector.push_back(i);
         }
 
@@ -2942,7 +2906,7 @@ void Board::draw_monte_carlo_arrows() const
 
     for (const int i : moves_vector) {
 	    const int mate = is_eval_mate(_eval_children[i]);
-        draw_arrow_from_coord(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3], i, get_color(), -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate, i == best_move);
+        draw_arrow_from_coord(_moves[i].i1, _moves[i].j1, _moves[i].i2, _moves[i].j2, i, get_color(), -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate, i == best_move);
     }
 }
 
@@ -2977,14 +2941,14 @@ int Board::get_piece_activity(const bool legal) const
 
     // Pour chaque coup, incrémente dans le tableau le nombre de coup à la position correspondante
     for (int i = 0; i < b._got_moves; i++)
-        piece_move_count[b._moves[4 * i] * 8 + b._moves[4 * i + 1]]++;
+        piece_move_count[b._moves[i].i1 * 8 + b._moves[i].j1]++;
 
     // Activité des pièces de l'autre joueur
     b._player = !b._player; b._got_moves = -1;
     b.get_moves(false, legal);
 
     for (int i = 0; i < b._got_moves; i++)
-        piece_move_count[b._moves[4 * i] * 8 + b._moves[4 * i + 1]]++;
+        piece_move_count[b._moves[i].i1 * 8 + b._moves[i].j1]++;
 
     // Pour chaque pièce : ajoute la valeur correspondante à l'activité
     index = 0;
@@ -3032,20 +2996,20 @@ bool Board::play_monte_carlo_move_keep(const int m, const bool keep, const bool 
     // Pour le moment c'est pas beau, il faudra changer ça à l'avenir
     // TODO
     Move wanted_move;
-    wanted_move.x1 = _moves[4 * m];
-    wanted_move.y1 = _moves[4 * m + 1];
-    wanted_move.x2 = _moves[4 * m + 2];
-    wanted_move.y2 = _moves[4 * m + 3];
+    wanted_move.i1 = _moves[m].i1;
+    wanted_move.j1 = _moves[m].j1;
+    wanted_move.i2 = _moves[m].i2;
+    wanted_move.j2 = _moves[m].j2;
 
     Move child_move;
     int move = m;
     for (int i = 0; i < _tested_moves; i++) {
-        int last_child_move[4];
+        uint_fast8_t last_child_move[4];
         copy(monte_buffer._heap_boards[_index_children[i]]._last_move, monte_buffer._heap_boards[_index_children[i]]._last_move + 4, last_child_move);
-        child_move.x1 = last_child_move[0];
-        child_move.y1 = last_child_move[1];
-        child_move.x2 = last_child_move[2];
-        child_move.y2 = last_child_move[3];
+        child_move.i1 = last_child_move[0];
+        child_move.j1 = last_child_move[1];
+        child_move.i2 = last_child_move[2];
+        child_move.j2 = last_child_move[3];
         if (child_move == wanted_move) {
             move = i;
             break;
@@ -3612,7 +3576,7 @@ bool Board::is_capturable(const int i, const int j) {
     _got_moves == -1 && get_moves(false, true);
 
     for (int k = 0; k < _got_moves; k++)
-        if (_moves[4 * k + 2] == i && _moves[4 * k + 3] == j)
+        if (_moves[k].i2 == i && _moves[k].j2 == j)
             return true;
 
     return false;
@@ -4973,17 +4937,17 @@ bool Board::quick_moves_sort() {
         // Assigne une valeur au coup (valeur de la prise ou de la promotion)
 
         // Prise
-        const int captured_value = captures_values[_array[_moves[4 * i + 2]][_moves[4 * i + 3]]];
-        const int capturer_value = captures_values[_array[_moves[4 * i]][_moves[4 * i + 1]]];
+        const int captured_value = captures_values[_array[_moves[i].i2][_moves[i].j2]];
+        const int capturer_value = captures_values[_array[_moves[i].i1][_moves[i].j1]];
 
         moves_values[i] = captured_value == 0 ? 0 : captured_value / capturer_value;
 
         // Promotion
         // Blancs
-        moves_values[i] += (_array[_moves[4 * i]][_moves[4 * i + 1]] == 1 && _moves[4 * i + 2] == 7) * promotion_value;
+        moves_values[i] += (_array[_moves[i].i1][_moves[i].j1] == 1 && _moves[i].i2 == 7) * promotion_value;
 
         // Noirs
-        moves_values[i] += (_array[_moves[4 * i]][_moves[4 * i + 1]] == 7 && _moves[4 * i + 2] == 0) * promotion_value;
+        moves_values[i] += (_array[_moves[i].i1][_moves[i].j1] == 7 && _moves[i].i2 == 0) * promotion_value;
     }
 
 
@@ -4999,15 +4963,11 @@ bool Board::quick_moves_sort() {
     }
 
     // Génération de la list de coups de façon ordonnée
-    auto*new_moves = new uint_fast8_t[_got_moves * 4];
-    copy(_moves, _moves + _got_moves * 4, new_moves);
+    auto*new_moves = new Move[_got_moves];
+    copy(_moves, _moves + _got_moves, new_moves);
 
     for (int i = 0; i < _got_moves; i++) {
-	    const int j = moves_indexes[i];
-        _moves[4 * i] = new_moves[4 * j];
-        _moves[4 * i + 1] = new_moves[4 * j + 1];
-        _moves[4 * i + 2] = new_moves[4 * j + 2];
-        _moves[4 * i + 3] = new_moves[4 * j + 3];
+        _moves[i] = new_moves[moves_indexes[i]];
     }
 
     // Suppression des tableaux
@@ -5022,8 +4982,8 @@ bool Board::quick_moves_sort() {
 
 
 // Fonction qui fait un quiescence search
+// TODO améliorer avec un delta pruning
 int Board::quiescence(Evaluator *eval, int alpha, const int beta, const int depth, const bool checkmates_check, bool main_call) { 
-
     if (true || main_call)
         _quiescence_nodes = 1;
 
@@ -5048,6 +5008,7 @@ int Board::quiescence(Evaluator *eval, int alpha, const int beta, const int dept
         // TODO : si main_call, alors on récupère tous les coups. sinon, on récupère seulement les captures
         // TODO : implement get_capture_moves();
     }
+
     quick_moves_sort();
 
     for (int i = 0; i < _got_moves; i++) {
@@ -5055,10 +5016,10 @@ int Board::quiescence(Evaluator *eval, int alpha, const int beta, const int dept
         // TODO : utiliser des flags
 
         // Si c'est une capture
-        if (_array[_moves[4 * i + 2]][_moves[4 * i + 3]] != 0) {
+        if (_array[_moves[i].i2][_moves[i].j2] != 0) {
             Board b;
             b.copy_data(*this);
-            b.make_move(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]);
+            b.make_index_move(i);
 
             const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, checkmates_check, false);
             _quiescence_nodes += b._quiescence_nodes;
@@ -5076,55 +5037,6 @@ int Board::quiescence(Evaluator *eval, int alpha, const int beta, const int dept
 
     return alpha;
 }
-
-
-int Board::quiescence_improved(Evaluator* eval, int alpha, const int beta, const int depth) {
-    // Evalue la position initiale
-    evaluate_int(eval, true);
-    const int stand_pat = _evaluation * get_color();
-
-    if (depth <= 0)
-        return stand_pat;
-
-    // Beta cut-off
-    if (stand_pat >= beta)
-        return beta;
-
-    // Mise à jour de alpha si l'éval statique est plus grande
-    if (alpha < stand_pat)
-        alpha = stand_pat;
-
-    (_got_moves == -1) && get_moves(false, true);
-    quick_moves_sort();
-    static const int captures_values[13] = { 0, 100, 300, 300, 500, 900, 10000, 100, 300, 300, 500, 900, 10000 };
-
-    // Delta pruning
-    constexpr int delta = 100; // Delta value for pruning
-    for (int i = 0; i < _got_moves; i++) {
-        if (_array[_moves[4 * i + 2]][_moves[4 * i + 3]] != 0) {
-            const int capture_value = captures_values[_array[_moves[4 * i + 2]][_moves[4 * i + 3]]];
-            const int capturer_value = captures_values[_array[_moves[4 * i]][_moves[4 * i + 1]]];
-            const int delta_eval = capture_value - capturer_value + delta;
-            if (stand_pat + delta_eval < alpha)
-                continue; // Delta pruning
-        }
-
-        // Make the move and evaluate the position
-        Board b;
-        b.copy_data(*this);
-        b.make_move(_moves[4 * i], _moves[4 * i + 1], _moves[4 * i + 2], _moves[4 * i + 3]);
-        const int score = -b.quiescence(eval, -beta, -alpha, depth - 1);
-
-        // Update the alpha value and perform beta cutoff
-        if (score >= beta)
-            return beta;
-        if (score > alpha)
-            alpha = score;
-    }
-
-    return alpha;
-}
-
 
 
 // Constructeur GUI
@@ -5145,10 +5057,10 @@ int* Board::get_i_move(const int i) const
     }
 
     const auto coord = new int[4];
-    coord[0] = _moves[4 * i];
-    coord[1] = _moves[4 * i + 1];
-    coord[2] = _moves[4 * i + 2];
-    coord[3] = _moves[4 * i + 3];
+    coord[0] = _moves[4].i1;
+    coord[1] = _moves[4].j1;
+    coord[2] = _moves[4].i2;
+    coord[3] = _moves[4].j2;
 
     return coord;
 }
@@ -5239,13 +5151,13 @@ bool GUI::new_bind_analysis() {
 bool compare_move_arrows(const int m1, const int m2) {
 
     // Si deux flèches finissent en un même point, affiche en dernier (au dessus), le "meilleur" coup
-    if (main_GUI._board._moves[4 * m1 + 2] == main_GUI._board._moves[4 * m2 + 2] && main_GUI._board._moves[4 * m1 + 3] == main_GUI._board._moves[4 * m2 + 3])
-        return main_GUI._board._nodes_children[m1] > main_GUI._board._nodes_children[m1];
+    if (main_GUI._board._moves[m1].i2 == main_GUI._board._moves[m2].i2 && main_GUI._board._moves[m1].j2 == main_GUI._board._moves[m2].j2)
+        return main_GUI._board._nodes_children[m1] > main_GUI._board._nodes_children[m2];
 
     // Si les deux flèches partent d'un même point (et vont dans la même direction - TODO), alors affiche par dessus la flèche la plus courte
-    if (main_GUI._board._moves[4 * m1] == main_GUI._board._moves[4 * m2] && main_GUI._board._moves[4 * m1 + 1] == main_GUI._board._moves[4 * m2 + 1]) {
-	    const int d1 = (main_GUI._board._moves[4 * m1] - main_GUI._board._moves[4 * m1 + 2]) * (main_GUI._board._moves[4 * m1] - main_GUI._board._moves[4 * m1 + 2]) + (main_GUI._board._moves[4 * m1 + 1] - main_GUI._board._moves[4 * m1 + 3]) * (main_GUI._board._moves[4 * m1 + 1] - main_GUI._board._moves[4 * m1 + 3]);
-	    const int d2 = (main_GUI._board._moves[4 * m2] - main_GUI._board._moves[4 * m2 + 2]) * (main_GUI._board._moves[4 * m2] - main_GUI._board._moves[4 * m2 + 2]) + (main_GUI._board._moves[4 * m2 + 1] - main_GUI._board._moves[4 * m2 + 3]) * (main_GUI._board._moves[4 * m2 + 1] - main_GUI._board._moves[4 * m2 + 3]);
+    if (main_GUI._board._moves[m1].i1 == main_GUI._board._moves[m2].i1 && main_GUI._board._moves[m1].j1 == main_GUI._board._moves[m2].j1) {
+	    const int d1 = (main_GUI._board._moves[m1].i1 - main_GUI._board._moves[m1].i2) * (main_GUI._board._moves[m1].i1 - main_GUI._board._moves[m1].i2) + (main_GUI._board._moves[m1].j1 - main_GUI._board._moves[m1].j2) * (main_GUI._board._moves[m1].j1 - main_GUI._board._moves[m1].j2);
+	    const int d2 = (main_GUI._board._moves[m2].i1 - main_GUI._board._moves[m2].i2) * (main_GUI._board._moves[m2].i1 - main_GUI._board._moves[m2].i2) + (main_GUI._board._moves[m2].j1 - main_GUI._board._moves[m2].j2) * (main_GUI._board._moves[m2].j1 - main_GUI._board._moves[m2].j2);
         return d1 > d2;
     }
 

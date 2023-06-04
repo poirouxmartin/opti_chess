@@ -54,16 +54,21 @@ constexpr int max_moves = 100; // ça n'arrivera quasi jamais que ça dépasse c
 // On peut utiliser 2 bits en plus, car on en utilise seulement 14 là (promotion flag -> sur 4 bits, et on retire capture flag?) (castling flag * 2? en passant?)
 // check flag?
 typedef struct Move {
-    uint_fast8_t x1 : 3;
-    uint_fast8_t y1 : 3;
-    uint_fast8_t x2 : 3;
-    uint_fast8_t y2 : 3;
+    uint_fast8_t i1 : 3;
+    uint_fast8_t j1 : 3;
+    uint_fast8_t i2 : 3;
+    uint_fast8_t j2 : 3;
     bool capture_flag : 1;
     bool promotion_flag : 1;
 
     bool operator== (const Move& other) const {
-        return (x1 == other.x1) && (y1 == other.y1) && (x2 == other.x2) && (y2 == other.y2);
+        return (i1 == other.i1) && (j1 == other.j1) && (i2 == other.i2) && (j2 == other.j2);
     }
+
+    void display() const
+    {
+	    		cout << "(" << static_cast<int>(i1) << ", " << static_cast<int>(j1) << ") -> (" << static_cast<int>(i2) << ", " << static_cast<int>(j2) << ")" << endl;
+	}
 };
 
 
@@ -133,11 +138,10 @@ class Board {
                                 {10, 8, 9,11,12, 9, 8,10 } };
 
     // Coups possibles
-    // Nombre max de coups légaux dans une position : 218 -> 872 (car 1 moves = 4 coord)
-	// max_moves * 4 bytes = 400 bytes
-    uint_fast8_t _moves[max_moves * 4]; 
+    // Nombre max de coups légaux dans une position : 218
 
-    //Move _moves_test[max_moves];
+    // 200 bytes
+    Move _moves[max_moves];
 
     // Les coups sont-ils actualisés? Si non : -1, sinon, _got_moves représente le nombre de coups jouables
 	// En supposant que le nombre de coups n'excède pas 127
@@ -363,9 +367,6 @@ class Board {
     // Fonction qui renvoie le label d'un coup en fonction de son index
     string move_label_from_index(int);
 
-    // Fonction qui fait un coup à partir de son label
-    void make_label_move(const string&);
-
     // Fonction qui renvoie un plateau à partir d'un PGN
     void from_pgn(string);
 
@@ -504,9 +505,6 @@ class Board {
     // Fonction qui fait un quiescence search
     int quiescence(Evaluator *eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool checkmates_check = true, bool main_call = true);
 
-    // Fonction qui fait un quiescence search, avec des méthodes de pruning avancées
-    int quiescence_improved(Evaluator*, int, int, int depth = 4);
-
     // Fonction qui renvoie le i-ème coup
     [[nodiscard]] int* get_i_move(int) const;
 
@@ -539,9 +537,6 @@ void switch_orientation();
 
 // Fonction aidant à l'affichage du plateau (renvoie i si board_orientation, et 7 - i sinon)
 int orientation_index(int);
-
-// Fonction qui à partir des coordonnées d'un coup renvoie le coup codé sur un entier (à 4 chiffres)
-static int move_to_int(int, int, int, int);
 
 
 class Buffer {
