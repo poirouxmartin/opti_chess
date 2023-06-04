@@ -100,7 +100,7 @@ string clock_to_string(clock_t, bool full = false);
 int float_to_int(float);
 
 // Fonction qui renvoie si une chaine de caractères est présente dans un tableau de taille n
-bool is_in(string, string[], int);
+bool is_in(const string&, string[], int);
 
 // Fonction qui calcule les chances de gain/nulle/perte
 float get_winning_chances_from_eval(float, bool, bool);
