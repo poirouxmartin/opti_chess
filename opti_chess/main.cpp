@@ -345,6 +345,8 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Activité des pièces = contrôle des cases dans le camp adverse?? A revoir absolument
 -> Afficher seulement les paramètres d'évaluation qui font sens? (par exemple king opposition seulement lorsque c'est une finale de pions)
 -> Tout foutre dans la classe GUI? les variables globales et fonctions globales en particulier -> par exemple eval_components
+-> Adapter les fonctions aux coups (make_move(Move)...)
+-> Faire des méthodes utiles pour les coups
 
 
 
@@ -436,6 +438,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Revoir les update du temps quand on le change pendant que ça joue
 -> Afficher des traits autour du plateau chess.com?
 -> Affichage de la réflexion de Grogros sur le PGN : {N: 10.29% of 544}
+-> Revoir le compare moves (sinon ça affiche pas toujours le meilleur coup au dessus)
 
 
 
@@ -1220,7 +1223,7 @@ int main() {
 
                 // Vérifie que le coup est légal avant de le jouer
                 for (int i = 0; i < main_GUI._board._got_moves; i++) {
-                    if (main_GUI._board._moves[4 * i] == main_GUI._binding_move[0] && main_GUI._board._moves[4 * i + 1] == main_GUI._binding_move[1] && main_GUI._board._moves[4 * i + 2] == main_GUI._binding_move[2] && main_GUI._board._moves[4 * i + 3] == main_GUI._binding_move[3]) {
+                    if (main_GUI._board._moves[i].i1 == main_GUI._binding_move[0] && main_GUI._board._moves[i].j1 == main_GUI._binding_move[1] && main_GUI._board._moves[i].i2 == main_GUI._binding_move[2] && main_GUI._board._moves[i].j2 == main_GUI._binding_move[3]) {
                         main_GUI._board.play_move_sound(main_GUI._binding_move[0], main_GUI._binding_move[1], main_GUI._binding_move[2], main_GUI._binding_move[3]);
                         main_GUI._board.play_monte_carlo_move_keep(i, true, true, true, true);
                         break;
