@@ -276,14 +276,6 @@ class Board {
     int _rook_semi = 0;
     bool _rook_semi_open_file = false;
 
-    // Contrôle des cases
-    int _control = 0;
-    bool _square_controls = false;
-
-    // Avantage d'espace
-    int _space = 0;
-    bool _space_adv = false;
-
     // Chances de gain/nulle/perte (4 bytes / 4 bytes / 4 bytes)
     float _white_winning_chance = 0.0f;
     float _drawing_chance = 0.0f;
@@ -537,7 +529,7 @@ class Board {
     [[nodiscard]] int grogros_main_depth() const;
 
     // Fonction qui calcule la valeur des cases controllées sur l'échiquier
-    void get_square_controls();
+    int get_square_controls() const;
 
     // Fonction qui calcule les chances de gain/nulle/perte
     void get_winning_chances();
@@ -566,8 +558,8 @@ class Board {
     // Fonction qui génère et renvoie la clé de Zobrist de la position
     [[nodiscard]] uint_fast64_t get_zobrist_key() const;
 
-    // Fonction qui calcule l'avantage d'espace
-    bool get_space();
+    // Fonction qui calcule et renvoie l'avantage d'espace
+    int get_space() const;
 
     // Fonction qui calcule et renvoie une évaluation des vis-à-vis
 	[[nodiscard]] int get_alignments() const;
