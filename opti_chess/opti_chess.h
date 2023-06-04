@@ -385,7 +385,7 @@ class Board {
     void draw_monte_carlo_arrows() const;
 
     // Fonction qui calcule et renvoie l'activité des pièces
-    int get_piece_activity(bool legal = false) const;
+    [[nodiscard]] int get_piece_activity(bool legal = false) const;
 
     // Fonction qui renvoie le meilleur coup selon l'analyse faite par l'algo de Monte-Carlo
     [[nodiscard]] int best_monte_carlo_move() const;
@@ -442,7 +442,7 @@ class Board {
     [[nodiscard]] string simple_position() const;
 
     // Fonction qui calcule la structure de pions et renvoie sa valeur
-    int get_pawn_structure() const;
+    [[nodiscard]] int get_pawn_structure() const;
 
     // Fonction qui met à jour le temps des joueurs
     void update_time();
@@ -454,7 +454,7 @@ class Board {
     void stop_time();
 
     // Fonction qui calcule la résultante des attaques et des défenses et la renvoie
-    float get_attacks_and_defenses(float attack_scale = 1.0f, float defense_scale = 1.0f) const;
+    [[nodiscard]] float get_attacks_and_defenses(float attack_scale = 1.0f, float defense_scale = 1.0f) const;
 
     // Fonction qui calcule et renvoie l'opposition des rois (en finales de pions)
     int get_kings_opposition();
@@ -484,13 +484,13 @@ class Board {
     void reset_eval();
 
     // Fonction qui compte les tours sur les colonnes ouvertes et semi-ouvertes et renvoie la valeur
-    int get_rooks_on_open_file() const;
+    [[nodiscard]] int get_rooks_on_open_file() const;
 
     // Fonction qui renvoie la profondeur de calcul de la variante principale
     [[nodiscard]] int grogros_main_depth() const;
 
     // Fonction qui calcule la valeur des cases controllées sur l'échiquier
-    int get_square_controls() const;
+    [[nodiscard]] int get_square_controls() const;
 
     // Fonction qui calcule les chances de gain/nulle/perte
     void get_winning_chances();
@@ -520,7 +520,7 @@ class Board {
     [[nodiscard]] uint_fast64_t get_zobrist_key() const;
 
     // Fonction qui calcule et renvoie l'avantage d'espace
-    int get_space() const;
+    [[nodiscard]] int get_space() const;
 
     // Fonction qui calcule et renvoie une évaluation des vis-à-vis
 	[[nodiscard]] int get_alignments() const;
