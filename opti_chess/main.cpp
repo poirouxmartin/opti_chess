@@ -342,6 +342,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Comme pour le roi, garder en mémoire l'emplacement des pièces (utiliserait 256 bytes)
 -> Virer toutes les variables d'évaluation dans le plateau
 -> On dirait que la position est évaluée à chaque frame... à regarder
+-> Activité des pièces = contrôle des cases dans le camp adverse??
 
 
 
