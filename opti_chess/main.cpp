@@ -1224,7 +1224,7 @@ int main() {
                 // Vérifie que le coup est légal avant de le jouer
                 for (int i = 0; i < main_GUI._board._got_moves; i++) {
                     if (main_GUI._board._moves[i].i1 == main_GUI._binding_move[0] && main_GUI._board._moves[i].j1 == main_GUI._binding_move[1] && main_GUI._board._moves[i].i2 == main_GUI._binding_move[2] && main_GUI._board._moves[i].j2 == main_GUI._binding_move[3]) {
-                        main_GUI._board.play_move_sound(main_GUI._binding_move[0], main_GUI._binding_move[1], main_GUI._binding_move[2], main_GUI._binding_move[3]);
+                    	main_GUI._board.play_move_sound(main_GUI._binding_move[0], main_GUI._binding_move[1], main_GUI._binding_move[2], main_GUI._binding_move[3]);
                         main_GUI._board.play_monte_carlo_move_keep(i, true, true, true, true);
                         break;
                     }
