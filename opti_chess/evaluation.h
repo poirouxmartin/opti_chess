@@ -20,8 +20,8 @@ class Evaluator {
     float _kings_opposition = 0.75f;
     float _push = 1.00f;
     float _rook_open = 0.005f;
-    float _square_controls = 0.005f;
-    float _space_advantage = 0.01f;
+    float _square_controls = 0.003f;
+    float _space_advantage = 0.006f;
     //float _alignments = 0.01f;
     float _alignments = 0.00f;
 

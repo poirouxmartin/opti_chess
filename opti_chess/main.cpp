@@ -142,6 +142,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
     - Pions passés liés !
     - Tours liées
     - Outpost
+    - Pawn push threat (on le pousse et ça attaque une pièce)
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Augmenter la profondeur pour les finales (GrogrosFish)
@@ -341,7 +342,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Faire evaluation.cpp? gui.cpp?
 -> Comme pour le roi, garder en mémoire l'emplacement des pièces (utiliserait 256 bytes)
 -> Virer toutes les variables d'évaluation dans le plateau
--> Activité des pièces = contrôle des cases dans le camp adverse??
+-> Activité des pièces = contrôle des cases dans le camp adverse?? A revoir absolument
 -> Afficher seulement les paramètres d'évaluation qui font sens? (par exemple king opposition seulement lorsque c'est une finale de pions)
 -> Tout foutre dans la classe GUI? les variables globales et fonctions globales en particulier -> par exemple eval_components
 
@@ -492,7 +493,10 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> r1b1k2r/pp1n3p/4p3/3pP1Q1/q2p4/3B4/P2N2PP/R4RK1 b - - 2 19 : king safety..............
 -> b1rr2k1/4bpp1/pq3n2/1p3P1p/3P4/P1NQB1P1/4B2P/R1R3K1 w - - 0 24 -> slider on queen
 -> b2r2k1/5pp1/p7/1p3P2/3Pq1p1/P1Q3P1/5B1P/R5K1 w - - 1 31 : king safety
-
+-> r1b1kb1r/pp1pnpp1/8/1Np4p/4P3/6Q1/q1PB1PPP/3RKB1R b Kkq - 1 13 : le roi noir est en danger. Stockfish +2, Grogros -2
+-> r1b1kb1r/ppBp1pp1/q5n1/1Np5/2B1P2p/2Q5/2P2PPP/3R1RK1 b - - 9 18 : king danger+++
+-> r1b1kb1r/ppBp1pp1/8/1Np1P3/2B4p/2Q5/2P3PP/5K2 b - - 0 23
+-> 5r1k/pR2p1bp/q1P3p1/5b2/8/1B2BN2/5PPP/2R3K1 b - - 4 20
 
 
 ----- Problèmes -----
@@ -804,15 +808,7 @@ int main() {
             cout << sizeof(test_array) << endl;
             cout << test_array.pieces[0][0].type << endl;*/
 
-            //cout << main_GUI._board._white_king_pos.i << ", " << main_GUI._board._white_king_pos.j << endl;
-        	//cout << main_GUI._board._black_king_pos.i << ", " << main_GUI._board._black_king_pos.j << endl;
-
-            //main_GUI._board.quick_moves_sort();
-            main_GUI._board.grogros_zero(&monte_evaluator, 1, true);
-            //cout << main_GUI._board._quick_sorted_moves << endl;
-            //main_GUI._board.display_moves();
-            //main_GUI.new_bind_game();
-            //main_GUI._board.evaluate(&monte_evaluator);
+            main_GUI.new_bind_game();
 
         }
 
