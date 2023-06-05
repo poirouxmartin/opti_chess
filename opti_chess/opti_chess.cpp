@@ -128,9 +128,9 @@ bool Board::add_pawn_moves(const uint_fast8_t i, const uint_fast8_t j, int *iter
         // Poussée (de 2)
         (i == 1 && _array[i + 1][j] == 0 && _array[i + 2][j] == 0) && add_move(i, j, i + 2, j, iterator);
         // Prise (gauche)
-        (j > 0 && (is_in_fast(_array[i + 1][j - 1], 7, 12) || _en_passant_col == j - 1)) && add_move(i, j, i + 1, j - 1, iterator);
+        (j > 0 && (is_in_fast(_array[i + 1][j - 1], 7, 12) || (_en_passant_col == j - 1 && i == 4))) && add_move(i, j, i + 1, j - 1, iterator);
         // Prise (droite)
-        (j < 7 && (is_in_fast(_array[i + 1][j + 1], 7, 12) || _en_passant_col == j + 1)) && add_move(i, j, i + 1, j + 1, iterator);
+        (j < 7 && (is_in_fast(_array[i + 1][j + 1], 7, 12) || (_en_passant_col == j + 1 && i == 4))) && add_move(i, j, i + 1, j + 1, iterator);
     }
     // Joueur avec les pièces noires
     else {
@@ -139,9 +139,9 @@ bool Board::add_pawn_moves(const uint_fast8_t i, const uint_fast8_t j, int *iter
         // Poussée (de 2)
         (i == 6 && _array[i - 1][j] == 0 && _array[i - 2][j] == 0) && add_move(i, j, i - 2, j, iterator);
         // Prise (gauche)
-        (j > 0 && (is_in_fast(_array[i - 1][j - 1], 1, 6) || _en_passant_col == j - 1)) && add_move(i, j, i - 1, j - 1, iterator);
+        (j > 0 && (is_in_fast(_array[i - 1][j - 1], 1, 6) || (_en_passant_col == j - 1 && i == 3))) && add_move(i, j, i - 1, j - 1, iterator);
         // Prise (droite)
-        (j < 7 && (is_in_fast(_array[i - 1][j + 1], 1, 6) || _en_passant_col == j + 1)) && add_move(i, j, i - 1, j + 1, iterator);
+        (j < 7 && (is_in_fast(_array[i - 1][j + 1], 1, 6) || (_en_passant_col == j + 1 && i == 3))) && add_move(i, j, i - 1, j + 1, iterator);
     }
 
     return true;
