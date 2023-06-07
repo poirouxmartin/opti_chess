@@ -398,7 +398,7 @@ class Board {
     [[nodiscard]] int max_monte_carlo_depth() const;
 
     // Algo de grogros_zero
-    void grogros_zero(Evaluator *eval = nullptr, int nodes = 1, bool checkmates = false, float beta = 0.035f, float k_add = 50.0f, int quiescence_depth = 4, bool display = false, int depth = 0, Network *net = nullptr);
+    void grogros_zero(Evaluator *eval = nullptr, int nodes = 1, bool checkmates = false, float beta = 0.035f, float k_add = 50.0f, int quiescence_depth = 4, bool deep_mates_check = true, bool explore_checks = true, bool display = false, int depth = 0, Network *net = nullptr);
 
     // Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
     void reset_board(bool display = false);
@@ -503,7 +503,7 @@ class Board {
     bool quick_moves_sort();
 
     // Fonction qui fait un quiescence search
-    int quiescence(Evaluator *eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool checkmates_check = true, bool main_call = true);
+    int quiescence(Evaluator *eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool checkmates_check = true, bool main_call = true, bool deep_mates_check = true, bool explore_checks = true);
 
     // Fonction qui renvoie le i-ème coup
     [[nodiscard]] int* get_i_move(int) const;
@@ -723,6 +723,8 @@ class GUI {
         float _beta = 0.035f;
         float _k_add = 25.0f;
         int _quiescence_depth = 4;
+        bool _deep_mates_search = true;
+        bool _explore_checks = true;
 
 
         // Constructeurs

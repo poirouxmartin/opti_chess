@@ -2589,7 +2589,7 @@ bool Board::draw() {
 
 
     // Analyse de Monte-Carlo
-    string monte_carlo_text = "Monte-Carlo research parameters : beta : " + to_string(main_GUI._beta) + " | k_add : " + to_string(main_GUI._k_add) + " | quiescence depth : " + to_string(main_GUI._quiescence_depth) + (!main_GUI._grogros_analysis ? "\nrun GrogrosZero-Auto (CTRL-G)" : "\nstop GrogrosZero-Auto (CTRL-H)");
+    string monte_carlo_text = "Monte-Carlo research parameters : beta : " + to_string(main_GUI._beta) + " | k_add : " + to_string(main_GUI._k_add) + " | quiescence depth : " + to_string(main_GUI._quiescence_depth) + " | deep mates search : " + (main_GUI._deep_mates_search ? "true" : "false") + " | explore checks : " + (main_GUI._explore_checks ? "true" : "false") + (!main_GUI._grogros_analysis ? "\nrun GrogrosZero-Auto (CTRL-G)" : "\nstop GrogrosZero-Auto (CTRL-H)");
     if (_tested_moves && drawing_arrows && (_monte_called || true)) {
         // int best_eval = (_player) ? max_value(_eval_children, _tested_moves) : min_value(_eval_children, _tested_moves);
         int best_move = max_index(_nodes_children, _tested_moves);
@@ -2598,7 +2598,7 @@ bool Board::draw() {
         int mate = is_eval_mate(best_eval);
         if (mate != 0) {
             if (mate * get_color() > 0)
-                eval = "+";
+                eval = "";
             else
                 eval = "-";
             eval += "M";
@@ -3163,8 +3163,8 @@ Buffer monte_buffer;
 
 
 // Algo de grogros_zero
-void Board::grogros_zero(Evaluator *eval, int nodes, const bool checkmates, const float beta, const float k_add, const int quiescence_depth, const bool display, const int depth, Network *net) {
-    static int max_depth;
+void Board::grogros_zero(Evaluator *eval, int nodes, const bool checkmates, const float beta, const float k_add, const int quiescence_depth, const bool deep_mates_check, const bool explore_checks, const bool display, const int depth, Network *net) {
+	static int max_depth;
     _monte_called = true;
     _is_active = true;
     const clock_t begin_monte_time = clock();
@@ -3268,7 +3268,7 @@ void Board::grogros_zero(Evaluator *eval, int nodes, const bool checkmates, cons
             
             // Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
             //monte_buffer._heap_boards[_index_children[_current_move]].evaluate_int(eval, checkmates, false, net);
-            monte_buffer._heap_boards[_index_children[_current_move]]._evaluation = monte_buffer._heap_boards[_index_children[_current_move]].quiescence(eval, -2147483647, 2147483647, quiescence_depth) * -get_color();
+            monte_buffer._heap_boards[_index_children[_current_move]]._evaluation = monte_buffer._heap_boards[_index_children[_current_move]].quiescence(eval, -2147483647, 2147483647, quiescence_depth, checkmates, true, deep_mates_check, explore_checks) * -get_color();
             //monte_buffer._heap_boards[_index_children[_current_move]]._evaluation = monte_buffer._heap_boards[_index_children[_current_move]].quiescence_improved(eval, -2147483647, 2147483647, quiescence_depth) * -_color;
         	monte_buffer._heap_boards[_index_children[_current_move]]._got_moves = -1; // BUG : euuuuh pourquoi ça bug sinon?
 
@@ -3300,7 +3300,7 @@ void Board::grogros_zero(Evaluator *eval, int nodes, const bool checkmates, cons
             //_current_move = select_uct();
 
             // Va une profondeur plus loin... appel récursif sur Monte-Carlo
-           monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(eval, 1, checkmates, beta, k_add, quiescence_depth, display, depth + 1, net);
+           monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(eval, 1, checkmates, beta, k_add, quiescence_depth, deep_mates_check, explore_checks, display, depth + 1, net);
 
             // Actualise l'évaluation
             _eval_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
@@ -3525,6 +3525,7 @@ int Board::get_king_safety(const int piece_attack, const int piece_defense, cons
 
 
 // Fonction qui renvoie s'il y a échec et mat, pat, ou rien (1 pour mat, 0 pour pat, -1 sinon)
+// TODO : à rendre plus rapide
 int Board::is_mate() {
 
     if (_mate_checked)
@@ -3556,13 +3557,15 @@ int Board::is_mate() {
             
     }
 
+    // Mat
     if (in_check()) {
         _half_moves_count = half_moves;
         _got_moves = moves;
         _mate_value = 1;
         return 1;  
     }
-              
+
+    // Pat
     _got_moves = moves;
     _half_moves_count = half_moves;
     _mate_value = 0;
@@ -4983,7 +4986,7 @@ bool Board::quick_moves_sort() {
 
 // Fonction qui fait un quiescence search
 // TODO améliorer avec un delta pruning
-int Board::quiescence(Evaluator *eval, int alpha, const int beta, const int depth, const bool checkmates_check, bool main_call) { 
+int Board::quiescence(Evaluator *eval, int alpha, const int beta, const int depth, const bool checkmates_check, bool main_call, bool deep_mates_check, bool explore_checks) {
     if (true || main_call)
         _quiescence_nodes = 1;
 
@@ -5021,7 +5024,7 @@ int Board::quiescence(Evaluator *eval, int alpha, const int beta, const int dept
             b.copy_data(*this);
             b.make_index_move(i);
 
-            const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, checkmates_check, false);
+            const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, checkmates_check, false, deep_mates_check, explore_checks);
             _quiescence_nodes += b._quiescence_nodes;
 
             if (score >= beta)
@@ -5029,6 +5032,40 @@ int Board::quiescence(Evaluator *eval, int alpha, const int beta, const int dept
 
             if (score > alpha)
                 alpha = score;
+        }
+
+        // Mats
+        // TODO : utiliser les flags 'échec' pour savoir s'il faut regarder ce coup
+        else if (deep_mates_check || explore_checks)
+        {
+            Board b;
+            b.copy_data(*this);
+            b.make_index_move(i);
+            if (b.in_check())
+            {
+                if (deep_mates_check)
+                {
+                    const int mate = b.is_mate();
+                    if (mate == 1)
+                        return 100 * (1000000 - 1000 * _moves_count);
+                    if (mate == 0)
+                        return 0;
+                }
+                
+
+                if (explore_checks)
+                {
+                    const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, checkmates_check, false, deep_mates_check, explore_checks);
+                    _quiescence_nodes += b._quiescence_nodes;
+
+                    if (score >= beta)
+                        return beta;
+
+                    if (score > alpha)
+                        alpha = score;
+                }
+            }
+            
         }
 
         
