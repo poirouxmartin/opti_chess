@@ -143,6 +143,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
     - Tours liées
     - Outpost
     - Pawn push threat (on le pousse et ça attaque une pièce)
+    - Passed block (si y'a qq chose qui bloque un pion passé)
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Augmenter la profondeur pour les finales (GrogrosFish)
@@ -347,6 +348,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Tout foutre dans la classe GUI? les variables globales et fonctions globales en particulier -> par exemple eval_components
 -> Adapter les fonctions aux coups (make_move(Move)...)
 -> Faire des méthodes utiles pour les coups
+-> Verifier que quiescence depth 0 est aussi rapide qu'une simple évaluation
 
 
 
@@ -439,6 +441,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Afficher des traits autour du plateau chess.com?
 -> Affichage de la réflexion de Grogros sur le PGN : {N: 10.29% of 544}
 -> Revoir le compare moves (sinon ça affiche pas toujours le meilleur coup au dessus)
+-> Quand on arrive au mat dans le quiescence, l'affichage de l'éval bug (-99800000 au lieu de mat en 2)
 
 
 
@@ -500,6 +503,11 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> r1b1kb1r/ppBp1pp1/q5n1/1Np5/2B1P2p/2Q5/2P2PPP/3R1RK1 b - - 9 18 : king danger+++
 -> r1b1kb1r/ppBp1pp1/8/1Np1P3/2B4p/2Q5/2P3PP/5K2 b - - 0 23
 -> 5r1k/pR2p1bp/q1P3p1/5b2/8/1B2BN2/5PPP/2R3K1 b - - 4 20
+-> 2r1kr2/pb3ppp/4pn2/2P5/pP6/4P3/PP3PPP/2KR1B1R b - - 0 15 : structure de pions surestimée?
+-> 2r2r2/4kpRp/4pn2/2Pb4/pP6/4P3/1P2BP1P/2KR4 b - - 0 20 : pawn structure + king safety.. ???
+-> 1k6/p1p5/8/2K5/6Bp/8/8/8 b - - 0 7 : ça c'est ingagnable aux blancs, y'a plus qu'un fou... faire qq chose pour l'eval d'engames
+-> 2kr2nr/2p2ppp/2Pb4/5q2/2Pp1B2/7P/RP3PP1/R5K1 b - - 0 2 : ici faut que l'eval statique comprenne que le roi est bloqué
+-> 2b1qk2/r3np2/4pBp1/p2pP3/1ppP4/2P5/PPB2PP1/2KR3R w - - 2 4 : pareil ici : réseau de mat
 
 
 ----- Problèmes -----
@@ -531,7 +539,7 @@ Q7/4pP1p/7k/4q2b/1B1r2PK/7n/8/6r1 w - - 0 1
 7k/4Q3/8/4p3/4p3/4pppp/4prpr/4Kbnq w - - 26 27
 8/8/5Q2/4p3/4p1k1/4pppp/4prpr/4Kbnq w - - 40 34
 8/7k/8/4p3/4p1Q1/4pppp/4prpr/4Kbnq w - - 48 38
-rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 0 1
+rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 0 1 : Mat de Lasker
 8/5k2/8/6Kp/6P1/8/8/8 w - - 40 69
 8/8/5p1P/8/4Pk2/2bP4/2B5/5K2 w - - 0 1
 K1k5/P1Pp4/1p1P4/8/p7/P2P4/8/8 w - - 0 1
@@ -588,6 +596,9 @@ rn2k1nr/pp3ppp/2p5/3pN3/1b1P4/2NQP1P1/PP1B1PqP/R3K2R w KQkq - 7 12
 3r4/bP5p/5kp1/2N2p2/4pP2/1R4PP/6K1/8 w - - 5 45
 r6k/p1p3pp/6n1/3Bp3/4P3/5r1q/PB1PNP2/R3QRK1 b - - 2 15 : ... mat en 3 pour les noirs
 2k2r2/pp1n1NQ1/2nPpp2/2Pb4/1r6/4B1P1/P4P1P/5BK1 b - - 0 24
+1r6/4P1P1/8/7k/8/7N/8/4K3 w - - 0 1
+r4qk1/pp6/3ppBBp/8/1n5Q/8/PPP2PPP/2KR4 w - - 0 1
+1k3q2/3r1p2/Kb6/p7/2N1Q3/1P6/8/8 w - - 0 1
 
 */
 
@@ -812,6 +823,7 @@ int main() {
             cout << test_array.pieces[0][0].type << endl;*/
 
             main_GUI.new_bind_game();
+            //main_GUI._board.grogros_zero(&monte_evaluator, 1, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._deep_mates_search, main_GUI._explore_checks);
 
         }
 
@@ -935,14 +947,14 @@ int main() {
                 monte_buffer.init();
             // ALT - Sans le calcul des mats/pats
             if (IsKeyDown(KEY_LEFT_ALT))
-                main_GUI._board.grogros_zero(&monte_evaluator, nodes_per_frame, false, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth);
+                main_GUI._board.grogros_zero(&monte_evaluator, nodes_per_frame, false, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._deep_mates_search, main_GUI._explore_checks);
             else {
                 // LSHIFT - Utilisation du réseau de neurones
                 if (IsKeyDown(KEY_LEFT_SHIFT))
                     //main_GUI._board.grogros_zero(nullptr, nodes_per_frame, true, main_GUI._beta, main_GUI._k_add, false, 0, &grogros_network);
                     false;
                 else
-                    main_GUI._board.grogros_zero(&monte_evaluator, nodes_per_frame, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth);
+                    main_GUI._board.grogros_zero(&monte_evaluator, nodes_per_frame, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._deep_mates_search, main_GUI._explore_checks);
             }
                 
         }
@@ -1163,21 +1175,21 @@ int main() {
                         time_to_play_move(main_GUI._time_white, main_GUI._time_black, 0.05f * (1.0f - best_move_percentage)) :
                         time_to_play_move(main_GUI._time_black, main_GUI._time_white, 0.05f * (1.0f - best_move_percentage));
                     int grogros_timed_nodes = min(nodes_per_frame, supposed_grogros_speed * max_move_time / 1000);
-                    main_GUI._board.grogros_zero(&monte_evaluator, min(!main_GUI._time ? nodes_per_frame : grogros_timed_nodes, grogros_nodes - main_GUI._board.total_nodes()), true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth);
+                    main_GUI._board.grogros_zero(&monte_evaluator, min(!main_GUI._time ? nodes_per_frame : grogros_timed_nodes, grogros_nodes - main_GUI._board.total_nodes()), true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._deep_mates_search, main_GUI._explore_checks);
                     if (main_GUI._board._time_monte_carlo >= max_move_time)
                         ((main_GUI._click_bind && main_GUI._board.click_i_move(main_GUI._board.best_monte_carlo_move(), get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board.best_monte_carlo_move(), true, true, false, false);
                 
                 
                 }
                 else
-                    main_GUI._board.grogros_zero(&monte_evaluator, nodes_per_frame, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth);
+                    main_GUI._board.grogros_zero(&monte_evaluator, nodes_per_frame, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._deep_mates_search, main_GUI._explore_checks);
             }
 
             // Quand c'est pas son tour
             if ((!main_GUI._board._player && main_GUI._white_player.substr(0, 12) == "GrogrosZero") || (main_GUI._board._player && main_GUI._black_player.substr(0, 12) == "GrogrosZero")) {
                 if (!monte_buffer._init)
                     monte_buffer.init();
-                main_GUI._board.grogros_zero(&monte_evaluator, nodes_per_user_frame, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth);
+                main_GUI._board.grogros_zero(&monte_evaluator, nodes_per_user_frame, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._deep_mates_search, main_GUI._explore_checks);
             }
 
             // Mode analyse
@@ -1186,9 +1198,9 @@ int main() {
                     monte_buffer.init();
 
                 if (!is_playing()) 
-                    main_GUI._board.grogros_zero(&monte_evaluator, nodes_per_frame, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth);
+                    main_GUI._board.grogros_zero(&monte_evaluator, nodes_per_frame, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._deep_mates_search, main_GUI._explore_checks);
                 else
-                    main_GUI._board.grogros_zero(&monte_evaluator, nodes_per_user_frame, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth); // Pour que ça ne lag pas pour l'utilisateur
+                    main_GUI._board.grogros_zero(&monte_evaluator, nodes_per_user_frame, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._deep_mates_search, main_GUI._explore_checks); // Pour que ça ne lag pas pour l'utilisateur
             }
 
 
