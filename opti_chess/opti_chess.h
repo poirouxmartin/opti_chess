@@ -60,6 +60,7 @@ typedef struct Move {
     uint_fast8_t j2 : 3;
     bool capture_flag : 1;
     bool promotion_flag : 1;
+    // Reste 2 bytes à utiliser : check? castling? en passant?
 
     bool operator== (const Move& other) const {
         return (i1 == other.i1) && (j1 == other.j1) && (i2 == other.i2) && (j2 == other.j2);
@@ -410,7 +411,7 @@ class Board {
     [[nodiscard]] int total_nodes() const;
 
     // Fonction qui calcule et renvoie la valeur correspondante à la sécurité des rois
-    int get_king_safety(int piece_attack = 40, int piece_defense = 20, int pawn_attack = 25, int pawn_defense = 100, int edge_defense = 125);
+    int get_king_safety();
 
     // Fonction qui renvoie s'il y a échec et mat (ou pat) (-1, 1 ou 0)
     int is_mate();
@@ -525,6 +526,12 @@ class Board {
 
     // Fonction qui met à jour la position des rois
     bool update_kings_pos();
+
+    // Fonction qui renvoie la puissance d'attaque d'une pièce sur le roi adverse
+    [[nodiscard]] int get_piece_attack_power(int i, int j) const;
+
+    // Fonction qui renvoie la puissance de défense d'une pièce pour le roi allié
+	[[nodiscard]] int get_piece_defense_power(int i, int j) const;
 
 };
 

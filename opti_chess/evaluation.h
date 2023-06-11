@@ -13,13 +13,13 @@ class Evaluator {
     float _bishop_pair = 0.3f;
     float _castling_rights = 0.0f;
     float _player_trait = 0.20f;
-    float _king_safety = 0.01f;
-    float _pawn_structure = 0.006f;
+    float _king_safety = 0.003f;
+    float _pawn_structure = 0.004f;
     float _attacks = 0.01f;
-    float _defenses = 0.0035f;
+    float _defenses = 0.0025f;
     float _kings_opposition = 0.75f;
     float _push = 1.00f;
-    float _rook_open = 0.005f;
+    float _rook_open = 0.003f;
     float _square_controls = 0.003f;
     float _space_advantage = 0.006f;
     //float _alignments = 0.01f;
@@ -58,7 +58,7 @@ class Evaluator {
 	        { -10,    5,   31,   65,   60,   30,    2,    0},
 	        { -18,   10,   25,   22,   18,   45,   20,  -14},
 	        { -40,  -30,    2,    5,    2,    0,  -23,  -25},
-	        { -74,  -80,  -46,  -34,  -19,  -25,  -90,  -59}   },
+	        { -74,  -60,  -46,  -34,  -19,  -25,  -75,  -59}   },
 
         // fou
         {
@@ -69,7 +69,7 @@ class Evaluator {
             {   6,   5,  17,  11,   8,  15,   0,   8 },
             {   7,  12,  17,  15,  12,  22,  10,   7 },
             {   9,  25,   5,   5,  10,   3,  32,   8 },
-            { -15,   1, -27,  -6,  -7, -20, -10, -10 }  },
+            { -15,   1, -37,  -6,  -7, -50, -10, -10 }  },
 
         // tour
 	    {
