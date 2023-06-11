@@ -349,6 +349,11 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Adapter les fonctions aux coups (make_move(Move)...)
 -> Faire des méthodes utiles pour les coups
 -> Verifier que quiescence depth 0 est aussi rapide qu'une simple évaluation
+-> Flags pour les coups
+-> Rajouter les noeuds du quiescence search dans le nombre de noeuds de grogros zero
+-> Rendre from_fen plus tolérant
+-> Améliorer l'évaluation en faisant jouer contre Leela, et regarder ce que Grogros évalue mal
+-> Différencier mobilité et activité des pièces
 
 
 
@@ -442,6 +447,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Affichage de la réflexion de Grogros sur le PGN : {N: 10.29% of 544}
 -> Revoir le compare moves (sinon ça affiche pas toujours le meilleur coup au dessus)
 -> Quand on arrive au mat dans le quiescence, l'affichage de l'éval bug (-99800000 au lieu de mat en 2)
+-> Adapter nodes_per_frame en fonction du temps de réflexion de GrogrosZero (tant que la parallelisation n'est pas faite)
 
 
 
@@ -508,6 +514,13 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> 1k6/p1p5/8/2K5/6Bp/8/8/8 b - - 0 7 : ça c'est ingagnable aux blancs, y'a plus qu'un fou... faire qq chose pour l'eval d'engames
 -> 2kr2nr/2p2ppp/2Pb4/5q2/2Pp1B2/7P/RP3PP1/R5K1 b - - 0 2 : ici faut que l'eval statique comprenne que le roi est bloqué
 -> 2b1qk2/r3np2/4pBp1/p2pP3/1ppP4/2P5/PPB2PP1/2KR3R w - - 2 4 : pareil ici : réseau de mat
+-> rnb2b1r/p3kPpp/2p5/3nP3/2p5/2N2N2/PP3PPP/R1BR2K1 w - - 1 13 : ...........
+-> 2r3k1/p4pbp/q3p1p1/8/8/1Q2P3/P4PPP/3K2RR w - - 0 27 : king danger+++++++
+-> r1bq1rk1/ppppnpp1/2n5/2bNp1P1/2B1P3/2P5/PP1P1PP1/R1BQK2R b KQ - 0 2
+-> rnbqk2r/pppp1ppp/8/4P3/2B1n3/5N2/PPP1KbPP/RNBQ3R b kq - 1 6 : king safety -820 mdr
+-> rnbq1k1r/pppp2pp/8/2bQP2B/8/5N2/PPP3PP/RNB1K2n b Q - 1 8
+-> 5rk1/p4pp1/7p/Q1p4b/2P1n3/P5nP/1PB3P1/RNr1N1K1 b - - 1 7
+-> 4k2r/1b1n1ppp/p4n2/1p1P2N1/1P6/P1r1P1P1/2P1B2P/R4RK1 b k - 0 20 : ça c'est déjà foutu pour les blancs
 
 
 ----- Problèmes -----
@@ -599,6 +612,7 @@ r6k/p1p3pp/6n1/3Bp3/4P3/5r1q/PB1PNP2/R3QRK1 b - - 2 15 : ... mat en 3 pour les n
 1r6/4P1P1/8/7k/8/7N/8/4K3 w - - 0 1
 r4qk1/pp6/3ppBBp/8/1n5Q/8/PPP2PPP/2KR4 w - - 0 1
 1k3q2/3r1p2/Kb6/p7/2N1Q3/1P6/8/8 w - - 0 1
+6k1/p4pp1/5r1p/Q1p4b/B1P1n1P1/P2Nn2P/1P5K/RNr5 b - - 2 13
 
 */
 
@@ -822,9 +836,9 @@ int main() {
             cout << sizeof(test_array) << endl;
             cout << test_array.pieces[0][0].type << endl;*/
 
+            locate_chessboard(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom);
             main_GUI.new_bind_game();
             //main_GUI._board.grogros_zero(&monte_evaluator, 1, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._deep_mates_search, main_GUI._explore_checks);
-
         }
 
         // CTRL-T - Cherche le plateau de chess.com sur l'écran
