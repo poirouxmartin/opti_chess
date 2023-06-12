@@ -386,8 +386,8 @@ class Board {
     // Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo d'un plateau
     void draw_monte_carlo_arrows() const;
 
-    // Fonction qui calcule et renvoie l'activité des pièces
-    [[nodiscard]] int get_piece_activity(bool legal = false) const;
+    // Fonction qui calcule et renvoie la mobilité des pièces
+    [[nodiscard]] int get_piece_mobility(bool legal = false) const;
 
     // Fonction qui renvoie le meilleur coup selon l'analyse faite par l'algo de Monte-Carlo
     [[nodiscard]] int best_monte_carlo_move() const;
@@ -532,6 +532,9 @@ class Board {
 
     // Fonction qui renvoie la puissance de défense d'une pièce pour le roi allié
 	[[nodiscard]] int get_piece_defense_power(int i, int j) const;
+
+    // Fonction qui renvoie l'activité des pièces
+	[[nodiscard]] int get_piece_activity() const;
 
 };
 
@@ -716,7 +719,7 @@ class GUI {
         // Pour la gestion du temps
         clock_t _last_move_clock;
 
-        // Joueur au trait lors du dernier check (pour les temps
+        // Joueur au trait lors du dernier check (pour les temps)
         bool _last_player = true;
 
         // Affichage des flèches : affiche les chances de gain (true), l'évaluation (false)
@@ -727,7 +730,7 @@ class GUI {
         TextBox _black_time_text_box;
 
         // Paramètres pour la recherche de Monte-Carlo
-        float _beta = 0.035f;
+        float _beta = 0.03f;
         float _k_add = 25.0f;
         int _quiescence_depth = 4;
         bool _deep_mates_search = true;

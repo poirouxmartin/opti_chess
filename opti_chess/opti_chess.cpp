@@ -1239,12 +1239,12 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
     }
         
 
-    // Activité des pièces
-    if (eval->_piece_activity != 0.0f) {
-	    const float piece_activity = static_cast<float>(get_piece_activity()) * eval->_piece_activity;
+    // Mobilité des pièces
+    if (eval->_piece_mobility != 0.0f) {
+	    const float piece_mobility = static_cast<float>(get_piece_mobility(true)) * eval->_piece_mobility;
         if (display)
-            eval_components += "piece activity : " + (piece_activity >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * piece_activity))) + "\n";
-        _evaluation += piece_activity;
+            eval_components += "piece mobility : " + (piece_mobility >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * piece_mobility))) + "\n";
+        _evaluation += piece_mobility;
     }
 
     // Trait du joueur
@@ -1334,6 +1334,15 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
 			eval_components += "pieces alignment : " + (pieces_alignment >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * pieces_alignment))) + "\n";
 		_evaluation += pieces_alignment;
 	}
+
+
+    // Activité des pièces
+    if (eval->_piece_activity != 0.0f) {
+        const float piece_activity = static_cast<float>(get_piece_activity()) * eval->_piece_activity;
+        if (display)
+            eval_components += "piece activity : " + (piece_activity >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * piece_activity))) + "\n";
+        _evaluation += piece_activity;
+    }
 
 
     // Forteresse
@@ -2916,15 +2925,16 @@ void Board::draw_monte_carlo_arrows() const
 }
 
 
-// Fonction qui calcule et renvoie l'activité des pièces
-int Board::get_piece_activity(const bool legal) const
+// Fonction qui calcule et renvoie la mobilité des pièces
+int Board::get_piece_mobility(const bool legal) const
 {
 
+    // TODO : les mobility values doivent dépendre de la pièce
     Board b;
     b.copy_data(*this);
-    int piece_activity = 0;
+    int piece_mobility = 0;
 
-    static constexpr int activity_values[21] = {-150, 100, 152, 193, 228, 261, 298, 332, 364, 393, 419, 442, 461, 478, 492, 504, 513, 520, 525, 528, 529};
+    static constexpr int mobility_values[21] = {-150, 100, 152, 193, 228, 261, 298, 332, 364, 393, 419, 442, 461, 478, 492, 504, 513, 520, 525, 528, 529};
 
     // Fait un tableau de toutes les pièces : position, valeur
     int piece_move_count[64] = {0};
@@ -2960,13 +2970,13 @@ int Board::get_piece_activity(const bool legal) const
     for (uint_fast8_t i = 0; i < 8; i++) {
         for (uint_fast8_t j = 0; j < 8; j++) {
             if (_array[i][j] != 0) {
-                piece_activity += (_array[i][j] < 7 ? 1 : -1) * activity_values[min(20, piece_move_count[i * 8 + j])];
+                piece_mobility += (_array[i][j] < 7 ? 1 : -1) * mobility_values[min(20, piece_move_count[i * 8 + j])];
                 index++;
             }
         }
     }
 
-    return piece_activity;
+    return piece_mobility;
 }
 
 
@@ -3434,7 +3444,7 @@ int Board::get_king_safety() {
     // Facteurs multiplicatifs
     constexpr float piece_attack_factor = 1.0f;
     constexpr float piece_defense_factor = 1.0f;
-    constexpr float pawn_protection_factor = 1.0f;
+    constexpr float pawn_protection_factor = 1.25f;
 
 
     // Calcul des protections et puissances d'attaques
@@ -3447,6 +3457,7 @@ int Board::get_king_safety() {
                         w_king_protection += static_cast<int>(pawn_protection_factor * static_cast<float>(get_piece_defense_power(i, j)));
                     else
                         w_defending_power += static_cast<int>(piece_defense_factor * static_cast<float>(get_piece_defense_power(i, j)));
+                        
                     
                 } 
                 else if (p > 6 && p < 12) {
@@ -3459,16 +3470,18 @@ int Board::get_king_safety() {
             }
         }
 
+
+
     // Protection des bords de l'échiquier
-    constexpr int edge_protection = 250;
-    w_king_protection += (_white_king_pos.i % 7 == 0 || _white_king_pos.j % 7 == 0) * edge_protection;
-    b_king_protection += (_black_king_pos.i % 7 == 0 || _black_king_pos.j % 7 == 0) * edge_protection;
+    constexpr int edge_protection = 0;
+    w_king_protection += (_white_king_pos.i % 7 == 0 + _white_king_pos.j % 7 == 0) * edge_protection;
+    b_king_protection += (_black_king_pos.i % 7 == 0 + _black_king_pos.j % 7 == 0) * edge_protection;
 
 
     // Il faut compter les cases vides (non-pion) autour de lui
 
     // Droits de roque
-    constexpr int castling_rights_protection = 100;
+    constexpr int castling_rights_protection = 150;
     w_king_protection += (_castling_rights.k_w + _castling_rights.q_w) * castling_rights_protection;
     b_king_protection += (_castling_rights.k_b + _castling_rights.q_b) * castling_rights_protection;
 
@@ -3481,11 +3494,11 @@ int Board::get_king_safety() {
     // Proximité avec le bord
     // Avancement à partir duquel il est plus dangereux d'être sur un bord
     constexpr float edge_adv = 0.75f;
-    constexpr float mult_endgame = 2.0f;
+    constexpr float mult_endgame = 10.0f;
 
 
     // Version additive, adaptée pour l'endgame
-    constexpr int edge_defense = 100;
+    constexpr int edge_defense = 200;
     constexpr int endgame_safe_zone = 16; // Si le "i * j" du roi en endgame est supérieur, alors il n'est pas en danger : s'il est en c4 (2, 3 -> (2 + 1) * (3 + 1) = 12 < 16 -> danger)
     w_king_weakness += max_int(edge_defense, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? min(_white_king_pos.i, 7 - _white_king_pos.i) + min(_white_king_pos.j, 7 - _white_king_pos.j) : endgame_safe_zone - ((min(_white_king_pos.i, 7 - _white_king_pos.i) + 1) * (min(_white_king_pos.j, 7 - _white_king_pos.j) + 1))) * mult_endgame / (edge_adv - 1)) - edge_defense;
     b_king_weakness += max_int(edge_defense, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? min(_black_king_pos.i, 7 - _black_king_pos.i) + min(_black_king_pos.j, 7 - _black_king_pos.j) : endgame_safe_zone - ((min(_black_king_pos.i, 7 - _black_king_pos.i) + 1) * (min(_black_king_pos.j, 7 - _black_king_pos.j) + 1))) * mult_endgame / (edge_adv - 1)) - edge_defense;
@@ -3561,7 +3574,7 @@ int Board::get_king_safety() {
     b_king_weakness = b_king_weakness * (static_cast<float>(w_attacking_power) / reference_attacking_power + static_cast<float>(w_total_potential) / reference_potential);
 
     // Même pour un roi 'non faible', un surnombre peut être dangereux
-    constexpr int attack_initiation_factor = 5;
+    constexpr int attack_initiation_factor = 1;
     w_king_weakness += max(0, (b_attacking_power - max(0, w_king_protection))) * attack_initiation_factor;
     b_king_weakness += max(0, (w_attacking_power - max(0, b_king_protection))) * attack_initiation_factor;
 
@@ -5644,7 +5657,7 @@ int Board::get_piece_attack_power(int i, int j) const
     // Tableaux des puissances d'attaque
 
     // Pion
-    constexpr int pawn_attacking_power_map[8][8] = {
+    static constexpr int pawn_attacking_power_map[8][8] = {
     {0, 15, 5, 0, 0, 0, 0, 0},
     {25, 30, 5, 0, 0, 0, 0, 0},
     {20, 15, 10, 0, 0, 0, 0, 0},
@@ -5656,11 +5669,11 @@ int Board::get_piece_attack_power(int i, int j) const
     };
 
     // Cavalier
-    constexpr int knight_attacking_power_map[8][8] = {
+    static constexpr int knight_attacking_power_map[8][8] = {
     {0, 15, 15, 10, 0, 0, 0, 0},
     {25, 20, 15, 10, 0, 0, 0, 0},
     {30, 45, 10, 5, 0, 0, 0, 0},
-    {60, 75, 15, 10, 0, 0, 0, 0},
+    {60, 95, 15, 10, 0, 0, 0, 0},
     {20, 15, 10, 5, 0, 0, 0, 0},
     {10, 15, 10, 0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0},
@@ -5668,7 +5681,7 @@ int Board::get_piece_attack_power(int i, int j) const
     };
 
     // Fou
-    constexpr int bishop_attacking_power_map[8][8] = {
+    static constexpr int bishop_attacking_power_map[8][8] = {
     {0, 25, 10, 0, 0, 0, 0, 0},
     {25, 30, 15, 0, 0, 0, 0, 0},
     {75, 80, 25, 0, 0, 0, 0, 0},
@@ -5680,7 +5693,7 @@ int Board::get_piece_attack_power(int i, int j) const
     };
 
     // Tour
-    constexpr int rook_attacking_power_map[8][8] = {
+    static constexpr int rook_attacking_power_map[8][8] = {
     {0, 50, 35, 35, 35, 35, 35, 35},
     {50, 25, 25, 25, 25, 25, 25, 25},
     {35, 15, 0, 0, 0, 0, 0, 0},
@@ -5692,19 +5705,19 @@ int Board::get_piece_attack_power(int i, int j) const
     };
 
     // Dame
-    constexpr int queen_attacking_power_map[8][8] = {
-    {0, 150, 120, 90, 50, 40, 30, 20},
-    {150, 120, 160, 40, 20, 0, 0, 0},
-    {300, 250, 150, 80, 30, 0, 0, 0},
-    {220, 170, 100, 70, 20, 0, 0, 0},
-    {100, 80, 50, 20, 0, 0, 0, 0},
-    {70, 40, 20, 0, 0, 0, 0, 0},
-    {40, 20, 0, 0, 0, 0, 0, 0},
-    {30, 10, 0, 0, 0, 0, 0, 0}
+    static constexpr int queen_attacking_power_map[8][8] = {
+	{0, 350, 80, 90, 70, 50, 30, 20},
+	{350, 300, 110, 70, 50, 40, 20, 10},
+	{200, 250, 150, 80, 30, 20, 10, 5},
+    {220, 170, 100, 70, 20, 15, 10, 5},
+	{100, 80, 50, 20, 10, 5, 0, 0},
+	{70, 40, 20, 10, 5, 0, 0, 0},
+	{40, 20, 10, 5, 0, 0, 0, 0},
+	{30, 10, 5, 0, 0, 0, 0, 0}
     };
 
     // Roi
-    constexpr int king_attacking_power_map[8][8] = {
+    static constexpr int king_attacking_power_map[8][8] = {
     {0, 0, 75, 0, 0, 0, 0, 0},
     {0, 0, 35, 0, 0, 0, 0, 0},
     {75, 35, 25, 0, 0, 0, 0, 0},
@@ -5767,8 +5780,8 @@ int Board::get_piece_defense_power(int i, int j) const
     // Tableaux des puissances d'attaque
 
     // Pion
-    constexpr int pawn_defensing_power_map[8][8] = {
-    {0, 100, 25, 0, 0, 0, 0, 0},
+    static constexpr int pawn_defensing_power_map[8][8] = {
+    {0, 150, 25, 0, 0, 0, 0, 0},
     {350, 175, 35, 0, 0, 0, 0, 0},
     {150, 100, 50, 0, 0, 0, 0, 0},
     {75, 15, 0, 15, 0, 0, 0, 0},
@@ -5779,9 +5792,9 @@ int Board::get_piece_defense_power(int i, int j) const
     };
 
     // Cavalier
-    constexpr int knight_defensing_power_map[8][8] = {
+    static constexpr int knight_defensing_power_map[8][8] = {
     {0, 45, 25, 10, 0, 0, 0, 0},
-    {75, 15, 10, 0, 0, 0, 0, 0},
+    {95, 15, 10, 0, 0, 0, 0, 0},
     {60, 50, 35, 5, 0, 0, 0, 0},
     {35, 25, 10, 0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0},
@@ -5791,7 +5804,7 @@ int Board::get_piece_defense_power(int i, int j) const
     };
 
     // Fou
-    constexpr int bishop_defensing_power_map[8][8] = {
+    static constexpr int bishop_defensing_power_map[8][8] = {
     {0, 50, 15, 0, 0, 0, 0, 0},
     {85, 45, 10, 0, 0, 0, 0, 0},
     {75, 50, 25, 5, 0, 0, 0, 0},
@@ -5803,7 +5816,7 @@ int Board::get_piece_defense_power(int i, int j) const
     };
 
     // Tour
-    constexpr int rook_defensing_power_map[8][8] = {
+    static constexpr int rook_defensing_power_map[8][8] = {
     {0, 15, 5, 5, 5, 5, 5, 5},
     {50, 25, 10, 10, 10, 10, 10, 10},
     {25, 10, 0, 0, 0, 0, 0, 0},
@@ -5815,15 +5828,15 @@ int Board::get_piece_defense_power(int i, int j) const
     };
 
     // Dame
-    constexpr int queen_defensing_power_map[8][8] = {
-    {0, 65, 30, 10, 0, 0, 0, 0},
-    {100, 80, 40, 10, 0, 0, 0, 0},
-    {125, 100, 60, 20, 0, 0, 0, 0},
-    {40, 65, 50, 10, 0, 0, 0, 0},
-    {20, 10, 5, 0, 0, 0, 0, 0},
-    {10, 0, 0, 0, 0, 0, 0, 0},
-    {5, 0, 0, 0, 0, 0, 0, 0},
-    {5, 0, 0, 0, 0, 0, 0, 0}
+	static constexpr int queen_defensing_power_map[8][8] = {
+	{0, 95, 45, 15, 0, 0, 0, 0},
+	{150, 120, 60, 15, 0, 0, 0, 0},
+	{185, 150, 90, 30, 0, 0, 0, 0},
+	{60, 95, 75, 15, 0, 0, 0, 0},
+	{30, 15, 5, 0, 0, 0, 0, 0},
+	{15, 0, 0, 0, 0, 0, 0, 0},
+	{5, 0, 0, 0, 0, 0, 0, 0},
+	{5, 0, 0, 0, 0, 0, 0, 0}
     };
 
 
@@ -5856,4 +5869,62 @@ int Board::get_piece_defense_power(int i, int j) const
 
 
     return 0;
+}
+
+
+
+// Fonction qui renvoie l'activité des pièces
+int Board::get_piece_activity() const
+{
+    uint_fast8_t controlled_squares[8][8] = {0};
+
+    Board b(*this);
+
+    // Contrôle des cases adverses
+
+    // Blancs
+    b._player = true;
+    b.get_moves(false, false);
+    for (uint_fast8_t i = 0; i < b._got_moves; i++)
+    {
+        const uint_fast8_t p = _array[b._moves[i].i1][b._moves[i].j1];
+        if (b._moves[i].i2 >= 4 && p != 1 && p != 5)
+            controlled_squares[b._moves[i].i2][b._moves[i].j2]++;
+    }
+	    
+
+    // Noirs
+    b._player = false;
+    b._got_moves = -1;
+    b.get_moves(false, false);
+    for (uint_fast8_t i = 0; i < b._got_moves; i++)
+    {
+        const uint_fast8_t p = _array[b._moves[i].i1][b._moves[i].j1];
+        if (b._moves[i].i2 <= 3 && p != 7 && p != 11)
+            controlled_squares[b._moves[i].i2][b._moves[i].j2]++;
+    }
+	    
+
+    // Puissance du contrôle d'une case adverse
+    // Controllée 1 fois, 2 fois...
+    constexpr uint_fast8_t controlled_power[4] = {10, 15, 18, 20};
+
+    int activity = 0;
+
+    for (uint_fast8_t j = 0; j < 8; j++)
+    {
+	    for (uint_fast8_t i = 0; i < 4; i++)
+	    {
+	    	if (controlled_squares[i][j] > 0)
+			    activity -= controlled_power[controlled_squares[i][j] - 1];
+	    }
+        for (uint_fast8_t i = 4; i < 8; i++)
+        {
+            if (controlled_squares[i][j] > 0)
+                activity += controlled_power[controlled_squares[i][j] - 1];
+        }
+    }
+
+
+    return activity * (1 - _adv);
 }
