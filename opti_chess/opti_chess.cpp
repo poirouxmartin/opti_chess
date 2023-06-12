@@ -555,48 +555,12 @@ bool Board::attacked(const int i, const int j) const
 bool Board::in_check()
 {
 
-    // Cherche le roi
-    const int king = 9 - 3 * get_color();
-    int_fast8_t king_i = -1;
-    int_fast8_t king_j = -1;
+    update_kings_pos();
 
-    if ((_player && _array[_white_king_pos.i][_white_king_pos.j] != 6) || (!_player && _array[_black_king_pos.i][_black_king_pos.j] != 12))
-    {
 
-        // Trouve la case correspondante au roi
-        for (int_fast8_t i = 0; i < 8; i++) {
-            for (int_fast8_t j = 0; j < 8; j++) {
-                if (_array[i][j] == king) {
-                    king_i = i;
-                    king_j = j;
-                    if (_player)
-                        _white_king_pos = { i, j };
-                    else
-                        _black_king_pos = { i, j };
-                    break;
-                }
-            }
-            if (king_i != -1)
-                break;
-        }
-    }
-
-    else
-    {
-        if (_player)
-        {
-            king_i = _white_king_pos.i;
-            king_j = _white_king_pos.j;
-        }
-        else
-        {
-            king_i = _black_king_pos.i;
-            king_j = _black_king_pos.j;
-        }
+    const int king_i = _player ? _white_king_pos.i : _black_king_pos.i;
+    const int king_j = _player ? _white_king_pos.j : _black_king_pos.j;
         
-    }
-	
-    
 
     // Comment aller plus vite : partir du roi, pour trouver les potentiels attaquants :
     // Regarder les diagonales, les lignes/colonnes, et voit si une pièce adverse attaque le roi par cette direction
@@ -1392,8 +1356,8 @@ float Board::negamax(const int depth, float alpha, const float beta, const bool 
 
     if (depth == 0) {
         //evaluate(eval);
-        return quiescence(eval, -10000000, 10000000, quiescence_depth);
-        //return color * _evaluation;
+        return quiescence(eval, -10000000, 10000000, quiescence_depth, false);
+        //return get_color() * _evaluation;
     }
 
     // à mettre avant depth == 0?

@@ -731,6 +731,7 @@ int main() {
 
     // Valeurs à 0 pour augmenter la vitesse de calcul. A tester vs grogrosfish avec tout d'activé
     eval_white._piece_mobility = 0.0f;
+    eval_white._piece_positioning = 0.0f;
     eval_white._attacks = 0.0f;
     eval_white._defenses = 0.0f;
     eval_white._king_safety = 0.0f;
@@ -739,14 +740,15 @@ int main() {
     eval_white._player_trait = 0.0f;
     eval_white._push = 0.0f;
     eval_white._rook_open = 0.0f;
-    eval_white._piece_positioning = 0.0f;
     eval_white._castling_rights = 0.0f;
     eval_white._square_controls = 0.0f;
     eval_white._space_advantage = 0.0f;
+    eval_white._alignments = 0.0f;
+    eval_white._piece_activity = 0.0f;
 
     // Paramètres pour l'IA
     int search_depth = 8;
-    search_depth = 4;
+    search_depth = 7;
 
 
     // Fin de partie
@@ -1221,6 +1223,8 @@ int main() {
                     main_GUI._board.grogros_zero(&monte_evaluator, nodes_per_user_frame, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._deep_mates_search, main_GUI._explore_checks); // Pour que ça ne lag pas pour l'utilisateur
             }
 
+            if (main_GUI._board._is_game_over || main_GUI._board.is_mate() != -1 || main_GUI._board.game_over() != 0)
+                goto game_over;
 
             // GrogrosFish (seulement lorsque c'est son tour)
             if (main_GUI._board._player && main_GUI._white_player.substr(0, 11) == "GrogrosFish")
@@ -1233,6 +1237,8 @@ int main() {
 
         // Si la partie est terminée
         else {
+            game_over:
+
             if (!main_game_over) {
                 main_GUI._time = false;
                 main_GUI._board.display_pgn();
