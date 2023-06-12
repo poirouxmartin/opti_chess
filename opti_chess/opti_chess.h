@@ -339,7 +339,7 @@ class Board {
     bool evaluate_int(Evaluator *eval = nullptr, bool checkmates = false, bool display = false, Network *n = nullptr);
 
     // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-    float negamax(int, float, float, bool, Evaluator *, bool play = false, bool display = false, int quiescence_depth = 4);
+    float negamax(int, float, float, bool, Evaluator *, bool play = false, bool display = false, int quiescence_depth = 0);
 
     // Version un peu mieux optimisée de Grogrosfish
     bool grogrosfish(int, Evaluator *, bool);
