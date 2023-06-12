@@ -354,6 +354,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Rendre from_fen plus tolérant
 -> Améliorer l'évaluation en faisant jouer contre Leela, et regarder ce que Grogros évalue mal
 -> Différencier mobilité et activité des pièces
+-> Eviter les accès à _moves[i] trop souvent? -> copier le coup?
 
 
 
@@ -478,7 +479,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> q1r3k1/3bbppp/2n1pn2/1BP5/P7/4PN2/2Q3PP/1R3RK1 b - - 0 20 -> passed pawn--, center control-, positioning-
 -> q1r3k1/4bpp1/2b1pn1p/nBP5/P7/3QPN2/6PP/2R2RK1 w - - 4 23 -> 'slider on queen'+, imbalance+?
 -> 1r4k1/4bpp1/2n1pn1p/2P5/q7/3QPN2/6PP/2R2RK1 w - - 0 26 -> (material + imbalance)+, passed pawn--, connected pawns (defense)+
--> 2rr2k1/pp3ppp/5b2/n7/2p2P2/P3P1P1/1PbNBK1P/R1B2R2 w - - 0 20 -> piece activity+
+-> 2rr2k1/pp3ppp/5b2/n7/2p2P2/P3P1P1/1PbNBK1P/R1B2R2 w - - 0 20 -> piece mobility+
 -> r7/1pp2kpp/5p2/1Pbr4/4p3/2B1P1P1/5P1P/1R3RK1 w - - 1 25 -> king safety... ???
 -> 6k1/1p3ppp/r7/3p1b2/1P6/2BpPP2/3P1KPP/5R2 w - - 5 29 -> king safety...
 -> 1r2kb1r/1q3pp1/p2p1n2/Pp1Pn1Bp/2bNP3/Q4B2/1P2N1PP/2R2RK1 b k - 2 24 : Stockfish dit +1.... Grogros +4
@@ -521,6 +522,8 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> rnbq1k1r/pppp2pp/8/2bQP2B/8/5N2/PPP3PP/RNB1K2n b Q - 1 8
 -> 5rk1/p4pp1/7p/Q1p4b/2P1n3/P5nP/1PB3P1/RNr1N1K1 b - - 1 7
 -> 4k2r/1b1n1ppp/p4n2/1p1P2N1/1P6/P1r1P1P1/2P1B2P/R4RK1 b k - 0 20 : ça c'est déjà foutu pour les blancs
+-> rn3r2/pbppq1p1/1p2pN2/8/3P2NP/3B1kP1/PPP2P2/R3K2R w KQ - 1 6 : king safety... faut du +20
+-> 5rk1/pp4pp/2pb4/3p3q/B2P3P/2N1Bp2/PPP5/R3Q1K1 w - - 0 4
 
 
 ----- Problèmes -----
@@ -726,7 +729,7 @@ int main() {
     int nodes_per_user_frame = 100;
 
     // Valeurs à 0 pour augmenter la vitesse de calcul. A tester vs grogrosfish avec tout d'activé
-    eval_white._piece_activity = 0.0f;
+    eval_white._piece_mobility = 0.0f;
     eval_white._attacks = 0.0f;
     eval_white._defenses = 0.0f;
     eval_white._king_safety = 0.0f;
