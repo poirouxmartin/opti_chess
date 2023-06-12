@@ -355,6 +355,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Améliorer l'évaluation en faisant jouer contre Leela, et regarder ce que Grogros évalue mal
 -> Différencier mobilité et activité des pièces
 -> Eviter les accès à _moves[i] trop souvent? -> copier le coup?
+-> Get_control_map() + type control_map (à utiliser lors de l'évaluation pour la calculer seulement une fois)
 
 
 

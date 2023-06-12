@@ -285,22 +285,22 @@ class Board {
     void display() const;
 
     // Fonction qui ajoute un coup dans la liste de coups
-    bool add_move(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, int*);
+    bool add_move(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
 
     // Fonction qui ajoute les coups "pions" dans la liste de coups
-    bool add_pawn_moves(uint_fast8_t, uint_fast8_t, int*);
+    bool add_pawn_moves(uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
 
     // Fonction qui ajoute les coups "cavaliers" dans la liste de coups
-    bool add_knight_moves(uint_fast8_t, uint_fast8_t, int*);
+    bool add_knight_moves(uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
 
     // Fonction qui ajoute les coups diagonaux dans la liste de coups
-    bool add_diag_moves(uint_fast8_t, uint_fast8_t, int*);
+    bool add_diag_moves(uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
 
     // Fonction qui ajoute les coups horizontaux et verticaux dans la liste de coups
-    bool add_rect_moves(uint_fast8_t, uint_fast8_t, int*);
+    bool add_rect_moves(uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
 
     // Fonction qui ajoute les coups "roi" dans la liste de coups
-    bool add_king_moves(uint_fast8_t, uint_fast8_t, int*);
+    bool add_king_moves(uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
 
     // Renvoie la liste des coups possibles
     bool get_moves(const bool pseudo = false, const bool forbide_check = false);
