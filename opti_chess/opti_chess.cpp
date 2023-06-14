@@ -1603,6 +1603,7 @@ void Board::sort_moves(Evaluator *eval) {
     // Suppression des tableaux
     delete[] values;
     delete[] new_moves;
+    delete[] moves_indexes;
 
     _sorted_moves = true;
     _quick_sorted_moves = false;
@@ -3408,7 +3409,7 @@ int Board::get_king_safety() {
     // Facteurs multiplicatifs
     constexpr float piece_attack_factor = 1.0f;
     constexpr float piece_defense_factor = 1.0f;
-    constexpr float pawn_protection_factor = 1.25f;
+    constexpr float pawn_protection_factor = 1.0f;
 
 
     // Calcul des protections et puissances d'attaques
@@ -3514,7 +3515,7 @@ int Board::get_king_safety() {
     // Le surnombre peut aussi provoquer une faiblesse sur le roi adverse -> TODO : king_weakness à modifier si attacking power est grand? -> au dessus d'une constante?
 
     // Constante qui determine la puissance d'attaque
-    constexpr int reference_attacking_power = 100;
+    constexpr int reference_attacking_power = 75;
 
 	// Affiche la faiblesse resultante
     if (display)
@@ -5011,6 +5012,7 @@ bool Board::quick_moves_sort() {
     // Suppression des tableaux
     delete[] moves_values;
     delete[] new_moves;
+    delete[] moves_indexes;
 
     _quick_sorted_moves = true;
     _sorted_moves = false;
@@ -5646,11 +5648,11 @@ int Board::get_piece_attack_power(int i, int j) const
 
     // Fou
     static constexpr int bishop_attacking_power_map[8][8] = {
-    {0, 25, 10, 0, 0, 0, 0, 0},
-    {25, 30, 15, 0, 0, 0, 0, 0},
-    {75, 80, 25, 0, 0, 0, 0, 0},
-    {10, 25, 20, 15, 0, 0, 0, 0},
-    {5, 0, 25, 20, 15, 0, 0, 0},
+    {0,  70, 50, 20, 0, 0, 0, 0},
+    {70, 60, 40, 20, 0, 0, 0, 0},
+    {75, 80, 45, 10, 0, 0, 0, 0},
+    {30, 25, 20, 15, 0, 0, 0, 0},
+    {15, 10, 25, 20, 15, 0, 0, 0},
     {0, 0, 0, 25, 20, 15, 0, 0},
     {0, 0, 0, 0, 25, 20, 15, 0},
     {0, 0, 0, 0, 0, 25, 20, 15}
@@ -5658,27 +5660,28 @@ int Board::get_piece_attack_power(int i, int j) const
 
     // Tour
     static constexpr int rook_attacking_power_map[8][8] = {
-    {0, 50, 35, 35, 35, 35, 35, 35},
-    {50, 25, 25, 25, 25, 25, 25, 25},
-    {35, 15, 0, 0, 0, 0, 0, 0},
-    {35, 15, 0, 0, 0, 0, 0, 0},
-    {35, 15, 0, 0, 0, 0, 0, 0},
-    {35, 15, 0, 0, 0, 0, 0, 0},
-    {35, 15, 0, 0, 0, 0, 0, 0},
-    {35, 15, 0, 0, 0, 0, 0, 0}
+    {0, 100, 75, 75, 75, 75, 75, 75},
+    {100, 75, 50, 50, 50, 50, 50, 50},
+    {75, 50, 35, 25, 20, 10, 0, 0},
+    {75, 50, 25, 10, 0, 0, 0, 0},
+    {75, 50, 20, 0, 0, 0, 0, 0},
+    {75, 50, 10, 0, 0, 0, 0, 0},
+    {75, 50, 0, 0, 0, 0, 0, 0},
+    {75, 50, 0, 0, 0, 0, 0, 0}
     };
 
     // Dame
     static constexpr int queen_attacking_power_map[8][8] = {
-	{0, 350, 80, 90, 70, 50, 30, 20},
-	{350, 300, 110, 70, 50, 40, 20, 10},
-	{200, 250, 150, 80, 30, 20, 10, 5},
-    {220, 170, 100, 70, 20, 15, 10, 5},
-	{100, 80, 50, 20, 10, 5, 0, 0},
-	{70, 40, 20, 10, 5, 0, 0, 0},
-	{40, 20, 10, 5, 0, 0, 0, 0},
-	{30, 10, 5, 0, 0, 0, 0, 0}
+    {   0,  250,  190,   130,   55,   40,   25,   15 },
+    { 250,  220,  180,   120,   40,   30,   15,    5 },
+    { 180,  170,  150,   110,   25,   15,    5,    0 },
+    { 170,  130,  120,   100,   15,   10,    5,    0 },
+    { 125,  100,   75,   15,    5,    0,    0,    0 },
+    {  55,   30,   15,    5,    0,    0,    0,    0 },
+    {  30,   15,    5,    0,    0,    0,    0,    0 },
+    {  25,    5,    0,    0,    0,    0,    0,    0 }
     };
+
 
     // Roi
     static constexpr int king_attacking_power_map[8][8] = {
@@ -5746,9 +5749,9 @@ int Board::get_piece_defense_power(int i, int j) const
     // Pion
     static constexpr int pawn_defensing_power_map[8][8] = {
     {0, 150, 25, 0, 0, 0, 0, 0},
-    {350, 175, 35, 0, 0, 0, 0, 0},
+    {250, 175, 35, 0, 0, 0, 0, 0},
     {150, 100, 50, 0, 0, 0, 0, 0},
-    {75, 15, 0, 15, 0, 0, 0, 0},
+    {75, 15, 10, 15, 0, 0, 0, 0},
     {35, 0, 0, 0, 5, 0, 0, 0},
     {15, 0, 0, 0, 0, 0, 0, 0},
     {5, 0, 0, 0, 0, 0, 0, 0},
@@ -5758,7 +5761,7 @@ int Board::get_piece_defense_power(int i, int j) const
     // Cavalier
     static constexpr int knight_defensing_power_map[8][8] = {
     {0, 45, 25, 10, 0, 0, 0, 0},
-    {95, 15, 10, 0, 0, 0, 0, 0},
+    {95, 35, 10, 0, 0, 0, 0, 0},
     {60, 50, 35, 5, 0, 0, 0, 0},
     {35, 25, 10, 0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0},
@@ -5769,20 +5772,21 @@ int Board::get_piece_defense_power(int i, int j) const
 
     // Fou
     static constexpr int bishop_defensing_power_map[8][8] = {
-    {0, 50, 15, 0, 0, 0, 0, 0},
-    {85, 45, 10, 0, 0, 0, 0, 0},
-    {75, 50, 25, 5, 0, 0, 0, 0},
-    {15, 15, 20, 10, 5, 0, 0, 0},
-    {0, 0, 0, 5, 10, 5, 0, 0},
-    {0, 0, 0, 0, 5, 10, 5, 0},
-    {0, 0, 0, 0, 0, 5, 10, 5},
-    {0, 0, 0, 0, 0, 0, 5, 10}
+    {   0,   35,   25,    0,    0,    0,    0,    0 },
+    {  65,   35,   15,    0,    0,    0,    0,    0 },
+    {  55,   35,   15,    5,    0,    0,    0,    0 },
+    {  25,   20,   15,    5,    5,    0,    0,    0 },
+    {   0,    0,    0,    5,    10,    5,    0,    0 },
+    {   0,    0,    0,    0,    5,    10,    5,    0 },
+    {   0,    0,    0,    0,    0,    5,    10,    5 },
+    {   0,    0,    0,    0,    0,    0,    5,    10 }
     };
+
 
     // Tour
     static constexpr int rook_defensing_power_map[8][8] = {
     {0, 15, 5, 5, 5, 5, 5, 5},
-    {50, 25, 10, 10, 10, 10, 10, 10},
+    {30, 25, 10, 10, 10, 10, 10, 10},
     {25, 10, 0, 0, 0, 0, 0, 0},
     {10, 5, 0, 0, 0, 0, 0, 0},
     {10, 5, 0, 0, 0, 0, 0, 0},
@@ -5891,4 +5895,14 @@ int Board::get_piece_activity() const
 
 
     return activity * (1 - _adv);
+}
+
+
+// Fonction qui reset le buffer
+bool Buffer::reset() const
+{
+	for (int i = 0; i < _length; i++)
+		_heap_boards[i].reset_board();
+
+    return true;
 }

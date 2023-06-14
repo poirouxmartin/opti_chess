@@ -896,6 +896,7 @@ int main() {
 
         // LCTRL-N - Recommencer une partie
         if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_N)) {
+            monte_buffer.reset();
             main_GUI._board.restart();
         }
 

@@ -575,6 +575,9 @@ class Buffer {
 
         // Fonction qui désalloue toute la mémoire
         void remove();
+
+		// Fonction qui reset le buffer
+        bool reset() const;
 };
 
 
