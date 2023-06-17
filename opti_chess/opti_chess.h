@@ -344,7 +344,7 @@ class Board {
     void from_fen(string);
 
     // Fonction qui renvoie le FEN du tableau
-    string to_fen() const;
+    [[nodiscard]] string to_fen() const;
 
     // Fonction qui renvoie le gagnant si la partie est finie (-1/1), et 0 sinon
     int game_over();

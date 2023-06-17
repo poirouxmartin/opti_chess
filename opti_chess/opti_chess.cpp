@@ -1443,7 +1443,6 @@ bool Board::grogrosfish(const int depth, Evaluator *eval, const bool display = f
     negamax(depth, -1e9, 1e9, true, eval, true, display);
     if (display) {
         evaluate(eval);
-        to_fen();
         cout << main_GUI._current_fen << endl;
         cout << main_GUI._global_pgn << endl;
     }
@@ -1524,8 +1523,7 @@ bool Board::undo() {
 
     _new_board = true;
 
-    const bool new_board = true;
-    if (new_board) {
+    if constexpr (constexpr bool new_board = true) {
         if (_is_active)
             reset_all();
         _tested_moves = 0;
@@ -1566,7 +1564,7 @@ void Board::sort_moves(Evaluator *eval) {
 
         // Evaluation
         b.evaluate(eval);
-        const float value = b._evaluation * get_color();
+        const float value = get_color() * b._evaluation;
 
         // Place l'évaluation en i dans les valeurs
         values[i] = value;
@@ -1603,9 +1601,10 @@ void Board::sort_moves(Evaluator *eval) {
 
 
 // Fonction qui récupère le plateau d'un FEN
-void Board::from_fen(string fen) {
+// TODO : à refaire
+void Board::from_fen(string fen)
+{
     string pgn;
-
     reset_all();
 
     // PGN
@@ -1618,9 +1617,7 @@ void Board::from_fen(string fen) {
     int i = 7;
     int j = 0;
 
-    int digit;
     char c;
-    string s;
 
     // Positionnement des pièces
     while (i >= 0) {
@@ -1641,7 +1638,7 @@ void Board::from_fen(string fen) {
             case 'k' : _array[i][j] = 12; j += 1; break;
             default :
                 if (isdigit(c)) {
-                    digit = (static_cast<int>(c)) - (static_cast<int>('0'));
+	                const int digit = (static_cast<int>(c)) - (static_cast<int>('0'));
                     for (int k = j; k < j + digit; k++) {
                         _array[i][k] = 0;
                     }
@@ -1703,7 +1700,7 @@ void Board::from_fen(string fen) {
     }
 
     iterator += 2;
-    s = "";
+    string s = "";
     while (fen[iterator] != ' ') {
         s += fen[iterator];
         iterator += 1;
@@ -2491,8 +2488,6 @@ bool Board::draw() {
     draw_text_box(main_GUI._black_time_text_box);
 
 
-
-
     // FEN
     main_GUI._current_fen = to_fen();
     const char *fen = main_GUI._current_fen.c_str();
@@ -2505,7 +2500,7 @@ bool Board::draw() {
 
 
     // Analyse de Monte-Carlo
-    string monte_carlo_text = "Monte-Carlo research parameters: beta: " + to_string(main_GUI._beta) + " | k_add: " + to_string(main_GUI._k_add) + " | quiescence depth: " + to_string(main_GUI._quiescence_depth) + " | deep mates search: " + (main_GUI._deep_mates_search ? "true" : "false") + " | explore checks: " + (main_GUI._explore_checks ? "true" : "false") + (!main_GUI._grogros_analysis ? "\nrun GrogrosZero-Auto (CTRL-G)" : "\nstop GrogrosZero-Auto (CTRL-H)");
+    string monte_carlo_text = static_cast<string>(main_GUI._grogros_analysis ? "stop GrogrosZero-Auto (CTRL-H)" : "run GrogrosZero-Auto (CTRL-G)") + "\n\nMonte-Carlo research parameters:\nbeta: " + to_string(main_GUI._beta) + " | k_add: " + to_string(main_GUI._k_add) + "\nquiescence depth: " + to_string(main_GUI._quiescence_depth) + " | deep mates search: " + (main_GUI._deep_mates_search ? "true" : "false") + " | explore checks: " + (main_GUI._explore_checks ? "true" : "false");
     if (_tested_moves && drawing_arrows && (_monte_called || true)) {
         // int best_eval = (_player) ? max_value(_eval_children, _tested_moves) : min_value(_eval_children, _tested_moves);
         int best_move = max_index(_nodes_children, _tested_moves);
@@ -2534,7 +2529,7 @@ bool Board::draw() {
     	float win_chance = get_winning_chances_from_eval(best_eval, mate != 0, _player);
         if (!_player)
         	win_chance = 1 - win_chance;
-    	eval += "\nW/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/0/" + to_string(static_cast<int>(100 * (1 - win_chance))) + "\%\n";
+        string win_chances = "\nW/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/0/" + to_string(static_cast<int>(100 * (1 - win_chance))) + "\%\n";
 
 
         // Pour l'évaluation statique
@@ -2542,7 +2537,7 @@ bool Board::draw() {
             evaluate_int(_evaluator, true, true);
         int max_depth = grogros_main_depth();
         int n_nodes = total_nodes();
-        monte_carlo_text += "\n\n--- static eval: "  + ((_static_evaluation > 0)  ? static_cast<string>("+") : static_cast<string>("")) + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval: " + ((best_eval > 0) ? static_cast<string>("+") : static_cast<string>("")) + eval + " ---" + "\nnodes: " + int_to_round_string(n_nodes) + "/" + int_to_round_string(monte_buffer._length) + " | time: " + clock_to_string(_time_monte_carlo) + " | speed : " + int_to_round_string(total_nodes() / (_time_monte_carlo + 1) * 1000) + "N/s" + " | depth : " + to_string(max_depth) + "\nquiescence: " + int_to_round_string(_quiescence_nodes) + "N" + " | speed : " + int_to_round_string(_quiescence_nodes / (_time_monte_carlo + 1) * 1000) + "N/s";
+        monte_carlo_text += "\n\n--- static eval: "  + ((_static_evaluation > 0)  ? static_cast<string>("+") : static_cast<string>("")) + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval: " + ((best_eval > 0) ? static_cast<string>("+") : static_cast<string>("")) + eval + " ---" + win_chances + "\nnodes: " + int_to_round_string(n_nodes) + "/" + int_to_round_string(monte_buffer._length) + " | time: " + clock_to_string(_time_monte_carlo) + " | speed: " + int_to_round_string(total_nodes() / (_time_monte_carlo + 1) * 1000) + "N/s" + " | depth: " + to_string(max_depth) + "\nquiescence: " + int_to_round_string(_quiescence_nodes) + "N" + " | speed: " + int_to_round_string(_quiescence_nodes / (_time_monte_carlo + 1) * 1000) + "N/s";
 
 
         // Affichage des paramètres d'analyse de Monte-Carlo
@@ -2577,7 +2572,7 @@ bool Board::draw() {
                 
                 string variant_i = monte_buffer._heap_boards[_index_children[i]].get_monte_carlo_variant(true); // Peut être plus rapide
                 // Ici aussi y'a qq chose qui ralentit, mais quoi?...
-                monte_carlo_variants += "eval : " + eval + " | " + move_label_from_index(i) + variant_i + " | (" + int_to_round_string(_nodes_children[i]) + "N - " + to_string(100.0 * _nodes_children[i] / n_nodes).substr(0, 5) + "%)";
+                monte_carlo_variants += "eval: " + eval + " | " + move_label_from_index(i) + variant_i + " | (" + int_to_round_string(_nodes_children[i]) + "N - " + to_string(100.0 * _nodes_children[i] / n_nodes).substr(0, 5) + "%)";
             }
             _monte_called = false;
         }
@@ -2594,7 +2589,7 @@ bool Board::draw() {
     else {
         
         // Touches
-        static string keys_information = "CTRL-G : Start GrogrosZero analysis\nCTRL-H : Stop GrogrosZero analysis\n\n";
+        static string keys_information = "CTRL-G: Start GrogrosZero analysis\nCTRL-H: Stop GrogrosZero analysis\n\n";
 
         // Binding chess.com
         static string binding_information;
@@ -2602,7 +2597,7 @@ bool Board::draw() {
 
         // Texte total
         static string controls_information;
-        controls_information = "Controls :\n\n" + keys_information + binding_information;
+        controls_information = "Controls:\n\n" + keys_information + binding_information;
 
         // TODO : ajout d'une valeur de slider
         slider_text(controls_information, board_padding_x + board_size + text_size / 2, board_padding_y, main_GUI._screen_width - text_size - board_padding_x - board_size, board_size, text_size / 3, 0, text_color_info);
