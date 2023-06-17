@@ -182,14 +182,6 @@ class Board {
     // La partie est-elle finie
     bool _is_game_over = false;
 
-    // FEN du plateau
-    // 32 bytes?
-    string _fen;
-
-    // 32 bytes
-    // PGN du plateau
-    string _pgn;
-
     // Dernier coup joué (coordonnées, pièce) ( *2 pour les roques...)
 	// 10 bytes
     int_fast8_t _last_move[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
@@ -226,11 +218,6 @@ class Board {
 
     // Pour l'affichage
     int _static_evaluation = 0;
-
-    // Est-ce que les noms des joueurs ont été ajoutés au PGN
-    // TODO : à mettre dans la GUI
-    bool _named_pgn = false;
-    bool _timed_pgn = false;
 
     // Paramètres pour éviter de tout recalculer pour le draw() avec les stats de Monte-Carlo
     bool _monte_called = false;
@@ -354,10 +341,10 @@ class Board {
     void sort_moves(Evaluator *);
 
     // Fonction qui récupère le plateau d'un FEN
-    void from_fen(string, bool fen_in_pgn = true, bool keep_headings = true);
+    void from_fen(string);
 
     // Fonction qui renvoie le FEN du tableau
-    void to_fen();
+    string to_fen() const;
 
     // Fonction qui renvoie le gagnant si la partie est finie (-1/1), et 0 sinon
     int game_over();
@@ -367,9 +354,6 @@ class Board {
 
     // Fonction qui renvoie le label d'un coup en fonction de son index
     string move_label_from_index(int);
-
-    // Fonction qui renvoie un plateau à partir d'un PGN
-    void from_pgn(string);
 
     // Fonction qui affiche un texte dans une zone donnée
     static void draw_text_rect(const string&, float, float, float, float, float);
@@ -422,12 +406,6 @@ class Board {
     // Fonction qui affiche le PGN
     void display_pgn() const;
 
-    // Fonction qui ajoute les noms des gens au PGN
-    void add_names_to_pgn();
-
-    // Fonction qui ajoute le time control au PGN
-    void add_time_to_pgn();
-
     // Fonction qui renvoie en chaîne de caractères la meilleure variante selon monte carlo
     string get_monte_carlo_variant(bool evaluate_final_pos = false);
 
@@ -445,15 +423,6 @@ class Board {
 
     // Fonction qui calcule la structure de pions et renvoie sa valeur
     [[nodiscard]] int get_pawn_structure() const;
-
-    // Fonction qui met à jour le temps des joueurs
-    void update_time();
-
-    // Fonction qui lance le temps
-    void start_time();
-
-    // Fonction qui stoppe le temps
-    void stop_time();
 
     // Fonction qui calcule la résultante des attaques et des défenses et la renvoie
     [[nodiscard]] float get_attacks_and_defenses(float attack_scale = 1.0f, float defense_scale = 1.0f) const;
@@ -701,10 +670,6 @@ class GUI {
         // Coordonées du plateau pour le binding
         //SimpleRectangle _binding_coord;
 
-        // Joueurs
-        string _white_player = "White";
-        string _black_player = "Black";
-
         // Temps des joueurs
         clock_t _time_white = 900000;
         clock_t _time_black = 900000;
@@ -739,6 +704,34 @@ class GUI {
         bool _deep_mates_search = true;
         bool _explore_checks = true;
 
+        // Est-ce que les noms des joueurs ont été ajoutés au PGN
+        bool _named_pgn = false;
+        bool _timed_pgn = false;
+
+        // Affichage du PGN
+
+		// Joueurs
+        string _white_player = "White";
+        string _black_player = "Black";
+
+		// TODO : ajouter les titres des joueurs
+
+		// FEN de la position initiale
+        string _initial_fen;
+
+		// FEN de la position actuelle
+		string _current_fen;
+
+		// PGN de la partie
+		string _pgn;
+
+		// Cadence
+		string _time_control;
+
+		// PGN global
+		string _global_pgn;
+
+
         // TODO : Threads (pour la parallélisation)
 
 		// Thread de GUI
@@ -762,6 +755,24 @@ class GUI {
 
         // Fonction qui met en place le binding avec chess.com pour une nouvelle analyse de partie
         bool new_bind_analysis();
+
+		// Fonction qui construit le PGN global
+        bool update_global_pgn();
+
+		// Fonction qui met à jour la cadence du PGN
+		bool update_time_control();
+
+        // Fonction qui lance le temps
+        void start_time();
+
+        // Fonction qui stoppe le temps
+        void stop_time();
+
+        // Fonction qui met à jour le temps des joueurs
+        void update_time();
+
+		// Fonction qui réinitialise le PGN
+        bool reset_pgn();
 };
 
 // Instantiation de la GUI globale

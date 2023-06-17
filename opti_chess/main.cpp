@@ -451,6 +451,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Revoir le compare moves (sinon ça affiche pas toujours le meilleur coup au dessus)
 -> Quand on arrive au mat dans le quiescence, l'affichage de l'éval bug (-99800000 au lieu de mat en 2)
 -> Adapter nodes_per_frame en fonction du temps de réflexion de GrogrosZero (tant que la parallelisation n'est pas faite)
+-> Montrer l'incrément sur la GUI
 
 
 
@@ -781,8 +782,7 @@ int main() {
 
     // Met les timers en place
     main_GUI._board.reset_timers();
-    main_GUI._board._pgn = "[FEN \"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\"]\n\n";
-    main_GUI._board._fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 
     //printAttributeSizes(main_GUI._board);
     //testFunc(main_GUI._board);
@@ -887,8 +887,8 @@ int main() {
         // S - Save FEN dans data/text.txt
         if (IsKeyPressed(KEY_S)) {
             main_GUI._board.to_fen();
-            SaveFileText("data/test.txt", (char*)main_GUI._board._fen.c_str());
-            cout << "saved FEN : " << main_GUI._board._fen << endl;
+            SaveFileText("data/test.txt", (char*)main_GUI._current_fen.c_str());
+            cout << "saved FEN : " << main_GUI._current_fen << endl;
         }
 
         // L - Load FEN dans data/text.txt
@@ -907,6 +907,7 @@ int main() {
         if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_N)) {
             //monte_buffer.reset();
             //main_GUI._board = monte_buffer._heap_boards[monte_buffer.get_first_free_index()];
+            main_GUI.reset_pgn();
             main_GUI._board.restart();
         }
 
@@ -917,15 +918,15 @@ int main() {
 
         // C - Copie dans le clipboard du PGN
         if (IsKeyPressed(KEY_C)) {
-            SetClipboardText(main_GUI._board._pgn.c_str());
-            cout << "copied PGN : \n" << main_GUI._board._pgn << endl;
+            SetClipboardText(main_GUI._pgn.c_str());
+            cout << "copied PGN : \n" << main_GUI._pgn << endl;
         }
 
         // X - Copie dans le clipboard du FEN
         if (IsKeyPressed(KEY_X)) {
             main_GUI._board.to_fen();
-            SetClipboardText(main_GUI._board._fen.c_str());
-            cout << "copied FEN : " << main_GUI._board._fen << endl;
+            SetClipboardText(main_GUI._current_fen.c_str());
+            cout << "copied FEN : " << main_GUI._current_fen << endl;
         }
 
         // V - Colle le FEN du clipboard (le charge)
@@ -1111,9 +1112,9 @@ int main() {
         // Return - Lancement et arrêt du temps
         if (IsKeyPressed(KEY_SPACE)) {
             if (main_GUI._time)
-                main_GUI._board.stop_time();
+                main_GUI.stop_time();
             else
-                main_GUI._board.start_time();
+                main_GUI.start_time();
         }
         
 
@@ -1123,8 +1124,6 @@ int main() {
                 main_GUI._white_player = "White";
             else
                 main_GUI._white_player = "GrogrosFish (depth " + to_string(search_depth) + ")";
-
-            main_GUI._board.add_names_to_pgn();  
         }
 
         // UP/DOWN - Activation, désactivation de GrogrosFish pour les pièces noires
@@ -1133,8 +1132,6 @@ int main() {
                 main_GUI._black_player = "Black";
             else
                 main_GUI._black_player = "GrogrosFish (depth " + to_string(search_depth) + ")";
-
-            main_GUI._board.add_names_to_pgn();     
         }
 
         // CTRL-UP/DOWN - Activation, désactivation de GrogrosZero pour les pièces blanches
@@ -1143,8 +1140,6 @@ int main() {
                 main_GUI._white_player = "White";
             else
                 main_GUI._white_player = "GrogrosZero";
-
-            main_GUI._board.add_names_to_pgn();
         }
 
         // CTRL-UP/DOWN - Activation, désactivation de GrogrosZero pour les pièces noires
@@ -1153,8 +1148,6 @@ int main() {
                 main_GUI._black_player = "Black";
             else
                 main_GUI._black_player = "GrogrosZero";
-
-            main_GUI._board.add_names_to_pgn();
         }
 
 
