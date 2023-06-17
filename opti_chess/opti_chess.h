@@ -229,12 +229,6 @@ class Board {
     float _adv = 0.0f;
     bool _advancement = false;
 
-    // Chances de gain/nulle/perte (4 bytes / 4 bytes / 4 bytes) -> 12 bytes
-    float _white_winning_chance = 0.0f;
-    float _drawing_chance = 0.0f;
-    float _black_winning_chance = 0.0f;
-    bool _winning_chances = false;
-
     // Chances de gain des fils
 
     // Est-ce que la vérification de mat a déjà été faite?
@@ -456,9 +450,6 @@ class Board {
 
     // Fonction qui calcule la valeur des cases controllées sur l'échiquier
     [[nodiscard]] int get_square_controls() const;
-
-    // Fonction qui calcule les chances de gain/nulle/perte
-    void get_winning_chances();
 
     // Fonction qui sélectionne et renvoie le coup avec le meilleur UCT
     [[nodiscard]] int select_uct(float c = 1.0f) const;
