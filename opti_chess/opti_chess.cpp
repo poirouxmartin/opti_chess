@@ -1150,14 +1150,14 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
     // Avancement de la partie
     game_advancement();
     if (display)
-        eval_components += "game advancement : " + to_string(static_cast<int>(round(100 * _adv))) + "%\n";
+        eval_components += "game advancement: " + to_string(static_cast<int>(round(100 * _adv))) + "%\n";
         
 
     // Matériel
     if (eval->_piece_value != 0.0f) {
 	    const float material = count_material(eval) * eval->_piece_value / 100; // à changer (le /100)
         if (display)
-            eval_components += "material : " + (material >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * material))) + "\n";
+            eval_components += "material: " + (material >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * material))) + "\n";
         _evaluation += material;
     }
 
@@ -1166,7 +1166,7 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
     if (eval->_piece_positioning != 0.0f) {
 	    const float positioning = pieces_positioning(eval) * eval->_piece_positioning;
         if (display)
-            eval_components += "positioning : " + (positioning >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * positioning))) + "\n";
+            eval_components += "positioning: " + (positioning >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * positioning))) + "\n";
         _evaluation += positioning;
     }
 
@@ -1188,7 +1188,7 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
     if (eval->_bishop_pair != 0.0f) {
 	    const float bishop_pair = eval->_bishop_pair * ((bishop_w >= 2) - (bishop_b >= 2));
         if (display)
-            eval_components += "bishop pair : " + (bishop_pair >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * bishop_pair))) + "\n";
+            eval_components += "bishop pair: " + (bishop_pair >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * bishop_pair))) + "\n";
         _evaluation += bishop_pair;
     }
         
@@ -1198,7 +1198,7 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
         float random_add = 0.0f;
         random_add += static_cast<float>(GetRandomValue(-50, 50)) * eval->_random_add / 100;
         if (display)
-            eval_components += "random add : " + (random_add >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * random_add))) + "\n";
+            eval_components += "random add: " + (random_add >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * random_add))) + "\n";
         _evaluation += random_add;
     }
         
@@ -1207,7 +1207,7 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
     if (eval->_piece_mobility != 0.0f) {
 	    const float piece_mobility = static_cast<float>(get_piece_mobility()) * eval->_piece_mobility;
         if (display)
-            eval_components += "piece mobility : " + (piece_mobility >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * piece_mobility))) + "\n";
+            eval_components += "piece mobility: " + (piece_mobility >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * piece_mobility))) + "\n";
         _evaluation += piece_mobility;
     }
 
@@ -1215,7 +1215,7 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
     if (eval->_player_trait != 0.0f) {
 	    const float player_trait = eval->_player_trait * static_cast<float>(get_color());
         if (display)
-            eval_components += "player trait : " + (player_trait >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * player_trait))) + "\n";
+            eval_components += "player trait: " + (player_trait >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * player_trait))) + "\n";
         _evaluation += player_trait;
     }
 
@@ -1225,7 +1225,7 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
         float castling_rights = 0.0f;
         castling_rights += eval->_castling_rights * static_cast<float>(_castling_rights.k_w + _castling_rights.q_w - _castling_rights.k_b - _castling_rights.q_b) * (1 - _adv);
         if (display)
-            eval_components += "castling rights : " + (castling_rights >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * castling_rights))) + "\n";
+            eval_components += "castling rights: " + (castling_rights >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * castling_rights))) + "\n";
         _evaluation += castling_rights;
     }
     
@@ -1233,7 +1233,7 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
     if (eval->_king_safety != 0.0f) {
 	    const float king_safety = static_cast<float>(get_king_safety()) * eval->_king_safety;
         if (display)
-            eval_components += "king safety : " + (king_safety >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * king_safety))) + "\n";
+            eval_components += "king safety: " + (king_safety >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * king_safety))) + "\n";
         _evaluation += king_safety;
     }
 
@@ -1241,7 +1241,7 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
     if (eval->_pawn_structure != 0.0f) {
 	    const float pawn_structure = static_cast<float>(get_pawn_structure()) * eval->_pawn_structure;
         if (display)
-            eval_components += "pawn structure : " + (pawn_structure >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * pawn_structure))) + "\n";
+            eval_components += "pawn structure: " + (pawn_structure >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * pawn_structure))) + "\n";
         _evaluation += pawn_structure;
     }
 
@@ -1249,7 +1249,7 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
     if (eval->_attacks != 0.0f || eval->_defenses != 0.0f) {
 	    const float pieces_attacks_and_defenses = get_attacks_and_defenses(eval->_attacks, eval->_defenses);
         if (display)
-                eval_components += "attacks/defenses : " + (pieces_attacks_and_defenses >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * pieces_attacks_and_defenses))) + "\n";
+                eval_components += "attacks/defenses: " + (pieces_attacks_and_defenses >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * pieces_attacks_and_defenses))) + "\n";
         _evaluation += pieces_attacks_and_defenses;
     }
 
@@ -1257,7 +1257,7 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
     if (eval->_kings_opposition != 0.0f) {
 	    const float kings_opposition = static_cast<float>(get_kings_opposition()) * eval->_kings_opposition;
         if (display)
-            eval_components += "king opposition : " + (kings_opposition >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * kings_opposition))) + "\n";
+            eval_components += "king opposition: " + (kings_opposition >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * kings_opposition))) + "\n";
         _evaluation += kings_opposition;
     }
 
@@ -1266,7 +1266,7 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
     if (eval->_rook_open != 0.0f) {
 	    const float rook_open = static_cast<float>(get_rooks_on_open_file()) * eval->_rook_open;
         if (display)
-            eval_components += "rooks on open/semi files : " + (rook_open >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * rook_open))) + "\n";
+            eval_components += "rooks on open/semi files: " + (rook_open >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * rook_open))) + "\n";
         _evaluation += rook_open;
     }
 
@@ -1275,7 +1275,7 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
     if (eval->_square_controls != 0.0f) {
 	    const float square_controls = static_cast<float>(get_square_controls()) * eval->_square_controls;
         if (display)
-            eval_components += "square controls : " + (square_controls >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * square_controls))) + "\n";
+            eval_components += "square controls: " + (square_controls >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * square_controls))) + "\n";
         _evaluation += square_controls;
     }
 
@@ -1285,7 +1285,7 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
     {
 	    const float space = static_cast<float>(get_space()) * eval->_space_advantage;
 		if (display)
-			eval_components += "space : " + (space >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * space))) + "\n";
+			eval_components += "space: " + (space >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * space))) + "\n";
 		_evaluation += space;
 	}
 
@@ -1295,7 +1295,7 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
     {
 	    const float pieces_alignment = static_cast<float>(get_alignments()) * eval->_alignments;
 		if (display)
-			eval_components += "pieces alignment : " + (pieces_alignment >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * pieces_alignment))) + "\n";
+			eval_components += "pieces alignment: " + (pieces_alignment >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * pieces_alignment))) + "\n";
 		_evaluation += pieces_alignment;
 	}
 
@@ -1304,7 +1304,7 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
     if (eval->_piece_activity != 0.0f) {
         const float piece_activity = static_cast<float>(get_piece_activity()) * eval->_piece_activity;
         if (display)
-            eval_components += "piece activity : " + (piece_activity >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * piece_activity))) + "\n";
+            eval_components += "piece activity: " + (piece_activity >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * piece_activity))) + "\n";
         _evaluation += piece_activity;
     }
 
@@ -1313,7 +1313,7 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
     if (eval->_push != 0.0f) {
 	    const float push = 1 - static_cast<float>(_half_moves_count) * eval->_push / 100;
         if (display)
-            eval_components += "fortress : " + to_string(static_cast<int>(100 - push * 100)) + "%\n";
+            eval_components += "fortress: " + to_string(static_cast<int>(100 - push * 100)) + "%\n";
         _evaluation *= push;
     }
 
@@ -1321,7 +1321,7 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
     // Chances de gain
     get_winning_chances();
     if (display)
-        eval_components += "W/D/L : " + to_string(static_cast<int>(100 * _white_winning_chance)) + "/" + to_string(static_cast<int>(100 * _drawing_chance)) + "/" + to_string(static_cast<int>(100 * _black_winning_chance)) + "%\n";
+        eval_components += "W/D/L: " + to_string(static_cast<int>(100 * _white_winning_chance)) + "/" + to_string(static_cast<int>(100 * _drawing_chance)) + "/" + to_string(static_cast<int>(100 * _black_winning_chance)) + "%\n";
 
 
     // Partie non finie
@@ -1620,9 +1620,8 @@ void Board::from_fen(string fen, bool fen_in_pgn, bool keep_headings) {
         timed = _timed_pgn;
         pgn = _pgn;
     }
-    
-    reset_all();
 
+    reset_all();
 
     // Mise à jour du FEN
     _fen = fen;
@@ -1771,6 +1770,7 @@ void Board::from_fen(string fen, bool fen_in_pgn, bool keep_headings) {
     _got_moves = -1;
 
     _new_board = true;
+    _quiescence_nodes = 0;
 
     reset_eval();
 
@@ -2568,7 +2568,7 @@ bool Board::draw() {
 
 
     // Analyse de Monte-Carlo
-    string monte_carlo_text = "Monte-Carlo research parameters : beta : " + to_string(main_GUI._beta) + " | k_add : " + to_string(main_GUI._k_add) + " | quiescence depth : " + to_string(main_GUI._quiescence_depth) + " | deep mates search : " + (main_GUI._deep_mates_search ? "true" : "false") + " | explore checks : " + (main_GUI._explore_checks ? "true" : "false") + (!main_GUI._grogros_analysis ? "\nrun GrogrosZero-Auto (CTRL-G)" : "\nstop GrogrosZero-Auto (CTRL-H)");
+    string monte_carlo_text = "Monte-Carlo research parameters: beta: " + to_string(main_GUI._beta) + " | k_add: " + to_string(main_GUI._k_add) + " | quiescence depth: " + to_string(main_GUI._quiescence_depth) + " | deep mates search: " + (main_GUI._deep_mates_search ? "true" : "false") + " | explore checks: " + (main_GUI._explore_checks ? "true" : "false") + (!main_GUI._grogros_analysis ? "\nrun GrogrosZero-Auto (CTRL-G)" : "\nstop GrogrosZero-Auto (CTRL-H)");
     if (_tested_moves && drawing_arrows && (_monte_called || true)) {
         // int best_eval = (_player) ? max_value(_eval_children, _tested_moves) : min_value(_eval_children, _tested_moves);
         int best_move = max_index(_nodes_children, _tested_moves);
@@ -2597,7 +2597,7 @@ bool Board::draw() {
     	float win_chance = get_winning_chances_from_eval(best_eval, mate != 0, _player);
         if (!_player)
         	win_chance = 1 - win_chance;
-    	eval += "\nW/D/L : " + to_string(static_cast<int>(100 * win_chance)) + "/0/" + to_string(static_cast<int>(100 * (1 - win_chance))) + "\%\n";
+    	eval += "\nW/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/0/" + to_string(static_cast<int>(100 * (1 - win_chance))) + "\%\n";
 
 
         // Pour l'évaluation statique
@@ -2605,7 +2605,7 @@ bool Board::draw() {
             evaluate_int(_evaluator, true, true);
         int max_depth = grogros_main_depth();
         int n_nodes = total_nodes();
-        monte_carlo_text += "\n\n--- static eval : "  + ((_static_evaluation > 0)  ? static_cast<string>("+") : static_cast<string>("")) + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval : " + ((best_eval > 0) ? static_cast<string>("+") : static_cast<string>("")) + eval + " ---" + "\nnodes : " + int_to_round_string(n_nodes) + "/" + int_to_round_string(monte_buffer._length) + " | time : " + clock_to_string(_time_monte_carlo) + " | speed : " + int_to_round_string(total_nodes() / (_time_monte_carlo + 1) * 1000) + "N/s" + " | depth : " + to_string(max_depth);
+        monte_carlo_text += "\n\n--- static eval: "  + ((_static_evaluation > 0)  ? static_cast<string>("+") : static_cast<string>("")) + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval: " + ((best_eval > 0) ? static_cast<string>("+") : static_cast<string>("")) + eval + " ---" + "\nnodes: " + int_to_round_string(n_nodes) + "/" + int_to_round_string(monte_buffer._length) + " | time: " + clock_to_string(_time_monte_carlo) + " | speed : " + int_to_round_string(total_nodes() / (_time_monte_carlo + 1) * 1000) + "N/s" + " | depth : " + to_string(max_depth) + "\nquiescence: " + int_to_round_string(_quiescence_nodes) + "N" + " | speed : " + int_to_round_string(_quiescence_nodes / (_time_monte_carlo + 1) * 1000) + "N/s";
 
 
         // Affichage des paramètres d'analyse de Monte-Carlo
@@ -3248,14 +3248,12 @@ void Board::grogros_zero(Evaluator *eval, int nodes, const bool checkmates, cons
             
             // Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
             //monte_buffer._heap_boards[_index_children[_current_move]].evaluate_int(eval, checkmates, false, net);
-            monte_buffer._heap_boards[_index_children[_current_move]]._evaluation = monte_buffer._heap_boards[_index_children[_current_move]].quiescence(eval, -2147483647, 2147483647, quiescence_depth, checkmates, true, deep_mates_check, explore_checks) * -get_color();
-            //monte_buffer._heap_boards[_index_children[_current_move]]._evaluation = monte_buffer._heap_boards[_index_children[_current_move]].quiescence_improved(eval, -2147483647, 2147483647, quiescence_depth) * -_color;
+            monte_buffer._heap_boards[_index_children[_current_move]]._evaluation = monte_buffer._heap_boards[_index_children[_current_move]].quiescence(eval, -2147483647, 2147483647, quiescence_depth, checkmates, deep_mates_check, explore_checks) * -get_color();
+            _quiescence_nodes += monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes;
         	monte_buffer._heap_boards[_index_children[_current_move]]._got_moves = -1; // BUG : euuuuh pourquoi ça bug sinon?
 
             _eval_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
             _nodes_children[_current_move]++;
-            //_nodes_children[_current_move] += monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes;
-            //cout << monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes << endl;
             //monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes = 0;
 
             // Actualise la valeur d'évaluation du plateau            
@@ -3280,12 +3278,13 @@ void Board::grogros_zero(Evaluator *eval, int nodes, const bool checkmates, cons
             //_current_move = select_uct();
 
             // Va une profondeur plus loin... appel récursif sur Monte-Carlo
-           monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(eval, 1, checkmates, beta, k_add, quiescence_depth, deep_mates_check, explore_checks, display, depth + 1, net);
+            _quiescence_nodes -= monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes;
+			monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(eval, 1, checkmates, beta, k_add, quiescence_depth, deep_mates_check, explore_checks, display, depth + 1, net);
+			_quiescence_nodes += monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes;
 
             // Actualise l'évaluation
             _eval_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
             _nodes_children[_current_move]++;
-            //_quiescence_nodes += monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes;
 
             if (_player)
                 _evaluation = max_value(_eval_children, _got_moves);
@@ -3310,7 +3309,6 @@ void Board::grogros_zero(Evaluator *eval, int nodes, const bool checkmates, cons
 // Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
 // FIXME? plus rapide d'instancier un nouveau plateau? et plus safe niveau mémoire?
 void Board::reset_board(bool display) {
-
     _is_active = false;
     _current_move = 0;
     _evaluated = false;
@@ -3325,6 +3323,9 @@ void Board::reset_board(bool display) {
     _pgn = "";
     _quick_sorted_moves = false;
     _sorted_moves = false;
+    _nodes = 0;
+    _quiescence_nodes = 0;
+    _player = true;
     
     if (!_new_board) {
         _tested_moves = 0;
@@ -3345,8 +3346,9 @@ void Board::reset_board(bool display) {
         _new_board = true;
     }
 
-    /*if (display)
-        cout << "board reset done" << endl;*/
+
+    if (display)
+        cout << "board reset done" << endl;
     
     return;
 }
@@ -3909,9 +3911,9 @@ int match(Evaluator *e_white, Evaluator *e_black, Network *n_white, Network *n_b
     // Jeu
     while ((b.is_mate() == -1 && b.game_over() == 0)) {
         if (b._player)
-            b.grogros_zero(e_white, nodes, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, false, 0, n_white);
+            b.grogros_zero(e_white, nodes, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, true, true, false, 0, n_white);
         else
-            b.grogros_zero(e_black, nodes, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, false, 0, n_black);
+            b.grogros_zero(e_black, nodes, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, true, true, false, 0, n_black);
         b.play_monte_carlo_move_keep(b.best_monte_carlo_move(), false, true, false);
 
         // Limite de coups
@@ -5023,9 +5025,10 @@ bool Board::quick_moves_sort() {
 
 // Fonction qui fait un quiescence search
 // TODO améliorer avec un delta pruning
-int Board::quiescence(Evaluator *eval, int alpha, const int beta, const int depth, const bool checkmates_check, bool main_call, bool deep_mates_check, bool explore_checks) {
-    if (true || main_call)
-        _quiescence_nodes = 1;
+int Board::quiescence(Evaluator *eval, int alpha, const int beta, const int depth, const bool checkmates_check, bool deep_mates_check, bool explore_checks)
+{
+    // Compte le nombre de noeuds visités
+	_quiescence_nodes = 1;
 
     // Evalue la position initiale
     evaluate_int(eval, checkmates_check);
@@ -5061,7 +5064,7 @@ int Board::quiescence(Evaluator *eval, int alpha, const int beta, const int dept
             b.copy_data(*this);
             b.make_index_move(i);
 
-            const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, checkmates_check, false, deep_mates_check, explore_checks);
+            const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, checkmates_check, deep_mates_check, explore_checks);
             _quiescence_nodes += b._quiescence_nodes;
 
             if (score >= beta)
@@ -5092,7 +5095,7 @@ int Board::quiescence(Evaluator *eval, int alpha, const int beta, const int dept
 
                 if (explore_checks)
                 {
-                    const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, checkmates_check, false, deep_mates_check, explore_checks);
+                    const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, checkmates_check, deep_mates_check, explore_checks);
                     _quiescence_nodes += b._quiescence_nodes;
 
                     if (score >= beta)

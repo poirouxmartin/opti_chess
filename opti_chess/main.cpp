@@ -356,6 +356,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Différencier mobilité et activité des pièces
 -> Eviter les accès à _moves[i] trop souvent? -> copier le coup?
 -> Get_control_map() + type control_map (à utiliser lors de l'évaluation pour la calculer seulement une fois)
+-> Remplacer total_nodes() par _total_nodes, et faire comme _quiescence_nodes? Vérifier la vitesse des deux approches
 
 
 
@@ -525,6 +526,8 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> 4k2r/1b1n1ppp/p4n2/1p1P2N1/1P6/P1r1P1P1/2P1B2P/R4RK1 b k - 0 20 : ça c'est déjà foutu pour les blancs
 -> rn3r2/pbppq1p1/1p2pN2/8/3P2NP/3B1kP1/PPP2P2/R3K2R w KQ - 1 6 : king safety... faut du +20
 -> 5rk1/pp4pp/2pb4/3p3q/B2P3P/2N1Bp2/PPP5/R3Q1K1 w - - 0 4
+-> r1b1kb1r/ppp1q1pp/8/5pN1/2Qp1P2/8/PP1N2PP/R3R1K1 b kq - 0 13
+-> 7k/1pR4p/p4p2/r4p2/4r3/4P2R/PP4PP/7K b - - 1 38 : +6 selon Grogros xD
 
 
 ----- Problèmes -----
@@ -842,9 +845,15 @@ int main() {
             cout << sizeof(test_array) << endl;
             cout << test_array.pieces[0][0].type << endl;*/
 
+            //main_GUI._board.grogros_zero(&monte_evaluator, 1, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._deep_mates_search, main_GUI._explore_checks);
+
             locate_chessboard(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom);
             main_GUI.new_bind_game();
-            //main_GUI._board.grogros_zero(&monte_evaluator, 1, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._deep_mates_search, main_GUI._explore_checks);
+
+            // Nombre de noeuds de la recherche quiescence
+            //main_GUI._board.quiescence(&eval_white);
+            //cout << main_GUI._board._quiescence_nodes << endl;
+            
         }
 
         // CTRL-T - Cherche le plateau de chess.com sur l'écran
@@ -896,7 +905,8 @@ int main() {
 
         // LCTRL-N - Recommencer une partie
         if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_N)) {
-            monte_buffer.reset();
+            //monte_buffer.reset();
+            //main_GUI._board = monte_buffer._heap_boards[monte_buffer.get_first_free_index()];
             main_GUI._board.restart();
         }
 
