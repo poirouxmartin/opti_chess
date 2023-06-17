@@ -504,7 +504,7 @@ class Board {
     bool quick_moves_sort();
 
     // Fonction qui fait un quiescence search
-    int quiescence(Evaluator *eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool checkmates_check = true, bool main_call = true, bool deep_mates_check = true, bool explore_checks = true);
+    int quiescence(Evaluator *eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool checkmates_check = true, bool deep_mates_check = true, bool explore_checks = true);
 
     // Fonction qui renvoie le i-ème coup
     [[nodiscard]] int* get_i_move(int) const;
@@ -565,7 +565,7 @@ class Buffer {
         Buffer();
 
         // Constructeur utilisant la taille max (en bits) du buffer
-        Buffer(unsigned long int);
+        explicit Buffer(unsigned long int);
 
         // Initialize l'allocation de n plateaux
         void init(int length = 5000000);
@@ -577,7 +577,7 @@ class Buffer {
         void remove();
 
 		// Fonction qui reset le buffer
-        bool reset() const;
+        [[nodiscard]] bool reset() const;
 };
 
 
@@ -738,6 +738,15 @@ class GUI {
         int _quiescence_depth = 4;
         bool _deep_mates_search = true;
         bool _explore_checks = true;
+
+        // TODO : Threads (pour la parallélisation)
+
+		// Thread de GUI
+
+		// Thread de GrogrosZero
+		thread _thread_grogros_zero;
+
+
 
 
         // Constructeurs

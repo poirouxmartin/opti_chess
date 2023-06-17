@@ -15,7 +15,7 @@ using namespace std;
 
 
 // Nombre de FPS
-static constexpr  int fps = 144;
+static constexpr int fps = 144;
 static constexpr int max_drawing_fps = 144; // Nombre d'updates max par secondes pour ces fonctions
 static constexpr clock_t last_drawing_time = 0;
 
