@@ -886,8 +886,7 @@ int main() {
 
         // S - Save FEN dans data/text.txt
         if (IsKeyPressed(KEY_S)) {
-            main_GUI._board.to_fen();
-            SaveFileText("data/test.txt", (char*)main_GUI._current_fen.c_str());
+            SaveFileText("data/test.txt", const_cast<char*>(main_GUI._current_fen.c_str()));
             cout << "saved FEN : " << main_GUI._current_fen << endl;
         }
 
@@ -924,7 +923,6 @@ int main() {
 
         // X - Copie dans le clipboard du FEN
         if (IsKeyPressed(KEY_X)) {
-            main_GUI._board.to_fen();
             SetClipboardText(main_GUI._current_fen.c_str());
             cout << "copied FEN : " << main_GUI._current_fen << endl;
         }
@@ -955,7 +953,7 @@ int main() {
             
         // TAB - Screenshot
         if (IsKeyPressed(KEY_TAB)) {
-            string screenshot_name = "resources/screenshots/" + to_string(time(0)) + ".png";
+            string screenshot_name = "resources/screenshots/" + to_string(time(nullptr)) + ".png";
             cout << "Screenshot : " << screenshot_name << endl;
             TakeScreenshot(screenshot_name.c_str());
 
