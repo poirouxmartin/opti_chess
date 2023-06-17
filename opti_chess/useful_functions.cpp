@@ -4,9 +4,6 @@
 #include <cmath>
 #include <random>
 #include <chrono>
-#include <cstdlib>
-#include <type_traits>
-
 
 // Fonction qui renvoie si un entier appartient à un intervalle
 bool is_in(const int x, const int min, const int max)
@@ -50,7 +47,6 @@ float min_float(const float a, const float b)
 	return (a < b) ? a : b;
 }
 
-
 // Fonction de détermination pour les probabilités des coups (exponentielle?)
 int move_power(const float n, const float range, const float min)
 {
@@ -90,7 +86,6 @@ void softmax(int* input, const int size, const float beta, const float k_add)
 	}
 }
 
-
 // Fonction pour générer une seed
 unsigned long long generate_seed()
 {
@@ -99,7 +94,6 @@ unsigned long long generate_seed()
 
 	return seed;
 }
-
 
 // Fonction qui renvoie un entier aléatoire entre deux entiers (le second non inclus)
 int rand_int(const int a, const int b)
@@ -117,17 +111,15 @@ int rand_int(const int a, const int b)
 	return distribution(generator);
 }
 
-
 // Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variantes, en fonction de la grandeur du nombre correspondant à cet index
 int pick_random_good_move(int* l, const int n, const int color, bool print, const int nodes, int* nodes_children,
-                          const float beta, const float k_add)
+	const float beta, const float k_add)
 {
 	int sum = 0;
 	int min = INT_MAX;
 
 	int range = max_value(l, n) - min_value(l, n);
 	int min_val = (color == 1) ? min_value(l, n) : max_value(l, n);
-
 
 	int l2[100];
 
@@ -168,7 +160,6 @@ int pick_random_good_move(int* l, const int n, const int color, bool print, cons
 	return 0;
 }
 
-
 // Fonction qui renvoie la valeur maximum d'une liste d'entiers
 int max_value(int* l, const int n)
 {
@@ -204,7 +195,6 @@ int min_value(float* l, const int n)
 
 	return min;
 }
-
 
 // Fonction qui affiche une liste d'entiers (array)
 void print_array(int l[], const int n)
@@ -250,7 +240,6 @@ void print_array(string l[], const int n)
 		cout << " " << l[i] << " |";
 	cout << "]" << endl;
 }
-
 
 // Fonction qui renvoie l'index de la valeur maximale d'une liste d'entiers
 int max_index(int* l, const int n)
@@ -301,7 +290,7 @@ int max_index(uint_fast8_t* l, const int n)
 }
 
 // Fonction qui renvoie l'index de la valeur maximale de deux listes d'entiers (la seconde est là pour départager en cas d'égalité)
-int max_index(int* l, const int n, int* l_annex, const int sign)
+int max_index(const int* l, const int n, const int* l_annex, const int sign)
 {
 	int max = -INT_MAX;
 	int max_annex = -INT_MAX;
@@ -325,7 +314,6 @@ int max_index(int* l, const int n, int* l_annex, const int sign)
 		}
 	}
 
-
 	return max_i;
 }
 
@@ -342,10 +330,8 @@ int min_index(int* l, const int n)
 			min_i = i;
 		}
 
-
 	return min_i;
 }
-
 
 // Fonction qui calcule une distance entre deux points
 float distance(const int i, const int j, const int x, const int y)
@@ -358,7 +344,6 @@ float proximity(const int i, const int j, const int x, const int y, const float 
 {
 	return k / distance(i, j, x, y);
 }
-
 
 // Fonction qui transforme un entier en string (et arrondit s'il est supérieur à 1000)
 // TODO : cas négatif à gérer
@@ -428,17 +413,14 @@ string clock_to_string(const clock_t t, const bool full)
 	if (full || (!h && !m))
 		time += "." + to_string(ms);
 
-
 	return time;
 }
-
 
 // Fonction qui arrondit un flottant en entier
 int float_to_int(const float x)
 {
 	return static_cast<int>(x) + (x - static_cast<int>(x) > 0.5f);
 }
-
 
 // Fonction qui renvoie si une chaine de caractères est présente dans un tableau de taille n
 bool is_in(const string& s, string string_array[], const int n)

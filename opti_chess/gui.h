@@ -9,10 +9,8 @@ using namespace std;
 
 // Définition des variables
 
-
 // Définition des couleurs
 #define VDARKGRAY CLITERAL(Color){50, 50, 50, 255}
-
 
 // Nombre de FPS
 static constexpr int fps = 144;
@@ -20,44 +18,44 @@ static constexpr int max_drawing_fps = 144; // Nombre d'updates max par secondes
 static constexpr clock_t last_drawing_time = 0;
 
 // Couleur de fond
-static constexpr Color background_color = {25, 25, 25, 255};
+static constexpr Color background_color = { 25, 25, 25, 255 };
 
 // Couleur du rectangle de texte
-static constexpr Color background_text_color = {0, 0, 0, 255};
+static constexpr Color background_text_color = { 0, 0, 0, 255 };
 
 // Couleurs du texte
-static constexpr Color text_color = {255, 75, 75, 255};
-static constexpr Color text_color_dark = {200, 50, 50, 255};
-static constexpr Color text_color_light = {200, 200, 200, 255};
-static constexpr Color text_color_blue = {150, 150, 200, 255};
-static constexpr Color text_color_info = {140, 140, 140, 255};
+static constexpr Color text_color = { 255, 75, 75, 255 };
+static constexpr Color text_color_dark = { 200, 50, 50, 255 };
+static constexpr Color text_color_light = { 200, 200, 200, 255 };
+static constexpr Color text_color_blue = { 150, 150, 200, 255 };
+static constexpr Color text_color_info = { 140, 140, 140, 255 };
 
 // Couleurs du plateau
-static constexpr Color board_color_light = {190, 162, 127, 255};
-static constexpr Color board_color_dark = {109, 78, 54, 255};
+static constexpr Color board_color_light = { 190, 162, 127, 255 };
+static constexpr Color board_color_dark = { 109, 78, 54, 255 };
 
 // Couleur de surlignage de cases
-static constexpr Color highlight_color = {255, 255, 100, 150};
+static constexpr Color highlight_color = { 255, 255, 100, 150 };
 
 // Couleur de selection de cases
-static constexpr Color select_color = {50, 225, 50, 100};
+static constexpr Color select_color = { 50, 225, 50, 100 };
 
 // Couleur des cases du dernier coup joué
-static constexpr Color last_move_color = {220, 150, 50, 125};
+static constexpr Color last_move_color = { 220, 150, 50, 125 };
 
 // Couleur de la case de pre-move
-static constexpr Color pre_move_color = {220, 30, 30, 125};
+static constexpr Color pre_move_color = { 220, 30, 30, 125 };
 
 // Couleur des flèches
-static constexpr Color arrow_color = {255, 225, 0, 150};
+static constexpr Color arrow_color = { 255, 225, 0, 150 };
 
 // Couleur des sliders
-static constexpr Color slider_color = {200, 200, 200, 100};
-static constexpr Color slider_background_color = {100, 100, 100, 75};
+static constexpr Color slider_color = { 200, 200, 200, 100 };
+static constexpr Color slider_background_color = { 100, 100, 100, 75 };
 
 // Couleurs de la barre d'évaluation
-static constexpr Color eval_bar_color_light = {224, 206, 186, 255};
-static constexpr Color eval_bar_color_dark = {57, 50, 47, 255};
+static constexpr Color eval_bar_color_light = { 224, 206, 186, 255 };
+static constexpr Color eval_bar_color_dark = { 57, 50, 47, 255 };
 
 // Epaisseur des flèches (par rapport à la taille d'une case)
 static float arrow_scale = 0.125f;
@@ -129,35 +127,33 @@ static Font text_font;
 // Espacement entre les caractères
 static float font_spacing = 0.1f;
 
-
 // Orientation du plateau
 static bool board_orientation = true;
-
 
 // Position de la souris
 static Vector2 mouse_pos;
 
 // Position de la case cliquée
-static pair<int, int> clicked_pos = {-1, -1};
+static pair<int, int> clicked_pos = { -1, -1 };
 
 // Position de la case cliquée (droit)
-static pair<int, int> right_clicked_pos = {-1, -1};
+static pair<int, int> right_clicked_pos = { -1, -1 };
 
 // La souris est-elle cliquée
 static bool clicked = false;
 
 // Pièce sélectionnée de la case cliquée
-static pair<int, int> selected_pos = {-1, -1};
+static pair<int, int> selected_pos = { -1, -1 };
 
 // Cases surlignées
-static int highlighted_array[8][8] {{0, 0, 0, 0, 0, 0, 0, 0}, 
-                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
-                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
-                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
-                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
-                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
-                                    {0, 0, 0, 0, 0, 0, 0, 0}, 
-                                    {0, 0, 0, 0, 0, 0, 0, 0}};
+static int highlighted_array[8][8]{ {0, 0, 0, 0, 0, 0, 0, 0},
+									{0, 0, 0, 0, 0, 0, 0, 0},
+									{0, 0, 0, 0, 0, 0, 0, 0},
+									{0, 0, 0, 0, 0, 0, 0, 0},
+									{0, 0, 0, 0, 0, 0, 0, 0},
+									{0, 0, 0, 0, 0, 0, 0, 0},
+									{0, 0, 0, 0, 0, 0, 0, 0},
+									{0, 0, 0, 0, 0, 0, 0, 0} };
 
 // Calcul du nombre de noeuds visités
 static int visited_nodes;
@@ -174,7 +170,7 @@ static float monte_carlo_slider = 0.0f;
 static float variants_slider = 0.0f;
 
 // Pre-move
-static int pre_move[4] = {-1, -1, -1, -1};
+static int pre_move[4] = { -1, -1, -1, -1 };
 
 // Eval à montrer pour la barre d'éval
 static float global_eval = 0.0f;
@@ -189,12 +185,12 @@ static int base_time_increment_white = -50;
 static int base_time_increment_black = -50;
 
 // Valeur des pièces pour l'affichage sur la GUI (rien/roi, pion, cavalier, fou, tour, dame)
-static const int piece_GUI_values[6] = {0, 1, 3, 3, 5, 9};
+static const int piece_GUI_values[6] = { 0, 1, 3, 3, 5, 9 };
 
 // Matériel manquant
-static const int base_material[6] = {0, 8, 2, 2, 2, 1};
-static int missing_w_material[6] = {0, 0, 0, 0, 0, 0};
-static int missing_b_material[6] = {0, 0, 0, 0, 0, 0};
+static const int base_material[6] = { 0, 8, 2, 2, 2, 1 };
+static int missing_w_material[6] = { 0, 0, 0, 0, 0, 0 };
+static int missing_b_material[6] = { 0, 0, 0, 0, 0, 0 };
 
 // Alphabet de taille 8
 static const string abc8 = "abcdefgh";
@@ -227,7 +223,7 @@ bool is_playing();
 void switch_arrow_drawing();
 
 // Fonction qui affiche un texte dans une zone donnée avec un slider
-void slider_text(const string&, float, float, float, float, float size = text_size, float *slider_value = nullptr, Color t_color = text_color, float slider_width = board_size * 0.025f, float slider_height = board_size * 0.1f);
+void slider_text(const string&, float, float, float, float, float size = text_size, float* slider_value = nullptr, Color t_color = text_color, float slider_width = board_size * 0.025f, float slider_height = board_size * 0.1f);
 
 // Fonction pour obtenir l'orientation du plateau
 bool get_board_orientation();

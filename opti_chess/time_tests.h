@@ -4,5 +4,4 @@
 #include <string>
 using namespace std;
 
-
 void test_function(void (*f)(), double test_time, const std::string& func = __builtin_FUNCTION()); // Nom de la fonction pas vraiment le bon...

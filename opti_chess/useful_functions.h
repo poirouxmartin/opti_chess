@@ -2,7 +2,6 @@
 #include <execution>
 #include <string>
 #include "time.h"
-#include <cfloat>
 
 using namespace std;
 
@@ -76,7 +75,7 @@ int max_index(float[], int);
 int max_index(uint_fast8_t[], int);
 
 // Fonction qui renvoie l'index de la valeur maximale de deux listes d'entiers (la seconde est là pour départager en cas d'égalité)
-int max_index(int*, int, int*, int);
+int max_index(const int*, int, const int*, int);
 
 // Fonction qui renvoie l'index de la valeur minimale d'une liste d'entiers
 int min_index(int[], int);
@@ -106,7 +105,7 @@ bool is_in(const string&, string[], int);
 float get_winning_chances_from_eval(float, bool, bool);
 
 // Fonction qui pondère les valeurs de la liste, en fonction d'un taux d'exploration par valeur
-void nodes_weighting(int *, const float *, int);
+void nodes_weighting(int*, const float*, int);
 
 // Fonction qui affiche chaque attribut d'une classe ainsi que sa taille
 template <typename T>

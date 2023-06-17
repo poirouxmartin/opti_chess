@@ -1,21 +1,16 @@
 #include "time_tests.h"
 
-
 void test_function(void (*f)(), const double test_time, const std::string& func) {
+	cout << "Testing the function '" << func << "'" << endl;
 
-    cout << "Testing the function '" << func << "'" << endl;
+	// Temps au début
+	const clock_t begin = clock();
 
-    // Temps au début
-    const clock_t begin = clock();
+	int i = 0;
+	while (static_cast<double>(clock() - begin) / CLOCKS_PER_SEC < test_time) {
+		f();
+		i += 1;
+	}
 
-
-    int i = 0;
-    while (static_cast<double>(clock() - begin) / CLOCKS_PER_SEC < test_time) {
-        f();
-        i += 1;
-    }
-
-    cout << "Done in " << static_cast<double>(clock() - begin) / CLOCKS_PER_SEC / i << "s"  << endl;
+	cout << "Done in " << static_cast<double>(clock() - begin) / CLOCKS_PER_SEC / i << "s" << endl;
 }
-
-

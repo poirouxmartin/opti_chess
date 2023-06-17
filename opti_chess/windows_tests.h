@@ -1,18 +1,17 @@
 // Color
 #pragma once
 class SimpleColor {
-	public:
-		int _r = 0; // Red
-		int _g = 0; // Green
-		int _b = 0; // Blue
+public:
+	int _r = 0; // Red
+	int _g = 0; // Green
+	int _b = 0; // Blue
 
-		SimpleColor();
-		SimpleColor(int r, int g, int b);
-		void print() const;
-		[[nodiscard]] bool equals(SimpleColor c) const;
-		[[nodiscard]] bool equals(SimpleColor c, float alike) const;
+	SimpleColor();
+	SimpleColor(int r, int g, int b);
+	void print() const;
+	[[nodiscard]] bool equals(SimpleColor c) const;
+	[[nodiscard]] bool equals(SimpleColor c, float alike) const;
 };
-
 
 // Rectangle
 typedef struct SimpleRectangle {
@@ -21,7 +20,6 @@ typedef struct SimpleRectangle {
 	int x2;
 	int y2;
 };
-
 
 // Fonction qui simule un clic de souris à une position donnée
 void simulate_mouse_click(int x, int y);
