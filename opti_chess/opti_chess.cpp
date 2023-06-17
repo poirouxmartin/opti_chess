@@ -1268,9 +1268,9 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
 
 
     // Chances de gain
-    get_winning_chances();
+    const float win_chance = get_winning_chances_from_eval(_evaluation * 100, false, true);
     if (display)
-        eval_components += "W/D/L: " + to_string(static_cast<int>(100 * _white_winning_chance)) + "/" + to_string(static_cast<int>(100 * _drawing_chance)) + "/" + to_string(static_cast<int>(100 * _black_winning_chance)) + "%\n";
+        eval_components += "W/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/" + to_string(static_cast<int>(100 * 0)) + "/" + to_string(static_cast<int>(100 * (1.0f - win_chance))) + "%\n";
 
 
     // Partie non finie
@@ -4600,7 +4600,6 @@ void Board::reset_eval() {
     _game_over_checked = false;
     _evaluated = false; _evaluation = 0;
     _advancement = false; _adv = 0;
-    _winning_chances = false; _white_winning_chance = 0; _drawing_chance = 0; _black_winning_chance = 0;
 }
 
 
@@ -4719,29 +4718,6 @@ int Board::get_square_controls() const
     constexpr float control_adv_factor = 0.0f; // En fonction de l'advancement de la partie
 
     return total_control * (1 + (control_adv_factor - 1) * _adv);
-}
-
-
-// Fonction qui calcule les chances de gain/nulle/perte
-void Board::get_winning_chances() {
-    if (_winning_chances)
-        return;
-
-    // float a = 1;
-    // float b = 1;
-    // float c = 1;
-    // float d = 1;
-    // float e = 1;
-    // float f = 1;
-
-    // TODO y'a des trucs vraiment bizarres dans _evaluation... parfois des *100.. parfois c'est des entiers, parfois des float... bizarre
-    _white_winning_chance = 0.5f * (1 + (2 / (1 + static_cast<float>(exp(-0.75 * _evaluation))) - 1));
-    // _drawing_chance = 1 / (1 + exp(-c * _evaluation + d));
-    _drawing_chance = 0.0f;
-    _black_winning_chance = 1.0f - _white_winning_chance;
-
-    _winning_chances = true;
-    return;
 }
 
 
