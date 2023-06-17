@@ -57,46 +57,6 @@ void Board::copy_data(const Board &b) {
 }
 
 
-// Fonction qui copie les coups d'un plateau
-void Board::copy_moves(const Board &b) {
-    _got_moves = b._got_moves;
-    memcpy(_moves, b._moves, sizeof(_moves));
-}
-
-
-// Affichage du plateau
-void Board::display() const
-{
-    string s = "\n--------------------------------\n";
-
-    for (int i = 7; i > -1; i--) {
-        for (int j = 0; j < 8; j++) {
-	        switch (_array[i][j])
-            {   
-                case 0: s += "|   "; break;
-                case 1: s += "| P "; break;
-                case 2: s += "| N "; break;
-                case 3: s += "| B "; break;
-                case 4: s += "| R "; break;
-                case 5: s += "| Q "; break;
-                case 6: s += "| K "; break;
-                case 7: s += "| p "; break;
-                case 8: s += "| n "; break;
-                case 9: s += "| b "; break;
-                case 10: s += "| r "; break;
-                case 11: s += "| q "; break;
-                case 12: s += "| k "; break;
-                default: return;
-            }
-
-        }
-        s += "|\n--------------------------------\n";
-    }
-
-    cout << s;
-}
-
-
 // Fonction qui ajoute un coup dans une liste de coups
 bool Board::add_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fast8_t k, const uint_fast8_t l, int *iterator, const uint_fast8_t piece)
 {
@@ -107,13 +67,6 @@ bool Board::add_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fast
     const Move m(i, j, k, l, _array[k][l] != 0, (piece == 1 && i == 7) || (piece == 7 && i == 1));
     _moves[*iterator] = m;
 
-    /*_moves[*iterator].i1 = i;
-    _moves[*iterator].j1 = j;
-    _moves[*iterator].i2 = k;
-    _moves[*iterator].j2 = l;
-	_moves[*iterator].capture_flag = _array[k][l] != 0;
-    _moves[*iterator].promotion_flag = (_array[i][j] == 1 && i == 7) || (_array[i][j] == 7 && i == 1);*/
-
     // Incrémentation du nombre de coups
 	(*iterator)++;
 
@@ -123,6 +76,8 @@ bool Board::add_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fast
 
 // Fonction qui ajoute les coups "pions" dans la liste de coups
 bool Board::add_pawn_moves(const uint_fast8_t i, const uint_fast8_t j, int *iterator, const uint_fast8_t piece) {
+
+    // FIXME : ne pas utiliser 'piece', et mettre juste 1 et 7 à la place?
 
     // Joueur avec les pièces blanches
     if (_player) {
@@ -783,7 +738,6 @@ void Board::make_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fas
     _half_moves_count++;
     (p == 1 || p == 7 || _array[k][l]) && ((_half_moves_count = 0));
 
-
     // Coups donnant la possibilité d'un en passant
     _en_passant_col = -1;
 
@@ -866,9 +820,6 @@ void Board::make_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fas
             _array[7][3] = 10;
         }
     }
-
-    // PGN pour roque à modifier (voir move_label)
-    // Permissions de roque à modifier
 
     _array[k][l] = p;
 
@@ -1086,6 +1037,8 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
     uint_fast8_t count_b_knight = 0;
     uint_fast8_t count_b_bishop = 0;
     uint_fast8_t p;
+
+    // TODO : retirer les goto
 
     for (uint_fast8_t i = 0; i < 8; i++) {
         for (uint_fast8_t j = 0; j < 8; j++) {
@@ -1700,7 +1653,7 @@ void Board::from_fen(string fen)
     }
 
     iterator += 2;
-    string s = "";
+    string s;
     while (fen[iterator] != ' ') {
         s += fen[iterator];
         iterator += 1;
@@ -5033,17 +4986,40 @@ bool GUI::new_bind_game() {
         return false;
 
     _board.restart();
+    main_GUI.reset_pgn();
 
     if (get_board_orientation() != orientation)
         switch_orientation();
     
     if (orientation) {
+        // Joueur blanc
         _white_player = "GrogrosZero";
+        _white_title = "BOT";
+        _white_elo = _grogros_zero_elo;
+        _white_url = "https://images.chesscomfiles.com/uploads/v1/user/284728633.4af59e2f.50x50o.0c8cdf830b69.png";
+        _white_country = "57";
+
+        // Joueur noir
         _black_player = "chess.com player";
+        _black_title = "";
+        _black_elo = "";
+        _black_url = "";
+        _black_country = "";
     }
     else {
+        // Joueur blanc
         _white_player = "chess.com player";
+        _white_title = "";
+        _white_elo = "";
+        _white_url = "";
+        _white_country = "";
+
+        // Joueur noir
         _black_player = "GrogrosZero";
+        _black_title = "BOT";
+        _black_elo = _grogros_zero_elo;
+        _black_url = "https://images.chesscomfiles.com/uploads/v1/user/284728633.4af59e2f.50x50o.0c8cdf830b69.png";
+        _black_country = "57";
     }
 
     _binding_solo = true;
@@ -5789,6 +5765,30 @@ bool GUI::update_global_pgn()
     if (!_black_player.empty())
 		_global_pgn += "[Black \"" + _black_player + "\"]\n";
 
+    // Titres des joueurs
+    if (!_white_title.empty())
+		_global_pgn += "[WhiteTitle \"" + _white_title + "\"]\n";
+    if (!_black_title.empty())
+        _global_pgn += "[BlackTitle \"" + _black_title + "\"]\n";
+
+    // Elo des joueurs
+    if (!_white_elo.empty())
+		_global_pgn += "[WhiteElo \"" + _white_elo + "\"]\n";
+    if (!_black_elo.empty())
+		_global_pgn += "[BlackElo \"" + _black_elo + "\"]\n";
+
+    // URL des joueurs
+    if (!_white_url.empty())
+        _global_pgn += "[WhiteUrl \"" + _white_url + "\"]\n";
+    if (!_black_url.empty())
+        _global_pgn += "[BlackUrl \"" + _black_url + "\"]\n";
+
+    // Pays des joueurs
+    if (!_white_country.empty())
+		_global_pgn += "[WhiteCountry \"" + _white_country + "\"]\n";
+    if (!_black_country.empty())
+    	_global_pgn += "[BlackCountry \"" + _black_country + "\"]\n";
+
     // Cadence
     if (!_time_control.empty())
         _global_pgn += "[TimeControl \"" + _time_control + "\"]\n";
@@ -5796,6 +5796,10 @@ bool GUI::update_global_pgn()
     // FEN importé
     if (!_initial_fen.empty())
 		_global_pgn += "[FEN \"" + _initial_fen + "\"]\n";
+
+    // Date
+    if (!_date.empty())
+		_global_pgn += "[Date \"" + _date + "\"]\n";
 
 
     // Ajout du PGN de la partie
@@ -5814,8 +5818,25 @@ bool GUI::update_time_control()
 // Fonction qui réinitialise le PGN
 bool GUI::reset_pgn()
 {
+    update_date();
 	_pgn = "";
     _initial_fen = "";
 
     return  true;
+}
+
+
+// Fonction qui met à jour la date du PGN
+bool GUI::update_date() {
+	const time_t current_time = time(nullptr);
+    tm local_time;
+	localtime_s(&local_time, &current_time);
+
+	const int year = local_time.tm_year + 1900;
+	const int month = local_time.tm_mon + 1;
+	const int day = local_time.tm_mday;
+
+    _date = std::to_string(year) + "." + std::to_string(month) + "." + std::to_string(day);
+
+    return true;
 }

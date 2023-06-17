@@ -265,12 +265,6 @@ class Board {
     // Fonction qui copie les attributs d'un plateau
     void copy_data(const Board&);
 
-    // Fonction qui copie les coups d'un plateau
-    void copy_moves(const Board&);
-
-    // Affichage du plateau
-    void display() const;
-
     // Fonction qui ajoute un coup dans la liste de coups
     bool add_move(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
 
@@ -731,6 +725,27 @@ class GUI {
 		// PGN global
 		string _global_pgn;
 
+		// Titres des joueurs
+		string _white_title;
+		string _black_title;
+
+		// Elo des joueurs
+		string _white_elo;
+		string _black_elo;
+
+		// URL des joueurs (pour les images)
+		string _white_url;
+		string _black_url;
+
+		// Pays des joueurs
+		string _white_country;
+        string _black_country;
+
+		// Date de la partie
+        string _date;
+
+		// Elo de GrogrosZero
+		string _grogros_zero_elo = "2300";
 
         // TODO : Threads (pour la parallélisation)
 
@@ -773,6 +788,9 @@ class GUI {
 
 		// Fonction qui réinitialise le PGN
         bool reset_pgn();
+
+        // Fonction qui met à jour la date du PGN
+        bool update_date();
 };
 
 // Instantiation de la GUI globale
