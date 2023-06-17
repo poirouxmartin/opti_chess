@@ -35,7 +35,6 @@ Board::Board(const Board &b) {
     _castling_rights = b._castling_rights;
     _half_moves_count = b._half_moves_count;
     _moves_count = b._moves_count;
-    _pgn = b._pgn;
     _white_king_pos = b._white_king_pos;
     _black_king_pos = b._black_king_pos;
 }
@@ -53,7 +52,6 @@ void Board::copy_data(const Board &b) {
     _castling_rights = b._castling_rights;
     _half_moves_count = b._half_moves_count;
     _moves_count = b._moves_count;
-    _pgn = b._pgn;
     _white_king_pos = b._white_king_pos;
     _black_king_pos = b._black_king_pos;
 }
@@ -765,18 +763,19 @@ void Board::make_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fas
 	const uint_fast8_t p = _array[i][j];
 	const uint_fast8_t p_last = _array[k][l];
 
+    // TODO : rendre plus efficace
     if (pgn) {
         if (_moves_count != 0 || _half_moves_count != 0)
-            _pgn += " ";
+            main_GUI._pgn += " ";
         if (_player) {
             stringstream ss;
             ss << _moves_count;
             string s;
             ss >> s;
-            _pgn += s;
-            _pgn += ". ";
+            main_GUI._pgn += s;
+            main_GUI._pgn += ". ";
         }
-        _pgn += move_label(i, j, k, l);
+        main_GUI._pgn += move_label(i, j, k, l);
     }
 
 
@@ -883,9 +882,6 @@ void Board::make_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fas
     _array[i][j] = 0;
     _player = !_player;
     _got_moves = -1;
-
-    // Implémentation du FEN possible?
-    _fen = "";
 
     // Implémentation des coups
     _player && (_moves_count += 1);
@@ -1134,13 +1130,13 @@ bool Board::evaluate(Evaluator *eval, const bool checkmates, const bool display,
 
 
     // Réseau de neurones
-    if (n != nullptr) {
+    /*if (n != nullptr) {
         to_fen();
         n->input_from_fen(_fen);
         n->calculate_output();
         _evaluation = n->_output;
         return true;
-    }
+    }*/
 
 
 
@@ -1448,8 +1444,8 @@ bool Board::grogrosfish(const int depth, Evaluator *eval, const bool display = f
     if (display) {
         evaluate(eval);
         to_fen();
-        cout << _fen << endl;
-        cout << _pgn << endl;
+        cout << main_GUI._current_fen << endl;
+        cout << main_GUI._global_pgn << endl;
     }
     
     return true;
@@ -1466,9 +1462,6 @@ bool Board::undo(const uint_fast8_t i1, const uint_fast8_t j1, const uint_fast8_
 
     _player = !_player;
     _got_moves = -1;
-
-    // Implémentation du FEN possible?
-    _fen = "";
 
     // Decrémentation des coups
     !_player && _moves_count--;
@@ -1509,7 +1502,6 @@ bool Board::undo() {
 
     _player = !_player;
     _got_moves = -1;
-    _fen = "";
 
     // Incrémentation des coups
     !_player && (_moves_count -= 1);
@@ -1611,52 +1603,13 @@ void Board::sort_moves(Evaluator *eval) {
 
 
 // Fonction qui récupère le plateau d'un FEN
-void Board::from_fen(string fen, bool fen_in_pgn, bool keep_headings) {
-    bool named;
-    bool timed;
+void Board::from_fen(string fen) {
     string pgn;
-    if (keep_headings) {
-        named = _named_pgn;
-        timed = _timed_pgn;
-        pgn = _pgn;
-    }
 
     reset_all();
 
-    // Mise à jour du FEN
-    _fen = fen;
-
     // PGN
-    _pgn = pgn;
-    string search_token = "[FEN \"";
-    string closing_quote = "\"]\n";
-    size_t end_headings = 0;
-    size_t tmp_end;
-    while (true) {
-        tmp_end = _pgn.substr(end_headings).rfind("]\n");
-        if (tmp_end != string::npos)
-            end_headings += tmp_end + 2;
-        else
-            break;
-    }
-
-    _pgn = _pgn.substr(0, end_headings + 1);
-
-    // Trouve la position du FEN dans le PGN
-    size_t start_pos = _pgn.find(search_token);
-    if (start_pos != string::npos) {
-        size_t end_pos = _pgn.find(closing_quote, start_pos + search_token.length());
-        if (end_pos != string::npos) {
-            // Remplace le FEN par sa nouvelle valeur
-            _pgn.replace(start_pos + search_token.length(), end_pos - start_pos - search_token.length(), fen);
-        }
-    }
-    else {
-        // Si y'a pas de FEN : en ajoute un
-        _pgn += "\n[FEN \"" + fen + "\"]";
-    }
-
-
+    main_GUI._initial_fen = fen;
 
     // Iterateur qui permet de parcourir la chaine de caractères
     int iterator = 0;
@@ -1779,26 +1732,19 @@ void Board::from_fen(string fen, bool fen_in_pgn, bool keep_headings) {
     _last_move[2] = -1;
     _last_move[3] = -1;
 
-    
-    if (keep_headings) {
-        _named_pgn = named;
-        _timed_pgn = timed; 
-    }
-    else {
-        _named_pgn = false;
-        _timed_pgn = false;
-    }
-
     _is_game_over = false;
 
     // Oriente le plateau dans pour le joueur qui joue
     board_orientation = _player;
 
+    // Met à jour le FEN de la position dans la GUI
+    main_GUI._initial_fen = fen;
 }
 
 
-// Fonction qui renvoie le FEN du tableau
-void Board::to_fen() {
+// Fonction qui renvoie le FEN du plateau
+string Board::to_fen() const
+{
     string s;
     int it = 0;
 
@@ -1853,10 +1799,7 @@ void Board::to_fen() {
     s += " " + en_passant + " " + to_string(_half_moves_count) + " " + to_string(_moves_count);
 
 
-    _fen = s;
-
-    return;
-    
+    return s;
 }
 
 
@@ -2019,12 +1962,6 @@ string Board::move_label_from_index(const int i) {
     if (_got_moves == -1)
         get_moves(false, true);
     return move_label(_moves[i].i1, _moves[i].j1, _moves[i].i2, _moves[i].j2);
-}
-
-
-// Fonction qui renvoie un plateau à partir d'un PGN
-void Board::from_pgn(string pgn) {
-    _pgn = std::move(pgn);
 }
 
 
@@ -2510,7 +2447,7 @@ bool Board::draw() {
 
     // Temps des joueurs
     // Update du temps
-    update_time();
+    main_GUI.update_time();
     float x_pad = board_padding_x + board_size - text_size * 2;
     Color time_colors[4] = {(main_GUI._time && !_player) ? BLACK : VDARKGRAY, (main_GUI._time && !_player) ? WHITE : LIGHTGRAY, (main_GUI._time && _player) ? WHITE : LIGHTGRAY, (main_GUI._time && _player) ? BLACK : VDARKGRAY};
     
@@ -2557,14 +2494,14 @@ bool Board::draw() {
 
 
     // FEN
-    if (_fen.empty())
-        to_fen();
-    const char *fen = _fen.c_str();
+    main_GUI._current_fen = to_fen();
+    const char *fen = main_GUI._current_fen.c_str();
     DrawTextEx(text_font, fen, {text_size / 2, board_padding_y + board_size + text_size * 3 / 2}, text_size / 3, font_spacing * text_size / 3, text_color_blue);
 
 
     // PGN
-    slider_text(_pgn, text_size / 2, board_padding_y + board_size + text_size * 2, main_GUI._screen_width - text_size, main_GUI._screen_height - (board_padding_y + board_size + text_size * 2) - text_size / 3, text_size / 3, &pgn_slider, text_color);
+    main_GUI.update_global_pgn();
+    slider_text(main_GUI._global_pgn, text_size / 2, board_padding_y + board_size + text_size * 2, main_GUI._screen_width - text_size, main_GUI._screen_height - (board_padding_y + board_size + text_size * 2) - text_size / 3, text_size / 3, &pgn_slider, text_color);
 
 
     // Analyse de Monte-Carlo
@@ -2968,19 +2905,19 @@ int Board::best_monte_carlo_move() const
 
 
 // Fonction qui joue le coup après analyse par l'algo de Monte Carlo, et qui garde en mémoire les infos du nouveau plateau
-bool Board::play_monte_carlo_move_keep(const int m, const bool keep, const bool keep_display, const bool display, const bool add_to_list) {
-    if (_got_moves == -1)
+bool Board::play_monte_carlo_move_keep(const int m, const bool keep, const bool keep_display, const bool display, const bool add_to_list)
+{
+    // Obtient les coups si nécessaire
+	if (_got_moves == -1)
         get_moves(false, true);
 
     // Il faut obtenir le vrai coup (correspondant aux plateaux fils de l'algo de Monte-Carlo)
     // Pour le moment c'est pas beau, il faudra changer ça à l'avenir
     // TODO
-    Move wanted_move;
-    wanted_move.i1 = _moves[m].i1;
-    wanted_move.j1 = _moves[m].j1;
-    wanted_move.i2 = _moves[m].i2;
-    wanted_move.j2 = _moves[m].j2;
+    const Move wanted_move = _moves[m];
 
+
+    // TODO c'est quoi ça déjà??
     Move child_move;
     int move = m;
     for (int i = 0; i < _tested_moves; i++) {
@@ -2996,26 +2933,13 @@ bool Board::play_monte_carlo_move_keep(const int m, const bool keep, const bool 
         }
     }
 
-
     // Si le coup a été calculé par l'algo de Monte-Carlo
     if (move < _tested_moves) {
 
         if (keep_display) {
             play_index_move_sound(m);
             Board b(*this);
-            b.make_index_move(m, true, add_to_list);
-            b.to_fen();
-            if (display) {
-                b.display_pgn();
-                b.to_fen();
-                cout << "***** FEN : " << b._fen << " *****" << endl;
-            }
-            if (_is_active) {
-                monte_buffer._heap_boards[_index_children[move]]._pgn = b._pgn;
-                monte_buffer._heap_boards[_index_children[move]]._timed_pgn = _timed_pgn;
-                monte_buffer._heap_boards[_index_children[move]]._named_pgn = _named_pgn;
-            }
-                
+            b.make_index_move(m, true, add_to_list);                
         }
 
         // Deletes all the children from the other boards
@@ -3026,10 +2950,11 @@ bool Board::play_monte_carlo_move_keep(const int m, const bool keep, const bool 
             }
 
         if (_is_active) {
+            
 	        const Board *b = &monte_buffer._heap_boards[_index_children[move]];
-            reset_board(true);
+            reset_board();
             *this = *b;
-            update_time();
+            main_GUI.update_time();
         }
 
         if (!keep)
@@ -3168,11 +3093,6 @@ void Board::grogros_zero(Evaluator *eval, int nodes, const bool checkmates, cons
     // Si on a dépassé la profondeur maximale
     if (depth > max_depth) {
         max_depth = depth;
-        if (display) {
-            cout << "GrogrosZero - depth : " << max_depth << '\r';
-            to_fen();
-            cout << _fen << endl;
-        }
     }
 
     // Si la partie est finie, évite le calcul des coups... bizarre aussi : ne plus rentrer dans cette ligne?
@@ -3319,8 +3239,6 @@ void Board::reset_board(bool display) {
     _time_monte_carlo = 0;
     _static_evaluation = 0;
     _evaluation = 0;
-    _fen = "";
-    _pgn = "";
     _quick_sorted_moves = false;
     _sorted_moves = false;
     _nodes = 0;
@@ -3640,49 +3558,7 @@ void switch_arrow_drawing() {
 // Fonction qui affiche le PGN
 void Board::display_pgn() const
 {
-    cout << "\n***** PGN *****\n" << _pgn << "\n***** PGN *****" << endl;
-}
-
-// Fonction qui ajoute les noms des gens au PGN
-void Board::add_names_to_pgn() {
-    if (_named_pgn) {
-        // Change le nom du joueur aux pièces blanches
-        const size_t p_white = _pgn.find("[White ") + 8;
-        const size_t p_white_2 = _pgn.find("\"]");
-        _pgn = _pgn.substr(0, p_white) + main_GUI._white_player + _pgn.substr(p_white_2);
-
-        // Change le nom du joueur aux pièces noires
-        const size_t p_black = _pgn.find("[Black ") + 8;
-        const size_t p_black_2 = _pgn.find("\"]", p_black);
-        _pgn = _pgn.substr(0, p_black) + main_GUI._black_player + _pgn.substr(p_black_2);
-    }
-
-    else {
-	    if (const size_t p = _pgn.find_last_of("\"]\n"); p == -1)
-            _pgn = "[White \"" + main_GUI._white_player + "\"]\n" + "[Black \"" + main_GUI._black_player + "\"]\n\n" + _pgn;
-        else
-            _pgn = "[White \"" +main_GUI._white_player + "\"]\n" + "[Black \"" + main_GUI._black_player + "\"]\n" + _pgn;
-        _named_pgn = true;
-    }
-}
-
-
-// Fonction qui ajoute le time control au PGN
-void Board::add_time_to_pgn() {
-    if (_timed_pgn) {
-        // cout << "déjà fait !" << endl;
-        true;
-    }
-    
-    else {
-	    if (const size_t p = _pgn.find_last_of("\"]\n"); p == -1)
-            _pgn = "[TimeControl \"" + to_string(static_cast<int>(max(main_GUI._time_white, main_GUI._time_black) / 1000)) + " + " + to_string(static_cast<int>(max(main_GUI._time_increment_white, main_GUI._time_increment_black) / 1000)) +"\"]\n\n" + _pgn;
-        else
-            _pgn = _pgn.substr(0, p) + "[TimeControl \"" + to_string(static_cast<int>(max(main_GUI._time_white, main_GUI._time_black) / 1000)) + " + " + to_string(static_cast<int>(max(main_GUI._time_increment_white, main_GUI._time_increment_black) / 1000)) +"\"]\n" + _pgn.substr(p);
-        
-
-        _timed_pgn = true;
-    }
+    //cout << "\n***** PGN *****\n" << _pgn << "\n***** PGN *****" << endl;
 }
 
 
@@ -3921,9 +3797,6 @@ int match(Evaluator *e_white, Evaluator *e_black, Network *n_white, Network *n_b
             break;
     }
 
-    if (display)
-        cout << b._pgn << endl;
-
     int g = b.is_mate();
     if (g == -1)
         g = b.game_over();
@@ -3994,25 +3867,25 @@ int* tournament(Evaluator **evaluators, Network **networks, const int n_players,
 // Fonction qui génère le livre d'ouvertures
 void Board::generate_opening_book(int nodes) {
 
-    // Lit le livre d'ouvertures actuel
-    string book = LoadFileText("resources/data/opening_book.txt");
-    cout << "Book : " << book << endl;
+    //// Lit le livre d'ouvertures actuel
+    //string book = LoadFileText("resources/data/opening_book.txt");
+    //cout << "Book : " << book << endl;
 
-    // Se place à l'endroit concerné dans le livre ----> mettre des FEN dans le livre et chercher?
-    to_fen();
-    size_t pos = book.find(_fen); // Que faire si y'en a plusieurs? Fabriquer un tableau avec les positions puis diviser le livre en plus de parties? puis insérer au milieu...
-    const string book_part_1;
-    const string book_part_2;
+    //// Se place à l'endroit concerné dans le livre ----> mettre des FEN dans le livre et chercher?
+    //to_fen();
+    //size_t pos = book.find(_fen); // Que faire si y'en a plusieurs? Fabriquer un tableau avec les positions puis diviser le livre en plus de parties? puis insérer au milieu...
+    //const string book_part_1;
+    //const string book_part_2;
 
-    const string add_to_book = "()";
-
-
-    // Regarde si tous les coups ont été testés. Sinon, teste un des coups restants -> avec nodes noeuds
+    //const string add_to_book = "()";
 
 
-    const string new_book = book_part_1 + add_to_book + book_part_2;
+    //// Regarde si tous les coups ont été testés. Sinon, teste un des coups restants -> avec nodes noeuds
 
-    SaveFileText("resources/data/opening_book.txt", const_cast<char*>(new_book.c_str()));
+
+    //const string new_book = book_part_1 + add_to_book + book_part_2;
+
+    //SaveFileText("resources/data/opening_book.txt", const_cast<char*>(new_book.c_str()));
 }
 
 
@@ -4185,49 +4058,50 @@ int time_to_play_move(const int t1, int t2, const float k) {
 
 
 // Fonction qui met à jour le temps des joueurs
-void Board::update_time() {
+void GUI::update_time() {
     // Faut-il quand même mettre à jour le temps quand il est désactivé?
-    if (!main_GUI._time)
+    if (!_time)
         return;
 
-    if (main_GUI._last_player)
-        main_GUI._time_white -= clock() - main_GUI._last_move_clock;
+    if (_last_player)
+        _time_white -= clock() - _last_move_clock;
     else
-        main_GUI._time_black -= clock() - main_GUI._last_move_clock;
-    main_GUI._last_move_clock = clock();
+        _time_black -= clock() - _last_move_clock;
+
+    _last_move_clock = clock();
 
 
     // Gestion du temps
-    if (_player != main_GUI._last_player) { // TODO fix dans le cas où GrogrosZero joue (car il ne joue pas sur le plateau principal)
-        if (_player) {
-            main_GUI._time_black -= clock() - main_GUI._last_move_clock - main_GUI._time_increment_black;
-            _pgn += " {[%clk " + clock_to_string(main_GUI._time_black, true) + "]}";
+    if (_board._player != _last_player) {
+        if (_board._player) {
+            _time_black -= clock() - _last_move_clock - _time_increment_black;
+            _pgn += " {[%clk " + clock_to_string(_time_black, true) + "]}";
         }
         else {
-            main_GUI._time_white -= clock() - main_GUI._last_move_clock - main_GUI._time_increment_white;
-            _pgn += " {[%clk " + clock_to_string(main_GUI._time_white, true) + "]}";
+            _time_white -= clock() - _last_move_clock - _time_increment_white;
+            _pgn += " {[%clk " + clock_to_string(_time_white, true) + "]}";
         }
 
-        main_GUI._last_move_clock = clock();
+        _last_move_clock = clock();
     }
 
-    main_GUI._last_player = _player;
+    _last_player = _board._player;
 }
 
 
 // Fonction qui lance le temps
-void Board::start_time() {
-    add_time_to_pgn();
-    main_GUI._time = true;
-    main_GUI._last_move_clock = clock();
+void GUI::start_time() {
+    update_time_control();
+    _time = true;
+    _last_move_clock = clock();
 }
 
 
 // Fonction qui stoppe le temps
-void Board::stop_time() {
-    add_time_to_pgn();
+void GUI::stop_time() {
+    update_time_control();
     update_time();
-    main_GUI._time = false;
+    _time = false;
 }
 
 
@@ -4703,7 +4577,7 @@ void Board::reset_timers() {
 // Fonction qui remet le plateau dans sa position initiale
 void Board::restart() {
     // Fonction largement optimisable
-    from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", true, true);
+    from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     // _pgn = "";
     reset_timers();
 }
@@ -5177,14 +5051,12 @@ bool GUI::new_bind_game() {
         _black_player = "GrogrosZero";
     }
 
-    _board.add_names_to_pgn();
-
     _binding_solo = true;
     _binding_full = false;
     _click_bind = true;
     if (!monte_buffer._init)
         monte_buffer.init();
-    _board.start_time();
+    main_GUI.start_time();
     _grogros_analysis = false;
 
     return true;
@@ -5210,8 +5082,6 @@ bool GUI::new_bind_analysis() {
         _white_player = "chess.com player 2";
         _black_player = "chess.com player 1";
     }
-
-    _board.add_names_to_pgn();
 
     _binding_solo = false;
     _binding_full = true;
@@ -5908,4 +5778,49 @@ bool Buffer::reset() const
 		_heap_boards[i].reset_board();
 
     return true;
+}
+
+
+// Fonction qui construit le PGN global
+bool GUI::update_global_pgn()
+{
+    _global_pgn = "";
+
+    // Headers
+
+    // Joueurs
+    if (!_white_player.empty())
+        _global_pgn += "[White \"" + _white_player + "\"]\n";
+    if (!_black_player.empty())
+		_global_pgn += "[Black \"" + _black_player + "\"]\n";
+
+    // Cadence
+    if (!_time_control.empty())
+        _global_pgn += "[TimeControl \"" + _time_control + "\"]\n";
+
+    // FEN importé
+    if (!_initial_fen.empty())
+		_global_pgn += "[FEN \"" + _initial_fen + "\"]\n";
+
+
+    // Ajout du PGN de la partie
+    _global_pgn += _pgn;
+
+}
+
+
+// Fonction qui met à jour la cadence du PGN
+bool GUI::update_time_control()
+{
+    _time_control = to_string(static_cast<int>(max(_time_white, _time_black) / 1000)) + " + " + to_string(static_cast<int>(max(_time_increment_white, _time_increment_black) / 1000));
+}
+
+
+// Fonction qui réinitialise le PGN
+bool GUI::reset_pgn()
+{
+	_pgn = "";
+    _initial_fen = "";
+
+    return  true;
 }
