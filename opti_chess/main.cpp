@@ -357,6 +357,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Eviter les accès à _moves[i] trop souvent? -> copier le coup?
 -> Get_control_map() + type control_map (à utiliser lors de l'évaluation pour la calculer seulement une fois)
 -> Remplacer total_nodes() par _total_nodes, et faire comme _quiescence_nodes? Vérifier la vitesse des deux approches
+-> IMPORTANT : refaire toutes les recherches de mat, et leur stockages
 
 
 
@@ -452,6 +453,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Quand on arrive au mat dans le quiescence, l'affichage de l'éval bug (-99800000 au lieu de mat en 2)
 -> Adapter nodes_per_frame en fonction du temps de réflexion de GrogrosZero (tant que la parallelisation n'est pas faite)
 -> Montrer l'incrément sur la GUI
+-> Afficher le titre et l'elo des joueurs sur la GUI
 
 
 
@@ -783,6 +785,9 @@ int main() {
     // Met les timers en place
     main_GUI._board.reset_timers();
 
+    // Met le PGN à la date du jour
+    main_GUI.update_date();
+
 
     //printAttributeSizes(main_GUI._board);
     //testFunc(main_GUI._board);
@@ -917,8 +922,8 @@ int main() {
 
         // C - Copie dans le clipboard du PGN
         if (IsKeyPressed(KEY_C)) {
-            SetClipboardText(main_GUI._pgn.c_str());
-            cout << "copied PGN : \n" << main_GUI._pgn << endl;
+            SetClipboardText(main_GUI._global_pgn.c_str());
+            cout << "copied PGN : \n" << main_GUI._global_pgn << endl;
         }
 
         // X - Copie dans le clipboard du FEN
@@ -1119,33 +1124,89 @@ int main() {
         // UP/DOWN - Activation, désactivation de GrogrosFish pour les pièces blanches
         if (!IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && get_board_orientation()) || (IsKeyPressed(KEY_UP) && !get_board_orientation()))) {
             if (main_GUI._white_player.substr(0, 11) == "GrogrosFish")
+            {
                 main_GUI._white_player = "White";
+				main_GUI._white_title = "";
+                main_GUI._white_elo = "?";
+                main_GUI._white_url = "";
+                main_GUI._white_country = "";
+            }
+                
             else
+            {
                 main_GUI._white_player = "GrogrosFish (depth " + to_string(search_depth) + ")";
+                main_GUI._white_title = "BOT";
+                main_GUI._white_elo = "?";
+                main_GUI._white_url = "https://images.chesscomfiles.com/uploads/v1/user/284728633.4af59e2f.50x50o.0c8cdf830b69.png";
+                main_GUI._white_country = "57";
+            }
+                
         }
 
         // UP/DOWN - Activation, désactivation de GrogrosFish pour les pièces noires
         if (!IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && !get_board_orientation()) || (IsKeyPressed(KEY_UP) && get_board_orientation()))) {
             if (main_GUI._black_player.substr(0, 11) == "GrogrosFish")
+            {
                 main_GUI._black_player = "Black";
+                main_GUI._black_title = "";
+                main_GUI._black_elo = "?";
+                main_GUI._black_url = "";
+                main_GUI._black_country = "";
+            }
+                
             else
+            {
                 main_GUI._black_player = "GrogrosFish (depth " + to_string(search_depth) + ")";
+            	main_GUI._black_title = "BOT";
+                main_GUI._black_elo = "?";
+                main_GUI._black_url = "https://images.chesscomfiles.com/uploads/v1/user/284728633.4af59e2f.50x50o.0c8cdf830b69.png";
+                main_GUI._black_country = "57";
+            }
+                
         }
 
         // CTRL-UP/DOWN - Activation, désactivation de GrogrosZero pour les pièces blanches
         if (IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && get_board_orientation()) || (IsKeyPressed(KEY_UP) && !get_board_orientation()))) {
             if (main_GUI._white_player.substr(0, 11) == "GrogrosZero")
+            {
                 main_GUI._white_player = "White";
+                main_GUI._white_title = "";
+                main_GUI._white_elo = "?";
+                main_GUI._white_url = "";
+                main_GUI._white_country = "";
+            }
+                
             else
+            {
                 main_GUI._white_player = "GrogrosZero";
+				main_GUI._white_title = "BOT";
+                main_GUI._white_elo = main_GUI._grogros_zero_elo;
+                main_GUI._white_url = "https://images.chesscomfiles.com/uploads/v1/user/284728633.4af59e2f.50x50o.0c8cdf830b69.png";
+                main_GUI._white_country = "57";
+            }
+                
         }
 
         // CTRL-UP/DOWN - Activation, désactivation de GrogrosZero pour les pièces noires
         if (IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && !get_board_orientation()) || (IsKeyPressed(KEY_UP) && get_board_orientation()))) {
             if (main_GUI._black_player.substr(0, 11) == "GrogrosZero")
+            {
                 main_GUI._black_player = "Black";
+            	main_GUI._black_title = "";
+                main_GUI._black_elo = "?";
+                main_GUI._black_url = "";
+                main_GUI._black_country = "";
+            }
+                
             else
+            {
                 main_GUI._black_player = "GrogrosZero";
+                main_GUI._black_title = "BOT";
+                main_GUI._black_elo = main_GUI._grogros_zero_elo;
+                main_GUI._black_url = "https://images.chesscomfiles.com/uploads/v1/user/284728633.4af59e2f.50x50o.0c8cdf830b69.png";
+                main_GUI._black_country = "57";
+            }
+                
         }
 
 
