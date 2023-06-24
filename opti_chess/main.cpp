@@ -346,6 +346,11 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Get_control_map() + type control_map (à utiliser lors de l'évaluation pour la calculer seulement une fois)
 -> Remplacer total_nodes() par _total_nodes, et faire comme _quiescence_nodes? Vérifier la vitesse des deux approches
 -> IMPORTANT : refaire toutes les recherches de mat, et leur stockages
+-> Faire le threading !
+-> FIX KING SAFETY !! : 8/8/R3pk2/p1Pp1p2/2r2Ppp/4PR1P/6P1/6K1 w - - 0 38 : +700?????
+-> Faire un king_centralization pour l'endgame?
+-> Voir comment gérer les positions qui sont mal évaluées par GrogrosZero
+
 
 ----- Interface utilisateur -----
 
@@ -400,9 +405,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> +M7 -> #-7 pour les noirs? .. bof
 -> Barre d'éval : barre pour l'évaluation du coup le plus recherché par l'IA? ou éval du "meilleur coup"?
 -> Mettre le screenshot dans le presse-papier?
--> Faire un readme
 -> Faire un truc pour montrer la menace (changer le trait du joueur)
--> CtrlN doit effacer tout le PGN... parfois ça bug
 -> Pouvoir éditer les positions
 -> PARALLELISER L'AFFICHAGE !! ça lag beaucoup trop !!!
 -> Refaire les pre-moves depuis zero (et ajouter la possibilité d'en faire plusieurs)
@@ -415,8 +418,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Montrer toute la variante calculée avec des flèches (d'une couleur spéciale)
 -> Thread : bug... parfois les coups joués ne sont pas les bons
 -> Re foncer le noir des pièces?
--> Ajout du titre BOT : [WhiteTitle "BOT"]
--> Afficher quand-même la barre d'éval même si GrogrosZero est arrêté?
 -> Pourquoi dans certaines variantes, l'éval ne s'affiche pas à la fin??
 -> Il doit sûrement manquer des delete quelque part?
 -> Dans les .h, remetre les noms des arguments?
@@ -440,6 +441,10 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Adapter nodes_per_frame en fonction du temps de réflexion de GrogrosZero (tant que la parallelisation n'est pas faite)
 -> Montrer l'incrément sur la GUI
 -> Afficher le titre et l'elo des joueurs sur la GUI
+-> Revoir le tri des coups pour les flèches de GrogrosZero, car parfois ça ne se trie pas bien
+-> Parfois quiescence speed -> négatif...
+
+
 
 ----- Réseaux de neurones -----
 
@@ -512,6 +517,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> 5rk1/pp4pp/2pb4/3p3q/B2P3P/2N1Bp2/PPP5/R3Q1K1 w - - 0 4
 -> r1b1kb1r/ppp1q1pp/8/5pN1/2Qp1P2/8/PP1N2PP/R3R1K1 b kq - 0 13
 -> 7k/1pR4p/p4p2/r4p2/4r3/4P2R/PP4PP/7K b - - 1 38 : +6 selon Grogros xD
+-> r1bq1bnr/ppp2Q1p/8/n3p1k1/3PPp2/8/PPP3P1/RNB1K2R w KQ - 0 12 : ici c'est mat
 
 ----- Problèmes -----
 
@@ -750,9 +756,6 @@ int main() {
 	//printAttributeSizes(main_GUI._board);
 	//testFunc(main_GUI._board);
 
-	// Nombre de threads pour la parallélisation
-	int n_threads = 1;
-
 	// Boucle principale (Quitter à l'aide de la croix, ou en faisant échap)
 	while (!WindowShouldClose()) {
 		// INPUTS
@@ -771,41 +774,15 @@ int main() {
 
 		// T - Test de thread
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_T)) {
-			// Vecteur de threads
-			//vector<thread> threads;
-			//mutex boardMutex; // Mutex for synchronizing access to main_GUI._board
-
-			//for (int i = 0; i < n_threads; i++) {
-			//    //threads.emplace_back([&]() {
-			//    //    // Lock the mutex before modifying main_GUI._board
-			//    //    lock_guard<mutex> lock(boardMutex);
-			//    //    main_GUI._board.grogros_zero(&monte_evaluator, 50000, true, main_GUI._beta, main_GUI._k_add, false, 0, nullptr, 4);
-			//    //    });
-
-			//    threads.push_back(thread(&Board::grogros_zero, &main_GUI._board, &monte_evaluator, 50000, true, main_GUI._beta, main_GUI._k_add, false, 0, nullptr, 4));
-			//}
-
-			//for (auto& thread : threads) {
-			//    //thread.join();
-			//    thread.detach();
-			//}
-
-			//cout << main_GUI._board.in_check() << endl;
-			//main_GUI._board.quiescence(&eval_white);
-			//cout << main_GUI._board._quiescence_nodes << endl;
-
-			/*Array test_array;
-			cout << sizeof(test_array) << endl;
-			cout << test_array.pieces[0][0].type << endl;*/
 
 			//main_GUI._board.grogros_zero(&monte_evaluator, 1, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._deep_mates_search, main_GUI._explore_checks);
 
 			locate_chessboard(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom);
 			main_GUI.new_bind_game();
 
-			// Nombre de noeuds de la recherche quiescence
-			//main_GUI._board.quiescence(&eval_white);
-			//cout << main_GUI._board._quiescence_nodes << endl;
+			// Lance grogrosZero sur un thread
+			//main_GUI._thread_grogros_zero = thread(&Board::display_pgn, &main_GUI._board);
+			//main_GUI._thread_grogros_zero.detach();
 		}
 
 		// CTRL-T - Cherche le plateau de chess.com sur l'écran
@@ -831,7 +808,7 @@ int main() {
 		// Changements de la taille de la fenêtre
 		if (IsWindowResized()) {
 			get_window_size();
-			load_resources(); // Sinon ça devient flou
+			//load_resources(); // Sinon ça devient flou
 			resize_GUI();
 		}
 
