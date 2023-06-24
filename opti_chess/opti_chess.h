@@ -10,8 +10,12 @@
 #include <map>
 #include <cstdint>
 #include "raylib.h"
+#include <iomanip>
 
 using namespace std;
+
+
+// TODO : à la place de 1, .. 12, mettre des enums (P, N, B, R, Q, K, p, n, b, r, q, k)
 
 /*
 
@@ -35,9 +39,10 @@ Plateau :
 
 */
 
-// Liste de coups globale, pour les calculs, et éviter d'avoir des listes trop grosses pour chaque plateau
-// extern uint_fast8_t _global_moves[1000];
-// extern int _global_moves_size;
+// Enumération des pièces
+enum piece_type { P = 1, N = 2, B = 3, R = 4, Q = 5, K = 6, p = 7, n = 8, b = 9, r = 10, q = 11, k = 12 };
+
+
 
 // Nombre maximum de coups légaux par position estimé
 // const int max_moves = 218;
@@ -93,6 +98,18 @@ struct Piece
 {
 	int type : 3;
 	bool color : 1;
+
+	// Constructeurs
+	Piece() : type(0), color(0) {}
+	Piece(int type, bool color) : type(type), color(color) {}
+
+	// Opérateurs
+
+	// Méthodes
+
+
+
+
 };
 
 // Ligne du plateau d'échec (horizontale)
@@ -110,6 +127,50 @@ struct Pos
 	int j : 4;
 };
 
+// Map d'un plateau (pour stocker les cases controllées, etc...)
+struct Map
+{
+	int _array[8][8];
+
+	// Constructeurs
+	Map() {
+		for (int i = 0; i < 8; i++) {
+			for (int j = 0; j < 8; j++) {
+				_array[i][j] = 0;
+			}
+		}
+	}
+
+	// Opérateurs
+
+	// Soustraction
+	Map operator- (const Map& other) const {
+		Map result;
+		for (int i = 0; i < 8; i++) {
+			for (int j = 0; j < 8; j++) {
+				result._array[i][j] = _array[i][j] - other._array[i][j];
+			}
+		}
+		return result;
+	}
+
+
+	// Méthodes
+
+	// Affichage de façon alignée
+	void print() const {
+		cout << "Map : " << endl;
+		for (int i = 7; i >= 0; i--) {
+			for (int j = 0; j < 8; j++) {
+				cout << setw(3) << _array[i][j] << " ";
+			}
+			cout << endl;
+		}
+		cout << endl;
+	}
+};
+	
+
 // Plateau
 class Board {
 public:
@@ -118,7 +179,7 @@ public:
 
 	// Plateau
 	// 64 bytes
-	uint_fast8_t _array[8][8]{ { 4, 2, 3, 5, 6, 3, 2, 4 },
+	uint_fast8_t _array[8][8]{	{ 4, 2, 3, 5, 6, 3, 2, 4 },
 								{ 1, 1, 1, 1, 1, 1, 1, 1 },
 								{ 0, 0, 0, 0, 0, 0, 0, 0 },
 								{ 0, 0, 0, 0, 0, 0, 0, 0 },
@@ -477,6 +538,18 @@ public:
 
 	// Fonction qui renvoie l'activité des pièces
 	[[nodiscard]] int get_piece_activity() const;
+
+	// Fonction qui renvoie la valeur de sécurité des rois (test)
+	[[nodiscard]] int get_king_safety_test();
+
+	// Fonction qui renvoie la map correspondante au nombre de contrôles pour chaque case de l'échiquier pour le joueur blanc
+	[[nodiscard]] Map get_white_controls_map() const;
+
+	// Fonction qui renvoie la map correspondante au nombre de contrôles pour chaque case de l'échiquier pour le joueur noir
+	[[nodiscard]] Map get_black_controls_map() const;
+
+	// Fonction qui ajoute à une map les contrôles d'une pièce
+	[[nodiscard]] bool add_piece_controls(Map* m, int i, int j, int piece) const;
 };
 
 // Fonction qui obtient la case correspondante à la position sur la GUI
@@ -717,6 +790,11 @@ public:
 
 	// Thread de GrogrosZero
 	thread _thread_grogros_zero;
+
+	// TODO : Pour le PGN, faire un vecteur de coups, comme ça on peut repasser la partie, et modifier le PGN facilement
+
+
+
 
 	// Constructeurs
 

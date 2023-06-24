@@ -59,7 +59,8 @@ bool Board::add_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fast
 	if (*iterator >= max_moves)
 		return false;
 
-	const Move m(i, j, k, l, _array[k][l] != 0, (piece == 1 && i == 7) || (piece == 7 && i == 1));
+	const Move m(i, j, k, l, false, false); // Si on utilise pas les flag, autant éviter les calculs inutiles
+	//const Move m(i, j, k, l, _array[k][l] != 0, (piece == 1 && i == 7) || (piece == 7 && i == 1));
 	_moves[*iterator] = m;
 
 	// Incrémentation du nombre de coups
@@ -101,9 +102,11 @@ bool Board::add_pawn_moves(const uint_fast8_t i, const uint_fast8_t j, int* iter
 // Fonction qui ajoute les coups "cavaliers" dans la liste de coups
 bool Board::add_knight_moves(const uint_fast8_t i, const uint_fast8_t j, int* iterator, const uint_fast8_t piece) {
 	// On va utiliser un tableau pour stocker les déplacements possibles du cavalier
+	// TODO : peut être rendu plus rapide? -> tableau 1 dimension.
+	//									   -> ne pas mettre les coordonnées hors du plateau dans la liste à tester 
 	static constexpr int_fast8_t knight_moves[8][2] = { {-2, -1}, {-2, 1}, {-1, -2}, {-1, 2}, {1, -2}, {1, 2}, {2, -1}, {2, 1} };
 	// On parcourt ce tableau
-	for (int m = 0; m < 8; m++) {
+	for (uint_fast8_t m = 0; m < 8; m++) {
 		const uint_fast8_t i2 = i + knight_moves[m][0];
 		const uint_fast8_t j2 = j + knight_moves[m][1];
 		if (_player)
@@ -1901,25 +1904,29 @@ void resize_GUI() {
 
 	// Pièces
 	for (int i = 0; i < 12; i++) {
-		ImageResize(&piece_images[i], piece_size, piece_size);
-		piece_textures[i] = LoadTextureFromImage(piece_images[i]);
+		Image piece_image = ImageCopy(piece_images[i]);
+		ImageResize(&piece_image, piece_size, piece_size);
+		piece_textures[i] = LoadTextureFromImage(piece_image);
 	}
 	text_size = board_size / 16.0f;
 
 	// Grogros
 	grogros_size = board_size / 16.0f;
-	ImageResize(&grogros_image, grogros_size, grogros_size);
-	grogros_texture = LoadTextureFromImage(grogros_image);
+	Image grogros_copy = ImageCopy(grogros_image);
+	ImageResize(&grogros_copy, grogros_size, grogros_size);
+	grogros_texture = LoadTextureFromImage(grogros_copy);
 
 	// Curseur
-	ImageResize(&cursor_image, cursor_size, cursor_size);
-	cursor_texture = LoadTextureFromImage(cursor_image);
+	Image cursor_copy = ImageCopy(cursor_image);
+	ImageResize(&cursor_copy, cursor_size, cursor_size);
+	cursor_texture = LoadTextureFromImage(cursor_copy);
 
 	// Mini-pièces (pour le compte des pièces prises durant la partie)
 	mini_piece_size = text_size / 3;
 	for (int i = 0; i < 12; i++) {
-		ImageResize(&mini_piece_images[i], mini_piece_size, mini_piece_size);
-		mini_piece_textures[i] = LoadTextureFromImage(mini_piece_images[i]);
+		Image mini_piece_image = ImageCopy(mini_piece_images[i]);
+		ImageResize(&mini_piece_image, mini_piece_size, mini_piece_size);
+		mini_piece_textures[i] = LoadTextureFromImage(mini_piece_image);
 	}
 }
 
@@ -2340,7 +2347,7 @@ bool Board::draw() {
 			evaluate_int(_evaluator, true, true);
 		int max_depth = grogros_main_depth();
 		int n_nodes = total_nodes();
-		monte_carlo_text += "\n\n--- static eval: " + ((_static_evaluation > 0) ? static_cast<string>("+") : static_cast<string>("")) + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval: " + ((best_eval > 0) ? static_cast<string>("+") : static_cast<string>("")) + eval + " ---" + win_chances + "\nnodes: " + int_to_round_string(n_nodes) + "/" + int_to_round_string(monte_buffer._length) + " | time: " + clock_to_string(_time_monte_carlo) + " | speed: " + int_to_round_string(total_nodes() / (_time_monte_carlo + 1) * 1000) + "N/s" + " | depth: " + to_string(max_depth) + "\nquiescence: " + int_to_round_string(_quiescence_nodes) + "N" + " | speed: " + int_to_round_string(_quiescence_nodes / (_time_monte_carlo + 1) * 1000) + "N/s";
+		monte_carlo_text += "\n\n--- static eval: " + ((_static_evaluation > 0) ? static_cast<string>("+") : static_cast<string>("")) + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval: " + ((best_eval > 0) ? static_cast<string>("+") : static_cast<string>("")) + eval + " ---" + win_chances + "\nnodes: " + int_to_round_string(n_nodes) + "/" + int_to_round_string(monte_buffer._length) + " | time: " + clock_to_string(_time_monte_carlo) + " | speed: " + int_to_round_string(1000 * total_nodes() / (_time_monte_carlo + 1)) + "N/s" + " | depth: " + to_string(max_depth) + "\nquiescence: " + int_to_round_string(_quiescence_nodes) + "N" + " | speed: " + int_to_round_string(1000 * _quiescence_nodes / (_time_monte_carlo + 1)) + "N/s";
 
 		// Affichage des paramètres d'analyse de Monte-Carlo
 		slider_text(monte_carlo_text, board_padding_x + board_size + text_size / 2, text_size, main_GUI._screen_width - text_size - board_padding_x - board_size, board_size * 9 / 16, text_size / 3, &monte_carlo_slider, text_color);
@@ -2967,7 +2974,7 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const bool checkmates, cons
 
 // Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
 // FIXME? plus rapide d'instancier un nouveau plateau? et plus safe niveau mémoire?
-void Board::reset_board(bool display) {
+void Board::reset_board(const bool display) {
 	_is_active = false;
 	_current_move = 0;
 	_evaluated = false;
@@ -2982,7 +2989,6 @@ void Board::reset_board(bool display) {
 	_sorted_moves = false;
 	_nodes = 0;
 	_quiescence_nodes = 0;
-	_player = true;
 
 	if (!_new_board) {
 		_tested_moves = 0;
@@ -3102,7 +3108,7 @@ int Board::get_king_safety() {
 	// Proximité avec le bord
 	// Avancement à partir duquel il est plus dangereux d'être sur un bord
 	constexpr float edge_adv = 0.75f;
-	constexpr float mult_endgame = 10.0f;
+	constexpr float mult_endgame = 5.0f;
 
 	// Version additive, adaptée pour l'endgame
 	constexpr int edge_defense = 200;
@@ -3787,12 +3793,12 @@ float Board::get_attacks_and_defenses(float attack_scale, float defense_scale) c
 	uint_fast8_t i2; uint_fast8_t j2;
 
 	// Diagonales
-	constexpr int_fast8_t dx[] = { -1, -1, 1, 1 };
-	constexpr int_fast8_t dy[] = { -1, 1, -1, 1 }; // à définir en dehors de la fonction pour gagner du temps, et pour le réutiliser autre part
+	constexpr static int_fast8_t dx[] = { -1, -1, 1, 1 };
+	constexpr static int_fast8_t dy[] = { -1, 1, -1, 1 };
 
 	// Mouvements rectilignes
-	constexpr int_fast8_t vx[] = { -1, 1, 0, 0 }; // vertical
-	constexpr int_fast8_t hy[] = { 0, 0, -1, 1 }; // horizontal
+	constexpr static int_fast8_t vx[] = { -1, 1, 0, 0 }; // vertical
+	constexpr static int_fast8_t hy[] = { 0, 0, -1, 1 }; // horizontal
 
 	// TODO Switch à changer, car c'est lent
 	// TODO changer les if par des &&
@@ -5016,9 +5022,7 @@ bool Board::update_kings_pos()
 	{
 		for (uint_fast8_t j = 0; j < 8; j++)
 		{
-			const uint_fast8_t piece = _array[i][j];
-
-			if (search_white && piece == 6)
+			if (const uint_fast8_t piece = _array[i][j]; search_white && piece == 6)
 			{
 				_white_king_pos = { i, j };
 				if (!search_black)
@@ -5039,7 +5043,7 @@ bool Board::update_kings_pos()
 }
 
 // Fonction qui renvoie la puissance d'attaque d'une pièce sur le roi adverse
-int Board::get_piece_attack_power(int i, int j) const
+int Board::get_piece_attack_power(const int i, const int j) const
 {
 	// TODO : faire des if en fonction de la position i, j pour éviter des calculs
 	const uint_fast8_t piece = _array[i][j];
@@ -5156,7 +5160,7 @@ int Board::get_piece_attack_power(int i, int j) const
 }
 
 // Fonction qui renvoie la puissance de défense d'une pièce pour le roi allié
-int Board::get_piece_defense_power(int i, int j) const
+int Board::get_piece_defense_power(const int i, const int j) const
 {
 	const uint_fast8_t piece = _array[i][j];
 
@@ -5370,12 +5374,15 @@ bool GUI::update_global_pgn()
 
 	// Ajout du PGN de la partie
 	_global_pgn += _pgn;
+
+	return true;
 }
 
 // Fonction qui met à jour la cadence du PGN
 bool GUI::update_time_control()
 {
 	_time_control = to_string(static_cast<int>(max(_time_white, _time_black) / 1000)) + " + " + to_string(static_cast<int>(max(_time_increment_white, _time_increment_black) / 1000));
+	return true;
 }
 
 // Fonction qui réinitialise le PGN
@@ -5401,4 +5408,217 @@ bool GUI::update_date() {
 	_date = std::to_string(year) + "." + std::to_string(month) + "." + std::to_string(day);
 
 	return true;
+}
+
+// Fonction qui renvoie la valeur de sécurité des rois (test)
+int Board::get_king_safety_test()
+{
+
+	// Récupère une map d'attaques pour chaque couleur, puis calcule la résultante
+	// Puis en déduit la sécurité de chacun des rois, en fonction des distances avec les attaques
+	// Un bord est considéré comme une attaque // TODO : pas sûr que ça soit génial
+
+
+	// Blancs
+	Map white_controls_map = get_white_controls_map();
+
+	// Noirs
+	Map black_controls_map = get_black_controls_map();
+
+	// Résultante
+	Map controls_map = white_controls_map - black_controls_map;
+
+	//controls_map.print();
+
+
+	// Danger en fonction de la distance avec les attaques
+	constexpr uint_fast8_t distance_dangers[8] = { 50, 50, 25, 10, 5, 2, 1, 0 };
+	//constexpr uint_fast8_t distance_dangers[8] = { 0, 10, 0, 0, 0, 0, 0, 0 };
+
+	constexpr uint_fast8_t edge_danger = 5;
+
+
+	// Calcul de la sécurité des rois
+	update_kings_pos();
+
+	// Roi blanc
+	int white_king_danger = 0;
+
+	// Bords : ajoute +3 s'il touche 1 bord, +5 s'il est dans un coin (nombre de cases perdues)
+	const bool white_vertical_edge = (_white_king_pos.i == 0 || _white_king_pos.i == 7);
+	const bool white_horizontal_edge = (_white_king_pos.j == 0 || _white_king_pos.j == 7);
+	white_king_danger += (white_vertical_edge && white_horizontal_edge) ? 5 * edge_danger : (white_vertical_edge || white_horizontal_edge) ? 3 * edge_danger : 0;
+
+
+	// Cases controllées proches du roi
+	for (uint_fast8_t i = 0; i < 8; i++)
+		for (uint_fast8_t j = 0; j < 8; j++)
+			if (controls_map._array[i][j] < 0)
+			{
+				const uint_fast8_t distance = max(abs(i - _white_king_pos.i), abs(j - _white_king_pos.j));
+				white_king_danger -= distance_dangers[distance] * controls_map._array[i][j]; // - car valeur négative
+			}
+
+
+	// Roi noir
+	int black_king_danger = 0;
+
+	// Bord : ajoute +3 s'il touche 1 bord, +5 s'il est dans un coin (nombre de cases perdues)
+	const bool black_vertical_edge = (_black_king_pos.i == 0 || _black_king_pos.i == 7);
+	const bool black_horizontal_edge = (_black_king_pos.j == 0 || _black_king_pos.j == 7);
+	black_king_danger += (black_vertical_edge && black_horizontal_edge) ? 5 * edge_danger : (black_vertical_edge || black_horizontal_edge) ? 3 * edge_danger : 0;
+
+	// Attaques sur le plateau
+	for (uint_fast8_t i = 0; i < 8; i++)
+		for (uint_fast8_t j = 0; j < 8; j++)
+			if (controls_map._array[i][j] > 0)
+			{
+				const uint_fast8_t distance = max(abs(i - _black_king_pos.i), abs(j - _black_king_pos.j));
+				black_king_danger += distance_dangers[distance] * controls_map._array[i][j];
+			}
+
+
+	// Resultante de la sécurité des rois
+	const int king_safety = black_king_danger - white_king_danger;
+
+	//cout << white_king_danger << ", " << black_king_danger << endl;
+	//rnb4r/pppp1k1p/5n2/3q4/5R2/8/PPP1Q1PP/5RK1 b - - 2 15
+
+	return king_safety;
+}
+
+// Fonction qui renvoie la map correspondante au nombre de contrôles pour chaque case de l'échiquier pour le joueur blanc
+Map Board::get_white_controls_map() const
+{
+	// Map de contrôles
+	Map controls_map;
+
+	// Itère sur toutes les pièces, et ajoute les contrôles de la pièce pour chaque case
+	for (uint_fast8_t i = 0; i < 8; i++)
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			const uint_fast8_t piece = _array[i][j];
+			piece > 0 && piece < 7 && add_piece_controls(&controls_map, i, j, piece);
+		}
+
+	return controls_map;
+}
+
+// Fonction qui renvoie la map correspondante au nombre de contrôles pour chaque case de l'échiquier pour le joueur noir
+Map Board::get_black_controls_map() const
+{
+	// Map de contrôles
+	Map controls_map;
+
+	// Itère sur toutes les pièces, et ajoute les contrôles de la pièce pour chaque case
+	for (uint_fast8_t i = 0; i < 8; i++)
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			const uint_fast8_t piece = _array[i][j];
+			piece >= 7 && add_piece_controls(&controls_map, i, j, piece);
+		}
+
+	return controls_map;
+}
+
+// Fonction qui ajoute à une map les contrôles d'une pièce
+bool Board::add_piece_controls(Map* m, int i, int j, int piece) const
+{
+	if (piece == 0)
+		return false;
+
+	// Pion blanc
+	if (piece == 1) {
+		j > 0 && (m->_array[i + 1][j - 1]++);
+		j < 7 && (m->_array[i + 1][j + 1]++);
+		return true;
+	}
+
+	// Pion noir
+	if (piece == 7) {
+		j > 0 && (m->_array[i - 1][j - 1]++);
+		j < 7 && (m->_array[i - 1][j + 1]++);
+		return true;
+	}
+
+	// Cavaliers
+	if (piece == 2 || piece == 8) {
+		static constexpr int_fast8_t knight_moves[8][2] = { {-2, -1}, {-2, 1}, {-1, -2}, {-1, 2}, {1, -2}, {1, 2}, {2, -1}, {2, 1} };
+		for (uint_fast8_t k = 0; k < 8; k++) {
+			const uint_fast8_t i2 = i + knight_moves[k][0];
+			const uint_fast8_t j2 = j + knight_moves[k][1];
+			i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8 && (m->_array[i2][j2]++);
+		}
+		return true;
+	}
+
+	// Fous
+	if (piece == 3 || piece == 9) {
+		static constexpr int_fast8_t bishop_moves[4][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1} };
+		for (uint_fast8_t k = 0; k < 4; k++) {
+			const uint_fast8_t mi = bishop_moves[k][0];
+			const uint_fast8_t mj = bishop_moves[k][1];
+			uint_fast8_t i2 = i + mi;
+			uint_fast8_t j2 = j + mj;
+			while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
+				m->_array[i2][j2]++;
+				if (_array[i2][j2] != 0)
+					break;
+				i2 += mi;
+				j2 += mj;
+			}
+		}
+		return true;
+	}
+
+	// Tours
+	if (piece == 4 || piece == 10) {
+		static constexpr int_fast8_t rook_moves[4][2] = { {-1, 0}, {0, -1}, {0, 1}, {1, 0} };
+		for (uint_fast8_t k = 0; k < 4; k++) {
+			const uint_fast8_t mi = rook_moves[k][0];
+			const uint_fast8_t mj = rook_moves[k][1];
+			uint_fast8_t i2 = i + mi;
+			uint_fast8_t j2 = j + mj;
+			while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
+				m->_array[i2][j2]++;
+				if (_array[i2][j2] != 0)
+					break;
+				i2 += mi;
+				j2 += mj;
+			}
+		}
+		return true;
+	}
+
+	// Dame blanche
+	if (piece == 5 || piece == 11) {
+		static constexpr int_fast8_t queen_moves[8][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1}, {-1, 0}, {0, -1}, {0, 1}, {1, 0} };
+		for (uint_fast8_t k = 0; k < 8; k++) {
+			const uint_fast8_t mi = queen_moves[k][0];
+			const uint_fast8_t mj = queen_moves[k][1];
+			uint_fast8_t i2 = i + mi;
+			uint_fast8_t j2 = j + mj;
+			while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
+				m->_array[i2][j2]++;
+				if (_array[i2][j2] != 0)
+					break;
+				i2 += mi;
+				j2 += mj;
+			}
+		}
+		return true;
+	}
+
+	// Roi blanc
+	if (piece == 6 || piece == 12) {
+		static constexpr int_fast8_t king_moves[8][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1}, {-1, 0}, {0, -1}, {0, 1}, {1, 0} };
+		for (uint_fast8_t k = 0; k < 8; k++) {
+			uint_fast8_t i2 = i + king_moves[k][0];
+			uint_fast8_t j2 = j + king_moves[k][1];
+			i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8 && (m->_array[i2][j2]++);
+		}
+		return true;
+	}
+
+	
+
+	return false;
 }
