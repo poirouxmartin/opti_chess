@@ -347,9 +347,9 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Remplacer total_nodes() par _total_nodes, et faire comme _quiescence_nodes? Vérifier la vitesse des deux approches
 -> IMPORTANT : refaire toutes les recherches de mat, et leur stockages
 -> Faire le threading !
--> FIX KING SAFETY !! : 8/8/R3pk2/p1Pp1p2/2r2Ppp/4PR1P/6P1/6K1 w - - 0 38 : +700?????
 -> Faire un king_centralization pour l'endgame?
 -> Voir comment gérer les positions qui sont mal évaluées par GrogrosZero
+-> Implementer les policy pour les coups (pour regarder des coups plus que d'autres)
 
 
 ----- Interface utilisateur -----
