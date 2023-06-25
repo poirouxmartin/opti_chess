@@ -550,6 +550,9 @@ public:
 
 	// Fonction qui ajoute à une map les contrôles d'une pièce
 	[[nodiscard]] bool add_piece_controls(Map* m, int i, int j, int piece) const;
+
+	// Fonction qui renvoie la mobilité virtuelle d'un roi
+	[[nodiscard]] int get_king_virtual_mobility(bool color);
 };
 
 // Fonction qui obtient la case correspondante à la position sur la GUI
