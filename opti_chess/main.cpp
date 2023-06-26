@@ -350,6 +350,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Faire un king_centralization pour l'endgame?
 -> Voir comment gérer les positions qui sont mal évaluées par GrogrosZero
 -> Implementer les policy pour les coups (pour regarder des coups plus que d'autres)
+-> Pion de moins en finale de pions est quasi toujours perdant
 
 
 ----- Interface utilisateur -----
