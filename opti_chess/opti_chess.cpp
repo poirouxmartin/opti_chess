@@ -1183,6 +1183,11 @@ no_draw:
 		_evaluation += piece_activity;
 	}
 
+	// Total de l'évaluation
+	if (display)
+		eval_components += "--- total: " + (_evaluation >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * _evaluation))) + " ---\n";
+
+
 	// Forteresse
 	if (eval->_push != 0.0f) {
 		const float push = 1 - static_cast<float>(_half_moves_count) * eval->_push / 100;
@@ -3140,9 +3145,9 @@ int Board::get_king_safety() {
 	Map white_controls_map = get_white_controls_map();
 	Map black_controls_map = get_black_controls_map();
 
-	// Danger par cases controllées en fonction de la distance (sera rajouté à la puissance d'attaque)
-	constexpr uint_fast8_t controls_distance_dangers[8] = { 8, 5, 2, 1, 0, 0, 0, 0 };
-	constexpr uint_fast8_t edge_danger = 5;
+	// Danger par cases controllées ou occupée en fonction de la distance (sera rajouté à la puissance d'attaque)
+	constexpr uint_fast8_t controls_distance_dangers[8] = { 8, 10, 2, 1, 0, 0, 0, 0 };
+	constexpr uint_fast8_t edge_danger = 10;
 
 	// Roi blanc
 	int white_king_mating_net = 0;
@@ -3152,10 +3157,10 @@ int Board::get_king_safety() {
 	const bool white_horizontal_edge = (_white_king_pos.j == 0 || _white_king_pos.j == 7);
 	white_king_mating_net += (white_vertical_edge && white_horizontal_edge) ? 5 * edge_danger : (white_vertical_edge || white_horizontal_edge) ? 3 * edge_danger : 0;
 
-	// Cases controllées proches du roi
+	// Cases controllées ou occupées proches du roi blanc
 	for (uint_fast8_t i = 0; i < 8; i++)
 		for (uint_fast8_t j = 0; j < 8; j++)
-			white_king_mating_net += controls_distance_dangers[max(abs(i - _white_king_pos.i), abs(j - _white_king_pos.j))] * black_controls_map._array[i][j];
+			white_king_mating_net += (black_controls_map._array[i][j] > 0 || is_in(_array[i][j], 1, 6)) * controls_distance_dangers[max(abs(i - _white_king_pos.i), abs(j - _white_king_pos.j))];
 
 
 	// Roi noir
@@ -3166,10 +3171,10 @@ int Board::get_king_safety() {
 	const bool black_horizontal_edge = (_black_king_pos.j == 0 || _black_king_pos.j == 7);
 	black_king_mating_net += (black_vertical_edge && black_horizontal_edge) ? 5 * edge_danger : (black_vertical_edge || black_horizontal_edge) ? 3 * edge_danger : 0;
 
-	// Cases controllées proches du roi
+	// Cases controllées ou occupées proches du roi noir
 	for (uint_fast8_t i = 0; i < 8; i++)
 		for (uint_fast8_t j = 0; j < 8; j++)
-			black_king_mating_net += controls_distance_dangers[max(abs(i - _black_king_pos.i), abs(j - _black_king_pos.j))] * white_controls_map._array[i][j];
+			black_king_mating_net += (white_controls_map._array[i][j] > 0 || is_in(_array[i][j], 7, 12)) * controls_distance_dangers[max(abs(i - _black_king_pos.i), abs(j - _black_king_pos.j))];
 
 
 	if (display) {
@@ -3240,12 +3245,12 @@ int Board::get_king_safety() {
 
 	// Il faut compter les cases vides (non-pion) autour de lui
 	// Droits de roque
-	constexpr int castling_rights_protection = 250;
+	constexpr int castling_rights_protection = 150;
 	w_king_protection += (_castling_rights.k_w + _castling_rights.q_w) * castling_rights_protection;
 	b_king_protection += (_castling_rights.k_b + _castling_rights.q_b) * castling_rights_protection;
 
 	// Niveau de protection auquel on peut considérer que le roi est safe
-	const int king_base_protection = 1000 * (1 - _adv);
+	const int king_base_protection = 500 * (1 - _adv);
 	w_king_protection -= king_base_protection;
 	b_king_protection -= king_base_protection;
 
@@ -3262,13 +3267,19 @@ int Board::get_king_safety() {
 	// Version additive, adaptée pour l'endgame
 	constexpr int edge_defense = 100;
 	constexpr int endgame_safe_zone = 25; // Si le "i * j" du roi en endgame est supérieur, alors il n'est pas en danger : s'il est en c4 (2, 3 -> (2 + 1) * (3 + 1) = 12 < 16 -> danger)
-	w_king_weakness += max_int(edge_defense, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? min(_white_king_pos.i, 7 - _white_king_pos.i) + min(_white_king_pos.j, 7 - _white_king_pos.j) : endgame_safe_zone - ((min(_white_king_pos.i, 7 - _white_king_pos.i) + 1) * (min(_white_king_pos.j, 7 - _white_king_pos.j) + 1))) * mult_endgame / (edge_adv - 1)) - edge_defense;
-	b_king_weakness += max_int(edge_defense, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? min(_black_king_pos.i, 7 - _black_king_pos.i) + min(_black_king_pos.j, 7 - _black_king_pos.j) : endgame_safe_zone - ((min(_black_king_pos.i, 7 - _black_king_pos.i) + 1) * (min(_black_king_pos.j, 7 - _black_king_pos.j) + 1))) * mult_endgame / (edge_adv - 1)) - edge_defense;
+	w_king_weakness += max_int(edge_defense, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? (min(_white_king_pos.i, 7 - _white_king_pos.i) + min(_white_king_pos.j, 7 - _white_king_pos.j)) : (endgame_safe_zone - ((min(_white_king_pos.i, 7 - _white_king_pos.i) + 1) * (min(_white_king_pos.j, 7 - _white_king_pos.j) + 1))) * mult_endgame / (edge_adv - 1))) - edge_defense;
+	b_king_weakness += max_int(edge_defense, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? (min(_black_king_pos.i, 7 - _black_king_pos.i) + min(_black_king_pos.j, 7 - _black_king_pos.j)) : (endgame_safe_zone - ((min(_black_king_pos.i, 7 - _black_king_pos.i) + 1) * (min(_black_king_pos.j, 7 - _black_king_pos.j) + 1))) * mult_endgame / (edge_adv - 1))) - edge_defense;
+	
+	if (display) {
+		cout << "White king placement weakness : " << max_int(edge_defense, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? (min(_white_king_pos.i, 7 - _white_king_pos.i) + min(_white_king_pos.j, 7 - _white_king_pos.j)) : (endgame_safe_zone - ((min(_white_king_pos.i, 7 - _white_king_pos.i) + 1) * (min(_white_king_pos.j, 7 - _white_king_pos.j) + 1))) * mult_endgame / (edge_adv - 1))) - edge_defense << endl;
+		cout << "Black king placement weakness : " << max_int(edge_defense, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? (min(_black_king_pos.i, 7 - _black_king_pos.i) + min(_black_king_pos.j, 7 - _black_king_pos.j)) : (endgame_safe_zone - ((min(_black_king_pos.i, 7 - _black_king_pos.i) + 1) * (min(_black_king_pos.j, 7 - _black_king_pos.j) + 1))) * mult_endgame / (edge_adv - 1))) - edge_defense << endl;
+	}
+
 
 	// Mobilité virtuelle du roi
 	constexpr int virtual_mobility_danger = 100;
-	w_king_weakness = virtual_mobility_danger * get_king_virtual_mobility(true);
-	b_king_weakness = virtual_mobility_danger * get_king_virtual_mobility(false);
+	w_king_weakness += virtual_mobility_danger * get_king_virtual_mobility(true) * (1 - _adv);
+	b_king_weakness += virtual_mobility_danger * get_king_virtual_mobility(false) * (1 - _adv);
 
 
 	// Affiche faiblesse, protection, attaque et defense des deux côtés
