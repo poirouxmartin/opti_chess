@@ -3070,6 +3070,8 @@ int Board::get_king_safety() {
 	// r1bq1b1r/ppp3pp/2n1k3/3np3/2B5/5Q2/PPPP1PPP/RNB1K2R w KQ - 2 8
 	// r1b2b1r/ppp3pp/8/3kp3/8/8/PPPP1PPP/R1B1K2R w KQ - 0 12
 	// 8/2p1k1pp/p1Qb4/3P3q/4p3/N1P1BnPb/P4P2/5R1K w - - 1 25
+	// 5rk1/6p1/pq1b3p/3p4/2p1n3/PP3N1P/4p1P1/RQR4K w - - 2 31 : roi blanc très faible (mat)
+	// 3r1rk1/pp1bbp2/1qp1pn1Q/4N3/3P4/2PB4/PP3PPP/R3R1K1 b - - 0 16
 
 
 	constexpr bool display = false;
@@ -3146,8 +3148,8 @@ int Board::get_king_safety() {
 	Map black_controls_map = get_black_controls_map();
 
 	// Danger par cases controllées ou occupée en fonction de la distance (sera rajouté à la puissance d'attaque)
-	constexpr uint_fast8_t controls_distance_dangers[8] = { 8, 10, 2, 1, 0, 0, 0, 0 };
-	constexpr uint_fast8_t edge_danger = 10;
+	constexpr uint_fast8_t controls_distance_dangers[8] = { 50, 25, 5, 1, 0, 0, 0, 0 };
+	constexpr uint_fast8_t edge_danger = 25;
 
 	// Roi blanc
 	int white_king_mating_net = 0;
