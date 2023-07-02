@@ -2616,25 +2616,21 @@ void Board::draw_monte_carlo_arrows() const
 // Fonction qui calcule et renvoie la mobilité des pièces
 int Board::get_piece_mobility(const bool legal) const
 {
-	// TODO : les mobility values doivent dépendre de la pièce
 	Board b;
 	b.copy_data(*this);
 	int piece_mobility = 0;
 
-	static constexpr int mobility_values[21] = { -750, 100, 152, 193, 228, 261, 298, 332, 364, 393, 419, 442, 461, 478, 492, 504, 513, 520, 525, 528, 529 };
+	// Pour chaque pièce (sauf le roi)
+	static constexpr int mobility_values_pawn[3] = { -200, 0, 100 };
+	static constexpr int mobility_values_knight[9] = { -500, -200, 0, 100, 200, 300, 400, 450, 500 };
+	static constexpr int mobility_values_bishop[15] = { -350, -200, -100, 0, 100, 150, 200, 325, 450, 550, 610, 660, 700, 725, 750 };
+	static constexpr int mobility_values_rook[15] = { -750, -100, 100, 150, 190, 235, 275, 300, 325, 345, 365, 385, 390, 400, 405 };
+	static constexpr int mobility_values_queen[29] = { -400, -100, 100, 150, 190, 235, 275, 300, 325, 345, 365, 385, 390, 400, 410, 420, 430, 440, 450, 460, 470, 480, 490, 495, 500, 505, 510 };
+
+	// TODO : rajouter le roi, pour l'endgame? faire des valeurs différentes selon le moment de la partie?
 
 	// Fait un tableau de toutes les pièces : position, valeur
 	int piece_move_count[64] = { 0 };
-	int index = 0;
-
-	for (uint_fast8_t i = 0; i < 8; i++) {
-		for (uint_fast8_t j = 0; j < 8; j++) {
-			if (_array[i][j] != 0) {
-				piece_move_count[index] = 0; // Utile?
-				index++;
-			}
-		}
-	}
 
 	// Activité des pièces du joueur
 	// TODO : ça doit être très lent : on re-calcule tous les coups à chaque fois... (et on les garde même pas en mémoire pour après, car c'est sur un plateau virtuel)
@@ -2653,11 +2649,31 @@ int Board::get_piece_mobility(const bool legal) const
 		piece_move_count[b._moves[i].i1 * 8 + b._moves[i].j1]++;
 
 	// Pour chaque pièce : ajoute la valeur correspondante à l'activité
-	index = 0;
+	int index = 0;
 	for (uint_fast8_t i = 0; i < 8; i++) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
-			if (_array[i][j] != 0) {
-				piece_mobility += (_array[i][j] < 7 ? 1 : -1) * mobility_values[min(20, piece_move_count[i * 8 + j])];
+			if (const uint_fast8_t piece = _array[i][j]; p > 0) {
+				if (piece == 1)
+					piece_mobility += mobility_values_pawn[min(2, piece_move_count[i * 8 + j])];
+				else if (piece == 2)
+					piece_mobility += mobility_values_knight[min(8, piece_move_count[i * 8 + j])];
+				else if (piece == 3)
+					piece_mobility += mobility_values_bishop[min(14, piece_move_count[i * 8 + j])];
+				else if (piece == 4)
+					piece_mobility += mobility_values_rook[min(14, piece_move_count[i * 8 + j])];
+				else if (piece == 5)
+					piece_mobility += mobility_values_queen[min(28, piece_move_count[i * 8 + j])];
+				else if (piece == 7)
+					piece_mobility -= mobility_values_pawn[min(8, piece_move_count[i * 8 + j])];
+				else if (piece == 8)
+					piece_mobility -= mobility_values_knight[min(8, piece_move_count[i * 8 + j])];
+				else if (piece == 9)
+					piece_mobility -= mobility_values_bishop[min(14, piece_move_count[i * 8 + j])];
+				else if (piece == 10)
+					piece_mobility -= mobility_values_rook[min(14, piece_move_count[i * 8 + j])];
+				else if (piece == 11)
+					piece_mobility -= mobility_values_queen[min(28, piece_move_count[i * 8 + j])];
+
 				index++;
 			}
 		}
@@ -3072,6 +3088,10 @@ int Board::get_king_safety() {
 	// 8/2p1k1pp/p1Qb4/3P3q/4p3/N1P1BnPb/P4P2/5R1K w - - 1 25
 	// 5rk1/6p1/pq1b3p/3p4/2p1n3/PP3N1P/4p1P1/RQR4K w - - 2 31 : roi blanc très faible (mat)
 	// 3r1rk1/pp1bbp2/1qp1pn1Q/4N3/3P4/2PB4/PP3PPP/R3R1K1 b - - 0 16
+	// 2k3r1/p1b4p/2p5/3P3r/8/5bP1/PP3P2/2R2RK1 w - - 0 7
+	// r1bq1rk1/ppppnpp1/8/2bNp1PQ/1nB1P3/2P5/PP1P1PP1/R1B1K2R b KQ - 2 3
+	// r1bq1rk1/pp2npp1/2n1p3/2ppP1NQ/3P4/P1P5/2P2PPP/R1B1K2R b KQ - 3 3
+	// r3kb1r/pR2pppp/2p5/3p4/3P2b1/B3RN2/q1P2PPP/3Q2K1 b kq - 1 14 : overload++
 
 
 	constexpr bool display = false;
@@ -3247,12 +3267,12 @@ int Board::get_king_safety() {
 
 	// Il faut compter les cases vides (non-pion) autour de lui
 	// Droits de roque
-	constexpr int castling_rights_protection = 150;
+	constexpr int castling_rights_protection = 200;
 	w_king_protection += (_castling_rights.k_w + _castling_rights.q_w) * castling_rights_protection;
 	b_king_protection += (_castling_rights.k_b + _castling_rights.q_b) * castling_rights_protection;
 
 	// Niveau de protection auquel on peut considérer que le roi est safe
-	const int king_base_protection = 500 * (1 - _adv);
+	const int king_base_protection = 400 * (1 - _adv);
 	w_king_protection -= king_base_protection;
 	b_king_protection -= king_base_protection;
 
@@ -5439,7 +5459,10 @@ int Board::get_piece_defense_power(const int i, const int j) const
 // Fonction qui renvoie l'activité des pièces
 int Board::get_piece_activity() const
 {
-	uint_fast8_t controlled_squares[8][8] = { 0 };
+	// Cela correspond on nombre de cases controllées par les pièces dans le camp adverse
+
+	int white_controlled_squares[8][8] = { 0 };
+	int black_controlled_squares[8][8] = { 0 };
 
 	Board b(*this);
 
@@ -5451,8 +5474,8 @@ int Board::get_piece_activity() const
 	for (uint_fast8_t i = 0; i < b._got_moves; i++)
 	{
 		const uint_fast8_t p = _array[b._moves[i].i1][b._moves[i].j1];
-		if (b._moves[i].i2 >= 4 && p != 1 && p != 5)
-			controlled_squares[b._moves[i].i2][b._moves[i].j2]++;
+		if (p != 1 && p != 5)
+			white_controlled_squares[b._moves[i].i2][b._moves[i].j2]++;
 	}
 
 	// Noirs
@@ -5462,27 +5485,34 @@ int Board::get_piece_activity() const
 	for (uint_fast8_t i = 0; i < b._got_moves; i++)
 	{
 		const uint_fast8_t p = _array[b._moves[i].i1][b._moves[i].j1];
-		if (b._moves[i].i2 <= 3 && p != 7 && p != 11)
-			controlled_squares[b._moves[i].i2][b._moves[i].j2]++;
+		if (p != 7 && p != 11)
+			black_controlled_squares[b._moves[i].i2][b._moves[i].j2]++;
 	}
 
 	// Puissance du contrôle d'une case adverse
 	// Controllée 1 fois, 2 fois...
-	constexpr uint_fast8_t controlled_power[4] = { 10, 15, 18, 20 };
+	static constexpr uint_fast8_t controlled_power[4] = { 10, 15, 18, 20 };
+
+	// Puissance du contrôle de chaque case
+	static constexpr uint_fast8_t activity_controlled_squares[8][8] = {
+	{10, 10, 10, 10, 10, 10, 10, 10},
+	{10, 10, 10, 10, 10, 10, 10, 10},
+	{10, 10, 15, 15, 15, 15, 10, 10},
+	{10, 10, 15, 20, 20, 15, 10, 10},
+	{0,  0,  5,  10, 10,  5,  0,  0},
+	{0,  0,  5,   5,  5,  5,  0,  0},
+	{0,  0,  0,   0,  0,  0,  0,  0},
+	{0,  0,  0,   0,  0,  0,  0,  0} };
+
 
 	int activity = 0;
 
 	for (uint_fast8_t j = 0; j < 8; j++)
 	{
-		for (uint_fast8_t i = 0; i < 4; i++)
+		for (uint_fast8_t i = 0; i < 8; i++)
 		{
-			if (controlled_squares[i][j] > 0)
-				activity -= controlled_power[controlled_squares[i][j] - 1];
-		}
-		for (uint_fast8_t i = 4; i < 8; i++)
-		{
-			if (controlled_squares[i][j] > 0)
-				activity += controlled_power[controlled_squares[i][j] - 1];
+			activity += controlled_power[min(3, white_controlled_squares[i][j] - 1)] * activity_controlled_squares[7 - i][j];
+			activity -= controlled_power[min(3, black_controlled_squares[i][j] - 1)] * activity_controlled_squares[i][j];
 		}
 	}
 
