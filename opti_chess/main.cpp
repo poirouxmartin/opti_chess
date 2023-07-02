@@ -132,6 +132,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Outpost
 	- Pawn push threat (on le pousse et ça attaque une pièce)
 	- Passed block (si y'a qq chose qui bloque un pion passé)
+	- Coordination des pièces
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Augmenter la profondeur pour les finales (GrogrosFish)
@@ -519,6 +520,12 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> r1b1kb1r/ppp1q1pp/8/5pN1/2Qp1P2/8/PP1N2PP/R3R1K1 b kq - 0 13
 -> 7k/1pR4p/p4p2/r4p2/4r3/4P2R/PP4PP/7K b - - 1 38 : +6 selon Grogros xD
 -> r1bq1bnr/ppp2Q1p/8/n3p1k1/3PPp2/8/PPP3P1/RNB1K2R w KQ - 0 12 : ici c'est mat
+-> r4rk1/pp3pp1/8/3pqNp1/4n3/4P3/PPB1Q1R1/5R1K w - - 0 27
+-> r1b2rk1/pp3p2/4p2p/3p2bQ/1qpB3P/6N1/P1B5/R3R1K1 b - - 0 25
+-> r1b2rk1/pp3p2/7Q/3pB1P1/2p5/6N1/P2q4/R3R1K1 b - - 0 29 : king safety++++++
+-< 1k1rr3/1pp5/pnn1b3/4p2p/3pPppq/PP1P4/1BPN1PB1/R1NQ1RK1 w - - 0 42
+-> 1k1rr3/1pp1q3/pnn1b3/4p2p/3pP1p1/PP1P4/1BPN2B1/R1N1QRK1 w - - 2 44 : roi blanc faible
+
 
 ----- Problèmes -----
 
@@ -610,6 +617,16 @@ r6k/p1p3pp/6n1/3Bp3/4P3/5r1q/PB1PNP2/R3QRK1 b - - 2 15 : ... mat en 3 pour les n
 r4qk1/pp6/3ppBBp/8/1n5Q/8/PPP2PPP/2KR4 w - - 0 1
 1k3q2/3r1p2/Kb6/p7/2N1Q3/1P6/8/8 w - - 0 1
 6k1/p4pp1/5r1p/Q1p4b/B1P1n1P1/P2Nn2P/1P5K/RNr5 b - - 2 13
+1r3rk1/2q2p1p/p2p1Qp1/1pnPn3/2PN4/1P5P/P5P1/1B2RRK1 w - - 1 4
+r1bq1rk1/pp2nppp/2n1p3/2ppP3/3P4/P1PB1N2/2P2PPP/R1BQK2R w KQ - 0 1 : greek gift
+
+
+
+--- Points d'améliorations / Remarques ---
+
+Fait trop de Cc3 (et de Ce5 inutiles) dans les ouvertures à d4
+Sécurité du roi un peu surévaluée de temps en temps
+1k1rr3/1pp1q3/pnn1b3/4p3/3pP1pp/PP1P4/1BPNN1BK/R3QR2 b - - 1 45 : ici il faut comprendre que h3 est une grosse faute, puisqu'après on ne peut plus pousser les pions devant le roi
 
 */
 

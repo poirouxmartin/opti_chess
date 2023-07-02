@@ -6,13 +6,13 @@ public:
 
 	// Coefficients des heuristiques
 	float _piece_value = 1.2f;
-	float _piece_mobility = 0.00025f;
+	float _piece_mobility = 0.0002f;
 	float _piece_positioning = 0.0045f;
 	float _random_add = 0.0f;
 	float _bishop_pair = 0.25f;
 	float _castling_rights = 0.0f;
 	float _player_trait = 0.20f;
-	float _king_safety = 0.001f;
+	float _king_safety = 0.00075f;
 	float _pawn_structure = 0.004f;
 	float _attacks = 0.01f;
 	float _defenses = 0.0015f;
@@ -20,10 +20,10 @@ public:
 	float _push = 1.00f;
 	float _rook_open = 0.003f;
 	float _square_controls = 0.002f;
-	float _space_advantage = 0.005f;
+	float _space_advantage = 0.0075f;
 	//float _alignments = 0.01f;
 	float _alignments = 0.00f;
-	float _piece_activity = 0.01f;
+	float _piece_activity = 0.001f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
 	int _pieces_value_begin[6] = { 72, 335, 340, 460, 980, 0 };
@@ -41,9 +41,9 @@ public:
 			{  78,   83,   86,  130,  130,   82,   85,   90},
 			{  37,   29,   21,  120,  125,   60,   44,   57},
 			{  10,   16,   20,   75,   80,   30,   35,   33},
-			{  -5,   10,   30,   50,   65,   10,  -30,  -23},
-			{ -25,    0,   20,   25,   35,  -35,   20,  -10},
-			{ -30,   20,  -20,  -15,  -20,   20,   20,  -20},
+			{  -5,   10,   45,   50,   65,   10,  -30,  -23},
+			{ -25,    0,   30,   25,   35,  -35,   20,  -10},
+			{ -30,   20,  -40,  -15,  -20,   20,   20,  -20},
 			{   0,    0,    0,    0,    0,    0,    0,    0}   },
 
 			// cavalier
@@ -55,7 +55,7 @@ public:
 				{ -10,    5,   31,   45,   40,   30,    2,    0},
 				{ -18,   10,   25,   22,   18,   45,   20,  -14},
 				{ -40,  -30,    2,    5,    2,    0,  -23,  -25},
-				{ -74,  -50,  -36,  -34,  -19,  -25,  -75,  -59}   },
+				{ -74,  -35,  -36,  -34,  -19,  -25,  -75,  -59}   },
 
 				// fou
 				{
