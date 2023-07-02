@@ -12,18 +12,18 @@ public:
 	float _bishop_pair = 0.25f;
 	float _castling_rights = 0.0f;
 	float _player_trait = 0.20f;
-	float _king_safety = 0.00075f;
+	float _king_safety = 0.0005f;
 	float _pawn_structure = 0.004f;
 	float _attacks = 0.01f;
 	float _defenses = 0.0015f;
 	float _kings_opposition = 0.75f;
 	float _push = 1.00f;
 	float _rook_open = 0.003f;
-	float _square_controls = 0.002f;
-	float _space_advantage = 0.0075f;
+	float _square_controls = 0.0025f;
+	float _space_advantage = 0.01f;
 	//float _alignments = 0.01f;
 	float _alignments = 0.00f;
-	float _piece_activity = 0.001f;
+	float _piece_activity = 0.0005f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
 	int _pieces_value_begin[6] = { 72, 335, 340, 460, 980, 0 };

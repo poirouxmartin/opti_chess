@@ -3093,6 +3093,8 @@ int Board::get_king_safety() {
 	// r1bq1rk1/pp2npp1/2n1p3/2ppP1NQ/3P4/P1P5/2P2PPP/R1B1K2R b KQ - 3 3
 	// r3kb1r/pR2pppp/2p5/3p4/3P2b1/B3RN2/q1P2PPP/3Q2K1 b kq - 1 14 : overload++
 
+	// 8/6PK/5k2/8/8/8/8/8 b - - 0 8
+
 
 	constexpr bool display = false;
 
@@ -3205,8 +3207,10 @@ int Board::get_king_safety() {
 	}
 
 	// Ajout des mating nets aux puissances d'attaque
-	w_attacking_power += black_king_mating_net;
-	b_attacking_power += white_king_mating_net;
+	//w_attacking_power += black_king_mating_net;
+	//b_attacking_power += white_king_mating_net;
+	w_attacking_power *= 1 + static_cast<float>(black_king_mating_net) / 100;
+	b_attacking_power *= 1 + static_cast<float>(white_king_mating_net) / 100;
 
 
 	// -----------------
@@ -3846,7 +3850,12 @@ int Board::get_pawn_structure() const
 
 	// Pions passés
 	// Table de valeur des pions passés en fonction de leur avancement sur le plateau
-	static const int passed_pawns[8] = { 0, 25, 35, 50, 70, 95, 135, 0 }; // TODO à vérif
+	static const int passed_pawns[8] = { 0, 50, 50, 100, 165, 250, 300, 0 }; // TODO à vérif
+
+	// Pion passé bloqué
+	static const int blocked_passed_pawn[8] = { 0, 10, 10, 20, 30, 40, 50, 60 };
+
+
 	constexpr float passed_adv_factor = 2.0f; // En fonction de l'advancement de la partie
 	const float passed_adv = 1 * (1 + (passed_adv_factor - 1) * _adv);
 
@@ -3866,8 +3875,18 @@ int Board::get_pawn_structure() const
 							break;
 						}
 
-					if (is_passed_pawn)
-						pawn_structure += passed_pawns[j] * passed_adv;
+					if (is_passed_pawn) {
+						// Regarde s'il y a un bloqueur // TODO : pareil si la case est controllée par une pièce adverse
+						bool blocked = false;
+						for (uint_fast8_t k = j + 1; k < 7; k++)
+							if (_array[k][i] != 0) {
+								blocked = true;
+								break;
+							}
+
+						pawn_structure += (blocked ? blocked_passed_pawn[j] : passed_pawns[j]) * passed_adv;
+					}
+						
 				}
 			}
 		}
@@ -3884,8 +3903,17 @@ int Board::get_pawn_structure() const
 							break;
 						}
 
-					if (is_passed_pawn)
-						pawn_structure -= passed_pawns[7 - j] * passed_adv;
+					if (is_passed_pawn) {
+						// Regarde s'il y a un bloqueur
+						bool blocked = false;
+						for (uint_fast8_t k = j - 1; k > 0; k--)
+							if (_array[k][i] != 0) {
+								blocked = true;
+								break;
+							}
+
+						pawn_structure -= (blocked ? blocked_passed_pawn[7 - j] : passed_pawns[7 - j]) * passed_adv;
+					}
 				}
 			}
 		}
