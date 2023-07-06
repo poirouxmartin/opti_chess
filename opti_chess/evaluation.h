@@ -173,4 +173,10 @@ public:
 
 	// Constructeur par défaut
 	Evaluator();
+
+	// Constructeur par copie
+	Evaluator(const Evaluator &evaluator);
+
+	// Opérateur de copie
+	Evaluator& operator=(const Evaluator &evaluator);
 };
