@@ -523,8 +523,10 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> r4rk1/pp3pp1/8/3pqNp1/4n3/4P3/PPB1Q1R1/5R1K w - - 0 27
 -> r1b2rk1/pp3p2/4p2p/3p2bQ/1qpB3P/6N1/P1B5/R3R1K1 b - - 0 25
 -> r1b2rk1/pp3p2/7Q/3pB1P1/2p5/6N1/P2q4/R3R1K1 b - - 0 29 : king safety++++++
--< 1k1rr3/1pp5/pnn1b3/4p2p/3pPppq/PP1P4/1BPN1PB1/R1NQ1RK1 w - - 0 42
+-> 1k1rr3/1pp5/pnn1b3/4p2p/3pPppq/PP1P4/1BPN1PB1/R1NQ1RK1 w - - 0 42
 -> 1k1rr3/1pp1q3/pnn1b3/4p2p/3pP1p1/PP1P4/1BPN2B1/R1N1QRK1 w - - 2 44 : roi blanc faible
+-> r3kb1r/pp1nnppp/2p1p3/q2pPb2/2PP4/2N2N2/PP2BPPP/R1BQ1RK1 b kq - 7 8 : ici grogros veut faire O-O-O... (-0.5 -> -5)
+-> R7/8/8/8/8/2K2ppk/8/8 w - - 0 3 : 2 pions passés liés > tour
 
 
 ----- Problèmes -----
@@ -619,6 +621,7 @@ r4qk1/pp6/3ppBBp/8/1n5Q/8/PPP2PPP/2KR4 w - - 0 1
 6k1/p4pp1/5r1p/Q1p4b/B1P1n1P1/P2Nn2P/1P5K/RNr5 b - - 2 13
 1r3rk1/2q2p1p/p2p1Qp1/1pnPn3/2PN4/1P5P/P5P1/1B2RRK1 w - - 1 4
 r1bq1rk1/pp2nppp/2n1p3/2ppP3/3P4/P1PB1N2/2P2PPP/R1BQK2R w KQ - 0 1 : greek gift
+r2kr3/pR1b1qpp/2p2b2/2P1R3/3P4/P5Q1/2P2PPP/2B3K1 w - - 3 23 : Te7 mate
 
 
 
@@ -627,6 +630,13 @@ r1bq1rk1/pp2nppp/2n1p3/2ppP3/3P4/P1PB1N2/2P2PPP/R1BQK2R w KQ - 0 1 : greek gift
 Fait trop de Cc3 (et de Ce5 inutiles) dans les ouvertures à d4
 Sécurité du roi un peu surévaluée de temps en temps
 1k1rr3/1pp1q3/pnn1b3/4p3/3pP1pp/PP1P4/1BPNN1BK/R3QR2 b - - 1 45 : ici il faut comprendre que h3 est une grosse faute, puisqu'après on ne peut plus pousser les pions devant le roi
+
+
+
+--- Position test (pour la vitesse de calcul) ---
+r1b2b1r/pp4pp/2p1kq2/3np3/1nBP4/2N5/PPP1QPPP/R1B2RK1 b - - 2 11 : position complexe
+r3k2r/pppq1ppp/2np1n2/2b1p1B1/2B1P1b1/2NP1N2/PPPQ1PPP/R3K2R w KQkq - 4 8 : pour tester les roques
+
 
 */
 
@@ -738,6 +748,9 @@ int main() {
 	eval_white._alignments = 0.0f;
 	eval_white._piece_activity = 0.0f;
 
+
+	//monte_evaluator = eval_white;
+
 	// Paramètres pour l'IA
 	int search_depth = 8;
 	search_depth = 7;
@@ -798,9 +811,13 @@ int main() {
 			locate_chessboard(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom);
 			main_GUI.new_bind_game();
 
-			// Lance grogrosZero sur un thread
-			//main_GUI._thread_grogros_zero = thread(&Board::display_pgn, &main_GUI._board);
+
+			// grogrosZero sur le thread de la GUI
+			//main_GUI._thread_grogros_zero = thread(&Board::grogros_zero, &main_GUI._board, &monte_evaluator, 50000, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, true, true, false, 0, nullptr);
 			//main_GUI._thread_grogros_zero.detach();
+			
+			// arrête le thread
+			//main_GUI._thread_grogros_zero.~thread();
 		}
 
 		// CTRL-T - Cherche le plateau de chess.com sur l'écran

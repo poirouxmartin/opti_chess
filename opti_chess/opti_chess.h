@@ -332,9 +332,6 @@ public:
 	// Fonction qui dit si une case est attaquée
 	[[nodiscard]] bool attacked(int, int) const;
 
-	// Fonction qui donne la position du roi du joueur
-	[[nodiscard]] pair<int, int> get_king_pos() const;
-
 	// Fonction qui dit s'il y'a échec
 	[[nodiscard]] bool in_check();
 
