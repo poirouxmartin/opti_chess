@@ -75,25 +75,15 @@ bool Board::add_pawn_moves(const uint_fast8_t i, const uint_fast8_t j, int* iter
 
 	// Joueur avec les pièces blanches
 	if (_player) {
-		// Poussée (de 1)
-		(_array[i + 1][j] == 0) && add_move(i, j, i + 1, j, iterator, piece);
-		// Poussée (de 2)
-		(i == 1 && _array[i + 1][j] == 0 && _array[i + 2][j] == 0) && add_move(i, j, i + 2, j, iterator, piece);
-		// Prise (gauche)
-		(j > 0 && (is_in_fast(_array[i + 1][j - 1], 7, 12) || (_en_passant_col == j - 1 && i == 4))) && add_move(i, j, i + 1, j - 1, iterator, piece);
-		// Prise (droite)
-		(j < 7 && (is_in_fast(_array[i + 1][j + 1], 7, 12) || (_en_passant_col == j + 1 && i == 4))) && add_move(i, j, i + 1, j + 1, iterator, piece);
+		_array[i + 1][j] == 0 && add_move(i, j, i + 1, j, iterator, piece) && i == 1 && _array[i + 2][j] == 0 && add_move(i, j, i + 2, j, iterator, piece); // Poussées
+		j > 0 && (is_in_fast(_array[i + 1][j - 1], 7, 12) || (_en_passant_col == j - 1 && i == 4)) && add_move(i, j, i + 1, j - 1, iterator, piece); // Prise (gauche)
+		j < 7 && (is_in_fast(_array[i + 1][j + 1], 7, 12) || (_en_passant_col == j + 1 && i == 4)) && add_move(i, j, i + 1, j + 1, iterator, piece); // Prise (droite)
 	}
 	// Joueur avec les pièces noires
 	else {
-		// Poussée (de 1)
-		(_array[i - 1][j] == 0) && add_move(i, j, i - 1, j, iterator, piece);
-		// Poussée (de 2)
-		(i == 6 && _array[i - 1][j] == 0 && _array[i - 2][j] == 0) && add_move(i, j, i - 2, j, iterator, piece);
-		// Prise (gauche)
-		(j > 0 && (is_in_fast(_array[i - 1][j - 1], 1, 6) || (_en_passant_col == j - 1 && i == 3))) && add_move(i, j, i - 1, j - 1, iterator, piece);
-		// Prise (droite)
-		(j < 7 && (is_in_fast(_array[i - 1][j + 1], 1, 6) || (_en_passant_col == j + 1 && i == 3))) && add_move(i, j, i - 1, j + 1, iterator, piece);
+		_array[i - 1][j] == 0 && add_move(i, j, i - 1, j, iterator, piece) && i == 6 && _array[i - 2][j] == 0 && add_move(i, j, i - 2, j, iterator, piece); // Poussées
+		j > 0 && (is_in_fast(_array[i - 1][j - 1], 1, 6) || (_en_passant_col == j - 1 && i == 3)) && add_move(i, j, i - 1, j - 1, iterator, piece); // Prise (gauche)
+		j < 7 && (is_in_fast(_array[i - 1][j + 1], 1, 6) || (_en_passant_col == j + 1 && i == 3)) && add_move(i, j, i - 1, j + 1, iterator, piece); // Prise (droite)
 	}
 
 	return true;
@@ -101,18 +91,20 @@ bool Board::add_pawn_moves(const uint_fast8_t i, const uint_fast8_t j, int* iter
 
 // Fonction qui ajoute les coups "cavaliers" dans la liste de coups
 bool Board::add_knight_moves(const uint_fast8_t i, const uint_fast8_t j, int* iterator, const uint_fast8_t piece) {
-	// On va utiliser un tableau pour stocker les déplacements possibles du cavalier
-	// TODO : peut être rendu plus rapide? -> tableau 1 dimension.
-	//									   -> ne pas mettre les coordonnées hors du plateau dans la liste à tester 
+
+	// Tableau des déplacements possibles
 	static constexpr int_fast8_t knight_moves[8][2] = { {-2, -1}, {-2, 1}, {-1, -2}, {-1, 2}, {1, -2}, {1, 2}, {2, -1}, {2, 1} };
-	// On parcourt ce tableau
+
 	for (uint_fast8_t m = 0; m < 8; m++) {
 		const uint_fast8_t i2 = i + knight_moves[m][0];
+		if (!is_in_fast(i2, 0, 7))
+			continue;
+
 		const uint_fast8_t j2 = j + knight_moves[m][1];
-		if (_player)
-			(is_in_fast(i2, 0, 7) && is_in_fast(j2, 0, 7) && !is_in_fast(_array[i2][j2], 1, 6)) && add_move(i, j, i2, j2, iterator, piece);
-		else
-			(is_in_fast(i2, 0, 7) && is_in_fast(j2, 0, 7) && !is_in_fast(_array[i2][j2], 7, 12)) && add_move(i, j, i2, j2, iterator, piece);
+		if (!is_in_fast(j2, 0, 7))
+			continue;
+
+		((_player && !is_in_fast(_array[i2][j2], 1, 6)) || (!_player && !is_in_fast(_array[i2][j2], 7, 12))) && add_move(i, j, i2, j2, iterator, piece);
 	}
 
 	return true;
@@ -120,96 +112,38 @@ bool Board::add_knight_moves(const uint_fast8_t i, const uint_fast8_t j, int* it
 
 // Fonction qui ajoute les coups diagonaux dans la liste de coups
 bool Board::add_diag_moves(const uint_fast8_t i, const uint_fast8_t j, int* iterator, const uint_fast8_t piece) {
+
 	const uint_fast8_t ally_min = _player ? 1 : 7;
 	const uint_fast8_t ally_max = _player ? 6 : 12;
 
-	uint_fast8_t i2; uint_fast8_t j2; uint_fast8_t p2;
+	// Directions possibles : diagonales
+	static constexpr int_fast8_t diag_moves[4][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1} };
 
-	// Diagonale 1
-	for (int k = 1; k < 8; k++) {
-		i2 = i + k; j2 = j + k;
-		// Si le coup n'est pas sur le plateau
-		if (!is_in_fast(i2, 0, 7) || !is_in_fast(j2, 0, 7))
-			k = 7;
-		else {
-			p2 = _array[i2][j2];
-			// Si la case est occupée par une pièce alliée
-			if (is_in_fast(p2, ally_min, ally_max))
-				k = 7;
-			// Sinon
-			else {
-				add_move(i, j, i2, j2, iterator, piece);
-				// Si la case est occupée par une pièce adverse
-				if (p2 != 0) {
-					k = 7;
-				}
-			}
-		}
-	}
+	for (uint_fast8_t k = 0; k < 4; k++) {
 
-	// Diagonale 2
-	for (int k = 1; k < 8; k++) {
-		i2 = i - k; j2 = j + k;
-		// Si le coup n'est pas sur le plateau
-		if (!is_in_fast(i2, 0, 7) || !is_in_fast(j2, 0, 7))
-			k = 7;
-		else {
-			p2 = _array[i2][j2];
-			// Si la case est occupée par une pièce alliée
-			if (is_in_fast(p2, ally_min, ally_max))
-				k = 7;
-			// Sinon
-			else {
-				add_move(i, j, i2, j2, iterator, piece);
-				// Si la case est occupée par une pièce adverse
-				if (p2 != 0) {
-					k = 7;
-				}
-			}
-		}
-	}
+		// Direction
+		const uint_fast8_t mi = diag_moves[k][0];
+		const uint_fast8_t mj = diag_moves[k][1];
 
-	// Diagonale 3
-	for (int k = 1; k < 8; k++) {
-		i2 = i + k; j2 = j - k;
-		// Si le coup n'est pas sur le plateau
-		if (!is_in_fast(i2, 0, 7) || !is_in_fast(j2, 0, 7))
-			k = 7;
-		else {
-			p2 = _array[i2][j2];
-			// Si la case est occupée par une pièce alliée
-			if (is_in_fast(p2, ally_min, ally_max))
-				k = 7;
-			// Sinon
-			else {
-				add_move(i, j, i2, j2, iterator, piece);
-				// Si la case est occupée par une pièce adverse
-				if (p2 != 0) {
-					k = 7;
-				}
-			}
-		}
-	}
+		uint_fast8_t i2 = i + mi;
+		uint_fast8_t j2 = j + mj;
 
-	// Diagonale 4
-	for (int k = 1; k < 8; k++) {
-		i2 = i - k; j2 = j - k;
-		// Si le coup n'est pas sur le plateau
-		if (!is_in_fast(i2, 0, 7) || !is_in_fast(j2, 0, 7))
-			k = 7;
-		else {
-			p2 = _array[i2][j2];
-			// Si la case est occupée par une pièce alliée
+		while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
+			const uint_fast8_t p2 = _array[i2][j2];
+
+			// Si y'a une pièce alliée, on arrête
 			if (is_in_fast(p2, ally_min, ally_max))
-				k = 7;
-			// Sinon
-			else {
-				add_move(i, j, i2, j2, iterator, piece);
-				// Si la case est occupée par une pièce adverse
-				if (p2 != 0) {
-					k = 7;
-				}
-			}
+				break;
+
+			// Coup possible
+			add_move(i, j, i2, j2, iterator, piece);
+
+			// Si y'a une pièce ennemie, on arrête
+			if (p2 != 0)
+				break;
+
+			i2 += mi;
+			j2 += mj;
 		}
 	}
 
@@ -218,97 +152,38 @@ bool Board::add_diag_moves(const uint_fast8_t i, const uint_fast8_t j, int* iter
 
 // Fonction qui ajoute les coups horizontaux et verticaux dans la liste de coups
 bool Board::add_rect_moves(const uint_fast8_t i, const uint_fast8_t j, int* iterator, const uint_fast8_t piece) {
+
 	const uint_fast8_t ally_min = _player ? 1 : 7;
 	const uint_fast8_t ally_max = _player ? 6 : 12;
 
-	uint_fast8_t i2; uint_fast8_t j2;
-	uint_fast8_t p2;
+	// Directions possibles : horizontales et verticales
+	static constexpr int_fast8_t rect_moves[4][2] = { {-1, 0}, {1, 0}, {0, -1}, {0, 1} };
 
-	// Horizontale 1
-	for (int k = 1; k < 8; k++) {
-		j2 = j - k;
-		// Si le coup n'est pas sur le plateau
-		if (!is_in_fast(i, 0, 7) || !is_in_fast(j2, 0, 7))
-			k = 7;
-		else {
-			p2 = _array[i][j2];
-			// Si la case est occupée par une pièce alliée
-			if (is_in_fast(p2, ally_min, ally_max))
-				k = 7;
-			// Sinon
-			else {
-				add_move(i, j, i, j2, iterator, piece);
-				// Si la case est occupée par une pièce adverse
-				if (p2 != 0) {
-					k = 7;
-				}
-			}
-		}
-	}
+	for (uint_fast8_t k = 0; k < 4; k++) {
 
-	// Horizontale 2
-	for (int k = 1; k < 8; k++) {
-		j2 = j + k;
-		// Si le coup n'est pas sur le plateau
-		if (!is_in_fast(i, 0, 7) || !is_in_fast(j2, 0, 7))
-			k = 7;
-		else {
-			p2 = _array[i][j2];
-			// Si la case est occupée par une pièce alliée
-			if (is_in_fast(p2, ally_min, ally_max))
-				k = 7;
-			// Sinon
-			else {
-				add_move(i, j, i, j2, iterator, piece);
-				// Si la case est occupée par une pièce adverse
-				if (p2 != 0) {
-					k = 7;
-				}
-			}
-		}
-	}
+		// Direction
+		const uint_fast8_t mi = rect_moves[k][0];
+		const uint_fast8_t mj = rect_moves[k][1];
 
-	// Verticale 1
-	for (int k = 1; k < 8; k++) {
-		i2 = i - k;
-		// Si le coup n'est pas sur le plateau
-		if (!is_in_fast(i2, 0, 7) || !is_in_fast(j, 0, 7))
-			k = 7;
-		else {
-			p2 = _array[i2][j];
-			// Si la case est occupée par une pièce alliée
-			if (is_in_fast(p2, ally_min, ally_max))
-				k = 7;
-			// Sinon
-			else {
-				add_move(i, j, i2, j, iterator, piece);
-				// Si la case est occupée par une pièce adverse
-				if (p2 != 0) {
-					k = 7;
-				}
-			}
-		}
-	}
+		uint_fast8_t i2 = i + mi;
+		uint_fast8_t j2 = j + mj;
 
-	// Verticale 2
-	for (int k = 1; k < 8; k++) {
-		i2 = i + k;
-		// Si le coup n'est pas sur le plateau
-		if (!is_in_fast(i2, 0, 7) || !is_in_fast(j, 0, 7))
-			k = 7;
-		else {
-			p2 = _array[i2][j];
-			// Si la case est occupée par une pièce alliée
+		while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
+			const uint_fast8_t p2 = _array[i2][j2];
+
+			// Si y'a une pièce alliée, on arrête
 			if (is_in_fast(p2, ally_min, ally_max))
-				k = 7;
-			// Sinon
-			else {
-				add_move(i, j, i2, j, iterator, piece);
-				// Si la case est occupée par une pièce adverse
-				if (p2 != 0) {
-					k = 7;
-				}
-			}
+				break;
+
+			// Coup possible
+			add_move(i, j, i2, j2, iterator, piece);
+
+			// Si y'a une pièce ennemie, on arrête
+			if (p2 != 0)
+				break;
+
+			i2 += mi;
+			j2 += mj;
 		}
 	}
 
@@ -322,10 +197,12 @@ bool Board::add_king_moves(const uint_fast8_t i, const uint_fast8_t j, int* iter
 
 	for (int k = -1; k < 2; k++) {
 		for (int l = -1; l < 2; l++) {
+			if (k == 0 && l == 0)
+				continue;
 			const uint_fast8_t i2 = i + k;
 			const uint_fast8_t j2 = j + l;
 			// Si le coup n'est ni hors du plateau, ni sur une case où une pièce alliée est placée
-			((k != 0 || l != 0) && is_in_fast(i2, 0, 7) && is_in_fast(j2, 0, 7) && !is_in_fast(_array[i2][j2], ally_min, ally_max)) && add_move(i, j, i2, j2, iterator, piece);
+			is_in_fast(i2, 0, 7) && is_in_fast(j2, 0, 7) && !is_in_fast(_array[i2][j2], ally_min, ally_max) && add_move(i, j, i2, j2, iterator, piece);
 		}
 	}
 
@@ -359,77 +236,85 @@ bool Board::get_moves(const bool pseudo, const bool forbide_check) {
 
 		// Si on dépasse le nombre de coups que l'on pensait possible dans une position
 		if (iterator >= max_moves) {
-			cout << "Too many moves in the position : " << iterator / 4 + 1 << "+" << endl;
+			cout << "Too many moves in the position : " << iterator << "+" << endl;
 			return false;
 		}
 
-		switch (p)
-		{
+
+		// Le joueur doit correspondre à la couleur de la pièce
+		if (p == 0 || _player != (p < 7))
+			continue;
+
+
+		switch (p) {
+
 		case 0: // Case vide
 			break;
 
 		case 1: // Pion blanc
-			_player && add_pawn_moves(i, j, &iterator, 1);
+			add_pawn_moves(i, j, &iterator, 1);
 			break;
 
 		case 2: // Cavalier blanc
-			_player && add_knight_moves(i, j, &iterator, 2);
+			add_knight_moves(i, j, &iterator, 2);
 			break;
 
 		case 3: // Fou blanc
-			_player && add_diag_moves(i, j, &iterator, 3);
+			add_diag_moves(i, j, &iterator, 3);
 			break;
 
 		case 4: // Tour blanche
-			_player && add_rect_moves(i, j, &iterator, 4);
+			add_rect_moves(i, j, &iterator, 4);
 			break;
 
 		case 5: // Dame blanche
-			_player && add_diag_moves(i, j, &iterator, 5) && add_rect_moves(i, j, &iterator, 5);
+			add_diag_moves(i, j, &iterator, 5) && add_rect_moves(i, j, &iterator, 5);
 			break;
 
 		case 6: // Roi blanc
-			_player && add_king_moves(i, j, &iterator, 6);
+			add_king_moves(i, j, &iterator, 6);
 			// Roques
 			// Grand
-			if (_player && _castling_rights.q_w && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j - 1) && !attacked(i, j - 2))))
+			// TODO : optimisable
+			if (_castling_rights.q_w && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j - 1) && !attacked(i, j - 2))))
 				add_move(i, j, i, j - 2, &iterator, 6);
 			// Petit
-			if (_player && _castling_rights.k_w && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j + 1) && !attacked(i, j + 2))))
+			if (_castling_rights.k_w && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j + 1) && !attacked(i, j + 2))))
 				add_move(i, j, i, j + 2, &iterator, 6);
 			break;
 
 		case 7: // Pion noir
-			!_player && add_pawn_moves(i, j, &iterator, 7);
+			add_pawn_moves(i, j, &iterator, 7);
 			break;
 
 		case 8: // Cavalier noir
-			!_player && add_knight_moves(i, j, &iterator, 8);
+			add_knight_moves(i, j, &iterator, 8);
 			break;
 
 		case 9: // Fou noir
-			!_player && add_diag_moves(i, j, &iterator, 9);
+			add_diag_moves(i, j, &iterator, 9);
 			break;
 
 		case 10: // Tour noire
-			!_player && add_rect_moves(i, j, &iterator, 10);
+			add_rect_moves(i, j, &iterator, 10);
 			break;
 
 		case 11: // Dame noire
-			!_player && add_diag_moves(i, j, &iterator, 11) && add_rect_moves(i, j, &iterator, 11);
+			add_diag_moves(i, j, &iterator, 11) && add_rect_moves(i, j, &iterator, 11);
 			break;
 
 		case 12: // Roi noir
-			!_player && add_king_moves(i, j, &iterator, 12);
+			add_king_moves(i, j, &iterator, 12);
 			// Roques
 			// Grand
-			if (!_player && _castling_rights.q_b && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j - 1) && !attacked(i, j - 2))))
+			if (_castling_rights.q_b && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j - 1) && !attacked(i, j - 2))))
 				add_move(i, j, i, j - 2, &iterator, 12);
 			// Petit
-			if (!_player && _castling_rights.k_b && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j + 1) && !attacked(i, j + 2))))
+			if (_castling_rights.k_b && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j + 1) && !attacked(i, j + 2))))
 				add_move(i, j, i, j + 2, &iterator, 12);
 			break;
 		}
+
 	}
 
 	_got_moves = static_cast<int_fast8_t>(iterator);
@@ -639,25 +524,6 @@ bool Board::in_check()
 	}
 
 	return false;
-}
-
-// Fonction qui donne la position du roi du joueur
-pair<int, int> Board::get_king_pos() const
-{
-	pair<int, int> pos = { -1, -1 };
-
-	for (int i = 0; i < 8; i++) {
-		for (int j = 0; j < 8; j++) {
-			if (_array[i][j] == 6 * (2 - _player)) {
-				pos = { i, j };
-				goto end_loops;
-			}
-		}
-	}
-
-end_loops:
-
-	return pos;
 }
 
 // Fonction qui affiche la liste des coups donnée en argument
@@ -3058,11 +2924,11 @@ int Board::total_nodes() const
 // Fonction qui calcule et renvoie la valeur correspondante à la sécurité des rois
 int Board::get_king_safety() {
 	// TODO : à rajouter pour préciser l'évaluation
-	// - cases controllées autour du roi (mating nets) -> escape squares
+	// - cases controllées autour du roi (mating nets) -> escape squares (à compter?)
 	// - diagonales et lignes ouvertes pour les tours et les fous
 	// - alignements des pièces avec le roi
 	// https://www.chessprogramming.org/King_Safety
-	// - virtual mobility : on remplace le roi par une dame, et on regarde le nombre de coups qu'elle peut jouer -> plus c'est grand, plus le roi est en danger
+	// - safe checks : échecs qui peuvent être joués sans risque : TRES IMPORTANT
 
 
 
@@ -3092,6 +2958,8 @@ int Board::get_king_safety() {
 	// r1bq1rk1/ppppnpp1/8/2bNp1PQ/1nB1P3/2P5/PP1P1PP1/R1B1K2R b KQ - 2 3
 	// r1bq1rk1/pp2npp1/2n1p3/2ppP1NQ/3P4/P1P5/2P2PPP/R1B1K2R b KQ - 3 3
 	// r3kb1r/pR2pppp/2p5/3p4/3P2b1/B3RN2/q1P2PPP/3Q2K1 b kq - 1 14 : overload++
+	// r1b1k2r/p1p2ppp/2p5/8/5P1q/3B1R1P/PBP3P1/Q5K1 w kq - 3 17 : le roi noir est le plus faible
+	// 1r4k1/p2n1pp1/2p1b2p/3p3P/4pQ2/2q1P3/P1P1BPP1/2KR3R w - - 1 23 : c'est mat pour les noirs
 
 	// 8/6PK/5k2/8/8/8/8/8 b - - 0 8
 
@@ -3849,6 +3717,7 @@ int Board::get_pawn_structure() const
 	}
 
 	// Pions passés
+	// r5k1/P3Rpp1/7p/8/3p4/8/2P2PPP/6K1 b - - 1 30 : position à tester
 	// Table de valeur des pions passés en fonction de leur avancement sur le plateau
 	static const int passed_pawns[8] = { 0, 50, 50, 100, 165, 250, 300, 0 }; // TODO à vérif
 
@@ -3878,7 +3747,7 @@ int Board::get_pawn_structure() const
 					if (is_passed_pawn) {
 						// Regarde s'il y a un bloqueur // TODO : pareil si la case est controllée par une pièce adverse
 						bool blocked = false;
-						for (uint_fast8_t k = j + 1; k < 7; k++)
+						for (uint_fast8_t k = j + 1; k <= 7; k++)
 							if (_array[k][i] != 0) {
 								blocked = true;
 								break;
