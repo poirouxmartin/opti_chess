@@ -745,8 +745,6 @@ public:
 	string _white_player = "White";
 	string _black_player = "Black";
 
-	// TODO : ajouter les titres des joueurs
-
 	// FEN de la position initiale
 	string _initial_fen;
 
