@@ -2530,7 +2530,7 @@ int Board::get_piece_mobility(const bool legal) const
 				else if (piece == 5)
 					piece_mobility += mobility_values_queen[min(28, piece_move_count[i * 8 + j])];
 				else if (piece == 7)
-					piece_mobility -= mobility_values_pawn[min(8, piece_move_count[i * 8 + j])];
+					piece_mobility -= mobility_values_pawn[min(2, piece_move_count[i * 8 + j])];
 				else if (piece == 8)
 					piece_mobility -= mobility_values_knight[min(8, piece_move_count[i * 8 + j])];
 				else if (piece == 9)
@@ -2960,6 +2960,7 @@ int Board::get_king_safety() {
 	// r3kb1r/pR2pppp/2p5/3p4/3P2b1/B3RN2/q1P2PPP/3Q2K1 b kq - 1 14 : overload++
 	// r1b1k2r/p1p2ppp/2p5/8/5P1q/3B1R1P/PBP3P1/Q5K1 w kq - 3 17 : le roi noir est le plus faible
 	// 1r4k1/p2n1pp1/2p1b2p/3p3P/4pQ2/2q1P3/P1P1BPP1/2KR3R w - - 1 23 : c'est mat pour les noirs
+	// rnbr2k1/ppq2p2/2pb1npQ/6N1/7R/3B2P1/PPP2P1P/2KR4 b - - 2 17 : mat pour les blancs
 
 	// 8/6PK/5k2/8/8/8/8/8 b - - 0 8
 
