@@ -792,6 +792,9 @@ public:
 	// Thread de GrogrosZero
 	thread _thread_grogros_zero;
 
+	// Threads pour les plateaux fils de GrogrosZero
+	vector<thread> _threads_grogros_zero;
+
 	// TODO : Pour le PGN, faire un vecteur de coups, comme ça on peut repasser la partie, et modifier le PGN facilement
 
 
@@ -830,6 +833,12 @@ public:
 
 	// Fonction qui met à jour la date du PGN
 	bool update_date();
+
+	// Fonction qui lance les threads de GrogrosZero
+	bool thread_grogros_zero(Evaluator *eval, int nodes);
+
+	// Fonction qui lance grogros sur un thread
+	bool grogros_zero_threaded(Evaluator *eval, int nodes);
 };
 
 // Instantiation de la GUI globale
