@@ -642,6 +642,7 @@ k7/8/K5r1/PQ2B3/8/8/8/8 w - - 0 1 : Fd6 pour Db6 gagne
 6r1/pk1nq2r/2n1p3/2p2p2/2PpQB2/P2P1NP1/5PB1/4R1K1 w - - 0 1 : Dxc6+ #9
 6r1/p2nq2r/k3p3/2p2p2/2PN1B2/P2P2P1/5PB1/1R4K1 w - - 3 4 : Fb7+ #6
 3r2k1/ppp1qppp/2n5/5b2/8/P1Q1PNbP/1P1NB1P1/R4K1R b - - 8 16 : Td3 gagne
+r4rk1/pp1qnpb1/2n1p1p1/2p3N1/4P3/5Q2/PPP2PP1/RNB1K2R w KQ - 0 1 : Txh8+ Fxh8 Dh3 Rg7 e5 gagne
 
 
 
@@ -774,7 +775,7 @@ int main() {
 
 	// Paramètres pour l'IA
 	int search_depth = 8;
-	search_depth = 7;
+	//search_depth = 7;
 
 	// Fin de partie
 	bool main_game_over = false;
@@ -829,8 +830,7 @@ int main() {
 
 			//main_GUI._board.grogros_zero(&monte_evaluator, 1, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._deep_mates_search, main_GUI._explore_checks);
 
-			locate_chessboard(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom);
-			main_GUI.new_bind_game();
+			
 
 
 			// grogrosZero sur le thread de la GUI
@@ -841,16 +841,21 @@ int main() {
 			// arrête le thread
 			//main_GUI._thread_grogros_zero.~thread();
 
+			// Threads
+			//main_GUI.thread_grogros_zero(&monte_evaluator, 5000);
+
+			main_GUI.grogros_zero_threaded(&monte_evaluator, 5000);
 
 		}
 
-		// CTRL-T - Cherche le plateau de chess.com sur l'écran
+		// CTRL-T - Cherche le plateau de chess.com sur l'écran, et lance une partie
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_T)) {
 			cout << "looking for chess.com chessboard..." << endl;
 			locate_chessboard(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom);
 			printf("Top-Left: (%d, %d)\n", main_GUI._binding_left, main_GUI._binding_top);
 			printf("Bottom-Right: (%d, %d)\n", main_GUI._binding_right, main_GUI._binding_bottom);
 			cout << "chess.com chessboard has been located" << endl;
+			main_GUI.new_bind_game();
 		}
 
 		// LCTRL-A - BInding full (binding chess.com)
