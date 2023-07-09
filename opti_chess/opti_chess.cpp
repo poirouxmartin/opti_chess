@@ -1342,6 +1342,7 @@ void Board::from_fen(string fen)
 
 	// PGN
 	main_GUI._initial_fen = fen;
+	main_GUI._pgn = "";
 
 	// Iterateur qui permet de parcourir la chaine de caractères
 	int iterator = 0;
@@ -1970,15 +1971,18 @@ bool Board::draw() {
 
 			// Flèche
 			else {
-				vector<int> arrow = { right_clicked_pos.first, right_clicked_pos.second, x_mouse, y_mouse };
+				if (right_clicked_pos.first != -1 && right_clicked_pos.second != -1 && x_mouse != -1 && y_mouse != -1) {
+					vector<int> arrow = { right_clicked_pos.first, right_clicked_pos.second, x_mouse, y_mouse };
 
-				// Si la flèche existe, la supprime
-				if (auto found_arrow = find(arrows_array.begin(), arrows_array.end(), arrow); found_arrow != arrows_array.end())
-					arrows_array.erase(found_arrow);
+					// Si la flèche existe, la supprime
+					if (auto found_arrow = find(arrows_array.begin(), arrows_array.end(), arrow); found_arrow != arrows_array.end())
+						arrows_array.erase(found_arrow);
 
-				// Sinon, la rajoute
-				else
-					arrows_array.push_back(arrow);
+					// Sinon, la rajoute
+					else
+						arrows_array.push_back(arrow);
+				}
+				
 			}
 		}
 	}
@@ -2924,11 +2928,8 @@ int Board::total_nodes() const
 // Fonction qui calcule et renvoie la valeur correspondante à la sécurité des rois
 int Board::get_king_safety() {
 	// TODO : à rajouter pour préciser l'évaluation
-	// - cases controllées autour du roi (mating nets) -> escape squares (à compter?)
-	// - diagonales et lignes ouvertes pour les tours et les fous
-	// - alignements des pièces avec le roi
+	// - escape squares (à compter?)
 	// https://www.chessprogramming.org/King_Safety
-	// - safe checks : échecs qui peuvent être joués sans risque : TRES IMPORTANT
 
 
 
@@ -2961,6 +2962,8 @@ int Board::get_king_safety() {
 	// r1b1k2r/p1p2ppp/2p5/8/5P1q/3B1R1P/PBP3P1/Q5K1 w kq - 3 17 : le roi noir est le plus faible
 	// 1r4k1/p2n1pp1/2p1b2p/3p3P/4pQ2/2q1P3/P1P1BPP1/2KR3R w - - 1 23 : c'est mat pour les noirs
 	// rnbr2k1/ppq2p2/2pb1npQ/6N1/7R/3B2P1/PPP2P1P/2KR4 b - - 2 17 : mat pour les blancs
+	// 3rk2r/ppp2ppq/2p1b3/2P5/4P1P1/2P3P1/PPQ1B3/RNB2RK1 w k - 1 7 : quasi égal
+	// 2k2r2/ppp3pp/1bp1b3/8/4Pp1q/1N1B1Pn1/PP3RPP/R2QB1K1 w - - 8 6 : roi blanc pas très safe
 
 	// 8/6PK/5k2/8/8/8/8/8 b - - 0 8
 
@@ -3037,6 +3040,11 @@ int Board::get_king_safety() {
 	// Récupère les maps de contrôle des cases
 	Map white_controls_map = get_white_controls_map();
 	Map black_controls_map = get_black_controls_map();
+
+	if (display) {
+		white_controls_map.print();
+		black_controls_map.print();
+	}
 
 	// Danger par cases controllées ou occupée en fonction de la distance (sera rajouté à la puissance d'attaque)
 	constexpr uint_fast8_t controls_distance_dangers[8] = { 50, 25, 5, 1, 0, 0, 0, 0 };
@@ -3160,7 +3168,7 @@ int Board::get_king_safety() {
 	constexpr float mult_endgame = 1.0f;
 
 	// Version additive, adaptée pour l'endgame
-	constexpr int edge_defense = 100;
+	constexpr int edge_defense = 50;
 	constexpr int endgame_safe_zone = 25; // Si le "i * j" du roi en endgame est supérieur, alors il n'est pas en danger : s'il est en c4 (2, 3 -> (2 + 1) * (3 + 1) = 12 < 16 -> danger)
 	w_king_weakness += max_int(edge_defense, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? (min(_white_king_pos.i, 7 - _white_king_pos.i) + min(_white_king_pos.j, 7 - _white_king_pos.j)) : (endgame_safe_zone - ((min(_white_king_pos.i, 7 - _white_king_pos.i) + 1) * (min(_white_king_pos.j, 7 - _white_king_pos.j) + 1))) * mult_endgame / (edge_adv - 1))) - edge_defense;
 	b_king_weakness += max_int(edge_defense, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? (min(_black_king_pos.i, 7 - _black_king_pos.i) + min(_black_king_pos.j, 7 - _black_king_pos.j)) : (endgame_safe_zone - ((min(_black_king_pos.i, 7 - _black_king_pos.i) + 1) * (min(_black_king_pos.j, 7 - _black_king_pos.j) + 1))) * mult_endgame / (edge_adv - 1))) - edge_defense;
@@ -3172,7 +3180,7 @@ int Board::get_king_safety() {
 
 
 	// Mobilité virtuelle du roi
-	constexpr int virtual_mobility_danger = 100;
+	constexpr int virtual_mobility_danger = 75;
 	w_king_weakness += virtual_mobility_danger * get_king_virtual_mobility(true) * (1 - _adv);
 	b_king_weakness += virtual_mobility_danger * get_king_virtual_mobility(false) * (1 - _adv);
 
@@ -3197,6 +3205,29 @@ int Board::get_king_safety() {
 	// Calcul de la resultante de la puissance d'attaque
 	w_attacking_power = max_int(0, w_attacking_power - b_defending_power);
 	b_attacking_power = max_int(0, b_attacking_power - w_defending_power);
+
+
+	// -------------------
+	// *** SAFE CHECKS ***
+	// -------------------
+
+	// TODO : à fix + ajouter en fonction du nombre d'escape squares du roi adverse
+	constexpr int safe_check_weakness = 350;
+	constexpr float safe_check_attack = 1.0f;
+	constexpr int safe_check_add = 1500;
+
+	pair<uint_fast8_t, uint_fast8_t> safe_checks = get_safe_checks(white_controls_map, black_controls_map);
+
+	if (display) {
+		cout << "White safe checks : " << static_cast<int>(safe_checks.first) << endl;
+		cout << "Black safe checks : " << static_cast<int>(safe_checks.second) << endl;
+	}
+
+	w_king_weakness += safe_checks.second * safe_check_weakness;
+	b_king_weakness += safe_checks.first * safe_check_weakness;
+
+	w_attacking_power += safe_checks.first * safe_check_attack;
+	b_attacking_power += safe_checks.second * safe_check_attack;
 
 
 	// ---------------------------
@@ -3258,6 +3289,16 @@ int Board::get_king_safety() {
 		cout << "White king weakness : " << w_king_weakness << endl;
 		cout << "Black king weakness : " << b_king_weakness << endl;
 	}
+
+
+	if (display) {
+		cout << "White safe checks : " << static_cast<int>(safe_checks.first) << endl;
+		cout << "Black safe checks : " << static_cast<int>(safe_checks.second) << endl;
+	}
+
+	w_king_weakness += safe_checks.second * safe_check_add;
+	b_king_weakness += safe_checks.first * safe_check_add;
+
 
 	const int king_safety = b_king_weakness - w_king_weakness;
 
@@ -4585,7 +4626,7 @@ bool Board::quick_moves_sort() {
 
 // Fonction qui fait un quiescence search
 // TODO améliorer avec un delta pruning
-int Board::quiescence(Evaluator* eval, int alpha, const int beta, const int depth, const bool checkmates_check, bool deep_mates_check, bool explore_checks)
+int Board::quiescence(Evaluator* eval, int alpha, const int beta, const int depth, const bool checkmates_check, bool deep_mates_check, bool explore_checks, bool main_player)
 {
 	// Compte le nombre de noeuds visités
 	_quiescence_nodes = 1;
@@ -4623,7 +4664,7 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, const int dept
 			b.copy_data(*this);
 			b.make_index_move(i);
 
-			const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, checkmates_check, deep_mates_check, explore_checks);
+			const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, checkmates_check, deep_mates_check, explore_checks, true);
 			_quiescence_nodes += b._quiescence_nodes;
 
 			if (score >= beta)
@@ -4640,7 +4681,7 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, const int dept
 			Board b;
 			b.copy_data(*this);
 			b.make_index_move(i);
-			if (b.in_check())
+			if (!main_player || b.in_check())
 			{
 				if (deep_mates_check)
 				{
@@ -4653,7 +4694,7 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, const int dept
 
 				if (explore_checks)
 				{
-					const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, checkmates_check, deep_mates_check, explore_checks);
+					const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, checkmates_check, deep_mates_check, explore_checks, !main_player);
 					_quiescence_nodes += b._quiescence_nodes;
 
 					if (score >= beta)
@@ -5609,6 +5650,8 @@ Map Board::get_white_controls_map() const
 // Fonction qui renvoie la map correspondante au nombre de contrôles pour chaque case de l'échiquier pour le joueur noir
 Map Board::get_black_controls_map() const
 {
+	// FIXME : si y'a une tour derrière une autre, normalement les cases devraient être comptées 2 fois, hors ce n'est pas le cas
+
 	// Map de contrôles
 	Map controls_map;
 
@@ -5663,7 +5706,8 @@ bool Board::add_piece_controls(Map* m, int i, int j, int piece) const
 			uint_fast8_t j2 = j + mj;
 			while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
 				m->_array[i2][j2]++;
-				if (_array[i2][j2] != 0)
+				// Si la case est occupée, on arrête (sauf si la pièce est un fou, une dame ou un pion allié)
+				if (_array[i2][j2] != 0 && _array[i2][j2] != piece && _array[i2][j2] != (piece + 2) && _array[i2][j2] != piece - 2)
 					break;
 				i2 += mi;
 				j2 += mj;
@@ -5682,7 +5726,8 @@ bool Board::add_piece_controls(Map* m, int i, int j, int piece) const
 			uint_fast8_t j2 = j + mj;
 			while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
 				m->_array[i2][j2]++;
-				if (_array[i2][j2] != 0)
+				// Si la case est occupée, on arrête (sauf si la pièce est une tour ou une dame alliée)
+				if (_array[i2][j2] != 0 && _array[i2][j2] != piece && _array[i2][j2] != (piece + 1))
 					break;
 				i2 += mi;
 				j2 += mj;
@@ -5691,7 +5736,7 @@ bool Board::add_piece_controls(Map* m, int i, int j, int piece) const
 		return true;
 	}
 
-	// Dame blanche
+	// Dames
 	if (piece == 5 || piece == 11) {
 		static constexpr int_fast8_t queen_moves[8][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1}, {-1, 0}, {0, -1}, {0, 1}, {1, 0} };
 		for (uint_fast8_t k = 0; k < 8; k++) {
@@ -5701,7 +5746,9 @@ bool Board::add_piece_controls(Map* m, int i, int j, int piece) const
 			uint_fast8_t j2 = j + mj;
 			while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
 				m->_array[i2][j2]++;
-				if (_array[i2][j2] != 0)
+				bool diagonal = mi != 0 && mj != 0;
+				// Si la case est occupée, on arrête (sauf si la pièce est une dame alliée, un (fou ou pion) allié et un déplacement diagonal, ou une tour alliée et un déplacement non diagonal)
+				if (_array[i2][j2] != 0 && _array[i2][j2] != piece && ((_array[i2][j2] != (piece - 2) && _array[i2][j2] != (piece - 4)) || !diagonal) && (_array[i2][j2] != (piece - 1) || diagonal))
 					break;
 				i2 += mi;
 				j2 += mj;
@@ -5710,7 +5757,7 @@ bool Board::add_piece_controls(Map* m, int i, int j, int piece) const
 		return true;
 	}
 
-	// Roi blanc
+	// Rois
 	if (piece == 6 || piece == 12) {
 		static constexpr int_fast8_t king_moves[8][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1}, {-1, 0}, {0, -1}, {0, 1}, {1, 0} };
 		for (uint_fast8_t k = 0; k < 8; k++) {
@@ -5754,4 +5801,108 @@ int Board::get_king_virtual_mobility(bool color) {
 
 
 	return mobility;
+}
+
+// Fonction qui renvoie le nombre d'échecs 'safe' dans la position pour les deux joueurs
+pair<uint_fast8_t, uint_fast8_t> Board::get_safe_checks(Map white_controls, Map black_controls) const
+{
+
+	// TODO : à revoir -> prendre en compte les clouages pour les échecs safe (la pièce clouée ne contrôle pas vraiment la case...)
+
+	// Un échec safe est :
+	// - un échec fait sur une case non controlée par l'adversaire
+	// - un échec fait sur une case controlée par le roi adverse, mais aussi controlée par une pièce alliée
+
+
+
+	// Map des cases ou un échec safe est possible pour les blancs
+	Map white_safe_checks;
+
+	// Nombre d'échecs safe pour les blancs
+	uint_fast8_t white_safe_checks_nb = 0;
+
+	// Regarde tous les coups possibles pour les blancs (sans regarder les échecs)
+	Board b_white(*this);
+	b_white._player = false;
+
+	// On ne le calcule seulement si le roi noir n'est pas en échec
+	if (!b_white.in_check()) {
+		b_white._player = true;
+		b_white._got_moves = -1;
+		b_white.get_moves(false, false);
+
+		for (int i = 0; i < b_white._got_moves; i++) {
+			// Si la destination du coup est non controlée par les noirs, ou qu'elle est seulement controllée par le roi noir et une pièce blanche (au moins)
+
+			// Case de destination du coup
+			const uint_fast8_t i2 = b_white._moves[i].i2;
+			const uint_fast8_t j2 = b_white._moves[i].j2;
+
+			/*if (white_safe_checks._array[i2][j2] > 0)
+				continue;*/
+
+			// Nombres de contrôles de la case de destination par les blancs et les noirs
+			const uint_fast8_t controls_white = white_controls._array[i2][j2];
+			const uint_fast8_t controls_black = black_controls._array[i2][j2];
+
+			if (controls_black == 0 || (controls_black == 1 && controls_white > 1 && abs(b_white._black_king_pos.i - i2) <= 1 && abs(b_white._black_king_pos.j - j2) <= 1)) {
+				// Joue le coup et regarde s'il fait échec
+				Board b_white_check(b_white);
+				b_white_check.make_index_move(i);
+				if (b_white_check.in_check()) {
+					white_safe_checks._array[i2][j2] = 1;
+					white_safe_checks_nb++;
+				}
+			}
+		}
+	}
+
+	
+
+
+	// Map des cases ou un échec safe est possible pour les noirs
+	Map black_safe_checks;
+
+	// Nombre d'échecs safe pour les noirs
+	uint_fast8_t black_safe_checks_nb = 0;
+
+	// Regarde tous les coups possibles pour les noirs (sans regarder les échecs)
+	Board b_black(*this);
+	b_black._player = true;
+
+	// On ne le calcule seulement si le roi blanc n'est pas en échec
+	if (!b_black.in_check()) {
+		b_black._player = false;
+		b_black._got_moves = -1;
+		b_black.get_moves(false, false);
+
+		for (int i = 0; i < b_black._got_moves; i++) {
+			// Si la destination du coup est non controlée par les blancs, ou qu'elle est seulement controllée par le roi blanc et une pièce noire (au moins)
+
+			// Case de destination du coup
+			const uint_fast8_t i2 = b_black._moves[i].i2;
+			const uint_fast8_t j2 = b_black._moves[i].j2;
+
+			/*if (black_safe_checks._array[i2][j2] > 0)
+				continue;*/
+
+			// Nombres de contrôles de la case de destination par les blancs et les noirs
+			const uint_fast8_t controls_white = white_controls._array[i2][j2];
+			const uint_fast8_t controls_black = black_controls._array[i2][j2];
+
+			if (controls_white == 0 || (controls_white == 1 && controls_black > 1 && abs(b_black._white_king_pos.i - i2) <= 1 && abs(b_black._white_king_pos.j - j2) <= 1)) {
+				// Joue le coup et regarde s'il fait échec
+				Board b_black_check(b_black);
+				b_black_check.make_index_move(i);
+				if (b_black_check.in_check()) {
+					black_safe_checks._array[i2][j2] = 1;
+					black_safe_checks_nb++;
+				}
+			}
+		}
+	}
+
+
+
+	return { white_safe_checks_nb, black_safe_checks_nb };
 }
