@@ -2748,7 +2748,7 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const bool checkmates, cons
 	}
 
 	// Obtention des coups jouables
-	(_got_moves == -1) && _new_board&& get_moves(false, true) && (_quick_sorted_moves = false); // A faire à chaque fois? (sinon, mettre à false) -> à mettre seulement si new_board??
+	(_got_moves == -1) && _new_board && get_moves(false, true) && (_quick_sorted_moves = false); // A faire à chaque fois? (sinon, mettre à false) -> à mettre seulement si new_board??
 	(!_quick_sorted_moves) && quick_moves_sort();
 
 	if (_new_board) {
@@ -2814,7 +2814,7 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const bool checkmates, cons
 			monte_buffer._heap_boards[_index_children[_current_move]]._got_moves = -1; // BUG : euuuuh pourquoi ça bug sinon?
 
 			_eval_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
-			_nodes_children[_current_move]++;
+			_nodes_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._nodes;
 			//monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes = 0;
 
 			// Actualise la valeur d'évaluation du plateau
@@ -2845,7 +2845,7 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const bool checkmates, cons
 
 			// Actualise l'évaluation
 			_eval_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
-			_nodes_children[_current_move]++;
+			_nodes_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._nodes;
 
 			if (_player)
 				_evaluation = max_value(_eval_children, _got_moves);
@@ -2964,6 +2964,7 @@ int Board::get_king_safety() {
 	// rnbr2k1/ppq2p2/2pb1npQ/6N1/7R/3B2P1/PPP2P1P/2KR4 b - - 2 17 : mat pour les blancs
 	// 3rk2r/ppp2ppq/2p1b3/2P5/4P1P1/2P3P1/PPQ1B3/RNB2RK1 w k - 1 7 : quasi égal
 	// 2k2r2/ppp3pp/1bp1b3/8/4Pp1q/1N1B1Pn1/PP3RPP/R2QB1K1 w - - 8 6 : roi blanc pas très safe
+	// 8/p7/r3pk2/8/1P2Kp2/P1R2P2/5P2/8 b - - 3 39 : roi blanc pas en danger
 
 	// 8/6PK/5k2/8/8/8/8/8 b - - 0 8
 
@@ -4635,8 +4636,9 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, const int dept
 	evaluate_int(eval, checkmates_check);
 	const int stand_pat = static_cast<int>(_evaluation) * get_color();
 
-	if (depth <= 0)
+	if (depth == 0)
 		return stand_pat;
+		
 
 	// Beta cut-off
 	if (stand_pat >= beta)
@@ -5849,6 +5851,8 @@ pair<uint_fast8_t, uint_fast8_t> Board::get_safe_checks(Map white_controls, Map 
 				// Joue le coup et regarde s'il fait échec
 				Board b_white_check(b_white);
 				b_white_check.make_index_move(i);
+
+				// TODO : à remplacer par 'est-ce que le coup attaque le roi'?
 				if (b_white_check.in_check()) {
 					white_safe_checks._array[i2][j2] = 1;
 					white_safe_checks_nb++;
@@ -5905,4 +5909,65 @@ pair<uint_fast8_t, uint_fast8_t> Board::get_safe_checks(Map white_controls, Map 
 
 
 	return { white_safe_checks_nb, black_safe_checks_nb };
+}
+
+// Fonction qui lance les threads de GrogrosZero
+bool GUI::thread_grogros_zero(Evaluator *eval, int nodes)
+{
+	// Initialisation du buffer pour GrogrosZero, si besoin
+	if (!monte_buffer._init)
+		monte_buffer.init();
+
+	// Lance grogros sur 1 noeud
+	_board.grogros_zero(eval, 100, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
+
+	//_thread_grogros_zero = thread(&Board::grogros_zero, &_board, eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
+	////_thread_grogros_zero = thread(&Board::grogros_zero, &monte_buffer._heap_boards[main_GUI._board._index_children[0]], &monte_evaluator, nodes, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, true, true, false, 0, nullptr);
+	//_thread_grogros_zero.detach();
+
+	//thread test = thread(&Board::grogros_zero, &monte_buffer._heap_boards[_board._index_children[0]], eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
+	//test.detach();
+
+	//thread test2 = thread(&Board::grogros_zero, &monte_buffer._heap_boards[_board._index_children[1]], eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
+	////_threads_grogros_zero.push_back()
+	//test2.detach();
+
+
+	_threads_grogros_zero.clear();
+
+	//_threads_grogros_zero.emplace_back(&Board::grogros_zero, &monte_buffer._heap_boards[_board._index_children[0]], eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
+	//_threads_grogros_zero.emplace_back(&Board::grogros_zero, &monte_buffer._heap_boards[_board._index_children[1]], eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
+	//_threads_grogros_zero.emplace_back(&Board::grogros_zero, &monte_buffer._heap_boards[_board._index_children[2]], eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
+
+	// Lance un thread pour chaque coup possible
+	/*for (int i = 0; i < _board._got_moves; i++) {
+		_threads_grogros_zero.emplace_back(&Board::grogros_zero, &monte_buffer._heap_boards[_board._index_children[i]], eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
+	}*/
+
+	/*for (int i = 0; i < _board._got_moves; i++) {
+		Board test(_board);
+		_threads_grogros_zero.emplace_back(&Board::grogros_zero, test, eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
+	}*/
+
+	for (auto& thread : _threads_grogros_zero) {
+		thread.join();
+	}
+
+	// Relance grogros sur 1 noeud (pour actualiser les valeurs)
+	_board.grogros_zero(eval, 100, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
+
+	return true;
+}
+
+
+// Fonction qui lance grogros sur un thread
+bool GUI::grogros_zero_threaded(Evaluator* eval, int nodes) {
+	// Initialisation du buffer pour GrogrosZero, si besoin
+	if (!monte_buffer._init)
+		monte_buffer.init();
+
+	// Lance grogros sur un thread
+	_thread_grogros_zero = thread(&Board::grogros_zero, &_board, eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
+
+	_thread_grogros_zero.detach();
 }
