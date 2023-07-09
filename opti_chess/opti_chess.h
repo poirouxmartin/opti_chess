@@ -504,7 +504,7 @@ public:
 	bool quick_moves_sort();
 
 	// Fonction qui fait un quiescence search
-	int quiescence(Evaluator* eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool checkmates_check = true, bool deep_mates_check = true, bool explore_checks = true);
+	int quiescence(Evaluator* eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool checkmates_check = true, bool deep_mates_check = true, bool explore_checks = true, bool main_player = true);
 
 	// Fonction qui renvoie le i-ème coup
 	[[nodiscard]] int* get_i_move(int) const;
@@ -550,6 +550,9 @@ public:
 
 	// Fonction qui renvoie la mobilité virtuelle d'un roi
 	[[nodiscard]] int get_king_virtual_mobility(bool color);
+
+	// Fonction qui renvoie le nombre d'échecs 'safe' dans la position pour les deux joueurs
+	[[nodiscard]] pair<uint_fast8_t, uint_fast8_t> get_safe_checks(Map white_controls, Map black_controls) const;
 };
 
 // Fonction qui obtient la case correspondante à la position sur la GUI
@@ -730,7 +733,7 @@ public:
 
 	// Paramètres pour la recherche de Monte-Carlo
 	float _beta = 0.03f;
-	float _k_add = 25.0f;
+	float _k_add = 50.0f;
 	int _quiescence_depth = 4;
 	bool _deep_mates_search = true;
 	bool _explore_checks = true;

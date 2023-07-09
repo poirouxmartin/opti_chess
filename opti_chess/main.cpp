@@ -641,6 +641,7 @@ k7/8/K5r1/PQ2B3/8/8/8/8 w - - 0 1 : Fd6 pour Db6 gagne
 2k3r1/pb1nqp1r/2n1p3/2p5/2Pp1B2/P2P1NP1/4QPB1/1R2R1K1 w - - 0 1 : Txb7 puis De4 gagne
 6r1/pk1nq2r/2n1p3/2p2p2/2PpQB2/P2P1NP1/5PB1/4R1K1 w - - 0 1 : Dxc6+ #9
 6r1/p2nq2r/k3p3/2p2p2/2PN1B2/P2P2P1/5PB1/1R4K1 w - - 3 4 : Fb7+ #6
+3r2k1/ppp1qppp/2n5/5b2/8/P1Q1PNbP/1P1NB1P1/R4K1R b - - 8 16 : Td3 gagne
 
 
 
@@ -839,6 +840,8 @@ int main() {
 			
 			// arrête le thread
 			//main_GUI._thread_grogros_zero.~thread();
+
+
 		}
 
 		// CTRL-T - Cherche le plateau de chess.com sur l'écran
@@ -915,6 +918,7 @@ int main() {
 		if (IsKeyPressed(KEY_V)) {
 			string fen = GetClipboardText();
 			main_GUI._board.from_fen(fen);
+			main_GUI.update_global_pgn();
 			cout << "loaded FEN : " << fen << endl;
 		}
 
