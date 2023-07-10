@@ -209,7 +209,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Position à tester : GrogrosZero vs Grogrosfish : 
 	-> r1bqkb1r/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 : sans cavaliers
 	-> rn1qk1nr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 : sans fous
-	-> 1nbqkbn1/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 : sans tours
+	-> 1nbqkbn1/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1 : sans tours
 	-> rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 : sans dame
 	-> rnbqkbnr/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 : sans pions
 -> Nouveau gros bug : quand on fait réfléchir grogros, qu'on supprime et qu'on lance grogrosfish, ça crash (ça peut crasher)
