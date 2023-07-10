@@ -456,7 +456,7 @@ public:
 	[[nodiscard]] string simple_position() const;
 
 	// Fonction qui calcule la structure de pions et renvoie sa valeur
-	[[nodiscard]] int get_pawn_structure() const;
+	[[nodiscard]] int get_pawn_structure(float display_factor = 0.0f) const;
 
 	// Fonction qui calcule la résultante des attaques et des défenses et la renvoie
 	[[nodiscard]] float get_attacks_and_defenses(float attack_scale = 1.0f, float defense_scale = 1.0f) const;
@@ -535,9 +535,6 @@ public:
 
 	// Fonction qui renvoie l'activité des pièces
 	[[nodiscard]] int get_piece_activity() const;
-
-	// Fonction qui renvoie la valeur de sécurité des rois (test)
-	[[nodiscard]] int get_king_safety_test();
 
 	// Fonction qui renvoie la map correspondante au nombre de contrôles pour chaque case de l'échiquier pour le joueur blanc
 	[[nodiscard]] Map get_white_controls_map() const;
