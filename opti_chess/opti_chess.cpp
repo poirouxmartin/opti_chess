@@ -3723,10 +3723,10 @@ int Board::get_pawn_structure(float display_factor) const
 {
 	// Améliorations :
 	// Nombre d'ilots de pions
-	// Doit dépendre de l'avancement de la partie
 	// Pions faibles
 	// Contrôle des cases
 	// Pions passés
+	// Candidats pions passés
 
 	int pawn_structure = 0;
 
@@ -3735,8 +3735,8 @@ int Board::get_pawn_structure(float display_factor) const
 	int s_black[8] = { 0 };
 
 	// Placement des pions (6 lignes suffiraient théoriquement... car on ne peut pas avoir de pions sur la première ou la dernière rangée...)
-	int pawns_white[8][8] = { { 0 } };
-	int pawns_black[8][8] = { { 0 } };
+	bool pawns_white[8][8] = { { 0 } };
+	bool pawns_black[8][8] = { { 0 } };
 
 	for (uint_fast8_t i = 0; i < 8; i++) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
@@ -3760,9 +3760,9 @@ int Board::get_pawn_structure(float display_factor) const
 			isolated_pawns -= isolated_pawn * s_black[i] / (1 + (i == 0 || i == 7)) * isolated_adv;
 	}
 
-	if (display_factor != 0.0f) {
+	if (display_factor != 0.0f)
 		eval_components += "isolated pawns: " + (isolated_pawns >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * isolated_pawns * display_factor))) + " | ";
-	}
+
 	pawn_structure += isolated_pawns;
 
 	// Pions doublés (ou triplés...)
@@ -3776,9 +3776,9 @@ int Board::get_pawn_structure(float display_factor) const
 		doubled_pawns -= (s_black[i] >= 2) * doubled_pawn * (s_black[i] - 1) * doubled_adv;
 	}
 
-	if (display_factor != 0.0f) {
+	if (display_factor != 0.0f)
 		eval_components += "doubled pawns: " + (doubled_pawns >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * doubled_pawns * display_factor))) + " | ";
-	}
+
 	pawn_structure += doubled_pawns;
 
 	// Pions passés
@@ -3854,13 +3854,39 @@ int Board::get_pawn_structure(float display_factor) const
 		}
 	}
 
-	if (display_factor != 0.0f) {
+	if (display_factor != 0.0f)
 		eval_components += "passed pawns: " + (passed_pawns_value >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * passed_pawns_value * display_factor))) + " || ";
-	}
+
 	pawn_structure += passed_pawns_value;
 
 
-	// TODO : pions connectés
+	// Pions connectés
+	// Un pion est dit connecté, s'il y a un pion de la même couleur sur une colonne adjacente sur la même rangée ou la rangée inférieure
+	constexpr int connected_pawns[8] = { 0, 25, 40, 65, 100, 140, 200, 0 };
+	constexpr float connected_pawns_factor = 1.0f; // En fonction de l'advancement de la partie
+	const float connected_pawns_adv = 1 * (1 + (connected_pawns_factor - 1) * _adv);
+
+	int connected_pawns_value = 0;
+
+	// Pour chaque colonne
+	for (uint_fast8_t j = 0; j < 8; j++) {
+		for (uint_fast8_t i = 1; i < 7; i++) {
+			if (pawns_white[i][j]) {
+				if ((j > 0 && (pawns_white[i][j - 1] || pawns_white[i - 1][j - 1])) || (j < 7 && (pawns_white[i][j + 1] || pawns_white[i - 1][j + 1])))
+					connected_pawns_value += connected_pawns[i] * connected_pawns_adv;
+			}
+			else if (pawns_black[i][j]) {
+				if ((j > 0 && (pawns_black[i][j - 1] || pawns_black[i + 1][j - 1])) || (j < 7 && (pawns_black[i][j + 1] || pawns_black[i + 1][j + 1])))
+					connected_pawns_value -= connected_pawns[7 - i] * connected_pawns_adv;
+			}
+		}
+	}
+
+	if (display_factor != 0.0f)
+		eval_components += "connected pawns: " + (connected_pawns_value >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * connected_pawns_value * display_factor))) + " || ";
+
+	pawn_structure += connected_pawns_value;
+
 
 	// TODO : pions arriérés
 
