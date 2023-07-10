@@ -845,13 +845,12 @@ bool Board::evaluate(Evaluator* eval, const bool checkmates, const bool display,
 	uint_fast8_t count_w_bishop = 0;
 	uint_fast8_t count_b_knight = 0;
 	uint_fast8_t count_b_bishop = 0;
-	uint_fast8_t p;
 
 	// TODO : retirer les goto
 
 	for (uint_fast8_t i = 0; i < 8; i++) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
-			p = _array[i][j];
+			const uint_fast8_t p = _array[i][j];
 			if (p == 2)
 				count_w_knight++;
 			else if (p == 3)
@@ -886,7 +885,7 @@ bool Board::evaluate(Evaluator* eval, const bool checkmates, const bool display,
 	}
 
 	// Sinon
-no_draw:
+	no_draw:
 
 	// Réseau de neurones
 	/*if (n != nullptr) {
@@ -911,23 +910,15 @@ no_draw:
 		if (display)
 			eval_components += "material: " + (material >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * material))) + "\n";
 		_evaluation += material;
-	}
+	}	
 
-	// Positionnement des pièces
-	if (eval->_piece_positioning != 0.0f) {
-		const float positioning = pieces_positioning(eval) * eval->_piece_positioning;
-		if (display)
-			eval_components += "positioning: " + (positioning >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * positioning))) + "\n";
-		_evaluation += positioning;
-	}
-
+	
+	// TODO : à compter directement avec le matériel
 	// Comptage des fous
-	// à tester: changer les boucles par des for (i : array) pour optimiser
-	int bishop_w = 0; int bishop_b = 0;
-
-	for (int i = 0; i < 8; i++) {
-		for (int j = 0; j < 8; j++) {
-			p = _array[i][j];
+	uint_fast8_t bishop_w = 0; uint_fast8_t bishop_b = 0;
+	for (uint_fast8_t i = 0; i < 8; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			const uint_fast8_t p = _array[i][j];
 			(p == 3) && bishop_w++;
 			(p == 9) && bishop_b++;
 		}
@@ -939,6 +930,14 @@ no_draw:
 		if (display)
 			eval_components += "bishop pair: " + (bishop_pair >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * bishop_pair))) + "\n";
 		_evaluation += bishop_pair;
+	}
+
+	// Positionnement des pièces
+	if (eval->_piece_positioning != 0.0f) {
+		const float positioning = pieces_positioning(eval) * eval->_piece_positioning;
+		if (display)
+			eval_components += "positioning: " + (positioning >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * positioning))) + "\n";
+		_evaluation += positioning;
 	}
 
 	// Ajout random
@@ -958,12 +957,20 @@ no_draw:
 		_evaluation += piece_mobility;
 	}
 
-	// Trait du joueur
-	if (eval->_player_trait != 0.0f) {
-		const float player_trait = eval->_player_trait * static_cast<float>(get_color());
+	// Activité des pièces
+	if (eval->_piece_activity != 0.0f) {
+		const float piece_activity = static_cast<float>(get_piece_activity()) * eval->_piece_activity;
 		if (display)
-			eval_components += "player trait: " + (player_trait >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * player_trait))) + "\n";
-		_evaluation += player_trait;
+			eval_components += "piece activity: " + (piece_activity >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * piece_activity))) + "\n";
+		_evaluation += piece_activity;
+	}
+
+	// Sécurité du roi
+	if (eval->_king_safety != 0.0f) {
+		const float king_safety = static_cast<float>(get_king_safety()) * eval->_king_safety;
+		if (display)
+			eval_components += "king safety: " + (king_safety >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * king_safety))) + "\n";
+		_evaluation += king_safety;
 	}
 
 	// Droits de roques
@@ -975,17 +982,26 @@ no_draw:
 		_evaluation += castling_rights;
 	}
 
-	// Sécurité du roi
-	if (eval->_king_safety != 0.0f) {
-		const float king_safety = static_cast<float>(get_king_safety()) * eval->_king_safety;
+	// Contrôle des cases
+	if (eval->_square_controls != 0.0f) {
+		const float square_controls = static_cast<float>(get_square_controls()) * eval->_square_controls;
 		if (display)
-			eval_components += "king safety: " + (king_safety >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * king_safety))) + "\n";
-		_evaluation += king_safety;
+			eval_components += "square controls: " + (square_controls >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * square_controls))) + "\n";
+		_evaluation += square_controls;
+	}
+
+	// Avantage d'espace
+	if (eval->_space_advantage != 0.0f)
+	{
+		const float space = static_cast<float>(get_space()) * eval->_space_advantage;
+		if (display)
+			eval_components += "space: " + (space >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * space))) + "\n";
+		_evaluation += space;
 	}
 
 	// Structure de pions
 	if (eval->_pawn_structure != 0.0f) {
-		const float pawn_structure = static_cast<float>(get_pawn_structure()) * eval->_pawn_structure;
+		const float pawn_structure = static_cast<float>(get_pawn_structure(display * eval->_pawn_structure)) * eval->_pawn_structure;
 		if (display)
 			eval_components += "pawn structure: " + (pawn_structure >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * pawn_structure))) + "\n";
 		_evaluation += pawn_structure;
@@ -1015,23 +1031,6 @@ no_draw:
 		_evaluation += rook_open;
 	}
 
-	// Contrôle des cases
-	if (eval->_square_controls != 0.0f) {
-		const float square_controls = static_cast<float>(get_square_controls()) * eval->_square_controls;
-		if (display)
-			eval_components += "square controls: " + (square_controls >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * square_controls))) + "\n";
-		_evaluation += square_controls;
-	}
-
-	// Avantage d'espace
-	if (eval->_space_advantage != 0.0f)
-	{
-		const float space = static_cast<float>(get_space()) * eval->_space_advantage;
-		if (display)
-			eval_components += "space: " + (space >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * space))) + "\n";
-		_evaluation += space;
-	}
-
 	// Alignement des pièces (fou-tour/dame-roi)
 	if (eval->_alignments != 0.0f)
 	{
@@ -1041,12 +1040,12 @@ no_draw:
 		_evaluation += pieces_alignment;
 	}
 
-	// Activité des pièces
-	if (eval->_piece_activity != 0.0f) {
-		const float piece_activity = static_cast<float>(get_piece_activity()) * eval->_piece_activity;
+	// Trait du joueur
+	if (eval->_player_trait != 0.0f) {
+		const float player_trait = eval->_player_trait * static_cast<float>(get_color());
 		if (display)
-			eval_components += "piece activity: " + (piece_activity >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * piece_activity))) + "\n";
-		_evaluation += piece_activity;
+			eval_components += "player trait: " + (player_trait >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * player_trait))) + "\n";
+		_evaluation += player_trait;
 	}
 
 	// Total de l'évaluation
@@ -2808,14 +2807,12 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const bool checkmates, cons
 			monte_buffer._heap_boards[_index_children[_current_move]].make_index_move(_current_move);
 
 			// Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
-			//monte_buffer._heap_boards[_index_children[_current_move]].evaluate_int(eval, checkmates, false, net);
 			monte_buffer._heap_boards[_index_children[_current_move]]._evaluation = monte_buffer._heap_boards[_index_children[_current_move]].quiescence(eval, -2147483647, 2147483647, quiescence_depth, checkmates, deep_mates_check, explore_checks) * -get_color();
 			_quiescence_nodes += monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes;
 			monte_buffer._heap_boards[_index_children[_current_move]]._got_moves = -1; // BUG : euuuuh pourquoi ça bug sinon?
 
 			_eval_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
-			_nodes_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._nodes;
-			//monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes = 0;
+			_nodes_children[_current_move] = 1;
 
 			// Actualise la valeur d'évaluation du plateau
 			if (_player) {
@@ -2845,7 +2842,7 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const bool checkmates, cons
 
 			// Actualise l'évaluation
 			_eval_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
-			_nodes_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._nodes;
+			_nodes_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._nodes + 1;
 
 			if (_player)
 				_evaluation = max_value(_eval_children, _got_moves);
@@ -2930,6 +2927,7 @@ int Board::get_king_safety() {
 	// TODO : à rajouter pour préciser l'évaluation
 	// - escape squares (à compter?)
 	// https://www.chessprogramming.org/King_Safety
+	// - pawn storm : -> rajout de faiblesse pour le roi adverse
 
 
 
@@ -3377,29 +3375,40 @@ void switch_arrow_drawing() {
 // Fonction qui affiche le PGN
 void Board::display_pgn() const
 {
-	//cout << "\n***** PGN *****\n" << _pgn << "\n***** PGN *****" << endl;
+	cout << "\n***** PGN *****\n" << main_GUI._pgn << "\n***** PGN *****" << endl;
 }
 
 // Fonction qui renvoie en chaîne de caractères la meilleure variante selon monte carlo
-string Board::get_monte_carlo_variant(const bool evaluate_final_pos) {
-	string s;
+string Board::get_monte_carlo_variant(const bool evaluate_final_pos) 
+{
+	if (_got_moves == 0 || _is_game_over)
+		return "";
 
-	if ((_got_moves == -1 && !_is_game_over) || _got_moves == 0)
+	if (_tested_moves > 0) {
+		const int move = best_monte_carlo_move();
+		string s = " " + move_label_from_index(move);
+
+		if (_tested_moves == _got_moves)
+			return s + monte_buffer._heap_boards[_index_children[move]].get_monte_carlo_variant(evaluate_final_pos);
+
+		if (evaluate_final_pos) {
+			int eval = monte_buffer._heap_boards[_index_children[move]]._evaluation;
+			const int mate = is_eval_mate(eval);
+			const string eval_text = mate != 0 ? ((mate > 0 ? "M" : "-M") + to_string(abs(mate))) : to_string(static_cast<int>(_evaluation));
+			return s + " (" + (eval > 0 ? static_cast<string>("+") : static_cast<string>("")) + eval_text + ")";
+
+		}
+			
 		return s;
-	if (_is_game_over)
-		return s;
-
-	const int move = best_monte_carlo_move();
-	s += " " + move_label_from_index(move);
-	//cout << _tested_moves << ", " << _got_moves << endl;
-
-	if (_tested_moves == _got_moves)
-		return s + monte_buffer._heap_boards[_index_children[move]].get_monte_carlo_variant(evaluate_final_pos);
-
-	if (evaluate_final_pos)
-		s += " (" + ((monte_buffer._heap_boards[_index_children[move]]._evaluation > 0) ? "+" + to_string(static_cast<int>(monte_buffer._heap_boards[_index_children[move]]._evaluation)) : to_string(static_cast<int>(monte_buffer._heap_boards[_index_children[move]]._evaluation))) + ")";
-
-	return s;
+	}
+	
+	if (evaluate_final_pos) {
+		const int mate = is_eval_mate(_evaluation);
+		const string eval_text = mate != 0 ? ((mate > 0 ? "M" : "-M") + to_string(abs(mate))) : to_string(static_cast<int>(_evaluation));
+		return " (" + (_evaluation > 0 ? static_cast<string>("+") : static_cast<string>("")) + eval_text + ")";
+	}
+	
+	return "";
 }
 
 // Fonction qui trie les index des coups par nombre de noeuds décroissant
@@ -3710,7 +3719,7 @@ int total_positions = 0;
 string all_positions[102];
 
 // Fonction qui calcule la structure de pions et renvoie sa valeur
-int Board::get_pawn_structure() const
+int Board::get_pawn_structure(float display_factor) const
 {
 	// Améliorations :
 	// Nombre d'ilots de pions
@@ -3739,25 +3748,38 @@ int Board::get_pawn_structure() const
 	}
 
 	// Pions isolés
-	constexpr int isolated_pawn = -50;
+	constexpr int isolated_pawn = -100;
 	constexpr float isolated_adv_factor = 0.3f; // En fonction de l'advancement de la partie
 	const float isolated_adv = 1 * (1 + (isolated_adv_factor - 1) * _adv);
+	int isolated_pawns = 0;
 
 	for (uint_fast8_t i = 0; i < 8; i++) {
 		if (s_white[i] > 0 && (i == 0 || s_white[i - 1] == 0) && (i == 7 || s_white[i + 1] == 0))
-			pawn_structure += isolated_pawn * s_white[i] / (1 + (i == 0 || i == 7)) * isolated_adv;
+			isolated_pawns += isolated_pawn * s_white[i] / (1 + (i == 0 || i == 7)) * isolated_adv;
 		if (s_black[i] > 0 && (i == 0 || s_black[i - 1] == 0) && (i == 7 || s_black[i + 1] == 0))
-			pawn_structure -= isolated_pawn * s_black[i] / (1 + (i == 0 || i == 7)) * isolated_adv;
+			isolated_pawns -= isolated_pawn * s_black[i] / (1 + (i == 0 || i == 7)) * isolated_adv;
 	}
+
+	if (display_factor != 0.0f) {
+		eval_components += "isolated pawns: " + (isolated_pawns >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * isolated_pawns * display_factor))) + " | ";
+	}
+	pawn_structure += isolated_pawns;
 
 	// Pions doublés (ou triplés...)
 	constexpr int doubled_pawn = -25;
 	constexpr float doubled_adv_factor = 0.5f; // En fonction de l'advancement de la partie
 	const float doubled_adv = 1 * (1 + (doubled_adv_factor - 1) * _adv);
+	int doubled_pawns = 0;
+
 	for (uint_fast8_t i = 0; i < 8; i++) {
-		pawn_structure += (s_white[i] >= 2) * doubled_pawn * (s_white[i] - 1) * doubled_adv;
-		pawn_structure -= (s_black[i] >= 2) * doubled_pawn * (s_black[i] - 1) * doubled_adv;
+		doubled_pawns += (s_white[i] >= 2) * doubled_pawn * (s_white[i] - 1) * doubled_adv;
+		doubled_pawns -= (s_black[i] >= 2) * doubled_pawn * (s_black[i] - 1) * doubled_adv;
 	}
+
+	if (display_factor != 0.0f) {
+		eval_components += "doubled pawns: " + (doubled_pawns >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * doubled_pawns * display_factor))) + " | ";
+	}
+	pawn_structure += doubled_pawns;
 
 	// Pions passés
 	// r5k1/P3Rpp1/7p/8/3p4/8/2P2PPP/6K1 b - - 1 30 : position à tester
@@ -3770,6 +3792,7 @@ int Board::get_pawn_structure() const
 
 	constexpr float passed_adv_factor = 2.0f; // En fonction de l'advancement de la partie
 	const float passed_adv = 1 * (1 + (passed_adv_factor - 1) * _adv);
+	int passed_pawns_value = 0;
 
 	// Pour chaque colonne
 	for (uint_fast8_t i = 0; i < 8; i++) {
@@ -3796,7 +3819,7 @@ int Board::get_pawn_structure() const
 								break;
 							}
 
-						pawn_structure += (blocked ? blocked_passed_pawn[j] : passed_pawns[j]) * passed_adv;
+						passed_pawns_value += (blocked ? blocked_passed_pawn[j] : passed_pawns[j]) * passed_adv;
 					}
 						
 				}
@@ -3824,12 +3847,23 @@ int Board::get_pawn_structure() const
 								break;
 							}
 
-						pawn_structure -= (blocked ? blocked_passed_pawn[7 - j] : passed_pawns[7 - j]) * passed_adv;
+						passed_pawns_value -= (blocked ? blocked_passed_pawn[7 - j] : passed_pawns[7 - j]) * passed_adv;
 					}
 				}
 			}
 		}
 	}
+
+	if (display_factor != 0.0f) {
+		eval_components += "passed pawns: " + (passed_pawns_value >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * passed_pawns_value * display_factor))) + " || ";
+	}
+	pawn_structure += passed_pawns_value;
+
+
+	// TODO : pions connectés
+
+	// TODO : pions arriérés
+
 
 	// On doit encore vérifier si le pion adverse est devant ou derrière l'autre pion...
 
@@ -4524,9 +4558,9 @@ int Board::get_square_controls() const
 			total_control += (white_controls[i][j] - black_controls[i][j]) * square_controls[i][j];
 
 	// L'importance de ce paramètre dépend de l'avancement de la partie : l'espace est d'autant plus important que le nombre de pièces est grand
-	constexpr float control_adv_factor = 0.0f; // En fonction de l'advancement de la partie
+	constexpr float control_adv_factor = -1.0f; // En fonction de l'advancement de la partie
 
-	return total_control * (1 + (control_adv_factor - 1) * _adv);
+	return total_control * max(0.0f, (1 + (control_adv_factor - 1) * _adv));
 }
 
 // Fonction qui renvoie la valeur UCT
@@ -5036,7 +5070,9 @@ int Board::get_space() const
 		}
 	}
 
-	return space_area;
+	constexpr float space_adv_factor = -1.0f; // En fonction de l'advancement de la partie
+
+	return space_area * max(0.0f, (1 + (space_adv_factor - 1) * _adv));
 }
 
 // Fonction qui calcule et renvoie une évaluation des vis-à-vis
@@ -5554,83 +5590,6 @@ bool GUI::update_date() {
 	_date = std::to_string(year) + "." + std::to_string(month) + "." + std::to_string(day);
 
 	return true;
-}
-
-// Fonction qui renvoie la valeur de sécurité des rois (test)
-int Board::get_king_safety_test()
-{
-
-	// Récupère une map d'attaques pour chaque couleur, puis calcule la résultante
-	// Puis en déduit la sécurité de chacun des rois, en fonction des distances avec les attaques
-	// Un bord est considéré comme une attaque // TODO : pas sûr que ça soit génial
-
-
-	// Blancs
-	Map white_controls_map = get_white_controls_map();
-
-	// Noirs
-	Map black_controls_map = get_black_controls_map();
-
-	// Résultante
-	Map controls_map = white_controls_map - black_controls_map;
-
-	//controls_map.print();
-
-
-	// Danger en fonction de la distance avec les attaques
-	constexpr uint_fast8_t distance_dangers[8] = { 50, 50, 25, 10, 5, 2, 1, 0 };
-	//constexpr uint_fast8_t distance_dangers[8] = { 0, 10, 0, 0, 0, 0, 0, 0 };
-
-	constexpr uint_fast8_t edge_danger = 5;
-
-
-	// Calcul de la sécurité des rois
-	update_kings_pos();
-
-	// Roi blanc
-	int white_king_danger = 0;
-
-	// Bords : ajoute +3 s'il touche 1 bord, +5 s'il est dans un coin (nombre de cases perdues)
-	const bool white_vertical_edge = (_white_king_pos.i == 0 || _white_king_pos.i == 7);
-	const bool white_horizontal_edge = (_white_king_pos.j == 0 || _white_king_pos.j == 7);
-	white_king_danger += (white_vertical_edge && white_horizontal_edge) ? 5 * edge_danger : (white_vertical_edge || white_horizontal_edge) ? 3 * edge_danger : 0;
-
-
-	// Cases controllées proches du roi
-	for (uint_fast8_t i = 0; i < 8; i++)
-		for (uint_fast8_t j = 0; j < 8; j++)
-			if (controls_map._array[i][j] < 0)
-			{
-				const uint_fast8_t distance = max(abs(i - _white_king_pos.i), abs(j - _white_king_pos.j));
-				white_king_danger -= distance_dangers[distance] * controls_map._array[i][j]; // - car valeur négative
-			}
-
-
-	// Roi noir
-	int black_king_danger = 0;
-
-	// Bord : ajoute +3 s'il touche 1 bord, +5 s'il est dans un coin (nombre de cases perdues)
-	const bool black_vertical_edge = (_black_king_pos.i == 0 || _black_king_pos.i == 7);
-	const bool black_horizontal_edge = (_black_king_pos.j == 0 || _black_king_pos.j == 7);
-	black_king_danger += (black_vertical_edge && black_horizontal_edge) ? 5 * edge_danger : (black_vertical_edge || black_horizontal_edge) ? 3 * edge_danger : 0;
-
-	// Attaques sur le plateau
-	for (uint_fast8_t i = 0; i < 8; i++)
-		for (uint_fast8_t j = 0; j < 8; j++)
-			if (controls_map._array[i][j] > 0)
-			{
-				const uint_fast8_t distance = max(abs(i - _black_king_pos.i), abs(j - _black_king_pos.j));
-				black_king_danger += distance_dangers[distance] * controls_map._array[i][j];
-			}
-
-
-	// Resultante de la sécurité des rois
-	const int king_safety = black_king_danger - white_king_danger;
-
-	//cout << white_king_danger << ", " << black_king_danger << endl;
-	//rnb4r/pppp1k1p/5n2/3q4/5R2/8/PPP1Q1PP/5RK1 b - - 2 15
-
-	return king_safety;
 }
 
 // Fonction qui renvoie la map correspondante au nombre de contrôles pour chaque case de l'échiquier pour le joueur blanc
