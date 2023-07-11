@@ -251,6 +251,9 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Voir comment gérer les positions qui sont mal évaluées par GrogrosZero
 -> Implementer les policy pour les coups (pour regarder des coups plus que d'autres)
 -> Pion de moins en finale de pions est quasi toujours perdant
+-> Ajouter la pièce dans le coup (et l'utiliser)
+-> Revoir les undo, et les faire rapides pour les utiliser au lieu de copier les plateaux
+-> Faire des tests de vitesse pour l'évaluation
 
 
 ----- Interface utilisateur -----
