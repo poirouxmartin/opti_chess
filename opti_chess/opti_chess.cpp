@@ -542,9 +542,15 @@ void Board::display_moves(const bool pseudo) {
 }
 
 // Fonction qui joue un coup
-void Board::make_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fast8_t k, const uint_fast8_t l, const bool pgn, const bool new_board, const bool add_to_list) {
+void Board::make_move(Move move, const bool pgn, const bool new_board, const bool add_to_list)
+{
+	const uint_fast8_t i = move.i1;
+	const uint_fast8_t j = move.j1;
+	const uint_fast8_t k = move.i2;
+	const uint_fast8_t l = move.j2;
 	const uint_fast8_t p = _array[i][j];
 	const uint_fast8_t p_last = _array[k][l];
+
 
 	// TODO : rendre plus efficace
 	if (pgn) {
@@ -558,122 +564,94 @@ void Board::make_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fas
 			main_GUI._pgn += s;
 			main_GUI._pgn += ". ";
 		}
-		main_GUI._pgn += move_label(i, j, k, l);
+		main_GUI._pgn += move_label(move);
 	}
+
+
 
 	// Incrémentation des demi-coups
 	_half_moves_count++;
-	(p == 1 || p == 7 || _array[k][l]) && ((_half_moves_count = 0));
+
+	// Reset des demi-coups si un pion est bougé ou si une pièce est prise
+	(p == 1 || p == 7 || p_last) && ((_half_moves_count = 0));
+
 
 	// Coups donnant la possibilité d'un en passant
 	_en_passant_col = -1;
 
-	// Pour les blancs : pion qui avance de 2 cases, et pion noir à gauche ou à droite
-	if (p == 1 && k == i + 2 && (_array[k][l - 1] == 7 || _array[k][l + 1] == 7))
-		_en_passant_col = j;
-	if (p == 7 && k == i - 2 && (_array[k][l - 1] == 1 || _array[k][l + 1] == 1))
-		_en_passant_col = j;
+	// Pion qui avance de 2 cases, et pion adverse à gauche ou à droite -> possibilité d'en passant
+	(p == 1 && k == i + 2 && (_array[k][l - 1] == 7 || _array[k][l + 1] == 7)) && ((_en_passant_col = j));
+	(p == 7 && k == i - 2 && (_array[k][l - 1] == 1 || _array[k][l + 1] == 1)) && ((_en_passant_col = j));
 
 	// En passant
-	(p == 1 && j != l && _array[k][l] == 0) && ((_array[k - 1][l] = 0));
-	(p == 7 && j != l && _array[k][l] == 0) && ((_array[k + 1][l] = 0));
+	(p == 1 && j != l && p_last == 0) && ((_array[k - 1][l] = 0));
+	(p == 7 && j != l && p_last == 0) && ((_array[k + 1][l] = 0));
 
-	// Si c'est le roi qui bouge, retire la permission de roque
+
+	// Roi blanc
 	if (p == 6) {
 		_castling_rights.q_w = false;
 		_castling_rights.k_w = false;
 		_white_king_pos = { k, l }; // Met à jour la position du roi
+
+		(l == j + 2) && ((_array[0][7] = 0), (_array[0][5] = 4)); // Petit roque
+		(l == j - 2) && ((_array[0][0] = 0), (_array[0][3] = 4)); // Grand roque
 	}
-	if (p == 12) {
+
+	// Roi noir
+	else if (p == 12) {
 		_castling_rights.q_b = false;
 		_castling_rights.k_b = false;
 		_black_king_pos = { k, l };
+
+		(l == j + 2) && ((_array[7][7] = 0), (_array[7][5] = 10)); // Petit roque
+		(l == j - 2) && ((_array[7][0] = 0), (_array[7][3] = 10)); // Grand roque
 	}
 
-	// Si c'est une tour, peut retirer la permission de roque
-	if (p == 4) {
-		if (j == 0)
-			_castling_rights.q_w = false;
-		if (j == 7)
-			_castling_rights.k_w = false;
-	}
-	if (p == 10) {
-		if (j == 0)
-			_castling_rights.q_b = false;
-		if (j == 7)
-			_castling_rights.k_b = false;
-	}
+	// Tour blanche
+	(p == 4) && ((j == 0) && (_castling_rights.q_w = false) || (j == 7) && (_castling_rights.k_w = false));
 
-	// Si une tour se fait manger
-	if (p_last == 4) {
-		if (l == 0)
-			_castling_rights.q_w = false;
-		if (l == 7)
-			_castling_rights.k_w = false;
-	}
-	if (p_last == 10) {
-		if (l == 0)
-			_castling_rights.q_b = false;
-		if (l == 7)
-			_castling_rights.k_b = false;
-	}
+	// Tour noire
+	(p == 10) && ((j == 0) && (_castling_rights.q_b = false) || (j == 7) && (_castling_rights.k_b = false));
 
-	// Roque
-	// Blanc
-	if (p == 6) {
-		// Petit
-		if (l == j + 2) {
-			_array[0][7] = 0;
-			_array[0][5] = 4;
-		}
-		// Grand
-		if (l == j - 2) {
-			_array[0][0] = 0;
-			_array[0][3] = 4;
-		}
-	}
-	// Noir
-	if (p == 12) {
-		// Petit
-		if (l == j + 2) {
-			_array[7][7] = 0;
-			_array[7][5] = 10;
-		}
-		// Grand
-		if (l == j - 2) {
-			_array[7][0] = 0;
-			_array[7][3] = 10;
-		}
-	}
+	// Tour blanche mangée
+	(p_last == 4) && ((l == 0) && (_castling_rights.q_w = false) || (l == 7) && (_castling_rights.k_w = false));
 
+	// Tour noire mangée
+	(p_last == 10) && ((l == 0) && (_castling_rights.q_b = false) || (l == 7) && (_castling_rights.k_b = false));
+
+
+	// Actualise la case d'arrivée
 	_array[k][l] = p;
 
 	// Promotion (en dame seulement pour le moment)
-	if (p == 1 && k == 7)
-		_array[k][l] = 5;
-	if (p == 7 && k == 0)
-		_array[k][l] = 11;
+	(p == 1 && k == 7) && (_array[k][l] = 5);
+	(p == 7 && k == 0) && (_array[k][l] = 11);
 
+	// Vide la case de départ
 	_array[i][j] = 0;
+
+	// Change le trait du joueur
 	_player = !_player;
-	_got_moves = -1;
 
-	// Implémentation des coups
-	_player && (_moves_count += 1);
+	
+	// Imcémentation des coups
+	_player && _moves_count++;
 
-	// Actualise les coups possibles
-	//get_moves();
 
+
+	// TODO : rendre plus efficace (les accès mémoire sont lents)
 	_last_move[0] = i;
 	_last_move[1] = j;
 	_last_move[2] = k;
 	_last_move[3] = l;
 	_last_move[4] = p;
-	// if (_last_move[5] == -1) {
-	//     _last_move[5] =
-	// }
 	_last_move[9] = p_last;
 
+	// Reset le nombre de coups possibles
+	_got_moves = -1;
+
+	// Les coups ne sont plus triés
 	_sorted_moves = false;
 	_quick_sorted_moves = false;
 
@@ -690,10 +668,6 @@ void Board::make_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fas
 		_evaluated = false;
 	}
 
-	_mate = false;
-	_mate_checked = false;
-	_game_over_checked = false;
-
 	if (add_to_list) {
 		all_positions[_half_moves_count] = simple_position();
 		total_positions++;
@@ -705,7 +679,7 @@ void Board::make_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fas
 
 // Fonction qui joue le coup i
 void Board::make_index_move(const int i, const bool pgn, const bool add_to_list) {
-	make_move(_moves[i].i1, _moves[i].j1, _moves[i].i2, _moves[i].j2, pgn, false, add_to_list);
+	make_move(_moves[i], pgn, false, add_to_list);
 }
 
 // Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
@@ -1121,8 +1095,11 @@ float Board::negamax(const int depth, float alpha, const float beta, const bool 
 
 	if (depth > 1)
 		sort_moves(eval);
-	if (max_depth)
+	if (max_depth) {
+		cout << "sorted moves : " << _sorted_moves << endl;
 		display_moves();
+	}
+		
 
 	for (int i = 0; i < _got_moves; i++) {
 		b.copy_data(*this);
@@ -1574,9 +1551,15 @@ kings:
 
 // Fonction qui renvoie le label d'un coup
 // En passant manquant... échecs aussi, puis roques, promotions, mats/pats
-string Board::move_label(uint_fast8_t i, uint_fast8_t j, uint_fast8_t k, uint_fast8_t l) {
-	uint_fast8_t p1 = _array[i][j]; // Pièce qui bouge
-	uint_fast8_t p2 = _array[k][l];
+string Board::move_label(Move move)
+{
+	const uint_fast8_t i = move.i1;
+	const uint_fast8_t j = move.j1;
+	const uint_fast8_t k = move.i2;
+	const uint_fast8_t l = move.j2;
+
+	const uint_fast8_t p1 = _array[i][j]; // Pièce qui bouge
+	const uint_fast8_t p2 = _array[k][l];
 
 	// Pour savoir si une autre pièce similaire peut aller sur la même case
 	bool spec_col = false;
@@ -1637,7 +1620,7 @@ string Board::move_label(uint_fast8_t i, uint_fast8_t j, uint_fast8_t k, uint_fa
 
 	// Mats, pats, échecs...
 	Board b(*this);
-	b.make_move(i, j, k, l);
+	b.make_move(move);
 
 	// mat
 	if (int m = b.is_mate(); m == 1) {
@@ -1672,7 +1655,7 @@ string Board::move_label_from_index(const int i) {
 	// Pour pas qu'il re écrase les moves
 	if (_got_moves == -1)
 		get_moves(false, true);
-	return move_label(_moves[i].i1, _moves[i].j1, _moves[i].i2, _moves[i].j2);
+	return move_label(_moves[i]);
 }
 
 // Fonction qui affiche un texte dans une zone donnée
@@ -1840,7 +1823,7 @@ bool Board::draw() {
 				{
 					if (arrow[2] == clicked_pos.first && arrow[3] == clicked_pos.second) {
 						// Retrouve le coup correspondant
-						play_move_sound(arrow[0], arrow[1], arrow[2], arrow[3]);
+						play_move_sound(Move(arrow[0], arrow[1], arrow[2], arrow[3]));
 						((main_GUI._click_bind && main_GUI._board.click_i_move(arrow[4], get_board_orientation())) || true) && play_monte_carlo_move_keep(arrow[4], true, true, true, true);
 						goto piece_selection;
 					}
@@ -1874,7 +1857,7 @@ bool Board::draw() {
 				get_moves(false, true);
 				for (int i = 0; i < _got_moves; i++) {
 					if (_moves[i].i1 == selected_pos.first && _moves[i].j1 == selected_pos.second && _moves[i].i2 == clicked_pos.first && _moves[i].j2 == clicked_pos.second) {
-						play_move_sound(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second);
+						play_move_sound(Move(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second));
 						((main_GUI._click_bind && main_GUI._board.click_i_move(i, get_board_orientation())) || true) && play_monte_carlo_move_keep(i, true, true, true, true);
 						break;
 					}
@@ -1912,7 +1895,7 @@ bool Board::draw() {
 						get_moves(false, true);
 						for (int i = 0; i < _got_moves; i++) {
 							if (_moves[i].i1 == selected_pos.first && _moves[i].j1 == selected_pos.second && _moves[i].i2 == drop_pos.first && _moves[i].j2 == drop_pos.second) {
-								play_move_sound(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second);
+								play_move_sound(Move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second));
 								((main_GUI._click_bind && main_GUI._board.click_i_move(i, get_board_orientation())) || true) && play_monte_carlo_move_keep(i, true, true, true, true);
 								selected_pos = { -1, -1 };
 								break;
@@ -1927,13 +1910,13 @@ bool Board::draw() {
 	}
 
 	// Pre-moves
-	if (pre_move[0] != -1 && pre_move[1] != -1 && pre_move[2] != -1 && pre_move[3] != -1) {
+	/*if (pre_move[0] != -1 && pre_move[1] != -1 && pre_move[2] != -1 && pre_move[3] != -1) {
 		if ((!_player && is_in_fast(_array[pre_move[0]][pre_move[1]], 7, 12)) || (_player && is_in_fast(_array[pre_move[0]][pre_move[1]], 1, 6))) {
 			if (_got_moves == -1)
 				get_moves(false, true);
 			for (int i = 0; i < _got_moves; i++) {
 				if (_moves[i].i1 == pre_move[0] && _moves[i].j1 == pre_move[1] && _moves[i].i2 == pre_move[2] && _moves[i].j2 == pre_move[3]) {
-					play_move_sound(pre_move[0], pre_move[1], pre_move[2], pre_move[3]);
+					play_move_sound(Move(pre_move[0], pre_move[1], pre_move[2], pre_move[3]));
 					((main_GUI._click_bind && main_GUI._board.click_i_move(i, get_board_orientation())) || true) && play_monte_carlo_move_keep(i, true, true, true, true);
 					break;
 				}
@@ -1943,7 +1926,7 @@ bool Board::draw() {
 			pre_move[2] = -1;
 			pre_move[3] = -1;
 		}
-	}
+	}*/
 
 	// Si on fait un clic droit
 	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
@@ -2290,15 +2273,20 @@ bool Board::draw() {
 }
 
 // Fonction qui joue le son d'un coup
-void Board::play_move_sound(const uint_fast8_t i, const uint_fast8_t j, const uint_fast8_t k, const uint_fast8_t l) const
+void Board::play_move_sound(Move move) const
 {
+	const uint_fast8_t i = move.i1;
+	const uint_fast8_t j = move.j1;
+	const uint_fast8_t k = move.i2;
+	const uint_fast8_t l = move.j2;
+
 	// Pièces
 	const uint_fast8_t p1 = _array[i][j];
 	const uint_fast8_t p2 = _array[k][l];
 
 	// Echecs
 	Board b(*this);
-	b.make_move(i, j, k, l);
+	b.make_move(move);
 
 	const int mate = b.is_mate();
 
@@ -2349,7 +2337,7 @@ void Board::play_move_sound(const uint_fast8_t i, const uint_fast8_t j, const ui
 // Fonction qui joue le son d'un coup à partir de son index
 void Board::play_index_move_sound(const int i) const
 {
-	play_move_sound(_moves[i].i1, _moves[i].j1, _moves[i].i2, _moves[i].j2);
+	play_move_sound(_moves[i]);
 }
 
 // Fonction qui obtient la case correspondante à la position sur la GUI
@@ -4472,6 +4460,7 @@ void draw_simple_arrow_from_coord(const int i1, const int j1, const int i2, cons
 // Fonction qui réinitialise les composantes de l'évaluation
 void Board::reset_eval() {
 	_displayed_components = false;
+	_mate = false;
 	_mate_checked = false;
 	_game_over_checked = false;
 	_evaluated = false; _evaluation = 0;
@@ -5213,6 +5202,11 @@ bool Board::update_kings_pos()
 	bool search_white = _array[_white_king_pos.i][_white_king_pos.j] != 6;
 	bool search_black = _array[_black_king_pos.i][_black_king_pos.j] != 12;
 
+	// Affiche la position des rois (supposée), ainsi que la valeur de la pièce sur cette case
+	/*cout << "White king pos : " << _white_king_pos.i << " " << _white_king_pos.j << " " << (int)_array[_white_king_pos.i][_white_king_pos.j] << endl;
+	cout << "Black king pos : " << _black_king_pos.i << " " << _black_king_pos.j << " " << (int)_array[_black_king_pos.i][_black_king_pos.j] << endl;
+	cout << search_white << " " << search_black << endl;*/
+
 	if (!search_white && !search_black)
 		return true;
 
@@ -5944,7 +5938,6 @@ bool GUI::thread_grogros_zero(Evaluator *eval, int nodes)
 	return true;
 }
 
-
 // Fonction qui lance grogros sur un thread
 bool GUI::grogros_zero_threaded(Evaluator* eval, int nodes) {
 	// Initialisation du buffer pour GrogrosZero, si besoin
@@ -5955,4 +5948,35 @@ bool GUI::grogros_zero_threaded(Evaluator* eval, int nodes) {
 	_thread_grogros_zero = thread(&Board::grogros_zero, &_board, eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
 
 	_thread_grogros_zero.detach();
+}
+
+// Fonction qui renvoie la vitesse de génération des coups
+[[nodiscard]] int Board::moves_generation_benchmark(uint_fast8_t depth, bool main_call)
+{
+	if (depth == 0)
+		return 1;
+
+	if (main_call) {
+		for (uint_fast8_t i = 1; i <= depth; i++) {
+			clock_t start = clock();
+			cout << "Depth " << static_cast<int>(i) << ": ";
+			int nodes = moves_generation_benchmark(i, false);
+			int time = clock() - start;
+			time = time == 0 ? 1 : time;
+			cout << nodes << " nodes in " << time << "ms (" << int_to_round_string(nodes / time * 1000) << "N/s)" << endl;
+		}
+
+		return 0;
+	}
+
+	int nodes = 0;
+	get_moves(false, true);
+
+	for (uint_fast8_t i = 0; i < _got_moves; i++) {
+		Board b(*this);
+		b.make_index_move(i);
+		nodes += b.moves_generation_benchmark(depth - 1, false);
+	}
+
+	return nodes;
 }

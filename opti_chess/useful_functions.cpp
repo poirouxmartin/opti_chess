@@ -244,7 +244,7 @@ void print_array(string l[], const int n)
 // Fonction qui renvoie l'index de la valeur maximale d'une liste d'entiers
 int max_index(int* l, const int n)
 {
-	int max = -1000000;
+	int max = -INT_MAX;
 	int max_i = 0;
 
 	for (int i = 0; i < n; i++)
@@ -260,7 +260,7 @@ int max_index(int* l, const int n)
 // Fonction qui renvoie l'index de la valeur maximale d'une liste d'entiers
 int max_index(float* l, const int n)
 {
-	int max = -1000000;
+	float max = -FLT_MAX;
 	int max_i = 0;
 
 	for (int i = 0; i < n; i++)
@@ -320,7 +320,7 @@ int max_index(const int* l, const int n, const int* l_annex, const int sign)
 // Fonction qui renvoie l'index de la valeur minimale d'une liste d'entiers
 int min_index(int* l, const int n)
 {
-	int min = 1000000;
+	int min = INT_MAX;
 	int min_i = 0;
 
 	for (int i = 0; i < n; i++)
