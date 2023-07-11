@@ -3,6 +3,14 @@
 #include "windows_tests.h"
 using namespace std;
 
+
+// Couleurs
+
+// Cases lichess :
+// blanches : 240, 217, 181
+// noires : 181, 136, 99
+
+
 // Constructeur de couleur
 SimpleColor::SimpleColor() = default;
 

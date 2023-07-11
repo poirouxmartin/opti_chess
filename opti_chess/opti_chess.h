@@ -53,6 +53,7 @@ constexpr int max_moves = 100; // ça n'arrivera quasi jamais que ça dépasse c
 // Utilise 2 bytes (16 bits)
 // On peut utiliser 2 bits en plus, car on en utilise seulement 14 là (promotion flag -> sur 4 bits, et on retire capture flag?) (castling flag * 2? en passant?)
 // check flag?
+// TODO : Faut-il mettre la pièce concérnée? ça éviterait de devoir la rechercher dans le plateau (coûteux)
 typedef struct Move {
 	uint_fast8_t i1 : 3;
 	uint_fast8_t j1 : 3;
@@ -294,7 +295,7 @@ public:
 
 	// On stocke les positions des rois
 	Pos _white_king_pos = { 0, 4 };
-	Pos _black_king_pos = { 6, 4 };
+	Pos _black_king_pos = { 7, 4 };
 
 	// Est-ce qu'on a affiché les composantes du plateau?
 	bool _displayed_components = false;
@@ -339,7 +340,7 @@ public:
 	void display_moves(bool pseudo = false);
 
 	// Fonction qui joue un coup
-	void make_move(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, bool pgn = false, bool new_board = false, bool add_to_list = false);
+	void make_move(Move, bool pgn = false, bool new_board = false, bool add_to_list = false);
 
 	// Fonction qui joue le coup i de la liste des coups possibles
 	void make_index_move(int, bool pgn = false, bool add_to_list = false);
@@ -384,7 +385,7 @@ public:
 	int game_over();
 
 	// Fonction qui renvoie le label d'un coup
-	string move_label(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t);
+	string move_label(Move move);
 
 	// Fonction qui renvoie le label d'un coup en fonction de son index
 	string move_label_from_index(int);
@@ -396,7 +397,7 @@ public:
 	bool draw();
 
 	// Fonction qui joue le son d'un coup
-	void play_move_sound(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t) const;
+	void play_move_sound(Move) const;
 
 	// Fonction qui joue le son d'un coup à partir de son index
 	void play_index_move_sound(int) const;
@@ -550,6 +551,9 @@ public:
 
 	// Fonction qui renvoie le nombre d'échecs 'safe' dans la position pour les deux joueurs
 	[[nodiscard]] pair<uint_fast8_t, uint_fast8_t> get_safe_checks(Map white_controls, Map black_controls) const;
+
+	// Fonction qui renvoie la vitesse de génération des coups
+	[[nodiscard]] int moves_generation_benchmark(uint_fast8_t depth, bool main_call = true);
 };
 
 // Fonction qui obtient la case correspondante à la position sur la GUI

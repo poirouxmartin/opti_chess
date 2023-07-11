@@ -69,7 +69,7 @@ int main() {
 
 	// Valeurs à 0 pour augmenter la vitesse de calcul. A tester vs grogrosfish avec tout d'activé
 	eval_white._piece_mobility = 0.0f;
-	eval_white._piece_positioning = 0.0f;
+	//eval_white._piece_positioning = 0.0f;
 	eval_white._attacks = 0.0f;
 	eval_white._defenses = 0.0f;
 	eval_white._king_safety = 0.0f;
@@ -159,7 +159,19 @@ int main() {
 			//main_GUI.thread_grogros_zero(&monte_evaluator, 5000);
 
 			//main_GUI.grogros_zero_threaded(&monte_evaluator, 5000);
-			cout << monte_buffer.get_first_free_index() << endl;
+
+			main_GUI._board.moves_generation_benchmark(6);
+
+			//	1 move : 20 possible positions.
+			//	2 moves : 400 possible positions.
+			//	3 moves : 8 902 possible positions.
+			//	4 moves : 197 281 possible positions.
+			//	5 moves : 4 865 609 possible positions.
+			//	6 moves : 119 060 324 possible positions.
+			//	7 moves : 3 195 901 860 possible positions.
+			//	8 moves : 84 998 978 956 possible positions.
+			//	9 moves : 2 439 530 234 167 possible positions.
+			//	10 moves : 69 352 859 712 417 possible positions.
 
 		}
 
@@ -607,7 +619,7 @@ int main() {
 				// Vérifie que le coup est légal avant de le jouer
 				for (int i = 0; i < main_GUI._board._got_moves; i++) {
 					if (main_GUI._board._moves[i].i1 == main_GUI._binding_move[0] && main_GUI._board._moves[i].j1 == main_GUI._binding_move[1] && main_GUI._board._moves[i].i2 == main_GUI._binding_move[2] && main_GUI._board._moves[i].j2 == main_GUI._binding_move[3]) {
-						main_GUI._board.play_move_sound(main_GUI._binding_move[0], main_GUI._binding_move[1], main_GUI._binding_move[2], main_GUI._binding_move[3]);
+						main_GUI._board.play_move_sound(Move(main_GUI._binding_move[0], main_GUI._binding_move[1], main_GUI._binding_move[2], main_GUI._binding_move[3]));
 						main_GUI._board.play_monte_carlo_move_keep(i, true, true, true, true);
 						break;
 					}

@@ -12,7 +12,7 @@ public:
 	float _bishop_pair = 0.25f;
 	float _castling_rights = 0.0f;
 	float _player_trait = 0.20f;
-	float _king_safety = 0.0005f;
+	float _king_safety = 0.00035f;
 	float _pawn_structure = 0.004f;
 	float _attacks = 0.01f;
 	float _defenses = 0.0015f;
