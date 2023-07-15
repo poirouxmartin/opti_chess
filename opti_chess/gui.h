@@ -85,7 +85,7 @@ static float grogros_size;
 // Curseur
 static Image cursor_image;
 static Texture2D cursor_texture;
-static float cursor_size = 32.0f;
+static float cursor_size = 64.0f;
 
 // Mini-pièces
 static Image mini_piece_images[12];

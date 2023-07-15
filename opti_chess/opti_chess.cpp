@@ -1748,7 +1748,7 @@ void load_resources() {
 	grogros_image = LoadImage("resources/images/grogros_zero.png");
 
 	// Curseur
-	cursor_image = LoadImage("resources/images/cursor.png");
+	cursor_image = LoadImage("resources/images/cursor_new.png");
 
 	loaded_resources = true;
 }
@@ -2198,11 +2198,10 @@ bool Board::draw() {
 			eval = to_string(best_eval);
 
 		global_eval = best_eval;
-		//global_eval_text = mate ? eval : to_string(best_eval / 100.0f);
 
 		stringstream stream;
 		stream << fixed << setprecision(2) << best_eval / 100.0f;
-		global_eval_text = mate ? eval : (best_eval > 0) ? "+" + stream.str() : stream.str();
+		global_eval_text = mate ? (best_eval > 0 ? "+" + eval : "-" + eval) : (best_eval > 0) ? "+" + stream.str() : stream.str();
 
 		float win_chance = get_winning_chances_from_eval(best_eval, mate != 0, _player);
 		if (!_player)
@@ -3075,12 +3074,9 @@ int Board::get_king_safety() {
 
 
 	if (display) {
-		cout << "base_w_attacking_power = " << w_attacking_power << endl;
-		cout << "base_b_attacking_power = " << b_attacking_power << endl;
-		cout << "base_w_defending_power = " << w_defending_power << endl;
-		cout << "base_b_defending_power = " << b_defending_power << endl;
-		cout << "base_w_king_protection = " << w_king_protection << endl;
-		cout << "base_b_king_protection = " << b_king_protection << endl;
+		cout << "base_w_attacking_power = " << w_attacking_power << "		-	base_b_attacking_power = " << b_attacking_power << endl;
+		cout << "base_w_defending_power = " << w_defending_power << "		-	 base_b_defending_power = " << b_defending_power << endl;
+		cout << "base_w_king_protection = " << w_king_protection << "		-	 base_b_king_protection = " << b_king_protection << endl;
 	}
 
 
@@ -3093,8 +3089,8 @@ int Board::get_king_safety() {
 	Map black_controls_map = get_black_controls_map();
 
 	if (display) {
-		white_controls_map.print();
-		black_controls_map.print();
+		//white_controls_map.print();
+		//black_controls_map.print();
 	}
 
 	// Danger par cases controllées ou occupée en fonction de la distance (sera rajouté à la puissance d'attaque)
@@ -3129,10 +3125,8 @@ int Board::get_king_safety() {
 			black_king_mating_net += (white_controls_map._array[i][j] > 0 || is_in(_array[i][j], 7, 12)) * controls_distance_dangers[max(abs(i - _black_king_pos.i), abs(j - _black_king_pos.j))];
 
 
-	if (display) {
-		cout << "white_king_mating_net = " << white_king_mating_net << endl;
-		cout << "black_king_mating_net = " << black_king_mating_net << endl;
-	}
+	if (display)
+		cout << "white_king_mating_net = " << white_king_mating_net << "		-	 black_king_mating_net = " << black_king_mating_net << endl;
 
 	// Ajout des mating nets aux puissances d'attaque
 	//w_attacking_power += black_king_mating_net;
@@ -3178,10 +3172,8 @@ int Board::get_king_safety() {
 			}
 
 
-	if (display) {
-		cout << "white_king_overloaded = " << white_king_overloaded << endl;
-		cout << "black_king_overloaded = " << black_king_overloaded << endl;
-	}
+	if (display)
+		cout << "white_king_overloaded = " << white_king_overloaded << "		-	 black_king_overloaded = " << black_king_overloaded << endl;
 
 	// Les surcharges peuvent provoquer des faiblesses sur le roi adverse
 	w_king_weakness += white_king_overloaded;
@@ -3225,8 +3217,8 @@ int Board::get_king_safety() {
 	b_king_weakness += max_int(edge_defense, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? (min(_black_king_pos.i, 7 - _black_king_pos.i) + min(_black_king_pos.j, 7 - _black_king_pos.j)) : (endgame_safe_zone - ((min(_black_king_pos.i, 7 - _black_king_pos.i) + 1) * (min(_black_king_pos.j, 7 - _black_king_pos.j) + 1))) * mult_endgame / (edge_adv - 1))) - edge_defense;
 	
 	if (display) {
-		cout << "White king placement weakness : " << max_int(edge_defense, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? (min(_white_king_pos.i, 7 - _white_king_pos.i) + min(_white_king_pos.j, 7 - _white_king_pos.j)) : (endgame_safe_zone - ((min(_white_king_pos.i, 7 - _white_king_pos.i) + 1) * (min(_white_king_pos.j, 7 - _white_king_pos.j) + 1))) * mult_endgame / (edge_adv - 1))) - edge_defense << endl;
-		cout << "Black king placement weakness : " << max_int(edge_defense, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? (min(_black_king_pos.i, 7 - _black_king_pos.i) + min(_black_king_pos.j, 7 - _black_king_pos.j)) : (endgame_safe_zone - ((min(_black_king_pos.i, 7 - _black_king_pos.i) + 1) * (min(_black_king_pos.j, 7 - _black_king_pos.j) + 1))) * mult_endgame / (edge_adv - 1))) - edge_defense << endl;
+		cout << "White king placement weakness : " << max_int(edge_defense, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? (min(_white_king_pos.i, 7 - _white_king_pos.i) + min(_white_king_pos.j, 7 - _white_king_pos.j)) : (endgame_safe_zone - ((min(_white_king_pos.i, 7 - _white_king_pos.i) + 1) * (min(_white_king_pos.j, 7 - _white_king_pos.j) + 1))) * mult_endgame / (edge_adv - 1))) - edge_defense;
+		cout << "	-	 Black king placement weakness : " << max_int(edge_defense, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? (min(_black_king_pos.i, 7 - _black_king_pos.i) + min(_black_king_pos.j, 7 - _black_king_pos.j)) : (endgame_safe_zone - ((min(_black_king_pos.i, 7 - _black_king_pos.i) + 1) * (min(_black_king_pos.j, 7 - _black_king_pos.j) + 1))) * mult_endgame / (edge_adv - 1))) - edge_defense << endl;
 	}
 
 
@@ -3239,14 +3231,10 @@ int Board::get_king_safety() {
 	// Affiche faiblesse, protection, attaque et defense des deux côtés
 	if (display)
 	{
-		cout << "White king weakness : " << w_king_weakness << endl;
-		cout << "White king protection : " << w_king_protection << endl;
-		cout << "White attacking power : " << w_attacking_power << endl;
-		cout << "White defending power : " << w_defending_power << endl;
-		cout << "Black king weakness : " << b_king_weakness << endl;
-		cout << "Black king protection : " << b_king_protection << endl;
-		cout << "Black attacking power : " << b_attacking_power << endl;
-		cout << "Black defending power : " << b_defending_power << endl;
+		cout << "White king weakness : " << w_king_weakness << "		-	 Black king weakness : " << b_king_weakness << endl;
+		cout << "White king protection : " << w_king_protection << "		-	 Black king protection : " << b_king_protection << endl;
+		cout << "White attacking power : " << w_attacking_power << "		-	 Black attacking power : " << b_attacking_power << endl;
+		cout << "White defending power : " << w_defending_power << "		-	 Black defending power : " << b_defending_power << endl;
 	}
 
 	// Ajout de la protection du roi... la faiblesse du roi ne peut pas être négative (potentiellement à revoir, mais parfois la surprotection donne des valeurs délirantes)
@@ -3269,10 +3257,8 @@ int Board::get_king_safety() {
 
 	pair<uint_fast8_t, uint_fast8_t> safe_checks = get_safe_checks(white_controls_map, black_controls_map);
 
-	if (display) {
-		cout << "White safe checks : " << static_cast<int>(safe_checks.first) << endl;
-		cout << "Black safe checks : " << static_cast<int>(safe_checks.second) << endl;
-	}
+	if (display)
+		cout << "White safe checks : " << static_cast<int>(safe_checks.first) << "			-	 Black safe checks : " << static_cast<int>(safe_checks.second) << endl;
 
 	w_king_weakness += safe_checks.second * safe_check_weakness;
 	b_king_weakness += safe_checks.first * safe_check_weakness;
@@ -3314,15 +3300,14 @@ int Board::get_king_safety() {
 	if (display)
 	{
 		cout << "______________________________" << endl;
-		cout << "White king new weakness : " << w_king_weakness << endl;
-		cout << "Black king new weakness : " << b_king_weakness << endl;
+		cout << "White king new weakness : " << w_king_weakness << "		-	 Black king new weakness : " << b_king_weakness << endl;
 	}
 
 	// Affiche les puissances d'attaque
 	if (display)
 	{
-		cout << "White attacking power : " << static_cast<float>(w_attacking_power) / reference_attacking_power + static_cast<float>(w_total_potential) / reference_potential << endl;
-		cout << "Black attacking power : " << static_cast<float>(b_attacking_power) / reference_attacking_power + static_cast<float>(b_total_potential) / reference_potential << endl;
+		cout << "White attacking power : " << static_cast<float>(w_attacking_power) / reference_attacking_power + static_cast<float>(w_total_potential) / reference_potential;
+		cout << "		-	 Black attacking power : " << static_cast<float>(b_attacking_power) / reference_attacking_power + static_cast<float>(b_total_potential) / reference_potential << endl;
 	}
 
 	// Calcul de la resultante finale
@@ -3337,14 +3322,12 @@ int Board::get_king_safety() {
 	if (display)
 	{
 		cout << "______________________________" << endl;
-		cout << "White king weakness : " << w_king_weakness << endl;
-		cout << "Black king weakness : " << b_king_weakness << endl;
+		cout << "White king weakness : " << w_king_weakness << "			-	 Black king weakness : " << b_king_weakness << endl;
 	}
 
 
 	if (display) {
-		cout << "White safe checks : " << static_cast<int>(safe_checks.first) << endl;
-		cout << "Black safe checks : " << static_cast<int>(safe_checks.second) << endl;
+		cout << "White safe checks : " << static_cast<int>(safe_checks.first) << "			-	 Black safe checks : " << static_cast<int>(safe_checks.second) << endl;
 	}
 
 	// En fonction de l'avancement
@@ -3355,8 +3338,8 @@ int Board::get_king_safety() {
 	const int king_safety = b_king_weakness - w_king_weakness;
 
 	if (display) {
-		cout << "Final white king weakness : " << w_king_weakness << endl;
-		cout << "Final black king weakness : " << b_king_weakness << endl;
+		cout << "Final white king weakness : " << w_king_weakness << "		-	 Final black king weakness : " << b_king_weakness << endl;
+		cout << "Eval white king weakness : -" << w_king_weakness * 0.00035f << "		-	 Eval black king weakness : +" << b_king_weakness * 0.00035f << endl;
 	}
 
 	return king_safety;
