@@ -544,6 +544,8 @@ void Board::display_moves(const bool pseudo) {
 // Fonction qui joue un coup
 void Board::make_move(Move move, const bool pgn, const bool new_board, const bool add_to_list)
 {
+
+	// TODO : à voir si ça rend plus rapide ou non
 	const uint_fast8_t i = move.i1;
 	const uint_fast8_t j = move.j1;
 	const uint_fast8_t k = move.i2;
@@ -2473,12 +2475,16 @@ void Board::draw_monte_carlo_arrows() const
 // Fonction qui calcule et renvoie la mobilité des pièces
 int Board::get_piece_mobility(const bool legal) const
 {
+
+	// TODO : fonction LARGEMENT optimisable
+
 	Board b;
 	b.copy_data(*this);
 	int piece_mobility = 0;
 
 	// Pour chaque pièce (sauf le roi)
-	static constexpr int mobility_values_pawn[3] = { -200, 0, 100 };
+	//static constexpr int mobility_values_pawn[3] = { -200, 0, 100 };
+	static constexpr int mobility_values_pawn[3] = { 0, 0, 0 };
 	static constexpr int mobility_values_knight[9] = { -500, -200, 0, 100, 200, 300, 400, 450, 500 };
 	static constexpr int mobility_values_bishop[15] = { -350, -200, -100, 0, 100, 150, 200, 325, 450, 550, 610, 660, 700, 725, 750 };
 	static constexpr int mobility_values_rook[15] = { -750, -100, 100, 150, 190, 235, 275, 300, 325, 345, 365, 385, 390, 400, 405 };
@@ -2486,8 +2492,58 @@ int Board::get_piece_mobility(const bool legal) const
 
 	// TODO : rajouter le roi, pour l'endgame? faire des valeurs différentes selon le moment de la partie?
 
+	
+
+
 	// Fait un tableau de toutes les pièces : position, valeur
 	int piece_move_count[64] = { 0 };
+
+
+	// On ne compte pas les cases controllées par les pions adverses
+	// TODO : c'est dégueu
+
+	// Mobility area pour les blancs
+	bool mobility_area_white[8][8] = {
+		{ true, true, true, true, true, true, true, true },
+		{ true, true, true, true, true, true, true, true },
+		{ true, true, true, true, true, true, true, true },
+		{ true, true, true, true, true, true, true, true },
+		{ true, true, true, true, true, true, true, true },
+		{ true, true, true, true, true, true, true, true },
+		{ true, true, true, true, true, true, true, true },
+		{ true, true, true, true, true, true, true, true } };
+
+
+	for (uint_fast8_t i = 1; i < 7; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			if (_array[i][j] == 7) {
+				(j > 0) && (mobility_area_white[i - 1][j - 1] = false);
+				(j < 7) && (mobility_area_white[i - 1][j + 1] = false);
+			}
+		}
+	}
+
+	// Mobility area pour les noirs
+	bool mobility_area_black[8][8] = {
+		{ true, true, true, true, true, true, true, true },
+		{ true, true, true, true, true, true, true, true },
+		{ true, true, true, true, true, true, true, true },
+		{ true, true, true, true, true, true, true, true },
+		{ true, true, true, true, true, true, true, true },
+		{ true, true, true, true, true, true, true, true },
+		{ true, true, true, true, true, true, true, true },
+		{ true, true, true, true, true, true, true, true } };
+
+
+	for (uint_fast8_t i = 1; i < 7; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			if (_array[i][j] == 1) {
+				(j > 0) && (mobility_area_black[i + 1][j - 1] = false);
+				(j < 7) && (mobility_area_black[i + 1][j + 1] = false);
+			}
+		}
+	}
+
 
 	// Activité des pièces du joueur
 	// TODO : ça doit être très lent : on re-calcule tous les coups à chaque fois... (et on les garde même pas en mémoire pour après, car c'est sur un plateau virtuel)
@@ -2495,15 +2551,30 @@ int Board::get_piece_mobility(const bool legal) const
 	b.get_moves(false, legal);
 
 	// Pour chaque coup, incrémente dans le tableau le nombre de coup à la position correspondante
-	for (int i = 0; i < b._got_moves; i++)
-		piece_move_count[b._moves[i].i1 * 8 + b._moves[i].j1]++;
+	if (_player) {
+		for (int i = 0; i < b._got_moves; i++)
+			mobility_area_white[b._moves[i].i2][b._moves[i].j2] && piece_move_count[b._moves[i].i1 * 8 + b._moves[i].i2]++;
+	}
+	else {
+		for (int i = 0; i < b._got_moves; i++)
+			mobility_area_black[b._moves[i].i2][b._moves[i].j2] && piece_move_count[b._moves[i].i1 * 8 + b._moves[i].i2]++;
+	}
+	
+
 
 	// Activité des pièces de l'autre joueur
 	b._player = !b._player; b._got_moves = -1;
 	b.get_moves(false, legal);
 
-	for (int i = 0; i < b._got_moves; i++)
-		piece_move_count[b._moves[i].i1 * 8 + b._moves[i].j1]++;
+	if (_player) {
+		for (int i = 0; i < b._got_moves; i++)
+			mobility_area_black[b._moves[i].i2][b._moves[i].j2] && piece_move_count[b._moves[i].i1 * 8 + b._moves[i].i2]++;
+	}
+	else {
+		for (int i = 0; i < b._got_moves; i++)
+			mobility_area_white[b._moves[i].i2][b._moves[i].j2] && piece_move_count[b._moves[i].i1 * 8 + b._moves[i].i2]++;
+	}
+		
 
 	// Pour chaque pièce : ajoute la valeur correspondante à l'activité
 	int index = 0;
@@ -2951,6 +3022,7 @@ int Board::get_king_safety() {
 	// 3rk2r/ppp2ppq/2p1b3/2P5/4P1P1/2P3P1/PPQ1B3/RNB2RK1 w k - 1 7 : quasi égal
 	// 2k2r2/ppp3pp/1bp1b3/8/4Pp1q/1N1B1Pn1/PP3RPP/R2QB1K1 w - - 8 6 : roi blanc pas très safe
 	// 8/p7/r3pk2/8/1P2Kp2/P1R2P2/5P2/8 b - - 3 39 : roi blanc pas en danger
+	// 2rk3q/1pp5/p4n2/1P1p1bp1/2PQ1b2/N2p4/P2P2PP/R1B1R2K w - - 0 23 : roi blanc foutu
 
 	// 8/6PK/5k2/8/8/8/8/8 b - - 0 8
 
@@ -3200,8 +3272,8 @@ int Board::get_king_safety() {
 
 	// TODO : à fix + ajouter en fonction du nombre d'escape squares du roi adverse
 	constexpr int safe_check_weakness = 350;
-	constexpr float safe_check_attack = 1.0f;
-	constexpr int safe_check_add = 1500;
+	constexpr float safe_check_attack = 2.0f;
+	constexpr int safe_check_add = 1000;
 
 	pair<uint_fast8_t, uint_fast8_t> safe_checks = get_safe_checks(white_controls_map, black_controls_map);
 
@@ -3283,11 +3355,17 @@ int Board::get_king_safety() {
 		cout << "Black safe checks : " << static_cast<int>(safe_checks.second) << endl;
 	}
 
-	w_king_weakness += safe_checks.second * safe_check_add;
-	b_king_weakness += safe_checks.first * safe_check_add;
+	// En fonction de l'avancement
+	w_king_weakness += safe_checks.second * safe_check_add * max(0.0f, (1 - _adv * 1.25f));
+	b_king_weakness += safe_checks.first * safe_check_add * max(0.0f, (1 - _adv * 1.25f));
 
 
 	const int king_safety = b_king_weakness - w_king_weakness;
+
+	if (display) {
+		cout << "Final white king weakness : " << w_king_weakness << endl;
+		cout << "Final black king weakness : " << b_king_weakness << endl;
+	}
 
 	return king_safety;
 }
@@ -3850,7 +3928,7 @@ int Board::get_pawn_structure(float display_factor) const
 
 	// Pions connectés
 	// Un pion est dit connecté, s'il y a un pion de la même couleur sur une colonne adjacente sur la même rangée ou la rangée inférieure
-	constexpr int connected_pawns[8] = { 0, 25, 40, 65, 100, 140, 200, 0 };
+	constexpr int connected_pawns[8] = { 0, 25, 35, 50, 75, 100, 150, 0 };
 	constexpr float connected_pawns_factor = 1.0f; // En fonction de l'advancement de la partie
 	const float connected_pawns_adv = 1 * (1 + (connected_pawns_factor - 1) * _adv);
 
