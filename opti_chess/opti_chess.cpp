@@ -6077,7 +6077,7 @@ int Board::get_fianchetto_value() const
 
 			for (uint_fast8_t k = min(i1, 7 - i1); k < 4; k++) {
 				if (_array[i1][j1] % 6 == 1)
-					continue;
+					break;
 				if (k == 3) {
 					piece < 7 ? fianchetti++ : fianchetti--;
 					break;
@@ -6088,5 +6088,5 @@ int Board::get_fianchetto_value() const
 		}
 	}
 
-	return fianchetti;
+	return fianchetti * 100.0f * (1.0f - _adv);
 }
