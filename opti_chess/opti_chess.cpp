@@ -214,7 +214,7 @@ bool Board::get_moves(const bool pseudo, const bool forbide_check) {
 	// Si la partie est finie
 
 	// Règle des 50 coups
-	if (_half_moves_count >= 100) {
+	if (_half_moves_count >= max_half_moves) {
 		_got_moves = 0;
 		return false;
 	}
@@ -799,7 +799,7 @@ bool Board::evaluate(Evaluator* eval, const bool checkmates, const bool display,
 	// Répétitions
 
 	// Règle des 50 coups
-	if (_half_moves_count >= 100) {
+	if (_half_moves_count >= max_half_moves) {
 		_evaluation = 0;
 		_is_game_over = true;
 		if (display)
@@ -1016,6 +1016,14 @@ bool Board::evaluate(Evaluator* eval, const bool checkmates, const bool display,
 		_evaluation += pieces_alignment;
 	}
 
+	// Fous en fianchetto
+	if (eval->_fianchetto != 0.0f) {
+		const float fianchetto = static_cast<float>(get_fianchetto_value()) * eval->_fianchetto;
+		if (display)
+			eval_components += "fianchetto bishops: " + (fianchetto >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * fianchetto))) + "\n";
+		_evaluation += fianchetto;
+	}
+
 	// Trait du joueur
 	if (eval->_player_trait != 0.0f) {
 		const float player_trait = eval->_player_trait * static_cast<float>(get_color());
@@ -1031,7 +1039,7 @@ bool Board::evaluate(Evaluator* eval, const bool checkmates, const bool display,
 
 	// Forteresse
 	if (eval->_push != 0.0f) {
-		const float push = 1 - static_cast<float>(_half_moves_count) * eval->_push / 100;
+		const float push = 1 - static_cast<float>(_half_moves_count) * eval->_push / max_half_moves;
 		if (display)
 			eval_components += "fortress: " + to_string(static_cast<int>(100 - push * 100)) + "%\n";
 		_evaluation *= push;
@@ -1511,7 +1519,7 @@ int Board::game_over() {
 	_game_over_checked = true;
 
 	// Règle des 50 coups
-	if (_half_moves_count >= 100) {
+	if (_half_moves_count >= max_half_moves) {
 		_game_over_value = 2;
 		return 2;
 	}
@@ -3006,6 +3014,7 @@ int Board::get_king_safety() {
 	// 2k2r2/ppp3pp/1bp1b3/8/4Pp1q/1N1B1Pn1/PP3RPP/R2QB1K1 w - - 8 6 : roi blanc pas très safe
 	// 8/p7/r3pk2/8/1P2Kp2/P1R2P2/5P2/8 b - - 3 39 : roi blanc pas en danger
 	// 2rk3q/1pp5/p4n2/1P1p1bp1/2PQ1b2/N2p4/P2P2PP/R1B1R2K w - - 0 23 : roi blanc foutu
+	// r1b1k2r/pppp2pp/2n5/4Pp2/8/BB3N2/P1PQ2PP/5K2 b kq - 0 15 : le roi est pas bien en fait
 
 	// 8/6PK/5k2/8/8/8/8/8 b - - 0 8
 
@@ -3797,7 +3806,7 @@ int Board::get_pawn_structure(float display_factor) const
 	}
 
 	// Pions isolés
-	constexpr int isolated_pawn = -100;
+	constexpr int isolated_pawn = -75;
 	constexpr float isolated_adv_factor = 0.3f; // En fonction de l'advancement de la partie
 	const float isolated_adv = 1 * (1 + (isolated_adv_factor - 1) * _adv);
 	int isolated_pawns = 0;
@@ -6040,4 +6049,44 @@ bool GUI::grogros_zero_threaded(Evaluator* eval, int nodes) {
 	}
 
 	return nodes;
+}
+
+// Fonction qui renvoie la valeur des fous en fianchetto (ou sur la grande diagonale, et à moins de 3 cases du bord)
+int Board::get_fianchetto_value() const
+{
+	int_fast8_t fianchetti = 0;
+
+	for (uint_fast8_t i = 0; i < 8; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+
+			// Pièce
+			const uint_fast8_t piece = _array[i][j];
+
+			// Si ça n'est pas un fou
+			if (piece % 6 != 3)
+				continue;
+
+			// Si le fou n'est pas sur la grande diagonale
+			if (i != j && i + j != 7)
+				continue;
+
+			int i1 = i, j1 = j;
+
+			if (min(i1, 7 - i1) > 2)
+				continue;
+
+			for (uint_fast8_t k = min(i1, 7 - i1); k < 4; k++) {
+				if (_array[i1][j1] % 6 == 1)
+					continue;
+				if (k == 3) {
+					piece < 7 ? fianchetti++ : fianchetti--;
+					break;
+				}
+				(i1 < 4) ? i1++ : i1--;
+				(j1 < 4) ? j1++ : j1--;
+			}
+		}
+	}
+
+	return fianchetti;
 }
