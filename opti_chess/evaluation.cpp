@@ -25,6 +25,7 @@ Evaluator::Evaluator(const Evaluator& other) {
 	_space_advantage = other._space_advantage;
 	_alignments = other._alignments;
 	_piece_activity = other._piece_activity;
+	_fianchetto = other._fianchetto;
 }
 
 // Opérateur de copie
@@ -48,5 +49,6 @@ Evaluator& Evaluator::operator=(const Evaluator& other) {
 	_space_advantage = other._space_advantage;
 	_alignments = other._alignments;
 	_piece_activity = other._piece_activity;
+	_fianchetto = other._fianchetto;
 	return *this;
 }
