@@ -43,6 +43,9 @@ Plateau :
 enum piece_type { P = 1, N = 2, B = 3, R = 4, Q = 5, K = 6, p = 7, n = 8, b = 9, r = 10, q = 11, k = 12 };
 
 
+// Nombre de demi-coups avant de déclarer la partie nulle
+constexpr int max_half_moves = 100;
+
 
 // Nombre maximum de coups légaux par position estimé
 // const int max_moves = 218;
@@ -554,6 +557,9 @@ public:
 
 	// Fonction qui renvoie la vitesse de génération des coups
 	[[nodiscard]] int moves_generation_benchmark(uint_fast8_t depth, bool main_call = true);
+
+	// Fonction qui renvoie la valeur des fous en fianchetto
+	[[nodiscard]] int get_fianchetto_value() const;
 };
 
 // Fonction qui obtient la case correspondante à la position sur la GUI
