@@ -42,8 +42,8 @@ int main() {
 	SetTargetFPS(fps);
 
 	// Curseur
-	//HideCursor();
-	SetMouseCursor(3);
+	HideCursor();
+	//SetMouseCursor(3);
 
 	// Variables
 	// Board t;
