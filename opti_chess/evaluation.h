@@ -24,7 +24,7 @@ public:
 	//float _alignments = 0.01f;
 	float _alignments = 0.00f;
 	float _piece_activity = 0.0005f;
-	float _fianchetto = 0.3f;
+	float _fianchetto = 0.003f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
 	int _pieces_value_begin[6] = { 72, 335, 340, 460, 980, 0 };

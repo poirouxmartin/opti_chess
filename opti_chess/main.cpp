@@ -161,7 +161,7 @@ int main() {
 
 			//main_GUI.grogros_zero_threaded(&monte_evaluator, 5000);
 
-			//main_GUI._board.moves_generation_benchmark(6);
+			main_GUI._board.moves_generation_benchmark(6);
 
 			//	1 move : 20 possible positions.
 			//	2 moves : 400 possible positions.
@@ -173,8 +173,6 @@ int main() {
 			//	8 moves : 84 998 978 956 possible positions.
 			//	9 moves : 2 439 530 234 167 possible positions.
 			//	10 moves : 69 352 859 712 417 possible positions.
-
-			cout << main_GUI._board.get_fianchetto_value() << endl;
 		}
 
 		// CTRL-T - Cherche le plateau de chess.com sur l'écran, et lance une partie
