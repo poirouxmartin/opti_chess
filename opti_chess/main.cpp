@@ -185,7 +185,7 @@ int main() {
 			main_GUI.new_bind_game();
 		}
 
-		// LCTRL-A - BInding full (binding chess.com)
+		// LCTRL-A - Binding full (binding chess.com)
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_Q)) {
 			main_GUI._binding_full = !main_GUI._binding_full;
 		}
