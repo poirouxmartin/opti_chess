@@ -2483,10 +2483,9 @@ int Board::get_piece_mobility(const bool legal) const
 	int piece_mobility = 0;
 
 	// Pour chaque pièce (sauf le roi)
-	//static constexpr int mobility_values_pawn[3] = { -200, 0, 100 };
-	static constexpr int mobility_values_pawn[3] = { 0, 0, 0 };
+	static constexpr int mobility_values_pawn[3] = { -200, 0, 100 };
 	static constexpr int mobility_values_knight[9] = { -500, -200, 0, 100, 200, 300, 400, 450, 500 };
-	static constexpr int mobility_values_bishop[15] = { -350, -200, -100, 0, 100, 150, 200, 325, 450, 550, 610, 660, 700, 725, 750 };
+	static constexpr int mobility_values_bishop[15] = { -400, -100, 150, 300, 410, 480, 530, 575, 615, 650, 680, 705, 725, 740, 750 };
 	static constexpr int mobility_values_rook[15] = { -750, -100, 100, 150, 190, 235, 275, 300, 325, 345, 365, 385, 390, 400, 405 };
 	static constexpr int mobility_values_queen[29] = { -400, -100, 100, 150, 190, 235, 275, 300, 325, 345, 365, 385, 390, 400, 410, 420, 430, 440, 450, 460, 470, 480, 490, 495, 500, 505, 510 };
 
@@ -2496,50 +2495,31 @@ int Board::get_piece_mobility(const bool legal) const
 
 
 	// Fait un tableau de toutes les pièces : position, valeur
-	int piece_move_count[64] = { 0 };
+	int piece_move_count[8][8] = {0};
 
 
 	// On ne compte pas les cases controllées par les pions adverses
-	// TODO : c'est dégueu
 
 	// Mobility area pour les blancs
-	bool mobility_area_white[8][8] = {
-		{ true, true, true, true, true, true, true, true },
-		{ true, true, true, true, true, true, true, true },
-		{ true, true, true, true, true, true, true, true },
-		{ true, true, true, true, true, true, true, true },
-		{ true, true, true, true, true, true, true, true },
-		{ true, true, true, true, true, true, true, true },
-		{ true, true, true, true, true, true, true, true },
-		{ true, true, true, true, true, true, true, true } };
-
+	bool mobility_area_white[8][8] = { false };
 
 	for (uint_fast8_t i = 1; i < 7; i++) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
 			if (_array[i][j] == 7) {
-				(j > 0) && (mobility_area_white[i - 1][j - 1] = false);
-				(j < 7) && (mobility_area_white[i - 1][j + 1] = false);
+				(j > 0) && (mobility_area_white[i - 1][j - 1] = true);
+				(j < 7) && (mobility_area_white[i - 1][j + 1] = true);
 			}
 		}
 	}
 
 	// Mobility area pour les noirs
-	bool mobility_area_black[8][8] = {
-		{ true, true, true, true, true, true, true, true },
-		{ true, true, true, true, true, true, true, true },
-		{ true, true, true, true, true, true, true, true },
-		{ true, true, true, true, true, true, true, true },
-		{ true, true, true, true, true, true, true, true },
-		{ true, true, true, true, true, true, true, true },
-		{ true, true, true, true, true, true, true, true },
-		{ true, true, true, true, true, true, true, true } };
-
+	bool mobility_area_black[8][8] = { false };
 
 	for (uint_fast8_t i = 1; i < 7; i++) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
 			if (_array[i][j] == 1) {
-				(j > 0) && (mobility_area_black[i + 1][j - 1] = false);
-				(j < 7) && (mobility_area_black[i + 1][j + 1] = false);
+				(j > 0) && (mobility_area_black[i + 1][j - 1] = true);
+				(j < 7) && (mobility_area_black[i + 1][j + 1] = true);
 			}
 		}
 	}
@@ -2553,11 +2533,11 @@ int Board::get_piece_mobility(const bool legal) const
 	// Pour chaque coup, incrémente dans le tableau le nombre de coup à la position correspondante
 	if (_player) {
 		for (int i = 0; i < b._got_moves; i++)
-			mobility_area_white[b._moves[i].i2][b._moves[i].j2] && piece_move_count[b._moves[i].i1 * 8 + b._moves[i].i2]++;
+			!mobility_area_white[b._moves[i].i2][b._moves[i].j2] && piece_move_count[b._moves[i].i1][b._moves[i].j1]++;
 	}
 	else {
 		for (int i = 0; i < b._got_moves; i++)
-			mobility_area_black[b._moves[i].i2][b._moves[i].j2] && piece_move_count[b._moves[i].i1 * 8 + b._moves[i].i2]++;
+			!mobility_area_black[b._moves[i].i2][b._moves[i].j2] && piece_move_count[b._moves[i].i1][b._moves[i].j1]++;
 	}
 	
 
@@ -2568,11 +2548,11 @@ int Board::get_piece_mobility(const bool legal) const
 
 	if (_player) {
 		for (int i = 0; i < b._got_moves; i++)
-			mobility_area_black[b._moves[i].i2][b._moves[i].j2] && piece_move_count[b._moves[i].i1 * 8 + b._moves[i].i2]++;
+			!mobility_area_black[b._moves[i].i2][b._moves[i].j2] && piece_move_count[b._moves[i].i1][b._moves[i].j1]++;
 	}
 	else {
 		for (int i = 0; i < b._got_moves; i++)
-			mobility_area_white[b._moves[i].i2][b._moves[i].j2] && piece_move_count[b._moves[i].i1 * 8 + b._moves[i].i2]++;
+			!mobility_area_white[b._moves[i].i2][b._moves[i].j2] && piece_move_count[b._moves[i].i1][b._moves[i].j1]++;
 	}
 		
 
@@ -2580,27 +2560,30 @@ int Board::get_piece_mobility(const bool legal) const
 	int index = 0;
 	for (uint_fast8_t i = 0; i < 8; i++) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
-			if (const uint_fast8_t piece = _array[i][j]; p > 0) {
+			if (const uint_fast8_t piece = _array[i][j]; piece > 0) {
 				if (piece == 1)
-					piece_mobility += mobility_values_pawn[min(2, piece_move_count[i * 8 + j])];
+					piece_mobility += mobility_values_pawn[min(2, piece_move_count[i][j])];
 				else if (piece == 2)
-					piece_mobility += mobility_values_knight[min(8, piece_move_count[i * 8 + j])];
+					piece_mobility += mobility_values_knight[min(8, piece_move_count[i][j])];
 				else if (piece == 3)
-					piece_mobility += mobility_values_bishop[min(14, piece_move_count[i * 8 + j])];
+					piece_mobility += mobility_values_bishop[min(14, piece_move_count[i][j])];
 				else if (piece == 4)
-					piece_mobility += mobility_values_rook[min(14, piece_move_count[i * 8 + j])];
+					piece_mobility += mobility_values_rook[min(14, piece_move_count[i][j])];
 				else if (piece == 5)
-					piece_mobility += mobility_values_queen[min(28, piece_move_count[i * 8 + j])];
+					piece_mobility += mobility_values_queen[min(28, piece_move_count[i][j])];
 				else if (piece == 7)
-					piece_mobility -= mobility_values_pawn[min(2, piece_move_count[i * 8 + j])];
+					piece_mobility -= mobility_values_pawn[min(2, piece_move_count[i][j])];
 				else if (piece == 8)
-					piece_mobility -= mobility_values_knight[min(8, piece_move_count[i * 8 + j])];
+					piece_mobility -= mobility_values_knight[min(8, piece_move_count[i][j])];
 				else if (piece == 9)
-					piece_mobility -= mobility_values_bishop[min(14, piece_move_count[i * 8 + j])];
+					piece_mobility -= mobility_values_bishop[min(14, piece_move_count[i][j])];
 				else if (piece == 10)
-					piece_mobility -= mobility_values_rook[min(14, piece_move_count[i * 8 + j])];
+					piece_mobility -= mobility_values_rook[min(14, piece_move_count[i][j])];
 				else if (piece == 11)
-					piece_mobility -= mobility_values_queen[min(28, piece_move_count[i * 8 + j])];
+					piece_mobility -= mobility_values_queen[min(28, piece_move_count[i][j])];
+
+				//cout << "(" << (int)i << ", " << (int)j << ") p: " << (int)piece << " -> m: " << piece_move_count[i][j] << " (total: " << piece_mobility << ")" << endl;
+				//r2qkb1r/ppp1pppp/2n5/5b2/2PP4/5N2/PP2BPPP/R1BQ1RK1 w kq - 1 10
 
 				index++;
 			}

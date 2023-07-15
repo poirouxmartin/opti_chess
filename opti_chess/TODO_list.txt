@@ -90,7 +90,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> A ajouter :
 	- Sécurité du roi (TRES IMPORTANT !) --> A améliorer
 	- Structures de pions :
-		- Pions connectés
 		- Pions arriérés
 	- Nature de la position :
 		- Ouverte
@@ -130,6 +129,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Bishop pawns : nombre de pion de la même couleur que le fou -> pénalité plus le nombre est grand
 	- Candidats pions passés : r1bq2kr/ppp1bn1p/2n1p2P/3pP1PR/3P1p2/1NPB1N2/PPQ2P2/R3K3 b Q - 0 16 : ici y'aura potentiellement un pion passé colonne g ou h
 	- King proximity : proximité du roi avec les pions passés (pour les aider à avancer) (prendre en compte aussi le roi adverse)
+	- Pièces non protégées
 
 -> Faire une policy pour les coups
 -> Livres d'ouvertures, tables d'engame?
@@ -255,7 +255,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Revoir les undo, et les faire rapides pour les utiliser au lieu de copier les plateaux
 -> Faire des tests de vitesse pour l'évaluation
 -> Mobility : une pièce mineure ne "peut pas" aller sur une case attaquée par un ionp adverse
--> FIX psqt
+-> Vérifier mobility
 
 
 ----- Interface utilisateur -----
