@@ -69,7 +69,7 @@ int main() {
 
 	// Valeurs à 0 pour augmenter la vitesse de calcul. A tester vs grogrosfish avec tout d'activé
 	eval_white._piece_mobility = 0.0f;
-	//eval_white._piece_positioning = 0.0f;
+	eval_white._piece_positioning = 0.0f;
 	eval_white._attacks = 0.0f;
 	eval_white._defenses = 0.0f;
 	eval_white._king_safety = 0.0f;

@@ -130,6 +130,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Candidats pions passés : r1bq2kr/ppp1bn1p/2n1p2P/3pP1PR/3P1p2/1NPB1N2/PPQ2P2/R3K3 b Q - 0 16 : ici y'aura potentiellement un pion passé colonne g ou h
 	- King proximity : proximité du roi avec les pions passés (pour les aider à avancer) (prendre en compte aussi le roi adverse)
 	- Pièces non protégées
+	- Shelter strength : pions devant le roi (faiblesses long terme)
 
 -> Faire une policy pour les coups
 -> Livres d'ouvertures, tables d'engame?
@@ -176,7 +177,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Refaire toute l'architecture avec les get_moves(), pour que ça prenne tout en compte (sans le faire dans l'évaluation)
 -> Calculer l'avancement de la partie au fur et à mesure de la partie (au lieu de le faire à chaque fois)
 -> GrogrosZero ralentit beaucoup quand les variantes deviennent longues
--> rn1r3k/pp4p1/1b2B3/5Qp1/3P4/P4b2/1P3PPP/6K1 b - - 1 3 : ici après Rxd4, tous les calculs sont perturbés par le fou en l'air en f3... ce qui ralentit la recherche de mat
 -> ----> Faire une recherche spécialement de mat, où on prend plus en compte le matériel??
 -> Au fil de la réflexion, retirer les coups pourris?? pour augmenter la capacité de stockage...
 -> Mettre une variable globale pour la règle des 50 coups (pour la passer à moins, si besoin)
@@ -255,6 +255,14 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Revoir les undo, et les faire rapides pour les utiliser au lieu de copier les plateaux
 -> Faire des tests de vitesse pour l'évaluation
 -> Evaluation endgame très mauvaise
+-> Quand une position est surestimée, Grogros va jouer des coups pour retarder l'échéance, mais qui peuvent pourrir la position encore plus
+-> Quand une position est sous-estimée, Grogros va jouer un coup qui parait bien et réfléchir beaucoup dessus, même si d'autres variations peuvent être meilleures
+-> Revoir negamax
+-> Utiliser sort c++ pour trier les coups
+-> Rajouter les coups du quiescence dans monte-carlo, et inversement... -> mettre le quiescence dans MCTS?
+-> Remettre la dame dans la mobilité des pièces et l'activité? pour que ça développe la dame aussi? Sinon, ça évalue mal ces positions: r1b1kbnr/ppqp1ppp/2n1p3/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 1 6 
+-> r1bqkb1r/ppp2ppp/2n1p3/8/3PP3/2P5/P4PPP/R1BQKBNR w KQkq - 0 7 : piece_mobility seulement +0.18? c'est un bug?
+
 
 
 ----- Interface utilisateur -----
@@ -336,12 +344,17 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Affichage de la réflexion de Grogros sur le PGN : {N: 10.29% of 544}
 -> Revoir le compare moves (sinon ça affiche pas toujours le meilleur coup au dessus)
 -> Quand on arrive au mat dans le quiescence, l'affichage de l'éval bug (-99800000 au lieu de mat en 2)
--> Adapter nodes_per_frame en fonction du temps de réflexion de GrogrosZero (tant que la parallelisation n'est pas faite)
+-> Adapter nodes_per_frame en fonction du temps de réflexion de GrogrosZero (tant que la parallélisation n'est pas faite)
 -> Montrer l'incrément sur la GUI
 -> Afficher le titre et l'elo des joueurs sur la GUI
 -> Revoir le tri des coups pour les flèches de GrogrosZero, car parfois ça ne se trie pas bien
--> Parfois quiescence speed -> négatif...
--> Dans l'évaluation en fin de variante parfois y'a un "+-"
+-> Parfois quiescence speed -> négatif... (environ après 2.1M de noeuds...) -> calcul de la vitesse (sûrement à cause du * 1000)
+-> Afficher différement la pièce sélectionnée (et au dessus des autres pièces)
+-> Faire des animations de Grogros qui bouge les pièces
+-> Quand on joue un coup (en appuyant sur p ou autre), il faut désélectionner la pièce
+-> Refaire la réflexion de GrogrosZero: quand il y a beaucoup d'incertitude dans l'éval, regarder large. Sinon, regarder profond
+-> Mobilité verticale ~= activité pour les tours?
+
 
 
 ----- Réseaux de neurones -----
