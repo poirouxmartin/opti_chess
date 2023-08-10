@@ -90,8 +90,8 @@ uint_fast8_t* get_board_move(const int x1, const int y1, const int x2, const int
 	// Couleurs des coups joués
 	// blanches : 247, 247, 105
 	// noires : 187, 203, 43
-	const SimpleColor white_played(247, 247, 105);
-	const SimpleColor black_played(187, 203, 43);
+	static const SimpleColor white_played(244, 246, 127);
+	static const SimpleColor black_played(187, 204, 67);
 
 	// Couleurs des cases normales
 	// blanches : 238, 238, 210
@@ -258,8 +258,8 @@ int bind_board_orientation(const int x1, const int y1, const int x2, const int y
 
 // Fonction qui cherche la position du plateau de chess.com sur l'écran
 void locate_chessboard(int& top_left_x, int& top_left_y, int& bottom_right_x, int& bottom_right_y) {
-	const SimpleColor dark_square_color(118, 150, 86);
-	const SimpleColor light_square_color(238, 238, 210);
+	static const SimpleColor dark_square_color(119, 153, 84);
+	static const SimpleColor light_square_color(233, 237, 204);
 
 	const int screen_width = GetSystemMetrics(SM_CXSCREEN);
 	const int screen_height = GetSystemMetrics(SM_CYSCREEN);

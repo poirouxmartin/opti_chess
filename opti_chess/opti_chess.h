@@ -364,7 +364,7 @@ public:
 	bool evaluate_int(Evaluator* eval = nullptr, bool checkmates = false, bool display = false, Network* n = nullptr);
 
 	// Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-	float negamax(int, float, float, bool, Evaluator*, bool play = false, bool display = false, int quiescence_depth = 0);
+	float negamax(int, float, float, bool, Evaluator*, bool play = false, bool display = false, int quiescence_depth = 0, int null_depth = 2);
 
 	// Version un peu mieux optimisée de Grogrosfish
 	bool grogrosfish(int, Evaluator*, bool);
@@ -739,8 +739,10 @@ public:
 	TextBox _black_time_text_box;
 
 	// Paramètres pour la recherche de Monte-Carlo
-	float _beta = 0.03f;
-	float _k_add = 50.0f;
+	float _beta = 0.1f;
+	float _k_add = 25.0f;
+	//float _beta = 0.03f;
+	//float _k_add = 50.0f;
 	int _quiescence_depth = 4;
 	bool _deep_mates_search = true;
 	bool _explore_checks = true;
