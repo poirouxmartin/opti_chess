@@ -14,7 +14,6 @@ using namespace std;
 
 // Nombre de FPS
 static constexpr int fps = 144;
-static constexpr int max_drawing_fps = 144; // Nombre d'updates max par secondes pour ces fonctions
 static constexpr clock_t last_drawing_time = 0;
 
 // Couleur de fond
@@ -31,8 +30,8 @@ static constexpr Color text_color_blue = { 150, 150, 200, 255 };
 static constexpr Color text_color_info = { 140, 140, 140, 255 };
 
 // Couleurs du plateau
-static constexpr Color board_color_light = { 190, 162, 127, 255 };
-static constexpr Color board_color_dark = { 109, 78, 54, 255 };
+static constexpr Color board_color_light = { 180, 150, 115, 255 };
+static constexpr Color board_color_dark = { 109, 75, 54, 255 };
 
 // Couleur de surlignage de cases
 static constexpr Color highlight_color = { 255, 255, 100, 150 };
@@ -125,7 +124,7 @@ static float text_size;
 static Font text_font;
 
 // Espacement entre les caractères
-static float font_spacing = 0.1f;
+static float font_spacing = 0.05f;
 
 // Orientation du plateau
 static bool board_orientation = true;

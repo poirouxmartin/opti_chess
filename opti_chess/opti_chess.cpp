@@ -1066,7 +1066,7 @@ bool Board::evaluate_int(Evaluator* eval, const bool checkmates, const bool disp
 }
 
 // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-float Board::negamax(const int depth, float alpha, const float beta, const bool max_depth, Evaluator* eval, const bool play, const bool display, const int quiescence_depth) {
+float Board::negamax(const int depth, float alpha, const float beta, const bool max_depth, Evaluator* eval, const bool play, const bool display, const int quiescence_depth, const int null_depth) {
 	// Nombre de noeuds
 	if (max_depth) {
 		visited_nodes = 1;
@@ -1074,12 +1074,6 @@ float Board::negamax(const int depth, float alpha, const float beta, const bool 
 	}
 	else {
 		visited_nodes++;
-	}
-
-	if (depth == 0) {
-		//evaluate(eval);
-		return quiescence(eval, -10000000, 10000000, quiescence_depth, false);
-		//return get_color() * _evaluation;
 	}
 
 	// à mettre avant depth == 0?
@@ -1090,6 +1084,25 @@ float Board::negamax(const int depth, float alpha, const float beta, const bool 
 		return -1e7f * static_cast<float>(depth + 1);
 	if (g == -10 || g == 10)
 		return -1e8f * static_cast<float>(depth + 1);
+
+	if (depth <= 0) {
+		//evaluate(eval);
+		return quiescence(eval, -10000000, 10000000, quiescence_depth, false);
+		//return get_color() * _evaluation;
+	}
+
+
+	// Null move pruning
+	/*if (null_depth > 0 && depth > 1 && !in_check())
+	{
+		_player = !_player;
+		int null_move_value = -negamax(depth - 1 - null_depth, -beta, -beta + 1, false, eval, false, false, quiescence_depth, 0);
+		_player = !_player;
+
+		if (null_move_value >= beta)
+			return null_move_value;
+	}*/
+
 
 	float value = -1e9f;
 	Board b;
@@ -1736,7 +1749,7 @@ void load_resources() {
 	promotion_sound = LoadSound("resources/sounds/promotion.mp3");
 
 	// Police de l'écriture
-	text_font = LoadFontEx("resources/fonts/SF TransRobotics.ttf", 32, 0, 250);
+	text_font = LoadFontEx("resources/fonts/SF TransRobotics.ttf", 64, 0, 250);
 	// text_font = GetFontDefault();
 
 	// Icône
@@ -1829,7 +1842,7 @@ bool Board::draw() {
 			// S'il y'a les flèches de réflexion de GrogrosZero, et qu'aucune pièce n'est sélectionnée
 			if (drawing_arrows && !selected_piece()) {
 				// On regarde dans le sens inverse pour jouer la flèche la plus récente (donc celle visible en cas de superposition)
-				for (auto arrow : std::ranges::reverse_view(grogros_arrows))
+				for (auto arrow : ranges::reverse_view(grogros_arrows))
 				{
 					if (arrow[2] == clicked_pos.first && arrow[3] == clicked_pos.second) {
 						// Retrouve le coup correspondant
@@ -2246,7 +2259,7 @@ bool Board::draw() {
 
 				string variant_i = monte_buffer._heap_boards[_index_children[i]].get_monte_carlo_variant(true); // Peut être plus rapide
 				// Ici aussi y'a qq chose qui ralentit, mais quoi?...
-				monte_carlo_variants += "eval: " + eval + " | " + move_label_from_index(i) + variant_i + " | (" + int_to_round_string(_nodes_children[i]) + "N - " + to_string(100.0 * _nodes_children[i] / n_nodes).substr(0, 5) + "%)";
+				monte_carlo_variants += "eval: " + eval + " | " + to_string(_moves_count) + (_player ? ". " : "... ") + move_label_from_index(i) + variant_i + " | (" + int_to_round_string(_nodes_children[i]) + "N - " + to_string(100.0 * _nodes_children[i] / n_nodes).substr(0, 5) + "%)";
 			}
 			_monte_called = false;
 		}
@@ -2492,7 +2505,7 @@ int Board::get_piece_mobility(const bool legal) const
 	// Pour chaque pièce (sauf le roi)
 	static constexpr int mobility_values_pawn[3] = { -200, 0, 100 };
 	static constexpr int mobility_values_knight[9] = { -500, -200, 0, 100, 200, 300, 400, 450, 500 };
-	static constexpr int mobility_values_bishop[15] = { -400, -100, 150, 300, 410, 480, 530, 575, 615, 650, 680, 705, 725, 740, 750 };
+	static constexpr int mobility_values_bishop[15] = { -600, -300, -50, 100, 210, 280, 330, 475, 415, 450, 480, 505, 525, 540, 550 };
 	static constexpr int mobility_values_rook[15] = { -750, -100, 100, 150, 190, 235, 275, 300, 325, 345, 365, 385, 390, 400, 405 };
 	static constexpr int mobility_values_queen[29] = { -400, -100, 100, 150, 190, 235, 275, 300, 325, 345, 365, 385, 390, 400, 410, 420, 430, 440, 450, 460, 470, 480, 490, 495, 500, 505, 510 };
 
@@ -2856,7 +2869,7 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const bool checkmates, cons
 			monte_buffer._heap_boards[_index_children[_current_move]].make_index_move(_current_move);
 
 			// Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
-			monte_buffer._heap_boards[_index_children[_current_move]]._evaluation = monte_buffer._heap_boards[_index_children[_current_move]].quiescence(eval, -2147483647, 2147483647, quiescence_depth, checkmates, deep_mates_check, explore_checks) * -get_color();
+			monte_buffer._heap_boards[_index_children[_current_move]]._evaluation = monte_buffer._heap_boards[_index_children[_current_move]].quiescence(eval, -INT32_MAX, INT32_MAX, quiescence_depth, checkmates, deep_mates_check, explore_checks) * -get_color();
 			_quiescence_nodes += monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes;
 			monte_buffer._heap_boards[_index_children[_current_move]]._got_moves = -1; // BUG : euuuuh pourquoi ça bug sinon?
 
@@ -2872,6 +2885,7 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const bool checkmates, cons
 				if (_eval_children[_current_move] < _evaluation)
 					_evaluation = _eval_children[_current_move];
 			}
+			// TODO : à condenser
 
 			// Incrémentation des coups
 			_current_move++;
@@ -2995,7 +3009,6 @@ int Board::get_king_safety() {
 	// ----------------------
 
 	// 4rb1r/pp3kpp/2p1b3/3nB3/2BP4/P7/1PP2PPP/4RRK1 w - - 0 18
-	// 4rb1r/pp3kpp/2p1b3/3nB3/2BP1P2/P7/1PP3PP/4RRK1 b - - 0 18
 	// 4r3/p3bkp1/r7/1pPpBP1p/1P1P4/P2b2P1/5R1P/4R1K1 w - - 1 28 : le roi devrait être safe
 	// r1bq1b1r/ppp3pp/2n1k3/3np3/2B5/5Q2/PPPP1PPP/RNB1K2R w KQ - 2 8
 	// r1b2b1r/ppp3pp/8/3kp3/8/8/PPPP1PPP/R1B1K2R w KQ - 0 12
@@ -3014,6 +3027,7 @@ int Board::get_king_safety() {
 	// 8/p7/r3pk2/8/1P2Kp2/P1R2P2/5P2/8 b - - 3 39 : roi blanc pas en danger
 	// 2rk3q/1pp5/p4n2/1P1p1bp1/2PQ1b2/N2p4/P2P2PP/R1B1R2K w - - 0 23 : roi blanc foutu
 	// r1b1k2r/pppp2pp/2n5/4Pp2/8/BB3N2/P1PQ2PP/5K2 b kq - 0 15 : le roi est pas bien en fait
+	// r1bq1b1r/pp4pp/2p1k3/3np3/1nBP4/2N2Q2/PPP2PPP/R1B2RK1 b - - 0 10 : +2.5 / +5 pour king safety
 
 	// 8/6PK/5k2/8/8/8/8/8 b - - 0 8
 
@@ -3427,7 +3441,7 @@ string Board::get_monte_carlo_variant(const bool evaluate_final_pos)
 
 	if (_tested_moves > 0) {
 		const int move = best_monte_carlo_move();
-		string s = " " + move_label_from_index(move);
+		string s = " " + (_player ? to_string(_moves_count) + ". " : "") + move_label_from_index(move);
 
 		if (_tested_moves == _got_moves)
 			return s + monte_buffer._heap_boards[_index_children[move]].get_monte_carlo_variant(evaluate_final_pos);
@@ -3435,7 +3449,7 @@ string Board::get_monte_carlo_variant(const bool evaluate_final_pos)
 		if (evaluate_final_pos) {
 			int eval = monte_buffer._heap_boards[_index_children[move]]._evaluation;
 			const int mate = is_eval_mate(eval);
-			const string eval_text = mate != 0 ? ((mate > 0 ? "M" : "-M") + to_string(abs(mate))) : to_string(static_cast<int>(_evaluation));
+			const string eval_text = mate != 0 ? ((mate > 0 ? "M" : "-M") + to_string(abs(mate))) : to_string(static_cast<int>(eval));
 			return s + " (" + (eval > 0 ? static_cast<string>("+") : static_cast<string>("")) + eval_text + ")";
 
 		}
@@ -3789,7 +3803,7 @@ int Board::get_pawn_structure(float display_factor) const
 	}
 
 	// Pions isolés
-	constexpr int isolated_pawn = -75;
+	constexpr int isolated_pawn = -30;
 	constexpr float isolated_adv_factor = 0.3f; // En fonction de l'advancement de la partie
 	const float isolated_adv = 1 * (1 + (isolated_adv_factor - 1) * _adv);
 	int isolated_pawns = 0;
@@ -3903,7 +3917,7 @@ int Board::get_pawn_structure(float display_factor) const
 
 	// Pions connectés
 	// Un pion est dit connecté, s'il y a un pion de la même couleur sur une colonne adjacente sur la même rangée ou la rangée inférieure
-	constexpr int connected_pawns[8] = { 0, 25, 35, 50, 75, 100, 150, 0 };
+	constexpr int connected_pawns[8] = { 0, 35, 50, 70, 95, 115, 150, 0 };
 	constexpr float connected_pawns_factor = 1.0f; // En fonction de l'advancement de la partie
 	const float connected_pawns_adv = 1 * (1 + (connected_pawns_factor - 1) * _adv);
 
@@ -6013,10 +6027,10 @@ bool GUI::grogros_zero_threaded(Evaluator* eval, int nodes) {
 		for (uint_fast8_t i = 1; i <= depth; i++) {
 			clock_t start = clock();
 			cout << "Depth " << static_cast<int>(i) << ": ";
-			int nodes = moves_generation_benchmark(i, false);
+			int nodes_main = moves_generation_benchmark(i, false);
 			int time = clock() - start;
 			time = time == 0 ? 1 : time;
-			cout << nodes << " nodes in " << time << "ms (" << int_to_round_string(nodes / time * 1000) << "N/s)" << endl;
+			cout << nodes_main << " nodes in " << time << "ms (" << int_to_round_string(nodes_main / time * 1000) << "N/s)" << endl;
 		}
 
 		return 0;
