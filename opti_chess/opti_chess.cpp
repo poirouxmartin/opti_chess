@@ -276,10 +276,10 @@ bool Board::get_moves(const bool pseudo, const bool forbide_check) {
 			// Roques
 			// Grand
 			// TODO : optimisable
-			if (_castling_rights.q_w && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j - 1) && !attacked(i, j - 2))))
+			if (_castling_rights.q_w && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!is_controlled(i, j) && !is_controlled(i, j - 1) && !is_controlled(i, j - 2))))
 				add_move(i, j, i, j - 2, &iterator, 6);
 			// Petit
-			if (_castling_rights.k_w && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j + 1) && !attacked(i, j + 2))))
+			if (_castling_rights.k_w && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!is_controlled(i, j) && !is_controlled(i, j + 1) && !is_controlled(i, j + 2))))
 				add_move(i, j, i, j + 2, &iterator, 6);
 			break;
 
@@ -307,10 +307,10 @@ bool Board::get_moves(const bool pseudo, const bool forbide_check) {
 			add_king_moves(i, j, &iterator, 12);
 			// Roques
 			// Grand
-			if (_castling_rights.q_b && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j - 1) && !attacked(i, j - 2))))
+			if (_castling_rights.q_b && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!is_controlled(i, j) && !is_controlled(i, j - 1) && !is_controlled(i, j - 2))))
 				add_move(i, j, i, j - 2, &iterator, 12);
 			// Petit
-			if (_castling_rights.k_b && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!attacked(i, j) && !attacked(i, j + 1) && !attacked(i, j + 2))))
+			if (_castling_rights.k_b && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!is_controlled(i, j) && !is_controlled(i, j + 1) && !is_controlled(i, j + 2))))
 				add_move(i, j, i, j + 2, &iterator, 12);
 			break;
 		}
@@ -342,23 +342,6 @@ bool Board::get_moves(const bool pseudo, const bool forbide_check) {
 	}
 
 	return true;
-}
-
-// Fonction qui dit si une case est attaquée
-bool Board::attacked(const int i, const int j) const
-{
-	// Regarde tous les coups adverses dans cette position, puis renvoie si l'un d'entre eux a pour case finale, la case en argument
-	Board b;
-	b.copy_data(*this);
-	b._player = !b._player;
-	b._half_moves_count = 0;
-	b.get_moves(true);
-	for (int m = 0; m < b._got_moves; m++) {
-		if (i == b._moves[m].i2 && j == b._moves[m].j2)
-			return true;
-	}
-
-	return false;
 }
 
 // Fonction qui dit s'il y'a échec
@@ -4761,26 +4744,14 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, const int dept
 			b.make_index_move(i);
 			if (!main_player || b.in_check())
 			{
-				//if (deep_mates_check)
-				//{
-				//	const int mate = b.is_mate();
-				//	if (mate == 1)
-				//		return 100 * (1000000 - 1000 * b._moves_count);
-				//	if (mate == 0)
-				//		return 0;
-				//}
+				const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, explore_checks, !main_player);
+				_quiescence_nodes += b._quiescence_nodes;
 
-				if (explore_checks)
-				{
-					const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, explore_checks, !main_player);
-					_quiescence_nodes += b._quiescence_nodes;
+				if (score >= beta)
+					return beta;
 
-					if (score >= beta)
-						return beta;
-
-					if (score > alpha)
-						alpha = score;
-				}
+				if (score > alpha)
+					alpha = score;
 			}
 		}
 	}
