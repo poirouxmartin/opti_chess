@@ -340,9 +340,6 @@ public:
 	// Renvoie la liste des coups possibles
 	bool get_moves(const bool pseudo = false, const bool forbide_check = false);
 
-	// Fonction qui dit si une case est attaquée
-	[[nodiscard]] bool attacked(int, int) const;
-
 	// Fonction qui dit s'il y'a échec
 	[[nodiscard]] bool in_check();
 

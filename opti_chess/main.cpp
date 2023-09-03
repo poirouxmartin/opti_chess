@@ -162,8 +162,8 @@ int main() {
 			test_function(&launch_eval, 1);
 
 			// Teste la vitesse de génération des coups
-			//cout << "testing moves generation speed..." << endl;
-			//main_GUI._board.moves_generation_benchmark(6);
+			cout << "testing moves generation speed..." << endl;
+			main_GUI._board.moves_generation_benchmark(6);
 
 			//	1 move : 20 possible positions.
 			//	2 moves : 400 possible positions.
