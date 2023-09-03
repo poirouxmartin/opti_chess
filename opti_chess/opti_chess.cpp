@@ -1800,10 +1800,10 @@ bool Board::draw() {
 			else if (selected_piece()) {
 				// Si c'est pas ton tour, pre-move, et déselectionne la pièce
 				if (selected_piece() > 0 && (selected_piece() < 7 && !_player) || (selected_piece() >= 7 && _player)) {
-					pre_move[0] = selected_pos.first;
+					/*pre_move[0] = selected_pos.first;
 					pre_move[1] = selected_pos.second;
 					pre_move[2] = clicked_pos.first;
-					pre_move[3] = clicked_pos.second;
+					pre_move[3] = clicked_pos.second;*/
 					unselect();
 				}
 
@@ -1837,10 +1837,10 @@ bool Board::draw() {
 				else {
 					if (int selected_piece = _array[selected_pos.first][selected_pos.second]; selected_piece > 0 && (selected_piece < 7 && !_player) || (selected_piece >= 7 && _player)) {
 						// Si c'est pas ton tour, pre-move
-						pre_move[0] = selected_pos.first;
+						/*pre_move[0] = selected_pos.first;
 						pre_move[1] = selected_pos.second;
 						pre_move[2] = drop_pos.first;
-						pre_move[3] = drop_pos.second;
+						pre_move[3] = drop_pos.second;*/
 						selected_pos = { -1, -1 };
 					}
 
@@ -1889,10 +1889,10 @@ bool Board::draw() {
 		right_clicked_pos = { x_mouse, y_mouse };
 
 		// Retire les pre-moves
-		pre_move[0] = -1;
+		/*pre_move[0] = -1;
 		pre_move[1] = -1;
 		pre_move[2] = -1;
-		pre_move[3] = -1;
+		pre_move[3] = -1;*/
 	}
 
 	// Si on fait un clic droit (en le relachant)
@@ -1960,10 +1960,10 @@ bool Board::draw() {
 				draw_rectangle(board_padding_x + tile_size * orientation_index(j), board_padding_y + tile_size * orientation_index(7 - i), tile_size, tile_size, highlight_color);
 
 	// Pre-move
-	if (pre_move[0] != -1 && pre_move[1] != -1 && pre_move[2] != -1 && pre_move[3] != -1) {
+	/*if (pre_move[0] != -1 && pre_move[1] != -1 && pre_move[2] != -1 && pre_move[3] != -1) {
 		draw_rectangle(board_padding_x + orientation_index(pre_move[1]) * tile_size, board_padding_y + orientation_index(7 - pre_move[0]) * tile_size, tile_size, tile_size, pre_move_color);
 		draw_rectangle(board_padding_x + orientation_index(pre_move[3]) * tile_size, board_padding_y + orientation_index(7 - pre_move[2]) * tile_size, tile_size, tile_size, pre_move_color);
-	}
+	}*/
 
 	// Sélection de cases et de pièces
 	if (selected_pos.first != -1) {
