@@ -697,7 +697,7 @@ void Board::game_advancement() {
 	static constexpr int adv_bishop = 10;
 	static constexpr int adv_rook = 10;
 	static constexpr int adv_queen = 50;
-	static constexpr int adv_castle = 5;
+	static constexpr int adv_castle = 25;
 
 	static constexpr int p_tot = 2 * (8 * adv_pawn + 2 * adv_knight + 2 * adv_bishop + 2 * adv_rook + 1 * adv_queen + 2 * adv_castle);
 	int p = 0;
@@ -708,7 +708,7 @@ void Board::game_advancement() {
 	for (int i = 0; i < 8; i++) {
 		for (int j = 0; j < 8; j++) {
 			const uint_fast8_t piece = _array[i][j];
-			p += values[piece % 6];
+			piece && (p += values[piece % 6]);
 		}
 	}
 
@@ -776,92 +776,93 @@ bool Board::evaluate(Evaluator* eval, const bool checkmates, const bool display,
 
 	_evaluator = eval;
 
-	if (checkmates) {
-		const int _is_mate = is_mate();
 
-		if (_is_mate == 1) {
-			_mate = true;
-			_evaluation = static_cast<float> (-get_color() * (1000000 - 1000 * _moves_count));
-			_is_game_over = true;
-			if (display)
-				eval_components += "Checkmate\n";
-			return true;
-		}
-		else if (_is_mate == 0) {
-			_evaluation = 0;
-			_is_game_over = true;
-			if (display)
-				eval_components += "Stealmate\n";
-			return true;
-		}
-	}
+	//if (checkmates) {
+	//	const int _is_mate = is_mate();
 
-	// Répétitions
+	//	if (_is_mate == 1) {
+	//		_mate = true;
+	//		_evaluation = static_cast<float> (-get_color() * (1000000 - 1000 * _moves_count));
+	//		_is_game_over = true;
+	//		if (display)
+	//			eval_components += "Checkmate\n";
+	//		return true;
+	//	}
+	//	else if (_is_mate == 0) {
+	//		_evaluation = 0;
+	//		_is_game_over = true;
+	//		if (display)
+	//			eval_components += "Stealmate\n";
+	//		return true;
+	//	}
+	//}
 
-	// Règle des 50 coups
-	if (_half_moves_count >= max_half_moves) {
-		_evaluation = 0;
-		_is_game_over = true;
-		if (display)
-			eval_components += "Draw by 50 moves rule\n";
-		return true;
-	}
+	//// Répétitions
 
-	// Répétition de coups
-	// if (is_in(simple_position(), all_positions, total_positions - 1)) {
-	//     _evaluation = 0;
-	//     _is_game_over = true;
-	//     if (display)
-	//             cout << "Draw by repetition" << endl;
-	//     return true;
-	// }
+	//// Règle des 50 coups
+	//if (_half_moves_count >= max_half_moves) {
+	//	_evaluation = 0;
+	//	_is_game_over = true;
+	//	if (display)
+	//		eval_components += "Draw by 50 moves rule\n";
+	//	return true;
+	//}
 
-	// Matériel insuffisant
-	uint_fast8_t count_w_knight = 0;
-	uint_fast8_t count_w_bishop = 0;
-	uint_fast8_t count_b_knight = 0;
-	uint_fast8_t count_b_bishop = 0;
+	//// Répétition de coups
+	//// if (is_in(simple_position(), all_positions, total_positions - 1)) {
+	////     _evaluation = 0;
+	////     _is_game_over = true;
+	////     if (display)
+	////             cout << "Draw by repetition" << endl;
+	////     return true;
+	//// }
 
-	// TODO : retirer les goto
+	//// Matériel insuffisant
+	//uint_fast8_t count_w_knight = 0;
+	//uint_fast8_t count_w_bishop = 0;
+	//uint_fast8_t count_b_knight = 0;
+	//uint_fast8_t count_b_bishop = 0;
 
-	for (uint_fast8_t i = 0; i < 8; i++) {
-		for (uint_fast8_t j = 0; j < 8; j++) {
-			const uint_fast8_t p = _array[i][j];
-			if (p == 2)
-				count_w_knight++;
-			else if (p == 3)
-				count_w_bishop++;
-			else if (p == 8)
-				count_b_knight++;
-			else if (p == 9)
-				count_b_bishop++;
-			// Pièces majeures ou pion -> possibilité de mater
-			else if (p != 6 && p != 12 && p != 0)
-				goto no_draw;
+	//// TODO : retirer les goto
 
-			// Si on a au moins 1 fou, et un cheval/fou ou plus -> plus de nulle par manque de matériel
-			if ((count_w_bishop > 0) && (count_w_knight > 0 || count_w_bishop > 1))
-				goto no_draw;
-		}
-	}
+	//for (uint_fast8_t i = 0; i < 8; i++) {
+	//	for (uint_fast8_t j = 0; j < 8; j++) {
+	//		const uint_fast8_t p = _array[i][j];
+	//		if (p == 2)
+	//			count_w_knight++;
+	//		else if (p == 3)
+	//			count_w_bishop++;
+	//		else if (p == 8)
+	//			count_b_knight++;
+	//		else if (p == 9)
+	//			count_b_bishop++;
+	//		// Pièces majeures ou pion -> possibilité de mater
+	//		else if (p != 6 && p != 12 && p != 0)
+	//			goto no_draw;
 
-	// Possibilités de nulles par manque de matériel
-	if (count_w_knight + count_w_bishop < 2 && count_b_knight + count_b_bishop < 2) {
-		_evaluation = 0;
-		_is_game_over = true;
-		if (display)
-			eval_components += "Draw by insufficient material";
-		return true;
-	}
+	//		// Si on a au moins 1 fou, et un cheval/fou ou plus -> plus de nulle par manque de matériel
+	//		if ((count_w_bishop > 0) && (count_w_knight > 0 || count_w_bishop > 1))
+	//			goto no_draw;
+	//	}
+	//}
 
-	// On ne peut pas mater avec seulement 2 cavaliers
-	if (count_w_knight == 2 || count_b_knight == 2) {
-		_evaluation = 0;
-		return true;
-	}
+	//// Possibilités de nulles par manque de matériel
+	//if (count_w_knight + count_w_bishop < 2 && count_b_knight + count_b_bishop < 2) {
+	//	_evaluation = 0;
+	//	_is_game_over = true;
+	//	if (display)
+	//		eval_components += "Draw by insufficient material";
+	//	return true;
+	//}
 
-	// Sinon
-	no_draw:
+	//// On ne peut pas mater avec seulement 2 cavaliers
+	//if (count_w_knight == 2 || count_b_knight == 2) {
+	//	_evaluation = 0;
+	//	return true;
+	//}
+
+	//// Sinon
+	//no_draw:
 
 	// Réseau de neurones
 	/*if (n != nullptr) {
@@ -1066,7 +1067,8 @@ bool Board::evaluate_int(Evaluator* eval, const bool checkmates, const bool disp
 }
 
 // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-float Board::negamax(const int depth, float alpha, const float beta, const bool max_depth, Evaluator* eval, const bool play, const bool display, const int quiescence_depth, const int null_depth) {
+int Board::negamax(const int depth, int alpha, const int beta, const bool max_depth, Evaluator* eval, const bool play, const bool display, const int quiescence_depth, const int null_depth) 
+{
 	// Nombre de noeuds
 	if (max_depth) {
 		visited_nodes = 1;
@@ -1077,13 +1079,12 @@ float Board::negamax(const int depth, float alpha, const float beta, const bool 
 	}
 
 	// à mettre avant depth == 0?
-	const int g = game_over();
-	if (g == 2)
-		return 0.0f;
-	if (g == -1 || g == 1)
-		return -1e7f * static_cast<float>(depth + 1);
-	if (g == -10 || g == 10)
-		return -1e8f * static_cast<float>(depth + 1);
+	is_game_over();
+
+	if (_game_over_value == 2)
+		return 0;
+	if (_game_over_value != 0)
+		return -mate_value + _moves_count * mate_ply;
 
 	if (depth <= 0) {
 		//evaluate(eval);
@@ -1104,17 +1105,10 @@ float Board::negamax(const int depth, float alpha, const float beta, const bool 
 	}*/
 
 
-	float value = -1e9f;
+	int value = -1e9;
 	Board b;
 
 	int best_move = 0;
-
-	if (_got_moves == -1) {
-		if (max_depth)
-			get_moves(false, true);
-		else
-			get_moves();
-	}
 
 	if (depth > 1)
 		sort_moves(eval);
@@ -1128,7 +1122,7 @@ float Board::negamax(const int depth, float alpha, const float beta, const bool 
 		b.copy_data(*this);
 		b.make_index_move(i);
 
-		float tmp_value = -b.negamax(depth - 1, -beta, -alpha, false, eval, false, false, quiescence_depth);
+		int tmp_value = -b.negamax(depth - 1, -beta, -alpha, false, eval, false, false, quiescence_depth);
 		// threads.emplace_back(std::thread([&]() {
 		//     tmp_value = -b.negamax(depth - 1, -beta, -alpha, -color, false, eval, a, use_agent);
 		// })); // Test de OpenAI
@@ -1525,7 +1519,9 @@ string Board::to_fen() const
 }
 
 // Fonction qui renvoie le gagnant si la partie est finie (-1/1, et 2 pour nulle), et 0 sinon
-int Board::game_over() {
+int Board::is_game_over() {
+
+	// Ne pas recalculer si déjà fait
 	if (_game_over_checked)
 		return _game_over_value;
 
@@ -1537,36 +1533,70 @@ int Board::game_over() {
 		return 2;
 	}
 
-	// Si un des rois est décédé
-	bool king_w = false;
-	bool king_b = false;
+	// Règle des 3 répétitions
+	// TODO
 
-	for (int i = 0; i < 8; i++) {
-		for (int j = 0; j < 8; j++) {
-			const int p = _array[i][j];
-			if (p == 6) {
-				king_w = true;
-				if (king_b)
-					goto kings;
+	// Calcule les coups légaux
+	if (_got_moves == -1)
+		get_moves(false, true);
+
+	// S'il n'y a pas de coups légaux, c'est soit mat, soit pat
+	if (_got_moves == 0) {
+		
+		// Mat
+		if (in_check()) {
+			_game_over_value = _player ? -1 : 1;
+			return _game_over_value;
+		}
+
+		// Pat
+		_game_over_value = 2;
+		return 2;
+	}
+
+	// Matériel insuffisant
+	uint_fast8_t count_w_knight = 0;
+	uint_fast8_t count_w_bishop = 0;
+	uint_fast8_t count_b_knight = 0;
+	uint_fast8_t count_b_bishop = 0;
+
+	for (uint_fast8_t i = 0; i < 8; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			const uint_fast8_t p = _array[i][j];
+			if (p == 2)
+				count_w_knight++;
+			else if (p == 3)
+				count_w_bishop++;
+			else if (p == 8)
+				count_b_knight++;
+			else if (p == 9)
+				count_b_bishop++;
+			// Pièces majeures ou pion -> possibilité de mater
+			else if (p != 6 && p != 12 && p != 0) {
+				_game_over_value = 0;
+				return 0;
 			}
-			if (p == 12) {
-				king_b = true;
-				if (king_w)
-					goto kings;
+
+			// Si on a au moins 1 fou, et un cheval/fou ou plus -> plus de nulle par manque de matériel
+			if ((count_w_bishop > 0) && (count_w_knight > 0 || count_w_bishop > 1)) {
+				_game_over_value = 0;
+				return 0;
 			}
 		}
 	}
 
-kings:
+	// Possibilités de nulles par manque de matériel
+	if (count_w_knight + count_w_bishop < 2 && count_b_knight + count_b_bishop < 2) {
+		_game_over_value = 2;
+		return 2;
+	}
 
-	if (!king_w) {
-		_game_over_value = -1;
-		return -1;
-	}
-	if (!king_b) {
-		_game_over_value = 1;
-		return 1;
-	}
+	// On ne peut pas mater avec seulement 2 cavaliers
+	// TODO: est-ce que la partie est déclarée nulle?
+	/*if (count_w_knight == 2 || count_b_knight == 2) {
+		_game_over_value = 2;
+		return 2;
+	}*/
 
 	_game_over_value = 0;
 	return 0;
@@ -1645,30 +1675,24 @@ string Board::move_label(Move move)
 	Board b(*this);
 	b.make_move(move);
 
-	// mat
-	if (int m = b.is_mate(); m == 1) {
-		s += "#";
-		if (_player)
-			s += " 1-0";
-		else
-			s += " 0-1";
-		return s;
-	}
+	// Le coup termine-t-il la partie?
+	b.is_game_over();
 
-	// pat
-	else if (m == 0) {
-		s += "@ 1/2-1/2";
-		return s;
-	}
+	// En cas de mat pour les blancs
+	if (b._game_over_value == 1)
+		return s + "# 1-0";
 
-	// échec
+	// En cas de mat pour les noirs
+	else if (b._game_over_value == -1)
+		return s + "# 0-1";
+
+	// En cas d'égalité
+	else if (b._game_over_value == 2)
+		return s + (b._got_moves == 0 ? "@ 1/2-1/2" : "1/2-1/2"); // Pat -> "@"
+
+	// Échec
 	if (b.in_check())
 		s += "+";
-
-	// sinon... plus de coups = draw? règles des 50 coups, nul par manque de matériel...
-	// Ne fonctionne pas -> A FIX
-	if (b._got_moves == 0 || b._is_game_over)
-		s += "@ 1/2-1/2";
 
 	return s;
 }
@@ -2801,8 +2825,12 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const bool checkmates, cons
 		max_depth = depth;
 	}
 
+
+	if (_new_board)
+		is_game_over();
+
 	// Si la partie est finie, évite le calcul des coups... bizarre aussi : ne plus rentrer dans cette ligne?
-	if (_is_game_over) {
+	if (_game_over_value) {
 		_nodes++; // un peu bizarre mais bon... revoir les cas où y'a des mats
 		_time_monte_carlo += clock() - begin_monte_time;
 		return;
@@ -2907,10 +2935,8 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const bool checkmates, cons
 			_eval_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
 			_nodes_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._nodes + 1;
 
-			if (_player)
-				_evaluation = max_value(_eval_children, _got_moves);
-			else
-				_evaluation = min_value(_eval_children, _got_moves);
+			// Actualise la valeur d'évaluation du plateau
+			_evaluation = _player ? max_value(_eval_children, _got_moves) : min_value(_eval_children, _got_moves);
 		}
 
 		// Décrémentation du nombre de noeuds restants
@@ -3449,7 +3475,7 @@ string Board::get_monte_carlo_variant(const bool evaluate_final_pos)
 		if (evaluate_final_pos) {
 			int eval = monte_buffer._heap_boards[_index_children[move]]._evaluation;
 			const int mate = is_eval_mate(eval);
-			const string eval_text = mate != 0 ? ((mate > 0 ? "M" : "-M") + to_string(abs(mate))) : to_string(static_cast<int>(eval));
+			const string eval_text = (mate != 0) ? ((mate > 0 ? "M" : "-M") + to_string(abs(mate))) : to_string(static_cast<int>(eval));
 			return s + " (" + (eval > 0 ? static_cast<string>("+") : static_cast<string>("")) + eval_text + ")";
 
 		}
@@ -3459,7 +3485,7 @@ string Board::get_monte_carlo_variant(const bool evaluate_final_pos)
 	
 	if (evaluate_final_pos) {
 		const int mate = is_eval_mate(_evaluation);
-		const string eval_text = mate != 0 ? ((mate > 0 ? "M" : "-M") + to_string(abs(mate))) : to_string(static_cast<int>(_evaluation));
+		const string eval_text = (mate != 0) ? ((mate > 0 ? "M" : "-M") + to_string(abs(mate))) : to_string(static_cast<int>(_evaluation));
 		return " (" + (_evaluation > 0 ? static_cast<string>("+") : static_cast<string>("")) + eval_text + ")";
 	}
 	
@@ -3491,13 +3517,15 @@ vector<int> Board::sort_by_nodes(const bool ascending) const
 	return sorted_indexes;
 }
 
-// Fonction qui renvoie selon l'évaluation si c'est un mat ou non
+// Fonction qui renvoie selon l'évaluation si c'est un mat ou non (0 si non, sinon le nombre de coups pour le mat, positif pour les blancs, négatif pour les noirs)
 int Board::is_eval_mate(const int e) const
 {
-	if (e > 100000)
-		return (100000000 - e) / 100000 - _moves_count + _player; // (Immonde) à changer...
-	if (e < -100000)
-		return -((100000000 + e) / 100000 - _moves_count);
+	int abs_eval = abs(e);
+
+	if (10 * abs_eval > mate_value) {
+		int mate_moves = (mate_value - abs_eval - _moves_count * mate_ply) * (e > 0 ? 1 : -1) / mate_ply + (_player && e > 0);
+		return mate_moves != 0 ? mate_moves : 1;
+	}
 	else
 		return 0;
 }
@@ -3639,7 +3667,7 @@ int match(Evaluator* e_white, Evaluator* e_black, Network* n_white, Network* n_b
 	Board b;
 
 	// Jeu
-	while ((b.is_mate() == -1 && b.game_over() == 0)) {
+	while ((b.is_mate() == -1 && b.is_game_over() == 0)) {
 		if (b._player)
 			b.grogros_zero(e_white, nodes, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, true, true, false, 0, n_white);
 		else
@@ -3653,7 +3681,7 @@ int match(Evaluator* e_white, Evaluator* e_black, Network* n_white, Network* n_b
 
 	int g = b.is_mate();
 	if (g == -1)
-		g = b.game_over();
+		g = b.is_game_over();
 	else
 		return -g * b.get_color();
 	if (g == 2)
@@ -4747,6 +4775,13 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, const int dept
 {
 	// Compte le nombre de noeuds visités
 	_quiescence_nodes = 1;
+	
+	// Si la partie est terminée
+	is_game_over();
+	if (_game_over_value == 2)
+		return 0;
+	if (_game_over_value != 0)
+		return -mate_value + _moves_count * mate_ply;
 
 	// Evalue la position initiale
 	evaluate_int(eval, checkmates_check);
@@ -4763,12 +4798,6 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, const int dept
 	// Mise à jour de alpha si l'éval statique est plus grande
 	if (alpha < stand_pat)
 		alpha = stand_pat;
-
-	if (_got_moves == -1) {
-		get_moves(false, true);
-		// TODO : si main_call, alors on récupère tous les coups. sinon, on récupère seulement les captures
-		// TODO : implement get_capture_moves();
-	}
 
 	quick_moves_sort();
 
@@ -4801,14 +4830,14 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, const int dept
 			b.make_index_move(i);
 			if (!main_player || b.in_check())
 			{
-				if (deep_mates_check)
-				{
-					const int mate = b.is_mate();
-					if (mate == 1)
-						return 100 * (1000000 - 1000 * b._moves_count);
-					if (mate == 0)
-						return 0;
-				}
+				//if (deep_mates_check)
+				//{
+				//	const int mate = b.is_mate();
+				//	if (mate == 1)
+				//		return 100 * (1000000 - 1000 * b._moves_count);
+				//	if (mate == 0)
+				//		return 0;
+				//}
 
 				if (explore_checks)
 				{

@@ -95,6 +95,24 @@ r3r1k1/pppqppb1/2n1b1p1/3pP1N1/3P4/2PBPQ2/PP4P1/RN2K2R b KQ - 1 13 : grosse atta
 3rr1k1/1ppqppb1/2n1b1p1/p2pP1N1/3P4/2PBP1Q1/PP4P1/RN2K2R w KQ - 0 15 : complètement gagnant pour les blancs
 r1bq1rk1/ppppbpp1/2n1p3/3nP1NQ/3P3P/8/PPP2PP1/RNB1K2R b KQ - 3 9 : quasi mat
 r1b2rk1/ppp3pp/2n1p3/3pP1N1/1P5q/2PB4/P6P/R1BQR2K w - - 6 20 : complètement gagnant pour les blancs (roi blanc safe)
+5k2/1R4bp/P1N1p1p1/6r1/4p3/7P/8/4K3 b - - 1 43 : gagnant pour les blancs (pion passé). les pions passés noirs sont doublés...
+r1bqkb1r/p3pppp/2p2n2/2p5/8/6P1/PPPP1P1P/RNBQK1NR w KQkq - 0 7 : gros trous sur cases blanches
+1r5k/p1pr1p1p/2pb1p2/4pN2/4P3/1P1R4/P1P2PPP/3R2K1 b - - 3 19 : foutu pour les noirs
+3r4/p1pr1p2/3b1pk1/2p1pN1p/2P1P3/1P1R3R/P3KPPP/8 b - - 5 24 : #3 pour les blancs
+8/5k2/6pp/4P3/7P/6P1/K7/8 b - - 0 7 : finales gagnante pour les noirs car le roi est beaucoup plus proche des pions
+2rqkbnr/p4ppp/1pn1p3/1B1pN3/3P1Bb1/1QP5/PP3PPP/RN2K2R b KQk - 3 9 : +3 au moins (menaces de partout) -> faire 'hanging'
+rn2k1r1/pppRpRpp/bb6/q7/6n1/8/PPPPPPPP/1NB1KBN1 w q - 0 1 : perpet
+3r1rk1/p3bppp/bq2pn2/4R1B1/2p5/1BN2Q2/PPP2PPP/3R2K1 w - - 0 17 : ça perd pour les blancs
+6k1/p5p1/4p3/5pQP/B1p2N1R/2P4P/PP1r1PbK/4q3 b - - 0 34 : mat pour les noirs
+2krr3/ppp2p1p/2n2n2/7q/3P1pb1/2P2N2/PP1NBP1P/R1BQR2K b - - 1 14 : gagnant pour les blancs
+2kr2r1/ppp2p1p/2n2n2/7q/3P1pb1/2P5/PP1NBP1P/R1BQR1NK b - - 3 15 : Tg6 seul coup qui gagne (doubler sur la colonne g)
+2kr4/ppp2p1p/2n3r1/7q/3Pnpb1/2P2N2/PP2BP1P/R1BQ1RNK b - - 7 17 : gagnant pour les noirs
+r1bq3r/p2pk1pp/2pNpn2/2P5/1b3P2/4B3/PP2K1PP/R2Q1B1R b - - 0 15 : gagnant pour les blancs
+8/8/8/7K/1p6/1P3k2/P1P5/8 b - - 0 5 : king proximity -> ça gagne pour les blancs
+1rbq1rk1/2p1bppp/p1np4/1p1Np3/4P3/1B1PPN2/PPP1Q1PP/R4RK1 w - - 0 13 : ici le cavalier est largement meilleur que le fou
+2r2k2/2q1bpp1/5np1/1p6/p6r/P1B2P2/BP2Q1P1/1K1RR3 b - - 1 25 : gagnant pour les blancs
+3r1r1k/1p4pp/p3R3/2b5/2Bq4/2Q5/PP3PPP/5RK1 b - - 2 2 : Dxf2+ gagne
+5b2/pp2p3/n1p1bq2/k7/3r2p1/P1N1B1P1/6K1/R3Q3 b - - 1 1 : Rb6 seul coup qui gagne
 
 
 
@@ -104,25 +122,26 @@ r3k2r/ppp2pp1/2p1bq2/2b4p/3PP1n1/2P2BP1/PP3P1P/RNBQK2R w KQkq - 3 11 : h3 (+4.50
 3rk3/ppp2pp1/2p2q1r/2P1n3/4P2p/1QP3Pb/PP1NBP1P/R1B1R1K1 b - - 5 16 : Txd2 & hxg3 gagnent
 3rk2r/ppp2pp1/2p1bq2/2P4p/4P1B1/2P3P1/PP3P1P/RNBQK2R b KQk - 0 12 : Fxg4 gagnant
 1rkb4/pNp5/8/2N4p/8/5B2/4K3/8 w - - 0 1 : Fc6 quasi gagnant
-2k1r1r1/p1p4p/1qpb4/3PN3/2Q3b1/4B3/PP3PP1/2R2RK1 b - - 0 1
+2k1r1r1/p1p4p/1qpb4/3PN3/2Q3b1/4B3/PP3PP1/2R2RK1 b - - 0 1 : Txe5 moins pire
 2kr2nr/1pp2ppp/3b4/1P3q2/2Pp1B2/5Q1P/RP3PP1/R5K1 w - - 0 1 : Dc6 #6
 4r1k1/5pP1/2q2Q1p/1p1RP3/p7/5RP1/5P1K/7r w - - 0 1 : Rxh1 puis Dxh6 gagne
 6bk/7p/2q1PP2/2Pp4/3R4/5K2/8/B7 w - - 0 1 : f7 draw
-8/6Q1/2r1p3/2rkr3/2rrr2Q/8/7K/8 w - - 0 1
+8/6Q1/2r1p3/2rkr3/2rrr2Q/8/7K/8 w - - 0 1 : Dd8+ #21
 5rk1/pp4pp/4p2r/4R1Q1/3n4/2q4B/P1P2PPP/5RK1 b - - 0 1 : Txh3 Tc5 -> Dg3 gagne
 2b1q1r1/r3np1k/4pQpP/p2pP1B1/1ppP4/2P5/PPB2PP1/2KR3R w - - 0 1 : Dg7+ #7
 1r1r3k/2q1b2p/p2pB1pB/3Pp2n/1pn5/1N3P2/PPP4Q/1K4RR w - - 0 1 : Fg7+ & Dxh5 gagnent
-bK3kq1/PPNppp1p/1b1n3P/n1R5/1p1Q3r/8/2R4p/r7 w - - 0 1
+bK3kq1/PPNppp1p/1b1n3P/n1R5/1p1Q3r/8/2R4p/r7 w - - 0 1 : Ce6 nulle
 r3Rk2/1pB2ppp/6b1/1P6/p1nN4/2P4P/1P3PP1/4R1K1 b - - 0 1 : Tc1 et c4, c5, c6 pas mal
 rnbqkbnr/pppppppp/8/PPPPPPPP/PPPPPPPP/PPPPPPPP/PPPPPPPP/4K3 w kq - 0 1 : bordel
 r1b1k2r/pp1nqpp1/4p2p/3pP1N1/8/3BQ3/PP3PPP/2R2RK1 w kq - 0 1 :  Dxa7 gagne
 1B3B1B/2B5/p6B/8/8/8/8/1k1K4 w - - 0 1 : 1. Bce5 Ka2 2. Kc2 a5 3. Ba1 a4 4. Bb8e5 a3 5. Kc3 Kb1 6. Kb3 a2 7. Kc3 Kxa1 8.Kc2# 1-0
 r1n2b1r/pN2kppp/1pQ1pq2/3p4/5B2/5B2/P4PPP/1R3RK1 w - - 0 1 : Fc7 #2
-3rr1k1/1p1b1pnp/pqpPn1p1/8/8/1PQ2N2/PBB2PP1/3RR1K1 w - - 0 1 : Txe6 gagne
+3rr1k1/1p1b1pnp/pqpPn1p1/8/8/1PQ2N2/PBB2PP1/3RR1K1 w - - 0 1 : Txe6 #6
 Q7/4pP1p/7k/4q2b/1B1r2PK/7n/8/6r1 w - - 0 1 : F8=Q+ Dc6 et Dc1+ mate
 2q5/ppr3k1/3p4/P1pPp1bB/2P4n/1P5P/3Q1P1K/6R1 b - - 0 1 :  Dg4 seul coup (reste quasi foutu)
 8/8/4p3/8/8/1P6/7P/2K3k1 w - - 0 1 : Rc2 seul coup qui gagne
-1RR3Q1/8/5p2/4p3/P3B3/5ppp/K3prqk/4Nbrn w - - 0 1 : De6 #8
+1RR3Q1/8/5p2/4p3/P3B3/5ppp/K3prqk/4Nbrn w - - 0 1 : De6 #8, Df7 #9
+1RR5/8/4Q3/5B2/P3p3/5ppp/K3prqk/4Nbrn w - - 0 3 : Th8 ou Fxh3 #6
 8/3pp1p1/4B3/1N1Pp3/2k5/5p1p/4prpr/4Kbnq w - - 0 1 : d6 draw
 rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 0 1 : Mat de Lasker -> Dxh7+ #7
 8/5k2/8/6Kp/6P1/8/8/8 w - - 40 69 : Rxh5 seul coup qui gagne
@@ -146,6 +165,7 @@ r4rk1/pnpb2p1/3p3q/1pbP1p1Q/7P/2B2N2/PpB2PP1/4RRK1 w - - 0 1 : Te7 seul coup qui
 8/6k1/7p/2p1p1pP/1pPpPpP1/1P1P1P1K/6N1/8 w - - 52 27 : Ch4 gagne
 3r1r1k/pb1pq1pp/1pnR1pn1/4p1BQ/2B1P3/2N5/PPP2PPP/3R2K1 w - - 0 1 : en omettant Fc1, Td3 puis Dxg6 est fort
 r2r1knR/6p1/1p1q2P1/2b3Q1/5pP1/pP2pP1R/7P/1K6 w - - 0 1 : Txg8+ #25
+r2r4/7Q/1p1q2P1/2b3k1/5pP1/pP2pP2/7P/1K6 w - - 19 16 : h4 #10
 5rk1/RP1R4/8/8/8/8/5pr1/5K2 w - - 0 1 : Tf7 gagne
 8/3k4/5P1p/1p1B1P2/2p2n2/8/1P1K3P/8 w - - 0 1 : Fc6 gagne
 r1b2k1N/pppp1B1Q/2n2qp1/4p3/4n3/3P4/PPP2bPP/RNB2K1R b - - 0 1 : Fg1+ #4
@@ -157,7 +177,7 @@ r3rqk1/pp3p1p/5Pp1/4p1N1/1P2P1bP/P2Q4/1K3P2/3R3R w - - 0 1
 1rQ2b1k/3PBq1p/5N2/p5p1/R5P1/7P/5PK1/1q6 w - - 0 1 : Te4 et Tb4 font nulle
 r5r1/p4p2/2ppb1kp/7N/qp2RPB1/7P/PPnQ1B2/R5K1 w - - 0 1 : Txe6 & Dd3 #6
 6k1/p1p2p1p/4q1p1/8/P4P2/2Q4b/1P2rP1P/2R3KR b - - 0 1 : Tc2 gagne facilement
-3rr1k1/1pq1bppp/p4n2/2P1n2b/PP1N4/BBN1PP2/4Q2P/R4RK1 b - - 0 1 : Fxc5 puis Txd4 et Cxf3 gagne
+3rr1k1/1pq1bppp/p4n2/2P1n2b/PP1N4/BBN1PP2/4Q2P/R4RK1 b - - 0 1 : Fxc5 puis Txd4 et Cxf3 gagne (Txf3 -> Cg4 Fxf7 Rh8 Fxe8 Dxh2+)
 8/8/6k1/1p5p/5K2/5P2/PPP5/8 w - - 0 1 : b3 seul coup qui perd
 8/5pk1/3p1n1p/R1r4P/p5p1/6P1/1B3P1K/8 w - - 0 4 : Txc5 gagne
 8/3k4/6pP/2p5/rpP5/8/PK6/4R3 w - - 0 1 : Te8 gagne
@@ -173,6 +193,7 @@ r3r1k1/3b1p2/p1pp3p/3Pp1q1/1p1bQP2/3P2B1/PPP1N1P1/2KR3R b - - 0 1 : exf4 gagne
 8/8/8/3k4/8/1PK5/8/8 w - - 5 17 : finales à revoir
 7Q/8/B4pp1/p5k1/3P2r1/q1PKP3/1r6/6R1 w - - 4 52 : Th1 gagne
 rn2k1nr/pp3ppp/2p5/3pN3/1b1P4/2NQP1P1/PP1B1PqP/R3K2R w KQkq - 7 12 : Df5 gagne
+rn2k1nr/pp3ppp/2p5/3pNQ2/1b1P4/2N1P1P1/PP1BKP1P/q7 w kq - 0 14 : Dc8+ #9
 8/8/5p2/5P2/k1B5/2K5/8/2n5 w - - 7 72 : Rd2 et fou bouge gagne
 3r4/bP5p/5kp1/2N2p2/4pP2/1R4PP/6K1/8 w - - 5 45 : b8=Q gagne
 r6k/p1p3pp/6n1/3Bp3/4P3/5r1q/PB1PNP2/R3QRK1 b - - 2 15 : Ch4 #3
@@ -184,7 +205,7 @@ r4qk1/pp6/3ppBBp/8/1n5Q/8/PPP2PPP/2KR4 w - - 0 1 : Fh5 #12
 1r3rk1/2q2p1p/p2p1Qp1/1pnPn3/2PN4/1P5P/P5P1/1B2RRK1 w - - 1 4 : Cf5/Txe5 gagne
 r1bq1rk1/pp2nppp/2n1p3/2ppP3/3P4/P1PB1N2/2P2PPP/R1BQK2R w KQ - 0 1 : greek gift
 r2kr3/pR1b1qpp/2p2b2/2P1R3/3P4/P5Q1/2P2PPP/2B3K1 w - - 3 23 : Te7 mate
-r1bq1r2/p4pk1/1p1ppn2/6B1/3Q1P2/1BP4P/P5P1/5RK1 w - - 0 20 : Tf3
+r1bq1r2/p4pk1/1p1ppn2/6B1/3Q1P2/1BP4P/P5P1/5RK1 w - - 0 20 : Tf3 gagne
 rnbqrk2/pp2bppB/2p2n2/3p2N1/7Q/2N5/PPP2PPP/2KRR3 w - - 3 14 : Be4 Kg8 Nxd5 +1
 r1b2b1r/pppp2p1/2n2k1p/3Q2N1/4n3/q1P5/P1P2PPP/R4RK1 w - - 0 4 : Df7+ #8
 r1b5/pppp2qk/2nb4/6Pp/4R3/2P1Q3/P1P3P1/5RK1 w - - 1 14 : Tf6 +3
@@ -197,7 +218,7 @@ rb6/rpp1R2p/3p1np1/pP1k1b2/P2P1B2/2P4P/3N1KP1/8 w - - 1 23 : Re3 #4
 1k1r4/1pp1q1pp/p1nb1r2/2Nb1p2/PP1Pp3/2Q1P3/4BPPP/1RB2RK1 b - b3 0 19 : Fxh2+ pour Th6 Dh4 gagne
 8/8/5N2/8/5p1p/6k1/3K4/8 b - - 2 3 : Rf3 gagne
 rn1qkbnr/1pp2ppp/p2p4/4p3/2B1P1b1/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 0 3 : Cxe5 gagne
-r1b2k2/1p3p2/2q2p2/p3pBr1/2Pp1P1N/2b1P1PQ/7P/3R1RK1 b - - 0 1 : Th5 pour Txf5, Fxe5 et dxe3 gagne
+r1b2k2/1p3p2/2q2p2/p3pBr1/2Pp1P1N/2b1P1PQ/7P/3R1RK1 b - - 0 1 : Th5 pour Txf5, Fxf5 et dxe3 gagne
 5q2/1R6/1p6/8/p7/k7/P1PB4/K7 w - - 0 1 : Te7 gagne
 r4rk1/pbq1bp1p/2n3p1/3n2N1/2N4R/2BBP3/1P2QPPP/5RK1 w - - 0 1 : Dh5 #5
 3r1rk1/1pb2p1p/2p3p1/p4N2/P6q/1P6/1BP2PPP/3Q1B1K w - - 0 1 : Dh5 gagne
@@ -206,6 +227,7 @@ k7/8/K5r1/PQ2B3/8/8/8/8 w - - 0 1 : Fd6 pour Db6 gagne
 3r2k1/pp2rppp/2pn4/q3N2Q/1b1P4/1B2R3/PP3PPP/R5K1 w - - 0 1 : Dxh7+ #6
 5rk1/p2b1ppp/1p2pq2/3pn3/3Q4/P3PB2/1PrN1PPP/2R2RK1 b - - 0 1 : Txd2 pour Df3 gagne
 1kbr3r/pp6/8/P1n2ppq/2N3n1/4Q1P1/R2B1P2/2R2BK1 w - - 0 1 : Df4 #11
+k1br3r/1p6/nP6/4Bp1q/8/6P1/R4P2/2R2BK1 w - - 1 6 : Txc8 #5
 2k3r1/pb1nqp1r/2n1p3/2p5/2Pp1B2/P2P1NP1/4QPB1/1R2R1K1 w - - 0 1 : Txb7 puis De4 gagne
 6r1/pk1nq2r/2n1p3/2p2p2/2PpQB2/P2P1NP1/5PB1/4R1K1 w - - 0 1 : Dxc6+ #9
 6r1/p2nq2r/k3p3/2p2p2/2PN1B2/P2P2P1/5PB1/1R4K1 w - - 3 4 : Fb7+ #6
@@ -220,19 +242,43 @@ r1bqkb1r/3nn3/p1p1p1p1/PpPpPpPp/1P1P1P1P/6N1/4B3/RNBQK2R b KQkq - 6 15 : attenti
 3q3k/2p4p/p2pB3/7P/1n1PPQP1/r1p5/8/1K1R2R1 b - - 0 2 : Cd3 gagne
 1q5k/2p2Q1p/p2p4/7P/1n1PP1P1/1rp5/8/2KR2R1 b - - 3 6 : Tb8+ #8
 r3r1k1/ppp4q/1n3Q2/3p1P2/5P2/2q5/PpPqN1B1/1K5R w - - 0 26 : Fxd5 #5
-r3r1k1/ppp4q/1n3Q2/3p1P2/5P2/2q5/PpPqN1B1/1K5R w - - 0 26 : Txg6 #2........ (il regarde pas parce que c'est -40)
+r3r1k1/ppp5/5Qq1/3n1P2/5P2/2q5/PpPqN3/1K4R1 w - - 2 28 : Txg6 #2........ (il regarde pas parce que c'est -40)
 8/7p/4k1p1/p2Nrp2/2P5/2KB3P/8/8 b - - 2 45 : Txd5 gagne facilement
 5rk1/pp4pp/2pb4/3p3q/B2Pp1bP/2N1B3/PPP3P1/R3Q1K1 b - - 0 2 : Ff3 gagne
 r1bq1rk1/ppppbppp/2n1p3/3nP3/3P3P/3B1N2/PPP2PP1/RNBQK2R w KQ - 1 7 : greek gift
 6kr/pp4p1/2p2q1p/8/4B3/3Q4/r1P3PP/6RK w - - 3 31 : Db3+ puis Dg3, Td1 gagne
 r1b3k1/3p2r1/p1n1p2B/1p2P2Q/2p5/q1P5/2P2PPP/2RR2K1 w - - 2 24 : Te1 Tg3 gagne
-r1b3Q1/3pk3/p1q1p3/1p2P3/2p5/2P5/2P2PPP/3R2K1 w - - 2 32 : Td4 gagne
+r1b3Q1/3pk3/p1q1p3/1p2P3/2p5/2P5/2P2PPP/3R2K1 w - - 2 32 : Td4 gagne (pour Fb7 Dg5 Re8 Tg4 Dc5 Tf4)
 r3k3/1b1p4/p1q1p3/1p2P1Q1/2pR4/2P5/2P2PPP/6K1 w - - 6 34 : Tg4 seul coup qui gagne (pour Dc5 Tf4 Dg7 Tf7)
 r7/4Pkp1/2p2p1p/P2p4/b7/7P/3N1PP1/4R1K1 w - - 1 27 : endgame -> Cb3 gagne
 5rk1/pp5p/3P2pQ/1q1P4/8/4R1PP/P1r5/3R2K1 b - - 0 30 : Db2 #10
 1rb2knr/1pNp1pp1/p2P3p/1p2q3/8/3QP3/PP4PP/R4RK1 w - - 2 19 : Tf5 seul coup qui gagne
-1rb2k2/1p1p1pr1/p2P1R1p/1p6/4Q3/4P3/q5PP/5RK1 w - - 3 25 : De7 #5
+1rb2k1r/1p1p2p1/p2P1p1p/1p3R1N/2q5/3QP3/6PP/5RK1 w - - 0 24 : Txf6 #6
+1rb2k2/1p1p1pr1/p2P1R1p/1p6/4Q3/4P3/q5PP/5RK1 w - - 3 25 : De7+ #5
 8/4pp2/2k3p1/2p4p/p1P1P2P/P2K1PP1/8/8 w - - 17 23 : e5 gagne
+r1bqk2r/pppp1Npp/8/2bnP3/8/6K1/PB4PP/RN1Q3R b kq - 0 12 : O-O gagne
+6k1/6p1/p1Nr2b1/2p2rP1/3q1p2/3P1Q2/PPP2PK1/R3R3 b - - 0 27 : Txc6 gagne (pour f3)
+QR6/4Nb1k/p2r1qp1/2p3r1/5p2/3P4/P1P2P2/4RK2 w - - 0 33 : Cg8 seul coup qui draw
+QR4N1/5b1k/p2r2p1/2p2qr1/5p2/3P4/P1P2P2/4RK2 w - - 2 34 : Ch6 gagne
+Q3R1R1/3r3k/p5p1/2p3r1/5p2/3P4/P1P1KP2/q7 b - - 4 36 : f3 gagne
+Q3R1R1/3r3k/p5p1/2p3r1/8/3P1p2/P1PK1P2/q7 b - - 1 37 : Txd3 #15
+Q3R1R1/7k/p5p1/2p2r2/8/3P4/P4q2/3K4 b - - 1 42 : #10
+7r/1p2npk1/2p2b2/3p2p1/1P1P2q1/PQN1PP1r/1B1R2B1/2R3K1 b - - 0 1 : Th1+ pour Dxg2 #8
+r5k1/r6p/2pR2pQ/pb3p2/1q3B2/1P2R3/5PPP/6K1 w - - 0 29 : Txg6+ #10
+2r2k1r/pq3ppp/1p6/4b3/Q7/P1N1P3/1P4PP/2KRR3 w - - 2 20 : Td7 gagne
+r4r2/5pp1/2kbp1p1/p1p1q1P1/4P3/2P2R1P/PP3KQ1/R1B5 w - - 10 33 : Ff4 gagne la dame
+r1b1r2k/pp1nN1pp/8/3Q4/3p2P1/2q3P1/P1P1KP2/2BR4 w q - 0 1 : Dg8+ #3
+8/pQRq2pk/4p2p/3r1p2/3P4/4P3/PP3PPP/6K1 b - - 0 1 : Tc5 gagne
+3kr3/p2n4/1b3n2/2p2p2/2q1p1r1/K7/3R4/1r1b4 w - - 0 1 : Txd7 nulle
+6k1/8/4K2P/5p2/4n3/8/8/8 b - - 1 56 : f4 ou Cd6 gagnent (les autres coups font nulle)
+2krr3/ppp2ppp/2n2n2/8/3P1b1q/2P1BB2/PP1NKPP1/R2QR3 w - - 8 16 : g3 gagne
+2k3r1/ppp2p1p/2n3r1/7q/3PnBb1/2P2N2/PP2BP1P/R2Q1RNK b - - 0 18 : Fxf3+ #4
+8/8/3k4/8/8/1PK5/8/8 w - - 3 14 : Finale à savoir gagner -> Rb4 ou Rd4 seuls coups qui gagnent
+8/1k6/8/K7/8/1P6/8/8 w - - 7 16 : Rb5
+8/2p5/p2k1p2/P1p2P1p/2P1PK1P/8/8/8 w - - 11 23 : e5 gagne
+8/R7/pk4PP/4Pp2/pK3P2/1b6/8/2r5 w - - 8 69 : h7 gagne
+6k1/p2npp1p/4bP2/1P1p1p2/7q/3Q1P2/PB6/5RK1 w - - 0 30 : Tf2 gagne
+3r4/p7/1pn5/5k2/P1Pp2p1/1P1R4/3N1P2/5K2 w - - 0 37 : noirs gagnants (roi trop actif)
 
 
 

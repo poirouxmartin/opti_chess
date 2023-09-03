@@ -328,6 +328,9 @@ public:
 	// Constructeur par copie
 	Evaluator(const Evaluator &evaluator);
 
+	// Constructeur avec paramètres
+	Evaluator(const double piece_value, const double piece_mobility, const double piece_positioning, const double random_add, const double bishop_pair, const double castling_rights, const double player_trait, const double king_safety, const double pawn_structure, const double attacks, const double defenses, const double kings_opposition, const double push, const double rook_open, const double square_controls, const double space_advantage, const double alignments, const double piece_activity, const double fianchetto);
+
 	// Opérateur de copie
 	Evaluator& operator=(const Evaluator &evaluator);
 };

@@ -131,6 +131,10 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- King proximity : proximité du roi avec les pions passés (pour les aider à avancer) (prendre en compte aussi le roi adverse)
 	- Pièces non protégées
 	- Shelter strength : pions devant le roi (faiblesses long terme)
+	- "anaconda" : pièces bloquées à vie + avantage d'espace etc.. plans long termes
+	- Hanging pieces : pièces non protégées
+	- Concepts de pression: attaques additionelles en rayon X à prendre en compte. Doubler les tours sur une colonne, etc...
+	- Marrées de pions : attaque sur le roi
 
 -> Faire une policy pour les coups
 -> Livres d'ouvertures, tables d'engame?
@@ -262,6 +266,9 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Rajouter les coups du quiescence dans monte-carlo, et inversement... -> mettre le quiescence dans MCTS?
 -> Remettre la dame dans la mobilité des pièces et l'activité? pour que ça développe la dame aussi? Sinon, ça évalue mal ces positions: r1b1kbnr/ppqp1ppp/2n1p3/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 1 6 
 -> r1bqkb1r/ppp2ppp/2n1p3/8/3PP3/2P5/P4PPP/R1BQKBNR w KQkq - 0 7 : piece_mobility seulement +0.18? c'est un bug?
+-> Dans la recherche de grogros_zero, regarder en priorité les coups forts et peu regardés
+-> REFAIRE TOUTE LA PARTIE SUR IS_GAME_OVER -> NE PAS METTRE DANS LA FONCTION D'EVALUATION!!
+-> Detection plus rapide d'échecs et mat
 
 
 
@@ -354,6 +361,8 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Quand on joue un coup (en appuyant sur p ou autre), il faut désélectionner la pièce
 -> Refaire la réflexion de GrogrosZero: quand il y a beaucoup d'incertitude dans l'éval, regarder large. Sinon, regarder profond
 -> Mobilité verticale ~= activité pour les tours?
+-> Vérifier qu'il n'y a pas d'int overflow dans la sélection des coups (softmax...)
+-> rnb2bnr/pppp1k1p/5q2/8/5p2/2N1BQ2/PPP3PP/R4RK1 b - - 3 11 : il évalue mal, et teste les coups 1 par 1 et se rend compte que ça va pas... beaucoup trop lent à ré évaluer la position correctement.
 
 
 

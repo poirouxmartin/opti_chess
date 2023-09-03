@@ -51,6 +51,13 @@ constexpr int max_half_moves = 100;
 // const int max_moves = 218;
 constexpr int max_moves = 100; // ça n'arrivera quasi jamais que ça dépasse ce nombre
 
+// Valeur d'un échec et mat
+constexpr int mate_value = 1e8;
+
+// Valeur d'un ply (double) dans la recherche de mat
+constexpr int mate_ply = 1e5;
+
+
 // Coup (défini par ses coordonnées)
 // TODO : l'utiliser !!
 // Utilise 2 bytes (16 bits)
@@ -364,7 +371,7 @@ public:
 	bool evaluate_int(Evaluator* eval = nullptr, bool checkmates = false, bool display = false, Network* n = nullptr);
 
 	// Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-	float negamax(int, float, float, bool, Evaluator*, bool play = false, bool display = false, int quiescence_depth = 0, int null_depth = 2);
+	int negamax(int, int, int, bool, Evaluator*, bool play = false, bool display = false, int quiescence_depth = 0, int null_depth = 2);
 
 	// Version un peu mieux optimisée de Grogrosfish
 	bool grogrosfish(int, Evaluator*, bool);
@@ -385,7 +392,7 @@ public:
 	[[nodiscard]] string to_fen() const;
 
 	// Fonction qui renvoie le gagnant si la partie est finie (-1/1), et 0 sinon
-	int game_over();
+	int is_game_over();
 
 	// Fonction qui renvoie le label d'un coup
 	string move_label(Move move);
@@ -740,7 +747,7 @@ public:
 
 	// Paramètres pour la recherche de Monte-Carlo
 	float _beta = 0.1f;
-	float _k_add = 25.0f;
+	float _k_add = 10.0f;
 	//float _beta = 0.03f;
 	//float _k_add = 50.0f;
 	int _quiescence_depth = 4;
@@ -806,6 +813,10 @@ public:
 
 	// TODO : Pour le PGN, faire un vecteur de coups, comme ça on peut repasser la partie, et modifier le PGN facilement
 
+
+	// Evaluation test
+	Evaluator *_eval = new Evaluator(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	//Evaluator *_eval = new Evaluator();
 
 
 
