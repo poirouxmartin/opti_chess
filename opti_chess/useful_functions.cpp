@@ -80,14 +80,14 @@ void softmax(int* input, const int size, const float beta, const float k_add)
 
 	static constexpr float evaluation_softener = 0.25f;
 	// Pour que ça regarde un peu plus des coups en dessous (plus la valeur est faible, plus ça applanit le k_add)
-	const float best_win_chance = get_winning_chances_from_eval(m * evaluation_softener, false, true);
+	const float best_win_chance = get_winning_chances_from_eval(m * evaluation_softener, true);
 	const float constant = beta * m + log(sum);
 
 	for (int i = 0; i < size; i++)
 	{
 		// TODO prendre en compte les mats
 		const auto eval_i = static_cast<float>(input[i]);
-		const float win_chance = get_winning_chances_from_eval(eval_i * evaluation_softener, false, true);
+		const float win_chance = get_winning_chances_from_eval(eval_i * evaluation_softener, true);
 		const float adding = (win_chance == 0.0f) ? 0.0f : win_chance / best_win_chance * 2;
 		//const float adding = 1;
 		// Juste histoire de continuer à regarder un peu les coups (on sait jamais)
@@ -449,10 +449,8 @@ bool is_in(const string& s, string string_array[], const int n)
 }
 
 // Fonction qui calcule les chances de gain/nulle/perte
-float get_winning_chances_from_eval(const float eval, const bool mate, const bool player)
+float get_winning_chances_from_eval(const float eval, const bool player)
 {
-	if (mate)
-		return 1;
 	return 0.5f * (1 + (2 / (1 + exp(-0.75f * (player ? 1 : -1) * eval / 100)) - 1));
 }
 

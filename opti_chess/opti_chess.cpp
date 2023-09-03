@@ -745,7 +745,6 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 		return false;*/
 
 	_evaluated = true;
-	_mate = false;
 
 	if (display)
 	{
@@ -935,7 +934,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 	}
 
 	// Chances de gain
-	const float win_chance = get_winning_chances_from_eval(_evaluation * 100, false, true);
+	const float win_chance = get_winning_chances_from_eval(_evaluation * 100, true);
 	if (display)
 		eval_components += "W/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/" + to_string(static_cast<int>(100 * 0)) + "/" + to_string(static_cast<int>(100 * (1.0f - win_chance))) + "%\n";
 
@@ -946,7 +945,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 // Fonction qui évalue la position à l'aide d'heuristiques -> évaluation entière
 bool Board::evaluate_int(Evaluator* eval, const bool display, Network* n) {
 	const bool evaluated = evaluate(eval, display, n);
-	if (n == nullptr || _mate)
+	if (n == nullptr)
 		_evaluation *= 100;
 	_evaluation = _evaluation + 0.5f - static_cast<float>(_evaluation < 0); // pour l'arrondi
 	_static_evaluation = static_cast<int>(_evaluation);
@@ -1149,8 +1148,6 @@ bool Board::undo() {
 		_evaluated = false;
 	}
 
-	_mate = false;
-	_mate_checked = false;
 	_game_over_checked = false;
 
 	// Decrémentation des coups
@@ -2130,7 +2127,7 @@ bool Board::draw() {
 		stream << fixed << setprecision(2) << best_eval / 100.0f;
 		global_eval_text = mate ? (best_eval > 0 ? "+" + eval : "-" + eval) : (best_eval > 0) ? "+" + stream.str() : stream.str();
 
-		float win_chance = get_winning_chances_from_eval(best_eval, mate != 0, _player);
+		float win_chance = get_winning_chances_from_eval(best_eval, _player);
 		if (!_player)
 			win_chance = 1 - win_chance;
 		string win_chances = "\nW/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/0/" + to_string(static_cast<int>(100 * (1 - win_chance))) + "\%\n";
@@ -2224,11 +2221,11 @@ void Board::play_move_sound(Move move) const
 	Board b(*this);
 	b.make_move(move);
 
-	const int mate = b.is_mate();
+	const int mate = b.is_game_over();
 
-	if (mate == 0)
+	if (mate == 2)
 		return PlaySound(stealmate_sound);
-	if (mate == 1)
+	if (mate != 0)
 		return PlaySound(checkmate_sound);
 
 	if (b.in_check()) {
@@ -2343,7 +2340,7 @@ void draw_arrow_from_coord(int i1, int j1, int i2, int j2, int index, const int 
 		else {
 #pragma warning(suppress : 4996)
 			if (main_GUI._display_win_chances)
-				value = float_to_int(100.0f * get_winning_chances_from_eval(value, false, main_GUI._board._player));
+				value = float_to_int(100.0f * get_winning_chances_from_eval(value, main_GUI._board._player));
 			sprintf_s(v, "%d", value);
 		}
 
@@ -2830,7 +2827,6 @@ void Board::reset_board(const bool display) {
 	_is_active = false;
 	_current_move = 0;
 	_evaluated = false;
-	_mate_checked = false;
 	_game_over_checked = false;
 	_monte_called = true;
 	_is_game_over = false;
@@ -3260,52 +3256,6 @@ int Board::get_king_safety() {
 	return king_safety;
 }
 
-// Fonction qui renvoie s'il y a échec et mat, pat, ou rien (1 pour mat, 0 pour pat, -1 sinon)
-// TODO : à rendre plus rapide
-int Board::is_mate() {
-	if (_mate_checked)
-		return _mate_value;
-
-	_mate_checked = true;
-
-	// Pour accélérer en ne re calculant pas forcément les coups (marche avec coups légaux OU illégaux)
-	const int half_moves = _half_moves_count;
-	_half_moves_count = 0;
-
-	const int moves = _got_moves;
-
-	if (_got_moves == -1)
-		get_moves();
-
-	Board b;
-
-	for (int i = 0; i < _got_moves; i++) {
-		b.copy_data(*this);
-		b.make_index_move(i);
-		b._player = _player;
-		if (!b.in_check()) {
-			_half_moves_count = half_moves;
-			_got_moves = moves;
-			_mate_value = -1;
-			return -1;
-		}
-	}
-
-	// Mat
-	if (in_check()) {
-		_half_moves_count = half_moves;
-		_got_moves = moves;
-		_mate_value = 1;
-		return 1;
-	}
-
-	// Pat
-	_got_moves = moves;
-	_half_moves_count = half_moves;
-	_mate_value = 0;
-	return 0;
-}
-
 // Fonction qui dit si une pièce est capturable par l'ennemi (pour les affichages GUI)
 bool Board::is_capturable(const int i, const int j) {
 	_got_moves == -1 && get_moves(false, true);
@@ -3542,7 +3492,7 @@ int match(Evaluator* e_white, Evaluator* e_black, Network* n_white, Network* n_b
 	Board b;
 
 	// Jeu
-	while ((b.is_mate() == -1 && b.is_game_over() == 0)) {
+	while (b.is_game_over() == 0) {
 		if (b._player)
 			b.grogros_zero(e_white, nodes, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, true, false, 0, n_white);
 		else
@@ -3554,16 +3504,11 @@ int match(Evaluator* e_white, Evaluator* e_black, Network* n_white, Network* n_b
 			break;
 	}
 
-	int g = b.is_mate();
-	if (g == -1)
-		g = b.is_game_over();
-	else
-		return -g * b.get_color();
+	int g = b.is_game_over();
 	if (g == 2)
 		return 0;
-	return g;
 
-	return g;
+	return -g * b.get_color();
 }
 
 // Fonction qui organise un tournoi entre les IA utilisant évaluateurs et réseaux de neurones des listes et renvoie la liste des scores
@@ -4559,8 +4504,7 @@ int Board::select_uct(const float c) const
 
 	// Pour chaque noeud fils
 	for (int i = 0; i < _got_moves; i++) {
-		const float win_chance = get_winning_chances_from_eval(monte_buffer._heap_boards[_index_children[i]]._evaluation,
-			monte_buffer._heap_boards[_index_children[i]]._mate, _player);
+		const float win_chance = get_winning_chances_from_eval(monte_buffer._heap_boards[_index_children[i]]._evaluation, _player);
 		if (const float uct_value = uct(win_chance, c, _nodes, _nodes_children[i]); uct_value > max_uct) {
 			max_uct = uct_value;
 			uct_move = i;

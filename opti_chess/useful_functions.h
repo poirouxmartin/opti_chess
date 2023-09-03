@@ -102,7 +102,7 @@ int float_to_int(float);
 bool is_in(const string&, string[], int);
 
 // Fonction qui calcule les chances de gain/nulle/perte
-float get_winning_chances_from_eval(float, bool, bool);
+float get_winning_chances_from_eval(float, bool);
 
 // Fonction qui pondère les valeurs de la liste, en fonction d'un taux d'exploration par valeur
 void nodes_weighting(int*, const float*, int);
