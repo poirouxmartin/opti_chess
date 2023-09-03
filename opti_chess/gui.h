@@ -169,7 +169,7 @@ static float monte_carlo_slider = 0.0f;
 static float variants_slider = 0.0f;
 
 // Pre-move
-static int pre_move[4] = { -1, -1, -1, -1 };
+//static int pre_move[4] = { -1, -1, -1, -1 };
 
 // Eval à montrer pour la barre d'éval
 static float global_eval = 0.0f;
