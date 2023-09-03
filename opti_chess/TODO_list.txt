@@ -269,6 +269,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Dans la recherche de grogros_zero, regarder en priorité les coups forts et peu regardés
 -> REFAIRE TOUTE LA PARTIE SUR IS_GAME_OVER -> NE PAS METTRE DANS LA FONCTION D'EVALUATION!!
 -> Detection plus rapide d'échecs et mat
+-> Regarder où on fait des accès mémoire fréquent et faire des copies locales pour aller plus vite?
 
 
 

@@ -365,15 +365,15 @@ public:
 	int pieces_positioning(const Evaluator* eval = nullptr) const;
 
 	// Fonction qui évalue la position à l'aide d'heuristiques
-	bool evaluate(Evaluator* eval = nullptr, bool checkmates = false, bool display = false, Network* n = nullptr);
+	bool evaluate(Evaluator* eval = nullptr, bool display = false, Network* n = nullptr);
 
 	// Fonction qui évalue la position à l'aide d'heuristiques -> évaluation entière
-	bool evaluate_int(Evaluator* eval = nullptr, bool checkmates = false, bool display = false, Network* n = nullptr);
+	bool evaluate_int(Evaluator* eval = nullptr, bool display = false, Network* n = nullptr);
 
 	// Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
 	int negamax(int, int, int, bool, Evaluator*, bool play = false, bool display = false, int quiescence_depth = 0, int null_depth = 2);
 
-	// Version un peu mieux optimisée de Grogrosfish
+	// Grogrosfish
 	bool grogrosfish(int, Evaluator*, bool);
 
 	// Fonction qui revient à la position précédente
@@ -428,7 +428,7 @@ public:
 	[[nodiscard]] int max_monte_carlo_depth() const;
 
 	// Algo de grogros_zero
-	void grogros_zero(Evaluator* eval = nullptr, int nodes = 1, bool checkmates = false, float beta = 0.035f, float k_add = 50.0f, int quiescence_depth = 4, bool deep_mates_check = true, bool explore_checks = true, bool display = false, int depth = 0, Network* net = nullptr);
+	void grogros_zero(Evaluator* eval = nullptr, int nodes = 1, bool checkmates = false, float beta = 0.035f, float k_add = 50.0f, int quiescence_depth = 4, bool explore_checks = true, bool display = false, int depth = 0, Network* net = nullptr);
 
 	// Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
 	void reset_board(bool display = false);
@@ -515,7 +515,7 @@ public:
 	bool quick_moves_sort();
 
 	// Fonction qui fait un quiescence search
-	int quiescence(Evaluator* eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool checkmates_check = true, bool deep_mates_check = true, bool explore_checks = true, bool main_player = true);
+	int quiescence(Evaluator* eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool explore_checks = true, bool main_player = true);
 
 	// Fonction qui renvoie le i-ème coup
 	[[nodiscard]] int* get_i_move(int) const;
@@ -751,7 +751,6 @@ public:
 	//float _beta = 0.03f;
 	//float _k_add = 50.0f;
 	int _quiescence_depth = 4;
-	bool _deep_mates_search = true;
 	bool _explore_checks = true;
 
 	// Est-ce que les noms des joueurs ont été ajoutés au PGN
@@ -815,9 +814,8 @@ public:
 
 
 	// Evaluation test
-	Evaluator *_eval = new Evaluator(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-	//Evaluator *_eval = new Evaluator();
-
+	//Evaluator *_eval = new Evaluator(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	Evaluator *_eval = new Evaluator();
 
 
 	// Constructeurs
