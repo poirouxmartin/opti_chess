@@ -5,6 +5,14 @@
 #include <random>
 #include <chrono>
 
+
+
+// Fonction qui renvoie si une valeur est comprise dans un intervalle
+bool is_in(const auto x, const auto min, const auto max)
+{
+	return (x >= min && x <= max);
+}
+
 // Fonction qui renvoie si un entier appartient à un intervalle
 bool is_in(const int x, const int min, const int max)
 {
@@ -62,7 +70,7 @@ int move_power(const float n, const float range, const float min)
 // Fonction qui fait un softmax
 void softmax(int* input, const int size, const float beta, const float k_add)
 {
-	constexpr int r = 10000;
+	constexpr int r = 100000;
 
 	const int m = *max_element(input, input + size);
 
@@ -81,6 +89,7 @@ void softmax(int* input, const int size, const float beta, const float k_add)
 		const auto eval_i = static_cast<float>(input[i]);
 		const float win_chance = get_winning_chances_from_eval(eval_i * evaluation_softener, false, true);
 		const float adding = (win_chance == 0.0f) ? 0.0f : win_chance / best_win_chance * 2;
+		//const float adding = 1;
 		// Juste histoire de continuer à regarder un peu les coups (on sait jamais)
 		input[i] = r * exp(beta * eval_i - constant) + k_add * adding;
 	}
@@ -118,8 +127,8 @@ int pick_random_good_move(int* l, const int n, const int color, bool print, cons
 	int sum = 0;
 	int min = INT_MAX;
 
-	int range = max_value(l, n) - min_value(l, n);
-	int min_val = (color == 1) ? min_value(l, n) : max_value(l, n);
+	//int range = max_value(l, n) - min_value(l, n);
+	//int min_val = (color == 1) ? min_value(l, n) : max_value(l, n);
 
 	int l2[100];
 
@@ -131,12 +140,20 @@ int pick_random_good_move(int* l, const int n, const int color, bool print, cons
 	// Liste de pondération en fonction de l'exploration de chaque noeud
 	// Pour que ça explore les noeuds les moins regardés
 	float pond[100];
-	const float inv_nodes = 1.0f / static_cast<float>(nodes);
+	//const float inv_nodes = 1.0f / static_cast<float>(nodes);
+
+	/*for (int i = 0; i < n; i++)
+		pond[i] = 1.0f - nodes_children[i] * inv_nodes;*/
 
 	for (int i = 0; i < n; i++)
-		pond[i] = 1.0f - nodes_children[i] * inv_nodes;
+		pond[i] = static_cast<float>(nodes) / static_cast<float>(nodes_children[i]);
+
+	//print_array(pond, n);
+	//print_array(l2, n);
 
 	nodes_weighting(l2, pond, n);
+
+	//print_array(l2, n);
 
 	// Somme de toutes les valeurs
 	for (int i = 0; i < n; i++)

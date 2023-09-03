@@ -9,6 +9,15 @@
 
 
 
+// Fonction de test
+void launch_eval() {
+	main_GUI._board.reset_board();
+	main_GUI._board.is_game_over();
+	main_GUI._board.evaluate_int(main_GUI._eval, true);
+}
+
+
+
 // Fonction qui fait le dessin de la GUI
 void gui_draw() {
 	if (!main_GUI._draw)
@@ -161,6 +170,12 @@ int main() {
 
 			//main_GUI.grogros_zero_threaded(&monte_evaluator, 5000);
 
+			// Teste la vitesse de la fonction d'évaluation
+			cout << "testing eval speed..." << endl;
+			test_function(&launch_eval, 1);
+
+			// Teste la vitesse de génération des coups
+			cout << "testing moves generation speed..." << endl;
 			main_GUI._board.moves_generation_benchmark(6);
 
 			//	1 move : 20 possible positions.
@@ -540,10 +555,13 @@ int main() {
 
 		// }
 
+
+
+
 		// Jeu des IA
 
 		// Fait jouer l'IA automatiquement en fonction des paramètres
-		if (!main_GUI._board._is_game_over && main_GUI._board.is_mate() == -1 && main_GUI._board.game_over() == 0) {
+		if (main_GUI._board.is_game_over() == 0) {
 			// GrogrosZero
 
 			// Quand c'est son tour
@@ -558,8 +576,8 @@ int main() {
 					int tot_nodes = main_GUI._board.total_nodes();
 					float best_move_percentage = tot_nodes == 0 ? 0.05f : static_cast<float>(main_GUI._board._nodes_children[main_GUI._board.best_monte_carlo_move()]) / static_cast<float>(main_GUI._board.total_nodes());
 					int max_move_time = main_GUI._board._player ?
-						time_to_play_move(main_GUI._time_white, main_GUI._time_black, 0.05f * (1.0f - best_move_percentage)) :
-						time_to_play_move(main_GUI._time_black, main_GUI._time_white, 0.05f * (1.0f - best_move_percentage));
+						time_to_play_move(main_GUI._time_white, main_GUI._time_black, 0.075f * (1.0f - best_move_percentage)) :
+						time_to_play_move(main_GUI._time_black, main_GUI._time_white, 0.075f * (1.0f - best_move_percentage));
 					int grogros_timed_nodes = min(nodes_per_frame, supposed_grogros_speed * max_move_time / 1000);
 					main_GUI._board.grogros_zero(&monte_evaluator, min(!main_GUI._time ? nodes_per_frame : grogros_timed_nodes, grogros_nodes - main_GUI._board.total_nodes()), true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._deep_mates_search, main_GUI._explore_checks);
 					if (main_GUI._board._time_monte_carlo >= max_move_time)
@@ -587,7 +605,7 @@ int main() {
 					main_GUI._board.grogros_zero(&monte_evaluator, nodes_per_user_frame, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._deep_mates_search, main_GUI._explore_checks); // Pour que ça ne lag pas pour l'utilisateur
 			}
 
-			if (main_GUI._board._is_game_over || main_GUI._board.is_mate() != -1 || main_GUI._board.game_over() != 0)
+			if (main_GUI._board.is_game_over() != 0)
 				goto game_over;
 
 			// GrogrosFish (seulement lorsque c'est son tour)
