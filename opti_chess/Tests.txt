@@ -118,6 +118,7 @@ r1bq3r/p2pk1pp/2pNpn2/2P5/1b3P2/4B3/PP2K1PP/R2Q1B1R b - - 0 15 : gagnant pour le
 3r4/1p1r3k/pR1p1pqp/2pPpN2/2P1P3/6PP/1P1Q2P1/6K1 w - - 10 39 : gagnant stratégiquement selon Leela -> les noirs n'ont pas de plan
 3r4/1p1r3k/pR1p1p1p/3PpNq1/1QP1P3/6PP/6PK/8 b - - 2 41 : plus de coups pour les noirs
 2kr3r/p1p4q/2pbp1R1/3p4/3P2p1/2N3P1/PPP2PK1/R2Q4 w - - 4 23 : quasi mat
+r1bqkbr1/pp2n2p/2p3p1/6B1/3N4/4R3/PQP2PPP/R5K1 b - - 0 16 : gagnant pour les blancs (beaucoup d'activité + roi faible)
 
 
 

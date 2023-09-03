@@ -225,9 +225,6 @@ public:
 	// Peut-être utile pour les optimisations?
 	float _evaluation = 0.0f;
 
-	// Position mat (pour les calculs de mat plus rapides)
-	bool _mate = false;
-
 	// Droits de roque
 	CastlingRights _castling_rights;
 
@@ -289,12 +286,6 @@ public:
 	// Avancement de la partie
 	float _adv = 0.0f;
 	bool _advancement = false;
-
-	// Chances de gain des fils
-
-	// Est-ce que la vérification de mat a déjà été faite?
-	bool _mate_checked = false;
-	int _mate_value = -1;
 
 	// Est-ce que le calcul de game over a déjà été fait?
 	bool _game_over_checked = false;
@@ -438,9 +429,6 @@ public:
 
 	// Fonction qui calcule et renvoie la valeur correspondante à la sécurité des rois
 	int get_king_safety();
-
-	// Fonction qui renvoie s'il y a échec et mat (ou pat) (-1, 1 ou 0)
-	int is_mate();
 
 	// Fonction qui dit si une pièce est capturable par l'ennemi (pour les affichages GUI)
 	bool is_capturable(int, int);
