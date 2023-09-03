@@ -117,6 +117,7 @@ r1bq3r/p2pk1pp/2pNpn2/2P5/1b3P2/4B3/PP2K1PP/R2Q1B1R b - - 0 15 : gagnant pour le
 3rqr2/1p5k/p2p1p1p/2pPpN2/2P1P3/5RPP/1P2Q1P1/6K1 w - - 4 36 : cheval en f5 hyper fort
 3r4/1p1r3k/pR1p1pqp/2pPpN2/2P1P3/6PP/1P1Q2P1/6K1 w - - 10 39 : gagnant stratégiquement selon Leela -> les noirs n'ont pas de plan
 3r4/1p1r3k/pR1p1p1p/3PpNq1/1QP1P3/6PP/6PK/8 b - - 2 41 : plus de coups pour les noirs
+2kr3r/p1p4q/2pbp1R1/3p4/3P2p1/2N3P1/PPP2PK1/R2Q4 w - - 4 23 : quasi mat
 
 
 
@@ -284,6 +285,10 @@ r1b1r2k/pp1nN1pp/8/3Q4/3p2P1/2q3P1/P1P1KP2/2BR4 w q - 0 1 : Dg8+ #3
 6k1/p2npp1p/4bP2/1P1p1p2/7q/3Q1P2/PB6/5RK1 w - - 0 30 : Tf2 gagne
 3r4/p7/1pn5/5k2/P1Pp2p1/1P1R4/3N1P2/5K2 w - - 0 37 : noirs gagnants (roi trop actif)
 3rr3/p1k1qbb1/2pp4/6p1/1Q2Pp2/5B2/PP3PP1/2R1RNK1 w - - 4 31 : Txc6+ #6
+8/k7/2B1R3/8/8/1pr5/4K3/8 b - - 3 73 : Txc6 gagne
+2kr3r/p1pq4/2pbp3/3p2pp/3P4/2N2RPP/PPP2PK1/R2Q4 b - - 1 19 : g4 gagne
+3rr3/p1pk2q1/2pb4/3p2p1/Q2R2Pp/2N4P/PPP2PK1/R7 b - - 0 25 : De5 gagne (pour Tf8)
+5r2/Q1pk4/2pb4/4q1p1/3p1rPp/3R1P1P/PPP3K1/3N3R b - - 1 30 : De2+ #6
 
 
 

@@ -121,8 +121,7 @@ int rand_int(const int a, const int b)
 }
 
 // Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variantes, en fonction de la grandeur du nombre correspondant à cet index
-int pick_random_good_move(int* l, const int n, const int color, bool print, const int nodes, int* nodes_children,
-	const float beta, const float k_add)
+int pick_random_good_move(int* l, const int n, const int color, bool print, const int nodes, int* nodes_children, const float beta, const float k_add)
 {
 	int sum = 0;
 	int min = INT_MAX;

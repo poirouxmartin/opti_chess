@@ -347,10 +347,6 @@ bool Board::get_moves(const bool pseudo, const bool forbide_check) {
 // Fonction qui dit si une case est attaquée
 bool Board::attacked(const int i, const int j) const
 {
-	// Pas besoin de regarder hors du plateau
-	if (i < 0 || i > 7 || j < 0 || j > 7)
-		return false;
-
 	// Regarde tous les coups adverses dans cette position, puis renvoie si l'un d'entre eux a pour case finale, la case en argument
 	Board b;
 	b.copy_data(*this);
@@ -528,7 +524,8 @@ bool Board::in_check()
 
 // Fonction qui affiche la liste des coups donnée en argument
 void Board::display_moves(const bool pseudo) {
-	get_moves(false, !pseudo);
+	if (_got_moves == -1)
+		get_moves(false, !pseudo);
 
 	if (_got_moves == 0) {
 		cout << "no legal moves" << endl;
@@ -1016,10 +1013,12 @@ int Board::negamax(const int depth, int alpha, const int beta, const bool max_de
 
 	int best_move = 0;
 
-	if (depth > 1)
-		sort_moves(eval);
+	if (depth > 1) {
+		//sort_moves(eval);
+		quick_moves_sort();
+	}
+		
 	if (max_depth) {
-		cout << "sorted moves : " << _sorted_moves << endl;
 		display_moves();
 	}
 		
@@ -1425,6 +1424,7 @@ string Board::to_fen() const
 }
 
 // Fonction qui renvoie le gagnant si la partie est finie (-1/1, et 2 pour nulle), et 0 sinon
+// Génère également les coups légaux, s'il y en a
 int Board::is_game_over() {
 
 	// Ne pas recalculer si déjà fait
@@ -1595,7 +1595,7 @@ string Board::move_label(Move move)
 
 	// En cas d'égalité
 	else if (b._game_over_value == 2)
-		return s + (b._got_moves == 0 ? "@ 1/2-1/2" : "1/2-1/2"); // Pat -> "@"
+		return s + (b._got_moves == 0 ? "@ 1/2-1/2" : " 1/2-1/2"); // Pat -> "@"
 
 	// Échec
 	if (b.in_check())
@@ -2705,11 +2705,15 @@ void Buffer::remove() {
 Buffer monte_buffer;
 
 // Algo de grogros_zero
-void Board::grogros_zero(Evaluator* eval, int nodes, const bool checkmates, const float beta, const float k_add, const int quiescence_depth, const bool explore_checks, const bool display, const int depth, Network* net)
+void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const float k_add, const int quiescence_depth, const bool explore_checks, const bool display, const int depth, Network* net)
 {
-	// Profondeur maximale atteinte
+	// Pour la GUI
 	_monte_called = true;
+
+	// Pour le buffer
 	_is_active = true;
+
+	// Temps au début de l'appel de GrogrosZero
 	const clock_t begin_monte_time = clock();
 
 	// Si c'est le premier appel, sur le plateau principal
@@ -2738,11 +2742,10 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const bool checkmates, cons
 		return;
 	}
 
-	// Obtention des coups jouables
-	(_got_moves == -1) && _new_board && get_moves(false, true); // A faire à chaque fois? (sinon, mettre à false) -> à mettre seulement si new_board??
-	_quick_sorted_moves = false;
-	(!_quick_sorted_moves) && quick_moves_sort();
+	// Trie les coups si ça n'est pas déjà fait
+	!_quick_sorted_moves && quick_moves_sort();
 
+	// Reset les tableaux pour les plateaux fils
 	if (_new_board) {
 		if (_eval_children != nullptr) {
 			delete[] _eval_children;
@@ -2759,32 +2762,23 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const bool checkmates, cons
 			_index_children = nullptr;
 		}
 
-		_eval_children = new int[_got_moves];
-		_nodes_children = new int[_got_moves];
-		_index_children = new int[_got_moves]; // à changer? cela prend du temps?
+		_eval_children = new int[_got_moves]();
+		_nodes_children = new int[_got_moves]();
+		_index_children = new int[_got_moves](); // à changer? cela prend du temps?
 
-		for (int i = 0; i < _got_moves; i++) {
-			_nodes_children[i] = 0;
-			_eval_children[i] = 0;
-		}
 
 		_tested_moves = 0;
 		_current_move = 0;
 		_new_board = false;
 	}
 
-	if (_got_moves == 0) {
-		_nodes++; // un peu bizarre mais bon... revoir les cas où y'a des mats
-		_time_monte_carlo += clock() - begin_monte_time;
-		return;
-	}
 
-	// Tant qu'il reste des noeuds à calculer...
+	// *** BOUCLE PRINCIPALE ***
 	while (nodes > 0) {
-		// Choix du coup à jouer pour l'exploration
 
-		// Si tous les coups de la position ne sont pas encore testés
+		// *** TOUS LES COUPS NE SONT PAS ENCORE EXPLORÉS ***
 		if (_tested_moves < _got_moves) {
+
 			// Prend une nouvelle place dans le buffer
 			const int index = monte_buffer.get_first_free_index();
 			if (index == -1) {
@@ -2792,10 +2786,10 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const bool checkmates, cons
 				return;
 			}
 
-			// FIXME : accès mémoire trop fréquents
-			// Créer le plateau et faires les opérations, et ensuite l'assigner?
-
+			// Stocke l'index du plateau dans le buffer pour ce coup
 			_index_children[_current_move] = index;
+
+			// Rend actif le plateau fils
 			monte_buffer._heap_boards[index]._is_active = true;
 
 			// Joue un nouveau coup
@@ -2810,22 +2804,14 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const bool checkmates, cons
 			_nodes_children[_current_move] = 1;
 
 			// Actualise la valeur d'évaluation du plateau
-			if (_player) {
-				if (_eval_children[_current_move] > _evaluation)
-					_evaluation = _eval_children[_current_move];
-			}
-			else {
-				if (_eval_children[_current_move] < _evaluation)
-					_evaluation = _eval_children[_current_move];
-			}
-			// TODO : à condenser
+			_evaluation = (_player && _eval_children[_current_move] > _evaluation) ? _eval_children[_current_move] : (!_player && _eval_children[_current_move] < _evaluation) ? _eval_children[_current_move] : _evaluation;
 
 			// Incrémentation des coups
 			_current_move++;
 			_tested_moves++;
 		}
 
-		// Lorsque tous les coups de la position ont déjà été testés (et évalués)
+		// *** TOUS LES COUPS SONT DÉJÀ EXPLORÉS ***
 		else {
 			// Choisit aléatoirement un "bon" coup
 			_current_move = pick_random_good_move(_eval_children, _got_moves, get_color(), false, _nodes, _nodes_children, beta, k_add);
@@ -2833,7 +2819,7 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const bool checkmates, cons
 
 			// Va une profondeur plus loin... appel récursif sur Monte-Carlo
 			_quiescence_nodes -= monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes;
-			monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(eval, 1, checkmates, beta, k_add, quiescence_depth, explore_checks, display, depth + 1, net);
+			monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(eval, 1, beta, k_add, quiescence_depth, explore_checks, display, depth + 1, net);
 			_quiescence_nodes += monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes;
 
 			// Actualise l'évaluation
@@ -3575,9 +3561,9 @@ int match(Evaluator* e_white, Evaluator* e_black, Network* n_white, Network* n_b
 	// Jeu
 	while ((b.is_mate() == -1 && b.is_game_over() == 0)) {
 		if (b._player)
-			b.grogros_zero(e_white, nodes, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, true, false, 0, n_white);
+			b.grogros_zero(e_white, nodes, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, true, false, 0, n_white);
 		else
-			b.grogros_zero(e_black, nodes, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, true, false, 0, n_black);
+			b.grogros_zero(e_black, nodes, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, true, false, 0, n_black);
 		b.play_monte_carlo_move_keep(b.best_monte_carlo_move(), false, true, false);
 
 		// Limite de coups
@@ -4640,7 +4626,14 @@ bool Board::quick_moves_sort() {
 		const int capturer_value = captures_values[piece];
 
 		// Valeur du coup
-		int move_value = captured_value == 0 ? 0 : captured_value / capturer_value;
+		//int move_value = captured_value == 0 ? 0 : captured_value / capturer_value;
+
+		// Alternative plus précise
+		int move_value = 0;
+		if (captured_value != 0) {
+			move_value = captured_value - capturer_value;
+			move_value += (move_value < 0 && is_controlled(move.i2, move.j2)) ? move_value : 10000;
+		}
 
 		// Promotion
 		// Blancs
@@ -4653,6 +4646,8 @@ bool Board::quick_moves_sort() {
 		moves_values[i] = move_value;
 	}
 
+
+	//print_array(moves_values, _got_moves);
 
 	// Plus lent??
 
@@ -4734,6 +4729,7 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, const int dept
 	if (alpha < stand_pat)
 		alpha = stand_pat;
 
+	// Trie rapidement les coups
 	quick_moves_sort();
 
 	for (int i = 0; i < _got_moves; i++) {
@@ -5929,7 +5925,7 @@ bool GUI::thread_grogros_zero(Evaluator *eval, int nodes)
 		monte_buffer.init();
 
 	// Lance grogros sur 1 noeud
-	_board.grogros_zero(eval, 100, true, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr);
+	_board.grogros_zero(eval, 100, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr);
 
 	//_thread_grogros_zero = thread(&Board::grogros_zero, &_board, eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
 	////_thread_grogros_zero = thread(&Board::grogros_zero, &monte_buffer._heap_boards[main_GUI._board._index_children[0]], &monte_evaluator, nodes, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, true, true, false, 0, nullptr);
@@ -5964,7 +5960,7 @@ bool GUI::thread_grogros_zero(Evaluator *eval, int nodes)
 	}
 
 	// Relance grogros sur 1 noeud (pour actualiser les valeurs)
-	_board.grogros_zero(eval, 100, true, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr);
+	_board.grogros_zero(eval, 100, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr);
 
 	return true;
 }
@@ -5976,7 +5972,7 @@ bool GUI::grogros_zero_threaded(Evaluator* eval, int nodes) {
 		monte_buffer.init();
 
 	// Lance grogros sur un thread
-	_thread_grogros_zero = thread(&Board::grogros_zero, &_board, eval, nodes, true, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr);
+	_thread_grogros_zero = thread(&Board::grogros_zero, &_board, eval, nodes, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr);
 
 	_thread_grogros_zero.detach();
 }
@@ -6050,4 +6046,154 @@ int Board::get_fianchetto_value() const
 	}
 
 	return fianchetti * 100.0f * (1.0f - _adv);
+}
+
+// Fonction qui renvoie si la case est controlée par le joueur adverse
+bool Board::is_controlled(int square_i, int square_j) const
+{
+
+	// Regarde les potentielles attaques de cavalier
+	constexpr int knight_offsets[8][2] = { {-1, -2}, {-2, -1}, {-2, 1}, {-1, 2}, {1, -2}, {2, -1}, {2, 1}, {1, 2} };
+
+	for (int k = 0; k < 8; k++) {
+		const int ni = square_i + knight_offsets[k][0];
+
+		// S'il y a un cavalier qui attaque, renvoie vrai (en échec)
+		if (const int nj = square_j + knight_offsets[k][1]; ni >= 0 && ni < 8 && nj >= 0 && nj < 8 && _array[ni][nj] == (2 + _player * 6))
+			return true;
+	}
+
+
+	// Regarde les lignes horizontales et verticales
+
+	// Gauche
+	for (int j = square_j - 1; j >= 0; j--)
+	{
+		// Si y'a une pièce
+		if (const uint_fast8_t piece = _array[square_i][j]; piece != 0)
+		{
+			// Si la pièce n'est pas au joueur, regarde si c'est une tour, une dame, ou un roi avec une distance de 1
+			if (piece < 7 != _player)
+				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 4 || simple_piece == 5 || (simple_piece == 6 && j == square_j - 1))
+					return true;
+
+			break;
+		}
+	}
+
+	// Droite
+	for (int j = square_j + 1; j < 8; j++)
+	{
+		if (const uint_fast8_t piece = _array[square_i][j]; piece != 0)
+		{
+			if (piece < 7 != _player)
+				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 4 || simple_piece == 5 || (simple_piece == 6 && j == square_j + 1))
+					return true;
+
+			break;
+		}
+	}
+
+	// Haut
+	for (int i = square_i - 1; i >= 0; i--)
+	{
+		if (const uint_fast8_t piece = _array[i][square_j]; piece != 0)
+		{
+			if (piece < 7 != _player)
+				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 4 || simple_piece == 5 || (simple_piece == 6 && i == square_i - 1))
+					return true;
+
+			break;
+		}
+	}
+
+	// Bas
+	for (int i = square_i + 1; i < 8; i++)
+	{
+		if (const uint_fast8_t piece = _array[i][square_j]; piece != 0)
+		{
+			if (piece < 7 != _player)
+				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 4 || simple_piece == 5 || (simple_piece == 6 && i == square_i + 1))
+					return true;
+
+			break;
+		}
+	}
+
+	// Regarde les diagonales
+
+	// Diagonale bas-gauche
+	for (int i = square_i - 1, j = square_j - 1; i >= 0 && j >= 0; i--, j--)
+	{
+		if (const uint_fast8_t piece = _array[i][j]; piece != 0)
+		{
+			if (piece < 7 != _player)
+			{
+				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 3 || simple_piece == 5 || (simple_piece == 6 && (abs(square_i - i) == 1)))
+					return true;
+
+				// Cas spécial pour les pions
+				if (piece == 1 && abs(square_j - j) == 1)
+					return true;
+			}
+
+			break;
+		}
+	}
+
+	// Diagonal bas-droite
+	for (int i = square_i - 1, j = square_j + 1; i >= 0 && j < 8; i--, j++)
+	{
+		if (const uint_fast8_t piece = _array[i][j]; piece != 0)
+		{
+			if ((piece < 7) != _player)
+			{
+				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 3 || simple_piece == 5 || (simple_piece == 6 && abs(square_i - i) == 1))
+					return true;
+
+				// Special case for pawns
+				if (piece == 1 && abs(square_j - j) == 1)
+					return true;
+			}
+			break;
+		}
+	}
+
+	// Diagonale haut-gauche
+	for (int i = square_i + 1, j = square_j - 1; i < 8 && j >= 0; i++, j--)
+	{
+		if (const uint_fast8_t piece = _array[i][j]; piece != 0)
+		{
+			if ((piece < 7) != _player)
+			{
+				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 3 || simple_piece == 5 || (simple_piece == 6 && abs(square_i - i) == 1))
+					return true;
+
+				// Special case for pawns
+				if (piece == 7 && abs(square_j - j) == 1)
+					return true;
+			}
+			break;
+		}
+	}
+
+	// Diagonale haut-droite
+	for (int i = square_i + 1, j = square_j + 1; i < 8 && j < 8; i++, j++)
+	{
+		if (const uint_fast8_t piece = _array[i][j]; piece != 0)
+		{
+			if ((piece < 7) != _player)
+			{
+				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 3 || simple_piece == 5 || (simple_piece == 6 && abs(square_j - i) == 1))
+					return true;
+
+				// Special case for pawns
+				if (piece == 7 && abs(square_j - j) == 1)
+					return true;
+			}
+			break;
+		}
+	}
+
+	return false;
 }

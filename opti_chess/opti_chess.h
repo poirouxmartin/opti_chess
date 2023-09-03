@@ -428,7 +428,7 @@ public:
 	[[nodiscard]] int max_monte_carlo_depth() const;
 
 	// Algo de grogros_zero
-	void grogros_zero(Evaluator* eval = nullptr, int nodes = 1, bool checkmates = false, float beta = 0.035f, float k_add = 50.0f, int quiescence_depth = 4, bool explore_checks = true, bool display = false, int depth = 0, Network* net = nullptr);
+	void grogros_zero(Evaluator* eval = nullptr, int nodes = 1, float beta = 0.035f, float k_add = 50.0f, int quiescence_depth = 4, bool explore_checks = true, bool display = false, int depth = 0, Network* net = nullptr);
 
 	// Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
 	void reset_board(bool display = false);
@@ -509,7 +509,7 @@ public:
 	[[nodiscard]] int get_square_controls() const;
 
 	// Fonction qui sélectionne et renvoie le coup avec le meilleur UCT
-	[[nodiscard]] int select_uct(float c = 1.0f) const;
+	[[nodiscard]] int select_uct(float c = 0.5f) const;
 
 	// Fonction qui fait un tri rapide des coups (en plaçant les captures en premier)
 	bool quick_moves_sort();
@@ -567,6 +567,9 @@ public:
 
 	// Fonction qui renvoie la valeur des fous en fianchetto
 	[[nodiscard]] int get_fianchetto_value() const;
+
+	// Fonction qui renvoie si la case est controlée par le joueur adverse
+	[[nodiscard]] bool is_controlled(int square_i, int square_j) const;
 };
 
 // Fonction qui obtient la case correspondante à la position sur la GUI
