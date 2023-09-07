@@ -2137,7 +2137,7 @@ bool Board::draw() {
 			evaluate_int(_evaluator, true);
 		int max_depth = grogros_main_depth();
 		int n_nodes = total_nodes();
-		monte_carlo_text += "\n\n--- static eval: " + ((_static_evaluation > 0) ? static_cast<string>("+") : static_cast<string>("")) + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval: " + ((best_eval > 0) ? static_cast<string>("+") : static_cast<string>("")) + eval + " ---" + win_chances + "\nnodes: " + int_to_round_string(n_nodes) + "/" + int_to_round_string(monte_buffer._length) + " | time: " + clock_to_string(_time_monte_carlo) + " | speed: " + int_to_round_string(1000 * total_nodes() / (_time_monte_carlo + 1)) + "N/s" + " | depth: " + to_string(max_depth) + "\nquiescence: " + int_to_round_string(_quiescence_nodes) + "N" + " | speed: " + int_to_round_string(1000 * _quiescence_nodes / (_time_monte_carlo + 1)) + "N/s";
+		monte_carlo_text += "\n\n--- static eval: " + ((_static_evaluation > 0) ? static_cast<string>("+") : static_cast<string>("")) + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval: " + ((best_eval > 0) ? static_cast<string>("+") : static_cast<string>("")) + eval + " ---" + win_chances + "\nnodes: " + int_to_round_string(n_nodes) + "/" + int_to_round_string(monte_buffer._length) + " | time: " + clock_to_string(_time_monte_carlo) + " | speed: " + int_to_round_string(total_nodes() / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s" + " | depth: " + to_string(max_depth) + "\nquiescence: " + int_to_round_string(_quiescence_nodes) + "N" + " | speed: " + int_to_round_string(_quiescence_nodes / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s";
 
 		// Affichage des paramètres d'analyse de Monte-Carlo
 		slider_text(monte_carlo_text, board_padding_x + board_size + text_size / 2, text_size, main_GUI._screen_width - text_size - board_padding_x - board_size, board_size * 9 / 16, text_size / 3, &monte_carlo_slider, text_color);
@@ -3892,14 +3892,14 @@ float Board::get_attacks_and_defenses(float attack_scale, float defense_scale) c
 	uint_fast8_t i2; uint_fast8_t j2;
 
 	// Diagonales
-	constexpr static int_fast8_t dx[] = { -1, -1, 1, 1 };
-	constexpr static int_fast8_t dy[] = { -1, 1, -1, 1 };
+	static constexpr int_fast8_t dx[] = { -1, -1, 1, 1 };
+	static constexpr int_fast8_t dy[] = { -1, 1, -1, 1 };
 
 	// Mouvements rectilignes
-	constexpr static int_fast8_t vx[] = { -1, 1, 0, 0 }; // vertical
-	constexpr static int_fast8_t hy[] = { 0, 0, -1, 1 }; // horizontal
+	static constexpr int_fast8_t vx[] = { -1, 1, 0, 0 }; // vertical
+	static constexpr int_fast8_t hy[] = { 0, 0, -1, 1 }; // horizontal
 
-	// TODO Switch à changer, car c'est lent
+
 	// TODO changer les if par des &&
 
 	for (int i = 0; i < 8; i++) {
