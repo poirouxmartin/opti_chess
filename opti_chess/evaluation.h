@@ -6,7 +6,7 @@ public:
 
 	// Coefficients des heuristiques
 	float _piece_value = 1.2f;
-	float _piece_mobility = 0.0005f;
+	float _piece_mobility = 0.0007f;
 	float _piece_positioning = 0.0045f;
 	float _random_add = 0.0f;
 	float _bishop_pair = 0.25f;
@@ -23,7 +23,7 @@ public:
 	float _space_advantage = 0.006f;
 	//float _alignments = 0.01f;
 	float _alignments = 0.00f;
-	float _piece_activity = 0.0005f;
+	float _piece_activity = 0.0003f;
 	float _fianchetto = 0.003f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
@@ -202,10 +202,10 @@ public:
 			{-48, 1, -14, -23, -23, -14, 1, -48},
 			{-17, -14, 5, 0, 0, 5, -14, -17},
 			{-16, 6, 1, 11, 11, 1, 6, -16},
-			{-12, 29, 22, 31, 31, 22, 29, -12},
-			{-5, 11, 25, 39, 39, 25, 11, -5},
-			{-7, 21, -5, 17, 17, -5, 21, -7},
-			{-15, 8, 19, 4, 4, 19, 8, -15},
+			{-12, 20, 22, 31, 31, 22, 20, -12},
+			{-5, 11, 35, 39, 39, 35, 11, -5},
+			{-7, 21, 15, 30, 30, 15, 21, -7},
+			{-15, 20, 19, 4, 4, 19, 20, -15},
 			{-53, -5, -8, -23, -23, -8, -5, -53}
 		},
 
@@ -218,7 +218,7 @@ public:
 			{-13, -5, -4, -6, -6, -4, -5, -13},
 			{-25, -11, -1, 3, 3, -1, -11, -25},
 			{-21, -13, -8, 6, 6, -8, -13, -21},
-			{-31, -20, -14, -5, -5, -14, -20, -31}
+			{-35, -20, 25, 35, 35, 5, -20, -35}
 		},
 
 		// Queen MG

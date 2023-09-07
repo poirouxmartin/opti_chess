@@ -88,7 +88,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 
 - EVALUATION -
 -> A ajouter :
-	- Sécurité du roi (TRES IMPORTANT !) --> A améliorer
+	- Sécurité du roi (TRES IMPORTANT !) --> A améliorer: lignes ouvertes et colonnes ouvertes proches du roi (ou semi-ouvertes)
 	- Structures de pions :
 		- Pions arriérés
 	- Nature de la position :
@@ -135,6 +135,10 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Hanging pieces : pièces non protégées
 	- Concepts de pression: attaques additionelles en rayon X à prendre en compte. Doubler les tours sur une colonne, etc...
 	- Marrées de pions : attaque sur le roi
+	- Tours: les mettre sur les colonnes ou les pions sont les plus avancés (activité verticale)
+	- Plans?
+	- Pawn push threat : pousse un pion et ça attaque une pièce
+	- Colonnes fermées -> tour mauvaises. Si beaucoup de colonnes ouvertes, bonus pour les tours. Pareil pour les diagonales et les fous
 
 -> Faire une policy pour les coups
 -> Livres d'ouvertures, tables d'engame?
@@ -175,8 +179,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> OpenAI propose un diviser pour reigner pour paralléliser GrogrosZero
 -> Est-ce plus rapide de mettre des boucles simples plutôt que double? while plutôt que for?
 -> Endgame : la force des pièces dépend du potentiel des pions (pièces seules = bof)
--> Refaire les game_over() de façon plus propre, et dire quand la partie est finie dans la GUI (+ son de fin)
--> Plein de calculs en double (voir appels de fonctions... is_mate()?)
 -> Faire des tables d'attaque (par exemple entre roi et dame, cavalier...)
 -> Refaire toute l'architecture avec les get_moves(), pour que ça prenne tout en compte (sans le faire dans l'évaluation)
 -> Calculer l'avancement de la partie au fur et à mesure de la partie (au lieu de le faire à chaque fois)
@@ -267,9 +269,12 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Remettre la dame dans la mobilité des pièces et l'activité? pour que ça développe la dame aussi? Sinon, ça évalue mal ces positions: r1b1kbnr/ppqp1ppp/2n1p3/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 1 6 
 -> r1bqkb1r/ppp2ppp/2n1p3/8/3PP3/2P5/P4PPP/R1BQKBNR w KQkq - 0 7 : piece_mobility seulement +0.18? c'est un bug?
 -> Dans la recherche de grogros_zero, regarder en priorité les coups forts et peu regardés
--> REFAIRE TOUTE LA PARTIE SUR IS_GAME_OVER -> NE PAS METTRE DANS LA FONCTION D'EVALUATION!!
 -> Detection plus rapide d'échecs et mat
 -> Regarder où on fait des accès mémoire fréquent et faire des copies locales pour aller plus vite?
+-> Refaire la partie sur attacks and defenses... pour que ça soit plus précis.. là si on tape un pion protégé, ça fait un bonus...
+-> Lorsqu'une position est mal évaluée, ajouter une constante de correction d'évaluation pour toutes les positions résultantes (ou jusqu'à ce que l'évaluation soit bonne)
+-> King safety, safe checks: FIXME -> ça prend pas en compte les échecs à la découverte, ni les échecs par clouage
+-> Faire quelques playoff jusqu'au bout pour avoir une idée de la nature de la position??
 
 
 
