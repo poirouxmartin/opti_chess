@@ -416,7 +416,7 @@ public:
 	[[nodiscard]] int max_monte_carlo_depth() const;
 
 	// Algo de grogros_zero
-	void grogros_zero(Evaluator* eval = nullptr, int nodes = 1, float beta = 0.035f, float k_add = 50.0f, int quiescence_depth = 4, bool explore_checks = true, bool display = false, int depth = 0, Network* net = nullptr);
+	void grogros_zero(Evaluator* eval = nullptr, int nodes = 1, float beta = 0.035f, float k_add = 50.0f, int quiescence_depth = 4, bool explore_checks = true, bool display = false, int depth = 0, Network* net = nullptr, int correction = 0);
 
 	// Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
 	void reset_board(bool display = false);
@@ -555,6 +555,9 @@ public:
 
 	// Fonction qui renvoie si la case est controlée par le joueur adverse
 	[[nodiscard]] bool is_controlled(int square_i, int square_j) const;
+
+	// Fonction qui calcule et renvoie la valeur des menaces d'avance de pion
+	[[nodiscard]] int get_pawn_push_threats() const;
 };
 
 // Fonction qui obtient la case correspondante à la position sur la GUI

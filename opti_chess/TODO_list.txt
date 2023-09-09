@@ -123,21 +123,18 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Colonnes occupées par une dame
 	- Pions passés liés !
 	- Outpost
-	- Pawn push threat (on le pousse et ça attaque une pièce)
 	- Passed block (si y'a qq chose qui bloque un pion passé) : ajouter le contrôle des cases devant le pion passé
 	- Coordination des pièces
 	- Bishop pawns : nombre de pion de la même couleur que le fou -> pénalité plus le nombre est grand
 	- Candidats pions passés : r1bq2kr/ppp1bn1p/2n1p2P/3pP1PR/3P1p2/1NPB1N2/PPQ2P2/R3K3 b Q - 0 16 : ici y'aura potentiellement un pion passé colonne g ou h
 	- King proximity : proximité du roi avec les pions passés (pour les aider à avancer) (prendre en compte aussi le roi adverse)
 	- Pièces non protégées
-	- Shelter strength : pions devant le roi (faiblesses long terme)
+	- Shelter strength : pions devant le roi (faiblesses long terme), quand le roi est déroqué
+	- Shelter storm : attaques avec les pions sur le roi quand il est déroqué
 	- "anaconda" : pièces bloquées à vie + avantage d'espace etc.. plans long termes
-	- Hanging pieces : pièces non protégées
 	- Concepts de pression: attaques additionelles en rayon X à prendre en compte. Doubler les tours sur une colonne, etc...
-	- Marrées de pions : attaque sur le roi
 	- Tours: les mettre sur les colonnes ou les pions sont les plus avancés (activité verticale)
 	- Plans?
-	- Pawn push threat : pousse un pion et ça attaque une pièce
 	- Colonnes fermées -> tour mauvaises. Si beaucoup de colonnes ouvertes, bonus pour les tours. Pareil pour les diagonales et les fous
 
 -> Faire une policy pour les coups
@@ -275,6 +272,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Lorsqu'une position est mal évaluée, ajouter une constante de correction d'évaluation pour toutes les positions résultantes (ou jusqu'à ce que l'évaluation soit bonne)
 -> King safety, safe checks: FIXME -> ça prend pas en compte les échecs à la découverte, ni les échecs par clouage
 -> Faire quelques playoff jusqu'au bout pour avoir une idée de la nature de la position??
+-> Fix pawn push threat : quand la case est controllée...
 
 
 
@@ -356,12 +354,10 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Afficher des traits autour du plateau chess.com?
 -> Affichage de la réflexion de Grogros sur le PGN : {N: 10.29% of 544}
 -> Revoir le compare moves (sinon ça affiche pas toujours le meilleur coup au dessus)
--> Quand on arrive au mat dans le quiescence, l'affichage de l'éval bug (-99800000 au lieu de mat en 2)
 -> Adapter nodes_per_frame en fonction du temps de réflexion de GrogrosZero (tant que la parallélisation n'est pas faite)
 -> Montrer l'incrément sur la GUI
 -> Afficher le titre et l'elo des joueurs sur la GUI
 -> Revoir le tri des coups pour les flèches de GrogrosZero, car parfois ça ne se trie pas bien
--> Parfois quiescence speed -> négatif... (environ après 2.1M de noeuds...) -> calcul de la vitesse (sûrement à cause du * 1000)
 -> Afficher différement la pièce sélectionnée (et au dessus des autres pièces)
 -> Faire des animations de Grogros qui bouge les pièces
 -> Quand on joue un coup (en appuyant sur p ou autre), il faut désélectionner la pièce
