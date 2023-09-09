@@ -24,6 +24,7 @@ public:
 	float _alignments = 0.00f;
 	float _piece_activity = 0.0003f;
 	float _fianchetto = 0.003f;
+	float _pawn_push_threats = 0.2f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
 	int _pieces_value_begin[6] = { 72, 335, 340, 460, 980, 0 };
@@ -328,7 +329,7 @@ public:
 	Evaluator(const Evaluator &evaluator);
 
 	// Constructeur avec paramètres
-	Evaluator(const double piece_value, const double piece_mobility, const double piece_positioning, const double random_add, const double bishop_pair, const double castling_rights, const double player_trait, const double king_safety, const double pawn_structure, const double attacks, const double defenses, const double kings_opposition, const double push, const double rook_open, const double square_controls, const double space_advantage, const double alignments, const double piece_activity, const double fianchetto);
+	Evaluator(const float piece_value, const float piece_mobility, const float piece_positioning, const float random_add, const float bishop_pair, const float castling_rights, const float player_trait, const float king_safety, const float pawn_structure, const float attacks, const float defenses, const float kings_opposition, const float push, const float rook_open, const float square_controls, const float space_advantage, const float alignments, const float piece_activity, const float fianchetto, const float pawn_push_threats);
 
 	// Opérateur de copie
 	Evaluator& operator=(const Evaluator &evaluator);
