@@ -150,6 +150,23 @@ rn4kr/1q1p3p/4n3/1p2QNp1/8/N1P3PK/1P5P/5R2 b - - 4 28 : quasi mat pour les blanc
 1k1r2r1/1p4qp/p2b4/3p1p2/N3n3/5N2/PPP2PBP/R2QR1K1 w - - 1 22 : quasi mat pour les noirs
 2k4r/1ppr3p/p3N3/3p4/2n1p3/P1P4P/2P2PP1/3RR1K1 w - - 1 23 : finale gagnante pour les noirs
 2krr3/7p/1p6/3p4/PPn1p3/7P/2P2PP1/3RRK2 b - - 0 28 : c'est une pièce de plus -> complètement gagnant
+5rk1/1pp3p1/p1p5/8/8/3Pb1Pp/PPP2R1P/5RK1 w - - 0 3 : ça gagne tout seul pour les blancs (clouage infini -> zugzwang)
+5r2/6k1/p1p5/p5p1/3P2P1/1P2b2p/5R1P/5RK1 w - - 0 10 : zugzwang
+r1b2b1r/pp2k1pp/2np1n2/4p3/2B5/1Q3N2/P4PPP/1N2R1K1 b - - 1 13 : gagnant pour les blancs
+r2qk2r/pQpb1ppp/6n1/2bPp3/2P5/2N1PN2/PP4PP/R3KB1R w KQkq - 1 13 : quasi gagnant pour les noirs
+r3r1k1/2p1qppp/p4bn1/Q1NP4/2P5/1P2pNPb/P3B2P/1R2R1K1 w - - 5 32 : noirs gagnants
+4r1k1/5ppp/2N2q2/3P4/2P5/1P2p3/P5RP/4R2K w - - 0 45 : les blancs sont foutus
+r1b1k1nr/pppp1ppp/2n5/bN6/8/2N5/PPP1BPPP/R1B1K2R w KQkq - 1 9 : piece mobility +160???
+r3r1k1/pb3ppp/2q5/2p5/3b4/P1N3P1/1PQRBP1P/4R1K1 w - - 4 3 : c'est mat
+2q2bk1/p1rn1pp1/bp2p2p/3pP2N/3P1Q1P/P2B1N2/1P3PPK/4R3 w - - 1 23 : le fou en d3 tape vers le roi: le roi noir est déjà en danger
+4r3/p2N2kr/2n5/5Q2/7p/2p5/qP4PP/3R2K1 w - - 1 5 : blancs gagnants
+2r3k1/p2Qnq2/4N1p1/4P2p/1p2N2P/8/P5PK/8 b - - 2 5 : blancs gagnants
+rn1qkb1r/pp3ppp/2p1pn2/3p1b2/3P1B2/2N1PN2/PPP2PPP/R2QKB1R w KQkq - 0 6 : la mobilité des blancs ne devrait pas être si grande..? position quasi égale
+r1b1k1nr/1pp2ppp/2P5/1p2N3/1b1qp3/8/PP1BPPPP/R2QKB1R w KQkq - 0 11 : meilleure mobilité pour les noirs, et roi blanc dans la sauce... noirs gagnants
+3k4/1pp5/p1n2p2/2P1p2p/P3p1pP/1P2P1B1/1KP2PP1/8 w - - 0 30 : finale gagnante pour les noirs car le fou blanc est enfermé à vie
+8/7p/1rp1B1pk/p2p4/2n2b2/r1PQ4/2K3PP/3RR3 b - - 1 37 : #1
+8/4k2p/2p3p1/3p4/1P6/p1P3P1/P6P/2K5 b - - 0 48 : cette finale gagne pour les blancs
+8/7p/2p3p1/3p4/1P6/1KP3P1/P6k/8 w - - 0 53 : on pousse le pion a et on gagne
 
 
 
@@ -342,7 +359,26 @@ rn3k1r/2np2pp/pq6/1P2pNp1/4Q3/N1P3P1/1P4KP/R7 w - - 4 24 : Tf1 gagne
 8/1pkrr3/3Rb1B1/p1p1Ppp1/2P1p2p/PP5P/2K2PP1/3R4 w - a6 0 32 : Txe6 gagne
 8/8/1p3k2/p1p3p1/P1P3P1/1P2K2P/8/8 w - - 9 47 : Rf3 Rg3 pour h4 gagne
 r2q1r2/pp4kp/2p1Qbp1/3pB3/3P4/8/PPP3PP/R4RK1 w - - 4 19 : Txf6 gagne
-5rk1/1pp3p1/p1p5/7p/8/3Pb3/PPP2RPP/5RK1 b - - 0 1 : h4 g3 h3 -> zwugzwang long terme
+5rk1/1pp3p1/p1p5/7p/8/3Pb3/PPP2RPP/5RK1 b - - 0 1 : h4 g3 h3 -> zugzwang long terme
+5rk1/1pp3p1/p1p5/8/7p/3Pb1P1/PPP2R1P/5RK1 b - - 0 2 : h3
+3br1k1/pp1q1ppp/2pBb1n1/2Pp4/3P4/1P1BN2P/P2Q1PP1/4R1K1 w - - 3 25 : f4 gagne
+8/8/1k2p3/1p1p4/1KpPP1p1/2P3P1/2bN4/8 b - - 0 43 : Fd3 seul coup qui gagne
+8/8/8/8/1p2N1K1/8/5Q2/2qk4 w - - 4 3 : Rh5 seul coup qui gagne
+8/8/p7/q1kbN3/P3P3/2N5/PPK5/8 w - - 0 1 : b4+ gagne
+3r2k1/pp3p1p/7b/2p5/8/2P4P/P1PR2P1/2KR4 b - - 0 1 : c4 zugzwang
+r1b1qrk1/1pppnpp1/1b5p/p3P3/1P5B/1Bp2N2/P4PPP/R2QR1K1 w - a6 0 15 : Ff6 quasi gagnant
+r3qrk1/1pp2pp1/1b1PbBnp/8/pPB5/2pQ1N2/P4PPP/R3R1K1 w - - 1 19 : Dxg6!! quasi gagnant
+r4r1k/1pp3p1/1b1P2pp/5q2/pPB1R3/2B2N2/P4PPP/R5K1 w - - 3 23 : Te7 quasi gagnant
+r1bqkbnr/ppp2ppp/2n5/4p3/2B5/5N2/PB3PPP/1N1QR1K1 w kq - 0 9 : Fxf7+ gagne
+r1b1k2r/1pqp1ppp/pbn1pn2/8/1P1NP3/P1N1BP2/2P2QPP/R3KB1R b KQkq - 2 11 : Cxd4 et e5 gagne
+r4k1r/3n1pp1/1qpb4/1p5p/p2PQ1b1/P2B1NP1/1PPN1PP1/2KR3R w - - 2 17 : Dxg4 gagne
+r2rn1k1/1p1bbppp/1q2p3/4n3/1P1N4/P2BB2P/1Q1N1PP1/2R2RK1 w - - 0 22 : Fxh7+ gagne
+2B3k1/1R6/8/3bn1rp/6p1/2P3K1/1P5P/R7 w - - 3 41 : Fe6+ #17
+r6r/pp1bk2p/3p1p1q/4p2B/7Q/2P5/P1P2PPP/3R1RK1 w - - 0 17 : Txd6 Rxd6 Td1+ Rc7 Txd7+ Rxd7 Fg4+ gagne
+8/3k4/p2p2P1/8/8/Pq1p4/3R4/4K1R1 b - - 2 2 : Dc3 gagne
+4r1k1/ppp4p/3p2p1/5r2/2P1q3/1P1R1RP1/PB4Q1/6K1 b - - 2 2 : Dxd3 gagne
+8/4k3/4P3/1K1P1P2/6pp/6P1/8/8 b - - 0 4 : h3 gagne
+1r2r3/1q5p/2p1B1pk/p2p4/2nB1b2/1PPQ4/P5PP/1K1RR3 b - - 5 32 : Dxb3+ #6
 
 
 

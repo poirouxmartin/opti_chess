@@ -17,7 +17,6 @@ Evaluator::Evaluator(const Evaluator& other) {
 	_king_safety = other._king_safety;
 	_pawn_structure = other._pawn_structure;
 	_attacks = other._attacks;
-	_defenses = other._defenses;
 	_kings_opposition = other._kings_opposition;
 	_push = other._push;
 	_rook_open = other._rook_open;
@@ -41,7 +40,6 @@ Evaluator::Evaluator(const double piece_value, const double piece_mobility, cons
 	_king_safety = king_safety;
 	_pawn_structure = pawn_structure;
 	_attacks = attacks;
-	_defenses = defenses;
 	_kings_opposition = kings_opposition;
 	_push = push;
 	_rook_open = rook_open;
@@ -65,7 +63,6 @@ Evaluator& Evaluator::operator=(const Evaluator& other) {
 	_king_safety = other._king_safety;
 	_pawn_structure = other._pawn_structure;
 	_attacks = other._attacks;
-	_defenses = other._defenses;
 	_kings_opposition = other._kings_opposition;
 	_push = other._push;
 	_rook_open = other._rook_open;

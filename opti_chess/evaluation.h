@@ -7,7 +7,7 @@ public:
 	// Coefficients des heuristiques
 	float _piece_value = 1.2f;
 	float _piece_mobility = 0.0007f;
-	float _piece_positioning = 0.0045f;
+	float _piece_positioning = 0.0035f;
 	float _random_add = 0.0f;
 	float _bishop_pair = 0.25f;
 	float _castling_rights = 0.0f;
@@ -15,7 +15,6 @@ public:
 	float _king_safety = 0.00035f;
 	float _pawn_structure = 0.004f;
 	float _attacks = 0.01f;
-	float _defenses = 0.0015f;
 	float _kings_opposition = 0.75f;
 	float _push = 1.00f;
 	float _rook_open = 0.003f;
@@ -194,7 +193,7 @@ public:
 			{-35, 8, 40, 49, 49, 40, 8, -35},
 			{-61, -17, 6, 12, 12, 26, -17, -61},
 			{-77, -41, -27, -5, -5, -27, -41, -77},
-			{-175, -52, -74, -73, -73, -74, -92, -175}
+			{-175, -42, -74, -73, -73, -74, -92, -175}
 		},
 
 		// Bishop MG
