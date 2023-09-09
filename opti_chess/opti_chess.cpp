@@ -920,6 +920,18 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 		_evaluation += player_trait;
 	}
 
+
+	// Menace de poussée de pion sur une pièce adverse
+	if (eval->_pawn_push_threats != 0.0f) {
+		const float pawn_push_threat = static_cast<float>(get_pawn_push_threats()) * eval->_pawn_push_threats;
+		if (display)
+			eval_components += "pawn push threats: " + (pawn_push_threat >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * pawn_push_threat))) + "\n";
+		_evaluation += pawn_push_threat;
+	}
+
+
+
+
 	// Total de l'évaluation
 	if (display)
 		eval_components += "--- total: " + (_evaluation >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * _evaluation))) + " ---\n";
@@ -2685,7 +2697,7 @@ void Buffer::remove() {
 Buffer monte_buffer;
 
 // Algo de grogros_zero
-void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const float k_add, const int quiescence_depth, const bool explore_checks, const bool display, const int depth, Network* net)
+void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const float k_add, const int quiescence_depth, const bool explore_checks, const bool display, const int depth, Network* net, int correction)
 {
 	// Pour la GUI
 	_monte_called = true;
@@ -2777,7 +2789,7 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const flo
 			monte_buffer._heap_boards[index].make_index_move(_current_move);
 
 			// Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
-			monte_buffer._heap_boards[index]._evaluation = monte_buffer._heap_boards[index].quiescence(eval, -INT32_MAX, INT32_MAX, quiescence_depth, explore_checks) * -get_color();
+			monte_buffer._heap_boards[index]._evaluation = monte_buffer._heap_boards[index].quiescence(eval, -INT32_MAX, INT32_MAX, quiescence_depth, explore_checks) * -get_color() + correction;
 			_quiescence_nodes += monte_buffer._heap_boards[index]._quiescence_nodes;
 
 			_eval_children[_current_move] = monte_buffer._heap_boards[index]._evaluation;
@@ -2793,13 +2805,25 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const flo
 
 		// *** TOUS LES COUPS SONT DÉJÀ EXPLORÉS ***
 		else {
+			// Correction de l'évaluation: différence entre l'évaluation du meilleur plateau fils et celle du plateau actuel
+
+			// Position test pour la correction
+			// 3r4/1p1r3k/pR1p1p1p/3PpNq1/1QP1P3/6PP/6PK/8 b - - 2 41 : blancs complètement gagnants
+			// r1bqk2r/1p3ppp/p1np1n2/3pp3/3P4/3BPN2/PPPB1PPP/R2QK2R w KQkq - 0 9 : grogros met du temps à voir la menace et joue un coup 'random'
+			// rnb2bnr/pppp1k1p/5q2/8/5p2/2N1BQ2/PPP3PP/R4RK1 b - - 3 11 : met du temps à évaluer les menaces
+			int eval_correction = 0;
+			/*if (depth == 0 || true)
+				eval_correction = _player ? max_value(_eval_children, _got_moves) - _static_evaluation : min_value(_eval_children, _got_moves) - _static_evaluation;*/
+			//cout << "eval_correction: " << eval_correction << endl;
+			//cout << _static_evaluation << endl;
+
 			// Choisit aléatoirement un "bon" coup
 			_current_move = pick_random_good_move(_eval_children, _got_moves, get_color(), false, _nodes, _nodes_children, beta, k_add);
 			//_current_move = select_uct();
 
 			// Va une profondeur plus loin... appel récursif sur Monte-Carlo
 			_quiescence_nodes -= monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes;
-			monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(eval, 1, beta, k_add, quiescence_depth, explore_checks, display, depth + 1, net);
+			monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(eval, 1, beta, k_add, quiescence_depth, explore_checks, display, depth + 1, net, eval_correction);
 			_quiescence_nodes += monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes;
 
 			// Actualise l'évaluation
@@ -5882,7 +5906,7 @@ bool GUI::thread_grogros_zero(Evaluator *eval, int nodes)
 		monte_buffer.init();
 
 	// Lance grogros sur 1 noeud
-	_board.grogros_zero(eval, 100, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr);
+	_board.grogros_zero(eval, 100, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
 
 	//_thread_grogros_zero = thread(&Board::grogros_zero, &_board, eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
 	////_thread_grogros_zero = thread(&Board::grogros_zero, &monte_buffer._heap_boards[main_GUI._board._index_children[0]], &monte_evaluator, nodes, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, true, true, false, 0, nullptr);
@@ -5917,7 +5941,7 @@ bool GUI::thread_grogros_zero(Evaluator *eval, int nodes)
 	}
 
 	// Relance grogros sur 1 noeud (pour actualiser les valeurs)
-	_board.grogros_zero(eval, 100, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr);
+	_board.grogros_zero(eval, 100, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
 
 	return true;
 }
@@ -5929,7 +5953,7 @@ bool GUI::grogros_zero_threaded(Evaluator* eval, int nodes) {
 		monte_buffer.init();
 
 	// Lance grogros sur un thread
-	_thread_grogros_zero = thread(&Board::grogros_zero, &_board, eval, nodes, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr);
+	_thread_grogros_zero = thread(&Board::grogros_zero, &_board, eval, nodes, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
 
 	_thread_grogros_zero.detach();
 }
@@ -6153,4 +6177,49 @@ bool Board::is_controlled(int square_i, int square_j) const
 	}
 
 	return false;
+}
+
+
+// Fonction qui calcule et renvoie la valeur des menaces d'avance de pion
+int Board::get_pawn_push_threats() const {
+
+	// Pour chacun des pions, on regarde s'il y'a une ou des pièces qui seraient attaquées si le pion avançait
+	// Il faut vérifier que rien ne bloque la poussée (ni une pièce, ni un contrôle adverse)
+	// TODO regarder les contrôles
+	
+	int threats = 0;
+
+	for (uint_fast8_t i = 1; i < 7; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			const uint_fast8_t p = _array[i][j];
+			
+			// Pion blanc
+			if (p == 1 && i < 6) {
+				if (j > 0) {
+					threats += _array[i + 1][j] == 0 && _array[i + 2][j - 1] > 7; // Poussée simple
+					threats += i == 1 && _array[i + 1][j] == 0 && _array[i + 2][j] == 0 && _array[i + 3][j - 1] > 7; // Poussée double
+				}
+				if (j < 7) {
+					threats += _array[i + 1][j] == 0 && _array[i + 2][j + 1] > 7;
+					threats += i == 1 && _array[i + 1][j] == 0 && _array[i + 2][j] == 0 && _array[i + 3][j + 1] > 7;
+				}
+			}
+
+			// Pion noir
+			else if (p == 7 && i > 1) {
+				if (j > 0) {
+					threats -= _array[i - 1][j] == 0 && is_in_fast(_array[i - 2][j - 1], 2, 6),
+					threats -= i == 6 && _array[i - 1][j] == 0 && _array[i - 2][j] == 0 && is_in_fast(_array[i - 3][j - 1], 2, 6);
+				}
+				if (j < 7) {
+					threats -= _array[i - 1][j] == 0 && is_in_fast(_array[i - 2][j + 1], 2, 6);
+					threats -= i == 6 && _array[i - 1][j] == 0 && _array[i - 2][j] == 0 && is_in_fast(_array[i - 3][j + 1], 2, 6);
+				}
+					
+			}
+
+		}
+	}
+
+	return threats;
 }
