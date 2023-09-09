@@ -872,8 +872,8 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 	}
 
 	// Attaques et défenses de pièces
-	if (eval->_attacks != 0.0f || eval->_defenses != 0.0f) {
-		const float pieces_attacks_and_defenses = get_attacks_and_defenses(eval->_attacks, eval->_defenses);
+	if (eval->_attacks != 0.0f) {
+		const float pieces_attacks_and_defenses = get_attacks_and_defenses() * eval->_attacks;
 		if (display)
 			eval_components += "attacks/defenses: " + (pieces_attacks_and_defenses >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * pieces_attacks_and_defenses))) + "\n";
 		_evaluation += pieces_attacks_and_defenses;
@@ -3856,40 +3856,35 @@ void GUI::stop_time() {
 }
 
 // Fonction qui calcule la résultante des attaques et des défenses et la renvoie
-float Board::get_attacks_and_defenses(float attack_scale, float defense_scale) const
+float Board::get_attacks_and_defenses() const
 {
-	// TODO faire en sorte que l'on puisse calculer les attaques seules ou les défenses seules
-	int attacks_eval = 0;
-	int defenses_eval = 0;
 
 	// Tableau des valeurs d'attaques des pièces (0 = pion, 1 = caval, 2 = fou, 3 = tour, 4 = dame, 5 = roi)
 	static constexpr int attacks_array[6][6] = {
-		//   P    N    B     R    Q    K
-		{0,   25,  25,  30,  50,  70}, // P
-		{5,   0,   20,  30, 100,  80}, // N
-		{5,   10,  0,   20,  60,  40}, // B
-		{5,   5,   5,   0,   60,  40}, // R
-		{5,   5,   5,   10,  0,   60}, // Q
-		{10,  20,  20,  25,  0,    0}, // K
+	//   P    N    B     R    Q    K
+		{15,  25,  25,  30,  50,  70}, // P
+		{25,  25,  30,  50, 100,  80}, // N
+		{25,  20,  25,  40,  80,  40}, // B
+		{25,  15,  15,  25,  60,  40}, // R
+		{15,  10,  10,  20,  35,  60}, // Q
+		{10,  10,  10,  15,  20,   0}, // K
 	};
 
 	// Tableau des valeurs de défenses des pièces (0 = pion, 1 = caval, 2 = fou, 3 = tour, 4 = dame, 5 = roi)
 	static constexpr int defenses_array[6][6] = {
-		//   P    N    B     R    Q    K
-		{15,   5,  10,   5,    5,  0}, // P
-		{5,   10,  10,  15,   20,  0}, // N
-		{5,   10,  10,   5,   15,  0}, // B
-		{10,  10,  10,  50,   25,  0}, // R
-		{2,    5,   5,  10,   20,  0}, // Q
-		{15,   5,   5,   5,   10,  0}, // K
+	//   P    N    B     R    Q    K
+		{40,  15,  15,  10,   5,   0}, // P
+		{20,  10,  10,   5,   5,   0}, // N
+		{20,  10,  10,   5,   5,   0}, // B
+		{15,   5,   5,  10,  10,   0}, // R
+		{15,   5,   5,  10,  20,   0}, // Q
+		{10,   5,   5,   5,   5,   0}, // K
 	};
 
 	// TODO ne pas additionner la défense de toutes les pièces? seulement regarder les pièces non-défendues? (sinon devient pleutre)
+	// FIXME : les attaques/défenses par rayon X ne sont pas prises en compte
+	// TODO : utiliser les offsets des cavalier plutôt que ces boucles dégueu
 
-	// Tant pis pour le en passant...
-
-	uint_fast8_t p; uint_fast8_t p2;
-	uint_fast8_t i2; uint_fast8_t j2;
 
 	// Diagonales
 	static constexpr int_fast8_t dx[] = { -1, -1, 1, 1 };
@@ -3900,107 +3895,130 @@ float Board::get_attacks_and_defenses(float attack_scale, float defense_scale) c
 	static constexpr int_fast8_t hy[] = { 0, 0, -1, 1 }; // horizontal
 
 
+
+	// Tableau d'attaques pour les blancs
+	int attacks_white[8][8] = { 0 };
+
+	// Tableau d'attaques pour les noirs
+	int attacks_black[8][8] = { 0 };
+
+
+	// TODO : utiliser des constantes pour les calculs redondants
+
+
 	// TODO changer les if par des &&
 
 	for (int i = 0; i < 8; i++) {
 		for (int j = 0; j < 8; j++) {
-			p = _array[i][j];
+			uint_fast8_t p = _array[i][j];
 			switch (p) {
-				// Pion blanc
+
+			// Pion blanc
 			case 1:
+				
 				if (j > 0) {
-					p2 = _array[i + 1][j - 1]; // Case haut-gauche du pion blanc
+					uint_fast8_t i2 = i + 1;
+					uint_fast8_t j2 = j - 1;
+					uint_fast8_t p2 = _array[i2][j2]; // Case haut-gauche du pion blanc
 					if (p2 >= 7)
-						attacks_eval += attacks_array[0][p2 - 7];
+						attacks_white[i2][j2] += attacks_array[0][p2 - 7];
 					else
-						p2 && (defenses_eval += defenses_array[0][p2 - 1]);
+						p2 && (attacks_black[i2][j2] -= defenses_array[0][p2 - 1]);
 				}
 				if (j < 7) {
-					p2 = _array[i + 1][j + 1]; // Case haut-droit du pion blanc
+					uint_fast8_t i2 = i + 1;
+					uint_fast8_t j2 = j + 1;
+					uint_fast8_t p2 = _array[i2][j2]; // Case haut-droit du pion blanc
 					if (p2 >= 7)
-						attacks_eval += attacks_array[0][p2 - 7];
+						attacks_white[i2][j2] += attacks_array[0][p2 - 7];
 					else
-						p2 && (defenses_eval += defenses_array[0][p2 - 1]);
+						p2 && (attacks_black[i2][j2] -= defenses_array[0][p2 - 1]);
 				}
 				break;
-				// Cavalier blanc
+
+			// Cavalier blanc
 			case 2:
 				for (int k = -2; k <= 2; k++) {
 					for (int l = -2; l <= 2; l++) {
-						i2 = i + k; j2 = j + l;
-						if (k * l != 0 && abs(k) + abs(l) == 3 && is_in_fast(i2, 0, 7) && is_in_fast(j2, 0, 7)) {
-							p2 = _array[i2][j2];
+						if (k * l == 0) continue;
+						if (abs(k) + abs(l) != 3) continue;
+						uint_fast8_t i2 = i + k; uint_fast8_t j2 = j + l;
+						if (is_in_fast(i2, 0, 7) && is_in_fast(j2, 0, 7)) {
+							uint_fast8_t p2 = _array[i2][j2];
 							if (p2 >= 7)
-								attacks_eval += attacks_array[1][p2 - 7];
+								attacks_white[i2][j2] += attacks_array[1][p2 - 7];
 							else
-								p2 && (defenses_eval += defenses_array[1][p2 - 1]);
+								p2 && (attacks_black[i2][j2] -= defenses_array[1][p2 - 1]);
 						}
 					}
 				}
 				break;
-				// Fou blanc
+
+			// Fou blanc
 			case 3:
 				// Pour chaque diagonale
 				for (int idx = 0; idx < 4; ++idx) {
-					i2 = i;
-					j2 = j;
+					uint_fast8_t i2 = i;
+					uint_fast8_t j2 = j;
 					int lim = min(dx[idx] == 1 ? 7 - i : i, dy[idx] == 1 ? 7 - j : j);
 
 					while (lim > 0) {
 						i2 += dx[idx];
 						j2 += dy[idx];
-						p2 = _array[i2][j2];
+						uint_fast8_t p2 = _array[i2][j2];
 						if (p2 != 0) {
 							if (p2 >= 7)
-								attacks_eval += attacks_array[2][p2 - 7];
+								attacks_white[i2][j2] += attacks_array[2][p2 - 7];
 							else
-								p2 && (defenses_eval += defenses_array[2][p2 - 1]);
+								p2 && (attacks_black[i2][j2] -= defenses_array[2][p2 - 1]);
 							break;
 						}
 						lim--;
 					}
 				}
 				break;
-				// Tour blanche
+
+			// Tour blanche
 			case 4:
 				// Pour chaque mouvement rectiligne
 				for (int idx = 0; idx < 4; ++idx) {
-					i2 = i;
-					j2 = j;
+					uint_fast8_t i2 = i;
+					uint_fast8_t j2 = j;
 					int lim = vx[idx] == -1 ? i : (vx[idx] == 1 ? 7 - i : (hy[idx] == -1 ? j : 7 - j));
 
 					while (lim > 0) {
 						i2 += vx[idx];
 						j2 += hy[idx];
-						p2 = _array[i2][j2];
+						uint_fast8_t p2 = _array[i2][j2];
 						if (p2 != 0) {
 							if (p2 >= 7)
-								attacks_eval += attacks_array[3][p2 - 7];
+								attacks_white[i2][j2] += attacks_array[3][p2 - 7];
 							else
-								p2 && (defenses_eval += defenses_array[3][p2 - 1]);
+								p2 && (attacks_black[i2][j2] -= defenses_array[3][p2 - 1]);
 							break;
 						}
 						lim--;
 					}
 				}
 				break;
-				// Dame blanche
+
+			// Dame blanche
 			case 5:
 				// Pour chaque diagonale
 				for (int idx = 0; idx < 4; ++idx) {
-					i2 = i;
-					j2 = j;
+					uint_fast8_t i2 = i;
+					uint_fast8_t j2 = j;
 					int lim = min(dx[idx] == 1 ? 7 - i : i, dy[idx] == 1 ? 7 - j : j);
 
 					while (lim > 0) {
 						i2 += dx[idx];
 						j2 += dy[idx];
-						p2 = _array[i2][j2];
+						uint_fast8_t p2 = _array[i2][j2];
 						if (p2 != 0) {
 							if (p2 >= 7)
-								attacks_eval += attacks_array[4][p2 - 7];
+								attacks_white[i2][j2] += attacks_array[4][p2 - 7];
 							else
-								p2 && (defenses_eval += defenses_array[4][p2 - 1]);
+								p2 && (attacks_black[i2][j2] -= defenses_array[4][p2 - 1]);
 							break;
 						}
 						lim--;
@@ -4009,138 +4027,149 @@ float Board::get_attacks_and_defenses(float attack_scale, float defense_scale) c
 
 				// Pour chaque mouvement rectiligne
 				for (int idx = 0; idx < 4; ++idx) {
-					i2 = i;
-					j2 = j;
+					uint_fast8_t i2 = i;
+					uint_fast8_t j2 = j;
 					int lim = vx[idx] == -1 ? i : (vx[idx] == 1 ? 7 - i : (hy[idx] == -1 ? j : 7 - j));
 
 					while (lim > 0) {
 						i2 += vx[idx];
 						j2 += hy[idx];
-						p2 = _array[i2][j2];
+						uint_fast8_t p2 = _array[i2][j2];
 						if (p2 != 0) {
 							if (p2 >= 7)
-								attacks_eval += attacks_array[4][p2 - 7];
+								attacks_white[i2][j2] += attacks_array[4][p2 - 7];
 							else
-								p2 && (defenses_eval += defenses_array[4][p2 - 1]);
+								p2 && (attacks_black[i2][j2] -= defenses_array[4][p2 - 1]);
 							break;
 						}
 						lim--;
 					}
 				}
 				break;
-				// Roi blanc
+
+			// Roi blanc
 			case 6:
 				for (int k = -1; k < 2; k++) {
 					for (int l = -1; l < 2; l++) {
 						if (k || l) {
-							i2 = i + k; j2 = j + l;
+							uint_fast8_t i2 = i + k; uint_fast8_t j2 = j + l;
 							if (is_in_fast(i2, 0, 7) && is_in_fast(j2, 0, 7)) {
-								p2 = _array[i2][j2];
+								uint_fast8_t p2 = _array[i2][j2];
 								if (p2 >= 7)
-									attacks_eval += attacks_array[5][p2 - 7];
+									attacks_white[i2][j2] += attacks_array[5][p2 - 7];
 								else
-									p2 && (defenses_eval += defenses_array[5][p2 - 1]);
+									p2 && (attacks_black[i2][j2] -= defenses_array[5][p2 - 1]);
 							}
 						}
 					}
 				}
 				break;
 
-				// Pion noir
+			// Pion noir
 			case 7:
 				if (j > 0) {
-					p2 = _array[i - 1][j - 1]; // Case bas-gauche du pion noir
+					uint_fast8_t i2 = i - 1;
+					uint_fast8_t j2 = j - 1;
+					uint_fast8_t p2 = _array[i2][j2]; // Case bas-gauche du pion noir
 					if (p2 >= 1 && p2 <= 6)
-						attacks_eval -= attacks_array[0][p2 - 1];
+						attacks_black[i2][j2] += attacks_array[0][p2 - 1];
 					else
-						p2 && (defenses_eval -= defenses_array[0][p2 - 7]);
+						p2 && (attacks_white[i2][j2] -= defenses_array[0][p2 - 7]);
 				}
 				if (j < 7) {
-					p2 = _array[i - 1][j + 1]; // Case bas-droit du pion noir
+					uint_fast8_t i2 = i - 1;
+					uint_fast8_t j2 = j + 1;
+					uint_fast8_t p2 = _array[i2][j2]; // Case bas-droit du pion noir
 					if (p2 >= 1 && p2 <= 6)
-						attacks_eval -= attacks_array[0][p2 - 1];
+						attacks_black[i2][j2] += attacks_array[0][p2 - 1];
 					else
-						p2 && (defenses_eval -= defenses_array[0][p2 - 7]);
+						p2 && (attacks_white[i2][j2] -= defenses_array[0][p2 - 7]);
 				}
 				break;
-				// Cavalier noir
+			
+			// Cavalier noir
 			case 8:
 				for (int k = -2; k <= 2; k++) {
 					for (int l = -2; l <= 2; l++) {
-						i2 = i + k; j2 = j + l;
-						if (k * l != 0 && abs(k) + abs(l) == 3 && is_in_fast(i2, 0, 7) && is_in_fast(j2, 0, 7)) {
-							p2 = _array[i2][j2];
+						if (k * l == 0) continue;
+						if (abs(k) + abs(l) != 3) continue;
+						uint_fast8_t i2 = i + k; uint_fast8_t j2 = j + l;
+						if (is_in_fast(i2, 0, 7) && is_in_fast(j2, 0, 7)) {
+							uint_fast8_t p2 = _array[i2][j2];
 							if (p2 >= 1 && p2 <= 6)
-								attacks_eval -= attacks_array[1][p2 - 1];
+								attacks_black[i2][j2] += attacks_array[1][p2 - 1];
 							else
-								p2 && (defenses_eval -= defenses_array[1][p2 - 7]);
+								p2 && (attacks_white[i2][j2] -= defenses_array[1][p2 - 7]);
 						}
 					}
 				}
 				break;
-				// Fou noir
+
+			// Fou noir
 			case 9:
 				// Pour chaque diagonale
 				for (int idx = 0; idx < 4; ++idx) {
-					i2 = i;
-					j2 = j;
+					uint_fast8_t i2 = i;
+					uint_fast8_t j2 = j;
 					int lim = min(dx[idx] == 1 ? 7 - i : i, dy[idx] == 1 ? 7 - j : j);
 
 					while (lim > 0) {
 						i2 += dx[idx];
 						j2 += dy[idx];
-						p2 = _array[i2][j2];
+						uint_fast8_t p2 = _array[i2][j2];
 						if (p2 != 0) {
 							if (p2 >= 1 && p2 <= 6)
-								attacks_eval -= attacks_array[2][p2 - 1];
+								attacks_black[i2][j2] += attacks_array[2][p2 - 1];
 							else
-								p2 && (defenses_eval -= defenses_array[2][p2 - 7]);
+								p2 && (attacks_white[i2][j2] -= defenses_array[2][p2 - 7]);
 							break;
 						}
 						lim--;
 					}
 				}
 				break;
-				// Tour noire
+
+			// Tour noire
 			case 10:
 				// Pour chaque mouvement rectiligne
 				for (int idx = 0; idx < 4; ++idx) {
-					i2 = i;
-					j2 = j;
+					uint_fast8_t i2 = i;
+					uint_fast8_t j2 = j;
 					int lim = vx[idx] == -1 ? i : (vx[idx] == 1 ? 7 - i : (hy[idx] == -1 ? j : 7 - j));
 
 					while (lim > 0) {
 						i2 += vx[idx];
 						j2 += hy[idx];
-						p2 = _array[i2][j2];
+						uint_fast8_t p2 = _array[i2][j2];
 						if (p2 != 0) {
 							if (p2 >= 1 && p2 <= 6)
-								attacks_eval -= attacks_array[3][p2 - 1];
+								attacks_black[i2][j2] += attacks_array[3][p2 - 1];
 							else
-								p2 && (defenses_eval -= defenses_array[3][p2 - 7]);
+								p2 && (attacks_white[i2][j2] -= defenses_array[3][p2 - 7]);
 							break;
 						}
 						lim--;
 					}
 				}
 				break;
-				// Dame noire
+
+			// Dame noire
 			case 11:
 				// Pour chaque diagonale
 				for (int idx = 0; idx < 4; ++idx) {
-					i2 = i;
-					j2 = j;
+					uint_fast8_t i2 = i;
+					uint_fast8_t j2 = j;
 					int lim = min(dx[idx] == 1 ? 7 - i : i, dy[idx] == 1 ? 7 - j : j);
 
 					while (lim > 0) {
 						i2 += dx[idx];
 						j2 += dy[idx];
-						p2 = _array[i2][j2];
+						uint_fast8_t p2 = _array[i2][j2];
 						if (p2 != 0) {
 							if (p2 >= 1 && p2 <= 6)
-								attacks_eval -= attacks_array[4][p2 - 1];
+								attacks_black[i2][j2] += attacks_array[4][p2 - 1];
 							else
-								p2 && (defenses_eval -= defenses_array[4][p2 - 7]);
+								p2 && (attacks_white[i2][j2] -= defenses_array[4][p2 - 7]);
 							break;
 						}
 						lim--;
@@ -4149,37 +4178,38 @@ float Board::get_attacks_and_defenses(float attack_scale, float defense_scale) c
 
 				// Pour chaque mouvement rectiligne
 				for (int idx = 0; idx < 4; ++idx) {
-					i2 = i;
-					j2 = j;
+					uint_fast8_t i2 = i;
+					uint_fast8_t j2 = j;
 					int lim = vx[idx] == -1 ? i : (vx[idx] == 1 ? 7 - i : (hy[idx] == -1 ? j : 7 - j));
 
 					while (lim > 0) {
 						i2 += vx[idx];
 						j2 += hy[idx];
-						p2 = _array[i2][j2];
+						uint_fast8_t p2 = _array[i2][j2];
 						if (p2 != 0) {
 							if (p2 >= 1 && p2 <= 6)
-								attacks_eval -= attacks_array[4][p2 - 1];
+								attacks_black[i2][j2] += attacks_array[4][p2 - 1];
 							else
-								p2 && (defenses_eval -= defenses_array[4][p2 - 7]);
+								p2 && (attacks_white[i2][j2] -= defenses_array[4][p2 - 7]);
 							break;
 						}
 						lim--;
 					}
 				}
 				break;
-				// Roi noir
+
+			// Roi noir
 			case 12:
 				for (int k = -1; k < 2; k++) {
 					for (int l = -1; l < 2; l++) {
 						if (k || l) {
-							i2 = i + k; j2 = j + l;
+							uint_fast8_t i2 = i + k; uint_fast8_t j2 = j + l;
 							if (is_in_fast(i2, 0, 7) && is_in_fast(j2, 0, 7)) {
-								p2 = _array[i2][j2];
+								uint_fast8_t p2 = _array[i2][j2];
 								if (p2 >= 1 && p2 <= 6)
-									attacks_eval -= attacks_array[5][p2 - 1];
+									attacks_black[i2][j2] += attacks_array[5][p2 - 1];
 								else
-									p2 && (defenses_eval -= defenses_array[5][p2 - 7]);
+									p2 && (attacks_white[i2][j2] -= defenses_array[5][p2 - 7]);
 							}
 						}
 					}
@@ -4189,7 +4219,19 @@ float Board::get_attacks_and_defenses(float attack_scale, float defense_scale) c
 		}
 	}
 
-	return attacks_eval * attack_scale + defenses_eval * defense_scale;
+
+	// Somme toutes les valeurs positives des tableaux d'attaques pour chaque camp
+	int white_attacks_eval = 0;
+	int black_attacks_eval = 0;
+
+	for (uint_fast8_t i = 0; i < 8; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			attacks_white[i][j] > 0 && (white_attacks_eval += attacks_white[i][j]);
+			attacks_black[i][j] > 0 && (black_attacks_eval += attacks_black[i][j]);
+		}
+	}
+
+	return white_attacks_eval - black_attacks_eval;
 }
 
 // Fonction qui calcule l'opposition des rois (en finales de pions)
