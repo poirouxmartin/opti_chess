@@ -349,6 +349,9 @@ public:
 	// Fonction qui compte le matériel sur l'échiquier et renvoie sa valeur
 	int count_material(const Evaluator* e = nullptr) const;
 
+	// Fonction qui compte les paires de fous et renvoie la valeur
+	int count_bishop_pairs() const;
+
 	// Fonction qui calcule et renvoie la valeur de positionnement des pièces sur l'échiquier
 	int pieces_positioning(const Evaluator* eval = nullptr) const;
 

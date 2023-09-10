@@ -702,8 +702,8 @@ int Board::count_material(const Evaluator* eval) const
 {
 	int material_count = 0;
 
-	for (int i = 0; i < 8; i++) {
-		for (int j = 0; j < 8; j++) {
+	for (uint_fast8_t i = 0; i < 8; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
 			if (const uint_fast8_t piece = _array[i][j]) {
 				const int value = static_cast<int>(static_cast<float>(eval->_pieces_value_begin[(piece - 1) % 6]) * (1.0f - _adv) + static_cast<float>(eval->_pieces_value_end[(piece - 1) % 6]) * _adv);
 				material_count += (piece < 7) ? value : -value;
@@ -712,6 +712,22 @@ int Board::count_material(const Evaluator* eval) const
 	}
 
 	return material_count;
+}
+
+// Fonction qui compte les paires de fous et renvoie la valeur
+int Board::count_bishop_pairs() const
+{
+	uint_fast8_t bishop_w = 0; uint_fast8_t bishop_b = 0;
+
+	for (uint_fast8_t i = 0; i < 8; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			const uint_fast8_t p = _array[i][j];
+			(p == 3) && bishop_w++;
+			(p == 9) && bishop_b++;
+		}
+	}
+
+	return (bishop_w >= 2) - (bishop_b >= 2);
 }
 
 // Fonction qui calcule et renvoie la valeur de positionnement des pièces sur l'échiquier
@@ -738,11 +754,11 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 	/*if (_evaluated)
 		return false;*/
 
+	_displayed_components = display;
 	if (display)
-		eval_components = "", _displayed_components = true;
-	else
-		_displayed_components = false;
+		eval_components = "";
 
+	// TODO : à mettre dans GUI
 	_evaluator = eval;
 
 
@@ -763,21 +779,9 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 		_evaluation += material;
 	}	
 
-	
-	// TODO : à compter directement avec le matériel
-	// Comptage des fous
-	uint_fast8_t bishop_w = 0; uint_fast8_t bishop_b = 0;
-	for (uint_fast8_t i = 0; i < 8; i++) {
-		for (uint_fast8_t j = 0; j < 8; j++) {
-			const uint_fast8_t p = _array[i][j];
-			(p == 3) && bishop_w++;
-			(p == 9) && bishop_b++;
-		}
-	}
-
 	// Paire de oufs
 	if (eval->_bishop_pair != 0.0f) {
-		const int bishop_pair = eval->_bishop_pair * ((bishop_w >= 2) - (bishop_b >= 2));
+		const int bishop_pair = count_bishop_pairs() * eval->_bishop_pair;
 		if (display)
 			eval_components += "bishop pair: " + (bishop_pair >= 0 ? string("+") : string()) + to_string(bishop_pair) + "\n";
 		_evaluation += bishop_pair;
