@@ -900,7 +900,6 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 		_evaluation += player_trait;
 	}
 
-
 	// Menace de poussée de pion sur une pièce adverse
 	if (eval->_pawn_push_threats != 0.0f) {
 		const int pawn_push_threat = get_pawn_push_threats() * eval->_pawn_push_threats;
@@ -909,6 +908,13 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 		_evaluation += pawn_push_threat;
 	}
 
+	// Proximité du roi avec les pions en finale
+	if (eval->_king_proximity != 0.0f) {
+		const int king_proximity = get_king_proximity() * eval->_king_proximity;
+		if (display)
+			eval_components += "king proximity: " + (king_proximity >= 0 ? string("+") : string()) + to_string(king_proximity) + "\n";
+		_evaluation += king_proximity;
+	}
 
 
 
@@ -3670,7 +3676,7 @@ int Board::get_pawn_structure(float display_factor) const
 	}
 
 	if (display_factor != 0.0f)
-		eval_components += "isolated pawns: " + (isolated_pawns >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * isolated_pawns * display_factor))) + " | ";
+		eval_components += "isolated pawns: " + (isolated_pawns >= 0 ? string("+") : string()) + to_string(static_cast<int>(isolated_pawns * display_factor)) + " | ";
 
 	pawn_structure += isolated_pawns;
 
@@ -3686,7 +3692,7 @@ int Board::get_pawn_structure(float display_factor) const
 	}
 
 	if (display_factor != 0.0f)
-		eval_components += "doubled pawns: " + (doubled_pawns >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * doubled_pawns * display_factor))) + " | ";
+		eval_components += "doubled pawns: " + (doubled_pawns >= 0 ? string("+") : string()) + to_string(static_cast<int>(doubled_pawns * display_factor)) + " | ";
 
 	pawn_structure += doubled_pawns;
 
@@ -3796,7 +3802,7 @@ int Board::get_pawn_structure(float display_factor) const
 	}
 
 	if (display_factor != 0.0f)
-		eval_components += "passed pawns: " + (passed_pawns_value >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * passed_pawns_value * display_factor))) + " || ";
+		eval_components += "passed pawns: " + (passed_pawns_value >= 0 ? string("+") : string()) + to_string(static_cast<int>(passed_pawns_value * display_factor)) + " || ";
 
 	pawn_structure += passed_pawns_value;
 
@@ -3824,7 +3830,7 @@ int Board::get_pawn_structure(float display_factor) const
 	}
 
 	if (display_factor != 0.0f)
-		eval_components += "connected pawns: " + (connected_pawns_value >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * connected_pawns_value * display_factor))) + " || ";
+		eval_components += "connected pawns: " + (connected_pawns_value >= 0 ? string("+") : string()) + to_string(static_cast<int>(connected_pawns_value * display_factor)) + " || ";
 
 	pawn_structure += connected_pawns_value;
 
@@ -6244,4 +6250,42 @@ int Board::get_pawn_push_threats() const {
 bool GUI::remove_last_move_PGN()
 {
 	// TODO	
+}
+
+
+// Fonction qui calcule et renvoie la proximité du roi avec les pions
+int Board::get_king_proximity()
+{
+	// Met à jour la position des rois
+	update_kings_pos();
+
+	// Proximité des rois
+	int proximity = 0;
+
+	// Pourcentage d'avancement pour que ça soit pris en compte
+	const float min_advancement = 0.75f;
+
+	if (_adv <= min_advancement)
+		return 0;
+
+	for (uint_fast8_t i = 0; i < 8; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			const uint_fast8_t p = _array[i][j];
+
+			// Pion blanc
+			if (p == 1) {
+				proximity -= max(abs(i - _white_king_pos.i), abs(j - _white_king_pos.j)) * i;
+				proximity += max(abs(i - _black_king_pos.i), abs(j - _black_king_pos.j)) * i;
+			}
+
+			// Pion noir
+			else if (p == 7) {
+				proximity -= max(abs(i - _white_king_pos.i), abs(j - _white_king_pos.j)) * (7 - i);
+				proximity += max(abs(i - _black_king_pos.i), abs(j - _black_king_pos.j)) * (7 - i);
+			}
+
+		}
+	}
+	
+	return 10 * proximity * (_adv - min_advancement) / (1.0f - min_advancement);
 }

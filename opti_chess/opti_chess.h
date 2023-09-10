@@ -558,6 +558,9 @@ public:
 
 	// Fonction qui calcule et renvoie la valeur des menaces d'avance de pion
 	[[nodiscard]] int get_pawn_push_threats() const;
+
+	// Fonction qui calcule et renvoie la proximité du roi avec les pions
+	[[nodiscard]] int get_king_proximity();
 };
 
 // Fonction qui obtient la case correspondante à la position sur la GUI
