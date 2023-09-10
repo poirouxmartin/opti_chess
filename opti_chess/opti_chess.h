@@ -554,7 +554,7 @@ public:
 	[[nodiscard]] int get_fianchetto_value() const;
 
 	// Fonction qui renvoie si la case est controlée par le joueur adverse
-	[[nodiscard]] bool is_controlled(int square_i, int square_j) const;
+	[[nodiscard]] bool is_controlled(int square_i, int square_j, bool player) const;
 
 	// Fonction qui calcule et renvoie la valeur des menaces d'avance de pion
 	[[nodiscard]] int get_pawn_push_threats() const;
