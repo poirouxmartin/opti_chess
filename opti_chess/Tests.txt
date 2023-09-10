@@ -105,7 +105,7 @@ r1b2rk1/ppp3pp/2n1p3/3pP1N1/1P5q/2PB4/P6P/R1BQR2K w - - 6 20 : complètement gagn
 r1bqkb1r/p3pppp/2p2n2/2p5/8/6P1/PPPP1P1P/RNBQK1NR w KQkq - 0 7 : gros trous sur cases blanches
 1r5k/p1pr1p1p/2pb1p2/4pN2/4P3/1P1R4/P1P2PPP/3R2K1 b - - 3 19 : foutu pour les noirs
 3r4/p1pr1p2/3b1pk1/2p1pN1p/2P1P3/1P1R3R/P3KPPP/8 b - - 5 24 : #3 pour les blancs
-8/5k2/6pp/4P3/7P/6P1/K7/8 b - - 0 7 : finales gagnante pour les noirs car le roi est beaucoup plus proche des pions
+8/5k2/6pp/4P3/7P/6P1/K7/8 b - - 0 7 : finale gagnante pour les noirs car le roi est beaucoup plus proche des pions
 2rqkbnr/p4ppp/1pn1p3/1B1pN3/3P1Bb1/1QP5/PP3PPP/RN2K2R b KQk - 3 9 : +3 au moins (menaces de partout) -> faire 'hanging'
 rn2k1r1/pppRpRpp/bb6/q7/6n1/8/PPPPPPPP/1NB1KBN1 w q - 0 1 : perpet
 3r1rk1/p3bppp/bq2pn2/4R1B1/2p5/1BN2Q2/PPP2PPP/3R2K1 w - - 0 17 : ça perd pour les blancs
