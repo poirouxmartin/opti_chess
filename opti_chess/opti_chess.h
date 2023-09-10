@@ -803,7 +803,10 @@ public:
 
 	// TODO : Pour le PGN, faire un vecteur de coups, comme ça on peut repasser la partie, et modifier le PGN facilement
 	// Historique des positions
+	vector<Board> _positions_history;
+	int _current_position = 0;
 
+	// TODO faire un arbre de recherche pour les coups, pour avoir toutes les variantes
 
 
 	// Evaluation test
@@ -850,6 +853,9 @@ public:
 
 	// Fonction qui lance grogros sur un thread
 	bool grogros_zero_threaded(Evaluator *eval, int nodes);
+
+	// Fonction qui retire le dernier coup du PGN
+	bool remove_last_move_PGN();
 };
 
 // Instantiation de la GUI globale
