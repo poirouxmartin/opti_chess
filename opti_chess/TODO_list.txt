@@ -187,7 +187,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Changer un peu l'algo, pour que ça ne joue pas forcément le coup auquel il a le plus réflechi, mais un autre si il semble être meilleur (quand c'est mat, facile, mais sinon, comment savoir?)
 -> Attaquer les faiblesses
 -> Quand Grogros joue un coup auquel il n'avait pas pensé.. les évaluations déscendent pour les coups, 1 par 1... comment faire pour que tout descende en même temps?
--> Regler tous les *100 et les /100 dans les évaluations
 -> L'éval statique en position symétrique sera toujours nulle ?? (modulo le trait du joueur)
 -> Puissance de la paire de fou qui dépend du moment de la partie? Qui dépend si y'a encore les dames pour compenser?
 -> Découper la foncion draw en plein de sous-fonctions?
@@ -215,7 +214,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	-> 1nbqkbn1/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1 : sans tours
 	-> rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 : sans dame
 	-> rnbqkbnr/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 : sans pions
--> Nouveau gros bug : quand on fait réfléchir grogros, qu'on supprime et qu'on lance grogrosfish, ça crash (ça peut crasher)
 -> Faire des pre-calculs dans des constantes (genre des divisions), pour éviter de les faire à chaque fois
 -> Mettre des flags pour les coups (capture, check, promotion -> caval possible??)
 -> Descendre un peu le winrate par éval? réference : +1.00 = 50% de chances de gain

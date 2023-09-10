@@ -10,7 +10,7 @@
 void launch_eval() {
 	main_GUI._board.reset_board();
 	main_GUI._board.is_game_over();
-	main_GUI._board.evaluate_int(main_GUI._eval, true);
+	main_GUI._board.evaluate(main_GUI._eval);
 	/*main_GUI._board._quick_sorted_moves = false;
 	main_GUI._board.quick_moves_sort();*/
 	//main_GUI._board.is_controlled(3, 3);
@@ -354,7 +354,7 @@ int main() {
 
 		// E - Évalue la position et renvoie les composantes dans la console
 		if (IsKeyPressed(KEY_E)) {
-			main_GUI._board.evaluate_int(&monte_evaluator, true);
+			main_GUI._board.evaluate(&monte_evaluator, true);
 			cout << "Evaluation : \n" << eval_components << endl;
 		}
 
