@@ -276,10 +276,10 @@ bool Board::get_moves(const bool pseudo, const bool forbide_check) {
 			// Roques
 			// Grand
 			// TODO : optimisable
-			if (_castling_rights.q_w && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!is_controlled(i, j) && !is_controlled(i, j - 1) && !is_controlled(i, j - 2))))
+			if (_castling_rights.q_w && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!is_controlled(i, j, true) && !is_controlled(i, j - 1, true) && !is_controlled(i, j - 2, true))))
 				add_move(i, j, i, j - 2, &iterator, 6);
 			// Petit
-			if (_castling_rights.k_w && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!is_controlled(i, j) && !is_controlled(i, j + 1) && !is_controlled(i, j + 2))))
+			if (_castling_rights.k_w && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!is_controlled(i, j, true) && !is_controlled(i, j + 1, true) && !is_controlled(i, j + 2, true))))
 				add_move(i, j, i, j + 2, &iterator, 6);
 			break;
 
@@ -307,10 +307,10 @@ bool Board::get_moves(const bool pseudo, const bool forbide_check) {
 			add_king_moves(i, j, &iterator, 12);
 			// Roques
 			// Grand
-			if (_castling_rights.q_b && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!is_controlled(i, j) && !is_controlled(i, j - 1) && !is_controlled(i, j - 2))))
+			if (_castling_rights.q_b && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!is_controlled(i, j, false) && !is_controlled(i, j - 1, false) && !is_controlled(i, j - 2, false))))
 				add_move(i, j, i, j - 2, &iterator, 12);
 			// Petit
-			if (_castling_rights.k_b && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!is_controlled(i, j) && !is_controlled(i, j + 1) && !is_controlled(i, j + 2))))
+			if (_castling_rights.k_b && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!is_controlled(i, j, false) && !is_controlled(i, j + 1, false) && !is_controlled(i, j + 2, false))))
 				add_move(i, j, i, j + 2, &iterator, 12);
 			break;
 		}
@@ -3710,11 +3710,16 @@ int Board::get_pawn_structure(float display_factor) const
 
 	// Pions passés
 	// r5k1/P3Rpp1/7p/8/3p4/8/2P2PPP/6K1 b - - 1 30 : position à tester
+
+
 	// Table de valeur des pions passés en fonction de leur avancement sur le plateau
-	static const int passed_pawns[8] = { 0, 50, 50, 100, 165, 250, 300, 0 }; // TODO à vérif
+	static const int passed_pawns[8] = { 0, 50, 50, 100, 165, 250, 300, 0 };
+
+	// Pion passé - chemin controllé par une pièce adverse
+	static const int controlled_passed_pawn[8] = { 0, 40, 50, 65, 80, 120, 150, 0 };
 
 	// Pion passé bloqué
-	static const int blocked_passed_pawn[8] = { 0, 10, 10, 20, 30, 40, 50, 60 };
+	static const int blocked_passed_pawn[8] = { 0, 30, 35, 40, 50, 75, 100, 0 };
 
 
 	constexpr float passed_adv_factor = 2.0f; // En fonction de l'advancement de la partie
@@ -3737,8 +3742,10 @@ int Board::get_pawn_structure(float display_factor) const
 							break;
 						}
 
+					// Si c'est un pion passé
 					if (is_passed_pawn) {
-						// Regarde s'il y a un bloqueur // TODO : pareil si la case est controllée par une pièce adverse
+
+						// Regarde s'il y a un bloqueur
 						bool blocked = false;
 						for (uint_fast8_t k = j + 1; k <= 7; k++)
 							if (_array[k][i] != 0) {
@@ -3746,9 +3753,20 @@ int Board::get_pawn_structure(float display_factor) const
 								break;
 							}
 
-						passed_pawns_value += (blocked ? blocked_passed_pawn[j] : passed_pawns[j]) * passed_adv;
+						// S'il n'est pas bloqué, regarde s'il est controllé par une pièce adverse
+						bool controlled = false;
+						if (!blocked) {
+							for (uint_fast8_t k = j + 1; k <= 7; k++)
+								if (is_controlled(k, i, true)) {
+									controlled = true;
+									break;
+								}
+						}
+
+						// Ajoute la valeur du pion passé
+						passed_pawns_value += (blocked ? blocked_passed_pawn[j] : (controlled ? controlled_passed_pawn[j] : passed_pawns[j])) * passed_adv;
 					}
-						
+
 				}
 			}
 		}
@@ -3765,16 +3783,30 @@ int Board::get_pawn_structure(float display_factor) const
 							break;
 						}
 
+					// Si c'est un pion passé
 					if (is_passed_pawn) {
+
 						// Regarde s'il y a un bloqueur
 						bool blocked = false;
-						for (uint_fast8_t k = j - 1; k > 0; k--)
+						for (int_fast8_t k = j - 1; k >= 0; k--)
+							//cout << "k = " << (int)k << " i = " << (int)i << " _array[k][i] = " << static_cast<int>(_array[k][i]) << endl;
 							if (_array[k][i] != 0) {
 								blocked = true;
 								break;
 							}
 
-						passed_pawns_value -= (blocked ? blocked_passed_pawn[7 - j] : passed_pawns[7 - j]) * passed_adv;
+						// S'il n'est pas bloqué, regarde s'il est controllé par une pièce adverse
+						bool controlled = false;
+						if (!blocked) {
+							for (int_fast8_t k = j - 1; k >= 0; k--)
+								if (is_controlled(k, i, false)) {
+									controlled = true;
+									break;
+								}
+						}
+
+						// Ajoute la valeur du pion passé
+						passed_pawns_value -= (blocked ? blocked_passed_pawn[7 - j] : (controlled ? controlled_passed_pawn[7 - j] : passed_pawns[7 - j])) * passed_adv;
 					}
 				}
 			}
@@ -4625,7 +4657,7 @@ bool Board::quick_moves_sort() {
 		int move_value = 0;
 		if (captured_value != 0) {
 			move_value = captured_value - capturer_value;
-			move_value += (move_value < 0 && is_controlled(move.i2, move.j2)) ? move_value : 10000;
+			move_value += (move_value < 0 && is_controlled(move.i2, move.j2, _player)) ? move_value : 10000;
 		}
 
 		// Promotion
@@ -6030,7 +6062,7 @@ int Board::get_fianchetto_value() const
 }
 
 // Fonction qui renvoie si la case est controlée par le joueur adverse
-bool Board::is_controlled(int square_i, int square_j) const
+bool Board::is_controlled(int square_i, int square_j, bool player) const
 {
 
 	// Regarde les potentielles attaques de cavalier
@@ -6040,7 +6072,7 @@ bool Board::is_controlled(int square_i, int square_j) const
 		const int ni = square_i + knight_offsets[k][0];
 
 		// S'il y a un cavalier qui attaque, renvoie vrai (en échec)
-		if (const int nj = square_j + knight_offsets[k][1]; ni >= 0 && ni < 8 && nj >= 0 && nj < 8 && _array[ni][nj] == (2 + _player * 6))
+		if (const int nj = square_j + knight_offsets[k][1]; ni >= 0 && ni < 8 && nj >= 0 && nj < 8 && _array[ni][nj] == (2 + player * 6))
 			return true;
 	}
 
@@ -6054,7 +6086,7 @@ bool Board::is_controlled(int square_i, int square_j) const
 		if (const uint_fast8_t piece = _array[square_i][j]; piece != 0)
 		{
 			// Si la pièce n'est pas au joueur, regarde si c'est une tour, une dame, ou un roi avec une distance de 1
-			if (piece < 7 != _player)
+			if (piece < 7 != player)
 				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 4 || simple_piece == 5 || (simple_piece == 6 && j == square_j - 1))
 					return true;
 
@@ -6067,7 +6099,7 @@ bool Board::is_controlled(int square_i, int square_j) const
 	{
 		if (const uint_fast8_t piece = _array[square_i][j]; piece != 0)
 		{
-			if (piece < 7 != _player)
+			if (piece < 7 != player)
 				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 4 || simple_piece == 5 || (simple_piece == 6 && j == square_j + 1))
 					return true;
 
@@ -6080,7 +6112,7 @@ bool Board::is_controlled(int square_i, int square_j) const
 	{
 		if (const uint_fast8_t piece = _array[i][square_j]; piece != 0)
 		{
-			if (piece < 7 != _player)
+			if (piece < 7 != player)
 				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 4 || simple_piece == 5 || (simple_piece == 6 && i == square_i - 1))
 					return true;
 
@@ -6093,7 +6125,7 @@ bool Board::is_controlled(int square_i, int square_j) const
 	{
 		if (const uint_fast8_t piece = _array[i][square_j]; piece != 0)
 		{
-			if (piece < 7 != _player)
+			if (piece < 7 != player)
 				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 4 || simple_piece == 5 || (simple_piece == 6 && i == square_i + 1))
 					return true;
 
@@ -6108,7 +6140,7 @@ bool Board::is_controlled(int square_i, int square_j) const
 	{
 		if (const uint_fast8_t piece = _array[i][j]; piece != 0)
 		{
-			if (piece < 7 != _player)
+			if (piece < 7 != player)
 			{
 				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 3 || simple_piece == 5 || (simple_piece == 6 && (abs(square_i - i) == 1)))
 					return true;
@@ -6127,7 +6159,7 @@ bool Board::is_controlled(int square_i, int square_j) const
 	{
 		if (const uint_fast8_t piece = _array[i][j]; piece != 0)
 		{
-			if ((piece < 7) != _player)
+			if ((piece < 7) != player)
 			{
 				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 3 || simple_piece == 5 || (simple_piece == 6 && abs(square_i - i) == 1))
 					return true;
@@ -6145,7 +6177,7 @@ bool Board::is_controlled(int square_i, int square_j) const
 	{
 		if (const uint_fast8_t piece = _array[i][j]; piece != 0)
 		{
-			if ((piece < 7) != _player)
+			if ((piece < 7) != player)
 			{
 				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 3 || simple_piece == 5 || (simple_piece == 6 && abs(square_i - i) == 1))
 					return true;
@@ -6163,7 +6195,7 @@ bool Board::is_controlled(int square_i, int square_j) const
 	{
 		if (const uint_fast8_t piece = _array[i][j]; piece != 0)
 		{
-			if ((piece < 7) != _player)
+			if ((piece < 7) != player)
 			{
 				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 3 || simple_piece == 5 || (simple_piece == 6 && abs(square_j - i) == 1))
 					return true;
@@ -6185,35 +6217,36 @@ int Board::get_pawn_push_threats() const {
 
 	// Pour chacun des pions, on regarde s'il y'a une ou des pièces qui seraient attaquées si le pion avançait
 	// Il faut vérifier que rien ne bloque la poussée (ni une pièce, ni un contrôle adverse)
-	// TODO regarder les contrôles
+	// TODO améliorer les contrôles... car ça veut dire qu'il n'y a jamais de menaces contre un fou, même si le pion est protégé
 	
 	int threats = 0;
+	bool player = _player;
 
 	for (uint_fast8_t i = 1; i < 7; i++) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
 			const uint_fast8_t p = _array[i][j];
-			
+
 			// Pion blanc
 			if (p == 1 && i < 6) {
 				if (j > 0) {
-					threats += _array[i + 1][j] == 0 && _array[i + 2][j - 1] > 7; // Poussée simple
-					threats += i == 1 && _array[i + 1][j] == 0 && _array[i + 2][j] == 0 && _array[i + 3][j - 1] > 7; // Poussée double
+					threats += _array[i + 1][j] == 0 && _array[i + 2][j - 1] > 7 && !is_controlled(i + 1, j, true); // Poussée simple
+					threats += i == 1 && _array[i + 1][j] == 0 && _array[i + 2][j] == 0 && _array[i + 3][j - 1] > 7 && !is_controlled(i + 2, j, true); // Poussée double
 				}
 				if (j < 7) {
-					threats += _array[i + 1][j] == 0 && _array[i + 2][j + 1] > 7;
-					threats += i == 1 && _array[i + 1][j] == 0 && _array[i + 2][j] == 0 && _array[i + 3][j + 1] > 7;
+					threats += _array[i + 1][j] == 0 && _array[i + 2][j + 1] > 7 && !is_controlled(i + 1, j, true);
+					threats += i == 1 && _array[i + 1][j] == 0 && _array[i + 2][j] == 0 && _array[i + 3][j + 1] > 7 && !is_controlled(i + 2, j, true);
 				}
 			}
 
 			// Pion noir
 			else if (p == 7 && i > 1) {
 				if (j > 0) {
-					threats -= _array[i - 1][j] == 0 && is_in_fast(_array[i - 2][j - 1], 2, 6),
-					threats -= i == 6 && _array[i - 1][j] == 0 && _array[i - 2][j] == 0 && is_in_fast(_array[i - 3][j - 1], 2, 6);
+					threats -= _array[i - 1][j] == 0 && is_in_fast(_array[i - 2][j - 1], 2, 6) && !is_controlled(i - 1, j, false);
+					threats -= i == 6 && _array[i - 1][j] == 0 && _array[i - 2][j] == 0 && is_in_fast(_array[i - 3][j - 1], 2, 6) && !is_controlled(i - 2, j, false);
 				}
 				if (j < 7) {
-					threats -= _array[i - 1][j] == 0 && is_in_fast(_array[i - 2][j + 1], 2, 6);
-					threats -= i == 6 && _array[i - 1][j] == 0 && _array[i - 2][j] == 0 && is_in_fast(_array[i - 3][j + 1], 2, 6);
+					threats -= _array[i - 1][j] == 0 && is_in_fast(_array[i - 2][j + 1], 2, 6) && !is_controlled(i - 1, j, false);
+					threats -= i == 6 && _array[i - 1][j] == 0 && _array[i - 2][j] == 0 && is_in_fast(_array[i - 3][j + 1], 2, 6) && !is_controlled(i - 2, j, false);
 				}
 					
 			}
