@@ -2538,6 +2538,12 @@ bool Board::play_monte_carlo_move_keep(const int m, const bool keep, const bool 
 	if (_got_moves == -1)
 		get_moves(true);
 
+	// Pour la GUI: historique des positions
+	Board b(*this);
+	main_GUI._positions_history.push_back(b);
+	main_GUI._current_position++;
+
+
 	// Il faut obtenir le vrai coup (correspondant aux plateaux fils de l'algo de Monte-Carlo)
 	// Pour le moment c'est pas beau, il faudra changer ça à l'avenir
 	// TODO
@@ -6205,24 +6211,24 @@ int Board::get_pawn_push_threats() const {
 			// Pion blanc
 			if (p == 1 && i < 6) {
 				if (j > 0) {
-					threats += _array[i + 1][j] == 0 && _array[i + 2][j - 1] > 7 && !is_controlled(i + 1, j, true); // Poussée simple
-					threats += i == 1 && _array[i + 1][j] == 0 && _array[i + 2][j] == 0 && _array[i + 3][j - 1] > 7 && !is_controlled(i + 2, j, true); // Poussée double
+					threats += _array[i + 1][j] == 0 && _array[i + 2][j - 1] > 7; // Poussée simple
+					threats += i == 1 && _array[i + 1][j] == 0 && _array[i + 2][j] == 0 && _array[i + 3][j - 1] > 7; // Poussée double
 				}
 				if (j < 7) {
-					threats += _array[i + 1][j] == 0 && _array[i + 2][j + 1] > 7 && !is_controlled(i + 1, j, true);
-					threats += i == 1 && _array[i + 1][j] == 0 && _array[i + 2][j] == 0 && _array[i + 3][j + 1] > 7 && !is_controlled(i + 2, j, true);
+					threats += _array[i + 1][j] == 0 && _array[i + 2][j + 1] > 7;
+					threats += i == 1 && _array[i + 1][j] == 0 && _array[i + 2][j] == 0 && _array[i + 3][j + 1] > 7;
 				}
 			}
 
 			// Pion noir
 			else if (p == 7 && i > 1) {
 				if (j > 0) {
-					threats -= _array[i - 1][j] == 0 && is_in_fast(_array[i - 2][j - 1], 2, 6) && !is_controlled(i - 1, j, false);
-					threats -= i == 6 && _array[i - 1][j] == 0 && _array[i - 2][j] == 0 && is_in_fast(_array[i - 3][j - 1], 2, 6) && !is_controlled(i - 2, j, false);
+					threats -= _array[i - 1][j] == 0 && is_in_fast(_array[i - 2][j - 1], 2, 6);
+					threats -= i == 6 && _array[i - 1][j] == 0 && _array[i - 2][j] == 0 && is_in_fast(_array[i - 3][j - 1], 2, 6);
 				}
 				if (j < 7) {
 					threats -= _array[i - 1][j] == 0 && is_in_fast(_array[i - 2][j + 1], 2, 6) && !is_controlled(i - 1, j, false);
-					threats -= i == 6 && _array[i - 1][j] == 0 && _array[i - 2][j] == 0 && is_in_fast(_array[i - 3][j + 1], 2, 6) && !is_controlled(i - 2, j, false);
+					threats -= i == 6 && _array[i - 1][j] == 0 && _array[i - 2][j] == 0 && is_in_fast(_array[i - 3][j + 1], 2, 6);
 				}
 					
 			}
@@ -6231,4 +6237,11 @@ int Board::get_pawn_push_threats() const {
 	}
 
 	return threats;
+}
+
+
+// Fonction qui retire le dernier coup du PGN
+bool GUI::remove_last_move_PGN()
+{
+	// TODO	
 }

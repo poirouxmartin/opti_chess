@@ -534,6 +534,15 @@ int main() {
 		// }
 
 
+		// Flèche gauche: revient sur la position précédente
+		if (IsKeyPressed(KEY_LEFT)) {
+			if (main_GUI._current_position > 0) {
+				main_GUI._board = main_GUI._positions_history[main_GUI._current_position - 1];
+				main_GUI._positions_history.pop_back();
+				main_GUI._current_position--;
+			}
+		}
+
 
 
 		// Jeu des IA
