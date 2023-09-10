@@ -731,7 +731,6 @@ int Board::count_bishop_pairs() const
 }
 
 // Fonction qui calcule et renvoie la valeur de positionnement des pièces sur l'échiquier
-// TODO : fusion avec material
 int Board::pieces_positioning(const Evaluator* eval) const
 {
 	int pos = 0;
@@ -935,17 +934,11 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 	// L'évaluation a été effectuée
 	_evaluated = true;
 
-	// Partie non finie
-	return false;
-}
-
-// Fonction qui évalue la position à l'aide d'heuristiques -> évaluation entière
-bool Board::evaluate_int(Evaluator* eval, const bool display, Network* n) {
-	const bool evaluated = evaluate(eval, display, n);
-	//_evaluation = _evaluation + 0.5f - static_cast<float>(_evaluation < 0); // pour l'arrondi
+	// Met à jour l'évaluation statique
 	_static_evaluation = static_cast<int>(_evaluation);
 
-	return evaluated;
+	// Partie non finie
+	return false;
 }
 
 // Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
@@ -2129,7 +2122,7 @@ bool Board::draw() {
 
 		// Pour l'évaluation statique
 		if (!_displayed_components)
-			evaluate_int(_evaluator, true);
+			evaluate(_evaluator, true);
 		int max_depth = grogros_main_depth();
 		int n_nodes = total_nodes();
 		monte_carlo_text += "\n\n--- static eval: " + ((_static_evaluation > 0) ? static_cast<string>("+") : static_cast<string>("")) + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval: " + ((best_eval > 0) ? static_cast<string>("+") : static_cast<string>("")) + eval + " ---" + win_chances + "\nnodes: " + int_to_round_string(n_nodes) + "/" + int_to_round_string(monte_buffer._length) + " | time: " + clock_to_string(_time_monte_carlo) + " | speed: " + int_to_round_string(total_nodes() / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s" + " | depth: " + to_string(max_depth) + "\nquiescence: " + int_to_round_string(_quiescence_nodes) + "N" + " | speed: " + int_to_round_string(_quiescence_nodes / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s";
@@ -2693,7 +2686,7 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const flo
 
 	// Si c'est le premier appel, sur le plateau principal
 	if (_new_board && depth == 0) {
-		evaluate_int(eval, false, net);
+		evaluate(eval, false, net);
 	}
 
 	// Si c'est le plateau principal
@@ -4722,7 +4715,7 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, const int dept
 		return -mate_value + _moves_count * mate_ply;
 
 	// Evalue la position initiale
-	evaluate_int(eval);
+	evaluate(eval);
 	const int stand_pat = static_cast<int>(_evaluation) * get_color();
 
 	if (depth == 0)

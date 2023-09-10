@@ -358,9 +358,6 @@ public:
 	// Fonction qui évalue la position à l'aide d'heuristiques
 	bool evaluate(Evaluator* eval = nullptr, bool display = false, Network* n = nullptr);
 
-	// Fonction qui évalue la position à l'aide d'heuristiques -> évaluation entière
-	bool evaluate_int(Evaluator* eval = nullptr, bool display = false, Network* n = nullptr);
-
 	// Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
 	int negamax(int, int, int, bool, Evaluator*, bool play = false, bool display = false, int quiescence_depth = 0, int null_depth = 2);
 
