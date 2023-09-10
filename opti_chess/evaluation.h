@@ -6,25 +6,24 @@ public:
 
 	// Coefficients des heuristiques
 	float _piece_value = 1.2f;
-	float _piece_mobility = 0.0007f;
-	float _piece_positioning = 0.0035f;
-	float _random_add = 0.0f;
-	float _bishop_pair = 0.25f;
+	float _piece_mobility = 0.07f;
+	float _piece_positioning = 0.35f;
+	float _bishop_pair = 25.0f;
 	float _castling_rights = 0.0f;
-	float _player_trait = 0.15f;
-	float _king_safety = 0.00035f;
-	float _pawn_structure = 0.004f;
-	float _attacks = 0.01f;
-	float _kings_opposition = 0.75f;
+	float _player_trait = 15.0f;
+	float _king_safety = 0.035f;
+	float _pawn_structure = 0.4f;
+	float _attacks = 1.0f;
+	float _kings_opposition = 75.0f;
 	float _push = 1.00f;
-	float _rook_open = 0.003f;
-	float _square_controls = 0.002f;
-	float _space_advantage = 0.006f;
-	//float _alignments = 0.01f;
+	float _rook_open = 0.3f;
+	float _square_controls = 0.2f;
+	float _space_advantage = 0.6f;
+	//float _alignments = 1.0f;
 	float _alignments = 0.00f;
-	float _piece_activity = 0.0003f;
-	float _fianchetto = 0.003f;
-	float _pawn_push_threats = 0.2f;
+	float _piece_activity = 0.03f;
+	float _fianchetto = 0.3f;
+	float _pawn_push_threats = 20.0f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
 	int _pieces_value_begin[6] = { 72, 335, 340, 460, 980, 0 };
@@ -329,7 +328,7 @@ public:
 	Evaluator(const Evaluator &evaluator);
 
 	// Constructeur avec paramètres
-	Evaluator(const float piece_value, const float piece_mobility, const float piece_positioning, const float random_add, const float bishop_pair, const float castling_rights, const float player_trait, const float king_safety, const float pawn_structure, const float attacks, const float defenses, const float kings_opposition, const float push, const float rook_open, const float square_controls, const float space_advantage, const float alignments, const float piece_activity, const float fianchetto, const float pawn_push_threats);
+	Evaluator(const float piece_value, const float piece_mobility, const float piece_positioning, const float bishop_pair, const float castling_rights, const float player_trait, const float king_safety, const float pawn_structure, const float attacks, const float defenses, const float kings_opposition, const float push, const float rook_open, const float square_controls, const float space_advantage, const float alignments, const float piece_activity, const float fianchetto, const float pawn_push_threats);
 
 	// Opérateur de copie
 	Evaluator& operator=(const Evaluator &evaluator);

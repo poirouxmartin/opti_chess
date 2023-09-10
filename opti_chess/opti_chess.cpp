@@ -70,20 +70,20 @@ bool Board::add_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fast
 }
 
 // Fonction qui ajoute les coups "pions" dans la liste de coups
-bool Board::add_pawn_moves(const uint_fast8_t i, const uint_fast8_t j, int* iterator, const uint_fast8_t piece) {
-	// FIXME : ne pas utiliser 'piece', et mettre juste 1 et 7 à la place?
+bool Board::add_pawn_moves(const uint_fast8_t i, const uint_fast8_t j, int* iterator) {
 
 	// Joueur avec les pièces blanches
 	if (_player) {
-		_array[i + 1][j] == 0 && add_move(i, j, i + 1, j, iterator, piece) && i == 1 && _array[i + 2][j] == 0 && add_move(i, j, i + 2, j, iterator, piece); // Poussées
-		j > 0 && (is_in_fast(_array[i + 1][j - 1], 7, 12) || (_en_passant_col == j - 1 && i == 4)) && add_move(i, j, i + 1, j - 1, iterator, piece); // Prise (gauche)
-		j < 7 && (is_in_fast(_array[i + 1][j + 1], 7, 12) || (_en_passant_col == j + 1 && i == 4)) && add_move(i, j, i + 1, j + 1, iterator, piece); // Prise (droite)
+		_array[i + 1][j] == 0 && add_move(i, j, i + 1, j, iterator, 1) && i == 1 && _array[i + 2][j] == 0 && add_move(i, j, i + 2, j, iterator, 1); // Poussées
+		j > 0 && (is_in_fast(_array[i + 1][j - 1], 7, 12) || (_en_passant_col == j - 1 && i == 4)) && add_move(i, j, i + 1, j - 1, iterator, 1); // Prise (gauche)
+		j < 7 && (is_in_fast(_array[i + 1][j + 1], 7, 12) || (_en_passant_col == j + 1 && i == 4)) && add_move(i, j, i + 1, j + 1, iterator, 1); // Prise (droite)
 	}
+
 	// Joueur avec les pièces noires
 	else {
-		_array[i - 1][j] == 0 && add_move(i, j, i - 1, j, iterator, piece) && i == 6 && _array[i - 2][j] == 0 && add_move(i, j, i - 2, j, iterator, piece); // Poussées
-		j > 0 && (is_in_fast(_array[i - 1][j - 1], 1, 6) || (_en_passant_col == j - 1 && i == 3)) && add_move(i, j, i - 1, j - 1, iterator, piece); // Prise (gauche)
-		j < 7 && (is_in_fast(_array[i - 1][j + 1], 1, 6) || (_en_passant_col == j + 1 && i == 3)) && add_move(i, j, i - 1, j + 1, iterator, piece); // Prise (droite)
+		_array[i - 1][j] == 0 && add_move(i, j, i - 1, j, iterator, 7) && i == 6 && _array[i - 2][j] == 0 && add_move(i, j, i - 2, j, iterator, 7); // Poussées
+		j > 0 && (is_in_fast(_array[i - 1][j - 1], 1, 6) || (_en_passant_col == j - 1 && i == 3)) && add_move(i, j, i - 1, j - 1, iterator, 7); // Prise (gauche)
+		j < 7 && (is_in_fast(_array[i - 1][j + 1], 1, 6) || (_en_passant_col == j + 1 && i == 3)) && add_move(i, j, i - 1, j + 1, iterator, 7); // Prise (droite)
 	}
 
 	return true;
@@ -210,17 +210,11 @@ bool Board::add_king_moves(const uint_fast8_t i, const uint_fast8_t j, int* iter
 }
 
 // Calcule la liste des coups possibles. pseudo ici fait référence au droit de roquer en passant par une position illégale.
-bool Board::get_moves(const bool pseudo, const bool forbide_check) {
-	// Si la partie est finie
+bool Board::get_moves(const bool forbide_check) 
+{
 
-	// Règle des 50 coups
-	if (_half_moves_count >= max_half_moves) {
-		_got_moves = 0;
-		return false;
-	}
-
+	// Si on a déjà calculé les coups possibles, on ne le refait pas (sauf si on souhaite calculer d'autres types de coups: pseudo ou non)
 	if (_got_moves != -1) {
-		// Si on souhaite calculer les autres types de coups (légaux plutôt qu'illégaux, ou inversement...)
 		if (_pseudo_moves == forbide_check)
 			_pseudo_moves = !forbide_check;
 		else
@@ -252,7 +246,7 @@ bool Board::get_moves(const bool pseudo, const bool forbide_check) {
 			break;
 
 		case 1: // Pion blanc
-			add_pawn_moves(i, j, &iterator, 1);
+			add_pawn_moves(i, j, &iterator);
 			break;
 
 		case 2: // Cavalier blanc
@@ -276,15 +270,15 @@ bool Board::get_moves(const bool pseudo, const bool forbide_check) {
 			// Roques
 			// Grand
 			// TODO : optimisable
-			if (_castling_rights.q_w && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!is_controlled(i, j, true) && !is_controlled(i, j - 1, true) && !is_controlled(i, j - 2, true))))
+			if (_castling_rights.q_w && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (!is_controlled(i, j, true) && !is_controlled(i, j - 1, true) && !is_controlled(i, j - 2, true)))
 				add_move(i, j, i, j - 2, &iterator, 6);
 			// Petit
-			if (_castling_rights.k_w && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!is_controlled(i, j, true) && !is_controlled(i, j + 1, true) && !is_controlled(i, j + 2, true))))
+			if (_castling_rights.k_w && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (!is_controlled(i, j, true) && !is_controlled(i, j + 1, true) && !is_controlled(i, j + 2, true)))
 				add_move(i, j, i, j + 2, &iterator, 6);
 			break;
 
 		case 7: // Pion noir
-			add_pawn_moves(i, j, &iterator, 7);
+			add_pawn_moves(i, j, &iterator);
 			break;
 
 		case 8: // Cavalier noir
@@ -307,10 +301,10 @@ bool Board::get_moves(const bool pseudo, const bool forbide_check) {
 			add_king_moves(i, j, &iterator, 12);
 			// Roques
 			// Grand
-			if (_castling_rights.q_b && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (pseudo || (!is_controlled(i, j, false) && !is_controlled(i, j - 1, false) && !is_controlled(i, j - 2, false))))
+			if (_castling_rights.q_b && _array[i][j - 1] == 0 && _array[i][j - 2] == 0 && _array[i][j - 3] == 0 && (!is_controlled(i, j, false) && !is_controlled(i, j - 1, false) && !is_controlled(i, j - 2, false)))
 				add_move(i, j, i, j - 2, &iterator, 12);
 			// Petit
-			if (_castling_rights.k_b && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (pseudo || (!is_controlled(i, j, false) && !is_controlled(i, j + 1, false) && !is_controlled(i, j + 2, false))))
+			if (_castling_rights.k_b && _array[i][j + 1] == 0 && _array[i][j + 2] == 0 && (!is_controlled(i, j, false) && !is_controlled(i, j + 1, false) && !is_controlled(i, j + 2, false)))
 				add_move(i, j, i, j + 2, &iterator, 12);
 			break;
 		}
@@ -508,7 +502,7 @@ bool Board::in_check()
 // Fonction qui affiche la liste des coups donnée en argument
 void Board::display_moves(const bool pseudo) {
 	if (_got_moves == -1)
-		get_moves(false, !pseudo);
+		get_moves(!pseudo);
 
 	if (_got_moves == 0) {
 		cout << "no legal moves" << endl;
@@ -744,24 +738,17 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 	/*if (_evaluated)
 		return false;*/
 
-	_evaluated = true;
-
 	if (display)
-	{
-		eval_components = "";
-		_displayed_components = true;
-	}
+		eval_components = "", _displayed_components = true;
 	else
-	{
 		_displayed_components = false;
-	}
 
 	_evaluator = eval;
 
 
 
 	// Reset l'évaluation
-	_evaluation = 0.0f;
+	_evaluation = 0;
 
 	// Avancement de la partie
 	game_advancement();
@@ -770,9 +757,9 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 
 	// Matériel
 	if (eval->_piece_value != 0.0f) {
-		const float material = count_material(eval) * eval->_piece_value / 100; // à changer (le /100)
+		const int material = count_material(eval) * eval->_piece_value;
 		if (display)
-			eval_components += "material: " + (material >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * material))) + "\n";
+			eval_components += "material: " + (material >= 0 ? string("+") : string()) + to_string(material) + "\n";
 		_evaluation += material;
 	}	
 
@@ -790,142 +777,132 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 
 	// Paire de oufs
 	if (eval->_bishop_pair != 0.0f) {
-		const float bishop_pair = eval->_bishop_pair * ((bishop_w >= 2) - (bishop_b >= 2));
+		const int bishop_pair = eval->_bishop_pair * ((bishop_w >= 2) - (bishop_b >= 2));
 		if (display)
-			eval_components += "bishop pair: " + (bishop_pair >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * bishop_pair))) + "\n";
+			eval_components += "bishop pair: " + (bishop_pair >= 0 ? string("+") : string()) + to_string(bishop_pair) + "\n";
 		_evaluation += bishop_pair;
 	}
 
 	// Positionnement des pièces
 	if (eval->_piece_positioning != 0.0f) {
-		const float positioning = pieces_positioning(eval) * eval->_piece_positioning;
+		const int positioning = pieces_positioning(eval) * eval->_piece_positioning;
 		if (display)
-			eval_components += "positioning: " + (positioning >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * positioning))) + "\n";
+			eval_components += "positioning: " + (positioning >= 0 ? string("+") : string()) + to_string(positioning) + "\n";
 		_evaluation += positioning;
-	}
-
-	// Ajout random
-	if (eval->_random_add != 0.0f) {
-		float random_add = 0.0f;
-		random_add += static_cast<float>(GetRandomValue(-50, 50)) * eval->_random_add / 100;
-		if (display)
-			eval_components += "random add: " + (random_add >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * random_add))) + "\n";
-		_evaluation += random_add;
 	}
 
 	// Mobilité des pièces
 	if (eval->_piece_mobility != 0.0f) {
-		const float piece_mobility = static_cast<float>(get_piece_mobility()) * eval->_piece_mobility;
+		const int piece_mobility = get_piece_mobility() * eval->_piece_mobility;
 		if (display)
-			eval_components += "piece mobility: " + (piece_mobility >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * piece_mobility))) + "\n";
+			eval_components += "piece mobility: " + (piece_mobility >= 0 ? string("+") : string()) + to_string(piece_mobility) + "\n";
 		_evaluation += piece_mobility;
 	}
 
 	// Activité des pièces
 	if (eval->_piece_activity != 0.0f) {
-		const float piece_activity = static_cast<float>(get_piece_activity()) * eval->_piece_activity;
+		const int piece_activity = get_piece_activity() * eval->_piece_activity;
 		if (display)
-			eval_components += "piece activity: " + (piece_activity >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * piece_activity))) + "\n";
+			eval_components += "piece activity: " + (piece_activity >= 0 ? string("+") : string()) + to_string(piece_activity) + "\n";
 		_evaluation += piece_activity;
 	}
 
 	// Sécurité du roi
 	if (eval->_king_safety != 0.0f) {
-		const float king_safety = static_cast<float>(get_king_safety()) * eval->_king_safety;
+		const int king_safety = get_king_safety() * eval->_king_safety;
 		if (display)
-			eval_components += "king safety: " + (king_safety >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * king_safety))) + "\n";
+			eval_components += "king safety: " + (king_safety >= 0 ? string("+") : string()) + to_string(king_safety) + "\n";
 		_evaluation += king_safety;
 	}
 
 	// Droits de roques
 	if (eval->_castling_rights != 0.0f) {
-		float castling_rights = 0.0f;
-		castling_rights += eval->_castling_rights * static_cast<float>(_castling_rights.k_w + _castling_rights.q_w - _castling_rights.k_b - _castling_rights.q_b) * (1 - _adv);
+		const int castling_rights = eval->_castling_rights * (_castling_rights.k_w + _castling_rights.q_w - _castling_rights.k_b - _castling_rights.q_b) * (1 - _adv);
 		if (display)
-			eval_components += "castling rights: " + (castling_rights >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * castling_rights))) + "\n";
+			eval_components += "castling rights: " + (castling_rights >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(castling_rights))) + "\n";
 		_evaluation += castling_rights;
 	}
 
 	// Contrôle des cases
 	if (eval->_square_controls != 0.0f) {
-		const float square_controls = static_cast<float>(get_square_controls()) * eval->_square_controls;
+		const int square_controls = get_square_controls() * eval->_square_controls;
 		if (display)
-			eval_components += "square controls: " + (square_controls >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * square_controls))) + "\n";
+			eval_components += "square controls: " + (square_controls >= 0 ? string("+") : string()) + to_string(square_controls) + "\n";
 		_evaluation += square_controls;
 	}
 
 	// Avantage d'espace
 	if (eval->_space_advantage != 0.0f)
 	{
-		const float space = static_cast<float>(get_space()) * eval->_space_advantage;
+		const int space = get_space() * eval->_space_advantage;
 		if (display)
-			eval_components += "space: " + (space >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * space))) + "\n";
+			eval_components += "space: " + (space >= 0 ? string("+") : string()) + to_string(space) + "\n";
 		_evaluation += space;
 	}
 
 	// Structure de pions
 	if (eval->_pawn_structure != 0.0f) {
-		const float pawn_structure = static_cast<float>(get_pawn_structure(display * eval->_pawn_structure)) * eval->_pawn_structure;
+		const int pawn_structure = get_pawn_structure(display * eval->_pawn_structure) * eval->_pawn_structure;
 		if (display)
-			eval_components += "pawn structure: " + (pawn_structure >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * pawn_structure))) + "\n";
+			eval_components += "pawn structure: " + (pawn_structure >= 0 ? string("+") : string()) + to_string(pawn_structure) + "\n";
 		_evaluation += pawn_structure;
 	}
 
 	// Attaques et défenses de pièces
 	if (eval->_attacks != 0.0f) {
-		const float pieces_attacks_and_defenses = get_attacks_and_defenses() * eval->_attacks;
+		const int pieces_attacks_and_defenses = get_attacks_and_defenses() * eval->_attacks;
 		if (display)
-			eval_components += "attacks/defenses: " + (pieces_attacks_and_defenses >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * pieces_attacks_and_defenses))) + "\n";
+			eval_components += "attacks/defenses: " + (pieces_attacks_and_defenses >= 0 ? string("+") : string()) + to_string(pieces_attacks_and_defenses) + "\n";
 		_evaluation += pieces_attacks_and_defenses;
 	}
 
 	// Opposition des rois
 	if (eval->_kings_opposition != 0.0f) {
-		const float kings_opposition = static_cast<float>(get_kings_opposition()) * eval->_kings_opposition;
+		const int kings_opposition = get_kings_opposition() * eval->_kings_opposition;
 		if (display)
-			eval_components += "king opposition: " + (kings_opposition >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * kings_opposition))) + "\n";
+			eval_components += "king opposition: " + (kings_opposition >= 0 ? string("+") : string()) + to_string(kings_opposition) + "\n";
 		_evaluation += kings_opposition;
 	}
 
 	// Tours sur les colonnes ouvertes / semi-ouvertes
 	if (eval->_rook_open != 0.0f) {
-		const float rook_open = static_cast<float>(get_rooks_on_open_file()) * eval->_rook_open;
+		const int rook_open = get_rooks_on_open_file() * eval->_rook_open;
 		if (display)
-			eval_components += "rooks on open/semi files: " + (rook_open >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * rook_open))) + "\n";
+			eval_components += "rooks on open/semi files: " + (rook_open >= 0 ? string("+") : string()) + to_string(rook_open) + "\n";
 		_evaluation += rook_open;
 	}
 
 	// Alignement des pièces (fou-tour/dame-roi)
 	if (eval->_alignments != 0.0f)
 	{
-		const float pieces_alignment = static_cast<float>(get_alignments()) * eval->_alignments;
+		const int pieces_alignment = get_alignments() * eval->_alignments;
 		if (display)
-			eval_components += "pieces alignment: " + (pieces_alignment >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * pieces_alignment))) + "\n";
+			eval_components += "pieces alignment: " + (pieces_alignment >= 0 ? string("+") : string()) + to_string(pieces_alignment) + "\n";
 		_evaluation += pieces_alignment;
 	}
 
 	// Fous en fianchetto
 	if (eval->_fianchetto != 0.0f) {
-		const float fianchetto = static_cast<float>(get_fianchetto_value()) * eval->_fianchetto;
+		const int fianchetto = get_fianchetto_value() * eval->_fianchetto;
 		if (display)
-			eval_components += "fianchetto bishops: " + (fianchetto >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * fianchetto))) + "\n";
+			eval_components += "fianchetto bishops: " + (fianchetto >= 0 ? string("+") : string()) + to_string(fianchetto) + "\n";
 		_evaluation += fianchetto;
 	}
 
 	// Trait du joueur
 	if (eval->_player_trait != 0.0f) {
-		const float player_trait = eval->_player_trait * static_cast<float>(get_color());
+		const int player_trait = eval->_player_trait * get_color();
 		if (display)
-			eval_components += "player trait: " + (player_trait >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * player_trait))) + "\n";
+			eval_components += "player trait: " + (player_trait >= 0 ? string("+") : string()) + to_string(player_trait) + "\n";
 		_evaluation += player_trait;
 	}
 
 
 	// Menace de poussée de pion sur une pièce adverse
 	if (eval->_pawn_push_threats != 0.0f) {
-		const float pawn_push_threat = static_cast<float>(get_pawn_push_threats()) * eval->_pawn_push_threats;
+		const int pawn_push_threat = get_pawn_push_threats() * eval->_pawn_push_threats;
 		if (display)
-			eval_components += "pawn push threats: " + (pawn_push_threat >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * pawn_push_threat))) + "\n";
+			eval_components += "pawn push threats: " + (pawn_push_threat >= 0 ? string("+") : string()) + to_string(pawn_push_threat) + "\n";
 		_evaluation += pawn_push_threat;
 	}
 
@@ -934,7 +911,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 
 	// Total de l'évaluation
 	if (display)
-		eval_components += "--- total: " + (_evaluation >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(100 * _evaluation))) + " ---\n";
+		eval_components += "--- total: " + (_evaluation >= 0 ? string("+") : string()) + to_string(_evaluation) + " ---\n";
 
 
 	// Forteresse
@@ -946,9 +923,13 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 	}
 
 	// Chances de gain
-	const float win_chance = get_winning_chances_from_eval(_evaluation * 100, true);
+	const float win_chance = get_winning_chances_from_eval(_evaluation, true);
 	if (display)
 		eval_components += "W/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/" + to_string(static_cast<int>(100 * 0)) + "/" + to_string(static_cast<int>(100 * (1.0f - win_chance))) + "%\n";
+
+
+	// L'évaluation a été effectuée
+	_evaluated = true;
 
 	// Partie non finie
 	return false;
@@ -957,9 +938,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 // Fonction qui évalue la position à l'aide d'heuristiques -> évaluation entière
 bool Board::evaluate_int(Evaluator* eval, const bool display, Network* n) {
 	const bool evaluated = evaluate(eval, display, n);
-	if (n == nullptr)
-		_evaluation *= 100;
-	_evaluation = _evaluation + 0.5f - static_cast<float>(_evaluation < 0); // pour l'arrondi
+	//_evaluation = _evaluation + 0.5f - static_cast<float>(_evaluation < 0); // pour l'arrondi
 	_static_evaluation = static_cast<int>(_evaluation);
 
 	return evaluated;
@@ -1437,7 +1416,7 @@ int Board::is_game_over() {
 
 	// Calcule les coups légaux
 	if (_got_moves == -1)
-		get_moves(false, true);
+		get_moves(true);
 
 	// S'il n'y a pas de coups légaux, c'est soit mat, soit pat
 	if (_got_moves == 0) {
@@ -1517,7 +1496,7 @@ string Board::move_label(Move move)
 	bool spec_col = false;
 	bool spec_line = false;
 	if (_got_moves == -1)
-		get_moves(false, true);
+		get_moves(true);
 
 	uint_fast8_t i1; uint_fast8_t j1; uint_fast8_t k1; uint_fast8_t l1; uint_fast8_t p11;
 	for (int m = 0; m < _got_moves; m++) {
@@ -1600,7 +1579,7 @@ string Board::move_label(Move move)
 string Board::move_label_from_index(const int i) {
 	// Pour pas qu'il re écrase les moves
 	if (_got_moves == -1)
-		get_moves(false, true);
+		get_moves(true);
 	return move_label(_moves[i]);
 }
 
@@ -1800,7 +1779,7 @@ bool Board::draw() {
 				}
 
 				// Si le coup est légal, le joue
-				get_moves(false, true);
+				get_moves(true);
 				for (int i = 0; i < _got_moves; i++) {
 					if (_moves[i].i1 == selected_pos.first && _moves[i].j1 == selected_pos.second && _moves[i].i2 == clicked_pos.first && _moves[i].j2 == clicked_pos.second) {
 						play_move_sound(Move(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second));
@@ -1838,7 +1817,7 @@ bool Board::draw() {
 
 					else {
 						// Si le coup est légal
-						get_moves(false, true);
+						get_moves(true);
 						for (int i = 0; i < _got_moves; i++) {
 							if (_moves[i].i1 == selected_pos.first && _moves[i].j1 == selected_pos.second && _moves[i].i2 == drop_pos.first && _moves[i].j2 == drop_pos.second) {
 								play_move_sound(Move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second));
@@ -1859,7 +1838,7 @@ bool Board::draw() {
 	/*if (pre_move[0] != -1 && pre_move[1] != -1 && pre_move[2] != -1 && pre_move[3] != -1) {
 		if ((!_player && is_in_fast(_array[pre_move[0]][pre_move[1]], 7, 12)) || (_player && is_in_fast(_array[pre_move[0]][pre_move[1]], 1, 6))) {
 			if (_got_moves == -1)
-				get_moves(false, true);
+				get_moves(true);
 			for (int i = 0; i < _got_moves; i++) {
 				if (_moves[i].i1 == pre_move[0] && _moves[i].j1 == pre_move[1] && _moves[i].i2 == pre_move[2] && _moves[i].j2 == pre_move[3]) {
 					play_move_sound(Move(pre_move[0], pre_move[1], pre_move[2], pre_move[3]));
@@ -2378,7 +2357,7 @@ void draw_arrow_from_coord(int i1, int j1, int i2, int j2, int index, const int 
 // Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo d'un plateau
 void Board::draw_monte_carlo_arrows() const
 {
-	// get_moves(false, true);
+	// get_moves(true);
 
 	grogros_arrows = {};
 
@@ -2471,7 +2450,7 @@ int Board::get_piece_mobility(const bool legal) const
 	// Activité des pièces du joueur
 	// TODO : ça doit être très lent : on re-calcule tous les coups à chaque fois... (et on les garde même pas en mémoire pour après, car c'est sur un plateau virtuel)
 	// En plus ça calcule aussi les coups de l'autre
-	b.get_moves(false, legal);
+	b.get_moves(legal);
 
 	// Pour chaque coup, incrémente dans le tableau le nombre de coup à la position correspondante
 	if (_player) {
@@ -2487,7 +2466,7 @@ int Board::get_piece_mobility(const bool legal) const
 
 	// Activité des pièces de l'autre joueur
 	b._player = !b._player; b._got_moves = -1;
-	b.get_moves(false, legal);
+	b.get_moves(legal);
 
 	if (_player) {
 		for (int i = 0; i < b._got_moves; i++)
@@ -2560,7 +2539,7 @@ bool Board::play_monte_carlo_move_keep(const int m, const bool keep, const bool 
 {
 	// Obtient les coups si nécessaire
 	if (_got_moves == -1)
-		get_moves(false, true);
+		get_moves(true);
 
 	// Il faut obtenir le vrai coup (correspondant aux plateaux fils de l'algo de Monte-Carlo)
 	// Pour le moment c'est pas beau, il faudra changer ça à l'avenir
@@ -2612,7 +2591,7 @@ bool Board::play_monte_carlo_move_keep(const int m, const bool keep, const bool 
 	// Sinon, joue simplement le coup
 	else {
 		if (_got_moves == -1)
-			get_moves(false, true);
+			get_moves(true);
 
 		if (m < _got_moves) {
 			if (_is_active)
@@ -3282,7 +3261,7 @@ int Board::get_king_safety() {
 
 // Fonction qui dit si une pièce est capturable par l'ennemi (pour les affichages GUI)
 bool Board::is_capturable(const int i, const int j) {
-	_got_moves == -1 && get_moves(false, true);
+	_got_moves == -1 && get_moves(true);
 
 	for (int k = 0; k < _got_moves; k++)
 		if (_moves[k].i2 == i && _moves[k].j2 == j)
@@ -5507,7 +5486,7 @@ int Board::get_piece_activity() const
 
 	// Blancs
 	b._player = true;
-	b.get_moves(false, false);
+	b.get_moves(false);
 	for (uint_fast8_t i = 0; i < b._got_moves; i++)
 	{
 		const uint_fast8_t p = _array[b._moves[i].i1][b._moves[i].j1];
@@ -5518,7 +5497,7 @@ int Board::get_piece_activity() const
 	// Noirs
 	b._player = false;
 	b._got_moves = -1;
-	b.get_moves(false, false);
+	b.get_moves(false);
 	for (uint_fast8_t i = 0; i < b._got_moves; i++)
 	{
 		const uint_fast8_t p = _array[b._moves[i].i1][b._moves[i].j1];
@@ -5850,7 +5829,7 @@ pair<uint_fast8_t, uint_fast8_t> Board::get_safe_checks(Map white_controls, Map 
 	if (!b_white.in_check()) {
 		b_white._player = true;
 		b_white._got_moves = -1;
-		b_white.get_moves(false, false);
+		b_white.get_moves(false);
 
 		for (int i = 0; i < b_white._got_moves; i++) {
 			// Si la destination du coup est non controlée par les noirs, ou qu'elle est seulement controllée par le roi noir et une pièce blanche (au moins)
@@ -5897,7 +5876,7 @@ pair<uint_fast8_t, uint_fast8_t> Board::get_safe_checks(Map white_controls, Map 
 	if (!b_black.in_check()) {
 		b_black._player = false;
 		b_black._got_moves = -1;
-		b_black.get_moves(false, false);
+		b_black.get_moves(false);
 
 		for (int i = 0; i < b_black._got_moves; i++) {
 			// Si la destination du coup est non controlée par les blancs, ou qu'elle est seulement controllée par le roi blanc et une pièce noire (au moins)
@@ -6010,7 +5989,7 @@ bool GUI::grogros_zero_threaded(Evaluator* eval, int nodes) {
 	}
 
 	int nodes = 0;
-	get_moves(false, true);
+	get_moves(true);
 
 	for (uint_fast8_t i = 0; i < _got_moves; i++) {
 		Board b(*this);

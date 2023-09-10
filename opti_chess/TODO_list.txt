@@ -142,7 +142,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Iterative deepening pour grogrosfish
 -> Améliorations pour trouver les mats les plus rapides... 
--> Ne plus regarder les branches finies de GrogrosZero
+-> Ne plus regarder les branches finies de GrogrosZero?
 -> Utiliser raylib pour le random? check la vitesse
 -> Création d'une base de données contenant des positions et des évaluations? (qui se remplit au cours des parties...)
 -> Allocations mémoires utilisant raylib?
@@ -273,6 +273,8 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> King safety, safe checks: FIXME -> ça prend pas en compte les échecs à la découverte, ni les échecs par clouage
 -> Faire quelques playoff jusqu'au bout pour avoir une idée de la nature de la position??
 -> Fix pawn push threat : quand la case est controllée...
+-> Passer la quiescence à depth 8 ou +? sinon y'a encore des positions mal évaluées... à voir si on peut réutiliser les noeuds de la quiescence pour la recherche normale
+-> Créer une classe 'arbre' pour les recherches de GrogrosZero?
 
 
 

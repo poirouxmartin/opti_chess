@@ -4,18 +4,15 @@
 #include "gui.h"
 #include "windows_tests.h"
 
-// *** Répertoire git ***
-// Documents/Info/Echecs/opti_chess/c++_git
-
 
 
 // Fonction de test
 void launch_eval() {
-	/*main_GUI._board.reset_board();
+	main_GUI._board.reset_board();
 	main_GUI._board.is_game_over();
-	main_GUI._board.evaluate_int(main_GUI._eval, true);*/
-	main_GUI._board._quick_sorted_moves = false;
-	main_GUI._board.quick_moves_sort();
+	main_GUI._board.evaluate_int(main_GUI._eval, true);
+	/*main_GUI._board._quick_sorted_moves = false;
+	main_GUI._board.quick_moves_sort();*/
 	//main_GUI._board.is_controlled(3, 3);
 	//main_GUI._board.attacked(3, 3);
 }
@@ -64,7 +61,7 @@ int main() {
 	total_positions = 1;
 
 	// Evaluateur de position
-	Evaluator eval_white(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	Evaluator eval_white(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 	Evaluator eval_black;
 
 	// Evaluateur pour Monte Carlo
@@ -163,6 +160,9 @@ int main() {
 
 			// Teste la vitesse de génération des coups
 			cout << "testing moves generation speed..." << endl;
+			/*Board b;
+			b.from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
+			b.moves_generation_benchmark(5);*/
 			main_GUI._board.moves_generation_benchmark(6);
 
 			//	1 move : 20 possible positions.

@@ -223,7 +223,7 @@ public:
 	bool _player = true;
 
 	// Peut-être utile pour les optimisations?
-	float _evaluation = 0.0f;
+	int _evaluation = 0;
 
 	// Droits de roque
 	CastlingRights _castling_rights;
@@ -314,7 +314,7 @@ public:
 	bool add_move(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
 
 	// Fonction qui ajoute les coups "pions" dans la liste de coups
-	bool add_pawn_moves(uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
+	bool add_pawn_moves(uint_fast8_t, uint_fast8_t, int*);
 
 	// Fonction qui ajoute les coups "cavaliers" dans la liste de coups
 	bool add_knight_moves(uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
@@ -329,7 +329,7 @@ public:
 	bool add_king_moves(uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
 
 	// Renvoie la liste des coups possibles
-	bool get_moves(const bool pseudo = false, const bool forbide_check = false);
+	bool get_moves(const bool forbide_check = false);
 
 	// Fonction qui dit s'il y'a échec
 	[[nodiscard]] bool in_check();
@@ -802,6 +802,8 @@ public:
 	vector<thread> _threads_grogros_zero;
 
 	// TODO : Pour le PGN, faire un vecteur de coups, comme ça on peut repasser la partie, et modifier le PGN facilement
+	// Historique des positions
+
 
 
 	// Evaluation test
