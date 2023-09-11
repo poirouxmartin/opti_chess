@@ -145,8 +145,8 @@ struct Map
 
 	// Constructeurs
 	Map() {
-		for (int i = 0; i < 8; i++) {
-			for (int j = 0; j < 8; j++) {
+		for (uint_fast8_t i = 0; i < 8; i++) {
+			for (uint_fast8_t j = 0; j < 8; j++) {
 				_array[i][j] = 0;
 			}
 		}
@@ -561,6 +561,9 @@ public:
 
 	// Fonction qui calcule et renvoie la proximité du roi avec les pions
 	[[nodiscard]] int get_king_proximity();
+
+	// Fonction qui calcule et renvoie l'activité/mobilité des tours
+	[[nodiscard]] int get_rook_activity() const;
 };
 
 // Fonction qui obtient la case correspondante à la position sur la GUI
@@ -741,7 +744,7 @@ public:
 
 	// Paramètres pour la recherche de Monte-Carlo
 	float _beta = 0.1f;
-	float _k_add = 10.0f;
+	float _k_add = 25.0f;
 	//float _beta = 0.03f;
 	//float _k_add = 50.0f;
 	int _quiescence_depth = 4;

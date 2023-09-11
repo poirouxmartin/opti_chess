@@ -6,7 +6,7 @@ public:
 
 	// Coefficients des heuristiques
 	float _piece_value = 1.2f;
-	float _piece_mobility = 0.07f;
+	float _piece_mobility = 0.05f;
 	float _piece_positioning = 0.35f;
 	float _bishop_pair = 25.0f;
 	float _castling_rights = 0.0f;
@@ -23,11 +23,12 @@ public:
 	float _alignments = 0.00f;
 	float _piece_activity = 0.03f;
 	float _fianchetto = 0.3f;
-	float _pawn_push_threats = 20.0f;
-	float _king_proximity = 0.25f;
+	float _pawn_push_threats = 10.0f;
+	float _king_proximity = 0.4f;
+	float _rook_activity = 0.2f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
-	int _pieces_value_begin[6] = { 72, 335, 340, 460, 980, 0 };
+	int _pieces_value_begin[6] = { 82, 335, 340, 460, 980, 0 };
 
 	// Valeurs en fin de partie
 	int _pieces_value_end[6] = { 105, 310, 350, 585, 1020, 0 };
@@ -178,10 +179,10 @@ public:
 			{0, 0, 0, 0, 0, 0, 0, 0},
 			{-7, 7, -3, -13, 5, -16, 10, -8},
 			{5, -12, -7, 22, -8, -5, -15, -8},
-			{13, 0, -13, 1, 11, -2, -13, 5},
-			{-4, -23, 36, 30, 40, 17, 4, -8},
-			{-9, -15, 11, 15, 32, 22, 5, -22},
-			{3, 3, 5, 19, 16, 19, 7, -5},
+			{13, 0,   23, 20, 20, -2, -13, 5},
+			{-4, -23, 76, 50, 50, -10, 4, -8},
+			{-9, -15, 31, 15, 32, -15, 5, -22},
+			{3, 3, 5,-40, 16, 39, 7, -5},
 			{0, 0, 0, 0, 0, 0, 0, 0}
 		},
 
@@ -194,7 +195,7 @@ public:
 			{-35, 8, 40, 49, 49, 40, 8, -35},
 			{-61, -17, 6, 12, 12, 26, -17, -61},
 			{-77, -41, -27, -5, -5, -27, -41, -77},
-			{-175, -42, -74, -73, -73, -74, -92, -175}
+			{-175, -62, -74, -73, -73, -74, -92, -175}
 		},
 
 		// Bishop MG
@@ -241,8 +242,8 @@ public:
 			{154, 179, 105, 70, 70, 105, 179, 154},
 			{164, 190, 138, 98, 98, 138, 190, 164},
 			{195, 258, 169, 120, 120, 169, 258, 195},
-			{278, 303, 234, 179, 179, 234, 303, 278},
-			{271, 327, 271, 198, 198, 271, 327, 271}
+			{278, 303, 120, 100, 100, 120, 303, 278},
+			{300, 350, 230, 170, 170, 230, 350, 300}
 		}
 	};
 
@@ -329,7 +330,7 @@ public:
 	Evaluator(const Evaluator &evaluator);
 
 	// Constructeur avec paramètres
-	Evaluator(const float piece_value, const float piece_mobility, const float piece_positioning, const float bishop_pair, const float castling_rights, const float player_trait, const float king_safety, const float pawn_structure, const float attacks, const float defenses, const float kings_opposition, const float push, const float rook_open, const float square_controls, const float space_advantage, const float alignments, const float piece_activity, const float fianchetto, const float pawn_push_threats, const float king_proximity);
+	Evaluator(const float piece_value, const float piece_mobility, const float piece_positioning, const float bishop_pair, const float castling_rights, const float player_trait, const float king_safety, const float pawn_structure, const float attacks, const float defenses, const float kings_opposition, const float push, const float rook_open, const float square_controls, const float space_advantage, const float alignments, const float piece_activity, const float fianchetto, const float pawn_push_threats, const float king_proximity, const float rook_activity);
 
 	// Opérateur de copie
 	Evaluator& operator=(const Evaluator &evaluator);

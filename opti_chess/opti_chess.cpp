@@ -916,6 +916,13 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 		_evaluation += king_proximity;
 	}
 
+	// Activité des tours
+	if (eval->_rook_activity != 0.0f) {
+		const int rook_activity = get_rook_activity() * eval->_rook_activity;
+		if (display)
+			eval_components += "rook activity: " + (rook_activity >= 0 ? string("+") : string()) + to_string(rook_activity) + "\n";
+	}
+
 
 
 	// Total de l'évaluation
@@ -2408,11 +2415,12 @@ int Board::get_piece_mobility(const bool legal) const
 	int piece_mobility = 0;
 
 	// Pour chaque pièce (sauf le roi)
-	static constexpr int mobility_values_pawn[3] = { -200, 0, 100 };
+	//static constexpr int mobility_values_pawn[3] = { -100, 0, 100 };
+	static constexpr int mobility_values_pawn[3] = { -50, 0, 25 };
 	static constexpr int mobility_values_knight[9] = { -500, -200, 0, 100, 200, 300, 400, 450, 500 };
 	static constexpr int mobility_values_bishop[15] = { -600, -300, -50, 100, 210, 280, 330, 475, 415, 450, 480, 505, 525, 540, 550 };
-	static constexpr int mobility_values_rook[15] = { -750, -100, 100, 150, 190, 235, 275, 300, 325, 345, 365, 385, 390, 400, 405 };
-	static constexpr int mobility_values_queen[29] = { -400, -100, 100, 150, 190, 235, 275, 300, 325, 345, 365, 385, 390, 400, 410, 420, 430, 440, 450, 460, 470, 480, 490, 495, 500, 505, 510 };
+	static constexpr int mobility_values_rook[15] = { -300, -100, 100, 150, 190, 235, 275, 300, 325, 345, 365, 385, 390, 400, 405 };
+	static constexpr int mobility_values_queen[29] = { -700, -400, -100, 150, 190, 235, 275, 300, 325, 345, 365, 385, 390, 400, 410, 420, 430, 440, 450, 460, 470, 480, 490, 495, 500, 505, 510 };
 
 	// TODO : rajouter le roi, pour l'endgame? faire des valeurs différentes selon le moment de la partie?
 
@@ -2913,6 +2921,18 @@ int Board::get_king_safety() {
 	// kd = danger du roi
 
 
+
+
+	// Nouvelle formule
+	// 
+	// Faiblesses long terme:
+	// (structure de pions autour du roi + colonnes ouvertes/semi ouvertes autour + diagonales + pawn storm) * pièces restantes adverses
+	// 
+	// Attaque court terme:
+	// 
+
+
+
 	// ----------------------
 	// *** POSITIONS TEST ***
 	// ----------------------
@@ -2966,7 +2986,7 @@ int Board::get_king_safety() {
 	// Facteurs multiplicatifs
 	constexpr float piece_attack_factor = 1.0f;
 	constexpr float piece_defense_factor = 1.25f;
-	constexpr float pawn_protection_factor = 1.0f;
+	constexpr float pawn_protection_factor = 1.25f;
 
 
 	// -------------------------------------
@@ -3114,12 +3134,12 @@ int Board::get_king_safety() {
 
 	// Il faut compter les cases vides (non-pion) autour de lui
 	// Droits de roque
-	constexpr int castling_rights_protection = 200;
+	constexpr int castling_rights_protection = 100;
 	w_king_protection += (_castling_rights.k_w + _castling_rights.q_w) * castling_rights_protection;
 	b_king_protection += (_castling_rights.k_b + _castling_rights.q_b) * castling_rights_protection;
 
 	// Niveau de protection auquel on peut considérer que le roi est safe
-	const int king_base_protection = 400 * (1 - _adv);
+	const int king_base_protection = 600 * (1 - _adv);
 	w_king_protection -= king_base_protection;
 	b_king_protection -= king_base_protection;
 
@@ -3134,7 +3154,7 @@ int Board::get_king_safety() {
 	constexpr float mult_endgame = 1.0f;
 
 	// Version additive, adaptée pour l'endgame
-	constexpr int edge_defense = 50;
+	constexpr int edge_defense = 150;
 	constexpr int endgame_safe_zone = 25; // Si le "i * j" du roi en endgame est supérieur, alors il n'est pas en danger : s'il est en c4 (2, 3 -> (2 + 1) * (3 + 1) = 12 < 16 -> danger)
 	w_king_weakness += max_int(edge_defense, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? (min(_white_king_pos.i, 7 - _white_king_pos.i) + min(_white_king_pos.j, 7 - _white_king_pos.j)) : (endgame_safe_zone - ((min(_white_king_pos.i, 7 - _white_king_pos.i) + 1) * (min(_white_king_pos.j, 7 - _white_king_pos.j) + 1))) * mult_endgame / (edge_adv - 1))) - edge_defense;
 	b_king_weakness += max_int(edge_defense, edge_defense * (edge_adv - _adv) * ((_adv < edge_adv) ? (min(_black_king_pos.i, 7 - _black_king_pos.i) + min(_black_king_pos.j, 7 - _black_king_pos.j)) : (endgame_safe_zone - ((min(_black_king_pos.i, 7 - _black_king_pos.i) + 1) * (min(_black_king_pos.j, 7 - _black_king_pos.j) + 1))) * mult_endgame / (edge_adv - 1))) - edge_defense;
@@ -3146,7 +3166,7 @@ int Board::get_king_safety() {
 
 
 	// Mobilité virtuelle du roi
-	constexpr int virtual_mobility_danger = 75;
+	constexpr int virtual_mobility_danger = 100;
 	w_king_weakness += virtual_mobility_danger * get_king_virtual_mobility(true) * (1 - _adv);
 	b_king_weakness += virtual_mobility_danger * get_king_virtual_mobility(false) * (1 - _adv);
 
@@ -3809,7 +3829,7 @@ int Board::get_pawn_structure(float display_factor) const
 
 	// Pions connectés
 	// Un pion est dit connecté, s'il y a un pion de la même couleur sur une colonne adjacente sur la même rangée ou la rangée inférieure
-	constexpr int connected_pawns[8] = { 0, 35, 50, 70, 95, 115, 150, 0 };
+	constexpr int connected_pawns[8] = { 0, 20, 30, 50, 75, 100, 150, 0 };
 	constexpr float connected_pawns_factor = 1.0f; // En fonction de l'advancement de la partie
 	const float connected_pawns_adv = 1 * (1 + (connected_pawns_factor - 1) * _adv);
 
@@ -3906,9 +3926,9 @@ float Board::get_attacks_and_defenses() const
 	// Tableau des valeurs d'attaques des pièces (0 = pion, 1 = caval, 2 = fou, 3 = tour, 4 = dame, 5 = roi)
 	static constexpr int attacks_array[6][6] = {
 	//   P    N    B     R    Q    K
-		{15,  25,  25,  30,  50,  70}, // P
+		{15,  75,  75, 100, 200,  70}, // P
 		{25,  25,  30,  50, 100,  80}, // N
-		{25,  20,  25,  40,  80,  40}, // B
+		{25,  30,  25,  40,  80,  40}, // B
 		{25,  15,  15,  25,  60,  40}, // R
 		{15,  10,  10,  20,  35,  60}, // Q
 		{10,  10,  10,  15,  20,   0}, // K
@@ -3917,7 +3937,7 @@ float Board::get_attacks_and_defenses() const
 	// Tableau des valeurs de défenses des pièces (0 = pion, 1 = caval, 2 = fou, 3 = tour, 4 = dame, 5 = roi)
 	static constexpr int defenses_array[6][6] = {
 	//   P    N    B     R    Q    K
-		{40,  15,  15,  10,   5,   0}, // P
+		{40,  25,  25,  10,   5,   0}, // P
 		{20,  10,  10,   5,   5,   0}, // N
 		{20,  10,  10,   5,   5,   0}, // B
 		{15,   5,   5,  10,  10,   0}, // R
@@ -4268,10 +4288,13 @@ float Board::get_attacks_and_defenses() const
 	int white_attacks_eval = 0;
 	int black_attacks_eval = 0;
 
+	// Facteur de défense
+	float defense_factor = 0.10f;
+
 	for (uint_fast8_t i = 0; i < 8; i++) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
-			attacks_white[i][j] > 0 && (white_attacks_eval += attacks_white[i][j]);
-			attacks_black[i][j] > 0 && (black_attacks_eval += attacks_black[i][j]);
+			white_attacks_eval += attacks_white[i][j] * (attacks_white[i][j] > 0 ? 1 : defense_factor);
+			black_attacks_eval += attacks_black[i][j] * (attacks_black[i][j] > 0 ? 1 : defense_factor);
 		}
 	}
 
@@ -6263,7 +6286,7 @@ int Board::get_king_proximity()
 	int proximity = 0;
 
 	// Pourcentage d'avancement pour que ça soit pris en compte
-	const float min_advancement = 0.75f;
+	const float min_advancement = 0.60f;
 
 	if (_adv <= min_advancement)
 		return 0;
@@ -6288,4 +6311,130 @@ int Board::get_king_proximity()
 	}
 	
 	return 10 * proximity * (_adv - min_advancement) / (1.0f - min_advancement);
+}
+
+
+// Fonction qui calcule l'activité/mobilité des tours
+int Board::get_rook_activity() const
+{
+	// Cas de figure:
+	// 1. Tour enfermée par le roi: mobilité < 3 -> malus (encore plus grand si le roi ne peut pas roquer) /= mobilité
+	// 2. L'activité dépend surtout de la mobilité verticale (distance au pion le plus proche devant)
+
+	constexpr int trapped_rook_malus = 250;
+	constexpr int vertical_mobility_bonus = 50;
+
+	int activity = 0;
+
+	for (uint_fast8_t i = 0; i < 8; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			const uint_fast8_t p = _array[i][j];
+
+			// Tour blanche
+			if (p == 4) {
+				
+				// Mobilité horizontale
+				int h_mobility = 0;
+
+				// Vers la droite
+				for (uint_fast8_t k = j + 1; k < 8; k++) {
+					if (_array[i][k] == 0)
+						h_mobility++;
+					else
+						break;
+				}
+
+				// Vers la gauche
+				for (int_fast8_t k = j - 1; k >= 0; k--) {
+					if (_array[i][k] == 0)
+						h_mobility++;
+					else
+						break;
+				}
+
+				// Mobilité verticale
+				int v_mobility = 0;
+
+				// Vers le haut
+				for (uint_fast8_t k = i + 1; k < 8; k++) {
+					const uint_fast8_t p2 = _array[k][j];
+					if (p2 != 1 && p2 != 7)
+						v_mobility++;
+					else
+						break;
+				}
+
+				// Vers le bas
+				for (int_fast8_t k = i - 1; k >= 0; k--) {
+					const uint_fast8_t p2 = _array[k][j];
+					if (p2 != 1 && p2 != 7)
+						v_mobility++;
+					else
+						break;
+				}
+
+				// Malus pour tour enfermée par le roi (si le tour est plus proche du bord que le roi)
+				if ((h_mobility + v_mobility) < 3 && _white_king_pos.i == i && abs(_white_king_pos.j - j) < 4 && min(_white_king_pos.j, 7 - _white_king_pos.j) > min((int)j, 7 - j))
+					activity -= trapped_rook_malus;
+
+				// Bonus pour la mobilité verticale
+				activity += vertical_mobility_bonus * v_mobility;
+			}
+
+
+			// Tour noire
+			else if (p == 10) {
+
+				// Mobilité horizontale
+				int h_mobility = 0;
+
+				// Vers la droite
+				for (uint_fast8_t k = j + 1; k < 8; k++) {
+					if (_array[i][k] == 0)
+						h_mobility++;
+					else
+						break;
+				}
+
+				// Vers la gauche
+				for (int_fast8_t k = j - 1; k >= 0; k--) {
+					if (_array[i][k] == 0)
+						h_mobility++;
+					else
+						break;
+				}
+
+				// Mobilité verticale
+				int v_mobility = 0;
+
+				// Vers le haut
+				for (uint_fast8_t k = i + 1; k < 8; k++) {
+					const uint_fast8_t p2 = _array[k][j];
+					if (p2 != 1 && p2 != 7)
+						v_mobility++;
+					else
+						break;
+				}
+
+				// Vers le bas
+				for (int_fast8_t k = i - 1; k >= 0; k--) {
+					const uint_fast8_t p2 = _array[k][j];
+					if (p2 != 1 && p2 != 7)
+						v_mobility++;
+					else
+						break;
+				}
+
+				// Malus pour tour enfermée par le roi
+				if ((h_mobility + v_mobility) < 3 && _black_king_pos.i == i && abs(_black_king_pos.j - j) < 4 && min(_black_king_pos.j, 7 - _black_king_pos.j) > min((int)j, 7 - j))
+					activity += trapped_rook_malus;
+
+				// Bonus pour la mobilité verticale
+				activity -= vertical_mobility_bonus * v_mobility;
+			}
+
+		}
+	}
+
+	return activity;
 }
