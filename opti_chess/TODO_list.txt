@@ -91,6 +91,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Sécurité du roi (TRES IMPORTANT !) --> A améliorer: lignes ouvertes et colonnes ouvertes proches du roi (ou semi-ouvertes)
 	- Structures de pions :
 		- Pions arriérés
+		- Pion faible sur une colonne semi-ouverte
 	- Nature de la position :
 		- Ouverte
 		- Fermée
@@ -136,6 +137,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Tours: les mettre sur les colonnes ou les pions sont les plus avancés (activité verticale)
 	- Plans?
 	- Colonnes fermées -> tour mauvaises. Si beaucoup de colonnes ouvertes, bonus pour les tours. Pareil pour les diagonales et les fous
+	- Trapped rook: ++ si le roi peut plus roquer
 
 -> Faire une policy pour les coups
 -> Livres d'ouvertures, tables d'engame?

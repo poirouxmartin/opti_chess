@@ -26,10 +26,11 @@ Evaluator::Evaluator(const Evaluator& other) {
 	_fianchetto = other._fianchetto;
 	_pawn_push_threats = other._pawn_push_threats;
 	_king_proximity = other._king_proximity;
+	_rook_activity = other._rook_activity;
 }
 
 // Constructeur avec paramètres
-Evaluator::Evaluator(const float piece_value, const float piece_mobility, const float piece_positioning, const float bishop_pair, const float castling_rights, const float player_trait, const float king_safety, const float pawn_structure, const float attacks, const float defenses, const float kings_opposition, const float push, const float rook_open, const float square_controls, const float space_advantage, const float alignments, const float piece_activity, const float fianchetto, const float pawn_push_threats, const float king_proximity) {
+Evaluator::Evaluator(const float piece_value, const float piece_mobility, const float piece_positioning, const float bishop_pair, const float castling_rights, const float player_trait, const float king_safety, const float pawn_structure, const float attacks, const float defenses, const float kings_opposition, const float push, const float rook_open, const float square_controls, const float space_advantage, const float alignments, const float piece_activity, const float fianchetto, const float pawn_push_threats, const float king_proximity, const float rook_activity) {
 	// Initialise les paramètres d'évaluation
 	_piece_value = piece_value;
 	_piece_mobility = piece_mobility;
@@ -50,6 +51,7 @@ Evaluator::Evaluator(const float piece_value, const float piece_mobility, const 
 	_fianchetto = fianchetto;
 	_pawn_push_threats = pawn_push_threats;
 	_king_proximity = king_proximity;
+	_rook_activity = rook_activity;
 }
 
 // Opérateur de copie
@@ -74,6 +76,7 @@ Evaluator& Evaluator::operator=(const Evaluator& other) {
 	_fianchetto = other._fianchetto;
 	_pawn_push_threats = other._pawn_push_threats;
 	_king_proximity = other._king_proximity;
+	_rook_activity = other._rook_activity;
 
 	return *this;
 }
