@@ -1617,7 +1617,7 @@ bool Board::draw() {
 				}
 
 				// Si le coup est légal, le joue
-				get_moves(true);
+				_got_moves == -1 && get_moves();
 				for (int i = 0; i < _got_moves; i++) {
 					if (_moves[i].i1 == selected_pos.first && _moves[i].j1 == selected_pos.second && _moves[i].i2 == clicked_pos.first && _moves[i].j2 == clicked_pos.second) {
 						play_move_sound(Move(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second));
@@ -1655,7 +1655,7 @@ bool Board::draw() {
 
 					else {
 						// Si le coup est légal
-						get_moves(true);
+						_got_moves == -1 && get_moves();
 						for (int i = 0; i < _got_moves; i++) {
 							if (_moves[i].i1 == selected_pos.first && _moves[i].j1 == selected_pos.second && _moves[i].i2 == drop_pos.first && _moves[i].j2 == drop_pos.second) {
 								play_move_sound(Move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second));
