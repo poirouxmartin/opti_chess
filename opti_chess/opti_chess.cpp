@@ -10,6 +10,7 @@
 #include "windows_tests.h"
 #include <utility>
 #include <iomanip>
+#include "buffer.h"
 
 // Tests pour la parallélisation
 vector<thread> threads;
@@ -2638,60 +2639,6 @@ int Board::max_monte_carlo_depth() const
 	return max_depth;
 }
 
-// Constructeur par défaut
-Buffer::Buffer() {
-	// Crée un gros buffer, de 4GB
-	constexpr unsigned long int _size_buffer = 4000000000;
-	_length = _size_buffer / sizeof(Board);
-	_length = 0;
-
-	_heap_boards = new Board[_length];
-}
-
-// Constructeur utilisant la taille max (en bits) du buffer
-Buffer::Buffer(const unsigned long int size) {
-	_length = size / sizeof(Board);
-	_heap_boards = new Board[_length];
-}
-
-// Initialize l'allocation de n plateaux
-void Buffer::init(const int length) {
-	if (_init)
-		cout << "already initialized" << endl;
-	else {
-		cout << "initializing buffer..." << endl;
-		_length = length;
-		_heap_boards = new Board[_length];
-		_init = true;
-		cout << "buffer initialized :" << endl;
-		cout << "board size : " << int_to_round_string(sizeof(Board)) << "b" << endl;
-		cout << "length : " << int_to_round_string(_length) << endl;
-		cout << "approximate buffer size : " << long_int_to_round_string(monte_buffer._length * sizeof(Board)) << "b" << endl;
-	}
-}
-
-// Fonction qui donne l'index du premier plateau de libre dans le buffer
-int Buffer::get_first_free_index() {
-	for (int i = 0; i < _length; i++) {
-		_iterator++;
-		if (_iterator >= _length)
-			_iterator -= _length;
-		if (!_heap_boards[_iterator]._is_active)
-			return _iterator;
-	}
-
-	return -1;
-}
-
-// Fonction qui désalloue toute la mémoire
-void Buffer::remove() {
-	delete[] _heap_boards;
-	_init = false;
-}
-
-// Buffer pour l'algo de Monte-Carlo
-Buffer monte_buffer;
-
 // Algo de grogros_zero
 void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const float k_add, const int quiescence_depth, const bool explore_checks, const bool display, const int depth, Network* net, int correction)
 {
@@ -5021,34 +4968,6 @@ void draw_text_box(const TextBox& text_box) {
 int Board::get_color() const
 {
 	return _player ? 1 : -1;
-}
-
-// Fonction qui génère la clé du plateau
-uint_fast64_t generate_board_key(const Board& b)
-{
-	uint_fast64_t key = 0;
-
-	/*for (int i = 0; i < 64; i++)
-		if (b._board[i] != 0)
-			key ^= _zobrist_keys[i][b._board[i] + 1];
-	if (b._player)
-		key ^= _zobrist_keys[64][0];*/
-
-	return key;
-}
-
-// Fonction qui génère et renvoie la clé de Zobrist de la position
-uint_fast64_t Board::get_zobrist_key() const
-{
-	uint_fast64_t key = 0;
-
-	/*for (int i = 0; i < 64; i++)
-		if (_board[i] != 0)
-			key ^= _zobrist_keys[i][_board[i] + 1];
-	if (_player)
-		key ^= _zobrist_keys[64][0];*/
-
-	return key;
 }
 
 // Fonction qui calcule l'avantage d'espace

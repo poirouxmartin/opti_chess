@@ -270,3 +270,196 @@ void play_end_sound();
 
 // A partir de coordonnées sur le plateau
 void draw_simple_arrow_from_coord(int, int, int, int, float, Color);
+
+
+// GUI
+class GUI {
+public:
+	// Variables
+
+	// Dimensions de la fenêtre
+	int _screen_width = 1800;
+	int _screen_height = 945;
+
+	// Plateau affiché
+	Board _board;
+
+	// Faut-il faire l'affichage?
+	bool _draw = true;
+
+	// Faut-il que les coups soient cliqués en binding chess.com?
+	bool _click_bind = false;
+
+	// Mode de jeu automatique en binding avec chess.com
+	bool _binding_full = false; // Pour récupérer tous les coups de la partie
+	bool _binding_solo = false; // Pour récupérer seulement les coups de la couleur du joueur du bas
+
+	// Intervalle de tmeps pour check chess.com
+	int _binding_interval_check = 100;
+
+	// Moment du dernier check
+	clock_t _last_binding_check = clock();
+
+	// Coup récupéré par le binding
+	uint_fast8_t* _binding_move = new uint_fast8_t[4];
+
+	// Coordonnées du plateau sur chess.com
+	int _binding_left = 108; // (+10 si barre d'éval)
+	int _binding_top = 219;
+	int _binding_right = 851;
+	int _binding_bottom = 962;
+
+	// Coordonées du plateau pour le binding
+	//SimpleRectangle _binding_coord;
+
+	// Temps des joueurs
+	clock_t _time_white = 900000;
+	clock_t _time_black = 900000;
+
+	// Incrément (5s/coup)
+	clock_t _time_increment_white = 5000;
+	clock_t _time_increment_black = 5000;
+
+	// Mode analyse de Grogros
+	bool _grogros_analysis = false;
+
+	// Le temps est-il activé?
+	bool _time = false;
+
+	// Pour la gestion du temps
+	clock_t _last_move_clock;
+
+	// Joueur au trait lors du dernier check (pour les temps)
+	bool _last_player = true;
+
+	// Affichage des flèches : affiche les chances de gain (true), l'évaluation (false)
+	bool _display_win_chances = true;
+
+	// Texte pour les timers
+	TextBox _white_time_text_box;
+	TextBox _black_time_text_box;
+
+	// Paramètres pour la recherche de Monte-Carlo
+	float _beta = 0.1f;
+	float _k_add = 25.0f;
+	//float _beta = 0.03f;
+	//float _k_add = 50.0f;
+	int _quiescence_depth = 4;
+	bool _explore_checks = true;
+
+	// Est-ce que les noms des joueurs ont été ajoutés au PGN
+	bool _named_pgn = false;
+	bool _timed_pgn = false;
+
+	// Affichage du PGN
+
+	// Joueurs
+	string _white_player = "White";
+	string _black_player = "Black";
+
+	// FEN de la position initiale
+	string _initial_fen;
+
+	// FEN de la position actuelle
+	string _current_fen;
+
+	// PGN de la partie
+	string _pgn;
+
+	// Cadence
+	string _time_control;
+
+	// PGN global
+	string _global_pgn;
+
+	// Titres des joueurs
+	string _white_title;
+	string _black_title;
+
+	// Elo des joueurs
+	string _white_elo;
+	string _black_elo;
+
+	// URL des joueurs (pour les images)
+	string _white_url;
+	string _black_url;
+
+	// Pays des joueurs
+	string _white_country;
+	string _black_country;
+
+	// Date de la partie
+	string _date;
+
+	// Elo de GrogrosZero
+	string _grogros_zero_elo = "2300";
+
+	// TODO : Threads (pour la parallélisation)
+
+	// Thread de GUI
+
+	// Thread de GrogrosZero
+	thread _thread_grogros_zero;
+
+	// Threads pour les plateaux fils de GrogrosZero
+	vector<thread> _threads_grogros_zero;
+
+	// TODO : Pour le PGN, faire un vecteur de coups, comme ça on peut repasser la partie, et modifier le PGN facilement
+	// Historique des positions
+	vector<Board> _positions_history;
+	int _current_position = 0;
+
+	// TODO faire un arbre de recherche pour les coups, pour avoir toutes les variantes
+
+
+	// Evaluation test
+	//Evaluator *_eval = new Evaluator(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	Evaluator* _eval = new Evaluator();
+
+
+	// Constructeurs
+
+	// Par défaut
+	GUI();
+
+	// Fonctions
+
+	// Fonction qui met en place le binding avec chess.com pour une nouvelle partie (et se prépare à jouer avec GrogrosZero)
+	bool new_bind_game();
+
+	// Fonction qui met en place le binding avec chess.com pour une nouvelle analyse de partie
+	bool new_bind_analysis();
+
+	// Fonction qui construit le PGN global
+	bool update_global_pgn();
+
+	// Fonction qui met à jour la cadence du PGN
+	bool update_time_control();
+
+	// Fonction qui lance le temps
+	void start_time();
+
+	// Fonction qui stoppe le temps
+	void stop_time();
+
+	// Fonction qui met à jour le temps des joueurs
+	void update_time();
+
+	// Fonction qui réinitialise le PGN
+	bool reset_pgn();
+
+	// Fonction qui met à jour la date du PGN
+	bool update_date();
+
+	// Fonction qui lance les threads de GrogrosZero
+	bool thread_grogros_zero(Evaluator* eval, int nodes);
+
+	// Fonction qui lance grogros sur un thread
+	bool grogros_zero_threaded(Evaluator* eval, int nodes);
+
+	// Fonction qui retire le dernier coup du PGN
+	bool remove_last_move_PGN();
+};
+
+// Instantiation de la GUI globale
+extern GUI main_GUI;

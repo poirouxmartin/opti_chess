@@ -277,6 +277,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Créer une classe 'arbre' pour les recherches de GrogrosZero?
 -> Réduire la valeur des fous?
 -> 6k1/4pp1p/P2p2p1/8/4P3/1P6/5PPP/6K1 b - - 0 26 : il faut améliorer king proximity avec les pions passés: le roi est clairement pas dans le carré
+-> Constructeur de coups à partir d'un string
 
 
 
@@ -369,6 +370,21 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Mobilité verticale ~= activité pour les tours?
 -> Vérifier qu'il n'y a pas d'int overflow dans la sélection des coups (softmax...)
 -> rnb2bnr/pppp1k1p/5q2/8/5p2/2N1BQ2/PPP3PP/R4RK1 b - - 3 11 : il évalue mal, et teste les coups 1 par 1 et se rend compte que ça va pas... beaucoup trop lent à ré évaluer la position correctement.
+-> Changer l'affichage du plateau en fonction de l'arbre de jeu, et le fils principal (surligner le coup)
+
+
+
+----- Grosses implémentations à faire -----
+
+-> Table de transposition
+-> Bitboards
+-> Réseaux de neurones
+-> Parallélisation
+-> Policy pour les coups
+-> "Killer moves", ou gestion des menaces
+-> Fusion de la quiessence search et de la recherche normale
+-> Arbres de variations / Chargement de PGN
+-> Livre d'ouvertures
 
 
 

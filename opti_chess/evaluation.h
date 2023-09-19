@@ -1,3 +1,5 @@
+#pragma once
+
 // Evaluateur de position (heuristiques)
 class Evaluator {
 public:
