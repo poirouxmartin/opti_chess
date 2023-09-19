@@ -4,6 +4,7 @@
 #include "raylib.h"
 #include <iostream>
 #include <vector>
+#include "opti_chess.h"
 
 using namespace std;
 
