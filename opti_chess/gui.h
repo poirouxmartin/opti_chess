@@ -395,6 +395,13 @@ public:
 	// Elo de GrogrosZero
 	string _grogros_zero_elo = "2300";
 
+	// Evaluateur pour l'affichage de l'évaluation
+	Evaluator* _grogros_eval = new Evaluator();
+
+	// Dernier coup joué
+	Move _last_move = Move(0, 0, 0, 0, true);
+
+
 	// TODO : Threads (pour la parallélisation)
 
 	// Thread de GUI
@@ -411,11 +418,6 @@ public:
 	int _current_position = 0;
 
 	// TODO faire un arbre de recherche pour les coups, pour avoir toutes les variantes
-
-
-	// Evaluation test
-	//Evaluator *_eval = new Evaluator(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-	Evaluator* _eval = new Evaluator();
 
 
 	// Constructeurs

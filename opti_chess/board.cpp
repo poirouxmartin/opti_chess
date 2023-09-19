@@ -1,16 +1,19 @@
 #include "board.h"
-#include <algorithm>
-#include "useful_functions.h"
 #include "gui.h"
+#include "useful_functions.h"
+#include "windows_tests.h"
+#include "buffer.h"
+#include "game_tree.h"
+
+#include <algorithm>
 #include <ranges>
 #include <string>
 #include <sstream>
 #include <thread>
 #include <cmath>
-#include "windows_tests.h"
 #include <utility>
 #include <iomanip>
-#include "buffer.h"
+
 
 // Tests pour la parallélisation
 vector<thread> threads;
@@ -27,7 +30,6 @@ Board::Board(const Board& b) {
 	_player = b._player;
 	memcpy(_moves, b._moves, sizeof(_moves));
 	_sorted_moves = b._sorted_moves;
-	_quick_sorted_moves = b._quick_sorted_moves;
 	_evaluation = b._evaluation;
 	_castling_rights = b._castling_rights;
 	_half_moves_count = b._half_moves_count;
@@ -44,7 +46,6 @@ void Board::copy_data(const Board& b) {
 	_player = b._player;
 	memcpy(_moves, b._moves, sizeof(_moves));
 	_sorted_moves = b._sorted_moves;
-	_quick_sorted_moves = b._quick_sorted_moves;
 	_evaluation = b._evaluation;
 	_castling_rights = b._castling_rights;
 	_half_moves_count = b._half_moves_count;
@@ -60,7 +61,7 @@ bool Board::add_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fast
 	if (*iterator >= max_moves)
 		return false;
 
-	const Move m(i, j, k, l, false, false); // Si on utilise pas les flag, autant éviter les calculs inutiles
+	const Move m(i, j, k, l, false); // Si on utilise pas les flag, autant éviter les calculs inutiles
 	//const Move m(i, j, k, l, _array[k][l] != 0, (piece == 1 && i == 7) || (piece == 7 && i == 1));
 	_moves[*iterator] = m;
 
@@ -213,15 +214,6 @@ bool Board::add_king_moves(const uint_fast8_t i, const uint_fast8_t j, int* iter
 // Calcule la liste des coups possibles. pseudo ici fait référence au droit de roquer en passant par une position illégale.
 bool Board::get_moves(const bool forbide_check) 
 {
-
-	// Si on a déjà calculé les coups possibles, on ne le refait pas (sauf si on souhaite calculer d'autres types de coups: pseudo ou non)
-	if (_got_moves != -1) {
-		if (_pseudo_moves == forbide_check)
-			_pseudo_moves = !forbide_check;
-		else
-			return true;
-	}
-
 	int iterator = 0;
 
 	for (int index = 0; index < 64; index++) {
@@ -616,21 +608,11 @@ void Board::make_move(Move move, const bool pgn, const bool new_board, const boo
 	_player && _moves_count++;
 
 
-
-	// TODO : rendre plus efficace (les accès mémoire sont lents)
-	_last_move[0] = i;
-	_last_move[1] = j;
-	_last_move[2] = k;
-	_last_move[3] = l;
-	_last_move[4] = p;
-	_last_move[9] = p_last;
-
 	// Reset le nombre de coups possibles
 	_got_moves = -1;
 
 	// Les coups ne sont plus triés
 	_sorted_moves = false;
-	_quick_sorted_moves = false;
 
 	// Il faut regarder de nouveau les fins de partie
 	_game_over_checked = false;
@@ -757,11 +739,6 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 	_displayed_components = display;
 	if (display)
 		eval_components = "";
-
-	// TODO : à mettre dans GUI
-	_evaluator = eval;
-
-
 
 	// Reset l'évaluation
 	_evaluation = 0;
@@ -997,14 +974,11 @@ int Board::negamax(const int depth, int alpha, const int beta, const bool max_de
 
 	int best_move = 0;
 
-	if (depth > 1) {
-		//sort_moves(eval);
-		quick_moves_sort();
-	}
+	if (depth > 1)
+		sort_moves();
 		
-	if (max_depth) {
+	if (max_depth)
 		display_moves();
-	}
 		
 
 	for (int i = 0; i < _got_moves; i++) {
@@ -1048,7 +1022,7 @@ int Board::negamax(const int depth, int alpha, const int beta, const bool max_de
 			play_index_move_sound(best_move);
 			if (display)
 				if (_tested_moves > 0)
-					((main_GUI._click_bind && main_GUI._board.click_i_move(main_GUI._board.best_monte_carlo_move(), get_board_orientation())) || true) && play_monte_carlo_move_keep(best_move, true, true, true, false);
+					((main_GUI._click_bind && main_GUI._board.click_i_move(main_GUI._board.best_monte_carlo_move(), get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[best_move], true, true, true, false);
 				else
 					make_index_move(best_move, true);
 		}
@@ -1069,148 +1043,6 @@ bool Board::grogrosfish(const int depth, Evaluator* eval, const bool display = f
 	}
 
 	return true;
-}
-
-// Fonction qui revient à la position précédente (ne marchera pas avec les roques pour le moment)
-bool Board::undo(const uint_fast8_t i1, const uint_fast8_t j1, const uint_fast8_t p1, const uint_fast8_t i2, const uint_fast8_t j2, const uint_fast8_t p2, const int half_moves) {
-	_array[i1][j1] = p1;
-	_array[i2][j2] = p2;
-
-	// Incrémentation des demi-coups
-	_half_moves_count = half_moves;
-
-	_player = !_player;
-	_got_moves = -1;
-
-	// Decrémentation des coups
-	!_player && _moves_count--;
-
-	return true;
-}
-
-// Une surcharge
-bool Board::undo() {
-	// Il faut rétablir les droits de roque, les en passant........
-
-	print_array(_last_move, 10);
-	const int_fast8_t i1 = _last_move[0];
-	const int_fast8_t j1 = _last_move[1];
-	const int_fast8_t k1 = _last_move[2];
-	const int_fast8_t l1 = _last_move[3];
-	const int_fast8_t p1 = _last_move[4];
-
-	const int_fast8_t i2 = _last_move[5];
-	const int_fast8_t j2 = _last_move[6];
-	const int_fast8_t k2 = _last_move[7];
-	const int_fast8_t l2 = _last_move[8];
-	const int_fast8_t p2 = _last_move[9];
-
-	if (i1 == -1 || j1 == -1 || k1 == -1 || l1 == -1 || p1 == -1)
-		return true;
-
-	// Replace les piècse leur place initiale
-	_array[k1][l1] = 0;
-	_array[i1][j1] = p1;
-
-	if (i2 != -1 && j2 != -1 && k2 != -1 && l2 != -1 && p2 != -1) {
-		_array[k2][l2] = 0;
-		_array[i2][j2] = p2;
-	}
-
-	_player = !_player;
-	_got_moves = -1;
-
-	// Incrémentation des coups
-	!_player && (_moves_count -= 1);
-
-	_last_move[0] = -1;
-	_last_move[1] = -1;
-	_last_move[2] = -1;
-	_last_move[3] = -1;
-	_last_move[4] = -1;
-	_last_move[5] = -1;
-	_last_move[6] = -1;
-	_last_move[7] = -1;
-	_last_move[8] = -1;
-	_last_move[9] = -1;
-
-	_sorted_moves = false;
-	_quick_sorted_moves = false;
-
-	reset_eval();
-
-	_new_board = true;
-
-	if constexpr (constexpr bool new_board = true) {
-		if (_is_active)
-			reset_all();
-		_tested_moves = 0;
-		_current_move = 0;
-		_nodes = 0;
-		_evaluated = false;
-	}
-
-	_game_over_checked = false;
-
-	// Decrémentation des coups
-	!_player && _moves_count--;
-	// TODO : remettre le compteur des half_move à ce qu'il était auparavent...
-
-	// Reste à changer le PGN, gérer les roques, en passant, demi-coups...
-
-	return true;
-}
-
-// Fonction qui arrange les coups de façon "logique", pour optimiser les algorithmes de calcul
-void Board::sort_moves(Evaluator* eval) {
-	// Modifier pour seulement garder le (ou les deux) meilleur(s) coups?
-
-	Board b;
-
-	(_got_moves == -1 && get_moves());
-
-	auto* values = new float[_got_moves];
-
-	// Création de la liste des valeurs des évaluations des positions après chaque coup
-	for (int i = 0; i < _got_moves; i++) {
-		// Mise à jour du plateau
-		b.copy_data(*this);
-		b.make_index_move(i);
-
-		// Evaluation
-		b.evaluate(eval);
-		const float value = get_color() * b._evaluation;
-
-		// Place l'évaluation en i dans les valeurs
-		values[i] = value;
-	}
-
-	// Construction des nouveaux coups
-
-	// Liste des index des coups triés par ordre décroissant de valeur
-	const auto moves_indexes = new int[_got_moves];
-
-	for (int i = 0; i < _got_moves; i++) {
-		const int max_ind = max_index(values, _got_moves);
-		moves_indexes[i] = max_ind;
-		values[max_ind] = -FLT_MAX;
-	}
-
-	// Génération de la list de coups de façon ordonnée
-	auto* new_moves = new Move[_got_moves];
-	copy(_moves, _moves + _got_moves, new_moves);
-
-	for (int i = 0; i < _got_moves; i++) {
-		_moves[i] = new_moves[moves_indexes[i]];
-	}
-
-	// Suppression des tableaux
-	delete[] values;
-	delete[] new_moves;
-	delete[] moves_indexes;
-
-	_sorted_moves = true;
-	_quick_sorted_moves = false;
 }
 
 // Fonction qui récupère le plateau d'un FEN
@@ -1335,12 +1167,7 @@ void Board::from_fen(string fen)
 
 	reset_eval();
 
-	_last_move[0] = -1;
-	_last_move[1] = -1;
-	_last_move[2] = -1;
-	_last_move[3] = -1;
-
-	_is_game_over = false;
+	main_GUI._last_move.is_null = true;
 
 	// Oriente le plateau dans pour le joueur qui joue
 	board_orientation = _player;
@@ -1760,7 +1587,7 @@ bool Board::draw() {
 					if (arrow[2] == clicked_pos.first && arrow[3] == clicked_pos.second) {
 						// Retrouve le coup correspondant
 						play_move_sound(Move(arrow[0], arrow[1], arrow[2], arrow[3]));
-						((main_GUI._click_bind && main_GUI._board.click_i_move(arrow[4], get_board_orientation())) || true) && play_monte_carlo_move_keep(arrow[4], true, true, true, true);
+						((main_GUI._click_bind && main_GUI._board.click_i_move(arrow[4], get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[arrow[4]], true, true, true, true);
 						goto piece_selection;
 					}
 				}
@@ -1794,7 +1621,7 @@ bool Board::draw() {
 				for (int i = 0; i < _got_moves; i++) {
 					if (_moves[i].i1 == selected_pos.first && _moves[i].j1 == selected_pos.second && _moves[i].i2 == clicked_pos.first && _moves[i].j2 == clicked_pos.second) {
 						play_move_sound(Move(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second));
-						((main_GUI._click_bind && main_GUI._board.click_i_move(i, get_board_orientation())) || true) && play_monte_carlo_move_keep(i, true, true, true, true);
+						((main_GUI._click_bind && main_GUI._board.click_i_move(i, get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[i], true, true, true, true);
 						break;
 					}
 				}
@@ -1832,7 +1659,7 @@ bool Board::draw() {
 						for (int i = 0; i < _got_moves; i++) {
 							if (_moves[i].i1 == selected_pos.first && _moves[i].j1 == selected_pos.second && _moves[i].i2 == drop_pos.first && _moves[i].j2 == drop_pos.second) {
 								play_move_sound(Move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second));
-								((main_GUI._click_bind && main_GUI._board.click_i_move(i, get_board_orientation())) || true) && play_monte_carlo_move_keep(i, true, true, true, true);
+								((main_GUI._click_bind && main_GUI._board.click_i_move(i, get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[i], true, true, true, true);
 								selected_pos = { -1, -1 };
 								break;
 							}
@@ -1930,9 +1757,9 @@ bool Board::draw() {
 		}
 
 	// Surligne du dernier coup joué
-	if (_last_move[0] != -1) {
-		draw_rectangle(board_padding_x + orientation_index(_last_move[1]) * tile_size, board_padding_y + orientation_index(7 - _last_move[0]) * tile_size, tile_size, tile_size, last_move_color);
-		draw_rectangle(board_padding_x + orientation_index(_last_move[3]) * tile_size, board_padding_y + orientation_index(7 - _last_move[2]) * tile_size, tile_size, tile_size, last_move_color);
+	if (!main_GUI._last_move.is_null) {
+		draw_rectangle(board_padding_x + orientation_index(main_GUI._last_move.j1) * tile_size, board_padding_y + orientation_index(7 - main_GUI._last_move.i1) * tile_size, tile_size, tile_size, last_move_color);
+		draw_rectangle(board_padding_x + orientation_index(main_GUI._last_move.j2) * tile_size, board_padding_y + orientation_index(7 - main_GUI._last_move.i2) * tile_size, tile_size, tile_size, last_move_color);
 	}
 
 	// Cases surglignées
@@ -2136,7 +1963,7 @@ bool Board::draw() {
 
 		// Pour l'évaluation statique
 		if (!_displayed_components)
-			evaluate(_evaluator, true);
+			evaluate(main_GUI._grogros_eval, true);
 		int max_depth = grogros_main_depth();
 		int n_nodes = total_nodes();
 		monte_carlo_text += "\n\n--- static eval: " + ((_static_evaluation > 0) ? static_cast<string>("+") : static_cast<string>("")) + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval: " + ((best_eval > 0) ? static_cast<string>("+") : static_cast<string>("")) + eval + " ---" + win_chances + "\nnodes: " + int_to_round_string(n_nodes) + "/" + int_to_round_string(monte_buffer._length) + " | time: " + clock_to_string(_time_monte_carlo) + " | speed: " + int_to_round_string(total_nodes() / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s" + " | depth: " + to_string(max_depth) + "\nquiescence: " + int_to_round_string(_quiescence_nodes) + "N" + " | speed: " + int_to_round_string(_quiescence_nodes / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s";
@@ -2547,11 +2374,11 @@ int Board::best_monte_carlo_move() const
 }
 
 // Fonction qui joue le coup après analyse par l'algo de Monte Carlo, et qui garde en mémoire les infos du nouveau plateau
-bool Board::play_monte_carlo_move_keep(const int m, const bool keep, const bool keep_display, const bool display, const bool add_to_list)
+bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const bool keep_display, const bool display, const bool add_to_list)
 {
 	// Obtient les coups si nécessaire
 	if (_got_moves == -1)
-		get_moves(true);
+		get_moves();
 
 	// Pour la GUI: historique des positions
 	Board b(*this);
@@ -2559,29 +2386,26 @@ bool Board::play_monte_carlo_move_keep(const int m, const bool keep, const bool 
 	main_GUI._current_position++;
 
 
-	// Il faut obtenir le vrai coup (correspondant aux plateaux fils de l'algo de Monte-Carlo)
-	// Pour le moment c'est pas beau, il faudra changer ça à l'avenir
-	// TODO
-	const Move wanted_move = _moves[m];
-
-	// TODO c'est quoi ça déjà??
-	Move child_move;
-	int move = m;
-	for (int i = 0; i < _tested_moves; i++) {
-		uint_fast8_t last_child_move[4];
-		copy(monte_buffer._heap_boards[_index_children[i]]._last_move, monte_buffer._heap_boards[_index_children[i]]._last_move + 4, last_child_move);
-		child_move.i1 = last_child_move[0];
-		child_move.j1 = last_child_move[1];
-		child_move.i2 = last_child_move[2];
-		child_move.j2 = last_child_move[3];
-		if (child_move == wanted_move) {
-			move = i;
+	// Cherche l'index du coup
+	int m = -1;
+	for (int i = 0; i < _got_moves; i++) {
+		if (move == _moves[i]) {
+			m = i;
 			break;
 		}
 	}
 
+	if (m == -1) {
+		cout << "illegal move" << endl;
+		return false;
+	}
+
+	// Pour la GUI
+	main_GUI._last_move = move;
+
+
 	// Si le coup a été calculé par l'algo de Monte-Carlo
-	if (move < _tested_moves) {
+	if (m < _tested_moves) {
 		if (keep_display) {
 			play_index_move_sound(m);
 			Board b(*this);
@@ -2590,13 +2414,13 @@ bool Board::play_monte_carlo_move_keep(const int m, const bool keep, const bool 
 
 		// Deletes all the children from the other boards
 		for (int i = 0; i < _tested_moves; i++)
-			if (i != move) {
+			if (i != m) {
 				if (_is_active)
 					monte_buffer._heap_boards[_index_children[i]].reset_all();
 			}
 
 		if (_is_active) {
-			const Board* b = &monte_buffer._heap_boards[_index_children[move]];
+			const Board* b = &monte_buffer._heap_boards[_index_children[m]];
 			reset_board();
 			*this = *b;
 			main_GUI.update_time();
@@ -2678,7 +2502,7 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const flo
 	}
 
 	// Trie les coups si ça n'est pas déjà fait
-	!_quick_sorted_moves && quick_moves_sort();
+	!_sorted_moves && sort_moves();
 
 	// Reset les tableaux pour les plateaux fils
 	if (_new_board) {
@@ -2796,11 +2620,9 @@ void Board::reset_board(const bool display) {
 	_evaluated = false;
 	_game_over_checked = false;
 	_monte_called = true;
-	_is_game_over = false;
 	_time_monte_carlo = 0;
 	_static_evaluation = 0;
 	_evaluation = 0;
-	_quick_sorted_moves = false;
 	_sorted_moves = false;
 	_nodes = 0;
 	_quiescence_nodes = 0;
@@ -3266,7 +3088,7 @@ void Board::display_pgn() const
 // Fonction qui renvoie en chaîne de caractères la meilleure variante selon monte carlo
 string Board::get_monte_carlo_variant(const bool evaluate_final_pos) 
 {
-	if (_got_moves == 0 || _is_game_over)
+	if (_got_moves == 0)
 		return "";
 
 	if (_tested_moves > 0) {
@@ -3476,7 +3298,7 @@ int match(Evaluator* e_white, Evaluator* e_black, Network* n_white, Network* n_b
 			b.grogros_zero(e_white, nodes, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, true, false, 0, n_white);
 		else
 			b.grogros_zero(e_black, nodes, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, true, false, 0, n_black);
-		b.play_monte_carlo_move_keep(b.best_monte_carlo_move(), false, true, false);
+		b.play_monte_carlo_move_keep(b._moves[b.best_monte_carlo_move()], false, true, false);
 
 		// Limite de coups
 		if (max_moves && b._player && b._moves_count > max_moves)
@@ -4449,10 +4271,7 @@ int Board::get_rooks_on_open_file() const
 // Fonction qui renvoie la profondeur de calcul de la variante principale
 int Board::grogros_main_depth() const
 {
-	if ((_got_moves == -1 && !_is_game_over) || _got_moves == 0)
-		return 0;
-
-	if (_is_game_over)
+	if ((_got_moves == -1) || _got_moves == 0)
 		return 0;
 
 	if (_tested_moves == _got_moves) {
@@ -4535,10 +4354,10 @@ int Board::select_uct(const float c) const
 
 // Fonction qui fait un tri rapide des coups (en plaçant les captures en premier)
 // TODO : à faire lors de la génération de coups?
-bool Board::quick_moves_sort() {
+bool Board::sort_moves() {
 
 	// Si le tri a déjà été fait
-	if (_quick_sorted_moves)
+	if (_sorted_moves)
 		return false;
 
 	// Captures, promotions.. échecs?
@@ -4639,8 +4458,7 @@ bool Board::quick_moves_sort() {
 	delete[] new_moves;
 	delete[] moves_indexes;
 
-	_quick_sorted_moves = true;
-	_sorted_moves = false;
+	_sorted_moves = true;
 
 	return true;
 }
@@ -4676,7 +4494,7 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, const int dept
 		alpha = stand_pat;
 
 	// Trie rapidement les coups
-	quick_moves_sort();
+	sort_moves();
 
 	for (int i = 0; i < _got_moves; i++) {
 		// TODO : ajouter promotions et échecs
@@ -5317,7 +5135,6 @@ int Board::get_piece_activity() const
 
 	// Noirs
 	b._player = false;
-	b._got_moves = -1;
 	b.get_moves(false);
 	for (uint_fast8_t i = 0; i < b._got_moves; i++)
 	{
@@ -5562,7 +5379,6 @@ pair<uint_fast8_t, uint_fast8_t> Board::get_safe_checks(Map white_controls, Map 
 	// On ne le calcule seulement si le roi noir n'est pas en échec
 	if (!b_white.in_check()) {
 		b_white._player = true;
-		b_white._got_moves = -1;
 		b_white.get_moves(false);
 
 		for (int i = 0; i < b_white._got_moves; i++) {
@@ -5609,7 +5425,6 @@ pair<uint_fast8_t, uint_fast8_t> Board::get_safe_checks(Map white_controls, Map 
 	// On ne le calcule seulement si le roi blanc n'est pas en échec
 	if (!b_black.in_check()) {
 		b_black._player = false;
-		b_black._got_moves = -1;
 		b_black.get_moves(false);
 
 		for (int i = 0; i < b_black._got_moves; i++) {
