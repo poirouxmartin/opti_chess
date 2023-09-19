@@ -124,7 +124,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Colonnes occupées par une dame
 	- Pions passés liés !
 	- Outpost
-	- Passed block (si y'a qq chose qui bloque un pion passé) : ajouter le contrôle des cases devant le pion passé
 	- Coordination des pièces
 	- Bishop pawns : nombre de pion de la même couleur que le fou -> pénalité plus le nombre est grand
 	- Candidats pions passés : r1bq2kr/ppp1bn1p/2n1p2P/3pP1PR/3P1p2/1NPB1N2/PPQ2P2/R3K3 b Q - 0 16 : ici y'aura potentiellement un pion passé colonne g ou h
@@ -137,9 +136,10 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Tours: les mettre sur les colonnes ou les pions sont les plus avancés (activité verticale)
 	- Plans?
 	- Colonnes fermées -> tour mauvaises. Si beaucoup de colonnes ouvertes, bonus pour les tours. Pareil pour les diagonales et les fous
-	- Trapped rook: ++ si le roi peut plus roquer
+	- Mauvais fous (pour les nerf un peu quand y'a beauoup de pions de la même couleur)
+	- Pions passés: prendre en compte les contrôles des alliés pour pousser les pions
 
--> Faire une policy pour les coups
+-> Faire une policy pour les coups (ou des préférences de réflexion)
 -> Livres d'ouvertures, tables d'engame?
 -> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
 -> Iterative deepening pour grogrosfish
@@ -275,6 +275,8 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Fix pawn push threat : quand la case est controllée...
 -> Passer la quiescence à depth 8 ou +? sinon y'a encore des positions mal évaluées... à voir si on peut réutiliser les noeuds de la quiescence pour la recherche normale
 -> Créer une classe 'arbre' pour les recherches de GrogrosZero?
+-> Réduire la valeur des fous?
+-> 6k1/4pp1p/P2p2p1/8/4P3/1P6/5PPP/6K1 b - - 0 26 : il faut améliorer king proximity avec les pions passés: le roi est clairement pas dans le carré
 
 
 

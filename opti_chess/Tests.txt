@@ -22,7 +22,7 @@ r4rk1/1b4p1/pqp4p/bp6/P1pPN2Q/4BP2/1n4PP/RB3RK1 w - - 2 26
 r5k1/1b3rp1/pqp4p/bpN5/n1pPQ3/4BP2/6PP/RB3RK1 w - - 2 28 : complètement gagnant pour les blancs (beaucoup d'attaque)
 r5k1/1b2r1p1/pq2N1QB/bpp2B2/n1pP4/5P2/6PP/R4RK1 b - - 1 32 : quasi mat
 r5k1/1b2r1p1/pq2N1QB/1p3B2/n1p5/3p1P2/6PP/4R2K b - - 0 35 : #6
-rnb2bnr/ppp4k/3p3p/6BQ/2BPP3/2N5/PPP2K1P/q7 w - - 0 15 : e5 #10
+rnb2bnr/ppp4k/3p3p/6BQ/2BPP3/2N5/PPP2K1P/q7 w - - 0 15 : e5 #9 (Df7+ ou Ff7)
 rnb2b1r/ppp1B2k/3p3p/4P2Q/2BP4/2N5/PPP2K1P/7q w - - 1 17 : #4
 r1bqkb1r/1p3pp1/p1np3p/3Np3/4P3/N7/PPP2PPP/R2QKB1R w KQkq - 2 11 : gros trou en d5
 2rq1rk1/1p2bpp1/p1np3p/3Np2Q/4P1BP/2P5/PP3PP1/R4RK1 b - - 4 20
@@ -174,6 +174,26 @@ r1b1kb1r/p1p2ppp/2p5/8/4P3/8/PPP3PP/R1BK1B1R b kq - 0 10 : la mobilité des pièce
 1rb2rk1/2p2ppp/1p3n2/4q3/2B1p3/2P5/PPQ2PPP/R1BR2K1 w - - 2 18 : g3 erreur stratégique
 2rr2k1/5p1p/8/2p3pq/4p1n1/2P1BbPP/P1Q2P2/R3RBK1 w - - 0 29 : le cavalier en g4 vaut plus que le fou en e3
 6k1/R5pp/8/4PK2/5PP1/4r3/8/8 w - - 1 47 : attention, e6 fait nulle: il faut ramener le roi en e6, et pousser ensuite les pions
+rn1qk1nr/pbp1ppbp/1p1p2p1/3P4/2P5/2N2NP1/PP2PP1P/R1BQKB1R b KQkq - 0 6 : stratégiquement il faut faire Fxc3+
+1nkr1b1r/1pp2ppp/3qpnb1/1P2N1B1/2BP2P1/2P4P/1P3P2/R2Q1RK1 b - - 0 16 : si on échange pas les dames, les blancs sont quasi gagnants
+1nkr3r/1pp1qppp/4p1b1/1P1nN3/Q1BP2P1/2P4P/1P3P2/R4RK1 w - - 0 19 : Da8 gagne quasi: Da8 Cb6 Cc6 bxc6 bxc6 Cxa8 Txa8 et c'est quasi mat
+2kr1b1r/ppp2p2/3qpn2/6Np/3n4/P1NP3P/1PP2PP1/R1BQ1RK1 b - - 2 5 : Cg4 meilleur coup
+2k3r1/pppN4/3bpn2/7p/3n4/P1NP1PqP/1PP2RP1/R1BQ1K2 b - - 4 19 : Dh2 gagne
+r1b2rk1/pp1nbpp1/1q2pn1p/2pp4/3P1B2/2PBPN1P/PPQN1PP1/R3K2R w KQ - 0 10 : g4 quasi gagnant
+r1b2rk1/pp1n2p1/1q2p3/3p2p1/2pP4/2P1P3/PPQNBP2/R3K2R w KQ - 0 17 : quasi mat
+r2q1rk1/pp2ppbp/2np2p1/8/2PNP1b1/2N1B3/PP1Q1PPP/R4RK1 b - - 1 11 : bon cavalier contre mauvais fou: les blancs sont mieux
+r2q1rk1/pp2ppbp/3p2p1/8/2PBP1b1/2N5/PP1Q1PPP/R4RK1 b - - 0 12 : il faut garder le fou du fianchetto
+2rq1rk1/B3ppbp/1p1pb1p1/8/2P1P3/1PN5/P2Q1PPP/R4RK1 w - - 0 15 : le fou est enfermé... il faut le protéger, Ta8 le menace
+2rq1rk1/pb1nbppp/1pn1p3/3pP2N/3P4/3B1N2/PP3PPP/R1BQR1K1 b - - 0 13 : c'est déjà quasi foutu pour les noirs: toutes les pièces arrivent en attaque alors que les noirs ne peuvent pas défendre. à noter la structure d4-e5 qui pointe vers le roi et restreint énormément les pièces adverses
+2rqr1k1/pb1nbp1p/1p2p1pB/3pP2N/1n1P4/4RN2/PP3PPP/RB1Q2K1 b - - 5 16 : toutes les pièces sont en attaque
+1r1q1rk1/p4bbp/7p/3Pp2P/1n6/5NN1/PQ2BPP1/K2R3R b - - 2 20 : roi noir foutu
+1r3rk1/p4bbp/7p/3q3P/3Np3/6N1/P1Q1BPP1/K2R3R w - - 0 23 : là aussi
+2br3k/2n3qp/1p3p2/p1p2n1P/2Pp4/1P1Q2P1/P3RPB1/4R1K1 w - - 0 35 : noirs gagnants
+1r5k/5pp1/4p2p/2BpP3/3P4/p1q5/5PKP/1B1Q4 b - - 3 35 : complètement gagnant pour les noirs
+rnb3r1/pppp2kp/8/3q1R2/8/8/PPP1Q1PP/5RK1 b - - 2 18 : complètement gagnant pour les blancs
+rnb2R2/pppp2kp/8/8/3q4/8/PPP1Q1PP/7K w - - 1 22 : #8
+rnb2R2/ppppQ2p/6k1/8/3q4/8/PPP3PP/7K w - - 3 23 : #7
+rnb5/ppppQ2p/8/5R2/3q2k1/6P1/PPP4P/7K w - - 3 27 : #3
 
 
 
@@ -182,7 +202,7 @@ r1b1kb1r/p1p2ppp/2p5/8/4P3/8/PPP3PP/R1BK1B1R b kq - 0 10 : la mobilité des pièce
 r3k2r/ppp2pp1/2p1bq2/2b4p/3PP1n1/2P2BP1/PP3P1P/RNBQK2R w KQkq - 3 11 : h3 (+4.50)
 3rk3/ppp2pp1/2p2q1r/2P1n3/4P2p/1QP3Pb/PP1NBP1P/R1B1R1K1 b - - 5 16 : Txd2 & hxg3 gagnent
 3rk2r/ppp2pp1/2p1bq2/2P4p/4P1B1/2P3P1/PP3P1P/RNBQK2R b KQk - 0 12 : Fxg4 gagnant
-1rkb4/pNp5/8/2N4p/8/5B2/4K3/8 w - - 0 1 : Fc6 quasi gagnant
+1rkb4/pNp5/8/2N4p/8/5B2/4K3/8 w - - 0 1 : Fc6 gagne
 2k1r1r1/p1p4p/1qpb4/3PN3/2Q3b1/4B3/PP3PP1/2R2RK1 b - - 0 1 : Txe5 moins pire
 2kr2nr/1pp2ppp/3b4/1P3q2/2Pp1B2/5Q1P/RP3PP1/R5K1 w - - 0 1 : Dc6 #6
 4r1k1/5pP1/2q2Q1p/1p1RP3/p7/5RP1/5P1K/7r w - - 0 1 : Rxh1 puis Dxh6 gagne
@@ -198,7 +218,7 @@ r1b1k2r/pp1nqpp1/4p2p/3pP1N1/8/3BQ3/PP3PPP/2R2RK1 w kq - 0 1 :  Dxa7 gagne
 1B3B1B/2B5/p6B/8/8/8/8/1k1K4 w - - 0 1 : 1. Bce5 Ka2 2. Kc2 a5 3. Ba1 a4 4. Bb8e5 a3 5. Kc3 Kb1 6. Kb3 a2 7. Kc3 Kxa1 8.Kc2# 1-0
 r1n2b1r/pN2kppp/1pQ1pq2/3p4/5B2/5B2/P4PPP/1R3RK1 w - - 0 1 : Fc7 #2
 3rr1k1/1p1b1pnp/pqpPn1p1/8/8/1PQ2N2/PBB2PP1/3RR1K1 w - - 0 1 : Txe6 #6
-Q7/4pP1p/7k/4q2b/1B1r2PK/7n/8/6r1 w - - 0 1 : F8=Q+ Dc6 et Dc1+ mate
+Q7/4pP1p/7k/4q2b/1B1r2PK/7n/8/6r1 w - - 0 1 : F8=Q+ Dc6 et Dc1+ #6
 2q5/ppr3k1/3p4/P1pPp1bB/2P4n/1P5P/3Q1P1K/6R1 b - - 0 1 :  Dg4 seul coup (reste quasi foutu)
 8/8/4p3/8/8/1P6/7P/2K3k1 w - - 0 1 : Rc2 seul coup qui gagne
 1RR3Q1/8/5p2/4p3/P3B3/5ppp/K3prqk/4Nbrn w - - 0 1 : De6 #8, Df7 #9
@@ -218,7 +238,7 @@ r4rk1/pp1qb1pp/2p1b3/1B3p2/3Pp3/8/PPP1Q1PP/RNB2RK1 w - - 0 1 : d5 gagne
 3brrk1/p2q4/2p1b3/4Bp2/2pP1Ppp/P1P1N3/2Q3PP/3R1RK1 w - - 0 1 : Cxg4 +2.5
 3k4/8/7p/2p1p1pP/1pPpPpP1/1P1P1P2/N7/2K5 w - - 0 1 : sûrement draw
 r3r1k1/pp3pbp/1qp3p1/2B5/2BP2b1/Q1n2N2/P4PPP/3R1K1R b - - 0 1 : Fe6 de Fisher gagne
-r1bq1rk1/ppppnpp1/2n4p/2bNp1N1/2B1P2P/2P5/PP1P1PP1/R1BQK2R b KQ - 0 1 : ne surtout pas prendre le cheval
+r1bq1rk1/ppppnpp1/2n4p/2bNp1N1/2B1P2P/2P5/PP1P1PP1/R1BQK2R b KQ - 0 1 : ne surtout pas prendre le cheval (sinon Cf6 #6)
 r4rk1/pnpb2p1/3p3q/1pbP1p1Q/7P/2B2N2/PpB2PP1/4RRK1 w - - 0 1 : Te7 seul coup qui gagne
 6k1/5p2/2Qp2p1/1p3b1p/2nB1P2/2P3PP/q3r1BK/2R5 w - - 0 1 : Tc2 gagne
 1Q6/p1p1kp2/3q1b2/2p1p3/1B6/8/PP3r1P/K2R4 w - - 0 1 : Fxc5 gagne
@@ -391,6 +411,23 @@ r4rk1/p1pq1p1p/1pb3pb/3pPn2/P7/1P1PP1PP/1BPQN1BK/R4R2 w - - 3 22 : Txf5 très for
 6k1/3q1ppp/8/1n2r3/3p4/1P1Q3P/5PP1/R5K1 w - - 0 1 : Df5 gagne
 3q4/8/4r3/4npkp/Q7/4P3/5PKP/4B3 w - - 0 1 : Dh4+ gagne
 2r3rk/q1rp2pp/8/2P5/1P2PNP1/P5P1/BP2QP2/1K6 w - - 0 1 : Cg6+ gagne
+r1q2kn1/4p1bQ/p1p1Pp1p/1pPN2pP/8/4B1P1/PP3P2/3RR1K1 w - - 0 30 : Cc7 #4
+r1b1kr2/1p1n4/p3p1pp/3pP2B/3N4/Q6P/5qP1/RR5K w - - 0 29 : Fxg6+ #13
+2rqr1k1/pb1nbp1p/1pn1p2B/3pP2p/3P4/3BRN2/PP3PPP/R2Q2K1 w - - 0 16 : Cg5 gagne (quasi tout gagne en fait)
+2rqr1k1/pb1nbp1p/1p2p1pB/3pP2N/1n1P4/3BRN2/PP3PPP/R2Q2K1 w - - 4 16 : Fb1 très fort (prise h5 n'est quasi jamais une menace)
+3qr1k1/p2n1p1p/bp2p2B/3pP1bQ/1n1P4/4R3/PP3PPP/RBr2NK1 w - - 3 20 : Fxh7+ #10
+3r2k1/ppp1qppp/2n5/5b2/8/P1Q1PNbP/1P1NB1P1/R4K1R b - - 8 16 : Td3!! gagne
+r2q1rk1/1pp2p2/p3pP1p/P2pPnNR/3P4/2PB4/1P3P2/2R1K3 w - - 0 20 : Rd2!! #9
+r2q1rk1/1pp2ppp/p1n1p2n/P2pP1bQ/3P4/2PB4/1P1N1PP1/R1B1K2R w KQ - 2 13 : Ce4! gagne
+r2q1rk1/1pp2p1p/p3p1pn/P2pPnNQ/3P2P1/2PB4/1P3P2/2R1K2R w K - 0 17 : gxf5!! gagne
+r2q1rk1/p5bp/2n3bp/1p1pp3/2p4P/2PP1NN1/PPQ1BPP1/2KR3R b - - 0 14 : Cb4 gagne
+2br3k/2n4p/1p3p2/p1p2nqP/2PpR3/1P1Q2PB/P4P2/4R1K1 b - - 3 36 : Cxg3 gagne
+r2r2k1/1b3p2/p3pn2/2b1q2p/4P1p1/2N4P/PPBBQPP1/R2R2K1 w - - 0 19 : Rh1 seul coup pour avantage. Sinon, Fe3 pour égalité
+r2r2k1/1b3p2/p3pn2/2B1q2p/4P3/2N4p/PPB1QPP1/R2R2K1 b - - 0 20 : Cg4 gagne
+r4rk1/pp1bbppp/2q1p3/3pPn2/3P4/3B1N2/3BQPPP/R3R1K1 w - - 4 19 : g4 gagne (Ch4, Cxh4, Fxh4 et g5 enferme le fou)
+2q2rk1/5ppp/4p3/p2pP1B1/3P4/3B4/4QP1P/6K1 b - - 0 28 : Dc3 gagne
+2r3k1/5ppp/4p3/p2pP1B1/3P4/2qBQ3/5PKP/8 b - - 4 30 : h6 seul coup qui gagne
+r5k1/1pb2pp1/2bp1nnp/4p3/1PP1P3/q3BNNP/2BQ1PP1/1R4K1 w - - 0 26 : Fxh6 gagne
 
 
 
