@@ -3,6 +3,7 @@
 #include "useful_functions.h"
 #include "gui.h"
 #include "windows_tests.h"
+#include "buffer.h"
 
 
 

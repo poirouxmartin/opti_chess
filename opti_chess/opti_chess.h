@@ -11,6 +11,7 @@
 #include <cstdint>
 #include "raylib.h"
 #include <iomanip>
+//#include "game_tree.h"
 
 using namespace std;
 
@@ -40,7 +41,7 @@ Plateau :
 */
 
 // Enumération des pièces
-enum piece_type { P = 1, N = 2, B = 3, R = 4, Q = 5, K = 6, p = 7, n = 8, b = 9, r = 10, q = 11, k = 12 };
+//enum piece_type { P = 1, N = 2, B = 3, R = 4, Q = 5, K = 6, p = 7, n = 8, b = 9, r = 10, q = 11, k = 12 };
 
 
 // Nombre de demi-coups avant de déclarer la partie nulle
@@ -80,6 +81,11 @@ typedef struct Move {
 	void display() const
 	{
 		cout << "(" << static_cast<int>(i1) << ", " << static_cast<int>(j1) << ") -> (" << static_cast<int>(i2) << ", " << static_cast<int>(j2) << ")" << endl;
+	}
+
+	string to_string() const
+	{
+		return "(" + std::to_string(i1) + ", " + std::to_string(j1) + ") -> (" + std::to_string(i2) + ", " + std::to_string(j2) + ")";
 	}
 };
 
@@ -511,9 +517,6 @@ public:
 	// Fonction qui récupère et renvoie la couleur du joueur au trait (1 pour les blancs, -1 pour les noirs)
 	[[nodiscard]] int get_color() const;
 
-	// Fonction qui génère et renvoie la clé de Zobrist de la position
-	[[nodiscard]] uint_fast64_t get_zobrist_key() const;
-
 	// Fonction qui calcule et renvoie l'avantage d'espace
 	[[nodiscard]] int get_space() const;
 
@@ -574,38 +577,6 @@ void switch_orientation();
 
 // Fonction aidant à l'affichage du plateau (renvoie i si board_orientation, et 7 - i sinon)
 int orientation_index(int);
-
-class Buffer {
-public:
-
-	bool _init = false;
-	int _length = 0;
-	Board* _heap_boards;
-
-	// Itérateur pour rechercher moins longtemps un index de plateau libre
-	int _iterator = -1;
-
-	// Constructeur par défaut
-	Buffer();
-
-	// Constructeur utilisant la taille max (en bits) du buffer
-	explicit Buffer(unsigned long int);
-
-	// Initialize l'allocation de n plateaux
-	void init(int length = 5000000);
-
-	// Fonction qui donne l'index du premier plateau de libre dans le buffer
-	int get_first_free_index();
-
-	// Fonction qui désalloue toute la mémoire
-	void remove();
-
-	// Fonction qui reset le buffer
-	[[nodiscard]] bool reset() const;
-};
-
-// Buffer pour monte-carlo
-extern Buffer monte_buffer;
 
 // Fonction qui joue un match entre deux IA utilisant GrogrosZero, et une évaluation par réseau de neurones ou des évaluateurs, avec un certain nombre de noeuds de calcul
 int match(Evaluator* e_white = nullptr, Evaluator* e_black = nullptr, Network* n_white = nullptr, Network* n_black = nullptr, int nodes = 1000, bool display = false, int max_moves = 100);
@@ -675,221 +646,5 @@ void update_text_box(TextBox& text_box);
 // Fonction qui dessine une text box
 void draw_text_box(const TextBox& text_box);
 
-// GUI
-class GUI {
-public:
-	// Variables
-
-	// Dimensions de la fenêtre
-	int _screen_width = 1800;
-	int _screen_height = 945;
-
-	// Plateau affiché
-	Board _board;
-
-	// Faut-il faire l'affichage?
-	bool _draw = true;
-
-	// Faut-il que les coups soient cliqués en binding chess.com?
-	bool _click_bind = false;
-
-	// Mode de jeu automatique en binding avec chess.com
-	bool _binding_full = false; // Pour récupérer tous les coups de la partie
-	bool _binding_solo = false; // Pour récupérer seulement les coups de la couleur du joueur du bas
-
-	// Intervalle de tmeps pour check chess.com
-	int _binding_interval_check = 100;
-
-	// Moment du dernier check
-	clock_t _last_binding_check = clock();
-
-	// Coup récupéré par le binding
-	uint_fast8_t* _binding_move = new uint_fast8_t[4];
-
-	// Coordonnées du plateau sur chess.com
-	int _binding_left = 108; // (+10 si barre d'éval)
-	int _binding_top = 219;
-	int _binding_right = 851;
-	int _binding_bottom = 962;
-
-	// Coordonées du plateau pour le binding
-	//SimpleRectangle _binding_coord;
-
-	// Temps des joueurs
-	clock_t _time_white = 900000;
-	clock_t _time_black = 900000;
-
-	// Incrément (5s/coup)
-	clock_t _time_increment_white = 5000;
-	clock_t _time_increment_black = 5000;
-
-	// Mode analyse de Grogros
-	bool _grogros_analysis = false;
-
-	// Le temps est-il activé?
-	bool _time = false;
-
-	// Pour la gestion du temps
-	clock_t _last_move_clock;
-
-	// Joueur au trait lors du dernier check (pour les temps)
-	bool _last_player = true;
-
-	// Affichage des flèches : affiche les chances de gain (true), l'évaluation (false)
-	bool _display_win_chances = true;
-
-	// Texte pour les timers
-	TextBox _white_time_text_box;
-	TextBox _black_time_text_box;
-
-	// Paramètres pour la recherche de Monte-Carlo
-	float _beta = 0.1f;
-	float _k_add = 25.0f;
-	//float _beta = 0.03f;
-	//float _k_add = 50.0f;
-	int _quiescence_depth = 4;
-	bool _explore_checks = true;
-
-	// Est-ce que les noms des joueurs ont été ajoutés au PGN
-	bool _named_pgn = false;
-	bool _timed_pgn = false;
-
-	// Affichage du PGN
-
-	// Joueurs
-	string _white_player = "White";
-	string _black_player = "Black";
-
-	// FEN de la position initiale
-	string _initial_fen;
-
-	// FEN de la position actuelle
-	string _current_fen;
-
-	// PGN de la partie
-	string _pgn;
-
-	// Cadence
-	string _time_control;
-
-	// PGN global
-	string _global_pgn;
-
-	// Titres des joueurs
-	string _white_title;
-	string _black_title;
-
-	// Elo des joueurs
-	string _white_elo;
-	string _black_elo;
-
-	// URL des joueurs (pour les images)
-	string _white_url;
-	string _black_url;
-
-	// Pays des joueurs
-	string _white_country;
-	string _black_country;
-
-	// Date de la partie
-	string _date;
-
-	// Elo de GrogrosZero
-	string _grogros_zero_elo = "2300";
-
-	// TODO : Threads (pour la parallélisation)
-
-	// Thread de GUI
-
-	// Thread de GrogrosZero
-	thread _thread_grogros_zero;
-
-	// Threads pour les plateaux fils de GrogrosZero
-	vector<thread> _threads_grogros_zero;
-
-	// TODO : Pour le PGN, faire un vecteur de coups, comme ça on peut repasser la partie, et modifier le PGN facilement
-	// Historique des positions
-	vector<Board> _positions_history;
-	int _current_position = 0;
-
-	// TODO faire un arbre de recherche pour les coups, pour avoir toutes les variantes
-
-
-	// Evaluation test
-	//Evaluator *_eval = new Evaluator(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-	Evaluator *_eval = new Evaluator();
-
-
-	// Constructeurs
-
-	// Par défaut
-	GUI();
-
-	// Fonctions
-
-	// Fonction qui met en place le binding avec chess.com pour une nouvelle partie (et se prépare à jouer avec GrogrosZero)
-	bool new_bind_game();
-
-	// Fonction qui met en place le binding avec chess.com pour une nouvelle analyse de partie
-	bool new_bind_analysis();
-
-	// Fonction qui construit le PGN global
-	bool update_global_pgn();
-
-	// Fonction qui met à jour la cadence du PGN
-	bool update_time_control();
-
-	// Fonction qui lance le temps
-	void start_time();
-
-	// Fonction qui stoppe le temps
-	void stop_time();
-
-	// Fonction qui met à jour le temps des joueurs
-	void update_time();
-
-	// Fonction qui réinitialise le PGN
-	bool reset_pgn();
-
-	// Fonction qui met à jour la date du PGN
-	bool update_date();
-
-	// Fonction qui lance les threads de GrogrosZero
-	bool thread_grogros_zero(Evaluator *eval, int nodes);
-
-	// Fonction qui lance grogros sur un thread
-	bool grogros_zero_threaded(Evaluator *eval, int nodes);
-
-	// Fonction qui retire le dernier coup du PGN
-	bool remove_last_move_PGN();
-};
-
-// Instantiation de la GUI globale
-extern GUI main_GUI;
-
 // Fonction qui compare deux coups pour savoir lequel afficher en premier
 bool compare_move_arrows(int m1, int m2);
-
-// Classe qui gère les clés de Zobrist
-class Zobrist
-{
-public:
-	// Variables
-
-	// Clés du plateau
-	uint_fast64_t _board_keys[64][12];
-
-	// Clé du trait
-	uint_fast64_t _player_key;
-
-	// Clés des roques
-	uint_fast64_t _castling_keys[16];
-
-	// Clés du en-passant
-	uint_fast64_t _en_passant_keys[8];
-
-	// Fonctions
-
-	// Fonction qui génère les clés du plateau
-	uint_fast64_t generate_board_keys();
-};

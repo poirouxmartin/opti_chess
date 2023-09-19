@@ -1,5 +1,6 @@
-// Color
 #pragma once
+
+// Color
 class SimpleColor {
 public:
 	int _r = 0; // Red
