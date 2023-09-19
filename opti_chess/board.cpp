@@ -1022,7 +1022,7 @@ int Board::negamax(const int depth, int alpha, const int beta, const bool max_de
 			play_index_move_sound(best_move);
 			if (display)
 				if (_tested_moves > 0)
-					((main_GUI._click_bind && main_GUI._board.click_i_move(main_GUI._board.best_monte_carlo_move(), get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[best_move], true, true, true, false);
+					((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[best_move], true, true, true, false);
 				else
 					make_index_move(best_move, true);
 		}
@@ -1576,18 +1576,17 @@ bool Board::draw() {
 		// Si on était pas déjà en train de cliquer (début de clic)
 		if (!clicked) {
 			// Stocke la case cliquée sur le plateau
-			clicked_pos = get_pos_from_GUI(mouse_pos.x, mouse_pos.y);
+			main_GUI._clicked_pos = get_pos_from_GUI(mouse_pos.x, mouse_pos.y);
 			clicked = true;
 
 			// S'il y'a les flèches de réflexion de GrogrosZero, et qu'aucune pièce n'est sélectionnée
 			if (drawing_arrows && !selected_piece()) {
 				// On regarde dans le sens inverse pour jouer la flèche la plus récente (donc celle visible en cas de superposition)
-				for (auto arrow : ranges::reverse_view(grogros_arrows))
+				for (Move move : ranges::reverse_view(main_GUI.grogros_arrows))
 				{
-					if (arrow[2] == clicked_pos.first && arrow[3] == clicked_pos.second) {
-						// Retrouve le coup correspondant
-						play_move_sound(Move(arrow[0], arrow[1], arrow[2], arrow[3]));
-						((main_GUI._click_bind && main_GUI._board.click_i_move(arrow[4], get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[arrow[4]], true, true, true, true);
+					if (move.i2 == main_GUI._clicked_pos.i && move.j2 == main_GUI._clicked_pos.j) {
+						play_move_sound(move);
+						((main_GUI._click_bind && main_GUI._board.click_m_move(move, get_board_orientation())) || true) && play_monte_carlo_move_keep(move, true, true, true, true);
 						goto piece_selection;
 					}
 				}
@@ -1598,7 +1597,7 @@ bool Board::draw() {
 			// Si aucune pièce n'est sélectionnée et que l'on clique sur une pièce, la sélectionne
 			if (!selected_piece() && clicked_piece()) {
 				if (false || clicked_piece_has_trait())
-					selected_pos = clicked_pos;
+					main_GUI._selected_pos = main_GUI._clicked_pos;
 			}
 
 			// Si le coup est l'un des mouvements possible de la pièce (diagonale pour le fou...)
@@ -1619,9 +1618,9 @@ bool Board::draw() {
 				// Si le coup est légal, le joue
 				_got_moves == -1 && get_moves();
 				for (int i = 0; i < _got_moves; i++) {
-					if (_moves[i].i1 == selected_pos.first && _moves[i].j1 == selected_pos.second && _moves[i].i2 == clicked_pos.first && _moves[i].j2 == clicked_pos.second) {
-						play_move_sound(Move(selected_pos.first, selected_pos.second, clicked_pos.first, clicked_pos.second));
-						((main_GUI._click_bind && main_GUI._board.click_i_move(i, get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[i], true, true, true, true);
+					if (_moves[i].i1 == main_GUI._selected_pos.i && _moves[i].j1 == main_GUI._selected_pos.j && _moves[i].i2 == main_GUI._clicked_pos.i && _moves[i].j2 == main_GUI._clicked_pos.j) {
+						play_move_sound(Move(main_GUI._selected_pos.i, main_GUI._selected_pos.j, main_GUI._clicked_pos.i, main_GUI._clicked_pos.j));
+						((main_GUI._click_bind && main_GUI._board.click_m_move(_moves[i], get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[i], true, true, true, true);
 						break;
 					}
 				}
@@ -1630,37 +1629,37 @@ bool Board::draw() {
 				unselect();
 
 				// Changement de sélection de pièce
-				if ((_player && is_in_fast(_array[clicked_pos.first][clicked_pos.second], 1, 6)) || (!_player && is_in_fast(_array[clicked_pos.first][clicked_pos.second], 7, 12)))
-					selected_pos = get_pos_from_GUI(mouse_pos.x, mouse_pos.y);
+				if ((_player && is_in_fast(_array[main_GUI._clicked_pos.i][main_GUI._clicked_pos.j], 1, 6)) || (!_player && is_in_fast(_array[main_GUI._clicked_pos.i][main_GUI._clicked_pos.j], 7, 12)))
+					main_GUI._selected_pos = get_pos_from_GUI(mouse_pos.x, mouse_pos.y);
 			}
 		}
 	}
 	else {
 		// Si on clique
-		if (clicked && clicked_pos.first != -1 && _array[clicked_pos.first][clicked_pos.second] != 0) {
-			pair<uint_fast8_t, uint_fast8_t> drop_pos = get_pos_from_GUI(mouse_pos.x, mouse_pos.y);
-			if (is_in_fast(drop_pos.first, 0, 7) && is_in_fast(drop_pos.second, 0, 7)) {
+		if (clicked && main_GUI._clicked_pos.i != -1 && _array[main_GUI._clicked_pos.i][main_GUI._clicked_pos.j] != 0) {
+			Pos drop_pos = get_pos_from_GUI(mouse_pos.x, mouse_pos.y);
+			if (is_in_fast(drop_pos.i, 0, 7) && is_in_fast(drop_pos.j, 0, 7)) {
 				// Déselection de la pièce si on reclique dessus
-				if (drop_pos.first == selected_pos.first && drop_pos.second == selected_pos.second) {
+				if (drop_pos.i == main_GUI._selected_pos.i && drop_pos.j == main_GUI._selected_pos.j) {
 				}
 				else {
-					if (int selected_piece = _array[selected_pos.first][selected_pos.second]; selected_piece > 0 && (selected_piece < 7 && !_player) || (selected_piece >= 7 && _player)) {
+					if (int selected_piece = _array[main_GUI._selected_pos.i][main_GUI._selected_pos.j]; selected_piece > 0 && (selected_piece < 7 && !_player) || (selected_piece >= 7 && _player)) {
 						// Si c'est pas ton tour, pre-move
 						/*pre_move[0] = selected_pos.first;
 						pre_move[1] = selected_pos.second;
 						pre_move[2] = drop_pos.first;
 						pre_move[3] = drop_pos.second;*/
-						selected_pos = { -1, -1 };
+						main_GUI._selected_pos = { -1, -1 };
 					}
 
 					else {
 						// Si le coup est légal
 						_got_moves == -1 && get_moves();
 						for (int i = 0; i < _got_moves; i++) {
-							if (_moves[i].i1 == selected_pos.first && _moves[i].j1 == selected_pos.second && _moves[i].i2 == drop_pos.first && _moves[i].j2 == drop_pos.second) {
-								play_move_sound(Move(clicked_pos.first, clicked_pos.second, drop_pos.first, drop_pos.second));
-								((main_GUI._click_bind && main_GUI._board.click_i_move(i, get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[i], true, true, true, true);
-								selected_pos = { -1, -1 };
+							if (_moves[i].i1 == main_GUI._selected_pos.i && _moves[i].j1 == main_GUI._selected_pos.j && _moves[i].i2 == drop_pos.i && _moves[i].j2 == drop_pos.j) {
+								play_move_sound(Move(main_GUI._clicked_pos.i, main_GUI._clicked_pos.j, drop_pos.i, drop_pos.j));
+								((main_GUI._click_bind && main_GUI._board.click_m_move(_moves[i], get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[i], true, true, true, true);
+								main_GUI._selected_pos = { -1, -1 };
 								break;
 							}
 						}
@@ -1693,8 +1692,8 @@ bool Board::draw() {
 
 	// Si on fait un clic droit
 	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-		int x_mouse = get_pos_from_GUI(mouse_pos.x, mouse_pos.y).first;
-		int y_mouse = get_pos_from_GUI(mouse_pos.x, mouse_pos.y).second;
+		int x_mouse = get_pos_from_GUI(mouse_pos.x, mouse_pos.y).i;
+		int y_mouse = get_pos_from_GUI(mouse_pos.x, mouse_pos.y).j;
 		right_clicked_pos = { x_mouse, y_mouse };
 
 		// Retire les pre-moves
@@ -1706,8 +1705,8 @@ bool Board::draw() {
 
 	// Si on fait un clic droit (en le relachant)
 	if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
-		int x_mouse = get_pos_from_GUI(mouse_pos.x, mouse_pos.y).first;
-		int y_mouse = get_pos_from_GUI(mouse_pos.x, mouse_pos.y).second;
+		int x_mouse = get_pos_from_GUI(mouse_pos.x, mouse_pos.y).i;
+		int y_mouse = get_pos_from_GUI(mouse_pos.x, mouse_pos.y).j;
 
 		if (x_mouse != -1) {
 			// Surlignage d'une case
@@ -1775,12 +1774,12 @@ bool Board::draw() {
 	}*/
 
 	// Sélection de cases et de pièces
-	if (selected_pos.first != -1) {
+	if (main_GUI._selected_pos.i != -1) {
 		// Affiche la case séléctionnée
-		draw_rectangle(board_padding_x + orientation_index(selected_pos.second) * tile_size, board_padding_y + orientation_index(7 - selected_pos.first) * tile_size, tile_size, tile_size, select_color);
+		draw_rectangle(board_padding_x + orientation_index(main_GUI._selected_pos.j) * tile_size, board_padding_y + orientation_index(7 - main_GUI._selected_pos.i) * tile_size, tile_size, tile_size, select_color);
 		// Affiche les coups possibles pour la pièce séléctionnée
 		for (int i = 0; i < _got_moves; i++) {
-			if (_moves[i].i1 == selected_pos.first && _moves[i].j1 == selected_pos.second) {
+			if (_moves[i].i1 == main_GUI._selected_pos.i && _moves[i].j1 == main_GUI._selected_pos.j) {
 				draw_rectangle(board_padding_x + orientation_index(_moves[i].j2) * tile_size, board_padding_y + orientation_index(7 - _moves[i].i2) * tile_size, tile_size, tile_size, select_color);
 			}
 		}
@@ -1793,7 +1792,7 @@ bool Board::draw() {
 			p = _array[i][j];
 			if (p > 0) {
 				if (is_capturable(i, j)) {
-					if (clicked && i == clicked_pos.first && j == clicked_pos.second)
+					if (clicked && i == main_GUI._clicked_pos.i && j == main_GUI._clicked_pos.j)
 						draw_texture(piece_textures[p - 1], mouse_pos.x - piece_size / 2, mouse_pos.y - piece_size / 2, WHITE);
 					else
 						draw_texture(piece_textures[p - 1], board_padding_x + tile_size * orientation_index(j) + (tile_size - piece_size) / 2, board_padding_y + tile_size * orientation_index(7 - i) + (tile_size - piece_size) / 2, WHITE);
@@ -1804,7 +1803,7 @@ bool Board::draw() {
 
 	// Coups auquel l'IA réflechit...
 	if (drawing_arrows)
-		draw_monte_carlo_arrows();
+		main_GUI.draw_monte_carlo_arrows();
 
 	// Pièces non-capturables
 	for (int i = 0; i < 8; i++) {
@@ -1812,7 +1811,7 @@ bool Board::draw() {
 			p = _array[i][j];
 			if (p > 0) {
 				if (!is_capturable(i, j)) {
-					if (clicked && i == clicked_pos.first && j == clicked_pos.second)
+					if (clicked && i == main_GUI._clicked_pos.i && j == main_GUI._clicked_pos.j)
 						draw_texture(piece_textures[p - 1], mouse_pos.x - piece_size / 2.0f, mouse_pos.y - piece_size / 2.0f, WHITE);
 					else
 						draw_texture(piece_textures[p - 1], board_padding_x + tile_size * static_cast<float>(orientation_index(j)) + (tile_size - piece_size) / 2.0f, board_padding_y + tile_size * static_cast<float>(orientation_index(7 - i)) + (tile_size - piece_size) / 2.0f, WHITE);
@@ -2103,11 +2102,11 @@ void Board::play_index_move_sound(const int i) const
 }
 
 // Fonction qui obtient la case correspondante à la position sur la GUI
-pair<int, int> get_pos_from_GUI(const float x, const float y) {
+Pos get_pos_from_GUI(const float x, const float y) {
 	if (!is_in(x, board_padding_x, board_padding_x + board_size) || !is_in(y, board_padding_y, board_padding_y + board_size))
-		return { -1, -1 };
+		return Pos(-1, -1);
 	else
-		return { orientation_index(8 - (y - board_padding_y) / tile_size), orientation_index((x - board_padding_x) / tile_size) };
+		return Pos(orientation_index(8 - (y - board_padding_y) / tile_size), orientation_index((x - board_padding_x) / tile_size));
 }
 
 // Fonction qui permet de changer l'orientation du plateau
@@ -2187,48 +2186,9 @@ void draw_arrow_from_coord(int i1, int j1, int i2, int j2, int index, const int 
 	}
 
 	// Ajoute la flèche au vecteur
-	grogros_arrows.push_back({ i1, j1, i2, j2, index });
+	main_GUI.grogros_arrows.push_back(Move(i1, j1, i2, j2));
 
 	return;
-}
-
-// Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo d'un plateau
-void Board::draw_monte_carlo_arrows() const
-{
-	// get_moves(true);
-
-	grogros_arrows = {};
-
-	const int best_move = best_monte_carlo_move();
-
-	int sum_nodes = 0;
-	for (int i = 0; i < _tested_moves; i++)
-		sum_nodes += _nodes_children[i];
-
-	// Une pièce est-elle sélectionnée?
-	const bool is_selected = selected_pos.first != -1 && selected_pos.second != -1;
-
-	// Crée un vecteur avec les coups visibles
-	vector<int> moves_vector;
-	for (int i = 0; i < _tested_moves; i++) {
-		if (is_selected) {
-			// Dessine pour la pièce sélectionnée
-			if (selected_pos.first == _moves[i].i1 && selected_pos.second == _moves[i].j1)
-				moves_vector.push_back(i);
-		}
-
-		else {
-			if (_nodes_children[i] / static_cast<float>(sum_nodes) > arrow_rate)
-				moves_vector.push_back(i);
-		}
-	}
-
-	sort(moves_vector.begin(), moves_vector.end(), compare_move_arrows);
-
-	for (const int i : moves_vector) {
-		const int mate = is_eval_mate(_eval_children[i]);
-		draw_arrow_from_coord(_moves[i].i1, _moves[i].j1, _moves[i].i2, _moves[i].j2, i, get_color(), -1.0, move_color(_nodes_children[i], sum_nodes), true, _eval_children[i], mate, i == best_move);
-	}
 }
 
 // Fonction qui calcule et renvoie la mobilité des pièces
@@ -3083,7 +3043,7 @@ bool Board::is_capturable(const int i, const int j) {
 // Fonction qui renvoie si le joueur est en train de jouer (pour que l'IA arrête de réflechir à ce moment sinon ça lagge)
 bool is_playing() {
 	const auto [x, y] = GetMousePosition();
-	return (selected_pos.first != -1 || x != mouse_pos.x || y != mouse_pos.y);
+	return (main_GUI._selected_pos.i != -1 || x != mouse_pos.x || y != mouse_pos.y);
 }
 
 // Fonction qui change le mode d'affichage des flèches (oui/non)
@@ -4109,7 +4069,7 @@ void remove_highlighted_tiles() {
 
 // Fonction qui selectionne une case
 void select_tile(int a, int b) {
-	selected_pos = { a, b };
+	main_GUI._selected_pos = Pos(a, b);
 }
 
 // Fonction qui surligne une case (ou la de-surligne)
@@ -4121,17 +4081,17 @@ void highlight_tile(const int a, const int b) {
 uint_fast8_t Board::selected_piece() const
 {
 	// Faut-il stocker cela pour éviter de le re-calculer?
-	if (selected_pos.first == -1 || selected_pos.second == -1)
+	if (main_GUI._selected_pos.i == -1 || main_GUI._selected_pos.j == -1)
 		return 0;
-	return _array[selected_pos.first][selected_pos.second];
+	return _array[main_GUI._selected_pos.i][main_GUI._selected_pos.j];
 }
 
 // Fonction qui renvoie le type de pièce où la souris vient de cliquer
 uint_fast8_t Board::clicked_piece() const
 {
-	if (clicked_pos.first == -1 || clicked_pos.second == -1)
+	if (main_GUI._clicked_pos.i == -1 || main_GUI._clicked_pos.j == -1)
 		return 0;
-	return _array[clicked_pos.first][clicked_pos.second];
+	return _array[main_GUI._clicked_pos.i][main_GUI._clicked_pos.j];
 }
 
 // Fonction qui renvoie si la pièce sélectionnée est au joueur ayant trait ou non
@@ -4148,7 +4108,7 @@ bool Board::clicked_piece_has_trait() const
 
 // Fonction qui déselectionne
 void unselect() {
-	selected_pos = { -1, -1 };
+	main_GUI._selected_pos = Pos(-1, -1);
 }
 
 // Fonction qui remet les compteurs de temps "à zéro" (temps de base)
@@ -4577,46 +4537,39 @@ int* Board::get_i_move(const int i) const
 	return coord;
 }
 
-// Fonction qui fait cliquer le i-ème coup
-bool Board::click_i_move(const int i, const bool orientation) const
+// Fonction qui fait cliquer le coup m
+bool Board::click_m_move(const Move m, const bool orientation) const
 {
-	const int* coord = get_i_move(i);
-
-	if (coord == nullptr)
-		return false;
-
-	click_move(coord[0], coord[1], coord[2], coord[3], main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom, orientation);
+	click_move(m.i1, m.j1, m.i2, m.j2 , main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom, orientation);
 	return true;
 }
 
 // Fonction qui compare deux coups pour savoir lequel afficher en premier
-bool compare_move_arrows(const int m1, const int m2) {
-	// TODO le problème de tri vient peut-être du fait que les coups on été triés, et donc ne correspondent pas aux indices des noeuds enfants
-	// FIX utiliser les coups plutôt que leurs indices
+bool compare_move_arrows(const int m1, const int m2)
+{
+	const Move move1 = main_GUI._board._moves[m1];
+	const Move move2 = main_GUI._board._moves[m2];
 
-	//return true;
+	//return main_GUI._board._nodes_children[m1] > main_GUI._board._nodes_children[m2];
 
 	// Si deux flèches finissent en un même point, affiche en dernier (au dessus), le "meilleur" coup
-	/*if (main_GUI._board._moves[m1].i2 == main_GUI._board._moves[m2].i2 && main_GUI._board._moves[m1].j2 == main_GUI._board._moves[m2].j2)
-		return main_GUI._board._nodes_children[m1] > main_GUI._board._nodes_children[m2];*/
-
-	return main_GUI._board._nodes_children[m1] > main_GUI._board._nodes_children[m2];
-
-	//return true;
+	if (move1.i2 == move2.i2 && move1.j2 == move2.j2)
+		return main_GUI._board._nodes_children[m1] > main_GUI._board._nodes_children[m2];
 
 	// Si les deux flèches partent d'un même poin, alors affiche par dessus la flèche la plus courte
-	//if (main_GUI._board._moves[m1].i1 == main_GUI._board._moves[m2].i1 && main_GUI._board._moves[m1].j1 == main_GUI._board._moves[m2].j1) {
-	//	
-	//	// Regarde si les flèches vont dans la même direction ou non
-	//	if ((main_GUI._board._moves[m1].j2 - main_GUI._board._moves[m1].j1) / (main_GUI._board._moves[m1].i2 - main_GUI._board._moves[m1].i1) != (main_GUI._board._moves[m1].j2 - main_GUI._board._moves[m1].j1) / (main_GUI._board._moves[m1].i2 - main_GUI._board._moves[m1].i1))
-	//		return true;
+	if (move1.i1 == move2.i1 && move1.j1 == move2.j1) {
+		
+		//// Regarde si les flèches vont dans la même direction ou non
+		//if ((move1.j2 - move1.j1) / (move1.i2 - move1.i1) != (move2.j2 - move2.j1) / (move2.i2 - move2.i1))
+		//	return true;
+		// FIXME: divisions par 0
 
-	//	const int d1 = (main_GUI._board._moves[m1].i1 - main_GUI._board._moves[m1].i2) * (main_GUI._board._moves[m1].i1 - main_GUI._board._moves[m1].i2) + (main_GUI._board._moves[m1].j1 - main_GUI._board._moves[m1].j2) * (main_GUI._board._moves[m1].j1 - main_GUI._board._moves[m1].j2);
-	//	const int d2 = (main_GUI._board._moves[m2].i1 - main_GUI._board._moves[m2].i2) * (main_GUI._board._moves[m2].i1 - main_GUI._board._moves[m2].i2) + (main_GUI._board._moves[m2].j1 - main_GUI._board._moves[m2].j2) * (main_GUI._board._moves[m2].j1 - main_GUI._board._moves[m2].j2);
-	//	return d1 > d2;
-	//}
+		const int d1 = (move1.i1 - move1.i2) * (move1.i1 - move1.i2) + (move1.j1 - move1.j2) * (move1.j1 - move1.j2);
+		const int d2 = (move2.i1 - move2.i2) * (move2.i1 - move2.i2) + (move2.j1 - move2.j2) * (move2.j1 - move2.j2);
+		return d1 > d2;
+	}
 
-	//return true;
+	return true;
 }
 
 // Fonction qui met à jour une text box

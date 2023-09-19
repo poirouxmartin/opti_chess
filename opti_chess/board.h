@@ -144,6 +144,11 @@ struct Pos
 {
 	int i : 4;
 	int j : 4;
+
+	// Opérateur d'égalité
+	bool operator== (const Pos& other) const {
+		return (i == other.i) && (j == other.j);
+	}
 };
 
 // Map d'un plateau (pour stocker les cases controllées, etc...)
@@ -383,9 +388,6 @@ public:
 	// Fonction qui joue le son d'un coup à partir de son index
 	void play_index_move_sound(int) const;
 
-	// Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo d'un plateau
-	void draw_monte_carlo_arrows() const;
-
 	// Fonction qui calcule et renvoie la mobilité des pièces
 	[[nodiscard]] int get_piece_mobility(bool legal = false) const;
 
@@ -488,8 +490,8 @@ public:
 	// Fonction qui renvoie le i-ème coup
 	[[nodiscard]] int* get_i_move(int) const;
 
-	// Fonction qui fait cliquer le i-ème coup
-	[[nodiscard]] bool click_i_move(int i, bool orientation) const;
+	// Fonction qui fait cliquer le coup m
+	[[nodiscard]] bool click_m_move(Move i, bool orientation) const;
 
 	// Fonction qui récupère et renvoie la couleur du joueur au trait (1 pour les blancs, -1 pour les noirs)
 	[[nodiscard]] int get_color() const;
@@ -547,7 +549,7 @@ public:
 };
 
 // Fonction qui obtient la case correspondante à la position sur la GUI
-pair<int, int> get_pos_from_GUI(float, float);
+Pos get_pos_from_GUI(float, float);
 
 // Fonction qui permet de changer l'orientation du plateau
 void switch_orientation();
