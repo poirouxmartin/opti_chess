@@ -292,3 +292,41 @@ bool GUI::remove_last_move_PGN()
 {
 	// TODO	
 }
+
+// Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo
+void GUI::draw_monte_carlo_arrows() const
+{
+	main_GUI.grogros_arrows = {};
+
+	const int best_move = _board.best_monte_carlo_move();
+
+	int sum_nodes = 0;
+	for (int i = 0; i < _board._tested_moves; i++)
+		sum_nodes += _board._nodes_children[i];
+
+	// Une pièce est-elle sélectionnée?
+	//cout << _selected_pos.i << " " << _selected_pos.j << endl;
+	const bool is_selected = _selected_pos.i != -1 && _selected_pos.j != -1;
+
+	// Crée un vecteur avec les coups visibles
+	vector<int> moves_vector;
+	for (int i = 0; i < _board._tested_moves; i++) {
+		if (is_selected) {
+			// Dessine pour la pièce sélectionnée
+			if (_selected_pos.i == _board._moves[i].i1 && _selected_pos.j == _board._moves[i].j1)
+				moves_vector.push_back(i);
+		}
+
+		else {
+			if (_board._nodes_children[i] / static_cast<float>(sum_nodes) > arrow_rate)
+				moves_vector.push_back(i);
+		}
+	}
+
+	sort(moves_vector.begin(), moves_vector.end(), compare_move_arrows);
+
+	for (const int i : moves_vector) {
+		const int mate = _board.is_eval_mate(_board._eval_children[i]);
+		draw_arrow_from_coord(_board._moves[i].i1, _board._moves[i].j1, _board._moves[i].i2, _board._moves[i].j2, i, _board.get_color(), -1.0, move_color(_board._nodes_children[i], sum_nodes), true, _board._eval_children[i], mate, i == best_move);
+	}
+}
