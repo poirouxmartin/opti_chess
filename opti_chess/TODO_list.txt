@@ -280,9 +280,11 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Constructeur de coups à partir d'un string
 -> Passer les fonctions d'évaluation dans evaluation.cpp
 -> Changer tous les play_move(i) en play_move(move)
--> Bugs parfois ça joue pas le bon coup...
 -> Il faut vider l'historique des variantes quand on change de position... faire une méthode pour reset?
-
+-> Mettre plus de choses dans GUI.cpp
+-> Refaire le tri des flèches
+-> Refaire toutes la fonction de dessin de la GUI (notamment pour clarifier les sélections.. puis faire les pre-moves...)
+-> Rajouter 'overwrite' en paramètre de la génération de coups
 
 
 ----- Interface utilisateur -----
