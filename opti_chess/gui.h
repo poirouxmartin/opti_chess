@@ -133,17 +133,11 @@ static bool board_orientation = true;
 // Position de la souris
 static Vector2 mouse_pos;
 
-// Position de la case cliquée
-static pair<int, int> clicked_pos = { -1, -1 };
-
 // Position de la case cliquée (droit)
 static pair<int, int> right_clicked_pos = { -1, -1 };
 
 // La souris est-elle cliquée
 static bool clicked = false;
-
-// Pièce sélectionnée de la case cliquée
-static pair<int, int> selected_pos = { -1, -1 };
 
 // Cases surlignées
 static int highlighted_array[8][8]{ {0, 0, 0, 0, 0, 0, 0, 0},
@@ -157,9 +151,6 @@ static int highlighted_array[8][8]{ {0, 0, 0, 0, 0, 0, 0, 0},
 
 // Calcul du nombre de noeuds visités
 static int visited_nodes;
-
-// Vecteur des flèches de GrogrosZero : coordonnées du coup + indice du coup
-static vector<vector<int>> grogros_arrows;
 
 // Calcul de temps
 static clock_t begin_time;
@@ -404,6 +395,15 @@ public:
 	// Faut-il actualiser la GUI au niveau des variantes?
 	bool _update_variants = false;
 
+	// Position sélectionnée sur la GUI
+	Pos _selected_pos = Pos(-1, -1);
+
+	// Position cliquée sur la GUI
+	Pos _clicked_pos = Pos(-1, -1);
+
+	// Vecteur des flèches de GrogrosZero : vecteur de coups
+	vector<Move> grogros_arrows;
+
 
 	// TODO : Threads (pour la parallélisation)
 
@@ -465,6 +465,9 @@ public:
 
 	// Fonction qui retire le dernier coup du PGN
 	bool remove_last_move_PGN();
+
+	// Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo
+	void draw_monte_carlo_arrows() const;
 };
 
 // Instantiation de la GUI globale

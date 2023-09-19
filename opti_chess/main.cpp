@@ -407,7 +407,7 @@ int main() {
 		// P - Joue le coup recommandé par l'algorithme de GrogrosZero
 		if (!IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_P)) {
 			if (main_GUI._board._tested_moves > 0)
-				((main_GUI._click_bind && main_GUI._board.click_i_move(main_GUI._board.best_monte_carlo_move(), get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false, false);
+				((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false, false);
 			else
 				cout << "no more moves are in memory" << endl;
 		}
@@ -415,7 +415,7 @@ int main() {
 		// LShift-P - Joue les coups recommandés par l'algorithme de GrogrosZero
 		if (IsKeyDown(KEY_LEFT_SHIFT) && IsKeyDown(KEY_P)) {
 			if (main_GUI._board._tested_moves > 0)
-				((main_GUI._click_bind && main_GUI._board.click_i_move(main_GUI._board.best_monte_carlo_move(), get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false, false);
+				((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false, false);
 			else
 				cout << "no more moves are in memory" << endl;
 		}
@@ -569,7 +569,7 @@ int main() {
 					int grogros_timed_nodes = min(nodes_per_frame, supposed_grogros_speed * max_move_time / 1000);
 					main_GUI._board.grogros_zero(main_GUI._grogros_eval, min(!main_GUI._time ? nodes_per_frame : grogros_timed_nodes, grogros_nodes - main_GUI._board.total_nodes()), main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
 					if (main_GUI._board._time_monte_carlo >= max_move_time)
-						((main_GUI._click_bind && main_GUI._board.click_i_move(main_GUI._board.best_monte_carlo_move(), get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false, false);
+						((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false, false);
 				}
 				else
 					main_GUI._board.grogros_zero(main_GUI._grogros_eval, nodes_per_frame, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
