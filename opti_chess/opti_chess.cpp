@@ -4328,6 +4328,13 @@ int Board::get_kings_opposition() {
 // Fonction qui affiche la barre d'evaluation
 void draw_eval_bar(const float eval, const string& text_eval, const float x, const float y, const float width, const float height, const float max_eval, const Color white, const Color black, const float max_height) {
 	const bool is_mate = text_eval.find('M') != -1;
+
+	// Coupe l'évaluation à 2 chiffres max
+	// FIXME: ça suppose que l'eval dépasse pas +100
+	string eval_text = is_mate ? text_eval : text_eval.substr(0, min(4, static_cast<int>(text_eval.size())));
+	if (eval_text[eval_text.size() - 1] == '.')
+		eval_text = eval_text.substr(0, eval_text.size() - 1);
+
 	const float max_bar = is_mate ? 1 : max_height;
 	const float switch_color = min(max_bar * height, max((1 - max_bar) * height, height / 2 - eval / max_eval * height / 2));
 	const float static_eval_switch = min(max_bar * height, max((1 - max_bar) * height, height / 2 - main_GUI._board._static_evaluation / max_eval * height / 2));
@@ -4346,11 +4353,11 @@ void draw_eval_bar(const float eval, const string& text_eval, const float x, con
 	const float y_margin = (1 - max_height) / 4;
 	const bool text_pos = (orientation ^ (eval < 0));
 	float t_size = width / 2;
-	Vector2 text_dimensions = MeasureTextEx(text_font, text_eval.c_str(), t_size, font_spacing);
+	Vector2 text_dimensions = MeasureTextEx(text_font, eval_text.c_str(), t_size, font_spacing);
 	if (text_dimensions.x > width)
 		t_size = t_size * width / text_dimensions.x;
-	text_dimensions = MeasureTextEx(text_font, text_eval.c_str(), t_size, font_spacing);
-	DrawTextEx(text_font, text_eval.c_str(), { x + (width - text_dimensions.x) / 2.0f, y + (y_margin + text_pos * (1.0f - y_margin * 2.0f)) * height - text_dimensions.y * text_pos }, t_size, font_spacing, (eval < 0) ? white : black);
+	text_dimensions = MeasureTextEx(text_font, eval_text.c_str(), t_size, font_spacing);
+	DrawTextEx(text_font, eval_text.c_str(), { x + (width - text_dimensions.x) / 2.0f, y + (y_margin + text_pos * (1.0f - y_margin * 2.0f)) * height - text_dimensions.y * text_pos }, t_size, font_spacing, (eval < 0) ? white : black);
 }
 
 // Fonction qui retire les surlignages de toutes les cases
@@ -6318,7 +6325,7 @@ int Board::get_king_proximity()
 int Board::get_rook_activity() const
 {
 	// Cas de figure:
-	// 1. Tour enfermée par le roi: mobilité < 3 -> malus (encore plus grand si le roi ne peut pas roquer) /= mobilité
+	// 1. Tour enfermée par le roi: mobilité < 4 -> malus (encore plus grand si le roi ne peut pas roquer) /= mobilité
 	// 2. L'activité dépend surtout de la mobilité verticale (distance au pion le plus proche devant)
 
 	constexpr int trapped_rook_malus = 250;
@@ -6374,7 +6381,7 @@ int Board::get_rook_activity() const
 				}
 
 				// Malus pour tour enfermée par le roi (si le tour est plus proche du bord que le roi)
-				if ((h_mobility + v_mobility) < 3 && _white_king_pos.i == i && abs(_white_king_pos.j - j) < 4 && min(_white_king_pos.j, 7 - _white_king_pos.j) > min((int)j, 7 - j))
+				if ((h_mobility + v_mobility) < 4 && _white_king_pos.i == i && abs(_white_king_pos.j - j) < 4 && min(_white_king_pos.j, 7 - _white_king_pos.j) > min((int)j, 7 - j))
 					activity -= trapped_rook_malus;
 
 				// Bonus pour la mobilité verticale
@@ -6426,7 +6433,7 @@ int Board::get_rook_activity() const
 				}
 
 				// Malus pour tour enfermée par le roi
-				if ((h_mobility + v_mobility) < 3 && _black_king_pos.i == i && abs(_black_king_pos.j - j) < 4 && min(_black_king_pos.j, 7 - _black_king_pos.j) > min((int)j, 7 - j))
+				if ((h_mobility + v_mobility) < 4 && _black_king_pos.i == i && abs(_black_king_pos.j - j) < 4 && min(_black_king_pos.j, 7 - _black_king_pos.j) > min((int)j, 7 - j))
 					activity += trapped_rook_malus;
 
 				// Bonus pour la mobilité verticale
