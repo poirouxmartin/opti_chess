@@ -1,5 +1,5 @@
 #pragma once
-#include "opti_chess.h"
+#include "board.h"
 #include <vector>
 
 
