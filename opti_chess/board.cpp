@@ -4550,13 +4550,11 @@ bool compare_move_arrows(const int m1, const int m2)
 	const Move move1 = main_GUI._board._moves[m1];
 	const Move move2 = main_GUI._board._moves[m2];
 
-	//return main_GUI._board._nodes_children[m1] > main_GUI._board._nodes_children[m2];
-
 	// Si deux flèches finissent en un même point, affiche en dernier (au dessus), le "meilleur" coup
 	if (move1.i2 == move2.i2 && move1.j2 == move2.j2)
-		return main_GUI._board._nodes_children[m1] > main_GUI._board._nodes_children[m2];
+		return main_GUI._board._nodes_children[m1] < main_GUI._board._nodes_children[m2];
 
-	// Si les deux flèches partent d'un même poin, alors affiche par dessus la flèche la plus courte
+	// Si les deux flèches partent d'un même point, alors affiche par dessus la flèche la plus courte
 	if (move1.i1 == move2.i1 && move1.j1 == move2.j1) {
 		
 		//// Regarde si les flèches vont dans la même direction ou non
