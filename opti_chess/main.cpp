@@ -11,7 +11,7 @@
 void launch_eval() {
 	main_GUI._board.reset_board();
 	main_GUI._board.is_game_over();
-	main_GUI._board.evaluate(main_GUI._eval);
+	main_GUI._board.evaluate(main_GUI._grogros_eval);
 	/*main_GUI._board._quick_sorted_moves = false;
 	main_GUI._board.quick_moves_sort();*/
 	//main_GUI._board.is_controlled(3, 3);
@@ -64,9 +64,6 @@ int main() {
 	// Evaluateur de position
 	Evaluator eval_white(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 	Evaluator eval_black;
-
-	// Evaluateur pour Monte Carlo
-	Evaluator monte_evaluator;
 
 	// Nombre de noeuds max pour le jeu automatique de GrogrosZero
 	int grogros_nodes = 3000000;
@@ -303,7 +300,7 @@ int main() {
 				//main_GUI._board.grogros_zero(nullptr, nodes_per_frame, main_GUI._beta, main_GUI._k_add, false, 0, &grogros_network);
 				false;
 			else
-				main_GUI._board.grogros_zero(&monte_evaluator, nodes_per_frame, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
+				main_GUI._board.grogros_zero(main_GUI._grogros_eval, nodes_per_frame, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
 		}
 
 		// LCTRL-G - Lancement de GrogrosZero en recherche automatique
@@ -355,12 +352,9 @@ int main() {
 
 		// E - Évalue la position et renvoie les composantes dans la console
 		if (IsKeyPressed(KEY_E)) {
-			main_GUI._board.evaluate(&monte_evaluator, true);
+			main_GUI._board.evaluate(main_GUI._grogros_eval, true);
 			cout << "Evaluation : \n" << eval_components << endl;
 		}
-
-		// U - Undo de dernier coup joué
-		IsKeyPressed(KEY_U) && main_GUI._board.undo();
 
 		// Modification des paramètres de recherche de GrogrosZero
 		IsKeyPressed(KEY_KP_ADD) && (main_GUI._beta *= 1.1f);
@@ -407,7 +401,7 @@ int main() {
 		// P - Joue le coup recommandé par l'algorithme de GrogrosZero
 		if (!IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_P)) {
 			if (main_GUI._board._tested_moves > 0)
-				((main_GUI._click_bind && main_GUI._board.click_i_move(main_GUI._board.best_monte_carlo_move(), get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board.best_monte_carlo_move(), true, true, false, false);
+				((main_GUI._click_bind && main_GUI._board.click_i_move(main_GUI._board.best_monte_carlo_move(), get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false, false);
 			else
 				cout << "no more moves are in memory" << endl;
 		}
@@ -415,7 +409,7 @@ int main() {
 		// LShift-P - Joue les coups recommandés par l'algorithme de GrogrosZero
 		if (IsKeyDown(KEY_LEFT_SHIFT) && IsKeyDown(KEY_P)) {
 			if (main_GUI._board._tested_moves > 0)
-				((main_GUI._click_bind && main_GUI._board.click_i_move(main_GUI._board.best_monte_carlo_move(), get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board.best_monte_carlo_move(), true, true, false, false);
+				((main_GUI._click_bind && main_GUI._board.click_i_move(main_GUI._board.best_monte_carlo_move(), get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false, false);
 			else
 				cout << "no more moves are in memory" << endl;
 		}
@@ -567,19 +561,19 @@ int main() {
 						time_to_play_move(main_GUI._time_white, main_GUI._time_black, 0.075f * (1.0f - best_move_percentage)) :
 						time_to_play_move(main_GUI._time_black, main_GUI._time_white, 0.075f * (1.0f - best_move_percentage));
 					int grogros_timed_nodes = min(nodes_per_frame, supposed_grogros_speed * max_move_time / 1000);
-					main_GUI._board.grogros_zero(&monte_evaluator, min(!main_GUI._time ? nodes_per_frame : grogros_timed_nodes, grogros_nodes - main_GUI._board.total_nodes()), main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
+					main_GUI._board.grogros_zero(main_GUI._grogros_eval, min(!main_GUI._time ? nodes_per_frame : grogros_timed_nodes, grogros_nodes - main_GUI._board.total_nodes()), main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
 					if (main_GUI._board._time_monte_carlo >= max_move_time)
-						((main_GUI._click_bind && main_GUI._board.click_i_move(main_GUI._board.best_monte_carlo_move(), get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board.best_monte_carlo_move(), true, true, false, false);
+						((main_GUI._click_bind && main_GUI._board.click_i_move(main_GUI._board.best_monte_carlo_move(), get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false, false);
 				}
 				else
-					main_GUI._board.grogros_zero(&monte_evaluator, nodes_per_frame, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
+					main_GUI._board.grogros_zero(main_GUI._grogros_eval, nodes_per_frame, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
 			}
 
 			// Quand c'est pas son tour
 			if ((!main_GUI._board._player && main_GUI._white_player.substr(0, 12) == "GrogrosZero") || (main_GUI._board._player && main_GUI._black_player.substr(0, 12) == "GrogrosZero")) {
 				if (!monte_buffer._init)
 					monte_buffer.init();
-				main_GUI._board.grogros_zero(&monte_evaluator, nodes_per_user_frame, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
+				main_GUI._board.grogros_zero(main_GUI._grogros_eval, nodes_per_user_frame, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
 			}
 
 			// Mode analyse
@@ -588,9 +582,9 @@ int main() {
 					monte_buffer.init();
 
 				if (!is_playing())
-					main_GUI._board.grogros_zero(&monte_evaluator, nodes_per_frame, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
+					main_GUI._board.grogros_zero(main_GUI._grogros_eval, nodes_per_frame, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
 				else
-					main_GUI._board.grogros_zero(&monte_evaluator, nodes_per_user_frame, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks); // Pour que ça ne lag pas pour l'utilisateur
+					main_GUI._board.grogros_zero(main_GUI._grogros_eval, nodes_per_user_frame, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks); // Pour que ça ne lag pas pour l'utilisateur
 			}
 
 			if (main_GUI._board.is_game_over() != 0)
@@ -626,7 +620,7 @@ int main() {
 				for (int i = 0; i < main_GUI._board._got_moves; i++) {
 					if (main_GUI._board._moves[i].i1 == main_GUI._binding_move[0] && main_GUI._board._moves[i].j1 == main_GUI._binding_move[1] && main_GUI._board._moves[i].i2 == main_GUI._binding_move[2] && main_GUI._board._moves[i].j2 == main_GUI._binding_move[3]) {
 						main_GUI._board.play_move_sound(Move(main_GUI._binding_move[0], main_GUI._binding_move[1], main_GUI._binding_move[2], main_GUI._binding_move[3]));
-						main_GUI._board.play_monte_carlo_move_keep(i, true, true, true, true);
+						main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[i], true, true, true, true);
 						break;
 					}
 				}
