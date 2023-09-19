@@ -153,15 +153,15 @@ int main() {
 			//main_GUI.grogros_zero_threaded(&monte_evaluator, 5000);
 
 			// Teste la vitesse de la fonction d'évaluation
-			cout << "testing eval speed..." << endl;
-			test_function(&launch_eval, 1);
+			//cout << "testing eval speed..." << endl;
+			//test_function(&launch_eval, 1);
 
 			// Teste la vitesse de génération des coups
-			cout << "testing moves generation speed..." << endl;
+			//cout << "testing moves generation speed..." << endl;
 			/*Board b;
 			b.from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
 			b.moves_generation_benchmark(5);*/
-			main_GUI._board.moves_generation_benchmark(6);
+			//main_GUI._board.moves_generation_benchmark(6);
 
 			//	1 move : 20 possible positions.
 			//	2 moves : 400 possible positions.
@@ -173,6 +173,12 @@ int main() {
 			//	8 moves : 84 998 978 956 possible positions.
 			//	9 moves : 2 439 530 234 167 possible positions.
 			//	10 moves : 69 352 859 712 417 possible positions.
+
+
+			// Test de quiescence
+			cout << "testing quiescence..." << endl;
+			cout << main_GUI._board.get_color() * main_GUI._board.quiescence(main_GUI._grogros_eval) << endl;
+			cout << main_GUI._board._quiescence_nodes << endl;
 		}
 
 		// CTRL-T - Cherche le plateau de chess.com sur l'écran, et lance une partie

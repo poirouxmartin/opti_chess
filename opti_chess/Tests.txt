@@ -194,6 +194,7 @@ rnb3r1/pppp2kp/8/3q1R2/8/8/PPP1Q1PP/5RK1 b - - 2 18 : complètement gagnant pour 
 rnb2R2/pppp2kp/8/8/3q4/8/PPP1Q1PP/7K w - - 1 22 : #8
 rnb2R2/ppppQ2p/6k1/8/3q4/8/PPP3PP/7K w - - 3 23 : #7
 rnb5/ppppQ2p/8/5R2/3q2k1/6P1/PPP4P/7K w - - 3 27 : #3
+2kr1bnr/pppqn2p/4b1p1/3pP3/3P1PP1/2N1B3/PPP1B3/R2QK2R w KQ - 4 14 : c'est pièce de plus pour les noirs quand-même
 
 
 
@@ -428,6 +429,7 @@ r4rk1/pp1bbppp/2q1p3/3pPn2/3P4/3B1N2/3BQPPP/R3R1K1 w - - 4 19 : g4 gagne (Ch4, C
 2q2rk1/5ppp/4p3/p2pP1B1/3P4/3B4/4QP1P/6K1 b - - 0 28 : Dc3 gagne
 2r3k1/5ppp/4p3/p2pP1B1/3P4/2qBQ3/5PKP/8 b - - 4 30 : h6 seul coup qui gagne
 r5k1/1pb2pp1/2bp1nnp/4p3/1PP1P3/q3BNNP/2BQ1PP1/1R4K1 w - - 0 26 : Fxh6 gagne
+r2q1rk1/1b3ppp/p7/1p1pnN2/4n3/4N2P/PPB2PP1/R2QR1K1 w - - 0 2 : Cxd5 et Dxd5 gagne
 
 
 

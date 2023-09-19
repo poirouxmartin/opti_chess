@@ -2223,7 +2223,6 @@ void Board::draw_monte_carlo_arrows() const
 		}
 	}
 
-	// BUG : invalid comparator ? (in debug mode)
 	sort(moves_vector.begin(), moves_vector.end(), compare_move_arrows);
 
 	for (const int i : moves_vector) {
@@ -2399,6 +2398,8 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 		cout << "illegal move" << endl;
 		return false;
 	}
+
+	main_GUI._update_variants = true;
 
 	// Cherche le coup dans les plateaux fils
 	int child_index = -1;
@@ -4090,8 +4091,11 @@ void draw_eval_bar(const float eval, const string& text_eval, const float x, con
 	const bool text_pos = (orientation ^ (eval < 0));
 	float t_size = width / 2;
 	Vector2 text_dimensions = MeasureTextEx(text_font, eval_text.c_str(), t_size, font_spacing);
-	if (text_dimensions.x > width)
-		t_size = t_size * width / text_dimensions.x;
+
+	// Largeur que le texte doit occuper
+	float max_text_width = width * 0.9f;
+	if (text_dimensions.x > max_text_width)
+		t_size = t_size * max_text_width / text_dimensions.x;
 	text_dimensions = MeasureTextEx(text_font, eval_text.c_str(), t_size, font_spacing);
 	DrawTextEx(text_font, eval_text.c_str(), { x + (width - text_dimensions.x) / 2.0f, y + (y_margin + text_pos * (1.0f - y_margin * 2.0f)) * height - text_dimensions.y * text_pos }, t_size, font_spacing, (eval < 0) ? white : black);
 }
@@ -4476,7 +4480,7 @@ bool Board::sort_moves() {
 
 // Fonction qui fait un quiescence search
 // TODO améliorer avec un delta pruning
-int Board::quiescence(Evaluator* eval, int alpha, const int beta, const int depth, bool explore_checks, bool main_player)
+int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, bool explore_checks, bool main_player)
 {
 	// Compte le nombre de noeuds visités
 	_quiescence_nodes = 1;
@@ -4492,6 +4496,9 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, const int dept
 	evaluate(eval);
 	const int stand_pat = static_cast<int>(_evaluation) * get_color();
 
+	// Si on est en échec
+	bool check_extension = in_check();
+
 	if (depth == 0)
 		return stand_pat;
 		
@@ -4501,7 +4508,8 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, const int dept
 		return beta;
 
 	// Mise à jour de alpha si l'éval statique est plus grande
-	if (alpha < stand_pat)
+	// Pas de stand_pat si on est en échec
+	if (alpha < stand_pat && !check_extension)
 		alpha = stand_pat;
 
 	// Trie rapidement les coups
@@ -4512,7 +4520,7 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, const int dept
 		// TODO : utiliser des flags
 
 		// Si c'est une capture
-		if (_array[_moves[i].i2][_moves[i].j2] != 0) {
+		if (_array[_moves[i].i2][_moves[i].j2] != 0 || check_extension) {
 			Board b;
 			b.copy_data(*this);
 			b.make_index_move(i);
@@ -4531,6 +4539,7 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, const int dept
 		// TODO : utiliser les flags 'échec' pour savoir s'il faut regarder ce coup
 		else if (explore_checks)
 		{
+			
 			Board b;
 			b.copy_data(*this);
 			b.make_index_move(i);
@@ -4582,18 +4591,32 @@ bool Board::click_i_move(const int i, const bool orientation) const
 
 // Fonction qui compare deux coups pour savoir lequel afficher en premier
 bool compare_move_arrows(const int m1, const int m2) {
+	// TODO le problème de tri vient peut-être du fait que les coups on été triés, et donc ne correspondent pas aux indices des noeuds enfants
+	// FIX utiliser les coups plutôt que leurs indices
+
+	//return true;
+
 	// Si deux flèches finissent en un même point, affiche en dernier (au dessus), le "meilleur" coup
-	if (main_GUI._board._moves[m1].i2 == main_GUI._board._moves[m2].i2 && main_GUI._board._moves[m1].j2 == main_GUI._board._moves[m2].j2)
-		return main_GUI._board._nodes_children[m1] > main_GUI._board._nodes_children[m2];
+	/*if (main_GUI._board._moves[m1].i2 == main_GUI._board._moves[m2].i2 && main_GUI._board._moves[m1].j2 == main_GUI._board._moves[m2].j2)
+		return main_GUI._board._nodes_children[m1] > main_GUI._board._nodes_children[m2];*/
 
-	// Si les deux flèches partent d'un même point (et vont dans la même direction - TODO), alors affiche par dessus la flèche la plus courte
-	if (main_GUI._board._moves[m1].i1 == main_GUI._board._moves[m2].i1 && main_GUI._board._moves[m1].j1 == main_GUI._board._moves[m2].j1) {
-		const int d1 = (main_GUI._board._moves[m1].i1 - main_GUI._board._moves[m1].i2) * (main_GUI._board._moves[m1].i1 - main_GUI._board._moves[m1].i2) + (main_GUI._board._moves[m1].j1 - main_GUI._board._moves[m1].j2) * (main_GUI._board._moves[m1].j1 - main_GUI._board._moves[m1].j2);
-		const int d2 = (main_GUI._board._moves[m2].i1 - main_GUI._board._moves[m2].i2) * (main_GUI._board._moves[m2].i1 - main_GUI._board._moves[m2].i2) + (main_GUI._board._moves[m2].j1 - main_GUI._board._moves[m2].j2) * (main_GUI._board._moves[m2].j1 - main_GUI._board._moves[m2].j2);
-		return d1 > d2;
-	}
+	return main_GUI._board._nodes_children[m1] > main_GUI._board._nodes_children[m2];
 
-	return true;
+	//return true;
+
+	// Si les deux flèches partent d'un même poin, alors affiche par dessus la flèche la plus courte
+	//if (main_GUI._board._moves[m1].i1 == main_GUI._board._moves[m2].i1 && main_GUI._board._moves[m1].j1 == main_GUI._board._moves[m2].j1) {
+	//	
+	//	// Regarde si les flèches vont dans la même direction ou non
+	//	if ((main_GUI._board._moves[m1].j2 - main_GUI._board._moves[m1].j1) / (main_GUI._board._moves[m1].i2 - main_GUI._board._moves[m1].i1) != (main_GUI._board._moves[m1].j2 - main_GUI._board._moves[m1].j1) / (main_GUI._board._moves[m1].i2 - main_GUI._board._moves[m1].i1))
+	//		return true;
+
+	//	const int d1 = (main_GUI._board._moves[m1].i1 - main_GUI._board._moves[m1].i2) * (main_GUI._board._moves[m1].i1 - main_GUI._board._moves[m1].i2) + (main_GUI._board._moves[m1].j1 - main_GUI._board._moves[m1].j2) * (main_GUI._board._moves[m1].j1 - main_GUI._board._moves[m1].j2);
+	//	const int d2 = (main_GUI._board._moves[m2].i1 - main_GUI._board._moves[m2].i2) * (main_GUI._board._moves[m2].i1 - main_GUI._board._moves[m2].i2) + (main_GUI._board._moves[m2].j1 - main_GUI._board._moves[m2].j2) * (main_GUI._board._moves[m2].j1 - main_GUI._board._moves[m2].j2);
+	//	return d1 > d2;
+	//}
+
+	//return true;
 }
 
 // Fonction qui met à jour une text box
