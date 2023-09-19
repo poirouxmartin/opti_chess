@@ -359,7 +359,7 @@ public:
 	bool evaluate(Evaluator* eval = nullptr, bool display = false, Network* n = nullptr);
 
 	// Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-	int negamax(int, int, int, bool, Evaluator*, bool play = false, bool display = false, int quiescence_depth = 0, int null_depth = 2);
+	int negamax(int, int, int, bool, Evaluator*, bool play = false, bool display = false, int quiescence_depth = 8, int null_depth = 2);
 
 	// Grogrosfish
 	bool grogrosfish(int, Evaluator*, bool);

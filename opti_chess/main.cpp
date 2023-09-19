@@ -72,10 +72,10 @@ int main() {
 
 	// Nombre de noeuds calculés par frame
 	// Si c'est sur son tour
-	int nodes_per_frame = 250;
+	int nodes_per_frame = 100;
 
 	// Sur le tour de l'autre (pour que ça plante moins)
-	int nodes_per_user_frame = 50;
+	int nodes_per_user_frame = 25;
 
 
 
