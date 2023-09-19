@@ -38,7 +38,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 
 ----- Structure globale du projet -----
 
--> Séparer les fonctions du fichier opti_chess dans d'autres fichiers (GUI, IA...)
+-> Séparer les fonctions du fichier board dans d'autres fichiers (GUI, IA...)
 -> Faire du ménage dans les fonctions
 -> Faire une classe pour les IA?
 
