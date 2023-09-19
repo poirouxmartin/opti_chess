@@ -153,7 +153,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="board.cpp" />
+    <ClCompile Include="buffer.cpp" />
     <ClCompile Include="evaluation.cpp" />
+    <ClCompile Include="game_tree.cpp" />
+    <ClCompile Include="gui.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="neural_network.cpp" />
     <ClCompile Include="opti_chess.cpp" />
@@ -162,13 +166,17 @@
     <ClCompile Include="windows_tests.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="board.h" />
+    <ClInclude Include="buffer.h" />
     <ClInclude Include="evaluation.h" />
+    <ClInclude Include="game_tree.h" />
     <ClInclude Include="gui.h" />
     <ClInclude Include="neural_network.h" />
     <ClInclude Include="opti_chess.h" />
     <ClInclude Include="time_tests.h" />
     <ClInclude Include="useful_functions.h" />
     <ClInclude Include="windows_tests.h" />
+    <ClInclude Include="zobrist.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="Tests.txt" />
