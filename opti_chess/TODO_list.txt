@@ -278,6 +278,9 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Réduire la valeur des fous?
 -> 6k1/4pp1p/P2p2p1/8/4P3/1P6/5PPP/6K1 b - - 0 26 : il faut améliorer king proximity avec les pions passés: le roi est clairement pas dans le carré
 -> Constructeur de coups à partir d'un string
+-> Passer les fonctions d'évaluation dans evaluation.cpp
+-> Garder le _last_move dans la GUI, pas dans tous les plateaux
+-> Changer tous les play_move(i) en play_move(move)
 
 
 

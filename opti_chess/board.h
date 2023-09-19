@@ -11,7 +11,6 @@
 #include <cstdint>
 #include "raylib.h"
 #include <iomanip>
-//#include "game_tree.h"
 
 using namespace std;
 
@@ -70,9 +69,10 @@ typedef struct Move {
 	uint_fast8_t j1 : 3;
 	uint_fast8_t i2 : 3;
 	uint_fast8_t j2 : 3;
-	bool capture_flag : 1;
-	bool promotion_flag : 1;
-	// Reste 2 bytes à utiliser : check? castling? en passant?
+	//bool capture_flag : 1;
+	//bool promotion_flag : 1;
+	bool is_null : 1;
+	// Reste 2 bytes à utiliser : check? castling? en passant? is null?
 
 	bool operator== (const Move& other) const {
 		return (i1 == other.i1) && (j1 == other.j1) && (i2 == other.i2) && (j2 == other.j2);
@@ -88,6 +88,8 @@ typedef struct Move {
 		return "(" + std::to_string(i1) + ", " + std::to_string(j1) + ") -> (" + std::to_string(i2) + ", " + std::to_string(j2) + ")";
 	}
 };
+
+
 
 // Droits de roque (pour optimiser la place mémoire)
 // 1 byte
@@ -219,12 +221,6 @@ public:
 	// Les coups sont-ils triés?
 	bool _sorted_moves = false;
 
-	// Tri rapide
-	bool _quick_sorted_moves = false;
-
-	// Les coups sont-ils pseudo-légaux? (sinon, légaux...)
-	bool _pseudo_moves = false;
-
 	// Tour du joueur (true pour les blancs, false pour les noirs)
 	bool _player = true;
 
@@ -241,14 +237,7 @@ public:
 	uint_fast8_t _half_moves_count = 0;
 
 	// Nombre de coups de la partie
-	short _moves_count = 1;
-
-	// La partie est-elle finie
-	bool _is_game_over = false;
-
-	// Dernier coup joué (coordonnées, pièce) ( *2 pour les roques...)
-	// 10 bytes
-	int_fast8_t _last_move[10] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+	uint_fast16_t _moves_count = 1;
 
 	// Plateau libre ou actif? (pour le buffer)
 	bool _is_active = false;
@@ -273,9 +262,6 @@ public:
 
 	// Est-ce que le plateau a été évalué?
 	bool _evaluated = false;
-
-	// Adresse de l'évaluateur
-	Evaluator* _evaluator = nullptr;
 
 	// Le plateau a t-il été initialisé?
 	bool _new_board = true;
@@ -370,15 +356,6 @@ public:
 	// Grogrosfish
 	bool grogrosfish(int, Evaluator*, bool);
 
-	// Fonction qui revient à la position précédente
-	bool undo(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, int);
-
-	// Une surcharge
-	bool undo();
-
-	// Fonction qui arrange les coups de façon "logique", pour optimiser les algorithmes de calcul
-	void sort_moves(Evaluator*);
-
 	// Fonction qui récupère le plateau d'un FEN
 	void from_fen(string);
 
@@ -416,7 +393,7 @@ public:
 	[[nodiscard]] int best_monte_carlo_move() const;
 
 	// Fonction qui joue le coup après analyse par l'algo de Monte-Carlo, et qui garde en mémoire les infos du nouveau plateau
-	bool play_monte_carlo_move_keep(int, bool keep = true, bool keep_display = false, bool display = false, bool add_to_list = false);
+	bool play_monte_carlo_move_keep(Move move, bool keep = true, bool keep_display = false, bool display = false, bool add_to_list = false);
 
 	// Pas très opti pour l'affichage, mais bon... Fonction qui cherche la profondeur la plus grande dans la recherche de Monté-Carlo
 	[[nodiscard]] int max_monte_carlo_depth() const;
@@ -503,7 +480,7 @@ public:
 	[[nodiscard]] int select_uct(float c = 0.5f) const;
 
 	// Fonction qui fait un tri rapide des coups (en plaçant les captures en premier)
-	bool quick_moves_sort();
+	bool sort_moves();
 
 	// Fonction qui fait un quiescence search
 	int quiescence(Evaluator* eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool explore_checks = true, bool main_player = true);
