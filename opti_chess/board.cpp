@@ -926,7 +926,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 	_evaluated = true;
 
 	// Met à jour l'évaluation statique
-	_static_evaluation = static_cast<int>(_evaluation);
+	_static_evaluation = _evaluation;
 
 	// Partie non finie
 	return false;
@@ -1932,7 +1932,7 @@ bool Board::draw() {
 
 	// Analyse de Monte-Carlo
 	string monte_carlo_text = static_cast<string>(main_GUI._grogros_analysis ? "stop GrogrosZero-Auto (CTRL-H)" : "run GrogrosZero-Auto (CTRL-G)") + "\n\nMonte-Carlo research parameters:\nbeta: " + to_string(main_GUI._beta) + " | k_add: " + to_string(main_GUI._k_add) + "\nquiescence depth: " + to_string(main_GUI._quiescence_depth) + " | explore checks: " + (main_GUI._explore_checks ? "true" : "false");
-	if (_tested_moves && drawing_arrows && (_monte_called || true)) {
+	if (_tested_moves && drawing_arrows) {
 		// int best_eval = (_player) ? max_value(_eval_children, _tested_moves) : min_value(_eval_children, _tested_moves);
 		int best_move = max_index(_nodes_children, _tested_moves);
 		int best_eval = _eval_children[best_move];
@@ -1975,7 +1975,7 @@ bool Board::draw() {
 		static string monte_carlo_variants;
 
 		// Calcul des variantes
-		if (_monte_called) {
+		if (main_GUI._update_variants) {
 			bool next_variant = false;
 			monte_carlo_variants = "";
 			vector<int> v(sort_by_nodes());
@@ -2001,7 +2001,7 @@ bool Board::draw() {
 				// Ici aussi y'a qq chose qui ralentit, mais quoi?...
 				monte_carlo_variants += "eval: " + eval + " | " + to_string(_moves_count) + (_player ? ". " : "... ") + move_label_from_index(i) + variant_i + " | (" + int_to_round_string(_nodes_children[i]) + "N - " + to_string(100.0 * _nodes_children[i] / n_nodes).substr(0, 5) + "%)";
 			}
-			_monte_called = false;
+			main_GUI._update_variants = false;
 		}
 
 		// Affichage des variantes
@@ -2400,12 +2400,25 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 		return false;
 	}
 
+	// Cherche le coup dans les plateaux fils
+	int child_index = -1;
+	Board child_board(*this);
+	child_board.make_index_move(m);
+
+	for (int i = 0; i < _tested_moves; i++) {
+		if (child_board == monte_buffer._heap_boards[_index_children[i]]) {
+			child_index = i;
+			break;
+		}
+	}
+
+
 	// Pour la GUI
 	main_GUI._last_move = move;
 
 
 	// Si le coup a été calculé par l'algo de Monte-Carlo
-	if (m < _tested_moves) {
+	if (child_index != -1) {
 		if (keep_display) {
 			play_index_move_sound(m);
 			Board b(*this);
@@ -2414,13 +2427,13 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 
 		// Deletes all the children from the other boards
 		for (int i = 0; i < _tested_moves; i++)
-			if (i != m) {
+			if (i != child_index) {
 				if (_is_active)
 					monte_buffer._heap_boards[_index_children[i]].reset_all();
 			}
 
 		if (_is_active) {
-			const Board* b = &monte_buffer._heap_boards[_index_children[m]];
+			const Board* b = &monte_buffer._heap_boards[_index_children[child_index]];
 			reset_board();
 			*this = *b;
 			main_GUI.update_time();
@@ -2432,8 +2445,7 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 
 	// Sinon, joue simplement le coup
 	else {
-		if (_got_moves == -1)
-			get_moves(true);
+		cout << "toto" << endl;
 
 		if (m < _got_moves) {
 			if (_is_active)
@@ -2467,7 +2479,7 @@ int Board::max_monte_carlo_depth() const
 void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const float k_add, const int quiescence_depth, const bool explore_checks, const bool display, const int depth, Network* net, int correction)
 {
 	// Pour la GUI
-	_monte_called = true;
+	main_GUI._update_variants = true;
 
 	// Pour le buffer
 	_is_active = true;
@@ -2619,7 +2631,6 @@ void Board::reset_board(const bool display) {
 	_current_move = 0;
 	_evaluated = false;
 	_game_over_checked = false;
-	_monte_called = true;
 	_time_monte_carlo = 0;
 	_static_evaluation = 0;
 	_evaluation = 0;
@@ -5886,4 +5897,25 @@ int Board::get_rook_activity() const
 	}
 
 	return activity;
+}
+
+
+// Opérateur d'égalité (compare seulement le placement des pièces, droits de roques, et l'en passant)
+bool Board::operator== (const Board& b) const
+{
+	// Comparaison des pièces
+	for (uint_fast8_t i = 0; i < 8; i++)
+		for (uint_fast8_t j = 0; j < 8; j++)
+			if (_array[i][j] != b._array[i][j])
+				return false;
+
+	// Comparaison des droits de roques
+	/*if (_castling_rights != b._castling_rights)
+		return false;*/
+
+	// Comparaison de l'en passant
+	/*if (_en_passant_col != b._en_passant_col)
+		return false;*/
+
+	return true;
 }
