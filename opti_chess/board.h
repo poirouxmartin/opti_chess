@@ -269,9 +269,6 @@ public:
 	// Pour l'affichage
 	int _static_evaluation = 0;
 
-	// Paramètres pour éviter de tout recalculer pour le draw() avec les stats de Monte-Carlo
-	bool _monte_called = false;
-
 	// Temps passé sur l'anayse de Monte-Carlo
 	clock_t _time_monte_carlo = 0;
 
@@ -298,6 +295,9 @@ public:
 
 	// Constructeur de copie
 	Board(const Board&);
+
+	// Opérateur d'égalité (compare seulement le placement des pièces, droits de roques, et nombre de coups)
+	bool operator== (const Board&) const;
 
 	// Fonction qui copie les attributs d'un plateau
 	void copy_data(const Board&);

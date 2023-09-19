@@ -29,6 +29,9 @@ class GameTreeNode {
 
 	// Affichage de l'arbre
 	string tree_display();
+
+	// Reset (ne pas oublier de vider la mémoire)
+	void reset();
 };
 
 
@@ -53,4 +56,6 @@ class GameTree {
 	// Sélection du noeud précédent
 	void select_previous_node();
 
+	// Destructeur
+	~GameTree();
 };

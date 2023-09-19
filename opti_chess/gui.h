@@ -401,6 +401,9 @@ public:
 	// Dernier coup joué
 	Move _last_move = Move(0, 0, 0, 0, true);
 
+	// Faut-il actualiser la GUI au niveau des variantes?
+	bool _update_variants = false;
+
 
 	// TODO : Threads (pour la parallélisation)
 
