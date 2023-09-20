@@ -278,6 +278,7 @@ public:
 	clock_t _time_monte_carlo = 0;
 
 	// Avancement de la partie
+	// TODO changer en uint_fast8_t
 	float _adv = 0.0f;
 	bool _advancement = false;
 

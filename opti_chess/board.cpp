@@ -2122,7 +2122,8 @@ int orientation_index(const int i) {
 }
 
 // A partir de coordonnées sur le plateau
-void draw_arrow_from_coord(int i1, int j1, int i2, int j2, int index, const int color, float thickness, Color c, const bool use_value, int value, const int mate, const bool outline) {
+void draw_arrow_from_coord(int i1, int j1, int i2, int j2, int index, const int color, float thickness, Color c, const bool use_value, int value, const int mate, const bool outline)
+{
 	if (thickness == -1.0f)
 		thickness = arrow_thickness;
 
@@ -3121,7 +3122,7 @@ int Board::is_eval_mate(const int e) const
 	int abs_eval = abs(e);
 
 	if (10 * abs_eval > mate_value) {
-		int mate_moves = (mate_value - abs_eval - _moves_count * mate_ply) * (e > 0 ? 1 : -1) / mate_ply + (_player && e > 0);
+		int mate_moves = static_cast<int>(mate_value - abs_eval - _moves_count * mate_ply) * (e > 0 ? 1 : -1) / mate_ply + (_player && e > 0);
 		return mate_moves != 0 ? mate_moves : 1;
 	}
 	else
