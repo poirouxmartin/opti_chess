@@ -2728,7 +2728,7 @@ int Board::get_king_safety() {
 	// Facteurs multiplicatifs
 	constexpr float piece_attack_factor = 1.0f;
 	constexpr float piece_defense_factor = 1.25f;
-	constexpr float pawn_protection_factor = 1.25f;
+	constexpr float pawn_protection_factor = 1.5f;
 
 
 	// -------------------------------------
@@ -2881,7 +2881,7 @@ int Board::get_king_safety() {
 	b_king_protection += (_castling_rights.k_b + _castling_rights.q_b) * castling_rights_protection;
 
 	// Niveau de protection auquel on peut considérer que le roi est safe
-	const int king_base_protection = 600 * (1 - _adv);
+	const int king_base_protection = 1000 * (1 - _adv);
 	w_king_protection -= king_base_protection;
 	b_king_protection -= king_base_protection;
 
@@ -2908,7 +2908,7 @@ int Board::get_king_safety() {
 
 
 	// Mobilité virtuelle du roi
-	constexpr int virtual_mobility_danger = 100;
+	constexpr int virtual_mobility_danger = 125;
 	w_king_weakness += virtual_mobility_danger * get_king_virtual_mobility(true) * (1 - _adv);
 	b_king_weakness += virtual_mobility_danger * get_king_virtual_mobility(false) * (1 - _adv);
 
@@ -2958,7 +2958,7 @@ int Board::get_king_safety() {
 
 	// Potentiel d'attaque de chaque pièce (pion, caval, fou, tour, dame)
 	static constexpr int attack_potentials[6] = { 1, 25, 28, 30, 100, 0 };
-	constexpr int reference_mating_potential = 50; // Matériel minimum pour mater
+	constexpr int reference_mating_potential = 85; // Matériel minimum pour mater
 	constexpr int reference_potential = 274 - reference_mating_potential; // Si y'a toutes les pièces de base sur l'échiquier
 
 	int w_total_potential = 0;
@@ -2975,6 +2975,12 @@ int Board::get_king_safety() {
 
 	w_total_potential = max(0, w_total_potential - reference_mating_potential);
 	b_total_potential = max(0, b_total_potential - reference_mating_potential);
+
+	float potential_factor = 1.5f;
+
+	w_total_potential *= potential_factor;
+	b_total_potential *= potential_factor;
+
 
 	// Le surnombre peut aussi provoquer une faiblesse sur le roi adverse -> TODO : king_weakness à modifier si attacking power est grand? -> au dessus d'une constante?
 
@@ -3466,10 +3472,10 @@ int Board::get_pawn_structure(float display_factor) const
 	static const int passed_pawns[8] = { 0, 50, 50, 100, 165, 250, 300, 0 };
 
 	// Pion passé - chemin controllé par une pièce adverse
-	static const int controlled_passed_pawn[8] = { 0, 40, 50, 65, 80, 120, 150, 0 };
+	static const int controlled_passed_pawn[8] = { 0, 45, 50, 75, 100, 135, 200, 0 };
 
 	// Pion passé bloqué
-	static const int blocked_passed_pawn[8] = { 0, 30, 35, 40, 50, 75, 100, 0 };
+	static const int blocked_passed_pawn[8] = { 0, 40, 45, 65, 80, 120, 150, 0 };
 
 
 	constexpr float passed_adv_factor = 2.0f; // En fonction de l'advancement de la partie
@@ -3572,7 +3578,7 @@ int Board::get_pawn_structure(float display_factor) const
 	// Pions connectés
 	// Un pion est dit connecté, s'il y a un pion de la même couleur sur une colonne adjacente sur la même rangée ou la rangée inférieure
 	constexpr int connected_pawns[8] = { 0, 20, 30, 50, 75, 100, 150, 0 };
-	constexpr float connected_pawns_factor = 1.0f; // En fonction de l'advancement de la partie
+	constexpr float connected_pawns_factor = 0.5f; // En fonction de l'advancement de la partie
 	const float connected_pawns_adv = 1 * (1 + (connected_pawns_factor - 1) * _adv);
 
 	int connected_pawns_value = 0;
@@ -4299,7 +4305,7 @@ int Board::get_square_controls() const
 			total_control += (white_controls[i][j] - black_controls[i][j]) * square_controls[i][j];
 
 	// L'importance de ce paramètre dépend de l'avancement de la partie : l'espace est d'autant plus important que le nombre de pièces est grand
-	constexpr float control_adv_factor = -1.0f; // En fonction de l'advancement de la partie
+	constexpr float control_adv_factor = -0.5f; // En fonction de l'advancement de la partie
 
 	return total_control * max(0.0f, (1 + (control_adv_factor - 1) * _adv));
 }
