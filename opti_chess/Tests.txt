@@ -197,6 +197,13 @@ rnb5/ppppQ2p/8/5R2/3q2k1/6P1/PPP4P/7K w - - 3 27 : #3
 2kr1bnr/pppqn2p/4b1p1/3pP3/3P1PP1/2N1B3/PPP1B3/R2QK2R w KQ - 4 14 : c'est pièce de plus pour les noirs quand-même
 r1q2rk1/pp3pp1/2pp1n1p/4p3/4P1P1/1PNPP2P/1PP3Q1/R4RK1 w - - 2 15 : Txf6 il faut faire
 r4k1r/pp3p2/2ppqp1p/4p2N/4P1P1/1P1PP2P/1PP2Q2/5RK1 b - - 9 20 : les blancs sont mieux ici
+3qkbnr/rp3ppp/pNb1p3/2Pp4/3B4/3B1Q2/PPP2PPP/R3K2R b KQk - 2 12 : c'est complètement gagnant pour les blancs; les pièces noires sont trop mal placées (voir Ta7)
+2krr3/ppp2p1p/5qp1/3n1b2/P1N2p2/1PnP1N1P/2Q1P1P1/2R1KB1R b K - 0 18 : les noirs sont foutus
+r2qk2r/1b1nbp2/2p1p3/1p1pP2p/1P4pP/3NP1B1/P3BPP1/R2Q1RK1 w kq - 4 18 : ici c'est les blancs qui sont mieux
+4k2r/1b1n1p2/2p1p3/1P1pP2p/1P4pq/3NP3/4BPP1/Q4RK1 b k - 0 21 : là les blancs sont étonnamment gagnants
+4k2r/Qb1n1p2/2p1p3/1P1pP2p/1P6/3NP1q1/4B1P1/5RK1 b k - 1 23 : pièces noires trop mal placées
+rnb4Q/pppp3p/6qk/8/8/8/PPP2RPP/6K1 b - - 0 24 : mieux pour les blancs
+r2qr1k1/p1p2ppp/5n2/2Qp1b2/3P4/2P2P2/P3P1PP/R1B1KB1R w KQ - 1 13 : ici g4 est une grosse erreur stratégique
 
 
 
@@ -432,6 +439,10 @@ r4rk1/pp1bbppp/2q1p3/3pPn2/3P4/3B1N2/3BQPPP/R3R1K1 w - - 4 19 : g4 gagne (Ch4, C
 2r3k1/5ppp/4p3/p2pP1B1/3P4/2qBQ3/5PKP/8 b - - 4 30 : h6 seul coup qui gagne
 r5k1/1pb2pp1/2bp1nnp/4p3/1PP1P3/q3BNNP/2BQ1PP1/1R4K1 w - - 0 26 : Fxh6 gagne
 r2q1rk1/1b3ppp/p7/1p1pnN2/4n3/4N2P/PPB2PP1/R2QR1K1 w - - 0 2 : Cxd5 et Dxd5 gagne
+2r2rk1/pp1b1pp1/3b4/4pP1Q/3pP2N/7P/qP4B1/2R2R1K w - - 0 25 : f6 gagne
+2kr3r/pp4pp/1bn1p1n1/1QNpPq2/3P1p2/2P2NP1/5P1P/R1B2RK1 w - - 2 21 : Txa7 gagne
+8/8/1rB4R/2K2p2/5kpp/8/8/8 b - - 1 50 : Txd3 gagne
+1k1r3r/pp3p2/1q1p1b2/1b1PnP2/4PNP1/1BB5/PP4K1/2RQ2R1 b - - 8 28 : De3 #9 (crée un réseau de mat)
 
 
 

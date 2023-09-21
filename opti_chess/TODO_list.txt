@@ -138,6 +138,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Colonnes fermées -> tour mauvaises. Si beaucoup de colonnes ouvertes, bonus pour les tours. Pareil pour les diagonales et les fous
 	- Mauvais fous (pour les nerf un peu quand y'a beauoup de pions de la même couleur)
 	- Pions passés: prendre en compte les contrôles des alliés pour pousser les pions
+	- Règle des 2 faiblesses : si y'a 2 faiblesses attaquables, ça donne un avantage
 
 -> Faire une policy pour les coups (ou des préférences de réflexion)
 -> Livres d'ouvertures, tables d'engame?
@@ -285,6 +286,10 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Refaire le tri des flèches
 -> Refaire toutes la fonction de dessin de la GUI (notamment pour clarifier les sélections.. puis faire les pre-moves..., draw arrow...)
 -> Rajouter 'overwrite' en paramètre de la génération de coups
+-> Ne pas jouer le coup quand un autre est en train de devenir meilleur?
+-> Changer l'activité des pièces? -> Faire comme pour les tours, regarder en fonctions des pions qu'il y a devant?
+-> Punir la perte des droits de roques -> si le roi est au milieu
+-> Structure de pions (connected -> -?)
 
 
 ----- Interface utilisateur -----
