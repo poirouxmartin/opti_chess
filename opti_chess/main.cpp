@@ -566,6 +566,11 @@ int main() {
 					int max_move_time = main_GUI._board._player ?
 						time_to_play_move(main_GUI._time_white, main_GUI._time_black, 0.075f * (1.0f - best_move_percentage)) :
 						time_to_play_move(main_GUI._time_black, main_GUI._time_white, 0.075f * (1.0f - best_move_percentage));
+					// On veut être sûr de jouer le meilleur coup de Grogros
+					// Si il y a un meilleur coup que celui avec le plus de noeuds, attendre...
+					bool wait_for_best_move = main_GUI._board._eval_children[main_GUI._board.best_monte_carlo_move()] * main_GUI._board.get_color() < main_GUI._board._evaluation * main_GUI._board.get_color();
+					max_move_time = wait_for_best_move ? max_move_time : max_move_time * 0.5f;
+
 					int grogros_timed_nodes = min(nodes_per_frame, supposed_grogros_speed * max_move_time / 1000);
 					main_GUI._board.grogros_zero(main_GUI._grogros_eval, min(!main_GUI._time ? nodes_per_frame : grogros_timed_nodes, grogros_nodes - main_GUI._board.total_nodes()), main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
 					if (main_GUI._board._time_monte_carlo >= max_move_time)
