@@ -443,6 +443,8 @@ r2q1rk1/1b3ppp/p7/1p1pnN2/4n3/4N2P/PPB2PP1/R2QR1K1 w - - 0 2 : Cxd5 et Dxd5 gagn
 2kr3r/pp4pp/1bn1p1n1/1QNpPq2/3P1p2/2P2NP1/5P1P/R1B2RK1 w - - 2 21 : Txa7 gagne
 8/8/1rB4R/2K2p2/5kpp/8/8/8 b - - 1 50 : Txd3 gagne
 1k1r3r/pp3p2/1q1p1b2/1b1PnP2/4PNP1/1BB5/PP4K1/2RQ2R1 b - - 8 28 : De3 #9 (crée un réseau de mat)
+r1bq1rk1/2p2p2/p2p1n2/1pb1p1B1/4P3/1P1P3P/1PP2PP1/RN1Q1RK1 b - - 0 14 : Rh7 gagne
+r4rk1/1pq2p2/p3bp1p/8/B2p4/3P4/PPPN1PPb/R2QR2K w - - 0 16 : g3 gagne
 
 
 
