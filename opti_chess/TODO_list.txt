@@ -290,6 +290,8 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Changer l'activité des pièces? -> Faire comme pour les tours, regarder en fonctions des pions qu'il y a devant?
 -> Punir la perte des droits de roques -> si le roi est au milieu
 -> Structure de pions (connected -> -?)
+-> King safety en endgame -> wtf parfois
+-> 7k/4r3/5pBP/p1n5/P6P/1P2PK2/5P2/8 b - - 3 51 : king safety??????
 
 
 ----- Interface utilisateur -----
@@ -382,6 +384,8 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Vérifier qu'il n'y a pas d'int overflow dans la sélection des coups (softmax...)
 -> rnb2bnr/pppp1k1p/5q2/8/5p2/2N1BQ2/PPP3PP/R4RK1 b - - 3 11 : il évalue mal, et teste les coups 1 par 1 et se rend compte que ça va pas... beaucoup trop lent à ré évaluer la position correctement.
 -> Changer l'affichage du plateau en fonction de l'arbre de jeu, et le fils principal (surligner le coup)
+-> Barre d'éval : afficher l'éval du coup le plus recherché par l'IA? ou éval du "meilleur coup"?
+-> Time management: faire en fonction de la différence entre le meilleur coup et les autres pour jouer plus vite? Debug pour voir si tout fonctionne bien
 
 
 
