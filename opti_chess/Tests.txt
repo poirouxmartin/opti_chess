@@ -212,6 +212,7 @@ r3r1k1/b1pbqp1n/2pp3p/p5p1/2NNP3/2P3BP/PP3PP1/R2QR1K1 w - - 4 18 : tour en face 
 rn1q1bn1/pp2k3/2p1b2r/8/4Q3/4P3/PPP2PPP/RNB1K2R w KQ - 1 14 : les noirs sont gagnants: y a pas assez de pièces pour attaquer le roi blanc
 2kr3r/pp1n1p2/4p3/q1pPPn2/4Q2p/5B2/P4PPP/2RR2K1 b - - 1 21 : lignes ouvertes sur le roi -> position à peu près égale malgré la pièce de moins
 r2qk2r/ppp2ppp/2nbpn2/3p1b2/3P4/N1P2NP1/PP2PPBP/R1BQ1RK1 b kq - 3 7 : ici il faut faire Fxa3 et casser la structure des blancs, puis suivre avec Ce4 sur l'outpost pour taper
+r3k2r/ppp1npp1/2np3q/2b1p3/2B1P1p1/1QPP1N2/PP1N1PP1/R1B2RK1 w kq - 2 11 : #5 pour les noirs
 
 
 
@@ -467,6 +468,7 @@ r1bqk2r/ppp1bppp/5n2/3P1nN1/2Bp4/2P5/PP3PPP/RNBQ1RK1 w kq - 2 9 : Cxf7 gagne
 r1r3k1/pppB3p/8/4bp1Q/6P1/7P/Pq3B2/R4bK1 w - - 0 27 : Fe6+ gagne
 8/3k2p1/ppqpppBr/3N3P/2P5/8/1P2QP2/1K1R3R w - - 1 29 : Dxe6+ #7
 8/1P3pk1/5n2/p6p/Pr6/5B1b/4P3/2R1K3 w - - 0 37 : Tc5 fait nulle (pour Fc6 Tb5)
+r3k2r/ppp1npp1/2np1q2/2b1p3/2B1P1p1/1QPP1N2/PP1N1PP1/R1B2RK1 b kq - 1 10 : Dh6 #6
 
 
 
