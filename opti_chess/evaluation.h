@@ -33,7 +33,7 @@ public:
 	int _pieces_value_begin[6] = { 82, 335, 340, 460, 980, 0 };
 
 	// Valeurs en fin de partie
-	int _pieces_value_end[6] = { 90, 360, 410, 610, 1070, 0 };
+	int _pieces_value_end[6] = { 90, 380, 410, 610, 1070, 0 };
 
 	// Positionnement des pièces
 

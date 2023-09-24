@@ -204,6 +204,14 @@ r2qk2r/1b1nbp2/2p1p3/1p1pP2p/1P4pP/3NP1B1/P3BPP1/R2Q1RK1 w kq - 4 18 : ici c'est
 4k2r/Qb1n1p2/2p1p3/1P1pP2p/1P6/3NP1q1/4B1P1/5RK1 b k - 1 23 : pièces noires trop mal placées
 rnb4Q/pppp3p/6qk/8/8/8/PPP2RPP/6K1 b - - 0 24 : mieux pour les blancs
 r2qr1k1/p1p2ppp/5n2/2Qp1b2/3P4/2P2P2/P3P1PP/R1B1KB1R w KQ - 1 13 : ici g4 est une grosse erreur stratégique
+r2q1rk1/b1p2ppp/2ppbn2/p3p3/3PP3/2P2N1P/PP3PP1/RNBQR1K1 b - - 0 11 : il faut buff les caval, parce que sinon il pense que les noirs sont mieux
+r2q1rk1/b1pb1ppp/2pp1n2/p7/3NP3/2P4P/PP3PP1/RNBQR1K1 w - - 1 13 : Fg5 fort -> clouage
+r3r1k1/b1pbqp1n/2pp3p/p5p1/2NNP3/2P3BP/PP3PP1/R2QR1K1 w - - 4 18 : tour en face de la dame, faut envoyer e5
+1r2r1k1/2p3qn/2b4p/p2pPNpQ/3P4/6BP/PP2RPP1/6K1 b - - 0 25 : les blancs sont gagnants: toutes les pièces sont en attaque
+1r2r2k/2p1RQ2/2b2P1q/p2p2p1/3P4/6BP/PP3PP1/6K1 b - - 3 29 : pareil
+rn1q1bn1/pp2k3/2p1b2r/8/4Q3/4P3/PPP2PPP/RNB1K2R w KQ - 1 14 : les noirs sont gagnants: y a pas assez de pièces pour attaquer le roi blanc
+2kr3r/pp1n1p2/4p3/q1pPPn2/4Q2p/5B2/P4PPP/2RR2K1 b - - 1 21 : lignes ouvertes sur le roi -> position à peu près égale malgré la pièce de moins
+r2qk2r/ppp2ppp/2nbpn2/3p1b2/3P4/N1P2NP1/PP2PPBP/R1BQ1RK1 b kq - 3 7 : ici il faut faire Fxa3 et casser la structure des blancs, puis suivre avec Ce4 sur l'outpost pour taper
 
 
 
@@ -445,7 +453,20 @@ r2q1rk1/1b3ppp/p7/1p1pnN2/4n3/4N2P/PPB2PP1/R2QR1K1 w - - 0 2 : Cxd5 et Dxd5 gagn
 1k1r3r/pp3p2/1q1p1b2/1b1PnP2/4PNP1/1BB5/PP4K1/2RQ2R1 b - - 8 28 : De3 #9 (crée un réseau de mat)
 r1bq1rk1/2p2p2/p2p1n2/1pb1p1B1/4P3/1P1P3P/1PP2PP1/RN1Q1RK1 b - - 0 14 : Rh7 gagne
 r4rk1/1pq2p2/p3bp1p/8/B2p4/3P4/PPPN1PPb/R2QR2K w - - 0 16 : g3 gagne
-
+r4rk1/p4ppp/2pb4/2pp4/5Nb1/1P1B2P1/PBPP1Q1q/R3KR2 b Q - 0 17 : Te8+ gagne
+r3r1k1/p4ppp/2pb4/2pp4/5Nb1/1P4P1/PBPPBQ1q/R3KR2 b Q - 2 18 : Txe2+	gagne
+rnbq1br1/ppp1n1kp/3p1Np1/4Q3/2B1P3/8/PPPP2PP/R1B1K1NR w KQ - 0 1 : Ce8+ (pour Dg5+!!) #5
+r7/3R1p2/1pk1PBp1/2p3R1/4P3/1P3P2/1KQ5/r4q2 w - - 5 40 : Txc5+ #11
+1r2r1k1/2pb2qn/2p4p/p2pPppQ/3P4/4N1BP/PP2RPP1/2R3K1 w - f6 0 24 : Txc6 gagne
+6rk/2p1RQ2/1rb2P1q/p2pB1p1/3P4/7P/PP3PP1/6K1 w - - 6 31 : Dh5!! #5 (#4 si promotion cavalier)
+rnbqkbnr/pp3ppp/2p5/3pN3/4p3/4P3/PPPPBPPP/RNBQK2R b KQkq - 1 5 : Dg5 gagne (Fg4 on échange tout, pour h5 Ce7 et f6 enferme le cheval)
+rnbq1bn1/pp2k3/2p4r/3p4/3QB3/4P3/PPP2PPP/RNB1K2R b KQ - 0 12 : là faut prendre le fou
+r5k1/ppp3pp/2Bqp3/3p4/P2Pn2P/1P6/2PB1rP1/Q3K2R b K - 0 15 : Txd2 #7
+r1bqk2r/ppp1bppp/5n2/3P1nN1/2Bp4/2P5/PP3PPP/RNBQ1RK1 w kq - 2 9 : Cxf7 gagne
+1k1r3r/pp1n1p2/3Pp3/q1p1P3/P2nQ2p/8/4BPPP/2RR2K1 w - - 1 23 : seule façon de tenter de résister un peu: Txd4 cxd4 Ff3 Db6 Tc7 Cc5 Txc5 Tc8 Txc8+ Txc8 h3 (d3 gagne quand-même)
+r1r3k1/pppB3p/8/4bp1Q/6P1/7P/Pq3B2/R4bK1 w - - 0 27 : Fe6+ gagne
+8/3k2p1/ppqpppBr/3N3P/2P5/8/1P2QP2/1K1R3R w - - 1 29 : Dxe6+ #7
+8/1P3pk1/5n2/p6p/Pr6/5B1b/4P3/2R1K3 w - - 0 37 : Tc5 fait nulle (pour Fc6 Tb5)
 
 
 

@@ -488,9 +488,6 @@ public:
 	// Fonction qui fait un quiescence search
 	int quiescence(Evaluator* eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool explore_checks = true, bool main_player = true);
 
-	// Fonction qui renvoie le i-ème coup
-	[[nodiscard]] int* get_i_move(int) const;
-
 	// Fonction qui fait cliquer le coup m
 	[[nodiscard]] bool click_m_move(Move i, bool orientation) const;
 
