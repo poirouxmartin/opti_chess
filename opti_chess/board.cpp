@@ -348,7 +348,7 @@ bool Board::in_check()
 	static constexpr int knight_offsets[8][2] = { {-1, -2}, {-2, -1}, {-2, 1}, {-1, 2}, {1, -2}, {2, -1}, {2, 1}, {1, 2} };
 	// TODO : regrouper avec ceux des autres fonctions?
 
-	static const int enemy_knight = 2 + _player * 6;
+	const int enemy_knight = 2 + _player * 6;
 
 	for (int k = 0; k < 8; k++) {
 
@@ -2417,8 +2417,6 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 
 	// Sinon, joue simplement le coup
 	else {
-		cout << "toto" << endl;
-
 		if (m < _got_moves) {
 			if (_is_active)
 				reset_all();
