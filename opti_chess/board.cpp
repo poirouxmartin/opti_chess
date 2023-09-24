@@ -345,14 +345,24 @@ bool Board::in_check()
 	//return attacked(king_i, king_j);
 
 	// Regarde les potentielles attaques de cavalier
-	constexpr int knight_offsets[8][2] = { {-1, -2}, {-2, -1}, {-2, 1}, {-1, 2}, {1, -2}, {2, -1}, {2, 1}, {1, 2} };
-	// TODO : mettre en static? et regrouper avec ceux des autres fonctions?
+	static constexpr int knight_offsets[8][2] = { {-1, -2}, {-2, -1}, {-2, 1}, {-1, 2}, {1, -2}, {2, -1}, {2, 1}, {1, 2} };
+	// TODO : regrouper avec ceux des autres fonctions?
+
+	static const int enemy_knight = 2 + _player * 6;
 
 	for (int k = 0; k < 8; k++) {
+
+		// Si le cavalier est hors du plateau, on passe
 		const int ni = king_i + knight_offsets[k][0];
+		if (!is_in(ni, 0, 7))
+			continue;
+
+		const int nj = king_j + knight_offsets[k][1];
+		if (!is_in(nj, 0, 7))
+			continue;
 
 		// S'il y a un cavalier qui attaque, renvoie vrai (en échec)
-		if (const int nj = king_j + knight_offsets[k][1]; ni >= 0 && ni < 8 && nj >= 0 && nj < 8 && _array[ni][nj] == (2 + _player * 6))
+		if (_array[ni][nj] == enemy_knight)
 			return true;
 	}
 
@@ -4525,23 +4535,6 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, boo
 	}
 
 	return alpha;
-}
-
-// Fonction qui renvoie le i-ème coup
-int* Board::get_i_move(const int i) const
-{
-	if (i < 0 || i >= _got_moves) {
-		cout << "i-th move impossible to find";
-		return nullptr;
-	}
-
-	const auto coord = new int[4];
-	coord[0] = _moves[i].i1;
-	coord[1] = _moves[i].j1;
-	coord[2] = _moves[i].i2;
-	coord[3] = _moves[i].j2;
-
-	return coord;
 }
 
 // Fonction qui fait cliquer le coup m
