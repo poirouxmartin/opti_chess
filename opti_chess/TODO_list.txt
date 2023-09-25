@@ -386,6 +386,14 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Changer l'affichage du plateau en fonction de l'arbre de jeu, et le fils principal (surligner le coup)
 -> Barre d'éval : afficher l'éval du coup le plus recherché par l'IA? ou éval du "meilleur coup"?
 -> Time management: faire en fonction de la différence entre le meilleur coup et les autres pour jouer plus vite? Debug pour voir si tout fonctionne bien
+-> Afficher l'endroit où on en est dans la variante, pouvoir cliquer dessus, changer les variantes
+-> Dé-surligner le coup quand on navigue dans les coups
+-> From_fen -> reset l'arbre
+-> Surligner le coup principal de la variante
+-> Parfois des positions buggent quand on navigue.. ça affiche des pièces en énorme (à cause de la réflexion de Grogros qui a supprimé le coup?)
+-> Remettre les chronos dans le PGN généré par l'arbre (et les noeuds, et d'autres notations?)
+-> Garder les réflexions de GrogrosZero quand on navigue dans les coups
+-> Parfois quand on revient en arrière, ça reprend sur la mauvaise variation
 
 
 

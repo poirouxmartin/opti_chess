@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 #include "board.h"
+#include "game_tree.h"
 
 using namespace std;
 
@@ -416,12 +417,8 @@ public:
 	// Threads pour les plateaux fils de GrogrosZero
 	vector<thread> _threads_grogros_zero;
 
-	// TODO : Pour le PGN, faire un vecteur de coups, comme ça on peut repasser la partie, et modifier le PGN facilement
-	// Historique des positions
-	vector<Board> _positions_history;
-	int _current_position = 0;
-
-	// TODO faire un arbre de recherche pour les coups, pour avoir toutes les variantes
+	// Arbre de recherche, variantes jouées dans le PGN
+	GameTree _game_tree = GameTree(_board);
 
 
 	// Constructeurs

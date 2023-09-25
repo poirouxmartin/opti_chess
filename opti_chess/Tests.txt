@@ -213,6 +213,16 @@ rn1q1bn1/pp2k3/2p1b2r/8/4Q3/4P3/PPP2PPP/RNB1K2R w KQ - 1 14 : les noirs sont gag
 2kr3r/pp1n1p2/4p3/q1pPPn2/4Q2p/5B2/P4PPP/2RR2K1 b - - 1 21 : lignes ouvertes sur le roi -> position à peu près égale malgré la pièce de moins
 r2qk2r/ppp2ppp/2nbpn2/3p1b2/3P4/N1P2NP1/PP2PPBP/R1BQ1RK1 b kq - 3 7 : ici il faut faire Fxa3 et casser la structure des blancs, puis suivre avec Ce4 sur l'outpost pour taper
 r3k2r/ppp1npp1/2np3q/2b1p3/2B1P1p1/1QPP1N2/PP1N1PP1/R1B2RK1 w kq - 2 11 : #5 pour les noirs
+r4rk1/1ppq1ppp/p1np1n2/2b1p2b/P1B1P3/2PP1N1P/1P1N1PP1/R1BQR1K1 w - - 0 11 : Cf1 très fort stratégiquement
+3r1rk1/1ppq1ppp/p1np1nb1/2b1p3/P1B1P3/2PP1NNP/1P3PP1/R1BQR1K1 w - - 4 13 : Fg5 impératif
+3r1rk1/1ppq1p2/p1np1pbp/2b1p3/P1B1P3/2PP1NNP/1P3PP1/R2QR1K1 w - - 0 15 : Complètement gagnant pour les blancs, structure autour du roi noir complètement détruite, toutes les pièces arrivent en attaque (Les caval en f5)
+5rk1/1ppr1p2/p1np1Q2/2b1p3/P1B1P3/2PP4/1P3PP1/R3R1K1 w - - 1 23 : d4 très fort, pour e5 Te4 #6
+5rk1/1ppr1p2/p2p1Q2/2b1n3/P1Bp4/2P5/1P3PP1/R3R1K1 w - - 0 25 : Te4 #6
+r2q1rk1/pp1bppbp/2np1np1/8/3PP3/3B1N1P/PP1N1PP1/R1BQR1K1 w - - 1 11 : le fou en d7 est mauvais
+3q1rk1/1prnppbp/pN1p1np1/P2P4/3BP3/7P/1P3PP1/R2QRBK1 b - - 0 20 : gros outpost en b6, avantage blancs
+2rq1rk1/1p2ppbp/pNnp2p1/P7/3PP3/4BPnP/1P4P1/R2QRBK1 b - - 2 19 : les blancs sont quasi gagnants
+1r2r1k1/1p2qpbp/pNnpp1p1/P7/3PP3/4BP1P/1PRQ2P1/2R3K1 b - - 3 24 : d5 seul coup
+1r2r1k1/1pRR2bp/pN1p1qp1/P2Pp3/3nP3/7P/1P1Q1BP1/6K1 b - - 6 30 : blancs complètement gagnants, les deux tours sur la 7e rangée, cavalier en b6
 
 
 
@@ -469,6 +479,12 @@ r1r3k1/pppB3p/8/4bp1Q/6P1/7P/Pq3B2/R4bK1 w - - 0 27 : Fe6+ gagne
 8/3k2p1/ppqpppBr/3N3P/2P5/8/1P2QP2/1K1R3R w - - 1 29 : Dxe6+ #7
 8/1P3pk1/5n2/p6p/Pr6/5B1b/4P3/2R1K3 w - - 0 37 : Tc5 fait nulle (pour Fc6 Tb5)
 r3k2r/ppp1npp1/2np1q2/2b1p3/2B1P1p1/1QPP1N2/PP1N1PP1/R1B2RK1 b kq - 1 10 : Dh6 #6
+2r2rk1/1p2ppbp/p1np1np1/q7/P2PP3/3BBN1P/1P3PP1/R2QR1K1 w - - 1 14 : b4 très fort
+1r2r3/1pnN1Qbk/p2p2p1/P2Pp3/4P2B/7P/1P4P1/6K1 w - - 2 36 : Cf6 #6
+r1bqr1k1/ppb2p2/4pn1p/2P3p1/1P1N3B/3B4/P4PPP/R2QR1K1 w - - 0 18 : Fg3 tranquille gagne
+r3nr2/2p1q1pk/p2p3p/1p4pP/3Pn1P1/5N2/PPQ1BP2/2KR3R w - - 0 21 : Ce5 gagne
+1r3rk1/1bq1bpp1/p4n1p/1pp2P2/7B/P1NB4/1PP3PP/1K1RQ2R w - - 1 19 : Fxb5 seul coup
+1r3r2/5p1k/5Pp1/2p3Rp/1p3Q2/P6R/1PP1q2P/1K6 b - - 3 8 : De1 seul coup qui gagne
 
 
 

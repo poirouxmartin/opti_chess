@@ -56,11 +56,6 @@ int main() {
 	HideCursor();
 	//SetMouseCursor(3);
 
-	// Variables
-	// Board t;
-	all_positions[0] = main_GUI._board.simple_position();
-	total_positions = 1;
-
 	// Evaluateur de position
 	Evaluator eval_white(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 	Evaluator eval_black;
@@ -153,8 +148,8 @@ int main() {
 			//main_GUI.grogros_zero_threaded(&monte_evaluator, 5000);
 
 			// Teste la vitesse de la fonction d'évaluation
-			cout << "testing eval speed..." << endl;
-			test_function(&launch_eval, 1);
+			/*cout << "testing eval speed..." << endl;
+			test_function(&launch_eval, 1);*/
 
 			// Teste la vitesse de génération des coups
 			//cout << "testing moves generation speed..." << endl;
@@ -179,6 +174,8 @@ int main() {
 			/*cout << "testing quiescence..." << endl;
 			cout << main_GUI._board.get_color() * main_GUI._board.quiescence(main_GUI._grogros_eval) << endl;
 			cout << main_GUI._board._quiescence_nodes << endl;*/
+
+			cout << main_GUI._game_tree.tree_display() << endl;
 		}
 
 		// CTRL-T - Cherche le plateau de chess.com sur l'écran, et lance une partie
@@ -537,11 +534,14 @@ int main() {
 
 		// Flèche gauche: revient sur la position précédente
 		if (IsKeyPressed(KEY_LEFT)) {
-			if (main_GUI._current_position > 0) {
-				main_GUI._board = main_GUI._positions_history[main_GUI._current_position - 1];
-				main_GUI._positions_history.pop_back();
-				main_GUI._current_position--;
-			}
+			if (main_GUI._game_tree.select_previous_node())
+				main_GUI._board = (main_GUI._game_tree._current_node)->_board;
+		}
+
+		// Flèche droite: avance sur la position suivante
+		if (IsKeyPressed(KEY_RIGHT)) {
+			if (main_GUI._game_tree.select_first_next_node())
+				main_GUI._board = (main_GUI._game_tree._current_node)->_board;	
 		}
 
 
