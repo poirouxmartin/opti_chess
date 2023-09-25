@@ -519,7 +519,7 @@ void Board::display_moves(const bool pseudo) {
 }
 
 // Fonction qui joue un coup
-void Board::make_move(Move move, const bool pgn, const bool new_board, const bool add_to_list)
+void Board::make_move(Move move, const bool pgn, const bool new_board)
 {
 
 	// TODO : à voir si ça rend plus rapide ou non
@@ -640,18 +640,12 @@ void Board::make_move(Move move, const bool pgn, const bool new_board, const boo
 		_evaluated = false;
 	}
 
-	if (add_to_list) {
-		all_positions[_half_moves_count] = simple_position();
-		total_positions++;
-		total_positions = _half_moves_count;
-	}
-
 	return;
 }
 
 // Fonction qui joue le coup i
-void Board::make_index_move(const int i, const bool pgn, const bool add_to_list) {
-	make_move(_moves[i], pgn, false, add_to_list);
+void Board::make_index_move(const int i, const bool pgn) {
+	make_move(_moves[i], pgn, false);
 }
 
 // Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
@@ -2350,11 +2344,6 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 	if (_got_moves == -1)
 		get_moves();
 
-	// Pour la GUI: historique des positions
-	Board b(*this);
-	main_GUI._positions_history.push_back(b);
-	main_GUI._current_position++;
-
 
 	// Cherche l'index du coup
 	int m = -1;
@@ -2371,6 +2360,9 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 	}
 
 	main_GUI._update_variants = true;
+
+	// Arbre de recherche
+	main_GUI._game_tree.add_child(*this, move, move_label(move));
 
 	// Cherche le coup dans les plateaux fils
 	int child_index = -1;
@@ -2394,7 +2386,8 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 		if (keep_display) {
 			play_index_move_sound(m);
 			Board b(*this);
-			b.make_index_move(m, true, add_to_list);
+			//b.make_index_move(m, true, add_to_list);
+			b.make_index_move(m);
 		}
 
 		// Deletes all the children from the other boards
@@ -2421,13 +2414,18 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 			if (_is_active)
 				reset_all();
 
-			make_index_move(m, true, add_to_list);
+			//make_index_move(m, true, add_to_list);
+			make_index_move(m);
 		}
 		else {
 			cout << "illegal move" << endl;
 			return false;
 		}
 	}
+
+	// Update le PGN
+	main_GUI._game_tree.select_next_node(move);
+	main_GUI._pgn = main_GUI._game_tree.tree_display();
 
 	return true;
 }
@@ -2658,6 +2656,7 @@ int Board::get_king_safety() {
 	// - escape squares (à compter?)
 	// https://www.chessprogramming.org/King_Safety
 	// - pawn storm : -> rajout de faiblesse pour le roi adverse
+	// - prendre en compte la nature du centre (ouvert/fermé)
 
 
 
@@ -3405,9 +3404,6 @@ string Board::simple_position() const
 
 	return s;
 }
-
-int total_positions = 0;
-string all_positions[102];
 
 // Fonction qui calcule la structure de pions et renvoie sa valeur
 int Board::get_pawn_structure(float display_factor) const
