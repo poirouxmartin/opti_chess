@@ -11,7 +11,7 @@ public:
 	float _piece_mobility = 0.06f;
 	float _piece_positioning = 0.35f;
 	float _bishop_pair = 25.0f;
-	float _castling_rights = 0.0f;
+	float _castling_rights = 0.2f;
 	float _player_trait = 15.0f;
 	float _king_safety = 0.035f;
 	float _pawn_structure = 0.4f;

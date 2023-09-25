@@ -336,10 +336,10 @@ public:
 	void display_moves(bool pseudo = false);
 
 	// Fonction qui joue un coup
-	void make_move(Move, bool pgn = false, bool new_board = false, bool add_to_list = false);
+	void make_move(Move, bool pgn = false, bool new_board = false);
 
 	// Fonction qui joue le coup i de la liste des coups possibles
-	void make_index_move(int, bool pgn = false, bool add_to_list = false);
+	void make_index_move(int, bool pgn = false);
 
 	// Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
 	void game_advancement();
@@ -566,10 +566,6 @@ bool equal_fen(const string&, const string&);
 
 // Fonction qui renvoie si deux positions (en format FEN) sont les mêmes (pour les répétitions)
 bool equal_positions(const Board&, const Board&);
-
-// Test de liste des positions (taille 100, pour la règle des 50 coups.. si on joue une prise ou un coup de pion, on peut reset la liste -> 52 : +1 pour la position de départ, +1 quand on joue exactement le 50ème coup)
-extern string all_positions[102];
-extern int total_positions;
 
 // Fonction qui renvoie le temps que l'IA doit passer sur le prochain coup (en ms), en fonction d'un facteur k, et des temps restant
 int time_to_play_move(int t1, int t2, float k = 0.05f);

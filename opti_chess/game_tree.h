@@ -5,9 +5,13 @@
 
 // Noeud de l'arbre de jeu
 class GameTreeNode {
+	public:
 
 	// Dernier coup joué
 	Move _move;
+
+	// Label du coup
+	string _move_label;
 
 	// Plateau
 	Board _board;
@@ -15,12 +19,14 @@ class GameTreeNode {
 	// Fils
 	vector<GameTreeNode> _children;
 
+	// Parent
+	GameTreeNode* _parent;
 
 	// Constructeur par défaut
 	GameTreeNode();
 
 	// Constructeur à partir d'un plateau et d'un coup
-	GameTreeNode(const Board&, const Move&);
+	GameTreeNode(Board, Move, string, const GameTreeNode&);
 
 	// Méthodes
 
@@ -37,9 +43,10 @@ class GameTreeNode {
 
 // Arbre de jeu (pour stocker les variations principales dans la GUI)
 class GameTree {
+	public:
 
 	// Racine
-	GameTreeNode _root;
+	GameTreeNode* _root;
 
 	// Noeud actuel
 	GameTreeNode* _current_node;
@@ -48,14 +55,32 @@ class GameTree {
 	// Constructeur par défaut
 	GameTree();
 
+	// Constructeur à partir d'un plateau
+	GameTree(Board);
+
 	// Méthodes
 
 	// Sélection du noeud suivant
-	void select_next_node();
+	bool select_next_node(Move move);
+
+	// Sélection du premier noeud suivant
+	bool select_first_next_node();
 
 	// Sélection du noeud précédent
-	void select_previous_node();
+	bool select_previous_node();
 
-	// Destructeur
-	~GameTree();
+	// Ajout d'un fils
+	void add_child(GameTreeNode);
+
+	// Ajout d'un fils à partir d'un plateau et d'un coup
+	void add_child(Board, Move, string);
+
+	// Affichage de l'arbre
+	string tree_display();
+
+	// Reset
+	void reset();
+
+	// Nouvel arbre à partir d'un plateau
+	void new_tree(Board&);
 };
