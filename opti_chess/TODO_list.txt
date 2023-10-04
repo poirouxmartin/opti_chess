@@ -292,13 +292,13 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Structure de pions (connected -> -?)
 -> King safety en endgame -> wtf parfois
 -> 7k/4r3/5pBP/p1n5/P6P/1P2PK2/5P2/8 b - - 3 51 : king safety??????
+-> Rajouter des comtempt: valeur qui dépend de l'adversaire, et qui définit à quel point tu acceptes les nulles (et tente des pièges?)
 
 
 ----- Interface utilisateur -----
 
 -> Faire un readme pour les contrôles
 -> Amélioration des sons (en faire des maison?)
--> Navigation dans les coups de la partie avec les flèches (il faut donc stocker l'ensemble de la partie - à l'aide du PGN -> from_pgn?)
 -> Nouveau sons/images
 -> Dans le negamax, renvoyer le coup à chaque fois, pour noter la ligne que l'ordi regarde?
 -> Faire des boutons pour faire des actions (ex copier ou coller le FEN/PGN, activer l'IA ou la changer...)
@@ -346,8 +346,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Faire un truc pour montrer la menace (changer le trait du joueur)
 -> Pouvoir éditer les positions
 -> PARALLELISER L'AFFICHAGE !! ça lag beaucoup trop !!!
--> Refaire les pre-moves depuis zero (et ajouter la possibilité d'en faire plusieurs)
--> Faire un arbre pour la partie actuelle analysée, pour pouvoir avancer ou reculer dedans, faire une nouvelle variante...
+-> Refaire les pre-moves depuis zéro (et ajouter la possibilité d'en faire plusieurs)
 -> Trop de flèches = crash
 -> Lignes de bézier et cercles pas très beaux
 -> Nouveaux bruits de pièces plus "soft" + bruit d'ambiance?
@@ -364,7 +363,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Pouvoir changer l'affichage de la GUI (winrate/eval)
 -> Faire des menus
 -> Désélectionner les pièces lors d'un chargement de position
--> Mettre une évaluation de grogrosZero pour main_GUI._board pour pas que grogrosFish prenne le dessus
 -> Utiliser des checkCollision de raylib pour la GUI
 -> Afficher l'incrément de temps sur la GUI, et pouvoir le modifier
 -> O-O+ dans les move label à prendre en compte
@@ -394,6 +392,9 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Remettre les chronos dans le PGN généré par l'arbre (et les noeuds, et d'autres notations?)
 -> Garder les réflexions de GrogrosZero quand on navigue dans les coups
 -> Parfois quand on revient en arrière, ça reprend sur la mauvaise variation
+-> Passer une variante en principale
+-> Montrer quand une ligne d'analyse est montante ou descendante
+-> Parallélisation: faut que les quiescence nodes augmentent aussi
 
 
 

@@ -175,7 +175,8 @@ int main() {
 			cout << main_GUI._board.get_color() * main_GUI._board.quiescence(main_GUI._grogros_eval) << endl;
 			cout << main_GUI._board._quiescence_nodes << endl;*/
 
-			cout << main_GUI._game_tree.tree_display() << endl;
+			//main_GUI.grogros_zero_threaded(main_GUI._grogros_eval, 50000);
+			main_GUI.thread_grogros_zero(main_GUI._grogros_eval, 1000);
 		}
 
 		// CTRL-T - Cherche le plateau de chess.com sur l'écran, et lance une partie
@@ -213,7 +214,7 @@ int main() {
 		}
 
 		// L - Load FEN dans data/text.txt
-		if (IsKeyPressed(KEY_L)) {
+		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_L)) {
 			string fen = LoadFileText("data/test.txt");
 			main_GUI._board.from_fen(fen);
 			cout << "loaded FEN : " << fen << endl;
@@ -358,6 +359,13 @@ int main() {
 			main_GUI._board.evaluate(main_GUI._grogros_eval, true);
 			cout << "Evaluation : \n" << eval_components << endl;
 		}
+
+		// CTRL - L - Promeut la variation en actuelle en tant que variation principale
+		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_L)) {
+			main_GUI._game_tree.promote_current_variation();
+			main_GUI._pgn = main_GUI._game_tree.tree_display();
+		}
+			
 
 		// Modification des paramètres de recherche de GrogrosZero
 		IsKeyPressed(KEY_KP_ADD) && (main_GUI._beta *= 1.1f);

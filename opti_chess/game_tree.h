@@ -83,4 +83,7 @@ class GameTree {
 
 	// Nouvel arbre à partir d'un plateau
 	void new_tree(Board&);
+
+	// Promeut la variante actuelle en tant que variante principale
+	bool promote_current_variation();
 };

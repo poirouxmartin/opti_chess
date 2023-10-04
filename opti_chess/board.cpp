@@ -1178,6 +1178,8 @@ void Board::from_fen(string fen)
 
 	// Met à jour le FEN de la position dans la GUI
 	main_GUI._initial_fen = fen;
+
+	main_GUI._game_tree.new_tree(*this);
 }
 
 // Fonction qui renvoie le FEN du plateau
@@ -1942,10 +1944,6 @@ bool Board::draw() {
 		string eval;
 		int mate = is_eval_mate(best_eval);
 		if (mate != 0) {
-			if (mate * get_color() > 0)
-				eval = "";
-			else
-				eval = "-";
 			eval += "M";
 			eval += to_string(abs(mate));
 		}
@@ -1969,7 +1967,7 @@ bool Board::draw() {
 			evaluate(main_GUI._grogros_eval, true);
 		int max_depth = grogros_main_depth();
 		int n_nodes = total_nodes();
-		monte_carlo_text += "\n\n--- static eval: " + ((_static_evaluation > 0) ? static_cast<string>("+") : static_cast<string>("")) + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval: " + ((best_eval > 0) ? static_cast<string>("+") : static_cast<string>("")) + eval + " ---" + win_chances + "\nnodes: " + int_to_round_string(n_nodes) + "/" + int_to_round_string(monte_buffer._length) + " | time: " + clock_to_string(_time_monte_carlo) + "s | speed: " + int_to_round_string(total_nodes() / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s" + " | depth: " + to_string(max_depth) + "\nquiescence: " + int_to_round_string(_quiescence_nodes) + "N" + " | speed: " + int_to_round_string(_quiescence_nodes / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s";
+		monte_carlo_text += "\n\n--- static eval: " + ((_static_evaluation > 0) ? static_cast<string>("+") : static_cast<string>("")) + to_string(_static_evaluation) + " ---\n" + eval_components + "\n--- dynamic eval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) + eval + " ---" + win_chances + "\nnodes: " + int_to_round_string(n_nodes) + "/" + int_to_round_string(monte_buffer._length) + " | time: " + clock_to_string(_time_monte_carlo) + "s | speed: " + int_to_round_string(total_nodes() / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s" + " | depth: " + to_string(max_depth) + "\nquiescence: " + int_to_round_string(_quiescence_nodes) + "N" + " | speed: " + int_to_round_string(_quiescence_nodes / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s";
 
 		// Affichage des paramètres d'analyse de Monte-Carlo
 		slider_text(monte_carlo_text, board_padding_x + board_size + text_size / 2, text_size, main_GUI._screen_width - text_size - board_padding_x - board_size, board_size * 9 / 16, text_size / 3, &monte_carlo_slider, text_color);
@@ -2446,6 +2444,7 @@ int Board::max_monte_carlo_depth() const
 // Algo de grogros_zero
 void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const float k_add, const int quiescence_depth, const bool explore_checks, const bool display, const int depth, Network* net, int correction)
 {
+
 	// Pour la GUI
 	main_GUI._update_variants = true;
 
@@ -2456,9 +2455,8 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const flo
 	const clock_t begin_monte_time = clock();
 
 	// Si c'est le premier appel, sur le plateau principal
-	if (_new_board && depth == 0) {
+	if (_new_board && depth == 0)
 		evaluate(eval, false, net);
-	}
 
 	// Si c'est le plateau principal
 	if (depth == 0) {
@@ -3581,7 +3579,7 @@ int Board::get_pawn_structure(float display_factor) const
 
 	// Pions connectés
 	// Un pion est dit connecté, s'il y a un pion de la même couleur sur une colonne adjacente sur la même rangée ou la rangée inférieure
-	constexpr int connected_pawns[8] = { 0, 20, 30, 50, 75, 100, 150, 0 };
+	constexpr int connected_pawns[8] = { 0, 20, 30, 50, 75, 135, 200, 0 };
 	constexpr float connected_pawns_factor = 0.5f; // En fonction de l'advancement de la partie
 	const float connected_pawns_adv = 1 * (1 + (connected_pawns_factor - 1) * _adv);
 
@@ -4453,6 +4451,7 @@ bool Board::sort_moves() {
 // TODO améliorer avec un delta pruning
 int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, bool explore_checks, bool main_player)
 {
+
 	// Compte le nombre de noeuds visités
 	_quiescence_nodes = 1;
 	
