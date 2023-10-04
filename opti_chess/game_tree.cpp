@@ -123,3 +123,27 @@ void GameTree::new_tree(Board& board) {
 	_root = new GameTreeNode(board, Move(), "", GameTreeNode());
 	_current_node = _root;
 }
+
+// Promeut la variante actuelle en tant que variante principale
+bool GameTree::promote_current_variation() {
+	// Vérifie que le noeud actuel a un parent
+	if (_current_node == _root)
+		return false;
+	
+	// TODO : il faut promouvoir la branche entière, pas seulement le noeud actuel
+
+	// Cherche la variante actuelle dans les fils du parent
+	for (int i = 0; i < _current_node->_parent->_children.size(); i++)
+		if (_current_node->_parent->_children[i]._move == _current_node->_move) {
+			if (i == 0)
+				return false;
+				
+			// Place la variation en première position
+			GameTreeNode temp = _current_node->_parent->_children[0];
+			_current_node->_parent->_children[0] = _current_node->_parent->_children[i];
+			// FIXME : ici ça swap, au lieu de simplement mettre la variante en première position, et de décaler les autres
+			_current_node->_parent->_children[i] = temp;
+
+			return true;
+		}
+}
