@@ -234,43 +234,32 @@ bool GUI::thread_grogros_zero(Evaluator* eval, int nodes)
 	if (!monte_buffer._init)
 		monte_buffer.init();
 
-	// Lance grogros sur 1 noeud
-	_board.grogros_zero(eval, 100, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
 
-	//_thread_grogros_zero = thread(&Board::grogros_zero, &_board, eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
-	////_thread_grogros_zero = thread(&Board::grogros_zero, &monte_buffer._heap_boards[main_GUI._board._index_children[0]], &monte_evaluator, nodes, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, true, true, false, 0, nullptr);
-	//_thread_grogros_zero.detach();
-
-	//thread test = thread(&Board::grogros_zero, &monte_buffer._heap_boards[_board._index_children[0]], eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
-	//test.detach();
-
-	//thread test2 = thread(&Board::grogros_zero, &monte_buffer._heap_boards[_board._index_children[1]], eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
-	////_threads_grogros_zero.push_back()
-	//test2.detach();
-
+	// Lance grogros sur chaque noeud fils pour l'initialisation
+	//_board.grogros_zero(eval, _board._got_moves, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
 
 	_threads_grogros_zero.clear();
 
-	//_threads_grogros_zero.emplace_back(&Board::grogros_zero, &monte_buffer._heap_boards[_board._index_children[0]], eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
-	//_threads_grogros_zero.emplace_back(&Board::grogros_zero, &monte_buffer._heap_boards[_board._index_children[1]], eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
-	//_threads_grogros_zero.emplace_back(&Board::grogros_zero, &monte_buffer._heap_boards[_board._index_children[2]], eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
+	for (int i = 0; i < _board._got_moves; i++)
+		_threads_grogros_zero.emplace_back(&Board::grogros_zero, &monte_buffer._heap_boards[_board._index_children[i]], eval, nodes, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
 
-	// Lance un thread pour chaque coup possible
-	/*for (int i = 0; i < _board._got_moves; i++) {
-		_threads_grogros_zero.emplace_back(&Board::grogros_zero, &monte_buffer._heap_boards[_board._index_children[i]], eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
-	}*/
 
-	/*for (int i = 0; i < _board._got_moves; i++) {
-		Board test(_board);
-		_threads_grogros_zero.emplace_back(&Board::grogros_zero, test, eval, nodes, true, _beta, _k_add, _quiescence_depth, true, true, false, 0, nullptr);
-	}*/
+	//_threads_grogros_zero.emplace_back(&Board::grogros_zero, &_board, eval, nodes, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
+	//_threads_grogros_zero.emplace_back(&Board::grogros_zero, &_board, eval, nodes, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
 
+	
 	for (auto& thread : _threads_grogros_zero) {
 		thread.join();
+		//thread.detach();
+		//cout << "Thread done" << endl;
 	}
 
+	// TODO:
+	// Faut re-additionner les temps de monte carlo de chaque fils (pareil pour les quiescence nodes)
+	// Il faut aussi update toutes les variantes
+
 	// Relance grogros sur 1 noeud (pour actualiser les valeurs)
-	_board.grogros_zero(eval, 100, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
+	//_board.grogros_zero(eval, 100, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
 
 	return true;
 }

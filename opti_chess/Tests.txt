@@ -223,7 +223,30 @@ r2q1rk1/pp1bppbp/2np1np1/8/3PP3/3B1N1P/PP1N1PP1/R1BQR1K1 w - - 1 11 : le fou en 
 2rq1rk1/1p2ppbp/pNnp2p1/P7/3PP3/4BPnP/1P4P1/R2QRBK1 b - - 2 19 : les blancs sont quasi gagnants
 1r2r1k1/1p2qpbp/pNnpp1p1/P7/3PP3/4BP1P/1PRQ2P1/2R3K1 b - - 3 24 : d5 seul coup
 1r2r1k1/1pRR2bp/pN1p1qp1/P2Pp3/3nP3/7P/1P1Q1BP1/6K1 b - - 6 30 : blancs complètement gagnants, les deux tours sur la 7e rangée, cavalier en b6
-
+2r1k2r/1b2bppp/pnn1p3/q2p3P/PppP1BP1/1P2PP2/2PQN3/1NKR1B1R w k - 0 9 : toutes les pièces sont sur le roi -> noirs gagnants
+r2qk1nr/2pbn1b1/3p4/1p1Ppp1p/4PPp1/1B2B1P1/PP1N2NP/R2Q1RK1 b kq f3 0 16 : les blancs sont gagants ici: après tous les échanges, le roi noir se retrouve mal
+4bbk1/r4ppp/1pq1r3/3pPpPP/1P1B1N2/pPP4R/K5R1/6Q1 w - - 0 1 : complètement gagnant pour les blancs (+6) -> le roi blanc n'est pas en danger (protégé par le pion). mais le roi noir si (marrée de pions, et tours)
+5bk1/1r4p1/1pq1p1P1/3pPpQ1/1P1B4/pPP5/K5R1/8 b - - 0 8 : +20...
+5bk1/4r1p1/1pq1p1P1/3pPp2/3B3Q/pPP5/K6R/8 w - - 6 12 : #1
+r7/2p2pk1/P1Pbp1p1/1B6/3n4/8/R6P/1R5K w - - 4 42 : c'est gagnant pour les blancs
+r7/n2R4/2P2kp1/2b1pp2/8/8/R5BP/7K w - - 0 48 : c7 termine la partie
+r1b1r1k1/pp1n3p/2p1p3/3p1pP1/3P1Np1/2P1P1P1/PP1N1QP1/2K1RB1q w - - 0 1 : dame blanch enfermée... Fe2 puis Tg1 et Cf1 la gagne
+rn2r1k1/ppp2ppp/8/8/7q/2N2K2/PPP3PP/R1BQ1BNn w - - 2 7 : Ch3 tient
+r1bqk2r/1ppp1ppp/p1n3n1/2b1p3/B2PP3/2P2N2/PP3PPP/RNBQ1RK1 b kq - 0 7 : il faut faire Fa7 pour garder un pion au centre
+r2qk2r/b1pnn1pp/p2p3P/1p1Ppp2/P3P1b1/1BP2N2/1P2QPP1/RNB2RK1 w kq - 0 15 : quasi gagnant pour les noirs
+r2q2k1/b1pnnrPp/p2p4/1P1Ppp2/4P1b1/1BP2N2/1P2QPP1/RNB2RK1 w - - 1 17 : noirs gagnants
+r5k1/b1pqnrPp/p2p1n1B/1P1Pp3/8/1BP2P2/1PQ2P2/RN3RK1 w - - 1 21 : c'est les blancs qui se font attaquer
+r5k1/b1pqnrPp/p2p1n1B/1P1P4/8/1BP2p2/1P1Q1P1K/RN3R2 w - - 0 23 : foutu pour les blancs
+r5k1/b1pq2rp/3p1n1R/1p1P4/8/1BP2p2/1P1Q1P1K/1N3R2 w - - 0 27 : encore pire
+6k1/b1p3rp/3p4/1p1P2q1/6nR/NBP2p2/1P2rP2/3Q1R1K w - - 14 34 : #4 (imparable)
+6k1/2p3rp/3p4/1p1P4/7q/NBP2p2/1P2r2R/3Q3K b - - 2 37 : #1
+r1bqk2r/2p3pp/p1Pp1pn1/4p3/Q3P3/2P1PN2/PP4PP/RN3RK1 b kq - 0 13 : f5 fort
+r1bq1rk1/2p3pp/p1Pp2n1/4p3/Q1P1p3/2N1PN2/PP4PP/R4RK1 w - - 0 16 : Cd2 très fort (idée de garder le Cc3 pour le mettre en d5)
+r4rk1/2p3pp/p1P3n1/2Pppb2/Q3N2q/2N1P3/PP4PP/R4RK1 w - - 0 19 : Cd6 et Txf5 sont très forts
+4r1k1/6pp/pNPP2n1/3ppr2/8/4P3/PP4PP/R5K1 b - - 0 23 : gagnants pour les blancs (2 pions passés liés sur la 6ème > tour)
+2r3k1/2Pr2pp/p1RPn3/3Np3/PP6/4P3/6PP/6K1 b - - 4 29 : noirs complètement foutus
+r5k1/2p3pp/p1PN2n1/2Ppp3/8/4P3/PP4PP/5RK1 b - - 0 23 : prendre en d6 est une erreur (pions passés liés sur la 6ème)
+5rk1/2PP2pp/p7/3pp3/1P6/4P3/P5PP/6K1 b - - 0 28 : gagnant pour les blancs
 
 
 ----- Problèmes -----
@@ -485,7 +508,41 @@ r1bqr1k1/ppb2p2/4pn1p/2P3p1/1P1N3B/3B4/P4PPP/R2QR1K1 w - - 0 18 : Fg3 tranquille
 r3nr2/2p1q1pk/p2p3p/1p4pP/3Pn1P1/5N2/PPQ1BP2/2KR3R w - - 0 21 : Ce5 gagne
 1r3rk1/1bq1bpp1/p4n1p/1pp2P2/7B/P1NB4/1PP3PP/1K1RQ2R w - - 1 19 : Fxb5 seul coup
 1r3r2/5p1k/5Pp1/2p3Rp/1p3Q2/P6R/1PP1q2P/1K6 b - - 3 8 : De1 seul coup qui gagne
-
+r5k1/1p6/5qpB/8/2P3P1/2b2NP1/1p4BK/1Q6 b - - 2 2 : Ta1 fait perpet. g5 gagne
+r5k1/1p4q1/8/6B1/2P3P1/2bQ1NP1/1p4BK/8 b - - 2 4 : Dh7+ gagne
+8/p2b3k/1p1P1R2/1r6/5Kp1/1B4Pp/P7/8 b - - 2 2 : Txb3 gagne
+8/4R3/P4p2/1pq2k2/5P1p/8/6RK/8 w - - 7 5 : Tg5+ gagne
+8/1Q5k/4pp2/3P1b2/5P2/4K1pp/1P4rP/8 b - - 1 6 : Rh6 gagne
+2kr3r/1pp2qp1/p7/4p3/1PPpP1p1/P2P2P1/5PK1/R1BQ1R2 b - - 2 2 : Th2+ gagne
+r4nk1/pb1pnpp1/4p2p/1q4BQ/1P1P4/4N1R1/P4PPP/4R1K1 w q - 0 1 : Ff6 gagne
+4r1k1/1ppb1pp1/p2br2p/n2N4/3P1P2/P1P3Pq/1PBQNR1P/R5K1 w - - 4 3 : f5 gagne
+3q1rk1/5ppp/p2b4/2pB1nP1/P1P2P2/2BP4/1r5P/R2Q1RK1 b - - 0 1 : Dxg5+ #5
+r2qk3/2pb4/3p2r1/1p1P3p/4PBn1/1B3N2/Pb5P/R3QR1K w q - 0 27 : e5 gagne
+1nq2bk1/rb3ppp/p3p3/1p3nPP/3N2B1/1P2P3/PB1N1P2/3Q1RK1 w - - 1 3 : g6 gagne
+r3k1r1/1bqn1p2/p2ppb1R/1p2n1p1/3NP1P1/P1N2P2/1PPB3Q/1K1R1B2 w q - 6 19 : prendre en b5 gagne
+r3k1r1/1bqn1p2/3Rp2R/4n1p1/1B2P1P1/P4P2/1PP4Q/1K3B2 w q - 1 24 : Txe6 gagne
+r5k1/1bqn1ppp/p3p3/1pb3PP/4P1B1/1PQ2N2/P4P2/B4RK1 b - - 12 27 : Cf6 gagne
+r2q1rk1/1p3p2/1np1p1pp/4P1b1/3P4/2NQP1P1/PpB4P/1R3RK1 w - - 0 1 : h4 gagne
+r1q3k1/3nr1pp/pBNRp3/8/2B1P3/P4P2/1P4PP/2K4R b - - 1 10 : Rh8 seul coup qui tient
+r3rn1k/6p1/p2Rp2p/4N3/2BBP1Pq/P4P2/1P6/1K1R4 w - - 0 18 : Fxe6 quasi gagnant
+r3rn1k/6p1/p2R3p/3BN3/3BP1P1/P4P2/1P5q/1K1R4 b - - 2 19 : Rh7 fort
+r3rn2/6pk/p2R3p/3BN1P1/3BP3/P4P2/1P5q/1K1R4 b - - 0 20 : Tac8 gagne
+3r1n2/5B1k/p4Rp1/4B3/6q1/P4N2/KP6/8 b - - 1 31 : Td3 gagne
+3r1rk1/1bq2ppp/pp2p3/4P3/2PpNP2/P2BnR2/1P2Q1PP/3R2K1 w - - 4 22 : Cf6+ gagne
+3r1rk1/2q2pp1/pp2p3/4P2Q/2Pp1P2/P3n2R/1P4PP/3R2K1 b - - 3 25 : f6 seul coup (f5 y a Dh7+ et Th6!!)
+3r1r2/5kpQ/pp2p2R/4Pp2/2qp1P2/P3n3/1P4PP/3R2K1 w - - 0 28 : Tf6+!! et Dxg7 gagne
+1q2rrk1/pb1n1ppp/1p2p3/1Nbp4/2P2P2/1P1BP3/PB2Q1PP/R4RK1 w - - 0 1 : Fxh7+ #12
+1q2rrk1/pb1n1pp1/1p2p3/1Nbp3Q/2P2P2/1P2P3/PB4PP/R4RK1 w - - 2 3 : Fxg7 #10
+r2q1r1k/2p2pb1/p1n1pNp1/4P2p/1p1P3P/2PBQP2/PP6/2KR3R w - - 2 20 : Cxh5 gagne
+6k1/1r4p1/1pq1p1P1/3pPpQ1/1b1B4/pPP5/K5R1/8 w - - 0 9 : Dd8+ #5
+r1r3k1/pp1b1ppp/1qn1p3/2n1P3/5P1B/2N5/PPB2QPP/1K1R3R w - - 0 1 : Ff6 est une possibilité de gain (Td6, Dg3... en sont d'autres)
+rnbqr1k1/ppp2ppp/5n2/2b5/4P3/2N5/PPP2PPP/R1BQKBNR b KQ - 0 1 : Fxf2+ gagne
+r3r1k1/pp3pbp/1q1p2p1/2pP4/P1P1bP2/1P4Q1/3BN1PP/4RRK1 w - - 0 1 : f5 très fort -> idée Fxf5 Txf5!! (et Fh6 si gxf5)
+r3r1k1/pp3pbp/1q1p2p1/2pP1b2/P1P5/1P4Q1/3BN1PP/4RRK1 w - - 0 2 : Txf5 gagne
+r4rk1/2p3pp/p1PN2n1/2Ppp3/N7/3bP3/PP4PP/R4RK1 w - - 1 21 : Cb6 gagne
+3r2k1/1R4pp/3N4/p1Ppp3/1n6/P3P3/6PP/6K1 b - - 0 28 : Ca6 seul coup qui tient
+3r2k1/1R4pp/3N4/p1Ppp3/8/P2nP3/6PP/6K1 w - - 1 29 : c6 gagne
+3r2k1/1R4pp/2PN4/p1npp3/8/P3P3/6PP/6K1 w - - 1 30 : Te7, Tb6, Ta7 gagnent assez facilement
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---
