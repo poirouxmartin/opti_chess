@@ -230,7 +230,7 @@ r2qk1nr/2pbn1b1/3p4/1p1Ppp1p/4PPp1/1B2B1P1/PP1N2NP/R2Q1RK1 b kq f3 0 16 : les bl
 5bk1/4r1p1/1pq1p1P1/3pPp2/3B3Q/pPP5/K6R/8 w - - 6 12 : #1
 r7/2p2pk1/P1Pbp1p1/1B6/3n4/8/R6P/1R5K w - - 4 42 : c'est gagnant pour les blancs
 r7/n2R4/2P2kp1/2b1pp2/8/8/R5BP/7K w - - 0 48 : c7 termine la partie
-r1b1r1k1/pp1n3p/2p1p3/3p1pP1/3P1Np1/2P1P1P1/PP1N1QP1/2K1RB1q w - - 0 1 : dame blanch enfermée... Fe2 puis Tg1 et Cf1 la gagne
+r1b1r1k1/pp1n3p/2p1p3/3p1pP1/3P1Np1/2P1P1P1/PP1N1QP1/2K1RB1q w - - 0 1 : dame blanche enfermée... Fe2 puis Tg1 et Cf1 la gagne
 rn2r1k1/ppp2ppp/8/8/7q/2N2K2/PPP3PP/R1BQ1BNn w - - 2 7 : Ch3 tient
 r1bqk2r/1ppp1ppp/p1n3n1/2b1p3/B2PP3/2P2N2/PP3PPP/RNBQ1RK1 b kq - 0 7 : il faut faire Fa7 pour garder un pion au centre
 r2qk2r/b1pnn1pp/p2p3P/1p1Ppp2/P3P1b1/1BP2N2/1P2QPP1/RNB2RK1 w kq - 0 15 : quasi gagnant pour les noirs

@@ -903,6 +903,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 		const int rook_activity = get_rook_activity() * eval->_rook_activity;
 		if (display)
 			eval_components += "rook activity: " + (rook_activity >= 0 ? string("+") : string()) + to_string(rook_activity) + "\n";
+		_evaluation += rook_activity;
 	}
 
 	// Bons/Mauvais fous
@@ -910,6 +911,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 		const int bishop_pawns = get_bishop_pawns() * eval->_bishop_pawns;
 		if (display)
 			eval_components += "bishop pawns: " + (bishop_pawns >= 0 ? string("+") : string()) + to_string(bishop_pawns) + "\n";
+		_evaluation += bishop_pawns;
 	}
 
 	// Marrées de pions
@@ -917,6 +919,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 		const int pawn_storm = get_pawn_storm() * eval->_pawn_storm;
 		if (display)
 			eval_components += "pawn storm: " + (pawn_storm >= 0 ? string("+") : string()) + to_string(pawn_storm) + "\n";
+		_evaluation += pawn_storm;
 	}
 
 	// Boucliers de pions
@@ -924,6 +927,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 		const int pawn_shield = get_pawn_shield() * eval->_pawn_shield;
 		if (display)
 			eval_components += "pawn shield: " + (pawn_shield >= 0 ? string("+") : string()) + to_string(pawn_shield) + "\n";
+		_evaluation += pawn_shield;
 	}
 
 	// Avant-postes
@@ -931,6 +935,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 		const int outposts = get_outposts() * eval->_outposts;
 		if (display)
 			eval_components += "outposts: " + (outposts >= 0 ? string("+") : string()) + to_string(outposts) + "\n";
+		_evaluation += outposts;
 	}
 
 	// Cases faibles
@@ -938,6 +943,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 		const int weak_squares = get_weak_squares() * eval->_weak_squares;
 		if (display)
 			eval_components += "weak squares: " + (weak_squares >= 0 ? string("+") : string()) + to_string(weak_squares) + "\n";
+		_evaluation += weak_squares;
 	}
 
 
