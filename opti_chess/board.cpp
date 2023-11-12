@@ -5924,7 +5924,95 @@ bool Board::operator== (const Board& b) const
 // Fonction qui calcule et renvoie la valeur des pions qui bloquent les fous
 int Board::get_bishop_pawns() const {
 	// TODO : implementer
-	return 0;
+
+	/*function bishop_pawns(pos, square) {
+		if (square == null) return sum(pos, bishop_pawns);
+		if (board(pos, square.x, square.y) != "B") return 0;
+		var c = (square.x + square.y) % 2, v = 0;
+		var blocked = 0;
+		for (var x = 0; x < 8; x++) {
+			for (var y = 0; y < 8; y++) {
+				if (board(pos, x, y) == "P" && c == (x + y) % 2) v++;
+				if (board(pos, x, y) == "P"
+					&& x > 1 && x < 6
+					&& board(pos, x, y - 1) != "-") blocked++;
+			}
+		}
+		return v * (blocked + (pawn_attack(pos, square) > 0 ? 0 : 1));
+	}*/
+
+	// Pions blancs sur case blanche
+	int white_pawns_w = 0;
+
+	// Pions blancs sur case noire
+	int white_pawns_b = 0;
+
+	// Pions noirs sur case blanche
+	int black_pawns_w = 0;
+
+	// Pions noirs sur case noire
+	int black_pawns_b = 0;
+
+	// Nombre de pions blancs bloqués sur les colonnes centrales (C, D, E, F)
+	int white_pawns_blocked = 0;
+
+	// Nombre de pions noirs bloqués sur les colonnes centrales (C, D, E, F)
+	int black_pawns_blocked = 0;
+
+
+	for (uint_fast8_t i = 0; i < 8; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			const uint_fast8_t p = _array[i][j];
+
+			// Pions blancs
+			if (p == 1) {
+				if ((i + j) % 2)
+					white_pawns_w++;
+				else
+					white_pawns_b++;
+
+				if (_array[i + 1][j] != 0)
+					white_pawns_blocked++;
+			}
+
+			// Pions noirs
+			else if (p == 7) {
+				if ((i + j) % 2)
+					black_pawns_w++;
+				else
+					black_pawns_b++;
+
+				if (_array[i - 1][j] != 0)
+					black_pawns_blocked++;
+			}
+		}
+	}
+
+	int bishop_pawns_value = 0;
+
+	for (uint_fast8_t i = 0; i < 8; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			const uint_fast8_t p = _array[i][j];
+
+			// Fou blanc
+			if (p == 3) {
+				if ((i + j) % 2)
+					bishop_pawns_value -= white_pawns_w * (1 + white_pawns_blocked);
+				else
+					bishop_pawns_value -= white_pawns_b * (1 + white_pawns_blocked);
+			}
+
+			// Fou noir
+			else if (p == 9) {
+				if ((i + j) % 2)
+					bishop_pawns_value += black_pawns_w * (1 + black_pawns_blocked);
+				else
+					bishop_pawns_value += black_pawns_b * (1 + black_pawns_blocked);
+			}
+		}
+	}
+
+	return bishop_pawns_value;
 }
 
 // Fonction qui renvoie la valeur d'une marrée de pions
