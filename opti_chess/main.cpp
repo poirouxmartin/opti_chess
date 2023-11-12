@@ -362,7 +362,9 @@ int main() {
 
 		// CTRL - L - Promeut la variation en actuelle en tant que variation principale
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_L)) {
+			//cout << main_GUI._game_tree._current_node->_move_label << endl;
 			main_GUI._game_tree.promote_current_variation();
+			//cout << main_GUI._game_tree._current_node->_move_label << endl;
 			main_GUI._pgn = main_GUI._game_tree.tree_display();
 		}
 			
