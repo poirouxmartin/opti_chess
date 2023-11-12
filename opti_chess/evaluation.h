@@ -10,7 +10,7 @@ public:
 	float _piece_value = 1.2f;
 	float _piece_mobility = 0.06f;
 	float _piece_positioning = 0.35f;
-	float _bishop_pair = 25.0f;
+	float _bishop_pair = 20.0f;
 	float _castling_rights = 0.2f;
 	float _player_trait = 15.0f;
 	float _king_safety = 0.035f;
@@ -28,7 +28,7 @@ public:
 	float _pawn_push_threats = 10.0f;
 	float _king_proximity = 0.4f;
 	float _rook_activity = 0.2f;
-	float _bishop_pawns = 1.5f;
+	float _bishop_pawns = 2.0f;
 	float _pawn_storm = 0.1f;
 	float _pawn_shield = 0.1f;
 	float _outposts = 0.1f;
