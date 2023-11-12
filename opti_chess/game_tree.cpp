@@ -126,24 +126,47 @@ void GameTree::new_tree(Board& board) {
 
 // Promeut la variante actuelle en tant que variante principale
 bool GameTree::promote_current_variation() {
-	// Vérifie que le noeud actuel a un parent
+
+	// FIXME : y'a encore des bugs........
+
+	// Si on est à la racine, on ne peut pas promouvoir
 	if (_current_node == _root)
 		return false;
+
+	// On regarde d'abord si le coup actuel est le principal de la variante
+
+	// Si oui, on regarde le parent
+	if (_current_node->_parent->_children[0]._move == _current_node->_move) {
+		_current_node = _current_node->_parent;
+
+		// On promeut le parent
+		return promote_current_variation();
+	}
+
+	// Si non, on promeut la variante en tant que variante principale
+
+	// On stocke d'abord la variante actuelle
+	GameTreeNode temp = *_current_node;
+
+	// On décale les autres variantes jusqu'à la variante actuelle
 	
-	// TODO : il faut promouvoir la branche entière, pas seulement le noeud actuel
-
-	// Cherche la variante actuelle dans les fils du parent
-	for (int i = 0; i < _current_node->_parent->_children.size(); i++)
+	// On cherche la variante actuelle
+	int variant_position = 0;
+	for (int i = 1; i < _current_node->_parent->_children.size(); i++) {
 		if (_current_node->_parent->_children[i]._move == _current_node->_move) {
-			if (i == 0)
-				return false;
-				
-			// Place la variation en première position
-			GameTreeNode temp = _current_node->_parent->_children[0];
-			_current_node->_parent->_children[0] = _current_node->_parent->_children[i];
-			// FIXME : ici ça swap, au lieu de simplement mettre la variante en première position, et de décaler les autres
-			_current_node->_parent->_children[i] = temp;
-
-			return true;
+			variant_position = i;
+			break;
 		}
+	}
+		
+	// On décale les variantes
+	for (int j = variant_position; j > 0; j--)
+		_current_node->_parent->_children[j] = _current_node->_parent->_children[j - 1];
+
+	// On place la variante actuelle en première position
+	_current_node->_parent->_children[0] = temp;
+
+	//*_current_node = _current_node->_parent->_children[0];
+
+	return true;
 }

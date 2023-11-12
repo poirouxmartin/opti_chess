@@ -22,6 +22,12 @@ class GameTreeNode {
 	// Parent
 	GameTreeNode* _parent;
 
+	// Temps restant pour le joueur n'ayant pas le trait
+	clock_t _time; // TODO
+
+	// TODO: (pour rajouter sur le PGN)
+	// Nombre de noeuds, évaluation, notation spéciale du coup...
+
 	// Constructeur par défaut
 	GameTreeNode();
 
