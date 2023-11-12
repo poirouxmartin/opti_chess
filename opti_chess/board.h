@@ -544,6 +544,21 @@ public:
 
 	// Fonction qui calcule et renvoie l'activité/mobilité des tours
 	[[nodiscard]] int get_rook_activity() const;
+
+	// Fonction qui calcule et renvoie la valeur des pions qui bloquent les fous
+	[[nodiscard]] int get_bishop_pawns() const;
+
+	// Fonction qui renvoie la valeur d'une marrée de pions
+	[[nodiscard]] int get_pawn_storm() const;
+
+	// Fonction qui renvoie la valeur des faiblesses long terme du bouclier de pions
+	[[nodiscard]] int get_pawn_shield() const;
+
+	// Fonction qui renvoie la valeur des pièces sur un avant-poste
+	[[nodiscard]] int get_outposts() const;
+
+	// Fonction qui renvoie la caleur des cases faibles
+	[[nodiscard]] int get_weak_squares() const;
 };
 
 // Fonction qui obtient la case correspondante à la position sur la GUI

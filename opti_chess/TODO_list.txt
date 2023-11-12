@@ -417,6 +417,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 ----- En cours -----
 
 -> Promotions de variantes -> il faut promouvoir toute la branche depuis le début, pas juste le dernier coup (+ le FIXME)
+-> Pawn storm / Pawn shield / Bishop pawns
 -> Affichage du temps dans le PGN
 -> Quiescence nodes qui augmente aussi avec les threads
 
