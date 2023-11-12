@@ -136,7 +136,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Tours: les mettre sur les colonnes ou les pions sont les plus avancés (activité verticale)
 	- Plans?
 	- Colonnes fermées -> tour mauvaises. Si beaucoup de colonnes ouvertes, bonus pour les tours. Pareil pour les diagonales et les fous
-	- Mauvais fous (pour les nerf un peu quand y'a beauoup de pions de la même couleur)
+	- Mauvais fous (pour les nerf un peu quand y'a beauoup de pions de la même couleur) -> bishop pawns !
 	- Pions passés: prendre en compte les contrôles des alliés pour pousser les pions
 	- Règle des 2 faiblesses : si y'a 2 faiblesses attaquables, ça donne un avantage
 
@@ -293,6 +293,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> King safety en endgame -> wtf parfois
 -> 7k/4r3/5pBP/p1n5/P6P/1P2PK2/5P2/8 b - - 3 51 : king safety??????
 -> Rajouter des comtempt: valeur qui dépend de l'adversaire, et qui définit à quel point tu acceptes les nulles (et tente des pièges?)
+-> Faire une structure pour la recherche de MonteCarlo (arbre avec noeuds)
 
 
 ----- Interface utilisateur -----
@@ -395,6 +396,8 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Passer une variante en principale
 -> Montrer quand une ligne d'analyse est montante ou descendante
 -> Parallélisation: faut que les quiescence nodes augmentent aussi
+-> Quand on navigue dans la partie, jouer les son
+-> Afficher en vert, orange ou rouge les forces et faiblesses de la positions?
 
 
 
@@ -410,6 +413,12 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Arbres de variations / Chargement de PGN
 -> Livre d'ouvertures
 
+
+----- En cours -----
+
+-> Promotions de variantes -> il faut promouvoir toute la branche depuis le début, pas juste le dernier coup (+ le FIXME)
+-> Affichage du temps dans le PGN
+-> Quiescence nodes qui augmente aussi avec les threads
 
 
 ----- Réseaux de neurones -----

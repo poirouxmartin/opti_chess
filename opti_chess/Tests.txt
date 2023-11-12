@@ -247,6 +247,14 @@ r4rk1/2p3pp/p1P3n1/2Pppb2/Q3N2q/2N1P3/PP4PP/R4RK1 w - - 0 19 : Cd6 et Txf5 sont 
 2r3k1/2Pr2pp/p1RPn3/3Np3/PP6/4P3/6PP/6K1 b - - 4 29 : noirs complètement foutus
 r5k1/2p3pp/p1PN2n1/2Ppp3/8/4P3/PP4PP/5RK1 b - - 0 23 : prendre en d6 est une erreur (pions passés liés sur la 6ème)
 5rk1/2PP2pp/p7/3pp3/1P6/4P3/P5PP/6K1 b - - 0 28 : gagnant pour les blancs
+2k5/ppp3rp/8/P3PP2/3r4/5R1K/7P/4R3 b - - 2 31 : blancs gagnants (pions passés liés)
+2k5/ppp1P2p/8/P4P1r/8/5RK1/7r/4R3 b - - 0 35 : pareil
+r1bq3r/1p2b2p/p4p1k/3N4/1P1pP3/6Q1/2PK3P/6R1 b - - 3 5 : gagne pour les blancs
+r2q1rk1/pp2ppbp/1np3p1/2Pp4/3Pn3/1Q2PN1P/PP3PPB/R3RBK1 b - - 0 16 : activité mieux pour les blancs
+r1b1qrk1/pppnp1b1/3p1npp/5p2/3P3B/2P1P3/PP1NBPPP/R2QNRK1 w - - 2 12 : Grogros met +2, alors que c'est mieux pour les noirs
+2n1b3/pp3qbk/2p3pp/2Pp1p2/3PnP2/3Q1N2/PPN2BPP/3B2K1 b - - 4 28 : ici, le cavalier en e4 est largement plus fort que le fou en f2 -> il ne faut surtout pas le prendre !! il faut implémenter les bishop pawns
+1qb1k2r/1p1p2pp/3b2n1/B5Nn/8/1Q2N3/1P3PP1/3R2K1 b - - 0 27 : les blancs sont gagnants
+
 
 
 ----- Problèmes -----
@@ -543,6 +551,14 @@ r4rk1/2p3pp/p1PN2n1/2Ppp3/N7/3bP3/PP4PP/R4RK1 w - - 1 21 : Cb6 gagne
 3r2k1/1R4pp/3N4/p1Ppp3/1n6/P3P3/6PP/6K1 b - - 0 28 : Ca6 seul coup qui tient
 3r2k1/1R4pp/3N4/p1Ppp3/8/P2nP3/6PP/6K1 w - - 1 29 : c6 gagne
 3r2k1/1R4pp/2PN4/p1npp3/8/P3P3/6PP/6K1 w - - 1 30 : Te7, Tb6, Ta7 gagnent assez facilement
+2k5/ppp4p/8/P3Pr2/3r1P2/5RK1/7P/4R3 b - - 4 29 : seuls coups qui draw: h5 et Rd7 (Rd8 peut-être)
+8/4p3/7B/2b1q3/7Q/P4B2/2b1PK1P/3k4 w - - 0 1 : Dd4+!! gagne
+1k6/p1p3bp/1pr2p2/2q3r1/7p/1P1R1P1P/PKPQ2P1/3R1B2 w - - 0 1 : Td8, Tg8 pour Dd8 Dc8 et Fa6 Td1# (#6)
+r1bq1k1r/1p2b1pp/p4p2/3NQ2B/1P1pP3/8/2PK3P/3R2R1 w - - 0 1 : Txg7 gagne
+r4nk1/pppbb1r1/7p/5n1P/8/1P4Q1/PB6/6RK w - - 0 1 : Dxg7+ gagne
+Q5qk/8/4N2p/8/7K/8/8/8 w - - 0 1 : staircase -> Cf8 en pointe gagne la dame
+3r1rk1/1pp3pp/p3p3/2q1Pp2/Pn2p3/BP2P1P1/2P1QP1P/R4RK1 w - - 5 20 : De1 gagne une pièce
+2r2rk1/1p2qpp1/1p1p1n1p/n2P4/1R2P3/3B1Q2/P2B1PPP/4R1K1 w - - 1 19 : Fxh6 suivi de e5 est très fort
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---
