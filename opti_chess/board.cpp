@@ -905,6 +905,40 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 			eval_components += "rook activity: " + (rook_activity >= 0 ? string("+") : string()) + to_string(rook_activity) + "\n";
 	}
 
+	// Bons/Mauvais fous
+	if (eval->_bishop_pawns != 0.0f) {
+		const int bishop_pawns = get_bishop_pawns() * eval->_bishop_pawns;
+		if (display)
+			eval_components += "bishop pawns: " + (bishop_pawns >= 0 ? string("+") : string()) + to_string(bishop_pawns) + "\n";
+	}
+
+	// Marrées de pions
+	if (eval->_pawn_storm != 0.0f) {
+		const int pawn_storm = get_pawn_storm() * eval->_pawn_storm;
+		if (display)
+			eval_components += "pawn storm: " + (pawn_storm >= 0 ? string("+") : string()) + to_string(pawn_storm) + "\n";
+	}
+
+	// Boucliers de pions
+	if (eval->_pawn_shield != 0.0f) {
+		const int pawn_shield = get_pawn_shield() * eval->_pawn_shield;
+		if (display)
+			eval_components += "pawn shield: " + (pawn_shield >= 0 ? string("+") : string()) + to_string(pawn_shield) + "\n";
+	}
+
+	// Avant-postes
+	if (eval->_outposts != 0.0f) {
+		const int outposts = get_outposts() * eval->_outposts;
+		if (display)
+			eval_components += "outposts: " + (outposts >= 0 ? string("+") : string()) + to_string(outposts) + "\n";
+	}
+
+	// Cases faibles
+	if (eval->_weak_squares != 0.0f) {
+		const int weak_squares = get_weak_squares() * eval->_weak_squares;
+		if (display)
+			eval_components += "weak squares: " + (weak_squares >= 0 ? string("+") : string()) + to_string(weak_squares) + "\n";
+	}
 
 
 	// Total de l'évaluation
@@ -5885,4 +5919,34 @@ bool Board::operator== (const Board& b) const
 		return false;*/
 
 	return true;
+}
+
+// Fonction qui calcule et renvoie la valeur des pions qui bloquent les fous
+int Board::get_bishop_pawns() const {
+	// TODO : implementer
+	return 0;
+}
+
+// Fonction qui renvoie la valeur d'une marrée de pions
+int Board::get_pawn_storm() const {
+	// TODO : implementer
+	return 0;
+}
+
+// Fonction qui renvoie la valeur des faiblesses long terme du bouclier de pions
+int Board::get_pawn_shield() const {
+	// TODO : implementer
+	return 0;
+}
+
+// Fonction qui renvoie la valeur des pièces sur un avant-poste
+int Board::get_outposts() const {
+	// TODO : implementer
+	return 0;
+}
+
+// Fonction qui renvoie la caleur des cases faibles
+int Board::get_weak_squares() const {
+	// TODO : implementer
+	return 0;
 }
