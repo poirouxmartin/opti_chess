@@ -27,7 +27,7 @@ public:
 	float _fianchetto = 0.3f;
 	float _pawn_push_threats = 10.0f;
 	float _king_proximity = 0.4f;
-	float _rook_activity = 0.2f;
+	float _rook_activity = 0.15f;
 	float _bishop_pawns = 2.0f;
 	float _pawn_storm = 0.1f;
 	float _pawn_shield = 0.1f;
