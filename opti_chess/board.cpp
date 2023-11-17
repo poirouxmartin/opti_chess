@@ -5977,7 +5977,7 @@ int Board::get_bishop_pawns() const {
 				else
 					white_pawns_b++;
 
-				if (_array[i + 1][j] != 0)
+				if (_array[i + 1][j] != 0 && is_in(j, 2, 5))
 					white_pawns_blocked++;
 			}
 
@@ -5988,11 +5988,18 @@ int Board::get_bishop_pawns() const {
 				else
 					black_pawns_b++;
 
-				if (_array[i - 1][j] != 0)
+				if (_array[i - 1][j] != 0 && is_in(j, 2, 5))
 					black_pawns_blocked++;
 			}
 		}
 	}
+
+	//cout << "white_pawns_w: " << white_pawns_w << endl;
+	//cout << "white_pawns_b: " << white_pawns_b << endl;
+	//cout << "black_pawns_w: " << black_pawns_w << endl;
+	//cout << "black_pawns_b: " << black_pawns_b << endl;
+	//cout << "white_pawns_blocked: " << white_pawns_blocked << endl;
+	//cout << "black_pawns_blocked: " << black_pawns_blocked << endl;
 
 	int bishop_pawns_value = 0;
 
@@ -6018,7 +6025,12 @@ int Board::get_bishop_pawns() const {
 		}
 	}
 
-	return bishop_pawns_value;
+	//cout << "bishop_pawns_value: " << bishop_pawns_value << endl;
+
+	// Facteur multiplicatif en fonction de l'avancement de la partie
+	int advancement_factor = 2;
+
+	return bishop_pawns_value * (1 + _adv * (advancement_factor - 1));
 }
 
 // Fonction qui renvoie la valeur d'une marrée de pions
