@@ -559,6 +559,7 @@ r4nk1/pppbb1r1/7p/5n1P/8/1P4Q1/PB6/6RK w - - 0 1 : Dxg7+ gagne
 Q5qk/8/4N2p/8/7K/8/8/8 w - - 0 1 : staircase -> Cf8 en pointe gagne la dame
 3r1rk1/1pp3pp/p3p3/2q1Pp2/Pn2p3/BP2P1P1/2P1QP1P/R4RK1 w - - 5 20 : De1 gagne une pièce
 2r2rk1/1p2qpp1/1p1p1n1p/n2P4/1R2P3/3B1Q2/P2B1PPP/4R1K1 w - - 1 19 : Fxh6 suivi de e5 est très fort
+r2q1rk1/1p1b1p2/p2b1n1Q/5p2/3P4/P1N2N2/1P3PPP/R3R1K1 w - - 0 18 : Cg5 gagne
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---
