@@ -254,6 +254,7 @@ r2q1rk1/pp2ppbp/1np3p1/2Pp4/3Pn3/1Q2PN1P/PP3PPB/R3RBK1 b - - 0 16 : activité mie
 r1b1qrk1/pppnp1b1/3p1npp/5p2/3P3B/2P1P3/PP1NBPPP/R2QNRK1 w - - 2 12 : Grogros met +2, alors que c'est mieux pour les noirs
 2n1b3/pp3qbk/2p3pp/2Pp1p2/3PnP2/3Q1N2/PPN2BPP/3B2K1 b - - 4 28 : ici, le cavalier en e4 est largement plus fort que le fou en f2 -> il ne faut surtout pas le prendre !! il faut implémenter les bishop pawns
 1qb1k2r/1p1p2pp/3b2n1/B5Nn/8/1Q2N3/1P3PP1/3R2K1 b - - 0 27 : les blancs sont gagnants
+1rr3k1/pb3ppp/nq3b2/2pp4/7P/P1NBPN2/1P1Q1PP1/2KR3R w - - 5 18 : déjà complètement gagnant pour les noirs (toutes les pièces sont en attaque)
 
 
 
@@ -560,6 +561,7 @@ Q5qk/8/4N2p/8/7K/8/8/8 w - - 0 1 : staircase -> Cf8 en pointe gagne la dame
 3r1rk1/1pp3pp/p3p3/2q1Pp2/Pn2p3/BP2P1P1/2P1QP1P/R4RK1 w - - 5 20 : De1 gagne une pièce
 2r2rk1/1p2qpp1/1p1p1n1p/n2P4/1R2P3/3B1Q2/P2B1PPP/4R1K1 w - - 1 19 : Fxh6 suivi de e5 est très fort
 r2q1rk1/1p1b1p2/p2b1n1Q/5p2/3P4/P1N2N2/1P3PPP/R3R1K1 w - - 0 18 : Cg5 gagne
+r3k2N/pppnq1pp/8/3Pp3/Q1Bn2b1/2P5/PP1P1KPP/RNB4R b q - 0 11 : Dh4+ gagne
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---
