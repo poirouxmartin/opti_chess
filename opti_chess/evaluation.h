@@ -30,7 +30,7 @@ public:
 	float _rook_activity = 0.15f;
 	float _bishop_pawns = 2.0f;
 	float _pawn_storm = 0.1f;
-	float _pawn_shield = 0.1f;
+	float _pawn_shield = 2.0f;
 	float _outposts = 0.1f;
 	float _weak_squares = 0.1f;
 
