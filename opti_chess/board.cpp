@@ -2484,15 +2484,14 @@ int Board::max_monte_carlo_depth() const
 // Algo de grogros_zero
 void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const float k_add, const int quiescence_depth, const bool explore_checks, const bool display, const int depth, Network* net, int correction)
 {
+	// Temps au début de l'appel de GrogrosZero
+	const clock_t begin_monte_time = clock();
 
 	// Pour la GUI
 	main_GUI._update_variants = true;
 
 	// Pour le buffer
 	_is_active = true;
-
-	// Temps au début de l'appel de GrogrosZero
-	const clock_t begin_monte_time = clock();
 
 	// Si c'est le premier appel, sur le plateau principal
 	if (_new_board && depth == 0)
@@ -2558,8 +2557,11 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const flo
 
 			// Prend une nouvelle place dans le buffer
 			const int index = monte_buffer.get_first_free_index();
+
+			// Si le buffer est plein, arrête l'exploration
 			if (index == -1) {
 				cout << "buffer is full" << endl;
+				_time_monte_carlo += clock() - begin_monte_time;
 				return;
 			}
 
@@ -6040,9 +6042,45 @@ int Board::get_pawn_storm() const {
 }
 
 // Fonction qui renvoie la valeur des faiblesses long terme du bouclier de pions
-int Board::get_pawn_shield() const {
-	// TODO : implementer
-	return 0;
+int Board::get_pawn_shield() {
+	// Prendre en compte:
+	// - la présence de pions devant le roi: DONE
+	// - colonnes semi-ouvertes devant le roi: TODO
+	// - pénalités pour pions doublés devant le roi, ou isolés devant le roi: TODO
+	// - colonnes/diagonales ouvertes
+
+	// si possibilité de roque côté roi -> regarde les pions f, g et h
+	// sinon, si possibilité de roque côté dame -> regarde les pions b, c et d
+	// sinon (sans droits de roques): regarder les 3 pions devant le roi, et les 3 colonnes semi-ouvertes devant le roi
+
+
+	int pawn_shield_value = 0;
+
+	update_kings_pos();
+
+	// Roi blanc
+
+	// Colonne du milieu à regarder
+	int w_col = _castling_rights.k_w ? 6 : _castling_rights.q_w ? 2 : _white_king_pos.j;
+
+	pawn_shield_value += 25 * ((w_col > 0) * (_array[1][w_col - 1] == 1) + (_array[1][w_col] == 1) + (w_col < 7) * (_array[1][w_col + 1] == 1));
+	pawn_shield_value += 15 * ((w_col > 0) * (_array[2][w_col - 1] == 1) + (_array[2][w_col] == 1) + (w_col < 7) * (_array[2][w_col + 1] == 1));
+	pawn_shield_value += 5 * ((w_col > 0) * (_array[3][w_col - 1] == 1) + (_array[3][w_col] == 1) + (w_col < 7) * (_array[3][w_col + 1] == 1));
+
+
+	// Roi noir
+
+	// Colonne du milieu à regarder
+	int b_col = _castling_rights.k_b ? 6 : _castling_rights.q_b ? 2 : _black_king_pos.j;
+
+	pawn_shield_value -= 25 * ((w_col > 0) * (_array[6][b_col - 1] == 7) + (_array[6][b_col] == 7) + (w_col < 7) * (_array[6][b_col + 1] == 7));
+	pawn_shield_value -= 15 * ((w_col > 0) * (_array[5][b_col - 1] == 7) + (_array[5][b_col] == 7) + (w_col < 7) * (_array[5][b_col + 1] == 7));
+	pawn_shield_value -= 5 * ((w_col > 0) * (_array[4][b_col - 1] == 7) + (_array[4][b_col] == 7) + (w_col < 7) * (_array[4][b_col + 1] == 7));
+
+	// A partir de quelle valeur de l'avancement de la partie, cela n'a plus d'importance (décroit linéairement)
+	float pawn_shield_advancement_threshold = 0.7f;
+
+	return pawn_shield_value * (max(0.0f, 1.0f - _adv / pawn_shield_advancement_threshold));
 }
 
 // Fonction qui renvoie la valeur des pièces sur un avant-poste

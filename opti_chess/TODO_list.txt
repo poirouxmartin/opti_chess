@@ -138,6 +138,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Colonnes fermées -> tour mauvaises. Si beaucoup de colonnes ouvertes, bonus pour les tours. Pareil pour les diagonales et les fous
 	- Pions passés: prendre en compte les contrôles des alliés pour pousser les pions
 	- Règle des 2 faiblesses : si y'a 2 faiblesses attaquables, ça donne un avantage
+	- Winnable? en endgame par exemple si on a qu'un fou on peut pas gagner
 
 -> Faire une policy pour les coups (ou des préférences de réflexion)
 -> Livres d'ouvertures, tables d'engame?
@@ -294,6 +295,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Rajouter des comtempt: valeur qui dépend de l'adversaire, et qui définit à quel point tu acceptes les nulles (et tente des pièges?)
 -> Faire une structure pour la recherche de MonteCarlo (arbre avec noeuds)
 -> Bishop pawns: retirer une part de la pénalité quand le fou est devant et protégé par un de ses pions?
+-> ATTENTION : pour l'activité des tours, parfois Grogros va faire un Th7 pour se déroquer (car il pense que sa tour ne sera plus bloquée). Il faut fix à tout prix
 
 
 ----- Interface utilisateur -----
