@@ -32,7 +32,7 @@ public:
 	float _pawn_storm = 0.1f;
 	float _pawn_shield = 2.0f;
 	float _outposts = 0.1f;
-	float _weak_squares = 0.1f;
+	float _weak_squares = 0.75f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
 	int _pieces_value_begin[6] = { 82, 335, 340, 460, 980, 0 };
