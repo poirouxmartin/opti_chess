@@ -562,6 +562,7 @@ Q5qk/8/4N2p/8/7K/8/8/8 w - - 0 1 : staircase -> Cf8 en pointe gagne la dame
 2r2rk1/1p2qpp1/1p1p1n1p/n2P4/1R2P3/3B1Q2/P2B1PPP/4R1K1 w - - 1 19 : Fxh6 suivi de e5 est très fort
 r2q1rk1/1p1b1p2/p2b1n1Q/5p2/3P4/P1N2N2/1P3PPP/R3R1K1 w - - 0 18 : Cg5 gagne
 r3k2N/pppnq1pp/8/3Pp3/Q1Bn2b1/2P5/PP1P1KPP/RNB4R b q - 0 11 : Dh4+ gagne
+r1b2k1r/pppp2pp/2n2pq1/3B2B1/8/4QN2/P4PPP/4R1K1 w - - 0 16 : Fxc6 termine la partie
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---

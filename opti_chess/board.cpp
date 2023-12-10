@@ -6047,11 +6047,11 @@ int Board::get_pawn_shield() {
 	// - la présence de pions devant le roi: DONE
 	// - colonnes semi-ouvertes devant le roi: TODO
 	// - pénalités pour pions doublés devant le roi, ou isolés devant le roi: TODO
-	// - colonnes/diagonales ouvertes
+	// - colonnes/diagonales ouvertes: TODO
 
-	// si possibilité de roque côté roi -> regarde les pions f, g et h
-	// sinon, si possibilité de roque côté dame -> regarde les pions b, c et d
-	// sinon (sans droits de roques): regarder les 3 pions devant le roi, et les 3 colonnes semi-ouvertes devant le roi
+	// si roqué (ne peut plus roquer): regarde les 3 pions devant lui
+	// si peut roquer que d'un côté, regarde les pions f, g et h ou b, c et d (selon le côté)
+	// si peut roquer des deux côtés, fais la moyenne des pions f, g et h et b, c et d, et des 3 pions devant lui
 
 
 	int pawn_shield_value = 0;
@@ -6060,22 +6060,48 @@ int Board::get_pawn_shield() {
 
 	// Roi blanc
 
-	// Colonne du milieu à regarder
-	int w_col = _castling_rights.k_w ? 6 : _castling_rights.q_w ? 2 : _white_king_pos.j;
+	// pions f, g et h
+	int w_kingside_pawns = 25 * ((_array[1][5] == 1) + (_array[1][6] == 1) + (_array[1][7] == 1)) + 15 * ((_array[2][5] == 1) + (_array[2][6] == 1) + (_array[2][7] == 1)) + 5 * ((_array[3][5] == 1) + (_array[3][6] == 1) + (_array[3][7] == 1));
 
-	pawn_shield_value += 25 * ((w_col > 0) * (_array[1][w_col - 1] == 1) + (_array[1][w_col] == 1) + (w_col < 7) * (_array[1][w_col + 1] == 1));
-	pawn_shield_value += 15 * ((w_col > 0) * (_array[2][w_col - 1] == 1) + (_array[2][w_col] == 1) + (w_col < 7) * (_array[2][w_col + 1] == 1));
-	pawn_shield_value += 5 * ((w_col > 0) * (_array[3][w_col - 1] == 1) + (_array[3][w_col] == 1) + (w_col < 7) * (_array[3][w_col + 1] == 1));
+	// pions b, c et d
+	int w_queenside_pawns = 25 * ((_array[1][1] == 1) + (_array[1][2] == 1) + (_array[1][3] == 1)) + 15 * ((_array[2][1] == 1) + (_array[2][2] == 1) + (_array[2][3] == 1)) + 5 * ((_array[3][1] == 1) + (_array[3][2] == 1) + (_array[3][3] == 1));
+
+	// pions devant le roi
+	int w_front_pawns = 25 * (_array[1][_white_king_pos.j] == 1) + 15 * (_array[2][_white_king_pos.j] == 1) + 5 * (_array[3][_white_king_pos.j] == 1);
+	if (_white_king_pos.j > 0)
+		w_front_pawns += 25 * (_array[1][_white_king_pos.j - 1] == 1) + 15 * (_array[2][_white_king_pos.j - 1] == 1) + 5 * (_array[3][_white_king_pos.j - 1] == 1);
+	if (_white_king_pos.j < 7)
+		w_front_pawns += 25 * (_array[1][_white_king_pos.j + 1] == 1) + 15 * (_array[2][_white_king_pos.j + 1] == 1) + 5 * (_array[3][_white_king_pos.j + 1] == 1);
+
+	int w_castles_count = _castling_rights.k_w + _castling_rights.q_w;
+
+	int w_pawn_shield_value = (w_front_pawns + _castling_rights.k_w * w_kingside_pawns + _castling_rights.q_w * w_queenside_pawns) / (1 + w_castles_count);
 
 
 	// Roi noir
 
-	// Colonne du milieu à regarder
-	int b_col = _castling_rights.k_b ? 6 : _castling_rights.q_b ? 2 : _black_king_pos.j;
+	// pions f, g et h
+	int b_kingside_pawns = 25 * ((_array[6][5] == 7) + (_array[6][6] == 7) + (_array[6][7] == 7)) + 15 * ((_array[5][5] == 7) + (_array[5][6] == 7) + (_array[5][7] == 7)) + 5 * ((_array[4][5] == 7) + (_array[4][6] == 7) + (_array[4][7] == 7));
 
-	pawn_shield_value -= 25 * ((w_col > 0) * (_array[6][b_col - 1] == 7) + (_array[6][b_col] == 7) + (w_col < 7) * (_array[6][b_col + 1] == 7));
-	pawn_shield_value -= 15 * ((w_col > 0) * (_array[5][b_col - 1] == 7) + (_array[5][b_col] == 7) + (w_col < 7) * (_array[5][b_col + 1] == 7));
-	pawn_shield_value -= 5 * ((w_col > 0) * (_array[4][b_col - 1] == 7) + (_array[4][b_col] == 7) + (w_col < 7) * (_array[4][b_col + 1] == 7));
+	// pions b, c et d
+	int b_queenside_pawns = 25 * ((_array[6][1] == 7) + (_array[6][2] == 7) + (_array[6][3] == 7)) + 15 * ((_array[5][1] == 7) + (_array[5][2] == 7) + (_array[5][3] == 7)) + 5 * ((_array[4][1] == 7) + (_array[4][2] == 7) + (_array[4][3] == 7));
+
+	// pions devant le roi
+	int b_front_pawns = 25 * (_array[6][_black_king_pos.j] == 7) + 15 * (_array[5][_black_king_pos.j] == 7) + 5 * (_array[4][_black_king_pos.j] == 7);
+	if (_black_king_pos.j > 0)
+		b_front_pawns += 25 * (_array[6][_black_king_pos.j - 1] == 7) + 15 * (_array[5][_black_king_pos.j - 1] == 7) + 5 * (_array[4][_black_king_pos.j - 1] == 7);
+	if (_black_king_pos.j < 7)
+		b_front_pawns += 25 * (_array[6][_black_king_pos.j + 1] == 7) + 15 * (_array[5][_black_king_pos.j + 1] == 7) + 5 * (_array[4][_black_king_pos.j + 1] == 7);
+
+	int b_castles_count = _castling_rights.k_b + _castling_rights.q_b;
+
+	int b_pawn_shield_value = (b_front_pawns + _castling_rights.k_b * b_kingside_pawns + _castling_rights.q_b * b_queenside_pawns) / (1 + b_castles_count);
+
+	// Trous sur les colonnes
+
+
+	// Calcul de la valeur du bouclier de pions
+	pawn_shield_value = w_pawn_shield_value - b_pawn_shield_value;
 
 	// A partir de quelle valeur de l'avancement de la partie, cela n'a plus d'importance (décroit linéairement)
 	float pawn_shield_advancement_threshold = 0.7f;
@@ -6091,6 +6117,93 @@ int Board::get_outposts() const {
 
 // Fonction qui renvoie la caleur des cases faibles
 int Board::get_weak_squares() const {
-	// TODO : implementer
-	return 0;
+	// Case faible: case qui ne peut plus être protégée par un pion (= pas de pions sur une ligne inférieure sur les colonnes adjacentes)
+
+	// TODO :
+	// - bonus quand cette case est controllée par un pion (~> pion arrieré parfois)
+	// - bonus quand une pièce est sur cette case (~> outpost)
+
+	// Valeur des cases faibles
+	const static int weak_square_values[8][8] = {
+		{ 0,  0,  0,  0,  0,  0,  0,  0},
+		{ 0,  0,  0,  0,  0,  0,  0,  0}, 
+		{ 0,  0,  0, 20, 20,  0,  0,  0},
+		{ 0,  0, 35, 50, 50, 35,  0,  0},
+		{ 0,  0, 35, 50, 50, 35,  0,  0},
+		{ 0,  0, 15, 20, 20, 15,  0,  0},
+		{ 0,  0,  0,  0,  0,  0,  0,  0},
+		{ 0,  0,  0,  0,  0,  0,  0,  0}
+	};
+
+
+	// Valeur des cases faibles
+	int weak_squares_value = 0;
+
+	// Cases faibles des blancs
+
+	// Pour chaque case
+	for (uint_fast8_t i = 2; i < 8; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			bool weak = _array[i][j] != 1;
+			
+			if (weak && j > 0) {
+				for (uint_fast8_t k = i - 1; k > 0; k--) {
+					if (_array[k][j - 1] == 1) {
+						weak = false;
+						break;
+					}
+				}
+			}
+
+			if (weak && j < 7) {
+				for (uint_fast8_t k = i - 1; k > 0; k--) {
+					if (_array[k][j + 1] == 1) {
+						weak = false;
+						break;
+					}
+				}
+			}
+
+			if (weak) {
+				cout << "W: weak square: " << (int)i << ", " << (int)j << endl;
+				weak_squares_value -= weak_square_values[7 - i][j];
+			}
+				
+		}
+	}
+
+	// Cases faibles des noirs
+
+	// Pour chaque case
+	for (uint_fast8_t i = 5; i > 0; i--) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			bool weak = _array[i][j] != 7;
+
+			if (weak && j > 0) {
+				for (uint_fast8_t k = i + 1; k < 7; k++) {
+					if (_array[k][j - 1] == 7) {
+						weak = false;
+						break;
+					}
+				}
+			}
+
+			if (weak && j < 7) {
+				for (uint_fast8_t k = i + 1; k < 7; k++) {
+					if (_array[k][j + 1] == 7) {
+						weak = false;
+						break;
+					}
+				}
+			}
+
+			if (weak) {
+				cout << "B: weak square: " << (int)i << ", " << (int)j << endl;
+				weak_squares_value += weak_square_values[i][j];
+			}
+				
+		}
+	}
+
+	return weak_squares_value * (1 - _adv);
 }
