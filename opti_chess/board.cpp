@@ -6117,7 +6117,7 @@ int Board::get_outposts() const {
 
 // Fonction qui renvoie la caleur des cases faibles
 int Board::get_weak_squares() const {
-	// Case faible: case qui ne peut plus être protégée par un pion (= pas de pions sur une ligne inférieure sur les colonnes adjacentes)
+	// Case faible: case qui ne peut plus être protégée par un pion (= pas de pions sur une ligne inférieure sur les colonnes adjacentes), s'il n'y a pas de pion dessus
 
 	// TODO :
 	// - bonus quand cette case est controllée par un pion (~> pion arrieré parfois)
@@ -6135,6 +6135,29 @@ int Board::get_weak_squares() const {
 		{ 0,  0,  0,  0,  0,  0,  0,  0}
 	};
 
+	// Valeur des outposts sur les cases faibles
+	const static int outpost_square_values[8][8] = {
+		{ 0,  0,  0,  0,  0,  0,  0,  0},
+		{ 0,  0, 15, 25, 25, 15,  0,  0},
+		{ 0,  0, 30, 40, 40, 30,  0,  0},
+		{ 0,  0, 35, 50, 50, 35,  0,  0},
+		{ 0,  0, 20, 35, 35, 20,  0,  0},
+		{ 0,  0,  5, 10, 10,  5,  0,  0},
+		{ 0,  0,  0,  0,  0,  0,  0,  0},
+		{ 0,  0,  0,  0,  0,  0,  0,  0}
+	};
+
+	// Outpost pour un cavalier
+	const static float knight_outpost_value = 1.0f;
+
+	// Outpost pour un fou
+	const static float bishop_outpost_value = 0.5f;
+
+	// Outpost pour une tour
+	const static float rook_outpost_value = 0.25f;
+
+
+
 
 	// Valeur des cases faibles
 	int weak_squares_value = 0;
@@ -6142,9 +6165,9 @@ int Board::get_weak_squares() const {
 	// Cases faibles des blancs
 
 	// Pour chaque case
-	for (uint_fast8_t i = 2; i < 8; i++) {
+	for (uint_fast8_t i = 2; i < 7; i++) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
-			bool weak = _array[i][j] != 1;
+			bool weak = _array[i][j] != 1 && _array[i][j] != 7;
 			
 			if (weak && j > 0) {
 				for (uint_fast8_t k = i - 1; k > 0; k--) {
@@ -6164,9 +6187,26 @@ int Board::get_weak_squares() const {
 				}
 			}
 
+			// Si c'est une case faible
 			if (weak) {
-				cout << "W: weak square: " << (int)i << ", " << (int)j << endl;
-				weak_squares_value -= weak_square_values[7 - i][j];
+				int square_value = weak_square_values[7 - i][j];
+				int pawn_controls = (j > 0 && _array[i + 1][j - 1] == 7) + (j < 7 && _array[i + 1][j + 1] == 7);
+
+				// Valeur du contrôle de la case faible par un pion adverse
+				square_value *= (1 + pawn_controls);
+
+				// Outposts
+				if (pawn_controls > 0) {
+
+					// Valeur de l'outpost adverse
+					int outpost_value = outpost_square_values[i][j];
+					int p = _array[i][j];
+
+					// Valeur en fonction de la pièce
+					square_value += outpost_value * (p == 8 ? knight_outpost_value : (p == 9 ? bishop_outpost_value : (p == 10 ? rook_outpost_value : 0)));
+				}
+
+				weak_squares_value -= square_value;
 			}
 				
 		}
@@ -6175,9 +6215,9 @@ int Board::get_weak_squares() const {
 	// Cases faibles des noirs
 
 	// Pour chaque case
-	for (uint_fast8_t i = 5; i > 0; i--) {
+	for (uint_fast8_t i = 5; i > 1; i--) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
-			bool weak = _array[i][j] != 7;
+			bool weak = _array[i][j] != 1 && _array[i][j] != 7;
 
 			if (weak && j > 0) {
 				for (uint_fast8_t k = i + 1; k < 7; k++) {
@@ -6197,13 +6237,33 @@ int Board::get_weak_squares() const {
 				}
 			}
 
+			// Si c'est une case faible
 			if (weak) {
-				cout << "B: weak square: " << (int)i << ", " << (int)j << endl;
-				weak_squares_value += weak_square_values[i][j];
+				int square_value = weak_square_values[i][j];
+				int pawn_controls = (j > 0 && _array[i - 1][j - 1] == 1) + (j < 7 && _array[i - 1][j + 1] == 1);
+
+				// Valeur du contrôle de la case faible par un pion adverse
+				square_value *= (1 + pawn_controls);
+
+				// Outposts
+				if (pawn_controls > 0) {
+
+					// Valeur de l'outpost adverse
+					int outpost_value = outpost_square_values[7 - i][j];
+					int p = _array[i][j];
+
+					// Valeur en fonction de la pièce
+					square_value += outpost_value * (p == 2 ? knight_outpost_value : (p == 3 ? bishop_outpost_value : (p == 4 ? rook_outpost_value : 0)));
+				}
+
+				weak_squares_value += square_value;
 			}
 				
 		}
 	}
 
-	return weak_squares_value * (1 - _adv);
+	// A partir de quelle valeur de l'avancement de la partie, cela n'a plus d'importance (décroit linéairement)
+	float weak_squares_advancement_threshold = 0.8f;
+
+	return weak_squares_value * (max(0.0f, 1.0f - _adv / weak_squares_advancement_threshold));
 }
