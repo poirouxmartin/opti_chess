@@ -554,9 +554,6 @@ public:
 	// Fonction qui renvoie la valeur des faiblesses long terme du bouclier de pions
 	[[nodiscard]] int get_pawn_shield();
 
-	// Fonction qui renvoie la valeur des pièces sur un avant-poste
-	[[nodiscard]] int get_outposts() const;
-
 	// Fonction qui renvoie la caleur des cases faibles
 	[[nodiscard]] int get_weak_squares() const;
 };
