@@ -19,7 +19,7 @@ public:
 	float _kings_opposition = 75.0f;
 	float _push = 1.00f;
 	float _rook_open = 0.3f;
-	float _square_controls = 0.25f;
+	float _square_controls = 0.35f;
 	float _space_advantage = 0.6f;
 	//float _alignments = 1.0f;
 	float _alignments = 0.00f;
@@ -27,12 +27,11 @@ public:
 	float _fianchetto = 0.3f;
 	float _pawn_push_threats = 10.0f;
 	float _king_proximity = 0.4f;
-	float _rook_activity = 0.15f;
+	float _rook_activity = 0.1f;
 	float _bishop_pawns = 2.0f;
 	float _pawn_storm = 0.1f;
 	float _pawn_shield = 2.0f;
-	float _outposts = 0.1f;
-	float _weak_squares = 0.75f;
+	float _weak_squares = 0.5f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
 	int _pieces_value_begin[6] = { 82, 335, 340, 460, 980, 0 };
@@ -337,7 +336,7 @@ public:
 	Evaluator(const Evaluator &evaluator);
 
 	// Constructeur avec paramètres
-	Evaluator(const float piece_value, const float piece_mobility, const float piece_positioning, const float bishop_pair, const float castling_rights, const float player_trait, const float king_safety, const float pawn_structure, const float attacks, const float defenses, const float kings_opposition, const float push, const float rook_open, const float square_controls, const float space_advantage, const float alignments, const float piece_activity, const float fianchetto, const float pawn_push_threats, const float king_proximity, const float rook_activity, const float bishop_pawns, const float pawn_storm, const float pawn_shield, const float outposts, const float weak_squares);
+	Evaluator(const float piece_value, const float piece_mobility, const float piece_positioning, const float bishop_pair, const float castling_rights, const float player_trait, const float king_safety, const float pawn_structure, const float attacks, const float defenses, const float kings_opposition, const float push, const float rook_open, const float square_controls, const float space_advantage, const float alignments, const float piece_activity, const float fianchetto, const float pawn_push_threats, const float king_proximity, const float rook_activity, const float bishop_pawns, const float pawn_storm, const float pawn_shield, const float weak_squares);
 
 	// Opérateur de copie
 	Evaluator& operator=(const Evaluator &evaluator);
