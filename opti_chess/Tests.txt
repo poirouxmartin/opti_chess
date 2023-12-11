@@ -255,6 +255,9 @@ r1b1qrk1/pppnp1b1/3p1npp/5p2/3P3B/2P1P3/PP1NBPPP/R2QNRK1 w - - 2 12 : Grogros me
 2n1b3/pp3qbk/2p3pp/2Pp1p2/3PnP2/3Q1N2/PPN2BPP/3B2K1 b - - 4 28 : ici, le cavalier en e4 est largement plus fort que le fou en f2 -> il ne faut surtout pas le prendre !! il faut implémenter les bishop pawns
 1qb1k2r/1p1p2pp/3b2n1/B5Nn/8/1Q2N3/1P3PP1/3R2K1 b - - 0 27 : les blancs sont gagnants
 1rr3k1/pb3ppp/nq3b2/2pp4/7P/P1NBPN2/1P1Q1PP1/2KR3R w - - 5 18 : déjà complètement gagnant pour les noirs (toutes les pièces sont en attaque)
+1r2r1k1/5pp1/pB1Q3p/4p1q1/R7/1P3bP1/2P2P1P/3R2K1 w - - 1 26 : problème sur cases blanches... foutu pour les blancs
+rnbqkbnr/pp3ppp/3p4/1B2p3/3NP3/8/PPP2PPP/RNBQK2R b KQkq - 1 5 : ici il faut réussir à faire comprendre que le fou de case blanche est utile pour controller la case faible en d5
+r1b2rk1/ppqnbppp/2n1p3/3pP3/NP3P2/P2B1N2/5BPP/R2Q1RK1 w - - 7 17 : gagnant pour les blancs.. il faudra peut-être revoir le concept de cases faibles...
 
 
 

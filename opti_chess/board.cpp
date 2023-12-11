@@ -930,15 +930,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 		_evaluation += pawn_shield;
 	}
 
-	// Avant-postes
-	if (eval->_outposts != 0.0f) {
-		const int outposts = get_outposts() * eval->_outposts;
-		if (display)
-			eval_components += "outposts: " + (outposts >= 0 ? string("+") : string()) + to_string(outposts) + "\n";
-		_evaluation += outposts;
-	}
-
-	// Cases faibles
+	// Cases faibles et avant-postes
 	if (eval->_weak_squares != 0.0f) {
 		const int weak_squares = get_weak_squares() * eval->_weak_squares;
 		if (display)
@@ -6109,25 +6101,17 @@ int Board::get_pawn_shield() {
 	return pawn_shield_value * (max(0.0f, 1.0f - _adv / pawn_shield_advancement_threshold));
 }
 
-// Fonction qui renvoie la valeur des pièces sur un avant-poste
-int Board::get_outposts() const {
-	// TODO : implementer
-	return 0;
-}
-
 // Fonction qui renvoie la caleur des cases faibles
 int Board::get_weak_squares() const {
 	// Case faible: case qui ne peut plus être protégée par un pion (= pas de pions sur une ligne inférieure sur les colonnes adjacentes), s'il n'y a pas de pion dessus
-
-	// TODO :
-	// - bonus quand cette case est controllée par un pion (~> pion arrieré parfois)
-	// - bonus quand une pièce est sur cette case (~> outpost)
+	// Bonus pour le contrôle de la case faible par un pion adverse
+	// Bonus pour l'outpost d'un cavalier, d'un fou, ou d'une tour
 
 	// Valeur des cases faibles
 	const static int weak_square_values[8][8] = {
 		{ 0,  0,  0,  0,  0,  0,  0,  0},
 		{ 0,  0,  0,  0,  0,  0,  0,  0}, 
-		{ 0,  0,  0, 20, 20,  0,  0,  0},
+		{ 0,  0, 10, 20, 20, 10,  0,  0},
 		{ 0,  0, 35, 50, 50, 35,  0,  0},
 		{ 0,  0, 35, 50, 50, 35,  0,  0},
 		{ 0,  0, 15, 20, 20, 15,  0,  0},
@@ -6193,7 +6177,7 @@ int Board::get_weak_squares() const {
 				int pawn_controls = (j > 0 && _array[i + 1][j - 1] == 7) + (j < 7 && _array[i + 1][j + 1] == 7);
 
 				// Valeur du contrôle de la case faible par un pion adverse
-				square_value *= (1 + pawn_controls);
+				square_value *= (1 + pawn_controls * pawn_controls);
 
 				// Outposts
 				if (pawn_controls > 0) {
@@ -6243,7 +6227,7 @@ int Board::get_weak_squares() const {
 				int pawn_controls = (j > 0 && _array[i - 1][j - 1] == 1) + (j < 7 && _array[i - 1][j + 1] == 1);
 
 				// Valeur du contrôle de la case faible par un pion adverse
-				square_value *= (1 + pawn_controls);
+				square_value *= (1 + pawn_controls * pawn_controls);
 
 				// Outposts
 				if (pawn_controls > 0) {
