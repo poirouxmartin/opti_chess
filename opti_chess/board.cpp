@@ -1776,6 +1776,10 @@ bool Board::draw() {
 
 	// Nombre de FPS
 	DrawTextEx(text_font, ("FPS : " + to_string(GetFPS())).c_str(), { main_GUI._screen_width - 3 * text_size, text_size / 3 }, text_size / 3, font_spacing, text_color);
+	//DrawTextEx(GetFontDefault(), "TOTO:♔ \u2654\u2655\u2656\u2657\u2658\u2659\u265A\u265B\u265C\u265D\u265E\u265F", {500, 0}, 20, 1, WHITE);
+	//cout << (char)"\u2654" << endl;
+	//cout << "♔" << endl;
+	//wcout << L'♔' << endl;
 
 	// Plateau
 	draw_rectangle(board_padding_x, board_padding_y, tile_size * 8, tile_size * 8, board_color_light);
@@ -5897,7 +5901,7 @@ int Board::get_rook_activity() const
 		}
 	}
 
-	return activity;
+	return activity * (1 - _adv);
 }
 
 
