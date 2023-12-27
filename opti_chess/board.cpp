@@ -6255,3 +6255,21 @@ int Board::get_weak_squares() const {
 
 	return weak_squares_value * (max(0.0f, 1.0f - _adv / weak_squares_advancement_threshold));
 }
+
+// Fonction qui convertit un coup en sa notation algébrique
+string Board::algebric_notation(Move move) {
+	string move_notation = abc8[move.j1] + to_string(move.i1 + 1) + abc8[move.j2] + to_string(move.i2 + 1);
+
+	// Promotion
+	if (move.i2 == 7 && _array[move.i1][move.j1] == 1)
+		move_notation += "q";
+	else if (move.i2 == 0 && _array[move.i1][move.j1] == 7)
+		move_notation += "q";
+
+	return move_notation;
+}
+
+// Fonction qui convertit une notation algébrique en un coup
+Move Board::move_from_algebric_notation(string notation) {
+	return Move(notation[1] - '1', notation[0] - 'a', notation[3] - '1', notation[2] - 'a');
+}

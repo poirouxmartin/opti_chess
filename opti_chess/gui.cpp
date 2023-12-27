@@ -274,12 +274,16 @@ bool GUI::grogros_zero_threaded(Evaluator* eval, int nodes) {
 	_thread_grogros_zero = thread(&Board::grogros_zero, &_board, eval, nodes, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
 
 	_thread_grogros_zero.detach();
+
+	return true;
 }
 
 // Fonction qui retire le dernier coup du PGN
 bool GUI::remove_last_move_PGN()
 {
 	// TODO	
+
+	return false;
 }
 
 // Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo

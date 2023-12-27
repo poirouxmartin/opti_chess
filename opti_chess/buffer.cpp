@@ -18,18 +18,23 @@ Buffer::Buffer(const unsigned long int size) {
 }
 
 // Initialize l'allocation de n plateaux
-void Buffer::init(const int length) {
-	if (_init)
-		cout << "already initialized" << endl;
+void Buffer::init(const int length, bool display) {
+	if (_init) {
+		if (display)
+			cout << "already initialized" << endl;
+	}
 	else {
-		cout << "initializing buffer..." << endl;
+		if (display)
+			cout << "initializing buffer..." << endl;
 		_length = length;
 		_heap_boards = new Board[_length];
 		_init = true;
-		cout << "buffer initialized :" << endl;
-		cout << "board size : " << int_to_round_string(sizeof(Board)) << "b" << endl;
-		cout << "length : " << int_to_round_string(_length) << endl;
-		cout << "approximate buffer size : " << long_int_to_round_string(monte_buffer._length * sizeof(Board)) << "b" << endl;
+		if (display) {
+			cout << "buffer initialized :" << endl;
+			cout << "board size : " << int_to_round_string(sizeof(Board)) << "b" << endl;
+			cout << "length : " << int_to_round_string(_length) << endl;
+			cout << "approximate buffer size : " << long_int_to_round_string(monte_buffer._length * sizeof(Board)) << "b" << endl;
+		}
 	}
 }
 
