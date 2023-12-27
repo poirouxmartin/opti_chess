@@ -556,6 +556,12 @@ public:
 
 	// Fonction qui renvoie la caleur des cases faibles
 	[[nodiscard]] int get_weak_squares() const;
+
+	// Fonction qui convertit un coup en sa notation algébrique
+	string algebric_notation(Move move);
+
+	// Fonction qui convertit une notation algébrique en un coup
+	Move move_from_algebric_notation(string notation);
 };
 
 // Fonction qui obtient la case correspondante à la position sur la GUI
