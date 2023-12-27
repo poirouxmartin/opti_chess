@@ -296,6 +296,11 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Faire une structure pour la recherche de MonteCarlo (arbre avec noeuds)
 -> Bishop pawns: retirer une part de la pénalité quand le fou est devant et protégé par un de ses pions?
 -> ATTENTION : pour l'activité des tours, parfois Grogros va faire un Th7 pour se déroquer (car il pense que sa tour ne sera plus bloquée). Il faut fix à tout prix
+-> Souvent, Grogros dépasse le centre pour rien, et ça crée des faiblesses et ne sert à rien (il faudrait mieux se développer à la place...). Contre les double fianchetto, ce genre d'erreur est fatal
+-> Utiliser des émoticones pour les pièces d'échec? \u2656xb5 plutôt que Rxb5
+-> Faire des plus petites allocations de buffer pour aller plus vite? et re allouer de la mémoire si on a rempli le buffer?
+-> Faire un truc sur la mobilité totale des pièces? qui ressemble à un logarithme? -> t'as pas de coups -> eval: -inf, t'as k coups -> eval: 0, et ça augmente en log
+-> Utiliser Texel tuner pour rectifier l'évaluation?
 
 
 ----- Interface utilisateur -----
@@ -419,11 +424,12 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 ----- En cours -----
 
 -> Promotions de variantes -> il faut promouvoir toute la branche depuis le début, pas juste le dernier coup (+ le FIXME -> il faut sélectionner le bon noeud après la promotion)
--> Pawn storm / Pawn shield / Weak squares / Outposts
+-> Pawn storm / Pawn shield (rajout des colonnes ouvertes etc...) / Pions arriérés
 -> Affichage du temps dans le PGN
 -> Quiescence nodes qui augmente aussi avec les threads
 -> Temps affiché = vrai temps
 -> Finir pieces alignements
+-> Afficher les pièces plutôt que P, R, N, B, Q, K
 
 
 ----- Réseaux de neurones -----

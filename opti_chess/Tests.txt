@@ -258,6 +258,9 @@ r1b1qrk1/pppnp1b1/3p1npp/5p2/3P3B/2P1P3/PP1NBPPP/R2QNRK1 w - - 2 12 : Grogros me
 1r2r1k1/5pp1/pB1Q3p/4p1q1/R7/1P3bP1/2P2P1P/3R2K1 w - - 1 26 : problème sur cases blanches... foutu pour les blancs
 rnbqkbnr/pp3ppp/3p4/1B2p3/3NP3/8/PPP2PPP/RNBQK2R b KQkq - 1 5 : ici il faut réussir à faire comprendre que le fou de case blanche est utile pour controller la case faible en d5
 r1b2rk1/ppqnbppp/2n1p3/3pP3/NP3P2/P2B1N2/5BPP/R2Q1RK1 w - - 7 17 : gagnant pour les blancs.. il faudra peut-être revoir le concept de cases faibles...
+B1bq1rk1/p1p2ppp/8/2b4Q/4p3/2Pn4/PP1K2PP/RNB4R w - - 0 12 : -3
+5r1k/p5p1/1q4Pp/7Q/P4r2/3p4/1P4RP/6RK b - - 5 36 : le pion passé est trop fort
+5r1k/p5p1/6Pp/3q4/P4r1P/1P4Q1/3p2R1/6RK b - - 2 41 : fini
 
 
 
@@ -566,6 +569,7 @@ Q5qk/8/4N2p/8/7K/8/8/8 w - - 0 1 : staircase -> Cf8 en pointe gagne la dame
 r2q1rk1/1p1b1p2/p2b1n1Q/5p2/3P4/P1N2N2/1P3PPP/R3R1K1 w - - 0 18 : Cg5 gagne
 r3k2N/pppnq1pp/8/3Pp3/Q1Bn2b1/2P5/PP1P1KPP/RNB4R b q - 0 11 : Dh4+ gagne
 r1b2k1r/pppp2pp/2n2pq1/3B2B1/8/4QN2/P4PPP/4R1K1 w - - 0 16 : Fxc6 termine la partie
+1kn5/2Rpppnp/pp6/1p6/1b6/1b1K1B2/1p5q/8 w - - 0 1 : Tb7+ Moulin-ed
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---
