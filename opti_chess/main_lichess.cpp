@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <chrono>
 
 using namespace std;
 
@@ -18,20 +19,24 @@ using namespace std;
 
 // Commande pour lancer le bot: python3 lichess-bot.py -u
 
+// FIXME
+// Vérifier que le jeu sur un autre threat n'est pas plus lent que sur le main thread
 
+
+// Paramètres de Grogros
 struct Param {
 
     // Est-ce que Grogros doit réfléchir?
-    bool think = true;
+    bool think = false;
 
     // Est-ce que Grogros doit jouer?
     bool play = false;
 
     // Nombre de noeuds max par réflexion
-    int max_nodes = 10000;
+    int max_nodes = 25000;
 
     // Nombre de noeuds par demande
-    int nodes = 100;
+    int nodes = 10000;
 
     // Beta
     float beta_grogros = 0.1f;
@@ -44,9 +49,14 @@ struct Param {
 
     // Explore checks
     bool explore_checks = true;
+
+    // Pour gérer les threads
+    //bool wait = false;
 };
 
 
+// Variables globales
+inline bool got_input = false;
 
 
 // Function to parse UCI commands
@@ -58,7 +68,8 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
 
         // Commandes UCI
         if (token == "uci") {
-            // Handle UCI initialization here
+
+            // Présentation de Grogros
             cout << "id name Grogros\n";
             cout << "id author Grobert\n";
             cout << "uciok\n";
@@ -71,7 +82,8 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
 
         // Nouvelle partie
         else if (token == "ucinewgame") {
-            board.restart();
+            board.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+            param.think = true;
         }
 
         // Move played by the opponent
@@ -91,8 +103,6 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
                 if (last_move[0] == ' ')
                     last_move = last_move.substr(1);
 
-                //board.move_from_algebric_notation(last_move).display();
-
                 // Joue le coup
                 board.play_monte_carlo_move_keep(board.move_from_algebric_notation(last_move));
 			}
@@ -103,16 +113,26 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
 			}
         }
 
-        // Should return bestmove
+        // Dit à Grogros de jouer
         else if (token == "go") {
-            cout << "GOOOOOOO" << endl;
-            param.think = true;
-            param.play = true;
+            //param.think = true;
+            //param.play = true;
+
+            // Prendre en compte la suite? (movetime...)
         }
 
+        // Dit à Grogros de s'arrêter
+        else if (token == "stop") {
+			param.think = false;
+		}
+
+        // Quitte le programme
         else if (token == "quit") {
             exit(0);
         }
+
+        // Commande reçue par Grogros
+        //cout << "Grogros received: " << command << endl;
     }
 }
 
@@ -131,37 +151,72 @@ inline void bestmove(Board& board, Param& param) {
 }
 
 // Fonction qui renvoie si Grogros doit jouer son coup
-inline bool should_play(Board& board, Param param) {
-    //cout << "toto" << endl;
-    if (param.play == true)
-        cout << "should play" << endl;
+inline bool should_play(const Board& board, Param param) {
     return (board.total_nodes() >= param.max_nodes && param.play == true);
 
     // TODO: prendre en compte le temps qu'il lui reste
+    // TODO: prendre en compte la réflexion actuelle (voir main_gui.cpp)
 }
 
 // Fonction qui gère la réflexion de Grogros
 inline void think(Board& board, Param& param, Evaluator evaluator) {
     while (true) {
-        // Réfléchit un certain nombre de noeuds
-        board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
-        //cout << param.play << " - " << board.total_nodes() << endl;
+        
+        
+        //cout << "bug: " << param.think << endl; // BUG: quand on le retire, ça casse tout... ????
 
-        // S'il doit jouer, joue le meilleur coup
-        if (should_play(board, param))
-            bestmove(board, param);
+        /*bool test2 = param.think;
+        cout << "t2: " << test2 << endl;*/
+        //param.think = false;
+        //param.think = test;
+        //param.think = !param.think;
+        //param.think = !param.think;
+
+        // BUG: param.think est toujours à true.. ????
+   //     if (param.think) {
+   //         //cout << "toto" << endl;
+   //         // Réfléchit un certain nombre de noeuds
+   //         board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
+
+   //         // S'il doit jouer, joue le meilleur coup
+   //         if (should_play(board, param)) {
+   //             bestmove(board, param);
+   //             return;
+   //         }
+   //             
+
+   //         /*if (param.wait) {
+			//	param.wait = false;
+			//	cout << "Grogros: wait" << endl;
+			//}*/
+   //     }
+
+        //board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
     }
+}
+
+inline void think_once(Board& board, Param& param, Evaluator evaluator, bool& doneRunning) {
+    cout << "thinking..." << endl;
+    board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
+    doneRunning = true;
+}
+
+inline void think_test(Board& board, Param& param, Evaluator evaluator, bool& doneRunning) {
+    while (!got_input) {
+		cout << "thinking..." << endl;
+		board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
+	}
+
+    doneRunning = true;
 }
 
 // Main
 inline int main_lichess() {
 
-	// Nombre de noeuds max pour le jeu automatique de GrogrosZero
-	int grogros_nodes = 3000000;
-
 	// Initialisation du buffer
 	monte_buffer.init(5000000, false);
 
+    // Input
     string input;
 
     // Paramètres de Grogros
@@ -173,54 +228,46 @@ inline int main_lichess() {
     // Plateau
     Board board;
 
-    // Thread pour les inputs
-    //thread input_thread(&getinput, ref(input));
-
     // Thread pour la réflexion de Grogros
-    thread grogros_thread(&think, ref(board), ref(param), ref(evaluator));
+    //thread grogros_thread(&think, ref(board), ref(param), ref(evaluator));
 
-    /*if (param.play) {
-        if (should_play(board, param))
-            bestmove(board, param);
-    }*/
+    // Grogros réfléchit en arrière-plan
+    //grogros_thread.detach();
 
-    grogros_thread.detach();
+    // Nouveau thread pour Grogros
+    bool grogrosRunning = false;
+    //thread grogros_thread(&think_once, ref(board), ref(param), ref(evaluator), ref(grogrosRunning));
+    //bool got_input = false;
+    
 
     // UCI loop
     while (true) {
 
-        // Grogros réfléchit
-        //if (param.think) {
-        //    //cout << "info string thinking..." << endl;
-        //    board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
-        //    //cout << board.total_nodes() << endl;
+        thread grogros_thread(&think_test, ref(board), ref(param), ref(evaluator), ref(grogrosRunning));
+        got_input = false;
+        cout << "starting grogros thread..." << endl;
+        grogros_thread.detach();
 
-        //    // S'il doit jouer, joue le meilleur coup
-        //    if (should_play(board, param))
-        //        bestmove(board, param);
-
-        //}
-
-        // Thread de réflexion de Grogros
-        /*grogros_thread.detach();*/
-
-
-        // Grogros demande combien de temps il lui reste
-        // TODO
-
-        // getLine attend une entrée de l'utilisateur pour continuer?
+        // Lit l'input
         getline(cin, input);
-        //input_thread.detach();
+
+        
 
         // INPUT
         if (!input.empty()) {
-            parseUCICommand(input, param, evaluator, board);
-            //input.clear();
-            //cout << "input cleared" << endl;
-        }
 
-        /*if (should_play(board, param))
-            bestmove(board, param);*/
+            got_input = true;
+
+            while (!grogrosRunning) {
+				cout << "waiting..." << endl;
+                this_thread::sleep_for(chrono::milliseconds(1000));
+			}
+
+            grogros_thread.~thread();
+            cout << "parsing..." << endl;
+
+            parseUCICommand(input, param, evaluator, board);
+        }
 
     }
 
