@@ -6,6 +6,9 @@
 #include <sstream>
 #include <string>
 #include <chrono>
+#include <thread>
+#include <fstream>
+#include <future>
 
 using namespace std;
 
@@ -16,8 +19,10 @@ using namespace std;
 // L'inscrire à des tournois
 // Le faire réfléchir sur le temps de l'adversaire
 // Pour demander le temps restant: go wtime -1 btime -1
+// Rajouter d'autres paramètres (nodes, time...)
 
-// Commande pour lancer le bot: python3 lichess-bot.py -u
+// Commande pour lancer le bot: .\venv\bin\activate
+// python3 lichess-bot.py -v
 
 // FIXME
 // Vérifier que le jeu sur un autre threat n'est pas plus lent que sur le main thread
@@ -33,7 +38,8 @@ struct Param {
     bool play = false;
 
     // Nombre de noeuds max par réflexion
-    int max_nodes = 25000;
+    int max_nodes = 10000;
+    //int max_nodes = 250;
 
     // Nombre de noeuds par demande
     int nodes = 100;
@@ -49,9 +55,6 @@ struct Param {
 
     // Explore checks
     bool explore_checks = true;
-
-    // Pour gérer les threads
-    //bool wait = false;
 };
 
 
@@ -63,6 +66,14 @@ inline bool got_input = false;
 // Est-ce que Grogros est en train de réfléchir?
 inline bool grogros_is_running = false;
 
+// Fonction qui joue le meilleur coup de Grogros et l'affiche
+inline void bestmove(Board& board, Param& param) {
+    Move best_move = board._moves[board.best_monte_carlo_move()];
+    string best_move_string = board.algebric_notation(best_move);
+    board.play_monte_carlo_move_keep(best_move);
+    cout << "bestmove " << best_move_string << endl;
+    param.play = false;
+}
 
 // Function to parse UCI commands
 inline void parseUCICommand(const string& command, Param& param, Evaluator evaluator, Board& board) {
@@ -75,14 +86,14 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
         if (token == "uci") {
 
             // Présentation de Grogros
-            cout << "id name Grogros\n";
-            cout << "id author Grobert\n";
-            cout << "uciok\n";
+            cout << "id name Grogros" << endl;
+            cout << "id author Grobert" << endl;
+            cout << "uciok" << endl;
         }
 
         // Est-ce qu'il est prêt?
         else if (token == "isready") {
-            cout << "readyok\n";
+            cout << "readyok" << endl;
         }
 
         // Nouvelle partie
@@ -120,8 +131,12 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
 
         // Dit à Grogros de jouer
         else if (token == "go") {
+            //cout << "bestmove e2e4" << endl;
             //param.think = true;
             param.play = true;
+            
+            //board.grogros_zero(&evaluator, param.max_nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
+            //bestmove(board, param);
 
             // Prendre en compte la suite? (movetime...)
         }
@@ -142,17 +157,10 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
 }
 
 // Fonction pour récupérer les inputs
-inline void getinput(string& input) {
-	getline(cin, input);
-}
-
-// Fonction qui joue le meilleur coup de Grogros et l'affiche
-inline void bestmove(Board& board, Param& param) {
-	Move best_move = board._moves[board.best_monte_carlo_move()];
-	string best_move_string = board.algebric_notation(best_move);
-	board.play_monte_carlo_move_keep(best_move);
-    cout << "bestmove " << best_move_string << endl;
-    param.play = false;
+inline string GetLineFromCin() {
+    string line;
+    getline(cin, line);
+    return line;
 }
 
 // Fonction qui renvoie si Grogros doit jouer son coup
@@ -173,13 +181,17 @@ inline void think(Board& board, Param& param, Evaluator evaluator) {
 		grogros_is_running = true;
 		//cout << "thinking..." << endl;
 		board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
+        // Affiche le nombre de noeuds
+        //cout << "Grogros - total nodes: " << board.total_nodes() << endl;
 
         // S'il doit jouer, joue le meilleur coup
-        if (should_play(board, param)) {
-            bestmove(board, param);
-            //grogros_is_running = false;
-            //return;
-        }
+        //if (should_play(board, param)) {
+        //    grogros_is_running = false;
+        //    return;
+        //    /*bestmove(board, param);*/
+        //    //grogros_is_running = false;
+        //    //return;
+        //}
 	}
 
     grogros_is_running = false;
@@ -203,40 +215,51 @@ inline int main_lichess() {
     // Plateau
     Board board;
 
+    // Lance le thread pour récupérer les inputs
+    auto future = async(launch::async, GetLineFromCin);
 
     // UCI loop
     while (true) {
 
-
-        got_input = false;
-        thread grogros_thread(&think, ref(board), ref(param), ref(evaluator));
+        // Lance la réflexion de Grogros
+        //got_input = false;
+        //thread grogros_thread(&think, ref(board), ref(param), ref(evaluator));
         //cout << "starting grogros thread..." << endl;
-        grogros_thread.detach();
+        //grogros_thread.detach();
+
+
+        if (future.wait_for(chrono::seconds(0)) == future_status::ready) {
+            auto input = future.get();
+
+            // Set a new line. Subtle race condition between the previous line
+            // and this. Some lines could be missed. To aleviate, you need an
+            // io-only thread. I'll give an example of that as well.
+            future = async(launch::async, GetLineFromCin);
+
+            // INPUT
+            if (!input.empty()) {
+
+                // Parse l'input
+                //cout << "parsing..." << endl;
+                parseUCICommand(input, param, evaluator, board);
+
+                //if (should_play(board, param))
+                //    bestmove(board, param);
+            }
+        }
+
+        //cout << "waiting..." << endl;
+        //this_thread::sleep_for(chrono::seconds(1));
+
+        board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
+
+        if (should_play(board, param))
+            bestmove(board, param);
 
         // Lit l'input
-        getline(cin, input);
+        //getline(cin, input);        
 
         
-
-        // INPUT
-        if (!input.empty()) {
-
-            // On a reçu un input
-            got_input = true;
-
-            // Tant que Grogros est en train de réfléchir, attend
-            while (grogros_is_running) {
-				//cout << "waiting for Grogros to finish thinking..." << endl;
-                this_thread::sleep_for(chrono::milliseconds(10));
-			}
-
-            // Détruit le thread
-            grogros_thread.~thread();
-
-            // Parse l'input
-            //cout << "parsing..." << endl;
-            parseUCICommand(input, param, evaluator, board);
-        }
 
     }
 
