@@ -36,7 +36,7 @@ struct Param {
     int max_nodes = 25000;
 
     // Nombre de noeuds par demande
-    int nodes = 10000;
+    int nodes = 100;
 
     // Beta
     float beta_grogros = 0.1f;
@@ -56,7 +56,12 @@ struct Param {
 
 
 // Variables globales
+
+// Est-ce que un input a été reçu?
 inline bool got_input = false;
+
+// Est-ce que Grogros est en train de réfléchir?
+inline bool grogros_is_running = false;
 
 
 // Function to parse UCI commands
@@ -116,7 +121,7 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
         // Dit à Grogros de jouer
         else if (token == "go") {
             //param.think = true;
-            //param.play = true;
+            param.play = true;
 
             // Prendre en compte la suite? (movetime...)
         }
@@ -158,56 +163,26 @@ inline bool should_play(const Board& board, Param param) {
     // TODO: prendre en compte la réflexion actuelle (voir main_gui.cpp)
 }
 
-// Fonction qui gère la réflexion de Grogros
+
 inline void think(Board& board, Param& param, Evaluator evaluator) {
-    while (true) {
-        
-        
-        //cout << "bug: " << param.think << endl; // BUG: quand on le retire, ça casse tout... ????
 
-        /*bool test2 = param.think;
-        cout << "t2: " << test2 << endl;*/
-        //param.think = false;
-        //param.think = test;
-        //param.think = !param.think;
-        //param.think = !param.think;
-
-        // BUG: param.think est toujours à true.. ????
-   //     if (param.think) {
-   //         //cout << "toto" << endl;
-   //         // Réfléchit un certain nombre de noeuds
-   //         board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
-
-   //         // S'il doit jouer, joue le meilleur coup
-   //         if (should_play(board, param)) {
-   //             bestmove(board, param);
-   //             return;
-   //         }
-   //             
-
-   //         /*if (param.wait) {
-			//	param.wait = false;
-			//	cout << "Grogros: wait" << endl;
-			//}*/
-   //     }
-
-        //board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
-    }
-}
-
-inline void think_once(Board& board, Param& param, Evaluator evaluator, bool& doneRunning) {
-    cout << "thinking..." << endl;
-    board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
-    doneRunning = true;
-}
-
-inline void think_test(Board& board, Param& param, Evaluator evaluator, bool& doneRunning) {
+    // Tant qu'aucun input n'a été reçu
     while (!got_input) {
-		cout << "thinking..." << endl;
+
+        // Réfléchit...
+		grogros_is_running = true;
+		//cout << "thinking..." << endl;
 		board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
+
+        // S'il doit jouer, joue le meilleur coup
+        if (should_play(board, param)) {
+            bestmove(board, param);
+            //grogros_is_running = false;
+            //return;
+        }
 	}
 
-    doneRunning = true;
+    grogros_is_running = false;
 }
 
 // Main
@@ -228,24 +203,14 @@ inline int main_lichess() {
     // Plateau
     Board board;
 
-    // Thread pour la réflexion de Grogros
-    //thread grogros_thread(&think, ref(board), ref(param), ref(evaluator));
-
-    // Grogros réfléchit en arrière-plan
-    //grogros_thread.detach();
-
-    // Nouveau thread pour Grogros
-    bool grogrosRunning = false;
-    //thread grogros_thread(&think_once, ref(board), ref(param), ref(evaluator), ref(grogrosRunning));
-    //bool got_input = false;
-    
 
     // UCI loop
     while (true) {
 
-        thread grogros_thread(&think_test, ref(board), ref(param), ref(evaluator), ref(grogrosRunning));
+
         got_input = false;
-        cout << "starting grogros thread..." << endl;
+        thread grogros_thread(&think, ref(board), ref(param), ref(evaluator));
+        //cout << "starting grogros thread..." << endl;
         grogros_thread.detach();
 
         // Lit l'input
@@ -256,16 +221,20 @@ inline int main_lichess() {
         // INPUT
         if (!input.empty()) {
 
+            // On a reçu un input
             got_input = true;
 
-            while (!grogrosRunning) {
-				cout << "waiting..." << endl;
-                this_thread::sleep_for(chrono::milliseconds(1000));
+            // Tant que Grogros est en train de réfléchir, attend
+            while (grogros_is_running) {
+				//cout << "waiting for Grogros to finish thinking..." << endl;
+                this_thread::sleep_for(chrono::milliseconds(10));
 			}
 
+            // Détruit le thread
             grogros_thread.~thread();
-            cout << "parsing..." << endl;
 
+            // Parse l'input
+            //cout << "parsing..." << endl;
             parseUCICommand(input, param, evaluator, board);
         }
 
