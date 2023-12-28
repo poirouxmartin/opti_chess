@@ -261,6 +261,7 @@ r1b2rk1/ppqnbppp/2n1p3/3pP3/NP3P2/P2B1N2/5BPP/R2Q1RK1 w - - 7 17 : gagnant pour 
 B1bq1rk1/p1p2ppp/8/2b4Q/4p3/2Pn4/PP1K2PP/RNB4R w - - 0 12 : -3
 5r1k/p5p1/1q4Pp/7Q/P4r2/3p4/1P4RP/6RK b - - 5 36 : le pion passé est trop fort
 5r1k/p5p1/6Pp/3q4/P4r1P/1P4Q1/3p2R1/6RK b - - 2 41 : fini
+r2qk2r/p4p1p/2p1b1pB/3p4/5Q2/P2B4/2P2PPP/R5K1 b kq - 0 17 : ici les noirs n'ont plus de cases noires... le fou blanc de cases noires est au moins aussi fort qu'une tour
 
 
 
