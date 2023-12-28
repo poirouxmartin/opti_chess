@@ -16,11 +16,16 @@ using namespace std;
 // Le faire réfléchir sur le temps de l'adversaire
 // Pour demander le temps restant: go wtime -1 btime -1
 
+// Commande pour lancer le bot: python3 lichess-bot.py -u
+
 
 struct Param {
 
     // Est-ce que Grogros doit réfléchir?
     bool think = true;
+
+    // Est-ce que Grogros doit jouer?
+    bool play = false;
 
     // Nombre de noeuds max par réflexion
     int max_nodes = 10000;
@@ -45,7 +50,7 @@ struct Param {
 
 
 // Function to parse UCI commands
-inline void parseUCICommand(const string& command, Param param, Evaluator evaluator, Board& board) {
+inline void parseUCICommand(const string& command, Param& param, Evaluator evaluator, Board& board) {
     istringstream iss(command);
     string token;
 
@@ -100,7 +105,9 @@ inline void parseUCICommand(const string& command, Param param, Evaluator evalua
 
         // Should return bestmove
         else if (token == "go") {
+            cout << "GOOOOOOO" << endl;
             param.think = true;
+            param.play = true;
         }
 
         else if (token == "quit") {
@@ -109,6 +116,42 @@ inline void parseUCICommand(const string& command, Param param, Evaluator evalua
     }
 }
 
+// Fonction pour récupérer les inputs
+inline void getinput(string& input) {
+	getline(cin, input);
+}
+
+// Fonction qui joue le meilleur coup de Grogros et l'affiche
+inline void bestmove(Board& board, Param& param) {
+	Move best_move = board._moves[board.best_monte_carlo_move()];
+	string best_move_string = board.algebric_notation(best_move);
+	board.play_monte_carlo_move_keep(best_move);
+    cout << "bestmove " << best_move_string << endl;
+    param.play = false;
+}
+
+// Fonction qui renvoie si Grogros doit jouer son coup
+inline bool should_play(Board& board, Param param) {
+    //cout << "toto" << endl;
+    if (param.play == true)
+        cout << "should play" << endl;
+    return (board.total_nodes() >= param.max_nodes && param.play == true);
+
+    // TODO: prendre en compte le temps qu'il lui reste
+}
+
+// Fonction qui gère la réflexion de Grogros
+inline void think(Board& board, Param& param, Evaluator evaluator) {
+    while (true) {
+        // Réfléchit un certain nombre de noeuds
+        board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
+        //cout << param.play << " - " << board.total_nodes() << endl;
+
+        // S'il doit jouer, joue le meilleur coup
+        if (should_play(board, param))
+            bestmove(board, param);
+    }
+}
 
 // Main
 inline int main_lichess() {
@@ -130,39 +173,55 @@ inline int main_lichess() {
     // Plateau
     Board board;
 
-    //cout << "id name Grogros\n";
+    // Thread pour les inputs
+    //thread input_thread(&getinput, ref(input));
+
+    // Thread pour la réflexion de Grogros
+    thread grogros_thread(&think, ref(board), ref(param), ref(evaluator));
+
+    /*if (param.play) {
+        if (should_play(board, param))
+            bestmove(board, param);
+    }*/
+
+    grogros_thread.detach();
 
     // UCI loop
     while (true) {
-        getline(cin, input);
-        //cout << "input: " << input << endl;
-        //cout << input.empty() << endl;
 
+        // Grogros réfléchit
+        //if (param.think) {
+        //    //cout << "info string thinking..." << endl;
+        //    board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
+        //    //cout << board.total_nodes() << endl;
+
+        //    // S'il doit jouer, joue le meilleur coup
+        //    if (should_play(board, param))
+        //        bestmove(board, param);
+
+        //}
+
+        // Thread de réflexion de Grogros
+        /*grogros_thread.detach();*/
+
+
+        // Grogros demande combien de temps il lui reste
+        // TODO
+
+        // getLine attend une entrée de l'utilisateur pour continuer?
+        getline(cin, input);
+        //input_thread.detach();
+
+        // INPUT
         if (!input.empty()) {
             parseUCICommand(input, param, evaluator, board);
-            //cout << "fen " << board.to_fen() << endl;
+            //input.clear();
+            //cout << "input cleared" << endl;
         }
 
-        // Si aucune commande n'a été entrée
-        else {
+        /*if (should_play(board, param))
+            bestmove(board, param);*/
 
-            // Grogros réfléchit
-            if (param.think) {
-                cout << "info string thinking..." << endl;
-				board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
-
-                // S'il dépasse le nombre de noeuds max
-                if (board.total_nodes() >= param.max_nodes) {
-                    Move best_move = board._moves[board.best_monte_carlo_move()];
-                    string best_move_string = board.algebric_notation(best_move);
-                    board.play_monte_carlo_move_keep(best_move);
-                    cout << "bestmove " << best_move_string << endl;
-                }
-				
-			}
-
-            // Grogros demande combien de temps il lui reste
-        }
     }
 
 	return 0;
