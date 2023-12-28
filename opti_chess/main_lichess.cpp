@@ -20,6 +20,10 @@ using namespace std;
 // Le faire réfléchir sur le temps de l'adversaire
 // Pour demander le temps restant: go wtime -1 btime -1
 // Rajouter d'autres paramètres (nodes, time...)
+// Afficher l'eval si demandée? profondeur?...
+// Faire parler Grogros dans la partie?
+// Voir les TODO dans le code
+// Demander le temps plusieurs fois pour uptdate pendant la réflexion
 
 // Commande pour lancer le bot: .\venv\bin\activate
 // python3 lichess-bot.py -v
@@ -31,15 +35,11 @@ using namespace std;
 // Paramètres de Grogros
 struct Param {
 
-    // Est-ce que Grogros doit réfléchir?
-    bool think = false;
-
     // Est-ce que Grogros doit jouer?
     bool play = false;
 
     // Nombre de noeuds max par réflexion
     int max_nodes = 10000;
-    //int max_nodes = 250;
 
     // Nombre de noeuds par demande
     int nodes = 100;
@@ -55,16 +55,12 @@ struct Param {
 
     // Explore checks
     bool explore_checks = true;
+
+    // Temps restant (en ms)
+    int time_white = 180000;
+    int time_black = 180000;
 };
 
-
-// Variables globales
-
-// Est-ce que un input a été reçu?
-inline bool got_input = false;
-
-// Est-ce que Grogros est en train de réfléchir?
-inline bool grogros_is_running = false;
 
 // Fonction qui joue le meilleur coup de Grogros et l'affiche
 inline void bestmove(Board& board, Param& param) {
@@ -99,7 +95,6 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
         // Nouvelle partie
         else if (token == "ucinewgame") {
             board.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-            param.think = true;
         }
 
         // Move played by the opponent
@@ -131,28 +126,33 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
 
         // Dit à Grogros de jouer
         else if (token == "go") {
-            //cout << "bestmove e2e4" << endl;
-            //param.think = true;
             param.play = true;
-            
-            //board.grogros_zero(&evaluator, param.max_nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
-            //bestmove(board, param);
 
-            // Prendre en compte la suite? (movetime...)
+            // Met à jour le temps restant
+            // Exemple: go wtime 100000 btime 100000
+            while (iss >> token) {
+                if (token == "wtime") {
+					iss >> token;
+					param.time_white = stoi(token);
+				}
+                else if (token == "btime") {
+					iss >> token;
+					param.time_black = stoi(token);
+				}
+			}
+
+
+            // TODO: Prendre en compte la suite? (movetime...)
         }
 
         // Dit à Grogros de s'arrêter
         else if (token == "stop") {
-			param.think = false;
 		}
 
         // Quitte le programme
         else if (token == "quit") {
             exit(0);
         }
-
-        // Commande reçue par Grogros
-        //cout << "Grogros received: " << command << endl;
     }
 }
 
@@ -165,36 +165,37 @@ inline string GetLineFromCin() {
 
 // Fonction qui renvoie si Grogros doit jouer son coup
 inline bool should_play(const Board& board, Param param) {
-    return (board.total_nodes() >= param.max_nodes && param.play == true);
+    
+    // Nombre de noueds que l'on suppose que Grogros va calculer par seconde
+    static constexpr int supposed_grogros_speed = 5000;
 
-    // TODO: prendre en compte le temps qu'il lui reste
-    // TODO: prendre en compte la réflexion actuelle (voir main_gui.cpp)
-}
+    // Nombre de noeuds déjà calculés
+    int tot_nodes = board.total_nodes();
+
+    // Pourcentage de réflexion utilisé pour le meilleur coup
+    float best_move_percentage = tot_nodes == 0 ? 0.05f : static_cast<float>(board._nodes_children[board.best_monte_carlo_move()]) / static_cast<float>(tot_nodes);
+    
+    // Temps que l'on veut passer sur ce coup
+    int max_move_time = board._player ?
+        time_to_play_move(param.time_white, param.time_black, 0.2f * (1.0f - best_move_percentage)) :
+        time_to_play_move(param.time_black, param.time_white, 0.2f * (1.0f - best_move_percentage));
+
+    // Equivalent en nombre de noeuds
+    int nodes_to_play = supposed_grogros_speed * max_move_time / 1000;
+
+    // On veut être sûr de jouer le meilleur coup de Grogros
+    // Si il y a un meilleur coup que celui avec le plus de noeuds, attendre...
+    bool wait_for_best_move = tot_nodes != 0 && board._eval_children[board.best_monte_carlo_move()] * board.get_color() < board._evaluation * board.get_color();
+    nodes_to_play = wait_for_best_move ? nodes_to_play : nodes_to_play / 4; // FIXME: on peut attendre en fonction de la différence d'évaluation entre le meilleur coup et le coup le plus réfléchi
+
+    //cout << "nodes to play: " << nodes_to_play << endl;
+    return tot_nodes >= nodes_to_play && param.play == true;
 
 
-inline void think(Board& board, Param& param, Evaluator evaluator) {
+    // TODO: jouer le nombre de noeuds à la prochaine itération en fonction de l'estimation du nombre de noeuds restants
+    //int grogros_timed_nodes = min(nodes_per_frame, supposed_grogros_speed * max_move_time / 1000);
 
-    // Tant qu'aucun input n'a été reçu
-    while (!got_input) {
-
-        // Réfléchit...
-		grogros_is_running = true;
-		//cout << "thinking..." << endl;
-		board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
-        // Affiche le nombre de noeuds
-        //cout << "Grogros - total nodes: " << board.total_nodes() << endl;
-
-        // S'il doit jouer, joue le meilleur coup
-        //if (should_play(board, param)) {
-        //    grogros_is_running = false;
-        //    return;
-        //    /*bestmove(board, param);*/
-        //    //grogros_is_running = false;
-        //    //return;
-        //}
-	}
-
-    grogros_is_running = false;
+    // TODO: prendre en compte l'incrément
 }
 
 // Main
@@ -221,46 +222,26 @@ inline int main_lichess() {
     // UCI loop
     while (true) {
 
-        // Lance la réflexion de Grogros
-        //got_input = false;
-        //thread grogros_thread(&think, ref(board), ref(param), ref(evaluator));
-        //cout << "starting grogros thread..." << endl;
-        //grogros_thread.detach();
+        // Demande le temps restant
+        //cout << "go wtime -1 btime -1" << endl;
 
-
+        // Input en asynchrone
         if (future.wait_for(chrono::seconds(0)) == future_status::ready) {
             auto input = future.get();
 
-            // Set a new line. Subtle race condition between the previous line
-            // and this. Some lines could be missed. To aleviate, you need an
-            // io-only thread. I'll give an example of that as well.
             future = async(launch::async, GetLineFromCin);
 
             // INPUT
             if (!input.empty()) {
-
-                // Parse l'input
-                //cout << "parsing..." << endl;
                 parseUCICommand(input, param, evaluator, board);
-
-                //if (should_play(board, param))
-                //    bestmove(board, param);
             }
         }
 
-        //cout << "waiting..." << endl;
-        //this_thread::sleep_for(chrono::seconds(1));
-
+        // Grogros réfléchit en attendant
         board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
 
         if (should_play(board, param))
             bestmove(board, param);
-
-        // Lit l'input
-        //getline(cin, input);        
-
-        
-
     }
 
 	return 0;
