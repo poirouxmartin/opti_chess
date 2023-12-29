@@ -23,6 +23,7 @@ using namespace std;
 // Voir les TODO dans le code
 // Demander le temps plusieurs fois pour uptdate pendant la réflexion
 // Regarder si should_play prend trop de temps
+// Prendre son temps sur le premier coup
 
 // Commande pour lancer le bot: .\venv\bin\activate
 // python3 lichess-bot.py -v
@@ -30,6 +31,22 @@ using namespace std;
 // FIXME
 // Parfois, Grogros fait b1c3 dans certaines positions (coup illegal)
 // test coups illégaux: r1q1kb1r/pb3pp1/1pn1pn1p/2ppN3/Q2P1B2/2P3P1/PP2PPBP/RN3RK1 w kq - 0 10
+// 'c2c3' in rn3rk1/7p/1p1N1pp1/p2p3n/P1pP4/2P3Bq/1P2QP2/RN2R1K1 b - - 3 22
+// 'c2c3' in r4rk1/1p3pp1/p3bb1p/1N6/2p2P2/2P1P1P1/PP4BP/R4RK1 w - - 0 20
+// 'c2c3' in 1rb3k1/3p1ppp/1p1N1n2/pP6/5P2/2PnPB2/P5PP/R1B3K1 w - - 3 24
+// EDIT: Grogros plante, et revient sur la position de base, et joue le coup illégal
+
+// FIXME: il faudrait que Grogros reprenne sur la bonne position après un crash
+
+// Bilans de parties:
+// Trop d'importance sur les colonnes des tours : FIXED
+// Trop d'échecs inutiles (batteries dame/fou -> Fh7+ -> Fou enfermé) : FIXED
+// Manque d'importance pour les pions au centre? : FIXED
+// Trop de c3 inutiles : FIXED
+// Trop de sacrifices inutiles sur le roi adverse : FIXED
+// Bloque pas assez les pions passés
+// Donne trop de pions gratuitement : FIXED?
+// Mauvaise modélisation de la sécurité du roi
 
 
 // Paramètres de Grogros
@@ -54,8 +71,8 @@ struct Param {
     bool explore_checks = true;
 
     // Temps restant (en ms)
-    int time_white = 60000;
-    int time_black = 60000;
+    int time_white = 600000;
+    int time_black = 600000;
 
     // Clock au début de la réflexion
     clock_t clock_start = 0;
@@ -171,7 +188,7 @@ inline string GetLineFromCin() {
 inline bool should_play(const Board& board, Param param) {
     
     // Nombre de noueds que l'on suppose que Grogros va calculer par seconde
-    static constexpr int supposed_grogros_speed = 5000;
+    static constexpr int supposed_grogros_speed = 3500;
 
     // Nombre de noeuds déjà calculés
     int tot_nodes = board.total_nodes();
