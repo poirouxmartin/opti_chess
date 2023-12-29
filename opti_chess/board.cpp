@@ -3512,7 +3512,7 @@ int Board::get_pawn_structure(float display_factor) const
 	static const int passed_pawns[8] = { 0, 50, 50, 100, 165, 250, 300, 0 };
 
 	// Pion passé - chemin controllé par une pièce adverse
-	static const int controlled_passed_pawn[8] = { 0, 45, 50, 75, 100, 135, 200, 0 };
+	static const int controlled_passed_pawn[8] = { 0, 45, 50, 85, 115, 150, 220, 0 };
 
 	// Pion passé bloqué
 	static const int blocked_passed_pawn[8] = { 0, 40, 45, 65, 80, 120, 150, 0 };
@@ -3617,8 +3617,8 @@ int Board::get_pawn_structure(float display_factor) const
 
 	// Pions connectés
 	// Un pion est dit connecté, s'il y a un pion de la même couleur sur une colonne adjacente sur la même rangée ou la rangée inférieure
-	constexpr int connected_pawns[8] = { 0, 20, 30, 50, 75, 135, 200, 0 };
-	constexpr float connected_pawns_factor = 0.5f; // En fonction de l'advancement de la partie
+	constexpr int connected_pawns[8] = { 0, 15, 25, 50, 100, 150, 350, 0 };
+	constexpr float connected_pawns_factor = 0.7f; // En fonction de l'advancement de la partie
 	const float connected_pawns_adv = 1 * (1 + (connected_pawns_factor - 1) * _adv);
 
 	int connected_pawns_value = 0;

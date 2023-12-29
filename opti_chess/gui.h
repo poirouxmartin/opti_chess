@@ -171,8 +171,8 @@ static string global_eval_text = "+0.0";
 // Temps de base pour les joueurs (en ms)
 //static int base_time_white = 180000;
 //static int base_time_black = 180000;
-static int base_time_white = 6000;
-static int base_time_black = 6000;
+static int base_time_white = 60000;
+static int base_time_black = 60000;
 
 
 // Incrément (en ms)

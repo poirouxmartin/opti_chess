@@ -570,7 +570,7 @@ inline int main_ui() {
 				// Grogros doit gérer son temps
 				if (main_GUI._time) {
 					// Nombre de noeuds que Grogros doit calculer (en fonction des contraintes de temps)
-					static constexpr int supposed_grogros_speed = 5000; // En supposant que Grogros va à plus de 5k noeuds par seconde
+					static constexpr int supposed_grogros_speed = 2500; // En supposant que Grogros va à plus de 5k noeuds par seconde
 					int tot_nodes = main_GUI._board.total_nodes();
 					float best_move_percentage = tot_nodes == 0 ? 0.05f : static_cast<float>(main_GUI._board._nodes_children[main_GUI._board.best_monte_carlo_move()]) / static_cast<float>(main_GUI._board.total_nodes());
 					int max_move_time = main_GUI._board._player ?
@@ -584,8 +584,16 @@ inline int main_ui() {
 
 					int grogros_timed_nodes = min(nodes_per_frame, supposed_grogros_speed * max_move_time / 1000);
 					main_GUI._board.grogros_zero(main_GUI._grogros_eval, min(!main_GUI._time ? nodes_per_frame : grogros_timed_nodes, grogros_nodes - main_GUI._board.total_nodes()), main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
-					if (main_GUI._board._time_monte_carlo >= max_move_time)
+					
+					/*if (main_GUI._board._time_monte_carlo >= max_move_time)
 						((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false, false);
+				*/
+					// Equivalent en nombre de noeuds
+					int nodes_to_play = supposed_grogros_speed * max_move_time / 1000;
+
+					if (main_GUI._board.total_nodes() >= nodes_to_play)
+						((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false, false);
+
 				}
 				else
 					main_GUI._board.grogros_zero(main_GUI._grogros_eval, nodes_per_frame, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);

@@ -301,6 +301,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Faire des plus petites allocations de buffer pour aller plus vite? et re allouer de la mémoire si on a rempli le buffer?
 -> Faire un truc sur la mobilité totale des pièces? qui ressemble à un logarithme? -> t'as pas de coups -> eval: -inf, t'as k coups -> eval: 0, et ça augmente en log
 -> Utiliser Texel tuner pour rectifier l'évaluation?
+-> Mettre les fous sur les diagonales ouvertes (voir comme on fait pour les colonnes des tours)
 
 
 ----- Interface utilisateur -----
