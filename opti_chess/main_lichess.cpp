@@ -24,12 +24,15 @@ using namespace std;
 // Faire parler Grogros dans la partie?
 // Voir les TODO dans le code
 // Demander le temps plusieurs fois pour uptdate pendant la réflexion
+// Regarder si should_play prend trop de temps
 
 // Commande pour lancer le bot: .\venv\bin\activate
 // python3 lichess-bot.py -v
 
 // FIXME
 // Vérifier que le jeu sur un autre threat n'est pas plus lent que sur le main thread
+// Parfois, Grogros fait b1c3 dans certaines positions (coup illegal)
+// test coups illégaux: r1q1kb1r/pb3pp1/1pn1pn1p/2ppN3/Q2P1B2/2P3P1/PP2PPBP/RN3RK1 w kq - 0 10
 
 
 // Paramètres de Grogros
@@ -38,11 +41,8 @@ struct Param {
     // Est-ce que Grogros doit jouer?
     bool play = false;
 
-    // Nombre de noeuds max par réflexion
-    int max_nodes = 10000;
-
     // Nombre de noeuds par demande
-    int nodes = 100;
+    int nodes = 50;
 
     // Beta
     float beta_grogros = 0.1f;
@@ -57,8 +57,11 @@ struct Param {
     bool explore_checks = true;
 
     // Temps restant (en ms)
-    int time_white = 180000;
-    int time_black = 180000;
+    int time_white = 60000;
+    int time_black = 60000;
+
+    // Clock au début de la réflexion
+    clock_t clock_start = 0;
 };
 
 
@@ -141,6 +144,10 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
 				}
 			}
 
+            param.clock_start = clock();
+
+            // TODO: à vérifier
+
 
             // TODO: Prendre en compte la suite? (movetime...)
         }
@@ -174,6 +181,16 @@ inline bool should_play(const Board& board, Param param) {
 
     // Pourcentage de réflexion utilisé pour le meilleur coup
     float best_move_percentage = tot_nodes == 0 ? 0.05f : static_cast<float>(board._nodes_children[board.best_monte_carlo_move()]) / static_cast<float>(tot_nodes);
+
+    // Mise à jour du temps de réflexion
+    if (board._player) {
+		param.time_white -= (clock() - param.clock_start) * 1000 / CLOCKS_PER_SEC;
+		param.clock_start = clock();
+	}
+    else {
+		param.time_black -= (clock() - param.clock_start) * 1000 / CLOCKS_PER_SEC;
+		param.clock_start = clock();
+	}
     
     // Temps que l'on veut passer sur ce coup
     int max_move_time = board._player ?
