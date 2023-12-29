@@ -1,5 +1,5 @@
-#include "main_lichess.cpp"
-#include "main_gui.cpp"
+#include "main_lichess.h"
+#include "main_gui.h"
 
 int main() {
 	main_lichess();

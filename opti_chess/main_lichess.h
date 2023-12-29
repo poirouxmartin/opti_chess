@@ -17,8 +17,6 @@ using namespace std;
 // Prendre en compte le temps qu'il lui reste pour jouer
 // Rajouter le lien au bot lichess dans le readme
 // L'inscrire à des tournois
-// Le faire réfléchir sur le temps de l'adversaire
-// Pour demander le temps restant: go wtime -1 btime -1
 // Rajouter d'autres paramètres (nodes, time...)
 // Afficher l'eval si demandée? profondeur?...
 // Faire parler Grogros dans la partie?
@@ -30,7 +28,6 @@ using namespace std;
 // python3 lichess-bot.py -v
 
 // FIXME
-// Vérifier que le jeu sur un autre threat n'est pas plus lent que sur le main thread
 // Parfois, Grogros fait b1c3 dans certaines positions (coup illegal)
 // test coups illégaux: r1q1kb1r/pb3pp1/1pn1pn1p/2ppN3/Q2P1B2/2P3P1/PP2PPBP/RN3RK1 w kq - 0 10
 
@@ -239,9 +236,6 @@ inline int main_lichess() {
     // UCI loop
     while (true) {
 
-        // Demande le temps restant
-        //cout << "go wtime -1 btime -1" << endl;
-
         // Input en asynchrone
         if (future.wait_for(chrono::seconds(0)) == future_status::ready) {
             auto input = future.get();
@@ -256,6 +250,7 @@ inline int main_lichess() {
 
         // Grogros réfléchit en attendant
         board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
+        //cout << "info nodes " << board.total_nodes() << endl;
 
         if (should_play(board, param))
             bestmove(board, param);

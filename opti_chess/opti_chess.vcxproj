@@ -237,8 +237,8 @@
     <ClCompile Include="game_tree.cpp" />
     <ClCompile Include="gui.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="main_gui.cpp" />
-    <ClCompile Include="main_lichess.cpp" />
+    <ClCompile Include="main_gui.h" />
+    <ClCompile Include="main_lichess.h" />
     <ClCompile Include="neural_network.cpp" />
     <ClCompile Include="board.cpp" />
     <ClCompile Include="time_tests.cpp" />
