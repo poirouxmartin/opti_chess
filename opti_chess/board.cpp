@@ -3625,7 +3625,7 @@ int Board::get_pawn_structure(float display_factor) const
 
 	// Pions connectés
 	// Un pion est dit connecté, s'il y a un pion de la même couleur sur une colonne adjacente sur la même rangée ou la rangée inférieure
-	constexpr int connected_pawns[8] = { 0, 15, 25, 50, 125, 200, 350, 0 };
+	constexpr int connected_pawns[8] = { 0, 15, 25, 100, 125, 200, 350, 0 };
 	constexpr float connected_pawns_factor = 0.7f; // En fonction de l'advancement de la partie
 	const float connected_pawns_adv = 1 * (1 + (connected_pawns_factor - 1) * _adv);
 
@@ -6370,4 +6370,46 @@ int Board::get_castling_distance() const {
 	//cout << "b_castling_distance: " << (int)b_castling_distance << endl;
 
 	return castling_distance_malus * (b_castling_distance - w_castling_distance) * (1 - _adv);
+}
+
+// Fonction qui renvoie la clé de Zobrist du plateau
+uint_fast64_t Board::get_zobrist_key() const {
+	
+	// Génération des clés de Zobrist si ce n'est pas déjà fait
+	if (!zobrist._keys_generated)
+		zobrist.generate_zobrist_keys();
+
+	// Clé de Zobrist
+	uint_fast64_t zobrist_key = zobrist._initial_key;
+
+	// Clé de Zobrist pour les pièces
+	for (uint_fast8_t i = 0; i < 8; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			// Numéro de la pièce
+			uint_fast8_t p = _array[i][j];
+
+			// Si la case n'est pas vide
+			if (p != 0) {
+				// Numéro de la case de la pièce
+				uint_fast8_t square = i * 8 + j;
+
+				// Zobrist associé
+				zobrist_key ^= zobrist._board_keys[square][p];
+			}
+		}
+	}
+
+	// Clé de Zobrist pour les droits de roques
+	uint_fast8_t castling_rights = _castling_rights.k_w + _castling_rights.q_w * 2 + _castling_rights.k_b * 4 + _castling_rights.q_b * 8;
+	zobrist_key ^= zobrist._castling_keys[castling_rights];
+
+	// Clé de Zobrist pour l'en passant
+	if (_en_passant_col != -1)
+		zobrist_key ^= zobrist._en_passant_keys[_en_passant_col];
+
+	// Clé de Zobrist pour le trait
+	if (_player == 1)
+		zobrist_key ^= zobrist._player_key;
+
+	return zobrist_key;
 }

@@ -13,17 +13,14 @@
 using namespace std;
 
 // TODO:
-// Faire un .h ou qq chose qui évite le bug de devoir tout regénérer pour que ça fonctionne
-// Prendre en compte le temps qu'il lui reste pour jouer
 // Rajouter le lien au bot lichess dans le readme
 // L'inscrire à des tournois
 // Rajouter d'autres paramètres (nodes, time...)
 // Afficher l'eval si demandée? profondeur?...
-// Faire parler Grogros dans la partie?
+// Faire parler Grogros dans la partie? en fonction de la partie en cours
 // Voir les TODO dans le code
 // Demander le temps plusieurs fois pour uptdate pendant la réflexion
 // Regarder si should_play prend trop de temps
-// Prendre son temps sur le premier coup
 
 // COMMANDS:
 // pour lancer le bot: .\venv\bin\activate
@@ -48,7 +45,9 @@ using namespace std;
 // Bloque pas assez les pions passés
 // Donne trop de pions gratuitement : FIXED?
 // Mauvaise modélisation de la sécurité du roi (agglutine les pièces vers le roi inutilement en fin de partie)
-// Ne roque pas assez vite
+// Ne roque pas assez vite : FIXED
+// Enfermement des pièces (fous/dames)
+// Donne des pièces trop facilement contre quelques pions
 
 
 // Paramètres de Grogros

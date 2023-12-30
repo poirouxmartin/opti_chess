@@ -305,6 +305,9 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Heuristique pour à quel point le roi est proche de roquer?
 -> Heuristique d'ouverture de la position -> draw ou non
 -> Grogros peut améliorer sa gestion du temps en en prenant un peu plus en fin de partie s'il lui en reste beaucoup. Prendre en compte aussi le temps de l'adversaire?
+-> Rajouter les pions passés soutenus par une tour derrière
+-> En finale contre fou, mettre les pions sur la couleur opposée au fou
+-> Parfois il fait Fb2 dans le pion c3
 
 
 ----- Interface utilisateur -----
