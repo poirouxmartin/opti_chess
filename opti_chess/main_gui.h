@@ -435,6 +435,11 @@ inline int main_ui() {
 				main_GUI.start_time();
 		}
 
+		// Z - Clé de Zobrist de la position actuelle
+		if (IsKeyPressed(KEY_W)) {
+			cout << "Zobrist key : " << main_GUI._board.get_zobrist_key() << endl;
+		}
+
 		// UP/DOWN - Activation, désactivation de GrogrosFish pour les pièces blanches
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && get_board_orientation()) || (IsKeyPressed(KEY_UP) && !get_board_orientation()))) {
 			if (main_GUI._white_player.substr(0, 11) == "GrogrosFish")

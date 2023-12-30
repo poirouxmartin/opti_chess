@@ -11,6 +11,7 @@
 #include <cstdint>
 #include "raylib.h"
 #include <iomanip>
+#include "zobrist.h"
 
 using namespace std;
 
@@ -565,6 +566,9 @@ public:
 
 	// Fonction qui renvoie la valeur de la distance à la possibilité de roque
 	[[nodiscard]] int get_castling_distance() const;
+
+	// Fonction qui renvoie la clé de Zobrist du plateau
+	[[nodiscard]] uint_fast64_t get_zobrist_key() const;
 };
 
 // Fonction qui obtient la case correspondante à la position sur la GUI
