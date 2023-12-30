@@ -6289,7 +6289,7 @@ int Board::get_castling_distance() const {
 	// Regarde s'il y a des pièces qui bloquent le roque (et si elles peuvent bouger? TODO), ou des pièces adverses qui controllent
 
 	// Malus de distance minimale au roque
-	int castling_distance_malus = 50;
+	int castling_distance_malus = 30;
 
 	// Blancs
 
@@ -6298,12 +6298,12 @@ int Board::get_castling_distance() const {
 
 	// Si on peut encore roquer côté roi
 	if (_castling_rights.k_w) {
-		// Y'a -t-il des pièces qui bloquent le roque?
-		w_kingside_castle_distance += (_array[0][5] != 0) + (_array[0][6] != 0);
+		// Y'a -t-il des pièces qui bloquent le roque? (Si le fou est encore en f1 (à vérifier que c'est le fou...), rajoute du malus si qq chose bloque sa sortie)
+		w_kingside_castle_distance += (_array[0][5] != 0) + (_array[0][6] != 0) + (_array[0][5] != 0 && _array[1][4] != 0 && _array[1][6] != 0);
 		//cout << "w_kingside_castle_distance: " << (int)w_kingside_castle_distance << endl;
 
 		// Y'a-t-il des pièces adverses qui contrôlent les cases?
-		//w_kingside_castle_distance += is_controlled(0, 5, false) + is_controlled(0, 6, false);
+		w_kingside_castle_distance += is_controlled(0, 5, true) + is_controlled(0, 6, true);
 	}
 	else {
 		w_kingside_castle_distance = 2;
@@ -6315,11 +6315,11 @@ int Board::get_castling_distance() const {
 	// Si on peut encore roquer côté dame
 	if (_castling_rights.q_w) {
 		// Y'a -t-il des pièces qui bloquent le roque?
-		w_queenside_castle_distance += (_array[0][1] != 0) + (_array[0][2] != 0) + (_array[0][3] != 0);
+		w_queenside_castle_distance += (_array[0][1] != 0) + (_array[0][2] != 0) + (_array[0][3] != 0) + (_array[0][3] != 0 && _array[1][2] != 0 && _array[1][4] != 0);
 		//cout << "w_queenside_castle_distance: " << (int)w_queenside_castle_distance << endl;
 
 		// Y'a-t-il des pièces adverses qui contrôlent les cases?
-		//w_queenside_castle_distance += is_controlled(0, 2, false) + is_controlled(0, 3, false);
+		w_queenside_castle_distance += is_controlled(0, 2, true) + is_controlled(0, 3, true);
 	}
 	else {
 		w_queenside_castle_distance = 2;
@@ -6337,11 +6337,11 @@ int Board::get_castling_distance() const {
 	// Si on peut encore roquer côté roi
 	if (_castling_rights.k_b) {
 		// Y'a -t-il des pièces qui bloquent le roque?
-		b_kingside_castle_distance += (_array[7][5] != 0) + (_array[7][6] != 0);
+		b_kingside_castle_distance += (_array[7][5] != 0) + (_array[7][6] != 0) + (_array[7][5] != 0 && _array[6][4] != 0 && _array[6][6] != 0);
 		//cout << "b_kingside_castle_distance: " << (int)b_kingside_castle_distance << endl;
 
 		// Y'a-t-il des pièces adverses qui contrôlent les cases?
-		//w_kingside_castle_distance += is_controlled(7, 5, true) + is_controlled(7, 6, true);
+		b_kingside_castle_distance += is_controlled(7, 5, false) + is_controlled(7, 6, false);
 	}
 	else {
 		b_kingside_castle_distance = 2;
@@ -6353,11 +6353,11 @@ int Board::get_castling_distance() const {
 	// Si on peut encore roquer côté dame
 	if (_castling_rights.q_b) {
 		// Y'a -t-il des pièces qui bloquent le roque?
-		b_queenside_castle_distance += (_array[7][1] != 0) + (_array[7][2] != 0) + (_array[7][3] != 0);
+		b_queenside_castle_distance += (_array[7][1] != 0) + (_array[7][2] != 0) + (_array[7][3] != 0) + (_array[7][3] != 0 && _array[6][2] != 0 && _array[6][4] != 0);
 		//cout << "b_queenside_castle_distance: " << (int)b_queenside_castle_distance << endl;
 
 		// Y'a-t-il des pièces adverses qui contrôlent les cases?
-		//w_queenside_castle_distance += is_controlled(7, 2, true) + is_controlled(7, 3, true);
+		b_queenside_castle_distance += is_controlled(7, 2, false) + is_controlled(7, 3, false);
 	}
 	else {
 		b_queenside_castle_distance = 2;

@@ -35,7 +35,7 @@ public:
 	float _castling_distance = 1.0f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
-	int _pieces_value_begin[6] = { 87, 335, 340, 460, 980, 0 };
+	int _pieces_value_begin[6] = { 87, 335, 340, 460, 1035, 0 };
 
 	// Valeurs en fin de partie
 	int _pieces_value_end[6] = { 90, 380, 410, 610, 1070, 0 };
