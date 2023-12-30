@@ -938,6 +938,14 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 		_evaluation += weak_squares;
 	}
 
+	// Distance au roque
+	if (eval->_castling_distance != 0.0f) {
+		const int castling_distance = get_castling_distance() * eval->_castling_distance;
+		if (display)
+			eval_components += "castling distance: " + (castling_distance >= 0 ? string("+") : string()) + to_string(castling_distance) + "\n";
+		_evaluation += castling_distance;
+	}
+
 
 	// Total de l'évaluation
 	if (display)
@@ -3617,7 +3625,7 @@ int Board::get_pawn_structure(float display_factor) const
 
 	// Pions connectés
 	// Un pion est dit connecté, s'il y a un pion de la même couleur sur une colonne adjacente sur la même rangée ou la rangée inférieure
-	constexpr int connected_pawns[8] = { 0, 15, 25, 50, 100, 150, 350, 0 };
+	constexpr int connected_pawns[8] = { 0, 15, 25, 50, 125, 200, 350, 0 };
 	constexpr float connected_pawns_factor = 0.7f; // En fonction de l'advancement de la partie
 	const float connected_pawns_adv = 1 * (1 + (connected_pawns_factor - 1) * _adv);
 
@@ -6272,4 +6280,94 @@ string Board::algebric_notation(Move move) {
 // Fonction qui convertit une notation algébrique en un coup
 Move Board::move_from_algebric_notation(string notation) {
 	return Move(notation[1] - '1', notation[0] - 'a', notation[3] - '1', notation[2] - 'a');
+}
+
+// Fonction qui renvoie la valeur de la distance à la possibilité de roque
+int Board::get_castling_distance() const {
+	// TODO: à fusionner avec d'autres fonctions pour que ça évite de donner un bonus constant même quand roquer nous fout dans la merde?
+
+	// Regarde s'il y a des pièces qui bloquent le roque (et si elles peuvent bouger? TODO), ou des pièces adverses qui controllent
+
+	// Malus de distance minimale au roque
+	int castling_distance_malus = 50;
+
+	// Blancs
+
+	// Petit roque
+	uint_fast8_t w_kingside_castle_distance = 0;
+
+	// Si on peut encore roquer côté roi
+	if (_castling_rights.k_w) {
+		// Y'a -t-il des pièces qui bloquent le roque?
+		w_kingside_castle_distance += (_array[0][5] != 0) + (_array[0][6] != 0);
+		//cout << "w_kingside_castle_distance: " << (int)w_kingside_castle_distance << endl;
+
+		// Y'a-t-il des pièces adverses qui contrôlent les cases?
+		//w_kingside_castle_distance += is_controlled(0, 5, false) + is_controlled(0, 6, false);
+	}
+	else {
+		w_kingside_castle_distance = 2;
+	}
+
+	// Grand roque
+	uint_fast8_t w_queenside_castle_distance = 0;
+
+	// Si on peut encore roquer côté dame
+	if (_castling_rights.q_w) {
+		// Y'a -t-il des pièces qui bloquent le roque?
+		w_queenside_castle_distance += (_array[0][1] != 0) + (_array[0][2] != 0) + (_array[0][3] != 0);
+		//cout << "w_queenside_castle_distance: " << (int)w_queenside_castle_distance << endl;
+
+		// Y'a-t-il des pièces adverses qui contrôlent les cases?
+		//w_queenside_castle_distance += is_controlled(0, 2, false) + is_controlled(0, 3, false);
+	}
+	else {
+		w_queenside_castle_distance = 2;
+	}
+	
+	// Distance minimale pour roquer (0 s'il a déjà roqué)
+	uint_fast8_t w_castling_distance = (_castling_rights.k_w || _castling_rights.q_w) ? min(w_kingside_castle_distance, w_queenside_castle_distance) : 0;
+
+
+	// Noirs
+
+	// Petit roque
+	uint_fast8_t b_kingside_castle_distance = 0;
+
+	// Si on peut encore roquer côté roi
+	if (_castling_rights.k_b) {
+		// Y'a -t-il des pièces qui bloquent le roque?
+		b_kingside_castle_distance += (_array[7][5] != 0) + (_array[7][6] != 0);
+		//cout << "b_kingside_castle_distance: " << (int)b_kingside_castle_distance << endl;
+
+		// Y'a-t-il des pièces adverses qui contrôlent les cases?
+		//w_kingside_castle_distance += is_controlled(7, 5, true) + is_controlled(7, 6, true);
+	}
+	else {
+		b_kingside_castle_distance = 2;
+	}
+
+	// Grand roque
+	uint_fast8_t b_queenside_castle_distance = 0;
+
+	// Si on peut encore roquer côté dame
+	if (_castling_rights.q_b) {
+		// Y'a -t-il des pièces qui bloquent le roque?
+		b_queenside_castle_distance += (_array[7][1] != 0) + (_array[7][2] != 0) + (_array[7][3] != 0);
+		//cout << "b_queenside_castle_distance: " << (int)b_queenside_castle_distance << endl;
+
+		// Y'a-t-il des pièces adverses qui contrôlent les cases?
+		//w_queenside_castle_distance += is_controlled(7, 2, true) + is_controlled(7, 3, true);
+	}
+	else {
+		b_queenside_castle_distance = 2;
+	}
+
+	// Distance minimale pour roquer (0 s'il a déjà roqué)
+	uint_fast8_t b_castling_distance = (_castling_rights.k_b || _castling_rights.q_b) ? min(b_kingside_castle_distance, b_queenside_castle_distance) : 0;
+
+	//cout << "w_castling_distance: " << (int)w_castling_distance << endl;
+	//cout << "b_castling_distance: " << (int)b_castling_distance << endl;
+
+	return castling_distance_malus * (b_castling_distance - w_castling_distance) * (1 - _adv);
 }

@@ -562,6 +562,9 @@ public:
 
 	// Fonction qui convertit une notation algébrique en un coup
 	Move move_from_algebric_notation(string notation);
+
+	// Fonction qui renvoie la valeur de la distance à la possibilité de roque
+	[[nodiscard]] int get_castling_distance() const;
 };
 
 // Fonction qui obtient la case correspondante à la position sur la GUI
