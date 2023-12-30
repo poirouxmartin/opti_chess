@@ -25,7 +25,8 @@ using namespace std;
 // Regarder si should_play prend trop de temps
 // Prendre son temps sur le premier coup
 
-// Commande pour lancer le bot: .\venv\bin\activate
+// COMMANDS:
+// pour lancer le bot: .\venv\bin\activate
 // python3 lichess-bot.py -v
 
 // FIXME
@@ -46,7 +47,8 @@ using namespace std;
 // Trop de sacrifices inutiles sur le roi adverse : FIXED
 // Bloque pas assez les pions passés
 // Donne trop de pions gratuitement : FIXED?
-// Mauvaise modélisation de la sécurité du roi
+// Mauvaise modélisation de la sécurité du roi (agglutine les pièces vers le roi inutilement en fin de partie)
+// Ne roque pas assez vite
 
 
 // Paramètres de Grogros

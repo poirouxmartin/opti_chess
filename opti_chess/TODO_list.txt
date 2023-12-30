@@ -276,7 +276,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Fix pawn push threat : quand la case est controllée...
 -> Passer la quiescence à depth 8 ou +? sinon y'a encore des positions mal évaluées... à voir si on peut réutiliser les noeuds de la quiescence pour la recherche normale
 -> Créer une classe 'arbre' pour les recherches de GrogrosZero?
--> Réduire la valeur des fous?
 -> 6k1/4pp1p/P2p2p1/8/4P3/1P6/5PPP/6K1 b - - 0 26 : il faut améliorer king proximity avec les pions passés: le roi est clairement pas dans le carré
 -> Constructeur de coups à partir d'un string
 -> Passer les fonctions d'évaluation dans evaluation.cpp
@@ -295,13 +294,17 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Rajouter des comtempt: valeur qui dépend de l'adversaire, et qui définit à quel point tu acceptes les nulles (et tente des pièges?)
 -> Faire une structure pour la recherche de MonteCarlo (arbre avec noeuds)
 -> Bishop pawns: retirer une part de la pénalité quand le fou est devant et protégé par un de ses pions?
--> ATTENTION : pour l'activité des tours, parfois Grogros va faire un Th7 pour se déroquer (car il pense que sa tour ne sera plus bloquée). Il faut fix à tout prix
+-> FIXME : pour l'activité des tours, parfois Grogros va faire un Th7 pour se déroquer (car il pense que sa tour ne sera plus bloquée). Il faut fix à tout prix
 -> Souvent, Grogros dépasse le centre pour rien, et ça crée des faiblesses et ne sert à rien (il faudrait mieux se développer à la place...). Contre les double fianchetto, ce genre d'erreur est fatal
 -> Utiliser des émoticones pour les pièces d'échec? \u2656xb5 plutôt que Rxb5
 -> Faire des plus petites allocations de buffer pour aller plus vite? et re allouer de la mémoire si on a rempli le buffer?
 -> Faire un truc sur la mobilité totale des pièces? qui ressemble à un logarithme? -> t'as pas de coups -> eval: -inf, t'as k coups -> eval: 0, et ça augmente en log
 -> Utiliser Texel tuner pour rectifier l'évaluation?
 -> Mettre les fous sur les diagonales ouvertes (voir comme on fait pour les colonnes des tours)
+-> 2b3k1/4bp2/3p1n1p/PP4p1/4P1P1/3BBP2/5K1P/8 w - - 1 36 : les pions connectés fonctionnent bien?
+-> Heuristique pour à quel point le roi est proche de roquer?
+-> Heuristique d'ouverture de la position -> draw ou non
+-> Grogros peut améliorer sa gestion du temps en en prenant un peu plus en fin de partie s'il lui en reste beaucoup. Prendre en compte aussi le temps de l'adversaire?
 
 
 ----- Interface utilisateur -----
@@ -425,7 +428,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 ----- En cours -----
 
 -> Promotions de variantes -> il faut promouvoir toute la branche depuis le début, pas juste le dernier coup (+ le FIXME -> il faut sélectionner le bon noeud après la promotion)
--> Pawn storm / Pawn shield (rajout des colonnes ouvertes etc...) / Pions arriérés
+-> Pawn storm / Pawn shield (rajout des colonnes/diagonales ouvertes etc...) / Pions arriérés / Proximité de roquer
 -> Affichage du temps dans le PGN
 -> Quiescence nodes qui augmente aussi avec les threads
 -> Temps affiché = vrai temps
