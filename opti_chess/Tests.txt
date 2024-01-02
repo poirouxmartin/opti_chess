@@ -262,6 +262,8 @@ B1bq1rk1/p1p2ppp/8/2b4Q/4p3/2Pn4/PP1K2PP/RNB4R w - - 0 12 : -3
 5r1k/p5p1/1q4Pp/7Q/P4r2/3p4/1P4RP/6RK b - - 5 36 : le pion passé est trop fort
 5r1k/p5p1/6Pp/3q4/P4r1P/1P4Q1/3p2R1/6RK b - - 2 41 : fini
 r2qk2r/p4p1p/2p1b1pB/3p4/5Q2/P2B4/2P2PPP/R5K1 b kq - 0 17 : ici les noirs n'ont plus de cases noires... le fou blanc de cases noires est au moins aussi fort qu'une tour
+r1bqkb1r/pp2pppp/2np1n2/8/2BNP3/2N5/PPP2PPP/R1BQK2R b KQkq - 4 6 : là faut jouer e6 plutôt que e5 (pour bloquer le fou, et ne pas donner la case d5)
+r1b1kbnr/pppp1ppp/2P5/4p3/4q3/8/PPP1QPPP/RNB1KBNR b KQkq - 1 5 : c'est pièce de moins pour les noirs là... -1.55 pour king safety c'est un peu abusé
 
 
 

@@ -3,6 +3,7 @@
 
 // Possibilités d'optimisation
 // -> Les pions ne peuvent pas être sur la première et dernière rangée
+// -> On utilise des entiers 32 bits au lieu de 64 bits (4.29e9 clés au lieu de 1.84e19)
 
 // Classe qui gère les clés de Zobrist
 class Zobrist
