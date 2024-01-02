@@ -4169,12 +4169,8 @@ void unselect() {
 // Fonction qui remet les compteurs de temps "à zéro" (temps de base)
 void Board::reset_timers() {
 	// Temps par joueur (en ms)
-	main_GUI._time_white = base_time_white;
-	main_GUI._time_black = base_time_black;
-
-	// Incrément (en ms)
-	main_GUI._time_increment_white = base_time_increment_white;
-	main_GUI._time_increment_black = base_time_increment_black;
+	main_GUI._time_white = main_GUI._initial_time_white;
+	main_GUI._time_black = main_GUI._initial_time_black;
 }
 
 // Fonction qui remet le plateau dans sa position initiale
@@ -6123,10 +6119,10 @@ int Board::get_weak_squares() const {
 	const static int weak_square_values[8][8] = {
 		{ 0,  0,  0,  0,  0,  0,  0,  0},
 		{ 0,  0,  0,  0,  0,  0,  0,  0}, 
-		{ 0,  0, 10, 20, 20, 10,  0,  0},
-		{ 0,  0, 35, 50, 50, 35,  0,  0},
-		{ 0,  0, 35, 50, 50, 35,  0,  0},
-		{ 0,  0, 15, 20, 20, 15,  0,  0},
+		{ 0,  5, 10, 20, 20, 10,  5,  0},
+		{10, 25, 35, 50, 50, 35, 20, 10},
+		{10, 25, 40, 60, 60, 40, 25, 10},
+		{ 5, 15, 25, 40, 40, 25, 15,  5},
 		{ 0,  0,  0,  0,  0,  0,  0,  0},
 		{ 0,  0,  0,  0,  0,  0,  0,  0}
 	};
@@ -6299,6 +6295,7 @@ int Board::get_castling_distance() const {
 	// Si on peut encore roquer côté roi
 	if (_castling_rights.k_w) {
 		// Y'a -t-il des pièces qui bloquent le roque? (Si le fou est encore en f1 (à vérifier que c'est le fou...), rajoute du malus si qq chose bloque sa sortie)
+		// TODO : à améliorer, car il peut y avoir des cas spéciaux...
 		w_kingside_castle_distance += (_array[0][5] != 0) + (_array[0][6] != 0) + (_array[0][5] != 0 && _array[1][4] != 0 && _array[1][6] != 0);
 		//cout << "w_kingside_castle_distance: " << (int)w_kingside_castle_distance << endl;
 

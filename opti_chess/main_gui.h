@@ -575,18 +575,22 @@ inline int main_ui() {
 				// Grogros doit gérer son temps
 				if (main_GUI._time) {
 					// Nombre de noeuds que Grogros doit calculer (en fonction des contraintes de temps)
-					static constexpr int supposed_grogros_speed = 2500; // En supposant que Grogros va à plus de 5k noeuds par seconde
+					static constexpr int supposed_grogros_speed = 3500; // En supposant que Grogros va à plus de 5k noeuds par seconde
 					int tot_nodes = main_GUI._board.total_nodes();
 					float best_move_percentage = tot_nodes == 0 ? 0.05f : static_cast<float>(main_GUI._board._nodes_children[main_GUI._board.best_monte_carlo_move()]) / static_cast<float>(main_GUI._board.total_nodes());
 					int max_move_time = main_GUI._board._player ?
 						time_to_play_move(main_GUI._time_white, main_GUI._time_black, 0.2f * (1.0f - best_move_percentage)) :
 						time_to_play_move(main_GUI._time_black, main_GUI._time_white, 0.2f * (1.0f - best_move_percentage));
 
+					// Si il nous reste beaucoup de temps en fin de partie, on peut réfléchir plus longtemps
+					max_move_time *= (1 + main_GUI._board._adv); // Regarder si ça marche bien (TODO)
+
 					// On veut être sûr de jouer le meilleur coup de Grogros
 					// Si il y a un meilleur coup que celui avec le plus de noeuds, attendre...
 					bool wait_for_best_move = tot_nodes != 0 && main_GUI._board._eval_children[main_GUI._board.best_monte_carlo_move()] * main_GUI._board.get_color() < main_GUI._board._evaluation * main_GUI._board.get_color();
 					max_move_time = wait_for_best_move ? max_move_time : max_move_time / 4;
 
+					// Nombre de noeuds à calculer
 					int grogros_timed_nodes = min(nodes_per_frame, supposed_grogros_speed * max_move_time / 1000);
 					main_GUI._board.grogros_zero(main_GUI._grogros_eval, min(!main_GUI._time ? nodes_per_frame : grogros_timed_nodes, grogros_nodes - main_GUI._board.total_nodes()), main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
 					

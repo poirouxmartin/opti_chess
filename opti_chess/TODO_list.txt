@@ -308,6 +308,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Rajouter les pions passés soutenus par une tour derrière
 -> En finale contre fou, mettre les pions sur la couleur opposée au fou
 -> Parfois il fait Fb2 dans le pion c3
+-> Remettre toutes les conditions pour determiner le temps pour jouer dans la fonction prévue pour
 
 
 ----- Interface utilisateur -----
@@ -431,11 +432,10 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 ----- En cours -----
 
 -> Promotions de variantes -> il faut promouvoir toute la branche depuis le début, pas juste le dernier coup (+ le FIXME -> il faut sélectionner le bon noeud après la promotion)
--> Pawn storm / Pawn shield (rajout des colonnes/diagonales ouvertes etc...) / Pions arriérés / Proximité de roquer
+-> Pawn storm / Pawn shield (rajout des colonnes/diagonales ouvertes etc...) / Pions arriérés / Fix king safety / Pieces alignement (à finir)
 -> Affichage du temps dans le PGN
 -> Quiescence nodes qui augmente aussi avec les threads
 -> Temps affiché = vrai temps
--> Finir pieces alignements
 -> Afficher les pièces plutôt que P, R, N, B, Q, K
 
 
