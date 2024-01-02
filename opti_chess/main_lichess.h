@@ -21,20 +21,11 @@ using namespace std;
 // Voir les TODO dans le code
 // Demander le temps plusieurs fois pour uptdate pendant la réflexion
 // Regarder si should_play prend trop de temps
+// Afficher le nombre de noeuds par seconde à la fin de la réflexion?
 
 // COMMANDS:
 // pour lancer le bot: .\venv\bin\activate
 // python3 lichess-bot.py -v
-
-// FIXME
-// Parfois, Grogros fait b1c3 dans certaines positions (coup illegal)
-// test coups illégaux: r1q1kb1r/pb3pp1/1pn1pn1p/2ppN3/Q2P1B2/2P3P1/PP2PPBP/RN3RK1 w kq - 0 10
-// 'c2c3' in rn3rk1/7p/1p1N1pp1/p2p3n/P1pP4/2P3Bq/1P2QP2/RN2R1K1 b - - 3 22
-// 'c2c3' in r4rk1/1p3pp1/p3bb1p/1N6/2p2P2/2P1P1P1/PP4BP/R4RK1 w - - 0 20
-// 'c2c3' in 1rb3k1/3p1ppp/1p1N1n2/pP6/5P2/2PnPB2/P5PP/R1B3K1 w - - 3 24
-// EDIT: Grogros plante, et revient sur la position de base, et joue le coup illégal
-
-// FIXME: il faudrait que Grogros reprenne sur la bonne position après un crash
 
 // Bilans de parties:
 // Trop d'importance sur les colonnes des tours : FIXED
@@ -48,6 +39,10 @@ using namespace std;
 // Ne roque pas assez vite : FIXED
 // Enfermement des pièces (fous/dames)
 // Donne des pièces trop facilement contre quelques pions
+// 1. e4 Cc6 2. d4 e5 3. d5 Cd4 4. c3 -> Gagne la plièce, et Grogros s'en fout un peu (eval: +7 pour les blancs...)
+// r1bq2k1/pppp2rp/2n3P1/3N1p1Q/2PP4/3pP3/PP3PP1/R3K2R w KQ - 1 16 : ici il faut surtout pas prendre h7 (ça ferme la colonne h)
+// 5r2/ppp5/3p1nk1/8/4P2R/5PP1/PP6/1K6 w - - 0 35 : ici faut pas abuser avec les ionps... le cheval reste plus fort (et faut pas échanger les tours) -> il faut implémenter winnable pour échanger les pions mais pas les pièces
+
 
 
 // Paramètres de Grogros
@@ -212,6 +207,9 @@ inline bool should_play(const Board& board, Param param) {
         time_to_play_move(param.time_white, param.time_black, 0.2f * (1.0f - best_move_percentage)) :
         time_to_play_move(param.time_black, param.time_white, 0.2f * (1.0f - best_move_percentage));
 
+    // Si il nous reste beaucoup de temps en fin de partie, on peut réfléchir plus longtemps
+    max_move_time *= (1 + board._adv); // Regarder si ça marche bien (TODO)
+
     // Equivalent en nombre de noeuds
     int nodes_to_play = supposed_grogros_speed * max_move_time / 1000;
 
@@ -268,7 +266,6 @@ inline int main_lichess() {
 
         // Grogros réfléchit en attendant
         board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
-        //cout << "info nodes " << board.total_nodes() << endl;
 
         if (should_play(board, param))
             bestmove(board, param);

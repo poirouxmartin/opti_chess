@@ -9,6 +9,9 @@
 
 using namespace std;
 
+
+// TODO: Tout mettre dans une classe GUI
+
 // Définition des variables
 
 // Définition des couleurs
@@ -168,19 +171,6 @@ static float variants_slider = 0.0f;
 static float global_eval = 0.0f;
 static string global_eval_text = "+0.0";
 
-// Temps de base pour les joueurs (en ms)
-//static int base_time_white = 180000;
-//static int base_time_black = 180000;
-static int base_time_white = 60000;
-static int base_time_black = 60000;
-
-
-// Incrément (en ms)
-static int base_time_increment_white = -50;
-static int base_time_increment_black = -50;
-//static int base_time_increment_white = 5000;
-//static int base_time_increment_black = 5000;
-
 // Valeur des pièces pour l'affichage sur la GUI (rien/roi, pion, cavalier, fou, tour, dame)
 static const int piece_GUI_values[6] = { 0, 1, 3, 3, 5, 9 };
 
@@ -308,9 +298,13 @@ public:
 	// Coordonées du plateau pour le binding
 	//SimpleRectangle _binding_coord;
 
+	// Temps initial des joueurs
+	clock_t _initial_time_white = 180000;
+	clock_t _initial_time_black = 180000;
+
 	// Temps des joueurs
-	clock_t _time_white = 900000;
-	clock_t _time_black = 900000;
+	clock_t _time_white;
+	clock_t _time_black;
 
 	// Incrément (5s/coup)
 	clock_t _time_increment_white = 5000;
