@@ -306,9 +306,9 @@ public:
 	clock_t _time_white;
 	clock_t _time_black;
 
-	// Incrément (5s/coup)
-	clock_t _time_increment_white = 5000;
-	clock_t _time_increment_black = 5000;
+	// Incrément
+	clock_t _time_increment_white = -50;
+	clock_t _time_increment_black = -50;
 
 	// Mode analyse de Grogros
 	bool _grogros_analysis = false;
