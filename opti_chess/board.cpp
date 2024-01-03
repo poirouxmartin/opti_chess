@@ -2988,8 +2988,8 @@ int Board::get_king_safety() {
 
 	// TODO : à fix + ajouter en fonction du nombre d'escape squares du roi adverse
 	constexpr int safe_check_weakness = 350;
-	constexpr float safe_check_attack = 2.0f;
-	constexpr int safe_check_add = 1000;
+	constexpr float safe_check_attack = 3.0f;
+	constexpr int safe_check_add = 500;
 
 	pair<uint_fast8_t, uint_fast8_t> safe_checks = get_safe_checks(white_controls_map, black_controls_map);
 
@@ -3479,7 +3479,7 @@ int Board::get_pawn_structure(float display_factor) const
 	}
 
 	// Pions isolés
-	constexpr int isolated_pawn = -30;
+	constexpr int isolated_pawn = -60;
 	constexpr float isolated_adv_factor = 0.3f; // En fonction de l'advancement de la partie
 	const float isolated_adv = 1 * (1 + (isolated_adv_factor - 1) * _adv);
 	int isolated_pawns = 0;
@@ -3497,7 +3497,7 @@ int Board::get_pawn_structure(float display_factor) const
 	pawn_structure += isolated_pawns;
 
 	// Pions doublés (ou triplés...)
-	constexpr int doubled_pawn = -25;
+	constexpr int doubled_pawn = -45;
 	constexpr float doubled_adv_factor = 0.5f; // En fonction de l'advancement de la partie
 	const float doubled_adv = 1 * (1 + (doubled_adv_factor - 1) * _adv);
 	int doubled_pawns = 0;
@@ -3625,7 +3625,7 @@ int Board::get_pawn_structure(float display_factor) const
 
 	// Pions connectés
 	// Un pion est dit connecté, s'il y a un pion de la même couleur sur une colonne adjacente sur la même rangée ou la rangée inférieure
-	constexpr int connected_pawns[8] = { 0, 15, 25, 100, 125, 200, 350, 0 };
+	constexpr int connected_pawns[8] = { 0, 15, 25, 80, 110, 180, 275, 0 };
 	constexpr float connected_pawns_factor = 0.7f; // En fonction de l'advancement de la partie
 	const float connected_pawns_adv = 1 * (1 + (connected_pawns_factor - 1) * _adv);
 
@@ -5790,7 +5790,7 @@ int Board::get_rook_activity() const
 	// 1. Tour enfermée par le roi: mobilité < 4 -> malus (encore plus grand si le roi ne peut pas roquer) /= mobilité
 	// 2. L'activité dépend surtout de la mobilité verticale (distance au pion le plus proche devant)
 
-	constexpr int trapped_rook_malus = 250;
+	constexpr int trapped_rook_malus = 350;
 	constexpr int vertical_mobility_bonus = 50;
 
 	int activity = 0;
