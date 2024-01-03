@@ -22,6 +22,7 @@ using namespace std;
 // Demander le temps plusieurs fois pour uptdate pendant la réflexion
 // Regarder si should_play prend trop de temps
 // Afficher le nombre de noeuds par seconde à la fin de la réflexion?
+// Tester d'autres paramètres d'exploration (exploration plus restreinte (beta plus grand), quiescence plus profonde...)
 
 // COMMANDS:
 // pour lancer le bot: .\venv\bin\activate
@@ -42,6 +43,8 @@ using namespace std;
 // 1. e4 Cc6 2. d4 e5 3. d5 Cd4 4. c3 -> Gagne la plièce, et Grogros s'en fout un peu (eval: +7 pour les blancs...)
 // r1bq2k1/pppp2rp/2n3P1/3N1p1Q/2PP4/3pP3/PP3PP1/R3K2R w KQ - 1 16 : ici il faut surtout pas prendre h7 (ça ferme la colonne h)
 // 5r2/ppp5/3p1nk1/8/4P2R/5PP1/PP6/1K6 w - - 0 35 : ici faut pas abuser avec les ionps... le cheval reste plus fort (et faut pas échanger les tours) -> il faut implémenter winnable pour échanger les pions mais pas les pièces
+// Valeurs des structures de pions à revoir...
+// Gestion du temps aussi (voir fins de parties)
 
 
 
