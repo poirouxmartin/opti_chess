@@ -6053,6 +6053,9 @@ int Board::get_pawn_shield() {
 	// si peut roquer que d'un côté, regarde les pions f, g et h ou b, c et d (selon le côté)
 	// si peut roquer des deux côtés, fais la moyenne des pions f, g et h et b, c et d, et des 3 pions devant lui
 
+	// Exemples:
+	// r3k2r/1ppq2pp/p1pbbpn1/8/3PP3/2N1BN1P/PP3PP1/R2Q1RK1 w kq - 3 13 : ici h4 pourrit la structure du roi. NE JAMAIS FAIRE (surtout en roques opposés)
+
 
 	int pawn_shield_value = 0;
 
@@ -6369,8 +6372,9 @@ int Board::get_castling_distance() const {
 	return castling_distance_malus * (b_castling_distance - w_castling_distance) * (1 - _adv);
 }
 
-// Fonction qui renvoie la clé de Zobrist du plateau
+// Fonction qui renvoie la clé de Zobrist du plateau (fonction pour le debug)
 uint_fast64_t Board::get_zobrist_key() const {
+	Zobrist zobrist = transposition_table._zobrist;
 	
 	// Génération des clés de Zobrist si ce n'est pas déjà fait
 	if (!zobrist._keys_generated)
@@ -6409,4 +6413,27 @@ uint_fast64_t Board::get_zobrist_key() const {
 		zobrist_key ^= zobrist._player_key;
 
 	return zobrist_key;
+}
+
+// Fonction qui renvoie à quel point la partie est gagnable (de 0 à 1)
+float Board::get_winnable() const {
+	// TODO: à implémenter
+	// Prendre en compte:
+	// si la position est fermée
+	// déséquilibre matériel
+	// ENDGAME: matériel restant
+	// si y'a des tours, c'est plus drawish
+	// combien de pions il reste
+
+	// EXEMPLES:
+	// 2q5/k3bp2/p1p1b1p1/P1PpPp1p/1Pp2P1P/2Q3P1/6K1/3RR3 w - - 0 1 : ça c'est nulle (position fermée)
+
+	return 0.0f;
+}
+
+// Fonction qui renvoie l'activité des fous sur les diagonales
+int Board::get_bishop_activity() const {
+	// TODO: à implémenter
+
+	return 0;
 }

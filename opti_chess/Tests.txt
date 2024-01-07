@@ -264,6 +264,13 @@ B1bq1rk1/p1p2ppp/8/2b4Q/4p3/2Pn4/PP1K2PP/RNB4R w - - 0 12 : -3
 r2qk2r/p4p1p/2p1b1pB/3p4/5Q2/P2B4/2P2PPP/R5K1 b kq - 0 17 : ici les noirs n'ont plus de cases noires... le fou blanc de cases noires est au moins aussi fort qu'une tour
 r1bqkb1r/pp2pppp/2np1n2/8/2BNP3/2N5/PPP2PPP/R1BQK2R b KQkq - 4 6 : là faut jouer e6 plutôt que e5 (pour bloquer le fou, et ne pas donner la case d5)
 r1b1kbnr/pppp1ppp/2P5/4p3/4q3/8/PPP1QPPP/RNB1KBNR b KQkq - 1 5 : c'est pièce de moins pour les noirs là... -1.55 pour king safety c'est un peu abusé
+rnb1kbnr/ppp1pppp/8/5q2/8/2N2NR1/PPPPBP1P/R1BQK3 w Qkq - 4 8 : ça c'est mieux pour les blancs (largement plus d'activité)
+2kr4/ppp2p1p/2nb1B2/1B5q/5pb1/1P2Pp2/P1P3PP/RN1Q2KR w - - 0 14 : déjà complètement gagnant pour les noirs: le roi est foutu, les noirs ont trop d'activité, y'a trop de menaces
+r1bqkb1r/1pp1n1pp/p1p2p2/4p3/4P3/3P1N2/PPP2PPP/RNBQ1RK1 w kq - 2 7 : difficile à croite, mais selon Leela, c'est légèrement mieux pour les noirs
+r3k2r/1ppq2pp/p1pbbpn1/8/3PP3/2N1BN1P/PP3PP1/R2Q1RK1 w kq - 3 13 : Grogros veut jouer h4.. c'est une grosse erreur stratégique !
+2kr3r/1ppq2pp/p1pb1pn1/8/3PP1bP/2N1BNP1/PP3P2/R2Q1RK1 w - - 1 15 : là c'est complètement gagnant pour les noirs selon Leela. Structure du roi blanc affaiblie, clouage du Cf3 à vie...
+2k1rr2/1ppq2pp/p1pb2n1/4P3/3P1pbP/2N2NP1/PP1BQP2/2R2RK1 w - - 0 19 : foutu pour les blancs
+
 
 
 
@@ -573,6 +580,7 @@ r2q1rk1/1p1b1p2/p2b1n1Q/5p2/3P4/P1N2N2/1P3PPP/R3R1K1 w - - 0 18 : Cg5 gagne
 r3k2N/pppnq1pp/8/3Pp3/Q1Bn2b1/2P5/PP1P1KPP/RNB4R b q - 0 11 : Dh4+ gagne
 r1b2k1r/pppp2pp/2n2pq1/3B2B1/8/4QN2/P4PPP/4R1K1 w - - 0 16 : Fxc6 termine la partie
 1kn5/2Rpppnp/pp6/1p6/1b6/1b1K1B2/1p5q/8 w - - 0 1 : Tb7+ Moulin-ed
+r1b1k2B/ppp2p1p/2nb4/1B1p3q/4np2/1P2PN2/P1PP2PP/RN1Q2KR b q - 2 10 : Fh3
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---

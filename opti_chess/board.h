@@ -569,6 +569,12 @@ public:
 
 	// Fonction qui renvoie la clé de Zobrist du plateau
 	[[nodiscard]] uint_fast64_t get_zobrist_key() const;
+
+	// Fonction qui renvoie à quel point la partie est gagnable (de 0 à 1)
+	[[nodiscard]] float get_winnable() const;
+
+	// Fonction qui renvoie l'activité des fous sur les diagonales
+	[[nodiscard]] int get_bishop_activity() const;
 };
 
 // Fonction qui obtient la case correspondante à la position sur la GUI
