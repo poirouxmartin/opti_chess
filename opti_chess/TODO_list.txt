@@ -421,7 +421,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Table de transposition
 -> Bitboards
 -> Réseaux de neurones
--> Parallélisation
+-> Parallélisation (possible sur le GPU?)
 -> Policy pour les coups
 -> "Killer moves", ou gestion des menaces
 -> Fusion de la quiessence search et de la recherche normale
@@ -442,3 +442,9 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 ----- Réseaux de neurones -----
 
 -> Faut t-il de la symétrie dans le réseau de neurone? (car sinon il évalue pas de la même manière les blancs et les noirs)
+-> Comment le faire apprendre?
+-> - Parties contre lui-même
+-> - Algorithme génétique: on détruit les plus faibles, et on fait des mutations sur les plus forts
+-> - Bonus et malus pendant les parties, lorsqu'il a mal évalué une position
+-> - Apprentissage à partir des fins de partie, puis on remonte
+-> - Reinforcement learning

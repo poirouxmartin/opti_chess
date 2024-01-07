@@ -4,8 +4,13 @@
 class Buffer {
 public:
 
+	// Le buffer est-il initialisé ?
 	bool _init = false;
+
+	// Longueur du buffer
 	int _length = 0;
+
+	// Tableau de plateaux
 	Board* _heap_boards;
 
 	// Itérateur pour rechercher moins longtemps un index de plateau libre

@@ -1,13 +1,18 @@
 #pragma once
 #include <cstdint>
+#include <unordered_map>
+
+using namespace std;
 
 // Possibilités d'optimisation
 // -> Les pions ne peuvent pas être sur la première et dernière rangée
 // -> On utilise des entiers 32 bits au lieu de 64 bits (4.29e9 clés au lieu de 1.84e19)
 
+// TODO: mettre les fonctions dans le .cpp au lieu du .h
+
+
 // Classe qui gère les clés de Zobrist
-class Zobrist
-{
+class Zobrist {
 public:
 	// Variables
 
@@ -29,12 +34,54 @@ public:
 	// Les clés sont-elles générées ?
 	bool _keys_generated = false;
 
-	// Fonctions
+	// Constructeur par défaut
+	Zobrist();
 
 	// Fonction qui génère les clés de Zobrist
 	void generate_zobrist_keys();
 
 };
 
-// Instance de la classe Zobrist
-extern Zobrist zobrist;
+// Entrée dans la table de transposition
+struct ZobristEntry {
+public:
+	// Clé de Zobrist
+	uint_fast64_t _key = 0;
+
+	// Indice du plateau dans le buffer
+	int _board_index = -1;
+
+	// Constructeur par défaut
+	ZobristEntry();
+
+	// Constructeur à partir d'une clé et d'un indice
+	ZobristEntry(const uint_fast64_t _key, const int _board_index);
+};
+
+// Table de transposition (structure: unordered_map)
+class TranspositionTable {
+public:
+	// Table de transposition
+	unordered_map<uint64_t, ZobristEntry> _hash_table; // FIXME: il faut gérer la taille de la table de transposition
+
+	// Zobrist utilisé
+	Zobrist _zobrist;
+
+	// La table est-elle initialisée?
+	bool _init = false;
+
+	// Taille de la table de transposition
+	int _length = 0;
+
+	// Constructeur par défaut de la table de transposition
+	TranspositionTable();
+
+	// Fonction qui initialise la table de transposition d'une longueur donnée (nombre d'éléments)
+	void init(const int length = 5000000, const Zobrist* zobrist = nullptr, bool display = false);
+
+	// Fonction qui renvoie l'indice du plateau dans le buffer (s'il existe)
+	int get_zobrist_position_buffer_index(uint_fast64_t key);
+};
+
+// Instance de la table de transposition
+extern TranspositionTable transposition_table;
