@@ -119,6 +119,10 @@ inline int main_ui() {
 	// Initialisation de la table de transposition
 	transposition_table.init(transposition_table_size, nullptr, true);
 
+	// Initialisation du buffer de Monte-Carlo
+	monte_buffer.init(2);
+
+
 	// Boucle principale (Quitter à l'aide de la croix, ou en faisant échap)
 	while (!WindowShouldClose()) {
 		// INPUTS
@@ -423,7 +427,7 @@ inline int main_ui() {
 		// P - Joue le coup recommandé par l'algorithme de GrogrosZero
 		if (!IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_P)) {
 			if (main_GUI._board._tested_moves > 0)
-				((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false, false);
+				((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false);
 			else
 				cout << "no more moves are in memory" << endl;
 		}
@@ -431,7 +435,7 @@ inline int main_ui() {
 		// LShift-P - Joue les coups recommandés par l'algorithme de GrogrosZero
 		if (IsKeyDown(KEY_LEFT_SHIFT) && IsKeyDown(KEY_P)) {
 			if (main_GUI._board._tested_moves > 0)
-				((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false, false);
+				((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false);
 			else
 				cout << "no more moves are in memory" << endl;
 		}
@@ -610,7 +614,7 @@ inline int main_ui() {
 					int nodes_to_play = supposed_grogros_speed * max_move_time / 1000;
 
 					if (main_GUI._board.total_nodes() >= nodes_to_play)
-						((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false, false);
+						((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false);
 
 				}
 				else
@@ -668,7 +672,7 @@ inline int main_ui() {
 				for (int i = 0; i < main_GUI._board._got_moves; i++) {
 					if (main_GUI._board._moves[i].i1 == main_GUI._binding_move[0] && main_GUI._board._moves[i].j1 == main_GUI._binding_move[1] && main_GUI._board._moves[i].i2 == main_GUI._binding_move[2] && main_GUI._board._moves[i].j2 == main_GUI._binding_move[3]) {
 						main_GUI._board.play_move_sound(Move(main_GUI._binding_move[0], main_GUI._binding_move[1], main_GUI._binding_move[2], main_GUI._binding_move[3]));
-						main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[i], true, true, true, true);
+						main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[i], true, true, true);
 						break;
 					}
 				}

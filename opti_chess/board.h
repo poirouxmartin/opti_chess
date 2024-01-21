@@ -75,6 +75,24 @@ typedef struct Move {
 	bool is_null : 1;
 	// Reste 2 bytes à utiliser : check? castling? en passant? is null?
 
+	// Constructeurs
+	/*Move() :
+		i1(-1),
+		j1(-1),
+		i2(-1),
+		j2(-1),
+		is_null(true)
+	{}*/
+
+	// FIXME: est-ce plus lent quand on utilise un constructeur?
+	/*Move(uint_fast8_t i1, uint_fast8_t j1, uint_fast8_t i2, uint_fast8_t j2) :
+		i1(i1),
+		j1(j1),
+		i2(i2),
+		j2(j2),
+		is_null(false)
+	{}*/
+
 	bool operator== (const Move& other) const {
 		return (i1 == other.i1) && (j1 == other.j1) && (i2 == other.i2) && (j2 == other.j2);
 	}
@@ -87,6 +105,11 @@ typedef struct Move {
 	string to_string() const
 	{
 		return "(" + std::to_string(i1) + ", " + std::to_string(j1) + ") -> (" + std::to_string(i2) + ", " + std::to_string(j2) + ")";
+	}
+
+	// Renvoie si c'est un coup nul
+	bool is_null_move() const {
+		return (is_null || (i1 == 0 && j1 == 0 && i2 == 0 && j2 == 0));
 	}
 };
 
@@ -285,7 +308,7 @@ public:
 
 	// Est-ce que le calcul de game over a déjà été fait?
 	bool _game_over_checked = false;
-	int _game_over_value = 0;
+	int_fast8_t _game_over_value = 0;
 
 	// Nombre de noeuds regardés par le quiescence search
 	int _quiescence_nodes = 0;
@@ -370,6 +393,9 @@ public:
 	[[nodiscard]] string to_fen() const;
 
 	// Fonction qui renvoie le gagnant si la partie est finie (-1/1), et 0 sinon
+	int game_over();
+
+	// Fonction qui renvoie le gagnant si la partie est finie (-1/1), et 0 sinon (et stocke sa valeur)
 	int is_game_over();
 
 	// Fonction qui renvoie le label d'un coup
@@ -387,9 +413,6 @@ public:
 	// Fonction qui joue le son d'un coup
 	void play_move_sound(Move) const;
 
-	// Fonction qui joue le son d'un coup à partir de son index
-	void play_index_move_sound(int) const;
-
 	// Fonction qui calcule et renvoie la mobilité des pièces
 	[[nodiscard]] int get_piece_mobility(bool legal = false) const;
 
@@ -397,7 +420,7 @@ public:
 	[[nodiscard]] int best_monte_carlo_move() const;
 
 	// Fonction qui joue le coup après analyse par l'algo de Monte-Carlo, et qui garde en mémoire les infos du nouveau plateau
-	bool play_monte_carlo_move_keep(Move move, bool keep = true, bool keep_display = false, bool display = false, bool add_to_list = false);
+	bool play_monte_carlo_move_keep(Move move, bool keep = true, bool keep_display = false, bool display = false);
 
 	// Pas très opti pour l'affichage, mais bon... Fonction qui cherche la profondeur la plus grande dans la recherche de Monté-Carlo
 	[[nodiscard]] int max_monte_carlo_depth() const;
@@ -575,16 +598,13 @@ public:
 
 	// Fonction qui renvoie l'activité des fous sur les diagonales
 	[[nodiscard]] int get_bishop_activity() const;
+
+	// Fonction qui réinitialise les plateau fils dans le buffer
+	void reset_children();
+
+	// Fonction qui renvoie si un coup est légal ou non
+	[[nodiscard]] bool is_legal(Move move);
 };
-
-// Fonction qui obtient la case correspondante à la position sur la GUI
-Pos get_pos_from_GUI(float, float);
-
-// Fonction qui permet de changer l'orientation du plateau
-void switch_orientation();
-
-// Fonction aidant à l'affichage du plateau (renvoie i si board_orientation, et 7 - i sinon)
-int orientation_index(int);
 
 // Fonction qui joue un match entre deux IA utilisant GrogrosZero, et une évaluation par réseau de neurones ou des évaluateurs, avec un certain nombre de noeuds de calcul
 int match(Evaluator* e_white = nullptr, Evaluator* e_black = nullptr, Network* n_white = nullptr, Network* n_black = nullptr, int nodes = 1000, bool display = false, int max_moves = 100);

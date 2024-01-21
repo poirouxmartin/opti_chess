@@ -323,3 +323,23 @@ void GUI::draw_monte_carlo_arrows() const
 		draw_arrow_from_coord(_board._moves[i].i1, _board._moves[i].j1, _board._moves[i].i2, _board._moves[i].j2, i, _board.get_color(), -1.0, move_color(_board._nodes_children[i], sum_nodes), true, _board._eval_children[i], mate, i == best_move);
 	}
 }
+
+// Fonction qui obtient la case correspondante à la position sur la GUI
+Pos get_pos_from_GUI(const float x, const float y) {
+	if (!is_in(x, board_padding_x, board_padding_x + board_size) || !is_in(y, board_padding_y, board_padding_y + board_size))
+		return Pos(-1, -1);
+	else
+		return Pos(orientation_index(8 - (y - board_padding_y) / tile_size), orientation_index((x - board_padding_x) / tile_size));
+}
+
+// Fonction qui permet de changer l'orientation du plateau
+void switch_orientation() {
+	board_orientation = !board_orientation;
+}
+
+// Fonction aidant à l'affichage du plateau (renvoie i si board_orientation, et 7 - i sinon)
+int orientation_index(const int i) {
+	if (board_orientation)
+		return i;
+	return 7 - i;
+}
