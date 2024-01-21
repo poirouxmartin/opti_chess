@@ -120,7 +120,7 @@ inline int main_ui() {
 	transposition_table.init(transposition_table_size, nullptr, true);
 
 	// Initialisation du buffer de Monte-Carlo
-	monte_buffer.init(2);
+	monte_buffer.init(buffer_size);
 
 
 	// Boucle principale (Quitter à l'aide de la croix, ou en faisant échap)
