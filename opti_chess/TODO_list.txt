@@ -424,27 +424,32 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Parallélisation (possible sur le GPU?)
 -> Policy pour les coups
 -> "Killer moves", ou gestion des menaces
--> Fusion de la quiessence search et de la recherche normale
+-> Fusion de la quiessence search et de la recherche normale (IMPORTANT)
 -> Arbres de variations / Chargement de PGN
 -> Livre d'ouvertures
+-> Beaucoup de vérifs à faire dans les fonctions principales (make_move, grogros_zero...)
+-> On peut réduire la taille des coups en groupant par 2 coordonnées
 
 
 ----- En cours -----
 
+-> Table de transposition
+-> Promotion de variantes: il faut repasser sur la variante principale au moment de la promotion
 -> Promotions de variantes -> il faut promouvoir toute la branche depuis le début, pas juste le dernier coup (+ le FIXME -> il faut sélectionner le bon noeud après la promotion)
 -> Pawn storm / Pawn shield (rajout des colonnes/diagonales ouvertes etc...) / Pions arriérés / Fix king safety / Pieces alignement (à finir)
 -> Affichage du temps dans le PGN
 -> Quiescence nodes qui augmente aussi avec les threads
 -> Temps affiché = vrai temps
 -> Afficher les pièces plutôt que P, R, N, B, Q, K
+-> Placer les fonctions dans gui.cpp
 
 
 ----- Réseaux de neurones -----
 
 -> Faut t-il de la symétrie dans le réseau de neurone? (car sinon il évalue pas de la même manière les blancs et les noirs)
 -> Comment le faire apprendre?
--> - Parties contre lui-même
--> - Algorithme génétique: on détruit les plus faibles, et on fait des mutations sur les plus forts
--> - Bonus et malus pendant les parties, lorsqu'il a mal évalué une position
--> - Apprentissage à partir des fins de partie, puis on remonte
--> - Reinforcement learning
+-> Parties contre lui-même
+-> Algorithme génétique: on détruit les plus faibles, et on fait des mutations sur les plus forts
+-> Bonus et malus pendant les parties, lorsqu'il a mal évalué une position
+-> Apprentissage à partir des fins de partie, puis on remonte
+-> Reinforcement learning

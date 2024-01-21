@@ -257,6 +257,15 @@ void play_end_sound();
 // A partir de coordonnées sur le plateau
 void draw_simple_arrow_from_coord(int, int, int, int, float, Color);
 
+// Fonction qui obtient la case correspondante à la position sur la GUI
+Pos get_pos_from_GUI(float, float);
+
+// Fonction qui permet de changer l'orientation du plateau
+void switch_orientation();
+
+// Fonction aidant à l'affichage du plateau (renvoie i si board_orientation, et 7 - i sinon)
+int orientation_index(int);
+
 
 // GUI
 class GUI {
@@ -388,9 +397,6 @@ public:
 	Evaluator* _grogros_eval = new Evaluator();
 	//Evaluator* _grogros_eval = new Evaluator(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 
-	// Dernier coup joué
-	Move _last_move = Move(0, 0, 0, 0, true);
-
 	// Faut-il actualiser la GUI au niveau des variantes?
 	bool _update_variants = false;
 
@@ -402,6 +408,9 @@ public:
 
 	// Vecteur des flèches de GrogrosZero : vecteur de coups
 	vector<Move> grogros_arrows;
+
+	// Index du plateau dans le buffer
+	int _buffer_index = -1;
 
 
 	// TODO : Threads (pour la parallélisation)

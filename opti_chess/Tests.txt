@@ -270,6 +270,8 @@ r1bqkb1r/1pp1n1pp/p1p2p2/4p3/4P3/3P1N2/PPP2PPP/RNBQ1RK1 w kq - 2 7 : difficile à
 r3k2r/1ppq2pp/p1pbbpn1/8/3PP3/2N1BN1P/PP3PP1/R2Q1RK1 w kq - 3 13 : Grogros veut jouer h4.. c'est une grosse erreur stratégique !
 2kr3r/1ppq2pp/p1pb1pn1/8/3PP1bP/2N1BNP1/PP3P2/R2Q1RK1 w - - 1 15 : là c'est complètement gagnant pour les noirs selon Leela. Structure du roi blanc affaiblie, clouage du Cf3 à vie...
 2k1rr2/1ppq2pp/p1pb2n1/4P3/3P1pbP/2N2NP1/PP1BQP2/2R2RK1 w - - 0 19 : foutu pour les blancs
+r1b4R/pp3k1p/3p1p2/3p4/8/3B4/P1P3PP/6K1 b - - 3 25 : gagnant pour les blancs malgré les deux pions de moins (les deux pièces sont bloquées)
+8/4r3/8/2k5/1p6/2ppP1P1/5P1P/1RR2K2 b - - 1 38 : complètement gagnant pour les noirs (les pions passés liés sont trop forts)
 
 
 
