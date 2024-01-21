@@ -329,8 +329,8 @@ public:
 	// Opérateur d'égalité (compare seulement le placement des pièces, droits de roques, et nombre de coups)
 	bool operator== (const Board&) const;
 
-	// Fonction qui copie les attributs d'un plateau
-	void copy_data(const Board&);
+	// Fonction qui copie les attributs d'un plateau (full copy: on copie tout)
+	void copy_data(const Board&, bool full = false);
 
 	// Fonction qui ajoute un coup dans la liste de coups
 	bool add_move(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
