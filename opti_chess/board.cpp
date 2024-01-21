@@ -24,22 +24,11 @@ Board::Board() {
 
 // Constructeur de copie
 Board::Board(const Board& b) {
-	// Copie du plateau
-	memcpy(_array, b._array, sizeof(_array));
-	_got_moves = b._got_moves;
-	_player = b._player;
-	memcpy(_moves, b._moves, sizeof(_moves));
-	_sorted_moves = b._sorted_moves;
-	_evaluation = b._evaluation;
-	_castling_rights = b._castling_rights;
-	_half_moves_count = b._half_moves_count;
-	_moves_count = b._moves_count;
-	_white_king_pos = b._white_king_pos;
-	_black_king_pos = b._black_king_pos;
+	copy_data(b, false);
 }
 
 // Fonction qui copie les attributs d'un tableau
-void Board::copy_data(const Board& b) {
+void Board::copy_data(const Board& b, bool full) {
 	// Copie du plateau
 	memcpy(_array, b._array, sizeof(_array));
 	_got_moves = b._got_moves;
@@ -52,6 +41,27 @@ void Board::copy_data(const Board& b) {
 	_moves_count = b._moves_count;
 	_white_king_pos = b._white_king_pos;
 	_black_king_pos = b._black_king_pos;
+	_en_passant_col = b._en_passant_col;
+	_evaluated = b._evaluated;
+	_static_evaluation = b._static_evaluation;
+
+	if (full) {
+		_is_active = b._is_active;
+		_index_children = b._index_children;
+		_tested_moves = b._tested_moves;
+		_current_move = b._current_move;
+		_eval_children = b._eval_children;
+		_nodes = b._nodes;
+		_nodes_children = b._nodes_children;
+		_new_board = b._new_board;
+		_time_monte_carlo = b._time_monte_carlo;
+		_adv = b._adv;
+		_advancement = b._advancement;
+		_game_over_checked = b._game_over_checked;
+		_game_over_value = b._game_over_value;
+		_quiescence_nodes = b._quiescence_nodes;
+		_displayed_components = b._displayed_components;
+	}
 }
 
 // Fonction qui ajoute un coup dans une liste de coups
@@ -637,7 +647,6 @@ void Board::make_move(Move move, const bool pgn, const bool new_board)
 		_tested_moves = 0;
 		_current_move = 0;
 		_nodes = 0;
-		_evaluated = false;
 	}
 
 	return;
@@ -1513,7 +1522,6 @@ bool Board::draw() {
 				{
 					if (move.i2 == main_GUI._clicked_pos.i && move.j2 == main_GUI._clicked_pos.j) {
 						play_move_sound(move);
-						cout << "otot" << endl;
 						((main_GUI._click_bind && main_GUI._board.click_m_move(move, main_GUI.get_board_orientation())) || true) && play_monte_carlo_move_keep(move, true, true, true);
 						goto piece_selection;
 					}
@@ -2153,9 +2161,7 @@ int Board::best_monte_carlo_move() const
 
 // Fonction qui joue le coup après analyse par l'algo de Monte Carlo, et qui garde en mémoire les infos du nouveau plateau
 bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const bool keep_display, const bool display)
-{
-	// FIXME: on oublie de supprimer les autres plateaux dans le cas ou c'est un coup non calculé par Grogros
-
+{	
 	// S'assure que le coup est légal
 	if (!is_legal(move))
 		return false;
@@ -2165,6 +2171,9 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 
 	// Arbre de recherche
 	main_GUI._game_tree.add_child(*this, move, move_label(move));
+
+	// Index dans le buffer du plateau fils
+	int child_buffer_index = -1;
 
 	// Cherche le coup dans les plateaux fils
 	int child_index = -1;
@@ -2180,11 +2189,12 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 
 	// Si le coup a été calculé par grogros_zero
 	if (child_index != -1) {
-		if (keep_display) {
+
+		// Index dans le buffer
+		child_buffer_index = _index_children[child_index];
+
+		if (keep_display)
 			play_move_sound(move);
-			Board b(*this);
-			b.make_move(move);
-		}
 
 		// Supprime tous les autres plateaux du buffer
 		for (int i = 0; i < _tested_moves; i++) {
@@ -2194,19 +2204,29 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 			}
 		}
 
-		if (_is_active) {
-			const Board* b = &monte_buffer._heap_boards[_index_children[child_index]];
-			reset_board();
-			*this = *b;
-			main_GUI.update_time();
-		}
+		// On copie les data du plateau fils
+		reset_board();
+		copy_data(monte_buffer._heap_boards[child_buffer_index], true);
 
+		// On vire les data du plateau fils du buffer
+		monte_buffer._heap_boards[child_buffer_index]._is_active = false;
+		monte_buffer._heap_boards[child_buffer_index]._index_children = nullptr;
+		monte_buffer._heap_boards[child_buffer_index]._eval_children = nullptr;
+		monte_buffer._heap_boards[child_buffer_index]._nodes_children = nullptr;
+		monte_buffer._heap_boards[child_buffer_index]._new_board = true;
+
+		// Update le temps passé
+		main_GUI.update_time();
+
+		// Si on ne veut rien garder, reset tout
 		if (!keep)
 			reset_all();
 	}
 
 	// Sinon, joue simplement le coup
 	else {
+
+		// Vire toutes les réflexions (s'il y en a eu)
 		if (_is_active)
 			reset_all();
 
@@ -2217,14 +2237,10 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 	main_GUI._game_tree.select_next_node(move);
 	main_GUI._pgn = main_GUI._game_tree.tree_display();
 
-	// Retire le plateau du buffer (TODO)
-
-	// Update l'index du buffer du nouveau plateau (TODO)
-
 	return true;
 }
 
-// Pas très opti pour l'affichage, mais bon... Fonction qui cherche la profondeur la plus grande dans la recherche de Monté-Carlo
+// Pas très opti pour l'affichage, mais bon... Fonction qui cherche la profondeur la plus grande dans la recherche de Monte-Carlo
 int Board::max_monte_carlo_depth() const
 {
 	int max_depth = 0;
@@ -2255,8 +2271,6 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const flo
 
 	// Si c'est le plateau principal
 	if (depth == 0) {
-		// FIXME: parfois le plateau principal est dans le buffer, parfois non... il faut rester cohérent là-dessus
-
 		// On regarde si le buffer est plein
 		const int n = total_nodes();
 		if (monte_buffer._length - n < nodes) { // Il faut prendre en compte que le plateau principal est déjà dans le buffer
@@ -2293,13 +2307,6 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const flo
 
 			// Prend une nouvelle place dans le buffer
 			const int index = monte_buffer.get_first_free_index();
-
-			// Si le buffer est plein, arrête l'exploration (FIXME: ne devrait pas arriver?)
-			if (index == -1) {
-				cout << "TOTObuffer is full" << endl;
-				_time_monte_carlo += clock() - begin_monte_time;
-				return;
-			}
 
 			// Stocke l'index du plateau dans le buffer pour ce coup
 			_index_children[_current_move] = index;

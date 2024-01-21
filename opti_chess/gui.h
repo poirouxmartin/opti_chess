@@ -153,9 +153,6 @@ public:
 	// Vecteur des flèches de GrogrosZero : vecteur de coups
 	vector<Move> _grogros_arrows;
 
-	// Index du plateau dans le buffer
-	int _buffer_index = -1;
-
 	// TODO : Threads (pour la parallélisation)
 	// Thread de GUI
 
@@ -295,14 +292,17 @@ public:
 	bool _clicked = false;
 
 	// Cases surlignées
-	int _highlighted_array[8][8]{ {0, 0, 0, 0, 0, 0, 0, 0},
-										{0, 0, 0, 0, 0, 0, 0, 0},
-										{0, 0, 0, 0, 0, 0, 0, 0},
-										{0, 0, 0, 0, 0, 0, 0, 0},
-										{0, 0, 0, 0, 0, 0, 0, 0},
-										{0, 0, 0, 0, 0, 0, 0, 0},
-										{0, 0, 0, 0, 0, 0, 0, 0},
-										{0, 0, 0, 0, 0, 0, 0, 0} };
+	int _highlighted_array[8][8]
+	{
+		{0, 0, 0, 0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0, 0, 0, 0} 
+	};
 
 	// Calcul du nombre de noeuds visités
 	int _visited_nodes;
