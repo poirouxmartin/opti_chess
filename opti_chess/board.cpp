@@ -61,7 +61,7 @@ bool Board::add_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fast
 	if (*iterator >= max_moves)
 		return false;
 
-	const Move m(i, j, k, l, false); // Si on utilise pas les flag, autant éviter les calculs inutiles
+	const Move m(i, j, k, l); // Si on utilise pas les flag, autant éviter les calculs inutiles
 	//const Move m(i, j, k, l, _array[k][l] != 0, (piece == 1 && i == 7) || (piece == 7 && i == 1));
 	_moves[*iterator] = m;
 
@@ -1063,10 +1063,10 @@ int Board::negamax(const int depth, int alpha, const int beta, const bool max_de
 			cout << "speed : " << visited_nodes / spent_time << "kN/s" << endl;
 		}
 		if (play) {
-			play_index_move_sound(best_move);
+			//play_index_move_sound(best_move);
 			if (display)
 				if (_tested_moves > 0)
-					((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[best_move], true, true, true, false);
+					((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[best_move], true, true, true);
 				else
 					make_index_move(best_move, true);
 		}
@@ -1211,8 +1211,6 @@ void Board::from_fen(string fen)
 
 	reset_eval();
 
-	main_GUI._last_move.is_null = true;
-
 	// Oriente le plateau dans pour le joueur qui joue
 	board_orientation = _player;
 
@@ -1280,7 +1278,7 @@ string Board::to_fen() const
 
 // Fonction qui renvoie le gagnant si la partie est finie (-1/1, et 2 pour nulle), et 0 sinon
 // Génère également les coups légaux, s'il y en a
-int Board::is_game_over() {
+int Board::game_over() {
 
 	// Ne pas recalculer si déjà fait
 	if (_game_over_checked)
@@ -1290,10 +1288,8 @@ int Board::is_game_over() {
 	_game_over_checked = true;
 
 	// Règle des 50 coups
-	if (_half_moves_count >= max_half_moves) {
-		_game_over_value = 2;
+	if (_half_moves_count >= max_half_moves)
 		return 2;
-	}
 
 	// Règle des 3 répétitions
 	// TODO
@@ -1306,13 +1302,10 @@ int Board::is_game_over() {
 	if (_got_moves == 0) {
 		
 		// Mat
-		if (in_check()) {
-			_game_over_value = _player ? -1 : 1;
-			return _game_over_value;
-		}
+		if (in_check())
+			return _player ? -1 : 1;
 
 		// Pat
-		_game_over_value = 2;
 		return 2;
 	}
 
@@ -1334,24 +1327,18 @@ int Board::is_game_over() {
 			else if (p == 9)
 				count_b_bishop++;
 			// Pièces majeures ou pion -> possibilité de mater
-			else if (p != 6 && p != 12 && p != 0) {
-				_game_over_value = 0;
+			else if (p != 6 && p != 12 && p != 0)
 				return 0;
-			}
 
 			// Si on a au moins 1 fou, et un cheval/fou ou plus -> plus de nulle par manque de matériel
-			if ((count_w_bishop > 0) && (count_w_knight > 0 || count_w_bishop > 1)) {
-				_game_over_value = 0;
+			if ((count_w_bishop > 0) && (count_w_knight > 0 || count_w_bishop > 1))
 				return 0;
-			}
 		}
 	}
 
 	// Possibilités de nulles par manque de matériel
-	if (count_w_knight + count_w_bishop < 2 && count_b_knight + count_b_bishop < 2) {
-		_game_over_value = 2;
+	if (count_w_knight + count_w_bishop < 2 && count_b_knight + count_b_bishop < 2)
 		return 2;
-	}
 
 	// On ne peut pas mater avec seulement 2 cavaliers
 	// TODO: est-ce que la partie est déclarée nulle?
@@ -1360,8 +1347,13 @@ int Board::is_game_over() {
 		return 2;
 	}*/
 
-	_game_over_value = 0;
 	return 0;
+}
+
+// Fonction qui renvoie le gagnant si la partie est finie (-1/1, et 2 pour nulle), et 0 sinon
+int Board::is_game_over() {
+	_game_over_value = game_over();
+	return _game_over_value;
 }
 
 // Fonction qui renvoie le label d'un coup
@@ -1632,7 +1624,7 @@ bool Board::draw() {
 				{
 					if (move.i2 == main_GUI._clicked_pos.i && move.j2 == main_GUI._clicked_pos.j) {
 						play_move_sound(move);
-						((main_GUI._click_bind && main_GUI._board.click_m_move(move, get_board_orientation())) || true) && play_monte_carlo_move_keep(move, true, true, true, true);
+						((main_GUI._click_bind && main_GUI._board.click_m_move(move, get_board_orientation())) || true) && play_monte_carlo_move_keep(move, true, true, true);
 						goto piece_selection;
 					}
 				}
@@ -1666,7 +1658,7 @@ bool Board::draw() {
 				for (int i = 0; i < _got_moves; i++) {
 					if (_moves[i].i1 == main_GUI._selected_pos.i && _moves[i].j1 == main_GUI._selected_pos.j && _moves[i].i2 == main_GUI._clicked_pos.i && _moves[i].j2 == main_GUI._clicked_pos.j) {
 						play_move_sound(Move(main_GUI._selected_pos.i, main_GUI._selected_pos.j, main_GUI._clicked_pos.i, main_GUI._clicked_pos.j));
-						((main_GUI._click_bind && main_GUI._board.click_m_move(_moves[i], get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[i], true, true, true, true);
+						((main_GUI._click_bind && main_GUI._board.click_m_move(_moves[i], get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[i], true, true, true);
 						break;
 					}
 				}
@@ -1704,7 +1696,7 @@ bool Board::draw() {
 						for (int i = 0; i < _got_moves; i++) {
 							if (_moves[i].i1 == main_GUI._selected_pos.i && _moves[i].j1 == main_GUI._selected_pos.j && _moves[i].i2 == drop_pos.i && _moves[i].j2 == drop_pos.j) {
 								play_move_sound(Move(main_GUI._clicked_pos.i, main_GUI._clicked_pos.j, drop_pos.i, drop_pos.j));
-								((main_GUI._click_bind && main_GUI._board.click_m_move(_moves[i], get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[i], true, true, true, true);
+								((main_GUI._click_bind && main_GUI._board.click_m_move(_moves[i], get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[i], true, true, true);
 								main_GUI._selected_pos = { -1, -1 };
 								break;
 							}
@@ -1806,9 +1798,9 @@ bool Board::draw() {
 		}
 
 	// Surligne du dernier coup joué
-	if (!main_GUI._last_move.is_null) {
-		draw_rectangle(board_padding_x + orientation_index(main_GUI._last_move.j1) * tile_size, board_padding_y + orientation_index(7 - main_GUI._last_move.i1) * tile_size, tile_size, tile_size, last_move_color);
-		draw_rectangle(board_padding_x + orientation_index(main_GUI._last_move.j2) * tile_size, board_padding_y + orientation_index(7 - main_GUI._last_move.i2) * tile_size, tile_size, tile_size, last_move_color);
+	if (!main_GUI._game_tree._current_node->_move.is_null_move()) {
+		draw_rectangle(board_padding_x + orientation_index(main_GUI._game_tree._current_node->_move.j1) * tile_size, board_padding_y + orientation_index(7 - main_GUI._game_tree._current_node->_move.i1) * tile_size, tile_size, tile_size, last_move_color);
+		draw_rectangle(board_padding_x + orientation_index(main_GUI._game_tree._current_node->_move.j2) * tile_size, board_padding_y + orientation_index(7 - main_GUI._game_tree._current_node->_move.i2) * tile_size, tile_size, tile_size, last_move_color);
 	}
 
 	// Cases surglignées
@@ -2141,32 +2133,6 @@ void Board::play_move_sound(Move move) const
 	return;
 }
 
-// Fonction qui joue le son d'un coup à partir de son index
-void Board::play_index_move_sound(const int i) const
-{
-	play_move_sound(_moves[i]);
-}
-
-// Fonction qui obtient la case correspondante à la position sur la GUI
-Pos get_pos_from_GUI(const float x, const float y) {
-	if (!is_in(x, board_padding_x, board_padding_x + board_size) || !is_in(y, board_padding_y, board_padding_y + board_size))
-		return Pos(-1, -1);
-	else
-		return Pos(orientation_index(8 - (y - board_padding_y) / tile_size), orientation_index((x - board_padding_x) / tile_size));
-}
-
-// Fonction qui permet de changer l'orientation du plateau
-void switch_orientation() {
-	board_orientation = !board_orientation;
-}
-
-// Fonction aidant à l'affichage du plateau (renvoie i si board_orientation, et 7 - i sinon)
-int orientation_index(const int i) {
-	if (board_orientation)
-		return i;
-	return 7 - i;
-}
-
 // A partir de coordonnées sur le plateau
 void draw_arrow_from_coord(int i1, int j1, int i2, int j2, int index, const int color, float thickness, Color c, const bool use_value, int value, const int mate, const bool outline)
 {
@@ -2380,27 +2346,15 @@ int Board::best_monte_carlo_move() const
 }
 
 // Fonction qui joue le coup après analyse par l'algo de Monte Carlo, et qui garde en mémoire les infos du nouveau plateau
-bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const bool keep_display, const bool display, const bool add_to_list)
+bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const bool keep_display, const bool display)
 {
-	// Obtient les coups si nécessaire
-	if (_got_moves == -1)
-		get_moves();
+	// FIXME: on oublie de supprimer les autres plateaux dans le cas ou c'est un coup non calculé par Grogros
 
-
-	// Cherche l'index du coup
-	int m = -1;
-	for (int i = 0; i < _got_moves; i++) {
-		if (move == _moves[i]) {
-			m = i;
-			break;
-		}
-	}
-
-	if (m == -1) {
-		cout << "illegal move" << endl;
+	// S'assure que le coup est légal
+	if (!is_legal(move))
 		return false;
-	}
 
+	// On update les variantes sur la GUI
 	main_GUI._update_variants = true;
 
 	// Arbre de recherche
@@ -2409,7 +2363,7 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 	// Cherche le coup dans les plateaux fils
 	int child_index = -1;
 	Board child_board(*this);
-	child_board.make_index_move(m);
+	child_board.make_move(move);
 
 	for (int i = 0; i < _tested_moves; i++) {
 		if (child_board == monte_buffer._heap_boards[_index_children[i]]) {
@@ -2418,26 +2372,21 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 		}
 	}
 
-
-	// Pour la GUI
-	main_GUI._last_move = move;
-
-
-	// Si le coup a été calculé par l'algo de Monte-Carlo
+	// Si le coup a été calculé par grogros_zero
 	if (child_index != -1) {
 		if (keep_display) {
-			play_index_move_sound(m);
+			play_move_sound(move);
 			Board b(*this);
-			//b.make_index_move(m, true, add_to_list);
-			b.make_index_move(m);
+			b.make_move(move);
 		}
 
-		// Deletes all the children from the other boards
-		for (int i = 0; i < _tested_moves; i++)
+		// Supprime tous les autres plateaux du buffer
+		for (int i = 0; i < _tested_moves; i++) {
 			if (i != child_index) {
 				if (_is_active)
 					monte_buffer._heap_boards[_index_children[i]].reset_all();
 			}
+		}
 
 		if (_is_active) {
 			const Board* b = &monte_buffer._heap_boards[_index_children[child_index]];
@@ -2452,22 +2401,19 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 
 	// Sinon, joue simplement le coup
 	else {
-		if (m < _got_moves) {
-			if (_is_active)
-				reset_all();
+		if (_is_active)
+			reset_all();
 
-			//make_index_move(m, true, add_to_list);
-			make_index_move(m);
-		}
-		else {
-			cout << "illegal move" << endl;
-			return false;
-		}
+		make_move(move);
 	}
 
 	// Update le PGN
 	main_GUI._game_tree.select_next_node(move);
 	main_GUI._pgn = main_GUI._game_tree.tree_display();
+
+	// Retire le plateau du buffer (TODO)
+
+	// Update l'index du buffer du nouveau plateau (TODO)
 
 	return true;
 }
@@ -2497,14 +2443,17 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const flo
 	// Pour le buffer
 	_is_active = true;
 
-	// Si c'est le premier appel, sur le plateau principal
+	// Si c'est le premier appel, sur le plateau principal (pour l'affichage de l'évaluation)
 	if (_new_board && depth == 0)
 		evaluate(eval, false, net);
 
 	// Si c'est le plateau principal
 	if (depth == 0) {
+		// FIXME: parfois le plateau principal est dans le buffer, parfois non... il faut rester cohérent là-dessus
+
+		// On regarde si le buffer est plein
 		const int n = total_nodes();
-		if (monte_buffer._length - n < nodes) {
+		if (monte_buffer._length - n < nodes) { // Il faut prendre en compte que le plateau principal est déjà dans le buffer
 			if (display)
 				cout << "buffer is full" << endl;
 			nodes = monte_buffer._length - n;
@@ -2522,35 +2471,12 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const flo
 		return;
 	}
 
-	// Trie les coups si ça n'est pas déjà fait
+	// Trie les coups si ça n'est pas déjà fait (les trie de façon rapide)
 	!_sorted_moves && sort_moves();
 
 	// Reset les tableaux pour les plateaux fils
-	if (_new_board) {
-		if (_eval_children != nullptr) {
-			delete[] _eval_children;
-			_eval_children = nullptr;
-		}
-
-		if (_nodes_children != nullptr) {
-			delete[] _nodes_children;
-			_nodes_children = nullptr;
-		}
-
-		if (_index_children != nullptr) {
-			delete[] _index_children;
-			_index_children = nullptr;
-		}
-
-		_eval_children = new int[_got_moves]();
-		_nodes_children = new int[_got_moves]();
-		_index_children = new int[_got_moves](); // à changer? cela prend du temps?
-
-
-		_tested_moves = 0;
-		_current_move = 0;
-		_new_board = false;
-	}
+	if (_new_board)
+		reset_children();
 
 
 	// *** BOUCLE PRINCIPALE ***
@@ -2562,9 +2488,9 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const flo
 			// Prend une nouvelle place dans le buffer
 			const int index = monte_buffer.get_first_free_index();
 
-			// Si le buffer est plein, arrête l'exploration
+			// Si le buffer est plein, arrête l'exploration (FIXME: ne devrait pas arriver?)
 			if (index == -1) {
-				cout << "buffer is full" << endl;
+				cout << "TOTObuffer is full" << endl;
 				_time_monte_carlo += clock() - begin_monte_time;
 				return;
 			}
@@ -6436,4 +6362,48 @@ int Board::get_bishop_activity() const {
 	// TODO: à implémenter
 
 	return 0;
+}
+
+// Fonction qui réinitialise les plateaux fils
+void Board::reset_children() {
+	if (_eval_children != nullptr) {
+		delete[] _eval_children;
+		_eval_children = nullptr;
+	}
+
+	if (_nodes_children != nullptr) {
+		delete[] _nodes_children;
+		_nodes_children = nullptr;
+	}
+
+	if (_index_children != nullptr) {
+		delete[] _index_children;
+		_index_children = nullptr;
+	}
+
+	_eval_children = new int[_got_moves]();
+	_nodes_children = new int[_got_moves]();
+	_index_children = new int[_got_moves](); // à changer? cela prend du temps?
+
+
+	_tested_moves = 0;
+	_current_move = 0;
+	_new_board = false;
+
+	return;
+}
+
+// Fonction qui renvoie si un coup est légal ou non
+bool Board::is_legal(Move move) {
+
+	// Obtient les coups si nécessaire
+	if (_got_moves == -1)
+		get_moves();
+
+	// Cherche l'index du coup
+	for (int i = 0; i < _got_moves; i++)
+		if (move == _moves[i])
+			return true;
+
+	return false;
 }
