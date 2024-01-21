@@ -50,7 +50,7 @@ inline int main_ui() {
 	SetMasterVolume(1.0f);
 
 	// Nombre d'images par secondes
-	SetTargetFPS(fps);
+	SetTargetFPS(main_GUI._fps);
 
 	// Curseur
 	HideCursor();
@@ -215,9 +215,9 @@ inline int main_ui() {
 
 		// Changements de la taille de la fenêtre
 		if (IsWindowResized()) {
-			get_window_size();
+			main_GUI.get_window_size();
 			//load_resources(); // Sinon ça devient flou
-			resize_GUI();
+			main_GUI.resize_GUI();
 		}
 
 		// S - Save FEN dans data/text.txt
@@ -235,7 +235,7 @@ inline int main_ui() {
 
 		// F - Retourne le plateau
 		if (IsKeyPressed(KEY_F)) {
-			switch_orientation();
+			main_GUI.switch_orientation();
 		}
 
 		// LCTRL-N - Recommencer une partie
@@ -341,7 +341,7 @@ inline int main_ui() {
 
 		// H - Déffichage/Affichage des flèches, Affichage/Désaffichage des contrôles
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_H)) {
-			switch_arrow_drawing();
+			main_GUI.switch_arrow_drawing();
 		}
 
 		// R - Réinitialisation des timers
@@ -370,7 +370,7 @@ inline int main_ui() {
 		// E - Évalue la position et renvoie les composantes dans la console
 		if (IsKeyPressed(KEY_E)) {
 			main_GUI._board.evaluate(main_GUI._grogros_eval, true);
-			cout << "Evaluation : \n" << eval_components << endl;
+			cout << "Evaluation : \n" << main_GUI._eval_components << endl;
 		}
 
 		// CTRL - L - Promeut la variation en actuelle en tant que variation principale
@@ -427,7 +427,7 @@ inline int main_ui() {
 		// P - Joue le coup recommandé par l'algorithme de GrogrosZero
 		if (!IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_P)) {
 			if (main_GUI._board._tested_moves > 0)
-				((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false);
+				((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], main_GUI.get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false);
 			else
 				cout << "no more moves are in memory" << endl;
 		}
@@ -435,7 +435,7 @@ inline int main_ui() {
 		// LShift-P - Joue les coups recommandés par l'algorithme de GrogrosZero
 		if (IsKeyDown(KEY_LEFT_SHIFT) && IsKeyDown(KEY_P)) {
 			if (main_GUI._board._tested_moves > 0)
-				((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false);
+				((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], main_GUI.get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false);
 			else
 				cout << "no more moves are in memory" << endl;
 		}
@@ -454,7 +454,7 @@ inline int main_ui() {
 		}
 
 		// UP/DOWN - Activation, désactivation de GrogrosFish pour les pièces blanches
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && get_board_orientation()) || (IsKeyPressed(KEY_UP) && !get_board_orientation()))) {
+		if (!IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && !main_GUI.get_board_orientation()))) {
 			if (main_GUI._white_player.substr(0, 11) == "GrogrosFish")
 			{
 				main_GUI._white_player = "White";
@@ -475,7 +475,7 @@ inline int main_ui() {
 		}
 
 		// UP/DOWN - Activation, désactivation de GrogrosFish pour les pièces noires
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && !get_board_orientation()) || (IsKeyPressed(KEY_UP) && get_board_orientation()))) {
+		if (!IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && !main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && main_GUI.get_board_orientation()))) {
 			if (main_GUI._black_player.substr(0, 11) == "GrogrosFish")
 			{
 				main_GUI._black_player = "Black";
@@ -496,7 +496,7 @@ inline int main_ui() {
 		}
 
 		// CTRL-UP/DOWN - Activation, désactivation de GrogrosZero pour les pièces blanches
-		if (IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && get_board_orientation()) || (IsKeyPressed(KEY_UP) && !get_board_orientation()))) {
+		if (IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && !main_GUI.get_board_orientation()))) {
 			if (main_GUI._white_player.substr(0, 11) == "GrogrosZero")
 			{
 				main_GUI._white_player = "White";
@@ -517,7 +517,7 @@ inline int main_ui() {
 		}
 
 		// CTRL-UP/DOWN - Activation, désactivation de GrogrosZero pour les pièces noires
-		if (IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && !get_board_orientation()) || (IsKeyPressed(KEY_UP) && get_board_orientation()))) {
+		if (IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && !main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && main_GUI.get_board_orientation()))) {
 			if (main_GUI._black_player.substr(0, 11) == "GrogrosZero")
 			{
 				main_GUI._black_player = "Black";
@@ -614,7 +614,7 @@ inline int main_ui() {
 					int nodes_to_play = supposed_grogros_speed * max_move_time / 1000;
 
 					if (main_GUI._board.total_nodes() >= nodes_to_play)
-						((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false);
+						((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], main_GUI.get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false);
 
 				}
 				else
@@ -633,7 +633,7 @@ inline int main_ui() {
 				if (!monte_buffer._init)
 					monte_buffer.init(buffer_size);
 
-				if (!is_playing())
+				if (!main_GUI.is_playing())
 					main_GUI._board.grogros_zero(main_GUI._grogros_eval, nodes_per_frame, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
 				else
 					main_GUI._board.grogros_zero(main_GUI._grogros_eval, nodes_per_user_frame, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks); // Pour que ça ne lag pas pour l'utilisateur
@@ -662,11 +662,11 @@ inline int main_ui() {
 		}
 
 		// Jeu automatique sur chess.com
-		if (main_GUI._binding_full || (main_GUI._binding_solo && get_board_orientation() != main_GUI._board._player)) {
+		if (main_GUI._binding_full || (main_GUI._binding_solo && main_GUI.get_board_orientation() != main_GUI._board._player)) {
 			// Le fait à chaque intervalle de temps 'binding_interval_check'
 			if (clock() - main_GUI._last_binding_check > main_GUI._binding_interval_check) {
 				// Coup joué sur le plateau
-				main_GUI._binding_move = get_board_move(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom, get_board_orientation());
+				main_GUI._binding_move = get_board_move(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom, main_GUI.get_board_orientation());
 
 				// Vérifie que le coup est légal avant de le jouer
 				for (int i = 0; i < main_GUI._board._got_moves; i++) {
