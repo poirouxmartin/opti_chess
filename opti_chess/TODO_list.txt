@@ -310,7 +310,9 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Parfois il fait Fb2 dans le pion c3
 -> Remettre toutes les conditions pour determiner le temps pour jouer dans la fonction prévue pour
 -> Beaucoup de choses peuvent être factorisées dans le main_gui (get_orientation() par exemple)
--> Bug: quand on lance les threads de Grogros lorsque le buffer est plein, ça plante
+-> BUG: quand on lance les threads de Grogros lorsque le buffer est plein, ça plante
+-> BUG: parfois grogros crash... à cause d'avoir retiré le plateau principal du buffer?
+-> Comment faire pour connaitre l'origine d'un crash?
 
 
 ----- Interface utilisateur -----
