@@ -2209,11 +2209,12 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 		copy_data(monte_buffer._heap_boards[child_buffer_index], true);
 
 		// On vire les data du plateau fils du buffer
-		monte_buffer._heap_boards[child_buffer_index]._is_active = false;
+		monte_buffer._heap_boards[child_buffer_index] = Board();
+		/*monte_buffer._heap_boards[child_buffer_index]._is_active = false;
 		monte_buffer._heap_boards[child_buffer_index]._index_children = nullptr;
 		monte_buffer._heap_boards[child_buffer_index]._eval_children = nullptr;
 		monte_buffer._heap_boards[child_buffer_index]._nodes_children = nullptr;
-		monte_buffer._heap_boards[child_buffer_index]._new_board = true;
+		monte_buffer._heap_boards[child_buffer_index]._new_board = true;*/
 
 		// Update le temps passé
 		main_GUI.update_time();
