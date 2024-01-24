@@ -8,7 +8,9 @@ using namespace std;
 // -> Les pions ne peuvent pas être sur la première et dernière rangée
 // -> On utilise des entiers 32 bits au lieu de 64 bits (4.29e9 clés au lieu de 1.84e19)
 
-// TODO: mettre les fonctions dans le .cpp au lieu du .h
+// A gérer:
+// Quand y'a plus de place dans la table, on fait quoi? Quelles entrées supprimer?
+// Il faut un historique des positions; la manière qui prend le moins de place est de stocker les indices des positions dans la table de transpo?
 
 
 // Classe qui gère les clés de Zobrist
@@ -51,11 +53,22 @@ public:
 	// Indice du plateau dans le buffer
 	int _board_index = -1;
 
+	// Potentiellement utile pour le quiescence search
+
+	// Profondeur de la recherche
+	int _depth = 0;
+
+	// Pruning?
+
+
 	// Constructeur par défaut
 	ZobristEntry();
 
 	// Constructeur à partir d'une clé et d'un indice
-	ZobristEntry(const uint_fast64_t _key, const int _board_index);
+	ZobristEntry(const uint_fast64_t key, const int board_index);
+
+	// Constructeur à partir d'une clé, d'un indice et d'une profondeur
+	ZobristEntry(const uint_fast64_t key, int board_index, int depth);
 };
 
 // Table de transposition (structure: unordered_map)

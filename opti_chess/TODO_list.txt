@@ -313,6 +313,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> BUG: quand on lance les threads de Grogros lorsque le buffer est plein, ça plante
 -> BUG: parfois grogros crash... à cause d'avoir retiré le plateau principal du buffer?
 -> Comment faire pour connaitre l'origine d'un crash?
+-> Il faut des classes pour l'évaluation (mettre toutes les fonctions dedans), pour l'algo de GrogrosZero (dont un arbre de recherche...)
 
 
 ----- Interface utilisateur -----
@@ -417,7 +418,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Parallélisation: faut que les quiescence nodes augmentent aussi
 -> Quand on navigue dans la partie, jouer les son
 -> Afficher en vert, orange ou rouge les forces et faiblesses de la positions?
--> BUG: quand on clique sur une flèche non visible, ça joue quand-même le coup
 
 
 
@@ -459,3 +459,8 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Bonus et malus pendant les parties, lorsqu'il a mal évalué une position
 -> Apprentissage à partir des fins de partie, puis on remonte
 -> Reinforcement learning
+
+
+----- Table de transposition -----
+
+-> Pour GrogrosZero: prendre en compte les transpositions, et les répétitions...
