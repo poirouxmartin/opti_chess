@@ -955,6 +955,14 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 		_evaluation += castling_distance;
 	}
 
+	// Activité des fous
+	if (eval->_bishop_activity != 0.0f) {
+		const int bishop_activity = get_bishop_activity() * eval->_bishop_activity;
+		if (display)
+			main_GUI._eval_components += "bishop activity: " + (bishop_activity >= 0 ? string("+") : string()) + to_string(bishop_activity) + "\n";
+		_evaluation += bishop_activity;
+	}
+
 
 	// Total de l'évaluation
 	if (display)
@@ -2210,11 +2218,6 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 
 		// On vire les data du plateau fils du buffer
 		monte_buffer._heap_boards[child_buffer_index] = Board();
-		/*monte_buffer._heap_boards[child_buffer_index]._is_active = false;
-		monte_buffer._heap_boards[child_buffer_index]._index_children = nullptr;
-		monte_buffer._heap_boards[child_buffer_index]._eval_children = nullptr;
-		monte_buffer._heap_boards[child_buffer_index]._nodes_children = nullptr;
-		monte_buffer._heap_boards[child_buffer_index]._new_board = true;*/
 
 		// Update le temps passé
 		main_GUI.update_time();
@@ -2260,6 +2263,9 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const flo
 	// Temps au début de l'appel de GrogrosZero
 	const clock_t begin_monte_time = clock();
 
+	// *** PRÉPARATION DU PLATEAU ***
+	//prepare_grogros_zero(&nodes, begin_monte_time, depth, display);
+
 	// Pour la GUI
 	main_GUI._update_variants = true;
 
@@ -2267,10 +2273,10 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const flo
 	_is_active = true;
 
 	// Si c'est le premier appel, sur le plateau principal (pour l'affichage de l'évaluation)
-	if (_new_board && depth == 0)
-		evaluate(eval, false, net);
+	/*if (_new_board && depth == 0)
+		evaluate(eval, false, net);*/
 
-	// Si c'est le plateau principal
+		// Si c'est le plateau principal
 	if (depth == 0) {
 		// On regarde si le buffer est plein
 		const int n = total_nodes();
@@ -2306,63 +2312,15 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const flo
 		// *** TOUS LES COUPS NE SONT PAS ENCORE EXPLORÉS ***
 		if (_tested_moves < _got_moves) {
 
-			// Prend une nouvelle place dans le buffer
-			const int index = monte_buffer.get_first_free_index();
-
-			// Stocke l'index du plateau dans le buffer pour ce coup
-			_index_children[_current_move] = index;
-
-			// Rend actif le plateau fils
-			monte_buffer._heap_boards[index]._is_active = true;
-
-			// Joue un nouveau coup
-			monte_buffer._heap_boards[index].copy_data(*this);
-			monte_buffer._heap_boards[index].make_index_move(_current_move);
-
-			// Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
-			monte_buffer._heap_boards[index]._evaluation = monte_buffer._heap_boards[index].quiescence(eval, -INT32_MAX, INT32_MAX, quiescence_depth, explore_checks) * -get_color() + correction;
-			_quiescence_nodes += monte_buffer._heap_boards[index]._quiescence_nodes;
-
-			_eval_children[_current_move] = monte_buffer._heap_boards[index]._evaluation;
-			_nodes_children[_current_move] = 1;
-
-			// Actualise la valeur d'évaluation du plateau
-			_evaluation = (_player && _eval_children[_current_move] > _evaluation) ? _eval_children[_current_move] : (!_player && _eval_children[_current_move] < _evaluation) ? _eval_children[_current_move] : _evaluation;
-
-			// Incrémentation des coups
-			_current_move++;
-			_tested_moves++;
+			// On explore un nouveau coup
+			explore_new_move(eval, quiescence_depth, explore_checks, correction);
 		}
 
 		// *** TOUS LES COUPS SONT DÉJÀ EXPLORÉS ***
 		else {
-			// Correction de l'évaluation: différence entre l'évaluation du meilleur plateau fils et celle du plateau actuel
 
-			// Position test pour la correction
-			// 3r4/1p1r3k/pR1p1p1p/3PpNq1/1QP1P3/6PP/6PK/8 b - - 2 41 : blancs complètement gagnants
-			// r1bqk2r/1p3ppp/p1np1n2/3pp3/3P4/3BPN2/PPPB1PPP/R2QK2R w KQkq - 0 9 : grogros met du temps à voir la menace et joue un coup 'random'
-			// rnb2bnr/pppp1k1p/5q2/8/5p2/2N1BQ2/PPP3PP/R4RK1 b - - 3 11 : met du temps à évaluer les menaces
-			int eval_correction = 0;
-			/*if (depth == 0 || true)
-				eval_correction = _player ? max_value(_eval_children, _got_moves) - _static_evaluation : min_value(_eval_children, _got_moves) - _static_evaluation;*/
-			//cout << "eval_correction: " << eval_correction << endl;
-			//cout << _static_evaluation << endl;
-
-			// Choisit aléatoirement un "bon" coup
-			_current_move = pick_random_good_move(_eval_children, _got_moves, get_color(), false, _nodes, _nodes_children, beta, k_add);
-			//_current_move = select_uct();
-
-			// Va une profondeur plus loin... appel récursif sur Monte-Carlo
-			_quiescence_nodes -= monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes;
-			monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(eval, 1, beta, k_add, quiescence_depth, explore_checks, display, depth + 1, net, eval_correction);
-			_quiescence_nodes += monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes;
-
-			// Actualise l'évaluation
-			_eval_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
-			_nodes_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._nodes + 1;
-
-			// Actualise la valeur d'évaluation du plateau
-			_evaluation = _player ? max_value(_eval_children, _got_moves) : min_value(_eval_children, _got_moves);
+			// On explore un nouveau noeud
+			explore_new_node(eval, beta, k_add, display, depth, quiescence_depth, explore_checks, net);
 		}
 
 		// Décrémentation du nombre de noeuds restants
@@ -2373,6 +2331,108 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const flo
 	_time_monte_carlo += clock() - begin_monte_time;
 
 	return;
+}
+
+// Fonction qui prépare le plateau pour l'algo de grogros_zero
+void Board::prepare_grogros_zero(int* nodes, clock_t begin_monte_time, int depth, bool display)
+{
+	// Pour la GUI
+	main_GUI._update_variants = true;
+
+	// Pour le buffer
+	_is_active = true;
+
+	// Si c'est le plateau principal
+	if (depth == 0) {
+		// On regarde si le buffer est plein
+		const int n = total_nodes();
+		if (monte_buffer._length - n < *nodes) { // Il faut prendre en compte que le plateau principal est déjà dans le buffer
+			if (display)
+				cout << "buffer is full" << endl;
+			*nodes = monte_buffer._length - n;
+		}
+	}
+
+	// Vérifie si la partie est finie
+	if (_new_board)
+		is_game_over();
+
+	// Si la partie est finie, évite le calcul des coups... bizarre aussi : ne plus rentrer dans cette ligne?
+	if (_game_over_value) {
+		_nodes++; // un peu bizarre mais bon... revoir les cas où y'a des mats
+		_time_monte_carlo += clock() - begin_monte_time;
+		return;
+	}
+
+	// Trie les coups si ça n'est pas déjà fait (les trie de façon rapide)
+	!_sorted_moves && sort_moves();
+
+	// Reset les tableaux pour les plateaux fils
+	if (_new_board)
+		reset_children();
+}
+
+// Fonction qui explore un coup pour l'algo de grogros_zero
+void Board::explore_new_move(Evaluator* eval, int quiescence_depth, bool explore_checks, int correction)
+{
+	// Prend une nouvelle place dans le buffer
+	const int index = monte_buffer.get_first_free_index();
+
+	// Stocke l'index du plateau dans le buffer pour ce coup
+	_index_children[_current_move] = index;
+
+	// Rend actif le plateau fils
+	monte_buffer._heap_boards[index]._is_active = true;
+
+	// Joue un nouveau coup
+	monte_buffer._heap_boards[index].copy_data(*this);
+	monte_buffer._heap_boards[index].make_index_move(_current_move);
+
+	// Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
+	monte_buffer._heap_boards[index]._evaluation = monte_buffer._heap_boards[index].quiescence(eval, -INT32_MAX, INT32_MAX, quiescence_depth, explore_checks) * -get_color() + correction;
+	_quiescence_nodes += monte_buffer._heap_boards[index]._quiescence_nodes;
+
+	_eval_children[_current_move] = monte_buffer._heap_boards[index]._evaluation;
+	_nodes_children[_current_move] = 1;
+
+	// Actualise la valeur d'évaluation du plateau
+	_evaluation = (_player && _eval_children[_current_move] > _evaluation) ? _eval_children[_current_move] : (!_player && _eval_children[_current_move] < _evaluation) ? _eval_children[_current_move] : _evaluation;
+
+	// Incrémentation des coups
+	_current_move++;
+	_tested_moves++;
+}
+
+// Fonction qui explore un nouveau noeud pour l'algo de grogros_zero
+void Board::explore_new_node(Evaluator* eval, float beta, float k_add, bool display, int depth, int quiescence_depth, bool explore_checks, Network* net)
+{
+	// Correction de l'évaluation: différence entre l'évaluation du meilleur plateau fils et celle du plateau actuel
+
+	// Position test pour la correction
+	// 3r4/1p1r3k/pR1p1p1p/3PpNq1/1QP1P3/6PP/6PK/8 b - - 2 41 : blancs complètement gagnants
+	// r1bqk2r/1p3ppp/p1np1n2/3pp3/3P4/3BPN2/PPPB1PPP/R2QK2R w KQkq - 0 9 : grogros met du temps à voir la menace et joue un coup 'random'
+	// rnb2bnr/pppp1k1p/5q2/8/5p2/2N1BQ2/PPP3PP/R4RK1 b - - 3 11 : met du temps à évaluer les menaces
+	int eval_correction = 0;
+	/*if (depth == 0 || true)
+		eval_correction = _player ? max_value(_eval_children, _got_moves) - _static_evaluation : min_value(_eval_children, _got_moves) - _static_evaluation;*/
+		//cout << "eval_correction: " << eval_correction << endl;
+		//cout << _static_evaluation << endl;
+
+		// Choisit aléatoirement un "bon" coup
+	_current_move = pick_random_good_move(_eval_children, _got_moves, get_color(), false, _nodes, _nodes_children, beta, k_add);
+	//_current_move = select_uct();
+
+	// Va une profondeur plus loin... appel récursif sur Monte-Carlo
+	_quiescence_nodes -= monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes;
+	monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(eval, 1, beta, k_add, quiescence_depth, explore_checks, display, depth + 1, net, eval_correction);
+	_quiescence_nodes += monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes;
+
+	// Actualise l'évaluation
+	_eval_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
+	_nodes_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._nodes + 1;
+
+	// Actualise la valeur d'évaluation du plateau
+	_evaluation = _player ? max_value(_eval_children, _got_moves) : min_value(_eval_children, _got_moves);
 }
 
 // Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
@@ -5634,9 +5694,9 @@ int Board::get_weak_squares() const {
 		{ 0,  0,  0,  0,  0,  0,  0,  0},
 		{ 0,  0,  0,  0,  0,  0,  0,  0}, 
 		{ 0,  5, 10, 20, 20, 10,  5,  0},
-		{10, 25, 35, 50, 50, 35, 20, 10},
-		{10, 25, 40, 60, 60, 40, 25, 10},
-		{ 5, 15, 25, 40, 40, 25, 15,  5},
+		{ 5, 20, 35, 50, 50, 35, 20,  5},
+		{ 5, 20, 40, 60, 60, 40, 20,  5},
+		{ 5, 10, 15, 40, 40, 15, 10,  5},
 		{ 0,  0,  0,  0,  0,  0,  0,  0},
 		{ 0,  0,  0,  0,  0,  0,  0,  0}
 	};
@@ -5644,10 +5704,10 @@ int Board::get_weak_squares() const {
 	// Valeur des outposts sur les cases faibles
 	const static int outpost_square_values[8][8] = {
 		{ 0,  0,  0,  0,  0,  0,  0,  0},
-		{ 0,  0, 15, 25, 25, 15,  0,  0},
-		{ 0,  0, 30, 40, 40, 30,  0,  0},
-		{ 0,  0, 35, 50, 50, 35,  0,  0},
-		{ 0,  0, 20, 35, 35, 20,  0,  0},
+		{ 0,  5, 15, 25, 25, 15,  5,  0},
+		{ 0, 25, 30, 40, 40, 30, 25,  0},
+		{ 0, 15, 35, 50, 50, 35, 15,  0},
+		{ 0, 10, 20, 35, 35, 20, 10,  0},
 		{ 0,  0,  5, 10, 10,  5,  0,  0},
 		{ 0,  0,  0,  0,  0,  0,  0,  0},
 		{ 0,  0,  0,  0,  0,  0,  0,  0}
@@ -5944,9 +6004,91 @@ float Board::get_winnable() const {
 
 // Fonction qui renvoie l'activité des fous sur les diagonales
 int Board::get_bishop_activity() const {
-	// TODO: à implémenter
+	// Mobilité d'un fou = nombre de cases non-pion sur les diagonales du fou
 
-	return 0;
+	// Bonus pour le fou blanc
+	int w_bishop_activity = 0;
+
+	// Bonus pour le fou noir
+	int b_bishop_activity = 0;
+
+	for (int i = 0; i < 8; i++) {
+		for (int j = 0; j < 8; j++) {
+			uint_fast8_t p = _array[i][j];
+
+			// Fou blanc
+			if (p == 3) {
+				// Diagonale haut-gauche
+				for (uint_fast8_t k = 1; k < min(i, j) + 1; k++) {
+					if (_array[i - k][j - k] != 1 && _array[i - k][j - k] != 7)
+						w_bishop_activity++;
+					else
+						break;
+				}
+
+				// Diagonale haut-droite
+				for (uint_fast8_t k = 1; k < min(i, 7 - j) + 1; k++) {
+					if (_array[i - k][j + k] != 1 && _array[i - k][j + k] != 7)
+						w_bishop_activity++;
+					else
+						break;
+				}
+
+				// Diagonale bas-gauche
+				for (uint_fast8_t k = 1; k < min(7 - i, j) + 1; k++) {
+					if (_array[i + k][j - k] != 1 && _array[i + k][j - k] != 7)
+						w_bishop_activity++;
+					else
+						break;
+				}
+
+				// Diagonale bas-droite
+				for (uint_fast8_t k = 1; k < min(7 - i, 7 - j) + 1; k++) {
+					if (_array[i + k][j + k] != 1 && _array[i + k][j + k] != 7)
+						w_bishop_activity++;
+					else
+						break;
+				}
+			}
+
+			// Fou noir
+			else if (p == 9) {
+				// Diagonale haut-gauche
+				for (uint_fast8_t k = 1; k < min(i, j) + 1; k++) {
+					if (_array[i - k][j - k] != 1 && _array[i - k][j - k] != 7)
+						b_bishop_activity++;
+					else
+						break;
+				}
+
+				// Diagonale haut-droite
+				for (uint_fast8_t k = 1; k < min(i, 7 - j) + 1; k++) {
+					if (_array[i - k][j + k] != 1 && _array[i - k][j + k] != 7)
+						b_bishop_activity++;
+					else
+						break;
+				}
+
+				// Diagonale bas-gauche
+				for (uint_fast8_t k = 1; k < min(7 - i, j) + 1; k++) {
+					if (_array[i + k][j - k] != 1 && _array[i + k][j - k] != 7)
+						b_bishop_activity++;
+					else
+						break;
+				}
+
+				// Diagonale bas-droite
+				for (uint_fast8_t k = 1; k < min(7 - i, 7 - j) + 1; k++) {
+					if (_array[i + k][j + k] != 1 && _array[i + k][j + k] != 7)
+						b_bishop_activity++;
+					else
+						break;
+				}
+			}
+		}
+	}
+
+	return (w_bishop_activity - b_bishop_activity);
 }
 
 // Fonction qui réinitialise les plateaux fils
