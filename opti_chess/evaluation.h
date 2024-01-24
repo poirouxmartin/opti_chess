@@ -9,7 +9,7 @@ public:
 	// Coefficients des heuristiques
 	float _piece_value = 1.2f;
 	float _piece_mobility = 0.06f;
-	float _piece_positioning = 0.35f;
+	float _piece_positioning = 0.5f;
 	float _bishop_pair = 20.0f;
 	float _castling_rights = 20.0f;
 	float _player_trait = 15.0f;
@@ -33,9 +33,10 @@ public:
 	float _pawn_shield = 2.0f;
 	float _weak_squares = 0.5f;
 	float _castling_distance = 1.0f;
+	float _bishop_activity = 5.0f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
-	int _pieces_value_begin[6] = { 87, 335, 340, 460, 1035, 0 };
+	int _pieces_value_begin[6] = { 67, 335, 340, 460, 1035, 0 };
 
 	// Valeurs en fin de partie
 	int _pieces_value_end[6] = { 90, 380, 410, 610, 1070, 0 };
@@ -337,7 +338,7 @@ public:
 	Evaluator(const Evaluator &evaluator);
 
 	// Constructeur avec paramètres
-	Evaluator(const float piece_value, const float piece_mobility, const float piece_positioning, const float bishop_pair, const float castling_rights, const float player_trait, const float king_safety, const float pawn_structure, const float attacks, const float defenses, const float kings_opposition, const float push, const float rook_open, const float square_controls, const float space_advantage, const float alignments, const float piece_activity, const float fianchetto, const float pawn_push_threats, const float king_proximity, const float rook_activity, const float bishop_pawns, const float pawn_storm, const float pawn_shield, const float weak_squares, const float castling_distance);
+	Evaluator(const float piece_value, const float piece_mobility, const float piece_positioning, const float bishop_pair, const float castling_rights, const float player_trait, const float king_safety, const float pawn_structure, const float attacks, const float defenses, const float kings_opposition, const float push, const float rook_open, const float square_controls, const float space_advantage, const float alignments, const float piece_activity, const float fianchetto, const float pawn_push_threats, const float king_proximity, const float rook_activity, const float bishop_pawns, const float pawn_storm, const float pawn_shield, const float weak_squares, const float castling_distance, const float bishop_activity);
 
 	// Opérateur de copie
 	Evaluator& operator=(const Evaluator &evaluator);

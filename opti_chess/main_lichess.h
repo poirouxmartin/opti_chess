@@ -25,6 +25,7 @@ using namespace std;
 // Tester d'autres paramètres d'exploration (exploration plus restreinte (beta plus grand), quiescence plus profonde...)
 
 // COMMANDS:
+// cd .\Documents\Info\Echecs\opti_chess\lichess-bot\
 // pour lancer le bot: .\venv\bin\activate
 // python3 lichess-bot.py -v
 

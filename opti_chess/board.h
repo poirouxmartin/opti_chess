@@ -428,6 +428,15 @@ public:
 	// Algo de grogros_zero
 	void grogros_zero(Evaluator* eval = nullptr, int nodes = 1, float beta = 0.035f, float k_add = 50.0f, int quiescence_depth = 4, bool explore_checks = true, bool display = false, int depth = 0, Network* net = nullptr, int correction = 0);
 
+	// Fonction qui prépare le plateau pour l'algo de grogros_zero
+	void prepare_grogros_zero(int* nodes, clock_t begin_monte_time, int depth, bool display);
+
+	// Fonction qui explore un nouveau coup pour l'algo de grogros_zero
+	void explore_new_move(Evaluator* eval, int quiescence_depth, bool explore_checks, int correction);
+
+	// Fonction qui explore un nouveau noeud pour l'algo de grogros_zero
+	void explore_new_node(Evaluator* eval, float beta, float k_add, bool display, int depth, int quiescence_depth, bool explore_checks, Network* net);
+
 	// Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
 	void reset_board(bool display = false);
 
