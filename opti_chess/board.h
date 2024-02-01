@@ -320,6 +320,14 @@ public:
 	// Est-ce qu'on a affiché les composantes du plateau?
 	bool _displayed_components = false;
 
+	// Clé de Zobrist de la position
+	uint_fast64_t _zobrist_key = 0;
+
+	// Historique des positions (position, nombre d'occurences)
+	vector<uint64_t> _positions_history = {};
+	//unordered_map<uint_fast64_t, int> _positions_history = {};
+
+
 	// Constructeur par défaut
 	Board();
 
@@ -519,7 +527,7 @@ public:
 	bool sort_moves();
 
 	// Fonction qui fait un quiescence search
-	int quiescence(Evaluator* eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool explore_checks = true, bool main_player = true);
+	int quiescence(Evaluator* eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool explore_checks = true, bool main_player = true, int delta = 900);
 
 	// Fonction qui fait cliquer le coup m
 	[[nodiscard]] bool click_m_move(Move i, bool orientation) const;
@@ -599,8 +607,8 @@ public:
 	// Fonction qui renvoie la valeur de la distance à la possibilité de roque
 	[[nodiscard]] int get_castling_distance() const;
 
-	// Fonction qui renvoie la clé de Zobrist du plateau
-	[[nodiscard]] uint_fast64_t get_zobrist_key() const;
+	// Fonction qui génère la clé de Zobrist du plateau
+	[[nodiscard]] void get_zobrist_key();
 
 	// Fonction qui renvoie à quel point la partie est gagnable (de 0 à 1)
 	[[nodiscard]] float get_winnable() const;
@@ -613,6 +621,12 @@ public:
 
 	// Fonction qui renvoie si un coup est légal ou non
 	[[nodiscard]] bool is_legal(Move move);
+
+	// Fonction qui reset l'historique des positions
+	void reset_positions_history();
+
+	// Fonction qui renvoie combien de fois la position actuelle a été répétée
+	[[nodiscard]] int repetition_count();
 };
 
 // Fonction qui joue un match entre deux IA utilisant GrogrosZero, et une évaluation par réseau de neurones ou des évaluateurs, avec un certain nombre de noeuds de calcul

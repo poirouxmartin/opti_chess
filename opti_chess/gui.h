@@ -88,7 +88,7 @@ public:
 	//float _beta = 0.03f;
 	//float _k_add = 50.0f;
 	int _quiescence_depth = 4;
-	bool _explore_checks = true;
+	bool _explore_checks = true; // FIXME? faut-il vraiment explorer les échecs?
 
 	// Est-ce que les noms des joueurs ont été ajoutés au PGN
 	bool _named_pgn = false;
@@ -344,6 +344,9 @@ public:
 
 	// Gris foncé
 	Color _dark_gray = { 50, 50, 50, 255 };
+
+	// Nombre de coups pour une répétition
+	int _max_repetition = 1;
 
 
 	// Constructeurs

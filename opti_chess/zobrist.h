@@ -75,6 +75,7 @@ public:
 class TranspositionTable {
 public:
 	// Table de transposition
+	// J'ai pas fait de la merde là? Il sert à quoi le uint64_t?
 	unordered_map<uint64_t, ZobristEntry> _hash_table; // FIXME: il faut gérer la taille de la table de transposition
 
 	// Zobrist utilisé

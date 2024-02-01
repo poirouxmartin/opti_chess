@@ -364,7 +364,8 @@ inline int main_ui() {
 		// D - Affichage dans la console de tous les coups légaux de la position
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_D)) {
 			main_GUI._draw = true;
-			main_GUI._board.display_moves(true);
+			//main_GUI._board.display_moves(true);
+			cout << main_GUI._board._positions_history.size() << endl;
 		}
 
 		// E - Évalue la position et renvoie les composantes dans la console
@@ -450,7 +451,8 @@ inline int main_ui() {
 
 		// Z - Clé de Zobrist de la position actuelle
 		if (IsKeyPressed(KEY_W)) {
-			cout << "Zobrist key : " << main_GUI._board.get_zobrist_key() << endl;
+			cout << "Zobrist key : " << main_GUI._board._zobrist_key << endl;
+			cout << main_game_over << endl;
 		}
 
 		// UP/DOWN - Activation, désactivation de GrogrosFish pour les pièces blanches

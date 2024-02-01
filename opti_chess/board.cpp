@@ -44,6 +44,8 @@ void Board::copy_data(const Board& b, bool full) {
 	_en_passant_col = b._en_passant_col;
 	_evaluated = b._evaluated;
 	_static_evaluation = b._static_evaluation;
+	_zobrist_key = b._zobrist_key;
+	_positions_history = b._positions_history;
 
 	if (full) {
 		_is_active = b._is_active;
@@ -61,6 +63,7 @@ void Board::copy_data(const Board& b, bool full) {
 		_game_over_value = b._game_over_value;
 		_quiescence_nodes = b._quiescence_nodes;
 		_displayed_components = b._displayed_components;
+		//_positions_history = b._positions_history;
 	}
 }
 
@@ -562,7 +565,16 @@ void Board::make_move(Move move, const bool pgn, const bool new_board)
 	_half_moves_count++;
 
 	// Reset des demi-coups si un pion est bougé ou si une pièce est prise
-	(p == 1 || p == 7 || p_last) && ((_half_moves_count = 0));
+	if (p == 1 || p == 7 || p_last) {
+		(_half_moves_count = 0);
+		reset_positions_history();
+	}
+	else {
+		// Ajoute la position actuelle dans l'historique
+		get_zobrist_key();
+		_positions_history.push_back(_zobrist_key);
+		//_positions_history[_zobrist_key] += 1;
+	}
 
 
 	// Coups donnant la possibilité d'un en passant
@@ -1309,7 +1321,8 @@ int Board::game_over() {
 		return 2;
 
 	// Règle des 3 répétitions
-	// TODO
+	if (repetition_count() >= main_GUI._max_repetition)
+		return 2;
 
 	// Calcule les coups légaux
 	if (_got_moves == -1)
@@ -2272,11 +2285,7 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const flo
 	// Pour le buffer
 	_is_active = true;
 
-	// Si c'est le premier appel, sur le plateau principal (pour l'affichage de l'évaluation)
-	/*if (_new_board && depth == 0)
-		evaluate(eval, false, net);*/
-
-		// Si c'est le plateau principal
+	// Si c'est le plateau principal
 	if (depth == 0) {
 		// On regarde si le buffer est plein
 		const int n = total_nodes();
@@ -2449,6 +2458,7 @@ void Board::reset_board(const bool display) {
 	_sorted_moves = false;
 	_nodes = 0;
 	_quiescence_nodes = 0;
+	_zobrist_key = 0;
 
 	if (!_new_board) {
 		_tested_moves = 0;
@@ -2468,6 +2478,8 @@ void Board::reset_board(const bool display) {
 		}
 		_new_board = true;
 	}
+
+	reset_positions_history();
 
 	if (display)
 		cout << "board reset done" << endl;
@@ -4062,24 +4074,23 @@ bool Board::sort_moves() {
 
 // Fonction qui fait un quiescence search
 // TODO améliorer avec un delta pruning
-int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, bool explore_checks, bool main_player)
+int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, bool explore_checks, bool main_player, int delta)
 {
-
 	// Compte le nombre de noeuds visités
 	_quiescence_nodes = 1;
 	
 	// Si la partie est terminée
 	is_game_over();
-	if (_game_over_value == 2)
+	if (_game_over_value == 2) // Nulle
 		return 0;
-	if (_game_over_value != 0)
+	if (_game_over_value != 0) // Mat
 		return -mate_value + _moves_count * mate_ply;
 
 	// Evalue la position initiale
 	evaluate(eval);
-	const int stand_pat = static_cast<int>(_evaluation) * get_color();
+	const int stand_pat = _evaluation * get_color();
 
-	// Si on est en échec
+	// Si on est en échec (pour ne pas terminer les variantes sur un échec)
 	bool check_extension = in_check();
 
 	if (depth == 0)
@@ -4102,13 +4113,16 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, boo
 		// TODO : ajouter promotions et échecs
 		// TODO : utiliser des flags
 
+		// Coup
+		Move move = _moves[i];
+
 		// Si c'est une capture
-		if (_array[_moves[i].i2][_moves[i].j2] != 0 || check_extension) {
+		if (_array[move.i2][move.j2] != 0 || check_extension) {
 			Board b;
 			b.copy_data(*this);
-			b.make_index_move(i);
+			b.make_move(move);
 
-			const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, explore_checks, true);
+			const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, explore_checks, true, delta);
 			_quiescence_nodes += b._quiescence_nodes;
 
 			if (score >= beta)
@@ -4116,19 +4130,23 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, boo
 
 			if (score > alpha)
 				alpha = score;
+
+			// Delta pruning (TODO : à tester)
+			//if (alpha >= beta - delta)
+			//	return alpha;
 		}
 
 		// Mats
 		// TODO : utiliser les flags 'échec' pour savoir s'il faut regarder ce coup
 		else if (explore_checks)
 		{
-			
 			Board b;
 			b.copy_data(*this);
-			b.make_index_move(i);
+			b.make_move(move);
+
 			if (!main_player || b.in_check())
 			{
-				const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, explore_checks, !main_player);
+				const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, explore_checks, !main_player, delta);
 				_quiescence_nodes += b._quiescence_nodes;
 
 				if (score >= beta)
@@ -4136,6 +4154,10 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, boo
 
 				if (score > alpha)
 					alpha = score;
+
+				// Delta pruning (TODO : à tester)
+				//if (alpha >= beta - delta)
+				//	return alpha;
 			}
 		}
 	}
@@ -5943,8 +5965,15 @@ int Board::get_castling_distance() const {
 	return castling_distance_malus * (b_castling_distance - w_castling_distance) * (1 - _adv);
 }
 
-// Fonction qui renvoie la clé de Zobrist du plateau (fonction pour le debug)
-uint_fast64_t Board::get_zobrist_key() const {
+// Fonction qui génère la clé de Zobrist du plateau (fonction pour le debug)
+void Board::get_zobrist_key()
+{
+	// On part du principe que la clé ne sera jamais 0
+	/*if (_zobrist_key != 0)
+		return;*/
+
+	// FIXME: elle est calculée plusieurs fois?
+
 	Zobrist zobrist = transposition_table._zobrist;
 	
 	// Génération des clés de Zobrist si ce n'est pas déjà fait
@@ -5983,7 +6012,7 @@ uint_fast64_t Board::get_zobrist_key() const {
 	if (_player == 1)
 		zobrist_key ^= zobrist._player_key;
 
-	return zobrist_key;
+	_zobrist_key = zobrist_key;
 }
 
 // Fonction qui renvoie à quel point la partie est gagnable (de 0 à 1)
@@ -6133,4 +6162,23 @@ bool Board::is_legal(Move move) {
 			return true;
 
 	return false;
+}
+
+// Fonction qui reset l'historique des positions
+void Board::reset_positions_history() {
+	_positions_history.clear();
+}
+
+// Fonction qui renvoie combien de fois la position actuelle a été répétée
+int Board::repetition_count() {
+	get_zobrist_key();
+	
+	/*if (_positions_history.find(_zobrist_key) == _positions_history.end())
+		return 0;*/
+
+	//return _positions_history[_zobrist_key];
+	//return _positions_history.
+	//return _half_moves_count >= max_half_moves - 1;
+	//cout << "count: " << count(_positions_history.begin(), _positions_history.end(), _zobrist_key) << endl;
+	return count(_positions_history.begin(), _positions_history.end(), _zobrist_key);
 }
