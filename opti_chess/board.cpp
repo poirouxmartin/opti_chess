@@ -6183,3 +6183,14 @@ int Board::repetition_count() {
 	//cout << "count: " << count(_positions_history.begin(), _positions_history.end(), _zobrist_key) << endl;
 	return count(_positions_history.begin(), _positions_history.end(), _zobrist_key);
 }
+
+// Affiche l'histoirque des positions (les clés de Zobrist)
+void Board::display_positions_history() const
+{
+	cout << "Positions history:" << endl;
+
+	for (auto const& x : _positions_history)
+	{
+		cout << x << endl;
+	}
+}

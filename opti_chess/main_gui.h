@@ -591,7 +591,7 @@ inline int main_ui() {
 				// Grogros doit gérer son temps
 				if (main_GUI._time) {
 					// Nombre de noeuds que Grogros doit calculer (en fonction des contraintes de temps)
-					static constexpr int supposed_grogros_speed = 2000; // En supposant que Grogros va à plus de 5k noeuds par seconde
+					static constexpr int supposed_grogros_speed = 2500; // En supposant que Grogros va à plus de 5k noeuds par seconde
 					int tot_nodes = main_GUI._board.total_nodes();
 					float best_move_percentage = tot_nodes == 0 ? 0.05f : static_cast<float>(main_GUI._board._nodes_children[main_GUI._board.best_monte_carlo_move()]) / static_cast<float>(main_GUI._board.total_nodes());
 					int max_move_time = main_GUI._board._player ?

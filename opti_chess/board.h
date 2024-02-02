@@ -627,6 +627,9 @@ public:
 
 	// Fonction qui renvoie combien de fois la position actuelle a été répétée
 	[[nodiscard]] int repetition_count();
+
+	// Affiche l'histoirque des positions (les clés de Zobrist)
+	void display_positions_history() const;
 };
 
 // Fonction qui joue un match entre deux IA utilisant GrogrosZero, et une évaluation par réseau de neurones ou des évaluateurs, avec un certain nombre de noeuds de calcul
