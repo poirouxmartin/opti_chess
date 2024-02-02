@@ -401,10 +401,10 @@ public:
 	[[nodiscard]] string to_fen() const;
 
 	// Fonction qui renvoie le gagnant si la partie est finie (-1/1), et 0 sinon
-	int game_over();
+	int game_over(int max_repetitions);
 
 	// Fonction qui renvoie le gagnant si la partie est finie (-1/1), et 0 sinon (et stocke sa valeur)
-	int is_game_over();
+	int is_game_over(int max_repetitions = 1);
 
 	// Fonction qui renvoie le label d'un coup
 	string move_label(Move move);
