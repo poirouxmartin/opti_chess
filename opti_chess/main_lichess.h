@@ -50,6 +50,9 @@ using namespace std;
 // King safety à revoir absolument... weak squares trop importants (scandi qui prend le pion g2, weak squares quasi -1...)
 
 
+// BUG:
+// Il plante parfois (quand y'a des répétitions...)
+
 
 // Paramètres de Grogros
 struct Param {
@@ -87,6 +90,10 @@ inline void bestmove(Board& board, Param& param) {
     string best_move_string = board.algebric_notation(best_move);
     board.play_monte_carlo_move_keep(best_move);
     cout << "bestmove " << best_move_string << endl;
+    //cout << "test" << board._positions_history.size() << endl;
+    //board.display_positions_history();
+    //cout << "eval: " << board._evaluation << endl;
+    //cout << "repetitions: " << board.repetition_count() << endl;
     param.play = false;
 }
 
@@ -119,28 +126,59 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
         // Move played by the opponent
         else if (token == "position") {
 
-            // Si c'est des coups
-            if (command.substr(9, 8) == "startpos") {
+            // On récupère le dernier coup
+            string last_move = command.substr(command.length() - 5);
+            if (last_move[0] == ' ')
+                last_move = last_move.substr(1);
+            Move move = board.move_from_algebric_notation(last_move);
 
-                // Si c'est juste la position de départ ("position startpos")
-                if (command.length() <= 18) {
-					board.restart();
-					continue;
-				}
+            // Si le coup est jouable, on le joue
+            if (board.is_legal(move)) {
+                board.play_monte_carlo_move_keep(move);
+                board._game_over_checked = false;
+                board.is_game_over(3);
+                //cout << "test" << board._positions_history.size() << endl;
+            }
 
-                // Sinon, récupère le dernier coup
-                string last_move = command.substr(command.length() - 5);
-                if (last_move[0] == ' ')
-                    last_move = last_move.substr(1);
-
-                // Joue le coup
-                board.play_monte_carlo_move_keep(board.move_from_algebric_notation(last_move));
-			}
-
-            // C'est un FEN
+            // Sinon, on prend la position de départ ou le FEN
             else {
-                board.from_fen(command.substr(9));
-			}
+                //cout << "Illegal move by opponent: " << last_move << "; in position: " << board.to_fen() << endl;
+
+                // Position de départ
+                if (command.substr(9, 8) == "startpos") {
+                    board.restart();
+                }
+
+                // FEN
+                else {
+                    board.from_fen(command.substr(9));
+                }
+            }
+
+
+   //         // Si c'est des coups
+   //         if (command.substr(9, 8) == "startpos") {
+
+   //             // Si c'est juste la position de départ ("position startpos")
+   //             if (command.length() <= 18) {
+			//		board.restart();
+			//		continue;
+			//	}
+
+   //             // Sinon, récupère le dernier coup
+   //             string last_move = command.substr(command.length() - 5);
+   //             if (last_move[0] == ' ')
+   //                 last_move = last_move.substr(1);
+
+   //             // Joue le coup
+   //             board.play_monte_carlo_move_keep(board.move_from_algebric_notation(last_move));
+   //             cout << "test" << board._positions_history.size() << endl;
+			//}
+
+   //         // C'est un FEN
+   //         else {
+   //             board.from_fen(command.substr(9));
+			//}
         }
 
         // Dit à Grogros de jouer
