@@ -419,6 +419,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Parallélisation: faut que les quiescence nodes augmentent aussi
 -> Quand on navigue dans la partie, jouer les son
 -> Afficher en vert, orange ou rouge les forces et faiblesses de la positions?
+-> Afficher à quel coup de la variante on est
 
 
 
