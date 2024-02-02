@@ -1307,7 +1307,7 @@ string Board::to_fen() const
 
 // Fonction qui renvoie le gagnant si la partie est finie (-1/1, et 2 pour nulle), et 0 sinon
 // Génère également les coups légaux, s'il y en a
-int Board::game_over() {
+int Board::game_over(int max_repetitions) {
 
 	// Ne pas recalculer si déjà fait
 	if (_game_over_checked)
@@ -1321,7 +1321,8 @@ int Board::game_over() {
 		return 2;
 
 	// Règle des 3 répétitions
-	if (repetition_count() >= main_GUI._max_repetition)
+	//if (repetition_count() >= main_GUI._max_repetition)
+	if (repetition_count() >= max_repetitions)
 		return 2;
 
 	// Calcule les coups légaux
@@ -1381,8 +1382,8 @@ int Board::game_over() {
 }
 
 // Fonction qui renvoie le gagnant si la partie est finie (-1/1, et 2 pour nulle), et 0 sinon
-int Board::is_game_over() {
-	_game_over_value = game_over();
+int Board::is_game_over(int max_repetitions) {
+	_game_over_value = game_over(max_repetitions);
 	return _game_over_value;
 }
 

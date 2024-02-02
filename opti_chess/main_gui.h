@@ -579,7 +579,8 @@ inline int main_ui() {
 		// Jeu des IA
 
 		// Fait jouer l'IA automatiquement en fonction des paramètres
-		if (main_GUI._board.is_game_over() == 0) {
+		main_GUI._board._game_over_checked = false;  // On recheck, pour les threefold (car dans la réflexion on dit que la partie est finie si y'a une seule répétition)
+		if (main_GUI._board.is_game_over(3) == 0) {
 			// GrogrosZero
 
 			// Quand c'est son tour
@@ -590,7 +591,7 @@ inline int main_ui() {
 				// Grogros doit gérer son temps
 				if (main_GUI._time) {
 					// Nombre de noeuds que Grogros doit calculer (en fonction des contraintes de temps)
-					static constexpr int supposed_grogros_speed = 3500; // En supposant que Grogros va à plus de 5k noeuds par seconde
+					static constexpr int supposed_grogros_speed = 2000; // En supposant que Grogros va à plus de 5k noeuds par seconde
 					int tot_nodes = main_GUI._board.total_nodes();
 					float best_move_percentage = tot_nodes == 0 ? 0.05f : static_cast<float>(main_GUI._board._nodes_children[main_GUI._board.best_monte_carlo_move()]) / static_cast<float>(main_GUI._board.total_nodes());
 					int max_move_time = main_GUI._board._player ?
@@ -641,7 +642,7 @@ inline int main_ui() {
 					main_GUI._board.grogros_zero(main_GUI._grogros_eval, nodes_per_user_frame, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks); // Pour que ça ne lag pas pour l'utilisateur
 			}
 
-			if (main_GUI._board.is_game_over() != 0)
+			if (main_GUI._board.is_game_over(3) != 0)
 				goto game_over;
 
 			// GrogrosFish (seulement lorsque c'est son tour)

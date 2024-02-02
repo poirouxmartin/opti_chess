@@ -266,14 +266,13 @@ r1bqkb1r/pp2pppp/2np1n2/8/2BNP3/2N5/PPP2PPP/R1BQK2R b KQkq - 4 6 : là faut jouer
 r1b1kbnr/pppp1ppp/2P5/4p3/4q3/8/PPP1QPPP/RNB1KBNR b KQkq - 1 5 : c'est pièce de moins pour les noirs là... -1.55 pour king safety c'est un peu abusé
 rnb1kbnr/ppp1pppp/8/5q2/8/2N2NR1/PPPPBP1P/R1BQK3 w Qkq - 4 8 : ça c'est mieux pour les blancs (largement plus d'activité)
 2kr4/ppp2p1p/2nb1B2/1B5q/5pb1/1P2Pp2/P1P3PP/RN1Q2KR w - - 0 14 : déjà complètement gagnant pour les noirs: le roi est foutu, les noirs ont trop d'activité, y'a trop de menaces
-r1bqkb1r/1pp1n1pp/p1p2p2/4p3/4P3/3P1N2/PPP2PPP/RNBQ1RK1 w kq - 2 7 : difficile à croite, mais selon Leela, c'est légèrement mieux pour les noirs
+r1bqkb1r/1pp1n1pp/p1p2p2/4p3/4P3/3P1N2/PPP2PPP/RNBQ1RK1 w kq - 2 7 : difficile à croire, mais selon Leela, c'est légèrement mieux pour les noirs
 r3k2r/1ppq2pp/p1pbbpn1/8/3PP3/2N1BN1P/PP3PP1/R2Q1RK1 w kq - 3 13 : Grogros veut jouer h4.. c'est une grosse erreur stratégique !
 2kr3r/1ppq2pp/p1pb1pn1/8/3PP1bP/2N1BNP1/PP3P2/R2Q1RK1 w - - 1 15 : là c'est complètement gagnant pour les noirs selon Leela. Structure du roi blanc affaiblie, clouage du Cf3 à vie...
 2k1rr2/1ppq2pp/p1pb2n1/4P3/3P1pbP/2N2NP1/PP1BQP2/2R2RK1 w - - 0 19 : foutu pour les blancs
 r1b4R/pp3k1p/3p1p2/3p4/8/3B4/P1P3PP/6K1 b - - 3 25 : gagnant pour les blancs malgré les deux pions de moins (les deux pièces sont bloquées)
 8/4r3/8/2k5/1p6/2ppP1P1/5P1P/1RR2K2 b - - 1 38 : complètement gagnant pour les noirs (les pions passés liés sont trop forts)
-
-
+8/1K6/5k1p/6p1/Pb4P1/5N1P/8/8 b - - 0 43 : complètement gagnant pour les blancs
 
 
 ----- Problèmes -----
@@ -585,6 +584,7 @@ r1b2k1r/pppp2pp/2n2pq1/3B2B1/8/4QN2/P4PPP/4R1K1 w - - 0 16 : Fxc6 termine la par
 r1b1k2B/ppp2p1p/2nb4/1B1p3q/4np2/1P2PN2/P1PP2PP/RN1Q2KR b q - 2 10 : Fh3
 r2b1rk1/1b3ppp/p1n2n2/5NB1/3p4/q4N2/B1Q2PPP/3RR1K1 w - - 2 20 : Cxg8 puis Fb1 gagne
 r2b2kr/1b2np1p/p2q1n1B/8/3p3N/3R4/2Q2PPP/1B2R1K1 w - - 8 25 : Txe7 et c'est fini
+8/1K6/P6p/2b3p1/2N3P1/6kP/8/8 w - - 7 50 : Cb6, interposation gagnante
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---
