@@ -24,11 +24,11 @@ Board::Board() {
 
 // Constructeur de copie
 Board::Board(const Board& b) {
-	copy_data(b, false);
+	copy_data(b, false, false);
 }
 
 // Fonction qui copie les attributs d'un tableau
-void Board::copy_data(const Board& b, bool full) {
+void Board::copy_data(const Board& b, bool full, bool copy_history) {
 	// Copie du plateau
 	memcpy(_array, b._array, sizeof(_array));
 	_got_moves = b._got_moves;
@@ -45,7 +45,10 @@ void Board::copy_data(const Board& b, bool full) {
 	_evaluated = b._evaluated;
 	_static_evaluation = b._static_evaluation;
 	_zobrist_key = b._zobrist_key;
-	_positions_history = b._positions_history;
+
+	if (copy_history) {
+		_positions_history = b._positions_history;
+	}
 
 	if (full) {
 		_is_active = b._is_active;
@@ -63,7 +66,6 @@ void Board::copy_data(const Board& b, bool full) {
 		_game_over_value = b._game_over_value;
 		_quiescence_nodes = b._quiescence_nodes;
 		_displayed_components = b._displayed_components;
-		//_positions_history = b._positions_history;
 	}
 }
 
@@ -532,7 +534,7 @@ void Board::display_moves(const bool pseudo) {
 }
 
 // Fonction qui joue un coup
-void Board::make_move(Move move, const bool pgn, const bool new_board)
+void Board::make_move(Move move, const bool pgn, const bool new_board, const bool add_to_history)
 {
 
 	// TODO : à voir si ça rend plus rapide ou non
@@ -566,14 +568,16 @@ void Board::make_move(Move move, const bool pgn, const bool new_board)
 
 	// Reset des demi-coups si un pion est bougé ou si une pièce est prise
 	if (p == 1 || p == 7 || p_last) {
-		(_half_moves_count = 0);
+		_half_moves_count = 0;
 		reset_positions_history();
 	}
 	else {
 		// Ajoute la position actuelle dans l'historique
-		get_zobrist_key();
-		_positions_history.push_back(_zobrist_key);
-		//_positions_history[_zobrist_key] += 1;
+		if (add_to_history) {
+			get_zobrist_key();
+			_positions_history.push_back(_zobrist_key);
+			//_positions_history[_zobrist_key] += 1;
+		}
 	}
 
 
@@ -665,8 +669,8 @@ void Board::make_move(Move move, const bool pgn, const bool new_board)
 }
 
 // Fonction qui joue le coup i
-void Board::make_index_move(const int i, const bool pgn) {
-	make_move(_moves[i], pgn, false);
+void Board::make_index_move(const int i, const bool pgn, const bool new_board, const bool add_to_history) {
+	make_move(_moves[i], pgn, new_board, add_to_history);
 }
 
 // Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
@@ -1055,7 +1059,7 @@ int Board::negamax(const int depth, int alpha, const int beta, const bool max_de
 		
 
 	for (int i = 0; i < _got_moves; i++) {
-		b.copy_data(*this);
+		b.copy_data(*this, false, true);
 		b.make_index_move(i);
 
 		int tmp_value = -b.negamax(depth - 1, -beta, -alpha, false, eval, false, false, quiescence_depth);
@@ -2228,7 +2232,7 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 
 		// On copie les data du plateau fils
 		reset_board();
-		copy_data(monte_buffer._heap_boards[child_buffer_index], true);
+		copy_data(monte_buffer._heap_boards[child_buffer_index], true, true);
 
 		// On vire les data du plateau fils du buffer
 		monte_buffer._heap_boards[child_buffer_index] = Board();
@@ -2329,8 +2333,8 @@ void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const flo
 		// *** TOUS LES COUPS SONT DÉJÀ EXPLORÉS ***
 		else {
 
-			// On explore un nouveau noeud
-			explore_new_node(eval, beta, k_add, display, depth, quiescence_depth, explore_checks, net);
+			// On explore dans un noeud fils
+			explore_random_child_node(eval, beta, k_add, display, depth, quiescence_depth, explore_checks, net);
 		}
 
 		// Décrémentation du nombre de noeuds restants
@@ -2395,8 +2399,8 @@ void Board::explore_new_move(Evaluator* eval, int quiescence_depth, bool explore
 	monte_buffer._heap_boards[index]._is_active = true;
 
 	// Joue un nouveau coup
-	monte_buffer._heap_boards[index].copy_data(*this);
-	monte_buffer._heap_boards[index].make_index_move(_current_move);
+	monte_buffer._heap_boards[index].copy_data(*this, false, true);
+	monte_buffer._heap_boards[index].make_index_move(_current_move, false, false, true);
 
 	// Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
 	monte_buffer._heap_boards[index]._evaluation = monte_buffer._heap_boards[index].quiescence(eval, -INT32_MAX, INT32_MAX, quiescence_depth, explore_checks) * -get_color() + correction;
@@ -2413,8 +2417,8 @@ void Board::explore_new_move(Evaluator* eval, int quiescence_depth, bool explore
 	_tested_moves++;
 }
 
-// Fonction qui explore un nouveau noeud pour l'algo de grogros_zero
-void Board::explore_new_node(Evaluator* eval, float beta, float k_add, bool display, int depth, int quiescence_depth, bool explore_checks, Network* net)
+// Fonction qui explore un noeud fils de manière pseudo-aléatoire pour l'algo de grogros_zero
+void Board::explore_random_child_node(Evaluator* eval, float beta, float k_add, bool display, int depth, int quiescence_depth, bool explore_checks, Network* net)
 {
 	// Correction de l'évaluation: différence entre l'évaluation du meilleur plateau fils et celle du plateau actuel
 
@@ -4120,7 +4124,7 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, boo
 		// Si c'est une capture
 		if (_array[move.i2][move.j2] != 0 || check_extension) {
 			Board b;
-			b.copy_data(*this);
+			b.copy_data(*this, false, true);
 			b.make_move(move);
 
 			const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, explore_checks, true, delta);
@@ -4142,7 +4146,7 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, boo
 		else if (explore_checks)
 		{
 			Board b;
-			b.copy_data(*this);
+			b.copy_data(*this, false, true);
 			b.make_move(move);
 
 			if (!main_player || b.in_check())
