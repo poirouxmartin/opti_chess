@@ -60,8 +60,8 @@ public:
 	clock_t _time_black;
 
 	// Incrément
-	clock_t _time_increment_white = -50;
-	clock_t _time_increment_black = -50;
+	clock_t _time_increment_white = -100;
+	clock_t _time_increment_black = -100;
 
 	// Mode analyse de Grogros
 	bool _grogros_analysis = false;
@@ -85,10 +85,13 @@ public:
 	// Paramètres pour la recherche de Monte-Carlo
 	float _beta = 0.1f;
 	float _k_add = 25.0f;
-	//float _beta = 0.03f;
-	//float _k_add = 50.0f;
 	int _quiescence_depth = 4;
 	bool _explore_checks = true; // FIXME? faut-il vraiment explorer les échecs?
+
+	// Paramètres de brute
+	//float _beta = 0.25f;
+	//float _k_add = 1.0f;
+	//int _quiescence_depth = 4;
 
 	// Est-ce que les noms des joueurs ont été ajoutés au PGN
 	bool _named_pgn = false;

@@ -338,7 +338,7 @@ public:
 	bool operator== (const Board&) const;
 
 	// Fonction qui copie les attributs d'un plateau (full copy: on copie tout)
-	void copy_data(const Board&, bool full = false);
+	void copy_data(const Board&, bool full = false, bool history = false);
 
 	// Fonction qui ajoute un coup dans la liste de coups
 	bool add_move(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
@@ -368,10 +368,10 @@ public:
 	void display_moves(bool pseudo = false);
 
 	// Fonction qui joue un coup
-	void make_move(Move, bool pgn = false, bool new_board = false);
+	void make_move(Move, const bool pgn = false, const bool new_board = false, const bool add_to_history = false);
 
 	// Fonction qui joue le coup i de la liste des coups possibles
-	void make_index_move(int, bool pgn = false);
+	void make_index_move(int, const bool pgn = false, const bool new_board = false, const bool add_to_history = false);
 
 	// Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
 	void game_advancement();
@@ -442,8 +442,8 @@ public:
 	// Fonction qui explore un nouveau coup pour l'algo de grogros_zero
 	void explore_new_move(Evaluator* eval, int quiescence_depth, bool explore_checks, int correction);
 
-	// Fonction qui explore un nouveau noeud pour l'algo de grogros_zero
-	void explore_new_node(Evaluator* eval, float beta, float k_add, bool display, int depth, int quiescence_depth, bool explore_checks, Network* net);
+	// Fonction qui explore un noeud fils de manière pseudo-aléatoire pour l'algo de grogros_zero
+	void explore_random_child_node(Evaluator* eval, float beta, float k_add, bool display, int depth, int quiescence_depth, bool explore_checks, Network* net);
 
 	// Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
 	void reset_board(bool display = false);
