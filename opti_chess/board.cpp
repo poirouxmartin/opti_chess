@@ -2204,7 +2204,7 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 	// Cherche le coup dans les plateaux fils
 	int child_index = -1;
 	Board child_board(*this);
-	child_board.make_move(move);
+	child_board.make_move(move, false, false, true);
 
 	for (int i = 0; i < _tested_moves; i++) {
 		if (child_board == monte_buffer._heap_boards[_index_children[i]]) {
@@ -2252,7 +2252,7 @@ bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const b
 		if (_is_active)
 			reset_all();
 
-		make_move(move);
+		make_move(move, false, false, true);
 	}
 
 	// Update le PGN
@@ -4124,7 +4124,7 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, boo
 		// Si c'est une capture
 		if (_array[move.i2][move.j2] != 0 || check_extension) {
 			Board b;
-			b.copy_data(*this, false, true);
+			b.copy_data(*this);
 			b.make_move(move);
 
 			const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, explore_checks, true, delta);
@@ -4146,7 +4146,7 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, boo
 		else if (explore_checks)
 		{
 			Board b;
-			b.copy_data(*this, false, true);
+			b.copy_data(*this); // Should we check the repetitions here?
 			b.make_move(move);
 
 			if (!main_player || b.in_check())

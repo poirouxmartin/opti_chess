@@ -1,7 +1,7 @@
 #include "main_lichess.h"
 #include "main_gui.h"
 
-bool lichess = false;
+bool lichess = true;
 
 int main() {
 
