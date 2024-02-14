@@ -421,7 +421,7 @@ QR6/4Nb1k/p2r1qp1/2p3r1/5p2/3P4/P1P2P2/4RK2 w - - 0 33 : Cg8 seul coup qui draw
 QR4N1/5b1k/p2r2p1/2p2qr1/5p2/3P4/P1P2P2/4RK2 w - - 2 34 : Ch6 gagne
 Q3R1R1/3r3k/p5p1/2p3r1/5p2/3P4/P1P1KP2/q7 b - - 4 36 : f3 gagne
 Q3R1R1/3r3k/p5p1/2p3r1/8/3P1p2/P1PK1P2/q7 b - - 1 37 : Txd3 #15
-Q3R1R1/7k/p5p1/2p2r2/8/3P4/P4q2/3K4 b - - 1 42 : #10
+Q3R1R1/7k/p5p1/2p2r2/8/3P4/P4q2/3K4 b - - 1 42 : Df1 #10
 7r/1p2npk1/2p2b2/3p2p1/1P1P2q1/PQN1PP1r/1B1R2B1/2R3K1 b - - 0 1 : Th1+ pour Dxg2 #8
 r5k1/r6p/2pR2pQ/pb3p2/1q3B2/1P2R3/5PPP/6K1 w - - 0 29 : Txg6+ #10
 2r2k1r/pq3ppp/1p6/4b3/Q7/P1N1P3/1P4PP/2KRR3 w - - 2 20 : Td7 gagne
@@ -462,6 +462,7 @@ r2q1rk1/ppp1ppbp/6p1/1N1Pn2n/1PP5/P6P/1B2QPP1/RB3RK1 b - - 6 17 : Cf3+ meilleur 
 rn2k2r/1bqp1ppp/p4n2/1p2pN2/P3P3/2P1B1P1/1P4BP/RN1Qb2K w kq - 2 14 : Cxg7+ puis Fh6 gagne
 rn3k1r/2np2pp/pq6/1P2pNp1/4Q3/N1P3P1/1P4KP/R7 w - - 4 24 : Tf1 gagne
 8/1pkrr3/3Rb1B1/p1p1Ppp1/2P1p2p/PP5P/2K2PP1/3R4 w - a6 0 32 : Txe6 gagne
+8/1p6/4k3/p1p1P1p1/2P1p2p/PP5P/2K2PP1/8 w - - 0 36 : Rd2 gagne
 8/8/1p3k2/p1p3p1/P1P3P1/1P2K2P/8/8 w - - 9 47 : Rf3 Rg3 pour h4 gagne
 r2q1r2/pp4kp/2p1Qbp1/3pB3/3P4/8/PPP3PP/R4RK1 w - - 4 19 : Txf6 gagne
 5rk1/1pp3p1/p1p5/7p/8/3Pb3/PPP2RPP/5RK1 b - - 0 1 : h4 g3 h3 -> zugzwang long terme
@@ -546,7 +547,7 @@ r4nk1/pb1pnpp1/4p2p/1q4BQ/1P1P4/4N1R1/P4PPP/4R1K1 w q - 0 1 : Ff6 gagne
 r2qk3/2pb4/3p2r1/1p1P3p/4PBn1/1B3N2/Pb5P/R3QR1K w q - 0 27 : e5 gagne
 1nq2bk1/rb3ppp/p3p3/1p3nPP/3N2B1/1P2P3/PB1N1P2/3Q1RK1 w - - 1 3 : g6 gagne
 r3k1r1/1bqn1p2/p2ppb1R/1p2n1p1/3NP1P1/P1N2P2/1PPB3Q/1K1R1B2 w q - 6 19 : prendre en b5 gagne
-r3k1r1/1bqn1p2/3Rp2R/4n1p1/1B2P1P1/P4P2/1PP4Q/1K3B2 w q - 1 24 : Txe6 gagne
+r3k1r1/1bqn1p2/3Rp2R/4n1p1/1B2P1P1/P4P2/1PP4Q/1K3B2 w q - 1 24 : Txe6 gagne (n'importe quelle tour)
 r5k1/1bqn1ppp/p3p3/1pb3PP/4P1B1/1PQ2N2/P4P2/B4RK1 b - - 12 27 : Cf6 gagne
 r2q1rk1/1p3p2/1np1p1pp/4P1b1/3P4/2NQP1P1/PpB4P/1R3RK1 w - - 0 1 : h4 gagne
 r1q3k1/3nr1pp/pBNRp3/8/2B1P3/P4P2/1P4PP/2K4R b - - 1 10 : Rh8 seul coup qui tient
