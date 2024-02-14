@@ -443,6 +443,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 
 -> REPETITIONS: il faut gérer si y'a 3 fois de suite dans la même partie, sans que Grogros s'arrête à la première
 -> Utiliser une mini clé de Zobrist pour les répétitions (car il y a peu de chances de collisions?) -> clé de 16 bits?
+-> BUG: parfois après une repetition 1 fois, Grogros choisit un coup complètement pourri et en est sûr (perdant)
 -> move_keep: virer le plateau du buffer
 -> Table de transposition
 -> Promotion de variantes: il faut repasser sur la variante principale au moment de la promotion

@@ -228,7 +228,7 @@ inline string GetLineFromCin() {
 inline bool should_play(const Board& board, Param param) {
     
     // Nombre de noueds que l'on suppose que Grogros va calculer par seconde
-    static constexpr int supposed_grogros_speed = 2000;
+    static constexpr int supposed_grogros_speed = 3500;
 
     // Nombre de noeuds déjà calculés
     int tot_nodes = board.total_nodes();
