@@ -258,6 +258,7 @@ int bind_board_orientation(const int x1, const int y1, const int x2, const int y
 
 // Fonction qui cherche la position du plateau de chess.com sur l'écran
 void locate_chessboard(int& top_left_x, int& top_left_y, int& bottom_right_x, int& bottom_right_y) {
+	cout << "looking for chess.com chessboard..." << endl;
 	static const SimpleColor dark_square_color(119, 153, 84);
 	static const SimpleColor light_square_color(233, 237, 204);
 
@@ -328,6 +329,10 @@ void locate_chessboard(int& top_left_x, int& top_left_y, int& bottom_right_x, in
 
 	// Droite du plateau (normalement il est carré)
 	bottom_right_x = top_left_x + bottom_right_y - top_left_y;
+
+	printf("Top-Left: (%d, %d)\n", top_left_x, top_left_y);
+	printf("Bottom-Right: (%d, %d)\n", bottom_right_x, bottom_right_y);
+	cout << "chess.com chessboard has been located" << endl;
 
 	return;
 }

@@ -1793,7 +1793,7 @@ bool Board::draw() {
 		main_GUI.draw_simple_arrow_from_coord(arrow[0], arrow[1], arrow[2], arrow[3], -1, main_GUI._arrow_color);
 
 	// Titre
-	DrawTextEx(main_GUI._text_font, "Grogros Chess", { main_GUI._board_padding_x + main_GUI._grogros_size / 2 + main_GUI._text_size / 2.8f, main_GUI._text_size / 4.0f }, main_GUI._text_size / 1.4f, main_GUI._font_spacing * main_GUI._text_size / 1.4f, main_GUI._text_color);
+	DrawTextEx(main_GUI._text_font, "GROGROS CHESS", { main_GUI._board_padding_x + main_GUI._grogros_size / 2 + main_GUI._text_size / 2.8f, main_GUI._text_size / 4.0f }, main_GUI._text_size / 1.4f, main_GUI._font_spacing * main_GUI._text_size / 1.4f, main_GUI._text_color);
 
 	// Grogros
 	main_GUI.draw_texture(main_GUI._grogros_texture, main_GUI._board_padding_x, main_GUI._text_size / 4.0f - main_GUI._text_size / 5.6f, WHITE);
@@ -2402,6 +2402,8 @@ void Board::explore_new_move(Evaluator* eval, int quiescence_depth, bool explore
 
 	// Regarde si la position existe déjà dans la table de transposition
 	if (false && transposition_table._hash_table.find(b._zobrist_key) != transposition_table._hash_table.end()) {
+		// POSITION TEST: 8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1 (Rb1 seul coup gagnant)
+
 		// Prend l'index du plateau dans le buffer
 		const int index = transposition_table._hash_table[b._zobrist_key]._board_index;
 
@@ -4149,7 +4151,8 @@ bool Board::sort_moves() {
 }
 
 // Fonction qui fait un quiescence search
-// TODO améliorer avec un delta pruning
+// TODO: améliorer avec un delta pruning
+// TODO: utiliser le buffer de plateaux pour remplir la réflexion
 int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, bool explore_checks, bool main_player, int delta)
 {
 	// Compte le nombre de noeuds visités
