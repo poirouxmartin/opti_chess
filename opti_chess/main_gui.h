@@ -194,16 +194,13 @@ inline int main_ui() {
 
 		// CTRL-T - Cherche le plateau de chess.com sur l'écran, et lance une partie
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_T)) {
-			cout << "looking for chess.com chessboard..." << endl;
 			locate_chessboard(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom);
-			printf("Top-Left: (%d, %d)\n", main_GUI._binding_left, main_GUI._binding_top);
-			printf("Bottom-Right: (%d, %d)\n", main_GUI._binding_right, main_GUI._binding_bottom);
-			cout << "chess.com chessboard has been located" << endl;
 			main_GUI.new_bind_game();
 		}
 
 		// LCTRL-A - Binding full (binding chess.com)
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_Q)) {
+			locate_chessboard(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom);
 			main_GUI._binding_full = !main_GUI._binding_full;
 		}
 
