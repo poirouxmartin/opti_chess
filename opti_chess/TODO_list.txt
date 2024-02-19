@@ -442,6 +442,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 
 ----- En cours -----
 
+-> Fusion entre GrogrosZero et quiescence search
 -> Peut-on fusionner _tested_moves et _current_moves?
 -> Il faut reset la table de transposition après chaque coup? sinon y'aura des positions obselettes (et potentiellement avec des indices buffer faux)
 -> Réduire le temps de l'évaluation de Grogros (voir king_safety, et implémenter l'évaluation incrémentale)
