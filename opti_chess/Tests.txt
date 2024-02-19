@@ -587,6 +587,7 @@ r2b1rk1/1b3ppp/p1n2n2/5NB1/3p4/q4N2/B1Q2PPP/3RR1K1 w - - 2 20 : Cxg8 puis Fb1 ga
 r2b2kr/1b2np1p/p2q1n1B/8/3p3N/3R4/2Q2PPP/1B2R1K1 w - - 8 25 : Txe7 et c'est fini
 8/1K6/P6p/2b3p1/2N3P1/6kP/8/8 w - - 7 50 : Cb6, interposation gagnante
 3b4/7p/6p1/6N1/8/6k1/6P1/5K2 w - - 14 51 : Cxh7 perd instant...
+nbbrqrk1/pp4pp/7n/4p3/3pP3/1P3N1P/PB3PP1/NB1RQRK1 b - - 0 10 : Txf3!! gagne
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---

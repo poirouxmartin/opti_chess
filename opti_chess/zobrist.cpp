@@ -55,19 +55,10 @@ ZobristEntry::ZobristEntry()
 {
 }
 
-// Constructeur à partir d'une clé et d'un indice
-ZobristEntry::ZobristEntry(const uint_fast64_t key, int board_index)
+// Constructeur à partir d'un indice
+ZobristEntry::ZobristEntry(const int board_index)
 {
-	_key = key;
 	_board_index = board_index;
-}
-
-// Constructeur à partir d'une clé, d'un indice et d'une profondeur
-ZobristEntry::ZobristEntry(const uint_fast64_t key, int board_index, int depth)
-{
-	_key = key;
-	_board_index = board_index;
-	_depth = depth;
 }
 
 // Constructeur par défaut de la table de transposition
