@@ -47,8 +47,6 @@ public:
 // Entrée dans la table de transposition
 struct ZobristEntry {
 public:
-	// Clé de Zobrist
-	uint_fast64_t _key = 0;
 
 	// Indice du plateau dans le buffer
 	int _board_index = -1;
@@ -64,18 +62,15 @@ public:
 	// Constructeur par défaut
 	ZobristEntry();
 
-	// Constructeur à partir d'une clé et d'un indice
-	ZobristEntry(const uint_fast64_t key, const int board_index);
+	// Constructeur à partir d'un indice
+	ZobristEntry(const int board_index);
 
-	// Constructeur à partir d'une clé, d'un indice et d'une profondeur
-	ZobristEntry(const uint_fast64_t key, int board_index, int depth);
 };
 
 // Table de transposition (structure: unordered_map)
 class TranspositionTable {
 public:
 	// Table de transposition
-	// J'ai pas fait de la merde là? Il sert à quoi le uint64_t?
 	unordered_map<uint64_t, ZobristEntry> _hash_table; // FIXME: il faut gérer la taille de la table de transposition
 
 	// Zobrist utilisé

@@ -23,8 +23,8 @@ Board::Board() {
 }
 
 // Constructeur de copie
-Board::Board(const Board& b) {
-	copy_data(b, false, false);
+Board::Board(const Board& b, bool full, bool copy_history) {
+	copy_data(b, full, copy_history);
 }
 
 // Fonction qui copie les attributs d'un tableau
@@ -66,6 +66,7 @@ void Board::copy_data(const Board& b, bool full, bool copy_history) {
 		_game_over_value = b._game_over_value;
 		_quiescence_nodes = b._quiescence_nodes;
 		_displayed_components = b._displayed_components;
+		_transpositions = b._transpositions;
 	}
 }
 
@@ -980,11 +981,6 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 	}
 
 
-	// Total de l'évaluation
-	if (display)
-		main_GUI._eval_components += "--- total: " + (_evaluation >= 0 ? string("+") : string()) + to_string(_evaluation) + " ---\n";
-
-
 	// Forteresse
 	if (eval->_push != 0.0f) {
 		const float push = 1 - static_cast<float>(_half_moves_count) * eval->_push / max_half_moves;
@@ -992,6 +988,10 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
 			main_GUI._eval_components += "fortress: " + to_string(static_cast<int>(100 - push * 100)) + "%\n";
 		_evaluation *= push;
 	}
+
+	// Total de l'évaluation
+	if (display)
+		main_GUI._eval_components += "TOTAL: " + (_evaluation >= 0 ? string("+") : string()) + to_string(_evaluation) + "\n";
 
 	// Chances de gain
 	const float win_chance = get_winning_chances_from_eval(_evaluation, true);
@@ -1241,6 +1241,8 @@ void Board::from_fen(string fen)
 
 	_new_board = true;
 	_quiescence_nodes = 0;
+	_nodes = 0;
+	_transpositions = 0;
 
 	reset_eval();
 
@@ -1896,7 +1898,7 @@ bool Board::draw() {
 	main_GUI.slider_text(main_GUI._global_pgn, main_GUI._text_size / 2, main_GUI._board_padding_y + main_GUI._board_size + main_GUI._text_size * 2, main_GUI._screen_width - main_GUI._text_size, main_GUI._screen_height - (main_GUI._board_padding_y + main_GUI._board_size + main_GUI._text_size * 2) - main_GUI._text_size / 3, main_GUI._text_size / 3, &main_GUI._pgn_slider, main_GUI._text_color);
 
 	// Analyse de Monte-Carlo
-	string monte_carlo_text = static_cast<string>(main_GUI._grogros_analysis ? "stop GrogrosZero-Auto (CTRL-H)" : "run GrogrosZero-Auto (CTRL-G)") + "\n\nMonte-Carlo research parameters:\nbeta: " + to_string(main_GUI._beta) + " | k_add: " + to_string(main_GUI._k_add) + "\nquiescence depth: " + to_string(main_GUI._quiescence_depth) + " | explore checks: " + (main_GUI._explore_checks ? "true" : "false");
+	string monte_carlo_text = static_cast<string>(main_GUI._grogros_analysis ? "STOP GrogrosZero-Auto (CTRL-H)" : "RUN GrogrosZero-Auto (CTRL-G)") + "\n\nSEARCH PARAMETERS\nbeta: " + to_string(main_GUI._beta) + "\nk_add: " + to_string(main_GUI._k_add) + "\nq_depth: " + to_string(main_GUI._quiescence_depth) + "\nexplore checks: " + (main_GUI._explore_checks ? "true" : "false");
 	if (_tested_moves && main_GUI._drawing_arrows) {
 		// int best_eval = (_player) ? max_value(_eval_children, _tested_moves) : min_value(_eval_children, _tested_moves);
 		int best_move = max_index(_nodes_children, _tested_moves);
@@ -1920,14 +1922,14 @@ bool Board::draw() {
 		float win_chance = get_winning_chances_from_eval(best_eval, _player);
 		if (!_player)
 			win_chance = 1 - win_chance;
-		string win_chances = "\nW/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/0/" + to_string(static_cast<int>(100 * (1 - win_chance))) + "\%\n";
+		string win_chances = "W/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/0/" + to_string(static_cast<int>(100 * (1 - win_chance))) + "\%";
 
 		// Pour l'évaluation statique
 		if (!_displayed_components)
 			evaluate(main_GUI._grogros_eval, true);
 		int max_depth = grogros_main_depth();
 		int n_nodes = total_nodes();
-		monte_carlo_text += "\n\n--- static eval: " + ((_static_evaluation > 0) ? static_cast<string>("+") : static_cast<string>("")) + to_string(_static_evaluation) + " ---\n" + main_GUI._eval_components + "\n--- dynamic eval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) + eval + " ---" + win_chances + "\nnodes: " + int_to_round_string(n_nodes) + "/" + int_to_round_string(monte_buffer._length) + " | time: " + clock_to_string(_time_monte_carlo) + "s | speed: " + int_to_round_string(total_nodes() / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s" + " | depth: " + to_string(max_depth) + "\nquiescence: " + int_to_round_string(_quiescence_nodes) + "N" + " | speed: " + int_to_round_string(_quiescence_nodes / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s";
+		monte_carlo_text += "\n\nSTATIC EVAL\n" + main_GUI._eval_components + "\ntime: " + clock_to_string(_time_monte_carlo) + "s\ndepth: " + to_string(max_depth) + "\neval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) + eval + "\n" + win_chances + "\nnodes: " + int_to_round_string(n_nodes) + "/" + int_to_round_string(monte_buffer._length) + " (" + int_to_round_string(total_nodes() / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s)\nquiescence : " + int_to_round_string(_quiescence_nodes) + "N (" + int_to_round_string(_quiescence_nodes / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s)\ntranspositions : " + int_to_round_string(_transpositions) + " (" + int_to_round_string(_transpositions / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "T/s)";
 
 		// Affichage des paramètres d'analyse de Monte-Carlo
 		main_GUI.slider_text(monte_carlo_text, main_GUI._board_padding_x + main_GUI._board_size + main_GUI._text_size / 2, main_GUI._text_size, main_GUI._screen_width - main_GUI._text_size - main_GUI._board_padding_x - main_GUI._board_size, main_GUI._board_size * 9 / 16, main_GUI._text_size / 3, &main_GUI._monte_carlo_slider, main_GUI._text_color);
@@ -2389,32 +2391,100 @@ void Board::prepare_grogros_zero(int* nodes, clock_t begin_monte_time, int depth
 // Fonction qui explore un coup pour l'algo de grogros_zero
 void Board::explore_new_move(Evaluator* eval, int quiescence_depth, bool explore_checks, int correction)
 {
-	// Prend une nouvelle place dans le buffer
-	const int index = monte_buffer.get_first_free_index();
+	// *** TEST ***
 
-	// Stocke l'index du plateau dans le buffer pour ce coup
-	_index_children[_current_move] = index;
+	// Crée un plateau fils test
+	Board b(*this);
 
-	// Rend actif le plateau fils
-	monte_buffer._heap_boards[index]._is_active = true;
+	// Joue le nouveau coup
+	b.make_index_move(_current_move);
+	b.get_zobrist_key();
 
-	// Joue un nouveau coup
-	monte_buffer._heap_boards[index].copy_data(*this, false, true);
-	monte_buffer._heap_boards[index].make_index_move(_current_move, false, false, true);
+	// Regarde si la position existe déjà dans la table de transposition
+	if (false && transposition_table._hash_table.find(b._zobrist_key) != transposition_table._hash_table.end()) {
+		// Prend l'index du plateau dans le buffer
+		const int index = transposition_table._hash_table[b._zobrist_key]._board_index;
 
-	// Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
-	monte_buffer._heap_boards[index]._evaluation = monte_buffer._heap_boards[index].quiescence(eval, -INT32_MAX, INT32_MAX, quiescence_depth, explore_checks) * -get_color() + correction;
-	_quiescence_nodes += monte_buffer._heap_boards[index]._quiescence_nodes;
+		// Stocke l'index du plateau dans le buffer pour ce coup
+		_index_children[_current_move] = index;
 
-	_eval_children[_current_move] = monte_buffer._heap_boards[index]._evaluation;
-	_nodes_children[_current_move] = 1;
+		_eval_children[_current_move] = monte_buffer._heap_boards[index]._evaluation;
+		_nodes_children[_current_move] = monte_buffer._heap_boards[index]._nodes;
 
-	// Actualise la valeur d'évaluation du plateau
-	_evaluation = (_player && _eval_children[_current_move] > _evaluation) ? _eval_children[_current_move] : (!_player && _eval_children[_current_move] < _evaluation) ? _eval_children[_current_move] : _evaluation;
+		// Actualise la valeur d'évaluation du plateau
+		_evaluation = (_player && _eval_children[_current_move] > _evaluation) ? _eval_children[_current_move] : (!_player && _eval_children[_current_move] < _evaluation) ? _eval_children[_current_move] : _evaluation;
+	
+		// Incrémentation du nombre de transpositions
+		_transpositions++;
+	}
 
-	// Incrémentation des coups
+	// Le plateau n'est pas dans la table de transposition
+	else {
+		// Prend une nouvelle place dans le buffer
+		const int index = monte_buffer.get_first_free_index();
+
+		// Stocke l'index du plateau dans le buffer pour ce coup
+		_index_children[_current_move] = index;
+
+		// Rend actif le plateau fils
+		monte_buffer._heap_boards[index]._is_active = true;
+
+		// Joue un nouveau coup
+		monte_buffer._heap_boards[index].copy_data(*this, false, true);
+		monte_buffer._heap_boards[index].make_index_move(_current_move, false, false, true);
+
+		// Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
+		monte_buffer._heap_boards[index]._evaluation = monte_buffer._heap_boards[index].quiescence(eval, -INT32_MAX, INT32_MAX, quiescence_depth, explore_checks) * -get_color() + correction;
+		_quiescence_nodes += monte_buffer._heap_boards[index]._quiescence_nodes;
+
+		_eval_children[_current_move] = monte_buffer._heap_boards[index]._evaluation;
+		_nodes_children[_current_move] = 1;
+
+		// Actualise la valeur d'évaluation du plateau
+		_evaluation = (_player && _eval_children[_current_move] > _evaluation) ? _eval_children[_current_move] : (!_player && _eval_children[_current_move] < _evaluation) ? _eval_children[_current_move] : _evaluation;
+
+		// Ajout de la position dans la table de transposition
+		get_zobrist_key();
+		ZobristEntry zobrist_entry(index);
+		transposition_table._hash_table[_zobrist_key] = zobrist_entry;
+	}
+
+	// Incrémentation des indices
 	_current_move++;
 	_tested_moves++;
+
+	// *** FIN TEST ***
+
+
+
+	//// Prend une nouvelle place dans le buffer
+	//const int index = monte_buffer.get_first_free_index();
+
+	//// Stocke l'index du plateau dans le buffer pour ce coup
+	//_index_children[_current_move] = index;
+
+	//// Rend actif le plateau fils
+	//monte_buffer._heap_boards[index]._is_active = true;
+
+	//// Joue un nouveau coup
+	//monte_buffer._heap_boards[index].copy_data(*this, false, true);
+	//monte_buffer._heap_boards[index].make_index_move(_current_move, false, false, true);
+
+	//// Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
+	//monte_buffer._heap_boards[index]._evaluation = monte_buffer._heap_boards[index].quiescence(eval, -INT32_MAX, INT32_MAX, quiescence_depth, explore_checks) * -get_color() + correction;
+	//_quiescence_nodes += monte_buffer._heap_boards[index]._quiescence_nodes;
+
+	//_eval_children[_current_move] = monte_buffer._heap_boards[index]._evaluation;
+	//_nodes_children[_current_move] = 1;
+
+	//// Actualise la valeur d'évaluation du plateau
+	//_evaluation = (_player && _eval_children[_current_move] > _evaluation) ? _eval_children[_current_move] : (!_player && _eval_children[_current_move] < _evaluation) ? _eval_children[_current_move] : _evaluation;
+
+	//// Incrémentation des coups
+	//_current_move++;
+	//_tested_moves++;
+
+	
 }
 
 // Fonction qui explore un noeud fils de manière pseudo-aléatoire pour l'algo de grogros_zero
@@ -2464,6 +2534,7 @@ void Board::reset_board(const bool display) {
 	_nodes = 0;
 	_quiescence_nodes = 0;
 	_zobrist_key = 0;
+	_transpositions = 0;
 
 	if (!_new_board) {
 		_tested_moves = 0;
@@ -4146,7 +4217,7 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, boo
 		else if (explore_checks)
 		{
 			Board b;
-			b.copy_data(*this); // Should we check the repetitions here?
+			b.copy_data(*this); // FIXME: Est-ce qu'on doit regarder les répétitions ici?
 			b.make_move(move);
 
 			if (!main_player || b.in_check())

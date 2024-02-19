@@ -327,18 +327,21 @@ public:
 	vector<uint64_t> _positions_history = {};
 	//unordered_map<uint_fast64_t, int> _positions_history = {};
 
+	// Nombre de transpositions
+	int _transpositions = 0;
+
 
 	// Constructeur par défaut
 	Board();
 
 	// Constructeur de copie
-	Board(const Board&);
+	Board(const Board&, bool full = false, bool copy_history = false);
 
 	// Opérateur d'égalité (compare seulement le placement des pièces, droits de roques, et nombre de coups)
 	bool operator== (const Board&) const;
 
 	// Fonction qui copie les attributs d'un plateau (full copy: on copie tout)
-	void copy_data(const Board&, bool full = false, bool history = false);
+	void copy_data(const Board&, bool full = false, bool copy_history = false);
 
 	// Fonction qui ajoute un coup dans la liste de coups
 	bool add_move(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
