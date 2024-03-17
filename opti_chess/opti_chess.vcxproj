@@ -234,6 +234,7 @@
   <ItemGroup>
     <ClCompile Include="buffer.cpp" />
     <ClCompile Include="evaluation.cpp" />
+    <ClCompile Include="exploration.cpp" />
     <ClCompile Include="game_tree.cpp" />
     <ClCompile Include="gui.cpp" />
     <ClCompile Include="main.cpp" />
@@ -249,6 +250,7 @@
   <ItemGroup>
     <ClInclude Include="buffer.h" />
     <ClInclude Include="evaluation.h" />
+    <ClInclude Include="exploration.h" />
     <ClInclude Include="game_tree.h" />
     <ClInclude Include="gui.h" />
     <ClInclude Include="neural_network.h" />

@@ -122,6 +122,12 @@ inline int main_ui() {
 	// Initialisation du buffer de Monte-Carlo
 	monte_buffer.init(buffer_size);
 
+	// Noeud d'exploration
+	// Plateau test: rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2
+	Board test_board;
+	//test_board.from_fen("rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2");
+	main_GUI._root_exploration_node = new Node(test_board, 0, Move());
+
 
 	// Boucle principale (Quitter à l'aide de la croix, ou en faisant échap)
 	while (!WindowShouldClose()) {
@@ -189,7 +195,13 @@ inline int main_ui() {
 			cout << main_GUI._board._quiescence_nodes << endl;*/
 
 			//main_GUI.grogros_zero_threaded(main_GUI._grogros_eval, 50000);
-			main_GUI.thread_grogros_zero(main_GUI._grogros_eval, 1000);
+			//main_GUI.thread_grogros_zero(main_GUI._grogros_eval, 1000);
+
+			//main_GUI._board.grogros_quiescence(main_GUI._grogros_eval);
+
+			main_GUI._root_exploration_node->grogros_zero(monte_buffer, *main_GUI._grogros_eval, main_GUI._beta, main_GUI._k_add, 50000);
+			cout << main_GUI._root_exploration_node->_nodes << endl;
+			cout << main_GUI._root_exploration_node->_board._evaluation << endl;
 		}
 
 		// CTRL-T - Cherche le plateau de chess.com sur l'écran, et lance une partie

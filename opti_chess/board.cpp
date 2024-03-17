@@ -761,10 +761,28 @@ int Board::pieces_positioning(const Evaluator* eval) const
 }
 
 // Fonction qui évalue la position à l'aide d'heuristiques
-bool Board::evaluate(Evaluator* eval, const bool display, Network* n)
+bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check_game_over)
 {
 	/*if (_evaluated)
 		return false;*/
+
+	if (check_game_over) {
+		is_game_over();
+
+		// Nulle
+		if (_game_over_value == 2) {
+			_evaluation = 0;
+			_evaluated = true;
+			return true;
+		}
+
+		// Mat
+		if (_game_over_value != 0) {
+			_evaluation = -mate_value + _moves_count * mate_ply;
+			_evaluated = true;
+			return true;
+		}
+	}
 
 	_displayed_components = display;
 	if (display)
@@ -2437,13 +2455,19 @@ void Board::explore_new_move(Evaluator* eval, int quiescence_depth, bool explore
 
 		// Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
 		monte_buffer._heap_boards[index]._evaluation = monte_buffer._heap_boards[index].quiescence(eval, -INT32_MAX, INT32_MAX, quiescence_depth, explore_checks) * -get_color() + correction;
+		//monte_buffer._heap_boards[index]._evaluation = monte_buffer._heap_boards[index].grogros_quiescence(eval, -INT32_MAX, INT32_MAX, quiescence_depth, explore_checks) * -get_color() + correction;
 		_quiescence_nodes += monte_buffer._heap_boards[index]._quiescence_nodes;
+		_nodes += monte_buffer._heap_boards[index]._nodes;
 
 		_eval_children[_current_move] = monte_buffer._heap_boards[index]._evaluation;
 		_nodes_children[_current_move] = 1;
 
 		// Actualise la valeur d'évaluation du plateau
-		_evaluation = (_player && _eval_children[_current_move] > _evaluation) ? _eval_children[_current_move] : (!_player && _eval_children[_current_move] < _evaluation) ? _eval_children[_current_move] : _evaluation;
+		int eval_child = _eval_children[_current_move];
+		if (_player)
+			_evaluation = max(eval_child, _evaluation);
+		else
+			_evaluation = min(eval_child, _evaluation);
 
 		// Ajout de la position dans la table de transposition
 		get_zobrist_key();
@@ -6272,3 +6296,143 @@ void Board::display_positions_history() const
 		cout << x << endl;
 	}
 }
+
+// Quiescence search pour l'algo de GrogrosZero
+int Board::grogros_quiescence(Evaluator* eval, int alpha, const int beta, int depth, bool explore_checks, bool main_player)
+{
+	// Positions tests pour voir la vitesse et la précision:
+	//r4rk1/1q1nb1p1/bpn1pp2/pB1pP2Q/3p4/N1P4R/PP3PPP/R1B3K1 w - - 0 18 : 51kN/s (dont 450N/s discrets)
+
+
+	// Compte le nombre de noeuds visités
+	//_quiescence_nodes = 1;
+	_nodes = 1;
+
+	// Si la partie est terminée
+	is_game_over();
+	if (_game_over_value == 2) // Nulle
+		return 0;
+	if (_game_over_value != 0) // Mat
+		return -mate_value + _moves_count * mate_ply;
+
+	// Evalue la position initiale
+	evaluate(eval);
+	const int stand_pat = _evaluation * get_color();
+
+	// Si on est en échec (pour ne pas terminer les variantes sur un échec)
+	bool check_extension = in_check();
+
+	if (depth == 0)
+		return stand_pat;
+
+
+	// Beta cut-off
+	if (stand_pat >= beta)
+		return beta;
+
+	// Mise à jour de alpha si l'éval statique est plus grande
+	// Pas de stand_pat si on est en échec
+	if (alpha < stand_pat && !check_extension)
+		alpha = stand_pat;
+
+	// Trie rapidement les coups
+	sort_moves();
+
+	if (_new_board)
+		reset_children();
+
+	for (int i = 0; i < _got_moves; i++) {
+		// TODO : ajouter promotions et échecs
+		// TODO : utiliser des flags
+
+		// Coup
+		Move move = _moves[i];
+
+		// Si c'est une capture
+		if (_array[move.i2][move.j2] != 0 || check_extension)
+		{
+			cout << "capture: " << move_label(move) << "(depth " << depth << ")" << endl;
+
+			// TEST
+			_tested_moves = i;
+			_current_move = i;
+			// TODO: _quiescence_moves? avec un array de coup pour dire lesquels ont été testés?
+
+			// Prend une nouvelle place dans le buffer
+			const int index = monte_buffer.get_first_free_index();
+
+			// Stocke l'index du plateau dans le buffer pour ce coup
+			_index_children[i] = index;
+
+			// Rend actif le plateau fils
+			monte_buffer._heap_boards[index]._is_active = true;
+
+			// Joue un nouveau coup
+			monte_buffer._heap_boards[index].copy_data(*this);
+			monte_buffer._heap_boards[index].make_move(move);
+
+			const int score = -monte_buffer._heap_boards[index].grogros_quiescence(eval, -beta, -alpha, depth - 1, explore_checks, true);
+			//_quiescence_nodes += monte_buffer._heap_boards[index]._quiescence_nodes;
+			_nodes += monte_buffer._heap_boards[index]._nodes;
+
+			if (score >= beta)
+				return beta;
+
+			if (score > alpha)
+				alpha = score;
+
+			// Delta pruning (TODO : à tester)
+			//if (alpha >= beta - delta)
+			//	return alpha;
+		}
+
+		// Mats
+		// TODO : utiliser les flags 'échec' pour savoir s'il faut regarder ce coup
+		else if (explore_checks)
+		{
+
+			// Regarde si le coup met en échec
+			Board b(*this);
+			b.make_move(move);
+
+			if (!main_player || b.in_check())
+			{
+				cout << "check: " << move_label(move) << "(depth " << depth << ")" << endl;
+
+				// TEST
+				_tested_moves = i;
+				_current_move = i;
+
+				// Prend une nouvelle place dans le buffer
+				const int index = monte_buffer.get_first_free_index();
+
+				// Stocke l'index du plateau dans le buffer pour ce coup
+				_index_children[i] = index;
+
+				// Rend actif le plateau fils
+				monte_buffer._heap_boards[index]._is_active = true;
+
+				// Joue un nouveau coup
+				monte_buffer._heap_boards[index].copy_data(*this, false, true);
+				monte_buffer._heap_boards[index].make_move(move, false, false, true);
+
+				const int score = -monte_buffer._heap_boards[index].grogros_quiescence(eval, -beta, -alpha, depth - 1, explore_checks, !main_player);
+				//_quiescence_nodes += monte_buffer._heap_boards[index]._quiescence_nodes;
+				_nodes += monte_buffer._heap_boards[index]._nodes;
+
+				if (score >= beta)
+					return beta;
+
+				if (score > alpha)
+					alpha = score;
+
+				// Delta pruning (TODO : à tester)
+				//if (alpha >= beta - delta)
+				//	return alpha;
+			}
+		}
+	}
+
+	return alpha;
+}
+
