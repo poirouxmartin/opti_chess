@@ -6,6 +6,7 @@
 #include <vector>
 #include "board.h"
 #include "game_tree.h"
+#include "exploration.h"
 
 using namespace std;
 
@@ -350,6 +351,9 @@ public:
 
 	// Nombre de coups pour une répétition
 	int _max_repetition = 1;
+
+	// Noeud de l'arbre d'exploration
+	Node *_root_exploration_node;
 
 
 	// Constructeurs
