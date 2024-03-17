@@ -273,6 +273,9 @@ r3k2r/1ppq2pp/p1pbbpn1/8/3PP3/2N1BN1P/PP3PP1/R2Q1RK1 w kq - 3 13 : Grogros veut 
 r1b4R/pp3k1p/3p1p2/3p4/8/3B4/P1P3PP/6K1 b - - 3 25 : gagnant pour les blancs malgré les deux pions de moins (les deux pièces sont bloquées)
 8/4r3/8/2k5/1p6/2ppP1P1/5P1P/1RR2K2 b - - 1 38 : complètement gagnant pour les noirs (les pions passés liés sont trop forts)
 8/1K6/5k1p/6p1/Pb4P1/5N1P/8/8 b - - 0 43 : complètement gagnant pour les blancs
+4kr2/1q1n2RQ/rpn1pp2/p2pP3/3p1B2/P1P5/P4PPP/R5K1 b - - 0 24 : position quasi gagnante pour les blancs
+8/1q3Q2/rpkBp3/p2p4/3n4/P7/P1p2PPP/4RK2 w - - 1 35 : Dxb7 et la finale gagne
+2k3r1/p2b2r1/1bpQp3/2NpP2q/8/2N3B1/PPP2P1P/R4R1K w - - 8 21 : là c'est nulle
 
 
 ----- Problèmes -----
@@ -365,7 +368,7 @@ r4qk1/pp6/3ppBBp/8/1n5Q/8/PPP2PPP/2KR4 w - - 0 1 : Fh5 #12
 r1bq1rk1/pp2nppp/2n1p3/2ppP3/3P4/P1PB1N2/2P2PPP/R1BQK2R w KQ - 0 1 : greek gift
 r2kr3/pR1b1qpp/2p2b2/2P1R3/3P4/P5Q1/2P2PPP/2B3K1 w - - 3 23 : Te7 mate
 r1bq1r2/p4pk1/1p1ppn2/6B1/3Q1P2/1BP4P/P5P1/5RK1 w - - 0 20 : Tf3 gagne
-rnbqrk2/pp2bppB/2p2n2/3p2N1/7Q/2N5/PPP2PPP/2KRR3 w - - 3 14 : Be4 Kg8 Nxd5 +1
+rnbqrk2/pp2bppB/2p2n2/3p2N1/7Q/2N5/PPP2PPP/2KRR3 w - - 3 14 : Fe4 Rg8 Cxd5 +1
 r1b2b1r/pppp2p1/2n2k1p/3Q2N1/4n3/q1P5/P1P2PPP/R4RK1 w - - 0 4 : Df7+ #8
 r1b5/pppp2qk/2nb4/6Pp/4R3/2P1Q3/P1P3P1/5RK1 w - - 1 14 : Tf6 +3
 r2n2k1/2p2Rpp/1p2P3/3p4/8/2P4P/p5P1/R5K1 w - - 2 34 : Txa2 gagne
@@ -399,7 +402,7 @@ r4r1b/pp1qnpk1/2n1p1p1/2p3N1/4P3/7Q/PPP2PP1/RNB1K3 w Q - 2 3 : e5 seul coup
 rnbqkbnr/8/p1p1p1p1/PpPpPpPp/1P1P1P1P/8/8/RNBQKBNR w KQkq - 1 13 : test de position fermée
 r1bqkb1r/3nn3/p1p1p1p1/PpPpPpPp/1P1P1P1P/6N1/4B3/RNBQK2R b KQkq - 6 15 : attention, Fxh5 au prochain coup !
 3q3k/2p4p/p2pB3/7P/1n1PPQP1/r1p5/8/1K1R2R1 b - - 0 2 : Cd3 gagne
-1q5k/2p2Q1p/p2p4/7P/1n1PP1P1/1rp5/8/2KR2R1 b - - 3 6 : Tb8+ #8
+1q5k/2p2Q1p/p2p4/7P/1n1PP1P1/1rp5/8/2KR2R1 b - - 3 6 : Tb1+ #8
 r3r1k1/ppp4q/1n3Q2/3p1P2/5P2/2q5/PpPqN1B1/1K5R w - - 0 26 : Fxd5 #5
 r3r1k1/ppp5/5Qq1/3n1P2/5P2/2q5/PpPqN3/1K4R1 w - - 2 28 : Txg6 #2........ (il regarde pas parce que c'est -40)
 8/7p/4k1p1/p2Nrp2/2P5/2KB3P/8/8 b - - 2 45 : Txd5 gagne facilement
@@ -588,6 +591,19 @@ r2b2kr/1b2np1p/p2q1n1B/8/3p3N/3R4/2Q2PPP/1B2R1K1 w - - 8 25 : Txe7 et c'est fini
 8/1K6/P6p/2b3p1/2N3P1/6kP/8/8 w - - 7 50 : Cb6, interposation gagnante
 3b4/7p/6p1/6N1/8/6k1/6P1/5K2 w - - 14 51 : Cxh7 perd instant...
 nbbrqrk1/pp4pp/7n/4p3/3pP3/1P3N1P/PB3PP1/NB1RQRK1 b - - 0 10 : Txf3!! gagne
+2rq1rk1/p3nppp/bp2pb2/4N3/3P1BQ1/1BPR4/P4PPP/5RK1 w - - 10 17 : Txh3! quasi gagnant
+2rr2k1/p3qpp1/bpn1pb1p/4N2Q/3P1B2/1BP4R/P4PPP/5RK1 w - - 0 19 : Fxh6 gagne
+r4rk1/1q1nbppp/bpn1p3/pBppP1N1/3P4/N1P5/PP3PPP/R1BQR1K1 w - - 10 14 : Cxh7!! suivi de Dh5 et Te3 gagne quasiment
+r4rk1/1q1nbpp1/bpn1p3/pBppP2Q/3P4/N1P5/PP3PPP/R1B1R1K1 w - - 2 16 : Te3 très fort
+r4rk1/1q1nb1p1/bpn1p3/pBppp2Q/3P4/N1P3R1/PP3PPP/R1B3K1 w - - 0 18 : Txg7 quasi gagnant
+r4rk1/1q1nb1p1/bpn1pp2/pB1pP2Q/3p4/N1P4R/PP3PPP/R1B3K1 w - - 0 18 : il faut trouver ici Fh6!! qui gagne quasiment (menace Fxh7 et mat en h8)
+r4r2/1q1nbkpQ/bpn1pp2/pB1pP3/3p1B2/N1P3R1/PP3PPP/R5K1 b - - 7 21 : Tg8 perd après Dg6+ puis Fh6
+4k3/1q3rR1/rp2pnQ1/p2p4/3n1B2/P1p5/P4PPP/4R1K1 w - - 4 28 : Te3 seul coup qui gagne (introuvable)
+4k3/1q3rR1/rp2pnQ1/p2p4/3n1B2/P3R3/P1p2PPP/6K1 w - - 0 29 : Th3 gagne
+4k3/q4rR1/rp1BpnQ1/p2p4/3n4/P7/P1p2PPP/4R1K1 w - - 2 31 : Rf1!! gagne (quasi?)
+2kq2r1/p2b2r1/1bpQp3/2NpP3/5B2/2N5/PPP2P1P/R4R1K b - - 5 19 : Dh4 fait nulle
+1r1q1rk1/4ppbp/b2p1n2/2pP2Bp/8/2N2NP1/PPQ1PPB1/2KR4 b - - 7 6 : Txb2 gagne assez violemment
+5r1k/4Npbp/b2p4/q1p3Bp/8/5NP1/PrQ1PPB1/2K4R w - - 1 10 : Dxh7+!! gagne
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---

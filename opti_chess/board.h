@@ -389,7 +389,7 @@ public:
 	int pieces_positioning(const Evaluator* eval = nullptr) const;
 
 	// Fonction qui évalue la position à l'aide d'heuristiques
-	bool evaluate(Evaluator* eval = nullptr, bool display = false, Network* n = nullptr);
+	bool evaluate(Evaluator* eval = nullptr, bool display = false, Network* n = nullptr, bool check_game_over = false);
 
 	// Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
 	int negamax(int, int, int, bool, Evaluator*, bool play = false, bool display = false, int quiescence_depth = 8, int null_depth = 2);
@@ -403,10 +403,10 @@ public:
 	// Fonction qui renvoie le FEN du tableau
 	[[nodiscard]] string to_fen() const;
 
-	// Fonction qui renvoie le gagnant si la partie est finie (-1/1), et 0 sinon
+	// Fonction qui renvoie le gagnant si la partie est finie (-1/1, et 2 pour nulle), et 0 sinon
 	int game_over(int max_repetitions);
 
-	// Fonction qui renvoie le gagnant si la partie est finie (-1/1), et 0 sinon (et stocke sa valeur)
+	// Fonction qui renvoie le gagnant si la partie est finie (-1/1, et 2 pour nulle), et 0 sinon -> et stocke la valeur dans _game_over_value
 	int is_game_over(int max_repetitions = 1);
 
 	// Fonction qui renvoie le label d'un coup
@@ -633,6 +633,9 @@ public:
 
 	// Affiche l'histoirque des positions (les clés de Zobrist)
 	void display_positions_history() const;
+
+	// Quiescence search pour l'algo de GrogrosZero
+	int grogros_quiescence(Evaluator* eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool explore_checks = true, bool main_player = true);
 };
 
 // Fonction qui joue un match entre deux IA utilisant GrogrosZero, et une évaluation par réseau de neurones ou des évaluateurs, avec un certain nombre de noeuds de calcul
