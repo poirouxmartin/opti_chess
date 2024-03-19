@@ -322,7 +322,47 @@ void GUI::draw_monte_carlo_arrows()
 
 	for (const int i : moves_vector) {
 		const int mate = _board.is_eval_mate(_board._eval_children[i]);
-		draw_arrow_from_coord(_board._moves[i].i1, _board._moves[i].j1, _board._moves[i].i2, _board._moves[i].j2, i, _board.get_color(), move_color(_board._nodes_children[i], sum_nodes), -1.0f, true, _board._eval_children[i], mate, i == best_move);
+		draw_arrow_from_coord(_board._moves[i].i1, _board._moves[i].j1, _board._moves[i].i2, _board._moves[i].j2, _board._player, move_color(_board._nodes_children[i], sum_nodes), -1.0f, true, _board._eval_children[i], mate, i == best_move);
+	}
+}
+
+// Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo
+void GUI::draw_exploration_arrows(Node node)
+{
+	// Vecteur de flèches à afficher
+	_grogros_arrows.clear();
+
+	// Coup à surligner
+	const int best_move = node.get_most_explored_child();
+
+	// Une pièce est-elle sélectionnée?
+	const bool is_selected = _selected_pos.i != -1 && _selected_pos.j != -1;
+
+	// Crée un vecteur avec les coups visibles
+	vector<int> moves_vector;
+	for (int i = 0; i < node.children_count(); i++) {
+		Move move = node._children[i]->_move;
+
+		// Si une pièce est sélectionnée, dessine toutes les flèches pour cette pièce
+		if (is_selected) {
+			if (_selected_pos.i == move.i1 && _selected_pos.j == move.j1)
+				moves_vector.push_back(i);
+		}
+
+		// Sinon, dessine les flèches pour les coups les plus explorés
+		else {
+			if (node._children[i]->_nodes / static_cast<float>(node._nodes) > _arrow_rate)
+				moves_vector.push_back(i);
+		}
+	}
+
+	// Trie les coups en fonction du nombre de noeuds et d'un affichage plus lisible
+	sort(moves_vector.begin(), moves_vector.end(), compare_move_arrows);
+
+	// Dessine les flèches
+	for (const int move_index : moves_vector) {
+		const int mate = node._children[move_index]->_board.is_eval_mate(node._children[move_index]->_board._evaluation);
+		draw_arrow(node._children[move_index]->_move, node._board._player, move_color(node._children[move_index]->_nodes, node._nodes), -1.0f, true, node._children[move_index]->_board._evaluation, mate, move_index == best_move);
 	}
 }
 
@@ -340,14 +380,19 @@ void GUI::switch_orientation() {
 }
 
 // Fonction aidant à l'affichage du plateau (renvoie i si board_orientation, et 7 - i sinon)
-int GUI::orientation_index(const int i) {
+int GUI::orientation_index(const int i) const {
 	if (_board_orientation)
 		return i;
 	return 7 - i;
 }
 
+// Fonction qui dessine la flèche d'un coup
+void GUI::draw_arrow(const Move move, const bool player, Color c, float thickness, const bool use_value, int value, const int mate, const bool outline) {
+	draw_arrow_from_coord(move.i1, move.j1, move.i2, move.j2, player, c, thickness, use_value, value, mate, outline);
+}
+
 // A partir de coordonnées sur le plateau
-void GUI::draw_arrow_from_coord(int i1, int j1, int i2, int j2, int index, const int player, Color c, float thickness, const bool use_value, int value, const int mate, const bool outline)
+void GUI::draw_arrow_from_coord(const int i1, const int j1, const int i2, const int j2, const bool player, Color c, float thickness, const bool use_value, int value, const int mate, const bool outline)
 {
 	if (thickness == -1.0f)
 		thickness = _arrow_thickness;
@@ -382,7 +427,7 @@ void GUI::draw_arrow_from_coord(int i1, int j1, int i2, int j2, int index, const
 		char v[4];
 		string eval;
 		if (mate != 0) {
-			if (mate * player > 0)
+			if (mate * (player ? 1 : -1) > 0)
 				eval = "+";
 			else
 				eval = "-";
@@ -394,7 +439,7 @@ void GUI::draw_arrow_from_coord(int i1, int j1, int i2, int j2, int index, const
 		else {
 #pragma warning(suppress : 4996)
 			if (_display_win_chances)
-				value = float_to_int(100.0f * get_winning_chances_from_eval(value, _board._player));
+				value = float_to_int(100.0f * get_winning_chances_from_eval(value, player));
 			sprintf_s(v, "%d", value);
 		}
 

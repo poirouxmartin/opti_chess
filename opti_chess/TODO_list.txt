@@ -139,6 +139,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Pions passés: prendre en compte les contrôles des alliés pour pousser les pions
 	- Règle des 2 faiblesses : si y'a 2 faiblesses attaquables, ça donne un avantage
 	- Winnable? en endgame par exemple si on a qu'un fou on peut pas gagner
+	- Redonner de la valeur pour la dame, car les tours on beaucoup d'évaluations différentes qui leur donnent de la valeur
 
 -> Faire une policy pour les coups (ou des préférences de réflexion)
 -> Livres d'ouvertures, tables d'engame?

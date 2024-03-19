@@ -1788,8 +1788,11 @@ bool Board::draw() {
 	}
 
 	// Coups auquel l'IA réflechit...
-	if (main_GUI._drawing_arrows)
+	if (main_GUI._drawing_arrows) {
 		main_GUI.draw_monte_carlo_arrows();
+		//main_GUI.draw_exploration_arrows(*main_GUI._root_exploration_node);
+	}
+		
 
 	// Pièces non-capturables
 	for (int i = 0; i < 8; i++) {
