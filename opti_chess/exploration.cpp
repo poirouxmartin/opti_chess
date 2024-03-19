@@ -2,8 +2,7 @@
 #include "useful_functions.h"
 
 // Constructeur avec un plateau, un indice et un coup
-Node::Node(Board board, int index, Move move)
-{
+Node::Node(Board board, int index, Move move) {
 	_board = board;
 	_index = index;
 	_move = move;
@@ -43,8 +42,7 @@ void Node::add_child(Node* child) {
 }
 
 // Nouveau GrogrosZero
-void Node::grogros_zero(Buffer buffer, Evaluator eval, float beta, float k_add, int nodes)
-{
+void Node::grogros_zero(Buffer buffer, Evaluator eval, float beta, float k_add, int nodes) {
 	// TODO:
 	// On peut rajouter la profondeur
 	// Garder le temps de calcul
@@ -89,8 +87,7 @@ void Node::grogros_zero(Buffer buffer, Evaluator eval, float beta, float k_add, 
 }
 
 // Fonction qui explore un nouveau coup
-void Node::explore_new_move(Buffer buffer, Evaluator eval)
-{
+void Node::explore_new_move(Buffer buffer, Evaluator eval) {
 	// On prend le premier coup non exploré
 	const int move_index = get_first_unexplored_move_index();
 	Move move = _board._moves[move_index];
@@ -123,8 +120,7 @@ void Node::explore_new_move(Buffer buffer, Evaluator eval)
 }
 
 // Fonction qui explore dans un plateau fils pseudo-aléatoire
-void Node::explore_random_child(Buffer buffer, Evaluator eval, float beta, float k_add)
-{
+void Node::explore_random_child(Buffer buffer, Evaluator eval, float beta, float k_add) {
 	// Prend un fils aléatoire
 	int child_index = pick_random_child(beta, k_add);
 
@@ -151,8 +147,7 @@ void Node::explore_random_child(Buffer buffer, Evaluator eval, float beta, float
 }
 
 // Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variantes, en fonction de la grandeur du nombre correspondant à cet index
-int Node::pick_random_child(const float beta, const float k_add)
-{
+int Node::pick_random_child(const float beta, const float k_add) {
 	bool color = _board._player;
 	int n_children = children_count();
 
@@ -198,4 +193,19 @@ int Node::pick_random_child(const float beta, const float k_add)
 	}
 
 	return 0;
+}
+
+// Fonction qui renvoie le fils le plus exploré
+[[nodiscard]] int Node::get_most_explored_child() {
+	int max = 0;
+	int index = 0;
+
+	for (int i = 0; i < children_count(); i++) {
+		if (_children[i]->_nodes > max) {
+			max = _children[i]->_nodes;
+			index = i;
+		}
+	}
+
+	return index;
 }
