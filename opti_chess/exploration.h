@@ -74,6 +74,9 @@ public:
 	// Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
 	[[nodiscard]] int pick_random_child(const float beta, const float k_add);
 
+	// Fonction qui renvoie le fils le plus exploré
+	[[nodiscard]] int get_most_explored_child();
+
 
 	// Fonctions à rajouter: destruction des fils et de soi...
 

@@ -402,8 +402,14 @@ public:
 	// Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo
 	void draw_monte_carlo_arrows();
 
+	// Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo
+	void draw_exploration_arrows(Node node);
+
+	// Fonction qui dessine la flèche d'un coup
+	void draw_arrow(const Move move, const bool player, Color c, float thickness = -1, const bool use_value = false, int value = 0, const int mate = -1, const bool outline = false);
+
 	// A partir de coordonnées sur le plateau (// Thickness = -1 -> default thickness)
-	void draw_arrow_from_coord(int, int, int, int, int, int, Color c, float thickness = -1, bool use_value = false, int value = 0, int mate = -1, bool outline = false);
+	void draw_arrow_from_coord(const int i1, const int j1, const int i2, const int j2, const bool player, Color c, float thickness = -1, const bool use_value = false, int value = 0, const int mate = -1, bool outline = false);
 
 	// Couleur de la flèche en fonction du coup (de son nombre de noeuds)
 	Color move_color(int, int) const;
@@ -478,7 +484,7 @@ public:
 	void switch_orientation();
 
 	// Fonction aidant à l'affichage du plateau (renvoie i si board_orientation, et 7 - i sinon)
-	int orientation_index(int);
+	int orientation_index(int) const;
 };
 
 // Instantiation de la GUI globale
