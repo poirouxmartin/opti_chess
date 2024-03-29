@@ -276,6 +276,10 @@ r1b4R/pp3k1p/3p1p2/3p4/8/3B4/P1P3PP/6K1 b - - 3 25 : gagnant pour les blancs mal
 4kr2/1q1n2RQ/rpn1pp2/p2pP3/3p1B2/P1P5/P4PPP/R5K1 b - - 0 24 : position quasi gagnante pour les blancs
 8/1q3Q2/rpkBp3/p2p4/3n4/P7/P1p2PPP/4RK2 w - - 1 35 : Dxb7 et la finale gagne
 2k3r1/p2b2r1/1bpQp3/2NpP2q/8/2N3B1/PPP2P1P/R4R1K w - - 8 21 : là c'est nulle
+3q1r2/pp1b1pk1/4p3/3pPnB1/3P4/P2Q3N/5P1P/n4RK1 b - - 1 22 : blancs mieux (roi noir faible)
+5r2/pp1b1p1k/1q2pB2/3pPnN1/3P4/P7/3Q1P1P/n4RK1 b - - 7 25 : le roi noir est bloqué sur deux colonnes ouvertes, il est complètement foutu
+5rk1/pp1b1pn1/1q2pB2/3pP1N1/3P4/P7/5P1P/n2Q1RK1 w - - 10 27 : Dg4 ça mate
+5rk1/pp1b1pn1/1q2pB2/3pP3/3P2Q1/P4N2/2n2P1P/5RK1 b - - 13 28 : #1 imparable
 
 
 ----- Problèmes -----
@@ -604,6 +608,7 @@ r4r2/1q1nbkpQ/bpn1pp2/pB1pP3/3p1B2/N1P3R1/PP3PPP/R5K1 b - - 7 21 : Tg8 perd aprè
 2kq2r1/p2b2r1/1bpQp3/2NpP3/5B2/2N5/PPP2P1P/R4R1K b - - 5 19 : Dh4 fait nulle
 1r1q1rk1/4ppbp/b2p1n2/2pP2Bp/8/2N2NP1/PPQ1PPB1/2KR4 b - - 7 6 : Txb2 gagne assez violemment
 5r1k/4Npbp/b2p4/q1p3Bp/8/5NP1/PrQ1PPB1/2K4R w - - 1 10 : Dxh7+!! gagne
+8/p6p/7p/p6p/b2Q3p/K6p/p1r5/rk3n1n w - - 0 1 : Dd1+ #130
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---

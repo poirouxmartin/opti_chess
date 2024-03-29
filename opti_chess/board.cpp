@@ -1721,9 +1721,22 @@ bool Board::draw() {
 	// Nombre de FPS
 	DrawTextEx(main_GUI._text_font, ("FPS : " + to_string(GetFPS())).c_str(), { main_GUI._screen_width - 3 * main_GUI._text_size, main_GUI._text_size / 3 }, main_GUI._text_size / 3, main_GUI._font_spacing, main_GUI._text_color);
 	//DrawTextEx(GetFontDefault(), "TOTO:♔ \u2654\u2655\u2656\u2657\u2658\u2659\u265A\u265B\u265C\u265D\u265E\u265F", {500, 0}, 20, 1, WHITE);
+	//DrawTextEx(GetFontDefault(), "TEST:\U0001F60A", {500, 0}, 20, 1, WHITE);
+	//Font font = LoadFontEx("resources/fonts/Segoe UI Symbol.ttf", 20, 0, 2500);
+	//Font font = LoadFontEx("resources/fonts/SF TransRobotics.ttf", 64, 0, 500);
+	//DrawTextEx(font, "TEST:\u00E1♔", {500, 0}, 20, 1, WHITE);
+	//DrawTextCodepoint(GetFontDefault(), 2654, {500, 0}, 50, WHITE);
 	//cout << (char)"\u2654" << endl;
+	//cout << (char)176 << endl;
 	//cout << "♔" << endl;
 	//wcout << L'♔' << endl;
+	//cout << "King: \u2654" << endl;
+	//cout << "Smiley face: \U0001F60A" << endl;
+	//const char heart[] = "\xe2\x99\xa5";
+	//std::cout << heart << '\n';
+	//cout << (char)'♜' << endl;
+	/*const char* s = "\u0444";
+	cout << s << endl;*/
 
 	// Plateau
 	main_GUI.draw_rectangle(main_GUI._board_padding_x, main_GUI._board_padding_y, main_GUI._tile_size * 8, main_GUI._tile_size * 8, main_GUI._board_color_light);
@@ -3090,78 +3103,6 @@ int Board::is_eval_mate(const int e) const
 	}
 	else
 		return 0;
-}
-
-// Fonction qui joue un match entre deux IA utilisant GrogrosZero, et une évaluation par réseau de neurones et renvoie le résultat de la partie (1/-1/0)
-int match(Evaluator* e_white, Evaluator* e_black, Network* n_white, Network* n_black, const int nodes, const bool display, const int max_moves) {
-	if (display)
-		cout << "Match (" << max_moves << " moves max)" << endl;
-
-	Board b;
-
-	// Jeu
-	while (b.is_game_over() == 0) {
-		if (b._player)
-			b.grogros_zero(e_white, nodes, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, true, false, 0, n_white);
-		else
-			b.grogros_zero(e_black, nodes, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, true, false, 0, n_black);
-		b.play_monte_carlo_move_keep(b._moves[b.best_monte_carlo_move()], false, true, false);
-
-		// Limite de coups
-		if (max_moves && b._player && b._moves_count > max_moves)
-			break;
-	}
-
-	int g = b.is_game_over();
-	if (g == 2)
-		return 0;
-
-	return -g * b.get_color();
-}
-
-// Fonction qui organise un tournoi entre les IA utilisant évaluateurs et réseaux de neurones des listes et renvoie la liste des scores
-int* tournament(Evaluator** evaluators, Network** networks, const int n_players, const int nodes, const int victory, const int draw, const bool display_full, const int max_moves) {
-	cout << "***** Tournament !! " << n_players << " players *****" << endl;
-
-	// Liste des scores
-	const auto scores = new int[n_players];
-	for (int i = 0; i < n_players; i++)
-		scores[i] = 0;
-
-	for (int i = 0; i < n_players; i++) {
-		if (display_full)
-			cout << "\n***** Round : " << i + 1 << "/" << n_players << " *****" << endl;
-
-		for (int j = 0; j < n_players; j++) {
-			if (i != j) {
-				if (display_full)
-					cout << "\nPlayer " << i << " vs Player " << j << endl;
-				const int result = match(evaluators[i], evaluators[j], networks[i], networks[j], nodes, display_full, max_moves);
-				if (result == 1) {
-					if (display_full)
-						cout << "1-0" << endl;
-					scores[i] += victory;
-				}
-				else if (result == -1) {
-					if (display_full)
-						cout << "0-1" << endl;
-					scores[j] += victory;
-				}
-				else {
-					if (display_full)
-						cout << "1/2-1/2" << endl;
-					scores[i] += draw;
-					scores[j] += draw;
-				}
-			}
-		}
-	}
-
-	// Afficher les scores
-	cout << "Scores : " << endl;
-	print_array(scores, n_players);
-
-	return scores;
 }
 
 // Fonction qui génère le livre d'ouvertures
@@ -6438,4 +6379,3 @@ int Board::grogros_quiescence(Evaluator* eval, int alpha, const int beta, int de
 
 	return alpha;
 }
-
