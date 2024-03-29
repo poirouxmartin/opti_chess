@@ -4,13 +4,16 @@
 #include "buffer.h"
 
 
+// TODO:
+// Au lieu d'avoir un plateau, stocker seulement l'indice du plateau dans le buffer?
+
 // Noeud de l'arbre d'exploration
 class Node {
 public:
 
 	// Variables
 
-	// Plateau
+	// Plateau : FIXME -> indice du plateau dans le buffer?
 	Board _board;
 
 	// Coup joué pour arriver à ce plateau (FIXME: est-ce déjà stocké dans le plateau?)
@@ -57,7 +60,7 @@ public:
 	[[nodiscard]] int children_count() const;
 
 	// Fonction qui renvoie l'indice du fils associé au coup s'il existe, -1 sinon (dans le vecteur _children)
-	[[nodiscard]] int get_child(Move move) const;
+	[[nodiscard]] int get_child_index(Move move) const;
 
 	// Fonction qui renvoie l'indice du premier coup qui n'a pas encore été ajouté, -1 sinon
 	[[nodiscard]] int get_first_unexplored_move_index();
@@ -72,11 +75,13 @@ public:
 	void explore_random_child(Buffer buffer, Evaluator eval, const float beta, const float k_add);
 
 	// Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
-	[[nodiscard]] int pick_random_child(const float beta, const float k_add);
+	[[nodiscard]] int pick_random_child_index(const float beta, const float k_add);
 
 	// Fonction qui renvoie le fils le plus exploré
-	[[nodiscard]] int get_most_explored_child();
+	[[nodiscard]] int get_most_explored_child_index();
 
+	// Reset le noeud et ses enfants, et les supprime tous
+	void reset();
 
 	// Fonctions à rajouter: destruction des fils et de soi...
 

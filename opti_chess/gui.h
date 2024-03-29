@@ -485,6 +485,19 @@ public:
 
 	// Fonction aidant à l'affichage du plateau (renvoie i si board_orientation, et 7 - i sinon)
 	int orientation_index(int) const;
+
+	// TODO
+	bool play_move_keep(const Move move);
+
+	// Fonction qui renvoie le type de pièce sélectionnée
+	uint_fast8_t selected_piece() const;
+
+	// Fonction qui renvoie le type de pièce où la souris vient de cliquer
+	uint_fast8_t clicked_piece() const;
+
+
+	// TODO
+	void draw();
 };
 
 // Instantiation de la GUI globale

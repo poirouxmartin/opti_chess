@@ -65,6 +65,7 @@ bool GUI::new_bind_game() {
 
 	_board.restart();
 	reset_pgn();
+	PlaySound(_game_begin_sound);
 
 	if (get_board_orientation() != orientation)
 		switch_orientation();
@@ -333,7 +334,7 @@ void GUI::draw_exploration_arrows(Node node)
 	_grogros_arrows.clear();
 
 	// Coup à surligner
-	const int best_move = node.get_most_explored_child();
+	const int best_move = node.get_most_explored_child_index();
 
 	// Une pièce est-elle sélectionnée?
 	const bool is_selected = _selected_pos.i != -1 && _selected_pos.j != -1;
@@ -825,4 +826,183 @@ void GUI::draw_simple_arrow_from_coord(const int i1, const int j1, const int i2,
 
 	draw_circle(x1, y1, thickness, c);
 	draw_circle(x2, y2, thickness * 2.0f, c);
+}
+
+// TODO
+bool GUI::play_move_keep(const Move move)
+{
+	// S'assure que le coup est légal
+	if (!_board.is_legal(move))
+		return false;
+
+	// Joue le son du coup
+	_board.play_move_sound(move);
+
+	// On update les variantes
+	//_update_variants = true;
+
+	// Arbre de la partie
+	_game_tree.add_child(_board, move, _board.move_label(move));
+
+	// Cherche le coup dans les fils du noeud de recherche
+	int child_index = _root_exploration_node->get_child_index(move);
+
+	// Si le coup a effectivement été calculé
+	if (child_index != -1) {
+		// Vire tous les autres fils du noeud de recherche
+		/*for (int i = 0; i < _root_exploration_node->children_count(); i++) {
+			if (i != child_index) {
+				_root_exploration_node->_children[i]->reset();
+			}
+		}*/
+
+		// Fait un reset du plateau
+		_root_exploration_node->_board.reset_board();
+		_board.reset_all();
+
+		// Il faudra supprimer le parent et tous les fils (TODO)
+
+		// On met à jour le noeud de recherche
+		_root_exploration_node = _root_exploration_node->_children[child_index];
+
+		// On met à jour le plateau
+		_board = _root_exploration_node->_board;
+	}
+
+	// Sinon, on joue simplement le coup
+	else {
+		_board.make_move(move, false, false, true);
+	}
+
+	// Update le PGN
+	_game_tree.select_next_node(move);
+	_pgn = _game_tree.tree_display();
+
+	return true;
+}
+
+// Fonction qui renvoie le type de pièce sélectionnée
+uint_fast8_t GUI::selected_piece() const
+{
+	// Faut-il stocker cela pour éviter de le re-calculer?
+	if (_selected_pos.i == -1 || _selected_pos.j == -1)
+		return 0;
+
+	return _board._array[_selected_pos.i][_selected_pos.j];
+}
+
+// Fonction qui renvoie le type de pièce où la souris vient de cliquer
+uint_fast8_t GUI::clicked_piece() const
+{
+	if (_clicked_pos.i == -1 || _clicked_pos.j == -1)
+		return 0;
+
+	return _board._array[_clicked_pos.i][_clicked_pos.j];
+}
+
+// TODO
+void GUI::draw()
+{
+	// Chargement des textures, si pas déjà fait
+	if (!_loaded_resources) {
+		load_resources();
+		resize_GUI();
+		PlaySound(_game_begin_sound);
+	}
+
+
+	// *** CLICS SOURIS ***
+
+	// Position de la souris
+	_mouse_pos = GetMousePosition();
+
+	// Si on clique avec la souris
+	if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+
+		// Retire toute les cases surlignées
+		remove_highlighted_tiles();
+
+		// Retire toutes les flèches
+		_arrows_array = {};
+
+		// Stocke la case cliquée sur le plateau
+		_clicked_pos = get_pos_from_GUI(_mouse_pos.x, _mouse_pos.y);
+
+		// S'il y'a les flèches de réflexion de GrogrosZero, et qu'aucune pièce n'est sélectionnée
+		if (_drawing_arrows && !selected_piece()) {
+
+			// On regarde dans le sens inverse pour jouer la flèche la plus récente (donc celle visible en cas de superposition)
+			for (Move move : ranges::reverse_view(_grogros_arrows))
+			{
+				if (move.i2 == _clicked_pos.i && move.j2 == _clicked_pos.j) {
+					if (_click_bind)
+						_board.click_m_move(move, get_board_orientation());
+					play_move_keep(move);
+					continue;
+				}
+			}
+		}
+
+		// Si aucune pièce n'est sélectionnée et que l'on clique sur une pièce, la sélectionne
+		if (!selected_piece() && clicked_piece()) {
+			if (_board.clicked_piece_has_trait())
+				_selected_pos = _clicked_pos;
+		}
+
+		// Si une pièce est déjà sélectionnée
+		else if (selected_piece()) {
+
+			// Si on clique sur la même case que celle sélectionnée, la déselectionne
+			if (_selected_pos == _clicked_pos)
+				unselect();
+
+			else {
+				
+				// Si le coup est légal, le joue
+				Move move = Move(_selected_pos.i, _selected_pos.j, _clicked_pos.i, _clicked_pos.j);
+
+				if (_board.is_legal(move)) {
+					if (_click_bind)
+						_board.click_m_move(move, get_board_orientation());
+					play_move_keep(move);
+
+					// Déselectionne la pièce
+					unselect();
+				}
+
+				else {
+					// Si on clique sur une autre pièce, la sélectionne
+					if (clicked_piece() && _board.clicked_piece_has_trait())
+						_selected_pos = _clicked_pos;
+				}
+			}
+		}
+	}	
+
+	// Si on relâche la souris
+	if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+
+		// Position de la case où l'on a relâché la souris
+		Pos drop_pos = get_pos_from_GUI(_mouse_pos.x, _mouse_pos.y);
+
+		// Si la case est bien sur le plateau
+		if (is_in_fast(drop_pos.i, 0, 7) && is_in_fast(drop_pos.j, 0, 7)) {
+
+			// Si on relâche la souris sur une autre case que celle où l'on a cliqué
+			if (drop_pos != _selected_pos) {
+
+				// Si le coup est légal, le joue
+				Move move = Move(drop_pos.i, drop_pos.j, _clicked_pos.i, _clicked_pos.j);
+
+				if (_board.is_legal(move)) {
+					if (_click_bind)
+						_board.click_m_move(move, get_board_orientation());
+					play_move_keep(move);
+
+					// Déselectionne la pièce
+					unselect();
+				}
+			}
+		}
+	}
 }
