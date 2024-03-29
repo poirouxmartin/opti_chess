@@ -441,6 +441,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Arbres de variations / Chargement de PGN
 -> Livre d'ouvertures
 -> Beaucoup de vérifs à faire dans les fonctions principales (make_move, grogros_zero, get_moves...)
+-> Buffer de coups pour éviter de les stocker dans les plateaux
 
 
 ----- En cours -----

@@ -19,7 +19,7 @@ void Node::add_child(Node* child) {
 }
 
 // Fonction qui renvoie le numéro du fils associé au coup s'il existe, -1 sinon
-[[nodiscard]] int Node::get_child(Move move) const {
+[[nodiscard]] int Node::get_child_index(Move move) const {
 	for (int i = 0; i < _children.size(); i++) {
 		if (_children[i]->_move == move) {
 			return i;
@@ -32,7 +32,7 @@ void Node::add_child(Node* child) {
 // Fonction qui renvoie l'indice du premier coup qui n'a pas encore été ajouté, -1 sinon
 [[nodiscard]] int Node::get_first_unexplored_move_index() {
 	for (int i = _latest_first_move_explored + 1; i < _board._got_moves; i++) {
-		if (get_child(_board._moves[i]) == -1) {
+		if (get_child_index(_board._moves[i]) == -1) {
 			_latest_first_move_explored = i;
 			return i;
 		}
@@ -122,7 +122,7 @@ void Node::explore_new_move(Buffer buffer, Evaluator eval) {
 // Fonction qui explore dans un plateau fils pseudo-aléatoire
 void Node::explore_random_child(Buffer buffer, Evaluator eval, float beta, float k_add) {
 	// Prend un fils aléatoire
-	int child_index = pick_random_child(beta, k_add);
+	int child_index = pick_random_child_index(beta, k_add);
 
 	// On explore ce fils
 	_children[child_index]->grogros_zero(buffer, eval, beta, k_add, 1); // L'évaluation du fils est mise à jour ici
@@ -147,7 +147,7 @@ void Node::explore_random_child(Buffer buffer, Evaluator eval, float beta, float
 }
 
 // Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variantes, en fonction de la grandeur du nombre correspondant à cet index
-int Node::pick_random_child(const float beta, const float k_add) {
+int Node::pick_random_child_index(const float beta, const float k_add) {
 	bool color = _board._player;
 	int n_children = children_count();
 
@@ -196,7 +196,7 @@ int Node::pick_random_child(const float beta, const float k_add) {
 }
 
 // Fonction qui renvoie le fils le plus exploré
-[[nodiscard]] int Node::get_most_explored_child() {
+[[nodiscard]] int Node::get_most_explored_child_index() {
 	int max = 0;
 	int index = 0;
 
@@ -208,4 +208,20 @@ int Node::pick_random_child(const float beta, const float k_add) {
 	}
 
 	return index;
+}
+
+// Reset le noeud et ses enfants, et les supprime tous
+void Node::reset() {
+	_latest_first_move_explored = -1;
+	_nodes = 0;
+	_board.reset_board();
+	_move = Move();
+	_new_node = true;
+
+	for (int i = 0; i < children_count(); i++) {
+		_children[i]->reset();
+		delete _children[i];
+	}
+
+	_children.clear();
 }
