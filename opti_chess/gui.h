@@ -154,6 +154,15 @@ public:
 	// Position cliquée sur la GUI
 	Pos _clicked_pos = Pos(-1, -1);
 
+	// Position de la souris
+	Vector2 _mouse_pos;
+
+	// Position de la case cliquée (droit)
+	Pos _right_clicked_pos = { -1, -1 };
+
+	// La souris est-elle cliquée
+	bool _clicked = false;
+
 	// Vecteur des flèches de GrogrosZero : vecteur de coups
 	vector<Move> _grogros_arrows;
 
@@ -285,15 +294,6 @@ public:
 
 	// Orientation du plateau
 	bool _board_orientation = true;
-
-	// Position de la souris
-	Vector2 _mouse_pos;
-
-	// Position de la case cliquée (droit)
-	pair<int, int> _right_clicked_pos = { -1, -1 };
-
-	// La souris est-elle cliquée
-	bool _clicked = false;
 
 	// Cases surlignées
 	int _highlighted_array[8][8]

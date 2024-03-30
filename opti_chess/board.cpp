@@ -773,6 +773,10 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 		if (_game_over_value == 2) {
 			_evaluation = 0;
 			_evaluated = true;
+
+			if (display)
+				main_GUI._eval_components = "DRAW\n";
+
 			return true;
 		}
 
@@ -780,6 +784,10 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 		if (_game_over_value != 0) {
 			_evaluation = -mate_value + _moves_count * mate_ply;
 			_evaluated = true;
+
+			if (display)
+				main_GUI._eval_components = "CHECKMATE\n";
+
 			return true;
 		}
 	}
@@ -1674,31 +1682,29 @@ bool Board::draw() {
 
 	// Si on fait un clic droit
 	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-		int x_mouse = main_GUI.get_pos_from_GUI(main_GUI._mouse_pos.x, main_GUI._mouse_pos.y).i;
-		int y_mouse = main_GUI.get_pos_from_GUI(main_GUI._mouse_pos.x, main_GUI._mouse_pos.y).j;
-		main_GUI._right_clicked_pos = { x_mouse, y_mouse };
 
-		// Retire les pre-moves
-		/*pre_move[0] = -1;
-		pre_move[1] = -1;
-		pre_move[2] = -1;
-		pre_move[3] = -1;*/
+		// Stocke la case cliquée sur le plateau
+		main_GUI._right_clicked_pos = main_GUI.get_pos_from_GUI(main_GUI._mouse_pos.x, main_GUI._mouse_pos.y);
 	}
 
-	// Si on fait un clic droit (en le relachant)
+	// Si on fait relâche le clic droit
 	if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
-		int x_mouse = main_GUI.get_pos_from_GUI(main_GUI._mouse_pos.x, main_GUI._mouse_pos.y).i;
-		int y_mouse = main_GUI.get_pos_from_GUI(main_GUI._mouse_pos.x, main_GUI._mouse_pos.y).j;
+		Pos drop_pos = main_GUI.get_pos_from_GUI(main_GUI._mouse_pos.x, main_GUI._mouse_pos.y);
 
-		if (x_mouse != -1) {
-			// Surlignage d'une case
-			if (pair<int, int>{x_mouse, y_mouse} == main_GUI._right_clicked_pos)
-				main_GUI._highlighted_array[x_mouse][y_mouse] = 1 - main_GUI._highlighted_array[x_mouse][y_mouse];
+		// Si on relâche la souris sur le plateau
+		if (is_in_fast(drop_pos.i, 0, 7) && is_in_fast(drop_pos.j, 0, 7)) {
 
-			// Flèche
+			// Si on relâche la souris sur une autre case que celle où l'on a cliqué
+			if (drop_pos == main_GUI._right_clicked_pos) {
+
+				// Sélectionne/déselectionne la case
+				main_GUI._highlighted_array[drop_pos.i][drop_pos.j] = 1 - main_GUI._highlighted_array[drop_pos.i][drop_pos.j];
+			}
+
+			// Sinon, fait une flèche
 			else {
-				if (main_GUI._right_clicked_pos.first != -1 && main_GUI._right_clicked_pos.second != -1 && x_mouse != -1 && y_mouse != -1) {
-					vector<int> arrow = { main_GUI._right_clicked_pos.first, main_GUI._right_clicked_pos.second, x_mouse, y_mouse };
+				if (main_GUI._right_clicked_pos.i != -1 && main_GUI._right_clicked_pos.j != -1) {
+					vector<int> arrow = { main_GUI._right_clicked_pos.i, main_GUI._right_clicked_pos.j, drop_pos.i, drop_pos.j };
 
 					// Si la flèche existe, la supprime
 					if (auto found_arrow = find(main_GUI._arrows_array.begin(), main_GUI._arrows_array.end(), arrow); found_arrow != main_GUI._arrows_array.end())
@@ -1708,7 +1714,7 @@ bool Board::draw() {
 					else
 						main_GUI._arrows_array.push_back(arrow);
 				}
-				
+
 			}
 		}
 	}
