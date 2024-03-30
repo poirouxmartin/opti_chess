@@ -25,7 +25,8 @@ inline void gui_draw() {
 	if (!main_GUI._draw)
 		return;
 	BeginDrawing();
-	main_GUI._board.draw();
+	//main_GUI._board.draw();
+	main_GUI.draw();
 	EndDrawing();
 }
 
@@ -200,9 +201,9 @@ inline int main_ui() {
 			//main_GUI._board.grogros_quiescence(main_GUI._grogros_eval);
 
 			main_GUI._root_exploration_node->grogros_zero(monte_buffer, *main_GUI._grogros_eval, main_GUI._beta, main_GUI._k_add, 50000);
-			if (main_GUI._root_exploration_node->_nodes > 100000) {
+			/*if (main_GUI._root_exploration_node->_nodes > 100000) {
 				main_GUI.play_move_keep(main_GUI._root_exploration_node->_children[main_GUI._root_exploration_node->get_most_explored_child_index()]->_move);
-			}
+			}*/
 			cout << main_GUI._root_exploration_node->_nodes << endl;
 			cout << main_GUI._root_exploration_node->_board._evaluation << endl;
 		}

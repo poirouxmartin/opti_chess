@@ -609,6 +609,8 @@ r4r2/1q1nbkpQ/bpn1pp2/pB1pP3/3p1B2/N1P3R1/PP3PPP/R5K1 b - - 7 21 : Tg8 perd aprè
 1r1q1rk1/4ppbp/b2p1n2/2pP2Bp/8/2N2NP1/PPQ1PPB1/2KR4 b - - 7 6 : Txb2 gagne assez violemment
 5r1k/4Npbp/b2p4/q1p3Bp/8/5NP1/PrQ1PPB1/2K4R w - - 1 10 : Dxh7+!! gagne
 8/p6p/7p/p6p/b2Q3p/K6p/p1r5/rk3n1n w - - 0 1 : Dd1+ #130
+r2q1k2/ppp3br/4p1P1/3pnb2/4N3/2PB1Q2/PP3P1P/R1B1K1NR w KQ - 1 15 : Cg5!! gagne
+r2q4/ppp4k/4p3/5b2/4p3/2PB1N2/PP3P1P/R3K1R1 w Q - 0 20 : pareil, Cg5 gagne
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---

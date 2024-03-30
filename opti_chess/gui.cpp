@@ -839,7 +839,7 @@ bool GUI::play_move_keep(const Move move)
 	_board.play_move_sound(move);
 
 	// On update les variantes
-	//_update_variants = true;
+	_update_variants = true;
 
 	// Arbre de la partie
 	_game_tree.add_child(_board, move, _board.move_label(move));
@@ -927,6 +927,7 @@ void GUI::draw()
 
 		// Stocke la case cliquée sur le plateau
 		_clicked_pos = get_pos_from_GUI(_mouse_pos.x, _mouse_pos.y);
+		_clicked = true;
 
 		// S'il y'a les flèches de réflexion de GrogrosZero, et qu'aucune pièce n'est sélectionnée
 		if (_drawing_arrows && !selected_piece()) {
@@ -953,8 +954,9 @@ void GUI::draw()
 		else if (selected_piece()) {
 
 			// Si on clique sur la même case que celle sélectionnée, la déselectionne
-			if (_selected_pos == _clicked_pos)
-				unselect();
+			if (_selected_pos == _clicked_pos) {
+				//unselect();
+			}
 
 			else {
 				
@@ -974,6 +976,10 @@ void GUI::draw()
 					// Si on clique sur une autre pièce, la sélectionne
 					if (clicked_piece() && _board.clicked_piece_has_trait())
 						_selected_pos = _clicked_pos;
+					
+					// Sinon, déselectionne la pièce
+					else
+						unselect();
 				}
 			}
 		}
@@ -992,7 +998,7 @@ void GUI::draw()
 			if (drop_pos != _selected_pos) {
 
 				// Si le coup est légal, le joue
-				Move move = Move(drop_pos.i, drop_pos.j, _clicked_pos.i, _clicked_pos.j);
+				Move move = Move(_selected_pos.i, _selected_pos.j, drop_pos.i, drop_pos.j);
 
 				if (_board.is_legal(move)) {
 					if (_click_bind)
@@ -1004,5 +1010,346 @@ void GUI::draw()
 				}
 			}
 		}
+
+		_clicked = false;
 	}
+
+	// Si on fait un clic droit
+	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+
+		// Stocke la case cliquée sur le plateau
+		_right_clicked_pos = get_pos_from_GUI(_mouse_pos.x, _mouse_pos.y);
+	}
+
+	// Si on fait relâche le clic droit
+	if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
+		Pos drop_pos = get_pos_from_GUI(_mouse_pos.x, _mouse_pos.y);
+
+		// Si on relâche la souris sur le plateau
+		if (is_in_fast(drop_pos.i, 0, 7) && is_in_fast(drop_pos.j, 0, 7)) {
+
+			// Si on relâche la souris sur une autre case que celle où l'on a cliqué
+			if (drop_pos == _right_clicked_pos) {
+
+				// Sélectionne/déselectionne la case
+				_highlighted_array[drop_pos.i][drop_pos.j] = 1 - _highlighted_array[drop_pos.i][drop_pos.j];
+			}
+				
+			// Sinon, fait une flèche
+			else {
+				if (_right_clicked_pos.i != -1 && _right_clicked_pos.j != -1) {
+					vector<int> arrow = { _right_clicked_pos.i, _right_clicked_pos.j, drop_pos.i, drop_pos.j };
+
+					// Si la flèche existe, la supprime
+					if (auto found_arrow = find(_arrows_array.begin(), _arrows_array.end(), arrow); found_arrow != _arrows_array.end())
+						_arrows_array.erase(found_arrow);
+
+					// Sinon, la rajoute
+					else
+						_arrows_array.push_back(arrow);
+				}
+
+			}
+		}
+	}
+
+
+	// *** AFFICHAGE ***
+
+	// Couleur de fond
+	ClearBackground(_background_color);
+
+	// Nombre de FPS
+	DrawTextEx(_text_font, ("FPS : " + to_string(GetFPS())).c_str(), { _screen_width - 3 * _text_size, _text_size / 3 }, _text_size / 3, _font_spacing, _text_color);
+
+	// Plateau
+	draw_rectangle(_board_padding_x, _board_padding_y, _tile_size * 8, _tile_size * 8, _board_color_light);
+
+	for (int i = 0; i < 8; i++)
+		for (int j = 0; j < 8; j++)
+			((i + j) % 2 == 1) && draw_rectangle(_board_padding_x + _tile_size * j, _board_padding_y + _tile_size * i, _tile_size, _tile_size, _board_color_dark);
+
+	// Coordonnées sur le plateau
+	for (int i = 0; i < 8; i++)
+		for (int j = 0; j < 8; j++) {
+			if (j == 0 + 7 * _board_orientation) // Chiffres
+				DrawTextEx(_text_font, to_string(i + 1).c_str(), { _board_padding_x + _text_size / 8, _board_padding_y + _tile_size * orientation_index(7 - i) + _text_size / 8 }, _text_size / 2, _font_spacing, ((i + j) % 2 == 1) ? _board_color_light : _board_color_dark);
+			if (i == 0 + 7 * _board_orientation) // Lettres
+				DrawTextEx(_text_font, _abc8.substr(j, 1).c_str(), { _board_padding_x + _tile_size * (orientation_index(j) + 1) - _text_size / 2, _board_padding_y + _tile_size * 8 - _text_size / 2 }, _text_size / 2, _font_spacing, ((i + j) % 2 == 1) ? _board_color_light : _board_color_dark);
+		}
+
+	// Surligne du dernier coup joué
+	if (!_game_tree._current_node->_move.is_null_move()) {
+		draw_rectangle(_board_padding_x + orientation_index(_game_tree._current_node->_move.j1) * _tile_size, _board_padding_y + orientation_index(7 - _game_tree._current_node->_move.i1) * _tile_size, _tile_size, _tile_size, _last_move_color);
+		draw_rectangle(_board_padding_x + orientation_index(_game_tree._current_node->_move.j2) * _tile_size, _board_padding_y + orientation_index(7 - _game_tree._current_node->_move.i2) * _tile_size, _tile_size, _tile_size, _last_move_color);
+	}
+
+	// Cases surglignées
+	for (int i = 0; i < 8; i++)
+		for (int j = 0; j < 8; j++)
+			if (_highlighted_array[i][j])
+				draw_rectangle(_board_padding_x + _tile_size * orientation_index(j), _board_padding_y + _tile_size * orientation_index(7 - i), _tile_size, _tile_size, _highlight_color);
+
+	// Sélection de cases et de pièces
+	if (_selected_pos.i != -1 && _selected_pos.j != -1) {
+
+		// Affiche la case séléctionnée
+		draw_rectangle(_board_padding_x + orientation_index(_selected_pos.j) * _tile_size, _board_padding_y + orientation_index(7 - _selected_pos.i) * _tile_size, _tile_size, _tile_size, _select_color);
+		
+		// Affiche les coups possibles pour la pièce séléctionnée
+		for (int i = 0; i < _board._got_moves; i++) {
+			if (_board._moves[i].i1 == _selected_pos.i && _board._moves[i].j1 == _selected_pos.j) {
+				draw_rectangle(_board_padding_x + orientation_index(_board._moves[i].j2) * _tile_size, _board_padding_y + orientation_index(7 - _board._moves[i].i2) * _tile_size, _tile_size, _tile_size, _select_color);
+			}
+		}
+	}
+
+	// Dessine les pièces adverses
+	for (int i = 0; i < 8; i++) {
+		for (int j = 0; j < 8; j++) {
+			uint_fast8_t piece = _board._array[i][j];
+			if (piece > 0 && ((_board._player && piece >= 7) || (!_board._player && piece < 7))) {
+				if (_clicked && i == _clicked_pos.i && j == _clicked_pos.j)
+					draw_texture(_piece_textures[piece - 1], _mouse_pos.x - _piece_size / 2, _mouse_pos.y - _piece_size / 2, WHITE);
+				else
+					draw_texture(_piece_textures[piece - 1], _board_padding_x + _tile_size * orientation_index(j) + (_tile_size - _piece_size) / 2, _board_padding_y + _tile_size * orientation_index(7 - i) + (_tile_size - _piece_size) / 2, WHITE);
+			}
+		}
+	}
+	
+	// Coups auquel l'IA réflechit...
+	if (_drawing_arrows) {
+		//draw_monte_carlo_arrows();
+		draw_exploration_arrows(*_root_exploration_node);
+	}
+
+	// Dessine les pièces alliées
+	for (int i = 0; i < 8; i++) {
+		for (int j = 0; j < 8; j++) {
+			uint_fast8_t piece = _board._array[i][j];
+			if (piece > 0 && ((_board._player && piece < 7) || (!_board._player && piece >= 7))) {
+				if (_clicked && i == _clicked_pos.i && j == _clicked_pos.j)
+					draw_texture(_piece_textures[piece - 1], _mouse_pos.x - _piece_size / 2, _mouse_pos.y - _piece_size / 2, WHITE);
+				else
+					draw_texture(_piece_textures[piece - 1], _board_padding_x + _tile_size * orientation_index(j) + (_tile_size - _piece_size) / 2, _board_padding_y + _tile_size * orientation_index(7 - i) + (_tile_size - _piece_size) / 2, WHITE);
+			}
+		}
+	}
+
+	// Flèches déssinées
+	for (vector<int> arrow : _arrows_array)
+		draw_simple_arrow_from_coord(arrow[0], arrow[1], arrow[2], arrow[3], -1, _arrow_color);
+
+	// Titre
+	DrawTextEx(_text_font, "GROGROS CHESS", { _board_padding_x + _grogros_size / 2 + _text_size / 2.8f, _text_size / 4.0f }, _text_size / 1.4f, _font_spacing * _text_size / 1.4f, _text_color);
+
+	// Grogros
+	draw_texture(_grogros_texture, _board_padding_x, _text_size / 4.0f - _text_size / 5.6f, WHITE);
+
+	// Joueurs de la partie
+	int material = _board.material_difference();
+	string black_material = (material < 0) ? ("+" + to_string(-material)) : "";
+	string white_material = (material > 0) ? ("+" + to_string(material)) : "";
+
+	int t_size = _text_size / 3.0f;
+
+	int x_mini_piece = _board_padding_x + t_size * 4;
+	int y_mini_piece_black = _board_padding_y - t_size + (_board_size + 2 * t_size) * !_board_orientation;
+	int y_mini_piece_white = _board_padding_y - t_size + (_board_size + 2 * t_size) * _board_orientation;
+
+	// Noirs
+	DrawCircle(x_mini_piece - t_size * 3, y_mini_piece_black, t_size * 0.6f, _board_color_dark);
+	DrawTextEx(_text_font, _black_player.c_str(), { static_cast<float>(x_mini_piece - t_size * 2), static_cast<float>(y_mini_piece_black - t_size) }, t_size, _font_spacing* t_size, _text_color);
+	DrawTextEx(_text_font, black_material.c_str(), { static_cast<float>(x_mini_piece - t_size * 2), static_cast<float>(y_mini_piece_black + t_size / 6) }, t_size, _font_spacing* t_size, _text_color_info);
+
+	bool next = false;
+	for (int i = 1; i < 6; i++) {
+		for (int j = 0; j < _missing_w_material[i]; j++) {
+			DrawTexture(_mini_piece_textures[i - 1], x_mini_piece, y_mini_piece_black, WHITE);
+			x_mini_piece += _mini_piece_size / 2;
+			next = true;
+		}
+		if (next)
+			x_mini_piece += _mini_piece_size;
+		next = false;
+	}
+
+	x_mini_piece = _board_padding_x + t_size * 4;
+
+	// Blancs
+	DrawCircle(x_mini_piece - t_size * 3, y_mini_piece_white, t_size * 0.6f, _board_color_light);
+	DrawTextEx(_text_font, _white_player.c_str(), { static_cast<float>(x_mini_piece - t_size * 2), static_cast<float>(y_mini_piece_white - t_size) }, t_size, _font_spacing * t_size, _text_color);
+	DrawTextEx(_text_font, white_material.c_str(), { static_cast<float>(x_mini_piece - t_size * 2), static_cast<float>(y_mini_piece_white + t_size / 6) }, t_size, _font_spacing * t_size, _text_color_info);
+
+	for (int i = 1; i < 6; i++) {
+		for (int j = 0; j < _missing_b_material[i]; j++) {
+			DrawTexture(_mini_piece_textures[i - 1 + 6], x_mini_piece, y_mini_piece_white, WHITE);
+			x_mini_piece += _mini_piece_size / 2;
+			next = true;
+		}
+		if (next)
+			x_mini_piece += _mini_piece_size;
+		next = false;
+	}
+
+	// Temps des joueurs
+	// Update du temps
+	update_time();
+	float x_pad = _board_padding_x + _board_size - _text_size * 2;
+	Color time_colors[4] = { (_time && !_board._player) ? BLACK : _dark_gray, (_time && !_board._player) ? WHITE : LIGHTGRAY, (_time && _board._player) ? WHITE : LIGHTGRAY, (_time && _board._player) ? BLACK : _dark_gray };
+
+	// Temps des blancs
+	if (!_white_time_text_box.active) {
+		_white_time_text_box.value = _time_white;
+		_white_time_text_box.text = clock_to_string(_white_time_text_box.value, false);
+	}
+	update_text_box(_white_time_text_box);
+	if (!_white_time_text_box.active) {
+		_time_white = _white_time_text_box.value;
+		_white_time_text_box.text = clock_to_string(_white_time_text_box.value, false);
+	}
+
+	// Position du texte
+	_white_time_text_box.set_rect(x_pad, _board_padding_y - _text_size / 2 * !_board_orientation + _board_size * _board_orientation, _board_padding_x + _board_size - x_pad, _text_size / 2);
+	_white_time_text_box.text_size = _text_size / 3;
+	_white_time_text_box.text_color = time_colors[3];
+	_white_time_text_box.text_font = _text_font;
+	_white_time_text_box.main_color = time_colors[2];
+	draw_text_box(_white_time_text_box);
+
+	// Temps des noirs
+	if (!_black_time_text_box.active) {
+		_black_time_text_box.value = _time_black;
+		_black_time_text_box.text = clock_to_string(_black_time_text_box.value, false);
+	}
+	update_text_box(_black_time_text_box);
+	if (!_black_time_text_box.active) {
+		_time_black = _black_time_text_box.value;
+		_black_time_text_box.text = clock_to_string(_black_time_text_box.value, false);
+	}
+
+	// Position du texte
+	_black_time_text_box.set_rect(x_pad, _board_padding_y - _text_size / 2 * _board_orientation + _board_size * !_board_orientation, _board_padding_x + _board_size - x_pad, _text_size / 2);
+	_black_time_text_box.text_size = _text_size / 3;
+	_black_time_text_box.text_color = time_colors[1];
+	_black_time_text_box.text_font = _text_font;
+	_black_time_text_box.main_color = time_colors[0];
+	draw_text_box(_black_time_text_box);
+
+	// FEN
+	_current_fen = _board.to_fen();
+	const char* fen = _current_fen.c_str();
+	DrawTextEx(_text_font, fen, { _text_size / 2, _board_padding_y + _board_size + _text_size * 3 / 2 }, _text_size / 3, _font_spacing * _text_size / 3, _text_color_blue);
+
+	// PGN
+	update_global_pgn();
+	slider_text(_global_pgn, _text_size / 2, _board_padding_y + _board_size + _text_size * 2, _screen_width - _text_size, _screen_height - (_board_padding_y + _board_size + _text_size * 2) - _text_size / 3, _text_size / 3, &_pgn_slider, _text_color);
+
+	// Analyse de Grogros
+	// TODO: faudra changer les paramètres ici en fonction de _root_exploration_node, et de la nouvelle quiescence
+	string monte_carlo_text = static_cast<string>(_grogros_analysis ? "STOP GrogrosZero-Auto (CTRL-H)" : "RUN GrogrosZero-Auto (CTRL-G)") + "\n\nSEARCH PARAMETERS\nbeta: " + to_string(_beta) + "\nk_add: " + to_string(_k_add) + "\nq_depth: " + to_string(_quiescence_depth) + "\nexplore checks: " + (_explore_checks ? "true" : "false");
+	
+	// S'il y a eu une recherche
+	if (_root_exploration_node->children_count() && _drawing_arrows) {
+
+		// Meilleur évaluation
+		int best_eval = _root_exploration_node->_board._evaluation;
+
+		string eval;
+		int mate = _board.is_eval_mate(best_eval);
+		if (mate != 0) {
+			eval += "M";
+			eval += to_string(abs(mate));
+		}
+
+		else
+			eval = to_string(best_eval);
+
+		_global_eval = best_eval;
+
+		stringstream stream;
+		stream << fixed << setprecision(2) << best_eval / 100.0f;
+		_global_eval_text = mate ? (best_eval > 0 ? "+" + eval : "-" + eval) : (best_eval > 0) ? "+" + stream.str() : stream.str();
+
+		float win_chance = get_winning_chances_from_eval(best_eval, _board._player);
+		if (!_board._player)
+			win_chance = 1 - win_chance;
+		string win_chances = "W/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/0/" + to_string(static_cast<int>(100 * (1 - win_chance))) + "\%";
+
+		// Pour l'évaluation statique
+		if (!_board._displayed_components)
+			_board.evaluate(_grogros_eval, true, nullptr, true);
+		//int max_depth = grogros_main_depth();
+		int max_depth = 0; // TODO
+		//int n_nodes = total_nodes();
+		//monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\ntime: " + clock_to_string(_time_monte_carlo) + "s\ndepth: " + to_string(max_depth) + "\neval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) + eval + "\n" + win_chances + "\nnodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) + " (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s)\nquiescence : " + int_to_round_string(_quiescence_nodes) + "N (" + int_to_round_string(_quiescence_nodes / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s)\ntranspositions : " + int_to_round_string(_transpositions) + " (" + int_to_round_string(_transpositions / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "T/s)";
+		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\ntime: TODO" + "s\ndepth: " + to_string(max_depth) + "\neval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) + eval + "\n" + win_chances + "\nnodes: " + int_to_round_string(_root_exploration_node->_nodes);
+
+		// Affichage des paramètres d'analyse de Monte-Carlo
+		slider_text(monte_carlo_text, _board_padding_x + _board_size + _text_size / 2, _text_size, _screen_width - _text_size - _board_padding_x - _board_size, _board_size * 9 / 16, _text_size / 3, &_monte_carlo_slider, _text_color);
+
+		// Lignes d'analyse de Monte-Carlo
+		static string monte_carlo_variants;
+
+		// Calcul des variantes
+		//if (_update_variants) {
+		//	bool next_variant = false;
+		//	monte_carlo_variants = "";
+		//	vector<int> v(sort_by_nodes());
+		//	for (int i : v) {
+		//		if (next_variant)
+		//			monte_carlo_variants += "\n\n";
+		//		next_variant = true;
+		//		mate = is_eval_mate(_eval_children[i]);
+		//		string eval;
+		//		if (mate != 0) {
+		//			if (mate > 0)
+		//				eval = "+";
+		//			else
+		//				eval = "-";
+		//			eval += "M";
+		//			eval += to_string(abs(mate));
+		//		}
+		//		else {
+		//			eval = _eval_children[i] > 0 ? "+" + to_string(_eval_children[i]) : to_string(_eval_children[i]);
+		//		}
+
+		//		string variant_i = monte_buffer._heap_boards[_index_children[i]].get_monte_carlo_variant(true); // Peut être plus rapide
+		//		// Ici aussi y'a qq chose qui ralentit, mais quoi?...
+		//		monte_carlo_variants += "eval: " + eval + " | " + to_string(_moves_count) + (_player ? ". " : "... ") + move_label_from_index(i) + variant_i + " | (" + int_to_round_string(_nodes_children[i]) + "N - " + to_string(100.0 * _nodes_children[i] / n_nodes).substr(0, 5) + "%)";
+		//	}
+		//	_update_variants = false;
+		//}
+
+		// Affichage des variantes
+		slider_text(monte_carlo_variants, _board_padding_x + _board_size + _text_size / 2, _board_padding_y + _board_size * 9 / 16, _screen_width - _text_size - _board_padding_x - _board_size, _board_size / 2, _text_size / 3, &_variants_slider, _text_color);
+
+		// Affichage de la barre d'évaluation
+		draw_eval_bar(_global_eval, _global_eval_text, _board_padding_x / 6, _board_padding_y, 2 * _board_padding_x / 3, _board_size, 800, _eval_bar_color_light, _eval_bar_color_dark);
+	}
+
+	// Affichage des contrôles et autres informations
+	else {
+		// Touches
+		static string keys_information = "CTRL-G: Start GrogrosZero analysis\nCTRL-H: Stop GrogrosZero analysis\n\n";
+
+		// Binding chess.com
+		static string binding_information;
+		binding_information = "Binding chess.com:\n- Auto-click: " + (_click_bind ? static_cast<string>("enabled") : static_cast<string>("disabled")) + "\n- Binding mode: " + (_binding_full ? static_cast<string>("analysis") : _binding_solo ? static_cast<string>("play") : "none");
+
+		// Texte total
+		static string controls_information;
+		controls_information = "Controls:\n\n" + keys_information + binding_information;
+
+		// TODO : ajout d'une valeur de slider
+		slider_text(controls_information, _board_padding_x + _board_size + _text_size / 2, _board_padding_y, _screen_width - _text_size - _board_padding_x - _board_size, _board_size, _text_size / 3, 0, _text_color_info);
+	}
+
+
+
+
+	// FIXME: problème avec le refresh des array de Grogros quand on clique un coup
+
+	// Affichage du curseur
+	draw_texture(_cursor_texture, _mouse_pos.x - _cursor_size / 2, _mouse_pos.y - _cursor_size / 2, WHITE);
 }
