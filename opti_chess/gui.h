@@ -358,6 +358,9 @@ public:
 	// Affichage des variantes
 	string _exploration_variants = "";
 
+	// Nombre de noeuds par frame pour l'exploration
+	int _nodes_per_frame = 1000;
+
 
 	// Constructeurs
 
