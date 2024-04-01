@@ -845,37 +845,53 @@ bool GUI::play_move_keep(const Move move)
 	// Cherche le coup dans les fils du noeud de recherche
 	int child_index = _root_exploration_node->get_child_index(move);
 
-	// Si le coup a effectivement été calculé
-	if (child_index != -1) {
-		// Vire tous les autres fils du noeud de recherche
-		/*for (int i = 0; i < _root_exploration_node->children_count(); i++) {
-			if (i != child_index) {
-				_root_exploration_node->_children[i]->reset();
-			}
-		}*/
+	// FIXME: les vraies distinctions de cas à faire: 
+	// y'a t-il eu des coups calculés? -> oui/non
+	// si oui, le coup joué en fait-il partie? -> oui/non
 
-		// Fait un reset du plateau
-		_root_exploration_node->_board.reset_board();
-		_board.reset_all();
-
-		// Il faudra supprimer le parent et tous les fils (TODO)
-
-		// On met à jour le noeud de recherche
-		_root_exploration_node = _root_exploration_node->_children[child_index];
-
-		// On met à jour le plateau
-		_board = _root_exploration_node->_board;
-	}
-
-	// Sinon, on joue simplement le coup
-	else {
+	if (_root_exploration_node->children_count() == 0) {
+		// On joue simplement le coup
 		_board.make_move(move, false, false, true);
-
-		// TODO: il faut supprimer les enfants du noeud de recherche
 
 		// On met à jour le plateau de recherche
 		_root_exploration_node->_board = _board;
-		
+	}
+
+	else {
+		// Si le coup a effectivement été calculé
+		if (child_index != -1) {
+			// Vire tous les autres fils du noeud de recherche
+			for (int i = 0; i < _root_exploration_node->children_count(); i++) {
+				if (i != child_index) {
+					_root_exploration_node->_children[i]->reset();
+					delete _root_exploration_node->_children[i];
+				}
+			}
+
+			// Fait un reset du plateau
+			_root_exploration_node->_board.reset_board();
+			_board.reset_all();
+
+			// Il faudra supprimer le parent et tous les fils (TODO)
+
+			// On met à jour le noeud de recherche
+			_root_exploration_node = _root_exploration_node->_children[child_index];
+
+			// On met à jour le plateau
+			_board = _root_exploration_node->_board;
+		}
+
+		// Sinon, on joue simplement le coup
+		else {
+			// On supprime toutes les recherces
+			_root_exploration_node->reset();
+
+			// On joue simplement le coup
+			_board.make_move(move, false, false, true);
+
+			// On met à jour le plateau de recherche
+			_root_exploration_node->_board = _board;
+		}
 	}
 
 	// Update le PGN
@@ -906,7 +922,7 @@ uint_fast8_t GUI::clicked_piece() const
 
 // Fonction qui lance une analyse de GrogrosZero
 void GUI::grogros_analysis() {
-	_root_exploration_node->grogros_zero(monte_buffer, *_grogros_eval, _beta, _k_add, 50000); // TODO: nombre de noeuds à paramétrer
+	_root_exploration_node->grogros_zero(monte_buffer, *_grogros_eval, _beta, _k_add, _nodes_per_frame); // TODO: nombre de noeuds à paramétrer
 	_update_variants = true;
 }
 
@@ -1256,13 +1272,12 @@ void GUI::draw()
 	slider_text(_global_pgn, _text_size / 2, _board_padding_y + _board_size + _text_size * 2, _screen_width - _text_size, _screen_height - (_board_padding_y + _board_size + _text_size * 2) - _text_size / 3, _text_size / 3, &_pgn_slider, _text_color);
 
 	// Analyse de Grogros
-	// TODO: faudra changer les paramètres ici en fonction de _root_exploration_node, et de la nouvelle quiescence
-	string monte_carlo_text = static_cast<string>(_grogros_analysis ? "STOP GrogrosZero-Auto (CTRL-H)" : "RUN GrogrosZero-Auto (CTRL-G)") + "\n\nSEARCH PARAMETERS\nbeta: " + to_string(_beta) + "\nk_add: " + to_string(_k_add) + "\nq_depth: " + to_string(_quiescence_depth) + "\nexplore checks: " + (_explore_checks ? "true" : "false");
+	string monte_carlo_text = static_cast<string>(_grogros_analysis ? "STOP GrogrosZero-Auto (CTRL-H)" : "RUN GrogrosZero-Auto (CTRL-G)") + "\nCONTROLS (H)" + "\n\nSEARCH PARAMETERS\nbeta: " + to_string(_beta) + "\nk_add: " + to_string(_k_add) + "\nq_depth: " + to_string(_quiescence_depth) + "\nexplore checks: " + (_explore_checks ? "true" : "false");
 	
 	// S'il y a eu une recherche
 	if (_root_exploration_node->children_count() && _drawing_arrows) {
 
-		// Meilleur évaluation
+		// Meilleure évaluation
 		int best_eval = _root_exploration_node->_board._evaluation;
 
 		string eval;
@@ -1289,12 +1304,10 @@ void GUI::draw()
 		// Pour l'évaluation statique
 		if (!_board._displayed_components)
 			_board.evaluate(_grogros_eval, true, nullptr, true);
-		//int max_depth = grogros_main_depth();
-		int max_depth = 0; // TODO
-		//int n_nodes = total_nodes();
-		//monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\ntime: " + clock_to_string(_time_monte_carlo) + "s\ndepth: " + to_string(max_depth) + "\neval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) + eval + "\n" + win_chances + "\nnodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) + " (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s)\nquiescence : " + int_to_round_string(_quiescence_nodes) + "N (" + int_to_round_string(_quiescence_nodes / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s)\ntranspositions : " + int_to_round_string(_transpositions) + " (" + int_to_round_string(_transpositions / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "T/s)";
-		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\ntime: TODO" + "s\ndepth: " + to_string(max_depth) + "\neval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) + eval + "\n" + win_chances + "\nnodes: " + int_to_round_string(_root_exploration_node->_nodes);
 
+		int max_depth = _root_exploration_node->get_main_depth();
+		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\ntime: " + clock_to_string(_root_exploration_node->_time_spent) + "s\ndepth: " + to_string(max_depth) + "\neval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) + eval + "\n" + win_chances + "\nnodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) + " (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 0.01) / 1000.0)) + "N/s)";
+		
 		// Affichage des paramètres d'analyse de Monte-Carlo
 		slider_text(monte_carlo_text, _board_padding_x + _board_size + _text_size / 2, _text_size, _screen_width - _text_size - _board_padding_x - _board_size, _board_size * 9 / 16, _text_size / 3, &_monte_carlo_slider, _text_color);
 
@@ -1305,37 +1318,6 @@ void GUI::draw()
 			_update_variants = false;
 		}
 		
-
-		// Calcul des variantes
-		//if (_update_variants) {
-		//	bool next_variant = false;
-		//	monte_carlo_variants = "";
-		//	vector<int> v(sort_by_nodes());
-		//	for (int i : v) {
-		//		if (next_variant)
-		//			monte_carlo_variants += "\n\n";
-		//		next_variant = true;
-		//		mate = is_eval_mate(_eval_children[i]);
-		//		string eval;
-		//		if (mate != 0) {
-		//			if (mate > 0)
-		//				eval = "+";
-		//			else
-		//				eval = "-";
-		//			eval += "M";
-		//			eval += to_string(abs(mate));
-		//		}
-		//		else {
-		//			eval = _eval_children[i] > 0 ? "+" + to_string(_eval_children[i]) : to_string(_eval_children[i]);
-		//		}
-
-		//		string variant_i = monte_buffer._heap_boards[_index_children[i]].get_monte_carlo_variant(true); // Peut être plus rapide
-		//		// Ici aussi y'a qq chose qui ralentit, mais quoi?...
-		//		monte_carlo_variants += "eval: " + eval + " | " + to_string(_moves_count) + (_player ? ". " : "... ") + move_label_from_index(i) + variant_i + " | (" + int_to_round_string(_nodes_children[i]) + "N - " + to_string(100.0 * _nodes_children[i] / n_nodes).substr(0, 5) + "%)";
-		//	}
-		//	_update_variants = false;
-		//}
-
 		// Affichage des variantes
 		slider_text(_exploration_variants, _board_padding_x + _board_size + _text_size / 2, _board_padding_y + _board_size * 9 / 16, _screen_width - _text_size - _board_padding_x - _board_size, _board_size / 2, _text_size / 3, &_variants_slider, _text_color);
 
@@ -1359,11 +1341,6 @@ void GUI::draw()
 		// TODO : ajout d'une valeur de slider
 		slider_text(controls_information, _board_padding_x + _board_size + _text_size / 2, _board_padding_y, _screen_width - _text_size - _board_padding_x - _board_size, _board_size, _text_size / 3, 0, _text_color_info);
 	}
-
-
-
-
-	// FIXME: problème avec le refresh des array de Grogros quand on clique un coup
 
 	// Affichage du curseur
 	draw_texture(_cursor_texture, _mouse_pos.x - _cursor_size / 2, _mouse_pos.y - _cursor_size / 2, WHITE);
