@@ -34,14 +34,8 @@ public:
 	// Nombre de noeuds
 	int _nodes = 0;
 
-	// Evaluations des enfants
-	//vector<int> _children_evaluations; // FIXME: faut-il utiliser des vecteurs ou des tableaux dynamiques?
-	//int *_children_evaluations;
-
-	// Nombre de noueds des enfants
-	//vector<int> _children_nodes;
-	//int *_children_nodes;
-
+	// Temps de calcul
+	clock_t _time_spent;
 
 	// A rajouter : évaluation?, nombre de noeuds?...
 
@@ -86,8 +80,14 @@ public:
 	// Fonction qui renvoie les variantes d'exploration
 	[[nodiscard]] string get_exploration_variants(bool main = true);
 
+	// Fonction qui renvoie la profondeur de la variante principale
+	[[nodiscard]] int get_main_depth();
+
 	// Fonctions à rajouter: destruction des fils et de soi...
 
 	// Destructeur : TODO (supprimer tous les tableaux dynamiques...)
 	// Il faudra free tous les plateaux du buffer
+
+	// Destructeur
+	~Node();
 };

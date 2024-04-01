@@ -47,6 +47,9 @@ void Node::grogros_zero(Buffer buffer, Evaluator eval, float beta, float k_add, 
 	// On peut rajouter la profondeur
 	// Garder le temps de calcul
 
+	// Temps de calcul
+	const clock_t begin_monte_time = clock();
+
 	// Si c'est un nouveau noeud, on fait son initialisation
 	if (_new_node) {
 
@@ -61,9 +64,9 @@ void Node::grogros_zero(Buffer buffer, Evaluator eval, float beta, float k_add, 
 	// Si la partie est finie, on ne fait rien
 	if (_board._game_over_value) {
 		// TODO: on fait quoi là??
-
-
 		_nodes++;
+		_time_spent += clock() - begin_monte_time;
+
 		return;
 	}
 
@@ -86,6 +89,8 @@ void Node::grogros_zero(Buffer buffer, Evaluator eval, float beta, float k_add, 
 		nodes--;
 	}
 	
+	// Temps de calcul
+	_time_spent += clock() - begin_monte_time;
 }
 
 // Fonction qui explore un nouveau coup
@@ -267,7 +272,9 @@ string Node::get_exploration_variants(bool main) {
 
 	// TODO: il faut rajouter les 1. .., 2...
 	// Pour les eval, il faut afficher différemment les mats
+	// Afficher les + et les - pour les évaluations
 	// Afficher les icônes des pièces (♔, ♕, ♖, ♗, ♘, ♙, ♚, ♛, ♜, ♝, ♞, ♟) (UTF-8)
+	// Afficher la profondeur de chaque variante
 
 	// Si on est en fin de variante
 	if (_board._game_over_value) {
@@ -327,7 +334,7 @@ string Node::get_exploration_variants(bool main) {
 				variants += _board.move_label(_children[children_index[i]]->_move) + " " + _children[children_index[i]]->get_exploration_variants(false);
 
 				// Nombre de noeuds...
-				variants += "\nEval: " + int_to_round_string(_children[children_index[i]]->_board._evaluation) + " | Nodes: " + int_to_round_string(_children[children_index[i]]->_nodes) + "\n\n";
+				variants += "\nN: " + int_to_round_string(_children[children_index[i]]->_nodes) + " (" + int_to_round_string(_children[children_index[i]]->_nodes * 100 / _nodes) + "%) | E: " + int_to_round_string(_children[children_index[i]]->_board._evaluation) + "\n\n";
 			}
 		}
 
@@ -349,4 +356,25 @@ string Node::get_exploration_variants(bool main) {
 	}
 	
 	return variants;
+}
+
+// Fonction qui renvoie la profondeur de la variante principale
+[[nodiscard]] int Node::get_main_depth() {
+	int depth = 0;
+
+	Node* current_node = this;
+
+	while (current_node->children_count() > 0) {
+		current_node = current_node->_children[current_node->get_most_explored_child_index()];
+		depth++;
+	}
+
+	return depth;
+}
+
+// Destructeur
+Node::~Node() {
+	/*for (int i = 0; i < children_count(); i++) {
+		delete _children[i];
+	}*/
 }
