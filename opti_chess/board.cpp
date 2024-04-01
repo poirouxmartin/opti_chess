@@ -782,7 +782,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 
 		// Mat
 		if (_game_over_value != 0) {
-			_evaluation = -mate_value + _moves_count * mate_ply;
+			_evaluation = (-mate_value + _moves_count * mate_ply) * get_color();
 			_evaluated = true;
 
 			if (display)
