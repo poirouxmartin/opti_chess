@@ -83,6 +83,9 @@ public:
 	// Reset le noeud et ses enfants, et les supprime tous
 	void reset();
 
+	// Fonction qui renvoie les variantes d'exploration
+	[[nodiscard]] string get_exploration_variants(bool main = true);
+
 	// Fonctions à rajouter: destruction des fils et de soi...
 
 	// Destructeur : TODO (supprimer tous les tableaux dynamiques...)

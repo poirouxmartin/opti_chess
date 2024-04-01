@@ -355,6 +355,9 @@ public:
 	// Noeud de l'arbre d'exploration
 	Node *_root_exploration_node;
 
+	// Affichage des variantes
+	string _exploration_variants = "";
+
 
 	// Constructeurs
 
@@ -494,6 +497,15 @@ public:
 
 	// Fonction qui renvoie le type de pièce où la souris vient de cliquer
 	uint_fast8_t clicked_piece() const;
+
+	// Fonction qui lance une analyse de GrogrosZero
+	void grogros_analysis();
+
+	// Fonction qui charge une position à partir d'une FEN
+	void load_FEN(const string fen);
+
+	// Fonction qui reset la partie
+	void reset_game();
 
 
 	// TODO

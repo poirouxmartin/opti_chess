@@ -61,6 +61,8 @@ void Node::grogros_zero(Buffer buffer, Evaluator eval, float beta, float k_add, 
 	// Si la partie est finie, on ne fait rien
 	if (_board._game_over_value) {
 		// TODO: on fait quoi là??
+
+
 		_nodes++;
 		return;
 	}
@@ -148,7 +150,7 @@ void Node::explore_random_child(Buffer buffer, Evaluator eval, float beta, float
 
 // Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variantes, en fonction de la grandeur du nombre correspondant à cet index
 int Node::pick_random_child_index(const float beta, const float k_add) {
-	bool color = _board._player;
+	int color = _board.get_color();
 	int n_children = children_count();
 
 	// *** 1. ***
@@ -224,4 +226,63 @@ void Node::reset() {
 	}
 
 	_children.clear();
+}
+
+// Fonction qui renvoie les variantes d'exploration
+string Node::get_exploration_variants(bool main) {
+
+	// Si on est en fin de variante
+	if (_board._game_over_value) {
+		return "";
+	}
+	/*if (_board._game_over_value == -1) {
+		return "# 0-1";
+	}
+	if (_board._game_over_value == 1) {
+		return "# 1-0";
+	}
+	if (_board._game_over_value == 2) {
+		return "1/2-1/2";
+	}*/
+
+	string variants = "";
+
+	// S'il y a des coups explorés
+	if (children_count() > 0) {
+
+		// Si on est dans le noeud principal, on affiche toutes les variantes
+		if (main) {
+			// Trie les enfants par nombre de noeuds (et sur une égalité, par évaluation - TODO)
+			vector<pair<int, int>> children_nodes;
+			for (int i = 0; i < children_count(); i++) {
+				children_nodes.push_back(make_pair(-_children[i]->_nodes, i));
+			}
+
+			sort(children_nodes.begin(), children_nodes.end());
+
+			for (int i = 0; i < children_count(); i++) {
+				variants += _board.move_label(_children[children_nodes[i].second]->_move) + " " + _children[children_nodes[i].second]->get_exploration_variants(false);
+				// TODO: il faut rajouter les 1. .., 2...
+
+				// Nombre de noeuds...
+				variants += "Eval: " + int_to_round_string(_children[children_nodes[i].second]->_board._evaluation) + " | Nodes: " + int_to_round_string(_children[children_nodes[i].second]->_nodes) + "\n\n";
+			}
+		}
+
+		// Sinon, on affiche seulement le coup le plus exploré
+		else {
+			// Affiche seulement le premier coup (le plus exploré)
+			variants += _board.move_label(_children[get_most_explored_child_index()]->_move) + " " + _children[get_most_explored_child_index()]->get_exploration_variants(false);
+		}
+		
+	}
+
+	// S'il n'y a pas de coups explorés
+	else {
+		variants = "(" + int_to_round_string(_board._evaluation) + ")\n";
+
+		// TODO: on peut afficher l'évaluation du plateau, le nombre de noeuds, le temps de calcul...
+	}
+	
+	return variants;
 }

@@ -63,9 +63,7 @@ bool GUI::new_bind_game() {
 	if (orientation == -1)
 		return false;
 
-	_board.restart();
-	reset_pgn();
-	PlaySound(_game_begin_sound);
+	reset_game();
 
 	if (get_board_orientation() != orientation)
 		switch_orientation();
@@ -119,7 +117,7 @@ bool GUI::new_bind_analysis() {
 	if (orientation == -1)
 		return false;
 
-	_board.restart();
+	reset_game();
 
 	if (get_board_orientation() != orientation)
 		switch_orientation();
@@ -872,6 +870,12 @@ bool GUI::play_move_keep(const Move move)
 	// Sinon, on joue simplement le coup
 	else {
 		_board.make_move(move, false, false, true);
+
+		// TODO: il faut supprimer les enfants du noeud de recherche
+
+		// On met à jour le plateau de recherche
+		_root_exploration_node->_board = _board;
+		
 	}
 
 	// Update le PGN
@@ -898,6 +902,12 @@ uint_fast8_t GUI::clicked_piece() const
 		return 0;
 
 	return _board._array[_clicked_pos.i][_clicked_pos.j];
+}
+
+// Fonction qui lance une analyse de GrogrosZero
+void GUI::grogros_analysis() {
+	_root_exploration_node->grogros_zero(monte_buffer, *_grogros_eval, _beta, _k_add, 50000); // TODO: nombre de noeuds à paramétrer
+	_update_variants = true;
 }
 
 // TODO
@@ -1289,7 +1299,12 @@ void GUI::draw()
 		slider_text(monte_carlo_text, _board_padding_x + _board_size + _text_size / 2, _text_size, _screen_width - _text_size - _board_padding_x - _board_size, _board_size * 9 / 16, _text_size / 3, &_monte_carlo_slider, _text_color);
 
 		// Lignes d'analyse de Monte-Carlo
-		static string monte_carlo_variants;
+		// TODO: on devrait utiliser ça aussi pour éviter de recalculer les autres paramètres
+		if (_update_variants) {
+			_exploration_variants = _root_exploration_node->get_exploration_variants();
+			_update_variants = false;
+		}
+		
 
 		// Calcul des variantes
 		//if (_update_variants) {
@@ -1322,7 +1337,7 @@ void GUI::draw()
 		//}
 
 		// Affichage des variantes
-		slider_text(monte_carlo_variants, _board_padding_x + _board_size + _text_size / 2, _board_padding_y + _board_size * 9 / 16, _screen_width - _text_size - _board_padding_x - _board_size, _board_size / 2, _text_size / 3, &_variants_slider, _text_color);
+		slider_text(_exploration_variants, _board_padding_x + _board_size + _text_size / 2, _board_padding_y + _board_size * 9 / 16, _screen_width - _text_size - _board_padding_x - _board_size, _board_size / 2, _text_size / 3, &_variants_slider, _text_color);
 
 		// Affichage de la barre d'évaluation
 		draw_eval_bar(_global_eval, _global_eval_text, _board_padding_x / 6, _board_padding_y, 2 * _board_padding_x / 3, _board_size, 800, _eval_bar_color_light, _eval_bar_color_dark);
@@ -1352,4 +1367,31 @@ void GUI::draw()
 
 	// Affichage du curseur
 	draw_texture(_cursor_texture, _mouse_pos.x - _cursor_size / 2, _mouse_pos.y - _cursor_size / 2, WHITE);
+}
+
+// Fonction qui charge une position à partir d'une FEN
+void GUI::load_FEN(const string fen) {
+	// TODO: il faut vériifer que la FEN est valide
+	_board.from_fen(fen);
+	update_global_pgn();
+	_root_exploration_node->reset();
+	_root_exploration_node->_board = _board;
+	_update_variants = true;
+
+	cout << "loaded FEN : " << fen << endl;
+}
+
+// Fonction qui reset la partie
+void GUI::reset_game() {
+	_board.reset_board();
+	_board.restart();
+	_game_tree.reset();
+	reset_pgn();
+	_root_exploration_node->reset();
+	_root_exploration_node->_board = _board;
+	_update_variants = true;
+
+	PlaySound(main_GUI._game_begin_sound);
+
+	cout << "game reset" << endl;
 }
