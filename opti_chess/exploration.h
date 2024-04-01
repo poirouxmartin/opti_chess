@@ -78,7 +78,7 @@ public:
 	[[nodiscard]] int pick_random_child_index(const float beta, const float k_add);
 
 	// Fonction qui renvoie le fils le plus exploré
-	[[nodiscard]] int get_most_explored_child_index();
+	[[nodiscard]] int get_most_explored_child_index(bool decide_by_eval = true);
 
 	// Reset le noeud et ses enfants, et les supprime tous
 	void reset();
