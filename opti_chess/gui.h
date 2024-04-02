@@ -397,19 +397,19 @@ public:
 	bool update_date();
 
 	// Fonction qui lance les threads de GrogrosZero
-	bool thread_grogros_zero(Evaluator* eval, int nodes);
+	//bool thread_grogros_zero(Evaluator* eval, int nodes);
 
 	// Fonction qui lance grogros sur un thread
-	bool grogros_zero_threaded(Evaluator* eval, int nodes);
+	//bool grogros_zero_threaded(Evaluator* eval, int nodes);
 
 	// Fonction qui retire le dernier coup du PGN
 	bool remove_last_move_PGN();
 
 	// Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo
-	void draw_monte_carlo_arrows();
+	//void draw_monte_carlo_arrows();
 
 	// Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo
-	void draw_exploration_arrows(Node node);
+	void draw_exploration_arrows();
 
 	// Fonction qui dessine la flèche d'un coup
 	void draw_arrow(const Move move, const bool player, Color c, float thickness = -1, const bool use_value = false, int value = 0, const int mate = -1, const bool outline = false);
@@ -509,6 +509,9 @@ public:
 
 	// Fonction qui reset la partie
 	void reset_game();
+
+	// Fonction qui compare deux flèches d'analyse de Grogros
+	bool compare_arrows(const int m1, const int m2) const;
 
 
 	// TODO
