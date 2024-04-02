@@ -446,6 +446,10 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 
 ----- En cours -----
 
+-> FAUT METTRE DES POINTEURS PARTOUT AU LIEU DE COPIER LES OBJETTTTTTSSS !! (exploration.h, gui?)
+-> Il faut vérifier qu'on supprime tout ce qu'on créé, car la mémoire est pas libérée !!
+-> BUG: après une répétition, Grogros joue plus
+
 -> Fusion entre GrogrosZero et quiescence search (faut-il vraiment le faire??) -> grogros_quiescence()
 -> Pour le softmax, faut-il un gradient absolu ou relatif? pour le moment il y a la même différence entre -100 et +100 qu'entre +1800 et +2000? pas optimal...
 -> Peut-on fusionner _tested_moves et _current_moves?

@@ -229,55 +229,55 @@ bool GUI::update_date() {
 }
 
 // Fonction qui lance les threads de GrogrosZero
-bool GUI::thread_grogros_zero(Evaluator* eval, int nodes)
-{
-	// Initialisation du buffer pour GrogrosZero, si besoin
-	if (!monte_buffer._init)
-		monte_buffer.init();
-
-
-	// Lance grogros sur chaque noeud fils pour l'initialisation
-	//_board.grogros_zero(eval, _board._got_moves, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
-
-	_threads_grogros_zero.clear();
-
-	for (int i = 0; i < _board._got_moves; i++)
-		_threads_grogros_zero.emplace_back(&Board::grogros_zero, &monte_buffer._heap_boards[_board._index_children[i]], eval, nodes, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
-
-
-	//_threads_grogros_zero.emplace_back(&Board::grogros_zero, &_board, eval, nodes, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
-	//_threads_grogros_zero.emplace_back(&Board::grogros_zero, &_board, eval, nodes, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
-
-	
-	for (auto& thread : _threads_grogros_zero) {
-		thread.join();
-		//thread.detach();
-		//cout << "Thread done" << endl;
-	}
-
-	// TODO:
-	// Faut re-additionner les temps de monte carlo de chaque fils (pareil pour les quiescence nodes)
-	// Il faut aussi update toutes les variantes
-
-	// Relance grogros sur 1 noeud (pour actualiser les valeurs)
-	//_board.grogros_zero(eval, 100, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
-
-	return true;
-}
+//bool GUI::thread_grogros_zero(Evaluator* eval, int nodes)
+//{
+//	// Initialisation du buffer pour GrogrosZero, si besoin
+//	if (!monte_buffer._init)
+//		monte_buffer.init();
+//
+//
+//	// Lance grogros sur chaque noeud fils pour l'initialisation
+//	//_board.grogros_zero(eval, _board._got_moves, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
+//
+//	_threads_grogros_zero.clear();
+//
+//	for (int i = 0; i < _board._got_moves; i++)
+//		_threads_grogros_zero.emplace_back(&Board::grogros_zero, &monte_buffer._heap_boards[_board._index_children[i]], eval, nodes, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
+//
+//
+//	//_threads_grogros_zero.emplace_back(&Board::grogros_zero, &_board, eval, nodes, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
+//	//_threads_grogros_zero.emplace_back(&Board::grogros_zero, &_board, eval, nodes, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
+//
+//	
+//	for (auto& thread : _threads_grogros_zero) {
+//		thread.join();
+//		//thread.detach();
+//		//cout << "Thread done" << endl;
+//	}
+//
+//	// TODO:
+//	// Faut re-additionner les temps de monte carlo de chaque fils (pareil pour les quiescence nodes)
+//	// Il faut aussi update toutes les variantes
+//
+//	// Relance grogros sur 1 noeud (pour actualiser les valeurs)
+//	//_board.grogros_zero(eval, 100, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
+//
+//	return true;
+//}
 
 // Fonction qui lance grogros sur un thread
-bool GUI::grogros_zero_threaded(Evaluator* eval, int nodes) {
-	// Initialisation du buffer pour GrogrosZero, si besoin
-	if (!monte_buffer._init)
-		monte_buffer.init();
-
-	// Lance grogros sur un thread
-	_thread_grogros_zero = thread(&Board::grogros_zero, &_board, eval, nodes, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
-
-	_thread_grogros_zero.detach();
-
-	return true;
-}
+//bool GUI::grogros_zero_threaded(Evaluator* eval, int nodes) {
+//	// Initialisation du buffer pour GrogrosZero, si besoin
+//	if (!monte_buffer._init)
+//		monte_buffer.init();
+//
+//	// Lance grogros sur un thread
+//	_thread_grogros_zero = thread(&Board::grogros_zero, &_board, eval, nodes, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
+//
+//	_thread_grogros_zero.detach();
+//
+//	return true;
+//}
 
 // Fonction qui retire le dernier coup du PGN
 bool GUI::remove_last_move_PGN()
@@ -288,59 +288,59 @@ bool GUI::remove_last_move_PGN()
 }
 
 // Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo
-void GUI::draw_monte_carlo_arrows()
-{
-	_grogros_arrows = {};
-
-	const int best_move = _board.best_monte_carlo_move();
-
-	int sum_nodes = 0;
-	for (int i = 0; i < _board._tested_moves; i++)
-		sum_nodes += _board._nodes_children[i];
-
-	// Une pièce est-elle sélectionnée?
-	//cout << _selected_pos.i << " " << _selected_pos.j << endl;
-	const bool is_selected = _selected_pos.i != -1 && _selected_pos.j != -1;
-
-	// Crée un vecteur avec les coups visibles
-	vector<int> moves_vector;
-	for (int i = 0; i < _board._tested_moves; i++) {
-		if (is_selected) {
-			// Dessine pour la pièce sélectionnée
-			if (_selected_pos.i == _board._moves[i].i1 && _selected_pos.j == _board._moves[i].j1)
-				moves_vector.push_back(i);
-		}
-
-		else {
-			if (_board._nodes_children[i] / static_cast<float>(sum_nodes) > _arrow_rate)
-				moves_vector.push_back(i);
-		}
-	}
-
-	sort(moves_vector.begin(), moves_vector.end(), compare_move_arrows);
-
-	for (const int i : moves_vector) {
-		const int mate = _board.is_eval_mate(_board._eval_children[i]);
-		draw_arrow_from_coord(_board._moves[i].i1, _board._moves[i].j1, _board._moves[i].i2, _board._moves[i].j2, _board._player, move_color(_board._nodes_children[i], sum_nodes), -1.0f, true, _board._eval_children[i], mate, i == best_move);
-	}
-}
+//void GUI::draw_monte_carlo_arrows()
+//{
+//	_grogros_arrows = {};
+//
+//	const int best_move = _board.best_monte_carlo_move();
+//
+//	int sum_nodes = 0;
+//	for (int i = 0; i < _board._tested_moves; i++)
+//		sum_nodes += _board._nodes_children[i];
+//
+//	// Une pièce est-elle sélectionnée?
+//	//cout << _selected_pos.i << " " << _selected_pos.j << endl;
+//	const bool is_selected = _selected_pos.i != -1 && _selected_pos.j != -1;
+//
+//	// Crée un vecteur avec les coups visibles
+//	vector<int> moves_vector;
+//	for (int i = 0; i < _board._tested_moves; i++) {
+//		if (is_selected) {
+//			// Dessine pour la pièce sélectionnée
+//			if (_selected_pos.i == _board._moves[i].i1 && _selected_pos.j == _board._moves[i].j1)
+//				moves_vector.push_back(i);
+//		}
+//
+//		else {
+//			if (_board._nodes_children[i] / static_cast<float>(sum_nodes) > _arrow_rate)
+//				moves_vector.push_back(i);
+//		}
+//	}
+//
+//	sort(moves_vector.begin(), moves_vector.end(), compare_move_arrows);
+//
+//	for (const int i : moves_vector) {
+//		const int mate = _board.is_eval_mate(_board._eval_children[i]);
+//		draw_arrow_from_coord(_board._moves[i].i1, _board._moves[i].j1, _board._moves[i].i2, _board._moves[i].j2, _board._player, move_color(_board._nodes_children[i], sum_nodes), -1.0f, true, _board._eval_children[i], mate, i == best_move);
+//	}
+//}
 
 // Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo
-void GUI::draw_exploration_arrows(Node node)
+void GUI::draw_exploration_arrows()
 {
 	// Vecteur de flèches à afficher
 	_grogros_arrows.clear();
 
 	// Coup à surligner
-	const int best_move = node.get_most_explored_child_index();
+	const int best_move = _root_exploration_node->get_most_explored_child_index();
 
 	// Une pièce est-elle sélectionnée?
 	const bool is_selected = _selected_pos.i != -1 && _selected_pos.j != -1;
 
 	// Crée un vecteur avec les coups visibles
 	vector<int> moves_vector;
-	for (int i = 0; i < node.children_count(); i++) {
-		Move move = node._children[i]->_move;
+	for (int i = 0; i < _root_exploration_node->children_count(); i++) {
+		Move move = _root_exploration_node->_children[i]->_move;
 
 		// Si une pièce est sélectionnée, dessine toutes les flèches pour cette pièce
 		if (is_selected) {
@@ -350,18 +350,21 @@ void GUI::draw_exploration_arrows(Node node)
 
 		// Sinon, dessine les flèches pour les coups les plus explorés
 		else {
-			if (node._children[i]->_nodes / static_cast<float>(node._nodes) > _arrow_rate)
+			if (_root_exploration_node->_children[i]->_nodes / static_cast<float>(_root_exploration_node->_nodes) > _arrow_rate)
 				moves_vector.push_back(i);
 		}
 	}
 
 	// Trie les coups en fonction du nombre de noeuds et d'un affichage plus lisible
-	sort(moves_vector.begin(), moves_vector.end(), compare_move_arrows);
+	sort(moves_vector.begin(), moves_vector.end(), [this](const int m1, const int m2) {
+		return this->compare_arrows(m1, m2); }
+	);
+	//compare_arrows(moves_vector[0], moves_vector[1]);
 
 	// Dessine les flèches
 	for (const int move_index : moves_vector) {
-		const int mate = node._children[move_index]->_board.is_eval_mate(node._children[move_index]->_board._evaluation);
-		draw_arrow(node._children[move_index]->_move, node._board._player, move_color(node._children[move_index]->_nodes, node._nodes), -1.0f, true, node._children[move_index]->_board._evaluation, mate, move_index == best_move);
+		const int mate = _root_exploration_node->_children[move_index]->_board->is_eval_mate(_root_exploration_node->_children[move_index]->_board->_evaluation);
+		draw_arrow(_root_exploration_node->_children[move_index]->_move, _root_exploration_node->_board->_player, move_color(_root_exploration_node->_children[move_index]->_nodes, _root_exploration_node->_nodes), -1.0f, true, _root_exploration_node->_children[move_index]->_board->_evaluation, mate, move_index == best_move);
 	}
 }
 
@@ -854,7 +857,7 @@ bool GUI::play_move_keep(const Move move)
 		_board.make_move(move, false, false, true);
 
 		// On met à jour le plateau de recherche
-		_root_exploration_node->_board = _board;
+		_root_exploration_node->_board = &_board;
 	}
 
 	else {
@@ -869,8 +872,8 @@ bool GUI::play_move_keep(const Move move)
 			}
 
 			// Fait un reset du plateau
-			_root_exploration_node->_board.reset_board();
-			_board.reset_all();
+			_root_exploration_node->_board->reset_board();
+			_board.reset_board();
 
 			// Il faudra supprimer le parent et tous les fils (TODO)
 
@@ -878,7 +881,7 @@ bool GUI::play_move_keep(const Move move)
 			_root_exploration_node = _root_exploration_node->_children[child_index];
 
 			// On met à jour le plateau
-			_board = _root_exploration_node->_board;
+			_board = *_root_exploration_node->_board;
 		}
 
 		// Sinon, on joue simplement le coup
@@ -890,7 +893,7 @@ bool GUI::play_move_keep(const Move move)
 			_board.make_move(move, false, false, true);
 
 			// On met à jour le plateau de recherche
-			_root_exploration_node->_board = _board;
+			_root_exploration_node->_board = &_board;
 		}
 	}
 
@@ -922,7 +925,7 @@ uint_fast8_t GUI::clicked_piece() const
 
 // Fonction qui lance une analyse de GrogrosZero
 void GUI::grogros_analysis() {
-	_root_exploration_node->grogros_zero(monte_buffer, *_grogros_eval, _beta, _k_add, _nodes_per_frame); // TODO: nombre de noeuds à paramétrer
+	_root_exploration_node->grogros_zero(&monte_buffer, _grogros_eval, _beta, _k_add, _nodes_per_frame); // TODO: nombre de noeuds à paramétrer
 	_update_variants = true;
 }
 
@@ -1146,7 +1149,7 @@ void GUI::draw()
 	// Coups auquel l'IA réflechit...
 	if (_drawing_arrows) {
 		//draw_monte_carlo_arrows();
-		draw_exploration_arrows(*_root_exploration_node);
+		draw_exploration_arrows();
 	}
 
 	// Dessine les pièces alliées
@@ -1278,7 +1281,7 @@ void GUI::draw()
 	if (_root_exploration_node->children_count() && _drawing_arrows) {
 
 		// Meilleure évaluation
-		int best_eval = _root_exploration_node->_board._evaluation;
+		int best_eval = _root_exploration_node->_board->_evaluation;
 
 		string eval;
 		int mate = _board.is_eval_mate(best_eval);
@@ -1352,7 +1355,7 @@ void GUI::load_FEN(const string fen) {
 	_board.from_fen(fen);
 	update_global_pgn();
 	_root_exploration_node->reset();
-	_root_exploration_node->_board = _board;
+	_root_exploration_node->_board = &_board;
 	_update_variants = true;
 
 	cout << "loaded FEN : " << fen << endl;
@@ -1365,10 +1368,32 @@ void GUI::reset_game() {
 	_game_tree.reset();
 	reset_pgn();
 	_root_exploration_node->reset();
-	_root_exploration_node->_board = _board;
+	_root_exploration_node->_board = &_board;
 	_update_variants = true;
 
 	PlaySound(main_GUI._game_begin_sound);
 
 	cout << "game reset" << endl;
+}
+
+// Fonction qui compare deux flèches d'analyse de Grogros
+bool GUI::compare_arrows(const int m1, const int m2) const {
+
+	// Récupère les deux coups
+	const Move move1 = _root_exploration_node->_children[m1]->_move;
+	const Move move2 = _root_exploration_node->_children[m2]->_move;
+
+	// Si deux flèches finissent en un même point, affiche en dernier (au dessus), le "meilleur" coup
+	if (move1.i2 == move2.i2 && move1.j2 == move2.j2)
+		return _root_exploration_node->_children[m1]->_nodes < _root_exploration_node->_children[m2]->_nodes;
+
+	// Si les deux flèches partent d'un même point, alors affiche par dessus la flèche la plus courte
+	if (move1.i1 == move2.i1 && move1.j1 == move2.j1) {
+		const int d1 = (move1.i1 - move1.i2) * (move1.i1 - move1.i2) + (move1.j1 - move1.j2) * (move1.j1 - move1.j2);
+		const int d2 = (move2.i1 - move2.i2) * (move2.i1 - move2.i2) + (move2.j1 - move2.j2) * (move2.j1 - move2.j2);
+
+		return d1 > d2;
+	}
+
+	return true;
 }

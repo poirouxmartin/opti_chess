@@ -272,34 +272,35 @@ public:
 	bool _is_active = false;
 
 	// Liste des index des plateaux fils dans le buffer (changer la structure de données?)
-	int* _index_children = nullptr;
+	//int* _index_children = nullptr;
 
 	// Nombre de coups déjà testés
-	uint_fast8_t _tested_moves = 0;
+	//uint_fast8_t _tested_moves = 0;
 
 	// Coup auquel il en est dans sa recherche
-	uint_fast8_t _current_move = 0;
+	//uint_fast8_t _current_move = 0;
 
 	// Evaluation des fils
-	int* _eval_children = nullptr;
+	//int* _eval_children = nullptr;
 
 	// Nombre de noeuds
-	int _nodes = 0;
+	//int _nodes = 0;
 
 	// Noeuds des enfants
-	int* _nodes_children = nullptr;
+	//int* _nodes_children = nullptr;
 
 	// Est-ce que le plateau a été évalué?
 	bool _evaluated = false;
 
 	// Le plateau a t-il été initialisé?
-	bool _new_board = true;
+	//bool _new_board = true;
 
-	// Pour l'affichage
+	// Pour l'affichage 
+	// FIXME: ça prend de la place, à voir si on peut s'en passer
 	int _static_evaluation = 0;
 
 	// Temps passé sur l'anayse de Monte-Carlo
-	clock_t _time_monte_carlo = 0;
+	//clock_t _time_monte_carlo = 0;
 
 	// Avancement de la partie
 	// TODO changer en uint_fast8_t
@@ -311,7 +312,7 @@ public:
 	int_fast8_t _game_over_value = 0;
 
 	// Nombre de noeuds regardés par le quiescence search
-	int _quiescence_nodes = 0;
+	//int _quiescence_nodes = 0;
 
 	// On stocke les positions des rois
 	Pos _white_king_pos = { 0, 4 };
@@ -328,7 +329,7 @@ public:
 	//unordered_map<uint_fast64_t, int> _positions_history = {};
 
 	// Nombre de transpositions
-	int _transpositions = 0;
+	//int _transpositions = 0;
 
 
 	// Constructeur par défaut
@@ -392,10 +393,10 @@ public:
 	bool evaluate(Evaluator* eval = nullptr, bool display = false, Network* n = nullptr, bool check_game_over = false);
 
 	// Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-	int negamax(int, int, int, bool, Evaluator*, bool play = false, bool display = false, int quiescence_depth = 8, int null_depth = 2);
+	//int negamax(int, int, int, bool, Evaluator*, bool play = false, bool display = false, int quiescence_depth = 8, int null_depth = 2);
 
 	// Grogrosfish
-	bool grogrosfish(int, Evaluator*, bool);
+	//bool grogrosfish(int, Evaluator*, bool);
 
 	// Fonction qui récupère le plateau d'un FEN
 	void from_fen(string);
@@ -419,7 +420,7 @@ public:
 	static void draw_text_rect(const string&, float, float, float, float, float);
 
 	// Fonction qui dessine le plateau
-	bool draw();
+	//bool draw();
 
 	// Fonction qui joue le son d'un coup
 	void play_move_sound(Move) const;
@@ -428,34 +429,34 @@ public:
 	[[nodiscard]] int get_piece_mobility(bool legal = false) const;
 
 	// Fonction qui renvoie le meilleur coup selon l'analyse faite par l'algo de Monte-Carlo
-	[[nodiscard]] int best_monte_carlo_move() const;
+	//[[nodiscard]] int best_monte_carlo_move() const;
 
 	// Fonction qui joue le coup après analyse par l'algo de Monte-Carlo, et qui garde en mémoire les infos du nouveau plateau
-	bool play_monte_carlo_move_keep(Move move, bool keep = true, bool keep_display = false, bool display = false);
+	//bool play_monte_carlo_move_keep(Move move, bool keep = true, bool keep_display = false, bool display = false);
 
 	// Pas très opti pour l'affichage, mais bon... Fonction qui cherche la profondeur la plus grande dans la recherche de Monté-Carlo
-	[[nodiscard]] int max_monte_carlo_depth() const;
+	//[[nodiscard]] int max_monte_carlo_depth() const;
 
 	// Algo de grogros_zero
-	void grogros_zero(Evaluator* eval = nullptr, int nodes = 1, float beta = 0.035f, float k_add = 50.0f, int quiescence_depth = 4, bool explore_checks = true, bool display = false, int depth = 0, Network* net = nullptr, int correction = 0);
+	//void grogros_zero(Evaluator* eval = nullptr, int nodes = 1, float beta = 0.035f, float k_add = 50.0f, int quiescence_depth = 4, bool explore_checks = true, bool display = false, int depth = 0, Network* net = nullptr, int correction = 0);
 
 	// Fonction qui prépare le plateau pour l'algo de grogros_zero
-	void prepare_grogros_zero(int* nodes, clock_t begin_monte_time, int depth, bool display);
+	//void prepare_grogros_zero(int* nodes, clock_t begin_monte_time, int depth, bool display);
 
 	// Fonction qui explore un nouveau coup pour l'algo de grogros_zero
-	void explore_new_move(Evaluator* eval, int quiescence_depth, bool explore_checks, int correction);
+	//void explore_new_move(Evaluator* eval, int quiescence_depth, bool explore_checks, int correction);
 
 	// Fonction qui explore un noeud fils de manière pseudo-aléatoire pour l'algo de grogros_zero
-	void explore_random_child_node(Evaluator* eval, float beta, float k_add, bool display, int depth, int quiescence_depth, bool explore_checks, Network* net);
+	//void explore_random_child_node(Evaluator* eval, float beta, float k_add, bool display, int depth, int quiescence_depth, bool explore_checks, Network* net);
 
 	// Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
 	void reset_board(bool display = false);
 
 	// Fonction qui réinitialise tous les plateaux fils dans le buffer
-	void reset_all(bool self = true, bool display = false);
+	//void reset_all(bool self = true, bool display = false);
 
 	// Fonction qui renvoie le nombre de noeuds calculés par GrogrosZero
-	[[nodiscard]] int total_nodes() const;
+	//[[nodiscard]] int total_nodes() const;
 
 	// Fonction qui calcule et renvoie la valeur correspondante à la sécurité des rois
 	int get_king_safety();
@@ -467,10 +468,10 @@ public:
 	void display_pgn() const;
 
 	// Fonction qui renvoie en chaîne de caractères la meilleure variante selon monte carlo
-	string get_monte_carlo_variant(bool evaluate_final_pos = false);
+	//string get_monte_carlo_variant(bool evaluate_final_pos = false);
 
 	// Fonction qui trie les index des coups par nombre de noeuds décroissant
-	[[nodiscard]] vector<int> sort_by_nodes(bool ascending = false) const;
+	//[[nodiscard]] vector<int> sort_by_nodes(bool ascending = false) const;
 
 	// Fonction qui renvoie selon l'évaluation si c'est un mat ou non
 	[[nodiscard]] int is_eval_mate(int) const;
@@ -518,13 +519,13 @@ public:
 	[[nodiscard]] int get_rooks_on_open_file() const;
 
 	// Fonction qui renvoie la profondeur de calcul de la variante principale
-	[[nodiscard]] int grogros_main_depth() const;
+	//[[nodiscard]] int grogros_main_depth() const;
 
 	// Fonction qui calcule la valeur des cases controllées sur l'échiquier
 	[[nodiscard]] int get_square_controls() const;
 
 	// Fonction qui sélectionne et renvoie le coup avec le meilleur UCT
-	[[nodiscard]] int select_uct(float c = 0.5f) const;
+	//[[nodiscard]] int select_uct(float c = 0.5f) const;
 
 	// Fonction qui fait un tri rapide des coups (en plaçant les captures en premier)
 	bool sort_moves();
@@ -620,7 +621,7 @@ public:
 	[[nodiscard]] int get_bishop_activity() const;
 
 	// Fonction qui réinitialise les plateau fils dans le buffer
-	void reset_children();
+	//void reset_children();
 
 	// Fonction qui renvoie si un coup est légal ou non
 	[[nodiscard]] bool is_legal(Move move);
@@ -635,7 +636,7 @@ public:
 	void display_positions_history() const;
 
 	// Quiescence search pour l'algo de GrogrosZero
-	int grogros_quiescence(Evaluator* eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool explore_checks = true, bool main_player = true);
+	//int grogros_quiescence(Evaluator* eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool explore_checks = true, bool main_player = true);
 };
 
 // Fonction qui renvoie si deux positions (en format FEN) sont les mêmes
@@ -697,4 +698,4 @@ void update_text_box(TextBox& text_box);
 void draw_text_box(const TextBox& text_box);
 
 // Fonction qui compare deux coups pour savoir lequel afficher en premier
-bool compare_move_arrows(int m1, int m2);
+//bool compare_move_arrows(int m1, int m2);

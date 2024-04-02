@@ -14,13 +14,10 @@ public:
 	// Variables
 
 	// Plateau : FIXME -> indice du plateau dans le buffer?
-	Board _board;
+	Board* _board;
 
 	// Coup joué pour arriver à ce plateau (FIXME: est-ce déjà stocké dans le plateau?)
 	Move _move;
-
-	// Indice du plateau dans le buffer
-	int _index = -1;
 
 	// Fils
 	vector<Node*> _children;
@@ -35,14 +32,14 @@ public:
 	int _nodes = 0;
 
 	// Temps de calcul
-	clock_t _time_spent;
+	clock_t _time_spent = 0;
 
 	// A rajouter : évaluation?, nombre de noeuds?...
 
 	// Constructeurs
 
 	// Constructeur avec un plateau, un indice et un coup
-	Node(Board board, int index, Move move);
+	Node(Board* board, Move move);
 
 
 	// Fonctions
@@ -60,13 +57,13 @@ public:
 	[[nodiscard]] int get_first_unexplored_move_index();
 
 	// Nouveau GrogrosZero
-	void grogros_zero(Buffer buffer, Evaluator eval, float beta, float k_add, int nodes);
+	void grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add, int nodes);
 
 	// Fonction qui explore un nouveau coup
-	void explore_new_move(Buffer buffer, Evaluator eval);
+	void explore_new_move(Buffer* buffer, Evaluator* eval);
 
 	// Fonction qui explore dans un plateau fils pseudo-aléatoire
-	void explore_random_child(Buffer buffer, Evaluator eval, const float beta, const float k_add);
+	void explore_random_child(Buffer* buffer, Evaluator* eval, const float beta, const float k_add);
 
 	// Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
 	[[nodiscard]] int pick_random_child_index(const float beta, const float k_add);
@@ -82,6 +79,12 @@ public:
 
 	// Fonction qui renvoie la profondeur de la variante principale
 	[[nodiscard]] int get_main_depth();
+
+	// Fonction qui renvoie le meilleur coup
+	[[nodiscard]] Move get_best_move();
+
+	// Fonction qui renvoie le fils le plus exploré
+	[[nodiscard]] Node* get_most_explored_child(bool decide_by_eval = true);
 
 	// Fonctions à rajouter: destruction des fils et de soi...
 

@@ -86,10 +86,11 @@ struct Param {
 
 // Fonction qui joue le meilleur coup de Grogros et l'affiche
 inline void bestmove(Board& board, Param& param) {
-    Move best_move = board._moves[board.best_monte_carlo_move()];
-    string best_move_string = board.algebric_notation(best_move);
-    board.play_monte_carlo_move_keep(best_move);
-    cout << "bestmove " << best_move_string << endl;
+    //Move best_move = board._moves[board.best_monte_carlo_move()];
+    //string best_move_string = board.algebric_notation(best_move);
+    //board.play_monte_carlo_move_keep(best_move);
+    //cout << "bestmove " << best_move_string << endl;
+    
     //cout << "test" << board._positions_history.size() << endl;
     //board.display_positions_history();
     //cout << "eval: " << board._evaluation << endl;
@@ -134,7 +135,7 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
 
             // Si le coup est jouable, on le joue
             if (board.is_legal(move)) {
-                board.play_monte_carlo_move_keep(move);
+                //board.play_monte_carlo_move_keep(move);
                 board._game_over_checked = false;
                 board.is_game_over(3);
                 //cout << "test" << board._positions_history.size() << endl;
@@ -231,10 +232,11 @@ inline bool should_play(const Board& board, Param param) {
     static constexpr int supposed_grogros_speed = 3500;
 
     // Nombre de noeuds déjà calculés
-    int tot_nodes = board.total_nodes();
+    //int tot_nodes = board.total_nodes();
 
     // Pourcentage de réflexion utilisé pour le meilleur coup
-    float best_move_percentage = tot_nodes == 0 ? 0.05f : static_cast<float>(board._nodes_children[board.best_monte_carlo_move()]) / static_cast<float>(tot_nodes);
+    //float best_move_percentage = tot_nodes == 0 ? 0.05f : static_cast<float>(board._nodes_children[board.best_monte_carlo_move()]) / static_cast<float>(tot_nodes);
+    float best_move_percentage = 0;
 
     // Mise à jour du temps de réflexion
     if (board._player) {
@@ -259,11 +261,13 @@ inline bool should_play(const Board& board, Param param) {
 
     // On veut être sûr de jouer le meilleur coup de Grogros
     // Si il y a un meilleur coup que celui avec le plus de noeuds, attendre...
-    bool wait_for_best_move = tot_nodes != 0 && board._eval_children[board.best_monte_carlo_move()] * board.get_color() < board._evaluation * board.get_color();
+    bool wait_for_best_move = false;
+    //bool wait_for_best_move = tot_nodes != 0 && board._eval_children[board.best_monte_carlo_move()] * board.get_color() < board._evaluation * board.get_color();
     nodes_to_play = wait_for_best_move ? nodes_to_play : nodes_to_play / 4; // FIXME: on peut attendre en fonction de la différence d'évaluation entre le meilleur coup et le coup le plus réfléchi
 
     //cout << "nodes to play: " << nodes_to_play << endl;
-    return tot_nodes >= nodes_to_play && param.play == true;
+    return true;
+    //return tot_nodes >= nodes_to_play && param.play == true;
 
 
     // TODO: jouer le nombre de noeuds à la prochaine itération en fonction de l'estimation du nombre de noeuds restants
@@ -318,7 +322,7 @@ inline int main_lichess() {
         }
 
         // Grogros réfléchit en attendant
-        board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
+        //board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
 
         if (should_play(board, param))
             bestmove(board, param);
