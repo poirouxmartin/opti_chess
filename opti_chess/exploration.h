@@ -86,6 +86,9 @@ public:
 	// Fonction qui renvoie le fils le plus exploré
 	[[nodiscard]] Node* get_most_explored_child(bool decide_by_eval = true);
 
+	// Fonction qui renvoie la vitesse de calcul moyenne en noeuds par seconde
+	[[nodiscard]] int get_avg_nps() const;
+
 	// Fonctions à rajouter: destruction des fils et de soi...
 
 	// Destructeur : TODO (supprimer tous les tableaux dynamiques...)

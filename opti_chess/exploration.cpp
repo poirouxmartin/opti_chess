@@ -112,15 +112,22 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval) {
 	new_board->make_move(move, false, false, true);
 
 	// Evalue le plateau, en regardant si la partie est finie
-	new_board->evaluate(eval, false, nullptr, true);
+	//new_board->evaluate(eval, false, nullptr, true);
+	new_board->_evaluation = new_board->quiescence(eval, -INT32_MAX, INT32_MAX, 4, true) * new_board->get_color();
 
 	// Met à jour l'évaluation du plateau
-	if (children_count() == 0) {
+	if (children_count() == 0 && false) { // Si c'est désactivé, alors il ne vera sûrement pas les zugzwang. Mais si activé, s'il joue un mauvais coup, il va considérer la branche comme mauvaise
 		_board->_evaluation = new_board->_evaluation; // Pour le quiescence search, faut-il ne pas aller là pour garder un standpat?
 	}
 	else {
+		// TODO: c'est vraiment ça qu'il faut faire?
 		_board->_evaluation = _board->_player * max(_board->_evaluation, new_board->_evaluation) + !_board->_player * min(_board->_evaluation, new_board->_evaluation);
 	}
+
+	// FIXME: si on a regardé tous les fils, et qu'aucun des coups n'améliore l'évaluation, on fait quoi?
+	// - Option 1: on garde l'évaluation sans aucun coup
+	// - Option 2: on garde l'évaluation du meilleur coup
+	// Est-ce vraiment grave? peut-être pas car si on continue une profondeur plus loin, explore_random_child() va prendre le meilleur coup
 
 	// Augmente le nombre de noeuds
 	_nodes++;
@@ -228,13 +235,17 @@ int Node::pick_random_child_index(const float beta, const float k_add) {
 
 	// Avec un départage par égalité
 	else {
-
+		// TODO: c'est foireux...
 		vector<int> indices;
 		int color = _board->get_color();
 
 		for (int i = 0; i < children_count(); i++) {
-			if (_children[i]->_nodes >= max) {
+			if (_children[i]->_nodes == max) {
+				indices.push_back(i);
+			}
+			else if (_children[i]->_nodes > max) {
 				max = _children[i]->_nodes;
+				indices.clear();
 				indices.push_back(i);
 			}
 		}
@@ -280,7 +291,7 @@ string Node::get_exploration_variants(bool main) {
 	// Pour les eval, il faut afficher différemment les mats
 	// Afficher les + et les - pour les évaluations
 	// Afficher les icônes des pièces (♔, ♕, ♖, ♗, ♘, ♙, ♚, ♛, ♜, ♝, ♞, ♟) (UTF-8)
-	// Afficher la profondeur de chaque variante
+	// Afficher le premier coup de la variante bien en évidence
 
 	// Si on est en fin de variante
 	if (_board->_game_over_value) {
@@ -337,10 +348,11 @@ string Node::get_exploration_variants(bool main) {
 
 
 			for (int i = 0; i < children_count(); i++) {
-				variants += _board->move_label(_children[children_index[i]]->_move) + " " + _children[children_index[i]]->get_exploration_variants(false);
+				int child_index = children_index[i];
 
-				// Nombre de noeuds...
-				variants += "\nN: " + int_to_round_string(_children[children_index[i]]->_nodes) + " (" + int_to_round_string(_children[children_index[i]]->_nodes * 100 / _nodes) + "%) | E: " + int_to_round_string(_children[children_index[i]]->_board->_evaluation) + "\n\n";
+				variants += "E: " + int_to_round_string(_children[child_index]->_board->_evaluation) + " | N: " + int_to_round_string(_children[child_index]->_nodes) + " (" + int_to_round_string(_children[child_index]->_nodes * 100 / _nodes) + "%) | D: " + int_to_round_string(_children[child_index]->get_main_depth() + 1) + " | T: " + clock_to_string(_children[child_index]->_time_spent) + "s\n";
+
+				variants += _board->move_label(_children[child_index]->_move) + " " + _children[child_index]->get_exploration_variants(false) + "\n\n";
 			}
 		}
 
@@ -395,4 +407,9 @@ Node::~Node() {
 [[nodiscard]] Node* Node::get_most_explored_child(bool decide_by_eval) {
 	int index_best_move = get_most_explored_child_index(decide_by_eval);
 	return _children[index_best_move];
+}
+
+// Fonction qui renvoie la vitesse de calcul moyenne en noeuds par seconde
+[[nodiscard]] int Node::get_avg_nps() const {
+	return _time_spent == 0 ? 0 : (_nodes / _time_spent * CLOCKS_PER_SEC);
 }
