@@ -502,7 +502,7 @@ public:
 	uint_fast8_t clicked_piece() const;
 
 	// Fonction qui lance une analyse de GrogrosZero
-	void grogros_analysis();
+	void grogros_analysis(int nodes = -1);
 
 	// Fonction qui charge une position à partir d'une FEN
 	void load_FEN(const string fen);

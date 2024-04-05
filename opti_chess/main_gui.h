@@ -209,7 +209,7 @@ inline int main_ui() {
 				cout << main_GUI._root_exploration_node->_children[i]->_board._positions_history.size() << endl;
 			}*/
 
-
+			main_GUI.grogros_analysis(1);
 		}
 
 		// CTRL-T - Cherche le plateau de chess.com sur l'écran, et lance une partie
@@ -610,9 +610,14 @@ inline int main_ui() {
 					monte_buffer.init(buffer_size);
 
 				// Grogros doit gérer son temps
+				// TODO: Faire une fonction pour ça
+				// il faudra prendre plus de temps dans les positions complexes
 				if (main_GUI._time) {
 					// Nombre de noeuds que Grogros doit calculer (en fonction des contraintes de temps)
-					static constexpr int supposed_grogros_speed = 40000; // En supposant que Grogros va à plus de 5k noeuds par seconde
+					//static constexpr int supposed_grogros_speed = 40000; // En supposant que Grogros va à plus de 5k noeuds par seconde
+					//int supposed_grogros_speed = main_GUI._root_exploration_node->_time_spent == 0 ? 1 : (main_GUI._root_exploration_node->_nodes / main_GUI._root_exploration_node->_time_spent); // En supposant que Grogros va à plus de 5k noeuds par seconde
+					//int supposed_grogros_speed = 2500;
+					int supposed_grogros_speed = main_GUI._root_exploration_node->get_avg_nps();
 					float best_move_percentage = main_GUI._root_exploration_node->_nodes == 0 ? 0.05f : static_cast<float>(main_GUI._root_exploration_node->_children[main_GUI._root_exploration_node->get_most_explored_child_index()]->_nodes) / static_cast<float>(main_GUI._root_exploration_node->_nodes);
 					int max_move_time = main_GUI._board._player ?
 						time_to_play_move(main_GUI._time_white, main_GUI._time_black, 0.2f * (1.0f - best_move_percentage)) :
