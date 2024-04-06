@@ -363,7 +363,7 @@ void GUI::draw_exploration_arrows()
 
 	// Dessine les flèches
 	for (const int move_index : moves_vector) {
-		const int mate = _root_exploration_node->_children[move_index]->_board->is_eval_mate(_root_exploration_node->_children[move_index]->_board->_evaluation);
+		const int mate = _root_exploration_node->_board->is_eval_mate(_root_exploration_node->_children[move_index]->_board->_evaluation);
 		draw_arrow(_root_exploration_node->_children[move_index]->_move, _root_exploration_node->_board->_player, move_color(_root_exploration_node->_children[move_index]->_nodes, _root_exploration_node->_nodes), -1.0f, true, _root_exploration_node->_children[move_index]->_board->_evaluation, mate, move_index == best_move);
 	}
 }

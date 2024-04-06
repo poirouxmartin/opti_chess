@@ -288,6 +288,10 @@ r2kr3/P1n5/b2N4/2BnQ3/q2P4/8/PP3PPP/K1R5 w - - 6 30 : ça tient pour les noirs
 r3r3/P6Q/q7/3P2k1/3B4/8/PP3PPP/K7 w - - 5 37 : askip les noirs sont mieux là...
 r3r3/P7/8/3q4/3B1k1P/8/PP3PP1/K2Q4 w - - 0 40 : y'a pas de mat, les noirs sont gagnants
 r7/Pk6/4r3/3q4/7P/4B3/PP3PP1/K1Q5 b - - 15 47 : ça reste une tour et une qualité de plus...
+r3qr1k/1ppQb2p/7P/nP2ppp1/8/2P2nN1/BB3P2/R2R1K2 b - - 0 29 : ici les blancs sont beaucoup mieux malgré le matériel de moins. Roi noir faible, fous sur les diagonales
+r6k/1pp1b2p/7P/n3p1p1/5p2/2PQ1n2/Bq3P2/R2R1K2 w - - 0 33 : Fb1 gagne
+4rr1k/1pp1b2p/p1n4P/1P2p1p1/P3Np2/1BP2n2/1B3P2/R2R1K2 b - - 1 29 : blancs quasi gagnants
+r4r1k/1ppRb2p/p1n4P/1P2p1p1/P3Np2/1BP2n2/1B3P2/R4K2 b - - 0 29 : noirs complètement foutus
 
 
 ----- Problèmes -----
@@ -635,6 +639,7 @@ r3r3/P1n5/3qn1k1/8/8/4BQ2/PP3PPP/K1R5 w - - 0 36 : Tc4!!
 4r1k1/B2Q2n1/q2Pn3/8/8/8/PP3PPP/K1R5 w - - 3 40 : Fe3 encore seul coup
 8/1nq5/bppp4/1p1k1K1N/1rrp3b/2pp2p1/8/n7 w - - 0 1 : Cf4 mate
 8/1n6/1ppp4/1pk2K2/1rrp1N1b/2pp2p1/8/n7 w - - 7 8 : Re4 mate
+r3qr1k/1ppQb2p/p3B2P/nP2p1p1/P3Np2/2P2n2/1B3P2/R2R1K2 b - - 3 29 : g4 seul coup qui tient
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---
