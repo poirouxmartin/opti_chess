@@ -6385,3 +6385,27 @@ void Board::display_positions_history() const
 //
 //	return alpha;
 //}
+
+// Fonction qui renvoie l'affichage de l'évaluation
+[[nodiscard]] string Board::evaluation_to_string(int eval) const {
+	string eval_string = "";
+
+	if (eval > 0)
+		eval_string += "+";
+
+	// Est-ce que c'est un mat?
+	int mate = is_eval_mate(eval);
+	if (mate != 0) {
+
+		if (eval < 0)
+			eval_string += "-";
+
+		eval_string += "M";
+		eval_string += to_string(abs(mate));
+	}
+	else {
+		eval_string += to_string(eval);
+	}
+
+	return eval_string;
+}

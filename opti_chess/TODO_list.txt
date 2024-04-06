@@ -318,6 +318,8 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Weak squares: faire de manière plus progressive? (un pion qui contrôle c'est ok, deux c'est mieux...)
 -> get_safe_checks() -> prend 90% du temps de l'évaluation...
 -> BUG: parfois après une repetition 1 fois, Grogros choisit un coup complètement pourri et en est sûr (perdant) : ça arrive encore?
+-> Pour tester les versions de grogros, faudrait que je fasse une fonction qui le confronte à un certain nombre de puzzles/evaluations et voir combien il en réussi pour lui donner un score. (utiliser ça aussi pour entraîner les réseaux de neurones?)
+-> BUG: parfois, grogros stoppe le temps en pleine partie (il pense que la partie est finie??)
 
 
 ----- Interface utilisateur -----
@@ -426,6 +428,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Ré-afficher un peu mieux les variantes et avec plus de détails (profondeur...)
 -> Affichage du temps dans le PGN
 -> Afficher les pièces plutôt que P, R, N, B, Q, K
+-> Quand l'adversaire à joué un coup, re-cliquer sur la fenêtre de Grogros pour que ça remette le focus sur l'appli
 
 
 
@@ -452,8 +455,9 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Quand on revient en arrière, il faut re update la recherche
 -> Problème au niveau de l'afichage des mats (ça met parfois - mat en 2, alors que c'est - mat en 1)
 -> Voir TODO affichage des variantes
-
 -> Fusion entre GrogrosZero et quiescence search (faut-il vraiment le faire??) -> grogros_quiescence()
+-> Revoir comment on gère le temps pour Grogros... en fonction de quiescence nodes?
+---------
 -> Pour le softmax, faut-il un gradient absolu ou relatif? pour le moment il y a la même différence entre -100 et +100 qu'entre +1800 et +2000? pas optimal...
 -> Peut-on fusionner _tested_moves et _current_moves?
 -> Il faut reset la table de transposition après chaque coup? sinon y'aura des positions obselettes (et potentiellement avec des indices buffer faux)
