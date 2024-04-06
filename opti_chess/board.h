@@ -637,6 +637,9 @@ public:
 
 	// Quiescence search pour l'algo de GrogrosZero
 	//int grogros_quiescence(Evaluator* eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool explore_checks = true, bool main_player = true);
+
+	// Fonction qui renvoie l'affichage de l'évaluation
+	[[nodiscard]] string evaluation_to_string(int eval) const;
 };
 
 // Fonction qui renvoie si deux positions (en format FEN) sont les mêmes

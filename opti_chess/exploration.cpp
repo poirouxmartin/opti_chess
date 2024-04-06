@@ -288,10 +288,9 @@ void Node::reset() {
 string Node::get_exploration_variants(bool main) {
 
 	// TODO: il faut rajouter les 1. .., 2...
-	// Pour les eval, il faut afficher différemment les mats
 	// Afficher les + et les - pour les évaluations
 	// Afficher les icônes des pièces (♔, ♕, ♖, ♗, ♘, ♙, ♚, ♛, ♜, ♝, ♞, ♟) (UTF-8)
-	// Afficher le premier coup de la variante bien en évidence
+	// r1b1kbnr/pppp1ppp/2n5/4p2Q/2B1P2q/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4 : #2
 
 	// Si on est en fin de variante
 	if (_board->_game_over_value) {
@@ -350,9 +349,13 @@ string Node::get_exploration_variants(bool main) {
 			for (int i = 0; i < children_count(); i++) {
 				int child_index = children_index[i];
 
-				variants += "E: " + int_to_round_string(_children[child_index]->_board->_evaluation) + " | N: " + int_to_round_string(_children[child_index]->_nodes) + " (" + int_to_round_string(_children[child_index]->_nodes * 100 / _nodes) + "%) | D: " + int_to_round_string(_children[child_index]->get_main_depth() + 1) + " | T: " + clock_to_string(_children[child_index]->_time_spent) + "s\n";
+				//variants += _board->move_label(_children[child_index]->_move) + " | E: " + to_string(_children[child_index]->_board->_evaluation) + " | N: " + int_to_round_string(_children[child_index]->_nodes) + " (" + int_to_round_string(_children[child_index]->_nodes * 100 / _nodes) + "%) | D: " + int_to_round_string(_children[child_index]->get_main_depth() + 1) + " | T: " + clock_to_string(_children[child_index]->_time_spent) + "s\n";
+				variants += "eval: " + _board->evaluation_to_string(_children[child_index]->_board->_evaluation) + " | ";
 
-				variants += _board->move_label(_children[child_index]->_move) + " " + _children[child_index]->get_exploration_variants(false) + "\n\n";
+				variants += _board->move_label(_children[child_index]->_move) + " " + _children[child_index]->get_exploration_variants(false) + "\n";
+
+				variants += "N: " + int_to_round_string(_children[child_index]->_nodes) + " (" + int_to_round_string(_children[child_index]->_nodes * 100 / _nodes) + "%) | D : " + int_to_round_string(_children[child_index]->get_main_depth() + 1) + " | T : " + clock_to_string(_children[child_index]->_time_spent) + "s\n\n";
+
 			}
 		}
 
@@ -370,7 +373,7 @@ string Node::get_exploration_variants(bool main) {
 	else {
 
 		// On affiche l'évaluation du plateau en fin de variante
-		variants = "(" + int_to_round_string(_board->_evaluation) + ")";
+		variants = "(" + to_string(_board->_evaluation) + ")";
 	}
 	
 	return variants;
