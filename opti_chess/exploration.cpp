@@ -106,6 +106,13 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval) {
 
 	// Prend une place dans le buffer
 	const int buffer_index = buffer->get_first_free_index();
+
+	// FIXME: faut peut-être check ça autre part...
+	if (buffer_index == -1) {
+		cout << "Buffer is full" << endl;
+		return;
+	}
+
 	Board *new_board = &buffer->_heap_boards[buffer_index];
 	new_board->copy_data(*_board, false, true);
 	new_board->_is_active = true;
@@ -134,7 +141,7 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval) {
 
 	// Ajoute le fils
 	Node* child = new Node(new_board, move);
-	child->_nodes = 1;
+	child->_nodes = 1; // FIXME: 0?
 	add_child(child);	
 }
 
@@ -287,10 +294,8 @@ void Node::reset() {
 // Fonction qui renvoie les variantes d'exploration
 string Node::get_exploration_variants(bool main) {
 
-	// TODO: il faut rajouter les 1. .., 2...
-	// Afficher les + et les - pour les évaluations
+	// TODO:
 	// Afficher les icônes des pièces (♔, ♕, ♖, ♗, ♘, ♙, ♚, ♛, ♜, ♝, ♞, ♟) (UTF-8)
-	// r1b1kbnr/pppp1ppp/2n5/4p2Q/2B1P2q/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4 : #2
 
 	// Si on est en fin de variante
 	if (_board->_game_over_value) {
@@ -341,20 +346,15 @@ string Node::get_exploration_variants(bool main) {
 				else {
 					children_evaluations.push_back(make_pair(- _children[children_nodes[i].second]->_board->_evaluation * color, children_nodes[i].second));
 				}
-
-				
 			}
 
 
 			for (int i = 0; i < children_count(); i++) {
 				int child_index = children_index[i];
 
-				//variants += _board->move_label(_children[child_index]->_move) + " | E: " + to_string(_children[child_index]->_board->_evaluation) + " | N: " + int_to_round_string(_children[child_index]->_nodes) + " (" + int_to_round_string(_children[child_index]->_nodes * 100 / _nodes) + "%) | D: " + int_to_round_string(_children[child_index]->get_main_depth() + 1) + " | T: " + clock_to_string(_children[child_index]->_time_spent) + "s\n";
 				variants += "eval: " + _board->evaluation_to_string(_children[child_index]->_board->_evaluation) + " | ";
-
-				variants += _board->move_label(_children[child_index]->_move) + " " + _children[child_index]->get_exploration_variants(false) + "\n";
-
-				variants += "N: " + int_to_round_string(_children[child_index]->_nodes) + " (" + int_to_round_string(_children[child_index]->_nodes * 100 / _nodes) + "%) | D : " + int_to_round_string(_children[child_index]->get_main_depth() + 1) + " | T : " + clock_to_string(_children[child_index]->_time_spent) + "s\n\n";
+				variants += to_string(_board->_moves_count) + (_board->_player ? ". " : "... ") + _board->move_label(_children[child_index]->_move) + " " + _children[child_index]->get_exploration_variants(false) + "\n";
+				variants += "N: " + int_to_round_string(_children[child_index]->_nodes) + " (" + int_to_round_string(_children[child_index]->_nodes * 100 / _nodes) + "%) | D: " + int_to_round_string(_children[child_index]->get_main_depth() + 1) + " | T: " + clock_to_string(_children[child_index]->_time_spent) + "s\n\n";
 
 			}
 		}
@@ -364,7 +364,7 @@ string Node::get_exploration_variants(bool main) {
 			// Affiche seulement le premier coup (le plus exploré, et en cas d'égalité, celui avec la meilleure évaluation)
 			int index_best_move = get_most_explored_child_index();
 
-			variants += _board->move_label(_children[index_best_move]->_move) + " " + _children[index_best_move]->get_exploration_variants(false);
+			variants += (_board->_player ? to_string(_board->_moves_count) + ". " : "") + _board->move_label(_children[index_best_move]->_move) + " " + _children[index_best_move]->get_exploration_variants(false);
 		}
 		
 	}
@@ -373,7 +373,7 @@ string Node::get_exploration_variants(bool main) {
 	else {
 
 		// On affiche l'évaluation du plateau en fin de variante
-		variants = "(" + to_string(_board->_evaluation) + ")";
+		variants = "(" + _board->evaluation_to_string(_board->_evaluation) + ")";
 	}
 	
 	return variants;
@@ -416,3 +416,135 @@ Node::~Node() {
 [[nodiscard]] int Node::get_avg_nps() const {
 	return _time_spent == 0 ? 0 : (_nodes / _time_spent * CLOCKS_PER_SEC);
 }
+
+// Quiescence search intégré à l'exploration
+void Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha, int beta) {
+	cout << "depth: " << depth << endl;
+	_nodes = 1;
+
+	// Temps de calcul
+	const clock_t begin_monte_time = clock();
+
+	// Si c'est un nouveau noeud, on fait son initialisation
+	if (_new_node) {
+
+		// Vérifie si la partie est finie (normalement, c'est déjà fait dans l'évaluation)
+		_board->is_game_over();
+		_new_node = false;
+
+		if (_board->_got_moves == -1) {
+			_board->get_moves();
+		}
+
+		// Trie les coups si ça n'est pas déjà fait (les trie de façon rapide)
+		!_board->_sorted_moves && _board->sort_moves();
+	}
+
+	// Couleur du joueur
+	int color = _board->get_color();
+
+	// Si la partie est finie
+	if (_board->is_game_over()) {
+		if (_board->_game_over_value == 2)
+			_board->_evaluation = 0;
+		else
+			_board->_evaluation = (-mate_value + _board->_moves_count * mate_ply) * color;
+
+		_nodes++; // BOF
+		_time_spent += clock() - begin_monte_time;
+		cout << "game over" << endl;
+
+		return;
+	}
+
+	// Évalue la position
+	_board->evaluate(eval);
+	int color_eval = _board->_evaluation * color;
+
+	// Stand pat
+	if (depth == 0) {
+		return;
+	}
+
+	// Si on est en échec (pour ne pas terminer les variantes sur un échec)
+	bool check_extension = _board->in_check();
+
+	// Beta cut-off
+	if (color_eval >= beta) {
+		_board->_evaluation = beta * color;
+		_time_spent += clock() - begin_monte_time;
+		cout << "beta cut-off" << endl;
+
+		return;
+	}
+
+	// Mise à jour de alpha si l'éval statique est plus grande
+	// Pas de stand_pat si on est en échec
+	if (alpha < color_eval && !check_extension)
+		alpha = color_eval;
+
+	for (int i = 0; i < _board->_got_moves; i++) {
+
+		// Coup
+		Move move = _board->_moves[i];
+
+		// Si c'est une capture (ou check extension)
+		if (_board->_array[move.i2][move.j2] != 0 || check_extension) {
+			cout << "move: " << _board->move_label(move) << endl;
+
+			// Prend une place dans le buffer
+			const int buffer_index = buffer->get_first_free_index();
+
+			// FIXME: faut peut-être check ça autre part...
+			if (buffer_index == -1) {
+				cout << "Buffer is full" << endl;
+				_time_spent += clock() - begin_monte_time;
+
+				return;
+			}
+
+			Board* new_board = &buffer->_heap_boards[buffer_index];
+			new_board->copy_data(*_board, false, true);
+			new_board->_is_active = true;
+			new_board->make_move(move, false, false, true);
+
+			// Ajoute le fils
+			Node* child = new Node(new_board, move);
+			//child->_nodes = 1; // FIXME: 0?
+			add_child(child);
+
+			// Appel récursif sur le fils
+			child->grogros_quiescence(buffer, eval, depth - 1, -beta, -alpha);
+			_nodes++;
+
+			// Evaluation du fils
+			int score = - child->_board->_evaluation * color_eval;
+
+			if (score >= beta) {
+				_board->_evaluation = beta * color;
+				_time_spent += clock() - begin_monte_time;
+				cout << "beta cut-off2" << endl;
+
+				return;
+			}
+
+			if (score > alpha) {
+				alpha = score;
+			}
+
+			cout << "next move" << endl;
+		}
+
+		
+
+		// TODO: explore checks?
+
+	}
+
+	// Met à jour l'évaluation du plateau avec le meilleur score trouvé
+	_board->_evaluation = alpha * color;
+
+	// Temps de calcul
+	_time_spent += clock() - begin_monte_time;
+}
+
