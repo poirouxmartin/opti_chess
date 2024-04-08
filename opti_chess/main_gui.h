@@ -209,7 +209,8 @@ inline int main_ui() {
 				cout << main_GUI._root_exploration_node->_children[i]->_board._positions_history.size() << endl;
 			}*/
 
-			main_GUI.grogros_analysis(1);
+			//main_GUI.grogros_analysis(1);
+			main_GUI._root_exploration_node->grogros_quiescence(&monte_buffer, main_GUI._grogros_eval, 4);
 		}
 
 		// CTRL-T - Cherche le plateau de chess.com sur l'écran, et lance une partie
@@ -365,6 +366,7 @@ inline int main_ui() {
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_DELETE)) {
 			//main_GUI._board.reset_all(true, true);
 			main_GUI._root_exploration_node->reset();
+			//main_GUI._root_exploration_node = new Node(&main_GUI._board, Move());
 		}
 
 		// CTRL - Suppr. - Supprime le buffer de Monte-Carlo

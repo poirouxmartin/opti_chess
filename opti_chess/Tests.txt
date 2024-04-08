@@ -67,6 +67,7 @@ r1bqkb1r/8/p1p1pPn1/PpPp1pP1/1P1P1P1P/8/R7/1NBQK2R b Kkq - 0 20 : gagnant pour l
 r4b1r/1bqk4/p1p2P2/PpPp1pPP/1P1P1p2/5Q2/4R3/1N2K2R w - - 2 26 : y'a quand-même 3 pions passés liés pour les blancs
 2kr4/2p2R2/2p5/1pq5/4P3/p1P2PP1/PP1B4/R3KB2 w Q - 0 14
 2R5/3R4/4k3/1p6/2P1PB2/pP3PP1/Pq5r/4KB2 w - - 7 24 : ici c'est perpet
+2R5/4k3/7B/1p6/1KP1P3/1P3PP1/pq6/8 w - - 0 31 : noirs gagnants
 6k1/5pp1/Q1p3q1/6B1/P6K/1p2r3/8/5R2 b - - 99 92
 5rk1/p4qb1/1p1p3p/3Ppp2/PRP1P3/2N1BnPb/2Q4P/1R5K w - - 0 5 : noirs mieux, car roi très faible... 5rk1/p5b1/1p1p3p/1N1P3q/PRP1Pp2/5n1b/2Q4P/2BR3K b - - 3 8
 r2qr1k1/ppp2pbp/1n6/3p1PPR/5P1Q/8/PpP1N1B1/1K1R4 w - - 2 22 : roi noir très faible, Grogros pense que les noirs sont mieux, alors que ça devrait être +15
@@ -640,6 +641,7 @@ r3r3/P1n5/3qn1k1/8/8/4BQ2/PP3PPP/K1R5 w - - 0 36 : Tc4!!
 8/1nq5/bppp4/1p1k1K1N/1rrp3b/2pp2p1/8/n7 w - - 0 1 : Cf4 mate
 8/1n6/1ppp4/1pk2K2/1rrp1N1b/2pp2p1/8/n7 w - - 7 8 : Re4 mate
 r3qr1k/1ppQb2p/p3B2P/nP2p1p1/P3Np2/2P2n2/1B3P2/R2R1K2 b - - 3 29 : g4 seul coup qui tient
+r2qr1k1/ppn1bppp/8/2pP1b2/3P4/2N1BN1P/PP1Q1PP1/R3R1K1 b - - 0 17 : c4 seul coup qui tient
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---
