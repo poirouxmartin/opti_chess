@@ -324,7 +324,7 @@ public:
 	// Clé de Zobrist de la position
 	uint_fast64_t _zobrist_key = 0;
 
-	// Historique des positions (position, nombre d'occurences)
+	// Historique des positions
 	vector<uint64_t> _positions_history = {};
 	//unordered_map<uint_fast64_t, int> _positions_history = {};
 

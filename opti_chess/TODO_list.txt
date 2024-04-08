@@ -123,7 +123,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Pression sur les cases et points faibles
 	- Colonnes occupées par une dame
 	- Pions passés liés !
-	- Outpost
 	- Coordination des pièces
 	- Bishop pawns : nombre de pion de la même couleur que le fou -> pénalité plus le nombre est grand
 	- Candidats pions passés : r1bq2kr/ppp1bn1p/2n1p2P/3pP1PR/3P1p2/1NPB1N2/PPQ2P2/R3K3 b Q - 0 16 : ici y'aura potentiellement un pion passé colonne g ou h
@@ -140,6 +139,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Règle des 2 faiblesses : si y'a 2 faiblesses attaquables, ça donne un avantage
 	- Winnable? en endgame par exemple si on a qu'un fou on peut pas gagner
 	- Redonner de la valeur pour la dame, car les tours on beaucoup d'évaluations différentes qui leur donnent de la valeur
+	- Quand t'as une position stratégiquement mauvaise, il faut jouer dynamiquement (r1bq1rk1/ppn1bppp/3p4/2p5/2PP4/2N1BN1P/PP3PP1/R2Q1RK1 b - - 0 14 : là faut faire d5)
 
 -> Faire une policy pour les coups (ou des préférences de réflexion)
 -> Livres d'ouvertures, tables d'engame?
@@ -320,6 +320,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> BUG: parfois après une repetition 1 fois, Grogros choisit un coup complètement pourri et en est sûr (perdant) : ça arrive encore?
 -> Pour tester les versions de grogros, faudrait que je fasse une fonction qui le confronte à un certain nombre de puzzles/evaluations et voir combien il en réussi pour lui donner un score. (utiliser ça aussi pour entraîner les réseaux de neurones?)
 -> BUG: parfois, grogros stoppe le temps en pleine partie (il pense que la partie est finie??)
+-> Pour get_zobrist _key, regarder si on ne le fait pas trop souvent
 
 
 ----- Interface utilisateur -----
@@ -450,13 +451,13 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 ----- En cours -----
 
 -> FAUT METTRE DES POINTEURS PARTOUT AU LIEU DE COPIER LES OBJETTTTTTSSS !! (exploration.h, gui?)
--> Il faut vérifier qu'on supprime tout ce qu'on créé, car la mémoire est pas libérée !!
 -> BUG: après une répétition, Grogros joue plus
 -> Quand on revient en arrière, il faut re update la recherche
--> Problème au niveau de l'afichage des mats (ça met parfois - mat en 2, alors que c'est - mat en 1)
--> Voir TODO affichage des variantes
--> Fusion entre GrogrosZero et quiescence search (faut-il vraiment le faire??) -> grogros_quiescence()
+-> Fusion entre GrogrosZero et quiescence search -> grogros_quiescence()
 -> Revoir comment on gère le temps pour Grogros... en fonction de quiescence nodes?
+-> Si on dépasse le max du buffer, ça plante
+-> Regarder les TODO/FIXME dans exploration.cpp
+-> Il faut revoir comment on compte les noeuds
 ---------
 -> Pour le softmax, faut-il un gradient absolu ou relatif? pour le moment il y a la même différence entre -100 et +100 qu'entre +1800 et +2000? pas optimal...
 -> Peut-on fusionner _tested_moves et _current_moves?

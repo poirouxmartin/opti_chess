@@ -89,6 +89,9 @@ public:
 	// Fonction qui renvoie la vitesse de calcul moyenne en noeuds par seconde
 	[[nodiscard]] int get_avg_nps() const;
 
+	// Quiescence search intégré à l'exploration
+	void grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha = -INT_MAX, int beta = INT_MAX);
+
 	// Fonctions à rajouter: destruction des fils et de soi...
 
 	// Destructeur : TODO (supprimer tous les tableaux dynamiques...)

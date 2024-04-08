@@ -6224,15 +6224,10 @@ void Board::reset_positions_history() {
 
 // Fonction qui renvoie combien de fois la position actuelle a été répétée
 int Board::repetition_count() {
-	get_zobrist_key();
-	
-	/*if (_positions_history.find(_zobrist_key) == _positions_history.end())
-		return 0;*/
 
-	//return _positions_history[_zobrist_key];
-	//return _positions_history.
-	//return _half_moves_count >= max_half_moves - 1;
-	//cout << "count: " << count(_positions_history.begin(), _positions_history.end(), _zobrist_key) << endl;
+	// FIXME: faut-il faire ça là? ça a peut-être déjà été fait...
+	get_zobrist_key();
+
 	return count(_positions_history.begin(), _positions_history.end(), _zobrist_key);
 }
 
