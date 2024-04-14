@@ -76,10 +76,10 @@ void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add
 
 	// Vérifie que le buffer n'est pas plein (TODO) (et est bien initialisé aussi)
 	
-	int initial_nodes = _nodes;
 
 	// Exploration des noeuds
 	while (nodes > 0) {
+		int initial_nodes = _nodes;
 
 		// S'il reste des coups à explorer
 		if (children_count() < _board->_got_moves) {
@@ -595,7 +595,7 @@ void Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth) {
 		}
 
 		// Trie les coups si ça n'est pas déjà fait (les trie de façon rapide)
-		!_board->_sorted_moves&& _board->sort_moves();
+		!_board->_sorted_moves && _board->sort_moves();
 	}
 
 	// Couleur du joueur
@@ -636,9 +636,12 @@ void Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth) {
 	for (int i = 0; i < _board->_got_moves; i++) {
 
 		// TODO: on peut améliorer ça...
-		if (get_child_index(_board->_moves[i]) != -1) {
+		// Si le coup a déjà été exploré, on ne le regarde pas
+		// FIXME: ça n'arrive jamais??
+		/*if (get_child_index(_board->_moves[i]) != -1) {
+			cout << "move already explored" << endl;
 			continue;
-		}
+		}*/
 
 		// Coup
 		Move move = _board->_moves[i];
