@@ -76,6 +76,7 @@ void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add
 
 	// Vérifie que le buffer n'est pas plein (TODO) (et est bien initialisé aussi)
 	
+	int initial_nodes = _nodes;
 
 	// Exploration des noeuds
 	while (nodes > 0) {
@@ -90,7 +91,7 @@ void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add
 			explore_random_child(buffer, eval, beta, k_add);
 		}
 
-		nodes--;
+		nodes -= _nodes - initial_nodes;
 	}
 	
 	// Temps de calcul
@@ -119,18 +120,27 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval) {
 	new_board->_is_active = true;
 	new_board->make_move(move, false, false, true);
 
+	// Création du noeud fils
+	Node* child = new Node(new_board, move);
+
 	// Evalue le plateau, en regardant si la partie est finie
 	//new_board->evaluate(eval, false, nullptr, true);
-	new_board->_evaluation = new_board->quiescence(eval, -INT32_MAX, INT32_MAX, 4, true) * new_board->get_color();
+	//new_board->_evaluation = new_board->quiescence(eval, -INT32_MAX, INT32_MAX, 4, true) * new_board->get_color();
+	child->grogros_quiescence(buffer, eval, 4);
+	bool test = false;
+	// rnb1kbnr/ppp1pppp/2q5/1B6/8/2N5/PPPP1PPP/R1BQK1NR b KQkq - 3 4
+	// rnb1kbnr/ppp1pppp/2q5/8/8/2N5/PPPP1PPP/R1BQKBNR w KQkq - 2 4 : ici Fb5 -> +114 au lieu de +895
 
 	// Met à jour l'évaluation du plateau
-	if (children_count() == 0 && false) { // Si c'est désactivé, alors il ne vera sûrement pas les zugzwang. Mais si activé, s'il joue un mauvais coup, il va considérer la branche comme mauvaise
+	if (children_count() == 0 && test) { // Si c'est désactivé, alors il ne vera sûrement pas les zugzwang. Mais si activé, s'il joue un mauvais coup, il va considérer la branche comme mauvaise
 		_board->_evaluation = new_board->_evaluation; // Pour le quiescence search, faut-il ne pas aller là pour garder un standpat?
+		//cout << "eval: " << _board->evaluation_to_string(_board->_evaluation) << endl;
 	}
 	else {
 		// TODO: c'est vraiment ça qu'il faut faire?
 		_board->_evaluation = _board->_player * max(_board->_evaluation, new_board->_evaluation) + !_board->_player * min(_board->_evaluation, new_board->_evaluation);
 	}
+	
 
 	// FIXME: si on a regardé tous les fils, et qu'aucun des coups n'améliore l'évaluation, on fait quoi?
 	// - Option 1: on garde l'évaluation sans aucun coup
@@ -138,11 +148,12 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval) {
 	// Est-ce vraiment grave? peut-être pas car si on continue une profondeur plus loin, explore_random_child() va prendre le meilleur coup
 
 	// Augmente le nombre de noeuds
-	_nodes++;
+	//_nodes++;
+	_nodes += child->_nodes;
 
 	// Ajoute le fils
-	Node* child = new Node(new_board, move);
-	child->_nodes = 1; // FIXME: 0?
+	//Node* child = new Node(new_board, move);
+	////child->_nodes = 1; // FIXME: 0?
 	add_child(child);	
 }
 
@@ -150,6 +161,8 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval) {
 void Node::explore_random_child(Buffer* buffer, Evaluator* eval, float beta, float k_add) {
 	// Prend un fils aléatoire
 	int child_index = pick_random_child_index(beta, k_add);
+
+	_nodes -= _children[child_index]->_nodes; // On enlève le nombre de noeuds de ce fils
 
 	// On explore ce fils
 	_children[child_index]->grogros_zero(buffer, eval, beta, k_add, 1); // L'évaluation du fils est mise à jour ici
@@ -170,7 +183,8 @@ void Node::explore_random_child(Buffer* buffer, Evaluator* eval, float beta, flo
 
 
 	// Augmente le nombre de noeuds
-	_nodes++;
+	//_nodes++;
+	_nodes += _children[child_index]->_nodes;
 }
 
 // Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variantes, en fonction de la grandeur du nombre correspondant à cet index
@@ -561,8 +575,10 @@ Node::~Node() {
 // Quiescence search intégré à l'exploration
 void Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth) {
 
-	cout << "depth: " << depth << endl;
-	_nodes = 1;
+	//cout << "depth: " << depth << endl;
+
+	if (_nodes == 0)
+		_nodes = 1;
 
 	// Temps de calcul
 	const clock_t begin_monte_time = clock();
@@ -594,7 +610,7 @@ void Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth) {
 
 		_nodes++; // BOF
 		_time_spent += clock() - begin_monte_time;
-		cout << "game over" << endl;
+		//cout << "game over" << endl;
 
 		return;
 	}
@@ -603,25 +619,41 @@ void Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth) {
 	_board->evaluate(eval);
 	int max_score = _board->_evaluation * color;
 
+	// Si on est en échec (pour ne pas terminer les variantes sur un échec)
+	//bool check_extension = _board->in_check();
+	bool check_extension = false;
+
 	// Stand pat
-	if (depth == 0) {
+	if (depth <= 0 && !check_extension) {
+		_time_spent += clock() - begin_monte_time;
 		return;
 	}
-
-	// Si on est en échec (pour ne pas terminer les variantes sur un échec)
-	bool check_extension = _board->in_check();
+	
 
 	// Regarde toutes les captures
 	// FIXME: faudra regarder que les coups non explorés? (ou gérer avec la profondeur...)
 	// TODO: get_next_capture()?
 	for (int i = 0; i < _board->_got_moves; i++) {
 
+		// TODO: on peut améliorer ça...
+		if (get_child_index(_board->_moves[i]) != -1) {
+			continue;
+		}
+
 		// Coup
 		Move move = _board->_moves[i];
 
+		// Est-ce que le coup met en échec?
+		Board b(*_board);
+		b.make_move(move);
+		bool check = b.in_check();
+
+		// Est-ce que le coup est une promotion?
+		bool promotion = (_board->_array[move.i1][move.j1] == 1 && move.i2 == 7) || (_board->_array[move.i1][move.j1] == 7 && move.i2 == 0);
+
 		// Si c'est une capture (ou check extension)
-		if (_board->_array[move.i2][move.j2] != 0 || check_extension) {
-			cout << "move: " << _board->move_label(move) << endl;
+		if (_board->_array[move.i2][move.j2] != 0 || check || promotion || check_extension) {
+			//cout << "move: " << _board->move_label(move) << endl;
 
 			// Prend une place dans le buffer
 			const int buffer_index = buffer->get_first_free_index();
@@ -639,25 +671,24 @@ void Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth) {
 			new_board->_is_active = true;
 			new_board->make_move(move, false, false, true);
 
-			// Ajoute le fils
+			// Création du noeud fils
 			Node* child = new Node(new_board, move);
-			//child->_nodes = 1; // FIXME: 0?
 			add_child(child);
 
 			// Appel récursif sur le fils
 			//child->grogros_quiescence(buffer, eval, depth - 1, -beta, -alpha);
 			child->grogros_quiescence(buffer, eval, depth - 1);
-			_nodes++;
+			_nodes+= child->_nodes;
 
 			// Evaluation du fils
-			cout << "move: " << _board->move_label(move) + ", score: " << child->_board->_evaluation << endl;
+			//cout << "move: " << _board->move_label(move) + ", score: " << child->_board->_evaluation << endl;
 			int score = child->_board->_evaluation * color;
 
 			if (score > max_score) {
 				max_score = score;
 			}
 
-			cout << "next move" << endl;
+			//cout << "next move" << endl;
 		}
 
 
