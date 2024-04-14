@@ -1309,8 +1309,12 @@ void GUI::draw()
 		string win_chances = "W/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/0/" + to_string(static_cast<int>(100 * (1 - win_chance))) + "\%";
 
 		// Pour l'évaluation statique
-		if (!_board._displayed_components)
+		if (!_board._displayed_components) {
+			int evaluation = _board._evaluation;
 			_board.evaluate(_grogros_eval, true, nullptr, true);
+			_board._evaluation = evaluation;
+		}
+			
 
 		int max_depth = _root_exploration_node->get_main_depth();
 		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\ntime: " + clock_to_string(_root_exploration_node->_time_spent) + "s\ndepth: " + to_string(max_depth) + "\neval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) + eval + "\n" + win_chances + "\nnodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) + " (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 0.01) / 1000.0)) + "N/s)";
