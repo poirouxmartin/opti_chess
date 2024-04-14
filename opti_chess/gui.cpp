@@ -929,7 +929,7 @@ void GUI::grogros_analysis(int nodes) {
 	int nodes_to_explore = _root_exploration_node->get_avg_nps() / 60;
 	if (nodes_to_explore == 0)
 		nodes_to_explore = _nodes_per_frame;
-	_root_exploration_node->grogros_zero(&monte_buffer, _grogros_eval, _beta, _k_add, nodes == -1 ? nodes_to_explore : nodes); // TODO: nombre de noeuds à paramétrer
+	_root_exploration_node->grogros_zero(&monte_buffer, _grogros_eval, _beta, _k_add, nodes == -1 ? nodes_to_explore : nodes, _quiescence_depth); // TODO: nombre de noeuds à paramétrer
 	_update_variants = true;
 }
 

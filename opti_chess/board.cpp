@@ -4151,8 +4151,13 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, boo
 		
 
 	// Beta cut-off
-	if (stand_pat >= beta)
+	if (stand_pat >= beta) {
+		cout << "Beta cut-off1: " << stand_pat << " >= " << beta << endl;
 		return beta;
+	}
+	else {
+		cout << "No beta cut-off1: " << stand_pat << " < " << beta << endl;
+	}
 
 	// Mise à jour de alpha si l'éval statique est plus grande
 	// Pas de stand_pat si on est en échec
@@ -4171,6 +4176,8 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, boo
 
 		// Si c'est une capture
 		if (_array[move.i2][move.j2] != 0 || check_extension) {
+			cout << "Capture, depth: " << depth << " | move: " << move_label(move) << " | check_extension: " << check_extension << endl;
+
 			Board b;
 			b.copy_data(*this);
 			b.make_move(move);
@@ -4178,8 +4185,10 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, boo
 			const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, explore_checks, true, delta);
 			//_quiescence_nodes += b._quiescence_nodes;
 
-			if (score >= beta)
+			if (score >= beta) {
+				cout << "Beta cut-off2: " << score << " >= " << beta << endl;
 				return beta;
+			}
 
 			if (score > alpha)
 				alpha = score;
@@ -4199,11 +4208,15 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, boo
 
 			if (!main_player || b.in_check())
 			{
+				cout << "Check, depth: " << depth << " | move: " << move_label(move) << " | check_extension: " << check_extension << endl;
+
 				const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, explore_checks, !main_player, delta);
 				//_quiescence_nodes += b._quiescence_nodes;
 
-				if (score >= beta)
+				if (score >= beta) {
+					cout << "Beta cut-off3: " << score << " >= " << beta << endl;
 					return beta;
+				}
 
 				if (score > alpha)
 					alpha = score;
@@ -5379,7 +5392,7 @@ int Board::get_pawn_push_threats() const {
 					threats -= i == 6 && _array[i - 1][j] == 0 && _array[i - 2][j] == 0 && is_in_fast(_array[i - 3][j - 1], 2, 6);
 				}
 				if (j < 7) {
-					threats -= _array[i - 1][j] == 0 && is_in_fast(_array[i - 2][j + 1], 2, 6) && !is_controlled(i - 1, j, false);
+					threats -= _array[i - 1][j] == 0 && is_in_fast(_array[i - 2][j + 1], 2, 6);
 					threats -= i == 6 && _array[i - 1][j] == 0 && _array[i - 2][j] == 0 && is_in_fast(_array[i - 3][j + 1], 2, 6);
 				}
 					
