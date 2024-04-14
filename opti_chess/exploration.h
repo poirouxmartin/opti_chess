@@ -57,13 +57,13 @@ public:
 	[[nodiscard]] int get_first_unexplored_move_index();
 
 	// Nouveau GrogrosZero
-	void grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add, int nodes);
+	void grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add, int nodes, int quiescence_dept);
 
 	// Fonction qui explore un nouveau coup
-	void explore_new_move(Buffer* buffer, Evaluator* eval);
+	void explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_depth);
 
 	// Fonction qui explore dans un plateau fils pseudo-aléatoire
-	void explore_random_child(Buffer* buffer, Evaluator* eval, const float beta, const float k_add);
+	void explore_random_child(Buffer* buffer, Evaluator* eval, const float beta, const float k_add, int quiescence_depth);
 
 	// Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
 	[[nodiscard]] int pick_random_child_index(const float beta, const float k_add);
@@ -90,8 +90,8 @@ public:
 	[[nodiscard]] int get_avg_nps() const;
 
 	// Quiescence search intégré à l'exploration
-	//void grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha = -INT_MAX, int beta = INT_MAX);
-	void grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth);
+	int grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha = -INT_MAX, int beta = INT_MAX);
+	//void grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth);
 
 	// Fonctions à rajouter: destruction des fils et de soi...
 
