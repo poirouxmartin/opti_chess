@@ -90,7 +90,8 @@ public:
 	[[nodiscard]] int get_avg_nps() const;
 
 	// Quiescence search intégré à l'exploration
-	void grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha = -INT_MAX, int beta = INT_MAX);
+	//void grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha = -INT_MAX, int beta = INT_MAX);
+	void grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth);
 
 	// Fonctions à rajouter: destruction des fils et de soi...
 
