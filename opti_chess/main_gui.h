@@ -209,11 +209,12 @@ inline int main_ui() {
 				cout << main_GUI._root_exploration_node->_children[i]->_board._positions_history.size() << endl;
 			}*/
 
-			//cout << main_GUI._board._evaluation << endl;
-			main_GUI.grogros_analysis(1);
-			//cout << main_GUI._board._evaluation << endl;
-			main_GUI._update_variants = true;
-			//main_GUI._root_exploration_node->grogros_quiescence(&monte_buffer, main_GUI._grogros_eval, 4);
+			//main_GUI.grogros_analysis(1);
+			main_GUI._root_exploration_node->grogros_quiescence(&monte_buffer, main_GUI._grogros_eval, main_GUI._quiescence_depth);
+			//r1bqr1k1/1pp2p1Q/p3p1B1/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 b - - 6 27 : #-1
+			cout << "\nOLD QUIESCENCE : " << endl;
+			int toto = main_GUI._root_exploration_node->_board->quiescence(main_GUI._grogros_eval);
+			cout << "eval : " << toto << endl;
 		}
 
 		// CTRL-T - Cherche le plateau de chess.com sur l'écran, et lance une partie

@@ -456,12 +456,12 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Revoir comment on gère le temps pour Grogros... en fonction de quiescence nodes?
 -> Si on dépasse le max du buffer, ça plante
 -> Regarder les TODO/FIXME dans exploration.cpp
--> Il faut revoir comment on compte les noeuds
--> Alpha-beta pruning pour la quiescence search
+-> Alpha-beta pruning pour la quiescence search à fix...
 -> Regarder les fins de variantes pour voir si ça fonctionne
 -> Qdepth plus que 4?
--> Pourquoi il joue lentement?
+-> Pourquoi il joue lentement? ... à fix
 -> En fait y'a plein de trucs à vérifier, ça fonctionne bizarrement...
+-> rnbq1rk1/ppp2ppp/5n2/3P2B1/3N4/2P5/P1P1BPPP/R2QK2R b KQ - 0 9 : Dxd5 oublié!
 ---------
 -> Pour le softmax, faut-il un gradient absolu ou relatif? pour le moment il y a la même différence entre -100 et +100 qu'entre +1800 et +2000? pas optimal...
 -> Peut-on fusionner _tested_moves et _current_moves?
