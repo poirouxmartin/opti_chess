@@ -1,4 +1,5 @@
 #pragma once
+
 #include "time.h"
 #include <string>
 #include "raylib.h"
@@ -86,7 +87,7 @@ public:
 	// Paramètres pour la recherche de Monte-Carlo
 	float _beta = 0.1f;
 	float _k_add = 25.0f;
-	int _quiescence_depth = 4;
+	int _quiescence_depth = 40;
 	bool _explore_checks = true; // FIXME? faut-il vraiment explorer les échecs?
 
 	// Paramètres de brute

@@ -57,7 +57,7 @@ public:
 	[[nodiscard]] int get_first_unexplored_move_index();
 
 	// Nouveau GrogrosZero
-	void grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add, int nodes, int quiescence_dept);
+	void grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add, int nodes, int quiescence_depth);
 
 	// Fonction qui explore un nouveau coup
 	void explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_depth);

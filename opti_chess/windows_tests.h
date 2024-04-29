@@ -25,6 +25,9 @@ typedef struct SimpleRectangle {
 // Fonction qui simule un clic de souris à une position donnée
 void simulate_mouse_click(int x, int y);
 
+// Fonction qui relâche le clic de la souris
+void simulate_mouse_release();
+
 // Fonction qui palce la souris à une position donnée
 void set_mouse_pos(int x, int y);
 

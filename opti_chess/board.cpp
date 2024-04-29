@@ -4234,7 +4234,10 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, boo
 // Fonction qui fait cliquer le coup m
 bool Board::click_m_move(const Move m, const bool orientation) const
 {
+	simulate_mouse_release();
 	click_move(m.i1, m.j1, m.i2, m.j2 , main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom, orientation);
+	SetWindowFocused();
+
 	return true;
 }
 
