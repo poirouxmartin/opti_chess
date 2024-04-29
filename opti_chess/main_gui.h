@@ -626,8 +626,8 @@ inline int main_ui() {
 					int supposed_grogros_speed = main_GUI._root_exploration_node->get_avg_nps();
 					float best_move_percentage = main_GUI._root_exploration_node->_nodes == 0 ? 0.05f : static_cast<float>(main_GUI._root_exploration_node->_children[main_GUI._root_exploration_node->get_most_explored_child_index()]->_nodes) / static_cast<float>(main_GUI._root_exploration_node->_nodes);
 					int max_move_time = main_GUI._board._player ?
-						time_to_play_move(main_GUI._time_white, main_GUI._time_black, 0.2f * (1.0f - best_move_percentage)) :
-						time_to_play_move(main_GUI._time_black, main_GUI._time_white, 0.2f * (1.0f - best_move_percentage));
+						time_to_play_move(main_GUI._time_white, main_GUI._time_black, 0.05f * (1.0f - best_move_percentage)) :
+						time_to_play_move(main_GUI._time_black, main_GUI._time_white, 0.05f * (1.0f - best_move_percentage));
 
 					// Si il nous reste beaucoup de temps en fin de partie, on peut réfléchir plus longtemps
 					max_move_time *= (1 + main_GUI._board._adv); // Regarder si ça marche bien (TODO)
@@ -636,7 +636,25 @@ inline int main_ui() {
 					// Si il y a un meilleur coup que celui avec le plus de noeuds, attendre...
 					bool wait_for_best_move = main_GUI._root_exploration_node->_nodes != 0 && main_GUI._root_exploration_node->get_most_explored_child()->_board->_evaluation * main_GUI._board.get_color() < main_GUI._board._evaluation * main_GUI._board.get_color();
 					//bool wait_for_best_move = tot_nodes != 0 && main_GUI._board._eval_children[main_GUI._board.best_monte_carlo_move()] * main_GUI._board.get_color() < main_GUI._board._evaluation * main_GUI._board.get_color();
-					max_move_time = wait_for_best_move ? max_move_time : max_move_time / 4;
+					
+					// A quel point faut-il attendre pour être sûr de jouer le meilleur coup?
+					float eval_diff;
+					float move_wait_factor;
+
+					// Si on attend pour le meilleur coup, attend plus longtemps si la différence d'évaluation est grande entre le meilleur coup et le coup actuel
+					if (wait_for_best_move) {
+						eval_diff = abs(main_GUI._root_exploration_node->get_most_explored_child()->_board->_evaluation - main_GUI._board._evaluation) / 100.0f;
+						move_wait_factor = 1 + eval_diff;
+					}
+
+					// Sinon, joue plus vite si la différence d'évaluation est grande entre le meilleur coup et ?? FIXME
+					else {
+						//move_wait_factor = 1 / (1 + eval_diff);
+						move_wait_factor = 1;
+					}
+
+					//cout << "base time : " << max_move_time << " | wait for best move : " << wait_for_best_move << " | eval diff : " << eval_diff << " | move wait factor : " << move_wait_factor << " | final time : " << max_move_time * move_wait_factor << endl;
+					max_move_time = max_move_time * move_wait_factor;
 
 					// Nombre de noeuds à calculer
 					int grogros_timed_nodes = min(nodes_per_frame, supposed_grogros_speed * max_move_time / 1000);
@@ -645,12 +663,13 @@ inline int main_ui() {
 					
 					/*if (main_GUI._board._time_monte_carlo >= max_move_time)
 						((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false, false);
-				*/
+					*/
 					// Equivalent en nombre de noeuds
 					int nodes_to_play = supposed_grogros_speed * max_move_time / 1000;
 
-					if (main_GUI._root_exploration_node->_nodes >= nodes_to_play)
+					if (main_GUI._root_exploration_node->_nodes >= nodes_to_play) {
 						((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._root_exploration_node->get_best_move(), main_GUI.get_board_orientation())) || true) && main_GUI.play_move_keep(main_GUI._root_exploration_node->get_best_move());
+					}
 
 				}
 				else {
