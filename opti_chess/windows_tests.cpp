@@ -1,6 +1,9 @@
-﻿#include "windows.h"
+﻿#pragma once
+
+#include "windows.h"
 #include <iostream>
 #include "windows_tests.h"
+
 using namespace std;
 
 
@@ -46,6 +49,16 @@ void simulate_mouse_click(const int x, const int y)
 	INPUT input = { 0 };
 	input.type = INPUT_MOUSE;
 	input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP;
+	SendInput(1, &input, sizeof(INPUT));
+	return;
+}
+
+// Fonction qui relâche le clic de la souris
+void simulate_mouse_release()
+{
+	INPUT input = { 0 };
+	input.type = INPUT_MOUSE;
+	input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
 	SendInput(1, &input, sizeof(INPUT));
 	return;
 }

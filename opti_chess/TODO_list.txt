@@ -458,10 +458,21 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Regarder les TODO/FIXME dans exploration.cpp
 -> Alpha-beta pruning pour la quiescence search à fix...
 -> Regarder les fins de variantes pour voir si ça fonctionne
--> Qdepth plus que 4?
 -> Pourquoi il joue lentement? ... à fix
 -> En fait y'a plein de trucs à vérifier, ça fonctionne bizarrement...
--> rnbq1rk1/ppp2ppp/5n2/3P2B1/3N4/2P5/P1P1BPPP/R2QK2R b KQ - 0 9 : Dxd5 oublié!
+-> rnbq1rk1/ppp2ppp/5n2/3P2B1/3N4/2P5/P1P1BPPP/R2QK2R b KQ - 0 9 : Dxd5 oublié! (voir en dessous pour les conditions)
+-> 4rrk1/p1qn1ppb/1p1b3p/2p5/P1NpPp2/1P1P1QPB/2P4P/R1B1R1K1 w - - 0 20 : e5 puis y'a des sortes de bugs... ça calcule bizarrement après... alors que si on copie-colle ça va
+-> 4rrk1/p1q2ppb/1p1b3p/2p1N3/P2p4/1P1P1QpB/2P4P/R1B1R1K1 w - - 0 22 : Ff4 perd direct, mais ça marche que quand on copie-colle après...
+-> 4rrk1/p1q2ppb/1p5p/2p1B3/P2p4/1P1P1QpB/2P4P/R3R1K1 b - - 0 23 : Txe5??
+-> Ca doit bugger car on a que la fin de la quiescence quand on joue la variante... (donc la quiescence des noueds de fin est moins profonde)
+	-> Possibilité: - stocker la profondeur de la quiescence pour chaque noeud (avec alpha et beta?) 
+					- quand on explore les noeuds, si la quiescence du noeud a une profondeur plus faible, la refait en full?
+-> Gestion du temps: pour décider s'il faut jouer le coup actuel, regarder la différence avec le meilleur coup pour ne pas y passer trop de temps si la différence est faible?
+-> r1b1r1k1/pp3pbp/6p1/qB1p4/3P2n1/1Q3NP1/PP1N1P1P/2R2RK1 b - - 2 17 : là c'est seul coup, il faut jouer !!
+-> Pourquoi il joue e4 direct au début? (pas vraiment dérangeant en soi, mais bizarre)
+-> S'il est si lent c'est qu'à cause de la nouvelle quiescence, il y a des noeuds dans toutes les branches, ce qui fait penser à Grogros qu'il hésite sur les coups...
+-> Grogros qui parfois ne joue pas le mat en 1...
+
 ---------
 -> Pour le softmax, faut-il un gradient absolu ou relatif? pour le moment il y a la même différence entre -100 et +100 qu'entre +1800 et +2000? pas optimal...
 -> Peut-on fusionner _tested_moves et _current_moves?

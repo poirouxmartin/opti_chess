@@ -437,6 +437,10 @@ Node::~Node() {
 
 // Quiescence search intégré à l'exploration
 int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha, int beta) {
+	// TODO: comment gérer la profondeur? faire en fonction de l'importance de la branche?
+	// mettre aucune profondeur limite?
+	// pourquoi en endgame ça va si loin? il fait full échecs...
+
 	// YA DES BUGS DE PRUNING...
 	//r1bqr2k/1pp2p1B/p3p2Q/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 3 26
 	//r1bqr1k1/1pp2p2/p3p1BQ/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 5 27 : #2......
