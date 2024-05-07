@@ -34,6 +34,12 @@ public:
 	// Temps de calcul
 	clock_t _time_spent = 0;
 
+	// Profondeur de la quiescence search
+	//int _quiescence_depth = 0;
+
+	// Est-ce que ce noeud a été exploré de façon complète?
+	bool _fully_explored = false;
+
 	// A rajouter : évaluation?, nombre de noeuds?...
 
 	// Constructeurs
@@ -54,7 +60,7 @@ public:
 	[[nodiscard]] int get_child_index(Move move) const;
 
 	// Fonction qui renvoie l'indice du premier coup qui n'a pas encore été ajouté, -1 sinon
-	[[nodiscard]] int get_first_unexplored_move_index();
+	[[nodiscard]] int get_first_unexplored_move_index(bool fully_explored = false);
 
 	// Nouveau GrogrosZero
 	void grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add, int nodes, int quiescence_depth);
@@ -92,6 +98,9 @@ public:
 	// Quiescence search intégré à l'exploration
 	int grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha = -INT_MAX, int beta = INT_MAX);
 	//void grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth);
+
+	// Fonction qui renvoie le nombre de noeuds fils complètement explorés
+	[[nodiscard]] int get_fully_explored_children_count() const;
 
 	// Fonctions à rajouter: destruction des fils et de soi...
 

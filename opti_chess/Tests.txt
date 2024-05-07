@@ -645,6 +645,7 @@ r3qr1k/1ppQb2p/p3B2P/nP2p1p1/P3Np2/2P2n2/1B3P2/R2R1K2 b - - 3 29 : g4 seul coup 
 r2qr1k1/ppn1bppp/8/2pP1b2/3P4/2N1BN1P/PP1Q1PP1/R3R1K1 b - - 0 17 : c4 seul coup qui tient
 r1bqr2k/1pp2p1B/p3p2Q/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 3 26 : Fg6+ #3
 5r2/2k1q3/1p2rpPp/p1p1p2P/P2pP1QB/1P1P4/2P4K/5R2 b - - 8 38 : Rd6 seul coup qui tient
+4rrk1/b1p1Rp2/p2p1P2/1p4P1/8/2P2QP1/Pq3PK1/R7 w - - 0 29 : g6 gagne
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---

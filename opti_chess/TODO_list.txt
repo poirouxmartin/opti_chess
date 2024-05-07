@@ -458,7 +458,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Regarder les TODO/FIXME dans exploration.cpp
 -> Alpha-beta pruning pour la quiescence search à fix...
 -> Regarder les fins de variantes pour voir si ça fonctionne
--> Pourquoi il joue lentement? ... à fix
 -> En fait y'a plein de trucs à vérifier, ça fonctionne bizarrement...
 -> rnbq1rk1/ppp2ppp/5n2/3P2B1/3N4/2P5/P1P1BPPP/R2QK2R b KQ - 0 9 : Dxd5 oublié! (voir en dessous pour les conditions)
 -> 4rrk1/p1qn1ppb/1p1b3p/2p5/P1NpPp2/1P1P1QPB/2P4P/R1B1R1K1 w - - 0 20 : e5 puis y'a des sortes de bugs... ça calcule bizarrement après... alors que si on copie-colle ça va
@@ -472,6 +471,12 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Pourquoi il joue e4 direct au début? (pas vraiment dérangeant en soi, mais bizarre)
 -> S'il est si lent c'est qu'à cause de la nouvelle quiescence, il y a des noeuds dans toutes les branches, ce qui fait penser à Grogros qu'il hésite sur les coups...
 -> Grogros qui parfois ne joue pas le mat en 1...
+-> rn2kb1r/1p4pp/p2p4/3N4/3NpBQ1/8/PP3PPP/R5K1 w - - 1 17 : ici il joue Td1 au lieu de Dc8+ #2 -> réglé?
+-> 5bnr/p2k1p1p/3pN1p1/3Pp3/8/K7/PP1q3P/R1rb4 b - - 1 24 : Tc6 joué au lieu de Da5 #1... (car plus de noeuds dans l'autre?) -> réglé?
+
+-> rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2 : ici c'est #1, faut au moins que 90% de la réflexion soit sur le mat
+
+-> il faut un nouvel algo, ça fonctionne juste pas...
 
 ---------
 -> Pour le softmax, faut-il un gradient absolu ou relatif? pour le moment il y a la même différence entre -100 et +100 qu'entre +1800 et +2000? pas optimal...
