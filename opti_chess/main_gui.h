@@ -622,15 +622,19 @@ inline int main_ui() {
 					// Nombre de noeuds que Grogros doit calculer (en fonction des contraintes de temps)
 					//static constexpr int supposed_grogros_speed = 40000; // En supposant que Grogros va à plus de 5k noeuds par seconde
 					//int supposed_grogros_speed = main_GUI._root_exploration_node->_time_spent == 0 ? 1 : (main_GUI._root_exploration_node->_nodes / main_GUI._root_exploration_node->_time_spent); // En supposant que Grogros va à plus de 5k noeuds par seconde
-					//int supposed_grogros_speed = 2500;
-					int supposed_grogros_speed = main_GUI._root_exploration_node->get_avg_nps();
+					int supposed_grogros_speed = 40000;
+					//int supposed_grogros_speed = main_GUI._root_exploration_node->get_avg_nps();
 					float best_move_percentage = main_GUI._root_exploration_node->_nodes == 0 ? 0.05f : static_cast<float>(main_GUI._root_exploration_node->_children[main_GUI._root_exploration_node->get_most_explored_child_index()]->_nodes) / static_cast<float>(main_GUI._root_exploration_node->_nodes);
 					int max_move_time = main_GUI._board._player ?
 						time_to_play_move(main_GUI._time_white, main_GUI._time_black, 0.05f * (1.0f - best_move_percentage)) :
 						time_to_play_move(main_GUI._time_black, main_GUI._time_white, 0.05f * (1.0f - best_move_percentage));
 
+					//cout << "best move percentage : " << best_move_percentage << " | max move time : " << max_move_time << " | supposed speed : " << supposed_grogros_speed << " | nodes : " << main_GUI._root_exploration_node->_nodes << " | time spent : " << main_GUI._root_exploration_node->_time_spent << " | avg nps : " << main_GUI._root_exploration_node->get_avg_nps() << endl;	
+
 					// Si il nous reste beaucoup de temps en fin de partie, on peut réfléchir plus longtemps
 					max_move_time *= (1 + main_GUI._board._adv); // Regarder si ça marche bien (TODO)
+
+					//cout << "max move time : " << max_move_time << endl;
 
 					// On veut être sûr de jouer le meilleur coup de Grogros
 					// Si il y a un meilleur coup que celui avec le plus de noeuds, attendre...
@@ -645,6 +649,7 @@ inline int main_ui() {
 					if (wait_for_best_move) {
 						eval_diff = abs(main_GUI._root_exploration_node->get_most_explored_child()->_board->_evaluation - main_GUI._board._evaluation) / 100.0f;
 						move_wait_factor = 1 + eval_diff;
+						//cout << "eval diff : " << eval_diff << " | move wait factor : " << move_wait_factor << endl;
 					}
 
 					// Sinon, joue plus vite si la différence d'évaluation est grande entre le meilleur coup et ?? FIXME
@@ -655,6 +660,10 @@ inline int main_ui() {
 
 					//cout << "base time : " << max_move_time << " | wait for best move : " << wait_for_best_move << " | eval diff : " << eval_diff << " | move wait factor : " << move_wait_factor << " | final time : " << max_move_time * move_wait_factor << endl;
 					max_move_time = max_move_time * move_wait_factor;
+					
+					// Parfois on a un overflow
+					if (max_move_time < 0)
+						max_move_time = INT_MAX;
 
 					// Nombre de noeuds à calculer
 					int grogros_timed_nodes = min(nodes_per_frame, supposed_grogros_speed * max_move_time / 1000);
@@ -667,7 +676,16 @@ inline int main_ui() {
 					// Equivalent en nombre de noeuds
 					int nodes_to_play = supposed_grogros_speed * max_move_time / 1000;
 
+					// Overflow (FIXME: faut mieux gérer ça...)
+					if (nodes_to_play < 0)
+						nodes_to_play = INT_MAX;
+
+					//cout << "nodes to play : " << nodes_to_play << ", " << main_GUI._root_exploration_node->_nodes << endl;
+
+					// 5bnr/p2k1p1p/3pN1p1/3Pp3/1K6/8/PP1P3P/R1rbq3 b - - 0 23 : bug après Ra3 -> Nodes to play: 0
+
 					if (main_GUI._root_exploration_node->_nodes >= nodes_to_play) {
+						//cout << nodes_to_play << ", max move time : " << max_move_time << ", supposed speed : " << supposed_grogros_speed << ", nodes : " << main_GUI._root_exploration_node->_nodes << endl;
 						((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._root_exploration_node->get_best_move(), main_GUI.get_board_orientation())) || true) && main_GUI.play_move_keep(main_GUI._root_exploration_node->get_best_move());
 					}
 
