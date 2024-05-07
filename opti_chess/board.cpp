@@ -4152,11 +4152,11 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, boo
 
 	// Beta cut-off
 	if (stand_pat >= beta) {
-		cout << "Beta cut-off1: " << stand_pat << " >= " << beta << endl;
+		//cout << "Beta cut-off1: " << stand_pat << " >= " << beta << endl;
 		return beta;
 	}
 	else {
-		cout << "No beta cut-off1: " << stand_pat << " < " << beta << endl;
+		//cout << "No beta cut-off1: " << stand_pat << " < " << beta << endl;
 	}
 
 	// Mise à jour de alpha si l'éval statique est plus grande
@@ -4176,7 +4176,7 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, boo
 
 		// Si c'est une capture
 		if (_array[move.i2][move.j2] != 0 || check_extension) {
-			cout << "Capture, depth: " << depth << " | move: " << move_label(move) << " | check_extension: " << check_extension << endl;
+			//cout << "Capture, depth: " << depth << " | move: " << move_label(move) << " | check_extension: " << check_extension << endl;
 
 			Board b;
 			b.copy_data(*this);
@@ -4186,7 +4186,7 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, boo
 			//_quiescence_nodes += b._quiescence_nodes;
 
 			if (score >= beta) {
-				cout << "Beta cut-off2: " << score << " >= " << beta << endl;
+				//cout << "Beta cut-off2: " << score << " >= " << beta << endl;
 				return beta;
 			}
 
@@ -4208,13 +4208,13 @@ int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, boo
 
 			if (!main_player || b.in_check())
 			{
-				cout << "Check, depth: " << depth << " | move: " << move_label(move) << " | check_extension: " << check_extension << endl;
+				//cout << "Check, depth: " << depth << " | move: " << move_label(move) << " | check_extension: " << check_extension << endl;
 
 				const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, explore_checks, !main_player, delta);
 				//_quiescence_nodes += b._quiescence_nodes;
 
 				if (score >= beta) {
-					cout << "Beta cut-off3: " << score << " >= " << beta << endl;
+					//cout << "Beta cut-off3: " << score << " >= " << beta << endl;
 					return beta;
 				}
 

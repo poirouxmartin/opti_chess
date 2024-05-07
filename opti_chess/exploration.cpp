@@ -10,6 +10,11 @@ Node::Node(Board *board, Move move) {
 // Fonction qui ajoute un fils
 void Node::add_child(Node* child) {
 	// FIXME: vérifier si le coup n'est pas déjà dans les enfants?
+	if (get_child_index(child->_move) != -1) {
+		cout << "move already in children" << endl;
+		return;
+	}
+
 	_children.push_back(child);
 }
 
@@ -30,9 +35,10 @@ void Node::add_child(Node* child) {
 }
 
 // Fonction qui renvoie l'indice du premier coup qui n'a pas encore été ajouté, -1 sinon
-[[nodiscard]] int Node::get_first_unexplored_move_index() {
+[[nodiscard]] int Node::get_first_unexplored_move_index(bool fully_explored) {
 	for (int i = _latest_first_move_explored + 1; i < _board->_got_moves; i++) {
-		if (get_child_index(_board->_moves[i]) == -1) {
+		int child_index = get_child_index(_board->_moves[i]);
+		if (child_index == -1 || (fully_explored && !_children[child_index]->_fully_explored)) {
 			_latest_first_move_explored = i;
 			return i;
 		}
@@ -85,7 +91,13 @@ void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add
 		int initial_nodes = _nodes;
 
 		// S'il reste des coups à explorer
-		if (children_count() < _board->_got_moves) {
+		/*if (children_count() < _board->_got_moves) {
+			explore_new_move(buffer, eval, quiescence_depth);
+		}*/
+
+		//cout << "explored nodes: " << get_fully_explored_children_count() << " | got moves: " << (int)_board->_got_moves << endl;
+
+		if (get_fully_explored_children_count() < _board->_got_moves) {
 			explore_new_move(buffer, eval, quiescence_depth);
 		}
 
@@ -106,42 +118,62 @@ void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add
 // Fonction qui explore un nouveau coup
 void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_depth) {
 	// On prend le premier coup non exploré
-	const int move_index = get_first_unexplored_move_index();
+	//const int move_index = get_first_unexplored_move_index();
+	const int move_index = get_first_unexplored_move_index(true);
 	Move move = _board->_moves[move_index];
 
-	// Prend une place dans le buffer
-	const int buffer_index = buffer->get_first_free_index();
+	// Noeud fils
+	Node *child = nullptr;
 
-	// FIXME: faut peut-être check ça autre part...
-	if (buffer_index == -1) {
-		cout << "Buffer is full" << endl;
-		return;
+	// Si on a déjà exploré ce coup, mais pas complètement
+	int child_index = get_child_index(move);
+	bool already_explored = child_index != -1;
+
+	if (already_explored) {
+		//cout << "move already explored: " << _fully_explored << endl;
+		
+		child = _children[child_index];
 	}
 
-	Board *new_board = &buffer->_heap_boards[buffer_index];
-	new_board->copy_data(*_board, false, true);
-	new_board->_is_active = true;
-	new_board->make_move(move, false, false, true);
+	else {
+		// Prend une place dans le buffer
+		const int buffer_index = buffer->get_first_free_index();
 
-	// Création du noeud fils
-	Node* child = new Node(new_board, move);
+		// FIXME: faut peut-être check ça autre part...
+		if (buffer_index == -1) {
+			cout << "Buffer is full" << endl;
+			return;
+		}
+
+		Board* new_board = &buffer->_heap_boards[buffer_index];
+		new_board->copy_data(*_board, false, true);
+		new_board->_is_active = true;
+		new_board->make_move(move, false, false, true);
+
+		// Création du noeud fils
+		child = new Node(new_board, move);
+	}
+
+	
 
 	// Evalue le plateau, en regardant si la partie est finie
-	//new_board->evaluate(eval, false, nullptr, true);
-	//new_board->_evaluation = new_board->quiescence(eval, -INT32_MAX, INT32_MAX, 4, true) * new_board->get_color();
+	//child->_board->evaluate(eval, false, nullptr, true);
+	//child->_board->_evaluation = child->_board->quiescence(eval, -INT32_MAX, INT32_MAX, 4, true) * child->_board->get_color();
+	//child->_nodes = 1;
 	child->grogros_quiescence(buffer, eval, quiescence_depth);
+	child->_fully_explored = true;
 	bool test = false;
 	// rnb1kbnr/ppp1pppp/2q5/1B6/8/2N5/PPPP1PPP/R1BQK1NR b KQkq - 3 4
 	// rnb1kbnr/ppp1pppp/2q5/8/8/2N5/PPPP1PPP/R1BQKBNR w KQkq - 2 4 : ici Fb5 -> +114 au lieu de +895
 
 	// Met à jour l'évaluation du plateau
 	if (children_count() == 0 && test) { // Si c'est désactivé, alors il ne vera sûrement pas les zugzwang. Mais si activé, s'il joue un mauvais coup, il va considérer la branche comme mauvaise
-		_board->_evaluation = new_board->_evaluation; // Pour le quiescence search, faut-il ne pas aller là pour garder un standpat?
+		_board->_evaluation = child->_board->_evaluation; // Pour le quiescence search, faut-il ne pas aller là pour garder un standpat?
 		//cout << "eval: " << _board->evaluation_to_string(_board->_evaluation) << endl;
 	}
 	else {
 		// TODO: c'est vraiment ça qu'il faut faire?
-		_board->_evaluation = _board->_player * max(_board->_evaluation, new_board->_evaluation) + !_board->_player * min(_board->_evaluation, new_board->_evaluation);
+		_board->_evaluation = _board->_player * max(_board->_evaluation, child->_board->_evaluation) + !_board->_player * min(_board->_evaluation, child->_board->_evaluation);
 	}
 	
 
@@ -157,7 +189,9 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 	// Ajoute le fils
 	//Node* child = new Node(new_board, move);
 	////child->_nodes = 1; // FIXME: 0?
-	add_child(child);	
+	if (!already_explored) {
+		add_child(child);
+	}
 }
 
 // Fonction qui explore dans un plateau fils pseudo-aléatoire
@@ -300,6 +334,7 @@ void Node::reset() {
 	_move = Move();
 	_new_node = true;
 	_time_spent = 0;
+	_fully_explored = false;
 
 	for (int i = 0; i < children_count(); i++) {
 		_children[i]->reset();
@@ -480,6 +515,9 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 		else
 			_board->_evaluation = (-mate_value + _board->_moves_count * mate_ply) * color;
 
+		_board->_evaluated = true;
+		_board->_static_evaluation = _board->_evaluation;
+
 		_nodes++; // BOF
 		_time_spent += clock() - begin_monte_time;
 		//cout << "game over" << endl;
@@ -488,7 +526,13 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 	}
 
 	// Évalue la position
-	_board->evaluate(eval);
+	if (_board->_evaluated) {
+		_board->_evaluation = _board->_static_evaluation;
+	}
+	else {
+		_board->evaluate(eval);
+	}
+
 	int stand_pat = _board->_evaluation * color;
 
 	// Si on est en échec (pour ne pas terminer les variantes sur un échec)
@@ -531,10 +575,14 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 		Move move = _board->_moves[i];
 
 		// Ce coup a-t-il déjà été exploré?
-		if (get_child_index(move) != -1) {
-			cout << "move already explored" << endl;
-			continue;
-		}
+		int child_index = get_child_index(move);
+		bool already_explored = child_index != -1;
+
+		//if (already_explored) {
+		//	cout << "move already explored" << endl;
+		//	// FIXME: IL FAUT GERER CE CAS-LA!!!
+		//	continue;
+		//}
 
 		// Doit-on explorer ce coup?
 		bool should_explore = false;
@@ -569,25 +617,39 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 		// Si c'est une capture/échec/promotion, on explore
 		if (should_explore) {
 
-			// Prend une place dans le buffer
-			const int buffer_index = buffer->get_first_free_index();
+			Node *child = nullptr;
 
-			// FIXME: faut peut-être check ça autre part...
-			if (buffer_index == -1) {
-				cout << "Buffer is full" << endl;
-				_time_spent += clock() - begin_monte_time;
+			// Si on a déjà exploré ce coup, mais pas complètement
+			if (already_explored) {
+				//cout << "move already explored" << endl;
 
-				return alpha; // faut renvoyer quoi?
+				child = _children[child_index];
 			}
 
-			Board* new_board = &buffer->_heap_boards[buffer_index];
-			new_board->copy_data(*_board, false, true);
-			new_board->_is_active = true;
-			new_board->make_move(move, false, false, true);
+			else {
+				// Prend une place dans le buffer
+				const int buffer_index = buffer->get_first_free_index();
 
-			// Création du noeud fils
-			Node* child = new Node(new_board, move);
-			add_child(child);
+				// FIXME: faut peut-être check ça autre part...
+				if (buffer_index == -1) {
+					cout << "Buffer is full" << endl;
+					_time_spent += clock() - begin_monte_time;
+
+					return alpha; // faut renvoyer quoi?
+				}
+
+				Board* new_board = &buffer->_heap_boards[buffer_index];
+				new_board->copy_data(*_board, false, true);
+				new_board->_is_active = true;
+				new_board->make_move(move, false, false, true);
+
+				// Création du noeud fils
+				child = new Node(new_board, move);
+				//cout << get_child_index(move) << endl;
+				add_child(child);
+			}
+
+			
 
 			//cout << "beta: " << beta << " | alpha: " << alpha << endl;
 
@@ -621,4 +683,17 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 	_time_spent += clock() - begin_monte_time;
 
 	return alpha;
+}
+
+// Fonction qui renvoie le nombre de noeuds fils complètement explorés
+[[nodiscard]] int Node::get_fully_explored_children_count() const {
+	int count = 0;
+
+	for (int i = 0; i < children_count(); i++) {
+		if (_children[i]->_fully_explored) {
+		count++;
+		}
+	}
+
+	return count;
 }
