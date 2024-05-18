@@ -102,6 +102,9 @@ public:
 	// Fonction qui renvoie le nombre de noeuds fils complètement explorés
 	[[nodiscard]] int get_fully_explored_children_count() const;
 
+	// Tentative de quiescence maison
+	void new_grogros_quiescence(Buffer* buffer, Evaluator* eval, float beta, float k_add, int nodes);
+
 	// Fonctions à rajouter: destruction des fils et de soi...
 
 	// Destructeur : TODO (supprimer tous les tableaux dynamiques...)
