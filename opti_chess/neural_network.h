@@ -3,12 +3,15 @@
 #include <string>
 using namespace std;
 
-// Fonctions d'activation pour les weights? (pour les mettre entre 0 et 1??)
+// Fonctions d'activation pour les weights? (pour les mettre entre 0 et 1??) -> exponentielles entre 0 et 1
+// L'output entre 0 et 1 représenterait la probabilité de gain (pour les blancs?)
 // Passage en flottants à la place?
 
 // Documentation
 // https://www.v7labs.com/blog/neural-networks-activation-functions
 // https://en.wikipedia.org/wiki/Activation_function
+
+// TODO: prendre en compte d'autres paramètres que simplement les pièces? (genre le trait, nombre de coups...)
 
 class Network {
 public:
