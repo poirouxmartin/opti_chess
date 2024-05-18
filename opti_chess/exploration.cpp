@@ -294,7 +294,7 @@ int Node::pick_random_child_index(const float beta, const float k_add) {
 
 	// Avec un départage par égalité
 	else {
-		// TODO: c'est foireux...
+		// FIXME: c'est foireux...
 		vector<int> indices;
 		int color = _board->get_color();
 
@@ -479,7 +479,7 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 	// YA DES BUGS DE PRUNING...
 	//r1bqr2k/1pp2p1B/p3p2Q/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 3 26
 	//r1bqr1k1/1pp2p2/p3p1BQ/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 5 27 : #2......
-	//r1bqr1k1/1pp2p1Q/p3p1B1/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 b - - 6 27 ... ? il regarde pas plus loin??
+	//r1bqr1k1/1pp2p1Q/p3p1B1/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 b - - 6 27 ... ? il regarde pas plus loin?? il affiche pas #1 comme éval...
 
 	//cout << "depth: " << depth << endl;
 	//rnbqkbnr/pp2pppp/2p5/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3
@@ -489,6 +489,8 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 
 	// Temps de calcul
 	const clock_t begin_monte_time = clock();
+
+	//cout << _new_node << ", " << _board->_evaluated << ", " << (int)_board->_got_moves << ", " << (int)_board->_sorted_moves << ", " << _board->_game_over_checked << endl;
 
 	// Si c'est un nouveau noeud, on fait son initialisation
 	if (_new_node) {
@@ -525,11 +527,16 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 		return _board->_evaluation * color;
 	}
 
-	// Évalue la position
+	// Évalue la position 
+	// FIXME: ça arrive souvent?
 	if (_board->_evaluated) {
+		//cout << "done" << endl;
+
+		// Position déjà évaluée: on reprend l'évaluation statique du plateau
 		_board->_evaluation = _board->_static_evaluation;
 	}
 	else {
+		//cout << "redo" << endl;
 		_board->evaluate(eval);
 	}
 
@@ -537,8 +544,11 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 
 	// Si on est en échec (pour ne pas terminer les variantes sur un échec)
 	bool check_extension = _board->in_check();
-	//cout << "check: " << check_extension << endl;
+	//_move.display();
+	//cout << "depth: " << depth << ", in check : " << check_extension << endl;
 	//bool check_extension = false;
+
+	//r1bqr1k1/1pp2p2/p3p1BQ/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 5 27 : le check extension fonctionne pas?
 
 	// Stand pat
 	if (depth <= 0 && !check_extension) {
@@ -596,18 +606,18 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 			if (_board->_array[move.i2][move.j2] != 0) {
 				should_explore = true;
 			}
-			else {
-				// Si c'est une promotion
-				if ((_board->_array[move.i1][move.j1] == 1 && move.i2 == 7) || (_board->_array[move.i1][move.j1] == 7 && move.i2 == 0)) {
-					should_explore = true;
-				}
-				// Si le coup met en échec
-				else {
-					Board b(*_board);
-					b.make_move(move);
-					should_explore = b.in_check();
-				}
-			}
+			//else {
+			//	// Si c'est une promotion
+			//	if ((_board->_array[move.i1][move.j1] == 1 && move.i2 == 7) || (_board->_array[move.i1][move.j1] == 7 && move.i2 == 0)) {
+			//		should_explore = true;
+			//	}
+			//	// Si le coup met en échec
+			//	else {
+			//		Board b(*_board);
+			//		b.make_move(move);
+			//		should_explore = b.in_check();
+			//	}
+			//}
 		}
 
 		/*if (should_explore)
@@ -682,6 +692,9 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 	// Temps de calcul
 	_time_spent += clock() - begin_monte_time;
 
+	//cout << "alpha: " << alpha << endl;
+	//_board->_evaluation = alpha * color;
+
 	return alpha;
 }
 
@@ -696,4 +709,76 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 	}
 
 	return count;
+}
+
+// Tentative de quiescence maison
+void Node::new_grogros_quiescence(Buffer* buffer, Evaluator* eval, float beta, float k_add, int nodes) {
+
+	// *** IDEE DE L'ALGO ***
+	// On ne regarde que les captures (pas les échecs ni promotions pour le moment...)
+	// On les trie (de la meilleure à la pire)
+	// On les joue une par une (tant qu'il y en a)
+	// Quand on les a toutes explorées, on regarde plus profondément les meilleures
+	// On s'arrête quand y'a plus de captures ou qu'on a plus de noeuds
+
+
+
+	// Temps de calcul
+	const clock_t begin_monte_time = clock();
+
+	// Si c'est un nouveau noeud, on fait son initialisation
+	if (_new_node) {
+
+		// Vérifie si la partie est finie (normalement, c'est déjà fait dans l'évaluation)
+		_board->is_game_over();
+		_new_node = false;
+
+		if (_board->_got_moves == -1) {
+			_board->get_moves();
+		}
+
+		// Trie les coups si ça n'est pas déjà fait (les trie de façon rapide)
+		!_board->_sorted_moves && _board->sort_moves();
+	}
+
+	// Si la partie est finie, on ne fait rien
+	if (_board->_game_over_value) {
+		// TODO: on fait quoi là??
+		_nodes++;
+		_time_spent += clock() - begin_monte_time;
+
+		return;
+	}
+
+	// Vérifie que le buffer n'est pas plein (TODO) (et est bien initialisé aussi)
+	
+
+	// Exploration des noeuds
+	while (nodes > 0) {
+		int initial_nodes = _nodes;
+
+		// S'il reste des coups à explorer
+		/*if (children_count() < _board->_got_moves) {
+			explore_new_move(buffer, eval, quiescence_depth);
+		}*/
+
+		//cout << "explored nodes: " << get_fully_explored_children_count() << " | got moves: " << (int)_board->_got_moves << endl;
+
+		if (get_fully_explored_children_count() < _board->_got_moves) {
+			//explore_new_capture(buffer, eval);
+		}
+
+		// On explore dans un fils
+		else {
+			//explore_random_capture(buffer, eval, beta, k_add);
+		}
+
+		nodes -= _nodes - initial_nodes;
+	}
+	
+	// Temps de calcul
+	_time_spent += clock() - begin_monte_time;
+
+	return;
+
 }

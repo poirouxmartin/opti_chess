@@ -646,6 +646,11 @@ r2qr1k1/ppn1bppp/8/2pP1b2/3P4/2N1BN1P/PP1Q1PP1/R3R1K1 b - - 0 17 : c4 seul coup 
 r1bqr2k/1pp2p1B/p3p2Q/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 3 26 : Fg6+ #3
 5r2/2k1q3/1p2rpPp/p1p1p2P/P2pP1QB/1P1P4/2P4K/5R2 b - - 8 38 : Rd6 seul coup qui tient
 4rrk1/b1p1Rp2/p2p1P2/1p4P1/8/2P2QP1/Pq3PK1/R7 w - - 0 29 : g6 gagne
+r6r/pQ6/3RbNpk/4Pp2/5P2/8/qP4P1/5RK1 w - - 1 31 : Rf2 gagne
+rr6/8/1p3Npk/4Pp2/5P2/1R6/1P4P1/6K1 w - - 2 35 : Th3+ #7
+r1bq1rk1/pp2np2/2n1p1p1/3pP1Np/P2P3P/3B2N1/1P3PP1/R2Q1RK1 w - - 1 16 : Cxh5 gagne
+1q2r1k1/2p1bpp1/8/1r6/8/1B6/1B6/1K2Q2R w - - 0 1 : De6!! #4
+8/8/4pk2/3rbpp1/8/2B5/4R1PP/7K w - - 0 1 : Txf4 puis g3, zugzwang à long terme
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---

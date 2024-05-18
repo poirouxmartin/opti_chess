@@ -5814,8 +5814,6 @@ int Board::get_weak_squares() const {
 	const static float rook_outpost_value = 0.25f;
 
 
-
-
 	// Valeur des cases faibles
 	int weak_squares_value = 0;
 
@@ -5847,10 +5845,9 @@ int Board::get_weak_squares() const {
 			// Si c'est une case faible
 			if (weak) {
 				int square_value = weak_square_values[7 - i][j];
-				int pawn_controls = (j > 0 && _array[i + 1][j - 1] == 7) + (j < 7 && _array[i + 1][j + 1] == 7);
 
-				// Valeur du contrôle de la case faible par un pion adverse
-				square_value *= (1 + pawn_controls * pawn_controls);
+				// Contrôle de la case par un (des) pions adverses
+				int pawn_controls = (j > 0 && _array[i + 1][j - 1] == 7) + (j < 7 && _array[i + 1][j + 1] == 7);
 
 				// Outposts
 				if (pawn_controls > 0) {
@@ -5862,6 +5859,9 @@ int Board::get_weak_squares() const {
 					// Valeur en fonction de la pièce
 					square_value += outpost_value * (p == 8 ? knight_outpost_value : (p == 9 ? bishop_outpost_value : (p == 10 ? rook_outpost_value : 0)));
 				}
+
+				// Valeur du contrôle de la case faible par un pion adverse
+				square_value *= (1 + pawn_controls);
 
 				weak_squares_value -= square_value;
 			}
@@ -5897,10 +5897,9 @@ int Board::get_weak_squares() const {
 			// Si c'est une case faible
 			if (weak) {
 				int square_value = weak_square_values[i][j];
-				int pawn_controls = (j > 0 && _array[i - 1][j - 1] == 1) + (j < 7 && _array[i - 1][j + 1] == 1);
 
-				// Valeur du contrôle de la case faible par un pion adverse
-				square_value *= (1 + pawn_controls * pawn_controls);
+				// Contrôle de la case par un (des) pions adverses
+				int pawn_controls = (j > 0 && _array[i - 1][j - 1] == 1) + (j < 7 && _array[i - 1][j + 1] == 1);
 
 				// Outposts
 				if (pawn_controls > 0) {
@@ -5912,6 +5911,9 @@ int Board::get_weak_squares() const {
 					// Valeur en fonction de la pièce
 					square_value += outpost_value * (p == 2 ? knight_outpost_value : (p == 3 ? bishop_outpost_value : (p == 4 ? rook_outpost_value : 0)));
 				}
+
+				// Valeur du contrôle de la case faible par un pion adverse
+				square_value *= (1 + pawn_controls);
 
 				weak_squares_value += square_value;
 			}
