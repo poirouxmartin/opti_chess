@@ -29,6 +29,9 @@ public:
 	// Output (si y'a une seule valeur) -> pour simplifier
 	int _output = 0;
 
+	// Fonction d'activation
+	//int (*_activation_function)(int, float, float) = linear_activation;
+
 	// Constructeurs
 
 	// Constructeur par défaut
@@ -50,6 +53,9 @@ public:
 
 	// Fonction qui prend un vecteur de positions et le vecteur des évaluations associées, et renvoie la distance globale des évaluations des positions selon le réseau de neurones, comparées aux évaluations en argument
 	int global_distance(const vector<string>&, const vector<int>&);
+
+	// Fonction qui remet à zéro toutes les valeurs du réseau
+	void reset_values();
 };
 
 // Fonction qui renvoie la distance entre deux évaluations

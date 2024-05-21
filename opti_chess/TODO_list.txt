@@ -504,6 +504,8 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Bonus et malus pendant les parties, lorsqu'il a mal évalué une position
 -> Apprentissage à partir des fins de partie, puis on remonte
 -> Reinforcement learning
+-> Prendre en compte d'autres paramètres que les pièces (trait, roques...)
+-> Y'a peu de valeurs négatives dans les évals, est-ce normal?
 
 
 ----- Table de transposition -----

@@ -28,8 +28,6 @@ Move Player::best_move(Board* board) const {
 	for (int i = 0; i < board->_got_moves; i++) {
 		Board b(*board, false, true);
 		b.make_move(board->_moves[i], false, false, true);
-		// FIXME: comment évaluer un plateau avec les réseaux de neurones?
-		//b.evaluate(nullptr, false, _network, false); // We don't look for checkmates, because we want it to learn to play such moves by itself
 		_network->input_from_fen(b.to_fen());
 		_network->calculate_output();
 
