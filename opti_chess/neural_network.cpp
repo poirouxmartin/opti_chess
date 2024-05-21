@@ -30,22 +30,31 @@ Network::Network(Network& n) {
 
 // Fonction qui calcule l'output (mettre tout le réseau à 0 au départ)
 void Network::calculate_output() {
+
 	// Remet toutes les valeurs à 0 dans les layers cachées et d'output
-	for (int i = 1; i < _layers.size(); i++)
-		for (int j = 0; j < _layers[i].size(); j++)
-			_layers[i][j] = 0;
+	reset_values();
 
 	// Calcul des noeuds
-	for (int i = 0; i < _layers.size() - 1; i++) {
-		for (int j = 0; j < _layers[i].size(); j++) {
-			for (int k = 0; k < _layers[i + 1].size(); k++) {
-				_layers[i + 1][k] += _layers[i][j] * _weights[i][_layers[i + 1].size() * j + k];
+
+	// Pour chaque couche
+	for (int layer = 0; layer < _layers.size() - 1; layer++) {
+
+		// On calcule les valeurs des noeuds de la couche suivante
+		for (int k = 0; k < _layers[layer + 1].size(); k++) {
+
+			// On calcule la somme pondérée des noeuds de la couche précédente
+			for (int i = 0; i < _layers[layer].size(); i++) {
+				_layers[layer + 1][k] += _layers[layer][i] * _weights[layer][k * _layers[layer].size() + i];
 			}
+
+			// On applique la fonction d'activation
+			//_layers[layer + 1][k] = _activation_function(_layers[layer + 1][k], 0, 1);
+			_layers[layer + 1][k] = linear_activation(_layers[layer + 1][k], 0.0f, 1.0f);
 		}
 	}
 
-	// Division par 1000 pour éviter les évaluations garguantuesques
-	_output = _layers[_layers_dimensions.size() - 1][0] / 100;
+	// On met l'output à la valeur du seul noeud de la dernière couche
+	_output = _layers[_layers.size() - 1][0];
 }
 
 // Fonction qui remplit l'input à l'aide d'une position d'échec sous forme FEN
@@ -56,7 +65,7 @@ void Network::input_from_fen(const string& fen) {
 	int k = 0;
 
 	// Remise à zéro des inputs
-	for (int i = 0; i < 768; i++)
+	for (int i = 0; i < _layers_dimensions[0]; i++)
 		_layers[0][i] = 0;
 
 	for (const char c : fen) {
@@ -128,6 +137,13 @@ int Network::global_distance(const vector<string>& positions_vector, const vecto
 	}
 
 	return vector_norm(distances);
+}
+
+// Fonction qui remet à zéro toutes les valeurs du réseau
+void Network::reset_values() {
+	for (int i = 1; i < _layers.size(); i++)
+		for (int j = 0; j < _layers[i].size(); j++)
+			_layers[i][j] = 0;
 }
 
 // Fonctions d'activation pour les calculs du réseau de neurones
