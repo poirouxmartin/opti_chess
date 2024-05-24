@@ -63,13 +63,13 @@ public:
 	[[nodiscard]] int get_first_unexplored_move_index(bool fully_explored = false);
 
 	// Nouveau GrogrosZero
-	void grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add, int nodes, int quiescence_depth);
+	void grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add, int nodes, int quiescence_depth, Network* network = nullptr);
 
 	// Fonction qui explore un nouveau coup
-	void explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_depth);
+	void explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_depth, Network* network = nullptr);
 
 	// Fonction qui explore dans un plateau fils pseudo-aléatoire
-	void explore_random_child(Buffer* buffer, Evaluator* eval, const float beta, const float k_add, int quiescence_depth);
+	void explore_random_child(Buffer* buffer, Evaluator* eval, const float beta, const float k_add, int quiescence_depth, Network* network = nullptr);
 
 	// Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
 	[[nodiscard]] int pick_random_child_index(const float beta, const float k_add);
@@ -96,7 +96,7 @@ public:
 	[[nodiscard]] int get_avg_nps() const;
 
 	// Quiescence search intégré à l'exploration
-	int grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha = -INT_MAX, int beta = INT_MAX);
+	int grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr);
 	//void grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth);
 
 	// Fonction qui renvoie le nombre de noeuds fils complètement explorés

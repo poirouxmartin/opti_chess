@@ -294,6 +294,9 @@ r6k/1pp1b2p/7P/n3p1p1/5p2/2PQ1n2/Bq3P2/R2R1K2 w - - 0 33 : Fb1 gagne
 4rr1k/1pp1b2p/p1n4P/1P2p1p1/P3Np2/1BP2n2/1B3P2/R2R1K2 b - - 1 29 : blancs quasi gagnants
 r4r1k/1ppRb2p/p1n4P/1P2p1p1/P3Np2/1BP2n2/1B3P2/R4K2 b - - 0 29 : noirs complètement foutus
 6rr/2kq1b2/1p3p1p/p1p1pP1P/P2pP3/1P1P1Q2/2PB2R1/5RK1 w - - 3 33 : Tg6!! coup stratégique
+2kr1b1r/ppp1pppp/1q3n2/7b/2BN4/P4P2/1PPBN1PP/R2QK2R b KQ - 0 3 : e5 et les noirs sont légèrement mieux
+2krr3/ppp2ppp/1q3n2/2b2N1b/1PB1p3/P4PN1/2PB2PP/R2QK2R w KQ - 1 7 : noirs gagnants
+2kr3r/ppp2ppp/1q1b4/7n/2B5/PN3P2/1PPB3P/R2QK2R w KQ - 0 5 : noirs mieux (le roi blanc est bloqué au centre de l'échiquier)
 
 
 ----- Problèmes -----
@@ -651,6 +654,10 @@ rr6/8/1p3Npk/4Pp2/5P2/1R6/1P4P1/6K1 w - - 2 35 : Th3+ #7
 r1bq1rk1/pp2np2/2n1p1p1/3pP1Np/P2P3P/3B2N1/1P3PP1/R2Q1RK1 w - - 1 16 : Cxh5 gagne
 1q2r1k1/2p1bpp1/8/1r6/8/1B6/1B6/1K2Q2R w - - 0 1 : De6!! #4
 8/8/4pk2/3rbpp1/8/2B5/4R1PP/7K w - - 0 1 : Txf4 puis g3, zugzwang à long terme
+2r2rk1/3Q2pp/p4p2/1p2p1PP/1q2b3/4B3/PPP5/1K1R3R w - - 0 23 : h6 #12
+r1b1r1k1/p3Bpb1/2p3p1/q7/2B1Npn1/7R/2P1Q1P1/3R3K w - - 1 25 : Fxf7+! gagne
+r1b5/p3QBbk/2pN2p1/q7/5p2/7n/2P3PK/3R4 w - - 1 29 : Td5!! seul coup qui gagne
+2krr3/ppp2ppp/1q3n2/2P2N1b/2B5/P5N1/2PB2KP/R2Q3R b - - 0 9 : Dc6! important
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---
