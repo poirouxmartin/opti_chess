@@ -64,9 +64,8 @@ void Network::input_from_fen(const string& fen) {
 	// Itérateur dans la couche d'input du réseau de neurones
 	int k = 0;
 
-	// Remise à zéro des inputs
-	for (int i = 0; i < _layers_dimensions[0]; i++)
-		_layers[0][i] = 0;
+	// Remise à zéro des valeurs
+	reset_values();
 
 	for (const char c : fen) {
 		switch (c) {
@@ -144,6 +143,26 @@ void Network::reset_values() {
 	for (int i = 1; i < _layers.size(); i++)
 		for (int j = 0; j < _layers[i].size(); j++)
 			_layers[i][j] = 0;
+}
+
+// Fonction qui affiche les poids du réseau
+void Network::display_weights() {
+	for (int i = 0; i < _weights.size(); i++) {
+		for (int j = 0; j < _weights[i].size(); j++) {
+			cout << _weights[i][j] << " ";
+		}
+		cout << endl;
+	}
+}
+
+// Fonction qui affiche les valeurs du réseau
+void Network::display_values() {
+	for (int i = 0; i < _layers.size(); i++) {
+		for (int j = 0; j < _layers[i].size(); j++) {
+			cout << _layers[i][j] << " ";
+		}
+		cout << endl;
+	}
 }
 
 // Fonctions d'activation pour les calculs du réseau de neurones

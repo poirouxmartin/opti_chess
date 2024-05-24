@@ -792,6 +792,22 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 		}
 	}
 
+	// Si on a un réseau de neurones
+	if (n != nullptr) {
+		n->input_from_fen(to_fen());
+		n->calculate_output();
+		_evaluation = n->_output;
+
+		// L'évaluation a été effectuée
+		_evaluated = true;
+
+		// Met à jour l'évaluation statique
+		_static_evaluation = _evaluation;
+
+		// Partie non finie
+		return false;
+	}
+
 	_displayed_components = display;
 	if (display)
 		main_GUI._eval_components = "";
