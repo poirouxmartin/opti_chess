@@ -796,7 +796,8 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	if (n != nullptr) {
 		n->input_from_fen(to_fen());
 		n->calculate_output();
-		_evaluation = n->_output;
+		//_evaluation = n->_output;
+		_evaluation = n->output_eval(mate_value);
 
 		// L'évaluation a été effectuée
 		_evaluated = true;
