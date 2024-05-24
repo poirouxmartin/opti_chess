@@ -83,26 +83,6 @@ inline int main_ui() {
 	// Fin de partie
 	bool main_game_over = false;
 
-	//// Réseau de neurones
-	//Network grogros_network;
-	//grogros_network.generate_random_weights();
-	//bool use_neural_network = false;
-
-	//// Liste de réseaux de neurones pour les tournois
-	//int n_networks = 5;
-	//Evaluator **evaluators = new Evaluator*[n_networks];
-	//for (int i = 0; i < n_networks; i++)
-	//    evaluators[i] = nullptr;
-	//Network **neural_networks = new Network*[n_networks];
-	//Network *neural_networks_test = new Network[n_networks];
-	//for (int i = 0; i < n_networks; i++) {
-	//    neural_networks[i] = &neural_networks_test[i];
-	//    neural_networks[i]->generate_random_weights();
-	//}
-
-	//neural_networks[0] = nullptr;
-	//evaluators[0] = &monte_evaluator;
-
 	// Met les timers en place
 	main_GUI._board.reset_timers();
 
@@ -128,9 +108,13 @@ inline int main_ui() {
 	// Plateau test: rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2
 	Board test_board;
 	//test_board.from_fen("rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2");
-	main_GUI._root_exploration_node = new Node(&test_board, Move());
+	main_GUI._root_exploration_node = new Node(&test_board, Move()); // FIXME: à faire autre part (dans la GUI?)
 
-	cout << "root exploration node created" << endl;
+
+	// Test de réseaux de neurones
+	Network eval_network;
+	eval_network.generate_random_weights();
+
 
 
 	// Boucle principale (Quitter à l'aide de la croix, ou en faisant échap)
@@ -224,11 +208,17 @@ inline int main_ui() {
 			cout << "eval : " << toto2 << endl;*/
 
 			// Test match between two neural networks
-			Player white_player;
-			Player black_player;
+			//Player white_player;
+			//Player black_player;
 
-			Match test_match(&white_player, &black_player);
-			int match_result = test_match.play("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", true);
+			//Match test_match(&white_player, &black_player);
+			//int match_result = test_match.play("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", true);
+
+			// Test du réseau de neurones
+			main_GUI._root_exploration_node->grogros_zero(&monte_buffer, nullptr, main_GUI._beta, main_GUI._k_add, 1, main_GUI._quiescence_depth, &eval_network);
+			eval_network.display_values();
+			//main_GUI._root_exploration_node->_board->evaluate(nullptr, false, &eval_network, false);
+			//cout << "eval : " << main_GUI._root_exploration_node->_board->_evaluation << endl;
 		}
 
 		// CTRL-T - Cherche le plateau de chess.com sur l'écran, et lance une partie

@@ -48,7 +48,7 @@ void Node::add_child(Node* child) {
 }
 
 // Nouveau GrogrosZero
-void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add, int nodes, int quiescence_depth) {
+void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add, int nodes, int quiescence_depth, Network* network) {
 	// TODO:
 	// On peut rajouter la profondeur
 	// Garder le temps de calcul
@@ -98,12 +98,12 @@ void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add
 		//cout << "explored nodes: " << get_fully_explored_children_count() << " | got moves: " << (int)_board->_got_moves << endl;
 
 		if (get_fully_explored_children_count() < _board->_got_moves) {
-			explore_new_move(buffer, eval, quiescence_depth);
+			explore_new_move(buffer, eval, quiescence_depth, network);
 		}
 
 		// On explore dans un fils
 		else {
-			explore_random_child(buffer, eval, beta, k_add, quiescence_depth);
+			explore_random_child(buffer, eval, beta, k_add, quiescence_depth, network);
 		}
 
 		nodes -= _nodes - initial_nodes;
@@ -116,7 +116,7 @@ void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add
 }
 
 // Fonction qui explore un nouveau coup
-void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_depth) {
+void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_depth, Network* network) {
 	// On prend le premier coup non exploré
 	//const int move_index = get_first_unexplored_move_index();
 	const int move_index = get_first_unexplored_move_index(true);
@@ -160,7 +160,7 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 	//child->_board->evaluate(eval, false, nullptr, true);
 	//child->_board->_evaluation = child->_board->quiescence(eval, -INT32_MAX, INT32_MAX, 4, true) * child->_board->get_color();
 	//child->_nodes = 1;
-	child->grogros_quiescence(buffer, eval, quiescence_depth);
+	child->grogros_quiescence(buffer, eval, quiescence_depth, -INT32_MAX, INT32_MAX, network);
 	child->_fully_explored = true;
 	bool test = false;
 	// rnb1kbnr/ppp1pppp/2q5/1B6/8/2N5/PPPP1PPP/R1BQK1NR b KQkq - 3 4
@@ -195,14 +195,14 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 }
 
 // Fonction qui explore dans un plateau fils pseudo-aléatoire
-void Node::explore_random_child(Buffer* buffer, Evaluator* eval, float beta, float k_add, int quiescence_depth) {
+void Node::explore_random_child(Buffer* buffer, Evaluator* eval, float beta, float k_add, int quiescence_depth, Network* network) {
 	// Prend un fils aléatoire
 	int child_index = pick_random_child_index(beta, k_add);
 
 	_nodes -= _children[child_index]->_nodes; // On enlève le nombre de noeuds de ce fils
 
 	// On explore ce fils
-	_children[child_index]->grogros_zero(buffer, eval, beta, k_add, 1, quiescence_depth); // L'évaluation du fils est mise à jour ici
+	_children[child_index]->grogros_zero(buffer, eval, beta, k_add, 1, quiescence_depth, network); // L'évaluation du fils est mise à jour ici
 
 	// Met à jour l'évaluation du plateau
 	if (_board->_player) {
@@ -471,7 +471,7 @@ Node::~Node() {
 }
 
 // Quiescence search intégré à l'exploration
-int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha, int beta) {
+int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha, int beta, Network* network) {
 	// TODO: comment gérer la profondeur? faire en fonction de l'importance de la branche?
 	// mettre aucune profondeur limite?
 	// pourquoi en endgame ça va si loin? il fait full échecs...
@@ -537,7 +537,7 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 	}
 	else {
 		//cout << "redo" << endl;
-		_board->evaluate(eval);
+		_board->evaluate(eval, false, network, false);
 	}
 
 	int stand_pat = _board->_evaluation * color;

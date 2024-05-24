@@ -56,6 +56,12 @@ public:
 
 	// Fonction qui remet à zéro toutes les valeurs du réseau
 	void reset_values();
+
+	// Fonction qui affiche les poids du réseau
+	void display_weights();
+
+	// Fonction qui affiche les valeurs du réseau
+	void display_values();
 };
 
 // Fonction qui renvoie la distance entre deux évaluations
