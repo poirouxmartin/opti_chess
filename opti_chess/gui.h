@@ -85,13 +85,13 @@ public:
 	TextBox _black_time_text_box;
 
 	// Paramètres pour la recherche de Monte-Carlo
-	//float _beta = 0.25f;
-	//float _k_add = 10.0f;
-	//int _quiescence_depth = 40;
+	float _beta = 0.25f;
+	float _k_add = 10.0f;
+	int _quiescence_depth = 40;
 
-	float _beta = 0.1f;
-	float _k_add = 25.0f;
-	int _quiescence_depth = 8;
+	//float _beta = 0.1f;
+	//float _k_add = 25.0f;
+	//int _quiescence_depth = 8;
 
 	bool _explore_checks = true; // FIXME? faut-il vraiment explorer les échecs?
 

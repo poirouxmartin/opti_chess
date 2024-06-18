@@ -30,7 +30,6 @@ Network::Network(Network& n) {
 
 // Fonction qui calcule l'output (mettre tout le réseau à 0 au départ)
 void Network::calculate_output() {
-
 	// Remet toutes les valeurs à 0 dans les layers cachées et d'output
 	reset_values();
 
