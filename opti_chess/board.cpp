@@ -2236,7 +2236,7 @@ int Board::get_piece_mobility(const bool legal) const
 		}
 	}
 
-	return piece_mobility;
+	return piece_mobility * (1 - _adv);
 }
 
 // Fonction qui renvoie le meilleur coup selon l'analyse faite par l'algo de Monte-Carlo
@@ -3192,7 +3192,7 @@ string Board::simple_position() const
 }
 
 // Fonction qui calcule la structure de pions et renvoie sa valeur
-int Board::get_pawn_structure(float display_factor) const
+int Board::get_pawn_structure(float display_factor)
 {
 	// Améliorations :
 	// Nombre d'ilots de pions
@@ -3256,16 +3256,16 @@ int Board::get_pawn_structure(float display_factor) const
 
 	// Pions passés
 	// r5k1/P3Rpp1/7p/8/3p4/8/2P2PPP/6K1 b - - 1 30 : position à tester
-
+	// 8/P5kp/8/q7/8/8/5B1P/5K2 w - - 1 57 : ici, il faut considérer la case controlée (par rayon X)
 
 	// Table de valeur des pions passés en fonction de leur avancement sur le plateau
-	static const int passed_pawns[8] = { 0, 50, 50, 100, 165, 250, 300, 0 };
+	static const int passed_pawns[8] = { 0, 50, 50, 80, 125, 350, 750, 0 };
 
 	// Pion passé - chemin controllé par une pièce adverse
-	static const int controlled_passed_pawn[8] = { 0, 45, 50, 85, 115, 150, 220, 0 };
+	static const int controlled_passed_pawn[8] = { 0, 45, 50, 75, 110, 160, 250, 0 };
 
 	// Pion passé bloqué
-	static const int blocked_passed_pawn[8] = { 0, 40, 45, 65, 80, 120, 150, 0 };
+	static const int blocked_passed_pawn[8] = { 0, 30, 35, 50, 65, 90, 140, 0 };
 
 
 	constexpr float passed_adv_factor = 2.0f; // En fonction de l'advancement de la partie
@@ -3293,20 +3293,28 @@ int Board::get_pawn_structure(float display_factor) const
 
 						// Regarde s'il y a un bloqueur
 						bool blocked = false;
-						for (uint_fast8_t k = j + 1; k <= 7; k++)
+						for (uint_fast8_t k = j + 1; k <= 7; k++) {
 							if (_array[k][i] != 0) {
 								blocked = true;
 								break;
 							}
+						}
 
 						// S'il n'est pas bloqué, regarde s'il est controllé par une pièce adverse
 						bool controlled = false;
 						if (!blocked) {
-							for (uint_fast8_t k = j + 1; k <= 7; k++)
+							// On retire le pion pour regarder si la case est controlée par rayon X
+							_array[j][i] = 0;
+
+							for (uint_fast8_t k = j + 1; k <= 7; k++) {
 								if (is_controlled(k, i, true)) {
 									controlled = true;
 									break;
 								}
+							}
+
+							// On remet le pion
+							_array[j][i] = 1;
 						}
 
 						// Ajoute la valeur du pion passé
@@ -3334,21 +3342,29 @@ int Board::get_pawn_structure(float display_factor) const
 
 						// Regarde s'il y a un bloqueur
 						bool blocked = false;
-						for (int_fast8_t k = j - 1; k >= 0; k--)
-							//cout << "k = " << (int)k << " i = " << (int)i << " _array[k][i] = " << static_cast<int>(_array[k][i]) << endl;
+						for (int_fast8_t k = j - 1; k >= 0; k--) {
 							if (_array[k][i] != 0) {
 								blocked = true;
 								break;
 							}
+						}
+							
 
 						// S'il n'est pas bloqué, regarde s'il est controllé par une pièce adverse
 						bool controlled = false;
 						if (!blocked) {
-							for (int_fast8_t k = j - 1; k >= 0; k--)
+							// On retire le pion pour regarder si la case est controlée par rayon X
+							_array[j][i] = 0;
+
+							for (int_fast8_t k = j - 1; k >= 0; k--) {
 								if (is_controlled(k, i, false)) {
 									controlled = true;
 									break;
 								}
+							}
+							
+							// On remet le pion
+							_array[j][i] = 7;
 						}
 
 						// Ajoute la valeur du pion passé
