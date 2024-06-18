@@ -8,7 +8,7 @@ public:
 
 	// Coefficients des heuristiques
 	float _piece_value = 1.2f;
-	float _piece_mobility = 0.06f;
+	float _piece_mobility = 0.08f;
 	float _piece_positioning = 0.5f;
 	float _bishop_pair = 20.0f;
 	float _castling_rights = 20.0f;
@@ -19,8 +19,8 @@ public:
 	float _kings_opposition = 75.0f;
 	float _push = 1.00f;
 	float _rook_open = 0.3f;
-	float _square_controls = 0.5f;
-	float _space_advantage = 0.6f;
+	float _square_controls = 0.85f;
+	float _space_advantage = 1.0f;
 	//float _alignments = 1.0f;
 	float _alignments = 0.00f;
 	float _piece_activity = 0.03f;

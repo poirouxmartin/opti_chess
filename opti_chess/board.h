@@ -16,37 +16,12 @@
 using namespace std;
 
 
-// TODO : à la place de 1, .. 12, mettre des enums (P, N, B, R, Q, K, p, n, b, r, q, k)
-
-/*
-
-Plateau :
-	Pièces :
-		Blancs :
-			Pion = 1
-			Cavalier = 2
-			Fou = 3
-			Tour = 4
-			Dame = 5
-			Roi = 6
-
-		Noirs :
-			Pion = 7
-			Cavalier = 8
-			Fou = 9
-			Tour = 10
-			Dame = 11
-			Roi = 12
-
-*/
-
+// TODO: les utiliser
 // Enumération des pièces
-//enum piece_type { P = 1, N = 2, B = 3, R = 4, Q = 5, K = 6, p = 7, n = 8, b = 9, r = 10, q = 11, k = 12 };
-
+enum piece_type { None = 0, P = 1, N = 2, B = 3, R = 4, Q = 5, K = 6, p = 7, n = 8, b = 9, r = 10, q = 11, k = 12 };
 
 // Nombre de demi-coups avant de déclarer la partie nulle
 constexpr int max_half_moves = 100;
-
 
 // Nombre maximum de coups légaux par position estimé
 // const int max_moves = 218;
@@ -155,6 +130,7 @@ struct Piece
 
 };
 
+// TODO: utiliser!!
 // Ligne du plateau d'échec (horizontale)
 // 40 bytes (Minimum possible pour une représentation board-centric : 32 bytes)
 struct Array
@@ -227,18 +203,21 @@ public:
 
 	// Plateau
 	// 64 bytes
-	uint_fast8_t _array[8][8]{	{ 4, 2, 3, 5, 6, 3, 2, 4 },
-								{ 1, 1, 1, 1, 1, 1, 1, 1 },
-								{ 0, 0, 0, 0, 0, 0, 0, 0 },
-								{ 0, 0, 0, 0, 0, 0, 0, 0 },
-								{ 0, 0, 0, 0, 0, 0, 0, 0 },
-								{ 0, 0, 0, 0, 0, 0, 0, 0 },
-								{ 7, 7, 7, 7, 7, 7, 7, 7 },
-								{10, 8, 9,11,12, 9, 8,10 } };
+	uint_fast8_t _array[8][8]{	{    R,    N,    B,    Q,    K,    B,    N,    R },
+								{    P,    P,    P,    P,    P,    P,    P,    P },
+								{ None, None, None, None, None, None, None, None },
+								{ None, None, None, None, None, None, None, None },
+								{ None, None, None, None, None, None, None, None },
+								{ None, None, None, None, None, None, None, None },
+								{    p,    p,    p,    p,    p,    p,    p,    p },
+								{    r,    n,    b,    q,    k,    b,    n,    r } };
+
+	//Array _array; // TODO utiliser
 
 	// Coups possibles
 	// Nombre max de coups légaux dans une position : 218
 
+	// TODO: réduire le nombre de bytes utilisés
 	// 200 bytes
 	Move _moves[max_moves];
 
@@ -483,7 +462,7 @@ public:
 	[[nodiscard]] string simple_position() const;
 
 	// Fonction qui calcule la structure de pions et renvoie sa valeur
-	[[nodiscard]] int get_pawn_structure(float display_factor = 0.0f) const;
+	[[nodiscard]] int get_pawn_structure(float display_factor = 0.0f);
 
 	// Fonction qui calcule la résultante des attaques et des défenses et la renvoie
 	[[nodiscard]] float get_attacks_and_defenses() const;

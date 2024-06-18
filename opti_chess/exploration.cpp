@@ -175,6 +175,21 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 		// TODO: c'est vraiment ça qu'il faut faire?
 		_board->_evaluation = _board->_player * max(_board->_evaluation, child->_board->_evaluation) + !_board->_player * min(_board->_evaluation, child->_board->_evaluation);
 	}
+
+	// FIXME optimiser ces cas pour n'en calculer qu'un
+
+	// Si tous les coups ont été explorés, on met à jour l'évaluation du plateau avec le meilleur coup
+	if (children_count() == _board->_got_moves) {
+		int color = _board->get_color();
+		int best_eval = -INT_MAX;
+		for (int i = 0; i < children_count(); i++) {
+			if (_children[i]->_board->_evaluation * color > best_eval) {
+				best_eval = _children[i]->_board->_evaluation * color;
+			}
+		}
+
+		_board->_evaluation = best_eval * color;
+	}
 	
 
 	// FIXME: si on a regardé tous les fils, et qu'aucun des coups n'améliore l'évaluation, on fait quoi?
@@ -606,18 +621,18 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 			if (_board->_array[move.i2][move.j2] != 0) {
 				should_explore = true;
 			}
-			//else {
-			//	// Si c'est une promotion
-			//	if ((_board->_array[move.i1][move.j1] == 1 && move.i2 == 7) || (_board->_array[move.i1][move.j1] == 7 && move.i2 == 0)) {
-			//		should_explore = true;
-			//	}
-			//	// Si le coup met en échec
-			//	else {
-			//		Board b(*_board);
-			//		b.make_move(move);
-			//		should_explore = b.in_check();
-			//	}
-			//}
+			else {
+				// Si c'est une promotion
+				if ((_board->_array[move.i1][move.j1] == 1 && move.i2 == 7) || (_board->_array[move.i1][move.j1] == 7 && move.i2 == 0)) {
+					should_explore = true;
+				}
+				// Si le coup met en échec
+				else {
+					Board b(*_board);
+					b.make_move(move);
+					should_explore = b.in_check();
+				}
+			}
 		}
 
 		/*if (should_explore)
@@ -664,13 +679,30 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 			//cout << "beta: " << beta << " | alpha: " << alpha << endl;
 
 			// Appel récursif sur le fils
-			int score = - child->grogros_quiescence(buffer, eval, depth - 1, -beta, -alpha);
+			int score = - child->grogros_quiescence(buffer, eval, depth - 1, -beta, -alpha, network);
 			//child->grogros_quiescence(buffer, eval, depth - 1);
 			_nodes += child->_nodes;
 
 			// Mise à jour de l'évaluation du plateau
-			if (child->_board->_evaluation * color > _board->_evaluation * color) {
-				_board->_evaluation = child->_board->_evaluation;
+			// FIXME: ici, s'il y'a un seul coup, il faut mettre à jour l'évaluation du plateau même si l'évaluation fils est moins bonne
+			// Ou alors: si tous les coups ont été explorés, on met à jour l'évaluation du plateau avec le meilleur coup
+			bool all_moves_explored = children_count() == _board->_got_moves;
+
+			if (all_moves_explored) {
+				int color = _board->get_color();
+				int best_eval = -INT_MAX;
+				for (int i = 0; i < children_count(); i++) {
+					if (_children[i]->_board->_evaluation * color > best_eval) {
+						best_eval = _children[i]->_board->_evaluation * color;
+					}
+				}
+
+				_board->_evaluation = best_eval * color;
+			}
+			else {
+				if (child->_board->_evaluation * color > _board->_evaluation * color) {
+					_board->_evaluation = child->_board->_evaluation;
+				}
 			}
 
 			// Beta cut-off

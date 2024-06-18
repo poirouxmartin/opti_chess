@@ -297,6 +297,10 @@ r4r1k/1ppRb2p/p1n4P/1P2p1p1/P3Np2/1BP2n2/1B3P2/R4K2 b - - 0 29 : noirs complètem
 2kr1b1r/ppp1pppp/1q3n2/7b/2BN4/P4P2/1PPBN1PP/R2QK2R b KQ - 0 3 : e5 et les noirs sont légèrement mieux
 2krr3/ppp2ppp/1q3n2/2b2N1b/1PB1p3/P4PN1/2PB2PP/R2QK2R w KQ - 1 7 : noirs gagnants
 2kr3r/ppp2ppp/1q1b4/7n/2B5/PN3P2/1PPB3P/R2QK2R w KQ - 0 5 : noirs mieux (le roi blanc est bloqué au centre de l'échiquier)
+r1bqr1k1/ppb3p1/6Np/3p1P2/1n1P2PP/4BQ2/P7/RB3R1K b - - 4 25 : blancs complètement gagnants -> trop d'espace, trop d'attaque
+r2qr1k1/p1b3p1/bp4Np/3p1PP1/1n1P3P/4BQ2/P7/RB3R1K w - - 1 27 : f6! on ouvre toutes les lignes sur le roi noir, il est foutu
+r2r2k1/1b3p1p/pqn1p1p1/1pNpP3/3P4/P5P1/1P3PBP/2RQ1RK1 w - - 1 18 : il faut envoyer h4/h5 pour ouvrir le roi noir
+r2r2k1/1b3p2/pqn1p1p1/1pNpP2p/3P3P/P5P1/1P3PB1/2RQ1RK1 w - - 0 19 : g4 hyper fort!!
 
 
 ----- Problèmes -----

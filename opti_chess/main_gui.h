@@ -215,8 +215,10 @@ inline int main_ui() {
 			//int match_result = test_match.play("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", true);
 
 			// Test du réseau de neurones
-			main_GUI._root_exploration_node->grogros_zero(&monte_buffer, nullptr, main_GUI._beta, main_GUI._k_add, 1, main_GUI._quiescence_depth, &eval_network);
-			eval_network.display_values();
+			main_GUI._root_exploration_node->grogros_zero(&monte_buffer, nullptr, main_GUI._beta, main_GUI._k_add, 5000, main_GUI._quiescence_depth, &eval_network);
+			// TODO: afficher l'évaluation actuelle (elle parait toujours augmenter, c'est bizarre...)
+
+			//eval_network.display_values();
 			//main_GUI._root_exploration_node->_board->evaluate(nullptr, false, &eval_network, false);
 			//cout << "eval : " << main_GUI._root_exploration_node->_board->_evaluation << endl;
 		}
