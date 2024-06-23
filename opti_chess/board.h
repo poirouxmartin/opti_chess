@@ -11,7 +11,7 @@
 #include <cstdint>
 #include "raylib.h"
 #include <iomanip>
-#include "zobrist.h"
+//#include "zobrist.h"
 
 using namespace std;
 
@@ -45,32 +45,35 @@ typedef struct Move {
 	uint_fast8_t j1 : 3;
 	uint_fast8_t i2 : 3;
 	uint_fast8_t j2 : 3;
+
+	//Pos init; utiliser ça?
 	//bool capture_flag : 1;
 	//bool promotion_flag : 1;
 	bool is_null : 1;
 	// Reste 2 bytes à utiliser : check? castling? en passant? is null?
 
-	// Constructeurs
-	/*Move() :
-		i1(-1),
-		j1(-1),
-		i2(-1),
-		j2(-1),
-		is_null(true)
-	{}*/
-
-	// FIXME: est-ce plus lent quand on utilise un constructeur?
-	/*Move(uint_fast8_t i1, uint_fast8_t j1, uint_fast8_t i2, uint_fast8_t j2) :
-		i1(i1),
-		j1(j1),
-		i2(i2),
-		j2(j2),
-		is_null(false)
-	{}*/
-
 	bool operator== (const Move& other) const {
 		return (i1 == other.i1) && (j1 == other.j1) && (i2 == other.i2) && (j2 == other.j2);
 	}
+
+	// Il faut pouvoir trier les coups dans un dictionnaire
+	bool operator<(const Move& other) const {
+		if (i1 != other.i1) return i1 < other.i1;
+		if (j1 != other.j1) return j1 < other.j1;
+		if (i2 != other.i2) return i2 < other.i2;
+		return j2 < other.j2;
+	}
+
+	// Fonction de hash
+	size_t hash() const {
+		size_t hashValue = 0;
+		hashValue ^= std::hash<uint_fast8_t>()(i1);
+		hashValue ^= std::hash<uint_fast8_t>()(j1) << 1;
+		hashValue ^= std::hash<uint_fast8_t>()(i2) << 2;
+		hashValue ^= std::hash<uint_fast8_t>()(j2) << 3;
+		return hashValue;
+	}
+
 
 	void display() const
 	{
@@ -87,7 +90,6 @@ typedef struct Move {
 		return (is_null || (i1 == 0 && j1 == 0 && i2 == 0 && j2 == 0));
 	}
 };
-
 
 
 // Droits de roque (pour optimiser la place mémoire)
@@ -142,7 +144,7 @@ struct Array
 // Position sur le plateau
 struct Pos
 {
-	int i : 4;
+	int i : 4; // TODO: 3 suffit?
 	int j : 4;
 
 	// Opérateur d'égalité

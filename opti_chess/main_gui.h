@@ -5,6 +5,7 @@
 #include "windows_tests.h"
 #include "buffer.h"
 #include "match.h"
+#include "zobrist.h"
 
 
 
@@ -108,7 +109,7 @@ inline int main_ui() {
 	// Plateau test: rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2
 	Board test_board;
 	//test_board.from_fen("rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2");
-	main_GUI._root_exploration_node = new Node(&test_board, Move()); // FIXME: à faire autre part (dans la GUI?)
+	main_GUI._root_exploration_node = new Node(&test_board); // FIXME: à faire autre part (dans la GUI?)
 
 
 	// Test de réseaux de neurones
@@ -194,7 +195,7 @@ inline int main_ui() {
 				cout << main_GUI._root_exploration_node->_children[i]->_board._positions_history.size() << endl;
 			}*/
 
-			//main_GUI.grogros_analysis(1);
+			main_GUI.grogros_analysis(1);
 			//r1bqr1k1/1pp2p1Q/p3p1B1/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 b - - 6 27 : #-1
 
 			// TEST: r1bqr1k1/1pp2p2/p3p1BQ/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 5 27 : Dh7+ #2
@@ -215,7 +216,7 @@ inline int main_ui() {
 			//int match_result = test_match.play("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", true);
 
 			// Test du réseau de neurones
-			main_GUI._root_exploration_node->grogros_zero(&monte_buffer, nullptr, main_GUI._beta, main_GUI._k_add, 5000, main_GUI._quiescence_depth, &eval_network);
+			//main_GUI._root_exploration_node->grogros_zero(&monte_buffer, nullptr, main_GUI._beta, main_GUI._k_add, 5000, main_GUI._quiescence_depth, &eval_network);
 			// TODO: afficher l'évaluation actuelle (elle parait toujours augmenter, c'est bizarre...)
 
 			//eval_network.display_values();
@@ -630,7 +631,7 @@ inline int main_ui() {
 					//int supposed_grogros_speed = main_GUI._root_exploration_node->_time_spent == 0 ? 1 : (main_GUI._root_exploration_node->_nodes / main_GUI._root_exploration_node->_time_spent); // En supposant que Grogros va à plus de 5k noeuds par seconde
 					int supposed_grogros_speed = 40000;
 					//int supposed_grogros_speed = main_GUI._root_exploration_node->get_avg_nps();
-					float best_move_percentage = main_GUI._root_exploration_node->_nodes == 0 ? 0.05f : static_cast<float>(main_GUI._root_exploration_node->_children[main_GUI._root_exploration_node->get_most_explored_child_index()]->_nodes) / static_cast<float>(main_GUI._root_exploration_node->_nodes);
+					float best_move_percentage = main_GUI._root_exploration_node->_nodes == 0 ? 0.05f : static_cast<float>(main_GUI._root_exploration_node->_children[main_GUI._root_exploration_node->get_most_explored_child_move()]->_nodes) / static_cast<float>(main_GUI._root_exploration_node->_nodes);
 					int max_move_time = main_GUI._board._player ?
 						time_to_play_move(main_GUI._time_white, main_GUI._time_black, 0.05f * (1.0f - best_move_percentage)) :
 						time_to_play_move(main_GUI._time_black, main_GUI._time_white, 0.05f * (1.0f - best_move_percentage));

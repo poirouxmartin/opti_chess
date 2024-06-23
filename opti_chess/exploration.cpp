@@ -1,21 +1,21 @@
 ﻿#include "exploration.h"
 #include "useful_functions.h"
+#include "zobrist.h"
 
 // Constructeur avec un plateau, un indice et un coup
-Node::Node(Board *board, Move move) {
+Node::Node(Board *board) {
 	_board = board;
-	_move = move;
 }
 
 // Fonction qui ajoute un fils
-void Node::add_child(Node* child) {
+void Node::add_child(Node* child, Move move) {
 	// FIXME: vérifier si le coup n'est pas déjà dans les enfants?
-	if (get_child_index(child->_move) != -1) {
+	if (_children.contains(move)) {
 		cout << "move already in children" << endl;
 		return;
 	}
 
-	_children.push_back(child);
+	_children[move] = child;
 }
 
 // Fonction qui renvoie le nombre de fils
@@ -23,28 +23,16 @@ void Node::add_child(Node* child) {
 	return _children.size();
 }
 
-// Fonction qui renvoie le numéro du fils associé au coup s'il existe, -1 sinon
-[[nodiscard]] int Node::get_child_index(Move move) const {
-	for (int i = 0; i < _children.size(); i++) {
-		if (_children[i]->_move == move) {
-			return i;
+// Fonction qui renvoie le premier coup qui n'a pas encore été ajouté
+[[nodiscard]] Move Node::get_first_unexplored_move(bool fully_explored) {
+	for (int i = 0; i < _board->_got_moves; i++) {
+		Move move = _board->_moves[i];
+		if (!_children.contains(move) || (fully_explored && !_children[move]->_fully_explored)) {
+			return move;
 		}
 	}
 
-	return -1;
-}
-
-// Fonction qui renvoie l'indice du premier coup qui n'a pas encore été ajouté, -1 sinon
-[[nodiscard]] int Node::get_first_unexplored_move_index(bool fully_explored) {
-	for (int i = _latest_first_move_explored + 1; i < _board->_got_moves; i++) {
-		int child_index = get_child_index(_board->_moves[i]);
-		if (child_index == -1 || (fully_explored && !_children[child_index]->_fully_explored)) {
-			_latest_first_move_explored = i;
-			return i;
-		}
-	}
-
-	return -1;
+	return Move();
 }
 
 // Nouveau GrogrosZero
@@ -90,13 +78,6 @@ void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add
 	while (nodes > 0) {
 		int initial_nodes = _nodes;
 
-		// S'il reste des coups à explorer
-		/*if (children_count() < _board->_got_moves) {
-			explore_new_move(buffer, eval, quiescence_depth);
-		}*/
-
-		//cout << "explored nodes: " << get_fully_explored_children_count() << " | got moves: " << (int)_board->_got_moves << endl;
-
 		if (get_fully_explored_children_count() < _board->_got_moves) {
 			explore_new_move(buffer, eval, quiescence_depth, network);
 		}
@@ -117,24 +98,19 @@ void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add
 
 // Fonction qui explore un nouveau coup
 void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_depth, Network* network) {
+
 	// On prend le premier coup non exploré
-	//const int move_index = get_first_unexplored_move_index();
-	const int move_index = get_first_unexplored_move_index(true);
-	Move move = _board->_moves[move_index];
+	const Move move = get_first_unexplored_move(true);
 
 	// Noeud fils
 	Node *child = nullptr;
 
 	// Si on a déjà exploré ce coup, mais pas complètement
-	int child_index = get_child_index(move);
-	bool already_explored = child_index != -1;
+	bool already_explored = _children.contains(move);
 
 	if (already_explored) {
-		//cout << "move already explored: " << _fully_explored << endl;
-		
-		child = _children[child_index];
+		child = _children[move];
 	}
-
 	else {
 		// Prend une place dans le buffer
 		const int buffer_index = buffer->get_first_free_index();
@@ -150,8 +126,32 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 		new_board->_is_active = true;
 		new_board->make_move(move, false, false, true);
 
-		// Création du noeud fils
-		child = new Node(new_board, move);
+		// Cela transpose t-il dans une autre branche?
+		new_board->get_zobrist_key();
+
+		// TEST: 8/2k5/3p4/p2P1p2/P2P1P2/8/3K4/8 w - - 10 6
+		// Ca marche pas forcément, car le coup parent ne sera pas le même, et ça fait tout bugger...
+		// Faire des noeud jumeaux? pas forcément le mieux...
+		// Stocker les parents? et/ou les différents coups par parent?
+		// Quand on update un des noeuds, il faudra potentiellement backpropagate dans toutes les branches parentes...
+
+		// TODO: à la place se stocker le coup joué dans le fils, faire un dictionnaire des fils avec leur coup associé?
+
+		// Si la position est déjà dans la table de transposition
+		if (transposition_table.contains(new_board->_zobrist_key)) {
+			cout << "transposition: "<< new_board->to_fen() << endl;
+
+			child = transposition_table._hash_table[new_board->_zobrist_key]._node;
+			
+			_nodes += child->_nodes;
+		}
+		else {
+			// Création du noeud fils
+			child = new Node(new_board);
+
+			// Ajoute la position dans la table
+			//transposition_table._hash_table[new_board->_zobrist_key] = ZobristEntry(child);
+		}
 	}
 
 	
@@ -160,8 +160,15 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 	//child->_board->evaluate(eval, false, nullptr, true);
 	//child->_board->_evaluation = child->_board->quiescence(eval, -INT32_MAX, INT32_MAX, 4, true) * child->_board->get_color();
 	//child->_nodes = 1;
-	child->grogros_quiescence(buffer, eval, quiescence_depth, -INT32_MAX, INT32_MAX, network);
-	child->_fully_explored = true;
+
+	if (!child->_fully_explored) {
+		child->grogros_quiescence(buffer, eval, quiescence_depth, -INT32_MAX, INT32_MAX, network);
+		//child->_board->evaluate(eval, false, nullptr, true);
+		//child->_nodes = 1;
+
+		child->_fully_explored = true;
+	}
+
 	bool test = false;
 	// rnb1kbnr/ppp1pppp/2q5/1B6/8/2N5/PPPP1PPP/R1BQK1NR b KQkq - 3 4
 	// rnb1kbnr/ppp1pppp/2q5/8/8/2N5/PPPP1PPP/R1BQKBNR w KQkq - 2 4 : ici Fb5 -> +114 au lieu de +895
@@ -182,9 +189,10 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 	if (children_count() == _board->_got_moves) {
 		int color = _board->get_color();
 		int best_eval = -INT_MAX;
-		for (int i = 0; i < children_count(); i++) {
-			if (_children[i]->_board->_evaluation * color > best_eval) {
-				best_eval = _children[i]->_board->_evaluation * color;
+
+		for (auto& [move, child] : _children) {
+			if (child->_board->_evaluation * color > best_eval) {
+				best_eval = child->_board->_evaluation * color;
 			}
 		}
 
@@ -202,68 +210,84 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 	_nodes += child->_nodes;
 
 	// Ajoute le fils
-	//Node* child = new Node(new_board, move);
-	////child->_nodes = 1; // FIXME: 0?
 	if (!already_explored) {
-		add_child(child);
+		add_child(child, move);
 	}
 }
 
 // Fonction qui explore dans un plateau fils pseudo-aléatoire
 void Node::explore_random_child(Buffer* buffer, Evaluator* eval, float beta, float k_add, int quiescence_depth, Network* network) {
-	// Prend un fils aléatoire
-	int child_index = pick_random_child_index(beta, k_add);
 
-	_nodes -= _children[child_index]->_nodes; // On enlève le nombre de noeuds de ce fils
+	// Prend un fils aléatoire
+	const Move move = pick_random_child(beta, k_add);
+	
+	//cout << "move: " << _board->move_label(move) << endl;
+
+	_nodes -= _children[move]->_nodes; // On enlève le nombre de noeuds de ce fils
 
 	// On explore ce fils
-	_children[child_index]->grogros_zero(buffer, eval, beta, k_add, 1, quiescence_depth, network); // L'évaluation du fils est mise à jour ici
+	_children[move]->grogros_zero(buffer, eval, beta, k_add, 1, quiescence_depth, network); // L'évaluation du fils est mise à jour ici
 
 	// Met à jour l'évaluation du plateau
 	if (_board->_player) {
 		_board->_evaluation = -INT_MAX;
-		for (int i = 0; i < children_count(); i++) {
-			_board->_evaluation = max(_board->_evaluation, _children[i]->_board->_evaluation);
+
+		for (auto& [move, child] : _children) {
+			_board->_evaluation = max(_board->_evaluation, child->_board->_evaluation);
 		}
 	}
 	else {
 		_board->_evaluation = INT_MAX;
-		for (int i = 0; i < children_count(); i++) {
-			_board->_evaluation = min(_board->_evaluation, _children[i]->_board->_evaluation);
+
+		for (auto& [move, child] : _children) {
+			_board->_evaluation = min(_board->_evaluation, child->_board->_evaluation);
 		}
 	}
 
-
 	// Augmente le nombre de noeuds
-	//_nodes++;
-	_nodes += _children[child_index]->_nodes;
+	_nodes += _children[move]->_nodes;
 }
 
 // Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variantes, en fonction de la grandeur du nombre correspondant à cet index
-int Node::pick_random_child_index(const float beta, const float k_add) {
+Move Node::pick_random_child(const float beta, const float k_add) {
 	int color = _board->get_color();
 	int n_children = children_count();
 
 	// *** 1. ***
 	// Evaluations des enfants (en fonction de la couleur)
-	int l2[100];
+	int l2[100]{};
+	map<int, Move> children_moves;
 
-	for (int i = 0; i < n_children; i++)
-		l2[i] = color * _children[i]->_board->_evaluation;
+	int i = 0;
+	for (auto& [move, child] : _children) {
+		l2[i] = color * child->_board->_evaluation;
+		children_moves[i] = move;
+		i++;
+	}
+
+	//print_array(l2, n_children);
 
 	// Softmax sur les évaluations
 	softmax(l2, n_children, beta, k_add);
 
+	//print_array(l2, n_children);
 
 	// *** 2. ***
 	// Liste de pondération en fonction de l'exploration de chaque noeud (donne plus de poids aux noeuds moins explorés)
-	float pond[100];
+	float pond[100]{};
 
-	for (int i = 0; i < n_children; i++)
-		pond[i] = static_cast<float>(_nodes) / static_cast<float>(_children[i]->_nodes);
+	i = 0;
+	for (auto& [move, child] : _children) {
+		pond[i] = static_cast<float>(_nodes) / static_cast<float>(child->_nodes);
+		i++;
+	}
+
+	//print_array(pond, n_children);
 
 	// On applique la pondération aux évaluations
 	nodes_weighting(l2, pond, n_children);
+
+	//print_array(l2, n_children);
 
 	// *** 3. ***
 	// Somme de toutes les valeurs
@@ -282,63 +306,63 @@ int Node::pick_random_child_index(const float beta, const float k_add) {
 	{
 		cumul += l2[i];
 		if (cumul >= rand_val)
-			return i;
+			return children_moves[i];
 	}
 
-	return 0;
+	return children_moves[0];
 }
 
 // Fonction qui renvoie le fils le plus exploré
-[[nodiscard]] int Node::get_most_explored_child_index(bool decide_by_eval) {
+[[nodiscard]] Move Node::get_most_explored_child_move(bool decide_by_eval) {
 	int max = 0;
 
 	// Tri simple, on ne départage pas les égalités
 	if (!decide_by_eval) {
 
-		int index = 0;
+		Move best_move = Move();
 
-		for (int i = 0; i < children_count(); i++) {
-			if (_children[i]->_nodes > max) {
-				max = _children[i]->_nodes;
-				index = i;
+		for (auto& [move, child] : _children) {
+			if (child->_nodes > max) {
+				max = child->_nodes;
+				best_move = move;
 			}
 		}
 
-		return index;
+		return best_move;
 	}
 
 	// Avec un départage par égalité
 	else {
-		// FIXME: c'est foireux...
-		vector<int> indices;
+		vector<Move> max_nodes_moves;
 		int color = _board->get_color();
 
-		for (int i = 0; i < children_count(); i++) {
-			if (_children[i]->_nodes == max) {
-				indices.push_back(i);
+		for (auto& [move, child] : _children) {
+			if (child->_nodes == max) {
+				max_nodes_moves.push_back(move);
 			}
-			else if (_children[i]->_nodes > max) {
-				max = _children[i]->_nodes;
-				indices.clear();
-				indices.push_back(i);
+			else if (child->_nodes > max) {
+				max = child->_nodes;
+				max_nodes_moves.clear();
+				max_nodes_moves.push_back(move);
 			}
 		}
 
 		// En cas d'égalité, on trie par évaluation
 		int max_eval = -INT_MAX;
-		int index = 0;
+		Move best_move = Move();
 
-		for (int i = 0; i < indices.size(); i++) {
-			if (_children[indices[i]]->_board->_evaluation * color > max_eval) {
-				max_eval = _children[indices[i]]->_board->_evaluation * color;
-				index = indices[i];
+		for (int i = 0; i < max_nodes_moves.size(); i++) {
+			Move move = max_nodes_moves[i];
+			Node* child = _children[move];
+
+			if (child->_board->_evaluation * color > max_eval) {
+				max_eval = child->_board->_evaluation * color;
+				best_move = move;
 			}
 		}
 
-		return index;
+		return best_move;
 	}
-
-	
 }
 
 // Reset le noeud et ses enfants, et les supprime tous
@@ -346,14 +370,14 @@ void Node::reset() {
 	_latest_first_move_explored = -1;
 	_nodes = 0;
 	_board->reset_board();
-	_move = Move();
 	_new_node = true;
 	_time_spent = 0;
 	_fully_explored = false;
 
-	for (int i = 0; i < children_count(); i++) {
-		_children[i]->reset();
-		delete _children[i];
+
+	for (auto& [move, child] : _children) {
+		child->reset();
+		delete child;
 	}
 
 	_children.clear();
@@ -378,17 +402,18 @@ string Node::get_exploration_variants(bool main) {
 		// Si on est dans le noeud principal, on affiche toutes les variantes
 		if (main) {
 			// Trie les enfants par nombre de noeuds
-			vector<pair<int, int>> children_nodes;
-			for (int i = 0; i < children_count(); i++) {
-				children_nodes.push_back(make_pair(-_children[i]->_nodes, i)); // On met un moins pour trier dans l'ordre décroissant
+			vector<pair<int, Move>> children_nodes;
+
+			for (auto& [move, child] : _children) {
+				children_nodes.push_back(make_pair(-child->_nodes, move)); // On met un moins pour trier dans l'ordre décroissant
 			}
 
 			sort(children_nodes.begin(), children_nodes.end());
 
 			// En cas d'égalité, on trie par évaluation
-			vector<int> children_index;
+			vector<Move> children_moves;
 
-			vector<pair<int, int>> children_evaluations;
+			vector<pair<int, Move>> children_evaluations;
 
 			int previous_nodes = children_nodes[0].first;
 			int color = _board->get_color();
@@ -401,7 +426,7 @@ string Node::get_exploration_variants(bool main) {
 				if (i == children_count() || children_nodes[i].first != children_nodes[i - 1].first) {
 					sort(children_evaluations.begin(), children_evaluations.end());
 					for (int j = 0; j < children_evaluations.size(); j++) {
-						children_index.push_back(children_evaluations[j].second);
+						children_moves.push_back(children_evaluations[j].second);
 					}
 
 					children_evaluations.clear();
@@ -416,23 +441,22 @@ string Node::get_exploration_variants(bool main) {
 				}
 			}
 
+			for (int i = 0; i < children_moves.size(); i++) {
+				Move move = children_moves[i];
+				Node* child = _children[move];
 
-			for (int i = 0; i < children_count(); i++) {
-				int child_index = children_index[i];
-
-				variants += "eval: " + _board->evaluation_to_string(_children[child_index]->_board->_evaluation) + " | ";
-				variants += to_string(_board->_moves_count) + (_board->_player ? ". " : "... ") + _board->move_label(_children[child_index]->_move) + " " + _children[child_index]->get_exploration_variants(false) + "\n";
-				variants += "N: " + int_to_round_string(_children[child_index]->_nodes) + " (" + int_to_round_string(_children[child_index]->_nodes * 100 / _nodes) + "%) | D: " + int_to_round_string(_children[child_index]->get_main_depth() + 1) + " | T: " + clock_to_string(_children[child_index]->_time_spent) + "s\n\n";
-
+				variants += "eval: " + _board->evaluation_to_string(child->_board->_evaluation) + " | ";
+				variants += to_string(_board->_moves_count) + (_board->_player ? ". " : "... ") + _board->move_label(move) + " " + child->get_exploration_variants(false) + "\n";
+				variants += "N: " + int_to_round_string(child->_nodes) + " (" + int_to_round_string(child->_nodes * 100 / _nodes) + "%) | D: " + int_to_round_string(child->get_main_depth() + 1) + " | T: " + clock_to_string(child->_time_spent) + "s\n\n";
 			}
 		}
 
 		// Sinon, on affiche seulement le coup le plus exploré
 		else {
 			// Affiche seulement le premier coup (le plus exploré, et en cas d'égalité, celui avec la meilleure évaluation)
-			int index_best_move = get_most_explored_child_index();
+			Move best_move = get_most_explored_child_move();
 
-			variants += (_board->_player ? to_string(_board->_moves_count) + ". " : "") + _board->move_label(_children[index_best_move]->_move) + " " + _children[index_best_move]->get_exploration_variants(false);
+			variants += (_board->_player ? to_string(_board->_moves_count) + ". " : "") + _board->move_label(best_move) + " " + _children[best_move]->get_exploration_variants(false);
 		}
 		
 	}
@@ -454,7 +478,7 @@ string Node::get_exploration_variants(bool main) {
 	Node* current_node = this;
 
 	while (current_node->children_count() > 0) {
-		current_node = current_node->_children[current_node->get_most_explored_child_index()];
+		current_node = current_node->_children[current_node->get_most_explored_child_move()];
 		depth++;
 	}
 
@@ -463,21 +487,20 @@ string Node::get_exploration_variants(bool main) {
 
 // Destructeur
 Node::~Node() {
-	/*for (int i = 0; i < children_count(); i++) {
-		delete _children[i];
-	}*/
+	//cout << "destructor not implemented" << endl;
+	//for (int i = 0; i < children_count(); i++) {
+	//	delete _children[i];
+	//}
 }
 
 // Fonction qui renvoie le meilleur coup
 [[nodiscard]] Move Node::get_best_move() {
-	int index_best_move = get_most_explored_child_index();
-	return _children[index_best_move]->_move;
+	return get_most_explored_child_move();
 }
 
 // Fonction qui renvoie le fils le plus exploré
 [[nodiscard]] Node* Node::get_most_explored_child(bool decide_by_eval) {
-	int index_best_move = get_most_explored_child_index(decide_by_eval);
-	return _children[index_best_move];
+	return _children[get_most_explored_child_move(decide_by_eval)];
 }
 
 // Fonction qui renvoie la vitesse de calcul moyenne en noeuds par seconde
@@ -597,11 +620,13 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 	for (int i = 0; i < _board->_got_moves; i++) {
 
 		// Coup
-		Move move = _board->_moves[i];
+		const Move move = _board->_moves[i];
 
 		// Ce coup a-t-il déjà été exploré?
-		int child_index = get_child_index(move);
-		bool already_explored = child_index != -1;
+		//int child_index = get_child_index(move);
+		//bool already_explored = child_index != -1;
+
+		bool already_explored = _children.contains(move);
 
 		//if (already_explored) {
 		//	cout << "move already explored" << endl;
@@ -648,7 +673,7 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 			if (already_explored) {
 				//cout << "move already explored" << endl;
 
-				child = _children[child_index];
+				child = _children[move];
 			}
 
 			else {
@@ -669,9 +694,9 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 				new_board->make_move(move, false, false, true);
 
 				// Création du noeud fils
-				child = new Node(new_board, move);
+				child = new Node(new_board);
 				//cout << get_child_index(move) << endl;
-				add_child(child);
+				add_child(child, move);
 			}
 
 			
@@ -691,9 +716,10 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 			if (all_moves_explored) {
 				int color = _board->get_color();
 				int best_eval = -INT_MAX;
-				for (int i = 0; i < children_count(); i++) {
-					if (_children[i]->_board->_evaluation * color > best_eval) {
-						best_eval = _children[i]->_board->_evaluation * color;
+
+				for (auto& [move, child] : _children) {
+					if (child->_board->_evaluation * color > best_eval) {
+						best_eval = child->_board->_evaluation * color;
 					}
 				}
 
@@ -734,9 +760,9 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 [[nodiscard]] int Node::get_fully_explored_children_count() const {
 	int count = 0;
 
-	for (int i = 0; i < children_count(); i++) {
-		if (_children[i]->_fully_explored) {
-		count++;
+	for (auto& [move, child] : _children) {
+		if (child->_fully_explored) {
+			count++;
 		}
 	}
 
