@@ -4,6 +4,7 @@
 #include "windows_tests.h"
 #include "buffer.h"
 #include "game_tree.h"
+#include "zobrist.h"
 
 #include <algorithm>
 #include <ranges>

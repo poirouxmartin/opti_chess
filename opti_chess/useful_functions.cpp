@@ -74,9 +74,13 @@ void softmax(int* input, const int size, const float beta, const float k_add)
 
 	const int m = *max_element(input, input + size);
 
+	//cout << "m: " << m << endl;
+
 	float sum = 0.0f;
 	for (int i = 0; i < size; i++)
 		sum += exp(beta * (input[i] - m));
+
+	//cout << "sum: " << sum << endl;
 
 	static constexpr float evaluation_softener = 0.25f;
 	// Pour que ça regarde un peu plus des coups en dessous (plus la valeur est faible, plus ça applanit le k_add)
@@ -91,7 +95,12 @@ void softmax(int* input, const int size, const float beta, const float k_add)
 		const float adding = (win_chance == 0.0f) ? 0.0f : win_chance / best_win_chance * 2;
 		//const float adding = 1;
 		// Juste histoire de continuer à regarder un peu les coups (on sait jamais)
+
+		//cout << "adding: " << adding << ", constant: " << constant << "mult: " << beta * eval_i - constant << endl;
+
 		input[i] = r * exp(beta * eval_i - constant) + k_add * adding;
+
+		//cout << "input[i]: " << input[i] << endl;
 	}
 }
 

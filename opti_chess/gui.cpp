@@ -288,83 +288,44 @@ bool GUI::remove_last_move_PGN()
 }
 
 // Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo
-//void GUI::draw_monte_carlo_arrows()
-//{
-//	_grogros_arrows = {};
-//
-//	const int best_move = _board.best_monte_carlo_move();
-//
-//	int sum_nodes = 0;
-//	for (int i = 0; i < _board._tested_moves; i++)
-//		sum_nodes += _board._nodes_children[i];
-//
-//	// Une pièce est-elle sélectionnée?
-//	//cout << _selected_pos.i << " " << _selected_pos.j << endl;
-//	const bool is_selected = _selected_pos.i != -1 && _selected_pos.j != -1;
-//
-//	// Crée un vecteur avec les coups visibles
-//	vector<int> moves_vector;
-//	for (int i = 0; i < _board._tested_moves; i++) {
-//		if (is_selected) {
-//			// Dessine pour la pièce sélectionnée
-//			if (_selected_pos.i == _board._moves[i].i1 && _selected_pos.j == _board._moves[i].j1)
-//				moves_vector.push_back(i);
-//		}
-//
-//		else {
-//			if (_board._nodes_children[i] / static_cast<float>(sum_nodes) > _arrow_rate)
-//				moves_vector.push_back(i);
-//		}
-//	}
-//
-//	sort(moves_vector.begin(), moves_vector.end(), compare_move_arrows);
-//
-//	for (const int i : moves_vector) {
-//		const int mate = _board.is_eval_mate(_board._eval_children[i]);
-//		draw_arrow_from_coord(_board._moves[i].i1, _board._moves[i].j1, _board._moves[i].i2, _board._moves[i].j2, _board._player, move_color(_board._nodes_children[i], sum_nodes), -1.0f, true, _board._eval_children[i], mate, i == best_move);
-//	}
-//}
-
-// Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo
 void GUI::draw_exploration_arrows()
 {
 	// Vecteur de flèches à afficher
 	_grogros_arrows.clear();
 
 	// Coup à surligner
-	const int best_move = _root_exploration_node->get_most_explored_child_index();
+	const Move best_move = _root_exploration_node->get_most_explored_child_move();
 
 	// Une pièce est-elle sélectionnée?
 	const bool is_selected = _selected_pos.i != -1 && _selected_pos.j != -1;
 
 	// Crée un vecteur avec les coups visibles
-	vector<int> moves_vector;
-	for (int i = 0; i < _root_exploration_node->children_count(); i++) {
-		Move move = _root_exploration_node->_children[i]->_move;
+	vector<Move> moves_vector;
 
+	for (auto& [move, child] : _root_exploration_node->_children) {
 		// Si une pièce est sélectionnée, dessine toutes les flèches pour cette pièce
 		if (is_selected) {
 			if (_selected_pos.i == move.i1 && _selected_pos.j == move.j1)
-				moves_vector.push_back(i);
+				moves_vector.push_back(move);
 		}
 
 		// Sinon, dessine les flèches pour les coups les plus explorés
 		else {
-			if (_root_exploration_node->_children[i]->_nodes / static_cast<float>(_root_exploration_node->_nodes) > _arrow_rate)
-				moves_vector.push_back(i);
+			if (child->_nodes / static_cast<float>(_root_exploration_node->_nodes) > _arrow_rate)
+				moves_vector.push_back(move);
 		}
 	}
 
 	// Trie les coups en fonction du nombre de noeuds et d'un affichage plus lisible
-	sort(moves_vector.begin(), moves_vector.end(), [this](const int m1, const int m2) {
+	sort(moves_vector.begin(), moves_vector.end(), [this](const Move m1, const Move m2) {
 		return this->compare_arrows(m1, m2); }
 	);
-	//compare_arrows(moves_vector[0], moves_vector[1]);
 
 	// Dessine les flèches
-	for (const int move_index : moves_vector) {
-		const int mate = _root_exploration_node->_board->is_eval_mate(_root_exploration_node->_children[move_index]->_board->_evaluation);
-		draw_arrow(_root_exploration_node->_children[move_index]->_move, _root_exploration_node->_board->_player, move_color(_root_exploration_node->_children[move_index]->_nodes, _root_exploration_node->_nodes), -1.0f, true, _root_exploration_node->_children[move_index]->_board->_evaluation, mate, move_index == best_move);
+	for (const Move move : moves_vector) {
+		const int mate = _root_exploration_node->_board->is_eval_mate(_root_exploration_node->_children[move]->_board->_evaluation);
+		Node *child = _root_exploration_node->_children[move];
+		draw_arrow(move, _root_exploration_node->_board->_player, move_color(child->_nodes, _root_exploration_node->_nodes), -1.0f, true, child->_board->_evaluation, mate, move == best_move);
 	}
 }
 
@@ -846,7 +807,7 @@ bool GUI::play_move_keep(const Move move)
 	_game_tree.add_child(_board, move, _board.move_label(move));
 
 	// Cherche le coup dans les fils du noeud de recherche
-	int child_index = _root_exploration_node->get_child_index(move);
+	//int child_index = _root_exploration_node->get_child_index(move);
 
 	// FIXME: les vraies distinctions de cas à faire: 
 	// y'a t-il eu des coups calculés? -> oui/non
@@ -862,12 +823,14 @@ bool GUI::play_move_keep(const Move move)
 
 	else {
 		// Si le coup a effectivement été calculé
-		if (child_index != -1) {
-			// Vire tous les autres fils du noeud de recherche
-			for (int i = 0; i < _root_exploration_node->children_count(); i++) {
-				if (i != child_index) {
-					_root_exploration_node->_children[i]->reset();
-					delete _root_exploration_node->_children[i];
+		// 
+		
+		if (_root_exploration_node->_children.contains(move)) {
+
+			for (auto& [m, child] : _root_exploration_node->_children) {
+				if (m != move) {
+					child->reset();
+					delete child;
 				}
 			}
 
@@ -878,7 +841,7 @@ bool GUI::play_move_keep(const Move move)
 			// Il faudra supprimer le parent et tous les fils (TODO)
 
 			// On met à jour le noeud de recherche
-			_root_exploration_node = _root_exploration_node->_children[child_index];
+			_root_exploration_node = _root_exploration_node->_children[move];
 
 			// On met à jour le plateau
 			_board = *_root_exploration_node->_board;
@@ -1149,7 +1112,7 @@ void GUI::draw()
 			}
 		}
 	}
-	
+
 	// Coups auquel l'IA réflechit...
 	if (_drawing_arrows) {
 		//draw_monte_carlo_arrows();
@@ -1314,8 +1277,7 @@ void GUI::draw()
 			_board.evaluate(_grogros_eval, true, nullptr, true);
 			_board._evaluation = evaluation;
 		}
-			
-
+		
 		int max_depth = _root_exploration_node->get_main_depth();
 		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\ntime: " + clock_to_string(_root_exploration_node->_time_spent) + "s\ndepth: " + to_string(max_depth) + "\neval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) + eval + "\n" + win_chances + "\nnodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) + " (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 0.01) / 1000.0)) + "N/s)";
 		
@@ -1328,7 +1290,7 @@ void GUI::draw()
 			_exploration_variants = _root_exploration_node->get_exploration_variants();
 			_update_variants = false;
 		}
-		
+
 		// Affichage des variantes
 		slider_text(_exploration_variants, _board_padding_x + _board_size + _text_size / 2, _board_padding_y + _board_size * 9 / 16, _screen_width - _text_size - _board_padding_x - _board_size, _board_size / 2, _text_size / 3, &_variants_slider, _text_color);
 
@@ -1385,20 +1347,16 @@ void GUI::reset_game() {
 }
 
 // Fonction qui compare deux flèches d'analyse de Grogros
-bool GUI::compare_arrows(const int m1, const int m2) const {
-
-	// Récupère les deux coups
-	const Move move1 = _root_exploration_node->_children[m1]->_move;
-	const Move move2 = _root_exploration_node->_children[m2]->_move;
+bool GUI::compare_arrows(const Move m1, const Move m2) const {
 
 	// Si deux flèches finissent en un même point, affiche en dernier (au dessus), le "meilleur" coup
-	if (move1.i2 == move2.i2 && move1.j2 == move2.j2)
+	if (m1.i2 == m2.i2 && m1.j2 == m2.j2)
 		return _root_exploration_node->_children[m1]->_nodes < _root_exploration_node->_children[m2]->_nodes;
 
 	// Si les deux flèches partent d'un même point, alors affiche par dessus la flèche la plus courte
-	if (move1.i1 == move2.i1 && move1.j1 == move2.j1) {
-		const int d1 = (move1.i1 - move1.i2) * (move1.i1 - move1.i2) + (move1.j1 - move1.j2) * (move1.j1 - move1.j2);
-		const int d2 = (move2.i1 - move2.i2) * (move2.i1 - move2.i2) + (move2.j1 - move2.j2) * (move2.j1 - move2.j2);
+	if (m1.i1 == m2.i1 && m1.j1 == m2.j1) {
+		const int d1 = (m1.i1 - m1.i2) * (m1.i1 - m1.i2) + (m1.j1 - m1.j2) * (m1.j1 - m1.j2);
+		const int d2 = (m2.i1 - m2.i2) * (m2.i1 - m2.i2) + (m2.j1 - m2.j2) * (m2.j1 - m2.j2);
 
 		return d1 > d2;
 	}
