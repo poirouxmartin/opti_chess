@@ -56,9 +56,15 @@ ZobristEntry::ZobristEntry()
 }
 
 // Constructeur à partir d'un indice
-ZobristEntry::ZobristEntry(const int board_index)
+//ZobristEntry::ZobristEntry(const int board_index)
+//{
+//	_board_index = board_index;
+//}
+
+// Constructeur à partir d'un noeud
+ZobristEntry::ZobristEntry(Node *node)
 {
-	_board_index = board_index;
+	_node = node;
 }
 
 // Constructeur par défaut de la table de transposition
@@ -104,13 +110,18 @@ void TranspositionTable::init(const int length, const Zobrist* zobrist, bool dis
 TranspositionTable transposition_table;
 
 // Fonction qui renvoie l'indice de la position dans le buffer si elle existe déjà
-int TranspositionTable::get_zobrist_position_buffer_index(uint_fast64_t key) {
-	auto it = _hash_table.find(key);
+//int TranspositionTable::get_zobrist_position_buffer_index(uint_fast64_t key) {
+//	auto it = _hash_table.find(key);
+//
+//	// Si l'entrée existe, renvoie l'indice du plateau dans le buffer
+//	if (it != _hash_table.end())
+//		return it->second._board_index;
+//
+//	// Sinon, renvoie -1
+//	return -1;
+//}
 
-	// Si l'entrée existe, renvoie l'indice du plateau dans le buffer
-	if (it != _hash_table.end())
-		return it->second._board_index;
-
-	// Sinon, renvoie -1
-	return -1;
+// Fonction qui renvoie si une position est déjà dans la table de transposition
+bool TranspositionTable::contains(uint_fast64_t key) {
+	return _hash_table.find(key) != transposition_table._hash_table.end();
 }

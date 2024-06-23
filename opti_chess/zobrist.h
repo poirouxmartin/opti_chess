@@ -1,6 +1,8 @@
 #pragma once
+
 #include <cstdint>
 #include <unordered_map>
+#include "exploration.h"
 
 using namespace std;
 
@@ -49,12 +51,15 @@ struct ZobristEntry {
 public:
 
 	// Indice du plateau dans le buffer
-	int _board_index = -1;
+	//int _board_index = -1;
 
 	// Potentiellement utile pour le quiescence search
 
 	// Profondeur de la recherche
-	int _depth = 0;
+	//int _depth = 0;
+
+	// Noeud correspondant
+	Node *_node = nullptr;
 
 	// Pruning?
 
@@ -63,7 +68,10 @@ public:
 	ZobristEntry();
 
 	// Constructeur à partir d'un indice
-	ZobristEntry(const int board_index);
+	//ZobristEntry(const int board_index);
+
+	// Constructeur à partir d'un noeud
+	ZobristEntry(Node *node);
 
 };
 
@@ -89,7 +97,10 @@ public:
 	void init(const int length = 5000000, const Zobrist* zobrist = nullptr, bool display = false);
 
 	// Fonction qui renvoie l'indice du plateau dans le buffer (s'il existe)
-	int get_zobrist_position_buffer_index(uint_fast64_t key);
+	//int get_zobrist_position_buffer_index(uint_fast64_t key);
+
+	// Fonction qui renvoie si une clé est présente dans la table de transposition
+	bool contains(uint_fast64_t key);
 };
 
 // Instance de la table de transposition
