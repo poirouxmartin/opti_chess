@@ -190,7 +190,7 @@ public:
 	GameTree _game_tree = GameTree(_board);
 
 	// Nombre de FPS
-	int _fps = 144;
+	int _fps = 90;
 	clock_t _last_drawing_time = 0;
 
 	// Couleur de fond
@@ -300,6 +300,9 @@ public:
 	// Police du texte
 	Font _text_font;
 
+	// Police pour les symboles d'échecs
+	Font _chess_font;
+
 	// Espacement entre les caractères
 	float _font_spacing = 0.05f;
 
@@ -372,6 +375,19 @@ public:
 	// Nombre de noeuds par frame pour l'exploration
 	int _nodes_per_frame = 1000;
 
+	// Symboles des pièces
+	const string P_symbol = "\xC4\x80";
+	const string N_symbol = "\xC4\x81";
+	const string B_symbol = "\xC4\x82";
+	const string R_symbol = "\xC4\x83";
+	const string Q_symbol = "\xC4\x84";
+	const string K_symbol = "\xC4\x85";
+	const string p_symbol = "\xC4\x86";
+	const string n_symbol = "\xC4\x87";
+	const string b_symbol = "\xC4\x88";
+	const string r_symbol = "\xC4\x89";
+	const string q_symbol = "\xC4\x8A";
+	const string k_symbol = "\xC4\x8B";
 
 	// Constructeurs
 
