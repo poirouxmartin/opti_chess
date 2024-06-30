@@ -1,5 +1,6 @@
 #include "game_tree.h"
 #include "board.h"
+#include "gui.h"
 
 // Constructeur par défaut
 GameTreeNode::GameTreeNode() {
@@ -19,8 +20,10 @@ void GameTreeNode::add_child(GameTreeNode child) {
 }
 
 // Affichage de l'arbre
-string GameTreeNode::tree_display() {
-	string display = "";
+string GameTreeNode::tree_display(GameTreeNode *current_node) {
+	bool is_current_node = this == current_node;
+	
+	string display = is_current_node ? "()" : ""; // FIXME: à améliorer
 
 	// Affichage des fils
 
@@ -30,11 +33,11 @@ string GameTreeNode::tree_display() {
 
 	// Autres variations
 	for (int i = 1; i < _children.size(); i++)
-		display += " (" + to_string(_board._moves_count) + (_board._player ?  + ". " : "... ") + _children[i]._move_label + _children[i].tree_display() + ")";
+		display += " (" + to_string(_board._moves_count) + (_board._player ?  + ". " : "... ") + _children[i]._move_label + _children[i].tree_display(current_node) + ")";
 
 	// Variation principale
 	if (_children.size() > 0)
-		display += _children[0].tree_display();
+		display += _children[0].tree_display(current_node);
 
 	return display;
 }
@@ -73,8 +76,9 @@ bool GameTree::select_next_node(Move move) {
 bool GameTree::select_first_next_node() {
 	bool can_go_forward = _current_node->_children.size() > 0;
 
-	if (can_go_forward)
-		_current_node = &(_current_node->_children[0]);
+	if (can_go_forward) {
+		main_GUI.play_move_keep((_current_node->_children[0])._move);
+	}
 
 	return can_go_forward;
 }
@@ -83,8 +87,17 @@ bool GameTree::select_first_next_node() {
 bool GameTree::select_previous_node() {
 	bool can_go_back = _current_node != _root;
 
-	if (can_go_back)
+	if (can_go_back) {
 		_current_node = _current_node->_parent;
+
+		// Il faut aussi remonter le plateau pour l'exploration
+		main_GUI._root_exploration_node->reset();
+		main_GUI._root_exploration_node->_board = &_current_node->_board;
+		main_GUI._board = _current_node->_board;
+
+		// Actualisation de l'affichage
+		main_GUI._pgn = tree_display();
+	}
 
 	return can_go_back;
 }
@@ -101,14 +114,28 @@ void GameTree::add_child(Board board, Move move, string move_label) {
 		if (_current_node->_children[i]._move == move)
 			return;
 
-	board.make_move(move);
+	board.make_move(move, false, false, true);
+
+	_current_node->add_child(GameTreeNode(board, move, move_label, *_current_node));
+}
+
+// Ajout d'un fils à partir d'un coup
+void GameTree::add_child(Move move) {
+	// Vérifie que le coup n'existe pas déjà
+	for (int i = 0; i < _current_node->_children.size(); i++)
+		if (_current_node->_children[i]._move == move)
+			return;
+
+	Board board = _current_node->_board;
+	string move_label = board.move_label(move);
+	board.make_move(move, false, false, true);
 
 	_current_node->add_child(GameTreeNode(board, move, move_label, *_current_node));
 }
 
 // Affichage de l'arbre
 string GameTree::tree_display() {
-	return _root->tree_display();
+	return _root->tree_display(_current_node);
 }
 
 // Reset
@@ -167,6 +194,7 @@ bool GameTree::promote_current_variation() {
 	_current_node->_parent->_children[0] = temp;
 
 	//*_current_node = _current_node->_parent->_children[0];
+	// FIXME: ça marche pas, on est pas sur le bon noeud
 
 	return true;
 }

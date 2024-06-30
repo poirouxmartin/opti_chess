@@ -143,6 +143,8 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 
 			child = transposition_table._hash_table[new_board->_zobrist_key]._node;
 			
+			//cout << "nodes: " << child->_nodes;
+
 			_nodes += child->_nodes;
 		}
 		else {
@@ -151,10 +153,10 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 
 			// Ajoute la position dans la table
 			//transposition_table._hash_table[new_board->_zobrist_key] = ZobristEntry(child);
+
+			//cout << "normal" << endl;
 		}
 	}
-
-	
 
 	// Evalue le plateau, en regardant si la partie est finie
 	//child->_board->evaluate(eval, false, nullptr, true);

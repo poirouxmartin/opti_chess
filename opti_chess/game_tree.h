@@ -40,7 +40,7 @@ class GameTreeNode {
 	void add_child(GameTreeNode);
 
 	// Affichage de l'arbre
-	string tree_display();
+	string tree_display(GameTreeNode *current_node);
 
 	// Reset (ne pas oublier de vider la mémoire)
 	void reset();
@@ -80,6 +80,9 @@ class GameTree {
 
 	// Ajout d'un fils à partir d'un plateau et d'un coup
 	void add_child(Board, Move, string);
+
+	// Ajout d'un fils à partir d'un coup
+	void add_child(Move move);
 
 	// Affichage de l'arbre
 	string tree_display();
