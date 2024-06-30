@@ -1440,7 +1440,7 @@ int Board::is_game_over(int max_repetitions) {
 
 // Fonction qui renvoie le label d'un coup
 // En passant manquant... échecs aussi, puis roques, promotions, mats/pats
-string Board::move_label(Move move)
+string Board::move_label(Move move, bool use_uft8)
 {
 	const uint_fast8_t i = move.i1;
 	const uint_fast8_t j = move.j1;
@@ -1476,10 +1476,10 @@ string Board::move_label(Move move)
 
 	switch (p1)
 	{
-	case 2: case 8: s += "N"; if (spec_line) s += main_GUI._abc8[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
-	case 3: case 9: s += "B"; if (spec_line) s += main_GUI._abc8[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
-	case 4: case 10: s += "R"; if (spec_line) s += main_GUI._abc8[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
-	case 5: case 11: s += "Q"; if (spec_line) s += main_GUI._abc8[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
+	case 2: case 8: s += use_uft8 ? (_player ? main_GUI.N_symbol : main_GUI.n_symbol) : "N"; if (spec_line) s += main_GUI._abc8[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
+	case 3: case 9: s += use_uft8 ? (_player ? main_GUI.B_symbol : main_GUI.b_symbol) : "B"; if (spec_line) s += main_GUI._abc8[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
+	case 4: case 10: s += use_uft8 ? (_player ? main_GUI.R_symbol : main_GUI.r_symbol) : "R"; if (spec_line) s += main_GUI._abc8[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
+	case 5: case 11: s += use_uft8 ? (_player ? main_GUI.Q_symbol : main_GUI.q_symbol) : "Q"; if (spec_line) s += main_GUI._abc8[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
 	case 6: case 12:
 		if (l - j == 2) {
 			s += "O-O"; return s;
@@ -1487,7 +1487,7 @@ string Board::move_label(Move move)
 		if (j - l == 2) {
 			s += "O-O-O"; return s;
 		}
-		s += "K"; break;
+		s += use_uft8 ? (_player ? main_GUI.K_symbol : main_GUI.k_symbol) : "K"; break;
 	}
 
 	if (p2 || ((p1 == 1 || p1 == 7) && j != l)) {
@@ -1505,7 +1505,7 @@ string Board::move_label(Move move)
 
 	// Promotion (seulement en dame pour le moment)
 	if ((p1 == 1 && k == 7) || (p1 == 7 && k == 0))
-		s += "=Q";
+		s += "=" + use_uft8 ? (_player ? main_GUI.Q_symbol : main_GUI.q_symbol) : "Q";
 
 	// Mats, pats, échecs...
 	Board b(*this);
