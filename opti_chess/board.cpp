@@ -3222,7 +3222,7 @@ int Board::get_pawn_structure(float display_factor)
 	}
 
 	// Pions isolés
-	constexpr int isolated_pawn = -60;
+	constexpr int isolated_pawn = -100;
 	constexpr float isolated_adv_factor = 0.3f; // En fonction de l'advancement de la partie
 	const float isolated_adv = 1 * (1 + (isolated_adv_factor - 1) * _adv);
 	int isolated_pawns = 0;
@@ -3240,7 +3240,7 @@ int Board::get_pawn_structure(float display_factor)
 	pawn_structure += isolated_pawns;
 
 	// Pions doublés (ou triplés...)
-	constexpr int doubled_pawn = -45;
+	constexpr int doubled_pawn = -75;
 	constexpr float doubled_adv_factor = 0.5f; // En fonction de l'advancement de la partie
 	const float doubled_adv = 1 * (1 + (doubled_adv_factor - 1) * _adv);
 	int doubled_pawns = 0;
@@ -3384,7 +3384,7 @@ int Board::get_pawn_structure(float display_factor)
 
 	// Pions connectés
 	// Un pion est dit connecté, s'il y a un pion de la même couleur sur une colonne adjacente sur la même rangée ou la rangée inférieure
-	constexpr int connected_pawns[8] = { 0, 15, 25, 80, 110, 180, 275, 0 };
+	constexpr int connected_pawns[8] = { 0, 25, 45, 80, 110, 180, 275, 0 };
 	constexpr float connected_pawns_factor = 0.7f; // En fonction de l'advancement de la partie
 	const float connected_pawns_adv = 1 * (1 + (connected_pawns_factor - 1) * _adv);
 

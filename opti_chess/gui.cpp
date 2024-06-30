@@ -22,11 +22,11 @@ void GUI::update_time() {
 	if (_board._player != _last_player) {
 		if (_board._player) {
 			_time_black -= clock() - _last_move_clock - _time_increment_black;
-			_pgn += " {[%clk " + clock_to_string(_time_black, true) + "]}";
+			//_pgn += " {[%clk " + clock_to_string(_time_black, true) + "]}";
 		}
 		else {
 			_time_white -= clock() - _last_move_clock - _time_increment_white;
-			_pgn += " {[%clk " + clock_to_string(_time_white, true) + "]}";
+			//_pgn += " {[%clk " + clock_to_string(_time_white, true) + "]}";
 		}
 
 		_last_move_clock = clock();
@@ -804,10 +804,7 @@ bool GUI::play_move_keep(const Move move)
 	_update_variants = true;
 
 	// Arbre de la partie
-	_game_tree.add_child(_board, move, _board.move_label(move));
-
-	// Cherche le coup dans les fils du noeud de recherche
-	//int child_index = _root_exploration_node->get_child_index(move);
+	_game_tree.add_child(move);
 
 	// FIXME: les vraies distinctions de cas à faire: 
 	// y'a t-il eu des coups calculés? -> oui/non
@@ -892,6 +889,11 @@ void GUI::grogros_analysis(int nodes) {
 	int nodes_to_explore = _root_exploration_node->get_avg_nps() / 60;
 	if (nodes_to_explore == 0)
 		nodes_to_explore = _nodes_per_frame;
+
+	// Il faut pas dépasser la taille du buffer
+	// FIXME: meilleure façon de gérer cela?
+	nodes_to_explore = min(nodes_to_explore, monte_buffer._length - _root_exploration_node->_nodes);
+
 	_root_exploration_node->grogros_zero(&monte_buffer, _grogros_eval, _beta, _k_add, nodes == -1 ? nodes_to_explore : nodes, _quiescence_depth); // TODO: nombre de noeuds à paramétrer
 	_update_variants = true;
 }
