@@ -322,6 +322,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Pour tester les versions de grogros, faudrait que je fasse une fonction qui le confronte à un certain nombre de puzzles/evaluations et voir combien il en réussi pour lui donner un score. (utiliser ça aussi pour entraîner les réseaux de neurones?)
 -> BUG: parfois, grogros stoppe le temps en pleine partie (il pense que la partie est finie??)
 -> Pour get_zobrist _key, regarder si on ne le fait pas trop souvent
+-> Dans les finales, il faut évaluer comment on peut avancer ou non... sinon il voit pas quand y'a des égalités...
 
 
 ----- Interface utilisateur -----
@@ -429,7 +430,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Ré-afficher un peu mieux les variantes et avec plus de détails (profondeur...)
 -> Affichage du temps dans le PGN
 -> Afficher les pièces plutôt que P, R, N, B, Q, K
--> Quand l'adversaire à joué un coup, re-cliquer sur la fenêtre de Grogros pour que ça remette le focus sur l'appli
 -> Mettre des flèches pour indiquer les coups de la variante principale?
 
 

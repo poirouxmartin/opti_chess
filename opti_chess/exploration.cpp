@@ -448,7 +448,7 @@ string Node::get_exploration_variants(bool main) {
 				Node* child = _children[move];
 
 				variants += "eval: " + _board->evaluation_to_string(child->_board->_evaluation) + " | ";
-				variants += to_string(_board->_moves_count) + (_board->_player ? ". " : "... ") + _board->move_label(move) + " " + child->get_exploration_variants(false) + "\n";
+				variants += to_string(_board->_moves_count) + (_board->_player ? ". " : "... ") + _board->move_label(move, true) + " " + child->get_exploration_variants(false) + "\n";
 				variants += "N: " + int_to_round_string(child->_nodes) + " (" + int_to_round_string(child->_nodes * 100 / _nodes) + "%) | D: " + int_to_round_string(child->get_main_depth() + 1) + " | T: " + clock_to_string(child->_time_spent) + "s\n\n";
 			}
 		}
@@ -458,7 +458,7 @@ string Node::get_exploration_variants(bool main) {
 			// Affiche seulement le premier coup (le plus exploré, et en cas d'égalité, celui avec la meilleure évaluation)
 			Move best_move = get_most_explored_child_move();
 
-			variants += (_board->_player ? to_string(_board->_moves_count) + ". " : "") + _board->move_label(best_move) + " " + _children[best_move]->get_exploration_variants(false);
+			variants += (_board->_player ? to_string(_board->_moves_count) + ". " : "") + _board->move_label(best_move, true) + " " + _children[best_move]->get_exploration_variants(false);
 		}
 		
 	}

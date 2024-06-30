@@ -392,7 +392,7 @@ public:
 	int is_game_over(int max_repetitions = 1);
 
 	// Fonction qui renvoie le label d'un coup
-	string move_label(Move move);
+	string move_label(Move move, bool use_uft8 = false);
 
 	// Fonction qui renvoie le label d'un coup en fonction de son index
 	string move_label_from_index(int);
