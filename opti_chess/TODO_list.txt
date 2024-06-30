@@ -420,7 +420,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Parfois des positions buggent quand on navigue.. ça affiche des pièces en énorme (à cause de la réflexion de Grogros qui a supprimé le coup?)
 -> Remettre les chronos dans le PGN généré par l'arbre (et les noeuds, et d'autres notations?)
 -> Garder les réflexions de GrogrosZero quand on navigue dans les coups
--> Parfois quand on revient en arrière, ça reprend sur la mauvaise variation
 -> Passer une variante en principale
 -> Montrer quand une ligne d'analyse est montante ou descendante
 -> Parallélisation: faut que les quiescence nodes augmentent aussi
@@ -431,6 +430,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Affichage du temps dans le PGN
 -> Afficher les pièces plutôt que P, R, N, B, Q, K
 -> Quand l'adversaire à joué un coup, re-cliquer sur la fenêtre de Grogros pour que ça remette le focus sur l'appli
+-> Mettre des flèches pour indiquer les coups de la variante principale?
 
 
 
@@ -442,7 +442,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Parallélisation (possible sur le GPU?)
 -> Policy pour les coups
 -> "Killer moves", ou gestion des menaces
--> Fusion de la quiessence search et de la recherche normale (IMPORTANT)
 -> Arbres de variations / Chargement de PGN
 -> Livre d'ouvertures
 -> Beaucoup de vérifs à faire dans les fonctions principales (make_move, grogros_zero, get_moves...)
@@ -451,24 +450,26 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 
 ----- En cours -----
 
+-> BUGS: 
+-> Après une répétition, Grogros joue plus
+-> Revoir les promotions de variantes etc...
+-> Parfois quand on joue 2 fois un même coup dans des variantes différentes, ils ont le même parent... du coup quand on revient en arrière, ça va au mauvais endroit
+-> Afficher où on en est dans la variante
+
+-> Améliorer le PGN (temps, noeuds, éval...)
+
+-> Afficher les pièces dans les variantes!!
+
 -> FAUT METTRE DES POINTEURS PARTOUT AU LIEU DE COPIER LES OBJETTTTTTSSS !! (exploration.h, gui?)
--> BUG: après une répétition, Grogros joue plus
--> Quand on revient en arrière, il faut re update la recherche
--> Revoir comment on gère le temps pour Grogros... en fonction de quiescence nodes?
--> Si on dépasse le max du buffer, ça plante
+
 -> Regarder les TODO/FIXME dans exploration.cpp
 -> Alpha-beta pruning pour la quiescence search à fix...
 -> Regarder les fins de variantes pour voir si ça fonctionne
--> En fait y'a plein de trucs à vérifier, ça fonctionne bizarrement...
--> Ca doit bugger car on a que la fin de la quiescence quand on joue la variante... (donc la quiescence des noueds de fin est moins profonde)
-	-> Possibilité: - stocker la profondeur de la quiescence pour chaque noeud (avec alpha et beta?) 
-					- quand on explore les noeuds, si la quiescence du noeud a une profondeur plus faible, la refait en full?
--> Gestion du temps: pour décider s'il faut jouer le coup actuel, regarder la différence avec le meilleur coup pour ne pas y passer trop de temps si la différence est faible?
 -> r1b1r1k1/pp3pbp/6p1/qB1p4/3P2n1/1Q3NP1/PP1N1P1P/2R2RK1 b - - 2 17 : là c'est seul coup, il faut jouer !!
+-> 8/8/2q5/6n1/5k2/1K4p1/8/8 w - - 0 90 : il joue plus quand il est mat?? il passe dans le négatif...
 -> S'il est si lent c'est qu'à cause de la nouvelle quiescence, il y a des noeuds dans toutes les branches, ce qui fait penser à Grogros qu'il hésite sur les coups...
--> Grogros qui parfois ne joue pas le mat en 1...
--> rn2kb1r/1p4pp/p2p4/3N4/3NpBQ1/8/PP3PPP/R5K1 w - - 1 17 : ici il joue Td1 au lieu de Dc8+ #2 -> réglé?
--> 5bnr/p2k1p1p/3pN1p1/3Pp3/8/K7/PP1q3P/R1rb4 b - - 1 24 : Tc6 joué au lieu de Da5 #1... (car plus de noeuds dans l'autre?) -> réglé?
+-> 6k1/5ppp/5n2/1Q6/1P2p1b1/4b2P/1B1rNqP1/2K2B1R b - - 1 22 : que 10% sur le mat??
+
 
 -> rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2 : ici c'est #1, faut au moins que 90% de la réflexion soit sur le mat
 
@@ -479,7 +480,11 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Algo catastrophique... il paraît juste plus lent qu'avant, il voit rien
 
 -> Faire une fonction pour tester les IAs: problèmes tactiques, stratégiques, finales, ouvertures... avec différents temps de réflexion (1s, 3s, 10s par exemple)
+-> Fonction de test d'évaluation: comparer les évals de Grogros avec celles de Leela par exemple puis fine-tuner
+
 -> Utiliser les noms des pièces plutôt que 0, 1, 2, 3... Utiliser Array plutôt que le faire à la main. Faire une structure pour stocker les coups plutôt qu'un tableau lourd?
+
+-> Simplifier le softmax: delta entre le meilleur coup et l'actuel, et voir en fonction du pourcentage de réflexion déjà fait
 
 ---------
 -> Pour le softmax, faut-il un gradient absolu ou relatif? pour le moment il y a la même différence entre -100 et +100 qu'entre +1800 et +2000? pas optimal...

@@ -598,14 +598,12 @@ inline int main_ui() {
 
 		// Flèche gauche: revient sur la position précédente
 		if (IsKeyPressed(KEY_LEFT)) {
-			if (main_GUI._game_tree.select_previous_node())
-				main_GUI._board = (main_GUI._game_tree._current_node)->_board;
+			main_GUI._game_tree.select_previous_node();
 		}
 
 		// Flèche droite: avance sur la position suivante
 		if (IsKeyPressed(KEY_RIGHT)) {
-			if (main_GUI._game_tree.select_first_next_node())
-				main_GUI._board = (main_GUI._game_tree._current_node)->_board;
+			main_GUI._game_tree.select_first_next_node();
 		}
 
 
@@ -633,8 +631,8 @@ inline int main_ui() {
 					//int supposed_grogros_speed = main_GUI._root_exploration_node->get_avg_nps();
 					float best_move_percentage = main_GUI._root_exploration_node->_nodes == 0 ? 0.05f : static_cast<float>(main_GUI._root_exploration_node->_children[main_GUI._root_exploration_node->get_most_explored_child_move()]->_nodes) / static_cast<float>(main_GUI._root_exploration_node->_nodes);
 					int max_move_time = main_GUI._board._player ?
-						time_to_play_move(main_GUI._time_white, main_GUI._time_black, 0.05f * (1.0f - best_move_percentage)) :
-						time_to_play_move(main_GUI._time_black, main_GUI._time_white, 0.05f * (1.0f - best_move_percentage));
+						time_to_play_move(main_GUI._time_white, main_GUI._time_black, 0.03f * (1.0f - best_move_percentage)) :
+						time_to_play_move(main_GUI._time_black, main_GUI._time_white, 0.03f * (1.0f - best_move_percentage));
 
 					//cout << "best move percentage : " << best_move_percentage << " | max move time : " << max_move_time << " | supposed speed : " << supposed_grogros_speed << " | nodes : " << main_GUI._root_exploration_node->_nodes << " | time spent : " << main_GUI._root_exploration_node->_time_spent << " | avg nps : " << main_GUI._root_exploration_node->get_avg_nps() << endl;	
 

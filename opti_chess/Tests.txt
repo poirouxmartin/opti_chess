@@ -305,12 +305,15 @@ Q4bn1/2k1ppp1/p7/2q3p1/p5Pr/2N5/PP3P1P/2K4R w - - 2 21 : Td1!
 rn3rk1/1b1p1ppp/p1pP4/1pP5/P7/8/3B1PPP/1R1K1B1R w - - 0 18 : a5 gagne juste stratégiquement: les trois pièces noirs sur l'aile dame sont bloquées à vie
 1nb1k3/1r1p1ppp/p1pP4/PpP5/1B6/3B4/3K1PPP/8 w - - 0 26 : c'est gagnant pour les blancs
 1nb2k2/1r1p4/p1pP2p1/PpP5/1B6/4K3/5PPP/8 w - - 0 29 : toujours gagnant !
+8/8/5p2/1k1K1P2/8/8/8/8 w - - 6 77 : ça devrait être évident que ça gagne
+1r3rk1/4bpp1/pn1p1n2/4p1Np/1Pb4P/R4B2/2QB1PP1/6K1 b - - 1 25 : c'est plutôt égal
 
 
 ----- Problèmes -----
 
 r3k2r/ppp2pp1/2p1bq2/2b4p/3PP1n1/2P2BP1/PP3P1P/RNBQK2R w KQkq - 3 11 : h3 (+4.50)
 3rk3/ppp2pp1/2p2q1r/2P1n3/4P2p/1QP3Pb/PP1NBP1P/R1B1R1K1 b - - 5 16 : Txd2 & hxg3 gagnent
+4k3/ppp2pp1/2p2q1r/2P1n3/4P2p/1QP3Pb/PP1BBP1P/R3R1K1 b - - 0 17 : Cf3+ gagne
 3rk2r/ppp2pp1/2p1bq2/2P4p/4P1B1/2P3P1/PP3P1P/RNBQK2R b KQk - 0 12 : Fxg4 gagnant
 1rkb4/pNp5/8/2N4p/8/5B2/4K3/8 w - - 0 1 : Fc6 gagne
 2k1r1r1/p1p4p/1qpb4/3PN3/2Q3b1/4B3/PP3PP1/2R2RK1 b - - 0 1 : Txe5 moins pire
@@ -668,6 +671,10 @@ r1b5/p3QBbk/2pN2p1/q7/5p2/7n/2P3PK/3R4 w - - 1 29 : Td5!! seul coup qui gagne
 2krr3/ppp2ppp/1q3n2/2P2N1b/2B5/P5N1/2PB2KP/R2Q3R b - - 0 9 : Dc6! important
 r3kbn1/4ppp1/p1P5/1pq3p1/B5Pr/2N2Q2/PP3P1P/R3K2R w KQq - 0 16 : O-O-O!! gagne
 3Q1bn1/5pp1/p1k1p3/2q3p1/p5Pr/2N5/PP3P1P/2KR4 w - - 2 23 : Td7! #8
+1k1rr3/p1p1bppp/2p2qb1/2Pp2N1/Q2P1B2/2P3P1/P4P1P/R3R1K1 w - - 2 18 : Fxc7+!! #8
+r1b4r/ppq2pp1/2p1kbnp/8/4PP2/2N1B1Q1/PPP3PP/1K3B1R w - - 0 17 : Cb5!! seul coup qui gagne
+1r3r2/2nq1pbk/3p2p1/p1pPp1Bn/1pP1P2N/P1N5/1P3P2/R2QK2R w KQ - 0 24 : Cf5!! gagne
+1r3r2/2nq1pbk/3p2p1/p1pPpNBn/2P1P3/P1p5/1P3P2/R2QK2R w KQ - 0 25 : Ce7!! ou Txh5+!!
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---
