@@ -314,6 +314,13 @@ Move Node::pick_random_child(const float beta, const float k_add) {
 	return children_moves[0];
 }
 
+// Fonction qui renvoie un fils de manière pseudo-aléatoire, en fonction de l'évaluation et du nombre de noeuds
+Move Node::pick_random_child_new() {
+	// TODO
+	return Move();
+}
+
+
 // Fonction qui renvoie le fils le plus exploré
 [[nodiscard]] Move Node::get_most_explored_child_move(bool decide_by_eval) {
 	int max = 0;
@@ -387,9 +394,6 @@ void Node::reset() {
 
 // Fonction qui renvoie les variantes d'exploration
 string Node::get_exploration_variants(bool main) {
-
-	// TODO:
-	// Afficher les icônes des pièces (♔, ♕, ♖, ♗, ♘, ♙, ♚, ♛, ♜, ♝, ♞, ♟) (UTF-8)
 
 	// Si on est en fin de variante
 	if (_board->_game_over_value) {
@@ -601,7 +605,9 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 
 	// Beta cut-off 
 	// FIXME: ça casse un peu tout
-	if (stand_pat >= beta) {
+	bool test_full_checks = false;
+
+	if (stand_pat >= beta && (!check_extension || !test_full_checks)) {
 		_time_spent += clock() - begin_monte_time;
 		//cout << "beta cut-off1: " << stand_pat << " >= " << beta << endl;
 		return beta;

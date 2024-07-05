@@ -18,7 +18,7 @@ using namespace std;
 
 // TODO: les utiliser
 // Enumération des pièces
-enum piece_type { None = 0, P = 1, N = 2, B = 3, R = 4, Q = 5, K = 6, p = 7, n = 8, b = 9, r = 10, q = 11, k = 12 };
+enum piece_type { none = 0, w_pawn = 1, w_knight = 2, w_bishop = 3, w_rook = 4, w_queen = 5, w_king = 6, b_pawn = 7, b_knight = 8, b_bishop = 9, b_rook = 10, b_queen = 11, b_king = 12 };
 
 // Nombre de demi-coups avant de déclarer la partie nulle
 constexpr int max_half_moves = 100;
@@ -151,6 +151,14 @@ struct Pos
 	bool operator== (const Pos& other) const {
 		return (i == other.i) && (j == other.j);
 	}
+
+	// Renvoie la notation de la case
+	string square() const {
+		string notation = "";
+		notation += char('a' + j);
+		notation += char('1' + i);
+		return notation;
+	}
 };
 
 // Map d'un plateau (pour stocker les cases controllées, etc...)
@@ -205,14 +213,14 @@ public:
 
 	// Plateau
 	// 64 bytes
-	uint_fast8_t _array[8][8]{	{    R,    N,    B,    Q,    K,    B,    N,    R },
-								{    P,    P,    P,    P,    P,    P,    P,    P },
-								{ None, None, None, None, None, None, None, None },
-								{ None, None, None, None, None, None, None, None },
-								{ None, None, None, None, None, None, None, None },
-								{ None, None, None, None, None, None, None, None },
-								{    p,    p,    p,    p,    p,    p,    p,    p },
-								{    r,    n,    b,    q,    k,    b,    n,    r } };
+	uint_fast8_t _array[8][8]{	{    w_rook,    w_knight,    w_bishop,    w_queen,    w_king,    w_bishop,    w_knight,    w_rook },
+								{    w_pawn,    w_pawn,    w_pawn,    w_pawn,    w_pawn,    w_pawn,    w_pawn,    w_pawn },
+								{ none, none, none, none, none, none, none, none },
+								{ none, none, none, none, none, none, none, none },
+								{ none, none, none, none, none, none, none, none },
+								{ none, none, none, none, none, none, none, none },
+								{    b_pawn,    b_pawn,    b_pawn,    b_pawn,    b_pawn,    b_pawn,    b_pawn,    b_pawn },
+								{    b_rook,    b_knight,    b_bishop,    b_queen,    b_king,    b_bishop,    b_knight,    b_rook } };
 
 	//Array _array; // TODO utiliser
 
@@ -584,7 +592,7 @@ public:
 	[[nodiscard]] int get_weak_squares() const;
 
 	// Fonction qui convertit un coup en sa notation algébrique
-	string algebric_notation(Move move);
+	string algebric_notation(Move move) const;
 
 	// Fonction qui convertit une notation algébrique en un coup
 	Move move_from_algebric_notation(string notation);
@@ -621,6 +629,9 @@ public:
 
 	// Fonction qui renvoie l'affichage de l'évaluation
 	[[nodiscard]] string evaluation_to_string(int eval) const;
+
+	// Fonction qui renvoie l'évaluation des pièces isolées
+	[[nodiscard]] int get_isolated_pieces() const;
 };
 
 // Fonction qui renvoie si deux positions (en format FEN) sont les mêmes

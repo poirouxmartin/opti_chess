@@ -687,7 +687,7 @@ void Board::game_advancement() {
 	static constexpr int adv_knight = 10;
 	static constexpr int adv_bishop = 10;
 	static constexpr int adv_rook = 10;
-	static constexpr int adv_queen = 50;
+	static constexpr int adv_queen = 100;
 	static constexpr int adv_castle = 25;
 
 	static constexpr int p_tot = 2 * (8 * adv_pawn + 2 * adv_knight + 2 * adv_bishop + 2 * adv_rook + 1 * adv_queen + 2 * adv_castle);
@@ -1024,6 +1024,13 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 		_evaluation += bishop_activity;
 	}
 
+	// Pièces isolées
+	if (eval->_isolated_pieces != 0.0f) {
+		const int isolated_pieces = get_isolated_pieces() * eval->_isolated_pieces;
+		if (display)
+			main_GUI._eval_components += "isolated_pieces: " + (isolated_pieces >= 0 ? string("+") : string()) + to_string(isolated_pieces) + "\n";
+		_evaluation += isolated_pieces;
+	}
 
 	// Forteresse
 	if (eval->_push != 0.0f) {
@@ -1504,8 +1511,10 @@ string Board::move_label(Move move, bool use_uft8)
 	}
 
 	// Promotion (seulement en dame pour le moment)
-	if ((p1 == 1 && k == 7) || (p1 == 7 && k == 0))
-		s += "=" + use_uft8 ? (_player ? main_GUI.Q_symbol : main_GUI.q_symbol) : "Q";
+	if ((p1 == 1 && k == 7) || (p1 == 7 && k == 0)) {
+		s += "=";
+		s += use_uft8 ? (_player ? main_GUI.Q_symbol : main_GUI.q_symbol) : "Q";
+	}
 
 	// Mats, pats, échecs...
 	Board b(*this);
@@ -2134,7 +2143,7 @@ int Board::get_piece_mobility(const bool legal) const
 	static constexpr int mobility_values_knight[9] = { -500, -200, 0, 100, 200, 300, 400, 450, 500 };
 	static constexpr int mobility_values_bishop[15] = { -600, -300, -50, 100, 210, 280, 330, 475, 415, 450, 480, 505, 525, 540, 550 };
 	static constexpr int mobility_values_rook[15] = { -300, -100, 100, 150, 190, 235, 275, 300, 325, 345, 365, 385, 390, 400, 405 };
-	static constexpr int mobility_values_queen[29] = { -700, -400, -100, 150, 190, 235, 275, 300, 325, 345, 365, 385, 390, 400, 410, 420, 430, 440, 450, 460, 470, 480, 490, 495, 500, 505, 510 };
+	static constexpr int mobility_values_queen[29] = { -700, -400, -300, 150, 190, 235, 275, 300, 325, 345, 365, 385, 390, 400, 410, 420, 430, 440, 450, 460, 470, 480, 490, 495, 500, 505, 510 };
 
 	// TODO : rajouter le roi, pour l'endgame? faire des valeurs différentes selon le moment de la partie?
 
@@ -2732,7 +2741,7 @@ int Board::get_king_safety() {
 	int b_defending_power = 75;
 
 	// Facteurs multiplicatifs
-	constexpr float piece_attack_factor = 1.0f;
+	constexpr float piece_attack_factor = 1.2f;
 	constexpr float piece_defense_factor = 1.25f;
 	constexpr float pawn_protection_factor = 1.5f;
 
@@ -3222,7 +3231,7 @@ int Board::get_pawn_structure(float display_factor)
 	}
 
 	// Pions isolés
-	constexpr int isolated_pawn = -100;
+	constexpr int isolated_pawn = -75;
 	constexpr float isolated_adv_factor = 0.3f; // En fonction de l'advancement de la partie
 	const float isolated_adv = 1 * (1 + (isolated_adv_factor - 1) * _adv);
 	int isolated_pawns = 0;
@@ -3240,7 +3249,7 @@ int Board::get_pawn_structure(float display_factor)
 	pawn_structure += isolated_pawns;
 
 	// Pions doublés (ou triplés...)
-	constexpr int doubled_pawn = -75;
+	constexpr int doubled_pawn = -50;
 	constexpr float doubled_adv_factor = 0.5f; // En fonction de l'advancement de la partie
 	const float doubled_adv = 1 * (1 + (doubled_adv_factor - 1) * _adv);
 	int doubled_pawns = 0;
@@ -3985,11 +3994,11 @@ int Board::get_square_controls() const
 
 	// Valeur du contrôle de chaque case (pour les pions)
 	static constexpr int square_controls[8][8] = {
+		{10,  10,  10,  10,  10,  10,  10,  10},
 		{20,  20,  20,  20,  20,  20,  20,  20},
-		{50,  50,  50,  50,  50,  50,  50,  50},
-		{10,  20,  40,  60,  60,  50,  20,  10},
-		{5,   10,  20,  50,  50,  20,  10,   5},
-		{0,    5,  10,  40,  40,  10,   5,   0},
+		{10,  20,  30,  40,  40,  30,  20,  10},
+		{5,   10,  40,  50,  50,  40,  10,   5},
+		{0,    5,  20,  40,  40,  20,   5,   0},
 		{5,   -5,   5,  10,  10,   5,  -5,   5},
 		{0,    0,   0,   0,   0,   0,   0,   0},
 		{0,    0,   0,   0,   0,   0,   0,   0}
@@ -4635,10 +4644,10 @@ int Board::get_piece_attack_power(const int i, const int j) const
 
 	// Cavalier
 	static constexpr int knight_attacking_power_map[8][8] = {
-	{0, 15, 15, 10, 0, 0, 0, 0},
-	{25, 20, 15, 10, 0, 0, 0, 0},
-	{30, 45, 10, 5, 0, 0, 0, 0},
-	{60, 95, 15, 10, 0, 0, 0, 0},
+	{0, 25, 35, 20, 0, 0, 0, 0},
+	{25, 40, 35, 20, 0, 0, 0, 0},
+	{35, 45, 30, 15, 0, 0, 0, 0},
+	{60, 55, 25, 10, 0, 0, 0, 0},
 	{20, 15, 10, 5, 0, 0, 0, 0},
 	{10, 15, 10, 0, 0, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0, 0},
@@ -4867,9 +4876,9 @@ int Board::get_piece_activity() const
 	static constexpr uint_fast8_t activity_controlled_squares[8][8] = {
 	{10, 10, 10, 10, 10, 10, 10, 10},
 	{10, 10, 10, 10, 10, 10, 10, 10},
-	{10, 10, 15, 15, 15, 15, 10, 10},
 	{10, 10, 15, 20, 20, 15, 10, 10},
-	{0,  0,  5,  10, 10,  5,  0,  0},
+	{10, 10, 20, 25, 25, 20, 10, 10},
+	{0,  0,  15, 20, 20, 15,  0,  0},
 	{0,  0,  5,   5,  5,  5,  0,  0},
 	{0,  0,  0,   0,  0,  0,  0,  0},
 	{0,  0,  0,   0,  0,  0,  0,  0} };
@@ -4886,7 +4895,10 @@ int Board::get_piece_activity() const
 		}
 	}
 
-	return activity * (1 - _adv);
+	// Facteur multiplicatif en fonction de l'avancement
+	float advancement_factor = 0.6f;
+
+	return activity * (1 - _adv * (advancement_factor - 1));
 }
 
 // Fonction qui reset le buffer
@@ -5486,7 +5498,9 @@ int Board::get_rook_activity() const
 	// 1. Tour enfermée par le roi: mobilité < 4 -> malus (encore plus grand si le roi ne peut pas roquer) /= mobilité
 	// 2. L'activité dépend surtout de la mobilité verticale (distance au pion le plus proche devant)
 
-	constexpr int trapped_rook_malus = 350;
+	// ça doit dimunuer en fonction du nombre de colonnes ouvertes...
+
+	constexpr int trapped_rook_malus = 500;
 	constexpr int vertical_mobility_bonus = 50;
 
 	int activity = 0;
@@ -5539,7 +5553,7 @@ int Board::get_rook_activity() const
 				}
 
 				// Malus pour tour enfermée par le roi (si le tour est plus proche du bord que le roi)
-				if ((h_mobility + v_mobility) < 4 && _white_king_pos.i == i && abs(_white_king_pos.j - j) < 4 && min(_white_king_pos.j, 7 - _white_king_pos.j) > min((int)j, 7 - j))
+				if ((h_mobility + v_mobility) < 6 && _white_king_pos.i == i && abs(_white_king_pos.j - j) < 4 && min(_white_king_pos.j, 7 - _white_king_pos.j) > min((int)j, 7 - j))
 					activity -= trapped_rook_malus;
 
 				// Bonus pour la mobilité verticale
@@ -5591,7 +5605,7 @@ int Board::get_rook_activity() const
 				}
 
 				// Malus pour tour enfermée par le roi
-				if ((h_mobility + v_mobility) < 4 && _black_king_pos.i == i && abs(_black_king_pos.j - j) < 4 && min(_black_king_pos.j, 7 - _black_king_pos.j) > min((int)j, 7 - j))
+				if ((h_mobility + v_mobility) < 6 && _black_king_pos.i == i && abs(_black_king_pos.j - j) < 4 && min(_black_king_pos.j, 7 - _black_king_pos.j) > min((int)j, 7 - j))
 					activity += trapped_rook_malus;
 
 				// Bonus pour la mobilité verticale
@@ -5601,7 +5615,10 @@ int Board::get_rook_activity() const
 		}
 	}
 
-	return activity * (1 - _adv);
+	// Facteur multiplicatif en fonction de l'avancement de la partie
+	float advancement_factor = 0.35f;
+
+	return activity * (1 - _adv * (advancement_factor - 1));
 }
 
 
@@ -5726,7 +5743,7 @@ int Board::get_bishop_pawns() const {
 	//cout << "bishop_pawns_value: " << bishop_pawns_value << endl;
 
 	// Facteur multiplicatif en fonction de l'avancement de la partie
-	int advancement_factor = 2;
+	float advancement_factor = 0.5f;
 
 	return bishop_pawns_value * (1 + _adv * (advancement_factor - 1));
 }
@@ -5839,7 +5856,7 @@ int Board::get_weak_squares() const {
 	};
 
 	// Outpost pour un cavalier
-	const static float knight_outpost_value = 1.0f;
+	const static float knight_outpost_value = 1.5f;
 
 	// Outpost pour un fou
 	const static float bishop_outpost_value = 0.5f;
@@ -5879,9 +5896,13 @@ int Board::get_weak_squares() const {
 			// Si c'est une case faible
 			if (weak) {
 				int square_value = weak_square_values[7 - i][j];
+				
+				//cout << "***\nweak square of white: " << Pos(i, j).square() << ": " << square_value << endl;
 
 				// Contrôle de la case par un (des) pions adverses
 				int pawn_controls = (j > 0 && _array[i + 1][j - 1] == 7) + (j < 7 && _array[i + 1][j + 1] == 7);
+
+				//cout << "pawn controls: " << pawn_controls << endl;
 
 				// Outposts
 				if (pawn_controls > 0) {
@@ -5892,10 +5913,15 @@ int Board::get_weak_squares() const {
 
 					// Valeur en fonction de la pièce
 					square_value += outpost_value * (p == 8 ? knight_outpost_value : (p == 9 ? bishop_outpost_value : (p == 10 ? rook_outpost_value : 0)));
+
+					//cout << "outpost value: " << outpost_value << " for piece: " << p << " -> " << (p == 8 ? knight_outpost_value : (p == 9 ? bishop_outpost_value : (p == 10 ? rook_outpost_value : 0))) << endl;
+					//cout << "square value: " << square_value << endl;
 				}
 
 				// Valeur du contrôle de la case faible par un pion adverse
-				square_value *= (1 + pawn_controls);
+				square_value *= (0.25 + (pawn_controls > 0));
+
+				//cout << "with controls, square value: " << square_value << endl;
 
 				weak_squares_value -= square_value;
 			}
@@ -5932,8 +5958,12 @@ int Board::get_weak_squares() const {
 			if (weak) {
 				int square_value = weak_square_values[i][j];
 
+				//cout << "***\nweak square of black: " << Pos(i, j).square() << ": " << square_value << endl;
+
 				// Contrôle de la case par un (des) pions adverses
 				int pawn_controls = (j > 0 && _array[i - 1][j - 1] == 1) + (j < 7 && _array[i - 1][j + 1] == 1);
+
+				//cout << "pawn controls: " << pawn_controls << endl;
 
 				// Outposts
 				if (pawn_controls > 0) {
@@ -5944,10 +5974,15 @@ int Board::get_weak_squares() const {
 
 					// Valeur en fonction de la pièce
 					square_value += outpost_value * (p == 2 ? knight_outpost_value : (p == 3 ? bishop_outpost_value : (p == 4 ? rook_outpost_value : 0)));
+
+					//cout << "outpost value: " << outpost_value << " for piece: " << p << " -> " << (p == 2 ? knight_outpost_value : (p == 3 ? bishop_outpost_value : (p == 4 ? rook_outpost_value : 0))) << endl;
+					//cout << "square value: " << square_value << endl;
 				}
 
 				// Valeur du contrôle de la case faible par un pion adverse
-				square_value *= (1 + pawn_controls);
+				square_value *= (0.25 + (pawn_controls > 0));
+
+				//cout << "with controls, square value: " << square_value << endl;
 
 				weak_squares_value += square_value;
 			}
@@ -5955,14 +5990,33 @@ int Board::get_weak_squares() const {
 		}
 	}
 
-	// A partir de quelle valeur de l'avancement de la partie, cela n'a plus d'importance (décroit linéairement)
-	float weak_squares_advancement_threshold = 0.8f;
+	// Nombre de colonnes ouvertes
+	int open_files = 0;
 
-	return weak_squares_value * (max(0.0f, 1.0f - _adv / weak_squares_advancement_threshold));
+	// Pour chaque colonne
+	for (uint_fast8_t j = 0; j < 8; j++) {
+		bool open = true;
+
+		// Pour chaque case
+		for (uint_fast8_t i = 0; i < 8; i++) {
+			if (_array[i][j] == w_pawn || _array[i][j] == b_pawn) {
+				open = false;
+				break;
+			}
+		}
+
+		open_files += open;
+	}
+
+	//cout << "open files: " << open_files << endl;
+	//cout << "total weak squares value: " << weak_squares_value << endl;
+	//cout << "final value: " << weak_squares_value / (open_files / 2 + 1) << endl;
+
+	return weak_squares_value / (open_files / 2 + 1);
 }
 
 // Fonction qui convertit un coup en sa notation algébrique
-string Board::algebric_notation(Move move) {
+string Board::algebric_notation(Move move) const {
 	string move_notation = main_GUI._abc8[move.j1] + to_string(move.i1 + 1) + main_GUI._abc8[move.j2] + to_string(move.i2 + 1);
 
 	// Promotion
@@ -6023,8 +6077,8 @@ int Board::get_castling_distance() const {
 		w_queenside_castle_distance = 2;
 	}
 	
-	// Distance minimale pour roquer (0 s'il a déjà roqué)
-	uint_fast8_t w_castling_distance = (_castling_rights.k_w || _castling_rights.q_w) ? min(w_kingside_castle_distance, w_queenside_castle_distance) : 0;
+	// Distance minimale pour roquer (2 s'il a déjà roqué)
+	uint_fast8_t w_castling_distance = (_castling_rights.k_w || _castling_rights.q_w) ? min(w_kingside_castle_distance, w_queenside_castle_distance) : 1;
 
 
 	// Noirs
@@ -6061,8 +6115,8 @@ int Board::get_castling_distance() const {
 		b_queenside_castle_distance = 2;
 	}
 
-	// Distance minimale pour roquer (0 s'il a déjà roqué)
-	uint_fast8_t b_castling_distance = (_castling_rights.k_b || _castling_rights.q_b) ? min(b_kingside_castle_distance, b_queenside_castle_distance) : 0;
+	// Distance minimale pour roquer (2 s'il a déjà roqué)
+	uint_fast8_t b_castling_distance = (_castling_rights.k_b || _castling_rights.q_b) ? min(b_kingside_castle_distance, b_queenside_castle_distance) : 1;
 
 	//cout << "w_castling_distance: " << (int)w_castling_distance << endl;
 	//cout << "b_castling_distance: " << (int)b_castling_distance << endl;
@@ -6222,7 +6276,10 @@ int Board::get_bishop_activity() const {
 		}
 	}
 
-	return (w_bishop_activity - b_bishop_activity);
+	// Facteur multiplicatif en fonction de l'avancement
+	float bishop_activity_advancement_factor = 0.35f;
+
+	return (w_bishop_activity - b_bishop_activity) * (1 - _adv * bishop_activity_advancement_factor);
 }
 
 // Fonction qui réinitialise les plateaux fils
@@ -6455,4 +6512,149 @@ void Board::display_positions_history() const
 	}
 
 	return eval_string;
+}
+
+// Fonction qui renvoie l'évaluation des pièces isolées
+[[nodiscard]] int Board::get_isolated_pieces() const {
+	// Pièce isolée: pièce éloignée des autres pièces alliées
+
+	// TODO: adapter ça pour les endgames aussi? pour que le roi se rapproche des pions? pareil pour les chevaux...
+	// TODO: ajouter un rayon variable pour le centre? pour savoir s'il est étendu ou non pour mieux évaluer si une pièce est effectivement isolée
+
+	// Poids par type de pièce
+	const float pawn_weight = 1.0f;
+	const float knight_weight = 5.0f; // Gros poids, car pièce de courte portée
+	const float bishop_weight = 3.0f;
+	const float rook_weight = 3.0f;
+	const float queen_weight = 10.0f;
+	const float king_weight = 0.0f; // Je sais pas trop s'il faut donner un poids ici, car il risque d'accumuler toutes ses pièces en défense?
+
+	// Pièces blanches
+
+	// Calcul du centre d'inertie
+	float w_center_of_mass_i = 0.0f;
+	float w_center_of_mass_j = 0.0f;
+	float w_total_weight = 0.0f;
+
+	// Pièces noires
+
+	// Calcul du centre d'inertie
+	float b_center_of_mass_i = 0.0f;
+	float b_center_of_mass_j = 0.0f;
+	float b_total_weight = 0.0f;
+
+	// Pour chaque pièce
+	for (uint_fast8_t i = 0; i < 8; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			uint_fast8_t p = _array[i][j];
+
+			if (p == none)
+				continue;
+
+			// Si c'est une pièce blanche
+			if (p <= w_king) {
+				// Poids de la pièce
+				float weight = p == w_pawn ? pawn_weight : (p == w_knight ? knight_weight : (p == w_bishop ? bishop_weight : (p == w_rook ? rook_weight : (p == w_queen ? queen_weight : king_weight))));
+
+				//cout << "i: " << i << ", j: " << j << ", weight: " << weight << endl;
+
+				// Centre de masse
+				w_center_of_mass_i += i * weight;
+				w_center_of_mass_j += j * weight;
+				w_total_weight += weight;
+			}
+
+			// Si c'est une pièce noire
+			else {
+				// Poids de la pièce
+				float weight = p == b_pawn ? pawn_weight : (p == b_knight ? knight_weight : (p == b_bishop ? bishop_weight : (p == b_rook ? rook_weight : (p == b_queen ? queen_weight : king_weight))));
+				
+				//cout << "i: " << i << ", j: " << j << ", weight: " << weight << endl;
+
+				// Centre de masse
+				b_center_of_mass_i += i * weight;
+				b_center_of_mass_j += j * weight;
+				b_total_weight += weight;
+			}
+		}
+	}
+
+	// Calcul du centre de masse
+	w_center_of_mass_i /= w_total_weight;
+	w_center_of_mass_j /= w_total_weight;
+
+	b_center_of_mass_i /= b_total_weight;
+	b_center_of_mass_j /= b_total_weight;
+
+	//cout << "w_center_of_mass_i: " << w_center_of_mass_i << endl;
+	//cout << "w_center_of_mass_j: " << w_center_of_mass_j << endl;
+	//cout << "b_center_of_mass_i: " << b_center_of_mass_i << endl;
+	//cout << "b_center_of_mass_j: " << b_center_of_mass_j << endl;
+
+
+	// Distance des pièces au centre de masse
+	// Il faut pénaliser les pièces loin du centre
+	float min_distance = 2.0f;
+
+	float w_isolated_pieces = 0.0f;
+	float b_isolated_pieces = 0.0f;
+
+	// Pénalité linéaire pour le moment?
+
+	// Malus par type de pièce
+	const float pawn_malus = 2.0f;
+	const float knight_malus = 5.0f; // Gros poids, car pièce de courte portée
+	const float bishop_malus = 3.0f;
+	const float rook_malus = 3.0f;
+	const float queen_malus = 10.0f;
+	const float king_malus = 5.0f;
+
+	// FIXME: rqb2Q2/3p3p/pBp1p1p1/P3Pp2/1P3P1k/2N5/2P1B1PP/6K1 w - - 5 30 : king malus marche pas?
+
+	// Pour chaque pièce
+	for (uint_fast8_t i = 0; i < 8; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			uint_fast8_t p = _array[i][j];
+
+			if (p == none)
+				continue;
+
+			// Si c'est une pièce blanche
+			if (p <= w_king) {
+				// Distance au centre de masse
+				float distance = sqrt(pow(i - w_center_of_mass_i, 2) + pow(j - w_center_of_mass_j, 2));
+
+				// Pénalité
+				float malus = p == w_pawn ? pawn_malus : (p == w_knight ? knight_malus : (p == w_bishop ? bishop_malus : (p == w_rook ? rook_malus : (p == w_queen ? queen_malus : king_malus))));
+
+				// Pénalité en fonction de la distance
+				float isolated_piece = max(0.0f, distance - min_distance) * malus;
+
+				//cout << "i: " << i << ", j: " << j << ", distance: " << distance << ", isolated_piece: " << isolated_piece << endl;
+
+				w_isolated_pieces += isolated_piece;
+			}
+
+			// Si c'est une pièce noire
+			else {
+				// Distance au centre de masse
+				float distance = sqrt(pow(i - b_center_of_mass_i, 2) + pow(j - b_center_of_mass_j, 2));
+
+				// Pénalité
+				float malus = p == b_pawn ? pawn_malus : (p == b_knight ? knight_malus : (p == b_bishop ? bishop_malus : (p == b_rook ? rook_malus : (p == b_queen ? queen_malus : king_malus))));
+
+				// Pénalité en fonction de la distance
+				float isolated_piece = max(0.0f, distance - min_distance) * malus;
+
+				//cout << "i: " << i << ", j: " << j << ", distance: " << distance << ", isolated_piece: " << isolated_piece << endl;
+
+				b_isolated_pieces += isolated_piece;
+			}
+		}
+	}
+
+	//cout << "w_isolated_pieces: " << w_isolated_pieces << endl;
+	//cout << "b_isolated_pieces: " << b_isolated_pieces << endl;
+
+	return b_isolated_pieces - w_isolated_pieces;
 }
