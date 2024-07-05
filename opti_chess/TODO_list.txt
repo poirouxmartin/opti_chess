@@ -100,10 +100,10 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 		- Fous de couleurs opposées
 		- Finales roi pion
 		- Mat fou cavalier
+		- Finales de tours: plus facilement nulles
 		- ...
 	- Clouages?
 	- Cases noires/blanches -> faiblesse sur une couleur
-	- Cases faibles
 	- Initiative -> A améliorer : fort dans les positions d'attaque?
 	- Fous de couleurs opposées : favorisent l'attaque, mais en finale -> draw
 	- Harmonie des pièces (qui se défendent entre elles)
@@ -124,7 +124,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Colonnes occupées par une dame
 	- Pions passés liés !
 	- Coordination des pièces
-	- Bishop pawns : nombre de pion de la même couleur que le fou -> pénalité plus le nombre est grand
 	- Candidats pions passés : r1bq2kr/ppp1bn1p/2n1p2P/3pP1PR/3P1p2/1NPB1N2/PPQ2P2/R3K3 b Q - 0 16 : ici y'aura potentiellement un pion passé colonne g ou h
 	- King proximity : proximité du roi avec les pions passés (pour les aider à avancer) (prendre en compte aussi le roi adverse)
 	- Pièces non protégées
@@ -141,6 +140,22 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Redonner de la valeur pour la dame, car les tours on beaucoup d'évaluations différentes qui leur donnent de la valeur
 	- Quand t'as une position stratégiquement mauvaise, il faut jouer dynamiquement (r1bq1rk1/ppn1bppp/3p4/2p5/2PP4/2N1BN1P/PP3PP1/R2Q1RK1 b - - 0 14 : là faut faire d5)
 	- Proximité du roi avec les pions passés
+	- Trapped pieces (https://www.chessprogramming.org/Trapped_Pieces)
+	- Connectivity (https://www.chessprogramming.org/Connectivity)
+	- Pawn storms
+	- Alignements
+	- Open lines around king
+	- Piece coordination
+	- Incremental evaluation (pour que ça aille plus vite)
+	- Tour derrrière un pion passé (implémenter les cases controlées pour les pions passés?)
+	- Ouvrir la position si on a un avantage de développement (roi adverse pas roqué, pièces pas développées)
+	- Développer les cavaliers avant les fous
+	- Favoriser les chevaux dans les positions fermées. Fous quand les diagonales sont ouvertes, tours quand les colonnes sont ouvertes (implémenter un bonus pour chaque?)
+	- Attaquer la chaîne de pions
+	- Moins de pions = moins de chances de gagner en finale
+	- Tours liées, important
+ 
+
 
 -> Faire une policy pour les coups (ou des préférences de réflexion)
 -> Livres d'ouvertures, tables d'engame?
@@ -323,6 +338,9 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> BUG: parfois, grogros stoppe le temps en pleine partie (il pense que la partie est finie??)
 -> Pour get_zobrist _key, regarder si on ne le fait pas trop souvent
 -> Dans les finales, il faut évaluer comment on peut avancer ou non... sinon il voit pas quand y'a des égalités...
+-> Gros problème de compréhension: r6r/p1p1kp1p/3p3q/2p1P3/6Q1/3B4/PP3P1P/2R2RK1 w - - 1 20 il voit pas la menace des noirs sur la dame et le roi
+-> 2r2k1r/pp2npp1/3p1n2/q3p2p/4P3/2PB1Q2/P1PB1PPP/R4RK1 b - - 1 16 : ici faut faire quelque chose pour que Th7 n'augmente pas l'activité de la tour d'autant. (pour le moment c'est à cause de la condition sur la tour bloquée par le roi dans le roque)
+-> 8/6B1/7p/7b/p7/1k2KPP1/1P6/8 w - - 0 39 : Grogros devrait savoir comment gagner ça quand-même (il a raté...)
 
 
 ----- Interface utilisateur -----
@@ -429,7 +447,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Afficher à quel coup de la variante on est
 -> Ré-afficher un peu mieux les variantes et avec plus de détails (profondeur...)
 -> Affichage du temps dans le PGN
--> Afficher les pièces plutôt que P, R, N, B, Q, K
 -> Mettre des flèches pour indiquer les coups de la variante principale?
 
 
@@ -451,14 +468,36 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 ----- En cours -----
 
 -> BUGS: 
--> Après une répétition, Grogros joue plus
+-> Après une répétition, Grogros ne joue plus
 -> Revoir les promotions de variantes etc...
 -> Parfois quand on joue 2 fois un même coup dans des variantes différentes, ils ont le même parent... du coup quand on revient en arrière, ça va au mauvais endroit
--> Afficher où on en est dans la variante
+-> 2r3k1/pp1n3p/3P2pB/2pr1q2/P2nN3/1P4Q1/R1P2PPP/4R1K1 b - - 8 26 : ici après Ce2+ Txe2 Te1+, la quiescence s'arrête alors que le joueur est en échec
+-> Parfois il joue pas le coup qu'il pense être le meilleur? r2qk1nr/ppp1pppp/2n5/8/3Pp1Q1/2P5/PP3PPP/R1B1KB1R b KQkq - 0 4 : ici il a joué Rf8 plutôt que Cf6... (apr_s avoir vu que Cf6 était meilleur)
+-> Quand y'a plusieurs eval de mats, il joue lentement, car les evals sont relativement proches?
+
+URGENT ***
+-> BUG: rnb3r1/pppp2kp/5R2/3q4/8/8/PPP2QPP/5RK1 b - - 2 18 : pourquoi il regarde à fond le mat en 5?? overflow lors du softmax??
+-> Refaire un nouveau pick random move plus simple?
+-> Revoir les weak squares pour qu'il y en ait pas de partout quand y'a plus de pions
+URGENT ***
+
+-> URGENT: faut-il garder le beta cut-off si on est en échec??? alpha aussi??
+-> Voir s'il faut moduler la profondeur de la quiescence en fonction de l'importance de la branche
+-> Il faut revoir la quiescence pour voir si c'est correct...
+-> q_depth plus petit avec des cas d'extensions?
+-> revoir les autorisations de standpat?
+
+-> EVAL: 
+-> Attacking power, regarder les cases attaquées plutôt que la position des pièces?
+-> 8/p4k1p/6r1/n7/8/1PP3P1/R4PKP/8 b - - 2 39 : weak squares +160??... Il faut vraiment améliorer ça... quand y'a plus de pions, il voit des cases faibles partout...
+
+-> r2q4/pp4kp/2p1Qrp1/3pB3/3P4/8/PPP3PP/R5K1 w - - 0 20 : met 4 ans à voir que Tf1 gagne alors que c'est évident... la quiescence prend trop de temps alors il regarde pas tous les coups et reste sur le standpat
+-> 1Q6/8/K7/8/8/4Q3/2k5/8 w - - 3 74 : y'a mat en 1, arrête de regarder les coups pourris à 90%!!
+-> r7/pp5k/2p2B2/3p2Qp/3P4/8/PPP3PP/6K1 w - - 1 25 : pareil
+-> A cause de la quiescence trop longue qui regarde les coups complexes à fond...
 
 -> Améliorer le PGN (temps, noeuds, éval...)
-
--> Afficher les pièces dans les variantes!!
+-> Améliorer le visuel des pièces uft8
 
 -> FAUT METTRE DES POINTEURS PARTOUT AU LIEU DE COPIER LES OBJETTTTTTSSS !! (exploration.h, gui?)
 
@@ -479,8 +518,9 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 
 -> Algo catastrophique... il paraît juste plus lent qu'avant, il voit rien
 
--> Faire une fonction pour tester les IAs: problèmes tactiques, stratégiques, finales, ouvertures... avec différents temps de réflexion (1s, 3s, 10s par exemple)
--> Fonction de test d'évaluation: comparer les évals de Grogros avec celles de Leela par exemple puis fine-tuner
+-> TESTING: Faire une fonction pour tester les IAs: problèmes tactiques, stratégiques, finales, ouvertures... avec différents temps de réflexion (1s, 3s, 10s par exemple)
+-> Fonction de test d'évaluation: comparer les évals de Grogros avec celles de Leela par exemple puis fine-tuner. Résultat final: correlation entre les évals de Grogros et les évals de Leela
+-> Utiliser ça pour entraîner les réseaux de neurones (au lieu de jouer contre d'autres réseaux? combiner les deux?)
 
 -> Utiliser les noms des pièces plutôt que 0, 1, 2, 3... Utiliser Array plutôt que le faire à la main. Faire une structure pour stocker les coups plutôt qu'un tableau lourd?
 
