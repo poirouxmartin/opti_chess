@@ -62,8 +62,11 @@ public:
 	clock_t _time_black;
 
 	// Incrément
-	clock_t _time_increment_white = -100;
-	clock_t _time_increment_black = -100;
+	//clock_t _time_increment_white = -100;
+	//clock_t _time_increment_black = -100;
+
+	clock_t _time_increment_white = 10000;
+	clock_t _time_increment_black = 10000;
 
 	// Mode analyse de Grogros
 	bool _grogros_analysis = false;
@@ -89,13 +92,13 @@ public:
 	//float _k_add = 10.0f;
 	//int _quiescence_depth = 40;
 
-	//float _beta = 0.1f;
-	//float _k_add = 25.0f;
-	//int _quiescence_depth = 8;
-
-	float _beta = 0.1f;
+	float _beta = 0.10f;
 	float _k_add = 25.0f;
 	int _quiescence_depth = 8;
+
+	//float _beta = 0.25f;
+	//float _k_add = 10.0f;
+	//int _quiescence_depth = 6;
 
 
 	bool _explore_checks = true; // FIXME? faut-il vraiment explorer les échecs?

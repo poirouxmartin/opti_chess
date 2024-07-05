@@ -488,7 +488,7 @@ void GUI::load_resources() {
 	_promotion_sound = LoadSound("resources/sounds/promotion.mp3");
 
 	// Police de l'écriture
-	_text_font = LoadFontEx("resources/fonts/SFTransRobotics.otf", 128, nullptr, 250);
+	_text_font = LoadFontEx("resources/fonts/SFTransRobotics.otf", 128, nullptr, 1000);
 
 	// Icône
 	_icon = LoadImage("resources/images/grogros_zero.png"); // TODO essayer de charger le .ico, pour que l'icone s'affiche tout le temps (pas seulement lors du build)
@@ -580,17 +580,30 @@ void GUI::slider_text(const string& s, float pos_x, float pos_y, float width, fl
 	float new_width = width - slider_width;
 
 	// Pour chaque bout de texte
-	std::stringstream ss(s);
-	std::string line;
+	stringstream ss(s);
+	string line;
 
+	// FIXME: il peut y avoir des boucles infinies ici
 	while (getline(ss, line, '\n')) {
 		// Taille horizontale du texte
 
 		// Split le texte en parties égales
 		if (float horizontal_text_size = MeasureTextEx(_text_font, line.c_str(), size, _font_spacing * size).x; horizontal_text_size > new_width) {
 			int split_length = line.length() * new_width / horizontal_text_size;
-			for (int i = split_length - 1; i < line.length() - 1; i += split_length)
-				line.insert(i, "\n");
+			for (int i = split_length - 1; i < line.length() - 1; i += split_length) {
+				bool can_split = true;
+				while (line[i] != ' ') {
+					i--;
+					if (i <= 0) {
+						can_split = false;
+						cout << "FIXME: can't split text too tight!!" << endl;
+						break;
+					}
+				}
+
+				if (can_split)
+					line.insert(i, "\n");
+			}
 		}
 
 		new_string += line + "\n";

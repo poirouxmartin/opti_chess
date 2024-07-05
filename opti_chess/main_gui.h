@@ -64,7 +64,7 @@ inline int main_ui() {
 	//SetMouseCursor(3);
 
 	// Evaluateur de position
-	Evaluator eval_white(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	Evaluator eval_white(1.0f);
 	Evaluator eval_black;
 
 	// Nombre de noeuds max pour le jeu automatique de GrogrosZero

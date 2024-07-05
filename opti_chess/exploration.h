@@ -80,6 +80,9 @@ public:
 	// Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
 	[[nodiscard]] Move pick_random_child(const float beta, const float k_add);
 
+	[[nodiscard]] Move pick_random_child_new();
+
+
 	// Fonction qui renvoie le fils le plus exploré
 	[[nodiscard]] Move get_most_explored_child_move(bool decide_by_eval = true);
 
