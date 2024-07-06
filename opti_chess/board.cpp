@@ -6594,7 +6594,7 @@ void Board::display_positions_history() const
 
 	// Distance des pièces au centre de masse
 	// Il faut pénaliser les pièces loin du centre
-	float min_distance = 2.0f;
+	float min_distance = 1.5f;
 
 	float w_isolated_pieces = 0.0f;
 	float b_isolated_pieces = 0.0f;
@@ -6604,9 +6604,9 @@ void Board::display_positions_history() const
 	// Malus par type de pièce
 	const float pawn_malus = 2.0f;
 	const float knight_malus = 5.0f; // Gros poids, car pièce de courte portée
-	const float bishop_malus = 3.0f;
-	const float rook_malus = 3.0f;
-	const float queen_malus = 10.0f;
+	const float bishop_malus = 5.0f;
+	const float rook_malus = 7.0f;
+	const float queen_malus = 12.0f;
 	const float king_malus = 5.0f;
 
 	// FIXME: rqb2Q2/3p3p/pBp1p1p1/P3Pp2/1P3P1k/2N5/2P1B1PP/6K1 w - - 5 30 : king malus marche pas?
@@ -6624,6 +6624,9 @@ void Board::display_positions_history() const
 				// Distance au centre de masse
 				float distance = sqrt(pow(i - w_center_of_mass_i, 2) + pow(j - w_center_of_mass_j, 2));
 
+				// Plus gros malus quand proche du camp advserse
+				distance *= (1 + max(0, (int)i - 3));
+
 				// Pénalité
 				float malus = p == w_pawn ? pawn_malus : (p == w_knight ? knight_malus : (p == w_bishop ? bishop_malus : (p == w_rook ? rook_malus : (p == w_queen ? queen_malus : king_malus))));
 
@@ -6639,6 +6642,9 @@ void Board::display_positions_history() const
 			else {
 				// Distance au centre de masse
 				float distance = sqrt(pow(i - b_center_of_mass_i, 2) + pow(j - b_center_of_mass_j, 2));
+
+				// Plus gros malus quand proche du camp adverse
+				distance *= (1 + max(0, 4 - (int)i));
 
 				// Pénalité
 				float malus = p == b_pawn ? pawn_malus : (p == b_knight ? knight_malus : (p == b_bishop ? bishop_malus : (p == b_rook ? rook_malus : (p == b_queen ? queen_malus : king_malus))));

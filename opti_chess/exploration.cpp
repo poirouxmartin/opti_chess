@@ -171,18 +171,26 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 		child->_fully_explored = true;
 	}
 
-	bool test = false;
 	// rnb1kbnr/ppp1pppp/2q5/1B6/8/2N5/PPPP1PPP/R1BQK1NR b KQkq - 3 4
 	// rnb1kbnr/ppp1pppp/2q5/8/8/2N5/PPPP1PPP/R1BQKBNR w KQkq - 2 4 : ici Fb5 -> +114 au lieu de +895
 
 	// Met à jour l'évaluation du plateau
-	if (children_count() == 0 && test) { // Si c'est désactivé, alors il ne vera sûrement pas les zugzwang. Mais si activé, s'il joue un mauvais coup, il va considérer la branche comme mauvaise
-		_board->_evaluation = child->_board->_evaluation; // Pour le quiescence search, faut-il ne pas aller là pour garder un standpat?
-		//cout << "eval: " << _board->evaluation_to_string(_board->_evaluation) << endl;
-	}
-	else {
-		// TODO: c'est vraiment ça qu'il faut faire?
+	if (children_count() + 1 < _board->_got_moves) {
 		_board->_evaluation = _board->_player * max(_board->_evaluation, child->_board->_evaluation) + !_board->_player * min(_board->_evaluation, child->_board->_evaluation);
+	}
+
+	// Tous les coups ont été explorés, donc on met à jour l'évaluation du plateau avec le meilleur coup
+	else {
+		int color = _board->get_color();
+		int best_eval = -INT_MAX;
+
+		for (auto& [move, child] : _children) {
+			if (child->_board->_evaluation * color > best_eval) {
+				best_eval = child->_board->_evaluation * color;
+			}
+		}
+
+		_board->_evaluation = best_eval * color;
 	}
 
 	// FIXME optimiser ces cas pour n'en calculer qu'un
@@ -222,6 +230,7 @@ void Node::explore_random_child(Buffer* buffer, Evaluator* eval, float beta, flo
 
 	// Prend un fils aléatoire
 	const Move move = pick_random_child(beta, k_add);
+	//const Move move = pick_best_uct_child();
 	
 	//cout << "move: " << _board->move_label(move) << endl;
 
@@ -257,7 +266,7 @@ Move Node::pick_random_child(const float beta, const float k_add) {
 
 	// *** 1. ***
 	// Evaluations des enfants (en fonction de la couleur)
-	int l2[100]{};
+	long long int l2[100]{};
 	map<int, Move> children_moves;
 
 	int i = 0;
@@ -267,6 +276,7 @@ Move Node::pick_random_child(const float beta, const float k_add) {
 		i++;
 	}
 
+	//cout << "new: " << endl;
 	//print_array(l2, n_children);
 
 	// Softmax sur les évaluations
@@ -293,7 +303,7 @@ Move Node::pick_random_child(const float beta, const float k_add) {
 
 	// *** 3. ***
 	// Somme de toutes les valeurs
-	int sum = 0;
+	long long int sum = 0;
 
 	for (int i = 0; i < n_children; i++)
 	{
@@ -301,23 +311,65 @@ Move Node::pick_random_child(const float beta, const float k_add) {
 	}
 
 	// Choix du coup en fonction d'une valeur aléatoire
-	const int rand_val = rand_int(1, sum);
-	int cumul = 0;
+	const long long int rand_val = rand_long(1, sum);
+	long long int cumul = 0;
 
 	for (int i = 0; i < n_children; i++)
 	{
 		cumul += l2[i];
-		if (cumul >= rand_val)
+		if (cumul >= rand_val) {
+			//cout << "move index: " << i << endl;
+			//cout << "move: " << _board->move_label(children_moves[i]) << endl;
 			return children_moves[i];
+		}
 	}
+
+	cout << "first move chosen by default?" << endl;
 
 	return children_moves[0];
 }
 
-// Fonction qui renvoie un fils de manière pseudo-aléatoire, en fonction de l'évaluation et du nombre de noeuds
-Move Node::pick_random_child_new() {
-	// TODO
-	return Move();
+// Fonction qui renvoie le ratio de victoire pour les blancs du noeud (le ratio de victoire pour une eval alpha est de beta)
+float Node::win_ratio(double alpha, double beta) const {
+	double eval = _board->_evaluation;
+	//cout << "eval: " << eval << ", sigmoid: " << sigmoid(eval, alpha, beta) << endl;
+	return sigmoid(eval, alpha, beta);
+}
+
+// Fonction qui calcule le score UCT du noeud
+float Node::uct_score(int total_nodes, float alpha) const {
+	float win_ratio_white = win_ratio();
+	float win = !_board->_player ? win_ratio_white : 1 - win_ratio_white;
+
+	//float win = -_board->_evaluation * _board->get_color() / 1000.0f;
+	//cout << "eval: " << _board->evaluation_to_string(_board->_evaluation) << ", win_ratio: " << win << endl;
+	return win + alpha * sqrt(log(total_nodes) / _nodes);
+}
+
+// Fonction qui renvoie le coup avec le meilleur score UCT
+Move Node::pick_best_uct_child(float alpha) {
+
+	// On prend le coup avec le meilleur score UCT
+	float best_uct = -FLT_MAX;
+	Move best_move = Move();
+
+	//cout << "*** children count: " << children_count() << endl;
+
+	// Pour chaque enfant, on calcule le score UCT
+	for (auto& [move, child] : _children) {
+		float uct = child->uct_score(_nodes, alpha);
+
+		//cout << "move: " << _board->move_label(move) << ", uct: " << uct << endl;
+
+		if (uct > best_uct) {
+			best_uct = uct;
+			best_move = move;
+		}
+	}
+
+	//cout << "best move: " << _board->move_label(best_move) << endl;
+
+	return best_move;
 }
 
 
@@ -605,7 +657,7 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 
 	// Beta cut-off 
 	// FIXME: ça casse un peu tout
-	bool test_full_checks = false;
+	bool test_full_checks = true;
 
 	if (stand_pat >= beta && (!check_extension || !test_full_checks)) {
 		_time_spent += clock() - begin_monte_time;
