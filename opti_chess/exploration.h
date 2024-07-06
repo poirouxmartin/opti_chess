@@ -80,8 +80,14 @@ public:
 	// Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
 	[[nodiscard]] Move pick_random_child(const float beta, const float k_add);
 
-	[[nodiscard]] Move pick_random_child_new();
+	// Fonction qui renvoie le ratio de victoire pour les blancs du noeud (le ratio de victoire pour une eval alpha est de beta)
+	[[nodiscard]] float win_ratio(double alpha = 100.0, double beta = 0.67) const;
 
+	// Fonction qui calcule le score UCT
+	[[nodiscard]] float uct_score(int total_nodes, float alpha) const;
+
+	// Fonction qui renvoie le coup avec le meilleur score UCT
+	[[nodiscard]] Move pick_best_uct_child(float alpha = 3.0f);
 
 	// Fonction qui renvoie le fils le plus exploré
 	[[nodiscard]] Move get_most_explored_child_move(bool decide_by_eval = true);

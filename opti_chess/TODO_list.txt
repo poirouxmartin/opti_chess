@@ -472,13 +472,18 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Revoir les promotions de variantes etc...
 -> Parfois quand on joue 2 fois un même coup dans des variantes différentes, ils ont le même parent... du coup quand on revient en arrière, ça va au mauvais endroit
 -> 2r3k1/pp1n3p/3P2pB/2pr1q2/P2nN3/1P4Q1/R1P2PPP/4R1K1 b - - 8 26 : ici après Ce2+ Txe2 Te1+, la quiescence s'arrête alors que le joueur est en échec
--> Parfois il joue pas le coup qu'il pense être le meilleur? r2qk1nr/ppp1pppp/2n5/8/3Pp1Q1/2P5/PP3PPP/R1B1KB1R b KQkq - 0 4 : ici il a joué Rf8 plutôt que Cf6... (apr_s avoir vu que Cf6 était meilleur)
+-> Parfois il joue pas le coup qu'il pense être le meilleur? r2qk1nr/ppp1pppp/2n5/8/3Pp1Q1/2P5/PP3PPP/R1B1KB1R b KQkq - 0 4 : ici il a joué Rf8 plutôt que Cf6... (après avoir vu que Cf6 était meilleur)
 -> Quand y'a plusieurs eval de mats, il joue lentement, car les evals sont relativement proches?
+-> r1b1k1r1/pp1npp1p/1q4p1/2p5/4B3/2P1BN2/Pb1Q1PPP/3R1RK1 w q - 0 16 : juste Tb1??
+-> Auparavant, il prenait plus de temps pour réflechir quand les positions étaient complexes (car il jouait en fonction du nombre de noeuds "quiet")
+-> 2Bk1b1r/1p4pp/p1q2p2/3pn3/3B4/7Q/PP1N1PPP/3bR1K1 w - - 1 21 : Fe6 quand y'a pas les échecs de regardés? Txd1 sinon?
 
 URGENT ***
--> BUG: rnb3r1/pppp2kp/5R2/3q4/8/8/PPP2QPP/5RK1 b - - 2 18 : pourquoi il regarde à fond le mat en 5?? overflow lors du softmax??
+-> Evaluer la nature de la position (ouverte/fermée), car ça change tout sur s'il faut jouer actif ou positionnel...
 -> Refaire un nouveau pick random move plus simple?
--> Revoir les weak squares pour qu'il y en ait pas de partout quand y'a plus de pions
+-> 5b1r/Npk3pp/pn2b2n/2p1P3/8/3QBN2/P4PPP/5K2 b - - 0 20 : combien de temps il met à voir Fc4?? -> la quiescence ne semble pas fonctionner du tout...
+-> parfois ça re-explore un coup non fully explored avant de regarder les non-explorés...
+-> 1Q6/8/K7/8/8/4Q3/2k5/8 w - - 3 74 : il crash??
 URGENT ***
 
 -> URGENT: faut-il garder le beta cut-off si on est en échec??? alpha aussi??
@@ -490,6 +495,7 @@ URGENT ***
 -> EVAL: 
 -> Attacking power, regarder les cases attaquées plutôt que la position des pièces?
 -> 8/p4k1p/6r1/n7/8/1PP3P1/R4PKP/8 b - - 2 39 : weak squares +160??... Il faut vraiment améliorer ça... quand y'a plus de pions, il voit des cases faibles partout...
+-> r4rk1/2qb1p2/1p2p2p/3p2p1/1nPP1n2/1P2RN2/p1BN1PPP/2Q1R1K1 w - - 0 24 : le pion passé est aidé par la tour en a8, il faut le noter!
 
 -> r2q4/pp4kp/2p1Qrp1/3pB3/3P4/8/PPP3PP/R5K1 w - - 0 20 : met 4 ans à voir que Tf1 gagne alors que c'est évident... la quiescence prend trop de temps alors il regarde pas tous les coups et reste sur le standpat
 -> 1Q6/8/K7/8/8/4Q3/2k5/8 w - - 3 74 : y'a mat en 1, arrête de regarder les coups pourris à 90%!!

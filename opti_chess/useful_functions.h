@@ -31,7 +31,7 @@ float min_float(float, float);
 int move_power(float, float, float);
 
 // Fonction qui permet de donner une puissance au coup afin de faciliter les choix
-void softmax(int*, int, float beta = 0.035f, float k_add = 50.0f); // beta = 0.05, k_add = 1. k_add x => ~x/10000 (the bigger the larger, the smaller the deeper) 0.05, 250 pour les mats
+void softmax(long long int*, int, float beta = 0.035f, float k_add = 50.0f); // beta = 0.05, k_add = 1. k_add x => ~x/10000 (the bigger the larger, the smaller the deeper) 0.05, 250 pour les mats
 
 // Fonction pour générer une seed
 unsigned long long generate_seed();
@@ -39,47 +39,53 @@ unsigned long long generate_seed();
 // Fonction qui renvoie un entier aléatoire entre deux entiers (le second non inclus)
 int rand_int(int, int);
 
+// Fonction qui renvoie un entier long aléatoire entre deux entiers (le second non inclus)
+long long rand_long(const long long a, const long long b);
+
 // Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variante en fonction de la grandeur du nombre correspondant à cet index
-int pick_random_good_move(int l[], const int n, const int color, bool print, const int nodes, int nodes_children[], const float beta = 0.035f, const float k_add = 50.0f);
+int pick_random_good_move(int *l, const int n, const int color, bool print, const int nodes, int *nodes_children, const float beta = 0.035f, const float k_add = 50.0f);
 
 // Fonction qui renvoie la valeur maximum d'une liste d'entiers
-int max_value(int[], int);
+int max_value(int*, const int);
 
 // Fonction qui renvoie la valeur minimum d'une liste d'entiers
-int min_value(int[], int);
+int min_value(int*, const int);
 
 // Fonction qui renvoie la valeur minimum d'une liste de flottans
-int min_value(float[], int);
+int min_value(float*, const int);
 
 // Fonction qui affiche une liste d'entiers (array)
-void print_array(int[], int);
+void print_array(int*, const int);
+
+// Fonction qui affiche une liste d'entiers longs (array)
+void print_array(long long int*, const int);
 
 // Fonction qui affiche une liste d'entiers 8 bits fast (array)
-void print_array(int_fast8_t[], int);
+void print_array(int_fast8_t*, const int);
 
 // Fonction qui affiche une liste d'entiers positifs 8 bits fast (array)
-void print_array(uint_fast8_t[], int);
+void print_array(uint_fast8_t*, const int);
 
 // Fonction qui affiche une liste de flottants (array)
-void print_array(float[], int);
+void print_array(float*, const int);
 
 // Fonction qui affiche une liste de chaines de caractères (array)
-void print_array(string[], int);
+void print_array(string*, const int);
 
 // Fonction qui renvoie l'index de la valeur maximale d'une liste d'entiers
-int max_index(int[], int);
+int max_index(int*, const int);
 
 // Fonction qui renvoie l'index de la valeur maximale d'une liste de flottants
-int max_index(float[], int);
+int max_index(float*, const int);
 
 // Fonction qui renvoie l'index de la valeur maximale d'une liste d'entiers uint_fast8_t
-int max_index(uint_fast8_t[], int);
+int max_index(uint_fast8_t*, const int);
 
 // Fonction qui renvoie l'index de la valeur maximale de deux listes d'entiers (la seconde est là pour départager en cas d'égalité)
 int max_index(const int*, int, const int*, int);
 
 // Fonction qui renvoie l'index de la valeur minimale d'une liste d'entiers
-int min_index(int[], int);
+int min_index(int*, const int);
 
 // Fonction qui calcule une distance entre deux points
 float distance(int, int, int, int);
@@ -106,11 +112,7 @@ bool is_in(const string&, string[], int);
 float get_winning_chances_from_eval(float, bool);
 
 // Fonction qui pondère les valeurs de la liste, en fonction d'un taux d'exploration par valeur
-void nodes_weighting(int*, const float*, int);
+void nodes_weighting(long long int*, const float*, int);
 
-// Fonction qui affiche chaque attribut d'une classe ainsi que sa taille
-template <typename T>
-void printAttributeSizes(const T& obj);
-
-template <typename T>
-void testFunc(const T& obj);
+// Sigmoïde
+double sigmoid(double x, double alpha, double beta);
