@@ -68,7 +68,7 @@ int move_power(const float n, const float range, const float min)
 }
 
 // Fonction qui fait un softmax
-void softmax(int* input, const int size, const float beta, const float k_add)
+void softmax(long long int* input, const int size, const float beta, const float k_add)
 {
 	constexpr int r = 100000;
 
@@ -129,6 +129,22 @@ int rand_int(const int a, const int b)
 	return distribution(generator);
 }
 
+// Fonction qui renvoie un entier long aléatoire entre deux entiers (le second non inclus)
+long long rand_long(const long long a, const long long b)
+{
+	static unsigned long long seed = generate_seed();
+
+	static default_random_engine generator;
+	static bool generated_seed = false;
+
+	if (!generated_seed)
+		generator.seed(seed), generated_seed = true;
+
+	uniform_int_distribution<long long> distribution(a, b);
+
+	return distribution(generator);
+}
+
 // Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variantes, en fonction de la grandeur du nombre correspondant à cet index
 int pick_random_good_move(int* l, const int n, const int color, bool print, const int nodes, int* nodes_children, const float beta, const float k_add)
 {
@@ -138,7 +154,7 @@ int pick_random_good_move(int* l, const int n, const int color, bool print, cons
 	//int range = max_value(l, n) - min_value(l, n);
 	//int min_val = (color == 1) ? min_value(l, n) : max_value(l, n);
 
-	int l2[100];
+	long long int l2[100];
 
 	for (int i = 0; i < n; i++)
 		l2[i] = color * l[i];
@@ -222,7 +238,16 @@ int min_value(float* l, const int n)
 }
 
 // Fonction qui affiche une liste d'entiers (array)
-void print_array(int l[], const int n)
+void print_array(int *l, const int n)
+{
+	cout << "[|";
+	for (int i = 0; i < n; i++)
+		cout << " " << l[i] << " |";
+	cout << "]" << endl;
+}
+
+// Fonction qui affiche une liste d'entiers longs (array)
+void print_array(long long int *l, const int n)
 {
 	cout << "[|";
 	for (int i = 0; i < n; i++)
@@ -231,7 +256,7 @@ void print_array(int l[], const int n)
 }
 
 // Fonction qui affiche une liste d'entiers 8 bits fast (array)
-void print_array(int_fast8_t l[], const int n)
+void print_array(int_fast8_t *l, const int n)
 {
 	cout << "[|";
 	for (int i = 0; i < n; i++)
@@ -240,7 +265,7 @@ void print_array(int_fast8_t l[], const int n)
 }
 
 // Fonction qui affiche une liste d'entiers 8 bits fast (array)
-void print_array(uint_fast8_t l[], const int n)
+void print_array(uint_fast8_t *l, const int n)
 {
 	cout << "[|";
 	for (int i = 0; i < n; i++)
@@ -249,7 +274,7 @@ void print_array(uint_fast8_t l[], const int n)
 }
 
 // Fonction qui affiche une liste de flottants (array)
-void print_array(float l[], const int n)
+void print_array(float *l, const int n)
 {
 	cout << "[|";
 	for (int i = 0; i < n; i++)
@@ -258,7 +283,7 @@ void print_array(float l[], const int n)
 }
 
 // Fonction qui affiche une liste de chaines de caractères (array)
-void print_array(string l[], const int n)
+void print_array(string *l, const int n)
 {
 	cout << "[|";
 	for (int i = 0; i < n; i++)
@@ -464,10 +489,20 @@ float get_winning_chances_from_eval(const float eval, const bool player)
 }
 
 // Fonction qui pondère les valeurs de la liste, en fonction d'un taux d'exploration par valeur
-void nodes_weighting(int* l, const float* weights, const int size)
+void nodes_weighting(long long int* l, const float* weights, const int size)
 {
 	for (int i = 0; i < size; i++)
 	{
 		l[i] *= weights[i];
+
+		if (l[i] < 0) {
+			cout << "overflow in node weighting? " << l[i] << endl;
+		}
 	}
+}
+
+// Sigmoïde
+double sigmoid(double x, double alpha, double beta) {
+	double k = 1.0 / alpha * log(1.0 / beta - 1.0);
+	return 1.0 / (1.0 + exp(k * x));
 }
