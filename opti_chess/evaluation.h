@@ -13,7 +13,7 @@ public:
 	float _bishop_pair = 25.0f;
 	float _castling_rights = 0.0f; // Compté dans la proximité au roque
 	float _player_trait = 25.0f;
-	float _king_safety = 0.025f;
+	float _king_safety = 1.0f;
 	float _pawn_structure = 0.4f;
 	float _attacks = 1.0f;
 	float _kings_opposition = 75.0f;

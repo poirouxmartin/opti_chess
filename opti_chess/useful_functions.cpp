@@ -429,41 +429,52 @@ string long_int_to_round_string(const unsigned long long k)
 }
 
 // Fonction qui transforme un clock en string (pour les timestamps dans les PGN)
-string clock_to_string(const clock_t t, const bool full)
+string clock_to_string(const clock_t t, bool full)
 {
-	const int ms = t % 1000;
-	int s = t / 1000;
-	const int m = (s / 60) % 60;
-	const int h = s / 3600;
-	s = s % 60;
+	double elapsed_seconds = static_cast<double>(t) / CLOCKS_PER_SEC;
 
-	string time;
+	int days = static_cast<int>(elapsed_seconds) / (24 * 3600);
+	elapsed_seconds -= days * 24 * 3600;
 
-	if (h || full)
-	{
-		string hours = to_string(h);
-		if (hours.length() == 1)
-			hours = "0" + hours;
-		time += hours + ":";
+	int hours = static_cast<int>(elapsed_seconds) / 3600;
+	elapsed_seconds -= hours * 3600;
+
+	int minutes = static_cast<int>(elapsed_seconds) / 60;
+	double seconds = elapsed_seconds - (minutes * 60);
+
+	ostringstream oss;
+	oss << fixed << setprecision(3);
+
+	if (full) {
+		if (days > 0) {
+			oss << days << "d " << hours << "h " << minutes << "min " << setw(2) << setfill('0') << setprecision(0) << seconds << "s";
+		}
+		else if (hours > 0) {
+			oss << hours << "h " << minutes << "min " << setw(2) << setfill('0') << setprecision(0) << seconds << "s";
+		}
+		else if (minutes > 0) {
+			oss << minutes << "min " << setw(2) << setfill('0') << setprecision(0) << seconds << "s";
+		}
+		else {
+			oss << setprecision(3) << seconds << "s";
+		}
+	}
+	else {
+		if (days > 0) {
+			oss << days << ":" << setw(2) << setfill('0') << hours << ":" << setw(2) << setfill('0') << minutes << ":" << setw(2) << setfill('0') << setprecision(0) << seconds;
+		}
+		else if (hours > 0) {
+			oss << hours << ":" << setw(2) << setfill('0') << minutes << ":" << setw(2) << setfill('0') << setprecision(0) << seconds;
+		}
+		else if (minutes > 0) {
+			oss << minutes << ":" << setw(2) << setfill('0') << setprecision(0) << seconds;
+		}
+		else {
+			oss << setw(2) << setfill('0') << setprecision(3) << seconds;
+		}
 	}
 
-	if (m || full)
-	{
-		string minutes = to_string(m);
-		if (minutes.length() == 1)
-			minutes = "0" + minutes;
-		time += minutes + ":";
-	}
-
-	string seconds = to_string(s);
-	if (seconds.length() == 1)
-		seconds = "0" + seconds;
-	time += seconds;
-
-	if (full || (!h && !m))
-		time += "." + to_string(ms);
-
-	return time;
+	return oss.str();
 }
 
 // Fonction qui arrondit un flottant en entier
@@ -493,6 +504,17 @@ void nodes_weighting(long long int* l, const float* weights, const int size)
 {
 	for (int i = 0; i < size; i++)
 	{
+		if (l[i] * weights[i] < 0) {
+			cout << "incoming overflow: " << l[i] << " * " << weights[i] << endl;
+		}
+
+		if (l[i] < 0 || l[i] > INT_MAX) {
+			cout << "negative or big value: " << l[i] << endl;
+		}
+		if (weights[i] < 0 || weights[i] > INT_MAX) {
+			cout << "negative or big weight: " << weights[i] << endl;
+		}
+
 		l[i] *= weights[i];
 
 		if (l[i] < 0) {
