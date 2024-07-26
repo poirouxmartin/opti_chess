@@ -448,7 +448,7 @@ public:
 	//[[nodiscard]] int total_nodes() const;
 
 	// Fonction qui calcule et renvoie la valeur correspondante à la sécurité des rois
-	int get_king_safety();
+	int get_king_safety(float display_factor = 0.0f);
 
 	// Fonction qui dit si une pièce est capturable par l'ennemi (pour les affichages GUI)
 	bool is_capturable(int, int);
@@ -567,7 +567,7 @@ public:
 	// Fonction qui renvoie la valeur des fous en fianchetto
 	[[nodiscard]] int get_fianchetto_value() const;
 
-	// Fonction qui renvoie si la case est controlée par le joueur adverse
+	// Fonction qui renvoie si la case est controlée par un joueur
 	[[nodiscard]] bool is_controlled(int square_i, int square_j, bool player) const;
 
 	// Fonction qui calcule et renvoie la valeur des menaces d'avance de pion
@@ -632,6 +632,30 @@ public:
 
 	// Fonction qui renvoie l'évaluation des pièces isolées
 	[[nodiscard]] int get_isolated_pieces() const;
+
+	// Fonction qui ajuste les valeurs des pièces (malus/bonus), en fonction du type de position
+	[[nodiscard]] int get_updated_piece_values() const;
+
+	// Fonction qui renvoie la nature de la position de manière chiffrée: 0 = fermée, 1 = ouverte
+	[[nodiscard]] float get_position_nature() const;
+
+	// Fonction qui renvoie la probabilité de nulle de la position
+	[[nodiscard]] float get_draw_chance() const;
+
+	// Fonction qui renvoie la valeur des bonus liés aux colonnes ouvertes et semi-ouvertes sur le roi adverse
+	[[nodiscard]] int get_open_files_on_opponent_king(bool color);
+
+	// Fonction qui renvoie la valeur des bonus liés aux diagonales ouvertes et semi-ouvertes sur le roi adverse
+	[[nodiscard]] int get_open_diagonals_on_opponent_king(bool color);
+
+	// Fonction qui renvoie le nombre de cases de retrait pour le roi
+	[[nodiscard]] int get_king_escape_squares(bool color);
+
+	// Fonction qui renvoie une valeur correspondante aux pièces attaquant le roi adverse
+	[[nodiscard]] int get_king_attackers(bool color);
+
+	// Fonction qui renvoie une valeur correspondante aux pièces défendant le roi
+	[[nodiscard]] int get_king_defenders(bool color);
 };
 
 // Fonction qui renvoie si deux positions (en format FEN) sont les mêmes

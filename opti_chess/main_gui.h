@@ -199,7 +199,7 @@ inline int main_ui() {
 				cout << main_GUI._root_exploration_node->_children[i]->_board._positions_history.size() << endl;
 			}*/
 
-			main_GUI.grogros_analysis(1);
+			//main_GUI.grogros_analysis(1);
 			//r1bqr1k1/1pp2p1Q/p3p1B1/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 b - - 6 27 : #-1
 
 			// TEST: r1bqr1k1/1pp2p2/p3p1BQ/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 5 27 : Dh7+ #2
@@ -226,6 +226,9 @@ inline int main_ui() {
 			//eval_network.display_values();
 			//main_GUI._root_exploration_node->_board->evaluate(nullptr, false, &eval_network, false);
 			//cout << "eval : " << main_GUI._root_exploration_node->_board->_evaluation << endl;
+
+			cout << main_GUI._root_exploration_node->_board->get_king_escape_squares(true) << endl;
+			cout << main_GUI._root_exploration_node->_board->get_king_escape_squares(false) << endl;
 		}
 
 		// CTRL-T - Cherche le plateau de chess.com sur l'écran, et lance une partie
@@ -635,8 +638,8 @@ inline int main_ui() {
 					//int supposed_grogros_speed = main_GUI._root_exploration_node->get_avg_nps();
 					float best_move_percentage = main_GUI._root_exploration_node->_nodes == 0 ? 0.05f : static_cast<float>(main_GUI._root_exploration_node->_children[main_GUI._root_exploration_node->get_most_explored_child_move()]->_nodes) / static_cast<float>(main_GUI._root_exploration_node->_nodes);
 					int max_move_time = main_GUI._board._player ?
-						time_to_play_move(main_GUI._time_white, main_GUI._time_black, 0.03f * (1.0f - best_move_percentage)) :
-						time_to_play_move(main_GUI._time_black, main_GUI._time_white, 0.03f * (1.0f - best_move_percentage));
+						time_to_play_move(main_GUI._time_white, main_GUI._time_black, 0.05f * (1.0f - best_move_percentage)) :
+						time_to_play_move(main_GUI._time_black, main_GUI._time_white, 0.05f * (1.0f - best_move_percentage));
 
 					//cout << "best move percentage : " << best_move_percentage << " | max move time : " << max_move_time << " | supposed speed : " << supposed_grogros_speed << " | nodes : " << main_GUI._root_exploration_node->_nodes << " | time spent : " << main_GUI._root_exploration_node->_time_spent << " | avg nps : " << main_GUI._root_exploration_node->get_avg_nps() << endl;	
 
