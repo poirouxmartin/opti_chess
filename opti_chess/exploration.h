@@ -33,6 +33,7 @@ public:
 
 	// Nombre de noeuds
 	int _nodes = 0;
+	//int _nodes = count_children_nodes() + 1;
 
 	// Temps de calcul
 	clock_t _time_spent = 0;
@@ -119,6 +120,12 @@ public:
 
 	// Tentative de quiescence maison
 	void new_grogros_quiescence(Buffer* buffer, Evaluator* eval, float beta, float k_add, int nodes);
+
+	// Fonction qui renvoie la somme des noeuds des fils
+	int count_children_nodes() const;
+
+	// Fonction qui renvoie le nombre de noeuds total
+	int get_total_nodes() const;
 
 	// Fonctions à rajouter: destruction des fils et de soi...
 

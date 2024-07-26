@@ -16,6 +16,7 @@ void Node::add_child(Node* child, Move move) {
 	}
 
 	_children[move] = child;
+	//_nodes += child->_nodes;
 }
 
 // Fonction qui renvoie le nombre de fils
@@ -87,6 +88,9 @@ void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add
 			explore_random_child(buffer, eval, beta, k_add, quiescence_depth, network);
 		}
 
+		if (_nodes - initial_nodes < 0) {
+			cout << "less nodes than before??" << endl;
+		}
 		nodes -= _nodes - initial_nodes;
 	}
 	
@@ -110,6 +114,7 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 
 	if (already_explored) {
 		child = _children[move];
+		_nodes -= child->_nodes; // On enlève le nombre de noeuds de ce fils
 	}
 	else {
 		// Prend une place dans le buffer
@@ -130,12 +135,8 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 		new_board->get_zobrist_key();
 
 		// TEST: 8/2k5/3p4/p2P1p2/P2P1P2/8/3K4/8 w - - 10 6
-		// Ca marche pas forcément, car le coup parent ne sera pas le même, et ça fait tout bugger...
-		// Faire des noeud jumeaux? pas forcément le mieux...
-		// Stocker les parents? et/ou les différents coups par parent?
 		// Quand on update un des noeuds, il faudra potentiellement backpropagate dans toutes les branches parentes...
-
-		// TODO: à la place se stocker le coup joué dans le fils, faire un dictionnaire des fils avec leur coup associé?
+		// Gros problème de noeuds négatifs
 
 		// Si la position est déjà dans la table de transposition
 		if (transposition_table.contains(new_board->_zobrist_key)) {
@@ -143,16 +144,23 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 
 			child = transposition_table._hash_table[new_board->_zobrist_key]._node;
 			
-			//cout << "nodes: " << child->_nodes;
+			cout << "transposition nodes: " << child->_nodes << endl;
+			cout << "parent nodes: " << _nodes << endl;
 
-			_nodes += child->_nodes;
+			//_nodes += child->_nodes;
+
+			//cout << "new transposition nodes: " << _nodes << endl;
 		}
 		else {
 			// Création du noeud fils
 			child = new Node(new_board);
 
 			// Ajoute la position dans la table
-			//transposition_table._hash_table[new_board->_zobrist_key] = ZobristEntry(child);
+			bool transpositions = false;
+			
+			if (transpositions) {
+				transposition_table._hash_table[new_board->_zobrist_key] = ZobristEntry(child);
+			}
 
 			//cout << "normal" << endl;
 		}
@@ -196,18 +204,18 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 	// FIXME optimiser ces cas pour n'en calculer qu'un
 
 	// Si tous les coups ont été explorés, on met à jour l'évaluation du plateau avec le meilleur coup
-	if (children_count() == _board->_got_moves) {
-		int color = _board->get_color();
-		int best_eval = -INT_MAX;
+	//if (children_count() == _board->_got_moves) {
+	//	int color = _board->get_color();
+	//	int best_eval = -INT_MAX;
 
-		for (auto& [move, child] : _children) {
-			if (child->_board->_evaluation * color > best_eval) {
-				best_eval = child->_board->_evaluation * color;
-			}
-		}
+	//	for (auto& [move, child] : _children) {
+	//		if (child->_board->_evaluation * color > best_eval) {
+	//			best_eval = child->_board->_evaluation * color;
+	//		}
+	//	}
 
-		_board->_evaluation = best_eval * color;
-	}
+	//	_board->_evaluation = best_eval * color;
+	//}
 	
 
 	// FIXME: si on a regardé tous les fils, et qu'aucun des coups n'améliore l'évaluation, on fait quoi?
@@ -217,11 +225,18 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 
 	// Augmente le nombre de noeuds
 	//_nodes++;
+	//cout << "main nodes:" << _nodes << ", child nodes:" << child->_nodes << endl;
 	_nodes += child->_nodes;
+	//cout << "total: " << _nodes << endl;
 
 	// Ajoute le fils
 	if (!already_explored) {
+		//cout << "new child" << endl;
 		add_child(child, move);
+	}
+	else {
+		//cout << "ALREADY EXPLORED! should we add nodes here??" << endl;
+		// FIXME: this should be reviewed
 	}
 }
 
@@ -234,6 +249,11 @@ void Node::explore_random_child(Buffer* buffer, Evaluator* eval, float beta, flo
 	
 	//cout << "move: " << _board->move_label(move) << endl;
 
+
+	if (_children[move]->_nodes > _nodes) {
+		cout << "incoming negative nodes!!!" << _children[move]->_nodes << " > " << _nodes << endl;
+		cout << "corresponding position and move: " << _board->to_fen() << ", " << _board->move_label(move) << endl;
+	}
 	_nodes -= _children[move]->_nodes; // On enlève le nombre de noeuds de ce fils
 
 	// On explore ce fils
@@ -290,6 +310,11 @@ Move Node::pick_random_child(const float beta, const float k_add) {
 
 	i = 0;
 	for (auto& [move, child] : _children) {
+		if (_nodes < 0 || child->_nodes < 0)
+			cout << "negative nodes!!!!!!!!!!!!!" << endl;
+		if (_nodes == 0 || child->_nodes == 0) {
+			cout << "0 nodes???" << endl;
+		}
 		pond[i] = static_cast<float>(_nodes) / static_cast<float>(child->_nodes);
 		i++;
 	}
@@ -428,20 +453,24 @@ Move Node::pick_best_uct_child(float alpha) {
 
 // Reset le noeud et ses enfants, et les supprime tous
 void Node::reset() {
+	//cout << "resetting node" << endl;
 	_latest_first_move_explored = -1;
 	_nodes = 0;
 	_board->reset_board();
 	_new_node = true;
 	_time_spent = 0;
 	_fully_explored = false;
-
+	//cout << "resetting children" << endl;
 
 	for (auto& [move, child] : _children) {
 		child->reset();
 		delete child;
 	}
 
+	//cout << "clearing children" << endl;
 	_children.clear();
+
+	//cout << "done" << endl;
 }
 
 // Fonction qui renvoie les variantes d'exploration
@@ -505,7 +534,10 @@ string Node::get_exploration_variants(bool main) {
 
 				variants += "eval: " + _board->evaluation_to_string(child->_board->_evaluation) + " | ";
 				variants += to_string(_board->_moves_count) + (_board->_player ? ". " : "... ") + _board->move_label(move, true) + " " + child->get_exploration_variants(false) + "\n";
-				variants += "N: " + int_to_round_string(child->_nodes) + " (" + int_to_round_string(child->_nodes * 100 / _nodes) + "%) | D: " + int_to_round_string(child->get_main_depth() + 1) + " | T: " + clock_to_string(child->_time_spent) + "s\n\n";
+
+				int nodes = _nodes;
+				int child_nodes = child->_nodes;
+				variants += "N: " + int_to_round_string(child_nodes) + " (" + int_to_round_string(child_nodes * 100 / nodes) + "%) | D: " + int_to_round_string(child->get_main_depth() + 1) + " | T: " + clock_to_string(child->_time_spent, true) + "\n\n";
 			}
 		}
 
@@ -581,7 +613,12 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 	//rnbqkbnr/pp2pppp/2p5/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3
 
 	// On a au moins évalué le plateau du noeud
-	_nodes = 1;
+	if (_nodes > 0) {
+		//cout << "quiescence nodes from already explored:" << _nodes << endl;
+	}
+	else {
+		_nodes = 1;
+	}
 
 	// Temps de calcul
 	const clock_t begin_monte_time = clock();
@@ -899,4 +936,23 @@ void Node::new_grogros_quiescence(Buffer* buffer, Evaluator* eval, float beta, f
 
 	return;
 
+}
+
+// Fonction qui renvoie la somme des noeuds des fils
+int Node::count_children_nodes() const {
+	int sum = 0;
+
+	for (auto& [move, child] : _children) {
+		sum += child->get_total_nodes();
+	}
+
+	cout << "SUM: " << sum << endl;
+
+	return sum;
+}
+
+// Fonction qui renvoie le nombre de noeuds total
+// TODO: à utiliser seulement pour savoir si le buffer est plein
+int Node::get_total_nodes() const {
+	return count_children_nodes() + 1;
 }

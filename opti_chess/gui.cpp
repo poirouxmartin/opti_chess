@@ -210,6 +210,7 @@ bool GUI::reset_pgn()
 {
 	update_date();
 	_pgn = "";
+	_global_pgn = "";
 	_initial_fen = "";
 
 	return  true;
@@ -225,7 +226,7 @@ bool GUI::update_date() {
 	const int month = local_time.tm_mon + 1;
 	const int day = local_time.tm_mday;
 
-	_date = std::to_string(year) + "." + std::to_string(month) + "." + std::to_string(day);
+	_date = to_string(year) + "." + to_string(month) + "." + to_string(day);
 
 	return true;
 }
@@ -834,22 +835,27 @@ bool GUI::play_move_keep(const Move move)
 		_root_exploration_node->_board = &_board;
 	}
 
+	// Si le coup a effectivement été calculé
 	else {
-		// Si le coup a effectivement été calculé
-		// 
-		
 		if (_root_exploration_node->_children.contains(move)) {
+			//cout << "children nodes: " << _root_exploration_node->_children[move]->_nodes << endl;
 
 			for (auto& [m, child] : _root_exploration_node->_children) {
 				if (m != move) {
+					//cout << 0 << endl;
 					child->reset();
+					//cout << 1 << endl;
 					delete child;
 				}
 			}
 
+			//cout << "toto" << endl;
+
 			// Fait un reset du plateau
 			_root_exploration_node->_board->reset_board();
 			_board.reset_board();
+
+			//cout << "tata" << endl;
 
 			// Il faudra supprimer le parent et tous les fils (TODO)
 
@@ -1215,12 +1221,12 @@ void GUI::draw()
 	// Temps des blancs
 	if (!_white_time_text_box.active) {
 		_white_time_text_box.value = _time_white;
-		_white_time_text_box.text = clock_to_string(_white_time_text_box.value, false);
+		_white_time_text_box.text = clock_to_string(_white_time_text_box.value);
 	}
 	update_text_box(_white_time_text_box);
 	if (!_white_time_text_box.active) {
 		_time_white = _white_time_text_box.value;
-		_white_time_text_box.text = clock_to_string(_white_time_text_box.value, false);
+		_white_time_text_box.text = clock_to_string(_white_time_text_box.value);
 	}
 
 	// Position du texte
@@ -1234,12 +1240,12 @@ void GUI::draw()
 	// Temps des noirs
 	if (!_black_time_text_box.active) {
 		_black_time_text_box.value = _time_black;
-		_black_time_text_box.text = clock_to_string(_black_time_text_box.value, false);
+		_black_time_text_box.text = clock_to_string(_black_time_text_box.value);
 	}
 	update_text_box(_black_time_text_box);
 	if (!_black_time_text_box.active) {
 		_time_black = _black_time_text_box.value;
-		_black_time_text_box.text = clock_to_string(_black_time_text_box.value, false);
+		_black_time_text_box.text = clock_to_string(_black_time_text_box.value);
 	}
 
 	// Position du texte
@@ -1297,10 +1303,10 @@ void GUI::draw()
 		}
 		
 		int max_depth = _root_exploration_node->get_main_depth();
-		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\ntime: " + clock_to_string(_root_exploration_node->_time_spent) + "s\ndepth: " + to_string(max_depth) + "\neval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) + eval + "\n" + win_chances + "\nnodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) + " (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 0.01) / 1000.0)) + "N/s)";
+		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\ntime: " + clock_to_string(_root_exploration_node->_time_spent, true) + "\ndepth: " + to_string(max_depth) + "\neval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) + eval + "\n" + win_chances + "\nnodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) + " (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 0.01) / 1000.0)) + "N/s)";
 		
 		// Affichage des paramètres d'analyse de Monte-Carlo
-		slider_text(monte_carlo_text, _board_padding_x + _board_size + _text_size / 2, _text_size, _screen_width - _text_size - _board_padding_x - _board_size, _board_size * 9 / 16, _text_size / 3, &_monte_carlo_slider, _text_color);
+		slider_text(monte_carlo_text, _board_padding_x + _board_size + _text_size / 2, _text_size, _screen_width - _text_size - _board_padding_x - _board_size, _board_size * 9 / 16, _text_size / 4, &_monte_carlo_slider, _text_color);
 
 		// Lignes d'analyse de Monte-Carlo
 		// TODO: on devrait utiliser ça aussi pour éviter de recalculer les autres paramètres
@@ -1351,6 +1357,10 @@ void GUI::load_FEN(const string fen) {
 
 // Fonction qui reset la partie
 void GUI::reset_game() {
+	cout << "*** RESETING GAME ***\n" << endl;
+
+	cout << _global_pgn << endl;
+	cout << _pgn << endl;
 	_board.reset_board();
 	_board.restart();
 	_game_tree.reset();
@@ -1361,7 +1371,7 @@ void GUI::reset_game() {
 
 	PlaySound(main_GUI._game_begin_sound);
 
-	cout << "game reset" << endl;
+	cout << "\n*** GAME RESET DONE ***" << endl;
 }
 
 // Fonction qui compare deux flèches d'analyse de Grogros

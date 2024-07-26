@@ -154,6 +154,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Attaquer la chaîne de pions
 	- Moins de pions = moins de chances de gagner en finale
 	- Tours liées, important
+	- Colonne ouverte/semi-ouverte contre le roi adverse combiné avec diagonale ouverte = grand avantage (+2?)
  
 
 
@@ -341,6 +342,8 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Gros problème de compréhension: r6r/p1p1kp1p/3p3q/2p1P3/6Q1/3B4/PP3P1P/2R2RK1 w - - 1 20 il voit pas la menace des noirs sur la dame et le roi
 -> 2r2k1r/pp2npp1/3p1n2/q3p2p/4P3/2PB1Q2/P1PB1PPP/R4RK1 b - - 1 16 : ici faut faire quelque chose pour que Th7 n'augmente pas l'activité de la tour d'autant. (pour le moment c'est à cause de la condition sur la tour bloquée par le roi dans le roque)
 -> 8/6B1/7p/7b/p7/1k2KPP1/1P6/8 w - - 0 39 : Grogros devrait savoir comment gagner ça quand-même (il a raté...)
+-> Il est relou avec ses Th7 pour se déroquer...
+-> Définir des concepts positionnels actifs et passifs (court terme et long terme), puis leur donner une valeur en fonction de la nature de la position (position ouvrte -> actif, fermée -> passif)
 
 
 ----- Interface utilisateur -----
@@ -448,7 +451,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Ré-afficher un peu mieux les variantes et avec plus de détails (profondeur...)
 -> Affichage du temps dans le PGN
 -> Mettre des flèches pour indiquer les coups de la variante principale?
-
+-> Inclure la proba de draw dans la barre d'éval
 
 
 ----- Grosses implémentations à faire -----
@@ -477,13 +480,25 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> r1b1k1r1/pp1npp1p/1q4p1/2p5/4B3/2P1BN2/Pb1Q1PPP/3R1RK1 w q - 0 16 : juste Tb1??
 -> Auparavant, il prenait plus de temps pour réflechir quand les positions étaient complexes (car il jouait en fonction du nombre de noeuds "quiet")
 -> 2Bk1b1r/1p4pp/p1q2p2/3pn3/3B4/7Q/PP1N1PPP/3bR1K1 w - - 1 21 : Fe6 quand y'a pas les échecs de regardés? Txd1 sinon?
+-> rnbqk1nr/ppp2ppp/3b4/8/3P4/8/PPP1P1PP/RNBQKBNR b KQkq - 0 4: Dh4+??
+-> 8/q1p2kp1/3bp2p/4p3/1pP1P3/rP2RNPP/2Q2PK1/8 w - - 3 31 : Ta2 arrive et c'est foutu si laissé!
+-> 8/6p1/3pp2p/4p1k1/4P3/1P2N1PP/2p2PK1/8 w - - 0 44 : pions passés, faut-il prendre en compte le contrôle sur la case même du pion passé?
+-> Parfois y'a des game reset...
+-> Revoir king safety
 
 URGENT ***
+-> 8/2k5/7R/4K3/8/8/8/8 w - - 14 8 : CRASH!!
+-> FIX KING SAFETY
 -> Evaluer la nature de la position (ouverte/fermée), car ça change tout sur s'il faut jouer actif ou positionnel...
 -> Refaire un nouveau pick random move plus simple?
 -> 5b1r/Npk3pp/pn2b2n/2p1P3/8/3QBN2/P4PPP/5K2 b - - 0 20 : combien de temps il met à voir Fc4?? -> la quiescence ne semble pas fonctionner du tout...
+-> rnb1kbnr/ppp1pppp/2q5/8/8/2N5/PPPP1PPP/R1BQKBNR w KQkq - 2 4 : pareil, Fb5 devrait être trouvé instantanément!!
 -> parfois ça re-explore un coup non fully explored avant de regarder les non-explorés...
 -> 1Q6/8/K7/8/8/4Q3/2k5/8 w - - 3 74 : il crash??
+-> 8/2k5/3p4/p2P1p2/P2P1P2/8/3K4/8 w - - 10 6 : il crash aussi?
+-> Transpositions!! on a des overflows etc.. des trucs louches se produisent
+-> A REGLER: *** Si y'a un problème de nombre de noeuds, c'est que lorsqu'on calcule dans une variante transposée, un seul des parents est mis à jour ***
+-> r1b3rk/pp1nbp1q/2p1p3/8/2BP4/2N1PNR1/PP3P1P/2K2Q2 w - - 1 13 : Th3!! c'est fini... (à cause de la quiescence trop longue il voit pas le coup, car tout n'est pas encore exploré?)
 URGENT ***
 
 -> URGENT: faut-il garder le beta cut-off si on est en échec??? alpha aussi??
@@ -493,12 +508,17 @@ URGENT ***
 -> revoir les autorisations de standpat?
 
 -> EVAL: 
+-> Alignements à terminer absolument... implémenter les fonctions d'évaluations étant en TODO
 -> Attacking power, regarder les cases attaquées plutôt que la position des pièces?
 -> 8/p4k1p/6r1/n7/8/1PP3P1/R4PKP/8 b - - 2 39 : weak squares +160??... Il faut vraiment améliorer ça... quand y'a plus de pions, il voit des cases faibles partout...
--> r4rk1/2qb1p2/1p2p2p/3p2p1/1nPP1n2/1P2RN2/p1BN1PPP/2Q1R1K1 w - - 0 24 : le pion passé est aidé par la tour en a8, il faut le noter!
+-> Pour évaluer les finales etc.., il faut un winnable white, et un winnable black... Tour Cavalier vs Tour = nulle
+-> Pions isolés, pions arriérés: malus si sur colonne ouverte
+-> Pour les pièces isolées, accentuer le malus si elles sont enfermées/attaquées
+-> Re-évaluer les pièces en fonction du type de position (colonnes / diagonales ouvertes / fermées, pions passés...)
+-> Organiser l'affichage de l'évaluation par catégorie. L'afficher en plus fin/petit pour qu'on en voit plus. Montrer aussi les facteurs multiplicatifs
 
 -> r2q4/pp4kp/2p1Qrp1/3pB3/3P4/8/PPP3PP/R5K1 w - - 0 20 : met 4 ans à voir que Tf1 gagne alors que c'est évident... la quiescence prend trop de temps alors il regarde pas tous les coups et reste sur le standpat
--> 1Q6/8/K7/8/8/4Q3/2k5/8 w - - 3 74 : y'a mat en 1, arrête de regarder les coups pourris à 90%!!
+-> 1Q6/8/K7/8/8/4Q3/2k5/8 w - - 3 74 : y'a mat en 1, qu'il arrête de regarder les coups pourris à 90%!!
 -> r7/pp5k/2p2B2/3p2Qp/3P4/8/PPP3PP/6K1 w - - 1 25 : pareil
 -> A cause de la quiescence trop longue qui regarde les coups complexes à fond...
 
@@ -558,8 +578,3 @@ URGENT ***
 -> Reinforcement learning
 -> Prendre en compte d'autres paramètres que les pièces (trait, roques...)
 -> Y'a peu de valeurs négatives dans les évals, est-ce normal?
-
-
------ Table de transposition -----
-
--> Pour GrogrosZero: prendre en compte les transpositions, et les répétitions...
