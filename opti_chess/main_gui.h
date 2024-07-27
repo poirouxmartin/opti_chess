@@ -94,6 +94,9 @@ inline int main_ui() {
 	// Met le PGN à la date du jour
 	main_GUI.update_date();
 
+	// Met à jour le nom de bot de GrogrosZero
+	main_GUI.update_grogros_zero_name();
+
 	//printAttributeSizes(main_GUI._board);
 	//testFunc(main_GUI._board);
 
@@ -540,7 +543,7 @@ inline int main_ui() {
 
 		// CTRL-UP/DOWN - Activation, désactivation de GrogrosZero pour les pièces blanches
 		if (IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && !main_GUI.get_board_orientation()))) {
-			if (main_GUI._white_player.substr(0, 11) == "GrogrosZero")
+			if (main_GUI._white_player == main_GUI._grogros_zero_name)
 			{
 				main_GUI._white_player = "White";
 				main_GUI._white_title = "";
@@ -551,7 +554,7 @@ inline int main_ui() {
 
 			else
 			{
-				main_GUI._white_player = "GrogrosZero";
+				main_GUI._white_player = main_GUI._grogros_zero_name;
 				main_GUI._white_title = "BOT";
 				main_GUI._white_elo = main_GUI._grogros_zero_elo;
 				main_GUI._white_url = "https://images.chesscomfiles.com/uploads/v1/user/284728633.4af59e2f.50x50o.0c8cdf830b69.png";
@@ -561,7 +564,7 @@ inline int main_ui() {
 
 		// CTRL-UP/DOWN - Activation, désactivation de GrogrosZero pour les pièces noires
 		if (IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && !main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && main_GUI.get_board_orientation()))) {
-			if (main_GUI._black_player.substr(0, 11) == "GrogrosZero")
+			if (main_GUI._black_player == main_GUI._grogros_zero_name)
 			{
 				main_GUI._black_player = "Black";
 				main_GUI._black_title = "";
@@ -572,7 +575,7 @@ inline int main_ui() {
 
 			else
 			{
-				main_GUI._black_player = "GrogrosZero";
+				main_GUI._black_player = main_GUI._grogros_zero_name;
 				main_GUI._black_title = "BOT";
 				main_GUI._black_elo = main_GUI._grogros_zero_elo;
 				main_GUI._black_url = "https://images.chesscomfiles.com/uploads/v1/user/284728633.4af59e2f.50x50o.0c8cdf830b69.png";
@@ -623,7 +626,7 @@ inline int main_ui() {
 			// GrogrosZero
 
 			// Quand c'est son tour
-			if ((main_GUI._board._player && main_GUI._white_player.substr(0, 11) == "GrogrosZero") || (!main_GUI._board._player && main_GUI._black_player.substr(0, 11) == "GrogrosZero")) {
+			if ((main_GUI._board._player && main_GUI._white_player == main_GUI._grogros_zero_name) || (!main_GUI._board._player && main_GUI._black_player == main_GUI._grogros_zero_name)) {
 				if (!monte_buffer._init)
 					monte_buffer.init(buffer_size);
 
@@ -709,7 +712,8 @@ inline int main_ui() {
 			}
 
 			// Quand c'est pas son tour
-			if ((!main_GUI._board._player && main_GUI._white_player.substr(0, 12) == "GrogrosZero") || (main_GUI._board._player && main_GUI._black_player.substr(0, 12) == "GrogrosZero")) {
+			// FIXME: il faut améliorer ça...
+			if ((!main_GUI._board._player && main_GUI._white_player == main_GUI._grogros_zero_name) || (main_GUI._board._player && main_GUI._black_player == main_GUI._grogros_zero_name)) {
 				if (!monte_buffer._init)
 					monte_buffer.init(buffer_size);
 				main_GUI.grogros_analysis();

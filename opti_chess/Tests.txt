@@ -368,6 +368,9 @@ r4rk1/pb1nqppp/1pp1p3/3p4/2PP1PP1/4P3/PPQ5/1K1RBBR1 b - - 2 6 : gagnant pour les
 2r2rk1/pb1nq2p/1p2ppp1/3P4/3pPPP1/3B4/PP5Q/1K1RB1R1 w - - 0 11 : f5! gagne
 2r2rk1/pb1n2q1/1p3pp1/3p4/3pP1P1/8/PPB4Q/1K1RB2R b - - 3 14 : gagnant pour les blancs (colonne ouverte + diagonale ouverte sur le roi noir)
 2r2rk1/pb4q1/1p3p2/3p2p1/3RP3/1B2n1BQ/PP6/1K5R b - - 0 18 : :')
+r1bqk2r/1p1p2bp/p5p1/2pnPp2/B3n3/2P1QN2/PP1N1PPP/R1B1K2R w KQkq - 2 12 : Cxe4 gagne stratégiquement
+r1bq1k1r/1p1p2bp/p2N2p1/2p1Pp2/B7/2P1BN2/PP3PPP/R3K2R b KQ - 0 14 : gagnant... les noirs sont paralysés
+1r3k1r/1bqp2bp/pp1N2p1/2p1Pp2/7P/1BP1BN2/PP3PP1/2KRR3 b - - 3 18 : toujours...
 
 
 
