@@ -8,9 +8,9 @@ public:
 
 	// Coefficients des heuristiques
 	float _piece_value = 1.35f;
-	float _piece_mobility = 0.07f;
+	float _piece_mobility = 0.05f;
 	float _piece_positioning = 0.2f;
-	float _bishop_pair = 25.0f;
+	float _bishop_pair = 50.0f;
 	float _castling_rights = 0.0f; // Compté dans la proximité au roque
 	float _player_trait = 25.0f;
 	float _king_safety = 1.0f;
@@ -37,10 +37,10 @@ public:
 	float _isolated_pieces = 1.0f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
-	int _pieces_value_begin[6] = { 67, 335, 340, 460, 1035, 0 };
+	int _pieces_value_begin[6] = { 80, 335, 360, 460, 1035, 0 };
 
 	// Valeurs en fin de partie
-	int _pieces_value_end[6] = { 90, 380, 410, 610, 1070, 0 };
+	int _pieces_value_end[6] = { 90, 350, 410, 610, 1070, 0 };
 
 	// Positionnement des pièces
 

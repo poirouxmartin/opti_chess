@@ -656,6 +656,9 @@ public:
 
 	// Fonction qui renvoie une valeur correspondante aux pièces défendant le roi
 	[[nodiscard]] int get_king_defenders(bool color);
+
+	// Fonction qui renvoie un bonus correspondant au pawn storm sur le roi adverse
+	[[nodiscard]] int get_pawn_storm(bool color);
 };
 
 // Fonction qui renvoie si deux positions (en format FEN) sont les mêmes
