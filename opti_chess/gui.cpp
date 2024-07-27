@@ -72,7 +72,7 @@ bool GUI::new_bind_game() {
 
 	if (orientation) {
 		// Joueur blanc
-		_white_player = "GrogrosZero";
+		_white_player = _grogros_zero_name;
 		_white_title = "BOT";
 		_white_elo = _grogros_zero_elo;
 		_white_url = "https://images.chesscomfiles.com/uploads/v1/user/284728633.4af59e2f.50x50o.0c8cdf830b69.png";
@@ -94,7 +94,7 @@ bool GUI::new_bind_game() {
 		_white_country = "";
 
 		// Joueur noir
-		_black_player = "GrogrosZero";
+		_black_player = _grogros_zero_name;
 		_black_title = "BOT";
 		_black_elo = _grogros_zero_elo;
 		_black_url = "https://images.chesscomfiles.com/uploads/v1/user/284728633.4af59e2f.50x50o.0c8cdf830b69.png";
@@ -1390,4 +1390,23 @@ bool GUI::compare_arrows(const Move m1, const Move m2) const {
 	}
 
 	return true;
+}
+
+// Fonction qui renvoie la date sous le format 'yyyymmdd'
+string GUI::get_date() {
+	const time_t current_time = time(nullptr);
+	tm local_time;
+	localtime_s(&local_time, &current_time);
+
+	const int year = local_time.tm_year + 1900;
+	const int month = local_time.tm_mon + 1;
+	const int day = local_time.tm_mday;
+
+	return to_string(year) + (month < 10 ? "0" : "") + to_string(month) + (day < 10 ? "0" : "") + to_string(day);
+}
+
+// Fonction qui met à jour le nom de bot de GrogrosZero
+void GUI::update_grogros_zero_name() {
+	//_grogros_zero_name = "Gr0_" + get_date();
+	_grogros_zero_name = "Gr0-" + _grogros_zero_version;
 }

@@ -154,6 +154,12 @@ public:
 	// Elo de GrogrosZero
 	string _grogros_zero_elo = "2300";
 
+	// Nom de bot de GrogrosZero
+	string _grogros_zero_name = "GrogrosZero";
+
+	// Version de GrogrosZero
+	string _grogros_zero_version = "1.0";
+
 	// Evaluateur pour l'affichage de l'évaluation
 	Evaluator* _grogros_eval = new Evaluator();
 	//Evaluator* _grogros_eval = new Evaluator(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -541,6 +547,12 @@ public:
 
 	// Fonction qui compare deux flèches d'analyse de Grogros
 	bool compare_arrows(const Move m1, const Move m2) const;
+
+	// Fonction qui renvoie la date sous le format 'yyyymmdd'
+	string get_date();
+
+	// Fonction qui met à jour le nom de bot de GrogrosZero
+	void update_grogros_zero_name();
 
 
 	// TODO

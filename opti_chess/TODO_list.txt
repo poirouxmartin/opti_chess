@@ -471,6 +471,8 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 ----- En cours -----
 
 -> BUGS: 
+-> 2r3k1/6p1/8/5p1p/4nP2/R1BRP3/2P1K2P/1r6 b - - 3 39 : il voit pas Th1+?
+-> 2r3k1/6p1/8/5p1p/4nP2/R1BRPK2/2P4P/7r b - - 5 40 : Txh2??
 -> Après une répétition, Grogros ne joue plus
 -> Revoir les promotions de variantes etc...
 -> Parfois quand on joue 2 fois un même coup dans des variantes différentes, ils ont le même parent... du coup quand on revient en arrière, ça va au mauvais endroit
@@ -480,15 +482,20 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> r1b1k1r1/pp1npp1p/1q4p1/2p5/4B3/2P1BN2/Pb1Q1PPP/3R1RK1 w q - 0 16 : juste Tb1??
 -> Auparavant, il prenait plus de temps pour réflechir quand les positions étaient complexes (car il jouait en fonction du nombre de noeuds "quiet")
 -> 2Bk1b1r/1p4pp/p1q2p2/3pn3/3B4/7Q/PP1N1PPP/3bR1K1 w - - 1 21 : Fe6 quand y'a pas les échecs de regardés? Txd1 sinon?
--> rnbqk1nr/ppp2ppp/3b4/8/3P4/8/PPP1P1PP/RNBQKBNR b KQkq - 0 4: Dh4+??
+-> rnbqk1nr/ppp2ppp/3b4/8/3P4/8/PPP1P1PP/RNBQKBNR b KQkq - 0 4 : Dh4+??
 -> 8/q1p2kp1/3bp2p/4p3/1pP1P3/rP2RNPP/2Q2PK1/8 w - - 3 31 : Ta2 arrive et c'est foutu si laissé!
--> 8/6p1/3pp2p/4p1k1/4P3/1P2N1PP/2p2PK1/8 w - - 0 44 : pions passés, faut-il prendre en compte le contrôle sur la case même du pion passé?
 -> Parfois y'a des game reset...
--> Revoir king safety
 
 URGENT ***
+-> 8/5pk1/6p1/6P1/4K3/PB2P1rp/1PP2r2/3R4 b - - 1 37 : passed pawn -> pourquoi il perd de la valeur quand on le pousse vers h2???
+-> Le nom de Grogros: Gr0-xxx où xxx est la date de la version
 -> 8/2k5/7R/4K3/8/8/8/8 w - - 14 8 : CRASH!!
--> FIX KING SAFETY
+-> 5k2/5p2/6p1/R5Pp/7P/P3PBK1/1r6/5r2 w - - 0 31 : ??? les noirs sont gagnants....
+-> 5k2/R4p2/2B3p1/6Pp/7P/P3P1K1/1PPr4/3r4 w - - 1 27 : plutôt égal
+-> Il donne des pions beaucoup trop facilement...
+-> r1bq1b1r/ppp2kpp/5n2/n7/3Bp3/8/PPPNNPPP/R2Q1RK1 b - - 2 9 : -_- le roi noir n'a pas de soucis là...
+-> r2q4/p1p2k1p/3b4/1p3p2/2P3b1/2Q2N2/P1P1r1PP/3R1R1K w - - 0 19 : c5??????????????????????
+-> 8/2p3p1/2P3P1/3Nb3/8/1k6/8/q1K5 w - - 0 63 : pareil aussi parfois
 -> Evaluer la nature de la position (ouverte/fermée), car ça change tout sur s'il faut jouer actif ou positionnel...
 -> Refaire un nouveau pick random move plus simple?
 -> 5b1r/Npk3pp/pn2b2n/2p1P3/8/3QBN2/P4PPP/5K2 b - - 0 20 : combien de temps il met à voir Fc4?? -> la quiescence ne semble pas fonctionner du tout...
@@ -508,6 +515,7 @@ URGENT ***
 -> revoir les autorisations de standpat?
 
 -> EVAL: 
+-> Redonner de la valeur aux fous. Ils sont meilleurs que les cavaliers en général (notamment quand on a la paire de fous)
 -> Alignements à terminer absolument... implémenter les fonctions d'évaluations étant en TODO
 -> Attacking power, regarder les cases attaquées plutôt que la position des pièces?
 -> 8/p4k1p/6r1/n7/8/1PP3P1/R4PKP/8 b - - 2 39 : weak squares +160??... Il faut vraiment améliorer ça... quand y'a plus de pions, il voit des cases faibles partout...
@@ -516,6 +524,9 @@ URGENT ***
 -> Pour les pièces isolées, accentuer le malus si elles sont enfermées/attaquées
 -> Re-évaluer les pièces en fonction du type de position (colonnes / diagonales ouvertes / fermées, pions passés...)
 -> Organiser l'affichage de l'évaluation par catégorie. L'afficher en plus fin/petit pour qu'on en voit plus. Montrer aussi les facteurs multiplicatifs
+-> 2rqkb1r/pp3p2/2n1p3/3pPnpp/3P4/3QB1PP/PP1N1P1N/R4RK1 b k - 0 14 : pas Th7 stp...
+-> 3rkbnr/pQ2pppp/4q3/2p5/3n4/6PP/PPPP1PB1/RNB2K1R w k - 1 10 : ici c'est les blancs qui sont gagnants...
+-> 6k1/5pp1/5r2/7K/P5PP/2Nr1n2/1P6/8 b - - 0 38 : #1 imparable...
 
 -> r2q4/pp4kp/2p1Qrp1/3pB3/3P4/8/PPP3PP/R5K1 w - - 0 20 : met 4 ans à voir que Tf1 gagne alors que c'est évident... la quiescence prend trop de temps alors il regarde pas tous les coups et reste sur le standpat
 -> 1Q6/8/K7/8/8/4Q3/2k5/8 w - - 3 74 : y'a mat en 1, qu'il arrête de regarder les coups pourris à 90%!!

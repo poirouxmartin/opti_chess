@@ -2950,7 +2950,7 @@ int Board::get_king_safety(float display_factor) {
 	b_king_protection -= king_base_protection;
 
 
-	const float king_protection_factor = 0.25f;
+	const float king_protection_factor = 0.3f;
 
 	w_king_protection *= king_protection_factor;
 	b_king_protection *= king_protection_factor;
@@ -3015,7 +3015,7 @@ int Board::get_king_safety(float display_factor) {
 	// *** OPEN DIAGONALS ***
 	// ------------------
 
-	constexpr int open_diagonals_danger = 2;
+	constexpr int open_diagonals_danger = 1;
 
 	int w_open_diagonals = get_open_diagonals_on_opponent_king(true) * open_diagonals_danger * (1 - _adv);
 	int b_open_diagonals = get_open_diagonals_on_opponent_king(false) * open_diagonals_danger * (1 - _adv);
@@ -3059,7 +3059,7 @@ int Board::get_king_safety(float display_factor) {
 
 	// Potentiel d'attaque de chaque pièce (pion, caval, fou, tour, dame)
 	static constexpr int attack_potentials[6] = { 1, 25, 28, 30, 100, 0 };
-	constexpr int reference_mating_potential = 85; // Matériel minimum pour mater
+	constexpr int reference_mating_potential = 40; // Matériel minimum pour mater (en général)
 	constexpr int reference_potential = 274 - reference_mating_potential; // Si y'a toutes les pièces de base sur l'échiquier
 
 	int w_total_potential = 0;
@@ -3106,13 +3106,36 @@ int Board::get_king_safety(float display_factor) {
 	// Attack/Defense overload
 	const int w_attacking_overload = w_attacking_power - b_defending_power;
 	
-	b_king_weakness = w_mating_potential + w_attacking_overload - b_king_protection + w_open_lines + w_open_diagonals + b_placement_weakness + b_king_overloaded;
 
-	// Affichage de la formule
+	// Faiblesses long terme:
+	// Colonnes/Diagonales ouvertes
+	// Pawn storm (TODO)
+	// Structure de pions autour du roi
+	const int b_long_term_weakness = w_open_lines + w_open_diagonals - b_king_protection;
+
 	if (display_factor != 0.0f) {
-		main_GUI._eval_components += "B WEAKNESS: M: " + to_string(w_mating_potential) + " + A: " + to_string(w_attacking_overload) + " - P: " + to_string(b_king_protection) + " + L: " + to_string(w_open_lines) + " + D: " + to_string(w_open_diagonals) + " + W: " + to_string(b_placement_weakness) + " + O: " + to_string(b_king_overloaded) + "= " + to_string(b_king_weakness) + "\n";
+		main_GUI._eval_components += "B LONG TERM WEAKNESS: L: " + to_string(w_open_lines) + " + D: " + to_string(w_open_diagonals) + " - P: " + to_string(b_king_protection) + "= " + to_string(b_long_term_weakness) + "\n";
 	}
 
+	// Attaque court terme:
+	// Attaque des pièces adverses / Défense des pièces alliées
+	// Overload
+	// Potentiel de mat
+	// Placement du roi
+	const int b_short_term_weakness = max(0, w_mating_potential + w_attacking_overload + b_placement_weakness + b_king_overloaded);
+
+	if (display_factor != 0.0f) {
+		main_GUI._eval_components += "B SHORT TERM WEAKNESS: M: " + to_string(w_mating_potential) + " + A: " + to_string(w_attacking_overload) + " + W: " + to_string(b_placement_weakness) + " + O: " + to_string(b_king_overloaded) + "= " + to_string(b_short_term_weakness) + "\n";
+	}
+
+	//b_king_weakness = w_mating_potential + w_attacking_overload - b_king_protection + w_open_lines + w_open_diagonals + b_placement_weakness + b_king_overloaded;
+
+	//// Affichage de la formule
+	//if (display_factor != 0.0f) {
+	//	main_GUI._eval_components += "B WEAKNESS: M: " + to_string(w_mating_potential) + " + A: " + to_string(w_attacking_overload) + " - P: " + to_string(b_king_protection) + " + L: " + to_string(w_open_lines) + " + D: " + to_string(w_open_diagonals) + " + W: " + to_string(b_placement_weakness) + " + O: " + to_string(b_king_overloaded) + "= " + to_string(b_king_weakness) + "\n";
+	//}
+
+	b_king_weakness = b_long_term_weakness + b_short_term_weakness;
 
 	// Roi blanc (attaque des noirs)
 
@@ -3122,12 +3145,35 @@ int Board::get_king_safety(float display_factor) {
 	// Attack/Defense overload
 	const int b_attacking_overload = b_attacking_power - w_defending_power;
 
-	w_king_weakness = b_mating_potential + b_attacking_overload - w_king_protection + b_open_lines + b_open_diagonals + w_placement_weakness + w_king_overloaded;
+	// Faiblesses long terme:
+	// Colonnes/Diagonales ouvertes
+	// Pawn storm (TODO)
+	// Structure de pions autour du roi
+	const int w_long_term_weakness = b_open_lines + b_open_diagonals - w_king_protection;
 
-	// Affichage de la formule
 	if (display_factor != 0.0f) {
-		main_GUI._eval_components += "W WEAKNESS: M: " + to_string(b_mating_potential) + " + A: " + to_string(b_attacking_overload) + " - P: " + to_string(w_king_protection) + " + L: " + to_string(b_open_lines) + " + D: " + to_string(b_open_diagonals) + " + W: " + to_string(w_placement_weakness) + " + O: " + to_string(w_king_overloaded) + "= " + to_string(w_king_weakness) + "\n";
+		main_GUI._eval_components += "W LONG TERM WEAKNESS: L: " + to_string(b_open_lines) + " + D: " + to_string(b_open_diagonals) + " - P: " + to_string(w_king_protection) + "= " + to_string(w_long_term_weakness) + "\n";
 	}
+
+	// Attaque court terme:
+	// Attaque des pièces adverses / Défense des pièces alliées
+	// Overload
+	// Potentiel de mat
+	// Placement du roi
+	const int w_short_term_weakness = max(0, b_mating_potential + b_attacking_overload + w_placement_weakness + w_king_overloaded);
+
+	if (display_factor != 0.0f) {
+		main_GUI._eval_components += "W SHORT TERM WEAKNESS: M: " + to_string(b_mating_potential) + " + A: " + to_string(b_attacking_overload) + " + W: " + to_string(w_placement_weakness) + " + O: " + to_string(w_king_overloaded) + "= " + to_string(w_short_term_weakness) + "\n";
+	}
+
+	w_king_weakness = w_long_term_weakness + w_short_term_weakness;
+
+	//w_king_weakness = b_mating_potential + b_attacking_overload - w_king_protection + b_open_lines + b_open_diagonals + w_placement_weakness + w_king_overloaded;
+
+	//// Affichage de la formule
+	//if (display_factor != 0.0f) {
+	//	main_GUI._eval_components += "W WEAKNESS: M: " + to_string(b_mating_potential) + " + A: " + to_string(b_attacking_overload) + " - P: " + to_string(w_king_protection) + " + L: " + to_string(b_open_lines) + " + D: " + to_string(b_open_diagonals) + " + W: " + to_string(w_placement_weakness) + " + O: " + to_string(w_king_overloaded) + "= " + to_string(w_king_weakness) + "\n";
+	//}
 
 	// Potentiel d'attaque
 	const float w_attacking_potential = (float)w_total_potential / reference_potential;
@@ -6799,7 +6845,7 @@ void Board::display_positions_history() const
 	//cout << "w_isolated_pieces: " << w_isolated_pieces << endl;
 	//cout << "b_isolated_pieces: " << b_isolated_pieces << endl;
 
-	return b_isolated_pieces - w_isolated_pieces;
+	return (b_isolated_pieces - w_isolated_pieces) * (1 - _adv);
 }
 
 // Fonction qui ajuste les valeurs des pièces (malus/bonus), en fonction du type de position
@@ -7026,4 +7072,15 @@ void Board::display_positions_history() const
 // Fonction qui renvoie une valeur correspondante aux pièces attaquant le roi adverse
 [[nodiscard]] int Board::get_king_attackers(bool color) {
 	// Pour les sliding pieces: regarde simplement sur la ligne/colonne/diagonale: s'il y a un pion qui bloque: est-ce un pion à proximité du roi? sinon: est-ce que il contrôle des cases du roi?
+
+	// TODO
+}
+
+[[nodiscard]] int Board::get_king_defenders(bool color) {
+	// TODO
+}
+
+// Fonction qui renvoie un bonus correspondant au pawn storm sur le roi adverse
+[[nodiscard]] int Board::get_pawn_storm(bool color) {
+	// TDOO
 }
