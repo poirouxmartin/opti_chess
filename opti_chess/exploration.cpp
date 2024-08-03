@@ -663,6 +663,8 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 	// Évalue la position 
 	// FIXME: ça arrive souvent?
 	if (_board->_evaluated) {
+		// FIXME: pourquoi on fait ça déjà??
+
 		//cout << "done" << endl;
 
 		// Position déjà évaluée: on reprend l'évaluation statique du plateau
