@@ -371,6 +371,7 @@ r4rk1/pb1nqppp/1pp1p3/3p4/2PP1PP1/4P3/PPQ5/1K1RBBR1 b - - 2 6 : gagnant pour les
 r1bqk2r/1p1p2bp/p5p1/2pnPp2/B3n3/2P1QN2/PP1N1PPP/R1B1K2R w KQkq - 2 12 : Cxe4 gagne stratégiquement
 r1bq1k1r/1p1p2bp/p2N2p1/2p1Pp2/B7/2P1BN2/PP3PPP/R3K2R b KQ - 0 14 : gagnant... les noirs sont paralysés
 1r3k1r/1bqp2bp/pp1N2p1/2p1Pp2/7P/1BP1BN2/PP3PP1/2KRR3 b - - 3 18 : toujours...
+7r/pQ1pkp2/2n4p/1Kp3p1/8/8/P3PPPP/2q2BNR w - - 2 21 : le roi noir se fait mater
 
 
 
@@ -770,6 +771,9 @@ r1nqr3/pp2bpkp/2p1bNn1/3p2B1/3P4/2PB1Q2/PP3PPP/4RRK1 w - - 5 19 : Txe6!! gagne
 r1nqr3/pp2b1kp/2p1pNn1/3p2B1/3P4/2PB1Q2/PP3PPP/5RK1 w - - 0 20 : Fh6!!
 r1nqr2k/pp2b2p/2p1pNnB/3p4/3P4/2PB1Q2/PP3PPP/5RK1 w - - 2 21 : Cxh7!!
 r5r1/2p1qp2/1p1pn1pk/pP4Rp/2P1PR1P/P4P2/2Q2P1K/B7 w - - 1 11 : Tf6!!
+r2qr1k1/pp1bb1p1/2pp4/5pP1/3B1Pn1/2PB4/PPPQ2P1/2K1R2R w - f6 0 17 : Fb6!! gagne
+Qnb1k2r/p2p1p2/7p/2p3p1/3q4/8/P1K1PPPP/2B2BNR b k - 2 15 : Cc6! gagne
+rn2k2r/p4p2/3p3p/q1pP4/4b1pP/8/P2NQPP1/2R1KB1R b Kkq - 1 18 : Rd8! seul coup qui gagne (et tient aussi)
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---
