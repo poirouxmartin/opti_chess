@@ -2940,12 +2940,12 @@ int Board::get_king_safety(float display_factor) {
 
 	// Il faut compter les cases vides (non-pion) autour de lui
 	// Droits de roque
-	constexpr int castling_rights_protection = 200;
+	constexpr int castling_rights_protection = 250;
 	w_king_protection += (_castling_rights.k_w + _castling_rights.q_w) * castling_rights_protection;
 	b_king_protection += (_castling_rights.k_b + _castling_rights.q_b) * castling_rights_protection;
 
 	// Niveau de protection auquel on peut considérer que le roi est safe
-	const int king_base_protection = 800 * (1 - _adv);
+	const int king_base_protection = 1000 * (1 - _adv);
 	w_king_protection -= king_base_protection;
 	b_king_protection -= king_base_protection;
 
@@ -2996,12 +2996,22 @@ int Board::get_king_safety(float display_factor) {
 	//w_king_weakness += virtual_mobility_danger * get_king_virtual_mobility(true) * (1 - _adv);
 	//b_king_weakness += virtual_mobility_danger * get_king_virtual_mobility(false) * (1 - _adv);
 
+	// ------------------
+	// *** PAWN STORM ***
+	// ------------------
+
+	int w_pawn_storm = get_pawn_storm(true);
+	int b_pawn_storm = get_pawn_storm(false);
+
+	if (display_factor != 0.0f) {
+		main_GUI._eval_components += "Pawn storms: " + to_string(w_pawn_storm) + " / " + to_string(b_pawn_storm) + "\n";
+	}
 
 	// ------------------
 	// *** OPEN LINES ***
 	// ------------------
 
-	constexpr int open_lines_danger = 5;
+	constexpr int open_lines_danger = 6;
 
 	int w_open_lines = get_open_files_on_opponent_king(true) * open_lines_danger * (1 - _adv);
 	int b_open_lines = get_open_files_on_opponent_king(false) * open_lines_danger * (1 - _adv);
@@ -3111,10 +3121,10 @@ int Board::get_king_safety(float display_factor) {
 	// Colonnes/Diagonales ouvertes
 	// Pawn storm (TODO)
 	// Structure de pions autour du roi
-	const int b_long_term_weakness = w_open_lines + w_open_diagonals - b_king_protection;
+	const int b_long_term_weakness = w_pawn_storm + w_open_lines + w_open_diagonals - b_king_protection;
 
 	if (display_factor != 0.0f) {
-		main_GUI._eval_components += "B LONG TERM WEAKNESS: L: " + to_string(w_open_lines) + " + D: " + to_string(w_open_diagonals) + " - P: " + to_string(b_king_protection) + "= " + to_string(b_long_term_weakness) + "\n";
+		main_GUI._eval_components += "B LONG TERM WEAKNESS: S: " + to_string(w_pawn_storm) + " + L: " + to_string(w_open_lines) + " + D: " + to_string(w_open_diagonals) + " - P: " + to_string(b_king_protection) + "= " + to_string(b_long_term_weakness) + "\n";
 	}
 
 	// Attaque court terme:
@@ -3127,13 +3137,6 @@ int Board::get_king_safety(float display_factor) {
 	if (display_factor != 0.0f) {
 		main_GUI._eval_components += "B SHORT TERM WEAKNESS: M: " + to_string(w_mating_potential) + " + A: " + to_string(w_attacking_overload) + " + W: " + to_string(b_placement_weakness) + " + O: " + to_string(b_king_overloaded) + "= " + to_string(b_short_term_weakness) + "\n";
 	}
-
-	//b_king_weakness = w_mating_potential + w_attacking_overload - b_king_protection + w_open_lines + w_open_diagonals + b_placement_weakness + b_king_overloaded;
-
-	//// Affichage de la formule
-	//if (display_factor != 0.0f) {
-	//	main_GUI._eval_components += "B WEAKNESS: M: " + to_string(w_mating_potential) + " + A: " + to_string(w_attacking_overload) + " - P: " + to_string(b_king_protection) + " + L: " + to_string(w_open_lines) + " + D: " + to_string(w_open_diagonals) + " + W: " + to_string(b_placement_weakness) + " + O: " + to_string(b_king_overloaded) + "= " + to_string(b_king_weakness) + "\n";
-	//}
 
 	b_king_weakness = b_long_term_weakness + b_short_term_weakness;
 
@@ -3149,10 +3152,10 @@ int Board::get_king_safety(float display_factor) {
 	// Colonnes/Diagonales ouvertes
 	// Pawn storm (TODO)
 	// Structure de pions autour du roi
-	const int w_long_term_weakness = b_open_lines + b_open_diagonals - w_king_protection;
+	const int w_long_term_weakness = b_pawn_storm + b_open_lines + b_open_diagonals - w_king_protection;
 
 	if (display_factor != 0.0f) {
-		main_GUI._eval_components += "W LONG TERM WEAKNESS: L: " + to_string(b_open_lines) + " + D: " + to_string(b_open_diagonals) + " - P: " + to_string(w_king_protection) + "= " + to_string(w_long_term_weakness) + "\n";
+		main_GUI._eval_components += "W LONG TERM WEAKNESS: S: " + to_string(b_pawn_storm) + " + L: " + to_string(b_open_lines) + " + D: " + to_string(b_open_diagonals) + " - P: " + to_string(w_king_protection) + "= " + to_string(w_long_term_weakness) + "\n";
 	}
 
 	// Attaque court terme:
@@ -4811,11 +4814,11 @@ int Board::get_piece_attack_power(const int i, const int j) const
 
 	// Pion
 	static constexpr int pawn_attacking_power_map[8][8] = {
-	{0, 15, 5, 0, 0, 0, 0, 0},
-	{25, 30, 5, 0, 0, 0, 0, 0},
-	{20, 15, 10, 0, 0, 0, 0, 0},
+	{0, 35, 10, 0, 0, 0, 0, 0},
+	{40, 30, 15, 0, 0, 0, 0, 0},
+	{30, 25, 10, 0, 0, 0, 0, 0},
+	{20, 15, 5, 0, 0, 0, 0, 0},
 	{10, 5, 0, 0, 0, 0, 0, 0},
-	{5, 0, 0, 0, 0, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0, 0}
@@ -7082,5 +7085,32 @@ void Board::display_positions_history() const
 
 // Fonction qui renvoie un bonus correspondant au pawn storm sur le roi adverse
 [[nodiscard]] int Board::get_pawn_storm(bool color) {
-	// TDOO
+	// FIXME: faut-il un bonus si le pion a déjà passé le roi adverse? en soit, cela veut dire que le roi adverse est sur une colonne "ouverte" sans vraiment être ouverte
+
+	// Position du roi
+	update_kings_pos();
+
+	Pos opponent_king_pos = color ? _black_king_pos : _white_king_pos;
+
+	// Bonus en fonction de la distance verticale entre les pions et le roi
+	int bonus[7] = { 100, 125, 90, 70, 45, 15, 0};
+
+	int total_bonus = 0;
+
+	// Regarde sur les trois colonnes adjacentes au roi
+	for (uint_fast8_t j = opponent_king_pos.j - 1; j < opponent_king_pos.j + 1; j++) {
+		if (j < 0 || j > 7) {
+			continue;
+		}
+
+		for (uint_fast8_t i = 0; i < 8; i++) {
+			if (_array[i][j] == (color ? w_pawn : b_pawn)) {
+				//cout << (int)i << ", " << opponent_king_pos.i << endl;
+				//cout << abs(i - opponent_king_pos.i) << endl;
+				total_bonus += bonus[abs(i - opponent_king_pos.i)];
+			}
+		}
+	}
+
+	return total_bonus;
 }
