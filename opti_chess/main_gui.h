@@ -230,8 +230,11 @@ inline int main_ui() {
 			//main_GUI._root_exploration_node->_board->evaluate(nullptr, false, &eval_network, false);
 			//cout << "eval : " << main_GUI._root_exploration_node->_board->_evaluation << endl;
 
-			cout << main_GUI._root_exploration_node->_board->get_king_escape_squares(true) << endl;
-			cout << main_GUI._root_exploration_node->_board->get_king_escape_squares(false) << endl;
+			cout << main_GUI._root_exploration_node->_board->get_king_attackers(true) << endl;
+			cout << main_GUI._root_exploration_node->_board->get_king_attackers(false) << endl;
+			cout << "vs\n";
+			cout << main_GUI._root_exploration_node->_board->get_king_defenders(true) << endl;
+			cout << main_GUI._root_exploration_node->_board->get_king_defenders(false) << endl;
 		}
 
 		// CTRL-T - Cherche le plateau de chess.com sur l'écran, et lance une partie

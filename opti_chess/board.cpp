@@ -2769,8 +2769,8 @@ int Board::get_king_safety(float display_factor) {
 	int b_defending_power = 75;
 
 	// Facteurs multiplicatifs
-	constexpr float piece_attack_factor = 1.2f;
-	constexpr float piece_defense_factor = 1.25f;
+	constexpr float piece_attack_factor = 1.75f;
+	constexpr float piece_defense_factor = 1.0f;
 	constexpr float pawn_protection_factor = 1.5f;
 
 
@@ -2784,22 +2784,28 @@ int Board::get_king_safety(float display_factor) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
 			if (const uint_fast8_t p = _array[i][j]; p > 0) {
 				if (p < 6) {
-					w_attacking_power += static_cast<int>(piece_attack_factor * static_cast<float>(get_piece_attack_power(i, j)));
+					//w_attacking_power += static_cast<int>(piece_attack_factor * static_cast<float>(get_piece_attack_power(i, j)));
 					if (p == 1)
 						w_king_protection += static_cast<int>(pawn_protection_factor * static_cast<float>(get_piece_defense_power(i, j)));
-					else
-						w_defending_power += static_cast<int>(piece_defense_factor * static_cast<float>(get_piece_defense_power(i, j)));
+					//else
+					//	w_defending_power += static_cast<int>(piece_defense_factor * static_cast<float>(get_piece_defense_power(i, j)));
 				}
 				else if (p > 6 && p < 12) {
-					b_attacking_power += static_cast<int>(piece_attack_factor * static_cast<float>(get_piece_attack_power(i, j)));
+					//b_attacking_power += static_cast<int>(piece_attack_factor * static_cast<float>(get_piece_attack_power(i, j)));
 					if (p == 7)
 						b_king_protection += static_cast<int>(pawn_protection_factor * static_cast<float>(get_piece_defense_power(i, j)));
-					else
-						b_defending_power += static_cast<int>(piece_defense_factor * static_cast<float>(get_piece_defense_power(i, j)));
+					//else
+					//	b_defending_power += static_cast<int>(piece_defense_factor * static_cast<float>(get_piece_defense_power(i, j)));
 				}
 			}
 		}
 	}
+
+	w_attacking_power = get_king_attackers(true) * piece_attack_factor;
+	b_attacking_power = get_king_attackers(false) * piece_attack_factor;
+
+	w_defending_power = get_king_defenders(true) * piece_defense_factor;
+	b_defending_power = get_king_defenders(false) * piece_defense_factor;
 
 	if (display_factor != 0.0f) {
 		main_GUI._eval_components += "----------\n";
@@ -7076,11 +7082,295 @@ void Board::display_positions_history() const
 [[nodiscard]] int Board::get_king_attackers(bool color) {
 	// Pour les sliding pieces: regarde simplement sur la ligne/colonne/diagonale: s'il y a un pion qui bloque: est-ce un pion à proximité du roi? sinon: est-ce que il contrôle des cases du roi?
 
+	// FIXME: faut-il compter seulement le nombre de pièces?
+	// Faut-il avoir une valeur différente pour chaque type de pièce?
+	// Faut-il compter en fonction de la distance avec le roi?
+
 	// TODO
+
+
+	// Valeur d'une pièce attaquant le roi adverse
+	constexpr int attacking_value[7] = { 0, 100, 120, 130, 138, 145, 150 };
+
+	// Met à jour la position des rois
+	update_kings_pos();
+
+	// Position du roi
+	Pos king_pos = color ? _black_king_pos : _white_king_pos;
+	Pos opponent_king_pos = color ? _white_king_pos : _black_king_pos;
+
+	// Nombre de contrôles sur le roi
+	int king_attackers = 0;
+
+	// Regarde chaque pièce alliée sur l'échiquier
+	for (uint_fast8_t i = 0; i < 8; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			uint_fast8_t p = _array[i][j];
+
+			uint_fast8_t attacks = 0;
+
+			// Pion
+			if (p == (color ? w_pawn : b_pawn)) {
+
+				// Cases contrôlées par le pion
+				uint_fast8_t di = abs(i + (color ? 1 : -1) - king_pos.i);
+				uint_fast8_t dj1 = abs(j - 1 - king_pos.j);
+				uint_fast8_t dj2 = abs(j + 1 - king_pos.j);
+
+				// Si le pion contrôle une case du roi
+				if (j > 0 && di <= 1 && dj1 <= 1)
+					attacks++;
+
+				if (j < 7 && di <= 1 && dj2 <= 1)
+					attacks++;
+			}
+
+			// Cavalier
+			if (p == (color ? w_knight : b_knight)) {
+				const int knight_moves[8][2] = {{1, 2}, {1, -2}, {-1, 2}, {-1, -2}, {2, 1}, {2, -1}, {-2, 1}, {-2, -1}}; // TODO: à stocker en variable globale
+
+				for (uint_fast8_t m = 0; m < 8; m++) {
+					int new_i = i + knight_moves[m][0];
+					int new_j = j + knight_moves[m][1];
+
+					if (!is_in(new_i, 0, 7) || !is_in(new_j, 0, 7))
+						continue;
+
+					uint_fast8_t di = abs(new_i - king_pos.i);
+					uint_fast8_t dj = abs(new_j - king_pos.j);
+
+					// Si le cavalier contrôle une case du roi
+					if (di <= 1 && dj <= 1)
+						attacks++;
+				}
+			}
+
+			// Pièces à mouvement rectiligne
+			if ((p == (color ? w_rook : b_rook)) || (p == (color ? w_queen : b_queen))) {
+				const int rect_moves[4][2] = { {0, -1}, {-1, 0}, {0, 1}, {1, 0} };
+
+				for (uint_fast8_t m = 0; m < 4; m++) {
+					int mi = rect_moves[m][0];
+					int mj = rect_moves[m][1];
+
+					int new_i = i + mi;
+					int new_j = j + mj;
+
+					while (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
+						uint_fast8_t p2 = _array[new_i][new_j];
+
+						uint_fast8_t di = abs(new_i - king_pos.i);
+						uint_fast8_t dj = abs(new_j - king_pos.j);
+
+						// Si la pièce contrôle une case du roi
+						if (di <= 1 && dj <= 1)
+							attacks++;
+
+						// Si un pion bloque la case
+						if (p2 == w_pawn || p2 == b_pawn)
+							break;
+
+						new_i += mi;
+						new_j += mj;
+					}
+				}
+			}
+
+			// Pièces à mouvement diagonal
+			if ((p == (color ? w_bishop : b_bishop)) || (p == (color ? w_queen : b_queen))) {
+				const int diag_moves[4][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1} };
+
+				for (uint_fast8_t m = 0; m < 4; m++) {
+					int mi = diag_moves[m][0];
+					int mj = diag_moves[m][1];
+
+					int new_i = i + mi;
+					int new_j = j + mj;
+
+					while (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
+						uint_fast8_t p2 = _array[new_i][new_j];
+
+						uint_fast8_t di = abs(new_i - king_pos.i);
+						uint_fast8_t dj = abs(new_j - king_pos.j);
+
+						// Si la pièce contrôle une case du roi
+						if (di <= 1 && dj <= 1)
+							attacks++;
+
+						// Si un pion bloque la case
+						if (p2 == w_pawn || p2 == b_pawn)
+							break;
+
+						new_i += mi;
+						new_j += mj;
+					}
+				}
+			}
+
+			// Roi
+			if (p == (color ? w_king : b_king)) {
+				for (int i = -1; i < 2; i++) {
+					for (int j = -1; j < 2; j++) {
+						int new_i = i + opponent_king_pos.i;
+						int new_j = j + opponent_king_pos.j;
+
+						if (!is_in(new_i, 0, 7) || !is_in(new_j, 0, 7))
+							continue;
+
+						uint_fast8_t di = abs(new_i - king_pos.i);
+						uint_fast8_t dj = abs(new_j - king_pos.j);
+
+						// Si le roi contrôle une case du roi
+						if (di <= 1 && dj <= 1)
+							attacks++;
+					}
+				}
+			}
+
+			if (attacks > 6) {
+				cout << "BUG: too many attacks from a single piece... check get_king_attackers()" << endl;
+			}
+			else {
+				king_attackers += attacking_value[attacks];
+			}
+		}
+	}
+
+	return king_attackers;
 }
 
 [[nodiscard]] int Board::get_king_defenders(bool color) {
-	// TODO
+	// Pour les sliding pieces: regarde simplement sur la ligne/colonne/diagonale: s'il y a un pion qui bloque: est-ce un pion à proximité du roi? sinon: est-ce que il contrôle des cases du roi?
+
+	// Valeur d'une pièce défendant le roi adverse
+	constexpr int defending_value[7] = { 0, 100, 120, 130, 138, 145, 150 };
+
+	// Met à jour la position des rois
+	update_kings_pos();
+
+	// Position du roi
+	Pos king_pos = color ? _white_king_pos : _black_king_pos;
+
+	// Nombre de contrôles sur le roi
+	int king_defenders = 0;
+
+	// Regarde chaque pièce alliée sur l'échiquier
+	for (uint_fast8_t i = 0; i < 8; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			uint_fast8_t p = _array[i][j];
+
+			uint_fast8_t defenses = 0;
+
+			// Pion : TODO à revoir...
+			if (p == (color ? w_pawn : b_pawn)) {
+
+				// Cases contrôlées par le pion
+				uint_fast8_t di = abs(i + (color ? 1 : -1) - king_pos.i);
+				uint_fast8_t dj1 = abs(j - 1 - king_pos.j);
+				uint_fast8_t dj2 = abs(j + 1 - king_pos.j);
+
+				// Si le pion contrôle une case du roi
+				if (j > 0 && di <= 1 && dj1 <= 1)
+					defenses++;
+
+				if (j < 7 && di <= 1 && dj2 <= 1)
+					defenses++;
+			}
+
+			// Cavalier
+			if (p == (color ? w_knight : b_knight)) {
+				const int knight_moves[8][2] = { {1, 2}, {1, -2}, {-1, 2}, {-1, -2}, {2, 1}, {2, -1}, {-2, 1}, {-2, -1} }; // TODO: à stocker en variable globale
+
+				for (uint_fast8_t m = 0; m < 8; m++) {
+					int new_i = i + knight_moves[m][0];
+					int new_j = j + knight_moves[m][1];
+
+					if (!is_in(new_i, 0, 7) || !is_in(new_j, 0, 7))
+						continue;
+
+					uint_fast8_t di = abs(new_i - king_pos.i);
+					uint_fast8_t dj = abs(new_j - king_pos.j);
+
+					// Si le cavalier contrôle une case du roi
+					if (di <= 1 && dj <= 1)
+						defenses++;
+				}
+			}
+
+			// Pièces à mouvement rectiligne
+			if ((p == (color ? w_rook : b_rook)) || (p == (color ? w_queen : b_queen))) {
+				const int rect_moves[4][2] = { {0, -1}, {-1, 0}, {0, 1}, {1, 0} };
+
+				for (uint_fast8_t m = 0; m < 4; m++) {
+					int mi = rect_moves[m][0];
+					int mj = rect_moves[m][1];
+
+					int new_i = i + mi;
+					int new_j = j + mj;
+
+					while (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
+						uint_fast8_t p2 = _array[new_i][new_j];
+
+						uint_fast8_t di = abs(new_i - king_pos.i);
+						uint_fast8_t dj = abs(new_j - king_pos.j);
+
+						// Si la pièce contrôle une case du roi
+						if (di <= 1 && dj <= 1)
+							defenses++;
+
+						// Si une pièce bloque la case
+						if (p2 != none)
+							break;
+
+						// Si 
+
+						new_i += mi;
+						new_j += mj;
+					}
+				}
+			}
+
+			// Pièces à mouvement diagonal
+			if ((p == (color ? w_bishop : b_bishop)) || (p == (color ? w_queen : b_queen))) {
+				const int diag_moves[4][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1} };
+
+				for (uint_fast8_t m = 0; m < 4; m++) {
+					int mi = diag_moves[m][0];
+					int mj = diag_moves[m][1];
+
+					int new_i = i + mi;
+					int new_j = j + mj;
+
+					while (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
+						uint_fast8_t p2 = _array[new_i][new_j];
+
+						uint_fast8_t di = abs(new_i - king_pos.i);
+						uint_fast8_t dj = abs(new_j - king_pos.j);
+
+						// Si la pièce contrôle une case du roi
+						if (di <= 1 && dj <= 1)
+							defenses++;
+
+						// Si un pion bloque la case
+						if (p2 == w_pawn || p2 == b_pawn)
+							break;
+
+						new_i += mi;
+						new_j += mj;
+					}
+				}
+			}
+
+			if (defenses > 6) {
+				cout << "BUG: too many defenses from a single piece... check get_king_defenders()" << endl;
+			}
+			else {
+				king_defenders += defending_value[defenses];
+			}
+		}
+	}
+
+	return king_defenders;
 }
 
 // Fonction qui renvoie un bonus correspondant au pawn storm sur le roi adverse
@@ -7093,7 +7383,7 @@ void Board::display_positions_history() const
 	Pos opponent_king_pos = color ? _black_king_pos : _white_king_pos;
 
 	// Bonus en fonction de la distance verticale entre les pions et le roi
-	int bonus[7] = { 100, 125, 90, 70, 45, 15, 0};
+	int bonus[7] = { 100, 100, 80, 50, 35, 15, 0};
 
 	int total_bonus = 0;
 
@@ -7109,7 +7399,7 @@ void Board::display_positions_history() const
 				//cout << abs(i - opponent_king_pos.i) << endl;
 
 				// S'il n'y a pas de pion adverse qui le bloque
-				if (_array[i + (color ? 1 : -1)][j] != (color ? b_pawn : w_pawn)) {
+				if (_array[i + (color ? 1 : -1)][j] != (color ? b_pawn : w_pawn)) { // En théorie, l'indice ne devrait pas sortir de [|0, 7|] puisque les pions ne peuvent pas se situer sur les lignes extrëmes
 					total_bonus += bonus[abs(i - opponent_king_pos.i)];
 				}
 			}
