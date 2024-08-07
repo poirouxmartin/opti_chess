@@ -7098,7 +7098,7 @@ void Board::display_positions_history() const
 	int total_bonus = 0;
 
 	// Regarde sur les trois colonnes adjacentes au roi
-	for (uint_fast8_t j = opponent_king_pos.j - 1; j < opponent_king_pos.j + 1; j++) {
+	for (uint_fast8_t j = opponent_king_pos.j - 1; j <= opponent_king_pos.j + 1; j++) {
 		if (j < 0 || j > 7) {
 			continue;
 		}
@@ -7107,7 +7107,11 @@ void Board::display_positions_history() const
 			if (_array[i][j] == (color ? w_pawn : b_pawn)) {
 				//cout << (int)i << ", " << opponent_king_pos.i << endl;
 				//cout << abs(i - opponent_king_pos.i) << endl;
-				total_bonus += bonus[abs(i - opponent_king_pos.i)];
+
+				// S'il n'y a pas de pion adverse qui le bloque
+				if (_array[i + (color ? 1 : -1)][j] != (color ? b_pawn : w_pawn)) {
+					total_bonus += bonus[abs(i - opponent_king_pos.i)];
+				}
 			}
 		}
 	}
