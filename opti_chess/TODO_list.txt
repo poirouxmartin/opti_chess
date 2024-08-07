@@ -489,6 +489,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Parfois y'a des game reset...
 
 URGENT ***
+-> r4rk1/2qnbppp/p2pbn2/1p2p3/4P1P1/1NN1BP2/PPPQ3P/1K1R1B1R w - - 1 13 : pourquoi quand on joue h4, ça augmente pas le pawn storm?
 -> Régler les bugs de quiescence
 -> 8/5pk1/6p1/6P1/4K3/PB2P1rp/1PP2r2/3R4 b - - 1 37 : passed pawn -> pourquoi il perd de la valeur quand on le pousse vers h2???
 -> 8/2k5/7R/4K3/8/8/8/8 w - - 14 8 : CRASH!! : y'a des gros bugs... ça met M3, M4, 0... et ça oscille
