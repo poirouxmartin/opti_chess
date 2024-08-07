@@ -489,7 +489,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Parfois y'a des game reset...
 
 URGENT ***
--> r4rk1/2qnbppp/p2pbn2/1p2p3/4P1P1/1NN1BP2/PPPQ3P/1K1R1B1R w - - 1 13 : pourquoi quand on joue h4, ça augmente pas le pawn storm?
 -> Régler les bugs de quiescence
 -> 8/5pk1/6p1/6P1/4K3/PB2P1rp/1PP2r2/3R4 b - - 1 37 : passed pawn -> pourquoi il perd de la valeur quand on le pousse vers h2???
 -> 8/2k5/7R/4K3/8/8/8/8 w - - 14 8 : CRASH!! : y'a des gros bugs... ça met M3, M4, 0... et ça oscille
@@ -522,6 +521,8 @@ URGENT ***
 -> revoir les autorisations de standpat?
 
 -> EVAL: 
+-> Combiner la puissance d'attaque avec le manque de protection? et les autres afaiblissements?
+-> Combiner pièce isolée avec pièce enfermée / attaquée?.. sinon il donne des pions en 1
 -> r1bq1rk1/1ppnbppp/4p3/4P3/pPBP3P/P4N2/2QB1PP1/R3K2R b KQ - 0 14 : ici, il faut regarder le nombre de pièces en attaque pour les blancs: elles participent presque toutes! (même le pion e5)
 -> r1bq1rk1/1pp1bpp1/1n2p2p/4P3/pP1P3P/P2B1N2/2QB1PP1/R3K2R w KQ - 0 16 : Th3 très fort, pour ramener une autre pièce dans l'attaque
 -> r2q1r1k/1ppbbpp1/1n2p2p/4P3/pP1P3P/P2B1NR1/2QB1PP1/R3K3 w Q - 4 18 : Fxh6!! gagne déjà
