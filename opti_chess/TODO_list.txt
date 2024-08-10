@@ -489,6 +489,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Parfois y'a des game reset...
 
 URGENT ***
+-> rnbr2k1/pp4q1/2pb4/6NQ/7R/6P1/PPP2P1P/2KR4 b - - 0 20 : pourquoi A = +495 sur le roi blanc???
 -> Régler les bugs de quiescence
 -> 8/5pk1/6p1/6P1/4K3/PB2P1rp/1PP2r2/3R4 b - - 1 37 : passed pawn -> pourquoi il perd de la valeur quand on le pousse vers h2???
 -> 8/2k5/7R/4K3/8/8/8/8 w - - 14 8 : CRASH!! : y'a des gros bugs... ça met M3, M4, 0... et ça oscille

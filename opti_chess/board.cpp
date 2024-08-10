@@ -2729,11 +2729,14 @@ int Board::get_king_safety(float display_factor) {
 	// r1bq1rk1/ppppnpp1/8/2bNp1PQ/1nB1P3/2P5/PP1P1PP1/R1B1K2R b KQ - 2 3
 	// r1bq1rk1/pp2npp1/2n1p3/2ppP1NQ/3P4/P1P5/2P2PPP/R1B1K2R b KQ - 3 3
 	// r3kb1r/pR2pppp/2p5/3p4/3P2b1/B3RN2/q1P2PPP/3Q2K1 b kq - 1 14 : overload++
+	// r4k1r/pRQ3pp/2p1pp2/3p1b2/3P4/R4N1P/2q2PP1/6K1 b - - 2 20 : mat imparrable
 	// r1b1k2r/p1p2ppp/2p5/8/5P1q/3B1R1P/PBP3P1/Q5K1 w kq - 3 17 : le roi noir est le plus faible
 	// 1r4k1/p2n1pp1/2p1b2p/3p3P/4pQ2/2q1P3/P1P1BPP1/2KR3R w - - 1 23 : c'est mat pour les noirs
 	// rnbr2k1/ppq2p2/2pb1npQ/6N1/7R/3B2P1/PPP2P1P/2KR4 b - - 2 17 : mat pour les blancs
 	// 3rk2r/ppp2ppq/2p1b3/2P5/4P1P1/2P3P1/PPQ1B3/RNB2RK1 w k - 1 7 : quasi égal
 	// 2k2r2/ppp3pp/1bp1b3/8/4Pp1q/1N1B1Pn1/PP3RPP/R2QB1K1 w - - 8 6 : roi blanc pas très safe
+	// 2k2r2/ppp3pp/1bp1b3/8/4Pp1q/1N1B1Pn1/PPQ2RPP/R3B1K1 b - - 9 6 : Dxh2+!! #5
+	// 2k5/ppp3pp/1bp1b2r/8/4Pp2/1N1B1Pn1/PPQ2RP1/R3B1K1 w - - 3 9 : #1 imparable
 	// 8/p7/r3pk2/8/1P2Kp2/P1R2P2/5P2/8 b - - 3 39 : roi blanc pas en danger
 	// 2rk3q/1pp5/p4n2/1P1p1bp1/2PQ1b2/N2p4/P2P2PP/R1B1R2K w - - 0 23 : roi blanc foutu
 	// r1b1k2r/pppp2pp/2n5/4Pp2/8/BB3N2/P1PQ2PP/5K2 b kq - 0 15 : le roi est pas bien en fait
@@ -2769,8 +2772,11 @@ int Board::get_king_safety(float display_factor) {
 	int b_defending_power = 75;
 
 	// Facteurs multiplicatifs
-	constexpr float piece_attack_factor = 1.75f;
+	constexpr float piece_attack_factor = 1.2f;
 	constexpr float piece_defense_factor = 1.0f;
+
+	constexpr float piece_overload_multiplicator = 2.0f; // TODO: à utiliser
+
 	constexpr float pawn_protection_factor = 1.5f;
 
 
@@ -2924,6 +2930,10 @@ int Board::get_king_safety(float display_factor) {
 		}
 	}
 
+	const float overload_factor = 1.5f;
+
+	w_king_overloaded *= overload_factor;
+	b_king_overloaded *= overload_factor;
 
 	// Les surcharges peuvent provoquer des faiblesses sur le roi adverse
 	//w_king_weakness += white_king_overloaded;
@@ -2940,23 +2950,31 @@ int Board::get_king_safety(float display_factor) {
 	// -------------------
 
 	// Protection des bords de l'échiquier
-	constexpr int edge_protection = 0;
-	w_king_protection += (_white_king_pos.i % 7 == 0 + _white_king_pos.j % 7 == 0) * edge_protection;
-	b_king_protection += (_black_king_pos.i % 7 == 0 + _black_king_pos.j % 7 == 0) * edge_protection;
+	//constexpr int edge_protection = 0;
+	//w_king_protection += (_white_king_pos.i % 7 == 0 + _white_king_pos.j % 7 == 0) * edge_protection;
+	//b_king_protection += (_black_king_pos.i % 7 == 0 + _black_king_pos.j % 7 == 0) * edge_protection;
+
+	// BUG: ici quand on fait Rf8, la protection du roi blanc augmente...??
+	// 1r2k2r/p1p1ppbp/n1B2np1/q7/3P1B2/2N1Q2P/PPP2P2/1K1R2R1 b k - 2 16
 
 	// Il faut compter les cases vides (non-pion) autour de lui
 	// Droits de roque
-	constexpr int castling_rights_protection = 250;
-	w_king_protection += (_castling_rights.k_w + _castling_rights.q_w) * castling_rights_protection;
-	b_king_protection += (_castling_rights.k_b + _castling_rights.q_b) * castling_rights_protection;
+	constexpr int castling_rights_protection = 175;
+	constexpr int single_castling_protection = 2;
+
+	const int w_castling_protection = (_castling_rights.k_w || _castling_rights.q_w) * single_castling_protection + (_castling_rights.k_w && _castling_rights.q_w);
+	w_king_protection += w_castling_protection * castling_rights_protection;
+
+	const int b_castling_protection = (_castling_rights.k_b || _castling_rights.q_b) * single_castling_protection + (_castling_rights.k_b && _castling_rights.q_b);
+	b_king_protection += b_castling_protection * castling_rights_protection;
 
 	// Niveau de protection auquel on peut considérer que le roi est safe
-	const int king_base_protection = 1000 * (1 - _adv);
+	const int king_base_protection = 800 * (1 - _adv);
 	w_king_protection -= king_base_protection;
 	b_king_protection -= king_base_protection;
 
 
-	const float king_protection_factor = 0.3f;
+	const float king_protection_factor = 0.5f;
 
 	w_king_protection *= king_protection_factor;
 	b_king_protection *= king_protection_factor;
@@ -3114,13 +3132,19 @@ int Board::get_king_safety(float display_factor) {
 	// *** CALCUL DE LA FAIBLESSE DU ROI ***
 	// -------------------------------------
 
+
+	const float no_escape_multiplier = 3.0f;
+
 	// Roi noir (attaque des blancs)
 
 	// Mating potential
-	const int w_mating_potential = safe_checks.first * safe_check_danger / (1 + b_escape_squares);
+	const int w_mating_potential = (float)(safe_checks.first * safe_check_danger) / (1.0f / no_escape_multiplier + (float)b_escape_squares);
 
 	// Attack/Defense overload
-	const int w_attacking_overload = w_attacking_power - b_defending_power;
+	int w_attacking_overload = w_attacking_power - b_defending_power;
+	if (w_attacking_overload > 0) {
+		w_attacking_overload *= piece_overload_multiplicator;
+	}
 	
 
 	// Faiblesses long terme:
@@ -3149,10 +3173,13 @@ int Board::get_king_safety(float display_factor) {
 	// Roi blanc (attaque des noirs)
 
 	// Mating potential
-	const int b_mating_potential = safe_checks.second * safe_check_danger / (1 + w_escape_squares);
+	const int b_mating_potential = (float)(safe_checks.second * safe_check_danger) / (1.0f / no_escape_multiplier + (float)w_escape_squares);
 
 	// Attack/Defense overload
-	const int b_attacking_overload = b_attacking_power - w_defending_power;
+	int b_attacking_overload = b_attacking_power - w_defending_power;
+	if (b_attacking_overload > 0) {
+		b_attacking_overload *= piece_overload_multiplicator;
+	}
 
 	// Faiblesses long terme:
 	// Colonnes/Diagonales ouvertes
