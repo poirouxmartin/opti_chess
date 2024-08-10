@@ -371,7 +371,8 @@ r4rk1/pb1nqppp/1pp1p3/3p4/2PP1PP1/4P3/PPQ5/1K1RBBR1 b - - 2 6 : gagnant pour les
 r1bqk2r/1p1p2bp/p5p1/2pnPp2/B3n3/2P1QN2/PP1N1PPP/R1B1K2R w KQkq - 2 12 : Cxe4 gagne stratégiquement
 r1bq1k1r/1p1p2bp/p2N2p1/2p1Pp2/B7/2P1BN2/PP3PPP/R3K2R b KQ - 0 14 : gagnant... les noirs sont paralysés
 1r3k1r/1bqp2bp/pp1N2p1/2p1Pp2/7P/1BP1BN2/PP3PP1/2KRR3 b - - 3 18 : toujours...
-7r/pQ1pkp2/2n4p/1Kp3p1/8/8/P3PPPP/2q2BNR w - - 2 21 : le roi noir se fait mater
+7r/pQ1pkp2/2n4p/1Kp3p1/8/8/P3PPPP/2q2BNR w - - 2 21 : le roi blanc se fait mater
+rnb4r/pp2k2p/2p2n2/3p2B1/2Q1N3/8/P1P3PP/6K1 w - - 0 19 : complètement gagnant pour les blancs
 
 
 
