@@ -3658,13 +3658,14 @@ int time_to_play_move(const int t1, int t2, const float k) {
 // Fonction qui calcule la résultante des attaques et des défenses et la renvoie
 float Board::get_attacks_and_defenses() const
 {
+	// TODO: à revoir (pour mieux modéliser les vraies menaces)
 
 	// Tableau des valeurs d'attaques des pièces (0 = pion, 1 = caval, 2 = fou, 3 = tour, 4 = dame, 5 = roi)
 	static constexpr int attacks_array[6][6] = {
 	//   P    N    B     R    Q    K
 		{15,  75,  75, 100, 200,  70}, // P
-		{25,  25,  30,  50, 100,  80}, // N
-		{25,  30,  25,  40,  80,  40}, // B
+		{25,  25,  30,  70, 100,  80}, // N
+		{25,  30,  25,  50,  80,  40}, // B
 		{25,  15,  15,  25,  60,  40}, // R
 		{15,  10,  10,  20,  35,  60}, // Q
 		{10,  10,  10,  15,  20,   0}, // K
@@ -3673,10 +3674,10 @@ float Board::get_attacks_and_defenses() const
 	// Tableau des valeurs de défenses des pièces (0 = pion, 1 = caval, 2 = fou, 3 = tour, 4 = dame, 5 = roi)
 	static constexpr int defenses_array[6][6] = {
 	//   P    N    B     R    Q    K
-		{40,  25,  25,  10,   5,   0}, // P
+		{40,  25,  15,  10,   5,   0}, // P
 		{20,  10,  10,   5,   5,   0}, // N
 		{20,  10,  10,   5,   5,   0}, // B
-		{15,   5,   5,  10,  10,   0}, // R
+		{15,   5,   5,  50,  10,   0}, // R
 		{15,   5,   5,  10,  20,   0}, // Q
 		{10,   5,   5,   5,   5,   0}, // K
 	};
@@ -4025,7 +4026,7 @@ float Board::get_attacks_and_defenses() const
 	int black_attacks_eval = 0;
 
 	// Facteur de défense
-	float defense_factor = 0.10f;
+	float defense_factor = 0.25f;
 
 	for (uint_fast8_t i = 0; i < 8; i++) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
@@ -5349,6 +5350,10 @@ pair<uint_fast8_t, uint_fast8_t> Board::get_safe_checks(Map white_controls, Map 
 				// TODO : à remplacer par 'est-ce que le coup attaque le roi'?
 				if (b_white_check.in_check()) {
 					//white_safe_checks._array[i2][j2] = 1;
+
+					// L'échec peut-il être bloqué par une pièce alliée?
+					//b_white_check.get_moves(); // FIMXE: BOF
+
 					white_safe_checks_nb++;
 				}
 			}
@@ -5391,6 +5396,7 @@ pair<uint_fast8_t, uint_fast8_t> Board::get_safe_checks(Map white_controls, Map 
 				// Joue le coup et regarde s'il fait échec
 				Board b_black_check(b_black);
 				b_black_check.make_index_move(i);
+
 				if (b_black_check.in_check()) {
 					//black_safe_checks._array[i2][j2] = 1;
 					black_safe_checks_nb++;
@@ -5398,8 +5404,6 @@ pair<uint_fast8_t, uint_fast8_t> Board::get_safe_checks(Map white_controls, Map 
 			}
 		}
 	}
-
-
 
 	return { white_safe_checks_nb, black_safe_checks_nb };
 }
@@ -7130,6 +7134,8 @@ void Board::display_positions_history() const
 	// Nombre de contrôles sur le roi
 	int king_attackers = 0;
 
+	//1k1rr3/1pp1q3/pnn1b3/4p3/3pP1p1/PP1P3p/1BPNN2K/R3QR1B b - - 1 46
+
 	// Regarde chaque pièce alliée sur l'échiquier
 	for (uint_fast8_t i = 0; i < 8; i++) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
@@ -7190,6 +7196,10 @@ void Board::display_positions_history() const
 						uint_fast8_t di = abs(new_i - king_pos.i);
 						uint_fast8_t dj = abs(new_j - king_pos.j);
 
+						// La case ne peut pas être attaquée
+						if (p2 == (color ? w_pawn : b_pawn))
+							break;
+
 						// Si la pièce contrôle une case du roi
 						if (di <= 1 && dj <= 1)
 							attacks++;
@@ -7220,6 +7230,10 @@ void Board::display_positions_history() const
 
 						uint_fast8_t di = abs(new_i - king_pos.i);
 						uint_fast8_t dj = abs(new_j - king_pos.j);
+
+						// La case ne peut pas être attaquée
+						if (p2 == (color ? w_pawn : b_pawn))
+							break;
 
 						// Si la pièce contrôle une case du roi
 						if (di <= 1 && dj <= 1)

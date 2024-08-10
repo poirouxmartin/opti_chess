@@ -15,7 +15,7 @@ public:
 	float _player_trait = 25.0f;
 	float _king_safety = 1.0f;
 	float _pawn_structure = 0.4f;
-	float _attacks = 1.0f;
+	float _attacks = 1.5f;
 	float _kings_opposition = 75.0f;
 	float _push = 1.00f;
 	float _rook_open = 0.3f;
