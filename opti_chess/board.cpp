@@ -2745,6 +2745,7 @@ int Board::get_king_safety(float display_factor) {
 	// r1bq1rk1/pp1nbpn1/2p1p3/8/2pP4/2N1PN2/PPQ2P1P/2KR1BR1 b - - 1 6 : gagnant pour les blancs -> roi noir trop faible, colonnes et diagonales ouvertes, pas de pions devant non plus. toutes les pièces peuvent attaquer (les 6), tandis que seules 4 pièces noires peuvent défendre
 	// r1b3kr/pppp3p/2n2Q2/8/5N2/4p3/PPP3PP/6K1 b - - 2 19 : blancs gagnants
 	// r1b3kr/ppp4p/2np1Q2/7N/8/4p3/PPP3PP/6K1 b - - 1 20 : #1 imparable
+	// rnb2bnr/pppp1k1p/8/8/5p2/4BQ2/PqP3PP/RN3RK1 w - - 0 11 : blancs gagnants
 
 	// 8/6PK/5k2/8/8/8/8/8 b - - 0 8
 
@@ -2959,7 +2960,7 @@ int Board::get_king_safety(float display_factor) {
 
 	// Il faut compter les cases vides (non-pion) autour de lui
 	// Droits de roque
-	constexpr int castling_rights_protection = 175;
+	constexpr int castling_rights_protection = 150;
 	constexpr int single_castling_protection = 2;
 
 	const int w_castling_protection = (_castling_rights.k_w || _castling_rights.q_w) * single_castling_protection + (_castling_rights.k_w && _castling_rights.q_w);
@@ -2969,12 +2970,12 @@ int Board::get_king_safety(float display_factor) {
 	b_king_protection += b_castling_protection * castling_rights_protection;
 
 	// Niveau de protection auquel on peut considérer que le roi est safe
-	const int king_base_protection = 800 * (1 - _adv);
+	const int king_base_protection = 700 * (1 - _adv);
 	w_king_protection -= king_base_protection;
 	b_king_protection -= king_base_protection;
 
 
-	const float king_protection_factor = 0.5f;
+	const float king_protection_factor = 0.3f;
 
 	w_king_protection *= king_protection_factor;
 	b_king_protection *= king_protection_factor;
