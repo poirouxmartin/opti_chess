@@ -489,6 +489,10 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Parfois y'a des game reset...
 
 URGENT ***
+-> Safe checks imparrables = beaucoup beaucoup plus puissant (-> x5? x10?)
+-> Ex: r1bq1rk1/2p1ppbp/pn1p3B/1p4Qp/3PP3/2N2P2/PPP3P1/2KR1BN1 b - - 1 12 : mat imparable en 2. rnb1kbnr/ppp1pppp/8/3q4/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3 : 3 façons de bloquer les échecs...
+-> Ajout tours liées
+-> 5r2/2p3pk/pp1b2rp/3Rpq2/2P2P2/1P2B1P1/6QP/3R2K1 b - - 0 27 : beaucoup de choses à revoir dans king safety.. il faut mieux combiner les paramètres... ici les noirs sont gagnants
 -> rnbr2k1/pp4q1/2pb4/6NQ/7R/6P1/PPP2P1P/2KR4 b - - 0 20 : pourquoi A = +495 sur le roi blanc???
 -> Régler les bugs de quiescence
 -> 8/5pk1/6p1/6P1/4K3/PB2P1rp/1PP2r2/3R4 b - - 1 37 : passed pawn -> pourquoi il perd de la valeur quand on le pousse vers h2???
