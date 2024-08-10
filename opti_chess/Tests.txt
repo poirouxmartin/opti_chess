@@ -373,6 +373,7 @@ r1bq1k1r/1p1p2bp/p2N2p1/2p1Pp2/B7/2P1BN2/PP3PPP/R3K2R b KQ - 0 14 : gagnant... l
 1r3k1r/1bqp2bp/pp1N2p1/2p1Pp2/7P/1BP1BN2/PP3PP1/2KRR3 b - - 3 18 : toujours...
 7r/pQ1pkp2/2n4p/1Kp3p1/8/8/P3PPPP/2q2BNR w - - 2 21 : le roi blanc se fait mater
 rnb4r/pp2k2p/2p2n2/3p2B1/2Q1N3/8/P1P3PP/6K1 w - - 0 19 : complètement gagnant pour les blancs
+4B2k/1p4pp/p7/2P5/P2P2n1/B1N2q2/2K5/R7 b - - 1 11 : gagnant pour les blancs
 
 
 
@@ -429,7 +430,7 @@ r4rk1/pnpb2p1/3p3q/1pbP1p1Q/7P/2B2N2/PpB2PP1/4RRK1 w - - 0 1 : Te7 seul coup qui
 r2r1knR/6p1/1p1q2P1/2b3Q1/5pP1/pP2pP1R/7P/1K6 w - - 0 1 : Txg8+ #25
 r2r4/7Q/1p1q2P1/2b3k1/5pP1/pP2pP2/7P/1K6 w - - 19 16 : h4 #10
 5rk1/RP1R4/8/8/8/8/5pr1/5K2 w - - 0 1 : Tf7 gagne
-8/3k4/5P1p/1p1B1P2/2p2n2/8/1P1K3P/8 w - - 0 1 : Fc6 gagne
+8/3k4/5P1p/1p1B1P2/2p2n2/8/1P1K3P/8 w - - 0 1 : Fc6+!! gagne
 r1b2k1N/pppp1B1Q/2n2qp1/4p3/4n3/3P4/PPP2bPP/RNB2K1R b - - 0 1 : Fg1+ #4
 6rk/3PbRp1/6Qp/8/3p4/q2P4/6KP/8 w - - 0 1 : Rh3 draw
 2r3k1/5pp1/4p1P1/p2n4/q2P4/Pp1B1P2/1PrQ2P1/1K1R3R w - - 0 1 : Th8 puis gxf7 gagne
@@ -693,7 +694,7 @@ r2b2kr/1b2np1p/p2q1n1B/8/3p3N/3R4/2Q2PPP/1B2R1K1 w - - 8 25 : Txe7 et c'est fini
 8/1K6/P6p/2b3p1/2N3P1/6kP/8/8 w - - 7 50 : Cb6, interposation gagnante
 3b4/7p/6p1/6N1/8/6k1/6P1/5K2 w - - 14 51 : Cxh7 perd instant...
 nbbrqrk1/pp4pp/7n/4p3/3pP3/1P3N1P/PB3PP1/NB1RQRK1 b - - 0 10 : Txf3!! gagne
-2rq1rk1/p3nppp/bp2pb2/4N3/3P1BQ1/1BPR4/P4PPP/5RK1 w - - 10 17 : Txh3! quasi gagnant
+2rq1rk1/p3nppp/bp2pb2/4N3/3P1BQ1/1BPR4/P4PPP/5RK1 w - - 10 17 : Th3! quasi gagnant
 2rr2k1/p3qpp1/bpn1pb1p/4N2Q/3P1B2/1BP4R/P4PPP/5RK1 w - - 0 19 : Fxh6 gagne
 r4rk1/1q1nbppp/bpn1p3/pBppP1N1/3P4/N1P5/PP3PPP/R1BQR1K1 w - - 10 14 : Cxh7!! suivi de Dh5 et Te3 gagne quasiment
 r4rk1/1q1nbpp1/bpn1p3/pBppP2Q/3P4/N1P5/PP3PPP/R1B1R1K1 w - - 2 16 : Te3 très fort
@@ -752,6 +753,7 @@ rnb3k1/1pp2rpp/7B/3n1p2/1p1Pp3/2N5/1PPQNq2/2KR1BR1 w - - 0 15 : Dg5 gagne
 r1b2rk1/p1q2p1p/2p1pp2/4p3/8/P3QN2/1P3PPP/2RR2K1 w - - 0 19 : Cg5!!
 2k3r1/p5q1/1ppppn2/P3p1rP/2P1P3/2N2B2/1P3PP1/R2Q1RK1 w - - 3 21 : Te1! seul coup qui gagne (perpet sur Dd6)
 r1b3k1/1p2brpp/p7/4p3/q1B1N3/2Q5/2P3PP/3R2K1 w - - 0 22 : Tf1... please
+6k1/1p2brpp/p3B3/4p3/q3N3/2Q5/2P3PP/6K1 w - - 0 25 : Cg5...
 4k3/1R5p/2p1bpp1/pp2p3/4P2P/P1N3P1/1Pq3BK/3R4 b - - 3 28 : Fg4 seule tentative
 2N1k3/7R/2p5/pp2pp2/6bP/q5P1/6BK/4R3 b - - 1 35 : e4 peut tenir
 4k3/R7/2p4P/8/1p3R1K/p5P1/8/1q6 b - - 0 48 : a2 gagne
