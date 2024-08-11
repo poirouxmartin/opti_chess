@@ -558,6 +558,8 @@ public:
 	// Fonction qui renvoie la mobilité virtuelle d'un roi
 	[[nodiscard]] int get_king_virtual_mobility(bool color);
 
+	[[nodiscard]] int get_safe_checks_value(Map white_controls, Map black_controls, bool color);
+
 	// Fonction qui renvoie le nombre d'échecs 'safe' dans la position pour les deux joueurs
 	[[nodiscard]] pair<uint_fast8_t, uint_fast8_t> get_safe_checks(Map white_controls, Map black_controls) const;
 

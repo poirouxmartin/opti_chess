@@ -2729,7 +2729,7 @@ int Board::get_king_safety(float display_factor) {
 	// r1bq1rk1/ppppnpp1/8/2bNp1PQ/1nB1P3/2P5/PP1P1PP1/R1B1K2R b KQ - 2 3
 	// r1bq1rk1/pp2npp1/2n1p3/2ppP1NQ/3P4/P1P5/2P2PPP/R1B1K2R b KQ - 3 3
 	// r3kb1r/pR2pppp/2p5/3p4/3P2b1/B3RN2/q1P2PPP/3Q2K1 b kq - 1 14 : overload++
-	// r4k1r/pRQ3pp/2p1pp2/3p1b2/3P4/R4N1P/2q2PP1/6K1 b - - 2 20 : mat imparrable
+	// r4k1r/pRQ3pp/2p1pp2/3p1b2/3P4/R4N1P/2q2PP1/6K1 b - - 2 20 : mat imparable
 	// r1b1k2r/p1p2ppp/2p5/8/5P1q/3B1R1P/PBP3P1/Q5K1 w kq - 3 17 : le roi noir est le plus faible
 	// 1r4k1/p2n1pp1/2p1b2p/3p3P/4pQ2/2q1P3/P1P1BPP1/2KR3R w - - 1 23 : c'est mat pour les noirs
 	// rnbr2k1/ppq2p2/2pb1npQ/6N1/7R/3B2P1/PPP2P1P/2KR4 b - - 2 17 : mat pour les blancs
@@ -2881,15 +2881,17 @@ int Board::get_king_safety(float display_factor) {
 	// *** ESCAPE SQUARES ***
 	// ----------------------
 
+	// FIXME: faut-il l'utiliser?
+	
 	// Récupère les cases d'échappatoires des rois
-	const uint_fast8_t w_escape_squares = get_king_escape_squares(true);
-	const uint_fast8_t b_escape_squares = get_king_escape_squares(false);
+	//const uint_fast8_t w_escape_squares = get_king_escape_squares(true);
+	//const uint_fast8_t b_escape_squares = get_king_escape_squares(false);
 
 	// TODO: à utiliser
 
-	if (display_factor != 0.0f) {
-		main_GUI._eval_components += "Escape squares: " + to_string(w_escape_squares) + " / " + to_string(b_escape_squares) + "\n";
-	}
+	//if (display_factor != 0.0f) {
+	//	main_GUI._eval_components += "Escape squares: " + to_string(w_escape_squares) + " / " + to_string(b_escape_squares) + "\n";
+	//}
 
 
 	// -----------------
@@ -3068,14 +3070,17 @@ int Board::get_king_safety(float display_factor) {
 	//constexpr int safe_check_weakness = 350;
 	//constexpr float safe_check_attack = 3.0f;
 	//constexpr int safe_check_add = 500;
-	constexpr int safe_check_danger = 250;
+	//constexpr int safe_check_danger = 250;
 
-	pair<uint_fast8_t, uint_fast8_t> safe_checks = get_safe_checks(white_controls_map, black_controls_map);
+	//pair<uint_fast8_t, uint_fast8_t> safe_checks = get_safe_checks(white_controls_map, black_controls_map);
+
+	const int w_safe_checks = get_safe_checks_value(white_controls_map, black_controls_map, true);
+	const int b_safe_checks = get_safe_checks_value(white_controls_map, black_controls_map, false);
 
 	// TODO: à utiliser
 
 	if (display_factor != 0.0f) {
-		main_GUI._eval_components += "Safe checks: " + to_string(safe_checks.first) + " / " + to_string(safe_checks.second) + "\n";
+		main_GUI._eval_components += "Safe checks: " + to_string(w_safe_checks) + " / " + to_string(b_safe_checks) + "\n";
 	}
 
 	// TODO: différencier les échecs qui peuvent être bloqués et ceux qui ne le peuvent pas (grosse différence de danger)
@@ -3139,7 +3144,7 @@ int Board::get_king_safety(float display_factor) {
 	// Roi noir (attaque des blancs)
 
 	// Mating potential
-	const int w_mating_potential = (float)(safe_checks.first * safe_check_danger) / (1.0f / no_escape_multiplier + (float)b_escape_squares);
+	//const int w_mating_potential = (float)(safe_checks.first * safe_check_danger) / (1.0f / no_escape_multiplier + (float)b_escape_squares);
 
 	// Attack/Defense overload
 	int w_attacking_overload = w_attacking_power - b_defending_power;
@@ -3163,10 +3168,10 @@ int Board::get_king_safety(float display_factor) {
 	// Overload
 	// Potentiel de mat
 	// Placement du roi
-	const int b_short_term_weakness = max(0, w_mating_potential + w_attacking_overload + b_placement_weakness + b_king_overloaded);
+	const int b_short_term_weakness = max(0, w_safe_checks + w_attacking_overload + b_placement_weakness + b_king_overloaded);
 
 	if (display_factor != 0.0f) {
-		main_GUI._eval_components += "B SHORT TERM WEAKNESS: M: " + to_string(w_mating_potential) + " + A: " + to_string(w_attacking_overload) + " + W: " + to_string(b_placement_weakness) + " + O: " + to_string(b_king_overloaded) + "= " + to_string(b_short_term_weakness) + "\n";
+		main_GUI._eval_components += "B SHORT TERM WEAKNESS: C: " + to_string(w_safe_checks) + " + A: " + to_string(w_attacking_overload) + " + W: " + to_string(b_placement_weakness) + " + O: " + to_string(b_king_overloaded) + "= " + to_string(b_short_term_weakness) + "\n";
 	}
 
 	b_king_weakness = b_long_term_weakness + b_short_term_weakness;
@@ -3174,7 +3179,7 @@ int Board::get_king_safety(float display_factor) {
 	// Roi blanc (attaque des noirs)
 
 	// Mating potential
-	const int b_mating_potential = (float)(safe_checks.second * safe_check_danger) / (1.0f / no_escape_multiplier + (float)w_escape_squares);
+	//const int b_mating_potential = (float)(safe_checks.second * safe_check_danger) / (1.0f / no_escape_multiplier + (float)w_escape_squares);
 
 	// Attack/Defense overload
 	int b_attacking_overload = b_attacking_power - w_defending_power;
@@ -3197,10 +3202,10 @@ int Board::get_king_safety(float display_factor) {
 	// Overload
 	// Potentiel de mat
 	// Placement du roi
-	const int w_short_term_weakness = max(0, b_mating_potential + b_attacking_overload + w_placement_weakness + w_king_overloaded);
+	const int w_short_term_weakness = max(0, b_safe_checks + b_attacking_overload + w_placement_weakness + w_king_overloaded);
 
 	if (display_factor != 0.0f) {
-		main_GUI._eval_components += "W SHORT TERM WEAKNESS: M: " + to_string(b_mating_potential) + " + A: " + to_string(b_attacking_overload) + " + W: " + to_string(w_placement_weakness) + " + O: " + to_string(w_king_overloaded) + "= " + to_string(w_short_term_weakness) + "\n";
+		main_GUI._eval_components += "W SHORT TERM WEAKNESS: C: " + to_string(b_safe_checks) + " + A: " + to_string(b_attacking_overload) + " + W: " + to_string(w_placement_weakness) + " + O: " + to_string(w_king_overloaded) + "= " + to_string(w_short_term_weakness) + "\n";
 	}
 
 	w_king_weakness = w_long_term_weakness + w_short_term_weakness;
@@ -3419,7 +3424,7 @@ int Board::get_pawn_structure(float display_factor)
 	}
 
 	// Pions isolés
-	constexpr int isolated_pawn = -75;
+	constexpr int isolated_pawn = -100;
 	constexpr float isolated_adv_factor = 0.3f; // En fonction de l'advancement de la partie
 	const float isolated_adv = 1 * (1 + (isolated_adv_factor - 1) * _adv);
 	int isolated_pawns = 0;
@@ -3437,7 +3442,7 @@ int Board::get_pawn_structure(float display_factor)
 	pawn_structure += isolated_pawns;
 
 	// Pions doublés (ou triplés...)
-	constexpr int doubled_pawn = -50;
+	constexpr int doubled_pawn = -75;
 	constexpr float doubled_adv_factor = 0.5f; // En fonction de l'advancement de la partie
 	const float doubled_adv = 1 * (1 + (doubled_adv_factor - 1) * _adv);
 	int doubled_pawns = 0;
@@ -4026,7 +4031,7 @@ float Board::get_attacks_and_defenses() const
 	int black_attacks_eval = 0;
 
 	// Facteur de défense
-	float defense_factor = 0.25f;
+	float defense_factor = 0.2f;
 
 	for (uint_fast8_t i = 0; i < 8; i++) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
@@ -5301,16 +5306,99 @@ int Board::get_king_virtual_mobility(bool color) {
 	return mobility;
 }
 
+int Board::get_safe_checks_value(Map white_controls, Map black_controls, bool color)
+{
+	constexpr int initial_safe_check_value = 400;
+	constexpr float initial_division = 0.5f;
+	constexpr float king_escape_division = 0.5f;
+	constexpr float piece_block_division = 2.0f;
+
+	int safe_checks_value = 0;
+
+	// Position du roi adverse
+	update_kings_pos();
+	const Pos king_pos = color ? _black_king_pos : _white_king_pos;
+
+	// On regarde tous les coups possibles pour le joueur
+	Board b(*this);
+	b._player = !color;
+	if (b.in_check()) // FIXME?
+		return 0;
+
+	b._player = color;
+	b.get_moves(true);
+
+	for (uint_fast8_t i = 0; i < b._got_moves; i++) {
+		
+		// Coup
+		const Move move = b._moves[i];
+
+		// Case de destination du coup
+		const uint_fast8_t i2 = move.i2;
+		const uint_fast8_t j2 = move.j2;
+
+		// Nombres de contrôles de la case de destination par les blancs et les noirs
+		const uint_fast8_t controls_ally = color ? white_controls._array[i2][j2] : black_controls._array[i2][j2];
+		const uint_fast8_t controls_enemy = color ? black_controls._array[i2][j2] : white_controls._array[i2][j2];
+
+		// Si la destination du coup est non controlée par les blancs, ou qu'elle est seulement controllée par le roi blanc et une pièce noire (au moins)
+		// FIXME: pas ouf
+		if (controls_enemy == 0 || (controls_enemy == 1 && controls_ally > 1 && abs(king_pos.i - i2) <= 1 && abs(king_pos.j - j2) <= 1)) {
+
+			// Joue le coup et regarde s'il fait échec
+			Board b_check(b);
+			b_check.make_move(move);
+
+			// TODO : à remplacer par 'est-ce que le coup attaque le roi'?
+			if (b_check.in_check()) {
+				b_check.get_moves(true); // FIMXE: BOF
+
+				// Nombre d'échapatoires pour le roi
+				int king_escapes = 0;
+
+				// Nombre de pièces pouvant bloquer l'échec
+				int piece_blocks = 0;
+
+				for (uint_fast8_t j = 0; j < b_check._got_moves; j++) {
+					// Pièce pouvant empêcher l'échec
+					uint_fast8_t piece = b_check._array[b_check._moves[j].i1][b_check._moves[j].j1];
+
+					// Echapatoire pour le roi
+					if (piece == (color ? b_king : w_king)) {
+						king_escapes++;
+					}
+					else {
+						piece_blocks++;
+					}
+				}
+
+				// Valeur de la division
+				float division = initial_division + king_escapes * king_escape_division + piece_blocks * piece_block_division;
+
+				//cout << "color: " << color << " king_escapes : " << king_escapes << " piece_blocks : " << piece_blocks << " division : " << division << endl;
+
+				// Ajoute la valeur de l'échec safe
+				safe_checks_value += initial_safe_check_value / division;
+			}
+		}
+	}
+
+	return safe_checks_value;
+}
+
 // Fonction qui renvoie le nombre d'échecs 'safe' dans la position pour les deux joueurs
 pair<uint_fast8_t, uint_fast8_t> Board::get_safe_checks(Map white_controls, Map black_controls) const
 {
-
+	// TODO: tout refaire car la fonction est lente
 	// TODO : à revoir -> prendre en compte les clouages pour les échecs safe (la pièce clouée ne contrôle pas vraiment la case...)
+	// Compter moindrement les échecs pouvant être parés
 
 	// Un échec safe est :
 	// - un échec fait sur une case non controlée par l'adversaire
 	// - un échec fait sur une case controlée par le roi adverse, mais aussi controlée par une pièce alliée
 
+
+	constexpr int initial_weight = 100;
 
 
 	// Map des cases ou un échec safe est possible pour les blancs
@@ -5352,7 +5440,7 @@ pair<uint_fast8_t, uint_fast8_t> Board::get_safe_checks(Map white_controls, Map 
 					//white_safe_checks._array[i2][j2] = 1;
 
 					// L'échec peut-il être bloqué par une pièce alliée?
-					//b_white_check.get_moves(); // FIMXE: BOF
+					b_white_check.get_moves(true); // FIMXE: BOF
 
 					white_safe_checks_nb++;
 				}
@@ -6831,7 +6919,7 @@ void Board::display_positions_history() const
 	const float bishop_malus = 5.0f;
 	const float rook_malus = 7.0f;
 	const float queen_malus = 12.0f;
-	const float king_malus = 5.0f;
+	const float king_malus = 15.0f;
 
 	// FIXME: rqb2Q2/3p3p/pBp1p1p1/P3Pp2/1P3P1k/2N5/2P1B1PP/6K1 w - - 5 30 : king malus marche pas?
 
@@ -6849,7 +6937,7 @@ void Board::display_positions_history() const
 				float distance = sqrt(pow(i - w_center_of_mass_i, 2) + pow(j - w_center_of_mass_j, 2));
 
 				// Plus gros malus quand proche du camp advserse
-				distance *= (1 + max(0, (int)i - 3));
+				distance *= (2 + max(0, (int)i - 3));
 
 				// Pénalité
 				float malus = p == w_pawn ? pawn_malus : (p == w_knight ? knight_malus : (p == w_bishop ? bishop_malus : (p == w_rook ? rook_malus : (p == w_queen ? queen_malus : king_malus))));
@@ -6868,7 +6956,7 @@ void Board::display_positions_history() const
 				float distance = sqrt(pow(i - b_center_of_mass_i, 2) + pow(j - b_center_of_mass_j, 2));
 
 				// Plus gros malus quand proche du camp adverse
-				distance *= (1 + max(0, 4 - (int)i));
+				distance *= (2 + max(0, 4 - (int)i));
 
 				// Pénalité
 				float malus = p == b_pawn ? pawn_malus : (p == b_knight ? knight_malus : (p == b_bishop ? bishop_malus : (p == b_rook ? rook_malus : (p == b_queen ? queen_malus : king_malus))));
@@ -7440,8 +7528,9 @@ void Board::display_positions_history() const
 				//cout << (int)i << ", " << opponent_king_pos.i << endl;
 				//cout << abs(i - opponent_king_pos.i) << endl;
 
-				// S'il n'y a pas de pion adverse qui le bloque
-				if (_array[i + (color ? 1 : -1)][j] != (color ? b_pawn : w_pawn)) { // En théorie, l'indice ne devrait pas sortir de [|0, 7|] puisque les pions ne peuvent pas se situer sur les lignes extrëmes
+				// S'il n'y a pas de pièce adverse qui le bloque
+				uint_fast8_t p = _array[i + (color ? 1 : -1)][j];
+				if ((color && p <= w_king) || (!color && (p == none || p >= w_pawn))) { // En théorie, l'indice ne devrait pas sortir de [|0, 7|] puisque les pions ne peuvent pas se situer sur les lignes extrëmes
 					total_bonus += bonus[abs(i - opponent_king_pos.i)];
 				}
 			}
