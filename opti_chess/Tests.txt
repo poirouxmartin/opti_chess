@@ -374,6 +374,7 @@ r1bq1k1r/1p1p2bp/p2N2p1/2p1Pp2/B7/2P1BN2/PP3PPP/R3K2R b KQ - 0 14 : gagnant... l
 7r/pQ1pkp2/2n4p/1Kp3p1/8/8/P3PPPP/2q2BNR w - - 2 21 : le roi blanc se fait mater
 rnb4r/pp2k2p/2p2n2/3p2B1/2Q1N3/8/P1P3PP/6K1 w - - 0 19 : complètement gagnant pour les blancs
 4B2k/1p4pp/p7/2P5/P2P2n1/B1N2q2/2K5/R7 b - - 1 11 : gagnant pour les blancs
+rnb1k1nr/ppp2ppp/8/8/3P4/6P1/PPP1P3/RNBQKBNq w Qkq - 0 7 : les noirs sont gagnants
 
 
 

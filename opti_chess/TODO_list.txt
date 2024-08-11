@@ -471,9 +471,13 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 
 ----- En cours -----
 
--> BUGS: 
+-> BUGS:
+r1bk3r/pp1nq2p/4p3/3pP2Q/3p4/1N1B4/P5PP/R4RK1 w - - 7 22 : il faut jouer Tf7!!
+-> 6k1/ppp2ppp/2n5/5b2/8/P1QBqNbP/1P1N2P1/R4K1R w - - 0 18 : pourquoi +280 en attaque
+-> r1bq1r2/pppp1ppk/2n1p3/3nP1b1/3P3P/8/PPP2PP1/RNBQK2R w KQ - 0 9 : il regarde pas hxg5???
 -> r1bq1rk1/2p1ppbp/pn1p3B/1p5p/3PP3/2N2P2/PPPQ2P1/2KR1BN1 w - - 0 12 : Dg5 c'est mat en 2 imparable.. il met combien de temps à le voir?...
 -> r1bq1rk1/2p1pp1p/pn1p1npQ/1p6/3PP1P1/2N2P2/PPP5/2KR1BNR w - - 2 4 : e5??
+-> rn2k1nr/ppp1ppbp/6p1/8/3Pq1b1/2P1BN1P/PP3PP1/RN1QKB1R b KQkq - 0 7 : il regarde pas Fxf3??
 -> 2r3k1/6p1/8/5p1p/4nP2/R1BRP3/2P1K2P/1r6 b - - 3 39 : il voit pas Th1+?
 -> 2r3k1/6p1/8/5p1p/4nP2/R1BRPK2/2P4P/7r b - - 5 40 : Txh2??
 -> Après une répétition, Grogros ne joue plus
@@ -491,9 +495,10 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> 3r1rk1/1p2p1b1/8/p1pp1p2/P2P4/1PP1P1R1/4Q3/R3KN1q w Q - 0 30 : faut roquer!!!!! -> vis à vis roi/dame => tour/dame
 
 URGENT ***
--> Safe checks imparrables = beaucoup beaucoup plus puissant (-> x5? x10?)
--> Ex: r1bq1rk1/2p1ppbp/pn1p3B/1p4Qp/3PP3/2N2P2/PPP3P1/2KR1BN1 b - - 1 12 : mat imparable en 2. rnb1kbnr/ppp1pppp/8/3q4/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3 : 3 façons de bloquer les échecs...
--> Ajout tours liées
+-> get_safe_check_value() : hypeeeer lent!!!
+-> Vérifier l'algo... à chaque fois y'a des coups qu'il regarde pas, sauf quand on clique dessus, il voit que c'est le meilleur coup...
+-> Elargir la zone d'attaque défense du roi? pion en e5 participe à l'attaque.. le fou c1 aussi...
+-> Ajout tours liées (déjà fait dans attacks/defenses?)
 -> 5r2/2p3pk/pp1b2rp/3Rpq2/2P2P2/1P2B1P1/6QP/3R2K1 b - - 0 27 : beaucoup de choses à revoir dans king safety.. il faut mieux combiner les paramètres... ici les noirs sont gagnants
 -> rnbr2k1/pp4q1/2pb4/6NQ/7R/6P1/PPP2P1P/2KR4 b - - 0 20 : pourquoi A = +495 sur le roi blanc???
 -> Régler les bugs de quiescence
@@ -528,6 +533,9 @@ URGENT ***
 -> revoir les autorisations de standpat?
 
 -> EVAL: 
+-> Quand short term weakness est négatif, garder une valeur négative pour compenser un déficit de protection long terme?? Sinon, il rajoute jamais de pièce en attaque si le roi en face n'est pas suffisament faible
+-> r1bk3r/pp1nq2p/4p3/3pP2Q/3p4/1N1B4/P5PP/R4RK1 w - - 7 22 : ici par exemple, il devrait jouer Tf7!! pour gagner
+-> Rajouter les unsafe checks: r3r1k1/p1p2ppp/2p5/2b1P3/2Pq2b1/2N3Q1/PP3nPP/R1B1KBR1 w Q - 1 15 ici ça donnerait beaucoup de poids à l'attaque des noirs
 -> Combiner la puissance d'attaque avec le manque de protection? et les autres afaiblissements?
 -> Combiner pièce isolée avec pièce enfermée / attaquée?.. sinon il donne des pions en 1
 -> r1bq1rk1/1ppnbppp/4p3/4P3/pPBP3P/P4N2/2QB1PP1/R3K2R b KQ - 0 14 : ici, il faut regarder le nombre de pièces en attaque pour les blancs: elles participent presque toutes! (même le pion e5)
@@ -535,8 +543,7 @@ URGENT ***
 -> r2q1r1k/1ppbbpp1/1n2p2p/4P3/pP1P3P/P2B1NR1/2QB1PP1/R3K3 w Q - 4 18 : Fxh6!! gagne déjà
 -> r1bq1rk1/1pp3p1/1n3b1B/4p3/pP1P2R1/P2B1N2/2Q2PP1/R3K3 w Q - 0 21 : Txg7!! gagne (il faut un peu de calcul quand-même)
 -> Redonner de la valeur aux fous. Ils sont meilleurs que les cavaliers en général (notamment quand on a la paire de fous)
--> Alignements à terminer absolument... implémenter les fonctions d'évaluations étant en TODO
--> Attacking power, regarder les cases attaquées plutôt que la position des pièces?
+-> IMPORTANT: Alignements à terminer absolument... implémenter les fonctions d'évaluations étant en TODO
 -> 8/p4k1p/6r1/n7/8/1PP3P1/R4PKP/8 b - - 2 39 : weak squares +160??... Il faut vraiment améliorer ça... quand y'a plus de pions, il voit des cases faibles partout...
 -> Pour évaluer les finales etc.., il faut un winnable white, et un winnable black... Tour Cavalier vs Tour = nulle
 -> Pions isolés, pions arriérés: malus si sur colonne ouverte
