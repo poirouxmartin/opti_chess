@@ -533,8 +533,7 @@ URGENT ***
 -> revoir les autorisations de standpat?
 
 -> EVAL: 
--> Quand short term weakness est négatif, garder une valeur négative pour compenser un déficit de protection long terme?? Sinon, il rajoute jamais de pièce en attaque si le roi en face n'est pas suffisament faible
--> r1bk3r/pp1nq2p/4p3/3pP2Q/3p4/1N1B4/P5PP/R4RK1 w - - 7 22 : ici par exemple, il devrait jouer Tf7!! pour gagner
+-> Réduire l'attaque lorsque négative? Sinon ça donne un trop gros bonus de défense, et il peut pousser des pions devant son roi pour rien
 -> Rajouter les unsafe checks: r3r1k1/p1p2ppp/2p5/2b1P3/2Pq2b1/2N3Q1/PP3nPP/R1B1KBR1 w Q - 1 15 ici ça donnerait beaucoup de poids à l'attaque des noirs
 -> Combiner la puissance d'attaque avec le manque de protection? et les autres afaiblissements?
 -> Combiner pièce isolée avec pièce enfermée / attaquée?.. sinon il donne des pions en 1

@@ -2957,12 +2957,9 @@ int Board::get_king_safety(float display_factor) {
 	//w_king_protection += (_white_king_pos.i % 7 == 0 + _white_king_pos.j % 7 == 0) * edge_protection;
 	//b_king_protection += (_black_king_pos.i % 7 == 0 + _black_king_pos.j % 7 == 0) * edge_protection;
 
-	// BUG: ici quand on fait Rf8, la protection du roi blanc augmente...??
-	// 1r2k2r/p1p1ppbp/n1B2np1/q7/3P1B2/2N1Q2P/PPP2P2/1K1R2R1 b k - 2 16
-
 	// Il faut compter les cases vides (non-pion) autour de lui
 	// Droits de roque
-	constexpr int castling_rights_protection = 150;
+	constexpr int castling_rights_protection = 200;
 	constexpr int single_castling_protection = 2;
 
 	const int w_castling_protection = (_castling_rights.k_w || _castling_rights.q_w) * single_castling_protection + (_castling_rights.k_w && _castling_rights.q_w);
@@ -2972,12 +2969,12 @@ int Board::get_king_safety(float display_factor) {
 	b_king_protection += b_castling_protection * castling_rights_protection;
 
 	// Niveau de protection auquel on peut considérer que le roi est safe
-	const int king_base_protection = 700 * (1 - _adv);
+	const int king_base_protection = 1000 * (1 - _adv);
 	w_king_protection -= king_base_protection;
 	b_king_protection -= king_base_protection;
 
 
-	const float king_protection_factor = 0.3f;
+	const float king_protection_factor = 0.5f;
 
 	w_king_protection *= king_protection_factor;
 	b_king_protection *= king_protection_factor;
@@ -3139,7 +3136,12 @@ int Board::get_king_safety(float display_factor) {
 	// -------------------------------------
 
 
-	const float no_escape_multiplier = 3.0f;
+	// Facteur multiplicatif en cas de faiblesse négative (pour compenser le court/long terme)
+	const float negative_long_term_factor = 1.0f;
+	const float negative_short_term_factor = 0.3f;
+
+
+	//const float no_escape_multiplier = 3.0f;
 
 	// Roi noir (attaque des blancs)
 
@@ -3157,7 +3159,10 @@ int Board::get_king_safety(float display_factor) {
 	// Colonnes/Diagonales ouvertes
 	// Pawn storm (TODO)
 	// Structure de pions autour du roi
-	const int b_long_term_weakness = w_pawn_storm + w_open_lines + w_open_diagonals - b_king_protection;
+	int b_long_term_weakness = w_pawn_storm + w_open_lines + w_open_diagonals - b_king_protection;
+	if (b_long_term_weakness < 0) {
+		b_long_term_weakness *= negative_long_term_factor;
+	}
 
 	if (display_factor != 0.0f) {
 		main_GUI._eval_components += "B LONG TERM WEAKNESS: S: " + to_string(w_pawn_storm) + " + L: " + to_string(w_open_lines) + " + D: " + to_string(w_open_diagonals) + " - P: " + to_string(b_king_protection) + "= " + to_string(b_long_term_weakness) + "\n";
@@ -3168,7 +3173,10 @@ int Board::get_king_safety(float display_factor) {
 	// Overload
 	// Potentiel de mat
 	// Placement du roi
-	const int b_short_term_weakness = max(0, w_safe_checks + w_attacking_overload + b_placement_weakness + b_king_overloaded);
+	int b_short_term_weakness = w_safe_checks + w_attacking_overload + b_placement_weakness + b_king_overloaded;
+	if (b_short_term_weakness < 0) {
+		b_short_term_weakness *= negative_short_term_factor;
+	}
 
 	if (display_factor != 0.0f) {
 		main_GUI._eval_components += "B SHORT TERM WEAKNESS: C: " + to_string(w_safe_checks) + " + A: " + to_string(w_attacking_overload) + " + W: " + to_string(b_placement_weakness) + " + O: " + to_string(b_king_overloaded) + "= " + to_string(b_short_term_weakness) + "\n";
@@ -3191,7 +3199,10 @@ int Board::get_king_safety(float display_factor) {
 	// Colonnes/Diagonales ouvertes
 	// Pawn storm (TODO)
 	// Structure de pions autour du roi
-	const int w_long_term_weakness = b_pawn_storm + b_open_lines + b_open_diagonals - w_king_protection;
+	int w_long_term_weakness = b_pawn_storm + b_open_lines + b_open_diagonals - w_king_protection;
+	if (w_long_term_weakness < 0) {
+		w_long_term_weakness *= negative_long_term_factor;
+	}
 
 	if (display_factor != 0.0f) {
 		main_GUI._eval_components += "W LONG TERM WEAKNESS: S: " + to_string(b_pawn_storm) + " + L: " + to_string(b_open_lines) + " + D: " + to_string(b_open_diagonals) + " - P: " + to_string(w_king_protection) + "= " + to_string(w_long_term_weakness) + "\n";
@@ -3202,7 +3213,10 @@ int Board::get_king_safety(float display_factor) {
 	// Overload
 	// Potentiel de mat
 	// Placement du roi
-	const int w_short_term_weakness = max(0, b_safe_checks + b_attacking_overload + w_placement_weakness + w_king_overloaded);
+	int w_short_term_weakness = b_safe_checks + b_attacking_overload + w_placement_weakness + w_king_overloaded;
+	if (w_short_term_weakness < 0) {
+		w_short_term_weakness *= negative_short_term_factor;
+	}
 
 	if (display_factor != 0.0f) {
 		main_GUI._eval_components += "W SHORT TERM WEAKNESS: C: " + to_string(b_safe_checks) + " + A: " + to_string(b_attacking_overload) + " + W: " + to_string(w_placement_weakness) + " + O: " + to_string(w_king_overloaded) + "= " + to_string(w_short_term_weakness) + "\n";
