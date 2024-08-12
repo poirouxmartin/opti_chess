@@ -472,6 +472,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 ----- En cours -----
 
 -> BUGS:
+2k1r1nr/pb5p/1pp1p3/5pB1/8/P4B2/1qP1QPPP/3R1RK1 w - - 0 18 : il a vu que Dc4 était meilleur, puis a joué Td6.........
 r1bk3r/pp1nq2p/4p3/3pP2Q/3p4/1N1B4/P5PP/R4RK1 w - - 7 22 : il faut jouer Tf7!!
 -> 6k1/ppp2ppp/2n5/5b2/8/P1QBqNbP/1P1N2P1/R4K1R w - - 0 18 : pourquoi +280 en attaque
 -> r1bq1r2/pppp1ppk/2n1p3/3nP1b1/3P3P/8/PPP2PP1/RNBQK2R w KQ - 0 9 : il regarde pas hxg5???
@@ -533,6 +534,7 @@ URGENT ***
 -> revoir les autorisations de standpat?
 
 -> EVAL: 
+-> r1bq1r1k/1pp3p1/1n2pb1p/8/pP1P3P/P2B1NR1/2QB1PP1/R3K3 w Q - 2 19 : +2 à cause d'un overload sur h7, alors que ça menace rien...
 -> Réduire l'attaque lorsque négative? Sinon ça donne un trop gros bonus de défense, et il peut pousser des pions devant son roi pour rien
 -> Rajouter les unsafe checks: r3r1k1/p1p2ppp/2p5/2b1P3/2Pq2b1/2N3Q1/PP3nPP/R1B1KBR1 w Q - 1 15 ici ça donnerait beaucoup de poids à l'attaque des noirs
 -> Combiner la puissance d'attaque avec le manque de protection? et les autres afaiblissements?
