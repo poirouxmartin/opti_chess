@@ -2685,7 +2685,7 @@ int Board::get_king_safety(float display_factor) {
 	// - Colonnes ouvrtes/semi-ouvertes contre le roi adverse
 	// - Diagonales ouvertes/semi-ouvertes contre le roi adverse
 	// - Ouverture de la position? TODO
-	// - Pawn storm: TODO
+	// - Pawn storm
 	// - Position du roi
 	// - Avancement de la partie / pièces restantes... (difficile à prendre en compte de manière juste)
 	// - Contre-jeu au centre?
@@ -2769,11 +2769,13 @@ int Board::get_king_safety(float display_factor) {
 	int b_attacking_power = 0;
 
 	// Puissance de défense (on met de base une valeur, car selon Kasparov : il faut du surnombre pour attaquer - constante)
-	int w_defending_power = 75;
-	int b_defending_power = 75;
+	//int w_defending_power = 75;
+	//int b_defending_power = 75;
+	int w_defending_power = 0;
+	int b_defending_power = 0;
 
 	// Facteurs multiplicatifs
-	constexpr float piece_attack_factor = 1.2f;
+	constexpr float piece_attack_factor = 1.25f;
 	constexpr float piece_defense_factor = 1.0f;
 
 	constexpr float piece_overload_multiplicator = 2.0f; // TODO: à utiliser
@@ -7220,11 +7222,17 @@ void Board::display_positions_history() const
 	// Faut-il avoir une valeur différente pour chaque type de pièce?
 	// Faut-il compter en fonction de la distance avec le roi?
 
-	// TODO
+	// TODO: prendre en compte distance 2??
 
 
 	// Valeur d'une pièce attaquant le roi adverse
 	constexpr int attacking_value[7] = { 0, 100, 120, 130, 138, 145, 150 };
+
+	// Valeur d'attaque d'une pièce attaquant la couronne lointaine du roi
+	constexpr int semi_attack_value = 50;
+
+	// Facteur d'attaque en fonction de la distance au roi
+
 
 	// Met à jour la position des rois
 	update_kings_pos();
@@ -7244,6 +7252,7 @@ void Board::display_positions_history() const
 			uint_fast8_t p = _array[i][j];
 
 			uint_fast8_t attacks = 0;
+			uint_fast8_t semi_attacks = 0;
 
 			// Pion
 			if (p == (color ? w_pawn : b_pawn)) {
@@ -7254,11 +7263,19 @@ void Board::display_positions_history() const
 				uint_fast8_t dj2 = abs(j + 1 - king_pos.j);
 
 				// Si le pion contrôle une case du roi
-				if (j > 0 && di <= 1 && dj1 <= 1)
-					attacks++;
+				if (j > 0 && di <= 2 && dj1 <= 2) {
+					semi_attacks++;
+					if (di <= 1 && dj1 <= 1) {
+						attacks++;
+					}
+				}
 
-				if (j < 7 && di <= 1 && dj2 <= 1)
-					attacks++;
+				if (j < 7 && di <= 2 && dj2 <= 2) {
+					semi_attacks++;
+					if (di <= 1 && dj2 <= 1) {
+						attacks++;
+					}
+				}
 			}
 
 			// Cavalier
@@ -7276,8 +7293,12 @@ void Board::display_positions_history() const
 					uint_fast8_t dj = abs(new_j - king_pos.j);
 
 					// Si le cavalier contrôle une case du roi
-					if (di <= 1 && dj <= 1)
-						attacks++;
+					if (di <= 2 && dj <= 2) {
+						semi_attacks++;
+						if (di <= 1 && dj <= 1) {
+							attacks++;
+						}
+					}
 				}
 			}
 
@@ -7303,8 +7324,12 @@ void Board::display_positions_history() const
 							break;
 
 						// Si la pièce contrôle une case du roi
-						if (di <= 1 && dj <= 1)
-							attacks++;
+						if (di <= 2 && dj <= 2) {
+							semi_attacks++;
+							if (di <= 1 && dj <= 1) {
+								attacks++;
+							}
+						}
 
 						// Si un pion bloque la case
 						if (p2 == w_pawn || p2 == b_pawn)
@@ -7338,8 +7363,12 @@ void Board::display_positions_history() const
 							break;
 
 						// Si la pièce contrôle une case du roi
-						if (di <= 1 && dj <= 1)
-							attacks++;
+						if (di <= 2 && dj <= 2) {
+							semi_attacks++;
+							if (di <= 1 && dj <= 1) {
+								attacks++;
+							}
+						}
 
 						// Si un pion bloque la case
 						if (p2 == w_pawn || p2 == b_pawn)
@@ -7365,8 +7394,12 @@ void Board::display_positions_history() const
 						uint_fast8_t dj = abs(new_j - king_pos.j);
 
 						// Si le roi contrôle une case du roi
-						if (di <= 1 && dj <= 1)
-							attacks++;
+						if (di <= 2 && dj <= 2) {
+							semi_attacks++;
+							if (di <= 1 && dj <= 1) {
+								attacks++;
+							}
+						}
 					}
 				}
 			}
@@ -7375,7 +7408,12 @@ void Board::display_positions_history() const
 				cout << "BUG: too many attacks from a single piece... check get_king_attackers()" << endl;
 			}
 			else {
-				king_attackers += attacking_value[attacks];
+				if (attacks > 0) {
+					king_attackers += attacking_value[attacks];
+				}
+				else if (semi_attacks > 0) { // TODO: à améliorer en prenant en compte le nombre de semi-attaques?
+					king_attackers += semi_attack_value;
+				}
 			}
 		}
 	}
@@ -7388,6 +7426,9 @@ void Board::display_positions_history() const
 
 	// Valeur d'une pièce défendant le roi adverse
 	constexpr int defending_value[7] = { 0, 100, 120, 130, 138, 145, 150 };
+
+	// Valeur de défense d'une pièce défendant la couronne lointaine du roi
+	constexpr int semi_defense_value = 50;
 
 	// Met à jour la position des rois
 	update_kings_pos();
@@ -7404,6 +7445,7 @@ void Board::display_positions_history() const
 			uint_fast8_t p = _array[i][j];
 
 			uint_fast8_t defenses = 0;
+			uint_fast8_t semi_defenses = 0;
 
 			// Pion : TODO à revoir...
 			if (p == (color ? w_pawn : b_pawn)) {
@@ -7414,11 +7456,19 @@ void Board::display_positions_history() const
 				uint_fast8_t dj2 = abs(j + 1 - king_pos.j);
 
 				// Si le pion contrôle une case du roi
-				if (j > 0 && di <= 1 && dj1 <= 1)
-					defenses++;
+				if (j > 0 && di <= 2 && dj1 <= 2) {
+					semi_defenses++;
+					if (di <= 1 && dj1 <= 1) {
+						defenses++;
+					}
+				}
 
-				if (j < 7 && di <= 1 && dj2 <= 1)
-					defenses++;
+				if (j < 7 && di <= 2 && dj2 <= 2) {
+					semi_defenses++;
+					if (di <= 1 && dj2 <= 1) {
+						defenses++;
+					}
+				}
 			}
 
 			// Cavalier
@@ -7436,8 +7486,12 @@ void Board::display_positions_history() const
 					uint_fast8_t dj = abs(new_j - king_pos.j);
 
 					// Si le cavalier contrôle une case du roi
-					if (di <= 1 && dj <= 1)
-						defenses++;
+					if (di <= 2 && dj <= 2) {
+						semi_defenses++;
+						if (di <= 1 && dj <= 1) {
+							defenses++;
+						}
+					}
 				}
 			}
 
@@ -7459,8 +7513,12 @@ void Board::display_positions_history() const
 						uint_fast8_t dj = abs(new_j - king_pos.j);
 
 						// Si la pièce contrôle une case du roi
-						if (di <= 1 && dj <= 1)
-							defenses++;
+						if (di <= 2 && dj <= 2) {
+							semi_defenses++;
+							if (di <= 1 && dj <= 1) {
+								defenses++;
+							}
+						}
 
 						// Si une pièce bloque la case
 						if (p2 != none)
@@ -7492,8 +7550,12 @@ void Board::display_positions_history() const
 						uint_fast8_t dj = abs(new_j - king_pos.j);
 
 						// Si la pièce contrôle une case du roi
-						if (di <= 1 && dj <= 1)
-							defenses++;
+						if (di <= 2 && dj <= 2) {
+							semi_defenses++;
+							if (di <= 1 && dj <= 1) {
+								defenses++;
+							}
+						}
 
 						// Si un pion bloque la case
 						if (p2 == w_pawn || p2 == b_pawn)
@@ -7509,7 +7571,12 @@ void Board::display_positions_history() const
 				cout << "BUG: too many defenses from a single piece... check get_king_defenders()" << endl;
 			}
 			else {
-				king_defenders += defending_value[defenses];
+				if (defenses > 0) {
+					king_defenders += defending_value[defenses];
+				}
+				else if (semi_defenses > 0) { // TODO: à améliorer en prenant en compte le nombre de semi-défenses?
+					king_defenders += semi_defense_value;
+				}
 			}
 		}
 	}
