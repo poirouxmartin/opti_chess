@@ -453,6 +453,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Affichage du temps dans le PGN
 -> Mettre des flèches pour indiquer les coups de la variante principale?
 -> Inclure la proba de draw dans la barre d'éval
+-> Au chrono, il met 1min60 au lieu de 2min
 
 
 ----- Grosses implémentations à faire -----
@@ -472,6 +473,9 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 ----- En cours -----
 
 -> BUGS:
+8/2R4P/1p5r/4p1p1/kp3nP1/5P2/3B4/5K2 w - - 0 53 : le pion passé noir avance.. pas le blanc
+8/3R3P/7r/1p4p1/1k3pP1/1p1K1P2/8/8 b - - 1 57 : le pion passé noir n'est pas compté??
+2k5/pr4pp/2p1p3/3p1bN1/q2P4/2P1R3/3Q1PPP/6K1 b - - 4 22 : Tb2 gagne
 2k1r1nr/pb5p/1pp1p3/5pB1/8/P4B2/1qP1QPPP/3R1RK1 w - - 0 18 : il a vu que Dc4 était meilleur, puis a joué Td6.........
 r1bk3r/pp1nq2p/4p3/3pP2Q/3p4/1N1B4/P5PP/R4RK1 w - - 7 22 : il faut jouer Tf7!!
 -> 6k1/ppp2ppp/2n5/5b2/8/P1QBqNbP/1P1N2P1/R4K1R w - - 0 18 : pourquoi +280 en attaque
