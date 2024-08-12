@@ -375,6 +375,7 @@ r1bq1k1r/1p1p2bp/p2N2p1/2p1Pp2/B7/2P1BN2/PP3PPP/R3K2R b KQ - 0 14 : gagnant... l
 rnb4r/pp2k2p/2p2n2/3p2B1/2Q1N3/8/P1P3PP/6K1 w - - 0 19 : complètement gagnant pour les blancs
 4B2k/1p4pp/p7/2P5/P2P2n1/B1N2q2/2K5/R7 b - - 1 11 : gagnant pour les blancs
 rnb1k1nr/ppp2ppp/8/8/3P4/6P1/PPP1P3/RNBQKBNq w Qkq - 0 7 : les noirs sont gagnants
+7r/ppk1p2p/6pP/4p3/4n3/2P1B1P1/PP2KP2/R7 b - - 1 26 : askip ça tient...
 
 
 
@@ -778,6 +779,8 @@ r5r1/2p1qp2/1p1pn1pk/pP4Rp/2P1PR1P/P4P2/2Q2P1K/B7 w - - 1 11 : Tf6!!
 r2qr1k1/pp1bb1p1/2pp4/5pP1/3B1Pn1/2PB4/PPPQ2P1/2K1R2R w - f6 0 17 : Fb6!! gagne
 Qnb1k2r/p2p1p2/7p/2p3p1/3q4/8/P1K1PPPP/2B2BNR b k - 2 15 : Cc6! gagne
 rn2k2r/p4p2/3p3p/q1pP4/4b1pP/8/P2NQPP1/2R1KB1R b Kkq - 1 18 : Rd8! seul coup qui gagne (et tient aussi)
+2k4r/pp1rp2p/3n1ppP/2R1b1N1/4P3/2P3P1/PP2KP2/R1B5 b - - 0 22 : Tc7 seul coup qui tient
+3r4/1p2p2p/2kn2pP/p3p3/P7/1RP1B1P1/1P2KP2/8 w - - 4 30 : c4 gagne
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---

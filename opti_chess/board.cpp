@@ -1818,6 +1818,7 @@ int Board::get_king_safety(float display_factor) {
 	// 1r4k1/p2n1pp1/2p1b2p/3p3P/4pQ2/2q1P3/P1P1BPP1/2KR3R w - - 1 23 : c'est mat pour les noirs
 	// rnbr2k1/ppq2p2/2pb1npQ/6N1/7R/3B2P1/PPP2P1P/2KR4 b - - 2 17 : mat pour les blancs
 	// 3rk2r/ppp2ppq/2p1b3/2P5/4P1P1/2P3P1/PPQ1B3/RNB2RK1 w k - 1 7 : quasi égal
+	// 3rk2r/ppp2pp1/2p5/2P5/4P3/2P3P1/PPQN1KR1/R1B4q b k - 2 12 : Th2 puis perpet
 	// 2k2r2/ppp3pp/1bp1b3/8/4Pp1q/1N1B1Pn1/PP3RPP/R2QB1K1 w - - 8 6 : roi blanc pas très safe
 	// 2k2r2/ppp3pp/1bp1b3/8/4Pp1q/1N1B1Pn1/PPQ2RPP/R3B1K1 b - - 9 6 : Dxh2+!! #5
 	// 2k5/ppp3pp/1bp1b2r/8/4Pp2/1N1B1Pn1/PPQ2RP1/R3B1K1 w - - 3 9 : #1 imparable
@@ -1827,6 +1828,7 @@ int Board::get_king_safety(float display_factor) {
 	// r1bq1b1r/pp4pp/2p1k3/3np3/1nBP4/2N2Q2/PPP2PPP/R1B2RK1 b - - 0 10 : +2.5 / +5 pour king safety
 	// r3r1k1/2p2pp1/1p1p3p/pPn4q/2PN3n/P3PP1P/2Q2P1K/B2R2R1 w - - 7 6 : déjà complètement gagnant pour les blancs
 	// r1bq1rk1/pp1nbpn1/2p1p3/8/2pP4/2N1PN2/PPQ2P1P/2KR1BR1 b - - 1 6 : gagnant pour les blancs -> roi noir trop faible, colonnes et diagonales ouvertes, pas de pions devant non plus. toutes les pièces peuvent attaquer (les 6), tandis que seules 4 pièces noires peuvent défendre
+	// 1r1qr1k1/p2n1pn1/b1p1pb1Q/4N3/1ppPN3/4P3/PP3P1P/2KR1BR1 b - - 9 12 : foutu pour les noirs
 	// r1b3kr/pppp3p/2n2Q2/8/5N2/4p3/PPP3PP/6K1 b - - 2 19 : blancs gagnants
 	// r1b3kr/ppp4p/2np1Q2/7N/8/4p3/PPP3PP/6K1 b - - 1 20 : #1 imparable
 	// rnb2bnr/pppp1k1p/8/8/5p2/4BQ2/PqP3PP/RN3RK1 w - - 0 11 : blancs gagnants
@@ -2451,7 +2453,7 @@ int Board::get_pawn_structure(float display_factor)
 	// 8/P5kp/8/q7/8/8/5B1P/5K2 w - - 1 57 : ici, il faut considérer la case controlée (par rayon X)
 
 	// Table de valeur des pions passés en fonction de leur avancement sur le plateau
-	static const int passed_pawns[8] = { 0, 50, 50, 80, 125, 350, 750, 0 };
+	static const int passed_pawns[8] = { 0, 50, 50, 120, 200, 350, 750, 0 };
 
 	// Pion passé - chemin controllé par une pièce adverse
 	static const int controlled_passed_pawn[8] = { 0, 45, 50, 75, 110, 160, 250, 0 };
@@ -2465,20 +2467,20 @@ int Board::get_pawn_structure(float display_factor)
 	int passed_pawns_value = 0;
 
 	// Pour chaque colonne
-	for (uint_fast8_t i = 0; i < 8; i++) {
+	for (uint_fast8_t col = 0; col < 8; col++) {
 
 		// On prend en compte seulement le pion le plus avancé de la colonne (car les autre seraient bloqués derrière)
 
 		// Pions blancs
-		if (s_white[i] >= 1) {
+		if (s_white[col] >= 1) {
 			// On regarde de la rangée la plus proche de la promotion, jusqu'a la première
-			for (uint_fast8_t j = 6; j > 0; j--) {
+			for (uint_fast8_t row = 6; row > 0; row--) {
 				// S'il y a un pion potentiellement passé
-				if (pawns_white[j][i]) {
+				if (pawns_white[row][col]) {
 					// Pas de pion sur une colonne adjacente ou pareille avec une lattitude supérieure (strictement)
 					bool is_passed_pawn = true;
-					for (uint_fast8_t k = j + 1; k < 7; k++)
-						if ((i > 0 && _array[k][i - 1] == 7) || _array[k][i] == 7 || (i < 7 && _array[k][i + 1] == 7)) {
+					for (uint_fast8_t k = row + 1; k < 7; k++)
+						if ((col > 0 && _array[k][col - 1] == 7) || _array[k][col] == 7 || (col < 7 && _array[k][col + 1] == 7)) {
 							is_passed_pawn = false;
 							break;
 						}
@@ -2488,8 +2490,8 @@ int Board::get_pawn_structure(float display_factor)
 
 						// Regarde s'il y a un bloqueur
 						bool blocked = false;
-						for (uint_fast8_t k = j + 1; k <= 7; k++) {
-							if (_array[k][i] != 0) {
+						for (uint_fast8_t k = row + 1; k <= 7; k++) {
+							if (_array[k][col] != 0) {
 								blocked = true;
 								break;
 							}
@@ -2501,10 +2503,10 @@ int Board::get_pawn_structure(float display_factor)
 						if (!blocked) {
 
 							// On retire le pion pour regarder si la case est controlée par rayon X
-							_array[j][i] = 0;
+							_array[row][col] = 0;
 
-							for (uint_fast8_t k = j + 1; k <= 7; k++) {
-								if (is_controlled(k, i, true)) {
+							for (uint_fast8_t k = row + 1; k <= 7; k++) {
+								if (is_controlled(k, col, true)) {
 									controlled = true;
 									break;
 								}
@@ -2512,8 +2514,8 @@ int Board::get_pawn_structure(float display_factor)
 
 							// Si c'est controlé par une pièce alliée, annule le bonus
 							if (controlled) {
-								for (uint_fast8_t k = j + 1; k <= 7; k++) {
-									if (is_controlled(k, i, false)) {
+								for (uint_fast8_t k = row + 1; k <= 7; k++) {
+									if (is_controlled(k, col, false)) {
 										controlled = false;
 										break;
 									}
@@ -2521,11 +2523,11 @@ int Board::get_pawn_structure(float display_factor)
 							}
 
 							// On remet le pion
-							_array[j][i] = 1;
+							_array[row][col] = 1;
 						}
 
 						// Ajoute la valeur du pion passé
-						passed_pawns_value += (blocked ? blocked_passed_pawn[j] : (controlled ? controlled_passed_pawn[j] : passed_pawns[j])) * passed_adv;
+						passed_pawns_value += (blocked ? blocked_passed_pawn[row] : (controlled ? controlled_passed_pawn[row] : passed_pawns[row])) * passed_adv;
 					}
 
 				}
@@ -2533,13 +2535,13 @@ int Board::get_pawn_structure(float display_factor)
 		}
 
 		// Pions noirs
-		if (s_black[i] >= 1) {
-			for (uint_fast8_t j = 1; j < 7; j++) {
+		if (s_black[col] >= 1) {
+			for (uint_fast8_t row = 1; row < 7; row++) {
 				// Pas de pion sur une colonne adjacente ou pareille avec une lattitude inférieure (strictement)
-				if (pawns_black[j][i]) {
+				if (pawns_black[row][col]) {
 					bool is_passed_pawn = true;
-					for (uint_fast8_t k = j - 1; k > 0; k--)
-						if ((i > 0 && _array[k][i - 1] == 1) || _array[k][i] == 1 || (i < 7 && _array[k][i + 1] == 1))
+					for (uint_fast8_t k = row - 1; k > 0; k--)
+						if ((col > 0 && _array[k][col - 1] == 1) || _array[k][col] == 1 || (col < 7 && _array[k][col + 1] == 1))
 						{
 							is_passed_pawn = false;
 							break;
@@ -2550,8 +2552,8 @@ int Board::get_pawn_structure(float display_factor)
 
 						// Regarde s'il y a un bloqueur
 						bool blocked = false;
-						for (int_fast8_t k = j - 1; k >= 0; k--) {
-							if (_array[k][i] != 0) {
+						for (int_fast8_t k = row - 1; k >= 0; k--) {
+							if (_array[k][col] != 0) {
 								blocked = true;
 								break;
 							}
@@ -2564,10 +2566,10 @@ int Board::get_pawn_structure(float display_factor)
 						if (!blocked) {
 
 							// On retire le pion pour regarder si la case est controlée par rayon X
-							_array[j][i] = 0;
+							_array[row][col] = 0;
 
-							for (int_fast8_t k = j - 1; k >= 0; k--) {
-								if (is_controlled(k, i, false)) {
+							for (int_fast8_t k = row - 1; k >= 0; k--) {
+								if (is_controlled(k, col, false)) {
 									controlled = true;
 									break;
 								}
@@ -2575,8 +2577,8 @@ int Board::get_pawn_structure(float display_factor)
 							
 							// Si c'est controlé par une pièce alliée, annule le bonus
 							if (controlled) {
-								for (int_fast8_t k = j - 1; k >= 0; k--) {
-									if (is_controlled(k, i, true)) {
+								for (int_fast8_t k = row - 1; k >= 0; k--) {
+									if (is_controlled(k, col, true)) {
 										controlled = false;
 										break;
 									}
@@ -2584,11 +2586,11 @@ int Board::get_pawn_structure(float display_factor)
 							}
 
 							// On remet le pion
-							_array[j][i] = 7;
+							_array[row][col] = 7;
 						}
 
 						// Ajoute la valeur du pion passé
-						passed_pawns_value -= (blocked ? blocked_passed_pawn[7 - j] : (controlled ? controlled_passed_pawn[7 - j] : passed_pawns[7 - j])) * passed_adv;
+						passed_pawns_value -= (blocked ? blocked_passed_pawn[7 - row] : (controlled ? controlled_passed_pawn[7 - row] : passed_pawns[7 - row])) * passed_adv;
 					}
 				}
 			}
@@ -4301,7 +4303,6 @@ bool Board::is_controlled(int square_i, int square_j, bool player) const
 			return true;
 	}
 
-
 	// Regarde les lignes horizontales et verticales
 
 	// Gauche
@@ -4422,7 +4423,7 @@ bool Board::is_controlled(int square_i, int square_j, bool player) const
 		{
 			if ((piece < 7) != player)
 			{
-				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 3 || simple_piece == 5 || (simple_piece == 6 && abs(square_j - i) == 1))
+				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 3 || simple_piece == 5 || (simple_piece == 6 && abs(square_j - j) == 1))
 					return true;
 
 				// Special case for pawns
