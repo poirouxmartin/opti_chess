@@ -53,21 +53,11 @@ void Board::copy_data(const Board& b, bool full, bool copy_history) {
 
 	if (full) {
 		_is_active = b._is_active;
-		//_index_children = b._index_children;
-		//_tested_moves = b._tested_moves;
-		//_current_move = b._current_move;
-		//_eval_children = b._eval_children;
-		//_nodes = b._nodes;
-		//_nodes_children = b._nodes_children;
-		//_new_board = b._new_board;
-		//_time_monte_carlo = b._time_monte_carlo;
 		_adv = b._adv;
 		_advancement = b._advancement;
 		_game_over_checked = b._game_over_checked;
 		_game_over_value = b._game_over_value;
-		//_quiescence_nodes = b._quiescence_nodes;
 		_displayed_components = b._displayed_components;
-		//_transpositions = b._transpositions;
 	}
 }
 
@@ -655,17 +645,6 @@ void Board::make_move(Move move, const bool pgn, const bool new_board, const boo
 	_game_over_checked = false;
 
 	reset_eval();
-	//reset_board();
-
-	//_new_board = true;
-
-	//if (new_board) {
-	//	//if (_is_active)
-	//	//	reset_all();
-	//	//_tested_moves = 0;
-	//	//_current_move = 0;
-	//	//_nodes = 0;
-	//}
 
 	return;
 }
@@ -1570,501 +1549,6 @@ void Board::draw_text_rect(const string& s, const float pos_x, const float pos_y
 	}
 }
 
-// TODO: à mettre à terme dans la GUI, en utilisant comme plateau le plateau de la GUI
-// Fonction qui dessine le plateau
-//bool Board::draw() {
-//	// Chargement des textures, si pas déjà fait
-//	if (!main_GUI._loaded_resources) {
-//		main_GUI.load_resources();
-//		main_GUI.resize_GUI();
-//		PlaySound(main_GUI._game_begin_sound);
-//	}
-//
-//	// Position de la souris
-//	main_GUI._mouse_pos = GetMousePosition();
-//
-//	// Si on clique avec la souris
-//	if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-//		// Retire toute les cases surlignées
-//		main_GUI.remove_highlighted_tiles();
-//
-//		// Retire toutes les flèches
-//		main_GUI._arrows_array = {};
-//
-//		// Si on était pas déjà en train de cliquer (début de clic)
-//		if (!main_GUI._clicked) {
-//			// Stocke la case cliquée sur le plateau
-//			main_GUI._clicked_pos = main_GUI.get_pos_from_GUI(main_GUI._mouse_pos.x, main_GUI._mouse_pos.y);
-//			main_GUI._clicked = true;
-//
-//			// S'il y'a les flèches de réflexion de GrogrosZero, et qu'aucune pièce n'est sélectionnée
-//			if (main_GUI._drawing_arrows && !selected_piece()) {
-//				// On regarde dans le sens inverse pour jouer la flèche la plus récente (donc celle visible en cas de superposition)
-//				for (Move move : ranges::reverse_view(main_GUI._grogros_arrows))
-//				{
-//					if (move.i2 == main_GUI._clicked_pos.i && move.j2 == main_GUI._clicked_pos.j) {
-//						play_move_sound(move);
-//						((main_GUI._click_bind && main_GUI._board.click_m_move(move, main_GUI.get_board_orientation())) || true) && play_monte_carlo_move_keep(move, true, true, true);
-//						goto piece_selection;
-//					}
-//				}
-//			}
-//
-//		piece_selection:
-//
-//			// Si aucune pièce n'est sélectionnée et que l'on clique sur une pièce, la sélectionne
-//			if (!selected_piece() && clicked_piece()) {
-//				if (false || clicked_piece_has_trait())
-//					main_GUI._selected_pos = main_GUI._clicked_pos;
-//			}
-//
-//			// Si le coup est l'un des mouvements possible de la pièce (diagonale pour le fou...)
-//			// Quand cette pièce est sélectionnée, il faut afficher ces coups
-//			// Il faut de même déplacer la pièce virtuellement quand on fait les pre-move
-//
-//			// Si une pièce est déjà sélectionnée
-//			else if (selected_piece()) {
-//				// Si c'est pas ton tour, pre-move, et déselectionne la pièce
-//				if (selected_piece() > 0 && (selected_piece() < 7 && !_player) || (selected_piece() >= 7 && _player)) {
-//					/*pre_move[0] = selected_pos.first;
-//					pre_move[1] = selected_pos.second;
-//					pre_move[2] = clicked_pos.first;
-//					pre_move[3] = clicked_pos.second;*/
-//					main_GUI.unselect();
-//				}
-//
-//				// Si le coup est légal, le joue
-//				_got_moves == -1 && get_moves();
-//				for (int i = 0; i < _got_moves; i++) {
-//					if (_moves[i].i1 == main_GUI._selected_pos.i && _moves[i].j1 == main_GUI._selected_pos.j && _moves[i].i2 == main_GUI._clicked_pos.i && _moves[i].j2 == main_GUI._clicked_pos.j) {
-//						play_move_sound(Move(main_GUI._selected_pos.i, main_GUI._selected_pos.j, main_GUI._clicked_pos.i, main_GUI._clicked_pos.j));
-//						((main_GUI._click_bind && main_GUI._board.click_m_move(_moves[i], main_GUI.get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[i], true, true, true);
-//						break;
-//					}
-//				}
-//
-//				// Déselectionne
-//				main_GUI.unselect();
-//
-//				// Changement de sélection de pièce
-//				if ((_player && is_in_fast(_array[main_GUI._clicked_pos.i][main_GUI._clicked_pos.j], 1, 6)) || (!_player && is_in_fast(_array[main_GUI._clicked_pos.i][main_GUI._clicked_pos.j], 7, 12)))
-//					main_GUI._selected_pos = main_GUI.get_pos_from_GUI(main_GUI._mouse_pos.x, main_GUI._mouse_pos.y);
-//			}
-//		}
-//	}
-//	else {
-//		// Si on clique
-//		if (main_GUI._clicked && main_GUI._clicked_pos.i != -1 && _array[main_GUI._clicked_pos.i][main_GUI._clicked_pos.j] != 0) {
-//			Pos drop_pos = main_GUI.get_pos_from_GUI(main_GUI._mouse_pos.x, main_GUI._mouse_pos.y);
-//			if (is_in_fast(drop_pos.i, 0, 7) && is_in_fast(drop_pos.j, 0, 7)) {
-//				// Déselection de la pièce si on reclique dessus
-//				if (drop_pos.i == main_GUI._selected_pos.i && drop_pos.j == main_GUI._selected_pos.j) {
-//				}
-//				else {
-//					if (int selected_piece = _array[main_GUI._selected_pos.i][main_GUI._selected_pos.j]; selected_piece > 0 && (selected_piece < 7 && !_player) || (selected_piece >= 7 && _player)) {
-//						// Si c'est pas ton tour, pre-move
-//						/*pre_move[0] = selected_pos.first;
-//						pre_move[1] = selected_pos.second;
-//						pre_move[2] = drop_pos.first;
-//						pre_move[3] = drop_pos.second;*/
-//						main_GUI._selected_pos = { -1, -1 };
-//					}
-//
-//					else {
-//						// Si le coup est légal
-//						_got_moves == -1 && get_moves();
-//						for (int i = 0; i < _got_moves; i++) {
-//							if (_moves[i].i1 == main_GUI._selected_pos.i && _moves[i].j1 == main_GUI._selected_pos.j && _moves[i].i2 == drop_pos.i && _moves[i].j2 == drop_pos.j) {
-//								play_move_sound(Move(main_GUI._clicked_pos.i, main_GUI._clicked_pos.j, drop_pos.i, drop_pos.j));
-//								((main_GUI._click_bind && main_GUI._board.click_m_move(_moves[i], main_GUI.get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[i], true, true, true);
-//								main_GUI._selected_pos = { -1, -1 };
-//								break;
-//							}
-//						}
-//					}
-//				}
-//			}
-//		}
-//
-//		main_GUI._clicked = false;
-//	}
-//
-//	// Pre-moves
-//	/*if (pre_move[0] != -1 && pre_move[1] != -1 && pre_move[2] != -1 && pre_move[3] != -1) {
-//		if ((!_player && is_in_fast(_array[pre_move[0]][pre_move[1]], 7, 12)) || (_player && is_in_fast(_array[pre_move[0]][pre_move[1]], 1, 6))) {
-//			if (_got_moves == -1)
-//				get_moves(true);
-//			for (int i = 0; i < _got_moves; i++) {
-//				if (_moves[i].i1 == pre_move[0] && _moves[i].j1 == pre_move[1] && _moves[i].i2 == pre_move[2] && _moves[i].j2 == pre_move[3]) {
-//					play_move_sound(Move(pre_move[0], pre_move[1], pre_move[2], pre_move[3]));
-//					((main_GUI._click_bind && main_GUI._board.click_i_move(i, get_board_orientation())) || true) && play_monte_carlo_move_keep(i, true, true, true, true);
-//					break;
-//				}
-//			}
-//			pre_move[0] = -1;
-//			pre_move[1] = -1;
-//			pre_move[2] = -1;
-//			pre_move[3] = -1;
-//		}
-//	}*/
-//
-//	// Si on fait un clic droit
-//	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
-//
-//		// Stocke la case cliquée sur le plateau
-//		main_GUI._right_clicked_pos = main_GUI.get_pos_from_GUI(main_GUI._mouse_pos.x, main_GUI._mouse_pos.y);
-//	}
-//
-//	// Si on fait relâche le clic droit
-//	if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
-//		Pos drop_pos = main_GUI.get_pos_from_GUI(main_GUI._mouse_pos.x, main_GUI._mouse_pos.y);
-//
-//		// Si on relâche la souris sur le plateau
-//		if (is_in_fast(drop_pos.i, 0, 7) && is_in_fast(drop_pos.j, 0, 7)) {
-//
-//			// Si on relâche la souris sur une autre case que celle où l'on a cliqué
-//			if (drop_pos == main_GUI._right_clicked_pos) {
-//
-//				// Sélectionne/déselectionne la case
-//				main_GUI._highlighted_array[drop_pos.i][drop_pos.j] = 1 - main_GUI._highlighted_array[drop_pos.i][drop_pos.j];
-//			}
-//
-//			// Sinon, fait une flèche
-//			else {
-//				if (main_GUI._right_clicked_pos.i != -1 && main_GUI._right_clicked_pos.j != -1) {
-//					vector<int> arrow = { main_GUI._right_clicked_pos.i, main_GUI._right_clicked_pos.j, drop_pos.i, drop_pos.j };
-//
-//					// Si la flèche existe, la supprime
-//					if (auto found_arrow = find(main_GUI._arrows_array.begin(), main_GUI._arrows_array.end(), arrow); found_arrow != main_GUI._arrows_array.end())
-//						main_GUI._arrows_array.erase(found_arrow);
-//
-//					// Sinon, la rajoute
-//					else
-//						main_GUI._arrows_array.push_back(arrow);
-//				}
-//
-//			}
-//		}
-//	}
-//
-//	// Dessins
-//
-//	// Couleur de fond
-//	ClearBackground(main_GUI._background_color);
-//
-//	// Nombre de FPS
-//	DrawTextEx(main_GUI._text_font, ("FPS : " + to_string(GetFPS())).c_str(), { main_GUI._screen_width - 3 * main_GUI._text_size, main_GUI._text_size / 3 }, main_GUI._text_size / 3, main_GUI._font_spacing, main_GUI._text_color);
-//	//DrawTextEx(GetFontDefault(), "TOTO:♔ \u2654\u2655\u2656\u2657\u2658\u2659\u265A\u265B\u265C\u265D\u265E\u265F", {500, 0}, 20, 1, WHITE);
-//	//DrawTextEx(GetFontDefault(), "TEST:\U0001F60A", {500, 0}, 20, 1, WHITE);
-//	//Font font = LoadFontEx("resources/fonts/Segoe UI Symbol.ttf", 20, 0, 2500);
-//	//Font font = LoadFontEx("resources/fonts/SF TransRobotics.ttf", 64, 0, 500);
-//	//DrawTextEx(font, "TEST:\u00E1♔", {500, 0}, 20, 1, WHITE);
-//	//DrawTextCodepoint(GetFontDefault(), 2654, {500, 0}, 50, WHITE);
-//	//cout << (char)"\u2654" << endl;
-//	//cout << (char)176 << endl;
-//	//cout << "♔" << endl;
-//	//wcout << L'♔' << endl;
-//	//cout << "King: \u2654" << endl;
-//	//cout << "Smiley face: \U0001F60A" << endl;
-//	//const char heart[] = "\xe2\x99\xa5";
-//	//std::cout << heart << '\n';
-//	//cout << (char)'♜' << endl;
-//	/*const char* s = "\u0444";
-//	cout << s << endl;*/
-//
-//	// Plateau
-//	main_GUI.draw_rectangle(main_GUI._board_padding_x, main_GUI._board_padding_y, main_GUI._tile_size * 8, main_GUI._tile_size * 8, main_GUI._board_color_light);
-//
-//	for (int i = 0; i < 8; i++)
-//		for (int j = 0; j < 8; j++)
-//			((i + j) % 2 == 1) && main_GUI.draw_rectangle(main_GUI._board_padding_x + main_GUI._tile_size * j, main_GUI._board_padding_y + main_GUI._tile_size * i, main_GUI._tile_size, main_GUI._tile_size, main_GUI._board_color_dark);
-//
-//	// Coordonnées sur le plateau
-//	for (int i = 0; i < 8; i++)
-//		for (int j = 0; j < 8; j++) {
-//			if (j == 0 + 7 * main_GUI._board_orientation) // Chiffres
-//				DrawTextEx(main_GUI._text_font, to_string(i + 1).c_str(), { main_GUI._board_padding_x + main_GUI._text_size / 8, main_GUI._board_padding_y + main_GUI._tile_size * main_GUI.orientation_index(7 - i) + main_GUI._text_size / 8 }, main_GUI._text_size / 2, main_GUI._font_spacing, ((i + j) % 2 == 1) ? main_GUI._board_color_light : main_GUI._board_color_dark);
-//			if (i == 0 + 7 * main_GUI._board_orientation) // Lettres
-//				DrawTextEx(main_GUI._text_font, main_GUI._abc8.substr(j, 1).c_str(), { main_GUI._board_padding_x + main_GUI._tile_size * (main_GUI.orientation_index(j) + 1) - main_GUI._text_size / 2, main_GUI._board_padding_y + main_GUI._tile_size * 8 - main_GUI._text_size / 2 }, main_GUI._text_size / 2, main_GUI._font_spacing, ((i + j) % 2 == 1) ? main_GUI._board_color_light : main_GUI._board_color_dark);
-//		}
-//
-//	// Surligne du dernier coup joué
-//	if (!main_GUI._game_tree._current_node->_move.is_null_move()) {
-//		main_GUI.draw_rectangle(main_GUI._board_padding_x + main_GUI.orientation_index(main_GUI._game_tree._current_node->_move.j1) * main_GUI._tile_size, main_GUI._board_padding_y + main_GUI.orientation_index(7 - main_GUI._game_tree._current_node->_move.i1) * main_GUI._tile_size, main_GUI._tile_size, main_GUI._tile_size, main_GUI._last_move_color);
-//		main_GUI.draw_rectangle(main_GUI._board_padding_x + main_GUI.orientation_index(main_GUI._game_tree._current_node->_move.j2) * main_GUI._tile_size, main_GUI._board_padding_y + main_GUI.orientation_index(7 - main_GUI._game_tree._current_node->_move.i2) * main_GUI._tile_size, main_GUI._tile_size, main_GUI._tile_size, main_GUI._last_move_color);
-//	}
-//
-//	// Cases surglignées
-//	for (int i = 0; i < 8; i++)
-//		for (int j = 0; j < 8; j++)
-//			if (main_GUI._highlighted_array[i][j])
-//				main_GUI.draw_rectangle(main_GUI._board_padding_x + main_GUI._tile_size * main_GUI.orientation_index(j), main_GUI._board_padding_y + main_GUI._tile_size * main_GUI.orientation_index(7 - i), main_GUI._tile_size, main_GUI._tile_size, main_GUI._highlight_color);
-//
-//	// Pre-move
-//	/*if (pre_move[0] != -1 && pre_move[1] != -1 && pre_move[2] != -1 && pre_move[3] != -1) {
-//		draw_rectangle(board_padding_x + orientation_index(pre_move[1]) * tile_size, board_padding_y + orientation_index(7 - pre_move[0]) * tile_size, tile_size, tile_size, pre_move_color);
-//		draw_rectangle(board_padding_x + orientation_index(pre_move[3]) * tile_size, board_padding_y + orientation_index(7 - pre_move[2]) * tile_size, tile_size, tile_size, pre_move_color);
-//	}*/
-//
-//	// Sélection de cases et de pièces
-//	if (main_GUI._selected_pos.i != -1) {
-//		// Affiche la case séléctionnée
-//		main_GUI.draw_rectangle(main_GUI._board_padding_x + main_GUI.orientation_index(main_GUI._selected_pos.j) * main_GUI._tile_size, main_GUI._board_padding_y + main_GUI.orientation_index(7 - main_GUI._selected_pos.i) * main_GUI._tile_size, main_GUI._tile_size, main_GUI._tile_size, main_GUI._select_color);
-//		// Affiche les coups possibles pour la pièce séléctionnée
-//		for (int i = 0; i < _got_moves; i++) {
-//			if (_moves[i].i1 == main_GUI._selected_pos.i && _moves[i].j1 == main_GUI._selected_pos.j) {
-//				main_GUI.draw_rectangle(main_GUI._board_padding_x + main_GUI.orientation_index(_moves[i].j2) * main_GUI._tile_size, main_GUI._board_padding_y + main_GUI.orientation_index(7 - _moves[i].i2) * main_GUI._tile_size, main_GUI._tile_size, main_GUI._tile_size, main_GUI._select_color);
-//			}
-//		}
-//	}
-//
-//	// Pièces capturables
-//	int p;
-//	for (int i = 0; i < 8; i++) {
-//		for (int j = 0; j < 8; j++) {
-//			p = _array[i][j];
-//			if (p > 0) {
-//				if (is_capturable(i, j)) {
-//					if (main_GUI._clicked && i == main_GUI._clicked_pos.i && j == main_GUI._clicked_pos.j)
-//						main_GUI.draw_texture(main_GUI._piece_textures[p - 1], main_GUI._mouse_pos.x - main_GUI._piece_size / 2, main_GUI._mouse_pos.y - main_GUI._piece_size / 2, WHITE);
-//					else
-//						main_GUI.draw_texture(main_GUI._piece_textures[p - 1], main_GUI._board_padding_x + main_GUI._tile_size * main_GUI.orientation_index(j) + (main_GUI._tile_size - main_GUI._piece_size) / 2, main_GUI._board_padding_y + main_GUI._tile_size * main_GUI.orientation_index(7 - i) + (main_GUI._tile_size - main_GUI._piece_size) / 2, WHITE);
-//				}
-//			}
-//		}
-//	}
-//
-//	// Coups auquel l'IA réflechit...
-//	if (main_GUI._drawing_arrows) {
-//		main_GUI.draw_monte_carlo_arrows();
-//		//main_GUI.draw_exploration_arrows(*main_GUI._root_exploration_node);
-//	}
-//		
-//
-//	// Pièces non-capturables
-//	for (int i = 0; i < 8; i++) {
-//		for (int j = 0; j < 8; j++) {
-//			p = _array[i][j];
-//			if (p > 0) {
-//				if (!is_capturable(i, j)) {
-//					if (main_GUI._clicked && i == main_GUI._clicked_pos.i && j == main_GUI._clicked_pos.j)
-//						main_GUI.draw_texture(main_GUI._piece_textures[p - 1], main_GUI._mouse_pos.x - main_GUI._piece_size / 2.0f, main_GUI._mouse_pos.y - main_GUI._piece_size / 2.0f, WHITE);
-//					else
-//						main_GUI.draw_texture(main_GUI._piece_textures[p - 1], main_GUI._board_padding_x + main_GUI._tile_size * static_cast<float>(main_GUI.orientation_index(j)) + (main_GUI._tile_size - main_GUI._piece_size) / 2.0f, main_GUI._board_padding_y + main_GUI._tile_size * static_cast<float>(main_GUI.orientation_index(7 - i)) + (main_GUI._tile_size - main_GUI._piece_size) / 2.0f, WHITE);
-//				}
-//			}
-//		}
-//	}
-//
-//	// Flèches déssinées
-//	for (vector<int> arrow : main_GUI._arrows_array)
-//		main_GUI.draw_simple_arrow_from_coord(arrow[0], arrow[1], arrow[2], arrow[3], -1, main_GUI._arrow_color);
-//
-//	// Titre
-//	DrawTextEx(main_GUI._text_font, "GROGROS CHESS", { main_GUI._board_padding_x + main_GUI._grogros_size / 2 + main_GUI._text_size / 2.8f, main_GUI._text_size / 4.0f }, main_GUI._text_size / 1.4f, main_GUI._font_spacing * main_GUI._text_size / 1.4f, main_GUI._text_color);
-//
-//	// Grogros
-//	main_GUI.draw_texture(main_GUI._grogros_texture, main_GUI._board_padding_x, main_GUI._text_size / 4.0f - main_GUI._text_size / 5.6f, WHITE);
-//
-//	// Joueurs de la partie
-//	int material = material_difference();
-//	string black_material = (material < 0) ? ("+" + to_string(-material)) : "";
-//	string white_material = (material > 0) ? ("+" + to_string(material)) : "";
-//
-//	int t_size = main_GUI._text_size / 3.0f;
-//
-//	int x_mini_piece = main_GUI._board_padding_x + t_size * 4;
-//	int y_mini_piece_black = main_GUI._board_padding_y - t_size + (main_GUI._board_size + 2 * t_size) * !main_GUI._board_orientation;
-//	int y_mini_piece_white = main_GUI._board_padding_y - t_size + (main_GUI._board_size + 2 * t_size) * main_GUI._board_orientation;
-//
-//	// Noirs
-//	DrawCircle(x_mini_piece - t_size * 3, y_mini_piece_black, t_size * 0.6f, main_GUI._board_color_dark);
-//	DrawTextEx(main_GUI._text_font, main_GUI._black_player.c_str(), { static_cast<float>(x_mini_piece - t_size * 2), static_cast<float>(y_mini_piece_black - t_size) }, t_size, main_GUI._font_spacing * t_size, main_GUI._text_color);
-//	DrawTextEx(main_GUI._text_font, black_material.c_str(), { static_cast<float>(x_mini_piece - t_size * 2), static_cast<float>(y_mini_piece_black + t_size / 6) }, t_size, main_GUI._font_spacing * t_size, main_GUI._text_color_info);
-//
-//	bool next = false;
-//	for (int i = 1; i < 6; i++) {
-//		for (int j = 0; j < main_GUI._missing_w_material[i]; j++) {
-//			DrawTexture(main_GUI._mini_piece_textures[i - 1], x_mini_piece, y_mini_piece_black, WHITE);
-//			x_mini_piece += main_GUI._mini_piece_size / 2;
-//			next = true;
-//		}
-//		if (next)
-//			x_mini_piece += main_GUI._mini_piece_size;
-//		next = false;
-//	}
-//
-//	x_mini_piece = main_GUI._board_padding_x + t_size * 4;
-//
-//	// Blancs
-//	DrawCircle(x_mini_piece - t_size * 3, y_mini_piece_white, t_size * 0.6f, main_GUI._board_color_light);
-//	DrawTextEx(main_GUI._text_font, main_GUI._white_player.c_str(), { static_cast<float>(x_mini_piece - t_size * 2), static_cast<float>(y_mini_piece_white - t_size) }, t_size, main_GUI._font_spacing * t_size, main_GUI._text_color);
-//	DrawTextEx(main_GUI._text_font, white_material.c_str(), { static_cast<float>(x_mini_piece - t_size * 2), static_cast<float>(y_mini_piece_white + t_size / 6) }, t_size, main_GUI._font_spacing * t_size, main_GUI._text_color_info);
-//
-//	for (int i = 1; i < 6; i++) {
-//		for (int j = 0; j < main_GUI._missing_b_material[i]; j++) {
-//			DrawTexture(main_GUI._mini_piece_textures[i - 1 + 6], x_mini_piece, y_mini_piece_white, WHITE);
-//			x_mini_piece += main_GUI._mini_piece_size / 2;
-//			next = true;
-//		}
-//		if (next)
-//			x_mini_piece += main_GUI._mini_piece_size;
-//		next = false;
-//	}
-//
-//	// Temps des joueurs
-//	// Update du temps
-//	main_GUI.update_time();
-//	float x_pad = main_GUI._board_padding_x + main_GUI._board_size - main_GUI._text_size * 2;
-//	Color time_colors[4] = { (main_GUI._time && !_player) ? BLACK : main_GUI._dark_gray, (main_GUI._time && !_player) ? WHITE : LIGHTGRAY, (main_GUI._time && _player) ? WHITE : LIGHTGRAY, (main_GUI._time && _player) ? BLACK : main_GUI._dark_gray };
-//
-//	// Temps des blancs
-//	if (!main_GUI._white_time_text_box.active) {
-//		main_GUI._white_time_text_box.value = main_GUI._time_white;
-//		main_GUI._white_time_text_box.text = clock_to_string(main_GUI._white_time_text_box.value, false);
-//	}
-//	update_text_box(main_GUI._white_time_text_box);
-//	if (!main_GUI._white_time_text_box.active) {
-//		main_GUI._time_white = main_GUI._white_time_text_box.value;
-//		main_GUI._white_time_text_box.text = clock_to_string(main_GUI._white_time_text_box.value, false);
-//	}
-//
-//	// Position du texte
-//	main_GUI._white_time_text_box.set_rect(x_pad, main_GUI._board_padding_y - main_GUI._text_size / 2 * !main_GUI._board_orientation + main_GUI._board_size * main_GUI._board_orientation, main_GUI._board_padding_x + main_GUI._board_size - x_pad, main_GUI._text_size / 2);
-//	main_GUI._white_time_text_box.text_size = main_GUI._text_size / 3;
-//	main_GUI._white_time_text_box.text_color = time_colors[3];
-//	main_GUI._white_time_text_box.text_font = main_GUI._text_font;
-//	main_GUI._white_time_text_box.main_color = time_colors[2];
-//	draw_text_box(main_GUI._white_time_text_box);
-//
-//	// Temps des noirs
-//	if (!main_GUI._black_time_text_box.active) {
-//		main_GUI._black_time_text_box.value = main_GUI._time_black;
-//		main_GUI._black_time_text_box.text = clock_to_string(main_GUI._black_time_text_box.value, false);
-//	}
-//	update_text_box(main_GUI._black_time_text_box);
-//	if (!main_GUI._black_time_text_box.active) {
-//		main_GUI._time_black = main_GUI._black_time_text_box.value;
-//		main_GUI._black_time_text_box.text = clock_to_string(main_GUI._black_time_text_box.value, false);
-//	}
-//
-//	// Position du texte
-//	main_GUI._black_time_text_box.set_rect(x_pad, main_GUI._board_padding_y - main_GUI._text_size / 2 * main_GUI._board_orientation + main_GUI._board_size * !main_GUI._board_orientation, main_GUI._board_padding_x + main_GUI._board_size - x_pad, main_GUI._text_size / 2);
-//	main_GUI._black_time_text_box.text_size = main_GUI._text_size / 3;
-//	main_GUI._black_time_text_box.text_color = time_colors[1];
-//	main_GUI._black_time_text_box.text_font = main_GUI._text_font;
-//	main_GUI._black_time_text_box.main_color = time_colors[0];
-//	draw_text_box(main_GUI._black_time_text_box);
-//
-//	// FEN
-//	main_GUI._current_fen = to_fen();
-//	const char* fen = main_GUI._current_fen.c_str();
-//	DrawTextEx(main_GUI._text_font, fen, { main_GUI._text_size / 2, main_GUI._board_padding_y + main_GUI._board_size + main_GUI._text_size * 3 / 2 }, main_GUI._text_size / 3, main_GUI._font_spacing * main_GUI._text_size / 3, main_GUI._text_color_blue);
-//
-//	// PGN
-//	main_GUI.update_global_pgn();
-//	main_GUI.slider_text(main_GUI._global_pgn, main_GUI._text_size / 2, main_GUI._board_padding_y + main_GUI._board_size + main_GUI._text_size * 2, main_GUI._screen_width - main_GUI._text_size, main_GUI._screen_height - (main_GUI._board_padding_y + main_GUI._board_size + main_GUI._text_size * 2) - main_GUI._text_size / 3, main_GUI._text_size / 3, &main_GUI._pgn_slider, main_GUI._text_color);
-//
-//	// Analyse de Monte-Carlo
-//	string monte_carlo_text = static_cast<string>(main_GUI._grogros_analysis ? "STOP GrogrosZero-Auto (CTRL-H)" : "RUN GrogrosZero-Auto (CTRL-G)") + "\n\nSEARCH PARAMETERS\nbeta: " + to_string(main_GUI._beta) + "\nk_add: " + to_string(main_GUI._k_add) + "\nq_depth: " + to_string(main_GUI._quiescence_depth) + "\nexplore checks: " + (main_GUI._explore_checks ? "true" : "false");
-//	if (_tested_moves && main_GUI._drawing_arrows) {
-//		// int best_eval = (_player) ? max_value(_eval_children, _tested_moves) : min_value(_eval_children, _tested_moves);
-//		int best_move = max_index(_nodes_children, _tested_moves);
-//		int best_eval = _eval_children[best_move];
-//		string eval;
-//		int mate = is_eval_mate(best_eval);
-//		if (mate != 0) {
-//			eval += "M";
-//			eval += to_string(abs(mate));
-//		}
-//
-//		else
-//			eval = to_string(best_eval);
-//
-//		main_GUI._global_eval = best_eval;
-//
-//		stringstream stream;
-//		stream << fixed << setprecision(2) << best_eval / 100.0f;
-//		main_GUI._global_eval_text = mate ? (best_eval > 0 ? "+" + eval : "-" + eval) : (best_eval > 0) ? "+" + stream.str() : stream.str();
-//
-//		float win_chance = get_winning_chances_from_eval(best_eval, _player);
-//		if (!_player)
-//			win_chance = 1 - win_chance;
-//		string win_chances = "W/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/0/" + to_string(static_cast<int>(100 * (1 - win_chance))) + "\%";
-//
-//		// Pour l'évaluation statique
-//		if (!_displayed_components)
-//			evaluate(main_GUI._grogros_eval, true);
-//		int max_depth = grogros_main_depth();
-//		int n_nodes = total_nodes();
-//		monte_carlo_text += "\n\nSTATIC EVAL\n" + main_GUI._eval_components + "\ntime: " + clock_to_string(_time_monte_carlo) + "s\ndepth: " + to_string(max_depth) + "\neval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) + eval + "\n" + win_chances + "\nnodes: " + int_to_round_string(n_nodes) + "/" + int_to_round_string(monte_buffer._length) + " (" + int_to_round_string(total_nodes() / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s)\nquiescence : " + int_to_round_string(_quiescence_nodes) + "N (" + int_to_round_string(_quiescence_nodes / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "N/s)\ntranspositions : " + int_to_round_string(_transpositions) + " (" + int_to_round_string(_transpositions / (static_cast<float>(_time_monte_carlo + 0.01) / 1000.0)) + "T/s)";
-//
-//		// Affichage des paramètres d'analyse de Monte-Carlo
-//		main_GUI.slider_text(monte_carlo_text, main_GUI._board_padding_x + main_GUI._board_size + main_GUI._text_size / 2, main_GUI._text_size, main_GUI._screen_width - main_GUI._text_size - main_GUI._board_padding_x - main_GUI._board_size, main_GUI._board_size * 9 / 16, main_GUI._text_size / 3, &main_GUI._monte_carlo_slider, main_GUI._text_color);
-//
-//		// Lignes d'analyse de Monte-Carlo
-//		static string monte_carlo_variants;
-//
-//		// Calcul des variantes
-//		if (main_GUI._update_variants) {
-//			bool next_variant = false;
-//			monte_carlo_variants = "";
-//			vector<int> v(sort_by_nodes());
-//			for (int i : v) {
-//				if (next_variant)
-//					monte_carlo_variants += "\n\n";
-//				next_variant = true;
-//				mate = is_eval_mate(_eval_children[i]);
-//				string eval;
-//				if (mate != 0) {
-//					if (mate > 0)
-//						eval = "+";
-//					else
-//						eval = "-";
-//					eval += "M";
-//					eval += to_string(abs(mate));
-//				}
-//				else {
-//					eval = _eval_children[i] > 0 ? "+" + to_string(_eval_children[i]) : to_string(_eval_children[i]);
-//				}
-//
-//				string variant_i = monte_buffer._heap_boards[_index_children[i]].get_monte_carlo_variant(true); // Peut être plus rapide
-//				// Ici aussi y'a qq chose qui ralentit, mais quoi?...
-//				monte_carlo_variants += "eval: " + eval + " | " + to_string(_moves_count) + (_player ? ". " : "... ") + move_label_from_index(i) + variant_i + " | (" + int_to_round_string(_nodes_children[i]) + "N - " + to_string(100.0 * _nodes_children[i] / n_nodes).substr(0, 5) + "%)";
-//			}
-//			main_GUI._update_variants = false;
-//		}
-//
-//		// Affichage des variantes
-//		main_GUI.slider_text(monte_carlo_variants, main_GUI._board_padding_x + main_GUI._board_size + main_GUI._text_size / 2, main_GUI._board_padding_y + main_GUI._board_size * 9 / 16, main_GUI._screen_width - main_GUI._text_size - main_GUI._board_padding_x - main_GUI._board_size, main_GUI._board_size / 2, main_GUI._text_size / 3, &main_GUI._variants_slider, main_GUI._text_color);
-//
-//		// Affichage de la barre d'évaluation
-//		main_GUI.draw_eval_bar(main_GUI._global_eval, main_GUI._global_eval_text, main_GUI._board_padding_x / 6, main_GUI._board_padding_y, 2 * main_GUI._board_padding_x / 3, main_GUI._board_size, 800, main_GUI._eval_bar_color_light, main_GUI._eval_bar_color_dark);
-//	}
-//
-//	// Affichage des contrôles et autres informations
-//	else {
-//		// Touches
-//		static string keys_information = "CTRL-G: Start GrogrosZero analysis\nCTRL-H: Stop GrogrosZero analysis\n\n";
-//
-//		// Binding chess.com
-//		static string binding_information;
-//		binding_information = "Binding chess.com:\n- Auto-click: " + (main_GUI._click_bind ? static_cast<string>("enabled") : static_cast<string>("disabled")) + "\n- Binding mode: " + (main_GUI._binding_full ? static_cast<string>("analysis") : main_GUI._binding_solo ? static_cast<string>("play") : "none");
-//
-//		// Texte total
-//		static string controls_information;
-//		controls_information = "Controls:\n\n" + keys_information + binding_information;
-//
-//		// TODO : ajout d'une valeur de slider
-//		main_GUI.slider_text(controls_information, main_GUI._board_padding_x + main_GUI._board_size + main_GUI._text_size / 2, main_GUI._board_padding_y, main_GUI._screen_width - main_GUI._text_size - main_GUI._board_padding_x - main_GUI._board_size, main_GUI._board_size, main_GUI._text_size / 3, 0, main_GUI._text_color_info);
-//	}
-//
-//	// Affichage du curseur
-//	main_GUI.draw_texture(main_GUI._cursor_texture, main_GUI._mouse_pos.x - main_GUI._cursor_size / 2, main_GUI._mouse_pos.y - main_GUI._cursor_size / 2, WHITE);
-//
-//	return true;
-//}
-
 // Fonction qui joue le son d'un coup
 void Board::play_move_sound(Move move) const
 {
@@ -2130,7 +1614,6 @@ void Board::play_move_sound(Move move) const
 // Fonction qui calcule et renvoie la mobilité des pièces
 int Board::get_piece_mobility(const bool legal) const
 {
-
 	// TODO : fonction LARGEMENT optimisable
 
 	Board b;
@@ -2249,352 +1732,6 @@ int Board::get_piece_mobility(const bool legal) const
 	return piece_mobility * (1 - _adv);
 }
 
-// Fonction qui renvoie le meilleur coup selon l'analyse faite par l'algo de Monte-Carlo
-//int Board::best_monte_carlo_move() const
-//{
-//	return max_index(_nodes_children, _tested_moves, _eval_children, get_color());
-//}
-
-// Fonction qui joue le coup après analyse par l'algo de Monte Carlo, et qui garde en mémoire les infos du nouveau plateau
-//bool Board::play_monte_carlo_move_keep(const Move move, const bool keep, const bool keep_display, const bool display)
-//{	
-//	// S'assure que le coup est légal
-//	if (!is_legal(move))
-//		return false;
-//
-//	// On update les variantes sur la GUI
-//	main_GUI._update_variants = true;
-//
-//	// Arbre de recherche
-//	main_GUI._game_tree.add_child(*this, move, move_label(move));
-//
-//	// Index dans le buffer du plateau fils
-//	int child_buffer_index = -1;
-//
-//	// Cherche le coup dans les plateaux fils
-//	int child_index = -1;
-//	Board child_board(*this);
-//	child_board.make_move(move, false, false, true);
-//
-//	for (int i = 0; i < _tested_moves; i++) {
-//		if (child_board == monte_buffer._heap_boards[_index_children[i]]) {
-//			child_index = i;
-//			break;
-//		}
-//	}
-//
-//	// Si le coup a été calculé par grogros_zero
-//	if (child_index != -1) {
-//
-//		// Index dans le buffer
-//		child_buffer_index = _index_children[child_index];
-//
-//		if (keep_display)
-//			play_move_sound(move);
-//
-//		// Supprime tous les autres plateaux du buffer
-//		for (int i = 0; i < _tested_moves; i++) {
-//			if (i != child_index) {
-//				if (_is_active)
-//					monte_buffer._heap_boards[_index_children[i]].reset_all();
-//			}
-//		}
-//
-//		// On copie les data du plateau fils
-//		reset_board();
-//		copy_data(monte_buffer._heap_boards[child_buffer_index], true, true);
-//
-//		// On vire les data du plateau fils du buffer
-//		monte_buffer._heap_boards[child_buffer_index] = Board();
-//
-//		// Update le temps passé
-//		main_GUI.update_time();
-//
-//		// Si on ne veut rien garder, reset tout
-//		if (!keep)
-//			reset_all();
-//	}
-//
-//	// Sinon, joue simplement le coup
-//	else {
-//
-//		// Vire toutes les réflexions (s'il y en a eu)
-//		if (_is_active)
-//			reset_all();
-//
-//		make_move(move, false, false, true);
-//	}
-//
-//	// Update le PGN
-//	main_GUI._game_tree.select_next_node(move);
-//	main_GUI._pgn = main_GUI._game_tree.tree_display();
-//
-//	return true;
-//}
-
-// Pas très opti pour l'affichage, mais bon... Fonction qui cherche la profondeur la plus grande dans la recherche de Monte-Carlo
-//int Board::max_monte_carlo_depth() const
-//{
-//	int max_depth = 0;
-//	for (int i = 0; i < _tested_moves; i++) {
-//		const int depth = monte_buffer._heap_boards[_index_children[i]].max_monte_carlo_depth() + 1;
-//		if (depth > max_depth)
-//			max_depth = depth;
-//	}
-//
-//	return max_depth;
-//}
-
-// Algo de grogros_zero
-//void Board::grogros_zero(Evaluator* eval, int nodes, const float beta, const float k_add, const int quiescence_depth, const bool explore_checks, const bool display, const int depth, Network* net, int correction)
-//{
-//	// Temps au début de l'appel de GrogrosZero
-//	const clock_t begin_monte_time = clock();
-//
-//	// *** PRÉPARATION DU PLATEAU ***
-//	//prepare_grogros_zero(&nodes, begin_monte_time, depth, display);
-//
-//	// Pour la GUI
-//	main_GUI._update_variants = true;
-//
-//	// Pour le buffer
-//	_is_active = true;
-//
-//	// Si c'est le plateau principal
-//	if (depth == 0) {
-//		// On regarde si le buffer est plein
-//		const int n = total_nodes();
-//		if (monte_buffer._length - n < nodes) { // Il faut prendre en compte que le plateau principal est déjà dans le buffer
-//			if (display)
-//				cout << "buffer is full" << endl;
-//			nodes = monte_buffer._length - n;
-//		}
-//	}
-//
-//	// Vérifie si la partie est finie
-//	if (_new_board)
-//		is_game_over();
-//
-//	// Si la partie est finie, évite le calcul des coups... bizarre aussi : ne plus rentrer dans cette ligne?
-//	if (_game_over_value) {
-//		_nodes++; // un peu bizarre mais bon... revoir les cas où y'a des mats
-//		_time_monte_carlo += clock() - begin_monte_time;
-//		return;
-//	}
-//
-//	// Trie les coups si ça n'est pas déjà fait (les trie de façon rapide)
-//	!_sorted_moves && sort_moves();
-//
-//	// Reset les tableaux pour les plateaux fils
-//	if (_new_board)
-//		reset_children();
-//
-//
-//	// *** BOUCLE PRINCIPALE ***
-//	while (nodes > 0) {
-//
-//		// *** TOUS LES COUPS NE SONT PAS ENCORE EXPLORÉS ***
-//		if (_tested_moves < _got_moves) {
-//
-//			// On explore un nouveau coup
-//			explore_new_move(eval, quiescence_depth, explore_checks, correction);
-//		}
-//
-//		// *** TOUS LES COUPS SONT DÉJÀ EXPLORÉS ***
-//		else {
-//
-//			// On explore dans un noeud fils
-//			explore_random_child_node(eval, beta, k_add, display, depth, quiescence_depth, explore_checks, net);
-//		}
-//
-//		// Décrémentation du nombre de noeuds restants
-//		nodes--;
-//		_nodes++;
-//	}
-//
-//	_time_monte_carlo += clock() - begin_monte_time;
-//
-//	return;
-//}
-
-// Fonction qui prépare le plateau pour l'algo de grogros_zero
-//void Board::prepare_grogros_zero(int* nodes, clock_t begin_monte_time, int depth, bool display)
-//{
-//	// Pour la GUI
-//	main_GUI._update_variants = true;
-//
-//	// Pour le buffer
-//	_is_active = true;
-//
-//	// Si c'est le plateau principal
-//	if (depth == 0) {
-//		// On regarde si le buffer est plein
-//		const int n = total_nodes();
-//		if (monte_buffer._length - n < *nodes) { // Il faut prendre en compte que le plateau principal est déjà dans le buffer
-//			if (display)
-//				cout << "buffer is full" << endl;
-//			*nodes = monte_buffer._length - n;
-//		}
-//	}
-//
-//	// Vérifie si la partie est finie
-//	if (_new_board)
-//		is_game_over();
-//
-//	// Si la partie est finie, évite le calcul des coups... bizarre aussi : ne plus rentrer dans cette ligne?
-//	if (_game_over_value) {
-//		_nodes++; // un peu bizarre mais bon... revoir les cas où y'a des mats
-//		_time_monte_carlo += clock() - begin_monte_time;
-//		return;
-//	}
-//
-//	// Trie les coups si ça n'est pas déjà fait (les trie de façon rapide)
-//	!_sorted_moves && sort_moves();
-//
-//	// Reset les tableaux pour les plateaux fils
-//	if (_new_board)
-//		reset_children();
-//}
-
-// Fonction qui explore un coup pour l'algo de grogros_zero
-//void Board::explore_new_move(Evaluator* eval, int quiescence_depth, bool explore_checks, int correction)
-//{
-//	// *** TEST ***
-//
-//	// Crée un plateau fils test
-//	Board b(*this);
-//
-//	// Joue le nouveau coup
-//	b.make_index_move(_current_move);
-//	b.get_zobrist_key();
-//
-//	// Regarde si la position existe déjà dans la table de transposition
-//	if (false && transposition_table._hash_table.find(b._zobrist_key) != transposition_table._hash_table.end()) {
-//		// POSITION TEST: 8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1 (Rb1 seul coup gagnant)
-//
-//		// Prend l'index du plateau dans le buffer
-//		const int index = transposition_table._hash_table[b._zobrist_key]._board_index;
-//
-//		// Stocke l'index du plateau dans le buffer pour ce coup
-//		_index_children[_current_move] = index;
-//
-//		_eval_children[_current_move] = monte_buffer._heap_boards[index]._evaluation;
-//		_nodes_children[_current_move] = monte_buffer._heap_boards[index]._nodes;
-//
-//		// Actualise la valeur d'évaluation du plateau
-//		_evaluation = (_player && _eval_children[_current_move] > _evaluation) ? _eval_children[_current_move] : (!_player && _eval_children[_current_move] < _evaluation) ? _eval_children[_current_move] : _evaluation;
-//	
-//		// Incrémentation du nombre de transpositions
-//		_transpositions++;
-//	}
-//
-//	// Le plateau n'est pas dans la table de transposition
-//	else {
-//		// Prend une nouvelle place dans le buffer
-//		const int index = monte_buffer.get_first_free_index();
-//
-//		// Stocke l'index du plateau dans le buffer pour ce coup
-//		_index_children[_current_move] = index;
-//
-//		// Rend actif le plateau fils
-//		monte_buffer._heap_boards[index]._is_active = true;
-//
-//		// Joue un nouveau coup
-//		monte_buffer._heap_boards[index].copy_data(*this, false, true);
-//		monte_buffer._heap_boards[index].make_index_move(_current_move, false, false, true);
-//
-//		// Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
-//		monte_buffer._heap_boards[index]._evaluation = monte_buffer._heap_boards[index].quiescence(eval, -INT32_MAX, INT32_MAX, quiescence_depth, explore_checks) * -get_color() + correction;
-//		//monte_buffer._heap_boards[index]._evaluation = monte_buffer._heap_boards[index].grogros_quiescence(eval, -INT32_MAX, INT32_MAX, quiescence_depth, explore_checks) * -get_color() + correction;
-//		_quiescence_nodes += monte_buffer._heap_boards[index]._quiescence_nodes;
-//		_nodes += monte_buffer._heap_boards[index]._nodes;
-//
-//		_eval_children[_current_move] = monte_buffer._heap_boards[index]._evaluation;
-//		_nodes_children[_current_move] = 1;
-//
-//		// Actualise la valeur d'évaluation du plateau
-//		int eval_child = _eval_children[_current_move];
-//		if (_player)
-//			_evaluation = max(eval_child, _evaluation);
-//		else
-//			_evaluation = min(eval_child, _evaluation);
-//
-//		// Ajout de la position dans la table de transposition
-//		get_zobrist_key();
-//		ZobristEntry zobrist_entry(index);
-//		transposition_table._hash_table[_zobrist_key] = zobrist_entry;
-//	}
-//
-//	// Incrémentation des indices
-//	_current_move++;
-//	_tested_moves++;
-//
-//	// *** FIN TEST ***
-//
-//
-//
-//	//// Prend une nouvelle place dans le buffer
-//	//const int index = monte_buffer.get_first_free_index();
-//
-//	//// Stocke l'index du plateau dans le buffer pour ce coup
-//	//_index_children[_current_move] = index;
-//
-//	//// Rend actif le plateau fils
-//	//monte_buffer._heap_boards[index]._is_active = true;
-//
-//	//// Joue un nouveau coup
-//	//monte_buffer._heap_boards[index].copy_data(*this, false, true);
-//	//monte_buffer._heap_boards[index].make_index_move(_current_move, false, false, true);
-//
-//	//// Evalue une première fois la position, puis stocke dans la liste d'évaluation des coups
-//	//monte_buffer._heap_boards[index]._evaluation = monte_buffer._heap_boards[index].quiescence(eval, -INT32_MAX, INT32_MAX, quiescence_depth, explore_checks) * -get_color() + correction;
-//	//_quiescence_nodes += monte_buffer._heap_boards[index]._quiescence_nodes;
-//
-//	//_eval_children[_current_move] = monte_buffer._heap_boards[index]._evaluation;
-//	//_nodes_children[_current_move] = 1;
-//
-//	//// Actualise la valeur d'évaluation du plateau
-//	//_evaluation = (_player && _eval_children[_current_move] > _evaluation) ? _eval_children[_current_move] : (!_player && _eval_children[_current_move] < _evaluation) ? _eval_children[_current_move] : _evaluation;
-//
-//	//// Incrémentation des coups
-//	//_current_move++;
-//	//_tested_moves++;
-//
-//	
-//}
-
-// Fonction qui explore un noeud fils de manière pseudo-aléatoire pour l'algo de grogros_zero
-//void Board::explore_random_child_node(Evaluator* eval, float beta, float k_add, bool display, int depth, int quiescence_depth, bool explore_checks, Network* net)
-//{
-//	// Correction de l'évaluation: différence entre l'évaluation du meilleur plateau fils et celle du plateau actuel
-//
-//	// Position test pour la correction
-//	// 3r4/1p1r3k/pR1p1p1p/3PpNq1/1QP1P3/6PP/6PK/8 b - - 2 41 : blancs complètement gagnants
-//	// r1bqk2r/1p3ppp/p1np1n2/3pp3/3P4/3BPN2/PPPB1PPP/R2QK2R w KQkq - 0 9 : grogros met du temps à voir la menace et joue un coup 'random'
-//	// rnb2bnr/pppp1k1p/5q2/8/5p2/2N1BQ2/PPP3PP/R4RK1 b - - 3 11 : met du temps à évaluer les menaces
-//	int eval_correction = 0;
-//	/*if (depth == 0 || true)
-//		eval_correction = _player ? max_value(_eval_children, _got_moves) - _static_evaluation : min_value(_eval_children, _got_moves) - _static_evaluation;*/
-//		//cout << "eval_correction: " << eval_correction << endl;
-//		//cout << _static_evaluation << endl;
-//
-//		// Choisit aléatoirement un "bon" coup
-//	_current_move = pick_random_good_move(_eval_children, _got_moves, get_color(), false, _nodes, _nodes_children, beta, k_add);
-//	//_current_move = select_uct();
-//
-//	// Va une profondeur plus loin... appel récursif sur Monte-Carlo
-//	_quiescence_nodes -= monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes;
-//	monte_buffer._heap_boards[_index_children[_current_move]].grogros_zero(eval, 1, beta, k_add, quiescence_depth, explore_checks, display, depth + 1, net, eval_correction);
-//	_quiescence_nodes += monte_buffer._heap_boards[_index_children[_current_move]]._quiescence_nodes;
-//
-//	// Actualise l'évaluation
-//	_eval_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._evaluation;
-//	_nodes_children[_current_move] = monte_buffer._heap_boards[_index_children[_current_move]]._nodes + 1;
-//
-//	// Actualise la valeur d'évaluation du plateau
-//	_evaluation = _player ? max_value(_eval_children, _got_moves) : min_value(_eval_children, _got_moves);
-//}
-
 // Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
 // FIXME? plus rapide d'instancier un nouveau plateau? et plus safe niveau mémoire?
 void Board::reset_board(const bool display) {
@@ -2660,59 +1797,6 @@ void Board::reset_board(const bool display) {
 
 // Fonction qui calcule et renvoie la valeur correspondante à la sécurité des rois
 int Board::get_king_safety(float display_factor) {
-	// TODO : à rajouter pour préciser l'évaluation
-	// https://www.chessprogramming.org/King_Safety
-	// - pawn storm : -> rajout de faiblesse pour le roi adverse
-	// - prendre en compte la nature du centre (ouvert/fermé)
-	// - revoir comment on calcule les pièces qui attaquent et défendent
-
-
-	// TODO URGENT:
-	// Améliorer comment on compte les pièces qui attaquent et défendent
-	// Différencier les safe checks qui peuvent être parés ou non? parfois des safe checks ne servent à rien
-
-
-	// Endgames à tester
-
-	// Décomposer en plusieurs fonctions
-
-	// Facteurs:
-	// - Nombre de pièces qui attaquent
-	// - Nombre de pièces qui défendent
-	// - Structure de pions qui protège le roi
-	// - Mating nets (cases échappatoires pour le roi)
-	// - Menaces d'échecs (safe/unsafe)
-	// - Colonnes ouvrtes/semi-ouvertes contre le roi adverse
-	// - Diagonales ouvertes/semi-ouvertes contre le roi adverse
-	// - Ouverture de la position? TODO
-	// - Pawn storm
-	// - Position du roi
-	// - Avancement de la partie / pièces restantes... (difficile à prendre en compte de manière juste)
-	// - Contre-jeu au centre?
-
-
-
-	// *** CALCUL ***
-	// ap = puissance d'attaque (pièces proches du roi adverse)
-	// dp = puissance de défense (pièces proches du roi allié)
-	// pp = puissance de protection (pions proches du roi allié + au bord de l'échiquier + droits de roques)
-	// w = faiblesse du roi (positionnement sur l'échiquier -> centre : roi plus faible + virtual mobility)
-	// cp = puissance de contrôle (cases contrôlées autour du roi adverse)
-
-	// kd = danger du roi
-
-
-
-
-	// Nouvelle formule
-	// 
-	// Faiblesses long terme:
-	// (structure de pions autour du roi + colonnes ouvertes/semi ouvertes autour + diagonales + pawn storm) * pièces restantes adverses
-	// 
-	// Attaque court terme:
-	// 
-
-
 
 	// ----------------------
 	// *** POSITIONS TEST ***
@@ -2746,11 +1830,10 @@ int Board::get_king_safety(float display_factor) {
 	// r1b3kr/pppp3p/2n2Q2/8/5N2/4p3/PPP3PP/6K1 b - - 2 19 : blancs gagnants
 	// r1b3kr/ppp4p/2np1Q2/7N/8/4p3/PPP3PP/6K1 b - - 1 20 : #1 imparable
 	// rnb2bnr/pppp1k1p/8/8/5p2/4BQ2/PqP3PP/RN3RK1 w - - 0 11 : blancs gagnants
+	// 6k1/5pp1/5r2/7K/P5PP/2Nr1n2/1P6/8 b - - 0 38 : #1 imparable...
 
 	// 8/6PK/5k2/8/8/8/8/8 b - - 0 8
 
-
-	constexpr bool display = false;
 
 	// Met à jour la position des rois
 	update_kings_pos();
@@ -2788,31 +1871,24 @@ int Board::get_king_safety(float display_factor) {
 	// * ATTAQUES - DEFENSES - PROTECTIONS *
 	// -------------------------------------
 
+	// TODO: fonction pour ça
 	// Calcul des protections et puissances d'attaques
 	for (uint_fast8_t i = 0; i < 8; i++) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
 			if (const uint_fast8_t p = _array[i][j]; p > 0) {
-				if (p < 6) {
-					//w_attacking_power += static_cast<int>(piece_attack_factor * static_cast<float>(get_piece_attack_power(i, j)));
-					if (p == 1)
-						w_king_protection += static_cast<int>(pawn_protection_factor * static_cast<float>(get_piece_defense_power(i, j)));
-					//else
-					//	w_defending_power += static_cast<int>(piece_defense_factor * static_cast<float>(get_piece_defense_power(i, j)));
-				}
-				else if (p > 6 && p < 12) {
-					//b_attacking_power += static_cast<int>(piece_attack_factor * static_cast<float>(get_piece_attack_power(i, j)));
-					if (p == 7)
-						b_king_protection += static_cast<int>(pawn_protection_factor * static_cast<float>(get_piece_defense_power(i, j)));
-					//else
-					//	b_defending_power += static_cast<int>(piece_defense_factor * static_cast<float>(get_piece_defense_power(i, j)));
-				}
+				if (p == 1)
+					w_king_protection += static_cast<int>(pawn_protection_factor * static_cast<float>(get_piece_defense_power(i, j)));
+				else if (p == 7)
+					b_king_protection += static_cast<int>(pawn_protection_factor * static_cast<float>(get_piece_defense_power(i, j)));
 			}
 		}
 	}
 
+	// Attaquants
 	w_attacking_power = get_king_attackers(true) * piece_attack_factor;
 	b_attacking_power = get_king_attackers(false) * piece_attack_factor;
 
+	// Défenseurs
 	w_defending_power = get_king_defenders(true) * piece_defense_factor;
 	b_defending_power = get_king_defenders(false) * piece_defense_factor;
 
@@ -2832,53 +1908,7 @@ int Board::get_king_safety(float display_factor) {
 	Map white_controls_map = get_white_controls_map();
 	Map black_controls_map = get_black_controls_map();
 
-	//if (display) {
-	//	//white_controls_map.print();
-	//	//black_controls_map.print();
-	//}
-
-	//// Danger par cases controllées ou occupée en fonction de la distance (sera rajouté à la puissance d'attaque)
-	//constexpr uint_fast8_t controls_distance_dangers[8] = { 50, 25, 5, 1, 0, 0, 0, 0 };
-	//constexpr uint_fast8_t edge_danger = 25;
-
-	//// Roi blanc
-	//int white_king_mating_net = 0;
-
-	//// Bords : ajoute +3 s'il touche 1 bord, +5 s'il est dans un coin (nombre de cases perdues)
-	//const bool white_vertical_edge = (_white_king_pos.i == 0 || _white_king_pos.i == 7);
-	//const bool white_horizontal_edge = (_white_king_pos.j == 0 || _white_king_pos.j == 7);
-	//white_king_mating_net += (white_vertical_edge && white_horizontal_edge) ? 5 * edge_danger : (white_vertical_edge || white_horizontal_edge) ? 3 * edge_danger : 0;
-
-	//// Cases controllées ou occupées proches du roi blanc
-	//for (uint_fast8_t i = 0; i < 8; i++)
-	//	for (uint_fast8_t j = 0; j < 8; j++)
-	//		white_king_mating_net += (black_controls_map._array[i][j] > 0 || is_in(_array[i][j], 1, 6)) * controls_distance_dangers[max(abs(i - _white_king_pos.i), abs(j - _white_king_pos.j))];
-
-
-	//// Roi noir
-	//int black_king_mating_net = 0;
-
-	//// Bord : ajoute +3 s'il touche 1 bord, +5 s'il est dans un coin (nombre de cases perdues)
-	//const bool black_vertical_edge = (_black_king_pos.i == 0 || _black_king_pos.i == 7);
-	//const bool black_horizontal_edge = (_black_king_pos.j == 0 || _black_king_pos.j == 7);
-	//black_king_mating_net += (black_vertical_edge && black_horizontal_edge) ? 5 * edge_danger : (black_vertical_edge || black_horizontal_edge) ? 3 * edge_danger : 0;
-
-	//// Cases controllées ou occupées proches du roi noir
-	//for (uint_fast8_t i = 0; i < 8; i++)
-	//	for (uint_fast8_t j = 0; j < 8; j++)
-	//		black_king_mating_net += (white_controls_map._array[i][j] > 0 || is_in(_array[i][j], 7, 12)) * controls_distance_dangers[max(abs(i - _black_king_pos.i), abs(j - _black_king_pos.j))];
-
-
-	//if (display)
-	//	cout << "white_king_mating_net = " << white_king_mating_net << "		-	 black_king_mating_net = " << black_king_mating_net << endl;
-
-	//// Ajout des mating nets aux puissances d'attaque
-	////w_attacking_power += black_king_mating_net;
-	////b_attacking_power += white_king_mating_net;
-	//w_attacking_power *= 1 + static_cast<float>(black_king_mating_net) / 100;
-	//b_attacking_power *= 1 + static_cast<float>(white_king_mating_net) / 100;
-
-
+	
 	// ----------------------
 	// *** ESCAPE SQUARES ***
 	// ----------------------
@@ -2888,8 +1918,6 @@ int Board::get_king_safety(float display_factor) {
 	// Récupère les cases d'échappatoires des rois
 	//const uint_fast8_t w_escape_squares = get_king_escape_squares(true);
 	//const uint_fast8_t b_escape_squares = get_king_escape_squares(false);
-
-	// TODO: à utiliser
 
 	//if (display_factor != 0.0f) {
 	//	main_GUI._eval_components += "Escape squares: " + to_string(w_escape_squares) + " / " + to_string(b_escape_squares) + "\n";
@@ -2921,7 +1949,7 @@ int Board::get_king_safety(float display_factor) {
 		}
 	}
 	
-	// Overload sur le roi blanc
+	// Overload sur le roi noir
 	int b_king_overloaded = 0;
 
 	// Attaques sur le plateau
@@ -2940,11 +1968,6 @@ int Board::get_king_safety(float display_factor) {
 	w_king_overloaded *= overload_factor;
 	b_king_overloaded *= overload_factor;
 
-	// Les surcharges peuvent provoquer des faiblesses sur le roi adverse
-	//w_king_weakness += white_king_overloaded;
-	//b_king_weakness += black_king_overloaded;
-
-	// TODO: à utiliser
 	if (display_factor != 0.0f) {
 		main_GUI._eval_components += "Overloaded: " + to_string(w_king_overloaded) + " / " + to_string(b_king_overloaded) + "\n";
 	}
@@ -2954,12 +1977,6 @@ int Board::get_king_safety(float display_factor) {
 	// *** PROTECTIONS ***
 	// -------------------
 
-	// Protection des bords de l'échiquier
-	//constexpr int edge_protection = 0;
-	//w_king_protection += (_white_king_pos.i % 7 == 0 + _white_king_pos.j % 7 == 0) * edge_protection;
-	//b_king_protection += (_black_king_pos.i % 7 == 0 + _black_king_pos.j % 7 == 0) * edge_protection;
-
-	// Il faut compter les cases vides (non-pion) autour de lui
 	// Droits de roque
 	constexpr int castling_rights_protection = 200;
 	constexpr int single_castling_protection = 2;
@@ -2975,7 +1992,7 @@ int Board::get_king_safety(float display_factor) {
 	w_king_protection -= king_base_protection;
 	b_king_protection -= king_base_protection;
 
-
+	// Facteur multiplicatif pour ce paramètre
 	const float king_protection_factor = 0.5f;
 
 	w_king_protection *= king_protection_factor;
@@ -3065,32 +2082,12 @@ int Board::get_king_safety(float display_factor) {
 	// *** SAFE CHECKS ***
 	// -------------------
 
-	// TODO : à fix + ajouter en fonction du nombre d'escape squares du roi adverse
-	//constexpr int safe_check_weakness = 350;
-	//constexpr float safe_check_attack = 3.0f;
-	//constexpr int safe_check_add = 500;
-	//constexpr int safe_check_danger = 250;
-
-	//pair<uint_fast8_t, uint_fast8_t> safe_checks = get_safe_checks(white_controls_map, black_controls_map);
-
 	const int w_safe_checks = get_safe_checks_value(white_controls_map, black_controls_map, true);
 	const int b_safe_checks = get_safe_checks_value(white_controls_map, black_controls_map, false);
-
-	// TODO: à utiliser
 
 	if (display_factor != 0.0f) {
 		main_GUI._eval_components += "Safe checks: " + to_string(w_safe_checks) + " / " + to_string(b_safe_checks) + "\n";
 	}
-
-	// TODO: différencier les échecs qui peuvent être bloqués et ceux qui ne le peuvent pas (grosse différence de danger)
-
-
-	//w_king_weakness += safe_checks.second * safe_check_weakness;
-	//b_king_weakness += safe_checks.first * safe_check_weakness;
-
-	//w_attacking_power += safe_checks.first * safe_check_attack;
-	//b_attacking_power += safe_checks.second * safe_check_attack;
-
 
 	// ---------------------------
 	// *** POTENTIEL D'ATTAQUE ***
@@ -3123,16 +2120,6 @@ int Board::get_king_safety(float display_factor) {
 	b_total_potential *= potential_factor;
 
 
-	// Le surnombre peut aussi provoquer une faiblesse sur le roi adverse -> TODO : king_weakness à modifier si attacking power est grand? -> au dessus d'une constante?
-
-	// Constante qui determine la puissance d'attaque
-	constexpr int reference_attacking_power = 75;
-
-	if (display_factor != 0.0f) {
-		main_GUI._eval_components += "Attacking potential: " + to_string(w_total_potential) + " / " + to_string(b_total_potential) + "\n";
-	}
-
-
 	// -------------------------------------
 	// *** CALCUL DE LA FAIBLESSE DU ROI ***
 	// -------------------------------------
@@ -3143,12 +2130,7 @@ int Board::get_king_safety(float display_factor) {
 	const float negative_short_term_factor = 0.3f;
 
 
-	//const float no_escape_multiplier = 3.0f;
-
 	// Roi noir (attaque des blancs)
-
-	// Mating potential
-	//const int w_mating_potential = (float)(safe_checks.first * safe_check_danger) / (1.0f / no_escape_multiplier + (float)b_escape_squares);
 
 	// Attack/Defense overload
 	int w_attacking_overload = w_attacking_power - b_defending_power;
@@ -3186,10 +2168,8 @@ int Board::get_king_safety(float display_factor) {
 
 	b_king_weakness = b_long_term_weakness + b_short_term_weakness;
 
-	// Roi blanc (attaque des noirs)
 
-	// Mating potential
-	//const int b_mating_potential = (float)(safe_checks.second * safe_check_danger) / (1.0f / no_escape_multiplier + (float)w_escape_squares);
+	// Roi blanc (attaque des noirs)
 
 	// Attack/Defense overload
 	int b_attacking_overload = b_attacking_power - w_defending_power;
@@ -3226,19 +2206,12 @@ int Board::get_king_safety(float display_factor) {
 
 	w_king_weakness = w_long_term_weakness + w_short_term_weakness;
 
-	//w_king_weakness = b_mating_potential + b_attacking_overload - w_king_protection + b_open_lines + b_open_diagonals + w_placement_weakness + w_king_overloaded;
-
-	//// Affichage de la formule
-	//if (display_factor != 0.0f) {
-	//	main_GUI._eval_components += "W WEAKNESS: M: " + to_string(b_mating_potential) + " + A: " + to_string(b_attacking_overload) + " - P: " + to_string(w_king_protection) + " + L: " + to_string(b_open_lines) + " + D: " + to_string(b_open_diagonals) + " + W: " + to_string(w_placement_weakness) + " + O: " + to_string(w_king_overloaded) + "= " + to_string(w_king_weakness) + "\n";
-	//}
-
 	// Potentiel d'attaque
 	const float w_attacking_potential = (float)w_total_potential / reference_potential;
 	const float b_attacking_potential = (float)b_total_potential / reference_potential;
 
 	if (display_factor != 0.0f) {
-		main_GUI._eval_components += "Attacking potentials: " + to_string(w_attacking_potential) + " / " + to_string(b_attacking_potential) + "\n";
+		main_GUI._eval_components += "Attacking potential: " + to_string(w_attacking_potential) + " / " + to_string(b_attacking_potential) + "\n";
 	}
 
 	// Mise à jour de la king safety en fonction des potentiels d'attaque
@@ -4277,24 +3250,6 @@ float uct(const float win_chance, const float c, const int nodes_parent, const i
 	return win_chance + c * static_cast<float>(sqrt(log(nodes_parent) / nodes_child));
 }
 
-// Fonction qui sélectionne et renvoie le coup avec le meilleur UCT
-//int Board::select_uct(const float c) const
-//{
-//	float max_uct = 0;
-//	int uct_move = 0;
-//
-//	// Pour chaque noeud fils
-//	for (int i = 0; i < _got_moves; i++) {
-//		const float win_chance = get_winning_chances_from_eval(monte_buffer._heap_boards[_index_children[i]]._evaluation, _player);
-//		if (const float uct_value = uct(win_chance, c, _nodes, _nodes_children[i]); uct_value > max_uct) {
-//			max_uct = uct_value;
-//			uct_move = i;
-//		}
-//	}
-//
-//	return uct_move;
-//}
-
 // Fonction qui fait un tri rapide des coups (en plaçant les captures en premier)
 // TODO : à faire lors de la génération de coups?
 bool Board::sort_moves() {
@@ -4521,32 +3476,6 @@ bool Board::click_m_move(const Move m, const bool orientation) const
 
 	return true;
 }
-
-// Fonction qui compare deux coups pour savoir lequel afficher en premier
-//bool compare_move_arrows(const int m1, const int m2)
-//{
-//	const Move move1 = main_GUI._board._moves[m1];
-//	const Move move2 = main_GUI._board._moves[m2];
-//
-//	// Si deux flèches finissent en un même point, affiche en dernier (au dessus), le "meilleur" coup
-//	if (move1.i2 == move2.i2 && move1.j2 == move2.j2)
-//		return main_GUI._board._nodes_children[m1] < main_GUI._board._nodes_children[m2];
-//
-//	// Si les deux flèches partent d'un même point, alors affiche par dessus la flèche la plus courte
-//	if (move1.i1 == move2.i1 && move1.j1 == move2.j1) {
-//		
-//		//// Regarde si les flèches vont dans la même direction ou non
-//		//if ((move1.j2 - move1.j1) / (move1.i2 - move1.i1) != (move2.j2 - move2.j1) / (move2.i2 - move2.i1))
-//		//	return true;
-//		// FIXME: divisions par 0
-//
-//		const int d1 = (move1.i1 - move1.i2) * (move1.i1 - move1.i2) + (move1.j1 - move1.j2) * (move1.j1 - move1.j2);
-//		const int d2 = (move2.i1 - move2.i2) * (move2.i1 - move2.i2) + (move2.j1 - move2.j2) * (move2.j1 - move2.j2);
-//		return d1 > d2;
-//	}
-//
-//	return true;
-//}
 
 // Fonction qui met à jour une text box
 void update_text_box(TextBox& text_box) {
@@ -4854,122 +3783,6 @@ bool Board::update_kings_pos()
 	}
 
 	return false;
-}
-
-// Fonction qui renvoie la puissance d'attaque d'une pièce sur le roi adverse
-int Board::get_piece_attack_power(const int i, const int j) const
-{
-	// TODO : faire des if en fonction de la position i, j pour éviter des calculs
-	const uint_fast8_t piece = _array[i][j];
-
-	// Renvoie 0 si la case est vide
-	if (piece == 0)
-		return 0;
-
-	// Tableaux des puissances d'attaque
-
-	// Pion
-	static constexpr int pawn_attacking_power_map[8][8] = {
-	{0, 35, 10, 0, 0, 0, 0, 0},
-	{40, 30, 15, 0, 0, 0, 0, 0},
-	{30, 25, 10, 0, 0, 0, 0, 0},
-	{20, 15, 5, 0, 0, 0, 0, 0},
-	{10, 5, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0}
-	};
-
-	// Cavalier
-	static constexpr int knight_attacking_power_map[8][8] = {
-	{0, 25, 35, 20, 0, 0, 0, 0},
-	{25, 40, 35, 20, 0, 0, 0, 0},
-	{35, 45, 30, 15, 0, 0, 0, 0},
-	{60, 55, 25, 10, 0, 0, 0, 0},
-	{20, 15, 10, 5, 0, 0, 0, 0},
-	{10, 15, 10, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0}
-	};
-
-	// Fou
-	static constexpr int bishop_attacking_power_map[8][8] = {
-	{0,  70, 50, 20, 0, 0, 0, 0},
-	{70, 60, 40, 20, 0, 0, 0, 0},
-	{75, 80, 45, 10, 0, 0, 0, 0},
-	{30, 25, 20, 15, 0, 0, 0, 0},
-	{15, 10, 25, 20, 15, 0, 0, 0},
-	{0, 0, 0, 25, 20, 15, 0, 0},
-	{0, 0, 0, 0, 25, 20, 15, 0},
-	{0, 0, 0, 0, 0, 25, 20, 15}
-	};
-
-	// Tour
-	static constexpr int rook_attacking_power_map[8][8] = {
-	{0, 100, 75, 75, 75, 75, 75, 75},
-	{100, 75, 50, 50, 50, 50, 50, 50},
-	{75, 50, 35, 25, 20, 10, 0, 0},
-	{75, 50, 25, 10, 0, 0, 0, 0},
-	{75, 50, 20, 0, 0, 0, 0, 0},
-	{75, 50, 10, 0, 0, 0, 0, 0},
-	{75, 50, 0, 0, 0, 0, 0, 0},
-	{75, 50, 0, 0, 0, 0, 0, 0}
-	};
-
-	// Dame
-	static constexpr int queen_attacking_power_map[8][8] = {
-	{ 0, 200, 152, 104, 44, 32, 20, 12},
-	{200, 176, 144, 96, 32, 24, 12, 4},
-	{144, 136, 120, 88, 20, 12, 4, 0},
-	{136, 104, 96, 80, 12, 8, 4, 0},
-	{100, 80, 60, 12, 4, 0, 0, 0},
-	{ 44, 24, 12, 4, 0, 0, 0, 0},
-	{ 24, 12, 4, 0, 0, 0, 0, 0},
-	{ 20, 4, 0, 0, 0, 0, 0, 0} };
-
-	// Roi
-	static constexpr int king_attacking_power_map[8][8] = {
-	{0, 0, 75, 0, 0, 0, 0, 0},
-	{0, 0, 35, 0, 0, 0, 0, 0},
-	{75, 35, 25, 0, 0, 0, 0, 0},
-	{20, 15, 10, 5, 0, 0, 0, 0},
-	{5, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0}
-	};
-
-	// Renvoie la valeur correspondante à la puissance d'attaque de la pièce
-
-	// Pièces blanches
-	if (piece == 1)
-		return (i > _black_king_pos.i) ? 0 : pawn_attacking_power_map[_black_king_pos.i - i][abs(j - _black_king_pos.j)];
-	if (piece == 2)
-		return knight_attacking_power_map[abs(i - _black_king_pos.i)][abs(j - _black_king_pos.j)];
-	if (piece == 3)
-		return bishop_attacking_power_map[abs(i - _black_king_pos.i)][abs(j - _black_king_pos.j)];
-	if (piece == 4)
-		return rook_attacking_power_map[abs(i - _black_king_pos.i)][abs(j - _black_king_pos.j)];
-	if (piece == 5)
-		return queen_attacking_power_map[abs(i - _black_king_pos.i)][abs(j - _black_king_pos.j)];
-	if (piece == 6)
-		return king_attacking_power_map[abs(i - _black_king_pos.i)][abs(j - _black_king_pos.j)];
-
-	// Pièces noires
-	if (piece == 7)
-		return (i < _white_king_pos.i) ? 0 : pawn_attacking_power_map[i - _white_king_pos.i][abs(j - _white_king_pos.j)];
-	if (piece == 8)
-		return knight_attacking_power_map[abs(i - _white_king_pos.i)][abs(j - _white_king_pos.j)];
-	if (piece == 9)
-		return bishop_attacking_power_map[abs(i - _white_king_pos.i)][abs(j - _white_king_pos.j)];
-	if (piece == 10)
-		return rook_attacking_power_map[abs(i - _white_king_pos.i)][abs(j - _white_king_pos.j)];
-	if (piece == 11)
-		return queen_attacking_power_map[abs(i - _white_king_pos.i)][abs(j - _white_king_pos.j)];
-	if (piece == 12)
-		return king_attacking_power_map[abs(i - _white_king_pos.i)][abs(j - _white_king_pos.j)];
-
-	return 0;
 }
 
 // Fonction qui renvoie la puissance de défense d'une pièce pour le roi allié
@@ -5322,6 +4135,7 @@ int Board::get_king_virtual_mobility(bool color) {
 	return mobility;
 }
 
+// Fonction qui renvoie le nombre d'échecs 'safe' dans la position pour les deux joueurs
 int Board::get_safe_checks_value(Map white_controls, Map black_controls, bool color)
 {
 	constexpr int initial_safe_check_value = 400;
@@ -5400,116 +4214,6 @@ int Board::get_safe_checks_value(Map white_controls, Map black_controls, bool co
 	}
 
 	return safe_checks_value;
-}
-
-// Fonction qui renvoie le nombre d'échecs 'safe' dans la position pour les deux joueurs
-pair<uint_fast8_t, uint_fast8_t> Board::get_safe_checks(Map white_controls, Map black_controls) const
-{
-	// TODO: tout refaire car la fonction est lente
-	// TODO : à revoir -> prendre en compte les clouages pour les échecs safe (la pièce clouée ne contrôle pas vraiment la case...)
-	// Compter moindrement les échecs pouvant être parés
-
-	// Un échec safe est :
-	// - un échec fait sur une case non controlée par l'adversaire
-	// - un échec fait sur une case controlée par le roi adverse, mais aussi controlée par une pièce alliée
-
-
-	constexpr int initial_weight = 100;
-
-
-	// Map des cases ou un échec safe est possible pour les blancs
-	//Map white_safe_checks;
-
-	// Nombre d'échecs safe pour les blancs
-	uint_fast8_t white_safe_checks_nb = 0;
-
-	// Regarde tous les coups possibles pour les blancs (sans regarder les échecs)
-	Board b_white(*this);
-	b_white._player = false;
-
-	// On ne le calcule seulement si le roi noir n'est pas en échec
-	if (!b_white.in_check()) {
-		b_white._player = true;
-		b_white.get_moves(false);
-
-		for (int i = 0; i < b_white._got_moves; i++) {
-			// Si la destination du coup est non controlée par les noirs, ou qu'elle est seulement controllée par le roi noir et une pièce blanche (au moins)
-
-			// Case de destination du coup
-			const uint_fast8_t i2 = b_white._moves[i].i2;
-			const uint_fast8_t j2 = b_white._moves[i].j2;
-
-			/*if (white_safe_checks._array[i2][j2] > 0)
-				continue;*/
-
-			// Nombres de contrôles de la case de destination par les blancs et les noirs
-			const uint_fast8_t controls_white = white_controls._array[i2][j2];
-			const uint_fast8_t controls_black = black_controls._array[i2][j2];
-
-			if (controls_black == 0 || (controls_black == 1 && controls_white > 1 && abs(b_white._black_king_pos.i - i2) <= 1 && abs(b_white._black_king_pos.j - j2) <= 1)) {
-				// Joue le coup et regarde s'il fait échec
-				Board b_white_check(b_white);
-				b_white_check.make_index_move(i);
-
-				// TODO : à remplacer par 'est-ce que le coup attaque le roi'?
-				if (b_white_check.in_check()) {
-					//white_safe_checks._array[i2][j2] = 1;
-
-					// L'échec peut-il être bloqué par une pièce alliée?
-					b_white_check.get_moves(true); // FIMXE: BOF
-
-					white_safe_checks_nb++;
-				}
-			}
-		}
-	}
-
-	
-
-
-	// Map des cases ou un échec safe est possible pour les noirs
-	//Map black_safe_checks;
-
-	// Nombre d'échecs safe pour les noirs
-	uint_fast8_t black_safe_checks_nb = 0;
-
-	// Regarde tous les coups possibles pour les noirs (sans regarder les échecs)
-	Board b_black(*this);
-	b_black._player = true;
-
-	// On ne le calcule seulement si le roi blanc n'est pas en échec
-	if (!b_black.in_check()) {
-		b_black._player = false;
-		b_black.get_moves(false);
-
-		for (int i = 0; i < b_black._got_moves; i++) {
-			// Si la destination du coup est non controlée par les blancs, ou qu'elle est seulement controllée par le roi blanc et une pièce noire (au moins)
-
-			// Case de destination du coup
-			const uint_fast8_t i2 = b_black._moves[i].i2;
-			const uint_fast8_t j2 = b_black._moves[i].j2;
-
-			/*if (black_safe_checks._array[i2][j2] > 0)
-				continue;*/
-
-			// Nombres de contrôles de la case de destination par les blancs et les noirs
-			const uint_fast8_t controls_white = white_controls._array[i2][j2];
-			const uint_fast8_t controls_black = black_controls._array[i2][j2];
-
-			if (controls_white == 0 || (controls_white == 1 && controls_black > 1 && abs(b_black._white_king_pos.i - i2) <= 1 && abs(b_black._white_king_pos.j - j2) <= 1)) {
-				// Joue le coup et regarde s'il fait échec
-				Board b_black_check(b_black);
-				b_black_check.make_index_move(i);
-
-				if (b_black_check.in_check()) {
-					//black_safe_checks._array[i2][j2] = 1;
-					black_safe_checks_nb++;
-				}
-			}
-		}
-	}
-
-	return { white_safe_checks_nb, black_safe_checks_nb };
 }
 
 // Fonction qui renvoie la vitesse de génération des coups
@@ -6990,7 +5694,11 @@ void Board::display_positions_history() const
 	//cout << "w_isolated_pieces: " << w_isolated_pieces << endl;
 	//cout << "b_isolated_pieces: " << b_isolated_pieces << endl;
 
-	return (b_isolated_pieces - w_isolated_pieces) * (1 - _adv);
+	// Avancement à partir duquel cela ne compte plus
+	// FIXME: en faut-il vraiment un? un cheval seul en finale ne sert à rien...
+	const float max_adv = 0.6f;
+
+	return (b_isolated_pieces - w_isolated_pieces) * max(1.0f - _adv / max_adv, 0.0f);
 }
 
 // Fonction qui ajuste les valeurs des pièces (malus/bonus), en fonction du type de position
