@@ -65,8 +65,8 @@ public:
 	clock_t _time_increment_white = -100;
 	clock_t _time_increment_black = -100;
 
-	//clock_t _time_increment_white = 10000;
-	//clock_t _time_increment_black = 10000;
+	//clock_t _time_increment_white = 15000;
+	//clock_t _time_increment_black = 15000;
 
 	// Mode analyse de Grogros
 	bool _grogros_analysis = false;
