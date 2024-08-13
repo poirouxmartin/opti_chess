@@ -37,10 +37,10 @@ public:
 	float _isolated_pieces = 0.7f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
-	int _pieces_value_begin[6] = { 80, 335, 360, 460, 1035, 0 };
+	int _pieces_value_begin[6] = { 80, 335, 360, 460, 1135, 0 };
 
 	// Valeurs en fin de partie
-	int _pieces_value_end[6] = { 90, 365, 410, 610, 1070, 0 };
+	int _pieces_value_end[6] = { 90, 365, 410, 610, 1170, 0 };
 
 	// Positionnement des pièces
 

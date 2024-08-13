@@ -623,119 +623,33 @@ inline int main_ui() {
 
 		// Jeu des IA
 
+		// TODO: il faut améliorer tout ça, et faire passer des choses dans la GUI
+
 		// Fait jouer l'IA automatiquement en fonction des paramètres
 		main_GUI._board._game_over_checked = false;  // On recheck, pour les threefold (car dans la réflexion on dit que la partie est finie si y'a une seule répétition)
 		if (main_GUI._board.is_game_over(3) == 0) {
 			// GrogrosZero
 
-			// Quand c'est son tour
+			// Analyse de GrogrosZero
+			if (main_GUI._grogros_analysis || main_GUI._white_player == main_GUI._grogros_zero_name || main_GUI._black_player == main_GUI._grogros_zero_name) {
+				if (!monte_buffer._init)
+					monte_buffer.init(buffer_size);
+
+				// FIXME: il faut utiliser ça pour pas que ça lag pour l'utilisateur
+				if (!main_GUI.is_playing()) {
+					main_GUI.grogros_analysis();
+				}
+				else {
+					main_GUI.grogros_analysis();
+				}
+			}
+
+			// Quand c'est son tour (TODO: fonction pour ça)
 			if ((main_GUI._board._player && main_GUI._white_player == main_GUI._grogros_zero_name) || (!main_GUI._board._player && main_GUI._black_player == main_GUI._grogros_zero_name)) {
 				if (!monte_buffer._init)
 					monte_buffer.init(buffer_size);
 
-				// Grogros doit gérer son temps
-				// TODO: Faire une fonction pour ça
-				// il faudra prendre plus de temps dans les positions complexes
-				if (main_GUI._time) {
-					// Nombre de noeuds que Grogros doit calculer (en fonction des contraintes de temps)
-					//static constexpr int supposed_grogros_speed = 40000; // En supposant que Grogros va à plus de 5k noeuds par seconde
-					//int supposed_grogros_speed = main_GUI._root_exploration_node->_time_spent == 0 ? 1 : (main_GUI._root_exploration_node->_nodes / main_GUI._root_exploration_node->_time_spent); // En supposant que Grogros va à plus de 5k noeuds par seconde
-					int supposed_grogros_speed = 40000;
-					//int supposed_grogros_speed = main_GUI._root_exploration_node->get_avg_nps();
-					float best_move_percentage = main_GUI._root_exploration_node->_nodes == 0 ? 0.05f : static_cast<float>(main_GUI._root_exploration_node->_children[main_GUI._root_exploration_node->get_most_explored_child_move()]->_nodes) / static_cast<float>(main_GUI._root_exploration_node->_nodes);
-					int max_move_time = main_GUI._board._player ?
-						time_to_play_move(main_GUI._time_white, main_GUI._time_black, 0.05f * (1.0f - best_move_percentage)) :
-						time_to_play_move(main_GUI._time_black, main_GUI._time_white, 0.05f * (1.0f - best_move_percentage));
-
-					//cout << "best move percentage : " << best_move_percentage << " | max move time : " << max_move_time << " | supposed speed : " << supposed_grogros_speed << " | nodes : " << main_GUI._root_exploration_node->_nodes << " | time spent : " << main_GUI._root_exploration_node->_time_spent << " | avg nps : " << main_GUI._root_exploration_node->get_avg_nps() << endl;	
-
-					// Si il nous reste beaucoup de temps en fin de partie, on peut réfléchir plus longtemps
-					max_move_time *= (1 + main_GUI._board._adv); // Regarder si ça marche bien (TODO)
-
-					//cout << "max move time : " << max_move_time << endl;
-
-					// On veut être sûr de jouer le meilleur coup de Grogros
-					// Si il y a un meilleur coup que celui avec le plus de noeuds, attendre...
-					bool wait_for_best_move = main_GUI._root_exploration_node->_nodes != 0 && main_GUI._root_exploration_node->get_most_explored_child()->_board->_evaluation * main_GUI._board.get_color() < main_GUI._board._evaluation * main_GUI._board.get_color();
-					//bool wait_for_best_move = tot_nodes != 0 && main_GUI._board._eval_children[main_GUI._board.best_monte_carlo_move()] * main_GUI._board.get_color() < main_GUI._board._evaluation * main_GUI._board.get_color();
-					
-					// A quel point faut-il attendre pour être sûr de jouer le meilleur coup?
-					float eval_diff;
-					float move_wait_factor;
-
-					// Si on attend pour le meilleur coup, attend plus longtemps si la différence d'évaluation est grande entre le meilleur coup et le coup actuel
-					if (wait_for_best_move) {
-						eval_diff = abs(main_GUI._root_exploration_node->get_most_explored_child()->_board->_evaluation - main_GUI._board._evaluation) / 100.0f;
-						move_wait_factor = 1 + eval_diff;
-						//cout << "eval diff : " << eval_diff << " | move wait factor : " << move_wait_factor << endl;
-					}
-
-					// Sinon, joue plus vite si la différence d'évaluation est grande entre le meilleur coup et ?? FIXME
-					else {
-						//move_wait_factor = 1 / (1 + eval_diff);
-						move_wait_factor = 1;
-					}
-
-					//cout << "base time : " << max_move_time << " | wait for best move : " << wait_for_best_move << " | eval diff : " << eval_diff << " | move wait factor : " << move_wait_factor << " | final time : " << max_move_time * move_wait_factor << endl;
-					max_move_time = max_move_time * move_wait_factor;
-					
-					// Parfois on a un overflow
-					if (max_move_time < 0)
-						max_move_time = INT_MAX;
-
-					// Nombre de noeuds à calculer
-					int grogros_timed_nodes = min(nodes_per_frame, supposed_grogros_speed * max_move_time / 1000);
-					main_GUI.grogros_analysis();
-					//main_GUI._board.grogros_zero(main_GUI._grogros_eval, min(!main_GUI._time ? nodes_per_frame : grogros_timed_nodes, grogros_nodes - main_GUI._board.total_nodes()), main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
-					
-					/*if (main_GUI._board._time_monte_carlo >= max_move_time)
-						((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false, false);
-					*/
-					// Equivalent en nombre de noeuds
-					int nodes_to_play = supposed_grogros_speed * max_move_time / 1000;
-
-					// Overflow (FIXME: faut mieux gérer ça...)
-					if (nodes_to_play < 0)
-						nodes_to_play = INT_MAX;
-
-					//cout << "nodes to play : " << nodes_to_play << ", " << main_GUI._root_exploration_node->_nodes << endl;
-
-					// 5bnr/p2k1p1p/3pN1p1/3Pp3/1K6/8/PP1P3P/R1rbq3 b - - 0 23 : bug après Ra3 -> Nodes to play: 0
-
-					if (main_GUI._root_exploration_node->_nodes >= nodes_to_play) {
-						//cout << nodes_to_play << ", max move time : " << max_move_time << ", supposed speed : " << supposed_grogros_speed << ", nodes : " << main_GUI._root_exploration_node->_nodes << endl;
-						((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._root_exploration_node->get_best_move(), main_GUI.get_board_orientation())) || true) && main_GUI.play_move_keep(main_GUI._root_exploration_node->get_best_move());
-					}
-
-				}
-				else {
-					main_GUI.grogros_analysis();
-					//main_GUI._board.grogros_zero(main_GUI._grogros_eval, nodes_per_frame, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
-				}
-			}
-
-			// Quand c'est pas son tour
-			// FIXME: il faut améliorer ça...
-			if ((!main_GUI._board._player && main_GUI._white_player == main_GUI._grogros_zero_name) || (main_GUI._board._player && main_GUI._black_player == main_GUI._grogros_zero_name)) {
-				if (!monte_buffer._init)
-					monte_buffer.init(buffer_size);
-				main_GUI.grogros_analysis();
-				//main_GUI._board.grogros_zero(main_GUI._grogros_eval, nodes_per_user_frame, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
-			}
-
-			// Mode analyse
-			if (main_GUI._grogros_analysis) {
-				if (!monte_buffer._init)
-					monte_buffer.init(buffer_size);
-
-				if (!main_GUI.is_playing()) {
-					main_GUI.grogros_analysis();
-					//main_GUI._board.grogros_zero(main_GUI._grogros_eval, nodes_per_frame, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks);
-				}
-				else {
-					main_GUI.grogros_analysis();
-					//main_GUI._board.grogros_zero(main_GUI._grogros_eval, nodes_per_user_frame, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._explore_checks); // Pour que ça ne lag pas pour l'utilisateur
-				}
+				main_GUI.play_grogros_zero_move();
 			}
 
 			if (main_GUI._board.is_game_over(3) != 0)
