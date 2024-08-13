@@ -302,33 +302,42 @@ void GUI::draw_exploration_arrows()
 	// Une pièce est-elle sélectionnée?
 	const bool is_selected = _selected_pos.i != -1 && _selected_pos.j != -1;
 
-	// Crée un vecteur avec les coups visibles
-	vector<Move> moves_vector;
+	// Crée un vecteur avec les coups explorés par GrogrosZero
+	vector<Move> iterated_moves_vector;
 
 	for (auto& [move, child] : _root_exploration_node->_children) {
 		// Si une pièce est sélectionnée, dessine toutes les flèches pour cette pièce
 		if (is_selected) {
 			if (_selected_pos.i == move.i1 && _selected_pos.j == move.j1)
-				moves_vector.push_back(move);
+				iterated_moves_vector.push_back(move);
 		}
 
 		// Sinon, dessine les flèches pour les coups les plus explorés
 		else {
-			if (child->_nodes / static_cast<float>(_root_exploration_node->_nodes) > _arrow_rate)
-				moves_vector.push_back(move);
+			// Le coup a-t-il été exploré par GrogrosZero, ou seulement la quiescence?
+			if (_root_exploration_node->_iterations > 0) {
+				if (child->_iterations / static_cast<float>(_root_exploration_node->_iterations) > _arrow_rate)
+					iterated_moves_vector.push_back(move);
+			}
+			else {
+				// TODO: quiescence arrows
+				// en rouge? blanc? avec un "?" au bout?
+			}
+
+			
 		}
 	}
 
 	// Trie les coups en fonction du nombre de noeuds et d'un affichage plus lisible
-	sort(moves_vector.begin(), moves_vector.end(), [this](const Move m1, const Move m2) {
+	sort(iterated_moves_vector.begin(), iterated_moves_vector.end(), [this](const Move m1, const Move m2) {
 		return this->compare_arrows(m1, m2); }
 	);
 
 	// Dessine les flèches
-	for (const Move move : moves_vector) {
+	for (const Move move : iterated_moves_vector) {
 		const int mate = _root_exploration_node->_board->is_eval_mate(_root_exploration_node->_children[move]->_board->_evaluation);
 		Node *child = _root_exploration_node->_children[move];
-		draw_arrow(move, _root_exploration_node->_board->_player, move_color(child->_nodes, _root_exploration_node->_nodes), -1.0f, true, child->_board->_evaluation, mate, move == best_move);
+		draw_arrow(move, _root_exploration_node->_board->_player, move_color(child->_iterations, _root_exploration_node->_iterations), -1.0f, true, child->_board->_evaluation, mate, move == best_move);
 	}
 }
 
@@ -429,8 +438,12 @@ void GUI::draw_arrow_from_coord(const int i1, const int j1, const int i2, const 
 }
 
 // Couleur de la flèche en fonction du coup (de son nombre de noeuds)
-Color GUI::move_color(const int nodes, const int total_nodes) const {
-	const float x = static_cast<float>(nodes) / static_cast<float>(total_nodes);
+Color GUI::move_color(const int explorations, const int total_explorations) const {
+	// S'il n'y a pas d'exploration, on affiche en blanc
+	if (total_explorations == 0)
+		return GRAY;
+
+	const float x = static_cast<float>(explorations) / static_cast<float>(total_explorations);
 
 	const auto red = static_cast<unsigned char>(255.0f * ((x <= 0.2f) + (x > 0.2f && x < 0.4f) * (0.4f - x) / 0.2f + (x > 0.8f) * (x - 0.8f) / 0.2f));
 	const auto green = static_cast<unsigned char>(255.0f * ((x < 0.2f) * x / 0.2f + (x >= 0.2f && x <= 0.6f) + (x > 0.6f && x < 0.8f) * (0.8f - x) / 0.2f));
@@ -1139,7 +1152,6 @@ void GUI::draw()
 
 	// Coups auquel l'IA réflechit...
 	if (_drawing_arrows) {
-		//draw_monte_carlo_arrows();
 		draw_exploration_arrows();
 	}
 
@@ -1303,12 +1315,17 @@ void GUI::draw()
 		}
 		
 		int max_depth = _root_exploration_node->get_main_depth();
-		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\ntime: " + clock_to_string(_root_exploration_node->_time_spent, true) + "\ndepth: " + to_string(max_depth) + "\neval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) + eval + "\n" + win_chances + "\nnodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) + " (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 0.01) / 1000.0)) + "N/s)";
+		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\ntime: " + clock_to_string(_root_exploration_node->_time_spent, true) +
+			"\ndepth: " + to_string(max_depth) + "\neval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) +
+			eval + "\n" + win_chances + "\nnodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) +
+			" (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 0.01) / 1000.0)) + "N/s)" +
+			"\niterations: " + int_to_round_string(_root_exploration_node->_iterations) + " (" + 
+			int_to_round_string(_root_exploration_node->_iterations / (static_cast<float>(_root_exploration_node->_time_spent + 0.01) / 1000.0)) + "I/s)";
 		
-		// Affichage des paramètres d'analyse de Monte-Carlo
+		// Affichage des paramètres d'analyse de GrogrosZero
 		slider_text(monte_carlo_text, _board_padding_x + _board_size + _text_size / 2, _text_size, _screen_width - _text_size - _board_padding_x - _board_size, _board_size * 9 / 16, _text_size / 4, &_monte_carlo_slider, _text_color);
 
-		// Lignes d'analyse de Monte-Carlo
+		// Lignes d'analyse de GrogrosZero
 		// TODO: on devrait utiliser ça aussi pour éviter de recalculer les autres paramètres
 		if (_update_variants) {
 			_exploration_variants = _root_exploration_node->get_exploration_variants();
@@ -1428,7 +1445,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	}
 
 	// S'il n'y a pas encore eu d'exploration
-	if (_root_exploration_node->_nodes == 0) {
+	if (_root_exploration_node->_iterations == 0) {
 		return;
 	}
 
@@ -1456,7 +1473,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	}
 
 	// Pourcentage de réflexion sur le meilleur coup
-	float best_move_percentage = static_cast<float>(most_explored_child->_nodes) / static_cast<float>(_root_exploration_node->_nodes);
+	float best_move_percentage = static_cast<float>(most_explored_child->_iterations) / static_cast<float>(_root_exploration_node->_iterations);
 
 	// Temps idéal qu'il faut prendre sur ce coup
 	int max_move_time = _board._player ? time_to_play_move(_time_white, _time_black, time_proportion_per_move * (1.0f - best_move_percentage)) : time_to_play_move(_time_black, _time_white, time_proportion_per_move * (1.0f - best_move_percentage));
@@ -1465,7 +1482,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 	// Si il nous reste beaucoup de temps en fin de partie, on peut réfléchir plus longtemps
 	// FIXME: Regarder si ça marche bien (TODO)
-	max_move_time *= (1 + _board._adv);
+	//max_move_time *= (1 + _board._adv);
 
 	//cout << "max move time : " << max_move_time << endl;
 
@@ -1501,19 +1518,23 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 		max_move_time = 0;
 	}
 
+	// Nombre d'itérations supposées par seconde
+	constexpr int supposed_ips = 1500;
+
 	// Equivalent en nombre de noeuds
 	float seconds_to_play = max_move_time / 1000.0f;
-	int nodes_to_play = grogros_nps * seconds_to_play;
+	//int nodes_to_play = grogros_nps * seconds_to_play;
+	int iterations_to_play = supposed_ips * seconds_to_play;
 
 	// Overflow (FIXME: faut mieux gérer ça...)
-	if (nodes_to_play < 0) {
-		cout << "RE: overflow in max move time (nodes to play)" << endl;
-		nodes_to_play = 0;
-	}
+	//if (nodes_to_play < 0) {
+	//	cout << "RE: overflow in max move time (nodes to play)" << endl;
+	//	nodes_to_play = 0;
+	//}
 
 	//cout << "nodes to play : " << nodes_to_play << ", " << _root_exploration_node->_nodes << endl;
 
-	if (_root_exploration_node->_nodes >= nodes_to_play) {
+	if (_root_exploration_node->_iterations >= iterations_to_play) {
 		if (wait_for_best_move) {
 			cout << "Position: " << _board.to_fen() << " : played the sub-optimal " << _board._moves_count << ". " << _board.move_label(_root_exploration_node->get_best_move()) << " because it was taking too long to wait for it... best move was probably:" << _board.move_label(best_move) << endl;
 		}
