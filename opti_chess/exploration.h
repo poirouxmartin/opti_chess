@@ -36,7 +36,7 @@ public:
 	//int _nodes = count_children_nodes() + 1;
 
 	// Nombre d'itérations par l'algorithme de GrogrosZero (TODO)
-
+	int _iterations = 0;
 
 	// TODO: il faut plusieurs types de noeuds: noeuds quiet (ceux recherchés par GrogrosZero), noeuds de quiescence, noeuds de transposition...
 	// On utilisera les research_nodes pour le temps de calcul de Grogros, l'affichage des flèches etc...

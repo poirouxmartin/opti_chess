@@ -474,6 +474,8 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 ----- En cours -----
 
 -> BUGS:
+Parfois la couleur bug, ça oscille entre bleu et magenta sur une repet
+Vérifier la profondeur des variantes. Est-elle bonne?
 2k5/pr4pp/2p1p3/3p1bN1/q2P4/2P1R3/3Q1PPP/6K1 b - - 4 22 : Tb2 gagne
 r1bk3r/pp1nq2p/4p3/3pP2Q/3p4/1N1B4/P5PP/R4RK1 w - - 7 22 : il faut jouer Tf7!!
 6k1/ppp2ppp/2n5/5b2/8/P1QBqNbP/1P1N2P1/R4K1R w - - 0 18 : pourquoi +280 en attaque
@@ -498,6 +500,8 @@ Parfois y'a des game reset...
 3r1rk1/1p2p1b1/8/p1pp1p2/P2P4/1PP1P1R1/4Q3/R3KN1q w Q - 0 30 : faut roquer!!!!! -> vis à vis roi/dame => tour/dame
 
 URGENT:
+-> Changer _nodes par _iterations à beaucoup d'endroit: dessin flèches gui, choix des coups dans l'exploration, vitesse de jeu du coup, choix du meilleur coup...
+-> Attention: faut-il dessiner les flèches par itérations? que fait-on s'il reste que les coups de la quiescence?
 -> La gestion du temps devrait être largement améliorée dès lors que l'on aura ajouté les research nodes (-> les "seuls coups" seront quasi instantanés, et les positions complexes prendront plus de temps)
 -> get_safe_check_value() : hypeeeer lent!!!
 -> Vérifier l'algo... à chaque fois y'a des coups qu'il regarde pas, sauf quand on clique dessus, il voit que c'est le meilleur coup...
