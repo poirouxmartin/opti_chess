@@ -781,6 +781,7 @@ Qnb1k2r/p2p1p2/7p/2p3p1/3q4/8/P1K1PPPP/2B2BNR b k - 2 15 : Cc6! gagne
 rn2k2r/p4p2/3p3p/q1pP4/4b1pP/8/P2NQPP1/2R1KB1R b Kkq - 1 18 : Rd8! seul coup qui gagne (et tient aussi)
 2k4r/pp1rp2p/3n1ppP/2R1b1N1/4P3/2P3P1/PP2KP2/R1B5 b - - 0 22 : Tc7 seul coup qui tient
 3r4/1p2p2p/2kn2pP/p3p3/P7/1RP1B1P1/1P2KP2/8 w - - 4 30 : c4 gagne
+6k1/8/bBB3p1/P3pp1p/8/2b3PP/5P2/6K1 w - - 0 34 : Fg2 très fort.. Ff1 arrive
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---

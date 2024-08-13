@@ -1369,7 +1369,7 @@ void GUI::reset_game() {
 	_root_exploration_node->_board = &_board;
 	_update_variants = true;
 
-	PlaySound(main_GUI._game_begin_sound);
+	PlaySound(_game_begin_sound);
 
 	cout << "\n*** GAME RESET DONE ***" << endl;
 }
@@ -1409,4 +1409,118 @@ string GUI::get_date() {
 void GUI::update_grogros_zero_name() {
 	//_grogros_zero_name = "Gr0_" + get_date();
 	_grogros_zero_name = "Gr0-" + _grogros_zero_version;
+}
+
+// Fonction qui fait jouer le coup de GrogrosZero ou non en fonction du temps restant
+void GUI::play_grogros_zero_move(float time_proportion_per_move) {
+
+	// Positions bug:
+	// rnbq1rk1/pp1p1ppp/7n/2p1P3/3p4/3B1N1P/PPPN1PP1/R2Q1RK1 w - - 0 10 : il joue pas Ce4
+
+	// TOOD: faire en fonction du nombre de noeuds de RECHERCHE, pour prendre plus de temps dans les positions complexes
+
+	// Si le buffer est complet, joue le coup de GrogrosZero
+	// TODO
+
+	// Si le temps n'est pas compté
+	if (!_time) {
+		return;
+	}
+
+	// S'il n'y a pas encore eu d'exploration
+	if (_root_exploration_node->_nodes == 0) {
+		return;
+	}
+
+	// Nombre de noeuds que Grogros doit calculer (en fonction des contraintes de temps)
+	int grogros_nps = _root_exploration_node->get_avg_nps();
+
+	// Pour les calculs d'évaluation
+	int color = _board.get_color();
+
+	// Noeud le plus exploré
+	Node *most_explored_child = _root_exploration_node->get_most_explored_child();
+
+	// Noeud avec la meilleure évaluation
+	Node* best_eval_node;
+	int best_eval = -INT_MAX;
+	Move best_move;
+
+	for (auto& child : _root_exploration_node->_children)
+	{
+		if (child.second->_board->_evaluation * color > best_eval) {
+			best_eval = child.second->_board->_evaluation;
+			best_eval_node = child.second;
+			best_move = child.first;
+		}
+	}
+
+	// Pourcentage de réflexion sur le meilleur coup
+	float best_move_percentage = static_cast<float>(most_explored_child->_nodes) / static_cast<float>(_root_exploration_node->_nodes);
+
+	// Temps idéal qu'il faut prendre sur ce coup
+	int max_move_time = _board._player ? time_to_play_move(_time_white, _time_black, time_proportion_per_move * (1.0f - best_move_percentage)) : time_to_play_move(_time_black, _time_white, time_proportion_per_move * (1.0f - best_move_percentage));
+
+	//cout << "best move percentage : " << best_move_percentage << " | max move time : " << max_move_time << " | supposed speed : " << grogros_nps << " | nodes : " << _root_exploration_node->_nodes << " | time spent : " << _root_exploration_node->_time_spent << endl;	
+
+	// Si il nous reste beaucoup de temps en fin de partie, on peut réfléchir plus longtemps
+	// FIXME: Regarder si ça marche bien (TODO)
+	max_move_time *= (1 + _board._adv);
+
+	//cout << "max move time : " << max_move_time << endl;
+
+	// On veut être sûr de jouer le meilleur coup de Grogros: s'il y a un meilleur coup que celui avec le plus de noeuds, attendre...
+	bool wait_for_best_move = (most_explored_child->_board->_evaluation * color) < (best_eval * color);
+
+	// FIXME: des choses à améliorer ici!
+	// A quel point faut-il attendre pour être sûr de jouer le meilleur coup?
+	//float eval_diff;
+	//float move_wait_factor;
+
+	//// Si on attend pour le meilleur coup, attend plus longtemps si la différence d'évaluation est grande entre le meilleur coup et le coup actuel
+	//if (wait_for_best_move) {
+	//	eval_diff = abs(most_explored_child->_board->_evaluation - _board._evaluation) / 100.0f;
+	//	move_wait_factor = 2 + eval_diff;
+	//	//cout << "eval diff : " << eval_diff << " | move wait factor : " << move_wait_factor << endl;
+	//}
+
+	//// Sinon, joue plus vite si la différence d'évaluation est grande entre le meilleur coup et le second meilleur coup??
+	//else {
+	//	//move_wait_factor = 1 / (1 + eval_diff);
+	//	move_wait_factor = 1;
+	//}
+
+	float move_wait_factor = wait_for_best_move ? 10.0f : 1.0f; // C'est beaucoup mais bon, il faut trouver un truc pour améliorer ça
+
+	//cout << "base time : " << max_move_time << " | wait for best move : " << wait_for_best_move << " | eval diff : " << eval_diff << " | move wait factor : " << move_wait_factor << " | final time : " << max_move_time * move_wait_factor << endl;
+	max_move_time = max_move_time * move_wait_factor;
+
+	// Parfois on a un overflow
+	if (max_move_time < 0) {
+		cout << "overflow in max move time" << endl;
+		max_move_time = 0;
+	}
+
+	// Equivalent en nombre de noeuds
+	float seconds_to_play = max_move_time / 1000.0f;
+	int nodes_to_play = grogros_nps * seconds_to_play;
+
+	// Overflow (FIXME: faut mieux gérer ça...)
+	if (nodes_to_play < 0) {
+		cout << "RE: overflow in max move time (nodes to play)" << endl;
+		nodes_to_play = 0;
+	}
+
+	//cout << "nodes to play : " << nodes_to_play << ", " << _root_exploration_node->_nodes << endl;
+
+	if (_root_exploration_node->_nodes >= nodes_to_play) {
+		if (wait_for_best_move) {
+			cout << "Position: " << _board.to_fen() << " : played the sub-optimal " << _board._moves_count << ". " << _board.move_label(_root_exploration_node->get_best_move()) << " because it was taking too long to wait for it... best move was probably:" << _board.move_label(best_move) << endl;
+		}
+
+		//cout << nodes_to_play << ", max move time : " << max_move_time << ", supposed speed : " << supposed_grogros_speed << ", nodes : " << _root_exploration_node->_nodes << endl;
+		((_click_bind && _board.click_m_move(_root_exploration_node->get_best_move(), get_board_orientation())) || true) && play_move_keep(_root_exploration_node->get_best_move());
+	}
+
+	return;
 }
