@@ -1833,6 +1833,9 @@ int Board::get_king_safety(float display_factor) {
 	// r1b3kr/ppp4p/2np1Q2/7N/8/4p3/PPP3PP/6K1 b - - 1 20 : #1 imparable
 	// rnb2bnr/pppp1k1p/8/8/5p2/4BQ2/PqP3PP/RN3RK1 w - - 0 11 : blancs gagnants
 	// 6k1/5pp1/5r2/7K/P5PP/2Nr1n2/1P6/8 b - - 0 38 : #1 imparable...
+	// r3k2r/pp1n1pp1/2n1b2p/2p1P3/5P2/P4NP1/1PPKBB1P/3R3R w kq - 0 18 : ici le roi est mieux en c1 que e3...
+	// r1b3kr/pppp3p/2n2Q2/3N4/8/4p3/PPP3PP/6K1 w - - 1 19 : gagnant pour les blancs
+	// r1b1r2k/pp3pp1/2n4n/3qp3/2Np4/3B1N1P/PP3PP1/RQ2R1K1 w - - 0 17 : roi noir pas tant en danger que ça... la batterie fou/dame ne sert en fait à rien, la dame n'est qu'a moitié en attaque
 
 	// 8/6PK/5k2/8/8/8/8/8 b - - 0 8
 
@@ -1864,6 +1867,7 @@ int Board::get_king_safety(float display_factor) {
 	constexpr float piece_defense_factor = 1.0f;
 
 	constexpr float piece_overload_multiplicator = 2.0f; // TODO: à utiliser
+	constexpr float piece_defense_multiplicator = 0.5f;
 
 	constexpr float pawn_protection_factor = 1.5f;
 
@@ -1930,6 +1934,8 @@ int Board::get_king_safety(float display_factor) {
 	// *** OVERLOADS ***
 	// -----------------
 
+	// Est-ce utile?
+
 	// Résultante des contrôles
 	Map controls_map = white_controls_map - black_controls_map;
 
@@ -1965,7 +1971,7 @@ int Board::get_king_safety(float display_factor) {
 		}
 	}
 
-	const float overload_factor = 1.5f;
+	const float overload_factor = 0.0f;
 
 	w_king_overloaded *= overload_factor;
 	b_king_overloaded *= overload_factor;
@@ -2139,6 +2145,9 @@ int Board::get_king_safety(float display_factor) {
 	if (w_attacking_overload > 0) {
 		w_attacking_overload *= piece_overload_multiplicator;
 	}
+	else {
+		w_attacking_overload *= piece_defense_multiplicator;
+	}
 	
 
 	// Faiblesses long terme:
@@ -2177,6 +2186,9 @@ int Board::get_king_safety(float display_factor) {
 	int b_attacking_overload = b_attacking_power - w_defending_power;
 	if (b_attacking_overload > 0) {
 		b_attacking_overload *= piece_overload_multiplicator;
+	}
+	else {
+		b_attacking_overload *= piece_defense_multiplicator;
 	}
 
 	// Faiblesses long terme:
@@ -2453,13 +2465,13 @@ int Board::get_pawn_structure(float display_factor)
 	// 8/P5kp/8/q7/8/8/5B1P/5K2 w - - 1 57 : ici, il faut considérer la case controlée (par rayon X)
 
 	// Table de valeur des pions passés en fonction de leur avancement sur le plateau
-	static const int passed_pawns[8] = { 0, 50, 50, 120, 200, 350, 750, 0 };
+	static const int passed_pawns[8] = { 0, 50, 50, 120, 235, 400, 750, 0 };
 
 	// Pion passé - chemin controllé par une pièce adverse
-	static const int controlled_passed_pawn[8] = { 0, 45, 50, 75, 110, 160, 250, 0 };
+	static const int controlled_passed_pawn[8] = { 0, 40, 40, 70, 110, 170, 250, 0 };
 
 	// Pion passé bloqué
-	static const int blocked_passed_pawn[8] = { 0, 30, 35, 50, 65, 90, 140, 0 };
+	static const int blocked_passed_pawn[8] = { 0, 20, 30, 45, 65, 95, 140, 0 };
 
 
 	constexpr float passed_adv_factor = 2.0f; // En fonction de l'advancement de la partie
@@ -2506,21 +2518,23 @@ int Board::get_pawn_structure(float display_factor)
 							_array[row][col] = 0;
 
 							for (uint_fast8_t k = row + 1; k <= 7; k++) {
-								if (is_controlled(k, col, true)) {
+								if (is_controlled(k, col, true) && !is_controlled(k, col, false)) {
 									controlled = true;
 									break;
 								}
 							}
 
+							// TODO: peut-être à revoir...
+
 							// Si c'est controlé par une pièce alliée, annule le bonus
-							if (controlled) {
-								for (uint_fast8_t k = row + 1; k <= 7; k++) {
-									if (is_controlled(k, col, false)) {
-										controlled = false;
-										break;
-									}
-								}
-							}
+							//if (controlled) {
+							//	for (uint_fast8_t k = row + 1; k <= 7; k++) {
+							//		if (is_controlled(k, col, false)) {
+							//			controlled = false;
+							//			break;
+							//		}
+							//	}
+							//}
 
 							// On remet le pion
 							_array[row][col] = 1;
@@ -2569,21 +2583,21 @@ int Board::get_pawn_structure(float display_factor)
 							_array[row][col] = 0;
 
 							for (int_fast8_t k = row - 1; k >= 0; k--) {
-								if (is_controlled(k, col, false)) {
+								if (is_controlled(k, col, false) && !is_controlled(k, col, true)) {
 									controlled = true;
 									break;
 								}
 							}
 							
 							// Si c'est controlé par une pièce alliée, annule le bonus
-							if (controlled) {
-								for (int_fast8_t k = row - 1; k >= 0; k--) {
-									if (is_controlled(k, col, true)) {
-										controlled = false;
-										break;
-									}
-								}
-							}
+							//if (controlled) {
+							//	for (int_fast8_t k = row - 1; k >= 0; k--) {
+							//		if (is_controlled(k, col, true)) {
+							//			controlled = false;
+							//			break;
+							//		}
+							//	}
+							//}
 
 							// On remet le pion
 							_array[row][col] = 7;
