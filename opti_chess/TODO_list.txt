@@ -502,14 +502,15 @@ rnbqk1nr/ppp2ppp/3b4/8/3P4/8/PPP1P1PP/RNBQKBNR b KQkq - 0 4 : Dh4+??
 Parfois y'a des game reset...
 3r1rk1/1p2p1b1/8/p1pp1p2/P2P4/1PP1P1R1/4Q3/R3KN1q w Q - 0 30 : faut roquer!!!!! -> vis à vis roi/dame => tour/dame
 
-MAIN BUG:
-Parfois l'évaluationn a une évaluation de -INT_MAX (pourquoi? ça vient du quiescence foireux)?
-Ainsi, lorsqu'on cherche le meilleur coup, ça renvoie null_move, car MAX_EVAL est initialisée à -INT_MAX...
-Ca créé par la suite des fils dans le noeuds, ayant comme coup le "coup nul", et le noeud fils est nul.. -> bug
-
+NEW BUG:
+Parfois on a des eval qui sont égales à +/-INT_MAX, et ça ne devrait pas être le cas...
+Tout refaire la quiescence en mode debug pour clarifier...
 
 URGENT:
+-> Faire du debug, code clean et optimisations
+-> Debugger la quiescence
 -> Utiliser des iterations plutôt que des noeuds pour GrogrosZero?
+-> Retirer les nodes++ dans GrogrosZero et la quiescence sur les noeuds terminaux
 -> Régler les "less nodes than before..."
 -> Régler les overflows dans les move time
 -> get_safe_check_value() : hypeeeer lent!!!

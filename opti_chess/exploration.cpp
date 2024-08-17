@@ -127,6 +127,8 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 	if (already_explored) {
 		child = _children[move];
 		_nodes -= child->_nodes; // On enlève le nombre de noeuds de ce fils
+
+		//cout << "move already explored, but considered as a new move?" << endl;
 	}
 	else {
 		// Prend une place dans le buffer
@@ -198,8 +200,11 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 	// rnb1kbnr/ppp1pppp/2q5/1B6/8/2N5/PPPP1PPP/R1BQK1NR b KQkq - 3 4
 	// rnb1kbnr/ppp1pppp/2q5/8/8/2N5/PPPP1PPP/R1BQKBNR w KQkq - 2 4 : ici Fb5 -> +114 au lieu de +895
 
+	// Tous les coups ont-ils déjà été explorés?
+	bool all_moves_explored = get_fully_explored_children_count() == _board->_got_moves;
+
 	// Met à jour l'évaluation du plateau
-	if (children_count() + 1 < _board->_got_moves) {
+	if (!all_moves_explored) {
 		_board->_evaluation = _board->_player * max(_board->_evaluation, child->_board->_evaluation) + !_board->_player * min(_board->_evaluation, child->_board->_evaluation);
 	}
 
@@ -212,6 +217,10 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 			if (child_2->_board->_evaluation * color > best_eval) {
 				best_eval = child_2->_board->_evaluation * color;
 			}
+		}
+
+		if (best_eval == -INT_MAX) {
+			cout << "new -max eval" << endl;
 		}
 
 		_board->_evaluation = best_eval * color;
@@ -286,12 +295,20 @@ void Node::explore_random_child(Buffer* buffer, Evaluator* eval, float beta, flo
 		for (auto const& [_, child_2] : _children) {
 			_board->_evaluation = max(_board->_evaluation, child_2->_board->_evaluation);
 		}
+
+		if (_board->_evaluation == INT_MAX) {
+			cout << "eval min" << endl;
+		}
 	}
 	else {
 		_board->_evaluation = INT_MAX;
 
 		for (auto const& [_, child_2] : _children) {
 			_board->_evaluation = min(_board->_evaluation, child_2->_board->_evaluation);
+		}
+
+		if (_board->_evaluation == INT_MAX) {
+			cout << "eval max" << endl;
 		}
 	}
 
@@ -693,13 +710,14 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 	if (_board->is_game_over()) {
 		if (_board->_game_over_value == 2)
 			_board->_evaluation = 0;
-		else
+		else {
 			_board->_evaluation = (-mate_value + _board->_moves_count * mate_ply) * color;
+		}
 
 		_board->_evaluated = true;
 		_board->_static_evaluation = _board->_evaluation;
 
-		_nodes++; // BOF
+		_nodes++; // BOF... FIXME
 		_time_spent += clock() - begin_monte_time;
 		//cout << "game over" << endl;
 
@@ -755,6 +773,7 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 
 	// Mise à jour de alpha si l'éval statique est plus grande
 	if (stand_pat > alpha && !check_extension) {
+	//if (stand_pat > alpha) {
 		alpha = stand_pat;
 	}
 
@@ -856,10 +875,9 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 			// Mise à jour de l'évaluation du plateau
 			// FIXME: ici, s'il y'a un seul coup, il faut mettre à jour l'évaluation du plateau même si l'évaluation fils est moins bonne
 			// Ou alors: si tous les coups ont été explorés, on met à jour l'évaluation du plateau avec le meilleur coup
-			bool all_moves_explored = children_count() == _board->_got_moves;
+			bool all_moves_explored = get_fully_explored_children_count() == _board->_got_moves;
 
 			if (all_moves_explored) {
-				int color = _board->get_color();
 				int best_eval = -INT_MAX;
 
 				for (auto const& [move_2, child_2] : _children) {
@@ -905,7 +923,7 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 [[nodiscard]] int Node::get_fully_explored_children_count() const {
 	int count = 0;
 
-	for (auto& [move, child] : _children) {
+	for (auto const& [_, child] : _children) {
 		if (child->_fully_explored) {
 			count++;
 		}
