@@ -384,7 +384,7 @@ rnb1k1nr/ppp2ppp/8/8/3P4/6P1/PPP1P3/RNBQKBNq w Qkq - 0 7 : les noirs sont gagnan
 r3k2r/ppp2pp1/2p1bq2/2b4p/3PP1n1/2P2BP1/PP3P1P/RNBQK2R w KQkq - 3 11 : h3 (+4.50)
 3rk3/ppp2pp1/2p2q1r/2P1n3/4P2p/1QP3Pb/PP1NBP1P/R1B1R1K1 b - - 5 16 : Txd2 & hxg3 gagnent
 4k3/ppp2pp1/2p2q1r/2P1n3/4P2p/1QP3Pb/PP1BBP1P/R3R1K1 b - - 0 17 : Cf3+ gagne
-3rk2r/ppp2pp1/2p1bq2/2P4p/4P1B1/2P3P1/PP3P1P/RNBQK2R b KQk - 0 12 : Fxg4 gagnant
+3rk2r/ppp2pp1/2p1bq2/2P4p/4P1B1/2P3P1/PP3P1P/RNBQK2R b KQk - 0 12 : Fxg4 gagne
 1rkb4/pNp5/8/2N4p/8/5B2/4K3/8 w - - 0 1 : Fc6 gagne
 2k1r1r1/p1p4p/1qpb4/3PN3/2Q3b1/4B3/PP3PP1/2R2RK1 b - - 0 1 : Txe5 moins pire
 2k3r1/p1p4p/1Bpb4/3Pr3/2Q5/5bP1/PP3P2/2R2RK1 b - - 0 3 : Th5 #5

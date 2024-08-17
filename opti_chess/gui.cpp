@@ -305,7 +305,7 @@ void GUI::draw_exploration_arrows()
 	// Crée un vecteur avec les coups explorés par GrogrosZero
 	vector<Move> iterated_moves_vector;
 
-	for (auto& [move, child] : _root_exploration_node->_children) {
+	for (auto const& [move, child] : _root_exploration_node->_children) {
 		// Si une pièce est sélectionnée, dessine toutes les flèches pour cette pièce
 		if (is_selected) {
 			if (_selected_pos.i == move.i1 && _selected_pos.j == move.j1)
@@ -316,12 +316,15 @@ void GUI::draw_exploration_arrows()
 		else {
 			// Le coup a-t-il été exploré par GrogrosZero, ou seulement la quiescence?
 			if (_root_exploration_node->_iterations > 0) {
-				if (child->_iterations / static_cast<float>(_root_exploration_node->_iterations) > _arrow_rate)
+				if (static_cast<float>(child->_iterations) / static_cast<float>(_root_exploration_node->_iterations) > _arrow_rate)
 					iterated_moves_vector.push_back(move);
 			}
 			else {
 				// TODO: quiescence arrows
 				// en rouge? blanc? avec un "?" au bout?
+				if (_root_exploration_node->_nodes > 0) {
+					iterated_moves_vector.push_back(move);
+				}
 			}
 
 			
@@ -329,14 +332,14 @@ void GUI::draw_exploration_arrows()
 	}
 
 	// Trie les coups en fonction du nombre de noeuds et d'un affichage plus lisible
-	sort(iterated_moves_vector.begin(), iterated_moves_vector.end(), [this](const Move m1, const Move m2) {
+	std::ranges::sort(iterated_moves_vector.begin(), iterated_moves_vector.end(), [this](const Move m1, const Move m2) {
 		return this->compare_arrows(m1, m2); }
 	);
 
 	// Dessine les flèches
 	for (const Move move : iterated_moves_vector) {
 		const int mate = _root_exploration_node->_board->is_eval_mate(_root_exploration_node->_children[move]->_board->_evaluation);
-		Node *child = _root_exploration_node->_children[move];
+		Node const *child = _root_exploration_node->_children[move];
 		draw_arrow(move, _root_exploration_node->_board->_player, move_color(child->_iterations, _root_exploration_node->_iterations), -1.0f, true, child->_board->_evaluation, mate, move == best_move);
 	}
 }
@@ -440,7 +443,7 @@ void GUI::draw_arrow_from_coord(const int i1, const int j1, const int i2, const 
 // Couleur de la flèche en fonction du coup (de son nombre de noeuds)
 Color GUI::move_color(const int explorations, const int total_explorations) const {
 	// S'il n'y a pas d'exploration, on affiche en blanc
-	if (total_explorations == 0)
+	if (explorations == 0 || total_explorations == 0)
 		return GRAY;
 
 	const float x = static_cast<float>(explorations) / static_cast<float>(total_explorations);
@@ -853,7 +856,7 @@ bool GUI::play_move_keep(const Move move)
 		if (_root_exploration_node->_children.contains(move)) {
 			//cout << "children nodes: " << _root_exploration_node->_children[move]->_nodes << endl;
 
-			for (auto& [m, child] : _root_exploration_node->_children) {
+			for (auto const& [m, child] : _root_exploration_node->_children) {
 				if (m != move) {
 					//cout << 0 << endl;
 					child->reset();
@@ -919,17 +922,21 @@ uint_fast8_t GUI::clicked_piece() const
 }
 
 // Fonction qui lance une analyse de GrogrosZero
-void GUI::grogros_analysis(int nodes) {
+void GUI::grogros_analysis(int iterations) {
 	// Noeuds à explorer par frame, en visant 60 FPS
-	int nodes_to_explore = _root_exploration_node->get_avg_nps() / 60;
-	if (nodes_to_explore == 0)
-		nodes_to_explore = _nodes_per_frame;
+	//int iterations_to_explore = _root_exploration_node->get_ips() / 60;
+	//if (iterations_to_explore == 0)
+	//	iterations_to_explore = 1;
+
+	int iterations_to_explore = _root_exploration_node->get_avg_nps() / 60;
+	if (iterations_to_explore == 0)
+		iterations_to_explore = _nodes_per_frame;
 
 	// Il faut pas dépasser la taille du buffer
 	// FIXME: meilleure façon de gérer cela?
-	nodes_to_explore = min(nodes_to_explore, monte_buffer._length - _root_exploration_node->_nodes);
+	iterations_to_explore = min(iterations_to_explore, monte_buffer._length - _root_exploration_node->_nodes);
 
-	_root_exploration_node->grogros_zero(&monte_buffer, _grogros_eval, _beta, _k_add, nodes == -1 ? nodes_to_explore : nodes, _quiescence_depth); // TODO: nombre de noeuds à paramétrer
+	_root_exploration_node->grogros_zero(&monte_buffer, _grogros_eval, _beta, _k_add, iterations == -1 ? iterations_to_explore : iterations, _quiescence_depth); // TODO: nombre de noeuds à paramétrer
 	_update_variants = true;
 }
 
@@ -1450,24 +1457,24 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	}
 
 	// Nombre de noeuds que Grogros doit calculer (en fonction des contraintes de temps)
-	int grogros_nps = _root_exploration_node->get_avg_nps();
+	//int grogros_nps = _root_exploration_node->get_avg_nps();
 
 	// Pour les calculs d'évaluation
 	int color = _board.get_color();
 
 	// Noeud le plus exploré
-	Node *most_explored_child = _root_exploration_node->get_most_explored_child();
+	Node const *most_explored_child = _root_exploration_node->get_most_explored_child();
 
 	// Noeud avec la meilleure évaluation
-	Node* best_eval_node;
+	//Node const* best_eval_node;
 	int best_eval = -INT_MAX;
 	Move best_move;
 
-	for (auto& child : _root_exploration_node->_children)
+	for (auto const& child : _root_exploration_node->_children)
 	{
 		if (child.second->_board->_evaluation * color > best_eval) {
 			best_eval = child.second->_board->_evaluation;
-			best_eval_node = child.second;
+			//best_eval_node = child.second;
 			best_move = child.first;
 		}
 	}
@@ -1482,7 +1489,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 	// Si il nous reste beaucoup de temps en fin de partie, on peut réfléchir plus longtemps
 	// FIXME: Regarder si ça marche bien (TODO)
-	//max_move_time *= (1 + _board._adv);
+	max_move_time *= 1.0f + _board._adv;
 
 	//cout << "max move time : " << max_move_time << endl;
 
