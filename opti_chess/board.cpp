@@ -17,7 +17,7 @@
 
 
 // Tests pour la parallélisation
-vector<thread> threads;
+//vector<thread> threads;
 
 // Constructeur par défaut
 Board::Board() {
@@ -1737,36 +1737,12 @@ int Board::get_piece_mobility(const bool legal) const
 void Board::reset_board(const bool display) {
 	_got_moves = -1;
 	_is_active = false;
-	//_current_move = 0;
 	_evaluated = false;
 	_game_over_checked = false;
-	//_time_monte_carlo = 0;
 	_static_evaluation = 0;
 	_evaluation = 0;
 	_sorted_moves = false;
-	//_nodes = 0;
-	//_quiescence_nodes = 0;
 	_zobrist_key = 0;
-	//_transpositions = 0;
-
-	/*if (!_new_board) {
-		_tested_moves = 0;
-		if (_eval_children != nullptr) {
-			delete[] _eval_children;
-			_eval_children = nullptr;
-		}
-
-		if (_nodes_children != nullptr) {
-			delete[] _nodes_children;
-			_nodes_children = nullptr;
-		}
-
-		if (_index_children != nullptr) {
-			delete[] _index_children;
-			_index_children = nullptr;
-		}
-		_new_board = true;
-	}*/
 
 	reset_positions_history();
 
@@ -1775,25 +1751,6 @@ void Board::reset_board(const bool display) {
 
 	return;
 }
-
-// Fonction qui réinitialise tous les plateaux fils dans le buffer
-//void Board::reset_all(bool self, bool display) {
-//	for (int i = 0; i < _tested_moves; i++)
-//		monte_buffer._heap_boards[_index_children[i]].reset_all(false);
-//
-//	reset_board();
-//}
-
-// Fonction qui renvoie le nombre de noeuds calculés par GrogrosZero ou Monte-Carlo
-//int Board::total_nodes() const
-//{
-//	int nodes = 0;
-//
-//	for (int i = 0; i < _tested_moves; i++)
-//		nodes += _nodes_children[i];
-//
-//	return nodes;
-//}
 
 // Fonction qui calcule et renvoie la valeur correspondante à la sécurité des rois
 int Board::get_king_safety(float display_factor) {
@@ -1971,7 +1928,7 @@ int Board::get_king_safety(float display_factor) {
 		}
 	}
 
-	const float overload_factor = 0.0f;
+	const float overload_factor = 1.5f;
 
 	w_king_overloaded *= overload_factor;
 	b_king_overloaded *= overload_factor;
@@ -2062,7 +2019,7 @@ int Board::get_king_safety(float display_factor) {
 	// *** OPEN LINES ***
 	// ------------------
 
-	constexpr int open_lines_danger = 6;
+	constexpr int open_lines_danger = 4;
 
 	int w_open_lines = get_open_files_on_opponent_king(true) * open_lines_danger * (1 - _adv);
 	int b_open_lines = get_open_files_on_opponent_king(false) * open_lines_danger * (1 - _adv);
@@ -2263,64 +2220,6 @@ void Board::display_pgn() const
 {
 	cout << "\n***** PGN *****\n" << main_GUI._pgn << "\n***** PGN *****" << endl;
 }
-
-// Fonction qui renvoie en chaîne de caractères la meilleure variante selon monte carlo
-//string Board::get_monte_carlo_variant(const bool evaluate_final_pos) 
-//{
-//	if (_got_moves == 0)
-//		return "";
-//
-//	if (_tested_moves > 0) {
-//		const int move = best_monte_carlo_move();
-//		string s = " " + (_player ? to_string(_moves_count) + ". " : "") + move_label_from_index(move);
-//
-//		if (_tested_moves == _got_moves)
-//			return s + monte_buffer._heap_boards[_index_children[move]].get_monte_carlo_variant(evaluate_final_pos);
-//
-//		if (evaluate_final_pos) {
-//			int eval = monte_buffer._heap_boards[_index_children[move]]._evaluation;
-//			const int mate = is_eval_mate(eval);
-//			const string eval_text = (mate != 0) ? ((mate > 0 ? "M" : "-M") + to_string(abs(mate))) : to_string(static_cast<int>(eval));
-//			return s + " (" + (eval > 0 ? static_cast<string>("+") : static_cast<string>("")) + eval_text + ")";
-//
-//		}
-//			
-//		return s;
-//	}
-//	
-//	if (evaluate_final_pos) {
-//		const int mate = is_eval_mate(_evaluation);
-//		const string eval_text = (mate != 0) ? ((mate > 0 ? "M" : "-M") + to_string(abs(mate))) : to_string(static_cast<int>(_evaluation));
-//		return " (" + (_evaluation > 0 ? static_cast<string>("+") : static_cast<string>("")) + eval_text + ")";
-//	}
-//	
-//	return "";
-//}
-
-// Fonction qui trie les index des coups par nombre de noeuds décroissant
-//vector<int> Board::sort_by_nodes(const bool ascending) const
-//{
-//	// Tri assez moche, et lent (tri par insertion)
-//	vector<int> sorted_indexes;
-//	vector<int> sorted_nodes;
-//
-//	for (int i = 0; i < _tested_moves; i++) {
-//		for (int j = 0; j <= sorted_indexes.size(); j++) {
-//			if (j == sorted_indexes.size()) {
-//				sorted_indexes.push_back(i);
-//				sorted_nodes.push_back(monte_buffer._heap_boards[_index_children[i]]._nodes);
-//				break;
-//			}
-//			if ((!ascending && monte_buffer._heap_boards[_index_children[i]]._nodes > sorted_nodes[j]) || (ascending && monte_buffer._heap_boards[_index_children[i]]._nodes < sorted_nodes[j])) {
-//				sorted_indexes.insert(sorted_indexes.begin() + j, i);
-//				sorted_nodes.insert(sorted_nodes.begin() + j, monte_buffer._heap_boards[_index_children[i]]._nodes);
-//				break;
-//			}
-//		}
-//	}
-//
-//	return sorted_indexes;
-//}
 
 // Fonction qui renvoie selon l'évaluation si c'est un mat ou non (0 si non, sinon le nombre de coups pour le mat, positif pour les blancs, négatif pour les noirs)
 int Board::is_eval_mate(const int e) const
@@ -3199,20 +3098,6 @@ int Board::get_rooks_on_open_file() const
 	// L'importance est moindre s'il y a plusieurs colonnes ouvertes
 	return rook_open / (open_files == 0 ? 0.5f : open_files);
 }
-
-// Fonction qui renvoie la profondeur de calcul de la variante principale
-//int Board::grogros_main_depth() const
-//{
-//	if ((_got_moves == -1) || _got_moves == 0)
-//		return 0;
-//
-//	if (_tested_moves == _got_moves) {
-//		const int move = best_monte_carlo_move();
-//		return 1 + monte_buffer._heap_boards[_index_children[move]].grogros_main_depth();
-//	}
-//
-//	return 1;
-//}
 
 // Fonction qui calcule la valeur des cases controllées sur l'échiquier
 int Board::get_square_controls() const
@@ -5329,35 +5214,6 @@ int Board::get_bishop_activity() const {
 	return (w_bishop_activity - b_bishop_activity) * (1 - _adv * bishop_activity_advancement_factor);
 }
 
-// Fonction qui réinitialise les plateaux fils
-//void Board::reset_children() {
-//	if (_eval_children != nullptr) {
-//		delete[] _eval_children;
-//		_eval_children = nullptr;
-//	}
-//
-//	if (_nodes_children != nullptr) {
-//		delete[] _nodes_children;
-//		_nodes_children = nullptr;
-//	}
-//
-//	if (_index_children != nullptr) {
-//		delete[] _index_children;
-//		_index_children = nullptr;
-//	}
-//
-//	_eval_children = new int[_got_moves]();
-//	_nodes_children = new int[_got_moves]();
-//	_index_children = new int[_got_moves](); // à changer? cela prend du temps?
-//
-//
-//	_tested_moves = 0;
-//	_current_move = 0;
-//	_new_board = false;
-//
-//	return;
-//}
-
 // Fonction qui renvoie si un coup est légal ou non
 bool Board::is_legal(Move move) {
 
@@ -5398,145 +5254,6 @@ void Board::display_positions_history() const
 	}
 }
 
-// Quiescence search pour l'algo de GrogrosZero
-//int Board::grogros_quiescence(Evaluator* eval, int alpha, const int beta, int depth, bool explore_checks, bool main_player)
-//{
-//	// Positions tests pour voir la vitesse et la précision:
-//	//r4rk1/1q1nb1p1/bpn1pp2/pB1pP2Q/3p4/N1P4R/PP3PPP/R1B3K1 w - - 0 18 : 51kN/s (dont 450N/s discrets)
-//
-//
-//	// Compte le nombre de noeuds visités
-//	//_quiescence_nodes = 1;
-//	_nodes = 1;
-//
-//	// Si la partie est terminée
-//	is_game_over();
-//	if (_game_over_value == 2) // Nulle
-//		return 0;
-//	if (_game_over_value != 0) // Mat
-//		return -mate_value + _moves_count * mate_ply;
-//
-//	// Evalue la position initiale
-//	evaluate(eval);
-//	const int stand_pat = _evaluation * get_color();
-//
-//	// Si on est en échec (pour ne pas terminer les variantes sur un échec)
-//	bool check_extension = in_check();
-//
-//	if (depth == 0)
-//		return stand_pat;
-//
-//
-//	// Beta cut-off
-//	if (stand_pat >= beta)
-//		return beta;
-//
-//	// Mise à jour de alpha si l'éval statique est plus grande
-//	// Pas de stand_pat si on est en échec
-//	if (alpha < stand_pat && !check_extension)
-//		alpha = stand_pat;
-//
-//	// Trie rapidement les coups
-//	sort_moves();
-//
-//	if (_new_board)
-//		reset_children();
-//
-//	for (int i = 0; i < _got_moves; i++) {
-//		// TODO : ajouter promotions et échecs
-//		// TODO : utiliser des flags
-//
-//		// Coup
-//		Move move = _moves[i];
-//
-//		// Si c'est une capture
-//		if (_array[move.i2][move.j2] != 0 || check_extension)
-//		{
-//			cout << "capture: " << move_label(move) << "(depth " << depth << ")" << endl;
-//
-//			// TEST
-//			_tested_moves = i;
-//			_current_move = i;
-//			// TODO: _quiescence_moves? avec un array de coup pour dire lesquels ont été testés?
-//
-//			// Prend une nouvelle place dans le buffer
-//			const int index = monte_buffer.get_first_free_index();
-//
-//			// Stocke l'index du plateau dans le buffer pour ce coup
-//			_index_children[i] = index;
-//
-//			// Rend actif le plateau fils
-//			monte_buffer._heap_boards[index]._is_active = true;
-//
-//			// Joue un nouveau coup
-//			monte_buffer._heap_boards[index].copy_data(*this);
-//			monte_buffer._heap_boards[index].make_move(move);
-//
-//			const int score = -monte_buffer._heap_boards[index].grogros_quiescence(eval, -beta, -alpha, depth - 1, explore_checks, true);
-//			//_quiescence_nodes += monte_buffer._heap_boards[index]._quiescence_nodes;
-//			_nodes += monte_buffer._heap_boards[index]._nodes;
-//
-//			if (score >= beta)
-//				return beta;
-//
-//			if (score > alpha)
-//				alpha = score;
-//
-//			// Delta pruning (TODO : à tester)
-//			//if (alpha >= beta - delta)
-//			//	return alpha;
-//		}
-//
-//		// Mats
-//		// TODO : utiliser les flags 'échec' pour savoir s'il faut regarder ce coup
-//		else if (explore_checks)
-//		{
-//
-//			// Regarde si le coup met en échec
-//			Board b(*this);
-//			b.make_move(move);
-//
-//			if (!main_player || b.in_check())
-//			{
-//				cout << "check: " << move_label(move) << "(depth " << depth << ")" << endl;
-//
-//				// TEST
-//				_tested_moves = i;
-//				_current_move = i;
-//
-//				// Prend une nouvelle place dans le buffer
-//				const int index = monte_buffer.get_first_free_index();
-//
-//				// Stocke l'index du plateau dans le buffer pour ce coup
-//				_index_children[i] = index;
-//
-//				// Rend actif le plateau fils
-//				monte_buffer._heap_boards[index]._is_active = true;
-//
-//				// Joue un nouveau coup
-//				monte_buffer._heap_boards[index].copy_data(*this, false, true);
-//				monte_buffer._heap_boards[index].make_move(move, false, false, true);
-//
-//				const int score = -monte_buffer._heap_boards[index].grogros_quiescence(eval, -beta, -alpha, depth - 1, explore_checks, !main_player);
-//				//_quiescence_nodes += monte_buffer._heap_boards[index]._quiescence_nodes;
-//				_nodes += monte_buffer._heap_boards[index]._nodes;
-//
-//				if (score >= beta)
-//					return beta;
-//
-//				if (score > alpha)
-//					alpha = score;
-//
-//				// Delta pruning (TODO : à tester)
-//				//if (alpha >= beta - delta)
-//				//	return alpha;
-//			}
-//		}
-//	}
-//
-//	return alpha;
-//}
-
 // Fonction qui renvoie l'affichage de l'évaluation
 [[nodiscard]] string Board::evaluation_to_string(int eval) const {
 	string eval_string = "";
@@ -5545,9 +5262,7 @@ void Board::display_positions_history() const
 		eval_string += "+";
 
 	// Est-ce que c'est un mat?
-	int mate = is_eval_mate(eval);
-	if (mate != 0) {
-
+	if (int mate = is_eval_mate(eval); mate != 0) {
 		if (eval < 0)
 			eval_string += "-";
 
@@ -5723,6 +5438,7 @@ void Board::display_positions_history() const
 	// Pareil pour la dame. Bonus dans les cas contraires
 
 	// *** TODO ***
+	return 0;
 }
 
 // Fonction qui renvoie la nature de la position de manière chiffrée: 0 = fermée, 1 = ouverte
@@ -5744,6 +5460,7 @@ void Board::display_positions_history() const
 	// *** TODO ***
 
 	// Implémenter winnable(color) -> notamment pour les fins de partie
+	return 0;
 }
 
 // Fonction qui renvoie la valeur des bonus liés aux colonnes ouvertes et semi-ouvertes sur le roi adverse

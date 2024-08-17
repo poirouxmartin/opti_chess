@@ -64,7 +64,7 @@ public:
 	void add_child(Node* child, Move move);
 
 	// Fonction qui renvoie le nombre de fils
-	[[nodiscard]] int children_count() const;
+	[[nodiscard]] size_t children_count() const;
 
 	// Fonction qui renvoie l'indice du fils associé au coup s'il existe, -1 sinon (dans le vecteur _children)
 	//[[nodiscard]] int get_child_index(Move move) const;
@@ -85,16 +85,16 @@ public:
 	void explore_random_child(Buffer* buffer, Evaluator* eval, const float beta, const float k_add, int quiescence_depth, Network* network = nullptr);
 
 	// Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
-	[[nodiscard]] Move pick_random_child(const float beta, const float k_add);
+	[[nodiscard]] Move pick_random_child(const float beta, const float k_add) const;
 
 	// Fonction qui renvoie le ratio de victoire pour les blancs du noeud (le ratio de victoire pour une eval alpha est de beta)
-	[[nodiscard]] float win_ratio(double alpha = 100.0, double beta = 0.67) const;
+	[[nodiscard]] double win_ratio(double alpha = 100.0, double beta = 0.67) const;
 
 	// Fonction qui calcule le score UCT
-	[[nodiscard]] float uct_score(int total_nodes, float alpha) const;
+	[[nodiscard]] double uct_score(int total_nodes, double alpha) const;
 
 	// Fonction qui renvoie le coup avec le meilleur score UCT
-	[[nodiscard]] Move pick_best_uct_child(float alpha = 3.0f);
+	[[nodiscard]] Move pick_best_uct_child(float alpha = 3.0f) const;
 
 	// Fonction qui renvoie le fils le plus exploré
 	[[nodiscard]] Move get_most_explored_child_move(bool decide_by_eval = true);
@@ -116,6 +116,9 @@ public:
 
 	// Fonction qui renvoie la vitesse de calcul moyenne en noeuds par seconde
 	[[nodiscard]] int get_avg_nps() const;
+
+	// Fonction qui renvoie le nombre d'itérations par seconde
+	[[nodiscard]] int get_ips() const;
 
 	// Quiescence search intégré à l'exploration
 	int grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr);
