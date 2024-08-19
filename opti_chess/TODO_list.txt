@@ -473,13 +473,17 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 
 ----- En cours -----
 
+Pour les variantes, mettre les coups de la quiescence entre parenthèses?
+
 -> BUGS:
+1Qb1k3/p3rqpp/2p2b2/2P5/3P4/P7/2P2PPP/2B3K1 w - - 1 27 : bug overflow
+3rkb1r/pQ1b1ppp/2pp4/4q3/4n3/3N4/PPPBBPPP/R4RK1 b k - 1 14 : il a fait Df6 au lieu de Db5 après avoir vu que Db5 était meilleur...
 r4rk1/ppq1bppp/5n2/3p4/8/3P4/PPP1QPPP/RNB1K2R w KQ - 3 12 : roqueeee!!!
 Y'a des gros soucis avec le temps.. parfois il s'écoule quasi plus.......... (quand on lance GrogrosZero par itérations p.s. plutôt que par noeuds p.s. ...)
 r1b3k1/1p3rpp/p4b2/4p3/q1B1N3/2Q5/2P3PP/5RK1 w - - 2 23 : Cxf6+??...
 Parfois la couleur bug, ça oscille entre bleu et magenta sur une repet
 Vérifier la profondeur des variantes. Est-elle bonne?
-2k5/pr4pp/2p1p3/3p1bN1/q2P4/2P1R3/3Q1PPP/6K1 b - - 4 22 : Tb2 gagne
+2k5/pr4pp/2p1p3/3p1bN1/q2P4/2P1R3/3Q1PPP/6K1 b - - 4 22 : Tb2 gagne -> il voit pas vraiment à cause de la quiescence qui update pas, car la variante n'est pas considérée comme full_explored, même si elle est forcée
 r1bk3r/pp1nq2p/4p3/3pP2Q/3p4/1N1B4/P5PP/R4RK1 w - - 7 22 : il faut jouer Tf7!!
 6k1/ppp2ppp/2n5/5b2/8/P1QBqNbP/1P1N2P1/R4K1R w - - 0 18 : pourquoi +280 en attaque
 r1bq1r2/pppp1ppk/2n1p3/3nP1b1/3P3P/8/PPP2PP1/RNBQK2R w KQ - 0 9 : il regarde pas hxg5???
@@ -507,6 +511,11 @@ Parfois on a des eval qui sont égales à +/-INT_MAX, et ça ne devrait pas être le
 Tout refaire la quiescence en mode debug pour clarifier...
 
 URGENT:
+-> GUI: toujours montrer le "meilleur" coup, même s'il dépasse pas l'arrow rate
+-> r2k4/pRQbrqpp/2p2b2/2P5/3P4/P7/2P2PPP/2B3K1 b - - 1 24 : overflow!!
+-> J'ai cassé quoi dans la quiescence?? il trouve plus aucun problème...
+-> 6k1/p5pp/2p5/2Np3q/1p1Pp3/1B2Bbr1/PPPQ4/R4K2 b - - 1 9 : ici y'a mat en 2... Dh8, et les deux autres coups doivent être considérés comme fully explored...
+-> En fait les autres coups qui ne font pas mat ne sont pas fully explored, d'où le souci...
 -> Faire du debug, code clean et optimisations
 -> Debugger la quiescence
 -> Utiliser des iterations plutôt que des noeuds pour GrogrosZero?
@@ -543,6 +552,7 @@ URGENT:
 -> revoir les autorisations de standpat?
 -> positions_history à mettre dans exploration plutôt que board
 -> Faut-il qu'il joue les "seuls coups" plus rapidement, ou c'est déjà le rôle du pseudo-random explorer?
+-> Re élargir l'exploration des coups?
 
 EVAL: 
 -> IMPORTANT: Alignements à terminer absolument... implémenter les fonctions d'évaluations étant en TODO
@@ -562,6 +572,7 @@ EVAL:
 -> Lignes et colonnes ouvertes sur le roi, c'est grave seulement si des tours/fous/dames peuvent aller dessus
 
 
+2rqkb1r/pp3p2/2n1p3/3pPn1p/3P2pP/3QB1P1/PP1N1P1N/R4RK1 b k - 0 15 : pas de storm ici! les pions sont bloqués!
 r4rk1/ppq2ppp/3b1n2/3p4/8/3P3P/PPP1QPP1/RNB2RK1 b - - 0 13 : y'a R là... les blancs sont mieux
 r3k2r/ppp3pp/2n2n2/4pp2/8/3PBN2/bPP2PPP/2KR1B1R w kq - 0 12 : b3 enferme le fou
 2r3k1/6p1/8/5p1p/4nP2/R1BRPK2/2P4P/7r b - - 5 40 : si on met overload, il trouve Txh2 beaucoup plus facilement et voit le mat... mais est-ce que ça ne fait pas doublon?
@@ -580,7 +591,9 @@ r1bq1rk1/1pp3p1/1n3b1B/4p3/pP1P2R1/P2B1N2/2Q2PP1/R3K3 w Q - 0 21 : Txg7!! gagne 
 3rkbnr/pQ2pppp/4q3/2p5/3n4/6PP/PPPP1PB1/RNB2K1R w k - 1 10 : ici c'est les blancs qui sont gagnants...
 r2q4/pp4kp/2p1Qrp1/3pB3/3P4/8/PPP3PP/R5K1 w - - 0 20 : met 4 ans à voir que Tf1 gagne alors que c'est évident... la quiescence prend trop de temps alors il regarde pas tous les coups et reste sur le standpat
 r7/pp5k/2p2B2/3p2Qp/3P4/8/PPP3PP/6K1 w - - 1 25 : pareil
-A cause de la quiescence trop longue qui regarde les coups complexes à fond...
+r1br2k1/pp3pp1/7p/5p2/3P4/1P1Q3P/5PP1/R5K1 b - - 1 31 : noirs un peu mieux
+rnbqkb1r/ppp1pp1p/6p1/3pP3/3Pn3/2N5/PPPB1PPP/R2QKBNR b KQkq - 2 5 : mieux vaut prendre le fou que le cavalier!
+r5k1/pp1nqrpp/2p5/8/2Bb1Nb1/6P1/P2BN2P/R2QKR2 w - - 5 19 : les blancs sont complètement gagnants
 
 
 
