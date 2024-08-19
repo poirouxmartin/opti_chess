@@ -80,6 +80,8 @@ void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add
 		_iterations++;
 		_time_spent += clock() - begin_monte_time;
 
+		_fully_explored = true;
+
 		return;
 	}
 
@@ -201,7 +203,9 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 	// rnb1kbnr/ppp1pppp/2q5/8/8/2N5/PPPP1PPP/R1BQKBNR w KQkq - 2 4 : ici Fb5 -> +114 au lieu de +895
 
 	// Tous les coups ont-ils déjà été explorés?
-	bool all_moves_explored = get_fully_explored_children_count() == _board->_got_moves;
+	// FIXME: faut-il seulement évaluer si tous les coups ont été entièrement explorés?
+	//bool all_moves_explored = get_fully_explored_children_count() == _board->_got_moves;
+	bool all_moves_explored = children_count() == _board->_got_moves;
 
 	// Met à jour l'évaluation du plateau
 	if (!all_moves_explored) {
@@ -355,7 +359,7 @@ Move Node::pick_random_child(const float beta, const float k_add) const {
 		//if (_nodes == 0 || child->_nodes == 0) {
 		//	cout << "0 nodes???" << endl;
 		//}
-		pond[i] = static_cast<float>(_iterations) / static_cast<float>(child->_iterations);
+		pond[i] = child->_iterations == 0 ? INT_MAX : static_cast<float>(_iterations) / static_cast<float>(child->_iterations);
 		i++;
 	}
 
@@ -721,6 +725,8 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 		_time_spent += clock() - begin_monte_time;
 		//cout << "game over" << endl;
 
+		_fully_explored = true;
+
 		return _board->_evaluation * color;
 	}
 
@@ -875,7 +881,8 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 			// Mise à jour de l'évaluation du plateau
 			// FIXME: ici, s'il y'a un seul coup, il faut mettre à jour l'évaluation du plateau même si l'évaluation fils est moins bonne
 			// Ou alors: si tous les coups ont été explorés, on met à jour l'évaluation du plateau avec le meilleur coup
-			bool all_moves_explored = get_fully_explored_children_count() == _board->_got_moves;
+			//bool all_moves_explored = get_fully_explored_children_count() == _board->_got_moves;
+			bool all_moves_explored = children_count() == _board->_got_moves;
 
 			if (all_moves_explored) {
 				int best_eval = -INT_MAX;

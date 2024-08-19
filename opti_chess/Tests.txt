@@ -397,6 +397,7 @@ r3k2r/ppp2pp1/2p1bq2/2b4p/3PP1n1/2P2BP1/PP3P1P/RNBQK2R w KQkq - 3 11 : h3 (+4.50
 1r1r3k/2q1b2p/p2pB1pB/3Pp2n/1pn5/1N3P2/PPP4Q/1K4RR w - - 0 1 : Fg7+ & Dxh5 gagnent
 bK3kq1/PPNppp1p/1b1n3P/n1R5/1p1Q3r/8/2R4p/r7 w - - 0 1 : Ce6 nulle
 r3Rk2/1pB2ppp/6b1/1P6/p1nN4/2P4P/1P3PP1/4R1K1 b - - 0 1 : Tc1 et c4, c5, c6 pas mal
+6k1/1b3ppp/8/1P6/2RN4/7P/5KP1/r7 w - - 0 15 : Tc7! seul coup qui gagne
 rnbqkbnr/pppppppp/8/PPPPPPPP/PPPPPPPP/PPPPPPPP/PPPPPPPP/4K3 w kq - 0 1 : bordel
 r1b1k2r/pp1nqpp1/4p2p/3pP1N1/8/3BQ3/PP3PPP/2R2RK1 w kq - 0 1 :  Dxa7 gagne
 1B3B1B/2B5/p6B/8/8/8/8/1k1K4 w - - 0 1 : 1. Bce5 Ka2 2. Kc2 a5 3. Ba1 a4 4. Bb8e5 a3 5. Kc3 Kb1 6. Kb3 a2 7. Kc3 Kxa1 8.Kc2# 1-0
@@ -782,6 +783,7 @@ rn2k2r/p4p2/3p3p/q1pP4/4b1pP/8/P2NQPP1/2R1KB1R b Kkq - 1 18 : Rd8! seul coup qui
 2k4r/pp1rp2p/3n1ppP/2R1b1N1/4P3/2P3P1/PP2KP2/R1B5 b - - 0 22 : Tc7 seul coup qui tient
 3r4/1p2p2p/2kn2pP/p3p3/P7/1RP1B1P1/1P2KP2/8 w - - 4 30 : c4 gagne
 6k1/8/bBB3p1/P3pp1p/8/2b3PP/5P2/6K1 w - - 0 34 : Fg2 très fort.. Ff1 arrive
+rnbr2k1/1p2bppp/p1q1pn2/2p5/2PP1B2/2N2N2/PP2BPPP/R2Q1RK1 w - - 5 11 : d5! très fort
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---

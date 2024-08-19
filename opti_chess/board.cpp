@@ -1953,7 +1953,7 @@ int Board::get_king_safety(float display_factor) {
 	b_king_protection += b_castling_protection * castling_rights_protection;
 
 	// Niveau de protection auquel on peut considérer que le roi est safe
-	const int king_base_protection = 1000 * (1 - _adv);
+	const int king_base_protection = 800 * (1 - _adv);
 	w_king_protection -= king_base_protection;
 	b_king_protection -= king_base_protection;
 
@@ -2059,9 +2059,9 @@ int Board::get_king_safety(float display_factor) {
 	// ---------------------------
 
 	// Potentiel d'attaque de chaque pièce (pion, caval, fou, tour, dame)
-	static constexpr int attack_potentials[6] = { 1, 25, 28, 30, 100, 0 };
+	static constexpr int attack_potentials[6] = { 1, 25, 28, 50, 100, 0 };
 	constexpr int reference_mating_potential = 40; // Matériel minimum pour mater (en général)
-	constexpr int reference_potential = 274 - reference_mating_potential; // Si y'a toutes les pièces de base sur l'échiquier
+	constexpr int reference_potential = 314 - reference_mating_potential; // Si y'a toutes les pièces de base sur l'échiquier
 
 	int w_total_potential = 0;
 	int b_total_potential = 0;
@@ -6051,7 +6051,10 @@ void Board::display_positions_history() const
 
 				// S'il n'y a pas de pièce adverse qui le bloque
 				uint_fast8_t p = _array[i + (color ? 1 : -1)][j];
-				if ((color && p <= w_king) || (!color && (p == none || p >= w_pawn))) { // En théorie, l'indice ne devrait pas sortir de [|0, 7|] puisque les pions ne peuvent pas se situer sur les lignes extrëmes
+				//cout << "piece : " << (int)p << endl;
+
+				// FIXME??
+				if ((color && p <= w_king) || (!color && (p == none || p >= b_pawn))) { // En théorie, l'indice ne devrait pas sortir de [|0, 7|] puisque les pions ne peuvent pas se situer sur les lignes extrëmes
 					total_bonus += bonus[abs(i - opponent_king_pos.i)];
 				}
 			}
