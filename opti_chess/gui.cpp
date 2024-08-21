@@ -1467,17 +1467,19 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 	// Noeud avec la meilleure évaluation
 	//Node const* best_eval_node;
-	int best_eval = -INT_MAX;
+	int best_eval_colored = -INT_MAX;
 	Move best_move;
 
 	for (auto const& child : _root_exploration_node->_children)
 	{
-		if (child.second->_board->_evaluation * color > best_eval) {
-			best_eval = child.second->_board->_evaluation;
+		if (child.second->_board->_evaluation * color > best_eval_colored) {
+			best_eval_colored = child.second->_board->_evaluation * color;
 			//best_eval_node = child.second;
 			best_move = child.first;
 		}
 	}
+
+	//cout << "best eval : " << best_eval_colored << ", color : " << color << ", best move : " << _board.move_label(best_move) << endl;
 
 	// Pourcentage de réflexion sur le meilleur coup
 	float best_move_percentage = static_cast<float>(most_explored_child->_iterations) / static_cast<float>(_root_exploration_node->_iterations);
@@ -1494,7 +1496,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	//cout << "max move time : " << max_move_time << endl;
 
 	// On veut être sûr de jouer le meilleur coup de Grogros: s'il y a un meilleur coup que celui avec le plus de noeuds, attendre...
-	bool wait_for_best_move = (most_explored_child->_board->_evaluation * color) < (best_eval * color);
+	bool wait_for_best_move = (most_explored_child->_board->_evaluation * color) < (best_eval_colored);
 
 	// FIXME: des choses à améliorer ici!
 	// A quel point faut-il attendre pour être sûr de jouer le meilleur coup?
@@ -1526,7 +1528,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	}
 
 	// Nombre d'itérations supposées par seconde
-	constexpr int supposed_ips = 1500;
+	constexpr int supposed_ips = 1000;
 
 	// Equivalent en nombre de noeuds
 	float seconds_to_play = max_move_time / 1000.0f;
@@ -1542,6 +1544,12 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	//cout << "nodes to play : " << nodes_to_play << ", " << _root_exploration_node->_nodes << endl;
 
 	if (_root_exploration_node->_iterations >= iterations_to_play) {
+
+		//cout << "best eval" << best_eval_colored << endl;
+		//for (auto const& child : _root_exploration_node->_children) {
+		//	cout << "move : " << _board.move_label(child.first) << " | eval : " << child.second->_board->_evaluation << " | nodes : " << child.second->_nodes << " | iterations : " << child.second->_iterations << endl;
+		//}
+
 		if (wait_for_best_move) {
 			cout << "Position: " << _board.to_fen() << " : played the sub-optimal " << _board._moves_count << ". " << _board.move_label(_root_exploration_node->get_best_move()) << " because it was taking too long to wait for it... best move was probably:" << _board.move_label(best_move) << endl;
 		}
