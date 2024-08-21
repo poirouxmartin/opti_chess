@@ -325,6 +325,8 @@ void Node::explore_random_child(Buffer* buffer, Evaluator* eval, float beta, flo
 
 // Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variantes, en fonction de la grandeur du nombre correspondant à cet index
 Move Node::pick_random_child(const float beta, const float k_add) const {
+	// FIXME: ajouter quelque chose comme l'évaluation relative pour choisir les coups plutôt que les évaluations brutes... sinon, dans les évaluations énormes, il regarde un seul coup...
+
 	int color = _board->get_color();
 	auto n_children = static_cast<int>(children_count());
 

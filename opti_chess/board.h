@@ -478,7 +478,7 @@ public:
 	[[nodiscard]] int get_king_virtual_mobility(bool color);
 
 	// Fonction qui renvoie le nombre d'échecs 'safe' dans la position pour les deux joueurs
-	[[nodiscard]] int get_safe_checks_value(Map white_controls, Map black_controls, bool color);
+	[[nodiscard]] int get_checks_value(Map white_controls, Map black_controls, bool color);
 
 	// Fonction qui renvoie la vitesse de génération des coups
 	[[nodiscard]] int moves_generation_benchmark(uint_fast8_t depth, bool main_call = true);
