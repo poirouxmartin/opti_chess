@@ -68,31 +68,31 @@ int move_power(const float n, const float range, const float min)
 }
 
 // Fonction qui fait un softmax
-void softmax(long long int* input, const int size, const float beta, const float k_add)
+void softmax(double* input, const int size, const float beta, const float k_add)
 {
-	constexpr int r = 100000;
+	constexpr double r = 100000;
 
-	const int m = *max_element(input, input + size);
+	const double m = *max_element(input, input + size);
 
 	//cout << "m: " << m << endl;
 
-	float sum = 0.0f;
+	double sum = 0.0;
 	for (int i = 0; i < size; i++)
 		sum += exp(beta * (input[i] - m));
 
 	//cout << "sum: " << sum << endl;
 
-	static constexpr float evaluation_softener = 0.25f;
+	static constexpr double evaluation_softener = 0.25;
 	// Pour que ça regarde un peu plus des coups en dessous (plus la valeur est faible, plus ça applanit le k_add)
-	const float best_win_chance = get_winning_chances_from_eval(m * evaluation_softener, true);
-	const float constant = beta * m + log(sum);
+	const double best_win_chance = get_winning_chances_from_eval(m * evaluation_softener, true);
+	const double constant = beta * m + log(sum);
 
 	for (int i = 0; i < size; i++)
 	{
 		// TODO prendre en compte les mats
-		const auto eval_i = static_cast<float>(input[i]);
-		const float win_chance = get_winning_chances_from_eval(eval_i * evaluation_softener, true);
-		const float adding = (win_chance == 0.0f) ? 0.0f : win_chance / best_win_chance * 2;
+		const double eval_i = input[i];
+		const double win_chance = get_winning_chances_from_eval(eval_i * evaluation_softener, true);
+		const double adding = (win_chance == 0.0f) ? 0.0f : win_chance / best_win_chance * 2;
 		//const float adding = 1;
 		// Juste histoire de continuer à regarder un peu les coups (on sait jamais)
 
@@ -143,62 +143,6 @@ long long rand_long(const long long a, const long long b)
 	uniform_int_distribution<long long> distribution(a, b);
 
 	return distribution(generator);
-}
-
-// Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variantes, en fonction de la grandeur du nombre correspondant à cet index
-int pick_random_good_move(int* l, const int n, const int color, bool print, const int nodes, int* nodes_children, const float beta, const float k_add)
-{
-	int sum = 0;
-	int min = INT_MAX;
-
-	//int range = max_value(l, n) - min_value(l, n);
-	//int min_val = (color == 1) ? min_value(l, n) : max_value(l, n);
-
-	long long int l2[100];
-
-	for (int i = 0; i < n; i++)
-		l2[i] = color * l[i];
-
-	softmax(l2, n, beta, k_add);
-
-	// Liste de pondération en fonction de l'exploration de chaque noeud
-	// Pour que ça explore les noeuds les moins regardés
-	float pond[100];
-	//const float inv_nodes = 1.0f / static_cast<float>(nodes);
-
-	/*for (int i = 0; i < n; i++)
-		pond[i] = 1.0f - nodes_children[i] * inv_nodes;*/
-
-	for (int i = 0; i < n; i++)
-		pond[i] = static_cast<float>(nodes) / static_cast<float>(nodes_children[i]);
-
-	//print_array(pond, n);
-	//print_array(l2, n);
-
-	nodes_weighting(l2, pond, n);
-
-	//print_array(l2, n);
-
-	// Somme de toutes les valeurs
-	for (int i = 0; i < n; i++)
-	{
-		if (l2[i] < min)
-			min = l2[i];
-		sum += l2[i];
-	}
-
-	// Choix du coup en fonction d'une valeur aléatoire
-	const int rand_val = rand_int(1, sum);
-	int cumul = 0;
-
-	for (int i = 0; i < n; i++)
-	{
-		cumul += l2[i];
-		if (cumul >= rand_val)
-			return i;
-	}
-
-	return 0;
 }
 
 // Fonction qui renvoie la valeur maximum d'une liste d'entiers
@@ -275,6 +219,15 @@ void print_array(uint_fast8_t *l, const int n)
 
 // Fonction qui affiche une liste de flottants (array)
 void print_array(float *l, const int n)
+{
+	cout << "[|";
+	for (int i = 0; i < n; i++)
+		cout << " " << l[i] << " |";
+	cout << "]" << endl;
+}
+
+// Fonction qui affiche une liste de double (array)
+void print_array(double* l, const int n)
 {
 	cout << "[|";
 	for (int i = 0; i < n; i++)
@@ -500,7 +453,7 @@ float get_winning_chances_from_eval(const float eval, const bool player)
 }
 
 // Fonction qui pondère les valeurs de la liste, en fonction d'un taux d'exploration par valeur
-void nodes_weighting(long long int* l, const float* weights, const int size)
+void nodes_weighting(double* l, const double* weights, const int size)
 {
 	for (int i = 0; i < size; i++)
 	{

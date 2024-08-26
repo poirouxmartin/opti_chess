@@ -96,9 +96,13 @@ public:
 	//float _k_add = 25.0f;
 	//int _quiescence_depth = 8;
 
-	float _beta = 0.25f;
-	float _k_add = 10.0f;
+	float _beta = 1.0f;
+	float _k_add = 2.5f;
 	int _quiescence_depth = 6;
+
+	//float _beta = 0.10f;
+	//float _k_add = 25.0f;
+	//int _quiescence_depth = 4;
 
 	bool _explore_checks = true; // FIXME? faut-il vraiment explorer les échecs?
 

@@ -229,11 +229,11 @@ inline int main_ui() {
 			//main_GUI._root_exploration_node->_board->evaluate(nullptr, false, &eval_network, false);
 			//cout << "eval : " << main_GUI._root_exploration_node->_board->_evaluation << endl;
 
-			//main_GUI.grogros_analysis(1);
+			main_GUI.grogros_analysis(1);
 			//cout << main_GUI._root_exploration_node->_iterations << endl;
 
 			//cout << main_GUI._root_exploration_node->get_main_depth() << endl;
-			cout << main_GUI._root_exploration_node->_fully_explored << endl;
+			//cout << main_GUI._root_exploration_node->_fully_explored << endl;
 		}
 
 		// CTRL-T - Cherche le plateau de chess.com sur l'écran, et lance une partie

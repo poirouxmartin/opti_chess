@@ -1820,7 +1820,7 @@ int Board::get_king_safety(float display_factor) {
 	int b_defending_power = 0;
 
 	// Facteurs multiplicatifs
-	constexpr float piece_attack_factor = 1.5f;
+	constexpr float piece_attack_factor = 1.25f;
 	constexpr float piece_defense_factor = 1.0f;
 
 	constexpr float piece_overload_multiplicator = 2.0f; // TODO: à utiliser
@@ -1929,6 +1929,7 @@ int Board::get_king_safety(float display_factor) {
 	}
 
 	const float overload_factor = 1.5f;
+	//const float overload_factor = 0.0f;
 
 	w_king_overloaded *= overload_factor;
 	b_king_overloaded *= overload_factor;
@@ -1949,7 +1950,8 @@ int Board::get_king_safety(float display_factor) {
 	b_king_protection += edge_protection * ((min(_black_king_pos.i, 7 - _black_king_pos.i) == 0) + (min(_black_king_pos.j, 7 - _black_king_pos.j) == 0));
 
 	// Droits de roque
-	constexpr int castling_rights_protection = 200;
+	//constexpr int castling_rights_protection = 200;
+	constexpr int castling_rights_protection = 0;
 	constexpr int single_castling_protection = 2;
 
 	const int w_castling_protection = (_castling_rights.k_w || _castling_rights.q_w) * single_castling_protection + (_castling_rights.k_w && _castling_rights.q_w);
@@ -1959,7 +1961,7 @@ int Board::get_king_safety(float display_factor) {
 	b_king_protection += b_castling_protection * castling_rights_protection;
 
 	// Niveau de protection auquel on peut considérer que le roi est safe
-	const int king_base_protection = 1000 * (1 - _adv);
+	const int king_base_protection = 600 * (1 - _adv);
 	w_king_protection -= king_base_protection;
 	b_king_protection -= king_base_protection;
 
@@ -2025,7 +2027,7 @@ int Board::get_king_safety(float display_factor) {
 	// *** OPEN LINES ***
 	// ------------------
 
-	constexpr int open_lines_danger = 5;
+	constexpr int open_lines_danger = 3;
 
 	int w_open_lines = get_open_files_on_opponent_king(true) * open_lines_danger * (1 - _adv);
 	int b_open_lines = get_open_files_on_opponent_king(false) * open_lines_danger * (1 - _adv);
@@ -2196,8 +2198,19 @@ int Board::get_king_safety(float display_factor) {
 	b_king_weakness *= w_attacking_potential;
 
 	// Ajout de la protection du roi... la faiblesse du roi ne peut pas être négative (potentiellement à revoir, mais parfois la surprotection donne des valeurs délirantes)
-	w_king_weakness = max_int(0, w_king_weakness);
-	b_king_weakness = max_int(0, b_king_weakness);
+	float overprotection_factor = 0.2f;
+
+	if (w_king_weakness < 0) {
+		w_king_weakness *= overprotection_factor;
+	}
+
+	if (b_king_weakness < 0) {
+		b_king_weakness *= overprotection_factor;
+	}
+
+
+	//w_king_weakness = max_int(0, w_king_weakness);
+	//b_king_weakness = max_int(0, b_king_weakness);
 
 
 	if (display_factor != 0.0f) {
@@ -2332,8 +2345,8 @@ int Board::get_pawn_structure(float display_factor)
 	}
 
 	// Pions isolés
-	constexpr int isolated_pawn = -100;
-	constexpr float isolated_adv_factor = 0.3f; // En fonction de l'advancement de la partie
+	constexpr int isolated_pawn = -75;
+	constexpr float isolated_adv_factor = 0.5f; // En fonction de l'advancement de la partie
 	const float isolated_adv = 1 * (1 + (isolated_adv_factor - 1) * _adv);
 	int isolated_pawns = 0;
 
@@ -2373,10 +2386,10 @@ int Board::get_pawn_structure(float display_factor)
 	static const int passed_pawns[8] = { 0, 50, 50, 120, 235, 400, 750, 0 };
 
 	// Pion passé - chemin controllé par une pièce adverse
-	static const int controlled_passed_pawn[8] = { 0, 40, 40, 70, 110, 170, 250, 0 };
+	static const int controlled_passed_pawn[8] = { 0, 40, 40, 70, 130, 220, 325, 0 };
 
 	// Pion passé bloqué
-	static const int blocked_passed_pawn[8] = { 0, 20, 30, 45, 65, 95, 140, 0 };
+	static const int blocked_passed_pawn[8] = { 0, 20, 30, 45, 90, 140, 250, 0 };
 
 
 	constexpr float passed_adv_factor = 2.0f; // En fonction de l'advancement de la partie
@@ -6078,7 +6091,7 @@ void Board::display_positions_history() const
 	Pos opponent_king_pos = color ? _black_king_pos : _white_king_pos;
 
 	// Bonus en fonction de la distance verticale entre les pions et le roi
-	int bonus[7] = { 100, 100, 80, 50, 35, 15, 0};
+	int bonus[7] = { 70, 70, 50, 35, 20, 10, 0};
 
 	int total_bonus = 0;
 
