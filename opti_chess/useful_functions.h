@@ -31,7 +31,7 @@ float min_float(float, float);
 int move_power(float, float, float);
 
 // Fonction qui permet de donner une puissance au coup afin de faciliter les choix
-void softmax(long long int*, int, float beta = 0.035f, float k_add = 50.0f); // beta = 0.05, k_add = 1. k_add x => ~x/10000 (the bigger the larger, the smaller the deeper) 0.05, 250 pour les mats
+void softmax(double*, int, float beta = 0.035f, float k_add = 50.0f); // beta = 0.05, k_add = 1. k_add x => ~x/10000 (the bigger the larger, the smaller the deeper) 0.05, 250 pour les mats
 
 // Fonction pour générer une seed
 unsigned long long generate_seed();
@@ -41,9 +41,6 @@ int rand_int(int, int);
 
 // Fonction qui renvoie un entier long aléatoire entre deux entiers (le second non inclus)
 long long rand_long(const long long a, const long long b);
-
-// Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variante en fonction de la grandeur du nombre correspondant à cet index
-int pick_random_good_move(int *l, const int n, const int color, bool print, const int nodes, int *nodes_children, const float beta = 0.035f, const float k_add = 50.0f);
 
 // Fonction qui renvoie la valeur maximum d'une liste d'entiers
 int max_value(int*, const int);
@@ -68,6 +65,9 @@ void print_array(uint_fast8_t*, const int);
 
 // Fonction qui affiche une liste de flottants (array)
 void print_array(float*, const int);
+
+// Fonction qui affiche une liste de double (array)
+void print_array(double*, const int);
 
 // Fonction qui affiche une liste de chaines de caractères (array)
 void print_array(string*, const int);
@@ -112,7 +112,7 @@ bool is_in(const string&, string[], int);
 float get_winning_chances_from_eval(float, bool);
 
 // Fonction qui pondère les valeurs de la liste, en fonction d'un taux d'exploration par valeur
-void nodes_weighting(long long int*, const float*, int);
+void nodes_weighting(double*, const double*, int);
 
 // Sigmoïde
 double sigmoid(double x, double alpha, double beta);
