@@ -10,7 +10,7 @@ public:
 	float _piece_value = 1.35f;
 	float _piece_mobility = 0.05f;
 	float _piece_positioning = 0.2f;
-	float _bishop_pair = 50.0f;
+	float _bishop_pair = 35.0f;
 	float _castling_rights = 0.0f; // Compté dans la proximité au roque
 	float _player_trait = 25.0f;
 	float _king_safety = 1.0f;
@@ -23,12 +23,12 @@ public:
 	float _space_advantage = 0.75f;
 	//float _alignments = 1.0f;
 	float _alignments = 0.00f;
-	float _piece_activity = 0.04f;
+	float _piece_activity = 0.025f;
 	float _fianchetto = 0.5f;
 	float _pawn_push_threats = 25.0f;
 	float _king_proximity = 0.4f;
 	float _rook_activity = 0.10f;
-	float _bishop_pawns = 3.0f;
+	float _bishop_pawns = 7.0f;
 	float _pawn_storm = 0.1f;
 	float _pawn_shield = 2.0f;
 	float _weak_squares = 0.5f;
@@ -37,10 +37,10 @@ public:
 	float _isolated_pieces = 0.7f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
-	int _pieces_value_begin[6] = { 80, 335, 360, 460, 1135, 0 };
+	int _pieces_value_begin[6] = { 80, 345, 360, 460, 1135, 0 };
 
 	// Valeurs en fin de partie
-	int _pieces_value_end[6] = { 90, 365, 410, 610, 1170, 0 };
+	int _pieces_value_end[6] = { 90, 375, 390, 610, 1170, 0 };
 
 	// Positionnement des pièces
 

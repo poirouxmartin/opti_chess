@@ -476,14 +476,13 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 Pour les variantes, mettre les coups de la quiescence entre parenthèses?
 
 -> BUGS:
+1k2r2r/p1pqb1pp/2ppbn2/6B1/3NP3/2N5/PPP1QPPP/R4RK1 w - - 0 13 : Da6???????????
 Qnkr3r/1p3ppp/3bq3/3p4/3B4/2P5/PP1N1PPP/R4RK1 w - - 6 16 : comprend rien à cette position... aucun bon coup n'est regardé
 Qnkr3r/1p3pBp/3bq3/3p4/8/2P5/PP1N1PPP/R4RK1 b - - 0 16 : Thg8 gagne
 Qnkr2r1/1p3p1p/3b4/3p4/3B4/2P3Pq/PP1N1P1P/4RRK1 b - - 0 19 : Fxg3!! gagne
 1nkr4/1p4rp/3b2q1/3p4/Q4p2/2P2NP1/PP3P1P/4RRK1 w - - 0 21 : roi noir foutu
 r1bqk1nr/pppp1ppp/2n5/8/1bB1P3/2P2N2/P4PPP/RNBQK2R b KQkq - 0 6 : Fa5??.. :(
 r1b2bkr/pp2Rppp/2q2n2/2p5/2B5/2N2PP1/PP2Q2P/R1B3K1 b - - 8 19 : Fxe7??
-r1bq1k1r/3p2bp/p2N2p1/1pB1Pp2/B7/2P2N2/PP3PPP/R3K2R b KQ - 0 15 : safe checks??
-rn3k1r/2np2pp/pq6/1P2pNp1/4Q3/N1P3P1/1P4KP/5R2 b - - 5 24 : là y'en a plein des safe checks.. non?
 3rkb1r/pQ1b1ppp/2pp4/4q3/4n3/3N4/PPPBBPPP/R4RK1 b k - 1 14 : il a fait Df6 au lieu de Db5 après avoir vu que Db5 était meilleur...
 r4rk1/ppq1bppp/5n2/3p4/8/3P4/PPP1QPPP/RNB1K2R w KQ - 3 12 : roqueeee!!!
 Y'a des gros soucis avec le temps.. parfois il s'écoule quasi plus.......... (quand on lance GrogrosZero par itérations p.s. plutôt que par noeuds p.s. ...)
@@ -518,6 +517,15 @@ Parfois on a des eval qui sont égales à +/-INT_MAX, et ça ne devrait pas être le
 Tout refaire la quiescence en mode debug pour clarifier...
 
 URGENT:
+-> r1bqk2r/ppp2ppp/1bn5/4p1N1/3Pp3/2P5/PP3PPP/RNBQ1RK1 b kq - 1 9 : là y'a plein de coups qui marchent.. même exd4
+-> Prioriser les coups qui n'ont pas regardé toutes les réponses de l'adversaire en entier??
+-> Position ouverte/fermée = nombre de pions bloqués? (avec plus de valeurs pour les pions centraux)
+-> Quand un coup n'est pas fully explored, il faut absolument le choisir..
+-> r2qr1k1/pp3ppp/2nb1n2/4p3/2P3P1/1PNb3P/PB1PNPB1/R2QK2R w KQ - 0 12 : Th2?????????? SURTOUT PAS
+-> r3r1k1/pp4pn/2nb1q2/4p2p/2P1B2P/1P6/PB1PNP2/R2Q1RK1 b - - 0 17 : il regarde pas Dxh4??
+-> r1b1kb1r/ppppq1pp/8/5p2/2BQnB2/8/PPP2PPP/RN2R1K1 b kq - 1 9 : Dc5 égalise
+-> Remettre virtual mobility pour l'évaluation de la sécurité du roi?
+-> King safety est tellement proeminent qu'il y a beaucoup de coups qu'il ne regarde même pas, car il voit une menace en 1 au coup d'après (qu'il peut parer...)
 -> En position perdante, il va chercher les draw (même si c'est pas déjà 3 répèt.. du coup il joue le coup qui répète, même si c'est pas le meilleur coup)
 -> Trop de quiescence, pas assez de killer moves? il regarde que les captures...
 -> Pour le pick_random_child: faire en fonction de l'évaluation relative!! (cela peut changer beaucoup de choses...)
@@ -573,8 +581,11 @@ EVAL:
 -> Implémenter les faiblesses de la position? pour taper dessus, et éviter de s'en créer?
 -> Lignes et colonnes ouvertes sur le roi, c'est grave seulement si des tours/fous/dames peuvent aller dessus
 -> Potentiel d'attaque global qui modifie moins la king safety? même avec 2 pièces, ça peut mater contre beaucoup
+-> Trop de bonus cumulés pour les fous: fianchetto, piece mobility, piece activity, bishop activity, bishop pair...
+-> Pour king safety, quand ça dépasse pas 0, rien ne change.. alors il n'y a jamais de plan d'attaque...
 
 
+2kr1b1r/ppp1qppp/5n2/8/3n4/1PN5/P1PPBPPP/R1BQ1RK1 b - - 4 11 : noirs mieux.. le cheval est mieux que le fou en e2
 r4rk1/ppq2ppp/3b1n2/3p4/8/3P3P/PPP1QPP1/RNB2RK1 b - - 0 13 : y'a R là... les blancs sont mieux
 r3k2r/ppp3pp/2n2n2/4pp2/8/3PBN2/bPP2PPP/2KR1B1R w kq - 0 12 : b3 enferme le fou
 2r3k1/6p1/8/5p1p/4nP2/R1BRPK2/2P4P/7r b - - 5 40 : si on met overload, il trouve Txh2 beaucoup plus facilement et voit le mat... mais est-ce que ça ne fait pas doublon?
@@ -609,10 +620,14 @@ N6N/pp2k1pp/8/3Pp3/2Bn4/6qP/PPPP4/R1B4K b - - 0 20 : Cf3 #3
 r1b2rk1/pnB1qp1p/2Q3p1/1B1pp3/8/2P1PP2/P1P3PP/1R3RK1 w - - 0 18 : blancs gagnants
 r1bqkbnr/ppp2ppp/2np4/4p3/4P3/3P1N2/PPP1BPPP/RNBQK2R b KQkq - 1 4 : f5 fort! il faut attaquer la chaîne de pions, et prendre le centre
 2nr2k1/1p1rppbp/n3b1p1/1N6/2P5/BPN2B2/P4PPP/2R2RK1 b - - 10 18 : blancs gagnants
+1k1r1br1/ppp2ppp/2nq4/4p3/2P3n1/2NPBN2/P1P2PPP/1R1QR1K1 w - - 6 13 : faut garder le fou e3 (Fd2 le meilleur coup)
+r1bqk2r/ppp4p/1bnppp2/6B1/3P4/2P2N2/PP4PP/RN1Q1BKR w kq - 0 11 : attention avec Ff4, ça donne du e5 aux noirs, et le roi en g1 sue
+1bkr3r/1ppb2q1/2nppp2/pN5p/P2P3N/2P1B3/1P4PP/R2Q1BKR w - - 6 19 : il faut envoyer du b4 pour attaquer le roi noir
 
 
 -> FAUT METTRE DES POINTEURS PARTOUT AU LIEU DE COPIER LES OBJETTTTTTSSS !! (exploration.h, gui?)
 
+-> Retirer pawn_shield/pawn_storm des éval (déjà fait dans king_safety)
 -> Regarder les TODO/FIXME dans exploration.cpp
 -> Alpha-beta pruning pour la quiescence search à fix...
 -> Regarder les fins de variantes pour voir si ça fonctionne

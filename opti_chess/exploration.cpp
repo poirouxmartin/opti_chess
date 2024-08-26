@@ -332,12 +332,18 @@ Move Node::pick_random_child(const float beta, const float k_add) const {
 
 	// *** 1. ***
 	// Evaluations des enfants (en fonction de la couleur)
-	long long int l2[100]{};
+	double l2[100]{};
 	map<int, Move> children_moves;
+	double max_eval = -DBL_MAX;
 
 	int i = 0;
 	for (auto const& [move, child] : _children) {
 		l2[i] = color * child->_board->_evaluation;
+
+		if (l2[i] > max_eval) {
+			max_eval = l2[i];
+		}
+
 		children_moves[i] = move;
 		i++;
 	}
@@ -345,14 +351,32 @@ Move Node::pick_random_child(const float beta, const float k_add) const {
 	//cout << "new: " << endl;
 	//print_array(l2, n_children);
 
+	// Plus les évaluations sont élevées, plus on veut regarder large (EXPERIMENTAL)
+	
+	// Facteur d'élargissement de la distribution
+	//double enlargement_factor = pow(log10(1.0 + abs(max_eval / 10)), 2.0) + 1.0;
+	// TODO: chercher plus large dans les positions complexes??
+	// Re: diminuer les valeurs des checks? à voir...
+	// Re: augmenter la valeur des pièces?
+	//double enlargement_factor = 1.0 + abs(max_eval / 100);
+	double enlargement_factor = sqrt((double)_nodes / (double)_iterations);
+	//double enlargement_factor = (double)_nodes / (double)_iterations;
+	
+	// FIXME: quelle est la meilleure manière d'élargir?
+	// Réduire beta? Augmenter k_add? Les deux?
+	float beta_enlarged = beta / enlargement_factor;
+	float k_add_enlarged = k_add * enlargement_factor;
+
+	//cout << "eval: " << abs(max_eval) << ", enlargement factor: " << enlargement_factor << ", beta: " << beta << ", beta_enlarged: " << beta_enlarged << ", k_add: " << k_add << ", k_add_enlarged: " << k_add_enlarged << endl;
+
 	// Softmax sur les évaluations
-	softmax(l2, n_children, beta, k_add);
+	softmax(l2, n_children, beta_enlarged, k_add_enlarged);
 
 	//print_array(l2, n_children);
 
 	// *** 2. ***
 	// Liste de pondération en fonction de l'exploration de chaque noeud (donne plus de poids aux noeuds moins explorés)
-	float pond[100]{};
+	double pond[100]{};
 
 	i = 0;
 	for (auto const& [_, child] : _children) {
@@ -361,7 +385,10 @@ Move Node::pick_random_child(const float beta, const float k_add) const {
 		//if (_nodes == 0 || child->_nodes == 0) {
 		//	cout << "0 nodes???" << endl;
 		//}
-		pond[i] = child->_iterations == 0 ? INT_MAX : static_cast<float>(_iterations) / static_cast<float>(child->_iterations);
+		if (child->_iterations == 0) {
+			cout << "0 iterations???" << endl;
+		}
+		pond[i] = child->_iterations == 0 ? INT_MAX : static_cast<double>(_iterations) / static_cast<double>(child->_iterations);
 		i++;
 	}
 
@@ -374,7 +401,7 @@ Move Node::pick_random_child(const float beta, const float k_add) const {
 
 	// *** 3. ***
 	// Somme de toutes les valeurs
-	long long int sum = 0;
+	double sum = 0.0;
 
 	for (int i = 0; i < n_children; i++)
 	{
@@ -750,7 +777,7 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 	int stand_pat = _board->_evaluation * color;
 
 	// Si on est en échec (pour ne pas terminer les variantes sur un échec)
-	bool check_extension = _board->in_check();
+	bool in_check = _board->in_check();
 	//_move.display();
 	//cout << "depth: " << depth << ", in check : " << check_extension << endl;
 	//bool check_extension = false;
@@ -758,7 +785,7 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 	//r1bqr1k1/1pp2p2/p3p1BQ/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 5 27 : le check extension fonctionne pas?
 
 	// Stand pat
-	if (depth <= 0 && !check_extension) {
+	if (depth <= 0 && !in_check) {
 		_time_spent += clock() - begin_monte_time;
 		//cout << "stand pat" << endl;
 		return stand_pat;
@@ -768,9 +795,9 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 
 	// Beta cut-off 
 	// FIXME: ça casse un peu tout
-	bool test_full_checks = true;
+	bool test_full_checks = false;
 
-	if (stand_pat >= beta && (!check_extension || !test_full_checks)) {
+	if (stand_pat >= beta && (!in_check || !test_full_checks)) {
 		_time_spent += clock() - begin_monte_time;
 		//cout << "beta cut-off1: " << stand_pat << " >= " << beta << endl;
 		return beta;
@@ -780,7 +807,7 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 	}
 
 	// Mise à jour de alpha si l'éval statique est plus grande
-	if (stand_pat > alpha && !check_extension) {
+	if (stand_pat > alpha && !in_check) {
 	//if (stand_pat > alpha) {
 		alpha = stand_pat;
 	}
@@ -810,7 +837,7 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 		bool should_explore = false;
 
 		// Si on est en échec, on explore tous les coups
-		if (check_extension) {
+		if (in_check) {
 			should_explore = true;
 		}
 		else {
@@ -818,6 +845,10 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 			if (_board->_array[move.i2][move.j2] != 0) {
 				should_explore = true;
 			}
+			// Si c'est un roque (EXPÉRIMENTAL)
+			//else if ((_board->_array[move.i1][move.j1] == 6 && abs(move.j1 - move.j2) == 2) || (_board->_array[move.i1][move.j1] == 12 && abs(move.j1 - move.j2) == 2)) {
+			//	should_explore = true;
+			//}
 			else {
 				// Si c'est une promotion
 				if ((_board->_array[move.i1][move.j1] == 1 && move.i2 == 7) || (_board->_array[move.i1][move.j1] == 7 && move.i2 == 0)) {

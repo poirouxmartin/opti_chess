@@ -1456,9 +1456,6 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 		return;
 	}
 
-	// Nombre de noeuds que Grogros doit calculer (en fonction des contraintes de temps)
-	//int grogros_nps = _root_exploration_node->get_avg_nps();
-
 	// Pour les calculs d'évaluation
 	int color = _board.get_color();
 
@@ -1530,6 +1527,9 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	// Nombre d'itérations supposées par seconde
 	constexpr int supposed_ips = 1000;
 
+	// Nombre de noeuds que Grogros doit calculer (en fonction des contraintes de temps)
+	//int grogros_nps = _root_exploration_node->get_avg_nps();
+
 	// Equivalent en nombre de noeuds
 	float seconds_to_play = max_move_time / 1000.0f;
 	//int nodes_to_play = grogros_nps * seconds_to_play;
@@ -1544,6 +1544,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	//cout << "nodes to play : " << nodes_to_play << ", " << _root_exploration_node->_nodes << endl;
 
 	if (_root_exploration_node->_iterations >= iterations_to_play) {
+	//if (_root_exploration_node->_nodes >= nodes_to_play) {
 
 		//cout << "best eval" << best_eval_colored << endl;
 		//for (auto const& child : _root_exploration_node->_children) {
