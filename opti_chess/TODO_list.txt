@@ -517,6 +517,9 @@ Parfois on a des eval qui sont égales à +/-INT_MAX, et ça ne devrait pas être le
 Tout refaire la quiescence en mode debug pour clarifier...
 
 URGENT:
+-> rn2kb1r/p4ppp/1pp1pn2/2Pp1b2/3P4/1N5P/PP2PPB1/R1B1K1NR w KQkq - 1 10 : rook activity qui augmente de beaucoup après Th2... faut trouver un truc...
+-> 6r1/p2b3r/2p5/4R2B/Pk3Bp1/1P6/5PP1/6K1 w - - 4 31 : king safety? le roi noir se promène...
+-> r2qk2r/p1p3pp/2pbp3/5bp1/2PP4/2N2N2/PPR2PPP/3Q1RK1 b kq - 0 13 : structure de pions +4??? il prend même pas la tour...
 -> r1bqk2r/ppp2ppp/1bn5/4p1N1/3Pp3/2P5/PP3PPP/RNBQ1RK1 b kq - 1 9 : là y'a plein de coups qui marchent.. même exd4
 -> Prioriser les coups qui n'ont pas regardé toutes les réponses de l'adversaire en entier??
 -> Position ouverte/fermée = nombre de pions bloqués? (avec plus de valeurs pour les pions centraux)
@@ -583,6 +586,10 @@ EVAL:
 -> Potentiel d'attaque global qui modifie moins la king safety? même avec 2 pièces, ça peut mater contre beaucoup
 -> Trop de bonus cumulés pour les fous: fianchetto, piece mobility, piece activity, bishop activity, bishop pair...
 -> Pour king safety, quand ça dépasse pas 0, rien ne change.. alors il n'y a jamais de plan d'attaque...
+-> Trop de b6/Fb7 ou b3/Fb2, pas forcément utiles... fianchetto, trop doublon avec les autres bonus?
+-> Pawn shield quand on est pas roqué?
+-> Catégorie: Développement (~= distance au roque?), plutôt que de compter ça dans King
+-> https://hxim.github.io/Stockfish-Evaluation-Guide/ : shelter strength à implémenter... rnbqkbnr/ppp1pppp/8/3p4/6P1/8/PPPPPP1P/RNBQKBNR w KQkq - 0 2 : ici le roi blanc est le plus faible. castling distance donne aussi un bonus, alors que le roque côté roi est pourri...
 
 
 2kr1b1r/ppp1qppp/5n2/8/3n4/1PN5/P1PPBPPP/R1BQ1RK1 b - - 4 11 : noirs mieux.. le cheval est mieux que le fou en e2
@@ -623,6 +630,10 @@ r1bqkbnr/ppp2ppp/2np4/4p3/4P3/3P1N2/PPP1BPPP/RNBQK2R b KQkq - 1 4 : f5 fort! il 
 1k1r1br1/ppp2ppp/2nq4/4p3/2P3n1/2NPBN2/P1P2PPP/1R1QR1K1 w - - 6 13 : faut garder le fou e3 (Fd2 le meilleur coup)
 r1bqk2r/ppp4p/1bnppp2/6B1/3P4/2P2N2/PP4PP/RN1Q1BKR w kq - 0 11 : attention avec Ff4, ça donne du e5 aux noirs, et le roi en g1 sue
 1bkr3r/1ppb2q1/2nppp2/pN5p/P2P3N/2P1B3/1P4PP/R2Q1BKR w - - 6 19 : il faut envoyer du b4 pour attaquer le roi noir
+r5k1/ppqnn2p/2pRb1p1/2P5/4P2r/1PQ1B3/P4PBP/5RK1 w - - 3 20 : gagnant stratégiquement
+Nnb2b1r/1p1k1p1p/p4p2/8/3p4/8/PP2PPPP/R3KB1R b KQ - 0 12 : Fc5 gagne (le cavalier est enfermé)
+2kr1b1r/pppqpppp/2n5/3n1b2/3P4/2PB1N2/PP3PPP/RNBQ1RK1 w - - 5 8 : il faut envoyer les pions sur le roi noir, c'est du roque opposés (augmenter la valeur des pawn storm en roques opposés?)
+8/8/8/5Q1K/8/2pp4/2k5/8 w - - 0 5 : là le roi doit forcément aller vers les pions et le roi adverse pour attaquer
 
 
 -> FAUT METTRE DES POINTEURS PARTOUT AU LIEU DE COPIER LES OBJETTTTTTSSS !! (exploration.h, gui?)

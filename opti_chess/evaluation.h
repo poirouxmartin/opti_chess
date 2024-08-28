@@ -28,10 +28,10 @@ public:
 	float _pawn_push_threats = 25.0f;
 	float _king_proximity = 0.4f;
 	float _rook_activity = 0.10f;
-	float _bishop_pawns = 7.0f;
+	float _bishop_pawns = 4.0f;
 	float _pawn_storm = 0.1f;
 	float _pawn_shield = 2.0f;
-	float _weak_squares = 0.5f;
+	float _weak_squares = 0.35f;
 	float _castling_distance = 1.0f;
 	float _bishop_activity = 4.0f;
 	float _isolated_pieces = 0.7f;

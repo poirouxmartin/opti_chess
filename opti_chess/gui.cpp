@@ -1322,11 +1322,11 @@ void GUI::draw()
 		}
 		
 		int max_depth = _root_exploration_node->get_main_depth();
-		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\ntime: " + clock_to_string(_root_exploration_node->_time_spent, true) +
-			"\ndepth: " + to_string(max_depth) + "\neval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) +
-			eval + "\n" + win_chances + "\nnodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) +
+		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\nTime: " + clock_to_string(_root_exploration_node->_time_spent, true) +
+			"\nDepth: " + to_string(max_depth) + "\nEval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) +
+			eval + "\n" + win_chances + "\nNodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) +
 			" (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 0.01) / 1000.0)) + "N/s)" +
-			"\niterations: " + int_to_round_string(_root_exploration_node->_iterations) + " (" + 
+			"\nIterations: " + int_to_round_string(_root_exploration_node->_iterations) + " (" + 
 			int_to_round_string(_root_exploration_node->_iterations / (static_cast<float>(_root_exploration_node->_time_spent + 0.01) / 1000.0)) + "I/s)";
 		
 		// Affichage des paramètres d'analyse de GrogrosZero
