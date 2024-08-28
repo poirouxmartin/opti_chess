@@ -355,7 +355,6 @@ Move Node::pick_random_child(const float beta, const float k_add) const {
 	
 	// Facteur d'élargissement de la distribution
 	//double enlargement_factor = pow(log10(1.0 + abs(max_eval / 10)), 2.0) + 1.0;
-	// TODO: chercher plus large dans les positions complexes??
 	// Re: diminuer les valeurs des checks? à voir...
 	// Re: augmenter la valeur des pièces?
 	//double enlargement_factor = 1.0 + abs(max_eval / 100);
@@ -409,8 +408,12 @@ Move Node::pick_random_child(const float beta, const float k_add) const {
 	}
 
 	// Choix du coup en fonction d'une valeur aléatoire
-	const long long int rand_val = rand_long(1, sum);
-	long long int cumul = 0;
+	if (sum > LLONG_MAX) {
+		cout << "sum too big" << endl;
+	}
+
+	const double rand_val = rand_long(1, sum);
+	double cumul = 0.0;
 
 	for (int k = 0; k < n_children; k++)
 	{
@@ -423,6 +426,8 @@ Move Node::pick_random_child(const float beta, const float k_add) const {
 	}
 
 	cout << "first move chosen by default?" << endl;
+	print_array(l2, n_children);
+	cout << "sum: " << sum << ", rand: " << rand_val << endl;
 
 	return children_moves[0];
 }
