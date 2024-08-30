@@ -103,7 +103,7 @@ public:
 	void reset();
 
 	// Fonction qui renvoie les variantes d'exploration
-	[[nodiscard]] string get_exploration_variants(bool main = true);
+	[[nodiscard]] string get_exploration_variants(bool main = true, bool quiescence = false);
 
 	// Fonction qui renvoie la profondeur de la variante principale
 	[[nodiscard]] int get_main_depth();

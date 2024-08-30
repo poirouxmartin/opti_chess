@@ -551,7 +551,7 @@ void Node::reset() {
 }
 
 // Fonction qui renvoie les variantes d'exploration
-string Node::get_exploration_variants(bool main) {
+string Node::get_exploration_variants(bool main, bool quiescence) {
 
 	// Si on est en fin de variante
 	if (_board->_game_over_value) {
@@ -565,6 +565,8 @@ string Node::get_exploration_variants(bool main) {
 
 		// Si on est dans le noeud principal, on affiche toutes les variantes
 		if (main) {
+			// TODO: améliorer ce tri...
+
 			// Trie les enfants par nombre d'itérations par l'algo de GrogrosZero
 			vector<pair<int, Move>> children_iterations;
 
@@ -612,22 +614,24 @@ string Node::get_exploration_variants(bool main) {
 			}
 
 			for (int i = 0; i < children_moves.size(); i++) {
-				Move move = children_moves[i];
+				const Move move = children_moves[i];
 				Node* child = _children[move];
 
-				variants += "eval: " + _board->evaluation_to_string(child->_board->_evaluation) + " | ";
-				variants += to_string(_board->_moves_count) + (_board->_player ? ". " : "... ") + _board->move_label(move, true) + " " + child->get_exploration_variants(false) + "\n";
+				const int child_iterations = child->_iterations;
+				const bool new_quiescence = !quiescence && child_iterations == 0;
 
-				int nodes = _nodes;
-				int child_nodes = child->_nodes;
-				int nodes_ratio = _nodes == 0 ? 0 : child_nodes * 100 / nodes;
+				variants += "eval: " + _board->evaluation_to_string(child->_board->_evaluation) + " | ";
+				variants += (new_quiescence ? "(" : "") + to_string(_board->_moves_count) + (_board->_player ? ". " : "... ") + _board->move_label(move, true) + " " + child->get_exploration_variants(false, new_quiescence || quiescence) + (new_quiescence ? ")" : "")+ "\n";
+
+				const int nodes = _nodes;
+				const int child_nodes = child->_nodes;
+				const int nodes_ratio = _nodes == 0 ? 0 : child_nodes * 100 / nodes;
 				if (_nodes == 0) {
 					cout << "nodes == 0?? le bug est peut-être ici..." << endl;
 				}
 
-				int iterations = _iterations;
-				int child_iterations = child->_iterations;
-				int iterations_ratio = _iterations == 0 ? 0 : child_iterations * 100 / iterations;
+				const int iterations = _iterations;
+				const int iterations_ratio = _iterations == 0 ? 0 : child_iterations * 100 / iterations;
 
 				variants += "I: " + int_to_round_string(child_iterations) + " (" + int_to_round_string(iterations_ratio) + "%) | N: " + int_to_round_string(child_nodes) + " (" + int_to_round_string(nodes_ratio) + "%) | D: " + int_to_round_string(child->get_main_depth() + 1) + " | T: " + clock_to_string(child->_time_spent, true) + "\n\n";
 			}
@@ -636,9 +640,11 @@ string Node::get_exploration_variants(bool main) {
 		// Sinon, on affiche seulement le coup le plus exploré
 		else {
 			// Affiche seulement le premier coup (le plus exploré, et en cas d'égalité, celui avec la meilleure évaluation)
-			Move best_move = get_most_explored_child_move();
+			const Move best_move = get_most_explored_child_move();
 
-			variants += (_board->_player ? to_string(_board->_moves_count) + ". " : "") + _board->move_label(best_move, true) + " " + _children[best_move]->get_exploration_variants(false);
+			const bool new_quiescence = !quiescence && _children[best_move]->_iterations == 0;
+
+			variants += (new_quiescence ? "(" + _board->evaluation_to_string(_board->_evaluation) + ") (" : "") + (_board->_player ? to_string(_board->_moves_count) + ". " : "") + _board->move_label(best_move, true) + " " + _children[best_move]->get_exploration_variants(false, new_quiescence || quiescence) + (new_quiescence ? ")" : "");
 		}
 		
 	}
