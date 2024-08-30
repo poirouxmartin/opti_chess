@@ -517,10 +517,13 @@ Parfois on a des eval qui sont égales à +/-INT_MAX, et ça ne devrait pas être le
 Tout refaire la quiescence en mode debug pour clarifier...
 
 URGENT:
--> rn2kb1r/p4ppp/1pp1pn2/2Pp1b2/3P4/1N5P/PP2PPB1/R1B1K1NR w KQkq - 1 10 : rook activity qui augmente de beaucoup après Th2... faut trouver un truc...
--> 6r1/p2b3r/2p5/4R2B/Pk3Bp1/1P6/5PP1/6K1 w - - 4 31 : king safety? le roi noir se promène...
--> r2qk2r/p1p3pp/2pbp3/5bp1/2PP4/2N2N2/PPR2PPP/3Q1RK1 b kq - 0 13 : structure de pions +4??? il prend même pas la tour...
--> r1bqk2r/ppp2ppp/1bn5/4p1N1/3Pp3/2P5/PP3PPP/RNBQ1RK1 b kq - 1 9 : là y'a plein de coups qui marchent.. même exd4
+-> Refaire toute l'activité des pièces? en fonction des pions plutôt, et pénaliser les pièces qui sont bloquées par les pions adverses? -> vrai trapped pieces...
+2bq1k1r/br3p2/p2p2n1/npp1p2p/4P1pP/2PPN1B1/PPBN1PP1/R3QR1K w - - 0 1 : il veut Rg1, alors que le roi est mieux en h1 ?? rook activity augmente quand on le fait...
+r1bqr1k1/pp3p2/4pn1p/2P3p1/1P1N4/3B2P1/P4PP1/R2QR1K1 b - - 0 19 : prise en g3, et d4 n'est pas comestible... la quiescence ne va pas assez loin?
+rn2kb1r/p4ppp/1pp1pn2/2Pp1b2/3P4/1N5P/PP2PPB1/R1B1K1NR w KQkq - 1 10 : rook activity qui augmente de beaucoup après Th2... faut trouver un truc...
+6r1/p2b3r/2p5/4R2B/Pk3Bp1/1P6/5PP1/6K1 w - - 4 31 : king safety? le roi noir se promène...
+r2qk2r/p1p3pp/2pbp3/5bp1/2PP4/2N2N2/PPR2PPP/3Q1RK1 b kq - 0 13 : structure de pions +4??? il prend même pas la tour...
+r1bqk2r/ppp2ppp/1bn5/4p1N1/3Pp3/2P5/PP3PPP/RNBQ1RK1 b kq - 1 9 : là y'a plein de coups qui marchent.. même exd4
 -> Prioriser les coups qui n'ont pas regardé toutes les réponses de l'adversaire en entier??
 -> Position ouverte/fermée = nombre de pions bloqués? (avec plus de valeurs pour les pions centraux)
 -> Quand un coup n'est pas fully explored, il faut absolument le choisir..
@@ -568,19 +571,16 @@ URGENT:
 -> Re élargir l'exploration des coups?
 
 EVAL: 
+-> King safety: protection: avoir une partie dans long term et une autre dans short term? (considéré comme faisant partie de la défense)
 -> IMPORTANT: Alignements à terminer absolument... implémenter les fonctions d'évaluations étant en TODO
 -> Combiner pièce isolée avec pièce enfermée / attaquée?.. sinon il donne des pions en 1... utiliser square controls pour voir où la pièce ne peut pas bouger? ou regarder avec virtual mobility?
 -> Réduire l'attaque lorsque négative? Sinon ça donne un trop gros bonus de défense, et il peut pousser des pions devant son roi pour rien
 -> Redonner de la valeur aux fous. Ils sont meilleurs que les cavaliers en général (notamment quand on a la paire de fous)
--> Combiner la puissance d'attaque avec le manque de protection? et les autres afaiblissements?
 -> Pour évaluer les finales etc.., il faut un winnable white, et un winnable black... Tour Cavalier vs Tour = nulle
--> Pions isolés, pions arriérés: malus si sur colonne ouverte
--> Pour les pièces isolées, accentuer le malus si elles sont enfermées/attaquées
+-> Pions arriérés
 -> Re-évaluer les pièces en fonction du type de position (colonnes / diagonales ouvertes / fermées, pions passés...)
 -> Organiser l'affichage de l'évaluation par catégorie. L'afficher en plus fin/petit pour qu'on en voit plus. Montrer aussi les facteurs multiplicatifs
--> Rajouter les unsafe checks: r3r1k1/p1p2ppp/2p5/2b1P3/2Pq2b1/2N3Q1/PP3nPP/R1B1KBR1 w Q - 1 15 ici ça donnerait beaucoup de poids à l'attaque des noirs
 -> Evaluer la nature de la position (ouverte/fermée), car ça change tout sur s'il faut jouer actif ou positionnel...
--> Ajout tours liées (déjà fait dans attacks/defenses?)
 -> Implémenter les faiblesses de la position? pour taper dessus, et éviter de s'en créer?
 -> Lignes et colonnes ouvertes sur le roi, c'est grave seulement si des tours/fous/dames peuvent aller dessus
 -> Potentiel d'attaque global qui modifie moins la king safety? même avec 2 pièces, ça peut mater contre beaucoup
@@ -589,16 +589,19 @@ EVAL:
 -> Trop de b6/Fb7 ou b3/Fb2, pas forcément utiles... fianchetto, trop doublon avec les autres bonus?
 -> Pawn shield quand on est pas roqué?
 -> Catégorie: Développement (~= distance au roque?), plutôt que de compter ça dans King
+-> Rajouter un knight activity?
 -> https://hxim.github.io/Stockfish-Evaluation-Guide/ : shelter strength à implémenter... rnbqkbnr/ppp1pppp/8/3p4/6P1/8/PPPPPP1P/RNBQKBNR w KQkq - 0 2 : ici le roi blanc est le plus faible. castling distance donne aussi un bonus, alors que le roque côté roi est pourri...
 
 
+r3r1k1/ppq2ppp/3b1n2/6n1/2P1p1P1/1PN4P/PBQPRPB1/R5K1 w - - 5 18 : il a peur pour le roi donc fait Rf1...
+rnb1kb1r/pp3ppp/5n2/4q3/8/3B4/PP3PPP/RNBQK1NR w KQkq - 0 9 : pas Rf1 stp... :'(
+5rk1/1p3Np1/p1n1Bn2/q4P1p/2Q4P/4R3/1P4P1/6K1 w - - 0 30 : le roi n'est en fait pas tant en danger que ça...
+r1b2rk1/pp2bpp1/5n1p/8/8/1PNpN3/1P1P1PPP/R1B2RK1 b - - 1 17 : fou de cases noires des blancs: enfermé quasi à vie
 2kr1b1r/ppp1qppp/5n2/8/3n4/1PN5/P1PPBPPP/R1BQ1RK1 b - - 4 11 : noirs mieux.. le cheval est mieux que le fou en e2
 r4rk1/ppq2ppp/3b1n2/3p4/8/3P3P/PPP1QPP1/RNB2RK1 b - - 0 13 : y'a R là... les blancs sont mieux
 r3k2r/ppp3pp/2n2n2/4pp2/8/3PBN2/bPP2PPP/2KR1B1R w kq - 0 12 : b3 enferme le fou
 2r3k1/6p1/8/5p1p/4nP2/R1BRPK2/2P4P/7r b - - 5 40 : si on met overload, il trouve Txh2 beaucoup plus facilement et voit le mat... mais est-ce que ça ne fait pas doublon?
 r1b1r2k/pp3pp1/2n4n/3qp3/2Np4/3B1N1P/PP3PP1/RQ2R1K1 w - - 0 17 : la dame ne participe qu'à moitié à l'attaque, car le fou blanc est devant... -> COMPTER CA COMME UNE SEMI ATTAQUE?
-r1br2k1/2p1bp2/1pp3p1/p3P3/8/P3QN2/1PP2PPP/5RK1 w - - 0 20 : c'est une dame de plus.... complètement gagnant !!!
-r3k2r/pp1n1pp1/2n1b2p/2p1P3/5P2/P4NP1/1PPKBB1P/3R3R w kq - 0 18 : il faut régler le placement weakness du roi.. ici faut pas le mettre en e3
 b7/P7/1B1k2p1/5p1p/4p2P/2b3P1/5P2/5BK1 w - - 2 41 : blancs gagnants!!
 b7/P3k3/6p1/5pPp/2B1p3/6P1/5P2/6K1 b - - 0 44 : pareil!!
 r1bq1r1k/1pp3p1/1n2pb1p/8/pP1P3P/P2B1NR1/2QB1PP1/R3K3 w Q - 2 19 : +2 à cause d'un overload sur h7, alors que ça menace rien...
@@ -634,6 +637,8 @@ r5k1/ppqnn2p/2pRb1p1/2P5/4P2r/1PQ1B3/P4PBP/5RK1 w - - 3 20 : gagnant stratégique
 Nnb2b1r/1p1k1p1p/p4p2/8/3p4/8/PP2PPPP/R3KB1R b KQ - 0 12 : Fc5 gagne (le cavalier est enfermé)
 2kr1b1r/pppqpppp/2n5/3n1b2/3P4/2PB1N2/PP3PPP/RNBQ1RK1 w - - 5 8 : il faut envoyer les pions sur le roi noir, c'est du roque opposés (augmenter la valeur des pawn storm en roques opposés?)
 8/8/8/5Q1K/8/2pp4/2k5/8 w - - 0 5 : là le roi doit forcément aller vers les pions et le roi adverse pour attaquer
+2b1k2r/5ppp/1qp5/p2n4/4pP2/P7/R3B1PP/1rB1QKNR w k - 2 17 : déjà foutu pour les blancs
+r1bq1rk1/1p3ppp/p1np4/3Np1b1/4P3/1N2P3/PPPQB1PP/R4RK1 w - - 7 13 : noirs un peu mieux (pion e3 très faible, et tapé dessus; +clouage avec la dame)
 
 
 -> FAUT METTRE DES POINTEURS PARTOUT AU LIEU DE COPIER LES OBJETTTTTTSSS !! (exploration.h, gui?)
@@ -642,13 +647,6 @@ Nnb2b1r/1p1k1p1p/p4p2/8/3p4/8/PP2PPPP/R3KB1R b KQ - 0 12 : Fc5 gagne (le cavalie
 -> Regarder les TODO/FIXME dans exploration.cpp
 -> Alpha-beta pruning pour la quiescence search à fix...
 -> Regarder les fins de variantes pour voir si ça fonctionne
--> r1b1r1k1/pp3pbp/6p1/qB1p4/3P2n1/1Q3NP1/PP1N1P1P/2R2RK1 b - - 2 17 : là c'est seul coup, il faut jouer !!
--> 8/8/2q5/6n1/5k2/1K4p1/8/8 w - - 0 90 : il joue plus quand il est mat?? il passe dans le négatif...
--> S'il est si lent c'est qu'à cause de la nouvelle quiescence, il y a des noeuds dans toutes les branches, ce qui fait penser à Grogros qu'il hésite sur les coups...
--> 6k1/5ppp/5n2/1Q6/1P2p1b1/4b2P/1B1rNqP1/2K2B1R b - - 1 22 : que 10% sur le mat??
-
-
--> rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2 : ici c'est #1, faut au moins que 90% de la réflexion soit sur le mat
 
 -> TESTING: Faire une fonction pour tester les IAs: problèmes tactiques, stratégiques, finales, ouvertures... avec différents temps de réflexion (1s, 3s, 10s par exemple)
 -> Fonction de test d'évaluation: comparer les évals de Grogros avec celles de Leela par exemple puis fine-tuner. Résultat final: correlation entre les évals de Grogros et les évals de Leela

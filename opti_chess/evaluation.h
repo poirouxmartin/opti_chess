@@ -11,7 +11,7 @@ public:
 	float _piece_mobility = 0.05f;
 	float _piece_positioning = 0.2f;
 	float _bishop_pair = 35.0f;
-	float _castling_rights = 0.0f; // Compté dans la proximité au roque
+	float _castling_rights = 0.0f; // Redondant
 	float _player_trait = 25.0f;
 	float _king_safety = 1.0f;
 	float _pawn_structure = 0.4f;
@@ -29,8 +29,8 @@ public:
 	float _king_proximity = 0.4f;
 	float _rook_activity = 0.10f;
 	float _bishop_pawns = 4.0f;
-	float _pawn_storm = 0.1f;
-	float _pawn_shield = 2.0f;
+	float _pawn_storm = 0.0f; // Redondant?
+	float _pawn_shield = 0.0f; // Redondant?
 	float _weak_squares = 0.35f;
 	float _castling_distance = 1.0f;
 	float _bishop_activity = 4.0f;
@@ -251,8 +251,8 @@ public:
 			{154, 179, 105, 70, 70, 105, 179, 154},
 			{164, 190, 138, 98, 98, 138, 190, 164},
 			{195, 258, 169, 120, 120, 169, 258, 195},
-			{278, 303, 120, 100, 100, 120, 303, 278},
-			{300, 400, 300, 110, 150, 230, 500, 400}
+			{350, 303, 120, 100, 100, 120, 303, 400},
+			{450, 500, 300, 110, 150, 230, 500, 500}
 		}
 	};
 
