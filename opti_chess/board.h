@@ -154,10 +154,7 @@ struct Pos
 
 	// Renvoie la notation de la case
 	string square() const {
-		string notation = "";
-		notation += char('a' + j);
-		notation += char('1' + i);
-		return notation;
+		return string(1, 'a' + j) + string(1, '1' + i);
 	}
 };
 
@@ -472,7 +469,7 @@ public:
 	[[nodiscard]] Map get_black_controls_map() const;
 
 	// Fonction qui ajoute à une map les contrôles d'une pièce
-	[[nodiscard]] bool add_piece_controls(Map* m, int i, int j, int piece) const;
+	[[nodiscard]] bool add_piece_controls(Map* map, int i, int j, int piece) const;
 
 	// Fonction qui renvoie la mobilité virtuelle d'un roi
 	[[nodiscard]] int get_king_virtual_mobility(bool color);
@@ -637,3 +634,9 @@ void draw_text_box(const TextBox& text_box);
 
 // Fonction qui compare deux coups pour savoir lequel afficher en premier
 //bool compare_move_arrows(int m1, int m2);
+// 
+// Fonction qui renvoie le nom de la case
+string square_name(uint_fast8_t i, uint_fast8_t j);
+
+// Fonction qui renvoie le nom d'une pièce
+string piece_name(uint_fast8_t piece);
