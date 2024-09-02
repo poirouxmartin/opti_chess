@@ -805,6 +805,7 @@ r2qkb1r/1p1b2p1/p3pp2/3nN1Bp/3PN3/8/PP3PPP/R2QR1K1 w kq - 0 14 : Dc2!
 2r3k1/1Q2ppbp/2P3p1/8/8/P4P2/1P5q/2R1RK2 b - - 2 42 : Fd4 #11
 3r2k1/2P2p1p/6p1/4p3/1QRbK3/P4P2/6q1/4R3 b - - 2 49 : f5+! seul coup qui gagne (les autres perdent)
 3r4/p4kpp/1bP2p2/2PR1p2/8/3K4/P4P1P/8 w - - 1 29 : cxb6!!
+r3k2r/ppq1bp2/4bn2/3p4/5RP1/P2PP3/1P1NB1P1/R1BQ2K1 b kq - 0 17 : Dxf4!!
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---

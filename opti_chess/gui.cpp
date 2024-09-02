@@ -1032,7 +1032,7 @@ void GUI::draw()
 		Pos drop_pos = get_pos_from_GUI(_mouse_pos.x, _mouse_pos.y);
 
 		// Si la case est bien sur le plateau
-		if (is_in_fast(drop_pos.i, 0, 7) && is_in_fast(drop_pos.j, 0, 7)) {
+		if (is_in_fast(drop_pos.i, 0, 7) && is_in_fast(drop_pos.j, 0, 7) && is_in_fast(_selected_pos.i, 0, 7) && is_in_fast(_selected_pos.j, 0, 7)) {
 
 			// Si on relâche la souris sur une autre case que celle où l'on a cliqué
 			if (drop_pos != _selected_pos) {

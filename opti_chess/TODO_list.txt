@@ -511,12 +511,15 @@ rnbqk1nr/ppp2ppp/3b4/8/3P4/8/PPP1P1PP/RNBQKBNR b KQkq - 0 4 : Dh4+??
 8/q1p2kp1/3bp2p/4p3/1pP1P3/rP2RNPP/2Q2PK1/8 w - - 3 31 : Ta2 arrive et c'est foutu si laissé!
 Parfois y'a des game reset...
 3r1rk1/1p2p1b1/8/p1pp1p2/P2P4/1PP1P1R1/4Q3/R3KN1q w Q - 0 30 : faut roquer!!!!! -> vis à vis roi/dame => tour/dame
+k2r2nr/q6p/6p1/3P1p2/3Q4/5p2/PR2N1PP/4K2R w K - 0 23 : faut prendre h8!!
 
 NEW BUG:
 Parfois on a des eval qui sont égales à +/-INT_MAX, et ça ne devrait pas être le cas...
 Tout refaire la quiescence en mode debug pour clarifier...
 
 URGENT:
+1r1qr3/5p1k/3p1Ppb/p2N3p/2pPP2P/2Pn3B/P3QR2/5RK1 w - - 1 22 : attaque +500 pour les blancs??... à causes des attaques sur f5 et h5?
+-> Pour les overload, on a retiré les rayons X à travers les pions. faut-il les garder dans le cas où le pion attaque directement une pièce sur la diagonale?
 -> Refaire toute l'activité des pièces? en fonction des pions plutôt, et pénaliser les pièces qui sont bloquées par les pions adverses? -> vrai trapped pieces...
 2bq1k1r/br3p2/p2p2n1/npp1p2p/4P1pP/2PPN1B1/PPBN1PP1/R3QR1K w - - 0 1 : il veut Rg1, alors que le roi est mieux en h1 ?? rook activity augmente quand on le fait...
 r1bqr1k1/pp3p2/4pn1p/2P3p1/1P1N4/3B2P1/P4PP1/R2QR1K1 b - - 0 19 : prise en g3, et d4 n'est pas comestible... la quiescence ne va pas assez loin?
@@ -561,7 +564,6 @@ r1bqk2r/ppp2ppp/1bn5/4p1N1/3Pp3/2P5/PP3PPP/RNBQ1RK1 b kq - 1 9 : là y'a plein de
 -> Transpositions!! on a des overflows etc.. des trucs louches se produisent
 -> A REGLER: *** Si y'a un problème de nombre de noeuds, c'est que lorsqu'on calcule dans une variante transposée, un seul des parents est mis à jour ***
 -> r1b3rk/pp1nbp1q/2p1p3/8/2BP4/2N1PNR1/PP3P1P/2K2Q2 w - - 1 13 : Th3!! c'est fini... (à cause de la quiescence trop longue il voit pas le coup, car tout n'est pas encore exploré?)
--> r1b4k/pp1nbprq/2p1p3/8/2BP4/2N1PN1R/PP3P1P/2K2Q2 w - - 3 14 : pourquoi quand on clique Txh7, ça joue aussi Rxh7 direct?
 -> Faut-il garder le beta cut-off si on est en échec??? alpha aussi??
 -> Voir s'il faut moduler la profondeur de la quiescence en fonction de l'importance de la branche
 -> q_depth plus petit avec des cas d'extensions?
@@ -569,6 +571,9 @@ r1bqk2r/ppp2ppp/1bn5/4p1N1/3Pp3/2P5/PP3PPP/RNBQ1RK1 b kq - 1 9 : là y'a plein de
 -> positions_history à mettre dans exploration plutôt que board
 -> Faut-il qu'il joue les "seuls coups" plus rapidement, ou c'est déjà le rôle du pseudo-random explorer?
 -> Re élargir l'exploration des coups?
+-> r4rk1/2p2ppp/p1nqp3/1p6/3P2b1/P3PN2/1P1QBPPP/2R2RK1 w - - 0 15 : Txc6!!
+-> rnbq1rk1/ppp2ppp/8/3P4/2BNp1n1/3P4/PPP1QPPb/RNB2R1K b - - 1 11 : faut jouer Dh4!!
+-> rk4r1/ppp2p1p/2b1n3/7R/7N/P1P3PB/2P5/2K2R2 w - - 2 27 : faut jouer Txf7!!
 
 EVAL: 
 -> King safety: protection: avoir une partie dans long term et une autre dans short term? (considéré comme faisant partie de la défense)
@@ -587,12 +592,15 @@ EVAL:
 -> Trop de bonus cumulés pour les fous: fianchetto, piece mobility, piece activity, bishop activity, bishop pair...
 -> Pour king safety, quand ça dépasse pas 0, rien ne change.. alors il n'y a jamais de plan d'attaque...
 -> Trop de b6/Fb7 ou b3/Fb2, pas forcément utiles... fianchetto, trop doublon avec les autres bonus?
--> Pawn shield quand on est pas roqué?
 -> Catégorie: Développement (~= distance au roque?), plutôt que de compter ça dans King
 -> Rajouter un knight activity?
 -> https://hxim.github.io/Stockfish-Evaluation-Guide/ : shelter strength à implémenter... rnbqkbnr/ppp1pppp/8/3p4/6P1/8/PPPPPP1P/RNBQKBNR w KQkq - 0 2 : ici le roi blanc est le plus faible. castling distance donne aussi un bonus, alors que le roque côté roi est pourri...
+-> Pour les clouages, rajouter des bonus quand on les appuie avec d'autres attaques
 
 
+r2q1rk1/pppn1bpp/5p2/8/3PpN2/2P1B1Q1/P1P3PP/R4RK1 w - - 2 16 : pawn push threat... ne fait pas toujours de sens.. à supprimer?
+3r1rk1/pp4pp/5p2/3n3R/4p3/2P3Q1/2q3PP/2B1R2K w - - 0 26 : Fh6 seule tentative pour sauver
+r3k2r/pppb3p/4p1p1/n5Q1/4p3/2q3PP/P1P1B1P1/3R1R1K w kq - 0 20 : Tf7!! ça mate
 r3r1k1/ppq2ppp/3b1n2/6n1/2P1p1P1/1PN4P/PBQPRPB1/R5K1 w - - 5 18 : il a peur pour le roi donc fait Rf1...
 rnb1kb1r/pp3ppp/5n2/4q3/8/3B4/PP3PPP/RNBQK1NR w KQkq - 0 9 : pas Rf1 stp... :'(
 5rk1/1p3Np1/p1n1Bn2/q4P1p/2Q4P/4R3/1P4P1/6K1 w - - 0 30 : le roi n'est en fait pas tant en danger que ça...
@@ -639,6 +647,9 @@ Nnb2b1r/1p1k1p1p/p4p2/8/3p4/8/PP2PPPP/R3KB1R b KQ - 0 12 : Fc5 gagne (le cavalie
 8/8/8/5Q1K/8/2pp4/2k5/8 w - - 0 5 : là le roi doit forcément aller vers les pions et le roi adverse pour attaquer
 2b1k2r/5ppp/1qp5/p2n4/4pP2/P7/R3B1PP/1rB1QKNR w k - 2 17 : déjà foutu pour les blancs
 r1bq1rk1/1p3ppp/p1np4/3Np1b1/4P3/1N2P3/PPPQB1PP/R4RK1 w - - 7 13 : noirs un peu mieux (pion e3 très faible, et tapé dessus; +clouage avec la dame)
+rnq1k2r/pp2bp2/2p5/3p4/5Pb1/P2P1NPp/1PP4K/R1BQ1R1N b kq - 0 17 : ici le pion h3 fait office de bouclier. le roi est en fait safe
+2rqr2k/p2p1p1B/bbn4Q/1p2P1p1/1P4P1/P3PN2/2P2PP1/RNB2RK1 w - - 3 17 : devrait voir le mat avec Fg6 en 3...
+3r1rk1/2qnpp1p/1p4p1/2p1b3/4P3/1QP1B2P/1P2BPP1/R4RK1 b - - 1 6 : ici le roi est effectivement mieux en g1 que h1 (donc Fh2+ puis Ff4 plus fort que Ff4 direct)
 
 
 -> FAUT METTRE DES POINTEURS PARTOUT AU LIEU DE COPIER LES OBJETTTTTTSSS !! (exploration.h, gui?)
