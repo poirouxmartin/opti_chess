@@ -240,6 +240,7 @@ r5k1/b1pqnrPp/p2p1n1B/1P1Pp3/8/1BP2P2/1PQ2P2/RN3RK1 w - - 1 21 : c'est les blanc
 r5k1/b1pqnrPp/p2p1n1B/1P1P4/8/1BP2p2/1P1Q1P1K/RN3R2 w - - 0 23 : foutu pour les blancs
 r5k1/b1pq2rp/3p1n1R/1p1P4/8/1BP2p2/1P1Q1P1K/1N3R2 w - - 0 27 : encore pire
 6k1/b1p3rp/3p4/1p1P2q1/6nR/NBP2p2/1P2rP2/3Q1R1K w - - 14 34 : #4 (imparable)
+6k1/b1p3rp/3p4/1p1P4/8/NBP2pq1/1P2r3/3n1K2 w - - 0 39 : king safety -10000 mdr
 6k1/2p3rp/3p4/1p1P4/7q/NBP2p2/1P2r2R/3Q3K b - - 2 37 : #1
 r1bqk2r/2p3pp/p1Pp1pn1/4p3/Q3P3/2P1PN2/PP4PP/RN3RK1 b kq - 0 13 : f5 fort
 r1bq1rk1/2p3pp/p1Pp2n1/4p3/Q1P1p3/2N1PN2/PP4PP/R4RK1 w - - 0 16 : Cd2 très fort (idée de garder le Cc3 pour le mettre en d5)
@@ -383,6 +384,9 @@ r4rk1/p1p2p2/6q1/3pp3/3p4/2P3R1/P1P1Q1PP/R5K1 b - - 3 24 : foutu
 8/1p6/1b1r1kpp/8/pP6/2R2N2/P4PPP/4K3 w - - 1 29 : ça reste pion de plus pour les blancs (avantage)
 1r3r1b/p1qb1k1P/2p2p2/2Pp1p1R/Q2Np1p1/2P1N3/PP3P2/2K3R1 b - - 6 26 : complètement gagnant stratégiquement
 r2qr1k1/p1p2ppp/3b1n2/7b/2B5/4B2P/PP2NPP1/R2QR1K1 b - - 4 15 : Txe3 fort
+r1b5/pp2k1pp/2pp1r2/8/8/1Q3N2/P1P2PPP/6K1 w - - 0 19 : Dg8 gagne
+r1b1Q2N/1p1r2p1/2pp1k2/p7/6P1/8/P1P2P1P/6K1 b - - 8 26 : complètement gagnant pour les blancs
+6QQ/8/3BR3/p4k2/4p3/P4P2/5PK1/8 b - - 0 28 : xD le +10000 pour king safety (logique néanmoins)
 
 
 
@@ -806,6 +810,8 @@ r2qkb1r/1p1b2p1/p3pp2/3nN1Bp/3PN3/8/PP3PPP/R2QR1K1 w kq - 0 14 : Dc2!
 3r2k1/2P2p1p/6p1/4p3/1QRbK3/P4P2/6q1/4R3 b - - 2 49 : f5+! seul coup qui gagne (les autres perdent)
 3r4/p4kpp/1bP2p2/2PR1p2/8/3K4/P4P1P/8 w - - 1 29 : cxb6!!
 r3k2r/ppq1bp2/4bn2/3p4/5RP1/P2PP3/1P1NB1P1/R1BQ2K1 b kq - 0 17 : Dxf4!!
+2r2rk1/pp4pp/2p5/4P3/3Pq1Pb/P3B3/1P1RQ3/2R1N1K1 b - - 2 33 : Tf1+!! -> nulle
+r2qk2r/ppp3p1/2nb1n2/3p3p/2PP4/4PB2/PP4PP/RNBQ1RK1 b kq - 0 10 : Fxh2+!! gagne
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---
