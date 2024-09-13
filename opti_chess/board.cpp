@@ -1928,7 +1928,7 @@ int Board::get_king_safety(float display_factor) {
 	int b_defending_power = 0;
 
 	// Facteurs multiplicatifs
-	constexpr float piece_attack_factor = 1.25f;
+	constexpr float piece_attack_factor = 1.75f;
 	constexpr float piece_defense_factor = 1.25f;
 
 	constexpr float piece_overload_multiplicator = 2.0f; // TODO: à utiliser
@@ -4279,10 +4279,11 @@ int Board::get_king_virtual_mobility(bool color) {
 int Board::get_checks_value(Map white_controls, Map black_controls, bool color)
 {
 	constexpr int initial_safe_check_value = 250;
-	constexpr int initial_unsafe_check_value = 20;
-	constexpr float initial_division = 0.5f;
-	constexpr float king_escape_division = 0.5f;
-	constexpr float piece_block_division = 2.0f;
+	constexpr int initial_unsafe_check_value = 25;
+	constexpr float no_escape_multiplier = 2.0f;
+	constexpr float inital_division = 1.0f;
+	constexpr float king_escape_division_add = 0.5f;
+	constexpr float piece_block_division_add = 2.0f;
 
 	int safe_checks_value = 0;
 	int unsafe_checks_value = 0;
@@ -4358,14 +4359,17 @@ int Board::get_checks_value(Map white_controls, Map black_controls, bool color)
 				}
 
 				// Valeur de la division
-				float division = initial_division + king_escapes * king_escape_division + piece_blocks * piece_block_division;
+				float division = inital_division + king_escapes * king_escape_division_add + piece_blocks * piece_block_division_add;
+
+				// Valeur de la multiplication
+				float multiplier = (king_escapes == 0 && piece_blocks == 0) ? no_escape_multiplier : 1.0f;
 
 				//cout << "is safe check: " << is_safe_check;
 
 				if (is_safe_check) {
 					// Ajoute la valeur de l'échec safe
 					//cout << ", king_escapes : " << king_escapes << ", piece_blocks : " << piece_blocks << ", division : " << division << ", value : " << initial_safe_check_value / division << endl;
-					safe_checks_value += initial_safe_check_value / division;
+					safe_checks_value += max(multiplier * initial_safe_check_value / division, (float)initial_unsafe_check_value); // Un échec safe est toujours mieux qu'un échec unsafe
 				}
 				else {
 					// Ajoute la valeur de l'échec unsafe
@@ -4871,6 +4875,11 @@ bool Board::operator== (const Board& b) const
 // Fonction qui calcule et renvoie la valeur des pions qui bloquent les fous
 int Board::get_bishop_pawns() const {
 
+	// Ajouter un bonus/malus en fonction de la couleur des pions adverses aussi?
+	float ally_bishop_pawn_malus = 1.0f;
+	float enemy_bishop_pawn_bonus = 1.0f;
+	// r1b1k2r/1p1n1p2/p1pBp1pp/2Pp1q1n/PP1P4/4P3/3N1PPP/R2Q1RK1 w kq - 0 5
+
 	// Pions blancs sur case blanche
 	int white_pawns_w = 0;
 
@@ -4922,8 +4931,8 @@ int Board::get_bishop_pawns() const {
 	//cout << "white_pawns_b: " << white_pawns_b << endl;
 	//cout << "black_pawns_w: " << black_pawns_w << endl;
 	//cout << "black_pawns_b: " << black_pawns_b << endl;
-	//cout << "white_pawns_blocked: " << white_pawns_blocked << endl;
-	//cout << "black_pawns_blocked: " << black_pawns_blocked << endl;
+	//cout << "white_pawns_blocked: " << white_central_pawns_blocked << endl;
+	//cout << "black_pawns_blocked: " << black_central_pawns_blocked << endl;
 
 	int bishop_pawns_value = 0;
 
@@ -4933,18 +4942,18 @@ int Board::get_bishop_pawns() const {
 
 			// Fou blanc
 			if (p == w_bishop) {
-				if ((i + j) % 2)
-					bishop_pawns_value -= white_pawns_w * (1 + white_central_pawns_blocked);
-				else
-					bishop_pawns_value -= white_pawns_b * (1 + white_central_pawns_blocked);
+				if ((i + j) % 2) // Case blanche
+					bishop_pawns_value -= white_pawns_w * (2 + white_central_pawns_blocked) * ally_bishop_pawn_malus + black_pawns_w * enemy_bishop_pawn_bonus;
+				else // Case noire
+					bishop_pawns_value -= white_pawns_b * (2 + white_central_pawns_blocked) * ally_bishop_pawn_malus + black_pawns_b * enemy_bishop_pawn_bonus;
 			}
 
 			// Fou noir
 			else if (p == b_bishop) {
-				if ((i + j) % 2)
-					bishop_pawns_value += black_pawns_w * (1 + black_central_pawns_blocked);
-				else
-					bishop_pawns_value += black_pawns_b * (1 + black_central_pawns_blocked);
+				if ((i + j) % 2) // Case blanche
+					bishop_pawns_value += black_pawns_w * (2 + black_central_pawns_blocked) * ally_bishop_pawn_malus + white_pawns_w * enemy_bishop_pawn_bonus;
+				else // Case noire
+					bishop_pawns_value += black_pawns_b * (2 + black_central_pawns_blocked) * ally_bishop_pawn_malus + white_pawns_b * enemy_bishop_pawn_bonus;
 			}
 		}
 	}
@@ -5043,6 +5052,8 @@ int Board::get_weak_squares() const {
 	// TODO: il faut le moduler en fonction des pièces qui peuvent aller dessus...
 	// Essayer un bonus en fonction de la distance d'une pièce vers la case?
 
+	// r1bq2rk/2n4p/3p4/pNpPnp2/P1P1pN2/2Q5/4BPPP/1R3RK1 w - - 1 25 : ici peut-on considérer e5 comme étant une case faible pour les blancs?
+
 	// Valeur des cases faibles
 	const static int weak_square_values[8][8] = {
 		{ 0,  0,  0,  0,  0,  0,  0,  0},
@@ -5061,7 +5072,7 @@ int Board::get_weak_squares() const {
 		{ 0,  5, 15, 25, 25, 15,  5,  0},
 		{ 0, 25, 30, 40, 40, 30, 25,  0},
 		{ 0, 15, 35, 50, 50, 35, 15,  0},
-		{ 0, 10, 20, 35, 35, 20, 10,  0},
+		{ 0, 10, 20, 45, 45, 20, 10,  0},
 		{ 0,  0,  5, 10, 10,  5,  0,  0},
 		{ 0,  0,  0,  0,  0,  0,  0,  0},
 		{ 0,  0,  0,  0,  0,  0,  0,  0}
@@ -5085,11 +5096,11 @@ int Board::get_weak_squares() const {
 	// Pour chaque case
 	for (uint_fast8_t i = 2; i < 7; i++) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
-			bool weak = _array[i][j] != 1 && _array[i][j] != 7;
+			bool weak = _array[i][j] != w_pawn && _array[i][j] != b_pawn;
 			
 			if (weak && j > 0) {
 				for (uint_fast8_t k = i - 1; k > 0; k--) {
-					if (_array[k][j - 1] == 1) {
+					if (_array[k][j - 1] == w_pawn && _array[k + 1][j - 1] != b_pawn) {
 						weak = false;
 						break;
 					}
@@ -5098,7 +5109,7 @@ int Board::get_weak_squares() const {
 
 			if (weak && j < 7) {
 				for (uint_fast8_t k = i - 1; k > 0; k--) {
-					if (_array[k][j + 1] == 1) {
+					if (_array[k][j + 1] == w_pawn && _array[k + 1][j + 1] != b_pawn) {
 						weak = false;
 						break;
 					}
@@ -5112,16 +5123,16 @@ int Board::get_weak_squares() const {
 				//cout << "***\nweak square of white: " << Pos(i, j).square() << ": " << square_value << endl;
 
 				// Contrôle de la case par un (des) pions adverses
-				int pawn_controls = (j > 0 && _array[i + 1][j - 1] == 7) + (j < 7 && _array[i + 1][j + 1] == 7);
+				const int pawn_controls = (j > 0 && _array[i + 1][j - 1] == b_pawn) + (j < 7 && _array[i + 1][j + 1] == b_pawn);
 
 				//cout << "pawn controls: " << pawn_controls << endl;
 
 				// Outposts
-				if (pawn_controls > 0) {
+				if (pawn_controls > 0 || true) {
 
 					// Valeur de l'outpost adverse
-					int outpost_value = outpost_square_values[i][j];
-					int p = _array[i][j];
+					const int outpost_value = outpost_square_values[i][j];
+					const int p = _array[i][j];
 
 					// Valeur en fonction de la pièce
 					square_value += outpost_value * (p == 8 ? knight_outpost_value : (p == 9 ? bishop_outpost_value : (p == 10 ? rook_outpost_value : 0)));
@@ -5146,11 +5157,11 @@ int Board::get_weak_squares() const {
 	// Pour chaque case
 	for (uint_fast8_t i = 5; i > 1; i--) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
-			bool weak = _array[i][j] != 1 && _array[i][j] != 7;
+			bool weak = _array[i][j] != w_pawn && _array[i][j] != b_pawn;
 
 			if (weak && j > 0) {
 				for (uint_fast8_t k = i + 1; k < 7; k++) {
-					if (_array[k][j - 1] == 7) {
+					if (_array[k][j - 1] == b_pawn && _array[k - 1][j - 1] != w_pawn) {
 						weak = false;
 						break;
 					}
@@ -5159,7 +5170,7 @@ int Board::get_weak_squares() const {
 
 			if (weak && j < 7) {
 				for (uint_fast8_t k = i + 1; k < 7; k++) {
-					if (_array[k][j + 1] == 7) {
+					if (_array[k][j + 1] == b_pawn && _array[k - 1][j + 1] != w_pawn) {
 						weak = false;
 						break;
 					}
@@ -5173,16 +5184,16 @@ int Board::get_weak_squares() const {
 				//cout << "***\nweak square of black: " << Pos(i, j).square() << ": " << square_value << endl;
 
 				// Contrôle de la case par un (des) pions adverses
-				int pawn_controls = (j > 0 && _array[i - 1][j - 1] == 1) + (j < 7 && _array[i - 1][j + 1] == 1);
+				const int pawn_controls = (j > 0 && _array[i - 1][j - 1] == w_pawn) + (j < 7 && _array[i - 1][j + 1] == w_pawn);
 
 				//cout << "pawn controls: " << pawn_controls << endl;
 
 				// Outposts
-				if (pawn_controls > 0) {
+				if (pawn_controls > 0 || true) {
 
 					// Valeur de l'outpost adverse
-					int outpost_value = outpost_square_values[7 - i][j];
-					int p = _array[i][j];
+					const int outpost_value = outpost_square_values[7 - i][j];
+					const int p = _array[i][j];
 
 					// Valeur en fonction de la pièce
 					square_value += outpost_value * (p == 2 ? knight_outpost_value : (p == 3 ? bishop_outpost_value : (p == 4 ? rook_outpost_value : 0)));
@@ -5982,15 +5993,19 @@ void Board::display_positions_history() const
 				uint_fast8_t dj1 = abs(j - 1 - king_pos.j);
 				uint_fast8_t dj2 = abs(j + 1 - king_pos.j);
 
+				uint_fast8_t p2a = _array[i + (color ? 1 : -1)][j - 1];
+
 				// Si le pion contrôle une case du roi
-				if (j > 0 && di <= 2 && dj1 <= 2) {
+				if (j > 0 && di <= 2 && dj1 <= 2 && p2a != (color ? w_pawn : b_pawn)) {
 					semi_attacks++;
 					if (di <= 1 && dj1 <= 1) {
 						attacks++;
 					}
 				}
 
-				if (j < 7 && di <= 2 && dj2 <= 2) {
+				uint_fast8_t p2b = _array[i + (color ? 1 : -1)][j + 1];
+
+				if (j < 7 && di <= 2 && dj2 <= 2 && p2b != (color ? w_pawn : b_pawn)) {
 					semi_attacks++;
 					if (di <= 1 && dj2 <= 1) {
 						attacks++;
@@ -6008,6 +6023,12 @@ void Board::display_positions_history() const
 
 					if (!is_in(new_i, 0, 7) || !is_in(new_j, 0, 7))
 						continue;
+
+					uint_fast8_t p2 = _array[new_i][new_j];
+
+					// La case ne peut pas être attaquée
+					if (p2 == (color ? w_pawn : b_pawn))
+						break;
 
 					uint_fast8_t di = abs(new_i - king_pos.i);
 					uint_fast8_t dj = abs(new_j - king_pos.j);
@@ -6027,6 +6048,10 @@ void Board::display_positions_history() const
 				const int rect_moves[4][2] = { {0, -1}, {-1, 0}, {0, 1}, {1, 0} };
 
 				for (uint_fast8_t m = 0; m < 4; m++) {
+
+					// La pièce est-elle obstruée par une autre pièce dans cette direction?
+					bool blocked = false;
+
 					int mi = rect_moves[m][0];
 					int mj = rect_moves[m][1];
 
@@ -6046,7 +6071,7 @@ void Board::display_positions_history() const
 						// Si la pièce contrôle une case du roi
 						if (di <= 2 && dj <= 2) {
 							semi_attacks++;
-							if (di <= 1 && dj <= 1) {
+							if (di <= 1 && dj <= 1 && !blocked) {
 								attacks++;
 							}
 						}
@@ -6054,6 +6079,11 @@ void Board::display_positions_history() const
 						// Si un pion bloque la case
 						if (p2 == w_pawn || p2 == b_pawn)
 							break;
+
+						// Si une pièce bloque la case
+						if (p2 != none) {
+							blocked = true;
+						}
 
 						new_i += mi;
 						new_j += mj;
@@ -6066,6 +6096,10 @@ void Board::display_positions_history() const
 				const int diag_moves[4][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1} };
 
 				for (uint_fast8_t m = 0; m < 4; m++) {
+
+					// La pièce est-elle obstruée par une autre pièce dans cette direction?
+					bool blocked = false;
+
 					int mi = diag_moves[m][0];
 					int mj = diag_moves[m][1];
 
@@ -6085,7 +6119,7 @@ void Board::display_positions_history() const
 						// Si la pièce contrôle une case du roi
 						if (di <= 2 && dj <= 2) {
 							semi_attacks++;
-							if (di <= 1 && dj <= 1) {
+							if (di <= 1 && dj <= 1 && !blocked) {
 								attacks++;
 							}
 						}
@@ -6093,6 +6127,11 @@ void Board::display_positions_history() const
 						// Si un pion bloque la case
 						if (p2 == w_pawn || p2 == b_pawn)
 							break;
+
+						// Si une pièce bloque la case
+						if (p2 != none) {
+							blocked = true;
+						}
 
 						new_i += mi;
 						new_j += mj;
@@ -6109,6 +6148,12 @@ void Board::display_positions_history() const
 
 						if (!is_in(new_i, 0, 7) || !is_in(new_j, 0, 7))
 							continue;
+
+						uint_fast8_t p2 = _array[new_i][new_j];
+
+						// La case ne peut pas être attaquée
+						if (p2 == (color ? w_pawn : b_pawn))
+							break;
 
 						uint_fast8_t di = abs(new_i - king_pos.i);
 						uint_fast8_t dj = abs(new_j - king_pos.j);

@@ -54,33 +54,28 @@ void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add
 	// BUG: rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 0 1
 	// quiescence là dessus, après il regarde à donf Tb1 après Dxh7... ??
 
+	// Ne devrait pas arriver
+	if (iterations <= 0) {
+		cout << "iterations <= 0 in grogros_zero" << endl;
+		return;
+	}
+
 	// Temps de calcul
 	const clock_t begin_monte_time = clock();
 
-	// Si c'est un nouveau noeud, on fait son initialisation
+	// INITIALISATION
 	if (_new_node) {
+		grogros_quiescence(buffer, eval, quiescence_depth, -INT32_MAX, INT32_MAX, network);
+		_iterations++;
+		_time_spent += clock() - begin_monte_time;
 
-		// Vérifie si la partie est finie (normalement, c'est déjà fait dans l'évaluation)
-		_board->is_game_over();
-		_new_node = false;
-
-		if (_board->_got_moves == -1) {
-			_board->get_moves();
-		}
-
-		// Trie les coups si ça n'est pas déjà fait (les trie de façon rapide)
-		!_board->_sorted_moves && _board->sort_moves();
+		return;
 	}
 
 	// Si la partie est finie, on ne fait rien
 	if (_board->_game_over_value) {
-		// TODO: on fait quoi là??
-		_nodes++; // Dans l'idéal on ferait _nodes = 1, mais ça risquerait de faire des boucles infinies, alors on garde comme ça pour le moment
-		//_nodes = 1;
 		_iterations++;
 		_time_spent += clock() - begin_monte_time;
-
-		_fully_explored = true;
 
 		return;
 	}
@@ -88,26 +83,25 @@ void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add
 	// Vérifie que le buffer n'est pas plein (TODO) (et est bien initialisé aussi)
 	
 
-	// Exploration des noeuds
 	while (iterations > 0) {
-		int initial_nodes = _nodes;
 
+		// EXPLORATION D'UN NOUVEAU COUP
 		if (get_fully_explored_children_count() < _board->_got_moves) {
 			explore_new_move(buffer, eval, quiescence_depth, network);
 		}
 
-		// On explore dans un fils
+		// EXPLORATION D'UN COUP DÉJÀ EXPLORÉ
 		else {
 			explore_random_child(buffer, eval, beta, k_add, quiescence_depth, network);
 		}
 
-		if (_nodes - initial_nodes < 0) {
-			cout << "less nodes than before??" << endl;
-		}
-		iterations -= _nodes - initial_nodes;
-		//iterations--;
+		iterations--;
 	}
 	
+	if (_nodes <= 0) {
+		cout << "negative nodes in grogros zero???" << endl;
+	}
+
 	// Temps de calcul
 	_time_spent += clock() - begin_monte_time;
 
@@ -128,6 +122,11 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 
 	if (already_explored) {
 		child = _children[move];
+
+		if (_nodes <= child->_nodes) {
+			cout << "child nodes >= nodes???" << endl;
+		}
+
 		_nodes -= child->_nodes; // On enlève le nombre de noeuds de ce fils
 
 		//cout << "move already explored, but considered as a new move?" << endl;
@@ -167,6 +166,8 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 
 			//cout << "new transposition nodes: " << _nodes << endl;
 		}
+
+		// Sinon, on crée un nouveau noeud
 		else {
 			// Création du noeud fils
 			child = new Node(new_board);
@@ -256,6 +257,15 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 	//_nodes++;
 	//cout << "main nodes:" << _nodes << ", child nodes:" << child->_nodes << endl;
 	_nodes += child->_nodes;
+
+	if (_nodes <= 0) {
+		cout << "negative nodes in explore_new_move???" << endl;
+	}
+
+	if (child->_nodes <= 0) {
+		cout << "negative nodes in explore_new_move child???" << endl;
+	}
+
 	//cout << "total: " << _nodes << endl;
 	child->_iterations = 1;
 	_iterations++;
@@ -278,16 +288,12 @@ void Node::explore_random_child(Buffer* buffer, Evaluator* eval, float beta, flo
 	const Move move = pick_random_child(beta, k_add);
 	Node *child = _children[move];
 
-	//const Move move = pick_best_uct_child();
-	
-	//cout << "move: " << _board->move_label(move) << endl;
+	if (child->_nodes >= _nodes) {
+		cout << "child nodes >= nodes in random exploration???" << endl;
+	}
 
-
-	//if (_children[move]->_nodes > _nodes) {
-	//	cout << "incoming negative nodes!!!" << _children[move]->_nodes << " > " << _nodes << endl;
-	//	cout << "corresponding position and move: " << _board->to_fen() << ", " << _board->move_label(move) << endl;
-	//}
-	_nodes -= child->_nodes; // On enlève le nombre de noeuds de ce fils
+	// Nombre de noeuds du fils
+	const int initial_child_nodes = child->_nodes;
 
 	// On explore ce fils
 	child->grogros_zero(buffer, eval, beta, k_add, 1, quiescence_depth, network); // L'évaluation du fils est mise à jour ici
@@ -317,7 +323,15 @@ void Node::explore_random_child(Buffer* buffer, Evaluator* eval, float beta, flo
 	}
 
 	// Augmente le nombre de noeuds
-	_nodes += child->_nodes;
+	_nodes += child->_nodes - initial_child_nodes;
+
+	if (_nodes <= 0) {
+		cout << "negative nodes in explore_random_child???" << endl;
+	}
+
+	if (child->_nodes <= 0) {
+		cout << "negative nodes in explore_random_child child???" << endl;
+	}
 
 	// Augmente le nombre d'itérations
 	_iterations++;
@@ -327,7 +341,7 @@ void Node::explore_random_child(Buffer* buffer, Evaluator* eval, float beta, flo
 Move Node::pick_random_child(const float beta, const float k_add) const {
 	// FIXME: ajouter quelque chose comme l'évaluation relative pour choisir les coups plutôt que les évaluations brutes... sinon, dans les évaluations énormes, il regarde un seul coup...
 
-	int color = _board->get_color();
+	const int color = _board->get_color();
 	auto n_children = static_cast<int>(children_count());
 
 	// *** 1. ***
@@ -358,6 +372,10 @@ Move Node::pick_random_child(const float beta, const float k_add) const {
 	// Re: diminuer les valeurs des checks? à voir...
 	// Re: augmenter la valeur des pièces?
 	//double enlargement_factor = 1.0 + abs(max_eval / 100);
+	if (_nodes <= 0) {
+		cout << "negative nodes???" << endl;
+	}
+
 	double enlargement_factor = sqrt((double)_nodes / (double)_iterations);
 	//double enlargement_factor = (double)_nodes / (double)_iterations;
 	
@@ -697,12 +715,12 @@ Node::~Node() {
 
 // Fonction qui renvoie la vitesse de calcul moyenne en noeuds par seconde
 [[nodiscard]] int Node::get_avg_nps() const {
-	return _time_spent == 0 ? 0 : (_nodes / _time_spent * CLOCKS_PER_SEC);
+	return _time_spent == 0 ? 0 : ((double)_nodes / (double)_time_spent * CLOCKS_PER_SEC);
 }
 
 // Fonction qui renvoie le nombre d'itérations par seconde
 [[nodiscard]] int Node::get_ips() const {
-	return _time_spent == 0 ? 0 : (_iterations / _time_spent * CLOCKS_PER_SEC);
+	return _time_spent == 0 ? 0 : ((double)_iterations / (double)_time_spent * CLOCKS_PER_SEC);
 }
 
 // Quiescence search intégré à l'exploration
@@ -761,7 +779,8 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 		_board->_evaluated = true;
 		_board->_static_evaluation = _board->_evaluation;
 
-		_nodes++; // BOF... FIXME
+		//_nodes++; // BOF... FIXME
+		_nodes = 1; // BOF... FIXME
 		_time_spent += clock() - begin_monte_time;
 		//cout << "game over" << endl;
 
