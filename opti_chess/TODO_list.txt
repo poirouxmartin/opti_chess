@@ -455,6 +455,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Au chrono, il met 1min60 au lieu de 2min
 -> Améliorer le PGN (temps, noeuds, éval...)
 -> Améliorer le visuel des pièces uft8
+-> Colorer les cases en fonction des bonus de chaque pièce?
 
 
 ----- Grosses implémentations à faire -----
@@ -473,7 +474,9 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 
 ----- En cours -----
 
-Pour les variantes, mettre les coups de la quiescence entre parenthèses?
+-> Essayer de laisser Grogros trouver des plans? pour structurer le jeu et donner les idées / coups forts. Le faire jouer plusieurs coups à la suite pour qu'il trouve le plan?
+-> Implémenter les killer moves? quand un coup est fort à une certaine profondeur, le favoriser dans les autres branches?
+-> Implémenter le concept de faiblesses
 
 -> BUGS:
 1k2r2r/p1pqb1pp/2ppbn2/6B1/3NP3/2N5/PPP1QPPP/R4RK1 w - - 0 13 : Da6???????????
@@ -518,6 +521,17 @@ Parfois on a des eval qui sont égales à +/-INT_MAX, et ça ne devrait pas être le
 Tout refaire la quiescence en mode debug pour clarifier...
 
 URGENT:
+-> Implémenter les plans (on regarde des coups à la suite, sans que l'autre joueur ne joue)
+-> Si pas de plan posisble, gros malus (= zugzwang long terme?). Exemple: 2Rnk3/3p2p1/3Pp2r/1b2P1Np/7P/5P1K/6P1/8 b - - 1 43
+-> Refaire les isolated pieces (éval mise à 0 pour le moment). 2kr1b2/pp2pp2/8/8/3p3B/3P4/PPP1KPr1/R6R w - - 0 21 : ici la tour en g2 est enfermée
+r4rk1/1ppqbpp1/p1n1b2p/3p4/3P1B2/2PB1N2/PPQ2PPP/2R1R1K1 w - - 1 15 : ici, les +300 sur le roi noir à cause de la batterie dame/fou, ça casse tout...
+3brrk1/1ppq1pp1/p6p/3pB3/3P1Pb1/2PBR1P1/PPQ4P/4R1K1 w - - 1 21 : les noirs sont quasi gagnants.. le roi noir est safe
+r2qr1k1/pp3ppp/5n2/2b1n3/2P1pNP1/1PNb3P/PB1P1PB1/R2QKR2 b Q - 5 15 : king safety?? le roi blanc est foutu...
+r2qr1k1/pp3ppp/5n2/2b5/2P2NP1/1PNb1p1P/PB1P1P2/R2QKR2 w Q - 0 17 : ...
+-> King safety: open lines: ++quand y'a une tour dessus
+-> Gérer quand le buffer est plein
+1rb4r/2pn1kb1/p2p1p1q/P2PpPp1/2P1N3/2B1PB2/6QP/1R3R1K w - - 8 32 : Fb2??? mais prends cette tour en b8!!!
+7r/2pb1kb1/p4p2/P1pPpPp1/2P1P2q/2B2B2/6QP/4R2K w - - 1 40 : vas en b1, pas g1!!
 1r1qr3/5p1k/3p1Ppb/p2N3p/2pPP2P/2Pn3B/P3QR2/5RK1 w - - 1 22 : attaque +500 pour les blancs??... à causes des attaques sur f5 et h5?
 -> Pour les overload, on a retiré les rayons X à travers les pions. faut-il les garder dans le cas où le pion attaque directement une pièce sur la diagonale?
 -> Refaire toute l'activité des pièces? en fonction des pions plutôt, et pénaliser les pièces qui sont bloquées par les pions adverses? -> vrai trapped pieces...
@@ -596,8 +610,13 @@ EVAL:
 -> Rajouter un knight activity?
 -> https://hxim.github.io/Stockfish-Evaluation-Guide/ : shelter strength à implémenter... rnbqkbnr/ppp1pppp/8/3p4/6P1/8/PPPPPP1P/RNBQKBNR w KQkq - 0 2 : ici le roi blanc est le plus faible. castling distance donne aussi un bonus, alors que le roque côté roi est pourri...
 -> Pour les clouages, rajouter des bonus quand on les appuie avec d'autres attaques
+-> Refaire l'activité des pièces
+-> Etudier les bons fous et les mauvais fous
+-> Rajouter les faiblesses sur une couleur
 
 
+4rk2/1p3ppQ/1qn1p3/p1p3P1/4B3/P3BP2/1b3PK1/3R4 b - - 0 16 : gagnant pour les blancs
+7r/2p2k2/p4b2/P1pPpPp1/2P1P1Rq/5B2/2Q4P/7K b - - 2 44 : c'est le roi blanc le moins bon ici. le roi noir est safe. des pions tous seuls ne suffisent pas à attaquer...
 r2q1rk1/pppn1bpp/5p2/8/3PpN2/2P1B1Q1/P1P3PP/R4RK1 w - - 2 16 : pawn push threat... ne fait pas toujours de sens.. à supprimer?
 3r1rk1/pp4pp/5p2/3n3R/4p3/2P3Q1/2q3PP/2B1R2K w - - 0 26 : Fh6 seule tentative pour sauver
 r3k2r/pppb3p/4p1p1/n5Q1/4p3/2q3PP/P1P1B1P1/3R1R1K w kq - 0 20 : Tf7!! ça mate
@@ -650,6 +669,14 @@ r1bq1rk1/1p3ppp/p1np4/3Np1b1/4P3/1N2P3/PPPQB1PP/R4RK1 w - - 7 13 : noirs un peu 
 rnq1k2r/pp2bp2/2p5/3p4/5Pb1/P2P1NPp/1PP4K/R1BQ1R1N b kq - 0 17 : ici le pion h3 fait office de bouclier. le roi est en fait safe
 2rqr2k/p2p1p1B/bbn4Q/1p2P1p1/1P4P1/P3PN2/2P2PP1/RNB2RK1 w - - 3 17 : devrait voir le mat avec Fg6 en 3...
 3r1rk1/2qnpp1p/1p4p1/2p1b3/4P3/1QP1B2P/1P2BPP1/R4RK1 b - - 1 6 : ici le roi est effectivement mieux en g1 que h1 (donc Fh2+ puis Ff4 plus fort que Ff4 direct)
+r1bqk2r/1p1n1pb1/p1pBp1pp/2Pp3n/PP1P4/3BPN2/3N1PPP/R2QK2R b KQkq - 0 1 : améliorer la notion de bon fou? en fonction des pions adverses? ici tous les pions adverses sont sur case blanche.. le fou de cases noires des blancs est-il donc un bon fou?
+r1r5/2p1bk1p/p1Pp2pP/P4pP1/1R1PpP2/4P3/4NK2/1R6 w - - 0 1 : d5 hyper fort stratégiquement! le fou des noirs ne peut plus jouer
+rnb2b1r/ppp1B2k/3p3p/4P2Q/2BP4/2N5/PPP2K1P/7q w - - 1 17 : le roi noir est mat
+r1b2kn1/1p1p1p1r/1p1P3p/1N1N1R2/6p1/8/PP4PP/5RK1 b - - 3 21 : fou blanc enfermé à vie
+2Rnk3/3p2p1/3Pp2r/1b2P1Np/7P/5P1K/6P1/8 b - - 1 43 : les noirs sont paralysés -> gagnant pour les blancs (même Lc0 met du temps à comprendre)
+3nk3/1bRp2p1/3Pp2r/1q2P1Np/1P3Q1P/5P1K/6P1/8 w - - 3 40 : Dc4 gagne ici (grâce à ce qui a été dit plus haut)
+2kr1b2/pp2pp2/8/8/3p3B/3P4/PPP1KPr1/R6R w - - 0 21 : Fg3 enferme la tour
+r1bq1rk1/2n2nbp/3p2p1/p1pPpP2/P1P5/2NN4/3BBPPP/1R1Q1RK1 b - - 0 19 : ici gxf5 est intéressant: pions connectés au centre. ça ouvre une colonne sur le roi adverse. sur Fxf5, la case e4 est faible (il faut améliorer la définition des cases faibles... quand un pion est bloqué et ne peut pas controller la case)
 
 
 -> FAUT METTRE DES POINTEURS PARTOUT AU LIEU DE COPIER LES OBJETTTTTTSSS !! (exploration.h, gui?)

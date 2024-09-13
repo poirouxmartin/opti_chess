@@ -924,17 +924,19 @@ uint_fast8_t GUI::clicked_piece() const
 // Fonction qui lance une analyse de GrogrosZero
 void GUI::grogros_analysis(int iterations) {
 	// Noeuds à explorer par frame, en visant 60 FPS
-	//int iterations_to_explore = _root_exploration_node->get_ips() / 60;
-	//if (iterations_to_explore == 0)
-	//	iterations_to_explore = 1;
-
-	int iterations_to_explore = _root_exploration_node->get_avg_nps() / 60;
+	int iterations_to_explore = _root_exploration_node->get_ips() / 60;
 	if (iterations_to_explore == 0)
-		iterations_to_explore = _nodes_per_frame;
+		iterations_to_explore = 1;
+
+	//int iterations_to_explore = _root_exploration_node->get_avg_nps() / 60;
+	//if (iterations_to_explore == 0)
+	//	iterations_to_explore = _nodes_per_frame;
 
 	// Il faut pas dépasser la taille du buffer
 	// FIXME: meilleure façon de gérer cela?
 	iterations_to_explore = min(iterations_to_explore, monte_buffer._length - _root_exploration_node->_nodes);
+
+	//cout << "IPS: " << _root_exploration_node->get_ips() << ", exploring " << iterations_to_explore << " nodes" << endl;
 
 	_root_exploration_node->grogros_zero(&monte_buffer, _grogros_eval, _beta, _k_add, iterations == -1 ? iterations_to_explore : iterations, _quiescence_depth); // TODO: nombre de noeuds à paramétrer
 	_update_variants = true;
@@ -1452,7 +1454,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	}
 
 	// S'il n'y a pas encore eu d'exploration
-	if (_root_exploration_node->_iterations == 0) {
+	if (_root_exploration_node->_iterations <= 1) {
 		return;
 	}
 
