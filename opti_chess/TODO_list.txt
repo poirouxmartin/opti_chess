@@ -524,14 +524,17 @@ URGENT:
 3r2k1/1q1n1ppp/2p3b1/p1P3N1/PrPB4/6PP/R2N1PB1/2Q3K1 w - - 3 29 : ici Rh2 est urgent! il y a une grosse ligne ouverte sur le roi.. remettre virtual_mobility?
 -> Implémenter les plans (on regarde des coups à la suite, sans que l'autre joueur ne joue)
 -> Si pas de plan posisble, gros malus (= zugzwang long terme?). Exemple: 2Rnk3/3p2p1/3Pp2r/1b2P1Np/7P/5P1K/6P1/8 b - - 1 43
+1R1nk3/1b1p2p1/1K1Pp2r/4P1NP/6P1/8/8/8 b - - 14 53 : les noirs sont foutus
 r4rk1/1ppqbpp1/p1n1b2p/3p4/3P1B2/2PB1N2/PPQ2PPP/2R1R1K1 w - - 1 15 : ici, les +300 sur le roi noir à cause de la batterie dame/fou, ça casse tout...
 3brrk1/1ppq1pp1/p6p/3pB3/3P1Pb1/2PBR1P1/PPQ4P/4R1K1 w - - 1 21 : les noirs sont quasi gagnants.. le roi noir est safe
 r2qr1k1/pp3ppp/5n2/2b1n3/2P1pNP1/1PNb3P/PB1P1PB1/R2QKR2 b Q - 5 15 : king safety?? le roi blanc est foutu...
 r2qr1k1/pp3ppp/5n2/2b5/2P2NP1/1PNb1p1P/PB1P1P2/R2QKR2 w Q - 0 17 : ...
 -> King safety: open lines: ++quand y'a une tour dessus
+-> Rajouter les lignes horizontales ouvertes (faiblesse première rangée, ça arrive souvent)
 -> Gérer quand le buffer est plein
 1rb4r/2pn1kb1/p2p1p1q/P2PpPp1/2P1N3/2B1PB2/6QP/1R3R1K w - - 8 32 : Fb2??? mais prends cette tour en b8!!!
 7r/2pb1kb1/p4p2/P1pPpPp1/2P1P2q/2B2B2/6QP/4R2K w - - 1 40 : vas en b1, pas g1!!
+7r/2pb1kb1/p4p2/P1pPpPp1/2P1P2q/2B2B2/6QP/6RK b - - 2 40 : le roi noir est safe... diags, y'a R (la pos est fermée)
 1r1qr3/5p1k/3p1Ppb/p2N3p/2pPP2P/2Pn3B/P3QR2/5RK1 w - - 1 22 : attaque +500 pour les blancs??... à causes des attaques sur f5 et h5?
 -> Pour les overload, on a retiré les rayons X à travers les pions. faut-il les garder dans le cas où le pion attaque directement une pièce sur la diagonale?
 -> Refaire toute l'activité des pièces? en fonction des pions plutôt, et pénaliser les pièces qui sont bloquées par les pions adverses? -> vrai trapped pieces...
@@ -647,7 +650,7 @@ rnb4r/ppp1BQbk/3p3p/4P3/2BP4/2N5/PPP2K1P/7q w - - 3 18 : roi noir beaucoup plus 
 rnb2b1r/p4kpp/8/3RP3/2p5/5N2/PP3PPP/R1B3K1 w - - 0 15 : roi safe!!
 rnb1k2r/ppppq1pp/1b6/3BPp2/P7/2P2N2/2P1K1PP/R1BQ3R b kq - 0 10 : le roi est quasi tranquille
 r1b1kq1r/pp1p2p1/n1p4p/P3Pp2/2B4N/2P1K3/2P3PP/R2Q3R b kq - 2 16 : y'a R
-5rk1/p4qb1/1p1p3p/3Ppp2/PRP1P3/2N1BnPb/2Q4P/1R5K w - - 0 5 : c'est le roi noir qui sue...
+5rk1/p4qb1/1p1p3p/3Ppp2/PRP1P3/2N1BnPb/2Q4P/1R5K w - - 0 5 : c'est le roi blanc qui sue...
 3rr1k1/pp3p2/2ppqp1p/4pN2/4P1PQ/1P1PP2P/1PP5/5RK1 b - - 13 22 : foutu pour le roi noir
 N6N/pp2k1pp/8/3Pp3/2Bn4/6qP/PPPP4/R1B4K b - - 0 20 : Cf3 #3
 3q4/8/4r3/4np1p/5Pk1/4P3/6KP/4B3 w - - 1 3 : #1 pour les blancs
@@ -675,6 +678,7 @@ r1b2kn1/1p1p1p1r/1p1P3p/1N1N1R2/6p1/8/PP4PP/5RK1 b - - 3 21 : fou blanc enfermé 
 2kr1b2/pp2pp2/8/8/3p3B/3P4/PPP1KPr1/R6R w - - 0 21 : Fg3 enferme la tour
 r1bq1rk1/2n2nbp/3p2p1/p1pPpP2/P1P5/2NN4/3BBPPP/1R1Q1RK1 b - - 0 19 : ici gxf5 est intéressant: pions connectés au centre. ça ouvre une colonne sur le roi adverse. sur Fxf5, la case e4 est faible (il faut améliorer la définition des cases faibles... quand un pion est bloqué et ne peut pas controller la case)
 2kr3r/B1p1b1pp/2p3qn/4p3/4N3/P2P2NK/1PP2P1P/R3QR2 b - - 0 18 : le roi blanc n'a pas de problème
+r4rk1/1p3ppp/3b4/p1pq4/4b1Q1/2P2N2/PP3PPP/R1B2RK1 b - - 1 18 : g6 erreur car ça donne les cases noires autour du roi après Fh6
 
 
 -> FAUT METTRE DES POINTEURS PARTOUT AU LIEU DE COPIER LES OBJETTTTTTSSS !! (exploration.h, gui?)
