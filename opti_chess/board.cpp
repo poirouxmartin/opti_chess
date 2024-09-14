@@ -101,9 +101,6 @@ bool Board::add_pawn_moves(const uint_fast8_t i, const uint_fast8_t j, int* iter
 // Fonction qui ajoute les coups "cavaliers" dans la liste de coups
 bool Board::add_knight_moves(const uint_fast8_t i, const uint_fast8_t j, int* iterator, const uint_fast8_t piece) {
 
-	// Tableau des déplacements possibles
-	static constexpr int_fast8_t knight_moves[8][2] = { {-2, -1}, {-2, 1}, {-1, -2}, {-1, 2}, {1, -2}, {1, 2}, {2, -1}, {2, 1} };
-
 	for (uint_fast8_t m = 0; m < 8; m++) {
 		const uint_fast8_t i2 = i + knight_moves[m][0];
 		if (!is_in_fast(i2, 0, 7))
@@ -122,11 +119,8 @@ bool Board::add_knight_moves(const uint_fast8_t i, const uint_fast8_t j, int* it
 // Fonction qui ajoute les coups diagonaux dans la liste de coups
 bool Board::add_diag_moves(const uint_fast8_t i, const uint_fast8_t j, int* iterator, const uint_fast8_t piece) {
 
-	const uint_fast8_t ally_min = _player ? 1 : 7;
-	const uint_fast8_t ally_max = _player ? 6 : 12;
-
-	// Directions possibles : diagonales
-	static constexpr int_fast8_t diag_moves[4][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1} };
+	const uint_fast8_t ally_min = _player ? w_pawn : b_pawn;
+	const uint_fast8_t ally_max = _player ? w_king : b_king;
 
 	for (uint_fast8_t k = 0; k < 4; k++) {
 
@@ -164,9 +158,6 @@ bool Board::add_rect_moves(const uint_fast8_t i, const uint_fast8_t j, int* iter
 
 	const uint_fast8_t ally_min = _player ? 1 : 7;
 	const uint_fast8_t ally_max = _player ? 6 : 12;
-
-	// Directions possibles : horizontales et verticales
-	static constexpr int_fast8_t rect_moves[4][2] = { {-1, 0}, {1, 0}, {0, -1}, {0, 1} };
 
 	for (uint_fast8_t k = 0; k < 4; k++) {
 
@@ -4155,7 +4146,6 @@ bool Board::add_piece_controls(Map* map, int i, int j, int piece) const
 
 	// Cavaliers
 	if (piece == w_knight || piece == b_knight) {
-		static constexpr int_fast8_t knight_moves[8][2] = { {-2, -1}, {-2, 1}, {-1, -2}, {-1, 2}, {1, -2}, {1, 2}, {2, -1}, {2, 1} };
 		for (uint_fast8_t k = 0; k < 8; k++) {
 			const uint_fast8_t i2 = i + knight_moves[k][0];
 			const uint_fast8_t j2 = j + knight_moves[k][1];
@@ -4166,10 +4156,9 @@ bool Board::add_piece_controls(Map* map, int i, int j, int piece) const
 
 	// Fous
 	if (piece == w_bishop || piece == b_bishop) {
-		static constexpr int_fast8_t bishop_moves[4][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1} };
 		for (uint_fast8_t k = 0; k < 4; k++) {
-			const uint_fast8_t mi = bishop_moves[k][0];
-			const uint_fast8_t mj = bishop_moves[k][1];
+			const uint_fast8_t mi = diag_moves[k][0];
+			const uint_fast8_t mj = diag_moves[k][1];
 			uint_fast8_t i2 = i + mi;
 			uint_fast8_t j2 = j + mj;
 			while (i2 >= 0 && i2 <= 7 && j2 >= 0 && j2 <= 7) {
@@ -4187,10 +4176,9 @@ bool Board::add_piece_controls(Map* map, int i, int j, int piece) const
 
 	// Tours
 	if (piece == w_rook || piece == b_rook) {
-		static constexpr int_fast8_t rook_moves[4][2] = { {-1, 0}, {0, -1}, {0, 1}, {1, 0} };
 		for (uint_fast8_t k = 0; k < 4; k++) {
-			const uint_fast8_t mi = rook_moves[k][0];
-			const uint_fast8_t mj = rook_moves[k][1];
+			const uint_fast8_t mi = rect_moves[k][0];
+			const uint_fast8_t mj = rect_moves[k][1];
 			uint_fast8_t i2 = i + mi;
 			uint_fast8_t j2 = j + mj;
 			while (i2 >= 0 && i2 <= 7 && j2 >= 0 && j2 <= 7) {
@@ -4207,10 +4195,9 @@ bool Board::add_piece_controls(Map* map, int i, int j, int piece) const
 
 	// Dames
 	if (piece == w_queen || piece == b_queen) {
-		static constexpr int_fast8_t queen_moves[8][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1}, {-1, 0}, {0, -1}, {0, 1}, {1, 0} };
 		for (uint_fast8_t k = 0; k < 8; k++) {
-			const uint_fast8_t mi = queen_moves[k][0];
-			const uint_fast8_t mj = queen_moves[k][1];
+			const uint_fast8_t mi = all_directions[k][0];
+			const uint_fast8_t mj = all_directions[k][1];
 			uint_fast8_t i2 = i + mi;
 			uint_fast8_t j2 = j + mj;
 			while (i2 >= 0 && i2 <= 7 && j2 >= 0 && j2 <= 7) {
@@ -4229,10 +4216,9 @@ bool Board::add_piece_controls(Map* map, int i, int j, int piece) const
 
 	// Rois
 	if (piece == w_king || piece == b_king) {
-		static constexpr int_fast8_t king_moves[8][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1}, {-1, 0}, {0, -1}, {0, 1}, {1, 0} };
 		for (uint_fast8_t k = 0; k < 8; k++) {
-			uint_fast8_t i2 = i + king_moves[k][0];
-			uint_fast8_t j2 = j + king_moves[k][1];
+			uint_fast8_t i2 = i + all_directions[k][0];
+			uint_fast8_t j2 = j + all_directions[k][1];
 			i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8 && (map->_array[i2][j2]++);
 		}
 		return true;
@@ -4254,11 +4240,10 @@ int Board::get_king_virtual_mobility(bool color) {
 	
 	// On compte le nombre de coups possibles pour la nouvelle dame
 	int mobility = 0;
-	static constexpr int_fast8_t queen_moves[8][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1}, {-1, 0}, {0, -1}, {0, 1}, {1, 0} };
 
 	for (uint_fast8_t k = 0; k < 8; k++) {
-		const uint_fast8_t mi = queen_moves[k][0];
-		const uint_fast8_t mj = queen_moves[k][1];
+		const uint_fast8_t mi = all_directions[k][0];
+		const uint_fast8_t mj = all_directions[k][1];
 		uint_fast8_t i2 = i + mi;
 		uint_fast8_t j2 = j + mj;
 
@@ -4943,17 +4928,17 @@ int Board::get_bishop_pawns() const {
 			// Fou blanc
 			if (p == w_bishop) {
 				if ((i + j) % 2) // Case blanche
-					bishop_pawns_value -= white_pawns_w * (2 + white_central_pawns_blocked) * ally_bishop_pawn_malus + black_pawns_w * enemy_bishop_pawn_bonus;
+					bishop_pawns_value -= (white_pawns_w - 4) * (2 + white_central_pawns_blocked) * ally_bishop_pawn_malus + (black_pawns_w - 4) * enemy_bishop_pawn_bonus;
 				else // Case noire
-					bishop_pawns_value -= white_pawns_b * (2 + white_central_pawns_blocked) * ally_bishop_pawn_malus + black_pawns_b * enemy_bishop_pawn_bonus;
+					bishop_pawns_value -= (white_pawns_b - 4) * (2 + white_central_pawns_blocked) * ally_bishop_pawn_malus + (black_pawns_b - 4) * enemy_bishop_pawn_bonus;
 			}
 
 			// Fou noir
 			else if (p == b_bishop) {
 				if ((i + j) % 2) // Case blanche
-					bishop_pawns_value += black_pawns_w * (2 + black_central_pawns_blocked) * ally_bishop_pawn_malus + white_pawns_w * enemy_bishop_pawn_bonus;
+					bishop_pawns_value += (black_pawns_w - 4) * (2 + black_central_pawns_blocked) * ally_bishop_pawn_malus + (white_pawns_w - 4) * enemy_bishop_pawn_bonus;
 				else // Case noire
-					bishop_pawns_value += black_pawns_b * (2 + black_central_pawns_blocked) * ally_bishop_pawn_malus + white_pawns_b * enemy_bishop_pawn_bonus;
+					bishop_pawns_value += (black_pawns_b - 4) * (2 + black_central_pawns_blocked) * ally_bishop_pawn_malus + (white_pawns_b - 4) * enemy_bishop_pawn_bonus;
 			}
 		}
 	}
@@ -5647,7 +5632,7 @@ void Board::display_positions_history() const
 
 	// Distance des pièces au centre de masse
 	// Il faut pénaliser les pièces loin du centre
-	float min_distance = 1.5f;
+	float min_distance = 1.2f;
 
 	float w_isolated_pieces = 0.0f;
 	float b_isolated_pieces = 0.0f;
@@ -5662,7 +5647,19 @@ void Board::display_positions_history() const
 	const float queen_malus = 12.0f;
 	const float king_malus = 15.0f;
 
+	const float attacked_factor = 1.5f;
+	const float trapped_factor = 3.0f;
+
+	// Avancement à partir duquel l'isolement ne compte plus (on garde néanmoins l'enfermement de pièces)
+	const float max_adv = 0.6f;
+
 	// FIXME: rqb2Q2/3p3p/pBp1p1p1/P3Pp2/1P3P1k/2N5/2P1B1PP/6K1 w - - 5 30 : king malus marche pas?
+
+	const Map w_controls = get_white_controls_map();
+	const Map b_controls = get_black_controls_map();
+
+	//w_controls.print();
+	//b_controls.print();
 
 	// Pour chaque pièce
 	for (uint_fast8_t i = 0; i < 8; i++) {
@@ -5681,12 +5678,93 @@ void Board::display_positions_history() const
 				distance *= (2 + max(0, (int)i - 3));
 
 				// Pénalité
-				float malus = p == w_pawn ? pawn_malus : (p == w_knight ? knight_malus : (p == w_bishop ? bishop_malus : (p == w_rook ? rook_malus : (p == w_queen ? queen_malus : king_malus))));
+				const float malus = p == w_pawn ? pawn_malus : (p == w_knight ? knight_malus : (p == w_bishop ? bishop_malus : (p == w_rook ? rook_malus : (p == w_queen ? queen_malus : king_malus))));
 
 				// Pénalité en fonction de la distance
 				float isolated_piece = max(0.0f, distance - min_distance) * malus;
 
-				//cout << "i: " << i << ", j: " << j << ", distance: " << distance << ", isolated_piece: " << isolated_piece << endl;
+				//cout << Pos(i, j).square() << ", distance: " << distance << ", isolated_piece: " << isolated_piece;
+
+				// Pénalité augmentée en fonction du peu de cases non-controllées où la pièce peut aller
+
+				int safe_squares = 0;
+
+				// Pion
+				if (p == w_pawn) {
+					safe_squares += b_controls._array[i + 1][j] == 0 && !is_white(_array[i - 1][j]);
+				}
+
+				// Cavalier
+				if (p == w_knight) {
+					for (int k = 0; k < 8; k++) {
+						int i2 = i + knight_moves[k][0];
+						int j2 = j + knight_moves[k][1];
+
+						if (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8)
+							safe_squares += b_controls._array[i2][j2] == 0 && !is_white(_array[i2][j2]);
+					}
+				}
+				
+				// Pièces à mouvement rectiligne
+				if (p == w_rook || p == w_queen) {
+					for (int k = 0; k < 4; k++) {
+						int i2 = i + rect_moves[k][0];
+						int j2 = j + rect_moves[k][1];
+
+						while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
+							// S'il la case n'est pas controllée et qu'une pièce alliée ne la bloque pas
+							safe_squares += b_controls._array[i2][j2] == 0 && !is_white(_array[i2][j2]);
+
+							if (_array[i2][j2] != none) {
+								break;
+							}
+
+							i2 += rect_moves[k][0];
+							j2 += rect_moves[k][1];
+						}
+					}
+				}
+
+				// Pièces à mouvement diagonal
+				if (p == w_bishop || p == w_queen) {
+					for (int k = 0; k < 4; k++) {
+						int i2 = i + diag_moves[k][0];
+						int j2 = j + diag_moves[k][1];
+
+						while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
+							// S'il la case n'est pas controllée et qu'une pièce alliée ne la bloque pas
+							safe_squares += b_controls._array[i2][j2] == 0 && !is_white(_array[i2][j2]);
+
+							if (_array[i2][j2] != none) {
+								break;
+							}
+
+							i2 += diag_moves[k][0];
+							j2 += diag_moves[k][1];
+						}
+					}
+				}
+
+				// Roi
+				if (p == w_king) {
+					for (int k = 0; k < 8; k++) {
+						int i2 = i + all_directions[k][0];
+						int j2 = j + all_directions[k][1];
+
+						if (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8)
+							safe_squares += b_controls._array[i2][j2] == 0 && !is_white(_array[i2][j2]);
+					}
+				}
+
+				const float trapped_malus = (trapped_factor - 1.0f) / (safe_squares + 1) + max(1.0f - _adv / max_adv, 0.0f);
+
+				isolated_piece *= trapped_malus;
+
+				// Malus accru si la pièce est sur une case contrôlée par l'adversaire
+				if (b_controls._array[i][j] != 0)
+					isolated_piece *= attacked_factor;
+
+				//cout << ", safe_squares: " << safe_squares << ", attacked: " << (b_controls._array[i][j] != 0) << ", total: " << isolated_piece << endl;
 
 				w_isolated_pieces += isolated_piece;
 			}
@@ -5700,12 +5778,93 @@ void Board::display_positions_history() const
 				distance *= (2 + max(0, 4 - (int)i));
 
 				// Pénalité
-				float malus = p == b_pawn ? pawn_malus : (p == b_knight ? knight_malus : (p == b_bishop ? bishop_malus : (p == b_rook ? rook_malus : (p == b_queen ? queen_malus : king_malus))));
+				const float malus = p == b_pawn ? pawn_malus : (p == b_knight ? knight_malus : (p == b_bishop ? bishop_malus : (p == b_rook ? rook_malus : (p == b_queen ? queen_malus : king_malus))));
 
 				// Pénalité en fonction de la distance
 				float isolated_piece = max(0.0f, distance - min_distance) * malus;
 
-				//cout << "i: " << i << ", j: " << j << ", distance: " << distance << ", isolated_piece: " << isolated_piece << endl;
+				//cout << Pos(i, j).square() << ", distance: " << distance << ", isolated_piece: " << isolated_piece;
+
+				// Pénalité augmentée en fonction du peu de cases non-controllées où la pièce peut aller
+
+				int safe_squares = 0;
+
+				// Pion
+				if (p == b_pawn) {
+					safe_squares += w_controls._array[i - 1][j] == 0 && !is_black(_array[i + 1][j]);
+				}
+
+				// Cavalier
+				if (p == b_knight) {
+					for (int k = 0; k < 8; k++) {
+						int i2 = i + knight_moves[k][0];
+						int j2 = j + knight_moves[k][1];
+
+						if (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8)
+							safe_squares += w_controls._array[i2][j2] == 0 && !is_black(_array[i2][j2]);
+					}
+				}
+
+				// Pièces à mouvement rectiligne
+				if (p == b_rook || p == b_queen) {
+					for (int k = 0; k < 4; k++) {
+						int i2 = i + rect_moves[k][0];
+						int j2 = j + rect_moves[k][1];
+
+						while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
+							// S'il la case n'est pas controllée et qu'une pièce alliée ne la bloque pas
+							safe_squares += w_controls._array[i2][j2] == 0 && !is_black(_array[i2][j2]);
+
+							if (_array[i2][j2] != none) {
+								break;
+							}
+
+							i2 += rect_moves[k][0];
+							j2 += rect_moves[k][1];
+						}
+					}
+				}
+
+				// Pièces à mouvement diagonal
+				if (p == b_bishop || p == b_queen) {
+					for (int k = 0; k < 4; k++) {
+						int i2 = i + diag_moves[k][0];
+						int j2 = j + diag_moves[k][1];
+
+						while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
+							// S'il la case n'est pas controllée et qu'une pièce alliée ne la bloque pas
+							safe_squares += w_controls._array[i2][j2] == 0 && !is_black(_array[i2][j2]);
+
+							if (_array[i2][j2] != none) {
+								break;
+							}
+
+							i2 += diag_moves[k][0];
+							j2 += diag_moves[k][1];
+						}
+					}
+				}
+
+				// Roi
+				if (p == b_king) {
+					for (int k = 0; k < 8; k++) {
+						int i2 = i + all_directions[k][0];
+						int j2 = j + all_directions[k][1];
+
+						if (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8)
+							safe_squares += w_controls._array[i2][j2] == 0 && !is_black(_array[i2][j2]);
+					}
+				}
+
+				const float trapped_malus = (trapped_factor - 1.0f) / (safe_squares + 1) + max(1.0f - _adv / max_adv, 0.0f);
+
+				isolated_piece *= trapped_malus;
+
+				// Malus accru si la pièce est sur une case contrôlée par l'adversaire
+				if (w_controls._array[i][j] != 0)
+					isolated_piece *= attacked_factor;
+
+				//cout << ", safe_squares: " << safe_squares << ", attacked: " << (w_controls._array[i][j] != 0) << ", total: " << isolated_piece << endl;
 
 				b_isolated_pieces += isolated_piece;
 			}
@@ -5715,11 +5874,7 @@ void Board::display_positions_history() const
 	//cout << "w_isolated_pieces: " << w_isolated_pieces << endl;
 	//cout << "b_isolated_pieces: " << b_isolated_pieces << endl;
 
-	// Avancement à partir duquel cela ne compte plus
-	// FIXME: en faut-il vraiment un? un cheval seul en finale ne sert à rien...
-	const float max_adv = 0.6f;
-
-	return (b_isolated_pieces - w_isolated_pieces) * max(1.0f - _adv / max_adv, 0.0f);
+	return (b_isolated_pieces - w_isolated_pieces);
 }
 
 // Fonction qui ajuste les valeurs des pièces (malus/bonus), en fonction du type de position
@@ -6015,8 +6170,6 @@ void Board::display_positions_history() const
 
 			// Cavalier
 			if (p == (color ? w_knight : b_knight)) {
-				const int knight_moves[8][2] = {{1, 2}, {1, -2}, {-1, 2}, {-1, -2}, {2, 1}, {2, -1}, {-2, 1}, {-2, -1}}; // TODO: à stocker en variable globale
-
 				for (uint_fast8_t m = 0; m < 8; m++) {
 					int new_i = i + knight_moves[m][0];
 					int new_j = j + knight_moves[m][1];
@@ -6045,7 +6198,6 @@ void Board::display_positions_history() const
 
 			// Pièces à mouvement rectiligne
 			if ((p == (color ? w_rook : b_rook)) || (p == (color ? w_queen : b_queen))) {
-				const int rect_moves[4][2] = { {0, -1}, {-1, 0}, {0, 1}, {1, 0} };
 
 				for (uint_fast8_t m = 0; m < 4; m++) {
 
@@ -6093,7 +6245,6 @@ void Board::display_positions_history() const
 
 			// Pièces à mouvement diagonal
 			if ((p == (color ? w_bishop : b_bishop)) || (p == (color ? w_queen : b_queen))) {
-				const int diag_moves[4][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1} };
 
 				for (uint_fast8_t m = 0; m < 4; m++) {
 
@@ -6242,8 +6393,6 @@ void Board::display_positions_history() const
 
 			// Cavalier
 			if (p == (color ? w_knight : b_knight)) {
-				const int knight_moves[8][2] = { {1, 2}, {1, -2}, {-1, 2}, {-1, -2}, {2, 1}, {2, -1}, {-2, 1}, {-2, -1} }; // TODO: à stocker en variable globale
-
 				for (uint_fast8_t m = 0; m < 8; m++) {
 					int new_i = i + knight_moves[m][0];
 					int new_j = j + knight_moves[m][1];
@@ -6266,7 +6415,6 @@ void Board::display_positions_history() const
 
 			// Pièces à mouvement rectiligne
 			if ((p == (color ? w_rook : b_rook)) || (p == (color ? w_queen : b_queen))) {
-				const int rect_moves[4][2] = { {0, -1}, {-1, 0}, {0, 1}, {1, 0} };
 
 				for (uint_fast8_t m = 0; m < 4; m++) {
 					int mi = rect_moves[m][0];
@@ -6303,7 +6451,6 @@ void Board::display_positions_history() const
 
 			// Pièces à mouvement diagonal
 			if ((p == (color ? w_bishop : b_bishop)) || (p == (color ? w_queen : b_queen))) {
-				const int diag_moves[4][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1} };
 
 				for (uint_fast8_t m = 0; m < 4; m++) {
 					int mi = diag_moves[m][0];

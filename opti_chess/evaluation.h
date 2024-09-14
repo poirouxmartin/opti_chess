@@ -33,8 +33,7 @@ public:
 	float _weak_squares = 0.35f;
 	float _castling_distance = 1.0f;
 	float _bishop_activity = 4.0f;
-	//float _isolated_pieces = 0.7f;
-	float _isolated_pieces = 0.0f;
+	float _isolated_pieces = 0.3f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
 	int _pieces_value_begin[6] = { 80, 345, 360, 460, 1135, 0 };
