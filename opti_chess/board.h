@@ -33,6 +33,30 @@ constexpr int mate_value = 1e8;
 // Valeur d'un ply (double) dans la recherche de mat
 constexpr int mate_ply = 1e5;
 
+// Coups possibles pour un cavalier
+constexpr int knight_moves[8][2] = { {1, 2}, {1, -2}, {-1, 2}, {-1, -2}, {2, 1}, {2, -1}, {-2, 1}, {-2, -1} };
+
+// Coups rectilignes
+constexpr int rect_moves[4][2] = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
+
+// Coups diagonaux
+constexpr int diag_moves[4][2] = { {1, 1}, {1, -1}, {-1, 1}, {-1, -1} };
+
+// Coups dans toutes les directions
+constexpr int all_directions[8][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1}, {-1, 0}, {0, -1}, {0, 1}, {1, 0} };
+
+// Renvoie si la pièce est blanche
+static bool is_white(uint_fast8_t piece) {
+	return piece >= w_pawn && piece <= w_king;
+}
+
+// Renvoie si la pièce est noire
+static bool is_black(uint_fast8_t piece) {
+	return piece >= b_pawn && piece <= b_king;
+}
+
+
+
 
 // Coup (défini par ses coordonnées)
 // TODO : l'utiliser !!
