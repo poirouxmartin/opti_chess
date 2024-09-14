@@ -1919,7 +1919,7 @@ int Board::get_king_safety(float display_factor) {
 	int b_defending_power = 0;
 
 	// Facteurs multiplicatifs
-	constexpr float piece_attack_factor = 1.75f;
+	constexpr float piece_attack_factor = 1.25f;
 	constexpr float piece_defense_factor = 1.25f;
 
 	constexpr float piece_overload_multiplicator = 2.0f; // TODO: à utiliser
@@ -5758,7 +5758,9 @@ void Board::display_positions_history() const
 
 				const float trapped_malus = (trapped_factor - 1.0f) / (safe_squares + 1) + max(1.0f - _adv / max_adv, 0.0f);
 
-				isolated_piece *= trapped_malus;
+				// On ne consière pas un pion comme "piégeable"
+				if (p != w_pawn)
+					isolated_piece *= trapped_malus;
 
 				// Malus accru si la pièce est sur une case contrôlée par l'adversaire
 				if (b_controls._array[i][j] != 0)
@@ -5858,7 +5860,9 @@ void Board::display_positions_history() const
 
 				const float trapped_malus = (trapped_factor - 1.0f) / (safe_squares + 1) + max(1.0f - _adv / max_adv, 0.0f);
 
-				isolated_piece *= trapped_malus;
+				// On ne consière pas un pion comme "piégeable"
+				if (p != b_pawn)
+					isolated_piece *= trapped_malus;
 
 				// Malus accru si la pièce est sur une case contrôlée par l'adversaire
 				if (w_controls._array[i][j] != 0)
@@ -6117,6 +6121,9 @@ void Board::display_positions_history() const
 	// Valeur d'attaque d'une pièce attaquant la couronne lointaine du roi
 	constexpr int semi_attack_value = 50;
 
+	// Facteur d'attaque par pièce (pion, cavalier, fou, tour, dame, roi)
+	constexpr float piece_attack_factor[6] = { 0.5f, 1.0f, 1.0f, 1.5f, 2.0f, 1.0f };
+
 	// Facteur d'attaque en fonction de la distance au roi
 
 
@@ -6325,7 +6332,7 @@ void Board::display_positions_history() const
 			}
 			else {
 				if (attacks > 0) {
-					king_attackers += attacking_value[attacks];
+					king_attackers += attacking_value[attacks] * piece_attack_factor[(p - 1) % 6];
 					//cout << "color: " << color << ", piece: " << (int)p << "(" << square_name(i, j) << "), attacks : " << (int)attacks << ", value : " << attacking_value[attacks] << endl;
 				}
 				else if (semi_attacks > 0) { // TODO: à améliorer en prenant en compte le nombre de semi-attaques?
@@ -6349,6 +6356,9 @@ void Board::display_positions_history() const
 
 	// Valeur de défense d'une pièce défendant la couronne lointaine du roi
 	constexpr int semi_defense_value = 50;
+
+	// Facteur de défense par pièce (pion, cavalier, fou, tour, dame, roi)
+	constexpr float piece_defense_factor[6] = { 0.75f, 1.2f, 1.2f, 1.0f, 2.0f, 0.0f };
 
 	// Met à jour la position des rois
 	update_kings_pos();
@@ -6488,7 +6498,7 @@ void Board::display_positions_history() const
 			}
 			else {
 				if (defenses > 0) {
-					king_defenders += defending_value[defenses];
+					king_defenders += defending_value[defenses] * piece_defense_factor[(p - 1) % 6];
 				}
 				else if (semi_defenses > 0) { // TODO: à améliorer en prenant en compte le nombre de semi-défenses?
 					king_defenders += semi_defense_value;
