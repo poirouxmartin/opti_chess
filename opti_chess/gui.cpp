@@ -1494,8 +1494,10 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 	//cout << "max move time : " << max_move_time << endl;
 
+	int most_explored_child_eval = most_explored_child->_board->_evaluation * color;
+
 	// On veut être sûr de jouer le meilleur coup de Grogros: s'il y a un meilleur coup que celui avec le plus de noeuds, attendre...
-	bool wait_for_best_move = (most_explored_child->_board->_evaluation * color) < (best_eval_colored);
+	bool wait_for_best_move = most_explored_child_eval < (best_eval_colored);
 
 	// FIXME: des choses à améliorer ici!
 	// A quel point faut-il attendre pour être sûr de jouer le meilleur coup?
@@ -1515,7 +1517,12 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	//	move_wait_factor = 1;
 	//}
 
-	float move_wait_factor = wait_for_best_move ? 10.0f : 1.0f; // C'est beaucoup mais bon, il faut trouver un truc pour améliorer ça
+	// Combien de temps devrait-on attendre?
+	// On met une valeur max pour éviter les overflow
+	// FIXME: la différence d'éval devrait être relative?
+	float move_wait_factor = min(100.0f, 1.0f + abs(most_explored_child_eval - best_eval_colored) / 50.0f);
+
+	//float move_wait_factor = wait_for_best_move ? wait_factor : 1.0f; // C'est beaucoup mais bon, il faut trouver un truc pour améliorer ça
 
 	//cout << "base time : " << max_move_time << " | wait for best move : " << wait_for_best_move << " | eval diff : " << eval_diff << " | move wait factor : " << move_wait_factor << " | final time : " << max_move_time * move_wait_factor << endl;
 	max_move_time = max_move_time * move_wait_factor;
@@ -1555,6 +1562,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 		if (wait_for_best_move) {
 			cout << "Position: " << _board.to_fen() << " : played the sub-optimal " << _board._moves_count << ". " << _board.move_label(_root_exploration_node->get_best_move()) << " because it was taking too long to wait for it... best move was probably:" << _board.move_label(best_move) << endl;
+			cout << move_wait_factor << endl;
 		}
 
 		//cout << nodes_to_play << ", max move time : " << max_move_time << ", supposed speed : " << supposed_grogros_speed << ", nodes : " << _root_exploration_node->_nodes << endl;
