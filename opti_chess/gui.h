@@ -96,8 +96,8 @@ public:
 	//float _k_add = 25.0f;
 	//int _quiescence_depth = 8;
 
-	float _beta = 1.0f;
-	float _k_add = 2.5f;
+	float _beta = 2.0f;
+	float _k_add = 1.0f;
 	int _quiescence_depth = 6;
 
 	//float _beta = 0.10f;
@@ -559,7 +559,7 @@ public:
 	void update_grogros_zero_name();
 
 	// Fonction qui fait jouer le coup de GrogrosZero ou non en fonction du temps restant
-	void play_grogros_zero_move(float time_proportion_per_move = 0.03f);
+	void play_grogros_zero_move(float time_proportion_per_move = 0.025f);
 
 
 	// TODO
