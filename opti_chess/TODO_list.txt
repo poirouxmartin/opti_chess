@@ -521,6 +521,7 @@ Parfois on a des eval qui sont égales à +/-INT_MAX, et ça ne devrait pas être le
 Tout refaire la quiescence en mode debug pour clarifier...
 
 URGENT:
+-> Quand y'a plein d'options équivalentes, pas besoin de passer trop de temps pour décider laquelle choisir... Réfléchir un max sur les positions critiques (quand y'a des prises, poussées de pions, échecs...)
 3r2k1/1q1n1ppp/2p3b1/p1P3N1/PrPB4/6PP/R2N1PB1/2Q3K1 w - - 3 29 : ici Rh2 est urgent! il y a une grosse ligne ouverte sur le roi.. remettre virtual_mobility?
 -> Implémenter les plans (on regarde des coups à la suite, sans que l'autre joueur ne joue)
 -> Si pas de plan posisble, gros malus (= zugzwang long terme?). Exemple: 2Rnk3/3p2p1/3Pp2r/1b2P1Np/7P/5P1K/6P1/8 b - - 1 43
