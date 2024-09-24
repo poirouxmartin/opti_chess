@@ -376,8 +376,8 @@ Move Node::pick_random_child(const float beta, const float k_add) const {
 		cout << "negative nodes???" << endl;
 	}
 
-	double enlargement_factor = (double)_nodes / (double)_iterations;
 	//double enlargement_factor = (double)_nodes / (double)_iterations;
+	double enlargement_factor = sqrt((double)_nodes / (double)_iterations);
 	
 	// FIXME: quelle est la meilleure manière d'élargir?
 	// Réduire beta? Augmenter k_add? Les deux?
@@ -780,7 +780,8 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 		_board->_static_evaluation = _board->_evaluation;
 
 		//_nodes++; // BOF... FIXME
-		_nodes = 1; // BOF... FIXME
+		_nodes = 1;
+		_iterations = 1;
 		_time_spent += clock() - begin_monte_time;
 		//cout << "game over" << endl;
 

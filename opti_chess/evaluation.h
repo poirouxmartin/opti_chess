@@ -24,16 +24,16 @@ public:
 	float _alignments = 0.5f;
 	float _piece_activity = 0.025f;
 	float _fianchetto = 0.5f;
-	float _pawn_push_threats = 25.0f;
+	float _pawn_push_threats = 25.0f; // A refaire
 	float _king_proximity = 0.4f;
-	float _rook_activity = 0.1f;
+	float _rook_activity = 0.2f;
 	float _bishop_pawns = 4.0f;
 	float _pawn_storm = 0.0f; // Redondant?
 	float _pawn_shield = 0.0f; // Redondant?
-	float _weak_squares = 0.35f;
+	float _weak_squares = 0.25f;
 	float _castling_distance = 1.0f;
 	float _bishop_activity = 4.0f;
-	float _isolated_pieces = 0.3f;
+	float _isolated_pieces = 0.25f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
 	int _pieces_value_begin[6] = { 80, 345, 360, 460, 1135, 0 };
