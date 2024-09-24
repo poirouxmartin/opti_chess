@@ -520,7 +520,19 @@ NEW BUG:
 Parfois on a des eval qui sont égales à +/-INT_MAX, et ça ne devrait pas être le cas...
 Tout refaire la quiescence en mode debug pour clarifier...
 
+NEXT:
+-> Nature de la position
+-> Transpositions
+-> Quiescence à 8?
+
 URGENT:
+r2qk2r/pb1pbpp1/1pn4n/2p1P2p/8/2NB1N1P/PP1BQPP1/R3R1K1 w kq - 1 13 : la tour, tu la mets en d1, pas c1!... (à cause de piece mobility)
+rn2k1r1/8/2p1bp1p/1p1qp3/5p2/pPbP1NP1/P1BNQP1P/1R3KR1 w q - 0 22 : Ce4 gagne...
+r3k1r1/3n4/2p1qp1p/1p2p3/1P3p2/p1NP1NPb/P1B1QPRP/1R3K2 b q - 0 25 : blancs gagnants (clouage fou-tour mal jugé?)
+r3k1r1/3n4/2p1qp1p/1p2p3/1P3p2/p1NP1NP1/P1B1QPKP/1R6 b q - 0 26 : blancs gagnants
+1r3r2/1nqb2bk/3p2pp/3Ppp2/p1P5/2BB1N1P/3Q1PP1/R3R1K1 w - - 0 29 : noirs gagnants
+1r1nqr2/p3ppbk/1p1p2pp/3P4/bP6/3BBN1P/2PQ1PP1/1R1R2K1 w - - 0 20 : b5 enferme le fou -> même si c'est pas en a8, il est enfermé
+r1bk1b1r/pp4pp/2p2n2/3p1p2/3B4/2NB4/PPP2PPP/3RR1K1 w - - 0 15 : égal
 -> 3rk1r1/ppp2p1p/1b2b3/8/1P3Q2/2q5/P2N1PPP/3RKB1R b K - 1 17 : foutu pour les blancs
 -> Quand y'a plein d'options équivalentes, pas besoin de passer trop de temps pour décider laquelle choisir... Réfléchir un max sur les positions critiques (quand y'a des prises, poussées de pions, échecs...)
 3r2k1/1q1n1ppp/2p3b1/p1P3N1/PrPB4/6PP/R2N1PB1/2Q3K1 w - - 3 29 : ici Rh2 est urgent! il y a une grosse ligne ouverte sur le roi.. remettre virtual_mobility?
@@ -562,10 +574,6 @@ r1bqk2r/ppp2ppp/1bn5/4p1N1/3Pp3/2P5/PP3PPP/RNBQ1RK1 b kq - 1 9 : là y'a plein de
 -> En fait les autres coups qui ne font pas mat ne sont pas fully explored, d'où le souci...
 -> Faire du debug, code clean et optimisations
 -> Debugger la quiescence
--> Utiliser des iterations plutôt que des noeuds pour GrogrosZero?
--> Retirer les nodes++ dans GrogrosZero et la quiescence sur les noeuds terminaux
--> Régler les "less nodes than before..."
--> Régler les overflows dans les move time
 -> get_safe_check_value() : hypeeeer lent!!!
 -> Vérifier l'algo... à chaque fois y'a des coups qu'il regarde pas, sauf quand on clique dessus, il voit que c'est le meilleur coup...
 -> Elargir la zone d'attaque défense du roi? pion en e5 participe à l'attaque.. le fou c1 aussi...
@@ -597,7 +605,6 @@ EVAL:
 -> Améliorer les pièces d'attaque et de défense... plus gros bonus quand une pièce attaque un endroit non (ou peu) défendu. plus gros bonus quand on défend une case attaquée
 -> Il donne vraiment trop souvent des pions dans l'ouverture
 -> King safety: protection: avoir une partie dans long term et une autre dans short term? (considéré comme faisant partie de la défense)
--> Réduire l'attaque lorsque négative? Sinon ça donne un trop gros bonus de défense, et il peut pousser des pions devant son roi pour rien
 -> Pour évaluer les finales etc.., il faut un winnable white, et un winnable black... Tour Cavalier vs Tour = nulle
 -> Pions arriérés
 -> Re-évaluer les pièces en fonction du type de position (colonnes / diagonales ouvertes / fermées, pions passés...)
@@ -607,7 +614,6 @@ EVAL:
 -> Potentiel d'attaque global qui modifie moins la king safety? même avec 2 pièces, ça peut mater contre beaucoup
 -> Trop de bonus cumulés pour les fous: fianchetto, piece mobility, piece activity, bishop activity, bishop pair...
 -> Pour king safety, quand ça dépasse pas 0, rien ne change.. alors il n'y a jamais de plan d'attaque...
--> Trop de b6/Fb7 ou b3/Fb2, pas forcément utiles... fianchetto, trop doublon avec les autres bonus?
 -> Catégorie: Développement (~= distance au roque?), plutôt que de compter ça dans King
 -> Rajouter un knight activity?
 -> https://hxim.github.io/Stockfish-Evaluation-Guide/ : shelter strength à implémenter... rnbqkbnr/ppp1pppp/8/3p4/6P1/8/PPPPPP1P/RNBQKBNR w KQkq - 0 2 : ici le roi blanc est le plus faible. castling distance donne aussi un bonus, alors que le roque côté roi est pourri...
@@ -639,7 +645,6 @@ r1bq1rk1/1ppnbppp/4p3/4P3/pPBP3P/P4N2/2QB1PP1/R3K2R b KQ - 0 14 : ici, il faut r
 r1bq1rk1/1pp1bpp1/1n2p2p/4P3/pP1P3P/P2B1N2/2QB1PP1/R3K2R w KQ - 0 16 : Th3 très fort, pour ramener une autre pièce dans l'attaque
 r2q1r1k/1ppbbpp1/1n2p2p/4P3/pP1P3P/P2B1NR1/2QB1PP1/R3K3 w Q - 4 18 : Fxh6!! gagne déjà
 r1bq1rk1/1pp3p1/1n3b1B/4p3/pP1P2R1/P2B1N2/2Q2PP1/R3K3 w Q - 0 21 : Txg7!! gagne (il faut un peu de calcul quand-même)
-8/p4k1p/6r1/n7/8/1PP3P1/R4PKP/8 b - - 2 39 : weak squares +160??... Il faut vraiment améliorer ça... quand y'a plus de pions, il voit des cases faibles partout...
 2rqkb1r/pp3p2/2n1p3/3pPnpp/3P4/3QB1PP/PP1N1P1N/R4RK1 b k - 0 14 : pas Th7 stp...
 3rkbnr/pQ2pppp/4q3/2p5/3n4/6PP/PPPP1PB1/RNB2K1R w k - 1 10 : ici c'est les blancs qui sont gagnants...
 r2q4/pp4kp/2p1Qrp1/3pB3/3P4/8/PPP3PP/R5K1 w - - 0 20 : met 4 ans à voir que Tf1 gagne alors que c'est évident... la quiescence prend trop de temps alors il regarde pas tous les coups et reste sur le standpat
@@ -696,8 +701,6 @@ r7/ppp2pp1/3p1nk1/1P1Pp3/1PP1Pn2/R4Pqr/1B1Q3N/6RK b - - 1 29 : quasi gagnant pou
 -> TESTING: Faire une fonction pour tester les IAs: problèmes tactiques, stratégiques, finales, ouvertures... avec différents temps de réflexion (1s, 3s, 10s par exemple)
 -> Fonction de test d'évaluation: comparer les évals de Grogros avec celles de Leela par exemple puis fine-tuner. Résultat final: correlation entre les évals de Grogros et les évals de Leela
 -> Utiliser ça pour entraîner les réseaux de neurones (au lieu de jouer contre d'autres réseaux? combiner les deux?)
-
--> Utiliser les noms des pièces plutôt que 0, 1, 2, 3... Utiliser Array plutôt que le faire à la main. Faire une structure pour stocker les coups plutôt qu'un tableau lourd?
 
 -> Simplifier le softmax: delta entre le meilleur coup et l'actuel, et voir en fonction du pourcentage de réflexion déjà fait
 
