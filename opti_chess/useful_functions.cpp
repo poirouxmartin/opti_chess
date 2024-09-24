@@ -481,3 +481,8 @@ double sigmoid(double x, double alpha, double beta) {
 	double k = 1.0 / alpha * log(1.0 / beta - 1.0);
 	return 1.0 / (1.0 + exp(k * x));
 }
+
+// Fonction qui renvoie la valeur d'évaluation en fonction de l'avancement, et d'un facteur multiplicatif en fonction de l'avancement
+double eval_from_progress(const int eval, const float advancement, const float factor) {
+	return eval * max(0.0f, 1.0f + advancement * (factor - 1.0f));
+}

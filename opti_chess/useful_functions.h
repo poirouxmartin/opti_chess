@@ -116,3 +116,6 @@ void nodes_weighting(double*, const double*, int);
 
 // Sigmoïde
 double sigmoid(double x, double alpha, double beta);
+
+// Fonction qui renvoie la valeur d'évaluation en fonction de l'avancement, et d'un facteur multiplicatif en fonction de l'avancement
+double eval_from_progress(const int eval, const float advancement, const float factor);
