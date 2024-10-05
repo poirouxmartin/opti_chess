@@ -1534,7 +1534,8 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	}
 
 	// Nombre d'itérations supposées par seconde
-	constexpr int supposed_ips = 1000;
+	//constexpr int supposed_ips = 1000;
+	const int supposed_ips = max(1500, _root_exploration_node->get_ips());
 
 	// Nombre de noeuds que Grogros doit calculer (en fonction des contraintes de temps)
 	//int grogros_nps = _root_exploration_node->get_avg_nps();
