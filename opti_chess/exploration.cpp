@@ -376,8 +376,9 @@ Move Node::pick_random_child(const float beta, const float k_add) const {
 		cout << "negative nodes???" << endl;
 	}
 
+	// Faut-il chercher plus large en finale?
 	//double enlargement_factor = (double)_nodes / (double)_iterations;
-	double enlargement_factor = sqrt((double)_nodes / (double)_iterations);
+	double enlargement_factor = pow((double)_nodes / (double)_iterations / (1 - _board->_adv), 0.3);
 	
 	// FIXME: quelle est la meilleure manière d'élargir?
 	// Réduire beta? Augmenter k_add? Les deux?

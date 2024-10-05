@@ -792,11 +792,15 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	if (display)
 		main_GUI._eval_components += "ADVANCEMENT: " + to_string(static_cast<int>(round(100 * _adv))) + "%\n";
 
+	// Nature de la position (ouverte/fermée)
+	const float position_nature = get_position_nature();
+	if (display)
+		main_GUI._eval_components += "CLOSED: " + to_string(static_cast<int>(position_nature * 100.0f)) + "%\n";
 
 	// *** MATERIEL ***
 
 	if (display)
-		main_GUI._eval_components += "\nMATERIAL:\n";
+		main_GUI._eval_components += "\nMATERIAL\n";
 
 	int total_material = 0;
 
@@ -817,14 +821,14 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	}
 
 	if (display)
-		main_GUI._eval_components += "TOTAL: " + (total_material >= 0 ? string("+") : string()) + to_string(total_material) + "\n";
+		main_GUI._eval_components += "--- TOTAL: " + (total_material >= 0 ? string("+") : string()) + to_string(total_material) + " ---\n";
 
 	_evaluation += total_material;
 
 	// *** POSITIONNEMENT ***
 
 	if (display)
-		main_GUI._eval_components += "\nPOSITIONING:\n";
+		main_GUI._eval_components += "\nPOSITIONING\n";
 
 	int total_positioning = 0;
 
@@ -846,7 +850,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 
 	// Fous en fianchetto
 	if (eval->_fianchetto != 0.0f) {
-		const int fianchetto = get_fianchetto_value() * eval->_fianchetto;
+		const int fianchetto = get_fianchetto_value() * eval->_fianchetto * (1 - position_nature);
 		if (display)
 			main_GUI._eval_components += "fianchetto bishops: " + (fianchetto >= 0 ? string("+") : string()) + to_string(fianchetto) + "\n";
 		total_positioning += fianchetto;
@@ -861,12 +865,12 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 		total_positioning += pieces_alignment;
 	}
 
-	// Pièces isolées
-	if (eval->_isolated_pieces != 0.0f) {
-		const int isolated_pieces = get_isolated_pieces() * eval->_isolated_pieces;
+	// Pièces enfermées
+	if (eval->_trapped_pieces != 0.0f) {
+		const int trapped_pieces = get_trapped_pieces() * eval->_trapped_pieces;
 		if (display)
-			main_GUI._eval_components += "isolated_pieces: " + (isolated_pieces >= 0 ? string("+") : string()) + to_string(isolated_pieces) + "\n";
-		total_positioning += isolated_pieces;
+			main_GUI._eval_components += "trapped pieces: " + (trapped_pieces >= 0 ? string("+") : string()) + to_string(trapped_pieces) + "\n";
+		total_positioning += trapped_pieces;
 	}
 
 	// Menace de poussée de pion sur une pièce adverse
@@ -878,7 +882,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	}
 
 	if (display)
-		main_GUI._eval_components += "TOTAL: " + (total_positioning >= 0 ? string("+") : string()) + to_string(total_positioning) + "\n";
+		main_GUI._eval_components += "--- TOTAL: " + (total_positioning >= 0 ? string("+") : string()) + to_string(total_positioning) + " ---\n";
 
 	_evaluation += total_positioning;
 
@@ -886,7 +890,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	// *** ACTIVITE ***
 
 	if (display)
-		main_GUI._eval_components += "\nACTIVITY:\n";
+		main_GUI._eval_components += "\nACTIVITY\n";
 
 	int total_activity = 0;
 
@@ -904,6 +908,14 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 		if (display)
 			main_GUI._eval_components += "piece activity: " + (piece_activity >= 0 ? string("+") : string()) + to_string(piece_activity) + "\n";
 		total_activity += piece_activity;
+	}
+
+	// Activité des cavaliers
+	if (eval->_knight_activity != 0.0f) {
+		const int knight_activity = get_knight_activity() * eval->_knight_activity;
+		if (display)
+			main_GUI._eval_components += "knight activity: " + (knight_activity >= 0 ? string("+") : string()) + to_string(knight_activity) + "\n";
+		total_activity += knight_activity;
 	}
 
 	// Activité des fous
@@ -939,7 +951,16 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	}
 
 	if (display)
-		main_GUI._eval_components += "TOTAL: " + (total_activity >= 0 ? string("+") : string()) + to_string(total_activity) + "\n";
+		main_GUI._eval_components += "SUB-TOTAL: " + (total_activity >= 0 ? string("+") : string()) + to_string(total_activity) + "\n";
+
+	// Ajustement en fonction de la nature de la position
+	if (display)
+		main_GUI._eval_components += "position nature: x" + to_string((int)(100 - 100 * position_nature)) + "%\n";
+	total_activity *= 1 - position_nature;
+
+
+	if (display)
+		main_GUI._eval_components += "--- TOTAL: " + (total_activity >= 0 ? string("+") : string()) + to_string(total_activity) + " ---\n";
 
 	_evaluation += total_activity;
 
@@ -947,7 +968,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	// *** STRUCTURE DE PIONS ***
 
 	if (display)
-		main_GUI._eval_components += "\nPAWN STRUCTURE:\n";
+		main_GUI._eval_components += "\nPAWN STRUCTURE\n";
 
 	int total_pawn_structure = 0;
 
@@ -962,7 +983,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	// Avantage d'espace
 	if (eval->_space_advantage != 0.0f)
 	{
-		const int space = get_space() * eval->_space_advantage;
+		const int space = get_space() * eval->_space_advantage * position_nature;
 		if (display)
 			main_GUI._eval_components += "space: " + (space >= 0 ? string("+") : string()) + to_string(space) + "\n";
 		total_pawn_structure += space;
@@ -986,7 +1007,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 
 	// Cases faibles et avant-postes
 	if (eval->_weak_squares != 0.0f) {
-		const int weak_squares = get_weak_squares() * eval->_weak_squares;
+		const int weak_squares = get_weak_squares() * eval->_weak_squares * position_nature;
 		if (display)
 			main_GUI._eval_components += "weak squares: " + (weak_squares >= 0 ? string("+") : string()) + to_string(weak_squares) + "\n";
 		total_pawn_structure += weak_squares;
@@ -994,7 +1015,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 
 	// Evaluation avec toutes ses composantes
 	if (display)
-		main_GUI._eval_components += "TOTAL: " + (total_pawn_structure >= 0 ? string("+") : string()) + to_string(total_pawn_structure) + "\n";
+		main_GUI._eval_components += "--- TOTAL: " + (total_pawn_structure >= 0 ? string("+") : string()) + to_string(total_pawn_structure) + " ---\n";
 
 	_evaluation += total_pawn_structure;
 
@@ -1002,7 +1023,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	// *** ROI ***
 
 	if (display)
-		main_GUI._eval_components += "\nKING:\n";
+		main_GUI._eval_components += "\nKING\n";
 
 	int total_king = 0;
 
@@ -1047,7 +1068,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	}
 
 	if (display)
-		main_GUI._eval_components += "TOTAL: " + (total_king >= 0 ? string("+") : string()) + to_string(total_king) + "\n";
+		main_GUI._eval_components += "--- TOTAL: " + (total_king >= 0 ? string("+") : string()) + to_string(total_king) + " ---\n";
 
 	_evaluation += total_king;
 
@@ -1055,7 +1076,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	// *** FINALES ***
 
 	if (display)
-		main_GUI._eval_components += "\nENDGAME:\n";
+		main_GUI._eval_components += "\nENDGAME\n";
 
 	int total_endgame = 0;
 
@@ -1076,20 +1097,16 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	}
 
 	if (display)
-		main_GUI._eval_components += "TOTAL: " + (total_endgame >= 0 ? string("+") : string()) + to_string(total_endgame) + "\n";
+		main_GUI._eval_components += "--- TOTAL: " + (total_endgame >= 0 ? string("+") : string()) + to_string(total_endgame) + " ---\n";
 
 	_evaluation += total_endgame;
 
 	// *** NATURE DE LA POSITION ***
 
 	if (display)
-		main_GUI._eval_components += "\nPOSITION NATURE:\n";
+		main_GUI._eval_components += "\nPOSITION NATURE\n";
 
 	int total_nature = 0;
-
-	// Nature de la position (TODO)
-	if (display)
-		main_GUI._eval_components += "(position nature: 0)\n";
 
 	// Forteresse
 	if (eval->_push != 0.0f) {
@@ -1102,14 +1119,14 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	}
 
 	if (display)
-		main_GUI._eval_components += "TOTAL: " + (total_nature >= 0 ? string("+") : string()) + to_string(total_nature) + "\n";
+		main_GUI._eval_components += "--- TOTAL: " + (total_nature >= 0 ? string("+") : string()) + to_string(total_nature) + " ---\n";
 
 	_evaluation += total_nature;
 
 
 	// *** TOTAL ***
 	if (display) {
-		main_GUI._eval_components += "\nTOTAL COMPONENTS:\n";
+		main_GUI._eval_components += "\nTOTAL COMPONENTS\n";
 		main_GUI._eval_components += "Material: " + (total_material >= 0 ? string("+") : string()) + to_string(total_material) + "\n";
 		main_GUI._eval_components += "Positioning: " + (total_positioning >= 0 ? string("+") : string()) + to_string(total_positioning) + "\n";
 		main_GUI._eval_components += "Activity: " + (total_activity >= 0 ? string("+") : string()) + to_string(total_activity) + "\n";
@@ -2084,6 +2101,10 @@ int Board::get_king_safety(float display_factor) {
 		//cout << "new protection b: " << b_king_protection << endl;
 	}
 
+	// Protection de base d'un roi seul
+	w_king_protection += 100;
+	b_king_protection += 100;
+
 	//r2r2k1/1b3p2/p3pn2/2b1q2p/4P1p1/2N4P/PPBBQPP1/R2R2K1 w - - 0 19
 
 	// Droits de roque
@@ -2471,7 +2492,7 @@ int Board::get_pawn_structure(float display_factor)
 	}
 
 	// Pions isolés
-	constexpr int isolated_pawn = -30;
+	constexpr int isolated_pawn = -50;
 	constexpr float open_row_factor = 3.0f; // Si le pion isolé est sur une colonne ouverte, il est beaucoup plus faible
 	constexpr float isolated_adv_factor = 0.75f; // En fonction de l'advancement de la partie
 	const float isolated_adv = 1 * (1 + (isolated_adv_factor - 1) * _adv);
@@ -2522,8 +2543,8 @@ int Board::get_pawn_structure(float display_factor)
 	pawn_structure += isolated_pawns;
 
 	// Pions doublés (ou triplés...)
-	constexpr int doubled_pawn = -40;
-	constexpr float doubled_adv_factor = 0.5f; // En fonction de l'advancement de la partie
+	constexpr int doubled_pawn = -50;
+	constexpr float doubled_adv_factor = 1.0f; // En fonction de l'advancement de la partie
 	const float doubled_adv = 1 * (1 + (doubled_adv_factor - 1) * _adv);
 	int doubled_pawns = 0;
 
@@ -3137,7 +3158,7 @@ float Board::get_attacks_and_defenses() const
 	}
 
 	// En fonction de l'avancement
-	constexpr float advancement_factor = 0.3f;
+	constexpr float advancement_factor = 0.5f;
 
 	return eval_from_progress(white_attacks_eval - black_attacks_eval, _adv, advancement_factor);
 }
@@ -4086,7 +4107,7 @@ int Board::get_piece_activity() const
 	}
 
 	// Facteur multiplicatif en fonction de l'avancement
-	float advancement_factor = 0.3f;
+	float advancement_factor = 0.5f;
 
 	return eval_from_progress(activity, _adv, advancement_factor);
 }
@@ -4608,7 +4629,8 @@ int Board::get_pawn_push_threats() const {
 	// Il faut vérifier que rien ne bloque la poussée (ni une pièce, ni un contrôle adverse)
 	// TODO améliorer les contrôles... car ça veut dire qu'il n'y a jamais de menaces contre un fou, même si le pion est protégé
 	
-	int threats = 0;
+	int w_threats = 0;
+	int b_threats = 0;
 
 	for (uint_fast8_t i = 1; i < 7; i++) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
@@ -4616,33 +4638,79 @@ int Board::get_pawn_push_threats() const {
 
 			// Pion blanc
 			if (p == w_pawn && i < 6) {
-				if (j > 0) {
-					threats += _array[i + 1][j] == 0 && _array[i + 2][j - 1] > 7; // Poussée simple
-					threats += i == 1 && _array[i + 1][j] == 0 && _array[i + 2][j] == 0 && _array[i + 3][j - 1] > 7; // Poussée double
+
+				// Le pion peut-il avancer de façon sécurisée? et de combien de cases?
+				int safe_push = 0;
+
+				// Si la case devant le pion est vide, et n'est pas controlée par un pion adverse
+				if (_array[i + 1][j] == none && (j == 0 || _array[i + 2][j - 1] != b_pawn) && (j == 7 || _array[i + 2][j + 1] != b_pawn)) {
+					safe_push = 1;
+
+					// Poussée double
+					if (i == 1 && _array[i + 2][j] == none && (j == 0 || _array[i + 3][j - 1] != b_pawn) && (j == 7 || _array[i + 3][j + 1] != b_pawn)) {
+						safe_push = 2;
+					}
 				}
-				if (j < 7) {
-					threats += _array[i + 1][j] == 0 && _array[i + 2][j + 1] > 7;
-					threats += i == 1 && _array[i + 1][j] == 0 && _array[i + 2][j] == 0 && _array[i + 3][j + 1] > 7;
+
+				// Les poussées menacent-elles des pièces?
+				if (safe_push > 0) {
+					if (j > 0 && is_black(_array[i + 2][j - 1])) {
+						w_threats++;
+					}
+					if (j < 7 && is_black(_array[i + 2][j + 1])) {
+						w_threats++;
+					}
+
+					if (safe_push > 1) {
+						if (j > 0 && is_black(_array[i + 3][j - 1])) {
+							w_threats++;
+						}
+						if (j < 7 && is_black(_array[i + 3][j + 1])) {
+							w_threats++;
+						}
+					}
 				}
 			}
 
 			// Pion noir
 			else if (p == b_pawn && i > 1) {
-				if (j > 0) {
-					threats -= _array[i - 1][j] == 0 && is_in_fast(_array[i - 2][j - 1], 2, 6);
-					threats -= i == 6 && _array[i - 1][j] == 0 && _array[i - 2][j] == 0 && is_in_fast(_array[i - 3][j - 1], 2, 6);
-				}
-				if (j < 7) {
-					threats -= _array[i - 1][j] == 0 && is_in_fast(_array[i - 2][j + 1], 2, 6);
-					threats -= i == 6 && _array[i - 1][j] == 0 && _array[i - 2][j] == 0 && is_in_fast(_array[i - 3][j + 1], 2, 6);
-				}
-					
-			}
 
+				// Le pion peut-il avancer de façon sécurisée? et de combien de cases?
+				int safe_push = 0;
+
+				// Si la case devant le pion est vide, et n'est pas controlée par un pion adverse
+				if (_array[i - 1][j] == none && (j == 0 || _array[i - 2][j - 1] != w_pawn) && (j == 7 || _array[i - 2][j + 1] != w_pawn)) {
+					safe_push = 1;
+
+					// Poussée double
+					if (i == 6 && _array[i - 2][j] == none && (j == 0 || _array[i - 3][j - 1] != w_pawn) && (j == 7 || _array[i - 3][j + 1] != w_pawn)) {
+						safe_push = 2;
+					}
+				}
+
+				// Les poussées menacent-elles des pièces?
+				if (safe_push > 0) {
+					if (j > 0 && is_white(_array[i - 2][j - 1])) {
+						b_threats++;
+					}
+					if (j < 7 && is_white(_array[i - 2][j + 1])) {
+						b_threats++;
+					}
+
+					if (safe_push > 1) {
+						if (j > 0 && is_white(_array[i - 3][j - 1])) {
+							b_threats++;
+						}
+						if (j < 7 && is_white(_array[i - 3][j + 1])) {
+							b_threats++;
+						}
+					}
+				}
+			}
 		}
 	}
 
-	return threats;
+	return w_threats - b_threats;
 }
 
 // Fonction qui calcule et renvoie la proximité du roi avec les pions
@@ -4844,7 +4912,7 @@ int Board::get_rook_activity() const
 	}
 
 	// Facteur multiplicatif en fonction de l'avancement de la partie
-	float advancement_factor = 0.3f;
+	float advancement_factor = 0.5f;
 
 	return eval_from_progress(activity, _adv, advancement_factor);
 }
@@ -5051,6 +5119,7 @@ int Board::get_weak_squares() const {
 	// Essayer un bonus en fonction de la distance d'une pièce vers la case?
 
 	// r1bq2rk/2n4p/3p4/pNpPnp2/P1P1pN2/2Q5/4BPPP/1R3RK1 w - - 1 25 : ici peut-on considérer e5 comme étant une case faible pour les blancs?
+	// rnbqkb1r/ppp2ppp/4pn2/3p4/3P4/4PN2/PPP2PPP/RNBQKB1R w KQkq - 0 4 : quand on fait h4, ça rajoute beaucoup à weak_squares... pourquoi??
 
 	// Valeur des cases faibles
 	const static int weak_square_values[8][8] = {
@@ -5310,7 +5379,7 @@ int Board::get_weak_squares() const {
 				}
 
 				// Valeur du contrôle de la case faible par un pion adverse
-				square_value *= (0.5 + (pawn_controls > 0));
+				square_value *= (1.25 + (pawn_controls > 0));
 
 				//cout << "with controls, square value: " << square_value << endl;
 
@@ -5383,7 +5452,7 @@ int Board::get_castling_distance() const {
 	if (_castling_rights.k_w) {
 		// Y'a -t-il des pièces qui bloquent le roque? (Si le fou est encore en f1 (à vérifier que c'est le fou...), rajoute du malus si qq chose bloque sa sortie)
 		// TODO : à améliorer, car il peut y avoir des cas spéciaux...
-		w_kingside_castle_distance += (_array[0][5] != 0) + (_array[0][6] != 0) + (_array[0][5] != 0 && _array[1][4] != 0 && _array[1][6] != 0);
+		w_kingside_castle_distance += (_array[0][5] != 0) + (_array[0][6] != 0) + (_array[0][5] == w_bishop && _array[1][4] != 0 && _array[1][6] != 0);
 		//cout << "w_kingside_castle_distance: " << (int)w_kingside_castle_distance << endl;
 
 		// Y'a-t-il des pièces adverses qui contrôlent les cases?
@@ -5399,7 +5468,7 @@ int Board::get_castling_distance() const {
 	// Si on peut encore roquer côté dame
 	if (_castling_rights.q_w) {
 		// Y'a -t-il des pièces qui bloquent le roque?
-		w_queenside_castle_distance += (_array[0][1] != 0) + (_array[0][2] != 0) + (_array[0][3] != 0) + (_array[0][3] != 0 && _array[1][2] != 0 && _array[1][4] != 0);
+		w_queenside_castle_distance += (_array[0][1] != 0) + (_array[0][2] != 0) + (_array[0][3] != 0) + (_array[0][2] == w_bishop && _array[1][1] != 0 && _array[1][3] != 0);
 		//cout << "w_queenside_castle_distance: " << (int)w_queenside_castle_distance << endl;
 
 		// Y'a-t-il des pièces adverses qui contrôlent les cases?
@@ -5421,7 +5490,7 @@ int Board::get_castling_distance() const {
 	// Si on peut encore roquer côté roi
 	if (_castling_rights.k_b) {
 		// Y'a -t-il des pièces qui bloquent le roque?
-		b_kingside_castle_distance += (_array[7][5] != 0) + (_array[7][6] != 0) + (_array[7][5] != 0 && _array[6][4] != 0 && _array[6][6] != 0);
+		b_kingside_castle_distance += (_array[7][5] != 0) + (_array[7][6] != 0) + (_array[7][5] == b_bishop && _array[6][4] != 0 && _array[6][6] != 0);
 		//cout << "b_kingside_castle_distance: " << (int)b_kingside_castle_distance << endl;
 
 		// Y'a-t-il des pièces adverses qui contrôlent les cases?
@@ -5437,7 +5506,7 @@ int Board::get_castling_distance() const {
 	// Si on peut encore roquer côté dame
 	if (_castling_rights.q_b) {
 		// Y'a -t-il des pièces qui bloquent le roque?
-		b_queenside_castle_distance += (_array[7][1] != 0) + (_array[7][2] != 0) + (_array[7][3] != 0) + (_array[7][3] != 0 && _array[6][2] != 0 && _array[6][4] != 0);
+		b_queenside_castle_distance += (_array[7][1] != 0) + (_array[7][2] != 0) + (_array[7][3] != 0) + (_array[7][2] == b_bishop && _array[6][1] != 0 && _array[6][3] != 0);
 		//cout << "b_queenside_castle_distance: " << (int)b_queenside_castle_distance << endl;
 
 		// Y'a-t-il des pièces adverses qui contrôlent les cases?
@@ -5537,7 +5606,7 @@ int Board::get_bishop_activity() const {
 			uint_fast8_t p = _array[i][j];
 
 			// Fou blanc
-			if (p == 3) {
+			if (p == w_bishop) {
 				// Diagonale haut-gauche
 				for (uint_fast8_t k = 1; k < min(i, j) + 1; k++) {
 					if (_array[i - k][j - k] != 1 && _array[i - k][j - k] != 7)
@@ -5572,7 +5641,7 @@ int Board::get_bishop_activity() const {
 			}
 
 			// Fou noir
-			else if (p == 9) {
+			else if (p == b_bishop) {
 				// Diagonale haut-gauche
 				for (uint_fast8_t k = 1; k < min(i, j) + 1; k++) {
 					if (_array[i - k][j - k] != 1 && _array[i - k][j - k] != 7)
@@ -5609,7 +5678,9 @@ int Board::get_bishop_activity() const {
 	}
 
 	// Facteur multiplicatif en fonction de l'avancement
-	float bishop_activity_advancement_factor = 0.35f;
+	float bishop_activity_advancement_factor = 0.5f;
+
+	// TODO: rendre ça non linéaire?
 
 	return eval_from_progress(w_bishop_activity - b_bishop_activity, _adv, bishop_activity_advancement_factor);
 }
@@ -5676,19 +5747,22 @@ void Board::display_positions_history() const
 	return eval_string;
 }
 
-// Fonction qui renvoie l'évaluation des pièces isolées
-[[nodiscard]] int Board::get_isolated_pieces() const {
+// Fonction qui renvoie l'évaluation des pièces enfermées
+[[nodiscard]] int Board::get_trapped_pieces() const {
 	// Pièce isolée: pièce éloignée des autres pièces alliées
 
 	// TODO: adapter ça pour les endgames aussi? pour que le roi se rapproche des pions? pareil pour les chevaux...
 	// TODO: ajouter un rayon variable pour le centre? pour savoir s'il est étendu ou non pour mieux évaluer si une pièce est effectivement isolée
 
+	// TESTS
+	//rn2kbnr/pp3ppp/4p3/2ppPb2/2PP4/4BN2/Pq2BPPP/RN1QK2R w KQkq - 0 8
+
 	// Poids par type de pièce
 	const float pawn_weight = 1.0f;
-	const float knight_weight = 5.0f; // Gros poids, car pièce de courte portée
+	const float knight_weight = 4.0f; // Gros poids, car pièce de courte portée
 	const float bishop_weight = 3.0f;
 	const float rook_weight = 3.0f;
-	const float queen_weight = 10.0f;
+	const float queen_weight = 5.0f;
 	const float king_weight = 0.0f; // Je sais pas trop s'il faut donner un poids ici, car il risque d'accumuler toutes ses pièces en défense?
 
 	// Pièces blanches
@@ -5706,9 +5780,9 @@ void Board::display_positions_history() const
 	float b_total_weight = 0.0f;
 
 	// Pour chaque pièce
-	for (uint_fast8_t i = 0; i < 8; i++) {
-		for (uint_fast8_t j = 0; j < 8; j++) {
-			uint_fast8_t p = _array[i][j];
+	for (uint_fast8_t row = 0; row < 8; row++) {
+		for (uint_fast8_t col = 0; col < 8; col++) {
+			uint_fast8_t p = _array[row][col];
 
 			if (p == none)
 				continue;
@@ -5721,8 +5795,8 @@ void Board::display_positions_history() const
 				//cout << "i: " << i << ", j: " << j << ", weight: " << weight << endl;
 
 				// Centre de masse
-				w_center_of_mass_i += i * weight;
-				w_center_of_mass_j += j * weight;
+				w_center_of_mass_i += row * weight;
+				w_center_of_mass_j += col * weight;
 				w_total_weight += weight;
 			}
 
@@ -5734,8 +5808,8 @@ void Board::display_positions_history() const
 				//cout << "i: " << i << ", j: " << j << ", weight: " << weight << endl;
 
 				// Centre de masse
-				b_center_of_mass_i += i * weight;
-				b_center_of_mass_j += j * weight;
+				b_center_of_mass_i += row * weight;
+				b_center_of_mass_j += col * weight;
 				b_total_weight += weight;
 			}
 		}
@@ -5756,10 +5830,10 @@ void Board::display_positions_history() const
 
 	// Distance des pièces au centre de masse
 	// Il faut pénaliser les pièces loin du centre
-	float min_distance = 1.0f;
+	float min_distance = 4.0f;
 
-	float w_isolated_pieces = 0.0f;
-	float b_isolated_pieces = 0.0f;
+	float w_trapped_pieces = 0.0f;
+	float b_trapped_pieces = 0.0f;
 
 	// Pénalité linéaire pour le moment?
 
@@ -5769,45 +5843,47 @@ void Board::display_positions_history() const
 	const float bishop_malus = 7.0f;
 	const float rook_malus = 9.0f;
 	const float queen_malus = 12.0f;
-	const float king_malus = 15.0f;
+	const float king_malus = 0.0f;
 
-	const float attacked_factor = 1.75f;
-	const float trapped_factor = 3.0f;
+	const float attacked_factor = 2.0f;
+	const float trapped_factor = 5.0f;
 
 	// Avancement à partir duquel l'isolement ne compte plus (on garde néanmoins l'enfermement de pièces)
 	const float max_adv = 0.6f;
-
-	// FIXME: rqb2Q2/3p3p/pBp1p1p1/P3Pp2/1P3P1k/2N5/2P1B1PP/6K1 w - - 5 30 : king malus marche pas?
 
 	const Map w_controls = get_white_controls_map();
 	const Map b_controls = get_black_controls_map();
 
 	//w_controls.print();
 	//b_controls.print();
+	//5rk1/Qbp2pp1/1pq1p2p/3p4/8/P1P1P3/2P2PPP/R3R1K1 w - - 0 21
 
 	// Pour chaque pièce
-	for (uint_fast8_t i = 0; i < 8; i++) {
-		for (uint_fast8_t j = 0; j < 8; j++) {
-			uint_fast8_t p = _array[i][j];
+	for (uint_fast8_t row = 0; row < 8; row++) {
+		for (uint_fast8_t col = 0; col < 8; col++) {
+			uint_fast8_t p = _array[row][col];
 
 			if (p == none)
 				continue;
 
 			// Si c'est une pièce blanche
-			if (p <= w_king) {
+			if (is_white(p)) {
+
 				// Distance au centre de masse
-				float distance = sqrt(pow(i - w_center_of_mass_i, 2) + pow(j - w_center_of_mass_j, 2));
+				float distance = sqrt(pow(row - w_center_of_mass_i, 2) + pow(col - w_center_of_mass_j, 2));
+
+				distance = max(0.0f, distance - min_distance);
 
 				// Plus gros malus quand proche du camp advserse
-				distance *= (3 + max(0, (int)i - 3));
+				distance *= row + 1;
 
 				// Pénalité
 				const float malus = p == w_pawn ? pawn_malus : (p == w_knight ? knight_malus : (p == w_bishop ? bishop_malus : (p == w_rook ? rook_malus : (p == w_queen ? queen_malus : king_malus))));
 
 				// Pénalité en fonction de la distance
-				float isolated_piece = max(0.0f, distance - min_distance) * malus;
+				float trapped_piece = distance * malus;
 
-				//cout << Pos(i, j).square() << ", distance: " << distance << ", isolated_piece: " << isolated_piece;
+				//cout << Pos(row, col).square() << ", distance: " << distance << ", trapped_piece: " << trapped_piece;
 
 				// Pénalité augmentée en fonction du peu de cases non-controllées où la pièce peut aller
 
@@ -5815,14 +5891,14 @@ void Board::display_positions_history() const
 
 				// Pion
 				if (p == w_pawn) {
-					safe_squares += b_controls._array[i + 1][j] == 0 && !is_white(_array[i - 1][j]);
+					safe_squares += b_controls._array[row + 1][col] == 0 && !is_white(_array[row - 1][col]);
 				}
 
 				// Cavalier
 				if (p == w_knight) {
 					for (int k = 0; k < 8; k++) {
-						int i2 = i + knight_moves[k][0];
-						int j2 = j + knight_moves[k][1];
+						int i2 = row + knight_moves[k][0];
+						int j2 = col + knight_moves[k][1];
 
 						if (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8)
 							safe_squares += b_controls._array[i2][j2] == 0 && !is_white(_array[i2][j2]);
@@ -5832,8 +5908,8 @@ void Board::display_positions_history() const
 				// Pièces à mouvement rectiligne
 				if (p == w_rook || p == w_queen) {
 					for (int k = 0; k < 4; k++) {
-						int i2 = i + rect_moves[k][0];
-						int j2 = j + rect_moves[k][1];
+						int i2 = row + rect_moves[k][0];
+						int j2 = col + rect_moves[k][1];
 
 						while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
 							// S'il la case n'est pas controllée et qu'une pièce alliée ne la bloque pas
@@ -5852,8 +5928,8 @@ void Board::display_positions_history() const
 				// Pièces à mouvement diagonal
 				if (p == w_bishop || p == w_queen) {
 					for (int k = 0; k < 4; k++) {
-						int i2 = i + diag_moves[k][0];
-						int j2 = j + diag_moves[k][1];
+						int i2 = row + diag_moves[k][0];
+						int j2 = col + diag_moves[k][1];
 
 						while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
 							// S'il la case n'est pas controllée et qu'une pièce alliée ne la bloque pas
@@ -5872,8 +5948,8 @@ void Board::display_positions_history() const
 				// Roi
 				if (p == w_king) {
 					for (int k = 0; k < 8; k++) {
-						int i2 = i + all_directions[k][0];
-						int j2 = j + all_directions[k][1];
+						int i2 = row + all_directions[k][0];
+						int j2 = col + all_directions[k][1];
 
 						if (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8)
 							safe_squares += b_controls._array[i2][j2] == 0 && !is_white(_array[i2][j2]);
@@ -5884,32 +5960,35 @@ void Board::display_positions_history() const
 
 				// On ne consière pas un pion comme "piégeable"
 				if (p != w_pawn)
-					isolated_piece *= trapped_malus;
+					trapped_piece = (trapped_piece + malus) * trapped_malus;
 
 				// Malus accru si la pièce est sur une case contrôlée par l'adversaire
-				if (b_controls._array[i][j] != 0)
-					isolated_piece *= attacked_factor;
+				if (b_controls._array[row][col] != 0)
+					trapped_piece *= attacked_factor;
 
-				//cout << ", safe_squares: " << safe_squares << ", attacked: " << (b_controls._array[i][j] != 0) << ", total: " << isolated_piece << endl;
+				//cout << ", safe_squares: " << safe_squares << ", attacked: " << (b_controls._array[row][col] != 0) << ", trapped malus: " << trapped_malus << ", total: " << trapped_piece << endl;
 
-				w_isolated_pieces += isolated_piece;
+				w_trapped_pieces += trapped_piece;
 			}
 
 			// Si c'est une pièce noire
 			else {
+
 				// Distance au centre de masse
-				float distance = sqrt(pow(i - b_center_of_mass_i, 2) + pow(j - b_center_of_mass_j, 2));
+				float distance = sqrt(pow(row - b_center_of_mass_i, 2) + pow(col - b_center_of_mass_j, 2));
+
+				distance = max(0.0f, distance - min_distance);
 
 				// Plus gros malus quand proche du camp adverse
-				distance *= (3 + max(0, 4 - (int)i));
+				distance *= 8 - row;
 
 				// Pénalité
 				const float malus = p == b_pawn ? pawn_malus : (p == b_knight ? knight_malus : (p == b_bishop ? bishop_malus : (p == b_rook ? rook_malus : (p == b_queen ? queen_malus : king_malus))));
 
 				// Pénalité en fonction de la distance
-				float isolated_piece = max(0.0f, distance - min_distance) * malus;
+				float trapped_piece = distance * malus;
 
-				//cout << Pos(i, j).square() << ", distance: " << distance << ", isolated_piece: " << isolated_piece;
+				//cout << Pos(row, col).square() << ", distance: " << distance << ", trapped_piece: " << trapped_piece;
 
 				// Pénalité augmentée en fonction du peu de cases non-controllées où la pièce peut aller
 
@@ -5917,14 +5996,14 @@ void Board::display_positions_history() const
 
 				// Pion
 				if (p == b_pawn) {
-					safe_squares += w_controls._array[i - 1][j] == 0 && !is_black(_array[i + 1][j]);
+					safe_squares += w_controls._array[row - 1][col] == 0 && !is_black(_array[row + 1][col]);
 				}
 
 				// Cavalier
 				if (p == b_knight) {
 					for (int k = 0; k < 8; k++) {
-						int i2 = i + knight_moves[k][0];
-						int j2 = j + knight_moves[k][1];
+						int i2 = row + knight_moves[k][0];
+						int j2 = col + knight_moves[k][1];
 
 						if (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8)
 							safe_squares += w_controls._array[i2][j2] == 0 && !is_black(_array[i2][j2]);
@@ -5934,8 +6013,8 @@ void Board::display_positions_history() const
 				// Pièces à mouvement rectiligne
 				if (p == b_rook || p == b_queen) {
 					for (int k = 0; k < 4; k++) {
-						int i2 = i + rect_moves[k][0];
-						int j2 = j + rect_moves[k][1];
+						int i2 = row + rect_moves[k][0];
+						int j2 = col + rect_moves[k][1];
 
 						while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
 							// S'il la case n'est pas controllée et qu'une pièce alliée ne la bloque pas
@@ -5954,8 +6033,8 @@ void Board::display_positions_history() const
 				// Pièces à mouvement diagonal
 				if (p == b_bishop || p == b_queen) {
 					for (int k = 0; k < 4; k++) {
-						int i2 = i + diag_moves[k][0];
-						int j2 = j + diag_moves[k][1];
+						int i2 = row + diag_moves[k][0];
+						int j2 = col + diag_moves[k][1];
 
 						while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
 							// S'il la case n'est pas controllée et qu'une pièce alliée ne la bloque pas
@@ -5974,8 +6053,8 @@ void Board::display_positions_history() const
 				// Roi
 				if (p == b_king) {
 					for (int k = 0; k < 8; k++) {
-						int i2 = i + all_directions[k][0];
-						int j2 = j + all_directions[k][1];
+						int i2 = row + all_directions[k][0];
+						int j2 = col + all_directions[k][1];
 
 						if (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8)
 							safe_squares += w_controls._array[i2][j2] == 0 && !is_black(_array[i2][j2]);
@@ -5986,23 +6065,23 @@ void Board::display_positions_history() const
 
 				// On ne consière pas un pion comme "piégeable"
 				if (p != b_pawn)
-					isolated_piece *= trapped_malus;
+					trapped_piece = (trapped_piece + malus) * trapped_malus;
 
 				// Malus accru si la pièce est sur une case contrôlée par l'adversaire
-				if (w_controls._array[i][j] != 0)
-					isolated_piece *= attacked_factor;
+				if (w_controls._array[row][col] != 0)
+					trapped_piece *= attacked_factor;
 
-				//cout << ", safe_squares: " << safe_squares << ", attacked: " << (w_controls._array[i][j] != 0) << ", total: " << isolated_piece << endl;
+				//cout << ", safe_squares: " << safe_squares << ", attacked: " << (w_controls._array[row][col] != 0) << ", trapped malus: " << trapped_malus << ", total: " << trapped_piece << endl;
 
-				b_isolated_pieces += isolated_piece;
+				b_trapped_pieces += trapped_piece;
 			}
 		}
 	}
 
-	//cout << "w_isolated_pieces: " << w_isolated_pieces << endl;
-	//cout << "b_isolated_pieces: " << b_isolated_pieces << endl;
+	//cout << "w_trapped_pieces: " << w_trapped_pieces << endl;
+	//cout << "b_trapped_pieces: " << b_trapped_pieces << endl;
 
-	return (b_isolated_pieces - w_isolated_pieces);
+	return (b_trapped_pieces - w_trapped_pieces);
 }
 
 // Fonction qui ajuste les valeurs des pièces (malus/bonus), en fonction du type de position
@@ -6015,18 +6094,76 @@ void Board::display_positions_history() const
 	return 0;
 }
 
-// Fonction qui renvoie la nature de la position de manière chiffrée: 0 = fermée, 1 = ouverte
+// Fonction qui renvoie la nature de la position de manière chiffrée: 0 = ouverte, 1 = fermée
 [[nodiscard]] float Board::get_position_nature() const {
-	// *** TODO ***
+	// Exemples à tester:
+	// rnbqkbnr/8/p1p1p1p1/PpPpPpPp/1P1P1P1P/8/8/RNBQKBNR w KQkq - 1 13 : complètement fermée
+	// r1bqkb1r/pp1n1ppp/2n1p3/2ppP3/3P1P2/2N1BN2/PPP3PP/R2QKB1R b KQkq - 3 7 : structure type française -> plutôt fermée
+	// rnbq1rk1/ppp2ppp/3b1n2/3p4/3P4/3B1N2/PPP2PPP/RNBQ1RK1 w - - 6 7 : française d'échange -> plutôt équilibrée?
+	// rnb1kb1r/ppp1pppp/3q1n2/8/3P4/2N2N2/PPP2PPP/R1BQKB1R b KQkq - 2 5 : scandi -> plutôt ouverte
 
-	// Mettre à jour les autres paramètres d'évaluation en fonction de cette valeur:
-	// Plus la position est ouverte, plus les atouts dynamiques sont forts (activité des pièces, sécurité du roi, etc.) (pas sûr...)
-	// Plus la position est fermée, plus les atouts statiques sont forts (structure de pions, espace, etc.)
+	// Ne dépend que de la structure de pions
 
-	// En position fermée, la position a plus de chances d'aboutir à une nulle. -> réduire l'évaluation?
-	// -> Comment prendre en compte le matériel? Le diminuer? C'est pourtant un paramètre statique...
+	// Facteurs rendant la position plus fermée
+	// - Nombre de pions
+	// - Nombre de pions bloqués
 
-	return 0;
+	// Facteurs rendant la position plus ouverte
+	// - Nombre de colonnes ouvertes
+	// - Nombre de diagonales ouvertes
+
+	// Impact sur les autres paramètres d'évaluation:
+	// Position ouverte:
+	// Activité des pièces
+
+	// Position fermée:
+	// Avantage d'espace
+	// Structure de pions
+	// Placement des pièces
+
+
+	// Facteur à partir duquel on considère la position comme complètement fermée 
+	constexpr int completely_closed = 900;
+
+	// Facteur en dessous duquel on considère la position comme complètement ouverte
+	constexpr int completely_open = 200;
+
+
+	// Fermeture par pion
+	constexpr int pawn_closed = 30;
+
+	// Fermeture par pion bloqué
+	constexpr int blocked_pawn_closed = 50;
+
+	// Nombre de pions
+	int pawns = 0;
+
+	// Nombre de pions bloqués
+	int blocked_pawns = 0;
+
+	for (uint_fast8_t row = 0; row < 8; row++) {
+		for (uint_fast8_t col = 0; col < 8; col++) {
+			uint_fast8_t p = _array[row][col];
+
+			if (p == w_pawn || p == b_pawn) {
+				pawns++;
+
+				// Si le pion est bloqué par un autre pion
+				if (p == w_pawn && (_array[row + 1][col] == w_pawn || _array[row + 1][col] == b_pawn))
+					blocked_pawns++;
+				else if (p == b_pawn && (_array[row - 1][col] == w_pawn || _array[row - 1][col] == b_pawn))
+					blocked_pawns++;
+			}
+		}
+	}
+
+	int range = (completely_closed - completely_open);
+
+	float total_factor = pawn_closed * pawns + blocked_pawn_closed * blocked_pawns;
+
+	float nature = (total_factor - completely_open) / range;
+
+	return min(max(0.0f, nature), 1.0f);
 }
 
 // Fonction qui renvoie la probabilité de nulle de la position
@@ -6052,6 +6189,8 @@ void Board::display_positions_history() const
 	constexpr float king_adjacent_file_bonus = 0.5f;
 
 	// Bonus en plus pour les pièces présentes dessus (tours/dame)
+	constexpr int rook_bonus = 20;
+	constexpr int queen_bonus = 15;
 
 	update_kings_pos();
 
@@ -6068,18 +6207,18 @@ void Board::display_positions_history() const
 	const int opponent_pawn = player ? b_pawn : w_pawn;
 
 	// Pour chaque colonne adjacente au roi noir
-	for (uint_fast8_t j = king_row - 1; j < king_row + 2; j++) {
+	for (uint_fast8_t col = king_row - 1; col < king_row + 2; col++) {
 
 		// Si la colonne est en dehors de l'échiquier
-		if (j < 0 || j > 7)
+		if (col < 0 || col > 7)
 			continue;
 		
 		// Nature de la colonne
 		bool semi_open = true;
 		bool open = true;
 
-		for (uint_fast8_t i = 0; i < 8; i++) {
-			uint_fast8_t p = _array[i][j];
+		for (uint_fast8_t row = 0; row < 8; row++) {
+			uint_fast8_t p = _array[row][col];
 
 			if (p == player_pawn) {
 				semi_open = false;
@@ -6089,14 +6228,25 @@ void Board::display_positions_history() const
 			else if (p == opponent_pawn) {
 				open = false;
 			}
-
 		}
 
 		// Bonus
 		int bonus = (open ? open_file_bonus : (semi_open ? semi_open_file_bonus : 0));
 
+		// Bonus pour les pièces présentes sur la colonne
+		if (open || semi_open) {
+			for (uint_fast8_t row = 0; row < 8; row++) {
+				uint_fast8_t p = _array[row][col];
+
+				if (p == (player ? w_rook : b_rook))
+					bonus += rook_bonus * (1 + open);
+				else if (p == (player ? w_queen : b_queen))
+					bonus += queen_bonus * (1 + open);
+			}
+		}
+
 		// Bonus en fonction de la proximité du roi
-		bonus *= (j == king_row ? king_file_bonus : king_adjacent_file_bonus);
+		bonus *= (col == king_row ? king_file_bonus : king_adjacent_file_bonus);
 
 		total_bonus += bonus;
 	}
@@ -6120,6 +6270,8 @@ void Board::display_positions_history() const
 	constexpr float king_adjacent_diagonal_bonus = 0.5f;
 
 	// Bonus en plus pour les pièces présentes dessus (fous/dame)
+	constexpr int bishop_bonus = 20;
+	constexpr int queen_bonus = 15;
 
 	update_kings_pos();
 
@@ -6174,6 +6326,24 @@ void Board::display_positions_history() const
 
 			// Bonus
 			int bonus = (open ? open_diagonal_bonus : (semi_open ? semi_open_diagonal_bonus : 0));
+
+			// Bonus pour les pièces présentes sur la diagonale
+			if (open || semi_open) {
+				new_i = king_i + i;
+				new_j = king_j + j;
+
+				while (new_i >= 0 && new_i < 8 && new_j >= 0 && new_j < 8) {
+					uint_fast8_t p = _array[new_i][new_j];
+
+					if (p == (color ? w_bishop : b_bishop))
+						bonus += bishop_bonus * (1 + open);
+					else if (p == (color ? w_queen : b_queen))
+						bonus += queen_bonus * (1 + open);
+
+					new_i += i;
+					new_j += j;
+				}
+			}
 
 			// Bonus en fonction de la proximité du roi
 			bonus *= (i == 0 && j == 0 ? king_diagonal_bonus : king_adjacent_diagonal_bonus);
@@ -6246,7 +6416,7 @@ void Board::display_positions_history() const
 	constexpr int semi_attack_value = 30;
 
 	// Facteur d'attaque par pièce (pion, cavalier, fou, tour, dame, roi)
-	constexpr float piece_attack_factor[6] = { 0.5f, 1.35f, 1.0f, 2.0f, 2.5f, 1.0f };
+	constexpr float piece_attack_factor[6] = { 0.5f, 1.35f, 1.0f, 2.2f, 2.5f, 1.0f };
 
 	// Facteur d'attaque en fonction de la distance au roi
 
@@ -6715,4 +6885,53 @@ string piece_name(uint_fast8_t piece) {
 	default:
 		return "none";
 	}
+}
+
+// Fonction qui renvoie un bonus d'activité pour les cavaliers
+int Board::get_knight_activity() const {
+
+	// Bonus par case contrôlée
+	constexpr int control_bonus[8][8] = 
+	{	{ 3, 4, 6, 6, 6, 6, 4, 3 },
+		{ 4, 6, 8,10,10, 8, 6, 4 },
+		{ 5, 7,10,12,12,10, 7, 5 },
+		{ 4, 6, 8,10,10, 8, 6, 4 },
+		{ 3, 5, 6, 8, 8, 6, 5, 3 },
+		{ 2, 3, 4, 5, 5, 4, 3, 2 },
+		{ 1, 2, 3, 4, 4, 3, 2, 1 },
+		{ 1, 2, 2, 3, 3, 2, 2, 1 } };
+
+	int white_knight_bonus = 0;
+	int black_knight_bonus = 0;
+
+	for (uint_fast8_t i = 0; i < 8; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			if (_array[i][j] == w_knight) {
+				for (uint_fast8_t m = 0; m < 8; m++) {
+					int new_i = i + knight_moves[m][0];
+					int new_j = j + knight_moves[m][1];
+
+					if (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
+						white_knight_bonus += control_bonus[7 - new_i][new_j];
+					}
+				}
+			}
+
+			if (_array[i][j] == b_knight) {
+				for (uint_fast8_t m = 0; m < 8; m++) {
+					int new_i = i + knight_moves[m][0];
+					int new_j = j + knight_moves[m][1];
+
+					if (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
+						black_knight_bonus += control_bonus[new_i][new_j];
+					}
+				}
+			}
+		}
+	}
+
+	// Facteur multiplicatif en fonction de l'avancement
+	float knight_activity_advancement_factor = 0.5f;
+
+	return eval_from_progress(white_knight_bonus - black_knight_bonus, _adv, knight_activity_advancement_factor);
 }
