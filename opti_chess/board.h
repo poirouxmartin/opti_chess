@@ -567,13 +567,13 @@ public:
 	// Fonction qui renvoie l'affichage de l'évaluation
 	[[nodiscard]] string evaluation_to_string(int eval) const;
 
-	// Fonction qui renvoie l'évaluation des pièces isolées
-	[[nodiscard]] int get_isolated_pieces() const;
+	// Fonction qui renvoie l'évaluation des pièces enfermées
+	[[nodiscard]] int get_trapped_pieces() const;
 
 	// Fonction qui ajuste les valeurs des pièces (malus/bonus), en fonction du type de position
 	[[nodiscard]] int get_updated_piece_values() const;
 
-	// Fonction qui renvoie la nature de la position de manière chiffrée: 0 = fermée, 1 = ouverte
+	// Fonction qui renvoie la nature de la position de manière chiffrée: 0 = ouverte, 1 = fermée
 	[[nodiscard]] float get_position_nature() const;
 
 	// Fonction qui renvoie la probabilité de nulle de la position
@@ -596,6 +596,9 @@ public:
 
 	// Fonction qui renvoie un bonus correspondant au pawn storm sur le roi adverse
 	[[nodiscard]] int get_pawn_storm(bool color);
+
+	// Fonction qui renvoie un bonus d'activité pour les cavaliers
+	[[nodiscard]] int get_knight_activity() const;
 };
 
 // Fonction qui renvoie si deux positions (en format FEN) sont les mêmes

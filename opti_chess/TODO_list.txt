@@ -511,7 +511,7 @@ r1b1k1r1/pp1npp1p/1q4p1/2p5/4B3/2P1BN2/Pb1Q1PPP/3R1RK1 w q - 0 16 : juste Tb1??
 Auparavant, il prenait plus de temps pour réflechir quand les positions étaient complexes (car il jouait en fonction du nombre de noeuds "quiet")
 2Bk1b1r/1p4pp/p1q2p2/3pn3/3B4/7Q/PP1N1PPP/3bR1K1 w - - 1 21 : Fe6 quand y'a pas les échecs de regardés? Txd1 sinon?
 rnbqk1nr/ppp2ppp/3b4/8/3P4/8/PPP1P1PP/RNBQKBNR b KQkq - 0 4 : Dh4+??
-8/q1p2kp1/3bp2p/4p3/1pP1P3/rP2RNPP/2Q2PK1/8 w - - 3 31 : Ta2 arrive et c'est foutu si laissé!
+8/q1p2kp1/3bp2p/4p3/1pP1P3/rP2RNPP/2Q2PK1/8 w - - 3 31 : Ta2 arrive et c'est foutu si laissé!zzdqzdqzdz
 Parfois y'a des game reset...
 3r1rk1/1p2p1b1/8/p1pp1p2/P2P4/1PP1P1R1/4Q3/R3KN1q w Q - 0 30 : faut roquer!!!!! -> vis à vis roi/dame => tour/dame
 k2r2nr/q6p/6p1/3P1p2/3Q4/5p2/PR2N1PP/4K2R w K - 0 23 : faut prendre h8!!
@@ -521,11 +521,15 @@ Parfois on a des eval qui sont égales à +/-INT_MAX, et ça ne devrait pas être le
 Tout refaire la quiescence en mode debug pour clarifier...
 
 NEXT:
--> Nature de la position
 -> Transpositions
 -> Quiescence à 8?
+-> Bugs de repétition pendant une partie (-> on a un child associé avec null move?? -> crash)
+-> Réseaux de neurones
 
 URGENT:
+5rk1/Qbp2pp1/1pq1p2p/3p4/8/P1P1P3/2P2PPP/R3R1K1 w - - 0 21 : la dame est enfermée.. trapped pieces??
+r2q1rk1/4bppp/2P1p3/p1np4/P7/4P3/1BP2PPP/RN1Q1RK1 b - - 0 14 : il dit que y'a du Dd4 sur chaque coup, et ne regarde jamais plus loin (en fait y'a Ff6 derrière...). Les noirs sont mieux
+2q2rk1/2r3pp/4pb2/1p2p3/1P2B3/P4P2/1B4PP/3RQ1K1 w - - 4 29 : ici les tours sont meilleures que les fous.. les noirs sont gagnants
 r2qk2r/pb1pbpp1/1pn4n/2p1P2p/8/2NB1N1P/PP1BQPP1/R3R1K1 w kq - 1 13 : la tour, tu la mets en d1, pas c1!... (à cause de piece mobility)
 rn2k1r1/8/2p1bp1p/1p1qp3/5p2/pPbP1NP1/P1BNQP1P/1R3KR1 w q - 0 22 : Ce4 gagne...
 r3k1r1/3n4/2p1qp1p/1p2p3/1P3p2/p1NP1NPb/P1B1QPRP/1R3K2 b q - 0 25 : blancs gagnants (clouage fou-tour mal jugé?)
@@ -615,13 +619,13 @@ EVAL:
 -> Trop de bonus cumulés pour les fous: fianchetto, piece mobility, piece activity, bishop activity, bishop pair...
 -> Pour king safety, quand ça dépasse pas 0, rien ne change.. alors il n'y a jamais de plan d'attaque...
 -> Catégorie: Développement (~= distance au roque?), plutôt que de compter ça dans King
--> Rajouter un knight activity?
 -> https://hxim.github.io/Stockfish-Evaluation-Guide/ : shelter strength à implémenter... rnbqkbnr/ppp1pppp/8/3p4/6P1/8/PPPPPP1P/RNBQKBNR w KQkq - 0 2 : ici le roi blanc est le plus faible. castling distance donne aussi un bonus, alors que le roque côté roi est pourri...
 -> Pour les clouages, rajouter des bonus quand on les appuie avec d'autres attaques
 -> Refaire l'activité des pièces
 -> Etudier les bons fous et les mauvais fous
 -> Rajouter les faiblesses sur une couleur
--> Faut-il garder le safe_squares = 1 pour les pions dans isolated_pieces?
+-> Faut-il garder le safe_squares = 1 pour les pions dans trapped_pieces?
+-> Puissance des pions passés: dépend des pièces restantes. Une pièce mineure se sacrifie plus facilement dessus qu'une dame
 
 
 4rk2/1p3ppQ/1qn1p3/p1p3P1/4B3/P3BP2/1b3PK1/3R4 b - - 0 16 : gagnant pour les blancs
@@ -689,7 +693,17 @@ r1bq1rk1/2n2nbp/3p2p1/p1pPpP2/P1P5/2NN4/3BBPPP/1R1Q1RK1 b - - 0 19 : ici gxf5 es
 r4rk1/1p3ppp/3b4/p1pq4/4b1Q1/2P2N2/PP3PPP/R1B2RK1 b - - 1 18 : g6 erreur car ça donne les cases noires autour du roi après Fh6
 1k6/5ppp/1p6/8/4BP2/4p1Pb/1q5r/2R1Q1K1 b - - 3 34 : roi blanc mat
 r7/ppp2pp1/3p1nk1/1P1Pp3/1PP1Pn2/R4Pqr/1B1Q3N/6RK b - - 1 29 : quasi gagnant pour les noirs (roi faible)
-
+3rrbk1/p1q2pp1/1n4p1/1R1p4/3B2P1/2PQ1N1P/P4PK1/5R2 w - - 9 23 : le roi blanc n'est pas si pourri
+2q2bk1/p2r1pp1/Rn2r1p1/R2p4/3B2P1/2PQ1N1P/P4PK1/8 b - - 18 27 : ici les blancs sont quasi gagnants. -175 pour les trapped piece, à revoir car la tour n'est pas vraiment en danger ni isolée
+r4rk1/ppq1bpp1/4bn2/6Bp/Q2pP2P/3P2P1/PP2NPB1/1K1R3R b - - 3 16 : b5 seul coup
+6Q1/8/5K2/8/1k6/8/4B3/2q5 w - - 0 11 : nulle théorique
+r2q1rk1/ppp2ppp/2nbbn2/8/3P4/2PB1N2/PP3PPP/RNBQ1RK1 b - - 0 8 : trapped pieces qui favorise les noirs.. pourquoi?
+5rk1/p3q1pp/2p1p3/2Pppr2/7b/2P1QP2/PP1N3N/2K3RR w - - 2 7 : gagnant pour les blancs (colonnes ouvertes sur le roi, occupées par des tours)
+r5k1/1br1nppp/4p1n1/1PqpP3/p2N1P2/2P3Q1/R3B1PP/1N1R3K w - - 0 1 : ici le fou est mieux en d3 que f3... fianchetto ne fait pas de sens??
+2br3k/2q4p/1pn1p1r1/p2pPpNQ/P1pP4/2P5/1PB2PP1/R3R1K1 w - - 1 30 : blancs gagnants
+2br1rk1/1pq4p/p1nbp1p1/3pNp2/P1pP1P2/2P2NQP/1PB2PP1/R3R1K1 b - - 3 23 : blancs mieux (case faible en e5, pion arriéré en e6).. trapped pieces -70??
+2n3k1/1p1r1ppp/p4bb1/N3p3/PPB1p1P1/B3P2P/5P2/5RK1 w - - 1 26 : Cb7!! gagne (pions passés connectés hyper forts)
+8/1p1Q2qk/4P2p/5p2/p4pP1/8/P5K1/8 w - - 0 28 : blancs gagnants
 
 -> FAUT METTRE DES POINTEURS PARTOUT AU LIEU DE COPIER LES OBJETTTTTTSSS !! (exploration.h, gui?)
 
