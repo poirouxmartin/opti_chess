@@ -97,7 +97,7 @@ public:
 	//int _quiescence_depth = 8;
 
 	float _beta = 0.2f;
-	float _k_add = 0.5f;
+	float _k_add = 2.5f;
 	int _quiescence_depth = 6;
 
 	//float _beta = 0.10f;

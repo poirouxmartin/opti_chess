@@ -82,7 +82,7 @@ void softmax(double* input, const int size, const float beta, const float k_add)
 
 	//cout << "sum: " << sum << endl;
 
-	static constexpr double evaluation_softener = 0.25;
+	static constexpr double evaluation_softener = 1.0;
 	// Pour que ça regarde un peu plus des coups en dessous (plus la valeur est faible, plus ça applanit le k_add)
 	const double best_win_chance = get_winning_chances_from_eval(m * evaluation_softener, true);
 	const double constant = beta * m + log(sum);

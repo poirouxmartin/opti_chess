@@ -300,7 +300,7 @@ void GUI::draw_exploration_arrows()
 	const Move best_move = _root_exploration_node->get_most_explored_child_move();
 
 	// Une pièce est-elle sélectionnée?
-	const bool is_selected = _selected_pos.i != -1 && _selected_pos.j != -1;
+	const bool is_selected = _selected_pos.row != -1 && _selected_pos.col != -1;
 
 	// Crée un vecteur avec les coups explorés par GrogrosZero
 	vector<Move> iterated_moves_vector;
@@ -308,7 +308,7 @@ void GUI::draw_exploration_arrows()
 	for (auto const& [move, child] : _root_exploration_node->_children) {
 		// Si une pièce est sélectionnée, dessine toutes les flèches pour cette pièce
 		if (is_selected) {
-			if (_selected_pos.i == move.i1 && _selected_pos.j == move.j1)
+			if (_selected_pos.row == move.i1 && _selected_pos.col == move.j1)
 				iterated_moves_vector.push_back(move);
 		}
 
@@ -573,7 +573,7 @@ void GUI::get_window_size() {
 // Fonction qui renvoie si le joueur est en train de jouer (pour que l'IA arrête de réflechir à ce moment sinon ça lagge)
 bool GUI::is_playing() {
 	const auto [x, y] = GetMousePosition();
-	return (_selected_pos.i != -1 || x != _mouse_pos.x || y != _mouse_pos.y);
+	return (_selected_pos.row != -1 || x != _mouse_pos.x || y != _mouse_pos.y);
 }
 
 // Fonction qui change le mode d'affichage des flèches (oui/non)
@@ -906,19 +906,19 @@ bool GUI::play_move_keep(const Move move)
 uint_fast8_t GUI::selected_piece() const
 {
 	// Faut-il stocker cela pour éviter de le re-calculer?
-	if (_selected_pos.i == -1 || _selected_pos.j == -1)
+	if (_selected_pos.row == -1 || _selected_pos.col == -1)
 		return 0;
 
-	return _board._array[_selected_pos.i][_selected_pos.j];
+	return _board._array[_selected_pos.row][_selected_pos.col];
 }
 
 // Fonction qui renvoie le type de pièce où la souris vient de cliquer
 uint_fast8_t GUI::clicked_piece() const
 {
-	if (_clicked_pos.i == -1 || _clicked_pos.j == -1)
+	if (_clicked_pos.row == -1 || _clicked_pos.col == -1)
 		return 0;
 
-	return _board._array[_clicked_pos.i][_clicked_pos.j];
+	return _board._array[_clicked_pos.row][_clicked_pos.col];
 }
 
 // Fonction qui lance une analyse de GrogrosZero
@@ -977,7 +977,7 @@ void GUI::draw()
 			// On regarde dans le sens inverse pour jouer la flèche la plus récente (donc celle visible en cas de superposition)
 			for (Move move : ranges::reverse_view(_grogros_arrows))
 			{
-				if (move.i2 == _clicked_pos.i && move.j2 == _clicked_pos.j) {
+				if (move.i2 == _clicked_pos.row && move.j2 == _clicked_pos.col) {
 					if (_click_bind)
 						_board.click_m_move(move, get_board_orientation());
 					play_move_keep(move);
@@ -1003,7 +1003,7 @@ void GUI::draw()
 			else {
 				
 				// Si le coup est légal, le joue
-				Move move = Move(_selected_pos.i, _selected_pos.j, _clicked_pos.i, _clicked_pos.j);
+				Move move = Move(_selected_pos.row, _selected_pos.col, _clicked_pos.row, _clicked_pos.col);
 
 				if (_board.is_legal(move)) {
 					if (_click_bind)
@@ -1034,13 +1034,13 @@ void GUI::draw()
 		Pos drop_pos = get_pos_from_GUI(_mouse_pos.x, _mouse_pos.y);
 
 		// Si la case est bien sur le plateau
-		if (is_in_fast(drop_pos.i, 0, 7) && is_in_fast(drop_pos.j, 0, 7) && is_in_fast(_selected_pos.i, 0, 7) && is_in_fast(_selected_pos.j, 0, 7)) {
+		if (is_in_fast(drop_pos.row, 0, 7) && is_in_fast(drop_pos.col, 0, 7) && is_in_fast(_selected_pos.row, 0, 7) && is_in_fast(_selected_pos.col, 0, 7)) {
 
 			// Si on relâche la souris sur une autre case que celle où l'on a cliqué
 			if (drop_pos != _selected_pos) {
 
 				// Si le coup est légal, le joue
-				Move move = Move(_selected_pos.i, _selected_pos.j, drop_pos.i, drop_pos.j);
+				Move move = Move(_selected_pos.row, _selected_pos.col, drop_pos.row, drop_pos.col);
 
 				if (_board.is_legal(move)) {
 					if (_click_bind)
@@ -1068,19 +1068,19 @@ void GUI::draw()
 		Pos drop_pos = get_pos_from_GUI(_mouse_pos.x, _mouse_pos.y);
 
 		// Si on relâche la souris sur le plateau
-		if (is_in_fast(drop_pos.i, 0, 7) && is_in_fast(drop_pos.j, 0, 7)) {
+		if (is_in_fast(drop_pos.row, 0, 7) && is_in_fast(drop_pos.col, 0, 7)) {
 
 			// Si on relâche la souris sur une autre case que celle où l'on a cliqué
 			if (drop_pos == _right_clicked_pos) {
 
 				// Sélectionne/déselectionne la case
-				_highlighted_array[drop_pos.i][drop_pos.j] = 1 - _highlighted_array[drop_pos.i][drop_pos.j];
+				_highlighted_array[drop_pos.row][drop_pos.col] = 1 - _highlighted_array[drop_pos.row][drop_pos.col];
 			}
 				
 			// Sinon, fait une flèche
 			else {
-				if (_right_clicked_pos.i != -1 && _right_clicked_pos.j != -1) {
-					vector<int> arrow = { _right_clicked_pos.i, _right_clicked_pos.j, drop_pos.i, drop_pos.j };
+				if (_right_clicked_pos.row != -1 && _right_clicked_pos.col != -1) {
+					vector<int> arrow = { _right_clicked_pos.row, _right_clicked_pos.col, drop_pos.row, drop_pos.col };
 
 					// Si la flèche existe, la supprime
 					if (auto found_arrow = find(_arrows_array.begin(), _arrows_array.end(), arrow); found_arrow != _arrows_array.end())
@@ -1133,14 +1133,14 @@ void GUI::draw()
 				draw_rectangle(_board_padding_x + _tile_size * orientation_index(j), _board_padding_y + _tile_size * orientation_index(7 - i), _tile_size, _tile_size, _highlight_color);
 
 	// Sélection de cases et de pièces
-	if (_selected_pos.i != -1 && _selected_pos.j != -1) {
+	if (_selected_pos.row != -1 && _selected_pos.col != -1) {
 
 		// Affiche la case séléctionnée
-		draw_rectangle(_board_padding_x + orientation_index(_selected_pos.j) * _tile_size, _board_padding_y + orientation_index(7 - _selected_pos.i) * _tile_size, _tile_size, _tile_size, _select_color);
+		draw_rectangle(_board_padding_x + orientation_index(_selected_pos.col) * _tile_size, _board_padding_y + orientation_index(7 - _selected_pos.row) * _tile_size, _tile_size, _tile_size, _select_color);
 		
 		// Affiche les coups possibles pour la pièce séléctionnée
 		for (int i = 0; i < _board._got_moves; i++) {
-			if (_board._moves[i].i1 == _selected_pos.i && _board._moves[i].j1 == _selected_pos.j) {
+			if (_board._moves[i].i1 == _selected_pos.row && _board._moves[i].j1 == _selected_pos.col) {
 				draw_rectangle(_board_padding_x + orientation_index(_board._moves[i].j2) * _tile_size, _board_padding_y + orientation_index(7 - _board._moves[i].i2) * _tile_size, _tile_size, _tile_size, _select_color);
 			}
 		}
@@ -1151,7 +1151,7 @@ void GUI::draw()
 		for (int j = 0; j < 8; j++) {
 			uint_fast8_t piece = _board._array[i][j];
 			if (piece > 0 && ((_board._player && piece >= 7) || (!_board._player && piece < 7))) {
-				if (_clicked && i == _clicked_pos.i && j == _clicked_pos.j)
+				if (_clicked && i == _clicked_pos.row && j == _clicked_pos.col)
 					draw_texture(_piece_textures[piece - 1], _mouse_pos.x - _piece_size / 2, _mouse_pos.y - _piece_size / 2, WHITE);
 				else
 					draw_texture(_piece_textures[piece - 1], _board_padding_x + _tile_size * orientation_index(j) + (_tile_size - _piece_size) / 2, _board_padding_y + _tile_size * orientation_index(7 - i) + (_tile_size - _piece_size) / 2, WHITE);
@@ -1169,7 +1169,7 @@ void GUI::draw()
 		for (int j = 0; j < 8; j++) {
 			uint_fast8_t piece = _board._array[i][j];
 			if (piece > 0 && ((_board._player && piece < 7) || (!_board._player && piece >= 7))) {
-				if (_clicked && i == _clicked_pos.i && j == _clicked_pos.j)
+				if (_clicked && i == _clicked_pos.row && j == _clicked_pos.col)
 					draw_texture(_piece_textures[piece - 1], _mouse_pos.x - _piece_size / 2, _mouse_pos.y - _piece_size / 2, WHITE);
 				else
 					draw_texture(_piece_textures[piece - 1], _board_padding_x + _tile_size * orientation_index(j) + (_tile_size - _piece_size) / 2, _board_padding_y + _tile_size * orientation_index(7 - i) + (_tile_size - _piece_size) / 2, WHITE);
