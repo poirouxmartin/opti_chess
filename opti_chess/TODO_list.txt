@@ -525,8 +525,23 @@ NEXT:
 -> Quiescence à 8?
 -> Bugs de repétition pendant une partie (-> on a un child associé avec null move?? -> crash)
 -> Réseaux de neurones
+-> Augmenter vitesse d'évaluation
+-> Refaire l'activité des pièces?
+-> Taper les faiblesses!!
+-> REFAIRE KING PROXIMITY
+-> Weak squares peut-être à revoir
+-> Winnable endgames
+-> Changer la valeur de pièces en fonction de la nature de la position (fermée -> cavals, ouvertes -> fous, tours et dames)
+
+-> Finaliser bloquages de pions passés (dame qui bloque est pour le moment pire qu'un contrôle qcq...)
+-> Activité de la dame (pour les milieurs/fins de partie?)
+-> Trop de choses à modifier pour trapped pieces (les attaques ne sont pas toujours des menaces...)
 
 URGENT:
+r2qkb1r/pp1b1ppp/4p3/1PPp4/3QnP2/4P3/P1P3PP/RNB1KB1R w KQkq - 1 12 : caval pas trapped...
+2rq1rk1/1p1b1pp1/p1n2b1p/P2p3n/1P4P1/2PB1N1P/1Q1N1P1B/R2R2K1 b - g3 0 21 : cavalier enfermé
+2r1brk1/6bp/p2pPpp1/qppN4/8/1P3NP1/P1Q2PP1/4RBK1 b - - 1 25 : blancs quasi gagnants: grosse case en d5, pion e6 très fort (passé + contrôle des cases). case faible plus forte quand elle bloque un pion? d3 et d4 sont considérées comme faibles pour les blancs... à revoir. pas vraiment de plans pour les noirs. pas de faiblesses pour les blancs
+8/2p3p1/p1p5/P1P3p1/1P4P1/1K3k2/8/8 w - - 2 69 : fix king proximity!!
 5rk1/Qbp2pp1/1pq1p2p/3p4/8/P1P1P3/2P2PPP/R3R1K1 w - - 0 21 : la dame est enfermée.. trapped pieces??
 r2q1rk1/4bppp/2P1p3/p1np4/P7/4P3/1BP2PPP/RN1Q1RK1 b - - 0 14 : il dit que y'a du Dd4 sur chaque coup, et ne regarde jamais plus loin (en fait y'a Ff6 derrière...). Les noirs sont mieux
 2q2rk1/2r3pp/4pb2/1p2p3/1P2B3/P4P2/1B4PP/3RQ1K1 w - - 4 29 : ici les tours sont meilleures que les fous.. les noirs sont gagnants
@@ -626,6 +641,8 @@ EVAL:
 -> Rajouter les faiblesses sur une couleur
 -> Faut-il garder le safe_squares = 1 pour les pions dans trapped_pieces?
 -> Puissance des pions passés: dépend des pièces restantes. Une pièce mineure se sacrifie plus facilement dessus qu'une dame
+-> Pawn protection pour quand le roi n'est pas roqué (en prenant en compte les poussées de pions f, g et h par exemple)
+-> Ajouter un 'exposed queen' pour éviter les scandi?
 
 
 4rk2/1p3ppQ/1qn1p3/p1p3P1/4B3/P3BP2/1b3PK1/3R4 b - - 0 16 : gagnant pour les blancs
@@ -702,8 +719,14 @@ r2q1rk1/ppp2ppp/2nbbn2/8/3P4/2PB1N2/PP3PPP/RNBQ1RK1 b - - 0 8 : trapped pieces q
 r5k1/1br1nppp/4p1n1/1PqpP3/p2N1P2/2P3Q1/R3B1PP/1N1R3K w - - 0 1 : ici le fou est mieux en d3 que f3... fianchetto ne fait pas de sens??
 2br3k/2q4p/1pn1p1r1/p2pPpNQ/P1pP4/2P5/1PB2PP1/R3R1K1 w - - 1 30 : blancs gagnants
 2br1rk1/1pq4p/p1nbp1p1/3pNp2/P1pP1P2/2P2NQP/1PB2PP1/R3R1K1 b - - 3 23 : blancs mieux (case faible en e5, pion arriéré en e6).. trapped pieces -70??
-2n3k1/1p1r1ppp/p4bb1/N3p3/PPB1p1P1/B3P2P/5P2/5RK1 w - - 1 26 : Cb7!! gagne (pions passés connectés hyper forts)
+2n3k1/1p1r1ppp/p4bb1/N3p3/PPB1p1P1/B3P2P/5P2/5RK1 w - - 1 26 : Cxb7!! gagne (pions passés connectés hyper forts)
 8/1p1Q2qk/4P2p/5p2/p4pP1/8/P5K1/8 w - - 0 28 : blancs gagnants
+3rkb2/1pp1pp2/p1b5/4P1p1/2q3Pr/2N1PP1p/PB5P/2R1QRK1 w - - 0 19 : le roi blanc est le plus faible
+r2q2k1/1p3p1p/p1p3p1/2n1Pp1P/2P5/3BR3/PP1Q1PP1/6K1 b - - 2 25 : gagnant pour les noirs!
+rbr5/1q3p2/pPp1pBpk/P1QpP2p/1R5P/6P1/5P2/2R3K1 b - - 5 18 : les noirs n'ont plus de coups!
+8/pp3k2/3b3p/5p2/P3n2P/1P1RPN2/1rrBKP2/6R1 b - - 0 25 : gagnant pour les noirs (beaucoup d'activité + roi blanc faible)
+r1b2rk1/ppq2p1p/2np2pb/4p3/4P3/2PBPN2/PP1N2PP/R2Q1R1K w - - 3 3 : faiblesse en e3 (et e4)
+r4rk1/5ppp/5b2/P4p2/8/8/P2B1PPP/3RR1K1 w - - 2 22 : a3 pour Fb4 gagne.. structure solide (sinon y'a des faiblesses)
 
 -> FAUT METTRE DES POINTEURS PARTOUT AU LIEU DE COPIER LES OBJETTTTTTSSS !! (exploration.h, gui?)
 

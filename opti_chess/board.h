@@ -168,17 +168,17 @@ struct Array
 // Position sur le plateau
 struct Pos
 {
-	int i : 4; // TODO: 3 suffit?
-	int j : 4;
+	int row : 4; // TODO: 3 suffit?
+	int col : 4;
 
 	// Opérateur d'égalité
 	bool operator== (const Pos& other) const {
-		return (i == other.i) && (j == other.j);
+		return (row == other.row) && (col == other.col);
 	}
 
 	// Renvoie la notation de la case
 	string square() const {
-		return string(1, 'a' + j) + string(1, '1' + i);
+		return string(1, 'a' + col) + string(1, '1' + row);
 	}
 };
 
@@ -361,7 +361,7 @@ public:
 	void game_advancement();
 
 	// Fonction qui compte le matériel sur l'échiquier et renvoie sa valeur
-	int count_material(const Evaluator* e = nullptr) const;
+	int count_material(const Evaluator* e = nullptr, float closed_factor = 0.0f) const;
 
 	// Fonction qui compte les paires de fous et renvoie la valeur
 	int count_bishop_pairs() const;
@@ -522,9 +522,6 @@ public:
 	// Fonction qui calcule et renvoie la valeur des pions qui bloquent les fous
 	[[nodiscard]] int get_bishop_pawns() const;
 
-	// Fonction qui renvoie la valeur d'une marrée de pions
-	[[nodiscard]] int get_pawn_storm() const;
-
 	// Fonction qui renvoie la valeur des faiblesses long terme du bouclier de pions
 	[[nodiscard]] int get_pawn_shield();
 
@@ -543,8 +540,8 @@ public:
 	// Fonction qui génère la clé de Zobrist du plateau
 	[[nodiscard]] void get_zobrist_key();
 
-	// Fonction qui renvoie à quel point la partie est gagnable (de 0 à 1)
-	[[nodiscard]] float get_winnable() const;
+	// Fonction qui renvoie à quel point la partie est gagnable (de 0 à 1), pour une couleur
+	[[nodiscard]] float get_winnable(bool color) const;
 
 	// Fonction qui renvoie l'activité des fous sur les diagonales
 	[[nodiscard]] int get_bishop_activity() const;
@@ -599,6 +596,12 @@ public:
 
 	// Fonction qui renvoie un bonus d'activité pour les cavaliers
 	[[nodiscard]] int get_knight_activity() const;
+
+	// Fonction qui renvoie la puissance de protection de la structure de pions du roi
+	[[nodiscard]] int get_pawn_shield_protection(bool color);
+
+	// Fonction qui renvoie la puissance de protection de la structure de pions du roi, s'il est sur la colonne donnée
+	[[nodiscard]] int get_pawn_shield_protection_at_column(bool color, int column);
 };
 
 // Fonction qui renvoie si deux positions (en format FEN) sont les mêmes
