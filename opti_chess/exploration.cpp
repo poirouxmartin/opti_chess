@@ -55,6 +55,7 @@ void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add
 	// quiescence là dessus, après il regarde à donf Tb1 après Dxh7... ??
 
 	// Ne devrait pas arriver
+	// FIXME!! ça arrive en fait...
 	if (iterations <= 0) {
 		cout << "iterations <= 0 in grogros_zero" << endl;
 		return;
