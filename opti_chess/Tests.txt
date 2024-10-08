@@ -820,6 +820,8 @@ r3r1k1/pp3p1p/5Bp1/q3P3/8/3BQ3/bP3PPP/4R1K1 w - - 4 22 : Dh6!! mate
 r1q2rk1/p2nbppp/1p2p3/1PppP1NN/3P1Q2/2P5/1P3PPP/n1B1R1K1 w - - 2 3 : Cxh7!! gagne
 r1q2r2/p2nbppk/1p2p3/1PppP2N/3P1Q2/2P5/1P3PPP/n1B1R1K1 w - - 0 4 : Cxg7!! gagne
 r1q4r/p2nbpNk/1p2p3/1PppP3/3P1Q2/2P5/1P3PPP/n1B1R1K1 w - - 1 5 : Cxe6!! #9
+7r/1pp1bp2/4kn1p/Q2r4/B2p3P/2NP2B1/PPP1b1qn/2K1RR2 w - - 2 24 : Cxe2!! #7
+3r2k1/ppp1qppp/2n5/5b2/8/P1Q1PNbP/1P1NB1P1/R4K1R b - - 8 16 : Td3!! gagne
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---

@@ -1743,9 +1743,9 @@ int Board::get_piece_mobility(const bool legal) const
 
 	// Pour chaque pièce (sauf le roi)
 	//static constexpr int mobility_values_pawn[3] = { -100, 0, 100 };
-	static constexpr int mobility_values_pawn[3] = { -50, 0, 25 };
+	static constexpr int mobility_values_pawn[3] = { -500, 0, 350 };
 	static constexpr int mobility_values_knight[9] = { -500, -200, 0, 100, 200, 300, 400, 450, 500 };
-	static constexpr int mobility_values_bishop[15] = { -400, -300, -50, 100, 210, 280, 330, 475, 415, 450, 480, 505, 525, 540, 550 };
+	static constexpr int mobility_values_bishop[15] = { -600, -300, -50, 100, 210, 280, 330, 475, 415, 450, 480, 505, 525, 540, 550 };
 	static constexpr int mobility_values_rook[15] = { -200, 0, 100, 150, 190, 235, 275, 300, 325, 345, 365, 385, 390, 400, 405 };
 	static constexpr int mobility_values_queen[29] = { -700, -400, -300, 150, 190, 235, 275, 300, 325, 345, 365, 385, 390, 400, 410, 420, 430, 440, 450, 460, 470, 480, 490, 495, 500, 505, 510 };
 
@@ -1821,7 +1821,7 @@ int Board::get_piece_mobility(const bool legal) const
 	for (uint_fast8_t i = 0; i < 8; i++) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
 			if (const uint_fast8_t piece = _array[i][j]; piece > 0) {
-				if (piece == 1)
+				if (piece == w_pawn)
 					piece_mobility += mobility_values_pawn[min(2, piece_move_count[i][j])];
 				else if (piece == 2)
 					piece_mobility += mobility_values_knight[min(8, piece_move_count[i][j])];
@@ -1930,9 +1930,9 @@ int Board::get_king_safety(float display_factor) {
 	int b_king_weakness = 0;
 
 	// Facteurs multiplicatifs
-	constexpr float piece_attack_factor = 1.0f;
+	constexpr float piece_attack_factor = 0.75f;
 	constexpr float piece_defense_factor = 1.0f;
-	constexpr float piece_overload_multiplicator = 2.0f; // TODO: à utiliser
+	constexpr float piece_overload_multiplicator = 1.5f; // TODO: à utiliser
 	constexpr float piece_defense_multiplicator = 0.5f;
 	constexpr float pawn_protection_factor = 1.5f;
 
@@ -1947,8 +1947,20 @@ int Board::get_king_safety(float display_factor) {
 	int b_king_protection = get_pawn_shield_protection(false) * pawn_protection_factor;
 
 	// Attaquants
-	int w_attacking_power = get_king_attackers(true) * piece_attack_factor;
-	int b_attacking_power = get_king_attackers(false) * piece_attack_factor;
+	int w_attacking_power = get_king_attackers(true);
+	int b_attacking_power = get_king_attackers(false);
+
+	// Plus y'a d'attaque, plus c'est difficile de défendre (même s'il y a beaucoup de défenseurs) -> exponentielle?
+	// Constante à partir de laquelle on considère un *2 sur la puissance d'attaque
+	constexpr int double_attack = 800;
+	float w_mult_attack = 1.0f + w_attacking_power / static_cast<float>(double_attack);
+	float b_mult_attack = 1.0f + b_attacking_power / static_cast<float>(double_attack);
+
+	w_attacking_power *= w_mult_attack;
+	b_attacking_power *= b_mult_attack;
+
+	w_attacking_power *= piece_attack_factor;
+	b_attacking_power *= piece_attack_factor;
 
 	// Défenseurs
 	int w_defending_power = get_king_defenders(true) * piece_defense_factor;
@@ -2052,7 +2064,7 @@ int Board::get_king_safety(float display_factor) {
 	constexpr int v_edge_protection = 50;
 
 	// Bord horizontal
-	constexpr int h_edge_protection = 150;
+	constexpr int h_edge_protection = 100;
 	
 	// Niveau de protection auquel on peut considérer que le roi est safe
 	const int king_base_protection = 400 * (1.0f - _adv) - 200;
@@ -2122,10 +2134,10 @@ int Board::get_king_safety(float display_factor) {
 	// Proximité avec le bord
 	// Avancement à partir duquel il est plus dangereux d'être sur un bord
 	constexpr float edge_adv = 0.85f;
-	constexpr float mult_endgame = 0.3f;
+	constexpr float mult_endgame = 0.5f;
 
 	// Version additive, adaptée pour l'endgame
-	constexpr int edge_defense = 135;
+	constexpr int edge_defense = 100;
 	constexpr int endgame_safe_zone = 25; // Si le "i * j" du roi en endgame est supérieur, alors il n'est pas en danger : s'il est en c4 (2, 3 -> (2 + 1) * (3 + 1) = 12 < 16 -> danger)
 	
 	//8/8/1k6/3Q4/4K3/8/8/8 w - - 19 136
@@ -2138,8 +2150,8 @@ int Board::get_king_safety(float display_factor) {
 	int b_row_dist = min(_black_king_pos.row, 7 - _black_king_pos.row);
 
 
-	int w_placement_weakness = edge_defense * (max_float(0.0f, (edge_adv - _adv) * ((_adv < edge_adv) ? (w_col_dist + w_row_dist) - 2 : ((endgame_safe_zone - (w_col_dist + 1) * (w_row_dist + 1)) * mult_endgame / (edge_adv - 1.0f)))));
-	int b_placement_weakness = edge_defense * (max_float(0.0f, (edge_adv - _adv) * ((_adv < edge_adv) ? (b_col_dist + b_row_dist) - 2 : ((endgame_safe_zone - (b_col_dist + 1) * (b_row_dist + 1)) * mult_endgame / (edge_adv - 1.0f)))));
+	int w_placement_weakness = edge_defense * (max_float(0.0f, (edge_adv - _adv) * ((_adv < edge_adv) ? (w_col_dist + _white_king_pos.row * _white_king_pos.row) - 2 : ((endgame_safe_zone - (w_col_dist + 1) * (w_row_dist + 1)) * mult_endgame / (edge_adv - 1.0f)))));
+	int b_placement_weakness = edge_defense * (max_float(0.0f, (edge_adv - _adv) * ((_adv < edge_adv) ? (b_col_dist + (7 - _black_king_pos.row) * (7 - _black_king_pos.row)) - 2 : ((endgame_safe_zone - (b_col_dist + 1) * (b_row_dist + 1)) * mult_endgame / (edge_adv - 1.0f)))));
 
 	//cout << b_placement_weakness << endl;
 
@@ -2183,7 +2195,7 @@ int Board::get_king_safety(float display_factor) {
 	// *** OPEN LINES ***
 	// ------------------
 
-	constexpr int open_lines_danger = 3;
+	constexpr float open_lines_danger = 2.5f;
 
 	int w_open_lines = get_open_files_on_opponent_king(true) * open_lines_danger * (1 - _adv);
 	int b_open_lines = get_open_files_on_opponent_king(false) * open_lines_danger * (1 - _adv);
@@ -2197,7 +2209,7 @@ int Board::get_king_safety(float display_factor) {
 	// *** OPEN DIAGONALS ***
 	// ----------------------
 
-	constexpr int open_diagonals_danger = 1;
+	constexpr float open_diagonals_danger = 1.0f;
 
 	int w_open_diagonals = get_open_diagonals_on_opponent_king(true) * open_diagonals_danger * (1 - _adv);
 	int b_open_diagonals = get_open_diagonals_on_opponent_king(false) * open_diagonals_danger * (1 - _adv);
@@ -5820,6 +5832,7 @@ void Board::display_positions_history() const
 
 	// TESTS
 	//rn2kbnr/pp3ppp/4p3/2ppPb2/2PP4/4BN2/Pq2BPPP/RN1QK2R w KQkq - 0 8
+	//8/1p4p1/p4p2/2k1p1p1/P1n1P3/2BK1P1P/6P1/8 b - - 0 42
 
 	// Poids par type de pièce
 	const float pawn_weight = 1.0f;
@@ -6024,7 +6037,7 @@ void Board::display_positions_history() const
 				}
 
 				// A quel point la pièce est enfermée
-				const float trapped_malus = trapped_factor / (safe_squares + 1);
+				const float trapped_malus = trapped_factor / ((safe_squares + 1) * (safe_squares + 1));
 
 				bool attacked = b_controls._array[row][col] != 0;
 
@@ -6134,7 +6147,7 @@ void Board::display_positions_history() const
 					}
 				}
 
-				const float trapped_malus = trapped_factor / (safe_squares + 1);
+				const float trapped_malus = trapped_factor / ((safe_squares + 1) * (safe_squares + 1));
 
 				bool attacked = w_controls._array[row][col] != 0;
 

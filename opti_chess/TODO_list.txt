@@ -538,6 +538,11 @@ NEXT:
 -> Trop de choses à modifier pour trapped pieces (les attaques ne sont pas toujours des menaces...)
 
 URGENT:
+8/1p4p1/p4p2/2k1p1p1/P1n1P3/2BK1P1P/6P1/8 b - - 0 42 : trapped pieces??
+8/pp4p1/5p2/2Pkp1p1/P1n5/2BKPP2/6PP/8 b - - 2 40 : king proximity à fix, sinon il hésite même à prendre le pion...
+r2r4/7Q/1p1q2P1/2b3k1/5pP1/pP2pP2/7P/1K6 w - - 19 16 : ici il met 0 réflexion sur les autres coups que Dh5 dont il connait le résultat.. il itère sur une branche "morte".. il faut regarder les autres coups aussi
+rnb1kb1r/pppp1ppp/5n2/8/4q3/5N2/PPPPBPPP/RNBQK2R b KQkq - 1 5 : déjà il est chiant à faire Fd6.. ça augmente l'attaque sur le roi.. ?? il a peur de faire d5??
+-> Iterations <= 0 dans GrogrosZero /!\
 r2qkb1r/pp1b1ppp/4p3/1PPp4/3QnP2/4P3/P1P3PP/RNB1KB1R w KQkq - 1 12 : caval pas trapped...
 2rq1rk1/1p1b1pp1/p1n2b1p/P2p3n/1P4P1/2PB1N1P/1Q1N1P1B/R2R2K1 b - g3 0 21 : cavalier enfermé
 2r1brk1/6bp/p2pPpp1/qppN4/8/1P3NP1/P1Q2PP1/4RBK1 b - - 1 25 : blancs quasi gagnants: grosse case en d5, pion e6 très fort (passé + contrôle des cases). case faible plus forte quand elle bloque un pion? d3 et d4 sont considérées comme faibles pour les blancs... à revoir. pas vraiment de plans pour les noirs. pas de faiblesses pour les blancs
@@ -727,6 +732,7 @@ rbr5/1q3p2/pPp1pBpk/P1QpP2p/1R5P/6P1/5P2/2R3K1 b - - 5 18 : les noirs n'ont plus
 8/pp3k2/3b3p/5p2/P3n2P/1P1RPN2/1rrBKP2/6R1 b - - 0 25 : gagnant pour les noirs (beaucoup d'activité + roi blanc faible)
 r1b2rk1/ppq2p1p/2np2pb/4p3/4P3/2PBPN2/PP1N2PP/R2Q1R1K w - - 3 3 : faiblesse en e3 (et e4)
 r4rk1/5ppp/5b2/P4p2/8/8/P2B1PPP/3RR1K1 w - - 2 22 : a3 pour Fb4 gagne.. structure solide (sinon y'a des faiblesses)
+r2q1rk1/pp1nbppp/2p2n2/3p3b/8/1P1B1N1P/PBPP1PP1/RN1QR1K1 w - - 3 11 : le fou en d3 est pas si mal, mais il bloque le pion d
 
 -> FAUT METTRE DES POINTEURS PARTOUT AU LIEU DE COPIER LES OBJETTTTTTSSS !! (exploration.h, gui?)
 
