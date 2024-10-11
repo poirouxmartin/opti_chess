@@ -559,7 +559,7 @@ public:
 	void update_grogros_zero_name();
 
 	// Fonction qui fait jouer le coup de GrogrosZero ou non en fonction du temps restant
-	void play_grogros_zero_move(float time_proportion_per_move = 0.025f);
+	void play_grogros_zero_move(float time_proportion_per_move = 0.02f);
 
 
 	// TODO
