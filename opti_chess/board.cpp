@@ -2058,75 +2058,6 @@ int Board::get_king_safety(float display_factor) {
 	//r3k3/p1q2p1r/4b3/1p1p4/6P1/P2PPQb1/1P1NB1P1/R1B2RK1 b q - 6 22 : il faut roquer pour ramener une autre tour à l'attaque
 	//Nnb2b1r/1p1k1p1p/p4p2/8/3p4/8/PP2PPPP/R3KB1R b KQ - 0 12
 
-	// Protection par les bords de l'échiquier
-
-	// Bord vertical
-	constexpr int v_edge_protection = 50;
-
-	// Bord horizontal
-	constexpr int h_edge_protection = 100;
-	
-	// Niveau de protection auquel on peut considérer que le roi est safe
-	const int king_base_protection = 400 * (1.0f - _adv) - 200;
-
-	// Facteur multiplicatif pour ce paramètre
-	const float king_protection_factor = 0.75f;
-
-	// REVIEW *** à ne compter seulement si le roi ne peut pas roquer? ***
-
-	// TEST: 3rk1r1/ppp2p1p/1b2b3/8/1P3Q2/2q5/P2N1PPP/3RKB1R b K - 1 17 (noirs gagnants)
-
-	// Roi blanc
-	if ((_castling_rights.k_w || _castling_rights.q_w) && false) {
-		w_king_protection = 200;
-	}
-	else {
-		//cout << "current protection w: " << w_king_protection << endl;
-		w_king_protection += v_edge_protection * (min(_white_king_pos.row, 7 - _white_king_pos.row) == 0) + h_edge_protection * (min(_white_king_pos.col, 7 - _white_king_pos.col) == 0);
-		w_king_protection -= king_base_protection;
-		//cout << "new protection w: " << w_king_protection << endl;
-	}
-
-	// Roi noir
-	if ((_castling_rights.k_b || _castling_rights.q_b) && false) {
-		b_king_protection = 200;
-	}
-	else {
-		//cout << "current protection b: " << b_king_protection << endl;
-		b_king_protection += v_edge_protection * (min(_black_king_pos.row, 7 - _black_king_pos.row) == 0) + h_edge_protection * (min(_black_king_pos.col, 7 - _black_king_pos.col) == 0);
-		b_king_protection -= king_base_protection;
-		//cout << "new protection b: " << b_king_protection << endl;
-	}
-
-	// Protection de base d'un roi seul
-	//w_king_protection += 100;
-	//b_king_protection += 100;
-
-
-
-	//r2r2k1/1b3p2/p3pn2/2b1q2p/4P1p1/2N4P/PPBBQPP1/R2R2K1 w - - 0 19
-	//5rk1/pp3p1p/4p3/q1np1p2/3Q4/1P1rPP2/P5PP/RN3RK1 w - - 3 20
-
-	// Droits de roque
-	//constexpr int castling_rights_protection = 100;
-	////constexpr int castling_rights_protection = 0;
-	//constexpr int single_castling_protection = 2;
-
-	//const int w_castling_protection = (_castling_rights.k_w || _castling_rights.q_w) * single_castling_protection + (_castling_rights.k_w && _castling_rights.q_w);
-	//w_king_protection += w_castling_protection * castling_rights_protection;
-
-	//const int b_castling_protection = (_castling_rights.k_b || _castling_rights.q_b) * single_castling_protection + (_castling_rights.k_b && _castling_rights.q_b);
-	//b_king_protection += b_castling_protection * castling_rights_protection;
-
-
-	//w_king_protection *= king_protection_factor;
-	//b_king_protection *= king_protection_factor;
-
-	if (display_factor != 0.0f) {
-		main_GUI._eval_components += "Updated king protection: " + to_string(w_king_protection) + " / " + to_string(b_king_protection) + "\n";
-	}
-
-
 	// -----------------------
 	// *** POSITION DU ROI ***
 	// -----------------------
@@ -2134,10 +2065,10 @@ int Board::get_king_safety(float display_factor) {
 	// Proximité avec le bord
 	// Avancement à partir duquel il est plus dangereux d'être sur un bord
 	constexpr float edge_adv = 0.85f;
-	constexpr float mult_endgame = 0.5f;
+	constexpr float mult_endgame = 0.35f;
 
 	// Version additive, adaptée pour l'endgame
-	constexpr int edge_defense = 100;
+	constexpr int edge_defense = 75;
 	constexpr int endgame_safe_zone = 25; // Si le "i * j" du roi en endgame est supérieur, alors il n'est pas en danger : s'il est en c4 (2, 3 -> (2 + 1) * (3 + 1) = 12 < 16 -> danger)
 	
 	//8/8/1k6/3Q4/4K3/8/8/8 w - - 19 136
@@ -2150,10 +2081,16 @@ int Board::get_king_safety(float display_factor) {
 	int b_row_dist = min(_black_king_pos.row, 7 - _black_king_pos.row);
 
 
-	int w_placement_weakness = edge_defense * (max_float(0.0f, (edge_adv - _adv) * ((_adv < edge_adv) ? (w_col_dist + _white_king_pos.row * _white_king_pos.row) - 2 : ((endgame_safe_zone - (w_col_dist + 1) * (w_row_dist + 1)) * mult_endgame / (edge_adv - 1.0f)))));
-	int b_placement_weakness = edge_defense * (max_float(0.0f, (edge_adv - _adv) * ((_adv < edge_adv) ? (b_col_dist + (7 - _black_king_pos.row) * (7 - _black_king_pos.row)) - 2 : ((endgame_safe_zone - (b_col_dist + 1) * (b_row_dist + 1)) * mult_endgame / (edge_adv - 1.0f)))));
+	int w_placement_weakness = edge_defense * (max_float(0.0f, (edge_adv - _adv) * ((_adv < edge_adv) ? (max(0, w_col_dist + 1) + _white_king_pos.row * _white_king_pos.row) - 2 : ((endgame_safe_zone - (w_col_dist + 1) * (w_row_dist + 1)) * mult_endgame / (edge_adv - 1.0f)))));
+	int b_placement_weakness = edge_defense * (max_float(0.0f, (edge_adv - _adv) * ((_adv < edge_adv) ? (max(0, b_col_dist + 1) + (7 - _black_king_pos.row) * (7 - _black_king_pos.row)) - 2 : ((endgame_safe_zone - (b_col_dist + 1) * (b_row_dist + 1)) * mult_endgame / (edge_adv - 1.0f)))));
 
 	//cout << b_placement_weakness << endl;
+
+	// Si le roi peut roquer, on ne considère pas les problèmes de placement
+	//if (_castling_rights.k_b || _castling_rights.q_b)
+	//	b_placement_weakness = 0;
+	//if (_castling_rights.k_w || _castling_rights.q_w)
+	//	w_placement_weakness = 0;
 
 	const float placement_factor = 1.0f;
 
@@ -2176,9 +2113,9 @@ int Board::get_king_safety(float display_factor) {
 	// ---------------------------------
 	
 	// FIXME: est-ce vraiment utile? ça casse peut-être tout en fait
-	//constexpr int virtual_mobility_danger = 125;
-	//w_king_weakness += virtual_mobility_danger * get_king_virtual_mobility(true) * (1 - _adv);
-	//b_king_weakness += virtual_mobility_danger * get_king_virtual_mobility(false) * (1 - _adv);
+	constexpr int virtual_mobility_danger = 35;
+	const int w_virtual_mobility = virtual_mobility_danger * get_king_virtual_mobility(true) * (1 - _adv);
+	const int b_virtual_mobility = virtual_mobility_danger * get_king_virtual_mobility(false) * (1 - _adv);
 
 	// ------------------
 	// *** PAWN STORM ***
@@ -2195,10 +2132,10 @@ int Board::get_king_safety(float display_factor) {
 	// *** OPEN LINES ***
 	// ------------------
 
-	constexpr float open_lines_danger = 2.5f;
+	constexpr float open_lines_danger = 2.0f;
 
-	int w_open_lines = get_open_files_on_opponent_king(true) * open_lines_danger * (1 - _adv);
-	int b_open_lines = get_open_files_on_opponent_king(false) * open_lines_danger * (1 - _adv);
+	int w_open_lines = get_open_files_on_opponent_king(true) * open_lines_danger;
+	int b_open_lines = get_open_files_on_opponent_king(false) * open_lines_danger;
 
 	if (display_factor != 0.0f) {
 		main_GUI._eval_components += "Open lines: " + to_string(w_open_lines) + " / " + to_string(b_open_lines) + "\n";
@@ -2209,10 +2146,10 @@ int Board::get_king_safety(float display_factor) {
 	// *** OPEN DIAGONALS ***
 	// ----------------------
 
-	constexpr float open_diagonals_danger = 1.0f;
+	constexpr float open_diagonals_danger = 0.0f;
 
-	int w_open_diagonals = get_open_diagonals_on_opponent_king(true) * open_diagonals_danger * (1 - _adv);
-	int b_open_diagonals = get_open_diagonals_on_opponent_king(false) * open_diagonals_danger * (1 - _adv);
+	int w_open_diagonals = get_open_diagonals_on_opponent_king(true) * open_diagonals_danger;
+	int b_open_diagonals = get_open_diagonals_on_opponent_king(false) * open_diagonals_danger;
 
 	if (display_factor != 0.0f) {
 		main_GUI._eval_components += "Open diagonals: " + to_string(w_open_diagonals) + " / " + to_string(b_open_diagonals) + "\n";
@@ -2275,15 +2212,15 @@ int Board::get_king_safety(float display_factor) {
 	w_total_potential = max(0, w_total_potential - reference_mating_potential);
 	b_total_potential = max(0, b_total_potential - reference_mating_potential);
 
-	// S'il y a un fou de couleur opposée, on ajoute un potentiel d'attaque
-	constexpr float opposite_bishop_potential = 1.75f;
+	// S'il y a un fou de couleur opposée, on ajoute un potentiel d'attaque en fonction du potential actuel
+	constexpr float opposite_bishop_potential = 1.5f;
 
 	//cout << "bishops: " << w_bishop_w << " " << w_bishop_b << " " << b_bishop_w << " " << b_bishop_b << endl;
 
 	if (((w_bishop_w && !w_bishop_b) && (!b_bishop_w && b_bishop_b)) || ((!w_bishop_w && w_bishop_b) && (b_bishop_w && !b_bishop_b))) {
 		//cout << "opposite bishop" << endl;
-		w_total_potential *= opposite_bishop_potential;
-		b_total_potential *= opposite_bishop_potential;
+		w_total_potential *= 1 + (opposite_bishop_potential - 1) * w_total_potential / reference_potential;
+		b_total_potential *= 1 + (opposite_bishop_potential - 1) * b_total_potential / reference_potential;
 	}
 
 
@@ -2313,27 +2250,34 @@ int Board::get_king_safety(float display_factor) {
 	// Colonnes/Diagonales ouvertes
 	// Pawn storm (TODO)
 	// Structure de pions autour du roi
-	int b_long_term_weakness = w_pawn_storm + w_open_lines + w_open_diagonals - b_king_protection;
+	// Placement du roi
+	int b_long_term_weakness = w_pawn_storm + w_open_lines + w_open_diagonals - b_king_protection + b_placement_weakness;
+
+	// Réduction si l'on peut encore roquer?
+	if (_castling_rights.k_b || _castling_rights.q_b) {
+		//b_long_term_weakness *= 0.5f;
+	}
+
 	if (b_long_term_weakness < 0) {
 		b_long_term_weakness *= negative_long_term_factor;
 	}
 
 	if (display_factor != 0.0f) {
-		main_GUI._eval_components += "B LONG TERM WEAKNESS: Storm: " + to_string(w_pawn_storm) + " + Lines: " + to_string(w_open_lines) + " + Diags: " + to_string(w_open_diagonals) + " - Protec: " + to_string(b_king_protection) + " = " + to_string(b_long_term_weakness) + "\n";
+		main_GUI._eval_components += "B LONG TERM WEAKNESS: Storm: " + to_string(w_pawn_storm) + " + Lines: " + to_string(w_open_lines) + " + Diags: " + to_string(w_open_diagonals) + " - Protec: " + to_string(b_king_protection) + " + Placement: " + to_string(b_placement_weakness) + " = " + to_string(b_long_term_weakness) + "\n";
 	}
 
 	// Attaque court terme:
 	// Attaque des pièces adverses / Défense des pièces alliées
 	// Overload
 	// Potentiel de mat
-	// Placement du roi
-	int b_short_term_weakness = w_checks + w_attacking_overload + b_placement_weakness + b_king_overloaded;
+	// Mobilité virtuelle
+	int b_short_term_weakness = w_checks + w_attacking_overload + b_king_overloaded + b_virtual_mobility;
 	if (b_short_term_weakness < 0) {
 		b_short_term_weakness *= negative_short_term_factor;
 	}
 
 	if (display_factor != 0.0f) {
-		main_GUI._eval_components += "B SHORT TERM WEAKNESS: Checks: " + to_string(w_checks) + " + Attack: " + to_string(w_attacking_overload) + " + Placement: " + to_string(b_placement_weakness) + " + Overload: " + to_string(b_king_overloaded) + " = " + to_string(b_short_term_weakness) + "\n";
+		main_GUI._eval_components += "B SHORT TERM WEAKNESS: Checks: " + to_string(w_checks) + " + Attack: " + to_string(w_attacking_overload) + " + Overload: " + to_string(b_king_overloaded) + " + Exposure: " + to_string(b_virtual_mobility) + " = " + to_string(b_short_term_weakness) + "\n";
 	}
 
 	b_king_weakness = b_long_term_weakness + b_short_term_weakness;
@@ -2354,27 +2298,34 @@ int Board::get_king_safety(float display_factor) {
 	// Colonnes/Diagonales ouvertes
 	// Pawn storm (TODO)
 	// Structure de pions autour du roi
-	int w_long_term_weakness = b_pawn_storm + b_open_lines + b_open_diagonals - w_king_protection;
+	// Placement du roi
+	int w_long_term_weakness = b_pawn_storm + b_open_lines + b_open_diagonals - w_king_protection + w_placement_weakness;
+
+	// Réduction si l'on peut encore roquer?
+	if (_castling_rights.k_w || _castling_rights.q_w) {
+		//w_long_term_weakness *= 0.5f;
+	}
+
 	if (w_long_term_weakness < 0) {
 		w_long_term_weakness *= negative_long_term_factor;
 	}
 
 	if (display_factor != 0.0f) {
-		main_GUI._eval_components += "W LONG TERM WEAKNESS: Storm: " + to_string(b_pawn_storm) + " + Lines: " + to_string(b_open_lines) + " + Diags: " + to_string(b_open_diagonals) + " - Protec: " + to_string(w_king_protection) + " = " + to_string(w_long_term_weakness) + "\n";
+		main_GUI._eval_components += "W LONG TERM WEAKNESS: Storm: " + to_string(b_pawn_storm) + " + Lines: " + to_string(b_open_lines) + " + Diags: " + to_string(b_open_diagonals) + " - Protec: " + to_string(w_king_protection) + " + Placement: " + to_string(w_placement_weakness) + " = " + to_string(w_long_term_weakness) + "\n";
 	}
 
 	// Attaque court terme:
 	// Attaque des pièces adverses / Défense des pièces alliées
 	// Overload
 	// Potentiel de mat
-	// Placement du roi
-	int w_short_term_weakness = b_checks + b_attacking_overload + w_placement_weakness + w_king_overloaded;
+	// Mobilité virtuelle
+	int w_short_term_weakness = b_checks + b_attacking_overload + w_king_overloaded + w_virtual_mobility;
 	if (w_short_term_weakness < 0) {
 		w_short_term_weakness *= negative_short_term_factor;
 	}
 
 	if (display_factor != 0.0f) {
-		main_GUI._eval_components += "W SHORT TERM WEAKNESS: Checks: " + to_string(b_checks) + " + Attack: " + to_string(b_attacking_overload) + " + Placement: " + to_string(w_placement_weakness) + " + Overload: " + to_string(w_king_overloaded) + " = " + to_string(w_short_term_weakness) + "\n";
+		main_GUI._eval_components += "W SHORT TERM WEAKNESS: Checks: " + to_string(b_checks) + " + Attack: " + to_string(b_attacking_overload) + " + Overload: " + to_string(w_king_overloaded) + " + Exposure: " + to_string(w_virtual_mobility) + " = " + to_string(w_short_term_weakness) + "\n";
 	}
 
 	w_king_weakness = w_long_term_weakness + w_short_term_weakness;
@@ -6269,8 +6220,8 @@ void Board::display_positions_history() const
 [[nodiscard]] int Board::get_open_files_on_opponent_king(bool player) {
 	
 	// Bonus pour les colonnes ouvertes et semi-ouvertes
-	constexpr int open_file_bonus = 50;
-	constexpr int semi_open_file_bonus = 25;
+	constexpr int open_file_bonus = 30;
+	constexpr int semi_open_file_bonus = 20;
 
 	// Facteur en fonction de la proximité avec la colonne du roi adverse
 	// Si le roi est sur la colonne, le bonus est maximal
@@ -6280,8 +6231,8 @@ void Board::display_positions_history() const
 	constexpr float king_adjacent_file_bonus = 0.5f;
 
 	// Bonus en plus pour les pièces présentes dessus (tours/dame)
-	constexpr int rook_bonus = 20;
-	constexpr int queen_bonus = 15;
+	constexpr int rook_bonus = 35;
+	constexpr int queen_bonus = 25;
 
 	update_kings_pos();
 
@@ -6342,7 +6293,10 @@ void Board::display_positions_history() const
 		total_bonus += bonus;
 	}
 
-	return total_bonus;
+	// En fonction de l'avancement de la partie
+	constexpr float advancement_factor = 0.0f;
+
+	return eval_from_progress(total_bonus, _adv, advancement_factor);
 }
 
 // Fonction qui renvoie la valeur des bonus liés aux diagonales ouvertes et semi-ouvertes sur le roi adverse
@@ -6443,7 +6397,10 @@ void Board::display_positions_history() const
 		}
 	}
 
-	return total_bonus;
+	// En fonction de l'avancement de la partie
+	constexpr float advancement_factor = 0.0f;
+
+	return eval_from_progress(total_bonus, _adv, advancement_factor);
 }
 
 // Fonction qui renvoie le nombre de cases de retrait pour le roi
@@ -6501,6 +6458,9 @@ void Board::display_positions_history() const
 
 	//6rk/1p3p1p/2nN1q2/2Q2p2/3p4/PP5P/5PP1/2R3K1 b - - 1 28 : la dame attaque quand on la met en e6??
 	//6rk/1p3p1p/2nNq3/2Q2p2/3p4/PP5P/5PP1/2R3K1 w - - 2 29 : bug?
+	//r1bqk2r/pppp1ppp/2n5/2b1p3/2BPP1n1/5N2/PPP2P1P/RNBQ1RK1 b kq - 0 6 ??
+	//r1br2k1/pp2Rp2/6nB/7Q/3p4/8/5PP1/6K1 b - - 0 5 : ici 300??
+	//6R1/5p2/5kp1/2q5/pp4B1/2n1R3/5PKP/8 b - - 5 45 : ici 700??
 
 	// Valeur d'une pièce attaquant le roi adverse
 	constexpr int attacking_value[7] = { 0, 100, 120, 130, 138, 145, 150 };
@@ -6509,7 +6469,7 @@ void Board::display_positions_history() const
 	constexpr int semi_attack_value = 30;
 
 	// Facteur d'attaque par pièce (pion, cavalier, fou, tour, dame, roi)
-	constexpr float piece_attack_factor[6] = { 0.5f, 1.35f, 1.0f, 2.2f, 2.5f, 1.75f };
+	constexpr float piece_attack_factor[6] = { 0.5f, 1.35f, 1.0f, 1.85f, 2.5f, 1.75f };
 
 	// Facteur d'attaque en fonction de la distance au roi
 
@@ -6527,9 +6487,9 @@ void Board::display_positions_history() const
 	//1k1rr3/1pp1q3/pnn1b3/4p3/3pP1p1/PP1P3p/1BPNN2K/R3QR1B b - - 1 46
 
 	// Regarde chaque pièce alliée sur l'échiquier
-	for (uint_fast8_t i = 0; i < 8; i++) {
-		for (uint_fast8_t j = 0; j < 8; j++) {
-			uint_fast8_t p = _array[i][j];
+	for (uint_fast8_t row = 0; row < 8; row++) {
+		for (uint_fast8_t col = 0; col < 8; col++) {
+			uint_fast8_t p = _array[row][col];
 
 			uint_fast8_t attacks = 0;
 			uint_fast8_t semi_attacks = 0;
@@ -6538,23 +6498,23 @@ void Board::display_positions_history() const
 			if (p == (color ? w_pawn : b_pawn)) {
 
 				// Cases contrôlées par le pion
-				uint_fast8_t di = abs(i + (color ? 1 : -1) - king_pos.row);
-				uint_fast8_t dj1 = abs(j - 1 - king_pos.col);
-				uint_fast8_t dj2 = abs(j + 1 - king_pos.col);
+				uint_fast8_t di = abs(row + (color ? 1 : -1) - king_pos.row);
+				uint_fast8_t dj1 = abs(col - 1 - king_pos.col);
+				uint_fast8_t dj2 = abs(col + 1 - king_pos.col);
 
-				uint_fast8_t p2a = _array[i + (color ? 1 : -1)][j - 1];
+				uint_fast8_t p2a = _array[row + (color ? 1 : -1)][col - 1];
 
 				// Si le pion contrôle une case du roi
-				if (j > 0 && di <= 2 && dj1 <= 2 && p2a != (color ? w_pawn : b_pawn)) {
+				if (col > 0 && di <= 2 && dj1 <= 2 && p2a != (color ? w_pawn : b_pawn)) {
 					semi_attacks++;
 					if (di <= 1 && dj1 <= 1) {
 						attacks++;
 					}
 				}
 
-				uint_fast8_t p2b = _array[i + (color ? 1 : -1)][j + 1];
+				uint_fast8_t p2b = _array[row + (color ? 1 : -1)][col + 1];
 
-				if (j < 7 && di <= 2 && dj2 <= 2 && p2b != (color ? w_pawn : b_pawn)) {
+				if (col < 7 && di <= 2 && dj2 <= 2 && p2b != (color ? w_pawn : b_pawn)) {
 					semi_attacks++;
 					if (di <= 1 && dj2 <= 1) {
 						attacks++;
@@ -6565,8 +6525,8 @@ void Board::display_positions_history() const
 			// Cavalier
 			if (p == (color ? w_knight : b_knight)) {
 				for (uint_fast8_t m = 0; m < 8; m++) {
-					int new_i = i + knight_moves[m][0];
-					int new_j = j + knight_moves[m][1];
+					int new_i = row + knight_moves[m][0];
+					int new_j = col + knight_moves[m][1];
 
 					if (!is_in(new_i, 0, 7) || !is_in(new_j, 0, 7))
 						continue;
@@ -6575,7 +6535,7 @@ void Board::display_positions_history() const
 
 					// La case ne peut pas être attaquée
 					if (p2 == (color ? w_pawn : b_pawn))
-						break;
+						continue;
 
 					uint_fast8_t di = abs(new_i - king_pos.row);
 					uint_fast8_t dj = abs(new_j - king_pos.col);
@@ -6601,8 +6561,8 @@ void Board::display_positions_history() const
 					int mi = rect_moves[m][0];
 					int mj = rect_moves[m][1];
 
-					int new_i = i + mi;
-					int new_j = j + mj;
+					int new_i = row + mi;
+					int new_j = col + mj;
 
 					while (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
 						uint_fast8_t p2 = _array[new_i][new_j];
@@ -6648,8 +6608,8 @@ void Board::display_positions_history() const
 					int mi = diag_moves[m][0];
 					int mj = diag_moves[m][1];
 
-					int new_i = i + mi;
-					int new_j = j + mj;
+					int new_i = row + mi;
+					int new_j = col + mj;
 
 					while (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
 						uint_fast8_t p2 = _array[new_i][new_j];
@@ -6720,11 +6680,11 @@ void Board::display_positions_history() const
 			else {
 				if (attacks > 0) {
 					king_attackers += attacking_value[attacks] * piece_attack_factor[(p - 1) % 6];
-					//cout << "color: " << color << ", piece: " << (int)p << "(" << square_name(i, j) << "), attacks : " << (int)attacks << ", value : " << attacking_value[attacks] << endl;
+					//cout << "color: " << color << ", piece: " << (int)p << "(" << square_name(row, col) << "), attacks : " << (int)attacks << ", value : " << attacking_value[attacks] << ", piece factor : " << piece_attack_factor[(p - 1) % 6] << ", total : " << attacking_value[attacks] * piece_attack_factor[(p - 1) % 6] << endl;
 				}
-				else if (semi_attacks > 0) { // TODO: à améliorer en prenant en compte le nombre de semi-attaques?
-					king_attackers += semi_attack_value * sqrt(piece_attack_factor[(p - 1) % 6]);
-					//cout << "color: " << color << ", piece: " << (int)p << "(" << square_name(i, j) << "), semi-attacks : " << (int)semi_attacks << ", value : " << semi_attack_value * sqrt(piece_attack_factor[(p - 1) % 6]) << endl;
+				else if (semi_attacks > 0) {
+					king_attackers += semi_attack_value * sqrt(piece_attack_factor[(p - 1) % 6]) * sqrt(semi_attacks);
+					//cout << "color: " << color << ", piece: " << (int)p << "(" << square_name(row, col) << "), semi-attacks : " << (int)semi_attacks << ", value : " << semi_attack_value * sqrt(piece_attack_factor[(p - 1) % 6]) * sqrt(semi_attacks) << endl;
 				}
 			}
 		}
@@ -6940,7 +6900,10 @@ void Board::display_positions_history() const
 		}
 	}
 
-	return total_bonus;
+	// En fonction de l'avancement
+	float pawn_storm_advancement_factor = 0.0f;
+
+	return eval_from_progress(total_bonus, _adv, pawn_storm_advancement_factor);
 }
 
 // Fonction qui renvoie le nom de la case
@@ -7047,6 +7010,7 @@ int Board::get_pawn_shield_protection(bool color) {
 	const int queenside_bonus = max(0, queenside_castle ? get_pawn_shield_protection_at_column(color, 2) : 0);
 
 	//r3k2r/pppnbppp/2n5/3N1q2/5B2/8/PPPQBP1P/1K1R2R1 b kq - 2 15
+	// rnb1kb1r/ppp2ppp/5n2/3qp3/8/5N2/PPPPBPPP/RNBQK2R w KQkq - 0 5
 	//cout << "main: " << main_bonus << ", kingside: " << kingside_bonus << ", queenside: " << queenside_bonus << endl;
 
 	// FIXME: il peut y avoir un cas particulier qui le rend pourri:
@@ -7060,6 +7024,9 @@ int Board::get_pawn_shield_protection(bool color) {
 
 // Fonction qui renvoie la puissance de protection de la structure de pions du roi, s'il est sur la colonne donnée
 int Board::get_pawn_shield_protection_at_column(bool color, int column) {
+
+	// Niveau de protection auquel on peut considérer que le roi est safe
+	const int king_base_protection = 350 * (1 - _adv) - 200;
 
 	// Position du roi
 	update_kings_pos();
@@ -7109,10 +7076,12 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column) {
 	//r1bqr1k1/ppp1bppp/2np1n2/4p3/2B1P1P1/3P3P/PPP2P2/RNBQNRK1 b - - 2 8
 	// vs
 	//r1bqr1k1/ppp1bppp/2np1n2/4p3/2B1P1P1/3P1P1P/PPP5/RNBQNRK1 b - - 1 10
+	//rnbq1b1r/ppp2kpp/3p1n2/8/4P3/2N5/PPPP1PPP/R1BQKB1R b KQ - 1 5 : g7 reste une protection
 
 	for (uint_fast8_t col = 0; col < 3; col++) {
 		for (uint_fast8_t row = 0; row < 8; row++) {
 			if (pawns[row][col]) {
+				//cout << "pawn on " << square_name(row, col + king_pos.col - 1) << endl;
 				// Le pion est-il à côté ou devant un autre pion dans la zone du roi?
 				// S'il est derrière le roi, on l'ignore
 				if (color ? row < king_pos.row : row > king_pos.row) {
@@ -7123,6 +7092,8 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column) {
 				int distance = abs(row - king_pos.row);
 				distance = distance == 0 ? 1 : distance;
 				distance *= distance;
+
+				//cout << "distance: " << distance << endl;
 
 				bool check_backwards = is_in(row - dir, 0, 7);
 
@@ -7135,17 +7106,31 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column) {
 		}
 	}
 
+	//cout << pawns_bonus_total << endl;
 
 	// Colonnes ouvertes
 	int open_files_total = 0;
 
 	for (uint_fast8_t col = 0; col < 3; col++) {
 		if (open_files[col]) {
+			//cout << "open file on " << square_name(king_pos.row, col + king_pos.col - 1) << endl;
 			open_files_total += open_file_malus;
 		}
 	}
 
-	int total_bonus = connected_pawns_bonus_total + pawns_bonus_total - open_files_total;
+	// Protection par les bords de l'échiquier
 
-	return total_bonus;
+	// Bord vertical
+	constexpr int v_edge_protection = 25;
+
+	// Bord horizontal
+	constexpr int h_edge_protection = 35;
+
+	const int edge_protection = v_edge_protection * (min(king_pos.row, 7 - king_pos.row) == 0) + h_edge_protection * (min(king_pos.col, 7 - king_pos.col) == 0);
+
+	int total_bonus = connected_pawns_bonus_total + pawns_bonus_total - open_files_total + edge_protection;
+
+	//cout << "total: " << total_bonus << endl;
+
+	return total_bonus - king_base_protection;
 }
