@@ -58,9 +58,9 @@ GUI::GUI() {
 // GUI
 GUI main_GUI;
 
-// Fonction qui met en place le binding avec chess.com pour une nouvelle partie
+// Fonction qui met en place le binding avec le site d'échecs pour une nouvelle partie
 bool GUI::new_bind_game() {
-	const int orientation = bind_board_orientation(_binding_left, _binding_top, _binding_right, _binding_bottom);
+	const int orientation = bind_board_orientation(_binding_left, _binding_top, _binding_right, _binding_bottom, _current_site);
 
 	if (orientation == -1)
 		return false;
@@ -79,7 +79,7 @@ bool GUI::new_bind_game() {
 		_white_country = "57";
 
 		// Joueur noir
-		_black_player = "chess.com player";
+		_black_player = _current_site._name + " player";
 		_black_title = "";
 		_black_elo = "";
 		_black_url = "";
@@ -87,7 +87,7 @@ bool GUI::new_bind_game() {
 	}
 	else {
 		// Joueur blanc
-		_white_player = "chess.com player";
+		_white_player = _current_site._name + " player";
 		_white_title = "";
 		_white_elo = "";
 		_white_url = "";
@@ -114,7 +114,7 @@ bool GUI::new_bind_game() {
 
 // Fonction qui met en place le binding avec chess.com pour une nouvelle analyse de partie
 bool GUI::new_bind_analysis() {
-	const int orientation = bind_board_orientation(_binding_left, _binding_top, _binding_right, _binding_bottom);
+	const int orientation = bind_board_orientation(_binding_left, _binding_top, _binding_right, _binding_bottom, _current_site);
 
 	if (orientation == -1)
 		return false;
@@ -823,7 +823,7 @@ void GUI::draw_simple_arrow_from_coord(const int i1, const int j1, const int i2,
 	draw_circle(x2, y2, thickness * 2.0f, c);
 }
 
-// TODO
+// Joue un coup en gardant la réflexion de GrogrosZero
 bool GUI::play_move_keep(const Move move)
 {
 	// S'assure que le coup est légal
@@ -848,7 +848,7 @@ bool GUI::play_move_keep(const Move move)
 		_board.make_move(move, false, false, true);
 
 		// On met à jour le plateau de recherche
-		_root_exploration_node->_board = &_board;
+		//_root_exploration_node->_board = &_board;
 	}
 
 	// Si le coup a effectivement été calculé
@@ -880,6 +880,7 @@ bool GUI::play_move_keep(const Move move)
 
 			// On met à jour le plateau
 			_board = *_root_exploration_node->_board;
+			//_root_exploration_node->_board = &_board;
 		}
 
 		// Sinon, on joue simplement le coup
@@ -891,9 +892,16 @@ bool GUI::play_move_keep(const Move move)
 			_board.make_move(move, false, false, true);
 
 			// On met à jour le plateau de recherche
-			_root_exploration_node->_board = &_board;
+			//_root_exploration_node->_board = &_board;
 		}
 	}
+
+	_root_exploration_node->_board = &_board;
+
+
+	//cout << "same board: " << (_root_exploration_node->_board == &_board) << endl;
+	//cout << "same board2: " << (*_root_exploration_node->_board == _board) << endl;
+
 
 	// Update le PGN
 	_game_tree.select_next_node(move);
@@ -924,7 +932,19 @@ uint_fast8_t GUI::clicked_piece() const
 // Fonction qui lance une analyse de GrogrosZero
 void GUI::grogros_analysis(int iterations) {
 	// Noeuds à explorer par frame, en visant 60 FPS
-	int iterations_to_explore = _root_exploration_node->get_ips() / 60;
+
+	// Iterations par seconde
+	int iterations_per_second = _root_exploration_node->get_ips();
+
+	// Iterations max par seconde
+	//constexpr int max_iterations_per_second = 100000;
+
+	//if (iterations_per_second > max_iterations_per_second) {
+	//	//cout << "Too many iterations per second? : " << iterations_per_second << endl;
+	//	iterations_per_second = 0;
+	//}
+
+	int iterations_to_explore = iterations_per_second / 60;
 	if (iterations_to_explore == 0)
 		iterations_to_explore = 1;
 
@@ -1520,7 +1540,13 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	// Combien de temps devrait-on attendre?
 	// On met une valeur max pour éviter les overflow
 	// FIXME: la différence d'éval devrait être relative?
-	float move_wait_factor = min(100.0f, 1.0f + abs(most_explored_child_eval - best_eval_colored) / 50.0f);
+
+	// Peut-on se permettre d'attendre? Dépend du temps restant (1 minute = limite...)
+	int time_left = _board._player ? _time_white : _time_black;
+
+	float move_wait_factor = min(100.0f, 1.0f + abs(most_explored_child_eval - best_eval_colored) / 50.0f * time_left / 60000.0f);
+
+
 
 	//float move_wait_factor = wait_for_best_move ? wait_factor : 1.0f; // C'est beaucoup mais bon, il faut trouver un truc pour améliorer ça
 
@@ -1563,7 +1589,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 		if (wait_for_best_move) {
 			cout << "Position: " << _board.to_fen() << " : played the sub-optimal " << _board._moves_count << ". " << _board.move_label(_root_exploration_node->get_best_move()) << " because it was taking too long to wait for it... best move was probably:" << _board.move_label(best_move) << endl;
-			cout << move_wait_factor << endl;
+			cout << "Evaluations: " << most_explored_child_eval << " | " << best_eval_colored << " -> wait factor: " << move_wait_factor << endl;
 		}
 
 		//cout << nodes_to_play << ", max move time : " << max_move_time << ", supposed speed : " << supposed_grogros_speed << ", nodes : " << _root_exploration_node->_nodes << endl;
@@ -1571,4 +1597,45 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	}
 
 	return;
+}
+
+// Fonction qui initialise les couleurs des sites de jeux d'échecs
+void GUI::init_chess_sites() {
+
+	// Chess.com (setup avec cases vertes et pièces de base)
+	ChessSite chess_com;
+	chess_com._name = "chess.com";
+	chess_com._white_tile_color = SimpleColor(233, 237, 204);
+	chess_com._black_tile_color = SimpleColor(119, 153, 84);
+	chess_com._white_piece_color = SimpleColor(248, 248, 248);
+	chess_com._black_piece_color = SimpleColor(86, 83, 82);
+	chess_com._white_tile_played_color = SimpleColor(244, 246, 127);
+	chess_com._black_tile_played_color = SimpleColor(187, 204, 67);
+	chess_com._piece_location_on_tile = { 0.15f, 0.50f };
+	chess_com._tile_location_on_tile = { 0.85f, 0.85f };
+	chess_com._time_lost_per_move = 125;
+
+	_chess_sites.push_back(chess_com);
+
+	// Lichess.org (TODO)
+	// Cases:
+	// blanches : 240, 217, 181
+	// noires : 181, 136, 99
+
+
+	// Internet Chess Club (setup avec cases marrons et pièces 'Default')
+	ChessSite internet_chess_club;
+	internet_chess_club._name = "ICC";
+	internet_chess_club._white_tile_color = SimpleColor(255, 219, 163);
+	internet_chess_club._black_tile_color = SimpleColor(181, 136, 99);
+	internet_chess_club._white_piece_color = SimpleColor(249, 249, 249);
+	internet_chess_club._black_piece_color = SimpleColor(63, 70, 77);
+	internet_chess_club._white_tile_played_color = SimpleColor(255, 233, 98);
+	internet_chess_club._black_tile_played_color = SimpleColor(211, 184, 59);
+	internet_chess_club._piece_location_on_tile = { 0.25f, 0.50f };
+	internet_chess_club._tile_location_on_tile = { 0.85f, 0.90f };
+	internet_chess_club._time_lost_per_move = 450;
+
+	_chess_sites.push_back(internet_chess_club);
+
 }
