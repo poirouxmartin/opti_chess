@@ -8,6 +8,7 @@
 #include "board.h"
 #include "game_tree.h"
 #include "exploration.h"
+#include "windows_tests.h"
 
 using namespace std;
 
@@ -35,7 +36,7 @@ public:
 	bool _binding_full = false; // Pour récupérer tous les coups de la partie
 	bool _binding_solo = false; // Pour récupérer seulement les coups de la couleur du joueur du bas
 
-	// Intervalle de tmeps pour check chess.com
+	// Intervalle de temps pour check chess.com
 	int _binding_interval_check = 100;
 
 	// Moment du dernier check
@@ -54,16 +55,18 @@ public:
 	//SimpleRectangle _binding_coord;
 
 	// Temps initial des joueurs
-	clock_t _initial_time_white = 180000;
-	clock_t _initial_time_black = 180000;
+	//clock_t _initial_time_white = 180000;
+	//clock_t _initial_time_black = 180000;
+	clock_t _initial_time_white = 60000;
+	clock_t _initial_time_black = 60000;
 
 	// Temps des joueurs
 	clock_t _time_white;
 	clock_t _time_black;
 
 	// Incrément
-	clock_t _time_increment_white = -100;
-	clock_t _time_increment_black = -100;
+	clock_t _time_increment_white = 0;
+	clock_t _time_increment_black = 0;
 
 	//clock_t _time_increment_white = 15000;
 	//clock_t _time_increment_black = 15000;
@@ -88,28 +91,11 @@ public:
 	TextBox _black_time_text_box;
 
 	// Paramètres pour la recherche de Monte-Carlo
-	//float _beta = 0.25f;
-	//float _k_add = 10.0f;
-	//int _quiescence_depth = 40;
-
-	//float _beta = 0.10f;
-	//float _k_add = 25.0f;
-	//int _quiescence_depth = 8;
-
 	float _beta = 0.1f;
 	float _k_add = 5.0f;
 	int _quiescence_depth = 6;
 
-	//float _beta = 0.10f;
-	//float _k_add = 25.0f;
-	//int _quiescence_depth = 4;
-
 	bool _explore_checks = true; // FIXME? faut-il vraiment explorer les échecs?
-
-	// Paramètres de brute
-	//float _beta = 0.25f;
-	//float _k_add = 1.0f;
-	//int _quiescence_depth = 4;
 
 	// Est-ce que les noms des joueurs ont été ajoutés au PGN
 	bool _named_pgn = false;
@@ -117,6 +103,7 @@ public:
 
 	// Affichage du PGN
 
+	// TODO: classe player avec nom, elo, pays, url, titre...
 	// Joueurs
 	string _white_player = "White";
 	string _black_player = "Black";
@@ -401,6 +388,12 @@ public:
 	const string q_symbol = "\xC4\x8A";
 	const string k_symbol = "\xC4\x8B";
 
+	// Sites de jeux d'échecs
+	vector<ChessSite> _chess_sites;
+
+	// Site de jeu d'échecs actuel
+	ChessSite _current_site;
+
 	// Constructeurs
 
 	// Par défaut
@@ -531,7 +524,7 @@ public:
 	// Fonction aidant à l'affichage du plateau (renvoie i si board_orientation, et 7 - i sinon)
 	int orientation_index(int) const;
 
-	// TODO
+	// Joue un coup en gardant la réflexion de GrogrosZero
 	bool play_move_keep(const Move move);
 
 	// Fonction qui renvoie le type de pièce sélectionnée
@@ -560,6 +553,9 @@ public:
 
 	// Fonction qui fait jouer le coup de GrogrosZero ou non en fonction du temps restant
 	void play_grogros_zero_move(float time_proportion_per_move = 0.02f);
+
+	// Fonction qui initialise les couleurs des sites de jeux d'échecs
+	void init_chess_sites();
 
 
 	// TODO

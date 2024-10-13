@@ -54,6 +54,8 @@ void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add
 	// BUG: rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 0 1
 	// quiescence là dessus, après il regarde à donf Tb1 après Dxh7... ??
 
+	//cout << "toto" << endl;
+
 	// Ne devrait pas arriver
 	// FIXME!! ça arrive en fait...
 	if (iterations <= 0) {
@@ -379,7 +381,7 @@ Move Node::pick_random_child(const float beta, const float k_add) const {
 
 	// Faut-il chercher plus large en finale?
 	//double enlargement_factor = (double)_nodes / (double)_iterations;
-	double enlargement_factor = pow((double)_nodes / (double)_iterations / (1 - _board->_adv + 0.5f), 0.2);
+	double enlargement_factor = pow((double)_nodes / (double)_iterations / (1 - _board->_adv + 0.5f), 0.1);
 	//double enlargement_factor = 1;
 	
 	// FIXME: quelle est la meilleure manière d'élargir?

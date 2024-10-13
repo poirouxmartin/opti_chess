@@ -123,6 +123,9 @@ inline int main_ui() {
 	Network eval_network;
 	eval_network.generate_random_weights();
 
+	// Génération des sites web
+	main_GUI.init_chess_sites();
+
 
 
 	// Boucle principale (Quitter à l'aide de la croix, ou en faisant échap)
@@ -143,109 +146,31 @@ inline int main_ui() {
 
 		// T - Test de thread
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_T)) {
-
-			//main_GUI._board.grogros_zero(&monte_evaluator, 1, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, main_GUI._deep_mates_search, main_GUI._explore_checks);
-
-
-
-
-			// grogrosZero sur le thread de la GUI
-			//main_GUI._thread_grogros_zero = thread(&Board::grogros_zero, &main_GUI._board, &monte_evaluator, 50000, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, true, true, false, 0, nullptr);
-			//main_GUI._thread_grogros_zero = thread(&Board::grogros_zero, &monte_buffer._heap_boards[main_GUI._board._index_children[0]], &monte_evaluator, 50000, true, main_GUI._beta, main_GUI._k_add, main_GUI._quiescence_depth, true, true, false, 0, nullptr);
-			//main_GUI._thread_grogros_zero.detach();
-
-			// arrête le thread
-			//main_GUI._thread_grogros_zero.~thread();
-
-			// Threads
-			//main_GUI.thread_grogros_zero(&monte_evaluator, 5000);
-
-			//main_GUI.grogros_zero_threaded(&monte_evaluator, 5000);
-
-			// Teste la vitesse de la fonction d'évaluation
-			/*cout << "testing eval speed..." << endl;
-			test_function(&launch_eval, 1);*/
-
-			// Teste la vitesse de génération des coups
-			//cout << "testing moves generation speed..." << endl;
-			/*Board b;
-			b.from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
-			b.moves_generation_benchmark(5);*/
-			//main_GUI._board.moves_generation_benchmark(6);
-
-			//	1 move : 20 possible positions.
-			//	2 moves : 400 possible positions.
-			//	3 moves : 8 902 possible positions.
-			//	4 moves : 197 281 possible positions.
-			//	5 moves : 4 865 609 possible positions.
-			//	6 moves : 119 060 324 possible positions.
-			//	7 moves : 3 195 901 860 possible positions.
-			//	8 moves : 84 998 978 956 possible positions.
-			//	9 moves : 2 439 530 234 167 possible positions.
-			//	10 moves : 69 352 859 712 417 possible positions.
-
-
-			// Test de quiescence
-			/*cout << "testing quiescence..." << endl;
-			cout << main_GUI._board.get_color() * main_GUI._board.quiescence(main_GUI._grogros_eval) << endl;
-			cout << main_GUI._board._quiescence_nodes << endl;*/
-
-			//main_GUI.grogros_zero_threaded(main_GUI._grogros_eval, 50000);
-			//main_GUI.thread_grogros_zero(main_GUI._grogros_eval, 1000);
-
-			//main_GUI._board.grogros_quiescence(main_GUI._grogros_eval);
-
-			//main_GUI.grogros_analysis();
-
-			/*cout << main_GUI._board._positions_history.size() << endl;
-			for (int i = 0; i < main_GUI._root_exploration_node->children_count(); i++) {
-				cout << main_GUI._root_exploration_node->_children[i]->_board._positions_history.size() << endl;
-			}*/
-
-			//r1bqr1k1/1pp2p1Q/p3p1B1/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 b - - 6 27 : #-1
-
-			// TEST: r1bqr1k1/1pp2p2/p3p1BQ/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 5 27 : Dh7+ #2
-
-			//cout << "\nOLD QUIESCENCE : " << endl;
-			//int toto = main_GUI._root_exploration_node->_board->quiescence(main_GUI._grogros_eval);
-			//cout << "eval : " << toto << endl;
-
-			//cout << "\nNEW QUIESCENCE : " << endl;
-			//int toto2 = main_GUI._root_exploration_node->grogros_quiescence(&monte_buffer, main_GUI._grogros_eval, main_GUI._quiescence_depth);
-			//cout << "eval : " << toto2 << endl;
-
-			// Test match between two neural networks
-			//Player white_player;
-			//Player black_player;
-
-			//Match test_match(&white_player, &black_player);
-			//int match_result = test_match.play("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", true);
-
-			// Test du réseau de neurones
-			//main_GUI._root_exploration_node->grogros_zero(&monte_buffer, nullptr, main_GUI._beta, main_GUI._k_add, 5000, main_GUI._quiescence_depth, &eval_network);
-			// TODO: afficher l'évaluation actuelle (elle parait toujours augmenter, c'est bizarre...)
-
-			//eval_network.display_values();
-			//main_GUI._root_exploration_node->_board->evaluate(nullptr, false, &eval_network, false);
-			//cout << "eval : " << main_GUI._root_exploration_node->_board->_evaluation << endl;
-
 			main_GUI.grogros_analysis(1);
-			//cout << main_GUI._root_exploration_node->_iterations << endl;
-
-			//cout << main_GUI._root_exploration_node->get_main_depth() << endl;
-			//cout << main_GUI._root_exploration_node->_fully_explored << endl;
 		}
 
-		// CTRL-T - Cherche le plateau de chess.com sur l'écran, et lance une partie
+		// CTRL-T - Cherche le plateau du site d'échecs sur l'écran, et lance une partie
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_T)) {
-			locate_chessboard(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom);
-			main_GUI.new_bind_game();
+			for (auto& site : main_GUI._chess_sites) {
+				bool located_board = locate_chessboard(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom, site);
+				if (located_board) {
+					main_GUI._current_site = site;
+					main_GUI.new_bind_game();
+					break;
+				}
+			}
 		}
 
-		// LCTRL-A - Binding full (binding chess.com)
+		// LCTRL-A - Binding full
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_Q)) {
-			locate_chessboard(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom);
-			main_GUI._binding_full = !main_GUI._binding_full;
+			for (auto& site : main_GUI._chess_sites) {
+				bool located_board = locate_chessboard(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom, site);
+				if (located_board) {
+					main_GUI._current_site = site;
+					main_GUI._binding_full = !main_GUI._binding_full;
+					break;
+				}
+			}
 		}
 
 		// LCTRL-Q - Mode de jeu automatique (binding chess.com) -> Check le binding seulement sur les coups de l'adversaire
@@ -624,23 +549,31 @@ inline int main_ui() {
 
 		// TODO: il faut améliorer tout ça, et faire passer des choses dans la GUI
 
+		int new_game_over = 0;
+
 		// Fait jouer l'IA automatiquement en fonction des paramètres
-		main_GUI._board._game_over_checked = false;  // On recheck, pour les threefold (car dans la réflexion on dit que la partie est finie si y'a une seule répétition)
-		if (main_GUI._board.is_game_over(3) == 0) {
+		if (main_GUI._board._game_over_checked && main_GUI._board._game_over_value != 0) {
+			//cout << "Game seems to be over... or is it?" << endl;
+			main_GUI._board._game_over_checked = false;
+			new_game_over = main_GUI._board.is_game_over(3);
+			main_GUI._root_exploration_node->_iterations = 0;
+			//cout << "New game over value : " << new_game_over << endl;
+			//cout << "exploration game over value : " << (int)main_GUI._root_exploration_node->_board->_game_over_value << endl;
+		}
+
+		//main_GUI._board._game_over_checked = false;  // On recheck, pour les threefold (car dans la réflexion on dit que la partie est finie si y'a une seule répétition)
+		//if (main_GUI._board.is_game_over(3) == 0) {
+		if (new_game_over == 0) {
 			// GrogrosZero
+
+			//cout << "test" << endl;
 
 			// Analyse de GrogrosZero
 			if (main_GUI._grogros_analysis || main_GUI._white_player == main_GUI._grogros_zero_name || main_GUI._black_player == main_GUI._grogros_zero_name) {
 				if (!monte_buffer._init)
 					monte_buffer.init(buffer_size);
 
-				// FIXME: il faut utiliser ça pour pas que ça lag pour l'utilisateur
-				if (!main_GUI.is_playing()) {
-					main_GUI.grogros_analysis();
-				}
-				else {
-					main_GUI.grogros_analysis();
-				}
+				main_GUI.grogros_analysis();
 			}
 
 			// Quand c'est son tour (TODO: fonction pour ça)
@@ -664,6 +597,7 @@ inline int main_ui() {
 
 		// Si la partie est terminée
 		else {
+
 		game_over:
 
 			if (!main_game_over) {
@@ -673,18 +607,25 @@ inline int main_ui() {
 			}
 		}
 
-		// Jeu automatique sur chess.com
+		// Jeu automatique sur sites d'échecs
 		if (main_GUI._binding_full || (main_GUI._binding_solo && main_GUI.get_board_orientation() != main_GUI._board._player)) {
 			// Le fait à chaque intervalle de temps 'binding_interval_check'
 			if (clock() - main_GUI._last_binding_check > main_GUI._binding_interval_check) {
 				// Coup joué sur le plateau
-				main_GUI._binding_move = get_board_move(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom, main_GUI.get_board_orientation());
+				main_GUI._binding_move = get_board_move(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom, main_GUI._current_site, main_GUI.get_board_orientation());
 
 				// Vérifie que le coup est légal avant de le jouer
 				for (int i = 0; i < main_GUI._board._got_moves; i++) {
 					if (main_GUI._board._moves[i].i1 == main_GUI._binding_move[0] && main_GUI._board._moves[i].j1 == main_GUI._binding_move[1] && main_GUI._board._moves[i].i2 == main_GUI._binding_move[2] && main_GUI._board._moves[i].j2 == main_GUI._binding_move[3]) {
 						//main_GUI._board.play_move_sound(Move(main_GUI._binding_move[0], main_GUI._binding_move[1], main_GUI._binding_move[2], main_GUI._binding_move[3]));
 						main_GUI.play_move_keep(main_GUI._board._moves[i]);
+
+						// Retire du temps en fonction du temps perdu par coup
+						if (main_GUI._board._player)
+							main_GUI._time_white -= main_GUI._current_site._time_lost_per_move;
+						else
+							main_GUI._time_black -= main_GUI._current_site._time_lost_per_move;
+
 						break;
 					}
 				}
