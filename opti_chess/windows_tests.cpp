@@ -97,20 +97,7 @@ HBITMAP get_screen_bmp(const HDC hdc, const int x1, const int y1, const int x2, 
 }
 
 // Fonction qui affiche la couleur de chacune des cases de l'échiquier sur l'écran, en donnant ses coordonnées (top-left, bottom-right)
-uint_fast8_t* get_board_move(const int x1, const int y1, const int x2, const int y2, const bool orientation, const bool display) {
-	// Pour un échiquier de base (blanc et vert sur chess.com)
-
-	// Couleurs des coups joués
-	// blanches : 247, 247, 105
-	// noires : 187, 203, 43
-	static const SimpleColor white_played(244, 246, 127);
-	static const SimpleColor black_played(187, 204, 67);
-
-	// Couleurs des cases normales
-	// blanches : 238, 238, 210
-	// noires : 118, 150, 86
-
-	// Couleur de chaque case
+uint_fast8_t* get_board_move(const int x1, const int y1, const int x2, const int y2, ChessSite website, const bool orientation, const bool display) {
 
 	int x_begin = -1;
 	int y_begin = -1;
@@ -119,10 +106,6 @@ uint_fast8_t* get_board_move(const int x1, const int y1, const int x2, const int
 
 	// Taille d'une case
 	const float tile_size = (x2 - x1) / 8.0f;
-
-	// Couleur de la case à 85%, 85% (haut-droite)
-	constexpr float tile_corner_x = 0.85f;
-	constexpr float tile_corner_y = 0.85f;
 
 	// Fait un screenshot en bmp
 	const HDC hdc = GetDC(nullptr);
@@ -139,16 +122,12 @@ uint_fast8_t* get_board_move(const int x1, const int y1, const int x2, const int
 	if (0 == GetDIBits(hdc, h_bitmap, 0, my_bm_info.bmiHeader.biHeight, (LPVOID)lp_pixels, &my_bm_info, DIB_RGB_COLORS))
 		cout << "error2" << endl;
 
-	BYTE blue;
-	BYTE green;
-	BYTE red;
-
 	// Regarde chaque case de l'échiquier
 	for (int i = 0; i < 8; i++) {
 		for (int j = 0; j < 8; j++) {
 			// Couleur de la case
-			int x = (i + tile_corner_x) * tile_size;
-			int y = (j + tile_corner_y) * tile_size;
+			int x = (i + website._tile_location_on_tile.first) * tile_size;
+			int y = (j + website._tile_location_on_tile.second) * tile_size;
 			int pixel_offset = x * my_bm_info.bmiHeader.biWidth + y;
 			const BYTE* pixel_address = lp_pixels + pixel_offset * (my_bm_info.bmiHeader.biBitCount / 8);
 			auto color = SimpleColor(static_cast<int>(pixel_address[2]), static_cast<int>(pixel_address[1]),
@@ -159,7 +138,7 @@ uint_fast8_t* get_board_move(const int x1, const int y1, const int x2, const int
 			}
 
 			// Si la couleur correspond à une couleur de case jouée
-			if (color.equals(white_played, 0.98f) || color.equals(black_played, 0.98f)) {
+			if (color.equals(website._white_tile_played_color, 0.98f) || color.equals(website._black_tile_played_color, 0.98f)) {
 				if (display) {
 					cout << "moved tile : ";
 				}
@@ -176,7 +155,7 @@ uint_fast8_t* get_board_move(const int x1, const int y1, const int x2, const int
 				}
 
 				// Si c'est le cas, alors c'est la case de départ
-				if (color.equals(white_played, 0.98f) || color.equals(black_played, 0.98f)) {
+				if (color.equals(website._white_tile_played_color, 0.98f) || color.equals(website._black_tile_played_color, 0.98f)) {
 					y_begin = orientation ? i : 7 - i;
 					x_begin = orientation ? j : 7 - j;
 					if (display)
@@ -226,17 +205,10 @@ void click_move(const int j1, const int i1, const int j2, const int i2, const in
 }
 
 // Fonction qui récupère l'orientation du plateau. Renvoie 1 si les blancs sont en bas, 0 si c'est les noirs, -1 sinon
-int bind_board_orientation(const int x1, const int y1, const int x2, const int y2) {
-	// Couleur des pièces sur le plateau
-	const SimpleColor white_color(248, 248, 248);
-	const SimpleColor black_color(86, 83, 82);
+int bind_board_orientation(const int x1, const int y1, const int x2, const int y2, ChessSite website) {
 
 	// Taille d'une case
 	const float tile_size = static_cast<float>((x2 - x1)) / 8.0f;
-
-	// Couleur de la case à :
-	constexpr float tile_corner_x = 0.15f; // 15% en bas
-	constexpr float tile_corner_y = 0.50f; // 50% au milieu
 
 	// Couleur de la case
 
@@ -255,25 +227,22 @@ int bind_board_orientation(const int x1, const int y1, const int x2, const int y
 	if (0 == GetDIBits(hdc, h_bitmap, 0, my_bm_info.bmiHeader.biHeight, (LPVOID)lp_pixels, &my_bm_info, DIB_RGB_COLORS))
 		cout << "error2" << endl;
 
-	BYTE blue;
-	BYTE green;
-	BYTE red;
-	const int x = static_cast<int>(tile_corner_x * tile_size);
-	const int y = static_cast<int>(tile_corner_y * tile_size);
+	// Position où regarder la couleur de la case
+	const int x = static_cast<int>(website._piece_location_on_tile.first * tile_size);
+	const int y = static_cast<int>(website._piece_location_on_tile.second * tile_size);
 
 	const int pixel_offset = x * my_bm_info.bmiHeader.biWidth + y;
 	const BYTE* pixel_address = lp_pixels + pixel_offset * (my_bm_info.bmiHeader.biBitCount / 8);
-	const auto color = SimpleColor(static_cast<int>(pixel_address[2]), static_cast<int>(pixel_address[1]),
-		static_cast<int>(pixel_address[0]));
+	const auto color = SimpleColor(static_cast<int>(pixel_address[2]), static_cast<int>(pixel_address[1]), static_cast<int>(pixel_address[0]));
 
-	return color.equals(white_color, 0.98f) ? 1 : color.equals(black_color, 0.98f) ? 0 : -1;
+	return color.equals(website._white_piece_color, 0.98f) ? 1 : color.equals(website._black_piece_color, 0.98f) ? 0 : -1;
 }
 
 // Fonction qui cherche la position du plateau de chess.com sur l'écran
-void locate_chessboard(int& top_left_x, int& top_left_y, int& bottom_right_x, int& bottom_right_y) {
-	cout << "looking for chess.com chessboard..." << endl;
-	static const SimpleColor dark_square_color(119, 153, 84);
-	static const SimpleColor light_square_color(233, 237, 204);
+bool locate_chessboard(int& top_left_x, int& top_left_y, int& bottom_right_x, int& bottom_right_y, ChessSite website) {
+
+	// Cherche le plateau sur le site
+	cout << "looking for " << website._name << " chessboard..." << endl;
 
 	const int screen_width = GetSystemMetrics(SM_CXSCREEN);
 	const int screen_height = GetSystemMetrics(SM_CYSCREEN);
@@ -294,9 +263,7 @@ void locate_chessboard(int& top_left_x, int& top_left_y, int& bottom_right_x, in
 		cout << "error2" << endl;
 
 	BYTE* pixel_address;
-	BYTE blue;
-	BYTE green;
-	BYTE red;
+
 	// Distance au bas
 	int y;
 	int pixel_offset;
@@ -305,37 +272,46 @@ void locate_chessboard(int& top_left_x, int& top_left_y, int& bottom_right_x, in
 	// Cherche au milieu de l'écran, mais on peut faire un cadrillage si besoin...
 
 	// Cherche la gauche du plateau
+	bool found_left = false;
 	int x = screen_height / 2;
 	for (y = 0; y < screen_width; y++) {
 		pixel_offset = x * my_bm_info.bmiHeader.biWidth + y;
 		pixel_address = lp_pixels + pixel_offset * (my_bm_info.bmiHeader.biBitCount / 8);
 		color = SimpleColor(static_cast<int>(pixel_address[2]), static_cast<int>(pixel_address[1]), static_cast<int>(pixel_address[0]));
-		if (color.equals(dark_square_color, 0.98f) || color.equals(light_square_color, 0.98f)) {
+
+		if (color.equals(website._black_tile_color, 0.98f) || color.equals(website._white_tile_color, 0.98f)) {
 			top_left_x = y;
+			found_left = true;
 			break;
 		}
 	}
 
 	// Cherche le bas du plateau
+	bool found_bottom = false;
 	y = top_left_x + 10;
 	for (x = 0; x < screen_height; x++) {
 		pixel_offset = x * my_bm_info.bmiHeader.biWidth + y;
 		pixel_address = lp_pixels + pixel_offset * (my_bm_info.bmiHeader.biBitCount / 8);
 		color = SimpleColor(static_cast<int>(pixel_address[2]), static_cast<int>(pixel_address[1]), static_cast<int>(pixel_address[0]));
-		if (color.equals(dark_square_color, 0.98f) || color.equals(light_square_color, 0.98f)) {
+
+		if (color.equals(website._black_tile_color, 0.98f) || color.equals(website._white_tile_color, 0.98f)) {
 			bottom_right_y = screen_height - x;
+			found_bottom = true;
 			break;
 		}
 	}
 
 	// Cherche le haut du plateau
+	bool found_top = false;
 	y = top_left_x + 10;
 	for (x = screen_height; x > 0; x--) {
 		pixel_offset = x * my_bm_info.bmiHeader.biWidth + y;
 		pixel_address = lp_pixels + pixel_offset * (my_bm_info.bmiHeader.biBitCount / 8);
 		color = SimpleColor(static_cast<int>(pixel_address[2]), static_cast<int>(pixel_address[1]), static_cast<int>(pixel_address[0]));
-		if (color.equals(dark_square_color, 0.98f) || color.equals(light_square_color, 0.98f)) {
+
+		if (color.equals(website._black_tile_color, 0.98f) || color.equals(website._white_tile_color, 0.98f)) {
 			top_left_y = screen_height - x;
+			found_top = true;
 			break;
 		}
 	}
@@ -343,12 +319,25 @@ void locate_chessboard(int& top_left_x, int& top_left_y, int& bottom_right_x, in
 	// Droite du plateau (normalement il est carré)
 	bottom_right_x = top_left_x + bottom_right_y - top_left_y;
 
-	printf("Top-Left: (%d, %d)\n", top_left_x, top_left_y);
-	printf("Bottom-Right: (%d, %d)\n", bottom_right_x, bottom_right_y);
-	cout << "chess.com chessboard has been located" << endl;
+	bool located = found_left && found_bottom && found_top;
 
-	return;
+	if (located) {
+
+		cout << website._name << " chessboard has been located:";
+		printf("Top-Left: (%d, %d), ", top_left_x, top_left_y);
+		printf("Bottom-Right: (%d, %d)\n", bottom_right_x, bottom_right_y);
+	}
+	else {
+		cout << "chessboard not found" << endl;
+	}
+
+	cout << endl;
+
+	return located;
 }
+
+// Constructeur par défaut
+ChessSite::ChessSite() = default;
 
 // TODO : clean
 // -> Clean les fonctions
