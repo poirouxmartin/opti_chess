@@ -1634,7 +1634,7 @@ void GUI::init_chess_sites() {
 	internet_chess_club._black_tile_played_color = SimpleColor(211, 184, 59);
 	internet_chess_club._piece_location_on_tile = { 0.25f, 0.50f };
 	internet_chess_club._tile_location_on_tile = { 0.85f, 0.90f };
-	internet_chess_club._time_lost_per_move = 450;
+	internet_chess_club._time_lost_per_move = 420;
 
 	_chess_sites.push_back(internet_chess_club);
 
