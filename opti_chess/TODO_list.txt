@@ -538,10 +538,15 @@ NEXT:
 -> Bonus pour les killer moves
 -> Plus la position est ouverte, plus la position du roi est problématique?
 -> Pour le bonus d'attaque, il faut savoir s'il est possible de mater avec ce rapport matériel...
+8/6p1/6k1/p2R4/b2B2K1/8/8/3r4 b - - 1 63 : ?????????????? king safety??
+rnb2rk1/pppp3p/5Q2/3N4/8/4p3/PPP3PP/6K1 w - - 1 19 : ici c'est bien mat en 1
+-> Queen activity (en prenant en compte si elle est attaquable?), king activity (pour les finales), blocked central pawn (pour éviter de foutre des pièces devant?)
+-> Re différencier les vraies cases faibles, et "semi-faibles"...
 
 
 URGENT:
-2k1r2r/p1q3pp/8/1pbp3Q/2n2P2/4P3/PPP3BP/1K1R2R1 w - - 2 22 : il a joué Df5+ après avoir vu Txd5 (wait_factor = 3.42...)
+
+r2qr1k1/pp1n1pp1/2pbbp1p/3p4/3P4/P1NBPN1P/1PPQ1PP1/R4RK1 w - - 2 12 : ici il fait h4 pour: weak square+, et bishop_pawns+... (car h4 octroie la case f4...)
 2bk1r2/4b1Qp/2q5/1p6/n1pP4/8/1P2NPPP/R1K2B1R b - - 2 22 : c3 gagne
 3kr3/3b2Qp/1nq5/1p1n4/1bpP1B2/8/1P2NPPP/R2K1B1R w - - 1 20 : gagnant pour les noirs: combinaison d'activité monstre, roi blanc au centre peu protégé, et tours et fou blancs inactifs
 2bk4/6Qp/1n3p2/1p6/1b1P3B/5K2/2q2PPP/R4B1R b - - 3 25 : le roi blanc est mat (en 7)
