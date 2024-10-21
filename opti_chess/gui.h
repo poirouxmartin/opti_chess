@@ -92,6 +92,7 @@ public:
 
 	// Paramètres pour la recherche de Monte-Carlo
 	float _beta = 0.1f;
+	//float _k_add = 50.0f;
 	float _k_add = 5.0f;
 	int _quiescence_depth = 6;
 

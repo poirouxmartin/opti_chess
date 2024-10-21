@@ -234,14 +234,14 @@ public:
 
 	// Plateau
 	// 64 bytes
-	uint_fast8_t _array[8][8]{	{    w_rook,    w_knight,    w_bishop,    w_queen,    w_king,    w_bishop,    w_knight,    w_rook },
-								{    w_pawn,    w_pawn,    w_pawn,    w_pawn,    w_pawn,    w_pawn,    w_pawn,    w_pawn },
-								{ none, none, none, none, none, none, none, none },
-								{ none, none, none, none, none, none, none, none },
-								{ none, none, none, none, none, none, none, none },
-								{ none, none, none, none, none, none, none, none },
-								{    b_pawn,    b_pawn,    b_pawn,    b_pawn,    b_pawn,    b_pawn,    b_pawn,    b_pawn },
-								{    b_rook,    b_knight,    b_bishop,    b_queen,    b_king,    b_bishop,    b_knight,    b_rook } };
+	uint_fast8_t _array[8][8]{	{	w_rook,		w_knight,	w_bishop,   w_queen,    w_king,		w_bishop,   w_knight,   w_rook	},
+								{   w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn	},
+								{	none,		none,		none,		none,		none,		none,		none,		none	},
+								{	none,		none,		none,		none,		none,		none,		none,		none	},
+								{	none,		none,		none,		none,		none,		none,		none,		none	},
+								{	none,		none,		none,		none,		none,		none,		none,		none	},
+								{   b_pawn,		b_pawn,		b_pawn,		b_pawn,		b_pawn,		b_pawn,		b_pawn,		b_pawn	},
+								{   b_rook,		b_knight,   b_bishop,   b_queen,    b_king,		b_bishop,   b_knight,   b_rook	} };
 
 	//Array _array; // TODO utiliser
 
@@ -602,6 +602,20 @@ public:
 
 	// Fonction qui renvoie la puissance de protection de la structure de pions du roi, s'il est sur la colonne donnée
 	[[nodiscard]] int get_pawn_shield_protection_at_column(bool color, int column);
+
+	// Fonction qui calcule tous les coups à une certaine profondeur, et renvoie le nombre de noeuds total
+	int count_nodes_at_depth(int depth);
+
+	// Fonction qui renvoie si le nombre de noeuds calculés pour une position à une certaine profondeur correspond au nombre attendu
+	bool validate_nodes_count_at_depth(string fen, int depth, vector<int> expected_nodes, bool display = false);
+
+	// TODO: génération plus rapide des coups
+
+	// TODO: test de puzzles et problèmes stratégiques, évaluations... avec un certain temps imparti
+	// Donner un score par catégorie: problèmes tactiques -> avec thèmes -> avec différentes cadences
+	// Problèmes stratégiques -> avec thèmes -> avec différentes cadences
+	// Test de positions pour évaluer le jeu; évaluation du coup joué et différence avec le meilleur coup
+	// Test d'évaluation: comparaison avec l'évaluation profonde de Stockfish/Leela -> test de l'évaluation statique + dynamique avec différentes cadences
 };
 
 // Fonction qui renvoie si deux positions (en format FEN) sont les mêmes
