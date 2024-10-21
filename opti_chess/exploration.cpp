@@ -84,7 +84,10 @@ void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add
 	}
 
 	// Vérifie que le buffer n'est pas plein (TODO) (et est bien initialisé aussi)
-	
+	if (_board->_got_moves <= 0) {
+		cout << "no moves in grogros_zero" << endl;
+		return;
+	}
 
 	while (iterations > 0) {
 
@@ -346,6 +349,10 @@ Move Node::pick_random_child(const float beta, const float k_add) const {
 
 	const int color = _board->get_color();
 	auto n_children = static_cast<int>(children_count());
+
+	if (n_children <= 0) {
+		cout << "no children in pick_random_child" << endl;
+	}
 
 	// *** 1. ***
 	// Evaluations des enfants (en fonction de la couleur)
