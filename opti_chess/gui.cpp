@@ -381,7 +381,7 @@ void GUI::draw_arrow_from_coord(const int i1, const int j1, const int i2, const 
 	const float y2 = _board_padding_y + _tile_size * orientation_index(7 - i2) + _tile_size / 2;
 
 	// Transparence nulle
-	c.a = 255;
+	//c.a = 255;
 
 	// Outline pour le coup choisi
 	if (outline) {
@@ -448,13 +448,17 @@ Color GUI::move_color(const int explorations, const int total_explorations) cons
 
 	const float x = static_cast<float>(explorations) / static_cast<float>(total_explorations);
 
-	const auto red = static_cast<unsigned char>(255.0f * ((x <= 0.2f) + (x > 0.2f && x < 0.4f) * (0.4f - x) / 0.2f + (x > 0.8f) * (x - 0.8f) / 0.2f));
-	const auto green = static_cast<unsigned char>(255.0f * ((x < 0.2f) * x / 0.2f + (x >= 0.2f && x <= 0.6f) + (x > 0.6f && x < 0.8f) * (0.8f - x) / 0.2f));
-	const auto blue = static_cast<unsigned char>(255.0f * ((x > 0.4f && x < 0.6f) * (x - 0.4f) / 0.2f + (x >= 0.6f)));
+	// Facteur d'atténuation par le blanc
+	const float white_attenuation = 0.3f;
 
-	//unsigned char alpha = 100 + 155 * nodes / total_nodes;
+	const auto red = static_cast<unsigned char>(255.0f * ((1 - white_attenuation) * ((x <= 0.2f) + (x > 0.2f && x < 0.4f) * (0.4f - x) / 0.2f + (x > 0.8f) * (x - 0.8f) / 0.2f) + white_attenuation));
+	const auto green = static_cast<unsigned char>(255.0f * ((1 - white_attenuation) * ((x < 0.2f) * x / 0.2f + (x >= 0.2f && x <= 0.6f) + (x > 0.6f && x < 0.8f) * (0.8f - x) / 0.2f) + white_attenuation));
+	const auto blue = static_cast<unsigned char>(255.0f * ((1 - white_attenuation) * ((x > 0.4f && x < 0.6f) * (x - 0.4f) / 0.2f + (x >= 0.6f)) + white_attenuation));
 
-	return { red, green, blue, 255 };
+	//unsigned char alpha = 100 + 155 * explorations / total_explorations;
+	const unsigned char alpha = 255;
+
+	return { red, green, blue, alpha };
 }
 
 // Fonction qui charge les textures
@@ -1634,7 +1638,7 @@ void GUI::init_chess_sites() {
 	internet_chess_club._black_tile_played_color = SimpleColor(211, 184, 59);
 	internet_chess_club._piece_location_on_tile = { 0.25f, 0.50f };
 	internet_chess_club._tile_location_on_tile = { 0.85f, 0.90f };
-	internet_chess_club._time_lost_per_move = 420;
+	internet_chess_club._time_lost_per_move = 425;
 
 	_chess_sites.push_back(internet_chess_club);
 
