@@ -451,7 +451,7 @@ public:
 	void draw_arrow_from_coord(const int i1, const int j1, const int i2, const int j2, const bool player, Color c, float thickness = -1, const bool use_value = false, int value = 0, const int mate = -1, bool outline = false);
 
 	// Couleur de la flèche en fonction du coup (de son nombre de noeuds)
-	Color move_color(int, int) const;
+	Color move_color(int, int, bool is_quiescence) const;
 
 	// Fonction qui charge les textures
 	void load_resources();

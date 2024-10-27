@@ -159,8 +159,11 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 		// Quand on update un des noeuds, il faudra potentiellement backpropagate dans toutes les branches parentes...
 		// Gros problème de noeuds négatifs
 
+		bool transpositions = false;
+
+
 		// Si la position est déjà dans la table de transposition
-		if (transposition_table.contains(new_board->_zobrist_key)) {
+		if (transposition_table.contains(new_board->_zobrist_key) && transpositions) {
 			cout << "transposition: "<< new_board->to_fen() << endl;
 
 			child = transposition_table._hash_table[new_board->_zobrist_key]._node;
@@ -179,7 +182,6 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 			child = new Node(new_board);
 
 			// Ajoute la position dans la table
-			bool transpositions = false;
 			
 			if (transpositions) {
 				transposition_table._hash_table[new_board->_zobrist_key] = ZobristEntry(child);
@@ -274,6 +276,7 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 
 	//cout << "total: " << _nodes << endl;
 	child->_iterations = 1;
+	child->_chosen_iterations = 1;
 	_iterations++;
 
 	// Ajoute le fils
@@ -344,7 +347,7 @@ void Node::explore_random_child(Buffer* buffer, Evaluator* eval, float beta, flo
 }
 
 // Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variantes, en fonction de la grandeur du nombre correspondant à cet index
-Move Node::pick_random_child(const float beta, const float k_add) const {
+Move Node::pick_random_child(const float beta, const float k_add) {
 	// FIXME: ajouter quelque chose comme l'évaluation relative pour choisir les coups plutôt que les évaluations brutes... sinon, dans les évaluations énormes, il regarde un seul coup...
 
 	const int color = _board->get_color();
@@ -442,18 +445,68 @@ Move Node::pick_random_child(const float beta, const float k_add) const {
 		cout << "sum too big" << endl;
 	}
 
+	//rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2
+
+	// Choix initial du coup
 	const double rand_val = rand_long(1, sum);
 	double cumul = 0.0;
 
 	for (int k = 0; k < n_children; k++)
 	{
 		cumul += l2[k];
+
+		// Coup choisi
 		if (cumul >= rand_val) {
 			//cout << "move index: " << i << endl;
 			//cout << "move: " << _board->move_label(children_moves[i]) << endl;
-			return children_moves[k];
+
+			_children.at(children_moves[k])->_chosen_iterations++;
+			
+			// S'il n'y a plus rien à explorer sur cette branche...
+			if (_children.at(children_moves[k])->_can_explore) {
+				return children_moves[k];
+			}
+			else {
+				//cout << "no more moves to explore" << endl;
+				break;
+			}
 		}
 	}
+
+
+	// Refait un choix des coups en fonction des branches explorables
+
+	double new_sum = 0.0;
+
+	for (int i = 0; i < n_children; i++)
+	{
+		if (_children.at(children_moves[i])->_can_explore) {
+			new_sum += l2[i];
+		}
+	}
+
+	if (new_sum == 0) {
+		cout << "no more moves to explore" << endl;
+		_can_explore = false;
+	}
+
+	const double new_rand_val = rand_long(1, new_sum);
+	double new_cumul = 0.0;
+
+	for (int k = 0; k < n_children; k++)
+	{
+		if (_children.at(children_moves[k])->_can_explore) {
+			new_cumul += l2[k];
+
+			// Nouveau coup choisi
+			if (new_cumul >= new_rand_val) {
+				return children_moves[k];
+			}
+		}
+	}
+
+
+	// Aucun coup choisi??
 
 	cout << "first move chosen by default?" << endl;
 	print_array(l2, n_children);
@@ -516,8 +569,8 @@ Move Node::pick_best_uct_child(float alpha) const {
 		auto best_move = Move();
 
 		for (auto const& [move, child] : _children) {
-			if (child->_iterations > max) {
-				max = child->_iterations;
+			if (child->_chosen_iterations > max) {
+				max = child->_chosen_iterations;
 				best_move = move;
 			}
 		}
@@ -531,11 +584,11 @@ Move Node::pick_best_uct_child(float alpha) const {
 		int color = _board->get_color();
 
 		for (auto const& [move, child] : _children) {
-			if (child->_iterations == max) {
+			if (child->_chosen_iterations == max) {
 				max_iterations_moves.push_back(move);
 			}
-			else if (child->_iterations > max) {
-				max = child->_iterations;
+			else if (child->_chosen_iterations > max) {
+				max = child->_chosen_iterations;
 				max_iterations_moves.clear();
 				max_iterations_moves.push_back(move);
 			}
@@ -564,6 +617,7 @@ void Node::reset() {
 	_latest_first_move_explored = -1;
 	_nodes = 0;
 	_iterations = 0;
+	_chosen_iterations = 0;
 	_board->reset_board();
 	_new_node = true;
 	_time_spent = 0;
@@ -607,7 +661,7 @@ string Node::get_exploration_variants(bool main, bool quiescence) {
 					children_iterations.push_back(make_pair(0, move)); // On met un moins pour trier dans l'ordre décroissant
 				}
 				else {
-					children_iterations.push_back(make_pair(-child->_iterations, move)); // On met un moins pour trier dans l'ordre décroissant
+					children_iterations.push_back(make_pair(-child->_chosen_iterations, move)); // On met un moins pour trier dans l'ordre décroissant
 				}
 			}
 
@@ -648,6 +702,7 @@ string Node::get_exploration_variants(bool main, bool quiescence) {
 				Node* child = _children[move];
 
 				const int child_iterations = child->_iterations;
+				const int child_chosen_iterations = child->_chosen_iterations;
 				const bool new_quiescence = !quiescence && child_iterations == 0;
 
 				variants += "eval: " + _board->evaluation_to_string(child->_board->_evaluation) + " | ";
@@ -663,7 +718,9 @@ string Node::get_exploration_variants(bool main, bool quiescence) {
 				const int iterations = _iterations;
 				const int iterations_ratio = _iterations == 0 ? 0 : child_iterations * 100 / iterations;
 
-				variants += "I: " + int_to_round_string(child_iterations) + " (" + int_to_round_string(iterations_ratio) + "%) | N: " + int_to_round_string(child_nodes) + " (" + int_to_round_string(nodes_ratio) + "%) | D: " + int_to_round_string(child->get_main_depth() + 1) + " | T: " + clock_to_string(child->_time_spent, true) + "\n\n";
+				const int chosen_iterations_ratio = iterations == 0 ? 0 : child_chosen_iterations * 100 / iterations;
+
+				variants += "C: " + int_to_round_string(child_chosen_iterations) + " (" + int_to_round_string(chosen_iterations_ratio) + "%) | I: " + int_to_round_string(child_iterations) + " (" + int_to_round_string(iterations_ratio) + "%) | N: " + int_to_round_string(child_nodes) + " (" + int_to_round_string(nodes_ratio) + "%) | D: " + int_to_round_string(child->get_main_depth() + 1) + " | T: " + clock_to_string(child->_time_spent, true) + "\n\n";
 			}
 		}
 
@@ -790,6 +847,7 @@ int Node::grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alp
 
 		_board->_evaluated = true;
 		_board->_static_evaluation = _board->_evaluation;
+		_can_explore = false;
 
 		//_nodes++; // BOF... FIXME
 		_nodes = 1;
