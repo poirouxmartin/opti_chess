@@ -420,7 +420,7 @@ Move Node::pick_random_child(const float beta, const float k_add) {
 		if (child->_iterations == 0) {
 			cout << "0 iterations???" << endl;
 		}
-		pond[i] = child->_iterations == 0 ? INT_MAX : static_cast<double>(_iterations) / static_cast<double>(child->_iterations);
+		pond[i] = child->_chosen_iterations == 0 ? INT_MAX : static_cast<double>(_iterations) / static_cast<double>(child->_chosen_iterations);
 		i++;
 	}
 
@@ -448,7 +448,7 @@ Move Node::pick_random_child(const float beta, const float k_add) {
 	//rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2
 
 	// Choix initial du coup
-	const double rand_val = rand_long(1, sum);
+	const double rand_val = rand_double(0.0, sum);
 	double cumul = 0.0;
 
 	for (int k = 0; k < n_children; k++)
@@ -490,7 +490,11 @@ Move Node::pick_random_child(const float beta, const float k_add) {
 		_can_explore = false;
 	}
 
-	const double new_rand_val = rand_long(1, new_sum);
+	const double new_rand_val = rand_double(0.0, new_sum);
+	if (new_rand_val > new_sum) {
+		cout << "???" << endl;
+	}
+
 	double new_cumul = 0.0;
 
 	for (int k = 0; k < n_children; k++)
@@ -505,12 +509,12 @@ Move Node::pick_random_child(const float beta, const float k_add) {
 		}
 	}
 
+	if (_can_explore) {
+		cout << "first move chosen by default?" << endl;
+		print_array(l2, n_children);
+		cout << "sum: " << sum << ", rand: " << rand_val << endl;
+	}
 
-	// Aucun coup choisi??
-
-	cout << "first move chosen by default?" << endl;
-	print_array(l2, n_children);
-	cout << "sum: " << sum << ", rand: " << rand_val << endl;
 
 	return children_moves[0];
 }
