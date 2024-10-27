@@ -8,7 +8,7 @@ public:
 
 	// Coefficients des heuristiques
 	float _piece_value = 1.35f;
-	float _piece_mobility = 0.05f;
+	float _piece_mobility = 0.035f;
 	float _piece_positioning = 0.2f;
 	float _bishop_pair = 35.0f;
 	float _castling_rights = 0.0f; // Redondant
@@ -20,21 +20,21 @@ public:
 	float _push = 1.0f;
 	float _rook_open = 0.3f;
 	float _square_controls = 0.5f;
-	float _space_advantage = 2.5f;
+	float _space_advantage = 1.5f;
 	float _alignments = 0.35f;
 	float _piece_activity = 0.015f;
-	float _fianchetto = 0.5f;
+	float _fianchetto = 0.65f;
 	float _pawn_push_threats = 0.15f; // A refaire
-	float _king_proximity = 0.5f;
+	float _king_proximity = 0.25f;
 	float _rook_activity = 0.1f;
 	float _bishop_pawns = 5.0f;
 	float _pawn_storm = 0.0f; // Redondant?
 	float _pawn_shield = 0.0f; // Redondant?
-	float _weak_squares = 0.5f;
+	float _weak_squares = 1.0f;
 	float _castling_distance = 1.0f;
 	float _bishop_activity = 6.0f;
 	float _trapped_pieces = 0.75f;
-	float _knight_activity = 1.0f;
+	float _knight_activity = 1.25f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
 	int _pieces_value_begin[6] = { 80, 350, 400, 540, 1175, 0 };

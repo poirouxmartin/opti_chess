@@ -539,22 +539,25 @@ NEXT:
 -> Plus la position est ouverte, plus la position du roi est problématique?
 -> Pour le bonus d'attaque, il faut savoir s'il est possible de mater avec ce rapport matériel...
 -> Queen activity (pour mileur/fin de partie... en prenant en compte si elle est attaquable?), king activity (pour les finales), blocked central pawn (pour éviter de foutre des pièces devant?)
--> Re différencier les vraies cases faibles, et "semi-faibles"...
 -> n1r1k3/2P1b3/p4p1p/1p6/1P4Pp/P1R4P/5PKB/8 b - - 5 37 : sur repet Td3 Re8 Tc3 Rd7, à un moment il veut jouer Rxc7??? (le roi est en prise...)
 -> Refaire le get_moves (et ne plus tester avec les échecs, faire avec des controlled squares...), puis une fonction perft test...
 -> Implémenter le framework de test
 -> Plans de jeux!!
 -> rnb2rk1/pppp3p/5Q2/3N4/8/4p3/PPP3PP/6K1 w - - 1 19 : ici c'est bien mat en 1, 8/6p1/6k1/p2R4/b2B2K1/8/8/3r4 b - - 1 63 : ici le roi est tranquille
 -> Tours liées, dame développée
+-> Queen safety / activity
+-> Bias move? Dans une position donnée, si pour le coup principal, l'adversaire a un coup très fort, alors on donne un biais au coup de l'adversaire pour le regarder en priorité sur les autres variantes... Est-ce que les transpositions se chargeraient déjà de ça?
 
 
 URGENT:
 
+rn2kb1r/p4ppp/4bn2/1Pp5/2p1P3/5P2/1P4PP/RNBK1BNR b kq - 0 9 : blancs gagnants
+2b2rk1/2r2pp1/2pq4/2b1pPN1/p1B1P1Q1/P6R/2P4P/5R1K w - - 9 33 : Fe6 gagne
 2r2r2/pb3p1k/1pn1pBp1/3qP3/3P4/5N2/P2Q1PPP/2R2RK1 w - - 4 22 : il veut jouer h3...
 rr4k1/2q1bpp1/2p1p1p1/p1n5/N4PPP/1P1P4/1PKBQ3/6RR w - - 1 3 : ici faut faire Fc3 ou h5 pour tenter quelque chose, sinon c'est foutu. h5 augmente l'incertitude et donc les chances de gain
 3q1rk1/4bppp/r3bn2/3p4/2p5/P3BN2/1PPQ1PPP/2KRRB2 w - - 0 6 : gagnant pour les noirs
 5rk1/5ppp/4bn2/q2p4/2p5/b1P1BN2/3Q1PPP/1K1RRB2 w - - 2 9 : roi blanc est mat
-r4Nk1/pp3ppp/8/q2p4/2p1n3/b1P1B3/1PP1QPPP/2KRRB2 b - - 0 6 : Fb4 #6
+r4Nk1/pp3ppp/8/q2p4/2p1n3/b1P1B3/1PP1QPPP/2KRRB2 b - - 0 6 : Fb4 #4
 rnb1kbnr/pppp1ppp/2q1p3/8/2PP4/5N2/PP1BPPPP/RN1QKB1R w KQkq - 5 5 : ici Cc3 est mieux que Ce5. une pièce développée en plus, est mieux que mettre une pièce développée au centre
 r2qkbnr/2p1pppp/p1p5/3p3b/3P4/4PN1P/PPP2PP1/RNBQK2R w KQkq - 1 7 : ici Cc3 bloque le pion c4 -> erreur
 r2qr1k1/pp1n1pp1/2pbbp1p/3p4/3P4/P1NBPN1P/1PPQ1PP1/R4RK1 w - - 2 12 : ici il fait h4 pour: weak square+, et bishop_pawns+... (car h4 octroie la case f4...)
@@ -653,11 +656,9 @@ r1bqk2r/ppp2ppp/1bn5/4p1N1/3Pp3/2P5/PP3PPP/RNBQ1RK1 b kq - 1 9 : là y'a plein de
 EVAL: 
 -> Améliorer les pièces d'attaque et de défense... plus gros bonus quand une pièce attaque un endroit non (ou peu) défendu. plus gros bonus quand on défend une case attaquée
 -> Il donne vraiment trop souvent des pions dans l'ouverture
--> King safety: protection: avoir une partie dans long term et une autre dans short term? (considéré comme faisant partie de la défense)
 -> Pour évaluer les finales etc.., il faut un winnable white, et un winnable black... Tour Cavalier vs Tour = nulle
 -> Pions arriérés
 -> Re-évaluer les pièces en fonction du type de position (colonnes / diagonales ouvertes / fermées, pions passés...)
--> Evaluer la nature de la position (ouverte/fermée), car ça change tout sur s'il faut jouer actif ou positionnel...
 -> Implémenter les faiblesses de la position? pour taper dessus, et éviter de s'en créer?
 -> Lignes et colonnes ouvertes sur le roi, c'est grave seulement si des tours/fous/dames peuvent aller dessus
 -> Potentiel d'attaque global qui modifie moins la king safety? même avec 2 pièces, ça peut mater contre beaucoup
@@ -674,7 +675,15 @@ EVAL:
 -> Pawn protection pour quand le roi n'est pas roqué (en prenant en compte les poussées de pions f, g et h par exemple)
 -> Ajouter un 'exposed queen' pour éviter les scandi?
 -> Les cases faibles proches du roi sont plus graves
+-> Théorème des fous de Kev: un fou qui protège le roi et attaque le roi adverse est plus fort qu'une tour
 
+r4Nk1/pp3ppp/8/1q1p4/2p5/2n1B3/2P1QPPP/2KRRB2 w - - 0 9 : 780 attaque pour les blancs??
+r1b5/3k4/pq2p1N1/1pbpPp1Q/8/4B3/PP3K1P/R6R w - - 5 23 : roi blancs plus safe
+r1b1kb2/3n4/pqn1p1p1/1p1pPr2/3P1N2/3BBN2/PP3K1P/R2Q3R b q - 3 17 : blancs gagnants
+r1b1kb1r/3n1p1p/p1n5/qp1pPp2/3P4/5N2/PP2NK1P/R1BQ1B1R w kq - 0 14 : roi blanc safe... 2kr1b1r/ppp2ppp/8/3Pn2q/3Np1b1/2P1B3/PP2BP1P/R2Q1RK1 w - - 2 14 : pas là !!!
+8/5B2/3k1p2/4p3/3p3P/2b3P1/4PP2/6K1 b - - 0 45 : nulle ! (fous de couleur opposée)
+7q/4kp2/5p2/4p3/2Bp3P/2b2QP1/4PP2/6K1 b - - 9 37 : Rf8 seul coup qui tient!
+7q/5pk1/5p2/4p2Q/3pB2P/6P1/4PP2/b5K1 w - - 2 34 : quasi nulle
 8/6p1/6k1/p2R4/b2B2K1/8/8/3r4 b - - 1 63 : ?????????????? king safety??
 rnb2rk1/pppp3p/5Q2/3N4/8/4p3/PPP3PP/6K1 w - - 1 19 : ici c'est bien mat en 1
 r4rk1/pp2bppp/4N3/q2p4/2p1n3/P1P1B3/1PP1QPPP/2KRRB2 b - - 0 5 : Fxa3!! gagne

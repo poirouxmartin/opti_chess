@@ -35,8 +35,11 @@ public:
 	int _nodes = 0;
 	//int _nodes = count_children_nodes() + 1;
 
-	// Nombre d'itérations par l'algorithme de GrogrosZero (TODO)
+	// Nombre d'explorations par l'algorithme de GrogrosZero
 	int _iterations = 0;
+
+	// Nombre de fois que l'algorithme a voulu explorer ce noeud
+	int _chosen_iterations = 0;
 
 	// TODO: il faut plusieurs types de noeuds: noeuds quiet (ceux recherchés par GrogrosZero), noeuds de quiescence, noeuds de transposition...
 	// On utilisera les research_nodes pour le temps de calcul de Grogros, l'affichage des flèches etc...
@@ -49,6 +52,9 @@ public:
 
 	// Est-ce que ce noeud a été exploré de façon complète?
 	bool _fully_explored = false;
+
+	// Reste t-il encore quelque chose à explorer?
+	bool _can_explore = true;
 
 	// A rajouter : évaluation?, nombre de noeuds?...
 
@@ -85,7 +91,7 @@ public:
 	void explore_random_child(Buffer* buffer, Evaluator* eval, const float beta, const float k_add, int quiescence_depth, Network* network = nullptr);
 
 	// Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
-	[[nodiscard]] Move pick_random_child(const float beta, const float k_add) const;
+	[[nodiscard]] Move pick_random_child(const float beta, const float k_add);
 
 	// Fonction qui renvoie le ratio de victoire pour les blancs du noeud (le ratio de victoire pour une eval alpha est de beta)
 	[[nodiscard]] double win_ratio(double alpha = 100.0, double beta = 0.67) const;
