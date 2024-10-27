@@ -393,6 +393,62 @@ inline int main_ui() {
 			main_GUI._k_add = 5000.0f;
 		}
 
+		// Keypads - met le temps (en minutes)
+
+		// 1 - 1 minute
+		if (IsKeyPressed(KEY_KP_1)) {
+			main_GUI._time_black = 60000;
+			main_GUI._time_white = 60000;
+		}
+
+		// 2 - 2 minutes
+		if (IsKeyPressed(KEY_KP_2)) {
+			main_GUI._time_black = 120000;
+			main_GUI._time_white = 120000;
+		}
+
+		// 3 - 3 minutes
+		if (IsKeyPressed(KEY_KP_3)) {
+			main_GUI._time_black = 180000;
+			main_GUI._time_white = 180000;
+		}
+
+		// 4 - 4 minutes
+		if (IsKeyPressed(KEY_KP_4)) {
+			main_GUI._time_black = 240000;
+			main_GUI._time_white = 240000;
+		}
+
+		// 5 - 5 minutes
+		if (IsKeyPressed(KEY_KP_5)) {
+			main_GUI._time_black = 300000;
+			main_GUI._time_white = 300000;
+		}
+
+		// 6 - 6 minutes
+		if (IsKeyPressed(KEY_KP_6)) {
+			main_GUI._time_black = 360000;
+			main_GUI._time_white = 360000;
+		}
+
+		// 7 - 7 minutes
+		if (IsKeyPressed(KEY_KP_7)) {
+			main_GUI._time_black = 420000;
+			main_GUI._time_white = 420000;
+		}
+
+		// 8 - 8 minutes
+		if (IsKeyPressed(KEY_KP_8)) {
+			main_GUI._time_black = 480000;
+			main_GUI._time_white = 480000;
+		}
+
+		// 9 - 9 minutes
+		if (IsKeyPressed(KEY_KP_9)) {
+			main_GUI._time_black = 540000;
+			main_GUI._time_white = 540000;
+		}
+
 		// P - Joue le coup recommandé par l'algorithme de GrogrosZero
 		if (!IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_P)) {
 			/*if (main_GUI._board._tested_moves > 0)
@@ -562,6 +618,7 @@ inline int main_ui() {
 			main_GUI._board._game_over_checked = false;
 			new_game_over = main_GUI._board.is_game_over(3);
 			main_GUI._root_exploration_node->_iterations = 0;
+			main_GUI._root_exploration_node->_chosen_iterations = 0;
 			//cout << "New game over value : " << new_game_over << endl;
 			//cout << "exploration game over value : " << (int)main_GUI._root_exploration_node->_board->_game_over_value << endl;
 		}

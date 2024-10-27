@@ -598,10 +598,10 @@ public:
 	[[nodiscard]] int get_knight_activity() const;
 
 	// Fonction qui renvoie la puissance de protection de la structure de pions du roi
-	[[nodiscard]] int get_pawn_shield_protection(bool color);
+	[[nodiscard]] int get_pawn_shield_protection(bool color, float opponent_attacking_potential);
 
 	// Fonction qui renvoie la puissance de protection de la structure de pions du roi, s'il est sur la colonne donnée
-	[[nodiscard]] int get_pawn_shield_protection_at_column(bool color, int column);
+	[[nodiscard]] int get_pawn_shield_protection_at_column(bool color, int column, float opponent_attacking_potential);
 
 	// Fonction qui calcule tous les coups à une certaine profondeur, et renvoie le nombre de noeuds total
 	int count_nodes_at_depth(int depth);
