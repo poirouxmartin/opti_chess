@@ -145,6 +145,14 @@ long long rand_long(const long long a, const long long b)
 	return distribution(generator);
 }
 
+double rand_double(const double a, const double b)
+{
+	static thread_local std::mt19937 generator(std::random_device{}());
+	std::uniform_real_distribution<double> distribution(a, b);
+
+	return distribution(generator);
+}
+
 // Fonction qui renvoie la valeur maximum d'une liste d'entiers
 int max_value(int* l, const int n)
 {

@@ -1783,9 +1783,9 @@ int Board::get_piece_mobility(const bool legal) const
 	// Pour chaque pièce (sauf le roi)
 	//static constexpr int mobility_values_pawn[3] = { -100, 0, 100 };
 	static constexpr int mobility_values_pawn[3] = { -500, 0, 350 };
-	static constexpr int mobility_values_knight[9] = { -500, -200, 0, 100, 200, 300, 400, 450, 500 };
+	static constexpr int mobility_values_knight[9] = { -1000, -300, 0, 100, 200, 300, 400, 450, 500 };
 	static constexpr int mobility_values_bishop[15] = { -600, -200, 0, 100, 210, 280, 330, 475, 415, 450, 480, 505, 525, 540, 550 };
-	static constexpr int mobility_values_rook[15] = { -200, 0, 100, 150, 190, 235, 275, 300, 325, 345, 365, 385, 390, 400, 405 };
+	static constexpr int mobility_values_rook[15] = { -400, 0, 100, 150, 190, 235, 275, 300, 325, 345, 365, 385, 390, 400, 405 };
 	static constexpr int mobility_values_queen[29] = { -700, -400, -300, 150, 190, 235, 275, 300, 325, 345, 365, 385, 390, 400, 410, 420, 430, 440, 450, 460, 470, 480, 490, 495, 500, 505, 510 };
 
 	// TODO : rajouter le roi, pour l'endgame? faire des valeurs différentes selon le moment de la partie?
