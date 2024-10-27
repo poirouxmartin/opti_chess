@@ -42,6 +42,9 @@ int rand_int(int, int);
 // Fonction qui renvoie un entier long aléatoire entre deux entiers (le second non inclus)
 long long rand_long(const long long a, const long long b);
 
+// Fonction qui renvoie un double aléatoire entre deux double
+double rand_double(double, double);
+
 // Fonction qui renvoie la valeur maximum d'une liste d'entiers
 int max_value(int*, const int);
 
