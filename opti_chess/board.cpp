@@ -512,7 +512,7 @@ void Board::display_moves(const bool pseudo) {
 
 	cout << "[|";
 	for (int i = 0; i < _got_moves; i++)
-		cout << " " << move_label_from_index(i) << " |";
+		cout << " " << move_label(_moves[i]) << " |";
 	cout << "]" << endl;
 }
 
@@ -520,12 +520,12 @@ void Board::display_moves(const bool pseudo) {
 void Board::make_move(Move move, const bool pgn, const bool new_board, const bool add_to_history)
 {
 	// TODO : à voir si ça rend plus rapide ou non
-	const uint_fast8_t i = move.i1;
-	const uint_fast8_t j = move.j1;
-	const uint_fast8_t k = move.i2;
-	const uint_fast8_t l = move.j2;
-	const uint_fast8_t p = _array[i][j];
-	const uint_fast8_t p_last = _array[k][l];
+	const uint_fast8_t row1 = move.i1;
+	const uint_fast8_t col1 = move.j1;
+	const uint_fast8_t row2 = move.i2;
+	const uint_fast8_t col2 = move.j2;
+	const uint_fast8_t p = _array[row1][col1];
+	const uint_fast8_t p_last = _array[row2][col2];
 
 
 	// TODO : rendre plus efficace
@@ -549,7 +549,7 @@ void Board::make_move(Move move, const bool pgn, const bool new_board, const boo
 	_half_moves_count++;
 
 	// Reset des demi-coups si un pion est bougé ou si une pièce est prise
-	if (p == 1 || p == 7 || p_last) {
+	if (is_pawn(p) || p_last) {
 		_half_moves_count = 0;
 		reset_positions_history();
 	}
@@ -567,64 +567,64 @@ void Board::make_move(Move move, const bool pgn, const bool new_board, const boo
 	_en_passant_col = -1;
 
 	// Pion qui avance de 2 cases, et pion adverse à gauche ou à droite -> possibilité d'en passant
-	(p == 1 && k == i + 2 && (_array[k][l - 1] == 7 || _array[k][l + 1] == 7)) && ((_en_passant_col = j));
-	(p == 7 && k == i - 2 && (_array[k][l - 1] == 1 || _array[k][l + 1] == 1)) && ((_en_passant_col = j));
+	(p == w_pawn && row2 == row1 + 2 && (_array[row2][col2 - 1] == b_pawn || _array[row2][col2 + 1] == b_pawn)) && ((_en_passant_col = col1)); // FIXME: si l - 1 ou l + 1 est hors du plateau?
+	(p == b_pawn && row2 == row1 - 2 && (_array[row2][col2 - 1] == w_pawn || _array[row2][col2 + 1] == w_pawn)) && ((_en_passant_col = col1));
 
 	// En passant
-	(p == 1 && j != l && p_last == 0) && ((_array[k - 1][l] = 0));
-	(p == 7 && j != l && p_last == 0) && ((_array[k + 1][l] = 0));
+	(p == w_pawn && col1 != col2 && p_last == 0) && ((_array[row2 - 1][col2] = 0));
+	(p == b_pawn && col1 != col2 && p_last == 0) && ((_array[row2 + 1][col2] = 0));
 
 
 	// Roi blanc
-	if (p == 6) {
+	if (p == w_king) {
 		_castling_rights.q_w = false;
 		_castling_rights.k_w = false;
-		_white_king_pos = { k, l }; // Met à jour la position du roi
+		_white_king_pos = { row2, col2 }; // Met à jour la position du roi
 
-		(l == j + 2) && ((_array[0][7] = 0), (_array[0][5] = 4)); // Petit roque
-		(l == j - 2) && ((_array[0][0] = 0), (_array[0][3] = 4)); // Grand roque
+		(col2 == col1 + 2) && ((_array[0][7] = none), (_array[0][5] = w_rook)); // Petit roque
+		(col2 == col1 - 2) && ((_array[0][0] = none), (_array[0][3] = w_rook)); // Grand roque
 	}
 
 	// Roi noir
-	else if (p == 12) {
+	else if (p == b_king) {
 		_castling_rights.q_b = false;
 		_castling_rights.k_b = false;
-		_black_king_pos = { k, l };
+		_black_king_pos = { row2, col2 };
 
-		(l == j + 2) && ((_array[7][7] = 0), (_array[7][5] = 10)); // Petit roque
-		(l == j - 2) && ((_array[7][0] = 0), (_array[7][3] = 10)); // Grand roque
+		(col2 == col1 + 2) && ((_array[7][7] = none), (_array[7][5] = b_rook)); // Petit roque
+		(col2 == col1 - 2) && ((_array[7][0] = none), (_array[7][3] = b_rook)); // Grand roque
 	}
 
+	// Perte des droits de roque
+
 	// Tour blanche
-	(p == 4) && ((j == 0) && (_castling_rights.q_w = false) || (j == 7) && (_castling_rights.k_w = false));
+	(p == w_rook) && ((col1 == 0) && (row1 == 0) && (_castling_rights.q_w = false) || (col1 == 7) && (row1 == 0) && (_castling_rights.k_w = false));
 
 	// Tour noire
-	(p == 10) && ((j == 0) && (_castling_rights.q_b = false) || (j == 7) && (_castling_rights.k_b = false));
+	(p == b_rook) && ((col1 == 0) && (row1 == 7) && (_castling_rights.q_b = false) || (col1 == 7) && (row1 == 7) && (_castling_rights.k_b = false));
 
 	// Tour blanche mangée
-	(p_last == 4) && ((l == 0) && (_castling_rights.q_w = false) || (l == 7) && (_castling_rights.k_w = false));
+	(p_last == w_rook) && ((col2 == 0) && (row1 == 0) && (_castling_rights.q_w = false) || (col2 == 7) && (row1 == 0) && (_castling_rights.k_w = false));
 
 	// Tour noire mangée
-	(p_last == 10) && ((l == 0) && (_castling_rights.q_b = false) || (l == 7) && (_castling_rights.k_b = false));
+	(p_last == b_rook) && ((col2 == 0) && (row1 == 7) && (_castling_rights.q_b = false) || (col2 == 7) && (row1 == 7) && (_castling_rights.k_b = false));
 
 
 	// Actualise la case d'arrivée
-	_array[k][l] = p;
+	_array[row2][col2] = p;
 
 	// Promotion (en dame seulement pour le moment)
-	(p == 1 && k == 7) && (_array[k][l] = 5);
-	(p == 7 && k == 0) && (_array[k][l] = 11);
+	(p == w_pawn && row2 == 7) && (_array[row2][col2] = w_queen);
+	(p == b_pawn && row2 == 0) && (_array[row2][col2] = b_queen);
 
 	// Vide la case de départ
-	_array[i][j] = 0;
+	_array[row1][col1] = none;
 
 	// Change le trait du joueur
 	_player = !_player;
 
-	
 	// Imcémentation des coups
 	_player && _moves_count++;
-
 
 	// Reset le nombre de coups possibles
 	_got_moves = -1;
@@ -751,7 +751,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	//if (transposition_table.contains(_zobrist_key)) {
 	//	cout << "Transposition table hit" << endl;
 	//	if (transposition_table._hash_table[_zobrist_key]._node->_board->_evaluated) {
-	//		_evaluation = transposition_table._hash_table[_zobrist_key]._node->_board->_evaluation;
+	//		_evaluation = transposition_table._hash_table[_zobrist_key]._node->_deep_evaluation._value;
 	//		cout << "Evaluation: " << _evaluation << endl;
 	//		_evaluated = true;
 	//		return true;
@@ -762,26 +762,32 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 
 
 	if (check_game_over) {
-		is_game_over();
+		//is_game_over();
 
 		// Nulle
-		if (_game_over_value == 2) {
+		if (_game_over_value == draw) {
 			_evaluation = 0;
+			_static_evaluation = 0;
 			_evaluated = true;
 
 			if (display)
 				main_GUI._eval_components = "DRAW\n";
 
+			get_WDL();
+
 			return true;
 		}
 
 		// Mat
-		if (_game_over_value != 0) {
+		if (_game_over_value != unterminated) {
 			_evaluation = (-mate_value + _moves_count * mate_ply) * get_color();
+			_static_evaluation = _evaluation;
 			_evaluated = true;
 
 			if (display)
 				main_GUI._eval_components = "CHECKMATE\n";
+
+			get_WDL();
 
 			return true;
 		}
@@ -919,11 +925,21 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	int total_activity = 0;
 
 	// Mobilité des pièces
-	if (eval->_piece_mobility != 0.0f) {
-		const int piece_mobility = get_piece_mobility() * eval->_piece_mobility;
+	//if (eval->_piece_mobility != 0.0f) {
+	//	const int piece_mobility = get_piece_mobility() * eval->_piece_mobility;
+	//	if (display)
+	//		main_GUI._eval_components += "piece mobility: " + (piece_mobility >= 0 ? string("+") : string()) + to_string(piece_mobility) + "\n";
+	//	total_activity += piece_mobility;
+	//}
+
+	// Nouvelle mobilité des pièces
+	//if (eval->_new_piece_mobility != 0.0f) {
+	if (true) {
+		//const int new_piece_mobility = get_new_piece_mobility() * eval->_new_piece_mobility;
+		const int new_piece_mobility = get_new_piece_mobility() * 0.15f;
 		if (display)
-			main_GUI._eval_components += "piece mobility: " + (piece_mobility >= 0 ? string("+") : string()) + to_string(piece_mobility) + "\n";
-		total_activity += piece_mobility;
+			main_GUI._eval_components += "new piece mobility: " + (new_piece_mobility >= 0 ? string("+") : string()) + to_string(new_piece_mobility) + "\n";
+		total_activity += new_piece_mobility;
 	}
 
 	// Activité des pièces
@@ -974,13 +990,13 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 		total_activity += player_trait;
 	}
 
-	if (display)
-		main_GUI._eval_components += "SUB-TOTAL: " + (total_activity >= 0 ? string("+") : string()) + to_string(total_activity) + "\n";
+	//if (display)
+	//	main_GUI._eval_components += "SUB-TOTAL: " + (total_activity >= 0 ? string("+") : string()) + to_string(total_activity) + "\n";
 
-	// Ajustement en fonction de la nature de la position
-	if (display)
-		main_GUI._eval_components += "position nature: x" + to_string((int)(100 - 100 * position_nature)) + "%\n";
-	total_activity *= 1 - position_nature;
+	//// Ajustement en fonction de la nature de la position
+	//if (display)
+	//	main_GUI._eval_components += "position nature: x" + to_string((int)(100 - 100 * position_nature)) + "%\n";
+	//total_activity *= 1 - position_nature;
 
 
 	if (display)
@@ -1147,14 +1163,11 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 		main_GUI._eval_components += "winnable: TODO\n";
 
 	// Incertitude de l'évaluation
-	//if (eval->_uncertainty != 0.0f) {
-	//	const int uncertainty = get_uncertainty() * eval->_uncertainty;
-	//	if (display)
-	//		main_GUI._eval_components += "uncertainty: " + (uncertainty >= 0 ? string("+") : string()) + to_string(uncertainty) + "\n";
-	//	total_nature += uncertainty;
-	//}
+	const float uncertainty = get_uncertainty();
+	const int uncertainity_percent = (int)(100 * uncertainty);
 	if (display)
-		main_GUI._eval_components += "uncertainty: TODO\n";
+		main_GUI._eval_components += "TODO uncertainity: " + to_string(uncertainity_percent) + "%\n";
+
 
 	if (display)
 		main_GUI._eval_components += "--- TOTAL: " + (total_nature >= 0 ? string("+") : string()) + to_string(total_nature) + " ---\n";
@@ -1178,9 +1191,15 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	}
 
 	// Chances de gain
-	const float win_chance = get_winning_chances_from_eval(_evaluation, true);
-	if (display)
-		main_GUI._eval_components += "W/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/" + to_string(static_cast<int>(100 * 0)) + "/" + to_string(static_cast<int>(100 * (1.0f - win_chance))) + "%\n";
+	//const float win_chance = get_winning_chances_from_eval(_evaluation, true);
+	//if (display)
+	//	main_GUI._eval_components += "W/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/" + to_string(static_cast<int>(100 * 0)) + "/" + to_string(static_cast<int>(100 * (1.0f - win_chance))) + "%\n";
+
+	get_WDL(uncertainty);
+	if (display) {
+		main_GUI._eval_components += _wdl.to_string() + "\n";
+		main_GUI._eval_components += "avg score: 0." + to_string((int)(100 * get_average_score())) + "\n";
+	}
 
 
 	// L'évaluation a été effectuée
@@ -1681,14 +1700,6 @@ string Board::move_label(Move move, bool use_uft8)
 	return s;
 }
 
-// Fonction qui renvoie le label d'un coup en fonction de son index
-string Board::move_label_from_index(const int i) {
-	// Pour pas qu'il re écrase les moves
-	if (_got_moves == -1)
-		get_moves(true);
-	return move_label(_moves[i]);
-}
-
 // Fonction qui affiche un texte dans une zone donnée
 void Board::draw_text_rect(const string& s, const float pos_x, const float pos_y, const float width, const float height, const float size) {
 	// Division du texte
@@ -1862,9 +1873,9 @@ int Board::get_piece_mobility(const bool legal) const
 			if (const uint_fast8_t piece = _array[i][j]; piece > 0) {
 				if (piece == w_pawn)
 					piece_mobility += mobility_values_pawn[min(2, piece_move_count[i][j])];
-				else if (piece == 2)
+				else if (piece == w_knight)
 					piece_mobility += mobility_values_knight[min(8, piece_move_count[i][j])];
-				else if (piece == 3)
+				else if (piece == w_bishop)
 					piece_mobility += mobility_values_bishop[min(14, piece_move_count[i][j])];
 				else if (piece == 4)
 					piece_mobility += mobility_values_rook[min(14, piece_move_count[i][j])];
@@ -2043,9 +2054,9 @@ int Board::get_king_safety(float display_factor) {
 	}
 
 	// Facteurs multiplicatifs
-	constexpr float piece_attack_factor = 1.0f;
+	constexpr float piece_attack_factor = 0.85f;
 	constexpr float piece_defense_factor = 1.0f;
-	constexpr float pawn_protection_factor = 0.75f;
+	constexpr float pawn_protection_factor = 1.0f;
 
 	// En cas de résultante positive ou négative...
 	constexpr float piece_overload_multiplicator = 1.5f; // TODO: à utiliser
@@ -2230,7 +2241,7 @@ int Board::get_king_safety(float display_factor) {
 	// ---------------------------------
 	
 	// FIXME: est-ce vraiment utile? ça casse peut-être tout en fait
-	constexpr int virtual_mobility_danger = 25;
+	constexpr int virtual_mobility_danger = 20;
 
 	// Mobilité à partir de laquelle le roi est en danger
 	constexpr int virtual_mobility_threshold = 3;
@@ -2256,8 +2267,9 @@ int Board::get_king_safety(float display_factor) {
 	// ------------------
 
 	//5rk1/5ppp/4bn2/q2p4/2p5/b1P1BN2/3Q1PPP/1K1RRB2 w - - 2 9
+	//r1b2k1r/ppp1qpp1/3bP1pn/3P4/4N3/8/PPPBQ1PP/2KR1R2 b - - 6 18
 
-	constexpr float open_lines_danger = 2.0f;
+	constexpr float open_lines_danger = 3.0f;
 
 	int w_open_lines = get_open_files_on_opponent_king(true) * open_lines_danger;
 	int b_open_lines = get_open_files_on_opponent_king(false) * open_lines_danger;
@@ -2299,8 +2311,8 @@ int Board::get_king_safety(float display_factor) {
 
 	// Facteur multiplicatif en cas de faiblesse négative (pour compenser le court/long terme)
 	const float negative_long_term_factor = 1.0f;
-	const float w_negative_short_term_factor = 0.35f + (1 - b_attacking_potential) * 0.5f;
-	const float b_negative_short_term_factor = 0.35f + (1 - w_attacking_potential) * 0.5f;
+	const float w_negative_short_term_factor = 0.25f + (1 - b_attacking_potential) * 0.5f;
+	const float b_negative_short_term_factor = 0.25f + (1 - w_attacking_potential) * 0.5f;
 
 
 	// Roi noir (attaque des blancs)
@@ -3523,14 +3535,18 @@ bool Board::sort_moves() {
 
 		// Promotion
 		// Blancs
-		move_value += (piece == 1 && move.i2 == 7) * promotion_value;
+		move_value += (piece == w_pawn && move.i2 == 7) * promotion_value;
 
 		// Noirs
-		move_value += (piece == 7 && move.i2 == 0) * promotion_value;
+		move_value += (piece == b_pawn && move.i2 == 0) * promotion_value;
 
 		// Assignation de la valeur
 		moves_values[i] = move_value;
+
+		//cout << move_label(move) << " : " << move_value << endl;
 	}
+
+	//print_array(moves_values, _got_moves);
 
 
 	//print_array(moves_values, _got_moves);
@@ -3564,6 +3580,8 @@ bool Board::sort_moves() {
 		moves_values[max_ind] = -INT_MAX;
 	}
 
+	//print_array(moves_indexes, _got_moves);
+
 	// Génération de la liste de coups de façon ordonnée
 	Move* new_moves = new Move[_got_moves];
 	copy(_moves, _moves + _got_moves, new_moves);
@@ -3579,113 +3597,6 @@ bool Board::sort_moves() {
 	_sorted_moves = true;
 
 	return true;
-}
-
-// Fonction qui fait un quiescence search
-// TODO: améliorer avec un delta pruning
-// TODO: utiliser le buffer de plateaux pour remplir la réflexion
-int Board::quiescence(Evaluator* eval, int alpha, const int beta, int depth, bool explore_checks, bool main_player, int delta)
-{
-	// Compte le nombre de noeuds visités
-	//_quiescence_nodes = 1;
-	
-	// Si la partie est terminée
-	is_game_over();
-	if (_game_over_value == 2) // Nulle
-		return 0;
-	if (_game_over_value != 0) // Mat
-		return -mate_value + _moves_count * mate_ply;
-
-	// Evalue la position initiale
-	evaluate(eval);
-	const int stand_pat = _evaluation * get_color();
-
-	// Si on est en échec (pour ne pas terminer les variantes sur un échec)
-	bool check_extension = in_check();
-
-	if (depth == 0)
-		return stand_pat;
-		
-
-	// Beta cut-off
-	if (stand_pat >= beta) {
-		//cout << "Beta cut-off1: " << stand_pat << " >= " << beta << endl;
-		return beta;
-	}
-	else {
-		//cout << "No beta cut-off1: " << stand_pat << " < " << beta << endl;
-	}
-
-	// Mise à jour de alpha si l'éval statique est plus grande
-	// Pas de stand_pat si on est en échec
-	if (alpha < stand_pat && !check_extension)
-		alpha = stand_pat;
-
-	// Trie rapidement les coups
-	sort_moves();
-
-	for (int i = 0; i < _got_moves; i++) {
-		// TODO : ajouter promotions et échecs
-		// TODO : utiliser des flags
-
-		// Coup
-		Move move = _moves[i];
-
-		// Si c'est une capture
-		if (_array[move.i2][move.j2] != 0 || check_extension) {
-			//cout << "Capture, depth: " << depth << " | move: " << move_label(move) << " | check_extension: " << check_extension << endl;
-
-			Board b;
-			b.copy_data(*this);
-			b.make_move(move);
-
-			const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, explore_checks, true, delta);
-			//_quiescence_nodes += b._quiescence_nodes;
-
-			if (score >= beta) {
-				//cout << "Beta cut-off2: " << score << " >= " << beta << endl;
-				return beta;
-			}
-
-			if (score > alpha)
-				alpha = score;
-
-			// Delta pruning (TODO : à tester)
-			//if (alpha >= beta - delta)
-			//	return alpha;
-		}
-
-		// Mats
-		// TODO : utiliser les flags 'échec' pour savoir s'il faut regarder ce coup
-		else if (explore_checks)
-		{
-			Board b;
-			b.copy_data(*this); // FIXME: Est-ce qu'on doit regarder les répétitions ici?
-			b.make_move(move);
-
-			if (!main_player || b.in_check())
-			{
-				//cout << "Check, depth: " << depth << " | move: " << move_label(move) << " | check_extension: " << check_extension << endl;
-
-				const int score = -b.quiescence(eval, -beta, -alpha, depth - 1, explore_checks, !main_player, delta);
-				//_quiescence_nodes += b._quiescence_nodes;
-
-				if (score >= beta) {
-					//cout << "Beta cut-off3: " << score << " >= " << beta << endl;
-					return beta;
-				}
-
-				if (score > alpha)
-					alpha = score;
-
-				// Delta pruning (TODO : à tester)
-				//if (alpha >= beta - delta)
-				//	return alpha;
-			}
-		}
-	}
-
-	return alpha;
 }
 
 // Fonction qui fait cliquer le coup m
@@ -4158,22 +4069,22 @@ int Board::get_piece_defense_power(const int i, const int j) const
 int Board::get_piece_activity() const
 {
 	// Cela correspond on nombre de cases controllées par les pièces dans le camp adverse
-
 	int white_controlled_squares[8][8] = { 0 };
 	int black_controlled_squares[8][8] = { 0 };
 
-	Board b(*this);
 
 	// Contrôle des cases adverses
+	Board b(*this);
 
 	// Blancs
 	b._player = true;
 	b.get_moves(false);
 	for (uint_fast8_t i = 0; i < b._got_moves; i++)
 	{
-		const uint_fast8_t p = _array[b._moves[i].i1][b._moves[i].j1];
-		if (p != 1 && p != 5)
-			white_controlled_squares[b._moves[i].i2][b._moves[i].j2]++;
+		Move m = b._moves[i];
+		const uint_fast8_t p = _array[m.i1][m.j1];
+		if (p != w_pawn && p != w_queen)
+			white_controlled_squares[m.i2][m.j2]++;
 	}
 
 	// Noirs
@@ -4181,9 +4092,10 @@ int Board::get_piece_activity() const
 	b.get_moves(false);
 	for (uint_fast8_t i = 0; i < b._got_moves; i++)
 	{
-		const uint_fast8_t p = _array[b._moves[i].i1][b._moves[i].j1];
-		if (p != 7 && p != 11)
-			black_controlled_squares[b._moves[i].i2][b._moves[i].j2]++;
+		Move m = b._moves[i];
+		const uint_fast8_t p = _array[m.i1][m.j1];
+		if (p != b_pawn && p != b_queen)
+			black_controlled_squares[m.i2][m.j2]++;
 	}
 
 	// Puissance du contrôle d'une case adverse
@@ -4193,30 +4105,32 @@ int Board::get_piece_activity() const
 	// Puissance du contrôle de chaque case
 	static constexpr uint_fast8_t activity_controlled_squares[8][8] = {
 	{10, 10, 10, 10, 10, 10, 10, 10},
-	{10, 10, 10, 10, 10, 10, 10, 10},
-	{10, 10, 15, 20, 20, 15, 10, 10},
-	{10, 10, 20, 25, 25, 20, 10, 10},
+	{10, 10, 12, 20, 20, 12, 10, 10},
+	{10, 10, 15, 30, 30, 15, 10, 10},
+	{10, 10, 20, 35, 35, 20, 10, 10},
 	{0,  0,  15, 20, 20, 15,  0,  0},
 	{0,  0,  5,   5,  5,  5,  0,  0},
 	{0,  0,  0,   0,  0,  0,  0,  0},
 	{0,  0,  0,   0,  0,  0,  0,  0} };
 
-
-	int activity = 0;
+	
+	// Total de l'activité des pièce
+	int white_activity = 0;
+	int black_activity = 0;
 
 	for (uint_fast8_t j = 0; j < 8; j++)
 	{
 		for (uint_fast8_t i = 0; i < 8; i++)
 		{
-			activity += controlled_power[min(3, white_controlled_squares[i][j] - 1)] * activity_controlled_squares[7 - i][j];
-			activity -= controlled_power[min(3, black_controlled_squares[i][j] - 1)] * activity_controlled_squares[i][j];
+			white_activity += controlled_power[min(3, white_controlled_squares[i][j] - 1)] * activity_controlled_squares[7 - i][j];
+			black_activity += controlled_power[min(3, black_controlled_squares[i][j] - 1)] * activity_controlled_squares[i][j];
 		}
 	}
 
 	// Facteur multiplicatif en fonction de l'avancement
-	float advancement_factor = 0.8f;
+	float advancement_factor = 0.5f;
 
-	return eval_from_progress(activity, _adv, advancement_factor);
+	return eval_from_progress(white_activity - black_activity, _adv, advancement_factor);
 }
 
 // Fonction qui reset le buffer
@@ -5379,7 +5293,7 @@ int Board::get_weak_squares() const {
 				cout << "***\nBonus for black, square: " << Pos(row, col).square() << ": " << (weak ? "weak " : "safe") << endl;
 
 			// C'est une case faible
-			int square_value = weak_square_values[7 - row][col] * (!weak ? safe_square_bonus : 1.0f);
+			int square_value = weak_square_values[7 - row][col];
 				
 			if (display)
 				cout << "square value: " << square_value << endl;
@@ -5407,6 +5321,8 @@ int Board::get_weak_squares() const {
 
 			// Valeur du contrôle de la case faible par un pion adverse
 			square_value *= (1.25 + (pawn_controls > 0));
+
+			square_value *= (!weak ? safe_square_bonus : 1.0f);
 
 			if (display)
 				cout << "with controls, square value: " << square_value << endl;
@@ -5526,7 +5442,7 @@ int Board::get_weak_squares() const {
 				cout << "***\nBonus for white, square: " << Pos(row, col).square() << ": " << (weak ? "weak" : "safe") << endl;
 
 			// C'est une case faible
-			int square_value = weak_square_values[row][col] * (!weak ? safe_square_bonus : 1.0f);
+			int square_value = weak_square_values[row][col];
 
 			if (display)
 				cout << "square value: " << square_value << endl;
@@ -5554,6 +5470,8 @@ int Board::get_weak_squares() const {
 
 			// Valeur du contrôle de la case faible par un pion adverse
 			square_value *= (1.25 + (pawn_controls > 0));
+
+			square_value *= (!weak ? safe_square_bonus : 1.0f);
 
 			if (display)
 				cout << "with controls, square value: " << square_value << endl;
@@ -6441,7 +6359,7 @@ void Board::display_positions_history() const
 	}
 
 	// En fonction de l'avancement de la partie
-	constexpr float advancement_factor = 0.0f;
+	constexpr float advancement_factor = 0.5f;
 
 	return eval_from_progress(total_bonus, _adv, advancement_factor);
 }
@@ -7290,8 +7208,7 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 }
 
 // Fonction qui calcule tous les coups à une certaine profondeur, et renvoie le nombre de noeuds total
-int Board::count_nodes_at_depth(int depth) {
-
+int Board::count_nodes_at_depth(int depth, bool display) {
 
 	if (depth == 0) {
 		return 1;
@@ -7303,15 +7220,27 @@ int Board::count_nodes_at_depth(int depth) {
 	//	cout << "toto" << endl;
 	//}
 
-	get_moves();
+	get_moves(true);
 	int nodes_count = 0;
 
 	for (int m = 0; m < _got_moves; m++) {
 		Board b(*this);
 		//Board b(*this, false, true);
+
+		if (display) {
+			cout << move_label(_moves[m]) << ", ";
+		}
+
 		b.make_move(_moves[m]);
 		//b.make_move(_moves[m], false, false, true);
-		nodes_count += b.count_nodes_at_depth(depth - 1);
+
+		int below_nodes = b.count_nodes_at_depth(depth - 1, false);
+
+		if (display) {
+			cout << below_nodes << endl;
+		}
+
+		nodes_count += below_nodes;
 	}
 
 	return nodes_count;
@@ -7340,7 +7269,8 @@ bool Board::validate_nodes_count_at_depth(string fen, int depth, vector<int> exp
 			cout << "Depth " << d << "...\r";
 		}
 
-		int nodes = count_nodes_at_depth(d);
+		//int nodes = count_nodes_at_depth(d);
+		int nodes = count_nodes_at_depth(d, false);
 		
 		if (expected_nodes.size() <= d) {
 			cout << "Missing expected nodes in nodes count validation" << endl;
@@ -7369,4 +7299,640 @@ bool Board::validate_nodes_count_at_depth(string fen, int depth, vector<int> exp
 	}
 
 	return success;
+}
+
+// Fonction test: nouvelle mobilité des pièces
+[[nodiscard]] int Board::get_new_piece_mobility(bool display) const {
+	// Points à prendre en compte:
+	// - Nombre de cases virtuellement atteignables (en fonction des pions seulement)
+	// - Cases réellement atteignables (en fonction des pièces qui peuvent gêner)
+	// - Cas des pièces bloquées: par des pièces? par des pions? enfermement éternel? : les pions qui bloque la pièce sont-ils aussi bloqués?
+	// - Pour les cases atteignables, valeurs differentes en fonction de la position de la case? -> ou alors ça va dans piece activity?
+
+	// Cas tests:
+	//2b1r1k1/qp3ppn/1r1p1n1p/pP1Pp3/P3P1P1/1P1QP1NP/5RB1/5RK1 w - - 1 3 : la tour en b6
+	//r1bqk1nr/p4ppp/2nbp3/3p4/Pp1P4/1Pp1PN2/2P1BPPP/RNBQK2R w KQkq - 0 10 : tour + cavalier en a1 et b1
+	//8/1p4pk/1r1p1n1p/pP1Pp2P/P1R1P3/1P2P3/6K1/8 b - - 2 18 : blancs gagnants? (selon Leela oui, mais pas SF17 à petite profondeur)
+	//2Rnk3/3p2p1/3Pp2r/1b2P1Np/7P/5P1K/6P1/8 b - - 1 43 : pas de coups pour les noirs -> complètement perdant
+	//3k4/1pp5/p1n2p2/2P1p2p/P3p1pP/1P2P1B1/1KP2PP1/8 w - - 0 30 : fou g3 enfermé à vie
+	//r1bq1knr/pp1p1pp1/1bnP3p/1p2P3/8/P1N2N2/1P3PPP/R1BQ1RK1 b - - 2 12 : quasi gagnant au blancs
+	//rn3rk1/1b1p1ppp/p1pP4/1pP5/P7/8/3B1PPP/1R1K1B1R w - - 0 18 : a5 gagne juste stratégiquement: les trois pièces noirs sur l'aile dame sont bloquées à vie
+	//r2qk2r/1bp1ppnp/p5p1/3pP3/6P1/2N2P2/PPPB3P/R2Q1RK1 w kq - 1 14 : noirs mieux...
+
+	//display = true;
+
+	// TODO: comment gérer les pièces clouées?
+	// TODO: plus trop de différences pour un fou entre 7 et 8 coups possibles...
+
+	// Importance de la mobilité virtuelle ("à travers" les pièces, mais pas les pions)
+	static constexpr int pawn_virtual_mobility[5] = { 0, 0, 0, 0, 0 };
+	static constexpr int knight_virtual_mobility[9] = { -1350, -150, 0, 65, 110, 125, 135, 143, 150 };
+	static constexpr int bishop_virtual_mobility[15] = { -1350, -500, 0, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180 };
+	static constexpr int rook_virtual_mobility[15] = { -1750, -750, 0, 35, 50, 65, 75, 85, 95, 105, 115, 125, 135, 145, 155 };
+	static constexpr int queen_virtual_mobility[29] = { -3000, -1500, 0, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250 };
+	static constexpr int king_virtual_mobility[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+    static const int* virtual_mobilities[6] = { pawn_virtual_mobility, knight_virtual_mobility, bishop_virtual_mobility, rook_virtual_mobility, queen_virtual_mobility, king_virtual_mobility };
+
+	// Importance de la mobilité réelle (en fonction des coups possibles réels; ne traverse aucune pièce)
+	static constexpr int pawn_real_mobility[5] = { -50, 0, 0, 0, 0 };
+	static constexpr int knight_real_mobility[9] = { -50, -25, 0, 15, 28, 37, 43, 47, 50 };
+	static constexpr int bishop_real_mobility[15] = { -35, -15, 0, 10, 15, 20, 25, 30, 35, 37, 40, 42, 45, 47, 50 };
+	static constexpr int rook_real_mobility[15] = { -25, -10, 0, 10, 15, 20, 25, 30, 35, 37, 40, 42, 45, 47, 50 };
+	static constexpr int queen_real_mobility[29] = { -50, -25, 0, 5, 10, 14, 18, 21, 24, 26, 28, 29, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30 };
+	static constexpr int king_real_mobility[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+
+	static const int* real_mobilities[6] = { pawn_real_mobility, knight_real_mobility, bishop_real_mobility, rook_real_mobility, queen_real_mobility, king_real_mobility };
+
+
+	// On ne compte pas les cases controllées par les pions adverses
+	bool b_pawn_controls[8][8] = { false };
+	bool w_pawn_controls[8][8] = { false };
+
+	for (uint_fast8_t row = 1; row < 7; row++) {
+		for (uint_fast8_t col = 0; col < 8; col++) {
+			if (_array[row][col] == w_pawn) {
+				(col > 0) && (w_pawn_controls[row + 1][col - 1] = true);
+				(col < 7) && (w_pawn_controls[row + 1][col + 1] = true);
+			}
+			else if (_array[row][col] == b_pawn) {
+				(col > 0) && (b_pawn_controls[row - 1][col - 1] = true);
+				(col < 7) && (b_pawn_controls[row - 1][col + 1] = true);
+			}
+		}
+	}
+
+
+	// Mobilité des pièces blanches
+	int white_mobility = 0;
+
+	// Mobilité des pièces noires
+	int black_mobility = 0;
+
+	// Mobilité des pièces
+	for (uint_fast8_t row = 0; row < 8; row++) {
+		for (uint_fast8_t col = 0; col < 8; col++) {
+			uint_fast8_t piece = _array[row][col];
+
+			if (piece == none) {
+				continue;
+			}
+
+			int virtual_mobility = 0;
+			int real_mobility = 0;
+			int blocking_pawn_moves = 0;
+
+			// Pion blanc
+			if (piece == w_pawn) {
+
+				// Avance de 1
+				uint_fast8_t front_piece = _array[row + 1][col];
+
+				if (front_piece == none) {
+					virtual_mobility++;
+					real_mobility++;
+
+					// Avance de 2
+					if (row == 1) {
+						uint_fast8_t front_piece2 = _array[row + 2][col];
+
+						if (!is_pawn(front_piece2)) {
+							virtual_mobility++;
+
+							if (front_piece2 == none) {
+								real_mobility++;
+							}
+						}
+					}
+				}
+				else if (!is_pawn(front_piece)) {
+					virtual_mobility++;
+
+					// Avance de 2
+					if (row == 1) {
+						virtual_mobility += !is_pawn(_array[row + 2][col]);
+					}
+				}
+
+				// Captures
+
+				// Capture en diagonale gauche
+				if (col > 0) {
+					uint_fast8_t left_piece = _array[row + 1][col - 1];
+
+					if (is_black(left_piece)) {
+						virtual_mobility++;
+						real_mobility++;
+					}
+				}
+
+				// Capture en diagonale droite
+				if (col < 7) {
+					uint_fast8_t right_piece = _array[row + 1][col + 1];
+
+					if (is_black(right_piece)) {
+						virtual_mobility++;
+						real_mobility++;
+					}
+				}
+			}
+
+			// Cavalier blanc
+			if (piece == w_knight) {
+				for (uint_fast8_t m = 0; m < 8; m++) {
+					int new_i = row + knight_moves[m][0];
+					int new_j = col + knight_moves[m][1];
+
+					if (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
+						uint_fast8_t p = _array[new_i][new_j];
+
+						if (!b_pawn_controls[new_i][new_j]) {
+							if (p != w_pawn && p != w_king) {
+								virtual_mobility++;
+
+								if (!is_white(p)) {
+									real_mobility++;
+								}
+							}
+
+							// Pion allié qui bloque la pièce
+							else {
+								// Le pion peut-il bouger?
+								if (pawn_can_move(new_i, new_j, true)) {
+									blocking_pawn_moves++;
+								}
+							}
+						}
+					}
+				}
+			}
+
+			// Pièce à mouvement rectiligne blanche
+			if (is_rectilinear(piece) && is_white(piece)) {
+				for (uint_fast8_t m = 0; m < 4; m++) {
+					int mi = rect_moves[m][0];
+					int mj = rect_moves[m][1];
+
+					int new_i = row + mi;
+					int new_j = col + mj;
+
+					bool blocked = false;
+
+					while (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
+						uint_fast8_t p = _array[new_i][new_j];
+
+						if (!b_pawn_controls[new_i][new_j]) {
+							if (p != w_pawn && p != w_king) {
+								virtual_mobility++;
+
+								if (!is_white(p) && !blocked) {
+									real_mobility++;
+								}
+							}
+							else {
+								if (pawn_can_move(new_i, new_j, true)) {
+									blocking_pawn_moves++;
+								}
+							}
+						}
+
+						// Un pion bloque la pièce
+						if (is_pawn(p) || p == w_king) {
+							break;
+						}
+
+						if (p != none) {
+							blocked = true;
+						}
+
+						new_i += mi;
+						new_j += mj;
+					}
+				}
+			}
+
+			// Pièce à mouvement diagonal blanche
+			if (is_diagonal(piece) && is_white(piece)) {
+				for (uint_fast8_t m = 0; m < 4; m++) {
+					int mi = diag_moves[m][0];
+					int mj = diag_moves[m][1];
+
+					int new_i = row + mi;
+					int new_j = col + mj;
+
+					bool blocked = false;
+
+					while (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
+						uint_fast8_t p = _array[new_i][new_j];
+
+						if (!b_pawn_controls[new_i][new_j]) {
+							if (p != w_pawn && p != w_king) {
+								virtual_mobility++;
+
+								if (!is_white(p) && !blocked) {
+									real_mobility++;
+								}
+							}
+							else {
+								if (pawn_can_move(new_i, new_j, true)) {
+									blocking_pawn_moves++;
+								}
+							}
+						}
+
+						// Un pion bloque la pièce
+						if (is_pawn(p) || p == w_king) {
+							break;
+						}
+
+						if (p != none) {
+							blocked = true;
+						}
+
+						new_i += mi;
+						new_j += mj;
+					}
+				}
+			}
+
+			// Roi blanc
+			if (piece == w_king) {
+				for (uint_fast8_t m = 0; m < 8; m++) {
+					int new_i = row + all_directions[m][0];
+					int new_j = col + all_directions[m][1];
+
+					if (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
+						uint_fast8_t p = _array[new_i][new_j];
+
+						if (!b_pawn_controls[new_i][new_j]) {
+							if (p != w_pawn) {
+								virtual_mobility++;
+
+								if (!is_white(p)) {
+									real_mobility++;
+								}
+							}
+							else {
+								if (pawn_can_move(new_i, new_j, true)) {
+									blocking_pawn_moves++;
+								}
+							}
+						}
+					}
+				}
+			}
+
+			// Pion noir
+			if (piece == b_pawn) {
+
+				// Avance de 1
+				uint_fast8_t front_piece = _array[row - 1][col];
+
+				if (front_piece == none) {
+					virtual_mobility++;
+					real_mobility++;
+
+					// Avance de 2
+					if (row == 6) {
+						uint_fast8_t front_piece2 = _array[row - 2][col];
+
+						if (!is_pawn(front_piece2)) {
+							virtual_mobility++;
+
+							if (front_piece2 == none) {
+								real_mobility++;
+							}
+						}
+					}
+				}
+				else if (!is_pawn(front_piece)) {
+					virtual_mobility++;
+
+					// Avance de 2
+					if (row == 6) {
+						virtual_mobility += !is_pawn(_array[row - 2][col]);
+					}
+				}
+
+				// Captures
+
+				// Capture en diagonale gauche
+				if (col > 0) {
+					uint_fast8_t left_piece = _array[row - 1][col - 1];
+
+					if (is_white(left_piece)) {
+						virtual_mobility++;
+						real_mobility++;
+					}
+				}
+
+				// Capture en diagonale droite
+				if (col < 7) {
+					uint_fast8_t right_piece = _array[row - 1][col + 1];
+
+					if (is_white(right_piece)) {
+						virtual_mobility++;
+						real_mobility++;
+					}
+				}
+			}
+
+			// Cavalier noir
+			if (piece == b_knight) {
+				for (uint_fast8_t m = 0; m < 8; m++) {
+					int new_i = row + knight_moves[m][0];
+					int new_j = col + knight_moves[m][1];
+
+					if (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
+						uint_fast8_t p = _array[new_i][new_j];
+
+						if (!w_pawn_controls[new_i][new_j]) {
+							if (p != b_pawn && p != b_king) {
+								virtual_mobility++;
+
+								if (!is_black(p)) {
+									real_mobility++;
+								}
+							}
+
+							// Pion allié qui bloque la pièce
+							else {
+								// Le pion peut-il bouger?
+								if (pawn_can_move(new_i, new_j, false)) {
+									blocking_pawn_moves++;
+								}
+							}
+						}
+					}
+				}
+			}
+
+			// Pièce à mouvement rectiligne noire
+			if (is_rectilinear(piece) && is_black(piece)) {
+				for (uint_fast8_t m = 0; m < 4; m++) {
+					int mi = rect_moves[m][0];
+					int mj = rect_moves[m][1];
+
+					int new_i = row + mi;
+					int new_j = col + mj;
+
+					bool blocked = false;
+
+					while (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
+						uint_fast8_t p = _array[new_i][new_j];
+
+						if (!w_pawn_controls[new_i][new_j]) {
+							if (p != b_pawn && p != b_king) {
+								virtual_mobility++;
+
+								if (!is_black(p) && !blocked) {
+									real_mobility++;
+								}
+							}
+							else {
+								if (pawn_can_move(new_i, new_j, false)) {
+									blocking_pawn_moves++;
+								}
+							}
+						}
+
+						// Un pion bloque la pièce
+						if (is_pawn(p) || p == b_king) {
+							break;
+						}
+
+						if (p != none) {
+							blocked = true;
+						}
+
+						new_i += mi;
+						new_j += mj;
+					}
+				}
+			}
+
+			// Pièce à mouvement diagonal noire
+			if (is_diagonal(piece) && is_black(piece)) {
+				for (uint_fast8_t m = 0; m < 4; m++) {
+					int mi = diag_moves[m][0];
+					int mj = diag_moves[m][1];
+
+					int new_i = row + mi;
+					int new_j = col + mj;
+
+					bool blocked = false;
+
+					while (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
+						uint_fast8_t p = _array[new_i][new_j];
+
+						if (!w_pawn_controls[new_i][new_j]) {
+							if (p != b_pawn && p != b_king) {
+								virtual_mobility++;
+
+								if (!is_black(p) && !blocked) {
+									real_mobility++;
+								}
+							}
+							else {
+								if (pawn_can_move(new_i, new_j, false)) {
+									blocking_pawn_moves++;
+								}
+							}
+						}
+
+						// Un pion bloque la pièce
+						if (is_pawn(p) || p == b_king) {
+							break;
+						}
+
+						if (p != none) {
+							blocked = true;
+						}
+
+						new_i += mi;
+						new_j += mj;
+					}
+				}
+			}
+
+			// Roi noir
+			if (piece == b_king) {
+				for (uint_fast8_t m = 0; m < 8; m++) {
+					int new_i = row + all_directions[m][0];
+					int new_j = col + all_directions[m][1];
+
+					if (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
+						uint_fast8_t p = _array[new_i][new_j];
+
+						if (!w_pawn_controls[new_i][new_j]) {
+							if (p != b_pawn && p != b_king) {
+								virtual_mobility++;
+
+								if (!is_black(p)) {
+									real_mobility++;
+								}
+							}
+							else {
+								if (pawn_can_move(new_i, new_j, false)) {
+									blocking_pawn_moves++;
+								}
+							}
+						}
+					}
+				}
+			}
+
+			if (display)
+				cout << piece_name(piece) << ", " << square_name(row, col) << ", virtual-mob : " << virtual_mobility << ", real-mob : " << real_mobility << ", pawn moves : " << blocking_pawn_moves << " | ";
+
+			// Ajout de la mobilité
+			if (is_white(piece)) {
+				int virtual_mobility_value = virtual_mobilities[piece - 1][virtual_mobility];
+
+				if (display)
+					cout << virtual_mobility_value;
+
+				if (virtual_mobility_value < 0) {
+					virtual_mobility_value /= (1 + blocking_pawn_moves) * (1 + blocking_pawn_moves);
+
+					if (display)
+						cout << " / " << (1 + blocking_pawn_moves) * (1 + blocking_pawn_moves) << " = " << virtual_mobility_value;
+				}
+
+				if (display)
+					cout << " + " << real_mobilities[piece - 1][real_mobility];
+
+				int piece_mobility = virtual_mobility_value + real_mobilities[piece - 1][real_mobility];
+
+				if (display)
+					cout << " = " << piece_mobility << endl;
+
+				white_mobility += piece_mobility;
+			}
+			else {
+				int virtual_mobility_value = virtual_mobilities[piece - 7][virtual_mobility];
+
+				if (display)
+					cout << virtual_mobility_value;
+
+				if (virtual_mobility_value < 0) {
+					virtual_mobility_value /= (1 + blocking_pawn_moves) * (1 + blocking_pawn_moves);
+
+					if (display)
+						cout << " / " << (1 + blocking_pawn_moves) * (1 + blocking_pawn_moves) << " = " << virtual_mobility_value;
+				}
+
+				if (display)
+					cout << " + " << real_mobilities[piece - 7][real_mobility];
+
+				int piece_mobility = virtual_mobility_value + real_mobilities[piece - 7][real_mobility];
+
+				if (display)
+					cout << " = " << piece_mobility << endl;
+
+				black_mobility += piece_mobility;
+			}
+		}
+	}
+
+	if (display) {
+		cout << "White mobility: " << white_mobility << ", black mobility: " << black_mobility << endl;
+	}
+
+	// Facteur multiplicatif en fonction de l'avancement
+	float piece_mobility_advancement_factor = 1.0f;
+
+	return eval_from_progress(white_mobility - black_mobility, _adv, piece_mobility_advancement_factor);
+}
+
+// Fonction qui renvoie si le pion peut bouger
+bool Board::pawn_can_move(uint_fast8_t row, uint_fast8_t col, bool color) const {
+
+	// Vérifie que c'est un pion
+	if (color) {
+		if (_array[row][col] != w_pawn) {
+			return false;
+		}
+	}
+	else {
+		if (_array[row][col] != b_pawn) {
+			return false;
+		}
+	}
+
+	if (color) {
+		if (_array[row + 1][col] == none) {
+			return true;
+		}
+		if (col > 0 && is_black(_array[row + 1][col - 1])) {
+			return true;
+		}
+		if (col < 7 && is_black(_array[row + 1][col + 1])) {
+			return true;
+		}
+	}
+	else {
+		if (_array[row - 1][col] == none) {
+			return true;
+		}
+		if (col > 0 && is_white(_array[row - 1][col - 1])) {
+			return true;
+		}
+		if (col < 7 && is_white(_array[row - 1][col + 1])) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+// Fonction qui renvoie l'incertiude de la position
+float Board::get_uncertainty() const {
+	// TODO: faudrait-il prendre en compte la réflexion faite par Grogros?
+	// Par exemple: si la position change rapidement d'évaluation?
+	// Dépend du nombre de pièces restantes
+
+	// TODO: Faut-il prendre en compte le nombre de captures possibles?
+
+
+	return 0.5f;
+}
+
+// Fonction qui stocke le WDL de la position (pour les blancs)
+void Board::get_WDL(float uncertainity, int winning_eval, float beta) {
+	
+	// Winning eval: evaluation pour laquelle la chance de gain et de nulle est égale, pour une incertitude de 0.
+
+	// beta contrôle la lenteur de convergence.
+	// Pour beta = 0.25, f(2 * winning_eval) = 0.84
+	// pour beta = 0.5,  f(2 * winning_eval) = 0.707
+	// pour beta = 0.75,  f(2 * winning_eval) = 0.62
+
+	bool is_eval_positive = _evaluation > 0;
+	float eval = abs(_evaluation);
+	float k = winning_eval;
+
+	float certain_win_chance = pow((eval / (eval + k)), beta);
+	float certain_draw_chance = 1 - certain_win_chance;
+
+	float white_win_chance = (is_eval_positive ? certain_win_chance : 0.0f);
+	float white_lose_chance = (is_eval_positive ? 0.0f : certain_win_chance);
+
+	// Fonction non-linéaire sur l'incertitude
+	float alpha = eval / winning_eval;
+	float relative_uncertainity = pow(uncertainity, alpha);
+
+	float win_chance = white_win_chance * (1 - relative_uncertainity) + relative_uncertainity / 3.0f;
+	float draw_chance = certain_draw_chance * (1 - relative_uncertainity) + relative_uncertainity / 3.0f;
+	float lose_chance = white_lose_chance * (1 - relative_uncertainity) + relative_uncertainity / 3.0f;
+
+	_wdl = WDL(win_chance, draw_chance, lose_chance);
+}
+
+// Fonction qui renvoie l'espérance de gain (en points) de la position (fondé sur les probas de WDL)
+float Board::get_average_score(float draw_score) const {
+	// TODO: utiliser ce score plutôt que l'évaluation pour choisir quel coup jouer?
+
+	return _wdl.win_chance + draw_score * _wdl.draw_chance;
 }

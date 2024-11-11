@@ -11,6 +11,7 @@
 #include <cstdint>
 #include "raylib.h"
 #include <iomanip>
+#include "useful_functions.h"
 //#include "zobrist.h"
 
 using namespace std;
@@ -53,6 +54,46 @@ static bool is_white(uint_fast8_t piece) {
 // Renvoie si la pièce est noire
 static bool is_black(uint_fast8_t piece) {
 	return piece >= b_pawn && piece <= b_king;
+}
+
+// Renvoie si la pièce est un pion
+static bool is_pawn(uint_fast8_t piece) {
+	return piece == w_pawn || piece == b_pawn;
+}
+
+// Renvoie si la pièce est un cavalier
+static bool is_knight(uint_fast8_t piece) {
+	return piece == w_knight || piece == b_knight;
+}
+
+// Renvoie si la pièce est un fou
+static bool is_bishop(uint_fast8_t piece) {
+	return piece == w_bishop || piece == b_bishop;
+}
+
+// Renvoie si la pièce est une tour
+static bool is_rook(uint_fast8_t piece) {
+	return piece == w_rook || piece == b_rook;
+}
+
+// Renvoie si la pièce est une dame
+static bool is_queen(uint_fast8_t piece) {
+	return piece == w_queen || piece == b_queen;
+}
+
+// Renvoie si la pièce est un roi
+static bool is_king(uint_fast8_t piece) {
+	return piece == w_king || piece == b_king;
+}
+
+// Renvoie si la pièce a un mouvement rectiligne
+static bool is_rectilinear(uint_fast8_t piece) {
+	return is_rook(piece) || is_queen(piece);
+}
+
+// Renvoie si la pièce a un mouvement diagonal
+static bool is_diagonal(uint_fast8_t piece) {
+	return is_bishop(piece) || is_queen(piece);
 }
 
 
@@ -225,6 +266,25 @@ struct Map
 	}
 };
 	
+// WDL chance
+struct WDL {
+	float win_chance; // Entre 0.0f et 1.0f
+	float draw_chance; // Entre 0.0f et 1.0f
+	float lose_chance; // Entre 0.0f et 1.0f
+
+	// Affichage
+	string to_string() const {
+		return "WDL: " + int_to_round_string(1000 * win_chance) + "/" + int_to_round_string(1000 * draw_chance) + "/" + int_to_round_string(1000 * lose_chance);
+	}
+
+	void print() const {
+		cout << "WDL: " << (int)(1000 * win_chance) << "/" << (int)(1000 * draw_chance) << "/" << (int)(1000 * lose_chance) << endl;
+	}
+};
+
+// Fins de partie
+enum game_termination { black_win = -1, unterminated = 0, white_win = 1, draw = 2 };
+
 
 // Plateau
 class Board {
@@ -311,6 +371,9 @@ public:
 	vector<uint64_t> _positions_history = {};
 	//unordered_map<uint_fast64_t, int> _positions_history = {};
 
+	// WDL
+	WDL _wdl;
+
 
 	// Constructeur par défaut
 	Board();
@@ -343,7 +406,7 @@ public:
 	bool add_king_moves(uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
 
 	// Renvoie la liste des coups possibles
-	bool get_moves(const bool forbide_check = false);
+	bool get_moves(const bool forbide_check = true);
 
 	// Fonction qui dit s'il y'a échec
 	[[nodiscard]] bool in_check();
@@ -386,9 +449,6 @@ public:
 
 	// Fonction qui renvoie le label d'un coup
 	string move_label(Move move, bool use_uft8 = false);
-
-	// Fonction qui renvoie le label d'un coup en fonction de son index
-	string move_label_from_index(int);
 
 	// Fonction qui affiche un texte dans une zone donnée
 	static void draw_text_rect(const string&, float, float, float, float, float);
@@ -461,9 +521,6 @@ public:
 
 	// Fonction qui fait un tri rapide des coups (en plaçant les captures en premier)
 	bool sort_moves();
-
-	// Fonction qui fait un quiescence search
-	int quiescence(Evaluator* eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool explore_checks = true, bool main_player = true, int delta = 900);
 
 	// Fonction qui fait cliquer le coup m
 	[[nodiscard]] bool click_m_move(Move i, bool orientation) const;
@@ -604,10 +661,25 @@ public:
 	[[nodiscard]] int get_pawn_shield_protection_at_column(bool color, int column, float opponent_attacking_potential);
 
 	// Fonction qui calcule tous les coups à une certaine profondeur, et renvoie le nombre de noeuds total
-	int count_nodes_at_depth(int depth);
+	int count_nodes_at_depth(int depth, bool display = true);
 
 	// Fonction qui renvoie si le nombre de noeuds calculés pour une position à une certaine profondeur correspond au nombre attendu
 	bool validate_nodes_count_at_depth(string fen, int depth, vector<int> expected_nodes, bool display = false);
+
+	// Fonction test: nouvelle mobilité des pièces
+	[[nodiscard]] int get_new_piece_mobility(bool display = false) const;
+
+	// Fonction qui renvoie si le pion peut bouger
+	[[nodiscard]] bool pawn_can_move(uint_fast8_t row, uint_fast8_t col, bool color) const;
+
+	// Fonction qui renvoie l'incertiude de la position
+	[[nodiscard]] float get_uncertainty() const;
+
+	// Fonction qui renvoie le WDL de la position
+	[[nodiscard]] void get_WDL(float uncertainity = 0.0f, int winning_eval = 100, float beta = 0.75f);
+
+	// Fonction qui renvoie l'espérance de gain (en points) de la position (fondé sur les probas de WDL) pour les blancs
+	[[nodiscard]] float get_average_score(float draw_score = 0.5f) const;
 
 	// TODO: génération plus rapide des coups
 
