@@ -91,8 +91,8 @@ public:
 	TextBox _black_time_text_box;
 
 	// Paramètres pour la recherche de Monte-Carlo
-	float _beta = 0.1f;
-	//float _k_add = 50.0f;
+	float _beta = 0.05f;
+	//float _k_add = 100.0f;
 	float _k_add = 5.0f;
 	int _quiescence_depth = 6;
 
@@ -231,6 +231,7 @@ public:
 
 	// Couleurs de la barre d'évaluation
 	Color _eval_bar_color_light = { 224, 206, 186, 255 };
+	Color _eval_bar_color_gray = { 141, 128, 117, 255 };
 	Color _eval_bar_color_dark = { 57, 50, 47, 255 };
 
 	// Epaisseur des flèches (par rapport à la taille d'une case)
@@ -339,6 +340,9 @@ public:
 	// Eval à montrer pour la barre d'éval
 	float _global_eval = 0.0f;
 	string _global_eval_text = "+0.0";
+
+	// WDL
+	WDL _wdl;
 
 	// Valeur des pièces pour l'affichage sur la GUI (rien/roi, pion, cavalier, fou, tour, dame)
 	const int _piece_GUI_values[6] = { 0, 1, 3, 3, 5, 9 };
@@ -496,7 +500,7 @@ public:
 	void draw_texture(const Texture&, float, float, Color);
 
 	// Fonction qui affiche la barre d'evaluation
-	void draw_eval_bar(float, const string&, float, float, float, float, float max_eval, Color, Color, float max_height = -1.0f);
+	void draw_eval_bar(float eval, WDL wdl, const string&, float, float, float, float, float max_eval, Color white, Color gray, Color black, float max_height = -1.0f);
 
 	// Fonction qui retire les surlignages de toutes les cases
 	void remove_highlighted_tiles();

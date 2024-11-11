@@ -104,3 +104,10 @@ Evaluator& Evaluator::operator=(const Evaluator& other) {
 
 	return *this;
 }
+
+// Evaluation de la position
+// TODO !!!
+//float Evaluator::evaluate(const Board& board)
+//{
+//	return 0.0f;
+//}
