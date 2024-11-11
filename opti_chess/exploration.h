@@ -7,6 +7,61 @@
 // TODO:
 // Au lieu d'avoir un plateau, stocker seulement l'indice du plateau dans le buffer?
 
+
+struct Evaluation {
+
+	// Variables
+
+	// Valeur de l'évaluation
+	int _value;
+
+	// Incertitude de l'évaluation
+	float _uncertainty;
+
+	// WDL
+	WDL _wdl;
+
+	// Score moyen
+	float _avg_score;
+
+	// Evalué?
+	bool _evaluated = false;
+
+
+	// Copie de l'évaluation
+	Evaluation& operator=(const Evaluation& other) {
+		// Recopie les paramètres d'évaluation
+		_value = other._value;
+		_uncertainty = other._uncertainty;
+		_wdl = other._wdl;
+		_avg_score = other._avg_score;
+		_evaluated = other._evaluated;
+
+		return *this;
+	}
+
+	// Comparateur
+	bool operator>(Evaluation& other) {
+		if (!other._evaluated)
+			return true;
+
+		if (!_evaluated)
+			return false;
+
+		return _value > other._value;
+	}
+
+	bool operator<(Evaluation& other) {
+		if (!other._evaluated)
+			return true;
+
+		if (!_evaluated)
+			return false;
+
+		return _value < other._value;
+	}
+};
+
 // Noeud de l'arbre d'exploration
 class Node {
 public:
@@ -26,7 +81,7 @@ public:
 	//vector<Node*> _children;
 
 	// Nouveau noeud?
-	bool _new_node = true;
+	//bool _new_node = true;
 
 	// Pour accélérer la recherche du premier coup non exploré
 	int _latest_first_move_explored = -1;
@@ -56,6 +111,18 @@ public:
 	// Reste t-il encore quelque chose à explorer?
 	bool _can_explore = true;
 
+	// Evaluation statique de la position
+	Evaluation _static_evaluation;
+
+	// Evaluation de la position après réflexion
+	Evaluation _deep_evaluation;
+
+	// Est-ce un noeud final?
+	bool _is_terminal = false;
+
+	// Noeud initialisé?
+	bool _initialized = false;
+
 	// A rajouter : évaluation?, nombre de noeuds?...
 
 	// Constructeurs
@@ -80,6 +147,9 @@ public:
 
 	// Fonction qui renvoie le premier coup qui n'a pas encore été ajouté
 	[[nodiscard]] Move get_first_unexplored_move(bool fully_explored = false);
+
+	// Initie le noeud en fonction de son plateau
+	void init_node();
 
 	// Nouveau GrogrosZero
 	void grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add, int nodes, int quiescence_depth, Network* network = nullptr);
@@ -127,20 +197,20 @@ public:
 	[[nodiscard]] int get_ips() const;
 
 	// Quiescence search intégré à l'exploration
-	int grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr);
+	int quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr, bool use_custom_stand_pat = false, int stand_pat_value = 0);
 	//void grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth);
 
 	// Fonction qui renvoie le nombre de noeuds fils complètement explorés
 	[[nodiscard]] int get_fully_explored_children_count() const;
-
-	// Tentative de quiescence maison
-	void new_grogros_quiescence(Buffer* buffer, Evaluator* eval, float beta, float k_add, int nodes);
 
 	// Fonction qui renvoie la somme des noeuds des fils
 	int count_children_nodes() const;
 
 	// Fonction qui renvoie le nombre de noeuds total
 	int get_total_nodes() const;
+
+	// Fonction qui évalue la position
+	void evaluate_position(Evaluator* eval, bool display = false, Network* network = nullptr, bool game_over_check = false);
 
 	// Fonctions à rajouter: destruction des fils et de soi...
 

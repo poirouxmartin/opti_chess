@@ -88,33 +88,22 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 
 - EVALUATION -
 -> A ajouter :
-	- Sécurité du roi (TRES IMPORTANT !) --> A améliorer: lignes ouvertes et colonnes ouvertes proches du roi (ou semi-ouvertes)
 	- Structures de pions :
 		- Pions arriérés
-		- Pion faible sur une colonne semi-ouverte
-	- Nature de la position :
-		- Ouverte
-		- Fermée
-		- Semi-ouverte
 	- Evaluation spéciale pour les finales :
 		- Fous de couleurs opposées
 		- Finales roi pion
 		- Mat fou cavalier
 		- Finales de tours: plus facilement nulles
 		- ...
-	- Clouages?
 	- Cases noires/blanches -> faiblesse sur une couleur
 	- Initiative -> A améliorer : fort dans les positions d'attaque?
-	- Fous de couleurs opposées : favorisent l'attaque, mais en finale -> draw
+	- Fous de couleurs opposées en finale -> draw
 	- Harmonie des pièces (qui se défendent entre elles)
 	- Pièces enfermées
-	- Bon/Mauvais fou
-	- Tours sur une même colonne qu'une dame ou un roi
 	- Pions bloqués / Développement de pièces impossible
-	- Fous/Paire de fou meilleurs en position ouverte (cavalier : inverse)
 	- Pièces défendues
 	- Faiblesse sur une couleur
-	- Vis-à-vis
 	- Focales
 	- Cavaliers bloqueurs
 	- Finales de pions : Roi dans le carré
@@ -122,22 +111,17 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Clouage infini
 	- Pression sur les cases et points faibles
 	- Colonnes occupées par une dame
-	- Pions passés liés !
 	- Coordination des pièces
 	- Candidats pions passés : r1bq2kr/ppp1bn1p/2n1p2P/3pP1PR/3P1p2/1NPB1N2/PPQ2P2/R3K3 b Q - 0 16 : ici y'aura potentiellement un pion passé colonne g ou h
 	- King proximity : proximité du roi avec les pions passés (pour les aider à avancer) (prendre en compte aussi le roi adverse)
 	- Pièces non protégées
-	- Shelter strength : pions devant le roi (faiblesses long terme), quand le roi est déroqué
-	- Shelter storm : attaques avec les pions sur le roi quand il est déroqué
 	- "anaconda" : pièces bloquées à vie + avantage d'espace etc.. plans long termes
 	- Concepts de pression: attaques additionelles en rayon X à prendre en compte. Doubler les tours sur une colonne, etc...
-	- Tours: les mettre sur les colonnes ou les pions sont les plus avancés (activité verticale)
 	- Plans?
 	- Colonnes fermées -> tour mauvaises. Si beaucoup de colonnes ouvertes, bonus pour les tours. Pareil pour les diagonales et les fous
 	- Pions passés: prendre en compte les contrôles des alliés pour pousser les pions
 	- Règle des 2 faiblesses : si y'a 2 faiblesses attaquables, ça donne un avantage
 	- Winnable? en endgame par exemple si on a qu'un fou on peut pas gagner
-	- Redonner de la valeur pour la dame, car les tours on beaucoup d'évaluations différentes qui leur donnent de la valeur
 	- Quand t'as une position stratégiquement mauvaise, il faut jouer dynamiquement (r1bq1rk1/ppn1bppp/3p4/2p5/2PP4/2N1BN1P/PP3PP1/R2Q1RK1 b - - 0 14 : là faut faire d5)
 	- Proximité du roi avec les pions passés
 	- Trapped pieces (https://www.chessprogramming.org/Trapped_Pieces)
@@ -145,7 +129,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Alignements
 	- Piece coordination
 	- Incremental evaluation (pour que ça aille plus vite)
-	- Tour derrrière un pion passé (implémenter les cases controlées pour les pions passés?)
+	- Tour derrrière un pion passé
 	- Ouvrir la position si on a un avantage de développement (roi adverse pas roqué, pièces pas développées)
 	- Développer les cavaliers avant les fous
 	- Favoriser les chevaux dans les positions fermées. Fous quand les diagonales sont ouvertes, tours quand les colonnes sont ouvertes (implémenter un bonus pour chaque?)
@@ -239,109 +223,52 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Descendre un peu le winrate par éval? réference : +1.00 = 50% de chances de gain
 -> Quels paramètres sont meilleurs pour GrogrosZero? k_add? beta? quiescence_depth?
 -> Utiliser std:sort pour trier les coups plus rapidement?
--> Alignement de pièces à finir (tour/roi, tour/dame...)
 -> Taper les faiblesses (notions de pression)
--> Réduire la puissance des fous : un cavalier bien placé peut être tout aussi bon -> Outpost
 -> Utiliser la map de contrôles pour les fonctions dans l'évaluation
 -> Quand l'arbre est trop plein : élaguer les branches pourries, pour se concentrer sur les plus prometteuses
 -> Faut-il vraiment regarder tous les coups d'une position avant de chercher plus loin??
 -> Evaluer les finales différemment : faires des fonctions exprès pour (carré du pion, mat fou cavalier : il faut aller dans le bon coin)
 -> Optimiser la mémoire de Grogros
--> Ajouter la nature de la position : ouverte, fermée... pour savoir à quel point les fous/cavaliers sont meilleurs, si y'a des chances de gain, si le développement des pièces compte beaucoup... l'espace aussi, la sécurité des rois...
 -> Améliorer l'implémentation de l'activité des pièces : peuvent pas vraiment se déplacer sur des cases pourries...
--> Pour mieux évaluer la sécurité du roi, il faut regarder le surnombre de pièces sur le roi adverse (+2, c'est généralement mat)
--> Pourquoi dans les Caro-Kann, il fait Fd3 pour reprendre du pion c plutôt que de la dame?
--> Faire que Grogros reclique sur la fenêtre principale après jouer son coup sur chess.com pour reprendre la main? ou alors faire un focus sur la fenêtre?
 -> Utiliser des static constexpr pour éviter des calculs redondants dans certaines fonctions
--> Il faut plus de g3 Fg2 -> revoir king safety?
 -> Re utiliser la réflexion de la quiescence search pour la recherche normale
--> Faire evaluation.cpp? gui.cpp?
 -> Comme pour le roi, garder en mémoire l'emplacement des pièces (utiliserait 256 bytes)
 -> Afficher seulement les paramètres d'évaluation qui font sens? (par exemple king opposition seulement lorsque c'est une finale de pions)
--> Tout foutre dans la classe GUI? les variables globales et fonctions globales en particulier -> par exemple eval_components
--> Adapter les fonctions aux coups (make_move(Move)...)
 -> Faire des méthodes utiles pour les coups
--> Verifier que quiescence depth 0 est aussi rapide qu'une simple évaluation
 -> Flags pour les coups
 -> Rendre from_fen plus tolérant
 -> Améliorer l'évaluation en faisant jouer contre Leela, et regarder ce que Grogros évalue mal
--> Eviter les accès à _moves[i] trop souvent? -> copier le coup?
--> IMPORTANT : refaire toutes les recherches de mat, et leur stockages
 -> Faire le threading !
--> Faire un king_centralization pour l'endgame?
--> Voir comment gérer les positions qui sont mal évaluées par GrogrosZero
 -> Implementer les policy pour les coups (pour regarder des coups plus que d'autres)
--> Pion de moins en finale de pions est quasi toujours perdant
--> Ajouter la pièce dans le coup (et l'utiliser)
 -> Revoir les undo, et les faire rapides pour les utiliser au lieu de copier les plateaux
 -> Faire des tests de vitesse pour l'évaluation
 -> Evaluation endgame très mauvaise
 -> Quand une position est surestimée, Grogros va jouer des coups pour retarder l'échéance, mais qui peuvent pourrir la position encore plus
 -> Quand une position est sous-estimée, Grogros va jouer un coup qui parait bien et réfléchir beaucoup dessus, même si d'autres variations peuvent être meilleures
--> Revoir negamax
 -> Utiliser sort c++ pour trier les coups
--> Rajouter les coups du quiescence dans monte-carlo, et inversement... -> mettre le quiescence dans MCTS?
 -> Remettre la dame dans la mobilité des pièces et l'activité? pour que ça développe la dame aussi? Sinon, ça évalue mal ces positions: r1b1kbnr/ppqp1ppp/2n1p3/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 1 6 
 -> r1bqkb1r/ppp2ppp/2n1p3/8/3PP3/2P5/P4PPP/R1BQKBNR w KQkq - 0 7 : piece_mobility seulement +0.18? c'est un bug?
--> Dans la recherche de grogros_zero, regarder en priorité les coups forts et peu regardés
--> Detection plus rapide d'échecs et mat
 -> Regarder où on fait des accès mémoire fréquent et faire des copies locales pour aller plus vite?
--> Refaire la partie sur attacks and defenses... pour que ça soit plus précis.. là si on tape un pion protégé, ça fait un bonus...
--> Lorsqu'une position est mal évaluée, ajouter une constante de correction d'évaluation pour toutes les positions résultantes (ou jusqu'à ce que l'évaluation soit bonne)
--> King safety, safe checks: FIXME -> ça prend pas en compte les échecs à la découverte, ni les échecs par clouage
--> Faire quelques playoff jusqu'au bout pour avoir une idée de la nature de la position??
--> Fix pawn push threat : quand la case est controllée...
--> Passer la quiescence à depth 8 ou +? sinon y'a encore des positions mal évaluées... à voir si on peut réutiliser les noeuds de la quiescence pour la recherche normale
--> Créer une classe 'arbre' pour les recherches de GrogrosZero?
 -> 6k1/4pp1p/P2p2p1/8/4P3/1P6/5PPP/6K1 b - - 0 26 : il faut améliorer king proximity avec les pions passés: le roi est clairement pas dans le carré
 -> Constructeur de coups à partir d'un string
 -> Passer les fonctions d'évaluation dans evaluation.cpp
--> Changer tous les play_move(i) en play_move(move)
 -> Il faut vider l'historique des variantes quand on change de position... faire une méthode pour reset?
--> Mettre plus de choses dans GUI.cpp
--> Refaire le tri des flèches
 -> Refaire toutes la fonction de dessin de la GUI (notamment pour clarifier les sélections.. puis faire les pre-moves..., draw arrow...)
--> Rajouter 'overwrite' en paramètre de la génération de coups
--> Ne pas jouer le coup quand un autre est en train de devenir meilleur?
--> Changer l'activité des pièces? -> Faire comme pour les tours, regarder en fonctions des pions qu'il y a devant?
--> Punir la perte des droits de roques -> si le roi est au milieu
--> Structure de pions (connected -> -?)
--> King safety en endgame -> wtf parfois
--> 7k/4r3/5pBP/p1n5/P6P/1P2PK2/5P2/8 b - - 3 51 : king safety??????
 -> Rajouter des comtempt: valeur qui dépend de l'adversaire, et qui définit à quel point tu acceptes les nulles (et tente des pièges?)
 -> Faire une structure pour la recherche de MonteCarlo (arbre avec noeuds)
 -> Bishop pawns: retirer une part de la pénalité quand le fou est devant et protégé par un de ses pions?
--> FIXME : pour l'activité des tours, parfois Grogros va faire un Th7 pour se déroquer (car il pense que sa tour ne sera plus bloquée). Il faut fix à tout prix
 -> Souvent, Grogros dépasse le centre pour rien, et ça crée des faiblesses et ne sert à rien (il faudrait mieux se développer à la place...). Contre les double fianchetto, ce genre d'erreur est fatal
--> Utiliser des émoticones pour les pièces d'échec? \u2656xb5 plutôt que Rxb5
--> Faire des plus petites allocations de buffer pour aller plus vite? et re allouer de la mémoire si on a rempli le buffer?
 -> Faire un truc sur la mobilité totale des pièces? qui ressemble à un logarithme? -> t'as pas de coups -> eval: -inf, t'as k coups -> eval: 0, et ça augmente en log
 -> Utiliser Texel tuner pour rectifier l'évaluation?
--> Mettre les fous sur les diagonales ouvertes (voir comme on fait pour les colonnes des tours)
--> 2b3k1/4bp2/3p1n1p/PP4p1/4P1P1/3BBP2/5K1P/8 w - - 1 36 : les pions connectés fonctionnent bien?
--> Heuristique pour à quel point le roi est proche de roquer?
--> Heuristique d'ouverture de la position -> draw ou non
--> Grogros peut améliorer sa gestion du temps en en prenant un peu plus en fin de partie s'il lui en reste beaucoup. Prendre en compte aussi le temps de l'adversaire?
--> Rajouter les pions passés soutenus par une tour derrière
 -> En finale contre fou, mettre les pions sur la couleur opposée au fou
--> Parfois il fait Fb2 dans le pion c3
--> Remettre toutes les conditions pour determiner le temps pour jouer dans la fonction prévue pour
 -> Beaucoup de choses peuvent être factorisées dans le main_gui (get_orientation() par exemple)
--> BUG: quand on lance les threads de Grogros lorsque le buffer est plein, ça plante
--> BUG: parfois grogros crash... à cause d'avoir retiré le plateau principal du buffer?
--> Comment faire pour connaitre l'origine d'un crash?
 -> Il faut des classes pour l'évaluation (mettre toutes les fonctions dedans), pour l'algo de GrogrosZero (dont un arbre de recherche...)
--> Weak squares: faire de manière plus progressive? (un pion qui contrôle c'est ok, deux c'est mieux...)
 -> get_safe_checks() -> prend 90% du temps de l'évaluation...
 -> BUG: parfois après une repetition 1 fois, Grogros choisit un coup complètement pourri et en est sûr (perdant) : ça arrive encore?
 -> Pour tester les versions de grogros, faudrait que je fasse une fonction qui le confronte à un certain nombre de puzzles/evaluations et voir combien il en réussi pour lui donner un score. (utiliser ça aussi pour entraîner les réseaux de neurones?)
--> BUG: parfois, grogros stoppe le temps en pleine partie (il pense que la partie est finie??)
 -> Pour get_zobrist _key, regarder si on ne le fait pas trop souvent
 -> Dans les finales, il faut évaluer comment on peut avancer ou non... sinon il voit pas quand y'a des égalités...
--> Gros problème de compréhension: r6r/p1p1kp1p/3p3q/2p1P3/6Q1/3B4/PP3P1P/2R2RK1 w - - 1 20 il voit pas la menace des noirs sur la dame et le roi
--> 2r2k1r/pp2npp1/3p1n2/q3p2p/4P3/2PB1Q2/P1PB1PPP/R4RK1 b - - 1 16 : ici faut faire quelque chose pour que Th7 n'augmente pas l'activité de la tour d'autant. (pour le moment c'est à cause de la condition sur la tour bloquée par le roi dans le roque)
--> 8/6B1/7p/7b/p7/1k2KPP1/1P6/8 w - - 0 39 : Grogros devrait savoir comment gagner ça quand-même (il a raté...)
--> Il est relou avec ses Th7 pour se déroquer...
+-> 8/6B1/7p/7b/p7/1k2KPP1/1P6/8 w - - 0 39 : Grogros devrait savoir comment gagner ça quand-même (il a raté...). 8/5b2/8/4KP1p/p1kB4/6P1/1P6/8 w - - 7 9 : ici f6 fait nulle
 -> Définir des concepts positionnels actifs et passifs (court terme et long terme), puis leur donner une valeur en fonction de la nature de la position (position ouvrte -> actif, fermée -> passif)
 -> Les pions faibles le sont encore plus lorsqu'ils sont bloqués par des pions adverses
 
@@ -351,13 +278,9 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Faire un readme pour les contrôles
 -> Amélioration des sons (en faire des maison?)
 -> Nouveau sons/images
--> Dans le negamax, renvoyer le coup à chaque fois, pour noter la ligne que l'ordi regarde?
--> Faire des boutons pour faire des actions (ex copier ou coller le FEN/PGN, activer l'IA ou la changer...)
 -> Options : désactivation son, ...
 -> Chargement FEN -> "auto-complétion" si le FEN est incorrect
--> Régler le clic (quand IA va jouer), qui affiche mal la pièce (grogrosfish)
 -> Modification de l'incrément dans la GUI
--> Interface qui ne freeze plus quand l'IA réfléchit -> Paralléliser
 -> Sons pour le temps
 -> Premettre de modifier les paramètres de recherche de l'IA : beta, k_add... (d'une meilleure manière)
 -> Musique de fond? (désactivable)
@@ -380,35 +303,24 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Pouvoir changer le nombre de noeuds de l'IA dans la GUI... ou la profondeur de Grogrosfish
 -> Parfois l'utilisation des réseaux de neurones bug
 -> Nd2f3 -> Ndf3? pas facile à faire
--> Ajouter la possibilité de faire plusieurs pre-move
 -> Faire du smooth sur la barre d'évaluation
 -> Faire un graphe d'éval en fin de partie?
--> Mettre des + sur les flèches (comme il y'a des -...)?
--> Faire un fonction pour tranformer une éval en son texte (mat ou non)
 -> Certains calculs sont peut-être en double dans l'affichage
 -> Echelle logarithmique pour la barre d'éval?
 -> Gestion du temps bizarre? Car le temps affiché par GrogrosZero n'est pas vraiment le vrai (ni sa vitesse)
 -> Clean l'implémentation de la GUI -> Faire des nouvelles fonctions pour tout simplifier
 -> Faire un vecteur pour les pre moves et les flèches
--> Fins de parties : message + son
 -> Dans une position que GrogrosZero sous-évalue, jouer le coup auquel il a le plus réflechi. dans le cas contraire, jouer le coup avec la meilleure éval
--> Barre d'éval : barre pour l'évaluation du coup le plus recherché par l'IA? ou éval du "meilleur coup"?
 -> Mettre le screenshot dans le presse-papier?
 -> Faire un truc pour montrer la menace (changer le trait du joueur)
--> Pouvoir éditer les positions
 -> PARALLELISER L'AFFICHAGE !! ça lag beaucoup trop !!!
 -> Refaire les pre-moves depuis zéro (et ajouter la possibilité d'en faire plusieurs)
--> Trop de flèches = crash
 -> Lignes de bézier et cercles pas très beaux
 -> Nouveaux bruits de pièces plus "soft" + bruit d'ambiance?
 -> Montrer toute la variante calculée avec des flèches (d'une couleur spéciale)
--> Thread : bug... parfois les coups joués ne sont pas les bons
--> Re foncer le noir des pièces?
--> Pourquoi dans certaines variantes, l'éval ne s'affiche pas à la fin??
 -> Dans les .h, remettre les noms des arguments?
 -> Rajouter des pre-moves pour Grogros si c'est un coup forcé en face
 -> Pourquoi c'est lent de changer la taille de la GUI?
--> Pour la barre d'éval, on utiise le winrate?
 -> Faire des maps pour afficher les paramètres d'évaluation (genre afficher les cases controllées, avec une couleur plus ou moins prononcée...)
 -> Pouvoir facilement changer les paramètres de Grogros (quiescence depth, beta, k_add, paramètres d'évaluation...)
 -> Pouvoir changer l'affichage de la GUI (winrate/eval)
@@ -421,7 +333,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Afficher des traits autour du plateau chess.com?
 -> Affichage de la réflexion de Grogros sur le PGN : {N: 10.29% of 544}
 -> Revoir le compare moves (sinon ça affiche pas toujours le meilleur coup au dessus)
--> Adapter nodes_per_frame en fonction du temps de réflexion de GrogrosZero (tant que la parallélisation n'est pas faite)
 -> Montrer l'incrément sur la GUI
 -> Afficher le titre et l'elo des joueurs sur la GUI
 -> Revoir le tri des coups pour les flèches de GrogrosZero, car parfois ça ne se trie pas bien
@@ -429,7 +340,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Faire des animations de Grogros qui bouge les pièces
 -> Quand on joue un coup (en appuyant sur p ou autre), il faut désélectionner la pièce
 -> Refaire la réflexion de GrogrosZero: quand il y a beaucoup d'incertitude dans l'éval, regarder large. Sinon, regarder profond
--> Mobilité verticale ~= activité pour les tours?
 -> Vérifier qu'il n'y a pas d'int overflow dans la sélection des coups (softmax...)
 -> rnb2bnr/pppp1k1p/5q2/8/5p2/2N1BQ2/PPP3PP/R4RK1 b - - 3 11 : il évalue mal, et teste les coups 1 par 1 et se rend compte que ça va pas... beaucoup trop lent à ré évaluer la position correctement.
 -> Changer l'affichage du plateau en fonction de l'arbre de jeu, et le fils principal (surligner le coup)
@@ -534,12 +444,12 @@ NEXT:
 -> Pour la win_chance, faire en fonction du déséquilibre de la position: même si on a plus beaucoup de pièce, si on menace des mats, on a une bonne chance de gagner (y'a beaucoup d'inceritude dans l'éval)
 -> Rajouter l'incertitude dans l'éval? -> exploration différente pour les positions incertaines
 -> Augmenter vitesse d'évaluation
--> Refaire l'activité des pièces?
+-> Refaire l'activité des pièces!!
 -> Bonus pour les killer moves
 -> Plus la position est ouverte, plus la position du roi est problématique?
 -> Pour le bonus d'attaque, il faut savoir s'il est possible de mater avec ce rapport matériel...
 -> Queen activity (pour mileur/fin de partie... en prenant en compte si elle est attaquable?), king activity (pour les finales), blocked central pawn (pour éviter de foutre des pièces devant?)
--> n1r1k3/2P1b3/p4p1p/1p6/1P4Pp/P1R4P/5PKB/8 b - - 5 37 : sur repet Td3 Re8 Tc3 Rd7, à un moment il veut jouer Rxc7??? (le roi est en prise...)
+-> n1r1k3/2P1b3/p4p1p/1p6/1P4Pp/P1R4P/5PKB/8 b - - 5 37 : sur repet Td3 Re8 Tc3 Rd7, à un moment il veut jouer Rxc7??? (le roi est en prise...) (FIXED??)
 -> Refaire le get_moves (et ne plus tester avec les échecs, faire avec des controlled squares...), puis une fonction perft test...
 -> Implémenter le framework de test
 -> Plans de jeux!!
@@ -547,10 +457,32 @@ NEXT:
 -> Tours liées, dame développée
 -> Queen safety / activity
 -> Bias move? Dans une position donnée, si pour le coup principal, l'adversaire a un coup très fort, alors on donne un biais au coup de l'adversaire pour le regarder en priorité sur les autres variantes... Est-ce que les transpositions se chargeraient déjà de ça?
-
+-> Nouvelle quiescence
 
 URGENT:
 
+r4rk1/ppp2ppp/2nq1b2/2np4/2P5/2NBQ2P/PP1B1PP1/R3R1K1 b - - 2 15 : il regarde même pas d4???
+FIX: pour chaque nouveau coup, faire un quiescence pour le joueur adverse pour voir la menace pour savoir s'il faut regarder tous les coups pour la parer?
+
+r4rk1/ppp2ppp/2nq1b2/2n5/2Pp4/2NBQ2P/PP1B1PP1/R3R1K1 w - - 0 16 : test de quiescence dessus...
+BUG QUIESCENCE
+
+Effet de l'incertitude sur les WDL à revoir?...
+Utiliser le WDL dans la recherche
+Update les variantes en fonction du WDL
+Update l'incertitude
+Y'a des trucs bizarres dans la barre d'éval... ça update avec le bon noeud? Stocker le meilleur coup dans l'algo plutôt? sinon avec les pruning, ça fait des trucs bizarres?
+J'ai peut-être merdé le WDL et l'incertitude... pour une incertitude donnée, la win chance du côté perdant ne change jamais??
+Flèches: afficher le avg score...
+
+Mettre toutes les fonctions d'évaluation dans "evaluation.h", puis clean board.h. pareil, évaluer dans l'exploration, pas dans le plateau...
+
+Smooth dans la barre d'éval
+
+3r1qk1/1pr3b1/pN1pbnpp/2p1p3/P1P1P3/4BP2/1P1QB1PP/3R1RK1 w - - 2 22 : blancs quasi gagnants
+r7/qp1n1ppk/1r1p1n1p/1P1PpP2/pPP3P1/3QP2P/R5BK/R7 w - - 5 11 : e4 important ici! faut pas laisser les noirs s'activer
+r4rk1/5pbp/2p2np1/pp1p1q2/5P1P/P1N1P1Pb/1PPBB3/R3QRK1 w - - 1 18 : blancs perdants
+2b1r1k1/qp3ppn/r1pp1n1p/p2Pp3/P1P1P1P1/NP1QP1NP/5RB1/5RK1 w - - 0 1 : Cb5!! bloque la tour complètement après prise/prise
 r1bqk1nr/p4ppp/2nbp3/3p4/Pp1P4/1Pp1PN2/2P1BPPP/RNBQK2R w KQkq - 0 10 : pièces blanches complètement enfermées !!
 rn2kb1r/p4ppp/4bn2/1Pp5/2p1P3/5P2/1P4PP/RNBK1BNR b kq - 0 9 : blancs gagnants
 2b2rk1/2r2pp1/2pq4/2b1pPN1/p1B1P1Q1/P6R/2P4P/5R1K w - - 9 33 : Fe6 gagne
@@ -777,6 +709,12 @@ r2q1rk1/pp1nbppp/2p2n2/3p3b/8/1P1B1N1P/PBPP1PP1/RN1QR1K1 w - - 3 11 : le fou en 
 r2qkb1r/ppp2ppp/2n1pn2/1B1p3b/3P4/4PN1P/PPP2PP1/RNBQ1RK1 w kq - 1 7 : g4 est pas mal affaiblisant pour le roi blanc
 r3kb1r/pp2pp2/2q3p1/3pPb1p/3P1P2/N7/PP3QPP/R1B1N1K1 b kq - 0 15 : ici il faut pas mettre le fou en g7, il va taper sur du dur...
 r4r2/1p1b1k2/p2p4/2pP1pPq/5P2/2Q5/PBP4P/1R4K1 w - - 0 26 : Df6+ mate
+rnb1k2r/pppp2pp/5q2/2b5/2B5/2P2N2/P1P1K1PP/R1BQ3R w kq - 1 10 : Fg5 gagne
+3k4/ppp2pp1/2p5/2P5/4P3/2PK2P1/PP6/RNB3q1 w - - 0 23 : égal
+3r1rk1/1p1qb1p1/p1n1p2p/2p1p3/P3P1P1/2P5/1P1B1PP1/R2QRNK1 b - - 1 20 : ici blancs légèrement mieux
+r1b2r2/p4p1k/1q1p1Bp1/2p3P1/2P1PP2/2N5/PP2BKP1/R7 b - - 4 20 : mat imparrable
+r1bq1rk1/ppp5/3p3p/3P3R/2PB2p1/2NB4/PP3PP1/2KR4 b - - 3 18 : blancs gagnants
+r1bq4/ppp5/3p2r1/3P3R/2PBNkp1/3B4/PP1K1PP1/8 b - - 5 22 : roi noir foutu
 
 -> FAUT METTRE DES POINTEURS PARTOUT AU LIEU DE COPIER LES OBJETTTTTTSSS !! (exploration.h, gui?)
 

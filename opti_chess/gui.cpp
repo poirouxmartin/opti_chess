@@ -338,9 +338,9 @@ void GUI::draw_exploration_arrows()
 
 	// Dessine les flèches
 	for (const Move move : iterated_moves_vector) {
-		const int mate = _root_exploration_node->_board->is_eval_mate(_root_exploration_node->_children[move]->_board->_evaluation);
+		const int mate = _root_exploration_node->_board->is_eval_mate(_root_exploration_node->_children[move]->_deep_evaluation._value);
 		Node const *child = _root_exploration_node->_children[move];
-		draw_arrow(move, _root_exploration_node->_board->_player, move_color(child->_chosen_iterations, _root_exploration_node->_iterations, child->_iterations == 0), -1.0f, true, child->_board->_evaluation, mate, move == best_move);
+		draw_arrow(move, _root_exploration_node->_board->_player, move_color(child->_chosen_iterations, _root_exploration_node->_iterations, child->_iterations == 0), -1.0f, true, child->_deep_evaluation._value, mate, move == best_move);
 	}
 }
 
@@ -735,7 +735,7 @@ void GUI::draw_texture(const Texture& texture, const float pos_x, const float po
 }
 
 // Fonction qui affiche la barre d'evaluation
-void GUI::draw_eval_bar(const float eval, const string& text_eval, const float x, const float y, const float width, const float height, const float max_eval, const Color white, const Color black, float max_height) {
+void GUI::draw_eval_bar(const float eval, WDL wdl, const string& text_eval, const float x, const float y, const float width, const float height, const float max_eval, const Color white, const Color gray, Color black, float max_height) {
 	const bool is_mate = text_eval.find('M') != -1;
 
 	// Taille max de la barre
@@ -748,19 +748,26 @@ void GUI::draw_eval_bar(const float eval, const string& text_eval, const float x
 	if (eval_text[eval_text.size() - 1] == '.')
 		eval_text = eval_text.substr(0, eval_text.size() - 1);
 
-	const float max_bar = is_mate ? 1 : max_height;
-	const float switch_color = min(max_bar * height, max((1 - max_bar) * height, height / 2 - eval / max_eval * height / 2));
-	const float static_eval_switch = min(max_bar * height, max((1 - max_bar) * height, height / 2 - _board._static_evaluation / max_eval * height / 2));
+	//const float max_bar = is_mate ? 1 : max_height;
+	//const float switch_color = min(max_bar * height, max((1 - max_bar) * height, height / 2 - eval / max_eval * height / 2));
+	//const float static_eval_switch = min(max_bar * height, max((1 - max_bar) * height, height / 2 - _board._static_evaluation / max_eval * height / 2));
+
 	const bool orientation = get_board_orientation();
 	if (orientation) {
+		//draw_rectangle(x, y, width, height, black);
+		//draw_rectangle(x, y + switch_color, width, height - switch_color, white);
+		//draw_rectangle(x, y + static_eval_switch - 1.0f, width, 2.0f, RED);
+
 		draw_rectangle(x, y, width, height, black);
-		draw_rectangle(x, y + switch_color, width, height - switch_color, white);
-		draw_rectangle(x, y + static_eval_switch - 1.0f, width, 2.0f, RED);
+		draw_rectangle(x, y + wdl.lose_chance * height, width, height - wdl.lose_chance * height, gray);
+		draw_rectangle(x, y + (wdl.lose_chance + wdl.draw_chance) * height, width, height - (wdl.lose_chance + wdl.draw_chance) * height, white);
+		//draw_rectangle(x, y + switch_color, width, height - switch_color, white);
+		//draw_rectangle(x, y + static_eval_switch - 1.0f, width, 2.0f, RED);
 	}
 	else {
-		draw_rectangle(x, y, width, height, black);
-		draw_rectangle(x, y, width, height - switch_color, white);
-		draw_rectangle(x, y + height - static_eval_switch - 1.0f, width, 2.0f, RED);
+		//draw_rectangle(x, y, width, height, black);
+		//draw_rectangle(x, y, width, height - switch_color, white);
+		//draw_rectangle(x, y + height - static_eval_switch - 1.0f, width, 2.0f, RED);
 	}
 
 	const float y_margin = (1 - max_height) / 4;
@@ -1317,7 +1324,7 @@ void GUI::draw()
 	if (_root_exploration_node->children_count() && _drawing_arrows) {
 
 		// Meilleure évaluation
-		int best_eval = _root_exploration_node->_board->_evaluation;
+		int best_eval = _root_exploration_node->_deep_evaluation._value;
 
 		string eval;
 		int mate = _board.is_eval_mate(best_eval);
@@ -1335,10 +1342,13 @@ void GUI::draw()
 		stream << fixed << setprecision(2) << best_eval / 100.0f;
 		_global_eval_text = mate ? (best_eval > 0 ? "+" + eval : "-" + eval) : (best_eval > 0) ? "+" + stream.str() : stream.str();
 
-		float win_chance = get_winning_chances_from_eval(best_eval, _board._player);
-		if (!_board._player)
-			win_chance = 1 - win_chance;
-		string win_chances = "W/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/0/" + to_string(static_cast<int>(100 * (1 - win_chance))) + "\%";
+		// TODO
+		//float win_chance = get_winning_chances_from_eval(best_eval, _board._player);
+		//if (!_board._player)
+		//	win_chance = 1 - win_chance;
+		//string win_chances = "W/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/0/" + to_string(static_cast<int>(100 * (1 - win_chance))) + "\%";
+
+		_wdl = _root_exploration_node->_deep_evaluation._wdl;
 
 		// Pour l'évaluation statique
 		if (!_board._displayed_components) {
@@ -1350,7 +1360,7 @@ void GUI::draw()
 		int max_depth = _root_exploration_node->get_main_depth();
 		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\nTime: " + clock_to_string(_root_exploration_node->_time_spent, true) +
 			"\nDepth: " + to_string(max_depth) + "\nEval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) +
-			eval + "\n" + win_chances + "\nNodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) +
+			eval + "\n" + _wdl.to_string() + "\nNodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) +
 			" (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 0.01) / 1000.0)) + "N/s)" +
 			"\nIterations: " + int_to_round_string(_root_exploration_node->_iterations) + " (" +
 			int_to_round_string(_root_exploration_node->_iterations / (static_cast<float>(_root_exploration_node->_time_spent + 0.01) / 1000.0)) + "I/s)";
@@ -1369,7 +1379,7 @@ void GUI::draw()
 		slider_text(_exploration_variants, _board_padding_x + _board_size + _text_size / 2, _board_padding_y + _board_size * 9 / 16, _screen_width - _text_size - _board_padding_x - _board_size, _board_size / 2, _text_size / 3, &_variants_slider, _text_color);
 
 		// Affichage de la barre d'évaluation
-		draw_eval_bar(_global_eval, _global_eval_text, _board_padding_x / 6, _board_padding_y, 2 * _board_padding_x / 3, _board_size, 800, _eval_bar_color_light, _eval_bar_color_dark);
+		draw_eval_bar(_global_eval, _wdl, _global_eval_text, _board_padding_x / 6, _board_padding_y, 2 * _board_padding_x / 3, _board_size, 800, _eval_bar_color_light, _eval_bar_color_gray, _eval_bar_color_dark);
 	}
 
 	// Affichage des contrôles et autres informations
@@ -1495,8 +1505,8 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 	for (auto const& child : _root_exploration_node->_children)
 	{
-		if (child.second->_board->_evaluation * color > best_eval_colored) {
-			best_eval_colored = child.second->_board->_evaluation * color;
+		if (child.second->_deep_evaluation._value * color > best_eval_colored) {
+			best_eval_colored = child.second->_deep_evaluation._value * color;
 			//best_eval_node = child.second;
 			best_move = child.first;
 		}
@@ -1518,7 +1528,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 	//cout << "max move time : " << max_move_time << endl;
 
-	int most_explored_child_eval = most_explored_child->_board->_evaluation * color;
+	int most_explored_child_eval = most_explored_child->_deep_evaluation._value * color;
 
 	// On veut être sûr de jouer le meilleur coup de Grogros: s'il y a un meilleur coup que celui avec le plus de noeuds, attendre...
 	bool wait_for_best_move = most_explored_child_eval < (best_eval_colored);
@@ -1530,7 +1540,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 	//// Si on attend pour le meilleur coup, attend plus longtemps si la différence d'évaluation est grande entre le meilleur coup et le coup actuel
 	//if (wait_for_best_move) {
-	//	eval_diff = abs(most_explored_child->_board->_evaluation - _board._evaluation) / 100.0f;
+	//	eval_diff = abs(most_explored_child->_deep_evaluation._value - _board._evaluation) / 100.0f;
 	//	move_wait_factor = 2 + eval_diff;
 	//	//cout << "eval diff : " << eval_diff << " | move wait factor : " << move_wait_factor << endl;
 	//}
@@ -1588,7 +1598,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 		//cout << "best eval" << best_eval_colored << endl;
 		//for (auto const& child : _root_exploration_node->_children) {
-		//	cout << "move : " << _board.move_label(child.first) << " | eval : " << child.second->_board->_evaluation << " | nodes : " << child.second->_nodes << " | iterations : " << child.second->_iterations << endl;
+		//	cout << "move : " << _board.move_label(child.first) << " | eval : " << child.second->_deep_evaluation._value << " | nodes : " << child.second->_nodes << " | iterations : " << child.second->_iterations << endl;
 		//}
 
 		if (wait_for_best_move) {
