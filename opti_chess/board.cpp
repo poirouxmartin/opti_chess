@@ -1163,7 +1163,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 		main_GUI._eval_components += "winnable: TODO\n";
 
 	// Incertitude de l'évaluation
-	const float uncertainty = get_uncertainty();
+	const float uncertainty = get_uncertainty(total_material);
 	const int uncertainity_percent = (int)(100 * uncertainty);
 	if (display)
 		main_GUI._eval_components += "TODO uncertainity: " + to_string(uncertainity_percent) + "%\n";
@@ -7888,26 +7888,88 @@ bool Board::pawn_can_move(uint_fast8_t row, uint_fast8_t col, bool color) const 
 }
 
 // Fonction qui renvoie l'incertiude de la position
-float Board::get_uncertainty() const {
+float Board::get_uncertainty(int material_eval) {
+
+	// r2r4/8/1p1q2P1/2b5/3k1pP1/pP2pP2/2Q4P/1K6 w - - 9 11 : exemple d'une position à grosse incertitude
+	// r2r4/4q3/1p4P1/2b5/5pPk/pP2pP2/8/1K6 w - - 0 18 : plus du tout d'incertitude !!
+	// rnb2bnr/pppp1k1p/5q2/8/5p2/4BQ2/PPP3PP/RN3RK1 w - - 2 11 : grosse incertitude
+	// r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4 : assez peu...
+	// r1bq1b1r/ppp3pp/2n1k3/3np3/2B5/5Q2/PPPP1PPP/RNB1K2R w KQ - 2 8 : grosse incertitude
+
 	// TODO: faudrait-il prendre en compte la réflexion faite par Grogros?
 	// Par exemple: si la position change rapidement d'évaluation?
 	// Dépend du nombre de pièces restantes
 
 	// TODO: Faut-il prendre en compte le nombre de captures possibles?
 
+	// FIXME *** améliorable: quand il est en négatif matériel et non matériel. il va pas vouloir regagner de l'activité et rapprocher le non-métierl de 0, car ça baisserait l'incertitude...
+	//5rk1/1B4p1/7p/3p4/5n2/4n2P/1R4PK/8 b - - 3 36 : ici les noirs ont de l'activité, donc de l'incertitude en plus... ça va pas
 
-	return 0.5f;
+	float raw_incertitude = 0.0f;
+
+	// TODO *** faut réussir à trouver une bonne formule pour l'incertitude ***
+	float non_material_eval = _evaluation - material_eval;
+
+	if (non_material_eval != 0) {
+		float abs_non_material_eval = abs(non_material_eval);
+
+		// A quel point l'éval non-matérielle est opposée à l'éval matérielle (0 = pas du tout, 1 = totalement)
+		float opposite_material_factor = 1.0f / (1.0f + abs(_evaluation) / (abs_non_material_eval));
+
+		// Valeur d'opposite material factor quand l'évaluation matérielle est nulle
+		constexpr float thresold = 0.5f;
+
+		// New opposite material factor
+		float new_opposite_material_factor = opposite_material_factor - thresold;
+
+		//cout << "old value: " << new_opposite_material_factor << endl;
+
+		// Rapproche la valeur des bornes (-0.5, 0.5)
+		new_opposite_material_factor = new_opposite_material_factor >= 0 ? pow(new_opposite_material_factor * 2, 0.1) / 2 : -pow(-new_opposite_material_factor * 2, 0.1) / 2;
+
+
+		// Constante pour laquelle on a une incertitude de base de 0.5 dans le cas le plus bordélique
+		constexpr int half_uncertainty_constant = 100;
+
+		// Normalise entre 0 et 1 ce facteur non-matériel à l'aide d'une fonction non-linéaire
+		float norm_non_material_eval = abs_non_material_eval / (half_uncertainty_constant + abs_non_material_eval);
+
+
+		// Combine les deux facteurs
+		float new_incertitude = norm_non_material_eval * new_opposite_material_factor;
+
+		// Remet l'incertitude entre 0 et 1
+		raw_incertitude = new_incertitude + thresold;
+
+		//cout << "eval: " << _evaluation << ", material eval: " << material_eval << ", non-material eval: " << non_material_eval << ", opposite material factor: " << opposite_material_factor << ", new opposite material factor: " << new_opposite_material_factor << ", norm non-material eval: " << norm_non_material_eval << ", raw incertitude: " << raw_incertitude << endl;
+	}
+
+	// Prise en compte de l'avancement de la partie
+
+	// Importance de l'avancement de la partie dans le calcul de l'incertitude
+	constexpr float advancement_factor = 0.25f;
+
+	float value = raw_incertitude * (1 - advancement_factor) + (1 - _adv) * advancement_factor;
+
+
+	_uncertainty = value;
+
+	return value;
 }
 
 // Fonction qui stocke le WDL de la position (pour les blancs)
 void Board::get_WDL(float uncertainity, int winning_eval, float beta) {
 	
+	// r2r4/8/1p1q2P1/2b5/3k1pP1/pP2pP2/2Q4P/1K6 w - - 9 11 : ici si on va dans les lignes de nulles, ça devrait être 0, 1000, 0, pas 333, 333, 333
+
 	// Winning eval: evaluation pour laquelle la chance de gain et de nulle est égale, pour une incertitude de 0.
 
 	// beta contrôle la lenteur de convergence.
 	// Pour beta = 0.25, f(2 * winning_eval) = 0.84
 	// pour beta = 0.5,  f(2 * winning_eval) = 0.707
 	// pour beta = 0.75,  f(2 * winning_eval) = 0.62
+
+
 
 	bool is_eval_positive = _evaluation > 0;
 	float eval = abs(_evaluation);
@@ -7920,7 +7982,7 @@ void Board::get_WDL(float uncertainity, int winning_eval, float beta) {
 	float white_lose_chance = (is_eval_positive ? 0.0f : certain_win_chance);
 
 	// Fonction non-linéaire sur l'incertitude
-	float alpha = eval / winning_eval;
+	float alpha = 1 + eval / winning_eval;
 	float relative_uncertainity = pow(uncertainity, alpha);
 
 	float win_chance = white_win_chance * (1 - relative_uncertainity) + relative_uncertainity / 3.0f;

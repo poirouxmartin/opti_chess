@@ -55,55 +55,6 @@ float min_float(const float a, const float b)
 	return (a < b) ? a : b;
 }
 
-// Fonction de détermination pour les probabilités des coups (exponentielle?)
-int move_power(const float n, const float range, const float min)
-{
-	// Rapport de force entre le meilleur et le pire coup
-	constexpr float r = 10000.0f;
-
-	// Normalisation : plus petit coup à 10.0 (pas 1.0 car sinon ça peut devenir 0 en int) (pas très efficace... niveau temps de calcul...)
-	const float k = 10.0f / pow(r, min / range);
-
-	return static_cast<int>(k * pow(r, n / range));
-}
-
-// Fonction qui fait un softmax
-void softmax(double* input, const int size, const float beta, const float k_add)
-{
-	constexpr double r = 100000;
-
-	const double m = *max_element(input, input + size);
-
-	//cout << "m: " << m << endl;
-
-	double sum = 0.0;
-	for (int i = 0; i < size; i++)
-		sum += exp(beta * (input[i] - m));
-
-	//cout << "sum: " << sum << endl;
-
-	static constexpr double evaluation_softener = 1.0;
-	// Pour que ça regarde un peu plus des coups en dessous (plus la valeur est faible, plus ça applanit le k_add)
-	const double best_win_chance = get_winning_chances_from_eval(m * evaluation_softener, true);
-	const double constant = beta * m + log(sum);
-
-	for (int i = 0; i < size; i++)
-	{
-		// TODO prendre en compte les mats
-		const double eval_i = input[i];
-		const double win_chance = get_winning_chances_from_eval(eval_i * evaluation_softener, true);
-		const double adding = (win_chance == 0.0f) ? 0.0f : win_chance / best_win_chance * 2;
-		//const float adding = 1;
-		// Juste histoire de continuer à regarder un peu les coups (on sait jamais)
-
-		//cout << "adding: " << adding << ", constant: " << constant << "mult: " << beta * eval_i - constant << endl;
-
-		input[i] = r * exp(beta * eval_i - constant) + k_add * adding;
-
-		//cout << "input[i]: " << input[i] << endl;
-	}
-}
-
 // Fonction pour générer une seed
 unsigned long long generate_seed()
 {
@@ -452,12 +403,6 @@ bool is_in(const string& s, string string_array[], const int n)
 			return true;
 
 	return false;
-}
-
-// Fonction qui calcule les chances de gain/nulle/perte
-float get_winning_chances_from_eval(const float eval, const bool player)
-{
-	return 0.5f * (1 + (2 / (1 + exp(-0.75f * (player ? 1 : -1) * eval / 100)) - 1));
 }
 
 // Fonction qui pondère les valeurs de la liste, en fonction d'un taux d'exploration par valeur
