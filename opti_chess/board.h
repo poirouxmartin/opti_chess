@@ -372,7 +372,11 @@ public:
 	//unordered_map<uint_fast64_t, int> _positions_history = {};
 
 	// WDL
+	// TODO *** faudra les retirer à terme...
 	WDL _wdl;
+
+	// Incertitude
+	float _uncertainty = 0.0f;
 
 
 	// Constructeur par défaut
@@ -673,10 +677,10 @@ public:
 	[[nodiscard]] bool pawn_can_move(uint_fast8_t row, uint_fast8_t col, bool color) const;
 
 	// Fonction qui renvoie l'incertiude de la position
-	[[nodiscard]] float get_uncertainty() const;
+	[[nodiscard]] float get_uncertainty(int material_eval);
 
 	// Fonction qui renvoie le WDL de la position
-	[[nodiscard]] void get_WDL(float uncertainity = 0.0f, int winning_eval = 100, float beta = 0.75f);
+	[[nodiscard]] void get_WDL(float uncertainity = 0.0f, int winning_eval = 150, float beta = 0.75f);
 
 	// Fonction qui renvoie l'espérance de gain (en points) de la position (fondé sur les probas de WDL) pour les blancs
 	[[nodiscard]] float get_average_score(float draw_score = 0.5f) const;

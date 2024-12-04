@@ -220,7 +220,6 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	-> rnbqkbnr/8/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 : sans pions
 -> Faire des pre-calculs dans des constantes (genre des divisions), pour éviter de les faire à chaque fois
 -> Mettre des flags pour les coups (capture, check, promotion -> caval possible??)
--> Descendre un peu le winrate par éval? réference : +1.00 = 50% de chances de gain
 -> Quels paramètres sont meilleurs pour GrogrosZero? k_add? beta? quiescence_depth?
 -> Utiliser std:sort pour trier les coups plus rapidement?
 -> Taper les faiblesses (notions de pression)
@@ -467,18 +466,18 @@ FIX: pour chaque nouveau coup, faire un quiescence pour le joueur adverse pour v
 r4rk1/ppp2ppp/2nq1b2/2n5/2Pp4/2NBQ2P/PP1B1PP1/R3R1K1 w - - 0 16 : test de quiescence dessus...
 BUG QUIESCENCE
 
-Effet de l'incertitude sur les WDL à revoir?...
-Utiliser le WDL dans la recherche
 Update les variantes en fonction du WDL
 Update l'incertitude
-Y'a des trucs bizarres dans la barre d'éval... ça update avec le bon noeud? Stocker le meilleur coup dans l'algo plutôt? sinon avec les pruning, ça fait des trucs bizarres?
-J'ai peut-être merdé le WDL et l'incertitude... pour une incertitude donnée, la win chance du côté perdant ne change jamais??
-Flèches: afficher le avg score...
+rnbqk2r/pppp1ppp/8/4P3/2B1n3/5N2/PPP1KbPP/RNBQ3R b kq - 1 6 : problème d'affichage de la barre d'éval?
+
+Revoir la formule dans le softmax... et y prendre en compte directement le taux d'exploitation dans la formule. focus seulement sur le avg_score?
+Le k_add fait clairement de la merde!!
 
 Mettre toutes les fonctions d'évaluation dans "evaluation.h", puis clean board.h. pareil, évaluer dans l'exploration, pas dans le plateau...
 
-Smooth dans la barre d'éval
 
+5k2/r2n2pp/p2R4/2pB1p2/5B2/8/Pq4PP/4R1K1 w - - 0 26 : Rf1!!
+rn5k/6pp/p2bp3/1P1b2q1/2p5/5B2/PP2Q1PP/3R1RK1 w - - 2 20 : Fxd5?? y'a des mats du couloir derrière...
 3r1qk1/1pr3b1/pN1pbnpp/2p1p3/P1P1P3/4BP2/1P1QB1PP/3R1RK1 w - - 2 22 : blancs quasi gagnants
 r7/qp1n1ppk/1r1p1n1p/1P1PpP2/pPP3P1/3QP2P/R5BK/R7 w - - 5 11 : e4 important ici! faut pas laisser les noirs s'activer
 r4rk1/5pbp/2p2np1/pp1p1q2/5P1P/P1N1P1Pb/1PPBB3/R3QRK1 w - - 1 18 : blancs perdants

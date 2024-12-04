@@ -449,10 +449,7 @@ public:
 	void draw_exploration_arrows();
 
 	// Fonction qui dessine la flèche d'un coup
-	void draw_arrow(const Move move, const bool player, Color c, float thickness = -1, const bool use_value = false, int value = 0, const int mate = -1, const bool outline = false);
-
-	// A partir de coordonnées sur le plateau (// Thickness = -1 -> default thickness)
-	void draw_arrow_from_coord(const int i1, const int j1, const int i2, const int j2, const bool player, Color c, float thickness = -1, const bool use_value = false, int value = 0, const int mate = -1, bool outline = false);
+	void draw_arrow(const Move move, const bool player, Color c, float thickness = -1.0f, const bool use_value = false, const float avg_score = 0.0f, const int mate = 0, const bool outline = false);
 
 	// Couleur de la flèche en fonction du coup (de son nombre de noeuds)
 	Color move_color(int, int, bool is_quiescence) const;

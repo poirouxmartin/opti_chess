@@ -340,7 +340,7 @@ void GUI::draw_exploration_arrows()
 	for (const Move move : iterated_moves_vector) {
 		const int mate = _root_exploration_node->_board->is_eval_mate(_root_exploration_node->_children[move]->_deep_evaluation._value);
 		Node const *child = _root_exploration_node->_children[move];
-		draw_arrow(move, _root_exploration_node->_board->_player, move_color(child->_chosen_iterations, _root_exploration_node->_iterations, child->_iterations == 0), -1.0f, true, child->_deep_evaluation._value, mate, move == best_move);
+		draw_arrow(move, _root_exploration_node->_board->_player, move_color(child->_chosen_iterations, _root_exploration_node->_iterations, child->_iterations == 0), -1.0f, true, child->_deep_evaluation._avg_score, mate, move == best_move);
 	}
 }
 
@@ -365,13 +365,13 @@ int GUI::orientation_index(const int i) const {
 }
 
 // Fonction qui dessine la flèche d'un coup
-void GUI::draw_arrow(const Move move, const bool player, Color c, float thickness, const bool use_value, int value, const int mate, const bool outline) {
-	draw_arrow_from_coord(move.i1, move.j1, move.i2, move.j2, player, c, thickness, use_value, value, mate, outline);
-}
-
-// A partir de coordonnées sur le plateau
-void GUI::draw_arrow_from_coord(const int i1, const int j1, const int i2, const int j2, const bool player, Color c, float thickness, const bool use_value, int value, const int mate, const bool outline)
+void GUI::draw_arrow(const Move move, const bool player, Color c, float thickness, const bool use_value, const float avg_score, const int mate, const bool outline)
 {
+	const uint_fast8_t i1 = move.i1;
+	const uint_fast8_t j1 = move.j1;
+	const uint_fast8_t i2 = move.i2;
+	const uint_fast8_t j2 = move.j2;
+
 	if (thickness == -1.0f)
 		thickness = _arrow_thickness;
 
@@ -401,9 +401,13 @@ void GUI::draw_arrow_from_coord(const int i1, const int j1, const int i2, const 
 	draw_circle(x1, y1, thickness, c);
 	draw_circle(x2, y2, thickness * 2.0f, c);
 
+	// Rajoute une valeur à la flèche
 	if (use_value) {
+
+		// Valeur à afficher
 		char v[4];
 		string eval;
+
 		if (mate != 0) {
 			if (mate * (player ? 1 : -1) > 0)
 				eval = "+";
@@ -411,14 +415,12 @@ void GUI::draw_arrow_from_coord(const int i1, const int j1, const int i2, const 
 				eval = "-";
 			eval += "M";
 			eval += to_string(abs(mate));
-#pragma warning(suppress : 4996)
-			sprintf(v, eval.c_str());
+			snprintf(v, sizeof(v), eval.c_str());
 		}
 		else {
-#pragma warning(suppress : 4996)
-			if (_display_win_chances)
-				value = float_to_int(100.0f * get_winning_chances_from_eval(value, player));
-			sprintf_s(v, "%d", value);
+			if (_display_win_chances) {
+				sprintf_s(v, "%d", float_to_int(100.0f * (player ? avg_score : 1.0f - avg_score)));
+			}
 		}
 
 		float size = thickness * 1.5f;
