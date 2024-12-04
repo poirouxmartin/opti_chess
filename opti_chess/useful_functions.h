@@ -27,12 +27,6 @@ float max_float(float, float);
 // Fonction qui renvoie le minimum de deux flottants
 float min_float(float, float);
 
-// Fonction de détermination pour les probabilités des coups (exponentielle?)
-int move_power(float, float, float);
-
-// Fonction qui permet de donner une puissance au coup afin de faciliter les choix
-void softmax(double*, int, float beta = 0.035f, float k_add = 50.0f); // beta = 0.05, k_add = 1. k_add x => ~x/10000 (the bigger the larger, the smaller the deeper) 0.05, 250 pour les mats
-
 // Fonction pour générer une seed
 unsigned long long generate_seed();
 
@@ -110,9 +104,6 @@ int float_to_int(float);
 
 // Fonction qui renvoie si une chaine de caractères est présente dans un tableau de taille n
 bool is_in(const string&, string[], int);
-
-// Fonction qui calcule les chances de gain/nulle/perte
-float get_winning_chances_from_eval(float, bool);
 
 // Fonction qui pondère les valeurs de la liste, en fonction d'un taux d'exploration par valeur
 void nodes_weighting(double*, const double*, int);

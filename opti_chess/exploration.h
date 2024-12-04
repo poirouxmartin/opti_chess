@@ -80,9 +80,6 @@ public:
 	// Fils
 	//vector<Node*> _children;
 
-	// Nouveau noeud?
-	//bool _new_node = true;
-
 	// Pour accélérer la recherche du premier coup non exploré
 	int _latest_first_move_explored = -1;
 
@@ -163,14 +160,9 @@ public:
 	// Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
 	[[nodiscard]] Move pick_random_child(const float beta, const float k_add);
 
-	// Fonction qui renvoie le ratio de victoire pour les blancs du noeud (le ratio de victoire pour une eval alpha est de beta)
-	[[nodiscard]] double win_ratio(double alpha = 100.0, double beta = 0.67) const;
-
-	// Fonction qui calcule le score UCT
-	[[nodiscard]] double uct_score(int total_nodes, double alpha) const;
-
-	// Fonction qui renvoie le coup avec le meilleur score UCT
-	[[nodiscard]] Move pick_best_uct_child(float alpha = 3.0f) const;
+	// Fait un softmax sur les evaluations
+	// TODO *** rendre statique (et faire pareil pour bon nombre de fonctions...)
+	void softmax(double* evaluations, float* avg_scores, int size, const float beta, const float k_add) const;
 
 	// Fonction qui renvoie le fils le plus exploré
 	[[nodiscard]] Move get_most_explored_child_move(bool decide_by_eval = true);

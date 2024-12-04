@@ -402,19 +402,20 @@ Move Node::pick_random_child(const float beta, const float k_add) {
 	}
 
 	// *** 1. ***
+	// 
 	// Evaluations des enfants (en fonction de la couleur)
-	double l2[100]{};
+	double evaluations[100]{};
+
+	// Score moyen des enfants
+	float avg_scores[100]{};
+
+	// Coups
 	map<int, Move> children_moves;
-	double max_eval = -DBL_MAX;
 
 	int i = 0;
 	for (auto const& [move, child] : _children) {
-		l2[i] = color * child->_deep_evaluation._value;
-
-		if (l2[i] > max_eval) {
-			max_eval = l2[i];
-		}
-
+		evaluations[i] = color * child->_deep_evaluation._value;
+		avg_scores[i] = _board->_player ? child->_deep_evaluation._avg_score : 1 - child->_deep_evaluation._avg_score;
 		children_moves[i] = move;
 		i++;
 	}
@@ -446,7 +447,7 @@ Move Node::pick_random_child(const float beta, const float k_add) {
 	//cout << "eval: " << abs(max_eval) << ", enlargement factor: " << enlargement_factor << ", beta: " << beta << ", beta_enlarged: " << beta_enlarged << ", k_add: " << k_add << ", k_add_enlarged: " << k_add_enlarged << endl;
 
 	// Softmax sur les évaluations
-	softmax(l2, n_children, beta_enlarged, k_add_enlarged);
+	softmax(evaluations, avg_scores, n_children, beta_enlarged, k_add_enlarged);
 
 	//print_array(l2, n_children);
 
@@ -471,7 +472,7 @@ Move Node::pick_random_child(const float beta, const float k_add) {
 	//print_array(pond, n_children);
 
 	// On applique la pondération aux évaluations
-	nodes_weighting(l2, pond, n_children);
+	nodes_weighting(evaluations, pond, n_children);
 
 	//print_array(l2, n_children);
 
@@ -481,7 +482,7 @@ Move Node::pick_random_child(const float beta, const float k_add) {
 
 	for (int i = 0; i < n_children; i++)
 	{
-		sum += l2[i];
+		sum += evaluations[i];
 	}
 
 	// Choix du coup en fonction d'une valeur aléatoire
@@ -497,7 +498,7 @@ Move Node::pick_random_child(const float beta, const float k_add) {
 
 	for (int k = 0; k < n_children; k++)
 	{
-		cumul += l2[k];
+		cumul += evaluations[k];
 
 		// Coup choisi
 		if (cumul >= rand_val) {
@@ -525,7 +526,7 @@ Move Node::pick_random_child(const float beta, const float k_add) {
 	for (int i = 0; i < n_children; i++)
 	{
 		if (_children.at(children_moves[i])->_can_explore) {
-			new_sum += l2[i];
+			new_sum += evaluations[i];
 		}
 	}
 
@@ -544,7 +545,7 @@ Move Node::pick_random_child(const float beta, const float k_add) {
 	for (int k = 0; k < n_children; k++)
 	{
 		if (_children.at(children_moves[k])->_can_explore) {
-			new_cumul += l2[k];
+			new_cumul += evaluations[k];
 
 			// Nouveau coup choisi
 			if (new_cumul >= new_rand_val) {
@@ -555,7 +556,7 @@ Move Node::pick_random_child(const float beta, const float k_add) {
 
 	if (_can_explore) {
 		cout << "first move chosen by default?" << endl;
-		print_array(l2, n_children);
+		print_array(evaluations, n_children);
 		cout << "sum: " << sum << ", rand: " << rand_val << endl;
 	}
 
@@ -563,49 +564,40 @@ Move Node::pick_random_child(const float beta, const float k_add) {
 	return children_moves[0];
 }
 
-// Fonction qui renvoie le ratio de victoire pour les blancs du noeud (le ratio de victoire pour une eval alpha est de beta)
-double Node::win_ratio(double alpha, double beta) const {
-	double eval = _deep_evaluation._value;
-	//cout << "eval: " << eval << ", sigmoid: " << sigmoid(eval, alpha, beta) << endl;
-	return sigmoid(eval, alpha, beta);
-}
+// Fait un softmax sur les evaluations
+void Node::softmax(double* evaluations, float* avg_scores, int size, const float beta, const float k_add) const {
 
-// Fonction qui calcule le score UCT du noeud
-double Node::uct_score(int total_iterations, double alpha) const {
-	double win_ratio_white = win_ratio();
-	double win = !_board->_player ? win_ratio_white : 1 - win_ratio_white;
+	// Constante multiplicative pour l'exponentielle
+	constexpr double r = 100000;
 
-	//float win = -_deep_evaluation._value * _board->get_color() / 1000.0f;
-	//cout << "eval: " << _board->evaluation_to_string(_deep_evaluation._value) << ", win_ratio: " << win << endl;
-	return win + alpha * sqrt(log(total_iterations) / _iterations);
-}
+	// Evaluation maximale
+	const double best_eval = *max_element(evaluations, evaluations + size);
 
-// Fonction qui renvoie le coup avec le meilleur score UCT
-Move Node::pick_best_uct_child(float alpha) const {
+	// Score moyen maximal
+	const float best_avg_score = *max_element(avg_scores, avg_scores + size);
 
-	// On prend le coup avec le meilleur score UCT
-	float best_uct = -FLT_MAX;
-	auto best_move = Move();
 
-	//cout << "*** children count: " << children_count() << endl;
+	// Somme des exponentielles
+	double eval_sum = 0.0;
 
-	// Pour chaque enfant, on calcule le score UCT
-	for (auto const& [move, child] : _children) {
-		auto uct = static_cast<float>(child->uct_score(_iterations, alpha));
+	for (int i = 0; i < size; i++)
+		eval_sum += exp(beta * (evaluations[i] - best_eval));
 
-		//cout << "move: " << _board->move_label(move) << ", uct: " << uct << endl;
+	// Constante de calcul
+	const double constant = beta * best_eval + log(eval_sum);
 
-		if (uct > best_uct) {
-			best_uct = uct;
-			best_move = move;
-		}
+
+	// Pour chaque évaluation
+	for (int i = 0; i < size; i++)
+	{
+		const double eval = evaluations[i];
+		const double avg_score = avg_scores[i];
+		const double adding = (avg_score == 0.0f) ? 0.0f : avg_score / best_avg_score;
+
+		// TODO *** formule à revoir
+		evaluations[i] = r * exp(beta * eval - constant) + k_add * adding;
 	}
-
-	//cout << "best move: " << _board->move_label(best_move) << endl;
-
-	return best_move;
 }
-
 
 // Fonction qui renvoie le fils le plus exploré
 [[nodiscard]] Move Node::get_most_explored_child_move(bool decide_by_eval) {
@@ -668,6 +660,8 @@ void Node::reset() {
 	_chosen_iterations = 0;
 	_board->reset_board();
 	_initialized = false;
+	_is_terminal = false;
+	_can_explore = true;
 	_time_spent = 0;
 	_fully_explored = false;
 	//cout << "resetting children" << endl;
