@@ -467,14 +467,36 @@ r4rk1/ppp2ppp/2nq1b2/2n5/2Pp4/2NBQ2P/PP1B1PP1/R3R1K1 w - - 0 16 : test de quiesc
 BUG QUIESCENCE
 
 Update les variantes en fonction du WDL
-Update l'incertitude
-rnbqk2r/pppp1ppp/8/4P3/2B1n3/5N2/PPP1KbPP/RNBQ3R b kq - 1 6 : problème d'affichage de la barre d'éval?
-
-Revoir la formule dans le softmax... et y prendre en compte directement le taux d'exploitation dans la formule. focus seulement sur le avg_score?
-Le k_add fait clairement de la merde!!
 
 Mettre toutes les fonctions d'évaluation dans "evaluation.h", puis clean board.h. pareil, évaluer dans l'exploration, pas dans le plateau...
 
+ATTENTION: pour l'affichage, mélange entre best eval, et l'éval du coup principal... (pareil avec les win_chance...)
+r1bq1b1r/ppp2kpp/2n5/3np3/2B5/5Q2/PPPP1PPP/RNB1K2R b KQ - 1 7 : ici par exemple... l'éval met -3, et le best WDL, c'est lequel? on sait pas trop
+
+Ajout de la confiance dans l'affichage de la deep evaluation
+RE: fonction pour l'avg score du WDL au lieu de le recalculer à chaque fois...
+
+!!! Comment on choisit la meilleure évaluation dans l'algorithme (quand on fait les min/max) ??? faut prendre la vraie éval, ou l'avg score??
+
+Devrait être plus confiant quand l'éval matérielle et non-matérielle sont dans le même sens (ex: b4n1N/2k3pp/2p2n2/8/3q4/8/PPQB1PPP/2K1R3 b - - 0 23)
+
+Parfois il regarde de manière trop diffuse les coups. parfois il en regarde qu'un seul...
+4rrk1/pppb4/2nbp1q1/5pBp/1P1P2p1/2PN2P1/P2Q1PBP/R3R1K1 w - - 1 22 : pourquoi il regarde tous les coups de la même manière?
+rnbqkb1r/ppp2ppp/7n/4N3/2BPp3/8/PPP2PPP/RNBQK2R b KQkq d3 0 5 : ici il favorise Cc6 plutôt que Cd7 au départ, car le WR est mieux de 1%... alors que l'éval est 0.70 moins bonne...
+rnb3r1/ppp2k1p/1b1p1N2/4P3/1P6/2P3P1/P3PP1P/RN1QK2R w KQ - 2 13 : que 76% de confiance??
+r1b2bkr/ppp4p/5Q2/3N4/8/8/PPP3PP/R5K1 w - - 1 20 : Tf1 devrait booster la confiance
+
+3r2k1/2p2pp1/p4B1p/q7/P3QPP1/1P1p3P/2P5/4R1K1 b - - 0 29 : il rate d2...
+Pour chaque coup joué, faut-il que tous les sous coups soient regardés au moins une fois? sinon ça reste sur le stand pat et ça évalue très mal la position
+
+rnbqk1nr/1p4pp/p4p2/2b1p3/3pP3/3B1N2/PPP1NPPP/R1BQ1RK1 b kq - 1 9 : premier coup auquel il pense: Re7... -_-
+Parce que ça augmente l'incertitude au point de penser que c'est quasi 50/50........??
+Car cette position: rnbq2nr/1p2k1pp/p7/2b1N1p1/3pP3/3B4/PPP1NPPP/R2Q1RK1 b - - 0 11 est evaluée comme la meilleure en eval, mais pas ouf en WR, car c'est le bordel...
+Il faut régler le problème de savoir dans le "min-max", quoi considérer: eval ou WR? (ou les 2?)
+Faut-il faire une fonction globale qui évalue une position (eval + WR), qui s'utilise autant dans le softmax que dans le min-max? pour garder une cohérence...
+
+rn1qk2r/ppp2ppp/4bn2/3p4/1b1P1B2/2N5/PPP1QPPP/R3KBNR w KQkq - 6 7 : +2 pour le roi??
+1r3rk1/p4ppp/4b3/2P3B1/3QB3/qp6/n4PPP/1K1R3R w - - 6 23 : roi noir quasi mat
 
 5k2/r2n2pp/p2R4/2pB1p2/5B2/8/Pq4PP/4R1K1 w - - 0 26 : Rf1!!
 rn5k/6pp/p2bp3/1P1b2q1/2p5/5B2/PP2Q1PP/3R1RK1 w - - 2 20 : Fxd5?? y'a des mats du couloir derrière...
@@ -584,6 +606,8 @@ r1bqk2r/ppp2ppp/1bn5/4p1N1/3Pp3/2P5/PP3PPP/RNBQ1RK1 b kq - 1 9 : là y'a plein de
 -> rk4r1/ppp2p1p/2b1n3/7R/7N/P1P3PB/2P5/2K2R2 w - - 2 27 : faut jouer Txf7!!
 -> 2kr3r/B1p1b1pp/2p3qn/4p3/4N3/P2P2Nb/1PP2PKP/R3QR2 w - - 1 18 : faut prendre le fou...
 -> rnb2rk1/pp3ppp/3q1n2/2b5/8/P7/1PBNNPPP/R1BQK2R w KQ - 1 13 : roque??
+-> 6k1/3Q3p/2p2pp1/1p2P1q1/1n4B1/7P/PP3KP1/2n5 w - - 0 35 : De8+ ça mate!
+-> 6k1/6rp/1p2p2q/5p2/2PPb2N/4b2P/P4QP1/2B2R1K b - - 9 44 : roi blanc dans la merde
 
 EVAL: 
 -> Améliorer les pièces d'attaque et de défense... plus gros bonus quand une pièce attaque un endroit non (ou peu) défendu. plus gros bonus quand on défend une case attaquée
