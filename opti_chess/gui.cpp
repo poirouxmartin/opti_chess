@@ -5,7 +5,8 @@
 #include <wchar.h>
 #include <sstream>
 #include <stdlib.h>
-#include <string.h>  
+#include <string.h>
+#include "ranges"
 
 // Fonction qui met à jour le temps des joueurs
 void GUI::update_time() {
@@ -405,7 +406,7 @@ void GUI::draw_arrow(const Move move, const bool player, Color c, float thicknes
 	if (use_value) {
 
 		// Valeur à afficher
-		char v[4];
+		char v[5];
 		string eval;
 
 		if (mate != 0) {
@@ -745,31 +746,21 @@ void GUI::draw_eval_bar(const float eval, WDL wdl, const string& text_eval, cons
 		max_height = 0.95f;
 
 	// Coupe l'évaluation à 2 chiffres max
-	// FIXME: ça suppose que l'eval dépasse pas +100
+	// FIXME: ça suppose que l'eval dépasse pas +100 (ou +10000 dans l'équivalent de Grogros)
 	string eval_text = is_mate ? text_eval : text_eval.substr(0, min(4, static_cast<int>(text_eval.size())));
 	if (eval_text[eval_text.size() - 1] == '.')
 		eval_text = eval_text.substr(0, eval_text.size() - 1);
 
-	//const float max_bar = is_mate ? 1 : max_height;
-	//const float switch_color = min(max_bar * height, max((1 - max_bar) * height, height / 2 - eval / max_eval * height / 2));
-	//const float static_eval_switch = min(max_bar * height, max((1 - max_bar) * height, height / 2 - _board._static_evaluation / max_eval * height / 2));
-
 	const bool orientation = get_board_orientation();
 	if (orientation) {
-		//draw_rectangle(x, y, width, height, black);
-		//draw_rectangle(x, y + switch_color, width, height - switch_color, white);
-		//draw_rectangle(x, y + static_eval_switch - 1.0f, width, 2.0f, RED);
-
 		draw_rectangle(x, y, width, height, black);
-		draw_rectangle(x, y + wdl.lose_chance * height, width, height - wdl.lose_chance * height, gray);
-		draw_rectangle(x, y + (wdl.lose_chance + wdl.draw_chance) * height, width, height - (wdl.lose_chance + wdl.draw_chance) * height, white);
-		//draw_rectangle(x, y + switch_color, width, height - switch_color, white);
-		//draw_rectangle(x, y + static_eval_switch - 1.0f, width, 2.0f, RED);
+		draw_rectangle(x, y + wdl.lose_chance * height, width, wdl.draw_chance * height, gray);
+		draw_rectangle(x, y + (1 - wdl.win_chance) * height, width, wdl.win_chance * height, white);
 	}
 	else {
-		//draw_rectangle(x, y, width, height, black);
-		//draw_rectangle(x, y, width, height - switch_color, white);
-		//draw_rectangle(x, y + height - static_eval_switch - 1.0f, width, 2.0f, RED);
+		draw_rectangle(x, y, width, height, black);
+		draw_rectangle(x, y + wdl.win_chance * height, width, wdl.draw_chance * height, gray);
+		draw_rectangle(x, y, width, wdl.win_chance * height, white);
 	}
 
 	const float y_margin = (1 - max_height) / 4;
@@ -1362,7 +1353,7 @@ void GUI::draw()
 		int max_depth = _root_exploration_node->get_main_depth();
 		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\nTime: " + clock_to_string(_root_exploration_node->_time_spent, true) +
 			"\nDepth: " + to_string(max_depth) + "\nEval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) +
-			eval + "\n" + _wdl.to_string() + "\nNodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) +
+			eval + "\n" + _wdl.to_string() + "\nScore: " + score_string(_wdl) + "\nNodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) +
 			" (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 0.01) / 1000.0)) + "N/s)" +
 			"\nIterations: " + int_to_round_string(_root_exploration_node->_iterations) + " (" +
 			int_to_round_string(_root_exploration_node->_iterations / (static_cast<float>(_root_exploration_node->_time_spent + 0.01) / 1000.0)) + "I/s)";

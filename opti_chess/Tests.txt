@@ -390,6 +390,9 @@ r1b5/pp2k1pp/2pp1r2/8/8/1Q3N2/P1P2PPP/6K1 w - - 0 19 : Dg8 gagne
 r1b1Q2N/1p1r2p1/2pp1k2/p7/6P1/8/P1P2P1P/6K1 b - - 8 26 : complètement gagnant pour les blancs
 6QQ/8/3BR3/p4k2/4p3/P4P2/5PK1/8 b - - 0 28 : xD le +10000 pour king safety (logique néanmoins)
 5rk1/ppp2pp1/2p5/2P1n3/4PqPp/2P2P2/PP2BQ1P/3R2K1 w - - 4 21 : mieux pour les noirs
+6r1/p5p1/r1p2pk1/2R5/P2Pn3/8/1PKB4/R7 w - - 3 33 : a5!! fait nulle
+8/p2k2p1/r1p2p2/P1P5/1P6/2B5/2K5/8 w - - 0 44 : égal
+8/p7/r1p3p1/P1Pk4/1P6/3KB3/8/8 b - - 4 47 : g5! fait nulle (idée Fxg5 -> Txa5!!)
 
 
 
@@ -826,6 +829,7 @@ r1q4r/p2nbpNk/1p2p3/1PppP3/3P1Q2/2P5/1P3PPP/n1B1R1K1 w - - 1 5 : Cxe6!! #9
 7r/1pp1bp2/4kn1p/Q2r4/B2p3P/2NP2B1/PPP1b1qn/2K1RR2 w - - 2 24 : Cxe2!! #7
 8/8/4k3/6R1/4p3/5p2/4r2p/5K2 w - - 4 73 : Te5+!! tour folle!!
 2kr4/ppp2Bp1/2p5/2q5/4P3/2P2PP1/PP1B4/R3K2R b Q - 0 20 : Txd2!! fait nulle
+4r1k1/rpR2ppp/p2Qb3/4N2P/4P3/4qP2/6P1/3R3K w - - 1 25 : Tc8!!!
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---

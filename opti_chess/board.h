@@ -760,3 +760,9 @@ string square_name(uint_fast8_t i, uint_fast8_t j);
 
 // Fonction qui renvoie le nom d'une pièce
 string piece_name(uint_fast8_t piece);
+
+// Fonction qui renvoie l'espérance de gain d'un WDL
+float get_average_score(WDL wdl, float draw_score = 0.5f);
+
+// Fonction qui renvoie le score d'un WDL avec une précision de 0.01
+string score_string(WDL wdl, float draw_score = 0.5f);
