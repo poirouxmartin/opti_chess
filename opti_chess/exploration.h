@@ -204,6 +204,9 @@ public:
 	// Fonction qui évalue la position
 	void evaluate_position(Evaluator* eval, bool display = false, Network* network = nullptr, bool game_over_check = false);
 
+	// Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
+	Move new_pick_random_child(const float beta, const float k_add);
+
 	// Fonctions à rajouter: destruction des fils et de soi...
 
 	// Destructeur : TODO (supprimer tous les tableaux dynamiques...)

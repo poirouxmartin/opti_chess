@@ -1166,7 +1166,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	const float uncertainty = get_uncertainty(total_material);
 	const int uncertainity_percent = (int)(100 * uncertainty);
 	if (display)
-		main_GUI._eval_components += "TODO uncertainity: " + to_string(uncertainity_percent) + "%\n";
+		main_GUI._eval_components += "uncertainity: " + to_string(uncertainity_percent) + "%\n";
 
 
 	if (display)
@@ -1197,8 +1197,9 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 
 	get_WDL(uncertainty);
 	if (display) {
+		main_GUI._eval_components += "Confidence: " + to_string(100 - uncertainity_percent) + "%\n";
 		main_GUI._eval_components += _wdl.to_string() + "\n";
-		main_GUI._eval_components += "avg score: 0." + to_string((int)(100 * get_average_score())) + "\n";
+		main_GUI._eval_components += "Score: " + score_string(_wdl) + "\n";
 	}
 
 
@@ -2054,12 +2055,12 @@ int Board::get_king_safety(float display_factor) {
 	}
 
 	// Facteurs multiplicatifs
-	constexpr float piece_attack_factor = 0.85f;
+	constexpr float piece_attack_factor = 0.9f;
 	constexpr float piece_defense_factor = 1.0f;
-	constexpr float pawn_protection_factor = 1.0f;
+	constexpr float pawn_protection_factor = 0.85f;
 
 	// En cas de résultante positive ou négative...
-	constexpr float piece_overload_multiplicator = 1.5f; // TODO: à utiliser
+	constexpr float piece_overload_multiplicator = 1.0f; // TODO: à utiliser
 	constexpr float piece_defense_multiplicator = 1.0f;
 
 
@@ -2093,7 +2094,7 @@ int Board::get_king_safety(float display_factor) {
 	int b_defending_power = get_king_defenders(false) * piece_defense_factor;
 
 	// Défense du roi seul
-	constexpr int king_defense = 250;
+	constexpr int king_defense = 150;
 
 	w_defending_power += king_defense;
 	b_defending_power += king_defense;
@@ -6536,7 +6537,7 @@ void Board::display_positions_history() const
 	constexpr int semi_attack_value = 50;
 
 	// Facteur d'attaque par pièce (pion, cavalier, fou, tour, dame, roi)
-	constexpr float piece_attack_factor[6] = { 0.5f, 1.45f, 1.15f, 1.65f, 2.5f, 1.0f };
+	constexpr float piece_attack_factor[6] = { 0.5f, 1.45f, 1.25f, 1.65f, 2.5f, 1.0f };
 
 	// Facteur d'attaque en fonction de la distance au roi
 
@@ -7097,7 +7098,7 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 
 	// Niveau de protection auquel on peut considérer que le roi est safe
 	//const int king_base_protection = 600 * (1 - _adv) - 200;
-	const int king_base_protection = 450 * opponent_attacking_potential - 100;
+	const int king_base_protection = 350 * opponent_attacking_potential - 100;
 
 	// Position du roi
 	update_kings_pos();
@@ -7193,10 +7194,10 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 	// Protection par les bords de l'échiquier
 
 	// Bord vertical
-	constexpr int v_edge_protection = 25;
+	constexpr int v_edge_protection = 20;
 
 	// Bord horizontal
-	constexpr int h_edge_protection = 50;
+	constexpr int h_edge_protection = 25;
 
 	const int edge_protection = v_edge_protection * (min(king_pos.row, 7 - king_pos.row) == 0) + h_edge_protection * (min(king_pos.col, 7 - king_pos.col) == 0);
 
@@ -7895,6 +7896,11 @@ float Board::get_uncertainty(int material_eval) {
 	// rnb2bnr/pppp1k1p/5q2/8/5p2/4BQ2/PPP3PP/RN3RK1 w - - 2 11 : grosse incertitude
 	// r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4 : assez peu...
 	// r1bq1b1r/ppp3pp/2n1k3/3np3/2B5/5Q2/PPPP1PPP/RNB1K2R w KQ - 2 8 : grosse incertitude
+	// 8/8/7P/1p2Kp2/3P4/P2k2P1/P7/8 b - - 0 41 : plus aucune incertitude
+
+	// rnb2bnr/pppp1k1p/5q2/8/5p2/4BQ2/PPP3PP/RN3RK1 w - - 2 11 : comment l'incertitude passe de 14% à 92% quand on fait Fxf4???
+	// et avg score 0.7 -> 0.42??
+
 
 	// TODO: faudrait-il prendre en compte la réflexion faite par Grogros?
 	// Par exemple: si la position change rapidement d'évaluation?
@@ -7904,6 +7910,8 @@ float Board::get_uncertainty(int material_eval) {
 
 	// FIXME *** améliorable: quand il est en négatif matériel et non matériel. il va pas vouloir regagner de l'activité et rapprocher le non-métierl de 0, car ça baisserait l'incertitude...
 	//5rk1/1B4p1/7p/3p4/5n2/4n2P/1R4PK/8 b - - 3 36 : ici les noirs ont de l'activité, donc de l'incertitude en plus... ça va pas
+
+	// rnb3r1/ppp2k1p/1b1p1N2/4P3/1P6/2P3P1/P3PP1P/RN1QK2R w KQ - 2 13 : devrait être quasi 100%
 
 	float raw_incertitude = 0.0f;
 
@@ -7925,11 +7933,13 @@ float Board::get_uncertainty(int material_eval) {
 		//cout << "old value: " << new_opposite_material_factor << endl;
 
 		// Rapproche la valeur des bornes (-0.5, 0.5)
-		new_opposite_material_factor = new_opposite_material_factor >= 0 ? pow(new_opposite_material_factor * 2, 0.1) / 2 : -pow(-new_opposite_material_factor * 2, 0.1) / 2;
+		//float rapprochement = 3.0f;
+		const float rapprochement = abs(material_eval) / 100.0f;
+		new_opposite_material_factor = new_opposite_material_factor >= 0 ? pow(new_opposite_material_factor * 2, 1 / rapprochement) / 2 : -pow(-new_opposite_material_factor * 2, 1 / rapprochement) / 2;
 
 
 		// Constante pour laquelle on a une incertitude de base de 0.5 dans le cas le plus bordélique
-		constexpr int half_uncertainty_constant = 100;
+		constexpr int half_uncertainty_constant = 50;
 
 		// Normalise entre 0 et 1 ce facteur non-matériel à l'aide d'une fonction non-linéaire
 		float norm_non_material_eval = abs_non_material_eval / (half_uncertainty_constant + abs_non_material_eval);
@@ -7947,7 +7957,8 @@ float Board::get_uncertainty(int material_eval) {
 	// Prise en compte de l'avancement de la partie
 
 	// Importance de l'avancement de la partie dans le calcul de l'incertitude
-	constexpr float advancement_factor = 0.25f;
+	//constexpr float advancement_factor = 0.25f;
+	constexpr float advancement_factor = 0.0f;
 
 	float value = raw_incertitude * (1 - advancement_factor) + (1 - _adv) * advancement_factor;
 
@@ -7985,9 +7996,9 @@ void Board::get_WDL(float uncertainity, int winning_eval, float beta) {
 	float alpha = 1 + eval / winning_eval;
 	float relative_uncertainity = pow(uncertainity, alpha);
 
-	float win_chance = white_win_chance * (1 - relative_uncertainity) + relative_uncertainity / 3.0f;
-	float draw_chance = certain_draw_chance * (1 - relative_uncertainity) + relative_uncertainity / 3.0f;
-	float lose_chance = white_lose_chance * (1 - relative_uncertainity) + relative_uncertainity / 3.0f;
+	float win_chance = white_win_chance * (1 - relative_uncertainity) + relative_uncertainity / 2.0f;
+	float draw_chance = certain_draw_chance * (1 - relative_uncertainity);
+	float lose_chance = white_lose_chance * (1 - relative_uncertainity) + relative_uncertainity / 2.0f;
 
 	_wdl = WDL(win_chance, draw_chance, lose_chance);
 }
@@ -7997,4 +8008,17 @@ float Board::get_average_score(float draw_score) const {
 	// TODO: utiliser ce score plutôt que l'évaluation pour choisir quel coup jouer?
 
 	return _wdl.win_chance + draw_score * _wdl.draw_chance;
+}
+
+// Fonction qui renvoie l'espérance de gain d'un WDL
+float get_average_score(WDL wdl, float draw_score) {
+	return wdl.win_chance + draw_score * wdl.draw_chance;
+}
+
+// Fonction qui renvoie le score d'un WDL avec une précision de 0.01
+string score_string(WDL wdl, float draw_score) {
+	float score = get_average_score(wdl, draw_score);
+	stringstream stream;
+	stream << fixed << setprecision(2) << score;
+	return stream.str();
 }
