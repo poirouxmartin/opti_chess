@@ -60,6 +60,15 @@ struct Evaluation {
 
 		return _value < other._value;
 	}
+
+	// Reset
+	void reset() {
+		_value = 0;
+		_uncertainty = 0.0f;
+		_wdl = WDL();
+		_avg_score = 0.0f;
+		_evaluated = false;
+	}
 };
 
 // Noeud de l'arbre d'exploration

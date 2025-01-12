@@ -488,6 +488,7 @@ r1b2bkr/ppp4p/5Q2/3N4/8/8/PPP3PP/R5K1 w - - 1 20 : Tf1 devrait booster la confia
 
 3r2k1/2p2pp1/p4B1p/q7/P3QPP1/1P1p3P/2P5/4R1K1 b - - 0 29 : il rate d2...
 Pour chaque coup joué, faut-il que tous les sous coups soient regardés au moins une fois? sinon ça reste sur le stand pat et ça évalue très mal la position
+Revoir la quiescence après d2... passer le stand pat au quiescence avec le trait à l'autre joueur?
 
 rnbqk1nr/1p4pp/p4p2/2b1p3/3pP3/3B1N2/PPP1NPPP/R1BQ1RK1 b kq - 1 9 : premier coup auquel il pense: Re7... -_-
 Parce que ça augmente l'incertitude au point de penser que c'est quasi 50/50........??
@@ -608,6 +609,8 @@ r1bqk2r/ppp2ppp/1bn5/4p1N1/3Pp3/2P5/PP3PPP/RNBQ1RK1 b kq - 1 9 : là y'a plein de
 -> rnb2rk1/pp3ppp/3q1n2/2b5/8/P7/1PBNNPPP/R1BQK2R w KQ - 1 13 : roque??
 -> 6k1/3Q3p/2p2pp1/1p2P1q1/1n4B1/7P/PP3KP1/2n5 w - - 0 35 : De8+ ça mate!
 -> 6k1/6rp/1p2p2q/5p2/2PPb2N/4b2P/P4QP1/2B2R1K b - - 9 44 : roi blanc dans la merde
+-> r3kb1r/pppq1ppp/2n1p1b1/1B1p2Pn/3P4/2N1PP2/PPP1N2P/R1BQ1RK1 b kq - 2 10 : castling distance qui disparait quand on roque, ça décourage un peu de roquer...
+-> 2kr1b1r/ppp2ppp/2q1p1b1/3p2Pn/P2P4/2N1PP2/1PP1N2P/R1BQ1RK1 b - - 0 12 : Ff5 qui augmente de +1.5 la new_piece_mobility pour les noirs.. pourquoi?
 
 EVAL: 
 -> Améliorer les pièces d'attaque et de défense... plus gros bonus quand une pièce attaque un endroit non (ou peu) défendu. plus gros bonus quand on défend une case attaquée
@@ -632,6 +635,7 @@ EVAL:
 -> Ajouter un 'exposed queen' pour éviter les scandi?
 -> Les cases faibles proches du roi sont plus graves
 -> Théorème des fous de Kev: un fou qui protège le roi et attaque le roi adverse est plus fort qu'une tour
+-> Remettre de la solidité: pénaliser les pièces non-protégées
 
 r4Nk1/pp3ppp/8/1q1p4/2p5/2n1B3/2P1QPPP/2KRRB2 w - - 0 9 : 780 attaque pour les blancs??
 r1b5/3k4/pq2p1N1/1pbpPp1Q/8/4B3/PP3K1P/R6R w - - 5 23 : roi blancs plus safe

@@ -675,6 +675,8 @@ void Node::reset() {
 	_can_explore = true;
 	_time_spent = 0;
 	_fully_explored = false;
+	_static_evaluation.reset();
+	_deep_evaluation.reset();
 	//cout << "resetting children" << endl;
 
 	for (auto const& [_, child] : _children) {
@@ -859,7 +861,7 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha, int 
 	// r4rk1/ppp2ppp/2nq1b2/2n5/2Pp4/2NBQ2P/PP1B1PP1/R3R1K1 w - - 0 16 : ??????????????
 
 	//cout << "depth: " << depth << endl;
-	//rnbqkbnr/pp2pppp/2p5/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3
+	//rnbqkbnr/pp2pppp/2p5/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3 : ????
 
 	// On a au moins évalué le plateau du noeud
 	if (_nodes > 0) {
@@ -1131,6 +1133,7 @@ Move Node::new_pick_random_child(const float beta, const float k_add) {
 
 	// TESTS:
 	// 8/8/8/1r5p/2p4k/2Kb4/8/8 b - - 1 69 : tout égal quand tout gagne...
+	// r2qr1k1/3bbp1p/p2pn1p1/3QP3/3P4/3B1N2/1P1B1PPP/R3R1K1 w - - 1 24 : pareil
 
 	int color = _board->get_color();
 
@@ -1151,7 +1154,7 @@ Move Node::new_pick_random_child(const float beta, const float k_add) {
 			max_eval = child->_deep_evaluation._value * color;
 		}
 
-		if (_board->_player ? child->_deep_evaluation._avg_score > max_avg_score : child->_deep_evaluation._avg_score < max_avg_score) {
+		if (_board->_player ? child->_deep_evaluation._avg_score > max_avg_score : 1 - child->_deep_evaluation._avg_score > max_avg_score) {
 			max_avg_score = _board->_player ? child->_deep_evaluation._avg_score : 1 - child->_deep_evaluation._avg_score;
 		}
 	}
@@ -1163,7 +1166,7 @@ Move Node::new_pick_random_child(const float beta, const float k_add) {
 
 		// Facteur 1: évaluation
 		double eval_score = child->_deep_evaluation._value * color;
-		const double alpha = 0.0005;
+		const double alpha = 0.005;
 		//eval_score = exp(eval_score / mate_value);
 		//eval_score = exp(alpha * eval_score / max_eval);
 		eval_score = exp(alpha * (eval_score - max_eval)) + 0.00000001;
@@ -1172,21 +1175,24 @@ Move Node::new_pick_random_child(const float beta, const float k_add) {
 
 		// Facteur 2: score moyen
 		const double avg_score = _board->_player ? child->_deep_evaluation._avg_score : 1 - child->_deep_evaluation._avg_score;
-		const double delta = 5.0;
+		const double delta = 1.0;
 		//const double score_score = exp(delta * (avg_score - max_avg_score)); // FIXME *** avg / max_avg_score?
-		const double score_score = exp(delta * avg_score * (1 - max_avg_score));
+
+		//cout << "avg_score: " << avg_score << ", max_avg_score: " << max_avg_score << endl;
+
+		const double score_score = exp(-delta * (1 - avg_score) / (1 - max_avg_score) * max_avg_score / avg_score);
 
 		// Facteur 3: pourcentage d'exploration
-		const double gamma = 0.1;
+		const double gamma = 0.25;
 		//double exploration_score = child->_chosen_iterations == 0 ? _iterations * 2 : (double)_iterations / (double)child->_chosen_iterations;
-		double exploration_score = child->_chosen_iterations == 0 ? _iterations * 2 : pow(pow((double)_iterations, gamma) / pow((double)child->_chosen_iterations, gamma), 2);
+		double exploration_score = child->_chosen_iterations == 0 ? _iterations * 2 : pow(pow((double)_iterations, gamma) / pow((double)child->_chosen_iterations, gamma), 3);
 		//exploration_score = pow(exploration_score, 0.15);
 
 
 		// Score final
 		const double score = eval_score * score_score * exploration_score;
 
-		//cout << "player: " << _board->_player << ", color: " << color << " move: " << _board->move_label(move) << " | eval: " << child->_deep_evaluation._value << " (" << eval_score << ") | avg_score: " << avg_score << " | exploration: " << exploration_score << " | score: " << score << endl;
+		//cout << (_board->_player ? "W" : "B") << " move: " << _board->move_label(move) << " | eval: " << child->_deep_evaluation._value << " (" << eval_score << ") | avg_score: " << avg_score << " -> " << score_score << " | exploration: " << exploration_score << " | score: " << score << endl;
 
 		// rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2 : il doit garder Dh4 comme 99% de chosen, mais regarder les autres normalement...
 
