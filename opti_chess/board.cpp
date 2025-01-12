@@ -7098,7 +7098,7 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 
 	// Niveau de protection auquel on peut considérer que le roi est safe
 	//const int king_base_protection = 600 * (1 - _adv) - 200;
-	const int king_base_protection = 350 * opponent_attacking_potential - 100;
+	const int king_base_protection = 450 * opponent_attacking_potential - 100;
 
 	// Position du roi
 	update_kings_pos();
@@ -7128,7 +7128,7 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 
 
 	// Bonus pour la connexion des pions entre eux
-	constexpr int connected_pawns_bonus = 75;
+	constexpr int connected_pawns_bonus = 100;
 
 	// Malus pour une colonne ouverte
 	constexpr int open_file_malus = 50;
