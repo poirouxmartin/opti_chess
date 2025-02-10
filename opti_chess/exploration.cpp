@@ -361,8 +361,7 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 void Node::explore_random_child(Buffer* buffer, Evaluator* eval, float beta, float k_add, int quiescence_depth, Network* network) {
 
 	// Prend un fils aléatoire
-	//const Move move = pick_random_child(beta, k_add);
-	const Move move = new_pick_random_child(beta, k_add);
+	const Move move = new_pick_random_child();
 	Node *child = _children[move];
 
 	if (child->_nodes >= _nodes) {
@@ -1125,74 +1124,44 @@ void Node::evaluate_position(Evaluator* eval, bool display, Network * network, b
 }
 
 // Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
-Move Node::new_pick_random_child(const float beta, const float k_add) {
-	// Facteurs à prendre en compte:
-	// - évaluation
-	// - avg_score
-	// - pourcentage d'exploration
-
-	// TESTS:
+Move Node::new_pick_random_child(const double alpha, const double beta, const double gamma) {
+	// TESTS
 	// 8/8/8/1r5p/2p4k/2Kb4/8/8 b - - 1 69 : tout égal quand tout gagne...
 	// r2qr1k1/3bbp1p/p2pn1p1/3QP3/3P4/3B1N2/1P1B1PPP/R3R1K1 w - - 1 24 : pareil
+	// 3b2rk/3P2pp/8/p7/8/2Q1p3/PP1p1pPP/3RqR1K b - - 1 36 : il faut pas 100% de reflexion sur un coup, quand tous les coups gagnent
+	// 8/8/8/1r5p/2p2k2/2Kb4/8/8 b - - 5 71 : pareil...
 
-	int color = _board->get_color();
 
+	// Meilleur coup global
 	Move best_move = Move();
 	double best_score = -DBL_MAX;
 
+	// Meilleur coup explorable
 	Move move_to_play = Move();
 	double explorable_best_score = -DBL_MAX;
 
-	// Meilleure valeur d'évaluation
-	int max_eval = -INT_MAX;
-
-	// Meilleure chance de gagner
-	double max_avg_score = 0.0;
-
-	for (auto const& [_, child] : _children) {
-		if (child->_deep_evaluation._value * color > max_eval) {
-			max_eval = child->_deep_evaluation._value * color;
-		}
-
-		if (_board->_player ? child->_deep_evaluation._avg_score > max_avg_score : 1 - child->_deep_evaluation._avg_score > max_avg_score) {
-			max_avg_score = _board->_player ? child->_deep_evaluation._avg_score : 1 - child->_deep_evaluation._avg_score;
-		}
-	}
+	// Scores des coups
+	map<Move, double> move_scores = get_move_scores(alpha, beta);
 
 	// Regarde chaque coup
 	for (auto const& [move, child] : _children) {
+		
+		// Score du coup
+		double move_score = move_scores[move];
 
-		// Calcule le score du coup
+		// Facteur d'exploration
+		int child_iterations = max(child->_chosen_iterations, child->_iterations);
 
-		// Facteur 1: évaluation
-		double eval_score = child->_deep_evaluation._value * color;
-		const double alpha = 0.005;
-		//eval_score = exp(eval_score / mate_value);
-		//eval_score = exp(alpha * eval_score / max_eval);
-		eval_score = exp(alpha * (eval_score - max_eval)) + 0.00000001;
+		// FIXME *** gamma devrait changer en fonction de l'incertitude: plus on est incertain, plus on explore large?
+		const double new_gamma = gamma / (1.00f - _board->_uncertainty / 2.0f);
+		//cout << "gamma: " << gamma << ", uncertainty: " << _board->_uncertainty << ", new_gamma: " << new_gamma << endl;
 
-		//cout << "relative eval: " << child->_deep_evaluation._value * color << ", max_eval: " << max_eval << ", eval_score: " << eval_score << endl;
-
-		// Facteur 2: score moyen
-		const double avg_score = _board->_player ? child->_deep_evaluation._avg_score : 1 - child->_deep_evaluation._avg_score;
-		const double delta = 1.0;
-		//const double score_score = exp(delta * (avg_score - max_avg_score)); // FIXME *** avg / max_avg_score?
-
-		//cout << "avg_score: " << avg_score << ", max_avg_score: " << max_avg_score << endl;
-
-		const double score_score = exp(-delta * (1 - avg_score) / (1 - max_avg_score) * max_avg_score / avg_score);
-
-		// Facteur 3: pourcentage d'exploration
-		const double gamma = 0.25;
-		//double exploration_score = child->_chosen_iterations == 0 ? _iterations * 2 : (double)_iterations / (double)child->_chosen_iterations;
-		double exploration_score = child->_chosen_iterations == 0 ? _iterations * 2 : pow(pow((double)_iterations, gamma) / pow((double)child->_chosen_iterations, gamma), 3);
-		//exploration_score = pow(exploration_score, 0.15);
-
+		double exploration_score = child_iterations == 0 ? _iterations * 2 : pow((double)_iterations / (double)child_iterations, new_gamma);
+		//const double test = 5.0;
+		//double exploration_score = child_iterations == 0 ? _iterations * 2 : pow(pow((double)_iterations, 1 / test) / pow((double)child_iterations, 1 / test), test);
 
 		// Score final
-		const double score = eval_score * score_score * exploration_score;
-
-		//cout << (_board->_player ? "W" : "B") << " move: " << _board->move_label(move) << " | eval: " << child->_deep_evaluation._value << " (" << eval_score << ") | avg_score: " << avg_score << " -> " << score_score << " | exploration: " << exploration_score << " | score: " << score << endl;
+		const double score = move_score * exploration_score;
 
 		// rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2 : il doit garder Dh4 comme 99% de chosen, mais regarder les autres normalement...
 
@@ -1217,4 +1186,57 @@ Move Node::new_pick_random_child(const float beta, const float k_add) {
 	}
 
 	return move_to_play;
+}
+
+// Fonction qui renvoie le score des coup
+map<Move, double> Node::get_move_scores(const double alpha, const double beta) {
+
+	// TEST: 8/8/8/1r5p/2p2k2/2Kb4/8/8 b - - 5 71
+
+	int color = _board->get_color();
+
+	// Meilleure valeur d'évaluation
+	int max_eval = -INT_MAX;
+
+	// Meilleure chance de gagner
+	double max_avg_score = 0.0;
+
+	// Cherche la meilleure eval et le meilleure score parmi tous les coups possibles
+	for (auto const& [_, child] : _children) {
+		if (child->_deep_evaluation._value * color > max_eval) {
+			max_eval = child->_deep_evaluation._value * color;
+		}
+
+		if (_board->_player ? child->_deep_evaluation._avg_score > max_avg_score : 1 - child->_deep_evaluation._avg_score > max_avg_score) {
+			max_avg_score = _board->_player ? child->_deep_evaluation._avg_score : 1 - child->_deep_evaluation._avg_score;
+		}
+	}
+
+    map<Move, double> move_scores;
+
+	const double min_constant = 1E-100;
+
+	// Regarde chaque coup
+	for (auto const& [move, child] : _children) {
+
+		// Facteur 1: évaluation
+		double eval_score = child->_deep_evaluation._value * color;
+		eval_score = exp(alpha * (eval_score - max_eval)) + min_constant;
+
+		// Facteur 2: score moyen
+		const double avg_score = _board->_player ? child->_deep_evaluation._avg_score : 1 - child->_deep_evaluation._avg_score;
+		const double score_score = exp(-beta * (1 - avg_score) / (1 - max_avg_score) * max_avg_score / avg_score) + min_constant;
+
+		//cout << "eval: " << eval_score << ", score: " << score_score << endl;
+
+		// Facteur 3: rajout quasi constant? à tester...
+		const double adding = (avg_score == 0.0f) ? 0.0f : avg_score / max_avg_score * 0.005f;
+
+		// Score final
+		const double score = eval_score * score_score + adding;
+
+		move_scores[move] = score;
+	}
+
+	return move_scores;
 }

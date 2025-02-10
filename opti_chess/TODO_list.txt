@@ -245,7 +245,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Quand une position est surestimée, Grogros va jouer des coups pour retarder l'échéance, mais qui peuvent pourrir la position encore plus
 -> Quand une position est sous-estimée, Grogros va jouer un coup qui parait bien et réfléchir beaucoup dessus, même si d'autres variations peuvent être meilleures
 -> Utiliser sort c++ pour trier les coups
--> Remettre la dame dans la mobilité des pièces et l'activité? pour que ça développe la dame aussi? Sinon, ça évalue mal ces positions: r1b1kbnr/ppqp1ppp/2n1p3/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 1 6 
+-> Remettre la dame dans la mobilité des pièces et l'activité? pour que ça développe la dame aussi? Sinon, ça évalue mal ces positions: r1b1kbnr/ppqp1ppp/2n1p3/8/3NP3/2N5/PPP2PPP/R1BQKB1R w KQkq - 1 6
 -> r1bqkb1r/ppp2ppp/2n1p3/8/3PP3/2P5/P4PPP/R1BQKBNR w KQkq - 0 7 : piece_mobility seulement +0.18? c'est un bug?
 -> Regarder où on fait des accès mémoire fréquent et faire des copies locales pour aller plus vite?
 -> 6k1/4pp1p/P2p2p1/8/4P3/1P6/5PPP/6K1 b - - 0 26 : il faut améliorer king proximity avec les pions passés: le roi est clairement pas dans le carré
@@ -408,7 +408,7 @@ r1bq1r2/pppp1ppk/2n1p3/3nP1b1/3P3P/8/PPP2PP1/RNBQK2R w KQ - 0 9 : il regarde pas
 r1bq1rk1/2p1ppbp/pn1p3B/1p5p/3PP3/2N2P2/PPPQ2P1/2KR1BN1 w - - 0 12 : Dg5 c'est mat en 2 imparable.. il met combien de temps à le voir?...
 r1bq1rk1/2p1pp1p/pn1p1npQ/1p6/3PP1P1/2N2P2/PPP5/2KR1BNR w - - 2 4 : e5??
 rn2k1nr/ppp1ppbp/6p1/8/3Pq1b1/2P1BN1P/PP3PP1/RN1QKB1R b KQkq - 0 7 : il regarde pas Fxf3??
-2r3k1/6p1/8/5p1p/4nP2/R1BRP3/2P1K2P/1r6 b - - 3 39 : il voit pas Th1+?
+2r3k1/6p1/8/5p1p/4nP2/R1BRP3/2P1K2P/1r6 b - - 3 39 : il voit pas Th1?
 2r3k1/6p1/8/5p1p/4nP2/R1BRPK2/2P4P/7r b - - 5 40 : Txh2??
 Après une répétition, Grogros ne joue plus
 Revoir les promotions de variantes etc...
@@ -497,8 +497,89 @@ Il faut régler le problème de savoir dans le "min-max", quoi considérer: eval ou
 Faut-il faire une fonction globale qui évalue une position (eval + WR), qui s'utilise autant dans le softmax que dans le min-max? pour garder une cohérence...
 
 rn1qk2r/ppp2ppp/4bn2/3p4/1b1P1B2/2N5/PPP1QPPP/R3KBNR w KQkq - 6 7 : +2 pour le roi??
-1r3rk1/p4ppp/4b3/2P3B1/3QB3/qp6/n4PPP/1K1R3R w - - 6 23 : roi noir quasi mat
+1r3rk1/p4ppp/4b3/2P3B1/3QB3/qp6/n4PPP/1K1R3R w - - 6 23 : roi blanc quasi mat
 
+r4rk1/p1p1b1q1/2p1pp2/2P5/8/3QB3/PP3PP1/R3R1K1 w - - 0 23 : ici, veut pas jouer Dc4, car il voit que la meilleure eval c'est après Rf7 et Fg5 (sacrifice du fou), mais la position est si bordélique qu'il dit que c'est quasi 50/50
+Il faut donc revoir ce qu'on met comme "meilleur coup" dans l'arbre de recherche... meilleure eval ou meilleur WR?
+Il faut implémenter la "valeur d'un coup" -> à utiliser aux deux endroits pour être cohérent
+
+Changer l'incertitude pour prendre en compte l'activité / king safety etc.. des deux camps? si les deux rois sont faibles, ça tend vers 50/50?
+
+Quand le meilleur coup est déjà complètement exploré, faut-il refaire une exploration sans prendre en compte de coup? sinon tous les autres coups sont regardés de la même manière car tous pourris comparé au meilleur
+
+Re-faut-il du k_add? FIXME *** est-ce que c'est mieux avec?
+rnbq1b1r/pppp2pp/8/3Q4/4nk2/2p5/PPP2PPP/R4RK1 b - - 1 10 : la confiance passe de 92% à 5% après Cg5.. normal?
+3b2rk/3P2pp/8/p7/8/2Q1p3/PP1p1pPP/3RqR1K b - - 1 36 : e2 gagne certes, mais il faut quand-même regarder un peu les autres coups...
+rn5r/pp2k1pp/1b1p4/4p3/2B1Ppb1/4nN2/PP2Q1PP/3RK2R w - - 0 16 : noirs gagnants -> beaucoup d'activité et le roi blanc est pas très bien au milieu...
+7R/5k2/p3p1b1/3pB1p1/3P2P1/qP3P2/2r5/4Q1K1 w - - 13 40 : grosse faiblesse sur la dernière rangée pour le roi blanc
+8/6r1/4pk1p/1b6/pPpP1P2/R1K1R2P/8/8 b - - 2 39 : revoir la valeur des pions passés?
+7R/5k2/p3p1b1/3pB1p1/3P2P1/qP3P2/2r5/4Q1K1 w - - 13 40 : 800 attacking power pour les blancs?..
+R7/5k2/p3p1b1/3pB1p1/3P2P1/1P3P2/1qr5/4Q1K1 w - - 15 41 : les noirs ont plus d'attaque que les blancs...
+5r2/6pk/p6p/1b1R4/8/1P3P2/3Q2PP/q5BK b - - 2 32 : roi blanc faible -> quasi draw
+
+********************************************************************************
+TODO *** utilisation de la valeur réelle des coups plutôt que leur évaluation
+à l'inverse de la proximité, il faut les carrés des pions passés adverses pour donner des gros malus quand le roi en est loin!
+ici 8/7p/p7/2k1Pp2/Pp3P1p/2p5/2P3P1/3K4 w - - 2 21 par exemple, a5 est le seul coup qui gagne
+Y'a des memory leak... ça vient des maps?? à vérifier
+Pour les chemins, doit-on vraiment interdire les cases controllées comme inatteignables? un rapprochement peut quand même aider... sinon il met des 0 partout.. comment adapter l'algo?
+3r4/8/8/8/3P2k1/3K4/8/R7 w - - 0 1 : ici par exemple, il faut faire Tf1!
+3r4/8/3k4/3P4/4K3/8/8/5R2 b - - 0 4 : là, le roi est proche...
+Remettre la proximité entre le roi est ses pions alliés? 6RK/8/1k6/8/2p5/8/8/8 w - - 0 1 : ici Tg5 seul coup car ça coupe le roi...
+8/7p/2P1kP2/p3p3/8/p7/2K4P/8 b - - 0 4 : roi noir pas dans le carré!
+********************************************************************************
+
+VERIFIER LA SYMETRIE DE L'EVALUATION!! -> Faire un framework de test (ça parait ok en général...)
+
+Faut qu'il arrête les Cc6 dans les positions à d4... ça bloque le pion c
+r1bqk2r/ppp2ppp/2nbpn2/8/2pP4/5NP1/PP1NPPBP/R1BQ1RK1 b kq - 1 7 : b5, énorme erreur stratégique!! revoir fianchetto aussi, y'a des trucs bizarres
+rajouter un vrai undefended piece? pour le val-che en c6 là...
+Grogros crash souvent quand on ferme la fenêtre...
+Devéloppement de la dame à rajouter... (et garder les dames augmente en général les chances de gain...)
+Il est pourri, c'est chiant.. faut vraiment mettre des tests pour le rendre rigoureusement meilleur...
+Unprotected pieces!!
+Backrank!!
+Attacking power!!
+Quand on est en roques opposés, favoriser les attaques sur le roi adverse? -> ++ pour les storm etc..?
+3rr3/1kpn1p1p/p1p1qbb1/2Pp2p1/Q2Pp3/P1N1P1NP/1P1B1PP1/1R2R1K1 w - - 1 24 : b4?? PAWN STORM = 0... ???
+rr6/1kpn1p1p/p1p1qbb1/2Pp2p1/3Pp3/P1N1P2P/1PQBNPP1/1R2R1K1 w - - 5 26 : a4 ou b4 les coups
+Montrer la confiance de la deep evaluation...
+
+
+Il faut s'assurer que pour une évaluation donnée (disons +100 matériel, +100 activité), que le gain d'activité n'augmente JAMAIS l'incertitude au point de réduire le WR...
+WR (100, 100) < WR (100, k) pour tout k > 100 /!\
+
+rnbq2nr/1p3kpp/p4p2/2b1p3/3pP3/3B1N2/PPP1NPPP/R1BQ1RK1 w - - 2 10 : il regarde Re7 ou Rf7... à voir si ça se règle avec la modif de l'algo
+
+r2q1rk1/pbp1bppp/1p2pn2/8/3P4/3BBN2/PPP1QPPP/R4RK1 b - - 2 11 vs r2q1rk1/pbp1bppp/1p2pn2/8/3P4/3BBN2/PPP1QPPP/1K1R3R b - - 3 11
+
+
+b2r2k1/2p3pn/p7/3p2Pp/2P4P/2N1B2q/P3Q3/5RK1 w - - 2 32 : le roi blanc est foutu.. pourquoi protection est la même pour les deux, alors que les noirs ont un pion en g7, et les blancs ont leur pion en g5??
+3r2k1/pp1Q1p1p/3r1p2/4pb2/3P4/P4P2/P3N1PP/2RR2K1 b - - 0 19 : ici on veut prendre de la tour 8, car la tour est plus active en d6
+2rq1rk1/pp2bppp/2b1pn2/3p4/2pP1B2/2P1P3/PPBN1PPP/R2QR1K1 b - - 3 12 : comment faire comprendre qu'il faut jouer du côté où pointe la structure? ici b5 est le meilleur coup... sinon la structure se fait attaquer...
+2rq1rk1/p4ppp/2b1pn2/3p4/1bpP1B2/4P3/PPBN1PPP/2RQR1K1 w - - 0 15 > 2rq1rk1/pp2bppp/2b1pn2/3p4/2pP1B2/2P1P3/PPBN1PPP/R2QR1K1 b - - 3 12
+8/3k4/2p5/1pb5/4B3/1KB5/8/8 b - - 1 134 : draw.....
+2rk1r2/p1pnb2R/1p2Q1p1/2q3P1/6N1/2BB4/PPP5/1K6 w - - 1 30 : il faut comprendre qu'un coup comme a3 est important pour éviter les problèmes de dernière rangée
+r1bq1rk1/p1p1bppp/1p2pn2/8/3P4/3BBN2/PPP1QPPP/R3K2R w KQ - 0 10 : ici, mieux vaut faire grand roque que petit roque
+7r/2pk4/2q5/3p2p1/1BNPp3/4Pp1r/Q4P2/2R1R1K1 w - - 1 47 : c'est mat pour les noirs
+4q1k1/2Q5/4p1p1/1pPp2b1/1P2p3/8/6P1/5R1K w - - 0 47 : sait pas gagner ça aux blancs... se fait rouler dessus par les pions passés liés...
+6k1/2R3pp/8/pp6/4r3/2P2K1P/6P1/8 b - - 1 33 : Tc4 devrait être instantané! si les tours sont échangées, le pion passé éloigné rend la position gagnante pour les noirs
+5Rqk/1ppR2pp/p7/8/4r3/2P4P/6P1/6K1 w - - 2 30 : Tdd8??? ça gagne en 1 coup, et il regarde même pas le coup...
+r1br2k1/1pp1bppp/p1n1pn2/6B1/Pq1P4/1BN2N1P/1PP1QPP1/3R1RK1 w - - 1 16 : blancs gagnants...
+r4rk1/2pq4/1pn1pp2/3p2pp/pPnP4/P1P3P1/2Q1PPBP/R1B1R1K1 b - - 1 20 : les blancs sont quasi gagnants...
+6RK/8/1k6/8/2p5/8/8/8 w - - 0 1 : Tg5 seul coup qui gagne
+8/8/3k2b1/1p5p/1P1K2p1/1B4P1/7P/8 w - - 6 12 : tu gagnes parce que t'as le bon fou?? même après Re3 Re5, ça gagne...
+8/8/8/1k1K3p/6p1/6P1/7P/8 w - - 0 25 : le roi blanc est BEAUCOUP plus proche
+8/8/3k2b1/1p5p/1P1K2p1/1B4P1/7P/8 w - - 6 12 : finale gagnante pour les blancs (même si le trait est au noir): le roi blanc est beaucoup plus proche de rentrer...
+r2q1r2/5pk1/R2pbnnp/4p1p1/1Pp1P3/2P1PNB1/2B1Q1PP/5RK1 w - - 4 7 : le fou g3 ne sert à rien
+1rbq1r2/2p2pk1/p2p1nnp/1p2p1p1/P3P3/2PPPNB1/1PB3PP/R2Q1RK1 b - - 0 r2q1rk1/pbp1bppp/1p2pn2/8/3P4/3BBN2/PPP1QPPP/R4RK1 b - - 2 111 : c5 donne certes la case d5, mais elle est très difficile à être atteinte par une pièce.. puis ça contrôle aussi le centre et prend l'espace
+1r3r2/2p2pk1/1b1p1qn1/4p3/4P1b1/NBPP1N1p/1P3PPB/R2Q1R1K w - - 0 9 : noirs gagnants
+1rbq1r2/2p2pk1/1b1p1nn1/4p1N1/4P3/NBPP1QP1/1P4PP/R4R1K b - - 0 7 : les cavaliers protègent bien le roi..
+5r2/5pk1/r1pp1qn1/4p2p/4P3/2P1QpB1/BP2b1PP/R5RK w - - 6 29 : complètement gagnant pour les noirs...
+rnb2rk1/pp4pp/3qp3/3p1p2/2pPn3/4P3/PPPNBPPP/R1BQ1RK1 w - - 0 11 : prise e4 puis b3 et ça gagne...
+rnb2rk1/p5pp/3qp3/1P1p4/3P1p2/4PP2/1pPBB1PP/R2Q1RK1 w - - 0 16 : ce pion est chiant, mais très faible...
+r1r2Q2/2k5/p1pp1P2/1p3Q2/2P2N2/4PR2/PP5P/6K1 w - - 1 40 : à haute profondeur ça monte jusqu'à +250 xDD, puis il trouve un mat en 11 (tout en regardant que Ce6+... y'a d'autres coups)
+r1bqk2r/pp3ppp/2n2n2/2b1p3/2P5/2NPB3/PP3PPP/R2QKBNR b KQkq - 2 7 : faut prendre e3! (il fait Fb4?) -> pion e3 faible un peu
 5k2/r2n2pp/p2R4/2pB1p2/5B2/8/Pq4PP/4R1K1 w - - 0 26 : Rf1!!
 rn5k/6pp/p2bp3/1P1b2q1/2p5/5B2/PP2Q1PP/3R1RK1 w - - 2 20 : Fxd5?? y'a des mats du couloir derrière...
 3r1qk1/1pr3b1/pN1pbnpp/2p1p3/P1P1P3/4BP2/1P1QB1PP/3R1RK1 w - - 2 22 : blancs quasi gagnants
@@ -611,6 +692,7 @@ r1bqk2r/ppp2ppp/1bn5/4p1N1/3Pp3/2P5/PP3PPP/RNBQ1RK1 b kq - 1 9 : là y'a plein de
 -> 6k1/6rp/1p2p2q/5p2/2PPb2N/4b2P/P4QP1/2B2R1K b - - 9 44 : roi blanc dans la merde
 -> r3kb1r/pppq1ppp/2n1p1b1/1B1p2Pn/3P4/2N1PP2/PPP1N2P/R1BQ1RK1 b kq - 2 10 : castling distance qui disparait quand on roque, ça décourage un peu de roquer...
 -> 2kr1b1r/ppp2ppp/2q1p1b1/3p2Pn/P2P4/2N1PP2/1PP1N2P/R1BQ1RK1 b - - 0 12 : Ff5 qui augmente de +1.5 la new_piece_mobility pour les noirs.. pourquoi?
+r3r1k1/p4ppp/1pb5/n1p5/3Pp3/2P4P/q1PNRPP1/1RBQ2K1 b - - 3 19 : bien perdant pour les blancs: très mauvaise coordination des pièces... TODO *** accentuer cela dans la piece activity? avec le nombre de coups effectivement possibles?
 
 EVAL: 
 -> Améliorer les pièces d'attaque et de défense... plus gros bonus quand une pièce attaque un endroit non (ou peu) défendu. plus gros bonus quand on défend une case attaquée
@@ -636,6 +718,7 @@ EVAL:
 -> Les cases faibles proches du roi sont plus graves
 -> Théorème des fous de Kev: un fou qui protège le roi et attaque le roi adverse est plus fort qu'une tour
 -> Remettre de la solidité: pénaliser les pièces non-protégées
+-> Tests: vérifier que l'évaluation est équilibrée (noir/blanc) si on retourne une position
 
 r4Nk1/pp3ppp/8/1q1p4/2p5/2n1B3/2P1QPPP/2KRRB2 w - - 0 9 : 780 attaque pour les blancs??
 r1b5/3k4/pq2p1N1/1pbpPp1Q/8/4B3/PP3K1P/R6R w - - 5 23 : roi blancs plus safe
