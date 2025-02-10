@@ -518,7 +518,7 @@ public:
 	void reset_eval();
 
 	// Fonction qui compte les tours sur les colonnes ouvertes et semi-ouvertes et renvoie la valeur
-	[[nodiscard]] int get_rooks_on_open_file() const;
+	[[nodiscard]] int get_sliders_on_open_file() const;
 
 	// Fonction qui calcule la valeur des cases controllées sur l'échiquier
 	[[nodiscard]] int get_square_controls() const;
@@ -662,7 +662,7 @@ public:
 	[[nodiscard]] int get_pawn_shield_protection(bool color, float opponent_attacking_potential);
 
 	// Fonction qui renvoie la puissance de protection de la structure de pions du roi, s'il est sur la colonne donnée
-	[[nodiscard]] int get_pawn_shield_protection_at_column(bool color, int column, float opponent_attacking_potential);
+	[[nodiscard]] int get_pawn_shield_protection_at_column(bool color, int column, float opponent_attacking_potential, bool add_column_bonus = false);
 
 	// Fonction qui calcule tous les coups à une certaine profondeur, et renvoie le nombre de noeuds total
 	int count_nodes_at_depth(int depth, bool display = true);
@@ -684,6 +684,24 @@ public:
 
 	// Fonction qui renvoie l'espérance de gain (en points) de la position (fondé sur les probas de WDL) pour les blancs
 	[[nodiscard]] float get_average_score(float draw_score = 0.5f) const;
+
+	// Fonction qui inverse les couleurs des joueurs (y compris le trait)
+	void switch_colors();
+
+	// Fonction qui itère sur la map des distances à partir d'une position donnée, et renvoie les nouvelles cases contrôlées
+	[[nodiscard]] vector<Pos> get_next_king_squares(Map& map, Pos start_pos, int distance, bool color) const;
+
+	// Fonction qui renvoie une map des distances entre le roi et chaque point de l'échiquier (nombre de coups pour y arriver, en fonction des contrôles actuels du plateau)
+	[[nodiscard]] Map get_king_squares_distance(bool color);
+
+	// Fonction qui renvoie la faiblesse sur les rangées du roi
+	[[nodiscard]] int get_king_row_weakness(bool color);
+
+	// Fonction qui renvoie la valeur de centralisation du roi en fin de partie
+	[[nodiscard]] int get_king_centralization(bool color);
+
+	// Fonction qui renvoie la valeur des pièces non défendues
+	[[nodiscard]] int get_unprotected_pieces(bool color) const;
 
 	// TODO: génération plus rapide des coups
 

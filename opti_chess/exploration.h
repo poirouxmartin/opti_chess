@@ -214,7 +214,10 @@ public:
 	void evaluate_position(Evaluator* eval, bool display = false, Network* network = nullptr, bool game_over_check = false);
 
 	// Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
-	Move new_pick_random_child(const float beta, const float k_add);
+	Move new_pick_random_child(const double alpha = 0.0075, const double beta = 2.5, const double gamma = 0.65);
+
+	// Fonction qui renvoie le score d'un coup. Alpha augmente l'importance de l'évaluation, et beta augmente l'importance du winrate
+	map<Move, double> get_move_scores(const double alpha, const double beta);
 
 	// Fonctions à rajouter: destruction des fils et de soi...
 
