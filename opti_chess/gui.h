@@ -242,7 +242,7 @@ public:
 	bool _drawing_arrows = true;
 
 	// Pourcentage de noeuds à partir duquel on montre le coup
-	float _arrow_rate = 0.05f;
+	float _arrow_rate = 0.03f;
 
 	// Variable qui indique si l'initialisation a été faite
 	bool _loaded_resources = false;

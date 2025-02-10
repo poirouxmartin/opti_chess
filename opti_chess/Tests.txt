@@ -830,6 +830,7 @@ r1q4r/p2nbpNk/1p2p3/1PppP3/3P1Q2/2P5/1P3PPP/n1B1R1K1 w - - 1 5 : Cxe6!! #9
 8/8/4k3/6R1/4p3/5p2/4r2p/5K2 w - - 4 73 : Te5+!! tour folle!!
 2kr4/ppp2Bp1/2p5/2q5/4P3/2P2PP1/PP1B4/R3K2R b Q - 0 20 : Txd2!! fait nulle
 4r1k1/rpR2ppp/p2Qb3/4N2P/4P3/4qP2/6P1/3R3K w - - 1 25 : Tc8!!!
+2k2r2/ppp3pp/1bp1b3/8/P3Pp1q/1N1B1Pn1/1P3RPP/R2QB1K1 b - - 0 18 : Dxh2+!! #4
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---

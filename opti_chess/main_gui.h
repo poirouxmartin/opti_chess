@@ -151,8 +151,12 @@ inline int main_ui() {
 
 			//main_GUI.grogros_analysis(1);
 
-			main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, 6);
+			//main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, 6);
 			//main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, 6, -2147483647, 2147483647, nullptr, true, -1000);
+
+			main_GUI._root_exploration_node->_board->switch_colors();
+			//main_GUI._root_exploration_node->_board->get_king_squares_distance(true).print();
+			//main_GUI._root_exploration_node->_board->get_king_squares_distance(false).print();
 		}
 
 		// CTRL-T - Cherche le plateau du site d'échecs sur l'écran, et lance une partie
