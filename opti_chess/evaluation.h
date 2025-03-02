@@ -9,18 +9,18 @@ public:
 
 	// Coefficients des heuristiques
 	float _piece_value = 1.35f;
-	float _piece_mobility = 0.02f;
+	float _piece_mobility = 0.1f;
 	float _piece_positioning = 0.2f;
 	float _bishop_pair = 35.0f;
 	float _castling_rights = 0.0f; // Redondant
-	float _player_trait = 25.0f;
+	float _player_trait = 50.0f;
 	float _king_safety = 1.0f;
 	float _pawn_structure = 0.4f;
 	float _attacks = 1.0f;
 	float _kings_opposition = 75.0f;
 	float _push = 1.0f;
 	float _rook_open = 1.0f;
-	float _square_controls = 0.65f;
+	float _square_controls = 0.5f;
 	float _space_advantage = 2.5f;
 	float _alignments = 0.35f;
 	float _piece_activity = 0.015f;

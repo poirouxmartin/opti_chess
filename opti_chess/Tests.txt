@@ -393,6 +393,7 @@ r1b1Q2N/1p1r2p1/2pp1k2/p7/6P1/8/P1P2P1P/6K1 b - - 8 26 : complètement gagnant po
 6r1/p5p1/r1p2pk1/2R5/P2Pn3/8/1PKB4/R7 w - - 3 33 : a5!! fait nulle
 8/p2k2p1/r1p2p2/P1P5/1P6/2B5/2K5/8 w - - 0 44 : égal
 8/p7/r1p3p1/P1Pk4/1P6/3KB3/8/8 b - - 4 47 : g5! fait nulle (idée Fxg5 -> Txa5!!)
+r3k2r/p2b1ppp/2nQp3/1pB1N3/8/1B6/P3KPPP/7q b kq - 1 17 : mat imparrable pour les blancs
 
 
 
@@ -587,6 +588,7 @@ r3rk2/pp5Q/2p3p1/8/5P2/1P1pP3/2q2P2/K6R w - - 0 28 : Dh8+ #5
 r2qkb1r/pppn1pp1/2b1pn1p/6N1/3P4/2PB1N2/PP3PPP/R1BQK2R w KQkq - 0 9 : Cxe6 meilleur coup
 r2q1rk1/ppp1ppbp/6p1/1N1Pn2n/1PP5/P6P/1B2QPP1/RB3RK1 b - - 6 17 : Cf3+ meilleur coup
 rn2k2r/1bqp1ppp/p4n2/1p2pN2/P3P3/2P1B1P1/1P4BP/RN1Qb2K w kq - 2 14 : Cxg7+ puis Fh6 gagne
+rn2k2r/1b1p1p1p/p1q4B/Pp2pN2/4n3/2P3P1/1P4BP/RN2Q2K w - - 0 19 : Dxe4!
 rn3k1r/2np2pp/pq6/1P2pNp1/4Q3/N1P3P1/1P4KP/R7 w - - 4 24 : Tf1 gagne
 8/1pkrr3/3Rb1B1/p1p1Ppp1/2P1p2p/PP5P/2K2PP1/3R4 w - a6 0 32 : Txe6 gagne
 8/1p6/4k3/p1p1P1p1/2P1p2p/PP5P/2K2PP1/8 w - - 0 36 : Rd2 gagne
@@ -831,6 +833,7 @@ r1q4r/p2nbpNk/1p2p3/1PppP3/3P1Q2/2P5/1P3PPP/n1B1R1K1 w - - 1 5 : Cxe6!! #9
 2kr4/ppp2Bp1/2p5/2q5/4P3/2P2PP1/PP1B4/R3K2R b Q - 0 20 : Txd2!! fait nulle
 4r1k1/rpR2ppp/p2Qb3/4N2P/4P3/4qP2/6P1/3R3K w - - 1 25 : Tc8!!!
 2k2r2/ppp3pp/1bp1b3/8/P3Pp1q/1N1B1Pn1/1P3RPP/R2QB1K1 b - - 0 18 : Dxh2+!! #4
+b2brkr1/p3pppR/2qn2n1/1pNR4/8/1B4N1/P2PPPP1/BQ3K2 w - - 0 1 : Dxg6!!
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---

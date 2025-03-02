@@ -73,7 +73,7 @@ void Node::init_node() {
 }
 
 // Nouveau GrogrosZero
-void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add, int iterations, int quiescence_depth, Network* network) {
+void Node::grogros_zero(Buffer* buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network) {
 	// TODO:
 	// On peut rajouter la profondeur
 	// Garder le temps de calcul
@@ -124,12 +124,12 @@ void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add
 
 		// EXPLORATION D'UN NOUVEAU COUP
 		if (get_fully_explored_children_count() < _board->_got_moves) {
-			explore_new_move(buffer, eval, quiescence_depth, network);
+			explore_new_move(buffer, eval, alpha, beta, gamma, quiescence_depth, network);
 		}
 
 		// EXPLORATION D'UN COUP DÉJÀ EXPLORÉ
 		else {
-			explore_random_child(buffer, eval, beta, k_add, quiescence_depth, network);
+			explore_random_child(buffer, eval, alpha, beta, gamma, quiescence_depth, network);
 		}
 
 		iterations--;
@@ -146,7 +146,7 @@ void Node::grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add
 }
 
 // Fonction qui explore un nouveau coup
-void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_depth, Network* network) {
+void Node::explore_new_move(Buffer* buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network) {
 
 	// On prend le premier coup non exploré
 	const Move move = get_first_unexplored_move(true);
@@ -268,14 +268,21 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 
 	// Tous les coups ont-ils déjà été explorés?
 	// FIXME: faut-il seulement évaluer si tous les coups ont été entièrement explorés?
-	//bool all_moves_explored = get_fully_explored_children_count() == _board->_got_moves;
-	bool all_moves_explored = (children_count() + !already_explored) == _board->_got_moves;
+	bool all_moves_explored = (get_fully_explored_children_count() + !already_explored) == _board->_got_moves;
+	//bool all_moves_explored = (children_count() + !already_explored) == _board->_got_moves;
 
 	// Met à jour l'évaluation du plateau
+
+	// TODO: use
+	//get_move_scores(alpha, beta);
+
+	// TEST: R3r1k1/1P3p2/3p2p1/5n2/4rb2/2P1p2P/4N3/2BK4 b - - 1 35
+	//2R1r1k1/1P3p2/3p2p1/5nb1/4r3/2P1p2P/4N3/2BK4 b - - 3 36
 
 	// Tous les coups ont été explorés, donc on met à jour l'évaluation du plateau avec le meilleur coup
 	if (all_moves_explored) {
 		Evaluation best_eval = Evaluation();
+		_is_stand_pat_eval = false;
 
 		for (auto const& [move_2, child_2] : _children) {
 			if (_board->_player ? child_2->_deep_evaluation > best_eval : child_2->_deep_evaluation < best_eval) {
@@ -292,16 +299,41 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 
 	}
 
+	// TEST
+	//if (true) {
+	//	Evaluation best_eval = Evaluation();
+
+	//	for (auto const& [move_2, child_2] : _children) {
+	//		if (!child_2->_fully_explored) {
+	//			continue;
+	//		}
+
+	//		if (_board->_player ? child_2->_deep_evaluation > best_eval : child_2->_deep_evaluation < best_eval) {
+	//			best_eval = child_2->_deep_evaluation;
+	//		}
+	//	}
+
+	//	// Il faut aussi regarder le coup qu'on vient d'explorer
+	//	if (_board->_player ? child->_deep_evaluation > best_eval : child->_deep_evaluation < best_eval) {
+	//		best_eval = child->_deep_evaluation;
+	//	}
+
+	//	_deep_evaluation = best_eval;
+
+	//}
+
 	// Tous les coups ne sont pas encore explorés, donc on met à jour l'évaluation du plateau avec le coup exploré
 	else {
 		if (_board->_player) {
 			if (child->_deep_evaluation._value > _deep_evaluation._value) {
 				_deep_evaluation = child->_deep_evaluation;
+				_is_stand_pat_eval = false;
 			}
 		}
 		else {
 			if (child->_deep_evaluation._value < _deep_evaluation._value) {
 				_deep_evaluation = child->_deep_evaluation;
+				_is_stand_pat_eval = false;
 			}
 		}
 	}
@@ -358,10 +390,10 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_dept
 }
 
 // Fonction qui explore dans un plateau fils pseudo-aléatoire
-void Node::explore_random_child(Buffer* buffer, Evaluator* eval, float beta, float k_add, int quiescence_depth, Network* network) {
+void Node::explore_random_child(Buffer* buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network) {
 
 	// Prend un fils aléatoire
-	const Move move = new_pick_random_child();
+	const Move move = pick_random_child(alpha, beta, gamma);
 	Node *child = _children[move];
 
 	if (child->_nodes >= _nodes) {
@@ -372,7 +404,7 @@ void Node::explore_random_child(Buffer* buffer, Evaluator* eval, float beta, flo
 	const int initial_child_nodes = child->_nodes;
 
 	// On explore ce fils
-	child->grogros_zero(buffer, eval, beta, k_add, 1, quiescence_depth, network); // L'évaluation du fils est mise à jour ici
+	child->grogros_zero(buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network); // L'évaluation du fils est mise à jour ici
 
 	// Met à jour l'évaluation du plateau
 	Evaluation best_eval = Evaluation();
@@ -398,215 +430,6 @@ void Node::explore_random_child(Buffer* buffer, Evaluator* eval, float beta, flo
 
 	// Augmente le nombre d'itérations
 	_iterations++;
-}
-
-// Fonction qui renvoie parmi une liste d'entiers, renvoie un index aléatoire, avec une probabilité variantes, en fonction de la grandeur du nombre correspondant à cet index
-Move Node::pick_random_child(const float beta, const float k_add) {
-	// FIXME: ajouter quelque chose comme l'évaluation relative pour choisir les coups plutôt que les évaluations brutes... sinon, dans les évaluations énormes, il regarde un seul coup...
-
-	const int color = _board->get_color();
-	auto n_children = static_cast<int>(children_count());
-
-	if (n_children <= 0) {
-		cout << "no children in pick_random_child" << endl;
-	}
-
-	// *** 1. ***
-	// 
-	// Evaluations des enfants (en fonction de la couleur)
-	double evaluations[100]{};
-
-	// Score moyen des enfants
-	float avg_scores[100]{};
-
-	// Coups
-	map<int, Move> children_moves;
-
-	int i = 0;
-	for (auto const& [move, child] : _children) {
-		evaluations[i] = color * child->_deep_evaluation._value;
-		avg_scores[i] = _board->_player ? child->_deep_evaluation._avg_score : 1 - child->_deep_evaluation._avg_score;
-		children_moves[i] = move;
-		i++;
-	}
-
-	//cout << "new: " << endl;
-	//print_array(l2, n_children);
-
-	// Plus les évaluations sont élevées, plus on veut regarder large (EXPERIMENTAL)
-	
-	// Facteur d'élargissement de la distribution
-	//double enlargement_factor = pow(log10(1.0 + abs(max_eval / 10)), 2.0) + 1.0;
-	// Re: diminuer les valeurs des checks? à voir...
-	// Re: augmenter la valeur des pièces?
-	//double enlargement_factor = 1.0 + abs(max_eval / 100);
-	if (_nodes <= 0) {
-		cout << "negative nodes???" << endl;
-	}
-
-	// Faut-il chercher plus large en finale?
-	//double enlargement_factor = (double)_nodes / (double)_iterations;
-	double enlargement_factor = pow((double)_nodes / (double)_iterations / (1 - _board->_adv + 0.5f), 0.1);
-	//double enlargement_factor = 1;
-	
-	// FIXME: quelle est la meilleure manière d'élargir?
-	// Réduire beta? Augmenter k_add? Les deux?
-	float beta_enlarged = beta / enlargement_factor;
-	float k_add_enlarged = k_add * enlargement_factor;
-
-	//cout << "eval: " << abs(max_eval) << ", enlargement factor: " << enlargement_factor << ", beta: " << beta << ", beta_enlarged: " << beta_enlarged << ", k_add: " << k_add << ", k_add_enlarged: " << k_add_enlarged << endl;
-
-	// Softmax sur les évaluations
-	softmax(evaluations, avg_scores, n_children, beta_enlarged, k_add_enlarged);
-
-	//print_array(l2, n_children);
-
-	// *** 2. ***
-	// Liste de pondération en fonction de l'exploration de chaque noeud (donne plus de poids aux noeuds moins explorés)
-	double pond[100]{};
-
-	i = 0;
-	for (auto const& [_, child] : _children) {
-		//if (_nodes < 0 || child->_nodes < 0)
-		//	cout << "negative nodes!!!!!!!!!!!!!" << endl;
-		//if (_nodes == 0 || child->_nodes == 0) {
-		//	cout << "0 nodes???" << endl;
-		//}
-		if (child->_iterations == 0) {
-			cout << "0 iterations???" << endl;
-		}
-		pond[i] = child->_chosen_iterations == 0 ? INT_MAX : static_cast<double>(_iterations) / static_cast<double>(child->_chosen_iterations);
-		i++;
-	}
-
-	//print_array(pond, n_children);
-
-	// On applique la pondération aux évaluations
-	nodes_weighting(evaluations, pond, n_children);
-
-	//print_array(l2, n_children);
-
-	// *** 3. ***
-	// Somme de toutes les valeurs
-	double sum = 0.0;
-
-	for (int i = 0; i < n_children; i++)
-	{
-		sum += evaluations[i];
-	}
-
-	// Choix du coup en fonction d'une valeur aléatoire
-	if (sum > LLONG_MAX) {
-		cout << "sum too big" << endl;
-	}
-
-	//rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2
-
-	// Choix initial du coup
-	const double rand_val = rand_double(0.0, sum);
-	double cumul = 0.0;
-
-	for (int k = 0; k < n_children; k++)
-	{
-		cumul += evaluations[k];
-
-		// Coup choisi
-		if (cumul >= rand_val) {
-			//cout << "move index: " << i << endl;
-			//cout << "move: " << _board->move_label(children_moves[i]) << endl;
-
-			_children.at(children_moves[k])->_chosen_iterations++;
-			
-			// S'il n'y a plus rien à explorer sur cette branche...
-			if (_children.at(children_moves[k])->_can_explore) {
-				return children_moves[k];
-			}
-			else {
-				//cout << "no more moves to explore" << endl;
-				break;
-			}
-		}
-	}
-
-
-	// Refait un choix des coups en fonction des branches explorables
-
-	double new_sum = 0.0;
-
-	for (int i = 0; i < n_children; i++)
-	{
-		if (_children.at(children_moves[i])->_can_explore) {
-			new_sum += evaluations[i];
-		}
-	}
-
-	if (new_sum == 0) {
-		cout << "no more moves to explore" << endl;
-		_can_explore = false;
-	}
-
-	const double new_rand_val = rand_double(0.0, new_sum);
-	if (new_rand_val > new_sum) {
-		cout << "???" << endl;
-	}
-
-	double new_cumul = 0.0;
-
-	for (int k = 0; k < n_children; k++)
-	{
-		if (_children.at(children_moves[k])->_can_explore) {
-			new_cumul += evaluations[k];
-
-			// Nouveau coup choisi
-			if (new_cumul >= new_rand_val) {
-				return children_moves[k];
-			}
-		}
-	}
-
-	if (_can_explore) {
-		cout << "first move chosen by default?" << endl;
-		print_array(evaluations, n_children);
-		cout << "sum: " << sum << ", rand: " << rand_val << endl;
-	}
-
-
-	return children_moves[0];
-}
-
-// Fait un softmax sur les evaluations
-void Node::softmax(double* evaluations, float* avg_scores, int size, const float beta, const float k_add) const {
-
-	// Constante multiplicative pour l'exponentielle
-	constexpr double r = 100000;
-
-	// Evaluation maximale
-	const double best_eval = *max_element(evaluations, evaluations + size);
-
-	// Score moyen maximal
-	const float best_avg_score = *max_element(avg_scores, avg_scores + size);
-
-
-	// Somme des exponentielles
-	double eval_sum = 0.0;
-
-	for (int i = 0; i < size; i++)
-		eval_sum += exp(beta * (evaluations[i] - best_eval));
-
-	// Constante de calcul
-	const double constant = beta * best_eval + log(eval_sum);
-
-
-	// Pour chaque évaluation
-	for (int i = 0; i < size; i++)
-	{
-		const double eval = evaluations[i];
-		const double avg_score = avg_scores[i];
-		const double adding = (avg_score == 0.0f) ? 0.0f : avg_score / best_avg_score;
-
-		// TODO *** formule à revoir
-		evaluations[i] = r * exp(beta * eval - constant) + k_add * adding;
-	}
 }
 
 // Fonction qui renvoie le fils le plus exploré
@@ -760,7 +583,7 @@ string Node::get_exploration_variants(bool main, bool quiescence) {
 				const bool new_quiescence = !quiescence && child_iterations == 0;
 
 				variants += (new_quiescence ? "(" : "") + to_string(_board->_moves_count) + (_board->_player ? ". " : "... ") + _board->move_label(move, true) + " " + child->get_exploration_variants(false, new_quiescence || quiescence) + (new_quiescence ? ")" : "") + "\n";
-				variants += "Eval: " + _board->evaluation_to_string(child->_deep_evaluation._value) + " | " + child->_deep_evaluation._wdl.to_string() + " | Score: " + score_string(child->_deep_evaluation._wdl) + "\n";
+				variants += "Eval: " + _board->evaluation_to_string(child->_deep_evaluation._value) + " (" + to_string(100 - (int)(100.0 * child->_deep_evaluation._uncertainty)) + "%) | " + child->_deep_evaluation._wdl.to_string() + " | Score: " + score_string(child->_deep_evaluation._avg_score) + "\n";
 
 				const int nodes = _nodes;
 				const int child_nodes = child->_nodes;
@@ -1116,6 +939,7 @@ int Node::get_total_nodes() const {
 void Node::evaluate_position(Evaluator* eval, bool display, Network * network, bool game_over_check) {
 	_board->evaluate(eval, display, network, game_over_check);
 	_deep_evaluation._value = _board->_evaluation;
+	_deep_evaluation._uncertainty = _board->_uncertainty;
 	_deep_evaluation._wdl = _board->_wdl;
 	_deep_evaluation._avg_score = _board->get_average_score();
 	_deep_evaluation._evaluated = true;
@@ -1124,7 +948,7 @@ void Node::evaluate_position(Evaluator* eval, bool display, Network * network, b
 }
 
 // Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
-Move Node::new_pick_random_child(const double alpha, const double beta, const double gamma) {
+Move Node::pick_random_child(const double alpha, const double beta, const double gamma) {
 	// TESTS
 	// 8/8/8/1r5p/2p4k/2Kb4/8/8 b - - 1 69 : tout égal quand tout gagne...
 	// r2qr1k1/3bbp1p/p2pn1p1/3QP3/3P4/3B1N2/1P1B1PPP/R3R1K1 w - - 1 24 : pareil
@@ -1153,7 +977,7 @@ Move Node::new_pick_random_child(const double alpha, const double beta, const do
 		int child_iterations = max(child->_chosen_iterations, child->_iterations);
 
 		// FIXME *** gamma devrait changer en fonction de l'incertitude: plus on est incertain, plus on explore large?
-		const double new_gamma = gamma / (1.00f - _board->_uncertainty / 2.0f);
+		const double new_gamma = gamma / (1.00f - _board->_uncertainty / 2.0f) / (1.00f - _board->_adv / 2.0f);
 		//cout << "gamma: " << gamma << ", uncertainty: " << _board->_uncertainty << ", new_gamma: " << new_gamma << endl;
 
 		double exploration_score = child_iterations == 0 ? _iterations * 2 : pow((double)_iterations / (double)child_iterations, new_gamma);
@@ -1161,9 +985,37 @@ Move Node::new_pick_random_child(const double alpha, const double beta, const do
 		//double exploration_score = child_iterations == 0 ? _iterations * 2 : pow(pow((double)_iterations, 1 / test) / pow((double)child_iterations, 1 / test), test);
 
 		// Score final
-		const double score = move_score * exploration_score;
+		double score = move_score * exploration_score;
 
 		// rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2 : il doit garder Dh4 comme 99% de chosen, mais regarder les autres normalement...
+
+		// Si tous les coups n'ont pas été regardés: augmente beaucoup le score
+		//if (child->get_fully_explored_children_count() < child->_board->_got_moves) {
+		//	score *= 10.0;
+		//}
+
+		if (child->_is_stand_pat_eval) {
+			Evaluation best_eval = Evaluation();
+
+			for (auto const& [_, child2] : child->_children) {
+				if (!child2->_fully_explored) {
+					continue;
+				}
+				if (child->_board->_player ? child2->_deep_evaluation > best_eval : child2->_deep_evaluation < best_eval) {
+					best_eval = child2->_deep_evaluation;
+				}
+			}
+
+			const float multiplier = 1.0 + abs(best_eval._value - child->_deep_evaluation._value) / 100.0;
+
+			//cout << "move: " << _board->move_label(move) << " | move_score: " << move_score << " | exploration_score : " << exploration_score << " moves explored " << child->get_fully_explored_children_count() << "/" << (int)child->_board->_got_moves << " = score : " << score << " | stand pat : " << child->_deep_evaluation._value << " | best eval : " << best_eval._value << " | multiplier : " << multiplier << endl;
+
+			//score *= 10.0;
+			score *= multiplier;
+		}
+		// Utiliser la différence d'évaluation entre les coups et le stand pat?
+
+		//cout << "move: " << _board->move_label(move) << " | move_score: " << move_score << " | exploration_score : " << exploration_score << " | fully_explored : " << child->get_fully_explored_children_count() << " / " << child->children_count() << " = score : " << score << endl;
 
 		// Si le score est meilleur
 		if (score > best_score) {
@@ -1177,6 +1029,8 @@ Move Node::new_pick_random_child(const double alpha, const double beta, const do
 			move_to_play = move;
 		}
 	}
+
+	//cout << "best move: " << _board->move_label(best_move) << " | best score: " << best_score << endl << endl;
 
 	// Meilleur coup global
 	_children.at(best_move)->_chosen_iterations++;
@@ -1214,29 +1068,38 @@ map<Move, double> Node::get_move_scores(const double alpha, const double beta) {
 
     map<Move, double> move_scores;
 
-	const double min_constant = 1E-100;
-
 	// Regarde chaque coup
 	for (auto const& [move, child] : _children) {
-
-		// Facteur 1: évaluation
-		double eval_score = child->_deep_evaluation._value * color;
-		eval_score = exp(alpha * (eval_score - max_eval)) + min_constant;
-
-		// Facteur 2: score moyen
-		const double avg_score = _board->_player ? child->_deep_evaluation._avg_score : 1 - child->_deep_evaluation._avg_score;
-		const double score_score = exp(-beta * (1 - avg_score) / (1 - max_avg_score) * max_avg_score / avg_score) + min_constant;
-
-		//cout << "eval: " << eval_score << ", score: " << score_score << endl;
-
-		// Facteur 3: rajout quasi constant? à tester...
-		const double adding = (avg_score == 0.0f) ? 0.0f : avg_score / max_avg_score * 0.005f;
-
-		// Score final
-		const double score = eval_score * score_score + adding;
-
-		move_scores[move] = score;
+		move_scores[move] = child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player);
 	}
 
 	return move_scores;
+}
+
+// Fonction qui renvoie la valeur du noeud
+double Node::get_node_score(const double alpha, const double beta, const int max_eval, const double max_avg_score, const bool player) const {
+
+	const double min_constant = 1E-100;
+	const double add_constant = 0.005f;
+	//const double add_constant = 0.000f;
+
+	int color = player ? 1 : -1;
+
+	// Facteur 1: évaluation
+	double eval_score = _deep_evaluation._value * color;
+	eval_score = exp(alpha * (eval_score - max_eval)) + min_constant;
+
+	// Facteur 2: score moyen
+	const double avg_score = player ? _deep_evaluation._avg_score : 1 - _deep_evaluation._avg_score;
+	const double score_score = exp(-beta * (1 - avg_score) / (1 - max_avg_score) * max_avg_score / avg_score) + min_constant;
+
+	//cout << "eval: " << eval_score << ", score: " << score_score << endl;
+
+	// Facteur 3: rajout quasi constant? à tester...
+	const double adding = (avg_score == 0.0f) ? 0.0f : avg_score / max_avg_score * add_constant;
+
+	// Score final
+	const double score = eval_score * score_score + adding;
+
+	return score;
 }

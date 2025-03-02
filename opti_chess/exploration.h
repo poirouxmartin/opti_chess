@@ -24,6 +24,8 @@ struct Evaluation {
 	// Score moyen
 	float _avg_score;
 
+	// TODO *** add total value (-> move score?)
+
 	// Evalué?
 	bool _evaluated = false;
 
@@ -129,6 +131,9 @@ public:
 	// Noeud initialisé?
 	bool _initialized = false;
 
+	// La valeur d'évaluation est le standpat
+	bool _is_stand_pat_eval = true;
+
 	// A rajouter : évaluation?, nombre de noeuds?...
 
 	// Constructeurs
@@ -158,20 +163,13 @@ public:
 	void init_node();
 
 	// Nouveau GrogrosZero
-	void grogros_zero(Buffer* buffer, Evaluator* eval, float beta, float k_add, int nodes, int quiescence_depth, Network* network = nullptr);
+	void grogros_zero(Buffer* buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int nodes, int quiescence_depth, Network* network = nullptr);
 
 	// Fonction qui explore un nouveau coup
-	void explore_new_move(Buffer* buffer, Evaluator* eval, int quiescence_depth, Network* network = nullptr);
+	void explore_new_move(Buffer* buffer, Evaluator* eval, double alpha, double beta, double gamman, int quiescence_depth, Network* network = nullptr);
 
 	// Fonction qui explore dans un plateau fils pseudo-aléatoire
-	void explore_random_child(Buffer* buffer, Evaluator* eval, const float beta, const float k_add, int quiescence_depth, Network* network = nullptr);
-
-	// Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
-	[[nodiscard]] Move pick_random_child(const float beta, const float k_add);
-
-	// Fait un softmax sur les evaluations
-	// TODO *** rendre statique (et faire pareil pour bon nombre de fonctions...)
-	void softmax(double* evaluations, float* avg_scores, int size, const float beta, const float k_add) const;
+	void explore_random_child(Buffer* buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr);
 
 	// Fonction qui renvoie le fils le plus exploré
 	[[nodiscard]] Move get_most_explored_child_move(bool decide_by_eval = true);
@@ -214,10 +212,13 @@ public:
 	void evaluate_position(Evaluator* eval, bool display = false, Network* network = nullptr, bool game_over_check = false);
 
 	// Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
-	Move new_pick_random_child(const double alpha = 0.0075, const double beta = 2.5, const double gamma = 0.65);
+	Move pick_random_child(const double alpha, const double beta, const double gamma);
 
 	// Fonction qui renvoie le score d'un coup. Alpha augmente l'importance de l'évaluation, et beta augmente l'importance du winrate
 	map<Move, double> get_move_scores(const double alpha, const double beta);
+
+	// Fonction qui renvoie la valeur du noeud
+	double get_node_score(const double alpha, const double beta, const int max_eval, const double max_avg_score, const bool player) const;
 
 	// Fonctions à rajouter: destruction des fils et de soi...
 
