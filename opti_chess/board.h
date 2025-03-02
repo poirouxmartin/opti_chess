@@ -460,9 +460,6 @@ public:
 	// Fonction qui joue le son d'un coup
 	void play_move_sound(Move) const;
 
-	// Fonction qui calcule et renvoie la mobilité des pièces
-	[[nodiscard]] int get_piece_mobility(bool legal = false) const;
-
 	// Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
 	void reset_board(bool display = false);
 
@@ -671,7 +668,7 @@ public:
 	bool validate_nodes_count_at_depth(string fen, int depth, vector<int> expected_nodes, bool display = false);
 
 	// Fonction test: nouvelle mobilité des pièces
-	[[nodiscard]] int get_new_piece_mobility(bool display = false) const;
+	[[nodiscard]] int get_piece_mobility(bool display = false) const;
 
 	// Fonction qui renvoie si le pion peut bouger
 	[[nodiscard]] bool pawn_can_move(uint_fast8_t row, uint_fast8_t col, bool color) const;
@@ -702,6 +699,15 @@ public:
 
 	// Fonction qui renvoie la valeur des pièces non défendues
 	[[nodiscard]] int get_unprotected_pieces(bool color) const;
+
+	// Fonction qui renvoie si le roi est dans le carré du pion
+	[[nodiscard]] bool in_king_square(Pos pos, bool color);
+
+	// Fonction qui renvoie si on est en finale de pions
+	[[nodiscard]] bool is_pawn_endgame() const;
+
+	// Fonction qui renvoie si le joueur a encore des pièces (autres que roi et pions)
+	[[nodiscard]] bool has_pieces(bool color) const;
 
 	// TODO: génération plus rapide des coups
 
@@ -783,4 +789,4 @@ string piece_name(uint_fast8_t piece);
 float get_average_score(WDL wdl, float draw_score = 0.5f);
 
 // Fonction qui renvoie le score d'un WDL avec une précision de 0.01
-string score_string(WDL wdl, float draw_score = 0.5f);
+string score_string(float avg_score);
