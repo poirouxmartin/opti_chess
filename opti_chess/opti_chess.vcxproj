@@ -264,6 +264,7 @@
     <ClInclude Include="neural_network.h" />
     <ClInclude Include="board.h" />
     <ClInclude Include="player.h" />
+    <ClInclude Include="tests.h" />
     <ClInclude Include="time_tests.h" />
     <ClInclude Include="useful_functions.h" />
     <ClInclude Include="windows_tests.h" />

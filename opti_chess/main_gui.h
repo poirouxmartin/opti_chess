@@ -149,12 +149,12 @@ inline int main_ui() {
 			//main_GUI._board.validate_nodes_count_at_depth("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 5, { 1, 48, 2039, 97862, 4085603, 193690690 }, true);
 			//main_GUI._board.validate_nodes_count_at_depth("", 5, { }, true);
 
-			//main_GUI.grogros_analysis(1);
+			main_GUI.grogros_analysis(1);
 
 			//main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, 6);
 			//main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, 6, -2147483647, 2147483647, nullptr, true, -1000);
 
-			main_GUI._root_exploration_node->_board->switch_colors();
+			//main_GUI._root_exploration_node->_board->switch_colors();
 			//main_GUI._root_exploration_node->_board->get_king_squares_distance(true).print();
 			//main_GUI._root_exploration_node->_board->get_king_squares_distance(false).print();
 		}
@@ -355,49 +355,6 @@ inline int main_ui() {
 			main_GUI._game_tree.promote_current_variation();
 			//cout << main_GUI._game_tree._current_node->_move_label << endl;
 			main_GUI._pgn = main_GUI._game_tree.tree_display();
-		}
-
-
-		// Modification des paramètres de recherche de GrogrosZero
-		IsKeyPressed(KEY_KP_ADD) && (main_GUI._beta *= 1.1f);
-		IsKeyPressed(KEY_KP_SUBTRACT) && (main_GUI._beta /= 1.1f);
-		IsKeyPressed(KEY_KP_MULTIPLY) && (main_GUI._k_add *= 1.25f);
-		IsKeyPressed(KEY_KP_DIVIDE) && (main_GUI._k_add /= 1.25f);
-
-		// R-Return - Reset aux valeurs initiales
-		if (IsKeyPressed(KEY_KP_ENTER)) {
-			main_GUI._beta = 0.05f;
-			main_GUI._k_add = 25.0f;
-		}
-
-		// 1 - Recherche en profondeur extrême
-		if (IsKeyPressed(KEY_ONE)) {
-			main_GUI._beta = 0.5f;
-			main_GUI._k_add = 0.0f;
-		}
-
-		// 2 - Recherche en profondeur
-		if (IsKeyPressed(KEY_TWO)) {
-			main_GUI._beta = 0.2f;
-			main_GUI._k_add = 10.0f;
-		}
-
-		// 3 - Recherche large
-		if (IsKeyPressed(KEY_THREE)) {
-			main_GUI._beta = 0.01f;
-			main_GUI._k_add = 100.0f;
-		}
-
-		// 4 - Recherche de mat
-		if (IsKeyPressed(KEY_FOUR)) {
-			main_GUI._beta = 0.005f;
-			main_GUI._k_add = 2500.0f;
-		}
-
-		// 5 - Recherche de victoire en endgame
-		if (IsKeyPressed(KEY_FIVE)) {
-			main_GUI._beta = 0.05f;
-			main_GUI._k_add = 5000.0f;
 		}
 
 		// Keypads - met le temps (en minutes)

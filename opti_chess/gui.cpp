@@ -962,7 +962,7 @@ void GUI::grogros_analysis(int iterations) {
 
 	//cout << "IPS: " << _root_exploration_node->get_ips() << ", exploring " << iterations_to_explore << " nodes" << endl;
 
-	_root_exploration_node->grogros_zero(&monte_buffer, _grogros_eval, _beta, _k_add, iterations == -1 ? iterations_to_explore : iterations, _quiescence_depth); // TODO: nombre de noeuds à paramétrer
+	_root_exploration_node->grogros_zero(&monte_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations == -1 ? iterations_to_explore : iterations, _quiescence_depth); // TODO: nombre de noeuds à paramétrer
 	_update_variants = true;
 }
 
@@ -1311,7 +1311,7 @@ void GUI::draw()
 	slider_text(_global_pgn, _text_size / 2, _board_padding_y + _board_size + _text_size * 2, _screen_width - _text_size, _screen_height - (_board_padding_y + _board_size + _text_size * 2) - _text_size / 3, _text_size / 3, &_pgn_slider, _text_color);
 
 	// Analyse de Grogros
-	string monte_carlo_text = static_cast<string>(_grogros_analysis ? "STOP GrogrosZero-Auto (CTRL-H)" : "RUN GrogrosZero-Auto (CTRL-G)") + "\nCONTROLS (H)" + "\n\nSEARCH PARAMETERS\nbeta: " + to_string(_beta) + "\nk_add: " + to_string(_k_add) + "\nq_depth: " + to_string(_quiescence_depth) + "\nexplore checks: " + (_explore_checks ? "true" : "false");
+	string monte_carlo_text = static_cast<string>(_grogros_analysis ? "STOP GrogrosZero-Auto (CTRL-H)" : "RUN GrogrosZero-Auto (CTRL-G)") + "\nCONTROLS (H)" + "\n\nSEARCH PARAMETERS\nalpha: " + to_string(_alpha) + "\nbeta: " + to_string(_beta) + "\ngamma : " + to_string(_gamma) + "\nq_depth : " + to_string(_quiescence_depth) + "\nexplore checks : " + (_explore_checks ? "true" : "false");
 	
 	// S'il y a eu une recherche
 	if (_root_exploration_node->children_count() && _drawing_arrows) {
@@ -1353,7 +1353,7 @@ void GUI::draw()
 		int max_depth = _root_exploration_node->get_main_depth();
 		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\nTime: " + clock_to_string(_root_exploration_node->_time_spent, true) +
 			"\nDepth: " + to_string(max_depth) + "\nEval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) +
-			eval + "\n" + _wdl.to_string() + "\nScore: " + score_string(_wdl) + "\nNodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) +
+			eval + "\nConfidence: " + to_string(100 - (int)(100 * _root_exploration_node->_deep_evaluation._uncertainty)) + "%\n" + _wdl.to_string() + "\nScore: " + score_string(_root_exploration_node->_deep_evaluation._avg_score) + "\nNodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) +
 			" (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 0.01) / 1000.0)) + "N/s)" +
 			"\nIterations: " + int_to_round_string(_root_exploration_node->_iterations) + " (" +
 			int_to_round_string(_root_exploration_node->_iterations / (static_cast<float>(_root_exploration_node->_time_spent + 0.01) / 1000.0)) + "I/s)";

@@ -91,9 +91,14 @@ public:
 	TextBox _black_time_text_box;
 
 	// Paramètres pour la recherche de Monte-Carlo
-	float _beta = 0.05f;
-	//float _k_add = 100.0f;
-	float _k_add = 5.0f;
+	//double _alpha = 0.0075;
+	//double _beta = 2.5;
+	//double _gamma = 0.65;
+	double _alpha = 0.015;
+	double _beta = 3.0;
+	double _gamma = 0.5;
+
+	// Profondeur de la recherche
 	int _quiescence_depth = 6;
 
 	bool _explore_checks = true; // FIXME? faut-il vraiment explorer les échecs?

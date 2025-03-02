@@ -482,7 +482,6 @@ Devrait être plus confiant quand l'éval matérielle et non-matérielle sont dans l
 
 Parfois il regarde de manière trop diffuse les coups. parfois il en regarde qu'un seul...
 4rrk1/pppb4/2nbp1q1/5pBp/1P1P2p1/2PN2P1/P2Q1PBP/R3R1K1 w - - 1 22 : pourquoi il regarde tous les coups de la même manière?
-rnbqkb1r/ppp2ppp/7n/4N3/2BPp3/8/PPP2PPP/RNBQK2R b KQkq d3 0 5 : ici il favorise Cc6 plutôt que Cd7 au départ, car le WR est mieux de 1%... alors que l'éval est 0.70 moins bonne...
 rnb3r1/ppp2k1p/1b1p1N2/4P3/1P6/2P3P1/P3PP1P/RN1QK2R w KQ - 2 13 : que 76% de confiance??
 r1b2bkr/ppp4p/5Q2/3N4/8/8/PPP3PP/R5K1 w - - 1 20 : Tf1 devrait booster la confiance
 
@@ -516,6 +515,7 @@ rn5r/pp2k1pp/1b1p4/4p3/2B1Ppb1/4nN2/PP2Q1PP/3RK2R w - - 0 16 : noirs gagnants ->
 7R/5k2/p3p1b1/3pB1p1/3P2P1/qP3P2/2r5/4Q1K1 w - - 13 40 : 800 attacking power pour les blancs?..
 R7/5k2/p3p1b1/3pB1p1/3P2P1/1P3P2/1qr5/4Q1K1 w - - 15 41 : les noirs ont plus d'attaque que les blancs...
 5r2/6pk/p6p/1b1R4/8/1P3P2/3Q2PP/q5BK b - - 2 32 : roi blanc faible -> quasi draw
+3b1r1k/3P2pp/4K3/p7/P2q3P/5q2/1P4P1/6q1 b - - 0 45 : xD évaluation à +222000... et Te8 perd quand-même
 
 ********************************************************************************
 TODO *** utilisation de la valeur réelle des coups plutôt que leur évaluation
@@ -540,10 +540,39 @@ Il est pourri, c'est chiant.. faut vraiment mettre des tests pour le rendre rigo
 Unprotected pieces!!
 Backrank!!
 Attacking power!!
-Quand on est en roques opposés, favoriser les attaques sur le roi adverse? -> ++ pour les storm etc..?
 3rr3/1kpn1p1p/p1p1qbb1/2Pp2p1/Q2Pp3/P1N1P1NP/1P1B1PP1/1R2R1K1 w - - 1 24 : b4?? PAWN STORM = 0... ???
 rr6/1kpn1p1p/p1p1qbb1/2Pp2p1/3Pp3/P1N1P2P/1PQBNPP1/1R2R1K1 w - - 5 26 : a4 ou b4 les coups
 Montrer la confiance de la deep evaluation...
+Revoir un peu les bonus d'activité en début de partie... différence entre activité court terme et long terme... parfois y'a des gros bonus alors que 2 coups plus tard y'a plus rien...
+Faire en sorte que ça préfère e5 ou c5 plutôt que d5...
+Il faut que les positions symétriques soient considérées comme moins incertaines... e4/e5, y'a pas beaucoup de diff -> incertitude basse...
+Pour résoudre le souci des Cc3 dans les ouvertures à d4: fous -> bonus si ... , cavaliers -> bonus pour les cases tapées faibles, ou non controllées au centre? à revoir les bonus...
+Candidats pions passés à rajouter pour donner les plans d'attaque de majorité
+rn1qkb1r/p4ppp/4pn2/1pp5/3Pb3/1Q3NP1/PP2PPBP/RNB1K2R b KQkq - 4 10 : la protection qui change en fonction des roques... à voir si on porte ça sur tout la faiblesse long terme? car le roi blanc est loin d'être faible
+Revoir l'activité... même si y'a pas beaucoup de coups possibles, une pièce peut être forte si elle tape sur une faiblesse...
+Réduire la valeur des weak squares si la case est beaucoup controllée?
+Confiance -> 100% si plus de pièces??
+Ajouter dans l'endgame: fous de couleurs opposées, finales de tours.. de pions...
+Il doit arrêter de faire d4 (Cf6) et e4! ça donne un pion!...
+Candidats pions passés x carré du pion
+En finales de pions, faudrait regarder plus large?
+Mating nets!! (même si aucun échec est menacé)
+Cases faibles proches du roi -> rajoute à la faiblesse long terme (encore plus si pas controllées par le fou du fianchetto...)
+Case faible notamment plus faible si juste devant le pion adverse. Moins faible si derrière la structure adverse
+r1bqkb1r/pp3ppp/2np1n2/1Bp1p3/4P3/2N2N2/PPPP1PPP/R1BQ1RK1 w kq e6 0 6 : faut pas prendre c6!! c'est con, ça rend la case d5 et le centre...
+2rqr1k1/p1bnnpp1/2p1p1p1/P1NpP3/Q2P4/B1P4P/4BPP1/RR4K1 w - - 5 22 : Cb7?? c'est juste une dame en 1
+Re-buff les bonus qui rapprochent du roque?
+
+!!!!!!!!!!!!
+REGLER ALGO:
+R3r1k1/1P3p2/3p2p1/5nb1/4r3/2P1p2P/4N3/2BK4 w - - 2 36 : ici y'a Tc8... il le considère pas comme bon pendant longtemps car il n'a pas regardé toutes les réponses adverses (alors qu'aucune n'est bonne)
+r4rk1/ppp2ppp/2nq1b2/2np4/2P5/2NBQ2P/PP1B1PP1/R3R1K1 b - - 2 15 : ici, d4 gagne sur le champ, pareil...
+TESTER: forcer une profondeur 2 min pour tous les coups?
+!!!!!!!!!!!!
+
+TODO *** Cases faibles proches du roi:
+rn1qkb1r/ppp2ppp/5n2/3pp3/6b1/3PPNP1/PPP2PBP/RNBQ1RK1 w kq - 0 1 vs rn1qkb1r/ppp2ppp/5n2/3pp3/6b1/1B1PPNP1/PPP2P1P/RNBQ1RK1 w kq - 0 1
+rn1q1rk1/ppp1bppp/5n2/3pp3/P5b1/N2PPNP1/1PP2PBP/R1BQR1K1 w - - 0 1 vs rn1q1rk1/ppp1bppp/5n2/3pp3/P5b1/NB1PPNP1/1PP2P1P/R1BQR1K1 w - - 0 1
 
 
 Il faut s'assurer que pour une évaluation donnée (disons +100 matériel, +100 activité), que le gain d'activité n'augmente JAMAIS l'incertitude au point de réduire le WR...
@@ -553,7 +582,42 @@ rnbq2nr/1p3kpp/p4p2/2b1p3/3pP3/3B1N2/PPP1NPPP/R1BQ1RK1 w - - 2 10 : il regarde R
 
 r2q1rk1/pbp1bppp/1p2pn2/8/3P4/3BBN2/PPP1QPPP/R4RK1 b - - 2 11 vs r2q1rk1/pbp1bppp/1p2pn2/8/3P4/3BBN2/PPP1QPPP/1K1R3R b - - 3 11
 
-
+rn2k2r/1b1p1p1p/p1q4B/Pp2pN2/4n3/2P3P1/1P4BP/RN2Q2K w - - 0 19 : Dxe4! vérifier la quiescence...
+1r1q1rk1/p1p2pp1/3b1n1p/3b4/1P1N3B/2P5/P4PPP/RN1QR1K1 b - b3 0 14 : le fou est mieux en a8 que b7 ici
+r1k4r/pppb1ppp/2p2n2/6B1/4P3/2P2P2/P1P3PP/2KR1B1R w - - 3 12 : mieux vaut garder le fou f6 ici
+r4rk1/p5pp/2pp3q/2p1p3/4Pp2/P2P1N1b/1PP1QP2/1N2RRK1 w - - 3 19 : les blancs se font mater
+2Q3nk/5p1q/4rP1p/7P/2P5/3P4/5RPK/8 w - - 0 47 : Dxe6!!
+r5nk/5p1q/1Q2nP1p/p6P/8/2PP2R1/1P3RP1/7K b - - 0 39 : la dame noire n'a pas de cases où aller... le cavalier en g8 non plus. et le pion en f6 est une vraie épine
+3r1r2/2p1npk1/1p2q1pp/p3p3/n1N1P2N/2PP1R2/1P2Q1PP/5R1K w - - 0 23 : Cf5!!
+rnb2qkr/pppp4/5B2/8/3P4/6b1/PPP4p/RN1Q1R1K w - - 1 6 : c'est le roi noir qui est faible. Le pion h2 protège le roi blanc. Le fait qu'il soit sur le bord aussi?
+r3r1k1/ppp2ppp/2nq4/4p3/2P3b1/3PPN2/PP2B1PP/R2QR1K1 b - - 0 13 : ici, noirs gagnants... pions très faible en e3
+2r2rk1/1p4p1/p3p3/qn2PpP1/2pP1P2/2P5/PPQ5/2KR1R2 w - - 1 28 : g6 créé un mating net sur le roi!
+8/8/8/2K2kPp/5P2/1P6/8/8 w - - 1 48 : Rd4 seul coup qui gagne
+2rr2k1/1p2bp1p/pq2bpp1/2pn4/2N1N3/PP1PPB2/1Q3PPP/2R2RK1 b - - 0 1 : noirs gagnants
+8/8/3P1pp1/p4p1p/P1K2P1P/6k1/8/8 b - - 0 43 : carré du pion!!! blancs complètement gagnants
+8/1p3pk1/p5p1/4qp1p/2Q4P/1P2P1P1/P4PK1/8 w - - 0 32 : Dd4!! il faut faire...
+8/1p3pk1/p4qp1/4bp1p/2Q4P/1P2PNP1/P4PK1/8 b - - 0 30 : plutôt égal, mais pas mieux aux noirs... les pions blancs sur cases noires bloquent bien le fou..
+8/6pk/2R4p/8/2K3P1/7P/4r3/8 b - g3 0 40 : Tc2 gagne
+8/7p/5K2/1pkr1P2/4R3/8/P7/8 w - - 1 58 : Te5!! et finale de pions largement gagnante. Faire pions passés++ en finales de pions? ou carré du roi?
+1k6/2r2R2/8/p3p3/4P2P/P4P2/5K2/8 w - - 1 50 : beaucoup plus simple de gagner après Txc7... finale de pion évidente
+rnbqkbnr/ppp1p1pp/3p4/5P2/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3 : stop le greed, faut faire Dh5+!
+5k2/7R/8/6R1/P2rP3/q1N5/2K5/8 w - - 1 50 : blancs mieux......
+rn1qkb1r/ppp2ppp/4pn2/3p1b2/2PP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 2 5 : il regarde jamais les coups genre Db3, alors que c'est un bon coup... (développement de la dame + attaque b7 faible)
+rn1q1rk1/1pp3pp/2bbp3/5p2/3P4/P1NQPN2/3B1PPP/R4RK1 w - - 2 18 : mieux aux noirs mais pas gagnant!
+r5k1/1pR2ppb/7p/1r1pn3/8/P3P1PP/3N1PB1/R5K1 w - - 1 24 : blancs mieux mais pas gagnants... la tour en b5 n'est pas sur une colonne ouverte, mais reste très active... (si on retire le pion b7, ça va augmenter la valeur de la tour? bof...)
+R3r1k1/1P3p2/3p2p1/5n2/4rb2/2P1p2P/4N3/2BK4 b - - 1 35 : Fh2 seul coup (Tc8 est menacé)
+8/p1rq1pk1/R1pb2p1/3p3p/QP1Pp1bP/P3B1P1/4PPB1/6K1 w - - 1 26 : blancs mieux. faiblesse en c6
+1k1r2nr/pp6/2pbb1p1/P3p2p/3q1p2/2NP4/1PP1QPPP/RNB1R1K1 w - h6 0 18 : la dame noire est trap
+r3k2r/pp2nppp/2n1b3/1B2N3/3q4/2N4P/PPPP2P1/R1BQK2R b kq - 2 11 : faut prendre e5!! pas roquer...
+rnbqk1nr/ppp2ppp/8/2bpp3/8/1P4P1/PBPPPPBP/RN1QK1NR b KQkq - 2 4 : faut pas faire d4 ici... :(
+r2q1rk1/1pp2p1p/p3nbp1/4p3/4N3/2P2P1Q/PPB2P1P/2KR2R1 b - - 2 19 : king safety.. ???
+r3k2r/p2b1ppp/2nQp3/1pB1N3/8/1B6/P3KPPP/7q b kq - 1 17 : revoir king safety: mat pour les blancs
+r2q1rk1/pp2bpp1/4b2p/2pn4/2Bp4/3P1NBP/PPP2PP1/R2Q1RK1 w - - 2 14 : square controls meilleur pour les noirs?? les blancs controlent e4 et c4 quand même...
+r1bq1rk1/pp2bpp1/7p/2pn4/2Bp1B2/3P1N1P/PPP2PP1/R2Q1RK1 w - - 0 13 : le cavalier est pas si fort en d5 (il tape dans des cases controllées...) -> faut pas échanger le fou pour ça
+2r2rk1/3n1ppp/1p2p3/p2pP3/P2N3q/2PQ4/1P3PPP/R3R1K1 w - - 0 23 : Te3 est le bon plan. elle sera plus active devant les pions que en e1
+5rk1/p3pp1p/2Q3p1/8/8/1Q2n2P/P2q1bP1/2R4K w - - 2 34 : Dcc3 seul coup qui gagne... 2 dames ça se marche dessus.. il faut les échanger
+r4rk1/p2nppbp/5qp1/2pP4/5B2/2PQ4/P3NPPP/1R3RK1 w - - 1 21 : petit avantage blanc, mais loin d'être gagnant... activité des blancs un peu surévaluée?
+r1b1kb1r/p4ppp/1pn1p3/2p5/2P1N3/5N2/PPP2PPP/R1BR2K1 w kq - 0 10 : finale meilleure aux noirs...
 b2r2k1/2p3pn/p7/3p2Pp/2P4P/2N1B2q/P3Q3/5RK1 w - - 2 32 : le roi blanc est foutu.. pourquoi protection est la même pour les deux, alors que les noirs ont un pion en g7, et les blancs ont leur pion en g5??
 3r2k1/pp1Q1p1p/3r1p2/4pb2/3P4/P4P2/P3N1PP/2RR2K1 b - - 0 19 : ici on veut prendre de la tour 8, car la tour est plus active en d6
 2rq1rk1/pp2bppp/2b1pn2/3p4/2pP1B2/2P1P3/PPBN1PPP/R2QR1K1 b - - 3 12 : comment faire comprendre qu'il faut jouer du côté où pointe la structure? ici b5 est le meilleur coup... sinon la structure se fait attaquer...
