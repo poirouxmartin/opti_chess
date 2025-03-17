@@ -685,6 +685,10 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha, int 
 	//cout << "depth: " << depth << endl;
 	//rnbqkbnr/pp2pppp/2p5/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3 : ????
 
+	// 4r3/4b1p1/p2B2k1/7p/1p4p1/1P6/P1P1RPP1/5K2 b - - 3 40 : pas de quiescence???
+
+	// r1bqk2r/ppp2ppp/1b6/1P1nP3/2B5/5P2/P5PP/RNBQK1NR b KQkq - 0 10
+
 	// On a au moins évalué le plateau du noeud
 	if (_nodes > 0) {
 		//cout << "quiescence nodes from already explored:" << _nodes << endl;
@@ -706,6 +710,7 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha, int 
 
 	// Evalue la position
 	if (!_static_evaluation._evaluated) {
+		//string test = _board->to_fen();
 		evaluate_position(eval, false, network, true);
 	}
 	else {
@@ -786,16 +791,24 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha, int 
 		}
 		else {
 			// Si c'est une capture
-			if (_board->_array[move.i2][move.j2] != none) {
+			if (_board->_array[move.end_row][move.end_col] != none) {
 				should_explore = true;
 			}
+
+			// Attention ! En passant est aussi une capture
+			else if (is_pawn(_board->_array[move.start_row][move.start_col]) && move.start_col != move.end_col) {
+				should_explore = true;
+			}
+
 			// Si c'est un roque (EXPÉRIMENTAL)
-			//else if ((_board->_array[move.i1][move.j1] == 6 && abs(move.j1 - move.j2) == 2) || (_board->_array[move.i1][move.j1] == 12 && abs(move.j1 - move.j2) == 2)) {
-			//	should_explore = true;
-			//}
+			else if (is_king(_board->_array[move.start_row][move.start_col]) && abs(move.start_col - move.end_col) == 2) {
+			//else if (is_king(_board->_array[move.i1][move.j1]) && (abs(move.j1 - move.j2) == 2 || true)) {
+				should_explore = true;
+			}
+
 			else {
 				// Si c'est une promotion
-				if ((_board->_array[move.i1][move.j1] == w_pawn && move.i2 == 7) || (_board->_array[move.i1][move.j1] == b_pawn && move.i2 == 0)) {
+				if ((_board->_array[move.start_row][move.start_col] == w_pawn && move.end_row == 7) || (_board->_array[move.start_row][move.start_col] == b_pawn && move.end_row == 0)) {
 					should_explore = true;
 				}
 				// Si le coup met en échec
@@ -977,7 +990,8 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		int child_iterations = max(child->_chosen_iterations, child->_iterations);
 
 		// FIXME *** gamma devrait changer en fonction de l'incertitude: plus on est incertain, plus on explore large?
-		const double new_gamma = gamma / (1.00f - _board->_uncertainty / 2.0f) / (1.00f - _board->_adv / 2.0f);
+		//const double new_gamma = gamma / (1.00f - _board->_uncertainty / 2.0f) / (1.00f - _board->_adv / 2.0f);
+		const double new_gamma = gamma;
 		//cout << "gamma: " << gamma << ", uncertainty: " << _board->_uncertainty << ", new_gamma: " << new_gamma << endl;
 
 		double exploration_score = child_iterations == 0 ? _iterations * 2 : pow((double)_iterations / (double)child_iterations, new_gamma);

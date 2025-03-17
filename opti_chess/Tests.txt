@@ -2,10 +2,11 @@
 
 5rk1/r3npbp/2p2np1/2N1p3/2B1P1P1/1P2BP2/b1P4P/2KR2NR b - - 2 19 : mobility+ / outpost
 8/pppbn2r/3p4/4k1p1/1P2P3/P1P1RP2/6P1/3R2K1 b - - 1 27 : king safety-- -> le roi est en fait en sécurité, et les noirs sont gagnants
-r2qrbk1/5ppp/pn3n2/4N3/1ppP1P2/4PQ2/PB2N1PP/2R2RK1 b - - 1 20
-4rrk1/1pp1qnpp/p3b3/P3Pp2/1bP2B2/1N6/1P2B1PP/R2Q1RK1 b - - 0 20
-r4rk1/ppp2ppp/2n5/1QQpp3/8/2NPbq1b/PPP2P1P/R3R1K1 b - - 3 18
-2kr2r1/ppp2p1p/5Q2/8/1b2q3/4BN1b/PP3PPP/R4K1R w - - 3 19
+r2qrbk1/5ppp/pn3n2/4N3/1ppP1P2/4PQ2/PB2N1PP/2R2RK1 b - - 1 20 : noirs complètement gagnants
+4rrk1/1pp1qnpp/p3b3/P3Pp2/1bP2B2/1N6/1P2B1PP/R2Q1RK1 b - - 0 20 : gagnants pour les noirs
+r4rk1/ppp2ppp/2n5/1QQpp3/8/2NPbq1b/PPP2P1P/R3R1K1 b - - 3 18 : mat en 1
+2kr2r1/ppp2p1p/5Q2/8/1b2q3/4BN1b/PP3PPP/R4K1R w - - 3 19 : roi blanc foutu
+8/5kp1/3p1p1p/3P2nq/1QP1P3/3BP1Pb/R6P/7K b - - 0 33 : mat pour les noirs
 r1b1k2r/pp2qpp1/3p3p/2pPn3/2P1P3/4P1P1/PP2B2P/R1BQ1RK1 w kq - 1 16
 2r2rk1/pp1b1pp1/1q1p3p/3P4/1P2P3/5QP1/1B4KP/R1R5 w - - 1 25 -> psqt ?? devrait être égal
 1r2kb1r/1q3pp1/p2p1n2/Pp1Pn1Bp/2bNP3/Q4B2/1P2N1PP/2R2RK1 b k - 2 24 : Stockfish dit +1.... Grogros +2.5
@@ -834,6 +835,7 @@ r1q4r/p2nbpNk/1p2p3/1PppP3/3P1Q2/2P5/1P3PPP/n1B1R1K1 w - - 1 5 : Cxe6!! #9
 4r1k1/rpR2ppp/p2Qb3/4N2P/4P3/4qP2/6P1/3R3K w - - 1 25 : Tc8!!!
 2k2r2/ppp3pp/1bp1b3/8/P3Pp1q/1N1B1Pn1/1P3RPP/R2QB1K1 b - - 0 18 : Dxh2+!! #4
 b2brkr1/p3pppR/2qn2n1/1pNR4/8/1B4N1/P2PPPP1/BQ3K2 w - - 0 1 : Dxg6!!
+5r1k/7B/4KpQp/5Pb1/8/8/2p3P1/8 w - - 0 1 : Fg8 #6
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---

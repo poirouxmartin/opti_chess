@@ -247,6 +247,7 @@
     <ClCompile Include="neural_network.cpp" />
     <ClCompile Include="board.cpp" />
     <ClCompile Include="player.cpp" />
+    <ClCompile Include="tests.cpp" />
     <ClCompile Include="time_tests.cpp" />
     <ClCompile Include="useful_functions.cpp" />
     <ClCompile Include="windows_tests.cpp" />
