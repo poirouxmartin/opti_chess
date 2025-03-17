@@ -96,7 +96,7 @@ public:
 	//double _gamma = 0.65;
 	double _alpha = 0.015;
 	double _beta = 3.0;
-	double _gamma = 0.5;
+	double _gamma = 1.0;
 
 	// Profondeur de la recherche
 	int _quiescence_depth = 6;
@@ -544,7 +544,7 @@ public:
 	void grogros_analysis(int nodes = -1);
 
 	// Fonction qui charge une position à partir d'une FEN
-	void load_FEN(const string fen);
+	void load_FEN(const string fen, bool display = true);
 
 	// Fonction qui reset la partie
 	void reset_game();

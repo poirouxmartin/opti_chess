@@ -562,6 +562,24 @@ Case faible notamment plus faible si juste devant le pion adverse. Moins faible 
 r1bqkb1r/pp3ppp/2np1n2/1Bp1p3/4P3/2N2N2/PPPP1PPP/R1BQ1RK1 w kq e6 0 6 : faut pas prendre c6!! c'est con, ça rend la case d5 et le centre...
 2rqr1k1/p1bnnpp1/2p1p1p1/P1NpP3/Q2P4/B1P4P/4BPP1/RR4K1 w - - 5 22 : Cb7?? c'est juste une dame en 1
 Re-buff les bonus qui rapprochent du roque?
+r1bqk1nr/ppp1bppp/8/4p2Q/2B1P3/8/PPP2PPP/RNB1K2R b KQkq - 1 4 vs r1bqk1nr/ppp1bppp/8/4p2Q/2B1P3/8/PPP2PPP/RNB1K2R b KQkq - 1 4 : revoir attaque défense? la dame est mieux en d1 car elle défend tout? pas sûr... la double attaque f7 et e5 est forte
+Faut qu-il arrête de faire les De2/De7 dans les ouvrtures (à cause des open lines??). Ca bloque le développement des pièces... (qui doit être revalorisé)
+Déselectionner une pièce quand on reclique dessus?
+Rajouter les autres facteurs de faiblesses long terme (weak_squares, pawn_storm) dans la prise en compte des roques...
+Revoir pièce par pièce leur valeur globale (pour qu'avec tous les bonus, ça soit pas délirant...)
+Remettre dans la compensation long terme court terme des faiblesses du roi, le potentiel d'attaque à prendre en compte
+Réseaux de neurones combinés à l'évaluation??
+Activité de la dame!!
+Bishop pawns: beaucoup plus graves si le fou est resté derrière la structure
+
+Revoir de manière générale l'activité des pièces... ça reste le facteur le plus important pour l'éval...
+
+King safety: quand un roi est safe, c'est ok d'affaiblir un peu le sien pour essayer de mater l'autre...
+r2qr1k1/5p2/2p1bb1B/p2pp2Q/1p2P3/1P1P3P/1PP2PP1/R4RK1 w - - 0 22 : ici, f4 est le meilleur coup!
+
+!! r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3 : attacks/defenses après Fc4??
+
+S'insipirer de Lc0: anaconda... on laisse aucun mouvement possible à l'adversaire. tout dans le contrôle des cases...
 
 !!!!!!!!!!!!
 REGLER ALGO:
@@ -570,18 +588,91 @@ r4rk1/ppp2ppp/2nq1b2/2np4/2P5/2NBQ2P/PP1B1PP1/R3R1K1 b - - 2 15 : ici, d4 gagne 
 TESTER: forcer une profondeur 2 min pour tous les coups?
 !!!!!!!!!!!!
 
+r1bq1rk1/2p2p2/p2p1n2/1pb1p1B1/4P3/1P1P3P/1PP2PP1/RN1Q1RK1 b - - 0 14 : Rh7 meilleur coup... le roi mieux placé que en g8... à comprendre
+
 TODO *** Cases faibles proches du roi:
 rn1qkb1r/ppp2ppp/5n2/3pp3/6b1/3PPNP1/PPP2PBP/RNBQ1RK1 w kq - 0 1 vs rn1qkb1r/ppp2ppp/5n2/3pp3/6b1/1B1PPNP1/PPP2P1P/RNBQ1RK1 w kq - 0 1
 rn1q1rk1/ppp1bppp/5n2/3pp3/P5b1/N2PPNP1/1PP2PBP/R1BQR1K1 w - - 0 1 vs rn1q1rk1/ppp1bppp/5n2/3pp3/P5b1/NB1PPNP1/1PP2P1P/R1BQR1K1 w - - 0 1
+
+TODO !!  pour les faiblesses long-terme du roi, il faut grouper les paramètres par roque... sinon il prend le meilleur de chaque roque et pense être bien...
 
 
 Il faut s'assurer que pour une évaluation donnée (disons +100 matériel, +100 activité), que le gain d'activité n'augmente JAMAIS l'incertitude au point de réduire le WR...
 WR (100, 100) < WR (100, k) pour tout k > 100 /!\
 
+4q1k1/p2n1pp1/1pb1r1rp/4P3/P1pP1Q2/2P1N3/2B2RPP/5RK1 b - - 8 26 : Lc0 aux blancs, grogros aux noirs... y'a qu'à regarder la coordination des pièces...
+
 rnbq2nr/1p3kpp/p4p2/2b1p3/3pP3/3B1N2/PPP1NPPP/R1BQ1RK1 w - - 2 10 : il regarde Re7 ou Rf7... à voir si ça se règle avec la modif de l'algo
 
 r2q1rk1/pbp1bppp/1p2pn2/8/3P4/3BBN2/PPP1QPPP/R4RK1 b - - 2 11 vs r2q1rk1/pbp1bppp/1p2pn2/8/3P4/3BBN2/PPP1QPPP/1K1R3R b - - 3 11
 
+rnbqk2r/ppp1bppp/5n2/3p4/3P1B2/2N1P3/PP3PPP/R2QKBNR b KQkq - 0 6 : attaques/défenses qui deviennent pourries après Ff5? (+192... à revoir...)
+
+6k1/p3r2p/3R3p/2p2N2/5P2/2P5/P5PP/6K1 b - - 0 31 : king proximity qui augmente après Te2? et diminue après Td7?? ça devrait être l'inverse??
+En fait, c'est parce que le fait de mettre la tour en e2 créé un chemin virtuel pour le roi blanc, PAR e2... pareil pour Td7...
+
+Il veut beaucoup trop faire de f3...
+Move: i1 -> row1...
+Pareil de partout, les i = row, et les j = col
+
+5k2/P7/1P2Q3/8/8/2P5/6K1/8 w - - 5 61 : faut régler ça... le pion b7 est plus fort qu'une dame... -_-...
+
+3rr1k1/2p2ppp/1bp2n2/pp6/4PB2/2PPN2q/PPQ1BP2/R4RK1 b - - 3 9 : Rh8 qui augmente l'attaque à cause des différences de colonnes, à revoir...
+Et 1000+ en attaque?? y'a au max 2 pièces!! ...
+
+5r2/1pk3p1/2pr3p/p1n2P2/2PN4/2P1pBP1/6KP/1R1R4 b - - 0 29 : pareil, trop d'attaque par rapport à la défense... y'a rien ici
+
+2r5/3r4/p1p1pk2/PpRnR2p/3P2p1/4P3/7P/1B5K b - - 5 37 : il pense être mieux aux blancs à cause du roi noir supposé faible...
+
+rnbqkb1r/ppp2ppp/5n2/3p4/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq - 0 5 vs rnbqkb1r/ppp2ppp/5n2/3p4/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq d6 0 5
+
+r4r1k/p3pp2/2p5/5R2/5B2/8/PPP2P2/1K6 b - - 0 28 : placement +600???
+
+En finale, que les pions soient passés ou non, faut les pousser!
+
+FIXME: bon il est encore tout cassé et tout pourri... merde
+
+6k1/5p2/1n5p/1P1qb1p1/8/B3P1P1/5P1P/1Q4K1 b - - 0 30 : Fianchetto exagéré?
+
+4r1k1/p1p2ppp/1p2bn2/8/1r6/1PN1B3/P3BPPP/R2R2K1 b - - 1 16 : la confiance augmente après c5, alors que ça donne de l'avantage aux noirs..??
+
+
+1r4k1/p2Q1ppp/8/8/2qPbB2/4P3/3R1PPP/4KB1R b - - 2 23 : mat imparrable pour les noirs
+1rr3k1/p2Q1ppp/6b1/8/1q1P1B2/4P3/4KPPP/3R1BNR b - - 1 19 : Fe4 gagne
+1q4rr/1p1bkn1p/1Pp1p1pP/2Pp1pP1/3P1P2/Q2BPN2/5K1R/R7 b - - 2 40 : aucun jeu possible pour les noirs, ils sont complètement enfermés
+3b2kr/1p3pp1/1q2bn2/1Np4p/5Q2/P1N5/1PP1BPPP/1K5R b - - 1 20 : complètement gagnant aux blancs
+rnb1kbnr/ppp2ppp/8/3q4/3N4/8/PPP2PPP/RNBQKB1R b KQkq - 0 5 : c5 erreur... le roi reste trop longtemps au centre...
+8/8/2p4k/2Pp4/3P1n2/8/3K4/8 w - - 0 58 : attacking potential égal pour les blancs et noirs??
+8/8/2p2k2/2Pp4/3P1PKP/8/8/1n6 w - - 0 51 : noirs gagnants
+3k4/1p5R/8/p1P2PrP/2P5/7K/7B/7r w - - 0 53 : noirs gagnants
+4R3/p4pkp/2p2pb1/qp1p4/3P3N/PRPB2PP/2Pn1P2/6K1 w - - 1 22 : noirs gagnants
+4rrk1/p2q1pp1/2p3p1/1p2B1Pn/2pP3P/2P2Q2/2P2P2/R3R1K1 w - - 3 25 : le cavalier en h5 est considéré comme trap alors qu'il est bon...
+r1br1nk1/pp3p1p/2p1n1pb/3p4/3P2P1/2NB1N1P/PPP1RP1B/4R1K1 w - - 3 22 : c'est bien d'avoir les tours sur la colonne e, mais elles sont pas actives... à revoir
+4rrk1/p4p1p/2p2p2/qp1p3b/2nP4/PRPB1N1P/2P1QPP1/4R1K1 w - - 2 18 : Dd1 meilleur que Dxe8
+1rb1k1nB/pppp3p/2n3q1/2bN4/6P1/5Q2/PPP4P/R4R1K w - - 1 18 : le roi se fait mater
+3r2k1/2p1Rppp/1b6/pp1p4/3P4/2P5/PP3P2/R4K2 b - - 1 8 : blancs mieux
+5k2/2p2Ppp/2p5/pp1r4/8/2PP1q2/PPQ2P1K/R3R3 w - - 1 17 : gagnant pour les noirs
+3r2k1/2p2ppp/1bp1r3/pp1P4/5B2/2PPN2q/PPQ1BP2/R3R1K1 b - - 0 1 : Fxe3 gagne!
+3r2k1/2p2ppp/1bp1rn2/pp6/4PB2/2PPN2q/PPQ1BP2/R3R1K1 b - - 5 10 : Cd5!! (encore plus fort que Cxe4)
+2r1r3/pQ4bp/2n2kp1/5bq1/4p3/B1P4P/PP1NRPP1/R5K1 w - - 1 24 : Td1 gagne
+r2qr1k1/pp3pbp/2n1bnp1/2Bpp3/4P3/1BP2N1P/PP1N1PP1/R2QR1K1 w - - 4 16 : pourquoi Fa3?
+4q1k1/3n1p2/1p1B1b2/pNpP3p/P1P5/1P3P1P/3Q4/7K w - - 0 39 : ici faut pas faire h4 -_-...
+6k1/2Bnqpb1/1p4p1/pNpP3p/P1P5/1P5P/3Q1PPK/8 w - - 1 32 : f3 affaiblit le roi blanc, et les cases noires
+r3r1k1/p2qbppp/1p3n2/2pPR3/8/2N4P/PPPB1PP1/R2Q2K1 w - - 1 17 : Te3 -> manque d'harmonie! ça bloque le fou en d2
+3rr1k1/pp2bp2/1q1pbn1Q/2p5/4P2P/2N5/PPP2PP1/1K1R1B1R w - - 1 18 : Td3 gagne
+3r1k2/2p4p/6r1/1Q2P3/4b1q1/b1P5/P2NRK1P/3R4 b - - 1 31 : seulement 53% de confiance... ça devrait être plus...
+r2qk3/pp3pp1/2n1pb2/2pp4/5Pp1/1PPbP3/PB4PK/RN1BQR2 b q - 0 15 : g3!
+r2qk3/pp3pp1/2n1pb2/2pp4/5P2/1PPbP1p1/PB4P1/RN1BQRK1 b q - 1 16 : Fxc3! (pour Dh4)
+r4r1k/1p5p/2p1b1p1/p2pP1n1/5Pq1/4P1N1/PPQ1B1K1/4R2R b - - 1 27 : Dame noire enfermée
+r4r1k/1p3n1p/2p1b1p1/p2pPp2/5PPq/3BP1NP/PPQ3K1/4RR2 b - - 2 24 : prise g4 est mauvais! (hxg4 puis Th1 arrivent en contrant sur le roi noir)
+r4r1k/1p2q1pp/2p1b3/p3Pp2/4pP2/1P2P2P/P1Q1N1P1/1R3RK1 b - - 0 23 : quasi gagnant aux blancs: le fou de cases blanches est pris dans les pions; pion e5: passé et protégé
+r1bqk1nr/1pppbpp1/p1n1p3/1B2P2p/3P4/2P2N2/PP3PPP/RNBQK2R w KQkq - 0 7 : faut pas prendre ce cheval en c6!!!
+r1bq1rk1/ppp1bp1p/2n1p1p1/4P2P/2pP4/2P1B3/P1Q1NPP1/R3KB1R w KQ - 0 12 : gagnant aux blancs : structure saine, harmonie, attaque sur le roi noir faible
+rn1q1r1n/pb2bppk/1ppp4/5P2/3P4/2N5/PPP1B1PP/R1BQ1RK1 w - - 1 13 : Tf3! faut ramener des pièces à l'attaque... sinon foutu
+r3r1k1/5pb1/1q2b2B/p1p1p2Q/Rp2P3/1P4RP/1PP2PP1/6K1 b - - 5 26 : foutu pour les noirs...
+r1bqk2r/1pp2pp1/p3p2p/3pP3/n4P2/P1BBP3/1PP3PP/R2Q1RK1 w kq - 1 13 : Dg4 gagne
+rn1q1b1r/pp3Qpk/2p1p2p/3nNb2/2BP4/8/PPP2PPP/R1B1K2R w KQ - 2 12 : Fxh6!! (moins pire)
+6R1/2r5/pr2p3/4np2/1p5p/4kB1P/PPPR2P1/2K5 w - - 12 34 : le roi noir ne sue même pas (légèrement mieux aux noirs)
 rn2k2r/1b1p1p1p/p1q4B/Pp2pN2/4n3/2P3P1/1P4BP/RN2Q2K w - - 0 19 : Dxe4! vérifier la quiescence...
 1r1q1rk1/p1p2pp1/3b1n1p/3b4/1P1N3B/2P5/P4PPP/RN1QR1K1 b - b3 0 14 : le fou est mieux en a8 que b7 ici
 r1k4r/pppb1ppp/2p2n2/6B1/4P3/2P2P2/P1P3PP/2KR1B1R w - - 3 12 : mieux vaut garder le fou f6 ici

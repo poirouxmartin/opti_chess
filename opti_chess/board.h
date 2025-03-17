@@ -6,7 +6,6 @@
 #include <string>
 #include "evaluation.h"
 #include "neural_network.h"
-#include <vector>
 #include <map>
 #include <cstdint>
 #include "raylib.h"
@@ -96,9 +95,6 @@ static bool is_diagonal(uint_fast8_t piece) {
 	return is_bishop(piece) || is_queen(piece);
 }
 
-
-
-
 // Coup (défini par ses coordonnées)
 // TODO : l'utiliser !!
 // Utilise 2 bytes (16 bits)
@@ -106,10 +102,10 @@ static bool is_diagonal(uint_fast8_t piece) {
 // check flag?
 // TODO : Faut-il mettre la pièce concérnée? ça éviterait de devoir la rechercher dans le plateau (coûteux)
 typedef struct Move {
-	uint_fast8_t i1 : 3;
-	uint_fast8_t j1 : 3;
-	uint_fast8_t i2 : 3;
-	uint_fast8_t j2 : 3;
+	uint_fast8_t start_row : 3;
+	uint_fast8_t start_col : 3;
+	uint_fast8_t end_row : 3;
+	uint_fast8_t end_col : 3;
 
 	//Pos init; utiliser ça?
 	//bool capture_flag : 1;
@@ -118,41 +114,41 @@ typedef struct Move {
 	// Reste 2 bytes à utiliser : check? castling? en passant? is null?
 
 	bool operator== (const Move& other) const {
-		return (i1 == other.i1) && (j1 == other.j1) && (i2 == other.i2) && (j2 == other.j2);
+		return (start_row == other.start_row) && (start_col == other.start_col) && (end_row == other.end_row) && (end_col == other.end_col);
 	}
 
 	// Il faut pouvoir trier les coups dans un dictionnaire
 	bool operator<(const Move& other) const {
-		if (i1 != other.i1) return i1 < other.i1;
-		if (j1 != other.j1) return j1 < other.j1;
-		if (i2 != other.i2) return i2 < other.i2;
-		return j2 < other.j2;
+		if (start_row != other.start_row) return start_row < other.start_row;
+		if (start_col != other.start_col) return start_col < other.start_col;
+		if (end_row != other.end_row) return end_row < other.end_row;
+		return end_col < other.end_col;
 	}
 
 	// Fonction de hash
 	size_t hash() const {
 		size_t hashValue = 0;
-		hashValue ^= std::hash<uint_fast8_t>()(i1);
-		hashValue ^= std::hash<uint_fast8_t>()(j1) << 1;
-		hashValue ^= std::hash<uint_fast8_t>()(i2) << 2;
-		hashValue ^= std::hash<uint_fast8_t>()(j2) << 3;
+		hashValue ^= std::hash<uint_fast8_t>()(start_row);
+		hashValue ^= std::hash<uint_fast8_t>()(start_col) << 1;
+		hashValue ^= std::hash<uint_fast8_t>()(end_row) << 2;
+		hashValue ^= std::hash<uint_fast8_t>()(end_col) << 3;
 		return hashValue;
 	}
 
 
 	void display() const
 	{
-		cout << "(" << static_cast<int>(i1) << ", " << static_cast<int>(j1) << ") -> (" << static_cast<int>(i2) << ", " << static_cast<int>(j2) << ")" << endl;
+		cout << "(" << static_cast<int>(start_row) << ", " << static_cast<int>(start_col) << ") -> (" << static_cast<int>(end_row) << ", " << static_cast<int>(end_col) << ")" << endl;
 	}
 
 	string to_string() const
 	{
-		return "(" + std::to_string(i1) + ", " + std::to_string(j1) + ") -> (" + std::to_string(i2) + ", " + std::to_string(j2) + ")";
+		return "(" + std::to_string(start_row) + ", " + std::to_string(start_col) + ") -> (" + std::to_string(end_row) + ", " + std::to_string(end_col) + ")";
 	}
 
 	// Renvoie si c'est un coup nul
 	bool is_null_move() const {
-		return (is_null || (i1 == 0 && j1 == 0 && i2 == 0 && j2 == 0));
+		return (is_null || (start_row == 0 && start_col == 0 && end_row == 0 && end_col == 0));
 	}
 };
 
@@ -584,7 +580,7 @@ public:
 	[[nodiscard]] int get_pawn_shield();
 
 	// Fonction qui renvoie la caleur des cases faibles
-	[[nodiscard]] int get_weak_squares() const;
+	[[nodiscard]] int get_weak_squares(bool color, bool around_king = false);
 
 	// Fonction qui convertit un coup en sa notation algébrique
 	string algebric_notation(Move move) const;
@@ -708,6 +704,18 @@ public:
 
 	// Fonction qui renvoie si le joueur a encore des pièces (autres que roi et pions)
 	[[nodiscard]] bool has_pieces(bool color) const;
+
+	// Fonction qui renvoie la réelle valeur d'un paramètre de faiblesse long terme du roi, en fonction des possibilités et proximités des roques
+	[[nodiscard]] int get_long_term_king_weakness(bool player, int current_weakness, int kingside_weakness, int queenside_weakness);
+
+	// Fonction qui renvoie la valeur des bonus liés aux colonnes ouvertes et semi-ouvertes sur le roi adverse, s'il était sur une certaine colonne
+	[[nodiscard]] int get_open_files_on_opponent_king_at_column(bool player, int king_col) const;
+
+	// Fonction qui renvoie la valeur des bonus liés au placement du roi, s'il était sur une certaine colonne
+	[[nodiscard]] int get_king_placement_weakness_at_column(bool player, Pos king_pos) const;
+
+	// Fonction qui renvoie la valeur des bonus liés au placement du roi
+	[[nodiscard]] int get_king_placement_weakness(bool player);
 
 	// TODO: génération plus rapide des coups
 

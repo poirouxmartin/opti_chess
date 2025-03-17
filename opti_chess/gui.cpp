@@ -309,7 +309,7 @@ void GUI::draw_exploration_arrows()
 	for (auto const& [move, child] : _root_exploration_node->_children) {
 		// Si une pièce est sélectionnée, dessine toutes les flèches pour cette pièce
 		if (is_selected) {
-			if (_selected_pos.row == move.i1 && _selected_pos.col == move.j1)
+			if (_selected_pos.row == move.start_row && _selected_pos.col == move.start_col)
 				iterated_moves_vector.push_back(move);
 		}
 
@@ -368,10 +368,10 @@ int GUI::orientation_index(const int i) const {
 // Fonction qui dessine la flèche d'un coup
 void GUI::draw_arrow(const Move move, const bool player, Color c, float thickness, const bool use_value, const float avg_score, const int mate, const bool outline)
 {
-	const uint_fast8_t i1 = move.i1;
-	const uint_fast8_t j1 = move.j1;
-	const uint_fast8_t i2 = move.i2;
-	const uint_fast8_t j2 = move.j2;
+	const uint_fast8_t i1 = move.start_row;
+	const uint_fast8_t j1 = move.start_col;
+	const uint_fast8_t i2 = move.end_row;
+	const uint_fast8_t j2 = move.end_col;
 
 	if (thickness == -1.0f)
 		thickness = _arrow_thickness;
@@ -1001,7 +1001,7 @@ void GUI::draw()
 			// On regarde dans le sens inverse pour jouer la flèche la plus récente (donc celle visible en cas de superposition)
 			for (Move move : ranges::reverse_view(_grogros_arrows))
 			{
-				if (move.i2 == _clicked_pos.row && move.j2 == _clicked_pos.col) {
+				if (move.end_row == _clicked_pos.row && move.end_col == _clicked_pos.col) {
 					if (_click_bind)
 						_board.click_m_move(move, get_board_orientation());
 					play_move_keep(move);
@@ -1146,8 +1146,8 @@ void GUI::draw()
 
 	// Surligne du dernier coup joué
 	if (!_game_tree._current_node->_move.is_null_move()) {
-		draw_rectangle(_board_padding_x + orientation_index(_game_tree._current_node->_move.j1) * _tile_size, _board_padding_y + orientation_index(7 - _game_tree._current_node->_move.i1) * _tile_size, _tile_size, _tile_size, _last_move_color);
-		draw_rectangle(_board_padding_x + orientation_index(_game_tree._current_node->_move.j2) * _tile_size, _board_padding_y + orientation_index(7 - _game_tree._current_node->_move.i2) * _tile_size, _tile_size, _tile_size, _last_move_color);
+		draw_rectangle(_board_padding_x + orientation_index(_game_tree._current_node->_move.start_col) * _tile_size, _board_padding_y + orientation_index(7 - _game_tree._current_node->_move.start_row) * _tile_size, _tile_size, _tile_size, _last_move_color);
+		draw_rectangle(_board_padding_x + orientation_index(_game_tree._current_node->_move.end_col) * _tile_size, _board_padding_y + orientation_index(7 - _game_tree._current_node->_move.end_row) * _tile_size, _tile_size, _tile_size, _last_move_color);
 	}
 
 	// Cases surglignées
@@ -1164,8 +1164,8 @@ void GUI::draw()
 		
 		// Affiche les coups possibles pour la pièce séléctionnée
 		for (int i = 0; i < _board._got_moves; i++) {
-			if (_board._moves[i].i1 == _selected_pos.row && _board._moves[i].j1 == _selected_pos.col) {
-				draw_rectangle(_board_padding_x + orientation_index(_board._moves[i].j2) * _tile_size, _board_padding_y + orientation_index(7 - _board._moves[i].i2) * _tile_size, _tile_size, _tile_size, _select_color);
+			if (_board._moves[i].start_row == _selected_pos.row && _board._moves[i].start_col == _selected_pos.col) {
+				draw_rectangle(_board_padding_x + orientation_index(_board._moves[i].end_col) * _tile_size, _board_padding_y + orientation_index(7 - _board._moves[i].end_row) * _tile_size, _tile_size, _tile_size, _select_color);
 			}
 		}
 	}
@@ -1397,7 +1397,7 @@ void GUI::draw()
 }
 
 // Fonction qui charge une position à partir d'une FEN
-void GUI::load_FEN(const string fen) {
+void GUI::load_FEN(const string fen, bool display) {
 	// TODO: il faut vériifer que la FEN est valide
 	_board.from_fen(fen);
 	update_global_pgn();
@@ -1405,7 +1405,8 @@ void GUI::load_FEN(const string fen) {
 	_root_exploration_node->_board = &_board;
 	_update_variants = true;
 
-	cout << "loaded FEN : " << fen << endl;
+	if (display)
+		cout << "loaded FEN : " << fen << endl;
 }
 
 // Fonction qui reset la partie
@@ -1431,13 +1432,13 @@ void GUI::reset_game() {
 bool GUI::compare_arrows(const Move m1, const Move m2) const {
 
 	// Si deux flèches finissent en un même point, affiche en dernier (au dessus), le "meilleur" coup
-	if (m1.i2 == m2.i2 && m1.j2 == m2.j2)
+	if (m1.end_row == m2.end_row && m1.end_col == m2.end_col)
 		return _root_exploration_node->_children[m1]->_nodes < _root_exploration_node->_children[m2]->_nodes;
 
 	// Si les deux flèches partent d'un même point, alors affiche par dessus la flèche la plus courte
-	if (m1.i1 == m2.i1 && m1.j1 == m2.j1) {
-		const int d1 = (m1.i1 - m1.i2) * (m1.i1 - m1.i2) + (m1.j1 - m1.j2) * (m1.j1 - m1.j2);
-		const int d2 = (m2.i1 - m2.i2) * (m2.i1 - m2.i2) + (m2.j1 - m2.j2) * (m2.j1 - m2.j2);
+	if (m1.start_row == m2.start_row && m1.start_col == m2.start_col) {
+		const int d1 = (m1.start_row - m1.end_row) * (m1.start_row - m1.end_row) + (m1.start_col - m1.end_col) * (m1.start_col - m1.end_col);
+		const int d2 = (m2.start_row - m2.end_row) * (m2.start_row - m2.end_row) + (m2.start_col - m2.end_col) * (m2.start_col - m2.end_col);
 
 		return d1 > d2;
 	}
