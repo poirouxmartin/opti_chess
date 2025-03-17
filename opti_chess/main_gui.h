@@ -8,6 +8,7 @@
 #include "zobrist.h"
 #include <io.h>
 #include <fcntl.h>
+#include "tests.h"
 
 
 // Fonction de test
@@ -149,7 +150,7 @@ inline int main_ui() {
 			//main_GUI._board.validate_nodes_count_at_depth("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 5, { 1, 48, 2039, 97862, 4085603, 193690690 }, true);
 			//main_GUI._board.validate_nodes_count_at_depth("", 5, { }, true);
 
-			main_GUI.grogros_analysis(1);
+			//main_GUI.grogros_analysis(1);
 
 			//main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, 6);
 			//main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, 6, -2147483647, 2147483647, nullptr, true, -1000);
@@ -157,6 +158,13 @@ inline int main_ui() {
 			//main_GUI._root_exploration_node->_board->switch_colors();
 			//main_GUI._root_exploration_node->_board->get_king_squares_distance(true).print();
 			//main_GUI._root_exploration_node->_board->get_king_squares_distance(false).print();
+
+			//Tests tests(&main_GUI);
+			//tests.run_all_tests();
+
+			main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, 6);
+			// r1bqk2r/ppp2ppp/1b6/nP1nP3/2P5/5P2/P5PP/RNBQKBNR b KQkq - 0 9 : Cxc4? ça devrait être vu...
+			// r1bqk2r/ppp2ppp/1b6/1P1nP3/2B5/5P2/P5PP/RNBQK1NR b KQkq - 0 10 : il voit rien après Dh4?? -> Pas de standpat en échec!!
 		}
 
 		// CTRL-T - Cherche le plateau du site d'échecs sur l'écran, et lance une partie
@@ -642,7 +650,7 @@ inline int main_ui() {
 
 				// Vérifie que le coup est légal avant de le jouer
 				for (int i = 0; i < main_GUI._board._got_moves; i++) {
-					if (main_GUI._board._moves[i].i1 == main_GUI._binding_move[0] && main_GUI._board._moves[i].j1 == main_GUI._binding_move[1] && main_GUI._board._moves[i].i2 == main_GUI._binding_move[2] && main_GUI._board._moves[i].j2 == main_GUI._binding_move[3]) {
+					if (main_GUI._board._moves[i].start_row == main_GUI._binding_move[0] && main_GUI._board._moves[i].start_col == main_GUI._binding_move[1] && main_GUI._board._moves[i].end_row == main_GUI._binding_move[2] && main_GUI._board._moves[i].end_col == main_GUI._binding_move[3]) {
 						//main_GUI._board.play_move_sound(Move(main_GUI._binding_move[0], main_GUI._binding_move[1], main_GUI._binding_move[2], main_GUI._binding_move[3]));
 						main_GUI.play_move_keep(main_GUI._board._moves[i]);
 
