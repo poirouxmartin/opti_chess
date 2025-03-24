@@ -296,15 +296,15 @@ int min_index(int* l, const int n)
 }
 
 // Fonction qui calcule une distance entre deux points
-float distance(const int i, const int j, const int x, const int y)
+float distance(const int row_1, const int col_1, const int row_2, const int col_2)
 {
-	return (i - x) * (i - x) + (j - y) * (j - y);
+	return (row_1 - row_2) * (row_1 - row_2) + (col_1 - col_2) * (col_1 - col_2);
 }
 
 // Fonction qui calcule la proximité entre deux points (pour l'évaluation de la sécurité du roi)
-float proximity(const int i, const int j, const int x, const int y, const float k)
+float proximity(const int row_1, const int col_1, const int row_2, const int col_2, const float k)
 {
-	return k / distance(i, j, x, y);
+	return k / distance(row_1, col_1, row_2, col_2);
 }
 
 // Fonction qui transforme un entier en string (et arrondit s'il est supérieur à 1000)
@@ -320,7 +320,7 @@ string int_to_round_string(const int k)
 	if (k < 1000000)
 		return to_string(static_cast<float>(k) / 1000).substr(0, 3) + "k";
 
-	return to_string(static_cast<float>(k) / 1000000).substr(0, 3) + "M";
+	return to_string(static_cast<float>(k) / 1000000).substr(0, 3) + "M"; // FIXME: "10.M" -> "10M"
 }
 
 // Fonction qui transforme un entier en string (et arrondit s'il est supérieur à 1000)

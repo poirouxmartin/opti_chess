@@ -55,7 +55,7 @@ inline int main_ui() {
 	SetMasterVolume(1.0f);
 
 	// Nombre d'images par secondes
-	SetTargetFPS(main_GUI._fps);
+	SetTargetFPS(main_GUI._max_fps);
 
 	// Espace entre les lignes de texte
 	SetTextLineSpacing(4);
@@ -159,10 +159,10 @@ inline int main_ui() {
 			//main_GUI._root_exploration_node->_board->get_king_squares_distance(true).print();
 			//main_GUI._root_exploration_node->_board->get_king_squares_distance(false).print();
 
-			//Tests tests(&main_GUI);
-			//tests.run_all_tests();
+			Tests tests(&main_GUI);
+			tests.run_all_tests();
 
-			main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, 6);
+			//main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, 6);
 			// r1bqk2r/ppp2ppp/1b6/nP1nP3/2P5/5P2/P5PP/RNBQKBNR b KQkq - 0 9 : Cxc4? ça devrait être vu...
 			// r1bqk2r/ppp2ppp/1b6/1P1nP3/2B5/5P2/P5PP/RNBQK1NR b KQkq - 0 10 : il voit rien après Dh4?? -> Pas de standpat en échec!!
 		}
@@ -346,9 +346,9 @@ inline int main_ui() {
 
 		// D - Affichage dans la console de tous les coups légaux de la position
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_D)) {
-			main_GUI._draw = true;
-			//main_GUI._board.display_moves(true);
-			cout << main_GUI._board._positions_history.size() << endl;
+			//main_GUI._draw = true;
+			main_GUI._board.display_moves(true);
+			//cout << main_GUI._board._positions_history.size() << endl;
 		}
 
 		// E - Évalue la position et renvoie les composantes dans la console
@@ -428,7 +428,7 @@ inline int main_ui() {
 			else
 				cout << "no more moves are in memory" << endl;*/
 			if (main_GUI._root_exploration_node->children_count() > 0)
-				((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._root_exploration_node->get_best_move(), main_GUI.get_board_orientation())) || true) && main_GUI.play_move_keep(main_GUI._root_exploration_node->get_best_move());
+				((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._root_exploration_node->get_most_explored_child_move(), main_GUI.get_board_orientation())) || true) && main_GUI.play_move_keep(main_GUI._root_exploration_node->get_most_explored_child_move());
 			else
 				cout << "no more moves are in memory" << endl;
 		}
@@ -440,7 +440,7 @@ inline int main_ui() {
 			else
 				cout << "no more moves are in memory" << endl;*/
 			if (main_GUI._root_exploration_node->children_count() > 0)
-				((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._root_exploration_node->get_best_move(), main_GUI.get_board_orientation())) || true) && main_GUI.play_move_keep(main_GUI._root_exploration_node->get_best_move());
+				((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._root_exploration_node->get_most_explored_child_move(), main_GUI.get_board_orientation())) || true) && main_GUI.play_move_keep(main_GUI._root_exploration_node->get_most_explored_child_move());
 			else
 				cout << "no more moves are in memory" << endl;
 		}

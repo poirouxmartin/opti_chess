@@ -183,9 +183,6 @@ public:
 	// Fonction qui renvoie la profondeur de la variante principale
 	[[nodiscard]] int get_main_depth();
 
-	// Fonction qui renvoie le meilleur coup
-	[[nodiscard]] Move get_best_move();
-
 	// Fonction qui renvoie le fils le plus exploré
 	[[nodiscard]] Node* get_most_explored_child(bool decide_by_eval = true);
 
@@ -219,6 +216,9 @@ public:
 
 	// Fonction qui renvoie la valeur du noeud
 	double get_node_score(const double alpha, const double beta, const int max_eval, const double max_avg_score, const bool player) const;
+
+	// Fonction qui renvoie le coup avec le meilleur score
+	Move get_best_score_move(const double alpha, const double beta);
 
 	// Fonctions à rajouter: destruction des fils et de soi...
 
