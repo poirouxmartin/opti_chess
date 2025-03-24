@@ -195,7 +195,8 @@ public:
 	GameTree _game_tree = GameTree(_board);
 
 	// Nombre de FPS
-	int _fps = 90;
+	int _max_fps = 120;
+	int _target_fps = 90;
 	clock_t _last_drawing_time = 0;
 
 	// Couleur de fond
@@ -454,7 +455,7 @@ public:
 	void draw_exploration_arrows();
 
 	// Fonction qui dessine la flèche d'un coup
-	void draw_arrow(const Move move, const bool player, Color c, float thickness = -1.0f, const bool use_value = false, const float avg_score = 0.0f, const int mate = 0, const bool outline = false);
+	void draw_arrow(const Move move, const bool player, Color c, float thickness = -1.0f, const bool use_value = false, const float avg_score = 0.0f, const int mate = 0, const bool is_most_explored = false, const bool is_best_eval = false);
 
 	// Couleur de la flèche en fonction du coup (de son nombre de noeuds)
 	Color move_color(int, int, bool is_quiescence) const;

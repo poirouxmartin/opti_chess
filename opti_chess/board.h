@@ -11,21 +11,20 @@
 #include "raylib.h"
 #include <iomanip>
 #include "useful_functions.h"
-//#include "zobrist.h"
 
 using namespace std;
 
 
 // TODO: les utiliser
 // Enumération des pièces
-enum piece_type { none = 0, w_pawn = 1, w_knight = 2, w_bishop = 3, w_rook = 4, w_queen = 5, w_king = 6, b_pawn = 7, b_knight = 8, b_bishop = 9, b_rook = 10, b_queen = 11, b_king = 12 };
+constexpr enum piece_type { none = 0, w_pawn = 1, w_knight = 2, w_bishop = 3, w_rook = 4, w_queen = 5, w_king = 6, b_pawn = 7, b_knight = 8, b_bishop = 9, b_rook = 10, b_queen = 11, b_king = 12 };
 
 // Nombre de demi-coups avant de déclarer la partie nulle
-constexpr int max_half_moves = 100;
+constexpr uint_fast8_t max_half_moves = 100;
 
 // Nombre maximum de coups légaux par position estimé
 // const int max_moves = 218;
-constexpr int max_moves = 100; // ça n'arrivera quasi jamais que ça dépasse ce nombre
+constexpr uint_fast8_t max_moves = 80; // ça n'arrivera quasi jamais que ça dépasse ce nombre
 
 // Valeur d'un échec et mat
 constexpr int mate_value = 1e8;
@@ -34,16 +33,16 @@ constexpr int mate_value = 1e8;
 constexpr int mate_ply = 1e5;
 
 // Coups possibles pour un cavalier
-constexpr int knight_moves[8][2] = { {1, 2}, {1, -2}, {-1, 2}, {-1, -2}, {2, 1}, {2, -1}, {-2, 1}, {-2, -1} };
+constexpr int_fast8_t knight_moves[8][2] = { {1, 2}, {1, -2}, {-1, 2}, {-1, -2}, {2, 1}, {2, -1}, {-2, 1}, {-2, -1} };
 
 // Coups rectilignes
-constexpr int rect_moves[4][2] = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
+constexpr int_fast8_t rect_moves[4][2] = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
 
 // Coups diagonaux
-constexpr int diag_moves[4][2] = { {1, 1}, {1, -1}, {-1, 1}, {-1, -1} };
+constexpr int_fast8_t diag_moves[4][2] = { {1, 1}, {1, -1}, {-1, 1}, {-1, -1} };
 
 // Coups dans toutes les directions
-constexpr int all_directions[8][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1}, {-1, 0}, {0, -1}, {0, 1}, {1, 0} };
+constexpr int_fast8_t all_directions[8][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1}, {-1, 0}, {0, -1}, {0, 1}, {1, 0} };
 
 // Renvoie si la pièce est blanche
 static bool is_white(uint_fast8_t piece) {
@@ -388,22 +387,22 @@ public:
 	void copy_data(const Board&, bool full = false, bool copy_history = false);
 
 	// Fonction qui ajoute un coup dans la liste de coups
-	bool add_move(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
+	bool add_move(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t*, uint_fast8_t);
 
 	// Fonction qui ajoute les coups "pions" dans la liste de coups
-	bool add_pawn_moves(uint_fast8_t, uint_fast8_t, int*);
+	bool add_pawn_moves(uint_fast8_t, uint_fast8_t, uint_fast8_t*);
 
 	// Fonction qui ajoute les coups "cavaliers" dans la liste de coups
-	bool add_knight_moves(uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
+	bool add_knight_moves(uint_fast8_t, uint_fast8_t, uint_fast8_t*, uint_fast8_t);
 
 	// Fonction qui ajoute les coups diagonaux dans la liste de coups
-	bool add_diag_moves(uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
+	bool add_diag_moves(uint_fast8_t, uint_fast8_t, uint_fast8_t*, uint_fast8_t);
 
 	// Fonction qui ajoute les coups horizontaux et verticaux dans la liste de coups
-	bool add_rect_moves(uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
+	bool add_rect_moves(uint_fast8_t, uint_fast8_t, uint_fast8_t*, uint_fast8_t);
 
 	// Fonction qui ajoute les coups "roi" dans la liste de coups
-	bool add_king_moves(uint_fast8_t, uint_fast8_t, int*, uint_fast8_t);
+	bool add_king_moves(uint_fast8_t, uint_fast8_t, uint_fast8_t*, uint_fast8_t);
 
 	// Renvoie la liste des coups possibles
 	bool get_moves(const bool forbide_check = true);
@@ -533,9 +532,6 @@ public:
 
 	// Fonction qui met à jour la position des rois
 	bool update_kings_pos();
-
-	// Fonction qui renvoie la puissance de défense d'une pièce pour le roi allié
-	[[nodiscard]] int get_piece_defense_power(int i, int j) const;
 
 	// Fonction qui renvoie l'activité des pièces
 	[[nodiscard]] int get_piece_activity() const;
@@ -670,10 +666,10 @@ public:
 	[[nodiscard]] bool pawn_can_move(uint_fast8_t row, uint_fast8_t col, bool color) const;
 
 	// Fonction qui renvoie l'incertiude de la position
-	[[nodiscard]] float get_uncertainty(int material_eval);
+	[[nodiscard]] float get_uncertainty(int material_eval, int winning_eval = 125);
 
 	// Fonction qui renvoie le WDL de la position
-	[[nodiscard]] void get_WDL(float uncertainity = 0.0f, int winning_eval = 150, float beta = 0.75f);
+	[[nodiscard]] void get_WDL(float uncertainity = 0.0f, int winning_eval = 125, float beta = 0.75f);
 
 	// Fonction qui renvoie l'espérance de gain (en points) de la position (fondé sur les probas de WDL) pour les blancs
 	[[nodiscard]] float get_average_score(float draw_score = 0.5f) const;

@@ -109,6 +109,13 @@ void GameTree::add_child(GameTreeNode child) {
 
 // Ajout d'un fils à partir d'un plateau et d'un coup
 void GameTree::add_child(Board board, Move move, string move_label) {
+
+	// Vérifie que ce n'est pas un coup nul
+	if (move.is_null_move()) {
+		cout << "null move added, in position " << _current_node->_board.to_fen() << endl;
+		return;
+	}
+
 	// Vérifie que le coup n'existe pas déjà
 	for (int i = 0; i < _current_node->_children.size(); i++)
 		if (_current_node->_children[i]._move == move)
@@ -121,6 +128,13 @@ void GameTree::add_child(Board board, Move move, string move_label) {
 
 // Ajout d'un fils à partir d'un coup
 void GameTree::add_child(Move move) {
+
+	// Vérifie que ce n'est pas un coup nul
+	if (move.is_null_move()) {
+		cout << "null move added, in position " << _current_node->_board.to_fen() << endl;
+		return;
+	}
+
 	// Vérifie que le coup n'existe pas déjà
 	for (int i = 0; i < _current_node->_children.size(); i++)
 		if (_current_node->_children[i]._move == move)

@@ -18,7 +18,7 @@ Evaluator::Evaluator(const Evaluator& other) {
 	_attacks = other._attacks;
 	_kings_opposition = other._kings_opposition;
 	_push = other._push;
-	_rook_open = other._rook_open;
+	_open_files = other._open_files;
 	_square_controls = other._square_controls;
 	_space_advantage = other._space_advantage;
 	_alignments = other._alignments;
@@ -50,7 +50,7 @@ Evaluator::Evaluator(const float piece_value, const float piece_mobility, const 
 	_attacks = attacks;
 	_kings_opposition = kings_opposition;
 	_push = push;
-	_rook_open = rook_open;
+	_open_files = rook_open;
 	_square_controls = square_controls;
 	_space_advantage = space_advantage;
 	_alignments = alignments;
@@ -82,7 +82,7 @@ Evaluator& Evaluator::operator=(const Evaluator& other) {
 	_attacks = other._attacks;
 	_kings_opposition = other._kings_opposition;
 	_push = other._push;
-	_rook_open = other._rook_open;
+	_open_files = other._open_files;
 	_square_controls = other._square_controls;
 	_space_advantage = other._space_advantage;
 	_alignments = other._alignments;

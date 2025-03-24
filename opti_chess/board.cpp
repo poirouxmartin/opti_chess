@@ -62,13 +62,13 @@ void Board::copy_data(const Board& b, bool full, bool copy_history) {
 }
 
 // Fonction qui ajoute un coup dans une liste de coups
-bool Board::add_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fast8_t k, const uint_fast8_t l, int* iterator, const uint_fast8_t piece)
+bool Board::add_move(const uint_fast8_t start_row, const uint_fast8_t start_col, const uint_fast8_t end_row, const uint_fast8_t end_col, uint_fast8_t* iterator, const uint_fast8_t piece)
 {
 	// Si on dépasse le nombre de coups que l'on pensait possible dans une position
 	if (*iterator >= max_moves)
 		return false;
 
-	const Move m(i, j, k, l); // Si on utilise pas les flag, autant éviter les calculs inutiles
+	const Move m(start_row, start_col, end_row, end_col); // Si on utilise pas les flag, autant éviter les calculs inutiles
 	//const Move m(i, j, k, l, _array[k][l] != 0, (piece == 1 && i == 7) || (piece == 7 && i == 1));
 	_moves[*iterator] = m;
 
@@ -79,74 +79,74 @@ bool Board::add_move(const uint_fast8_t i, const uint_fast8_t j, const uint_fast
 }
 
 // Fonction qui ajoute les coups "pions" dans la liste de coups
-bool Board::add_pawn_moves(const uint_fast8_t i, const uint_fast8_t j, int* iterator) {
+bool Board::add_pawn_moves(const uint_fast8_t row, const uint_fast8_t col, uint_fast8_t* iterator) {
 
 	// Joueur avec les pièces blanches
 	if (_player) {
-		_array[i + 1][j] == 0 && add_move(i, j, i + 1, j, iterator, 1) && i == 1 && _array[i + 2][j] == 0 && add_move(i, j, i + 2, j, iterator, 1); // Poussées
-		j > 0 && (is_in_fast(_array[i + 1][j - 1], 7, 12) || (_en_passant_col == j - 1 && i == 4)) && add_move(i, j, i + 1, j - 1, iterator, 1); // Prise (gauche)
-		j < 7 && (is_in_fast(_array[i + 1][j + 1], 7, 12) || (_en_passant_col == j + 1 && i == 4)) && add_move(i, j, i + 1, j + 1, iterator, 1); // Prise (droite)
+		_array[row + 1][col] == none && add_move(row, col, row + 1, col, iterator, w_pawn) && row == 1 && _array[row + 2][col] == none && add_move(row, col, row + 2, col, iterator, w_pawn); // Poussées
+		col > 0 && (is_black(_array[row + 1][col - 1]) || (_en_passant_col == col - 1 && row == 4)) && add_move(row, col, row + 1, col - 1, iterator, w_pawn); // Prise (gauche)
+		col < 7 && (is_black(_array[row + 1][col + 1]) || (_en_passant_col == col + 1 && row == 4)) && add_move(row, col, row + 1, col + 1, iterator, w_pawn); // Prise (droite)
 	}
 
 	// Joueur avec les pièces noires
 	else {
-		_array[i - 1][j] == 0 && add_move(i, j, i - 1, j, iterator, 7) && i == 6 && _array[i - 2][j] == 0 && add_move(i, j, i - 2, j, iterator, 7); // Poussées
-		j > 0 && (is_in_fast(_array[i - 1][j - 1], 1, 6) || (_en_passant_col == j - 1 && i == 3)) && add_move(i, j, i - 1, j - 1, iterator, 7); // Prise (gauche)
-		j < 7 && (is_in_fast(_array[i - 1][j + 1], 1, 6) || (_en_passant_col == j + 1 && i == 3)) && add_move(i, j, i - 1, j + 1, iterator, 7); // Prise (droite)
+		_array[row - 1][col] == none && add_move(row, col, row - 1, col, iterator, b_pawn) && row == 6 && _array[row - 2][col] == none && add_move(row, col, row - 2, col, iterator, b_pawn); // Poussées
+		col > 0 && (is_white(_array[row - 1][col - 1]) || (_en_passant_col == col - 1 && row == 3)) && add_move(row, col, row - 1, col - 1, iterator, b_pawn); // Prise (gauche)
+		col < 7 && (is_white(_array[row - 1][col + 1]) || (_en_passant_col == col + 1 && row == 3)) && add_move(row, col, row - 1, col + 1, iterator, b_pawn); // Prise (droite)
 	}
 
 	return true;
 }
 
 // Fonction qui ajoute les coups "cavaliers" dans la liste de coups
-bool Board::add_knight_moves(const uint_fast8_t i, const uint_fast8_t j, int* iterator, const uint_fast8_t piece) {
+bool Board::add_knight_moves(const uint_fast8_t row, const uint_fast8_t col, uint_fast8_t* iterator, const uint_fast8_t piece) {
 
 	for (uint_fast8_t m = 0; m < 8; m++) {
-		const uint_fast8_t i2 = i + knight_moves[m][0];
-		if (!is_in_fast(i2, 0, 7))
+		const uint_fast8_t new_row = row + knight_moves[m][0];
+		if (!is_in_fast(new_row, 0, 7))
 			continue;
 
-		const uint_fast8_t j2 = j + knight_moves[m][1];
-		if (!is_in_fast(j2, 0, 7))
+		const uint_fast8_t new_col = col + knight_moves[m][1];
+		if (!is_in_fast(new_col, 0, 7))
 			continue;
 
-		((_player && !is_in_fast(_array[i2][j2], 1, 6)) || (!_player && !is_in_fast(_array[i2][j2], 7, 12))) && add_move(i, j, i2, j2, iterator, piece);
+		((_player && !is_white(_array[new_row][new_col])) || (!_player && !is_black(_array[new_row][new_col]))) && add_move(row, col, new_row, new_col, iterator, piece);
 	}
 
 	return true;
 }
 
 // Fonction qui ajoute les coups diagonaux dans la liste de coups
-bool Board::add_diag_moves(const uint_fast8_t i, const uint_fast8_t j, int* iterator, const uint_fast8_t piece) {
+bool Board::add_diag_moves(const uint_fast8_t row, const uint_fast8_t col, uint_fast8_t* iterator, const uint_fast8_t piece) {
 
 	const uint_fast8_t ally_min = _player ? w_pawn : b_pawn;
 	const uint_fast8_t ally_max = _player ? w_king : b_king;
 
-	for (uint_fast8_t k = 0; k < 4; k++) {
+	for (uint_fast8_t m = 0; m < 4; m++) {
 
 		// Direction
-		const uint_fast8_t mi = diag_moves[k][0];
-		const uint_fast8_t mj = diag_moves[k][1];
+		const uint_fast8_t d_row = diag_moves[m][0];
+		const uint_fast8_t d_col = diag_moves[m][1];
 
-		uint_fast8_t i2 = i + mi;
-		uint_fast8_t j2 = j + mj;
+		uint_fast8_t current_row = row + d_row;
+		uint_fast8_t current_col = col + d_col;
 
-		while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
-			const uint_fast8_t p2 = _array[i2][j2];
+		while (current_row >= 0 && current_row < 8 && current_col >= 0 && current_col < 8) {
+			const uint_fast8_t p2 = _array[current_row][current_col];
 
 			// Si y'a une pièce alliée, on arrête
 			if (is_in_fast(p2, ally_min, ally_max))
 				break;
 
 			// Coup possible
-			add_move(i, j, i2, j2, iterator, piece);
+			add_move(row, col, current_row, current_col, iterator, piece);
 
 			// Si y'a une pièce ennemie, on arrête
-			if (p2 != 0)
+			if (p2 != none)
 				break;
 
-			i2 += mi;
-			j2 += mj;
+			current_row += d_row;
+			current_col += d_col;
 		}
 	}
 
@@ -154,36 +154,36 @@ bool Board::add_diag_moves(const uint_fast8_t i, const uint_fast8_t j, int* iter
 }
 
 // Fonction qui ajoute les coups horizontaux et verticaux dans la liste de coups
-bool Board::add_rect_moves(const uint_fast8_t i, const uint_fast8_t j, int* iterator, const uint_fast8_t piece) {
+bool Board::add_rect_moves(const uint_fast8_t row, const uint_fast8_t col, uint_fast8_t* iterator, const uint_fast8_t piece) {
 
-	const uint_fast8_t ally_min = _player ? 1 : 7;
-	const uint_fast8_t ally_max = _player ? 6 : 12;
+	const uint_fast8_t ally_min = _player ? w_pawn : b_pawn;
+	const uint_fast8_t ally_max = _player ? w_king : b_king;
 
-	for (uint_fast8_t k = 0; k < 4; k++) {
+	for (uint_fast8_t m = 0; m < 4; m++) {
 
 		// Direction
-		const uint_fast8_t mi = rect_moves[k][0];
-		const uint_fast8_t mj = rect_moves[k][1];
+		const uint_fast8_t d_row = rect_moves[m][0];
+		const uint_fast8_t d_col = rect_moves[m][1];
 
-		uint_fast8_t i2 = i + mi;
-		uint_fast8_t j2 = j + mj;
+		uint_fast8_t current_row = row + d_row;
+		uint_fast8_t current_col = col + d_col;
 
-		while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
-			const uint_fast8_t p2 = _array[i2][j2];
+		while (current_row >= 0 && current_row < 8 && current_col >= 0 && current_col < 8) {
+			const uint_fast8_t p2 = _array[current_row][current_col];
 
 			// Si y'a une pièce alliée, on arrête
 			if (is_in_fast(p2, ally_min, ally_max))
 				break;
 
 			// Coup possible
-			add_move(i, j, i2, j2, iterator, piece);
+			add_move(row, col, current_row, current_col, iterator, piece);
 
 			// Si y'a une pièce ennemie, on arrête
-			if (p2 != 0)
+			if (p2 != none)
 				break;
 
-			i2 += mi;
-			j2 += mj;
+			current_row += d_row;
+			current_col += d_col;
 		}
 	}
 
@@ -191,140 +191,130 @@ bool Board::add_rect_moves(const uint_fast8_t i, const uint_fast8_t j, int* iter
 }
 
 // Fonction qui ajoute les coups "roi" dans la liste de coups
-bool Board::add_king_moves(const uint_fast8_t i, const uint_fast8_t j, int* iterator, const uint_fast8_t piece) {
-	const uint_fast8_t ally_min = _player ? 1 : 7;
-	const uint_fast8_t ally_max = _player ? 6 : 12;
+bool Board::add_king_moves(const uint_fast8_t row, const uint_fast8_t col, uint_fast8_t* iterator, const uint_fast8_t piece) {
 
-	for (int k = -1; k < 2; k++) {
-		for (int l = -1; l < 2; l++) {
-			if (k == 0 && l == 0)
-				continue;
-			const uint_fast8_t i2 = i + k;
-			const uint_fast8_t j2 = j + l;
-			// Si le coup n'est ni hors du plateau, ni sur une case où une pièce alliée est placée
-			is_in_fast(i2, 0, 7) && is_in_fast(j2, 0, 7) && !is_in_fast(_array[i2][j2], ally_min, ally_max) && add_move(i, j, i2, j2, iterator, piece);
-		}
+	const uint_fast8_t ally_min = _player ? w_pawn : b_pawn;
+	const uint_fast8_t ally_max = _player ? w_king : b_king;
+
+	// TODO *** utiliser les all_directions?
+	for (uint_fast8_t m = 0; m < 8; m++) {
+
+		// Direction
+		const uint_fast8_t new_row = row + all_directions[m][0];
+		if (!is_in_fast(new_row, 0, 7))
+			continue;
+
+		const uint_fast8_t new_col = col + all_directions[m][1];
+		if (!is_in_fast(new_col, 0, 7))
+			continue;
+
+		((_player && !is_white(_array[new_row][new_col])) || (!_player && !is_black(_array[new_row][new_col]))) && add_move(row, col, new_row, new_col, iterator, piece);
 	}
 
 	return true;
 }
 
 // Calcule la liste des coups possibles. pseudo ici fait référence au droit de roquer en passant par une position illégale.
-bool Board::get_moves(const bool forbide_check) 
-{
-	int iterator = 0;
+bool Board::get_moves(const bool forbide_check) {
 
-	for (int index = 0; index < 64; index++) {
-		const uint_fast8_t i = index / 8;
-		const uint_fast8_t j = index % 8;
-		const uint_fast8_t p = _array[i][j];
+	// Itérateur
+	uint_fast8_t iterator = 0;
 
-		// Si on dépasse le nombre de coups que l'on pensait possible dans une position
-		if (iterator >= max_moves) {
-			cout << "Too many moves in the position : " << iterator << "+" << endl;
-			return false;
+	for (uint_fast8_t row = 0; row < 8; row++) {
+		for (uint_fast8_t col = 0; col < 8; col++) {
+
+			// Pièce
+			const uint_fast8_t piece = _array[row][col];
+
+			// Si on dépasse le nombre de coups que l'on pensait possible dans une position
+			if (iterator >= max_moves) {
+				cout << "Too many moves in the position : " << to_fen() << " : moves > " << (int)iterator << endl;
+				return false;
+			}
+
+			// Le joueur doit correspondre à la couleur de la pièce
+			if ((_player && !is_white(piece) || (!_player && !is_black(piece))))
+				continue;
+
+			switch (piece) {
+				case none:
+					break;
+				case w_pawn:
+					add_pawn_moves(row, col, &iterator);
+					break;
+				case w_knight:
+					add_knight_moves(row, col, &iterator, w_knight);
+					break;
+				case w_bishop:
+					add_diag_moves(row, col, &iterator, w_bishop);
+					break;
+				case w_rook:
+					add_rect_moves(row, col, &iterator, w_rook);
+					break;
+				case w_queen:
+					add_diag_moves(row, col, &iterator, w_queen) && add_rect_moves(row, col, &iterator, w_queen);
+					break;
+				case w_king:
+					add_king_moves(row, col, &iterator, w_king);
+
+					// Roques (TODO *** optimisable)
+					// Grand
+					if (_castling_rights.q_w && _array[row][col - 1] == none && _array[row][col - 2] == none && _array[row][col - 3] == none && (!is_controlled(row, col, true) && !is_controlled(row, col - 1, true) && !is_controlled(row, col - 2, true)))
+						add_move(row, col, row, col - 2, &iterator, w_king);
+					// Petit
+					if (_castling_rights.k_w && _array[row][col + 1] == none && _array[row][col + 2] == none && (!is_controlled(row, col, true) && !is_controlled(row, col + 1, true) && !is_controlled(row, col + 2, true)))
+						add_move(row, col, row, col + 2, &iterator, w_king);
+					break;
+				case b_pawn: // Pion noir
+					add_pawn_moves(row, col, &iterator);
+					break;
+				case b_knight: // Cavalier noir
+					add_knight_moves(row, col, &iterator, b_knight);
+					break;
+				case b_bishop: // Fou noir
+					add_diag_moves(row, col, &iterator, b_bishop);
+					break;
+				case b_rook: // Tour noire
+					add_rect_moves(row, col, &iterator, b_rook);
+					break;
+				case b_queen: // Dame noire
+					add_diag_moves(row, col, &iterator, b_queen) && add_rect_moves(row, col, &iterator, b_queen);
+					break;
+				case b_king: // Roi noir
+					add_king_moves(row, col, &iterator, b_king);
+					// Roques
+					// Grand
+					if (_castling_rights.q_b && _array[row][col - 1] == none && _array[row][col - 2] == none && _array[row][col - 3] == none && (!is_controlled(row, col, false) && !is_controlled(row, col - 1, false) && !is_controlled(row, col - 2, false)))
+						add_move(row, col, row, col - 2, &iterator, b_king);
+					// Petit
+					if (_castling_rights.k_b && _array[row][col + 1] == none && _array[row][col + 2] == none && (!is_controlled(row, col, false) && !is_controlled(row, col + 1, false) && !is_controlled(row, col + 2, false)))
+						add_move(row, col, row, col + 2, &iterator, b_king);
+					break;
+			}
 		}
-
-
-		// Le joueur doit correspondre à la couleur de la pièce
-		if (p == none || _player != (p < 7))
-			continue;
-
-
-		switch (p) {
-
-		case none:
-			break;
-
-		case w_pawn:
-			add_pawn_moves(i, j, &iterator);
-			break;
-
-		case w_knight:
-			add_knight_moves(i, j, &iterator, w_knight);
-			break;
-
-		case w_bishop:
-			add_diag_moves(i, j, &iterator, w_bishop);
-			break;
-
-		case w_rook:
-			add_rect_moves(i, j, &iterator, w_rook);
-			break;
-
-		case w_queen:
-			add_diag_moves(i, j, &iterator, w_queen) && add_rect_moves(i, j, &iterator, w_queen);
-			break;
-
-		case w_king:
-			add_king_moves(i, j, &iterator, w_king);
-
-			// Roques (TODO *** optimisable)
-			// Grand
-			if (_castling_rights.q_w && _array[i][j - 1] == none && _array[i][j - 2] == none && _array[i][j - 3] == none && (!is_controlled(i, j, true) && !is_controlled(i, j - 1, true) && !is_controlled(i, j - 2, true)))
-				add_move(i, j, i, j - 2, &iterator, w_king);
-			// Petit
-			if (_castling_rights.k_w && _array[i][j + 1] == none && _array[i][j + 2] == none && (!is_controlled(i, j, true) && !is_controlled(i, j + 1, true) && !is_controlled(i, j + 2, true)))
-				add_move(i, j, i, j + 2, &iterator, w_king);
-			break;
-
-		case b_pawn: // Pion noir
-			add_pawn_moves(i, j, &iterator);
-			break;
-
-		case b_knight: // Cavalier noir
-			add_knight_moves(i, j, &iterator, b_knight);
-			break;
-
-		case b_bishop: // Fou noir
-			add_diag_moves(i, j, &iterator, b_bishop);
-			break;
-
-		case b_rook: // Tour noire
-			add_rect_moves(i, j, &iterator, b_rook);
-			break;
-
-		case b_queen: // Dame noire
-			add_diag_moves(i, j, &iterator, b_queen) && add_rect_moves(i, j, &iterator, b_queen);
-			break;
-
-		case b_king: // Roi noir
-			add_king_moves(i, j, &iterator, b_king);
-			// Roques
-			// Grand
-			if (_castling_rights.q_b && _array[i][j - 1] == none && _array[i][j - 2] == none && _array[i][j - 3] == none && (!is_controlled(i, j, false) && !is_controlled(i, j - 1, false) && !is_controlled(i, j - 2, false)))
-				add_move(i, j, i, j - 2, &iterator, b_king);
-			// Petit
-			if (_castling_rights.k_b && _array[i][j + 1] == none && _array[i][j + 2] == none && (!is_controlled(i, j, false) && !is_controlled(i, j + 1, false) && !is_controlled(i, j + 2, false)))
-				add_move(i, j, i, j + 2, &iterator, b_king);
-			break;
-		}
-
 	}
 
-	_got_moves = static_cast<int_fast8_t>(iterator);
+	_got_moves = iterator;
 
 	// Vérification échecs (TODO *** optimisable)
 	if (forbide_check) {
-		Move new_moves[100]{}; // Est-ce que ça prend de la mémoire?
-		int_fast8_t n_moves = 0;
+		uint_fast8_t n_moves = 0;
 		Board b;
 
-		for (int i = 0; i < _got_moves; i++) {
+		for (uint_fast8_t i = 0; i < _got_moves; i++) {
 			b.copy_data(*this);
-			b.make_index_move(i, false);
+			b.make_move(_moves[i]);
 			b._player = !b._player;
+
 			if (!b.in_check()) {
-				new_moves[n_moves] = _moves[i];
+				_moves[n_moves] = _moves[i];  // On écrase les coups invalides
 				n_moves++;
 			}
 		}
 
-		for (int i = 0; i < n_moves; i++)
-			_moves[i] = new_moves[i];
-
 		_got_moves = n_moves;
 	}
+
 
 	return true;
 }
@@ -870,8 +860,8 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	}
 
 	// Tours sur les colonnes ouvertes / semi-ouvertes
-	if (eval->_rook_open != 0.0f) {
-		const int rook_open = get_sliders_on_open_file() * eval->_rook_open;
+	if (eval->_open_files != 0.0f) {
+		const int rook_open = get_sliders_on_open_file() * eval->_open_files;
 		if (display)
 			main_GUI._eval_components += "sliders on open/semi files: " + (rook_open >= 0 ? string("+") : string()) + to_string(rook_open) + "\n";
 		total_positioning += rook_open;
@@ -1021,8 +1011,8 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	// Structure de pions
 	if (eval->_pawn_structure != 0.0f) {
 		const int pawn_structure = get_pawn_structure(display * eval->_pawn_structure) * eval->_pawn_structure;
-		if (display)
-			main_GUI._eval_components += "pawn structure: " + (pawn_structure >= 0 ? string("+") : string()) + to_string(pawn_structure) + "\n";
+		//if (display)
+		//	main_GUI._eval_components += "pawn structure: " + (pawn_structure >= 0 ? string("+") : string()) + to_string(pawn_structure) + "\n";
 		total_pawn_structure += pawn_structure;
 	}
 
@@ -1920,7 +1910,7 @@ int Board::get_king_safety(float display_factor) {
 	// Facteurs multiplicatifs
 	constexpr float piece_attack_factor = 1.0f;
 	constexpr float piece_defense_factor = 1.0f;
-	constexpr float pawn_protection_factor = 0.65f;
+	constexpr float pawn_protection_factor = 0.45f;
 
 	// En cas de résultante positive ou négative...
 	constexpr float piece_overload_multiplicator = 1.0f; // TODO: à utiliser
@@ -2032,8 +2022,8 @@ int Board::get_king_safety(float display_factor) {
 	const float overload_factor = 1.5f;
 	//const float overload_factor = 0.0f;
 
-	w_king_overloaded *= overload_factor;
-	b_king_overloaded *= overload_factor;
+	w_king_overloaded *= overload_factor * b_attacking_potential;
+	b_king_overloaded *= overload_factor * w_attacking_potential;
 
 	//if (display_factor != 0.0f) {
 	//	main_GUI._eval_components += "Overloaded: " + to_string(w_king_overloaded) + " / " + to_string(b_king_overloaded) + "\n";
@@ -2103,6 +2093,18 @@ int Board::get_king_safety(float display_factor) {
 	//}
 
 
+	// --------------------------
+	// *** ESPACE DE MOBILITE ***
+	// --------------------------
+
+	// TEST (pas sûr)
+	constexpr float space_safety_factor = 0.0f;
+
+	const int space = get_space();
+
+	const int w_space = space_safety_factor * space;
+	const int b_space = - space_safety_factor * space;
+
 	// ---------------------------------
 	// *** MOBILITE VIRTUELLE DU ROI ***
 	// ---------------------------------
@@ -2144,7 +2146,7 @@ int Board::get_king_safety(float display_factor) {
 	// *** PAWN STORM ***
 	// ------------------
 
-	constexpr float pawn_storm_danger = 2.0f;
+	constexpr float pawn_storm_danger = 1.5f;
 
 	int w_pawn_storm = get_pawn_storm(true) * pawn_storm_danger;
 	int b_pawn_storm = get_pawn_storm(false) * pawn_storm_danger;
@@ -2230,7 +2232,7 @@ int Board::get_king_safety(float display_factor) {
 	// Short term = 1000 -> factor = 0.5
 
 	// Valeur pour laquelle la compensation est de 0.5
-	constexpr int short_term_compensation_value = 1000;
+	constexpr int short_term_compensation_value = 850;
 
 	//const float w_short_term_compensation_factor = 1 - 1 / (1 + abs(w_short_term_weakness) / short_term_compensation_value);
 
@@ -2249,7 +2251,7 @@ int Board::get_king_safety(float display_factor) {
 	
 
 	// Faiblesses long terme:
-	int b_long_term_weakness = w_pawn_storm + w_open_lines + w_open_diagonals - b_king_protection + b_placement_weakness + b_virtual_mobility + b_weak_squares + b_rank_weakness;
+	int b_long_term_weakness = w_pawn_storm + w_open_lines + w_open_diagonals - b_king_protection + b_placement_weakness + b_virtual_mobility + b_weak_squares + b_rank_weakness - b_space;
 
 	// Faiblesse accentuée quand les rois sont éloignés
 	b_long_term_weakness *= long_term_weakness_distance_factor;
@@ -2279,6 +2281,7 @@ int Board::get_king_safety(float display_factor) {
 		main_GUI._eval_components += " + Weak squares: " + to_string(b_weak_squares);
 		main_GUI._eval_components += " + Rank weakness (TODO): " + to_string(b_rank_weakness);
 		main_GUI._eval_components += " + Mating nets (TODO): " + to_string(0);
+		main_GUI._eval_components += " - Space: " + to_string(b_space);
 		main_GUI._eval_components += ") * Kings distance : " + to_string(long_term_weakness_distance_factor);
 		main_GUI._eval_components += " = " + to_string(b_long_term_weakness) + "\n";
 	}
@@ -2290,7 +2293,7 @@ int Board::get_king_safety(float display_factor) {
 	b_short_term_weakness *= short_term_weakness_distance_factor;
 
 	// Compensation court terme / long terme (entre 0 et 1)
-	const float b_short_term_compensation_factor = 1.0f - 1.0f / (1.0f + abs(b_short_term_weakness) / static_cast<float>(short_term_compensation_value));
+	const float b_short_term_compensation_factor = 1.0f - 1.0f / (1.0f + abs(b_short_term_weakness) / static_cast<float>(short_term_compensation_value) / w_attacking_potential);
 	//short term = max(0, short_term) - factor * long_term / short_term
 
 	//cout << "b short term: " << b_short_term_weakness << " / b long term: " << b_long_term_weakness << " / b factor: " << b_short_term_compensation_factor << endl;
@@ -2330,7 +2333,7 @@ int Board::get_king_safety(float display_factor) {
 	}
 
 	// Faiblesses long terme:
-	int w_long_term_weakness = b_pawn_storm + b_open_lines + b_open_diagonals - w_king_protection + w_placement_weakness + w_virtual_mobility + w_weak_squares + w_rank_weakness;
+	int w_long_term_weakness = b_pawn_storm + b_open_lines + b_open_diagonals - w_king_protection + w_placement_weakness + w_virtual_mobility + w_weak_squares + w_rank_weakness - w_space;
 
 	// Faiblesse accentuée quand les rois sont éloignés
 	w_long_term_weakness *= long_term_weakness_distance_factor;
@@ -2359,6 +2362,7 @@ int Board::get_king_safety(float display_factor) {
 		main_GUI._eval_components += " + Weak squares: " + to_string(w_weak_squares);
 		main_GUI._eval_components += " + Rank weakness (TODO): " + to_string(w_rank_weakness);
 		main_GUI._eval_components += " + Mating nets (TODO): " + to_string(0);
+		main_GUI._eval_components += " - Space: " + to_string(w_space);
 		main_GUI._eval_components += ") * Kings distance : " + to_string(long_term_weakness_distance_factor);
 		main_GUI._eval_components += " = " + to_string(w_long_term_weakness) + "\n";
 	}
@@ -2369,7 +2373,7 @@ int Board::get_king_safety(float display_factor) {
 	// Faiblesse accentuée quand les rois sont éloignés
 	w_short_term_weakness *= short_term_weakness_distance_factor;
 
-	const float w_short_term_compensation_factor = 1.0f - 1.0f / (1.0f + abs(w_short_term_weakness) / static_cast<float>(short_term_compensation_value));
+	const float w_short_term_compensation_factor = 1.0f - 1.0f / (1.0f + abs(w_short_term_weakness) / static_cast<float>(short_term_compensation_value) / b_attacking_potential);
 	//short term = max(0, short_term) - factor * long_term / short_term
 
 	//cout << "w short term: " << w_short_term_weakness << " / w long term: " << w_long_term_weakness << " / w factor: " << w_short_term_compensation_factor << endl;
@@ -2403,13 +2407,13 @@ int Board::get_king_safety(float display_factor) {
 	// TEST: fonction non linéaire, pour amortir les différences autour de 0, et éviter les trop grosses surprotections
 
 	if (w_king_weakness < 0) {
-		float w_overprotection = 1.0f / (1.0f - w_king_weakness / 50.0f);
+		float w_overprotection = 1.0f / (1.0f - w_king_weakness / 20.0f);
 		w_king_weakness *= w_overprotection;
 		//w_king_weakness = 0;
 	}
 
 	if (b_king_weakness < 0) {
-		float b_overprotection = 1.0f / (1.0f - b_king_weakness / 50.0f);
+		float b_overprotection = 1.0f / (1.0f - b_king_weakness / 20.0f);
 		b_king_weakness *= b_overprotection;
 		//b_king_weakness = 0;
 	}
@@ -2555,17 +2559,18 @@ int Board::get_pawn_structure(float display_factor)
 	// TEST: r4rk1/pp2qppp/3b1n2/8/P2pP3/3B1P2/P2B2PP/2RQ1RK1 b - - 0 17 : pourquoi isolated positif?
 
 	// Pions isolés
-	constexpr int isolated_pawn = -55;
+	constexpr int isolated_pawn = -45;
 	constexpr float open_row_factor = 1.5f; // Si le pion isolé est sur une colonne ouverte, il est beaucoup plus faible
-	constexpr float isolated_adv_factor = 0.4f; // En fonction de l'advancement de la partie
-	const float isolated_adv = 1 * (1 + (isolated_adv_factor - 1) * _adv);
-	int isolated_pawns = 0;
+	constexpr float isolated_adv_factor = 0.25f; // En fonction de l'advancement de la partie
+	const float isolated_adv = eval_from_progress(1, _adv, isolated_adv_factor);
+	float isolated_pawns = 0.0f;
 
 	for (uint_fast8_t col = 0; col < 8; col++) {
 
 		// Pion isolé blanc sur la colonne
 		if (s_white[col] > 0 && (col == 0 || s_white[col - 1] == 0) && (col == 7 || s_white[col + 1] == 0)) {
 			bool is_open_col = true;
+
 			for (uint_fast8_t row = 7; row > 0; row--) {
 				if (_array[row][col] == w_pawn) {
 					break;
@@ -2584,6 +2589,7 @@ int Board::get_pawn_structure(float display_factor)
 		// Pion isolé noir sur la colonne
 		if (s_black[col] > 0 && (col == 0 || s_black[col - 1] == 0) && (col == 7 || s_black[col + 1] == 0)) {
 			bool is_open_col = true;
+
 			for (uint_fast8_t row = 0; row < 7; row++) {
 				if (_array[row][col] == b_pawn) {
 					break;
@@ -2601,15 +2607,15 @@ int Board::get_pawn_structure(float display_factor)
 	}
 
 	if (display_factor != 0.0f)
-		main_GUI._eval_components += "isolated pawns: " + (isolated_pawns >= 0 ? string("+") : string()) + to_string(static_cast<int>(isolated_pawns * display_factor)) + " | ";
+		main_GUI._eval_components += "isolated pawns: " + (isolated_pawns >= 0 ? string("+") : string()) + to_string(static_cast<int>(isolated_pawns * display_factor)) + "\n";
 
 	pawn_structure += isolated_pawns;
 
 	// Pions doublés (ou triplés...)
 	constexpr int doubled_pawn = -70;
-	constexpr float doubled_adv_factor = 0.85f; // En fonction de l'advancement de la partie
-	const float doubled_adv = 1 * (1 + (doubled_adv_factor - 1) * _adv);
-	int doubled_pawns = 0;
+	constexpr float doubled_adv_factor = 0.45f; // En fonction de l'advancement de la partie
+	const float doubled_adv = eval_from_progress(1, _adv, doubled_adv_factor);
+	float doubled_pawns = 0.0f;
 
 	for (uint_fast8_t i = 0; i < 8; i++) {
 		doubled_pawns += (s_white[i] >= 2) * doubled_pawn * (s_white[i] - 1) * doubled_adv;
@@ -2617,9 +2623,119 @@ int Board::get_pawn_structure(float display_factor)
 	}
 
 	if (display_factor != 0.0f)
-		main_GUI._eval_components += "doubled pawns: " + (doubled_pawns >= 0 ? string("+") : string()) + to_string(static_cast<int>(doubled_pawns * display_factor)) + " | ";
+		main_GUI._eval_components += "doubled pawns: " + (doubled_pawns >= 0 ? string("+") : string()) + to_string(static_cast<int>(doubled_pawns * display_factor)) + "\n";
 
 	pawn_structure += doubled_pawns;
+
+	// Pions arrierés
+	// Pion qui ne peut être défendu par aucun autre pion, et qui est fixé par un pion adverse (la case devant est controlée par un pion adverse)
+	constexpr int backward_pawn = -35;
+	constexpr float backward_adv_factor = 0.0f; // En fonction de l'advancement de la partie
+	constexpr float backward_open_factor = 1.5f; // Si le pion arriéré est sur une colonne ouverte, il est beaucoup plus faible
+	constexpr float blocked_factor = 2.0f; // Si le pion est bloqué par une pièce adverse, ou si la case devant est controlée par un pion adverse
+	const float backward_adv = eval_from_progress(1, _adv, backward_adv_factor);
+	float backward_pawns = 0.0f;
+
+	// Pions blancs
+	for (uint_fast8_t col = 0; col < 8; col++) {
+		for (uint_fast8_t row = 1; row < 7; row++) {
+			if (pawns_white[row][col]) {
+				bool is_backward = true;
+				
+				// Y'a-t-il un potentiel défenseur?
+				for (int_fast8_t k = row; k >= 1; k--) {
+					if (col > 0 && _array[k][col - 1] == w_pawn) {
+						is_backward = false;
+						break;
+					}
+
+					if (col < 7 && _array[k][col + 1] == w_pawn) {
+						is_backward = false;
+						break;
+					}
+				}
+
+				// La case devant est-elle controlée par un pion adverse?
+				if (is_backward) {
+					bool is_controlled = false;
+
+					if (row < 6 && col > 0 && _array[row + 2][col - 1] == b_pawn) {
+						is_controlled = true;
+					}
+					else if (row < 6 && col < 7 && _array[row + 2][col + 1] == b_pawn) {
+						is_controlled = true;
+					}
+
+					bool is_blocked = is_black(_array[row + 1][col]);
+
+					// Si la colonne est ouverte, le pion arriéré est beaucoup plus faible
+					bool is_open_col = true;
+
+					for (uint_fast8_t k = 7; k > row; k--) {
+						if (_array[k][col] == b_pawn) {
+							is_open_col = false;
+							break;
+						}
+					}
+
+					backward_pawns += backward_pawn * backward_adv * ((is_controlled || is_blocked) ? blocked_factor : 1.0f) * (is_open_col ? backward_open_factor : 1.0f);
+				}
+			}
+		}
+	}
+
+	// Pions noirs
+	for (uint_fast8_t col = 0; col < 8; col++) {
+		for (uint_fast8_t row = 6; row > 0; row--) {
+			if (pawns_black[row][col]) {
+				bool is_backward = true;
+
+				// Y'a-t-il un potentiel défenseur?
+				for (int_fast8_t k = row; k <= 6; k++) {
+					if (col > 0 && _array[k][col - 1] == b_pawn) {
+						is_backward = false;
+						break;
+					}
+
+					if (col < 7 && _array[k][col + 1] == b_pawn) {
+						is_backward = false;
+						break;
+					}
+				}
+
+				// La case devant est-elle controlée par un pion adverse?
+				if (is_backward) {
+					bool is_controlled = false;
+
+					if (row > 1 && col > 0 && _array[row - 2][col - 1] == w_pawn) {
+						is_controlled = true;
+					}
+					else if (row > 1 && col < 7 && _array[row - 2][col + 1] == w_pawn) {
+						is_controlled = true;
+					}
+
+					bool is_blocked = is_white(_array[row - 1][col]);
+
+					// Si la colonne est ouverte, le pion arriéré est beaucoup plus faible
+					bool is_open_col = true;
+
+					for (uint_fast8_t k = 0; k < row; k++) {
+						if (_array[k][col] == w_pawn) {
+							is_open_col = false;
+							break;
+						}
+					}
+
+					backward_pawns -= backward_pawn * backward_adv * ((is_controlled || is_blocked) ? blocked_factor : 1.0f) * (is_open_col ? backward_open_factor : 1.0f);
+				}
+			}
+		}
+	}
+
+	if (display_factor != 0.0f)
+		main_GUI._eval_components += "backward pawns: " + (backward_pawns >= 0 ? string("+") : string()) + to_string(static_cast<int>(backward_pawns * display_factor)) + "\n";
+
+	pawn_structure += backward_pawns;
 
 	// Pions passés
 	// r5k1/P3Rpp1/7p/8/3p4/8/2P2PPP/6K1 b - - 1 30 : position à tester
@@ -2632,10 +2748,10 @@ int Board::get_pawn_structure(float display_factor)
 
 	// Facteur de division par pièce qui contrôle (cavalier, fou, tour, dame, roi)
 	//static constexpr float control_division_per_piece[5] = { 1.5f, 1.75f, 1.35f, 1.2f, 1.35f };
-	static constexpr float control_division = 2.25f;
+	static constexpr float control_division = 1.85f;
 
 	// Facteur de division par pièce qui bloque (cavalier, fou, tour, dame, roi)
-	static constexpr float block_division_per_piece[5] = { 2.75f, 2.35f, 2.0f, 1.75f, 2.5f };
+	static constexpr float block_division_per_piece[5] = { 2.75f, 2.15f, 2.0f, 1.55f, 2.3f };
 
 	// Bloquage par une pièce alliée
 	static constexpr float self_block_division = 1.5f;
@@ -2652,8 +2768,8 @@ int Board::get_pawn_structure(float display_factor)
 
 
 	constexpr float passed_adv_factor = 1.0f; // En fonction de l'advancement de la partie
-	const float passed_adv = 1 * (1 + (passed_adv_factor - 1) * _adv);
-	int passed_pawns_value = 0;
+	const float passed_adv = eval_from_progress(1, _adv, passed_adv_factor);
+	float passed_pawns_value = 0.0f;
 
 	//print_array(s_white, 8);
 	//print_array(s_black, 8);
@@ -2829,7 +2945,7 @@ int Board::get_pawn_structure(float display_factor)
 	// Valeur qui diminue quand on pousse c3??
 
 	if (display_factor != 0.0f)
-		main_GUI._eval_components += "passed pawns: " + (passed_pawns_value >= 0 ? string("+") : string()) + to_string(static_cast<int>(passed_pawns_value * display_factor)) + " || ";
+		main_GUI._eval_components += "passed pawns: " + (passed_pawns_value >= 0 ? string("+") : string()) + to_string(static_cast<int>(passed_pawns_value * display_factor)) + "\n";
 
 	pawn_structure += passed_pawns_value;
 
@@ -2838,9 +2954,9 @@ int Board::get_pawn_structure(float display_factor)
 	// Un pion est dit connecté, s'il y a un pion de la même couleur sur une colonne adjacente sur la même rangée ou la rangée inférieure
 	constexpr int connected_pawns[8] = { 0, 25, 35, 70, 120, 180, 275, 0 };
 	constexpr float connected_pawns_factor = 0.3f; // En fonction de l'advancement de la partie
-	const float connected_pawns_adv = 1 * (1 + (connected_pawns_factor - 1) * _adv);
+	const float connected_pawns_adv = eval_from_progress(1, _adv, connected_pawns_factor);
 
-	int connected_pawns_value = 0;
+	float connected_pawns_value = 0.0f;
 
 	// Pour chaque colonne
 	for (uint_fast8_t j = 0; j < 8; j++) {
@@ -2871,13 +2987,11 @@ int Board::get_pawn_structure(float display_factor)
 	}
 
 	if (display_factor != 0.0f)
-		main_GUI._eval_components += "connected pawns: " + (connected_pawns_value >= 0 ? string("+") : string()) + to_string(static_cast<int>(connected_pawns_value * display_factor)) + " || ";
+		main_GUI._eval_components += "connected pawns: " + (connected_pawns_value >= 0 ? string("+") : string()) + to_string(static_cast<int>(connected_pawns_value * display_factor)) + "\n";
 
 	pawn_structure += connected_pawns_value;
 
-
-	// TODO : pions arriérés
-
+	// TODO *** les facteurs multiplicatifs par avancement devraient être ajoutés à la fin
 
 	// On doit encore vérifier si le pion adverse est devant ou derrière l'autre pion...
 
@@ -2916,12 +3030,12 @@ float Board::get_attacks_and_defenses() const
 	// Tableau des valeurs de défenses des pièces (0 = pion, 1 = caval, 2 = fou, 3 = tour, 4 = dame, 5 = roi)
 	static constexpr int defenses_array[6][6] = {
 	//   P    N    B     R    Q    K
-		{100,  45,  45,  35,  30,   0}, // P
-		{20,  30,  30,  30,  30,   0}, // N
-		{20,  30,  30,  30,  30,   0}, // B
-		{10,  20,  20,  35,  25,   0}, // R
-		{ 5,   5,   5,   5,   5,   0}, // Q
-		{ 5,   5,   5,   5,   5,   0}, // K
+		{100, 45,  45,  35,  30,   0}, // P
+		{25,  30,  30,  30,  30,   0}, // N
+		{25,  30,  30,  30,  30,   0}, // B
+		{20,  20,  20,  35,  25,   0}, // R
+		{10,   5,   5,   5,   5,   0}, // Q
+		{10,   5,   5,   5,   5,   0}, // K
 	};
 
 	// TODO ne pas additionner la défense de toutes les pièces? seulement regarder les pièces non-défendues? (sinon devient pleutre)
@@ -3257,7 +3371,8 @@ float Board::get_attacks_and_defenses() const
 	int max_defense = 10;
 
 	// Malus pour les pièces non-défendues (pions, cavaliers, fous, tours, dames, rois)
-	int undefended_malus[6] = { 0, 20, 8, 10, 5, 0 };
+	//int undefended_malus[6] = { 0, 20, 8, 10, 5, 0 };
+	int undefended_malus[6] = { 0, 0, 0, 0, 0, 0 };
 
 	// TESTS
 	//rnbqkbnr/ppp2ppp/4p3/3p4/3P4/2N5/PPP1PPPP/R1BQKBNR w KQkq - 0 3
@@ -3299,10 +3414,12 @@ float Board::get_attacks_and_defenses() const
 		}
 	}
 
+	// r6r/p1kb2p1/1p2p3/3pP3/2p2P2/2P1R1P1/PP1N2P1/R5K1 b - - 0 20 : les noirs n'attaquent rien, mais ont quand-même du bonus?
+
 	// 4R3/p4pkp/2p2pb1/qp1p4/2nP2PN/PRPB3P/2P2P2/6K1 b - - 2 21
 
 	// En fonction de l'avancement
-	constexpr float advancement_factor = 1.0f;
+	constexpr float advancement_factor = 0.5f;
 
 	//cout << "\nWhite attacks: " << white_attacks_eval << " | Black attacks: " << black_attacks_eval << endl;
 
@@ -3419,9 +3536,9 @@ int Board::get_sliders_on_open_file() const
 
 	// Bonus
 	constexpr int rook_open_bonus = 50;
-	constexpr int rook_semi_open_bonus = 25;
-	constexpr int queen_open_bonus = 25;
-	constexpr int queen_semi_open_bonus = 15;
+	constexpr int rook_semi_open_bonus = 35;
+	constexpr int queen_open_bonus = 30;
+	constexpr int queen_semi_open_bonus = 20;
 
 	int w_open_value = 0;
 	int b_open_value = 0;
@@ -3506,13 +3623,20 @@ int Board::get_sliders_on_open_file() const
 		}
 	}
 
+	//cout << "Open files: " << (int)open_files << " | Semi-open files: " << (int)w_semi_open_files << " / " << (int)b_semi_open_files << endl;
+	//cout << "W open value: " << w_open_value << " | B open value: " << b_open_value << endl;
+	//cout << "W semi-open value: " << w_semi_open_value << " | B semi-open value: " << b_semi_open_value << endl;
+
 	// L'importance est moindre s'il y a plusieurs colonnes ouvertes
-	w_open_value = 2 * w_open_value / (open_files + 1);
-	b_open_value = 2 * b_open_value / (open_files + 1);
+	w_open_value = w_open_value == 0 ? 0 : w_open_value / open_files;
+	b_open_value = b_open_value == 0 ? 0 : b_open_value / open_files;
 
 	// L'importance est moindre s'il y a plusieurs colonnes semi-ouvertes
-	w_semi_open_value = 2 * w_semi_open_value / (w_semi_open_files + open_files * 2 + 1);
-	b_semi_open_value = 2 * b_semi_open_value / (b_semi_open_files + open_files * 2 + 1);
+	w_semi_open_value = w_semi_open_value == 0 ? 0 : w_semi_open_value / (w_semi_open_files + open_files * 2);
+	b_semi_open_value = b_semi_open_value == 0 ? 0 : b_semi_open_value / (b_semi_open_files + open_files * 2);
+
+	//cout << "W open value: " << w_open_value << " | B open value: " << b_open_value << endl;
+	//cout << "W semi-open value: " << w_semi_open_value << " | B semi-open value: " << b_semi_open_value << endl;
 
 	// Valeur totale
 	return w_open_value - b_open_value + w_semi_open_value - b_semi_open_value;
@@ -3528,9 +3652,9 @@ int Board::get_square_controls() const
 	static constexpr int square_controls[8][8] = {
 		{10,  10,  10,  10,  10,  10,  10,  10},
 		{20,  20,  30,  40,  40,  30,  20,  20},
-		{10,  25,  35,  50,  50,  35,  25,  10},
+		{10,  25,  45,  65,  65,  45,  25,  10},
 		{5,   35,  55,  75,  75,  55,  35,   5},
-		{0,   15,  25,  40,  40,  25,  15,   0},
+		{0,   15,  25,  30,  30,  25,  15,   0},
 		{5,    5,  10,  20,  20,  10,   5,   5},
 		{0,    0,   0,   0,   0,   0,   0,   0},
 		{0,    0,   0,   0,   0,   0,   0,   0}
@@ -4051,108 +4175,6 @@ bool Board::update_kings_pos()
 	return false;
 }
 
-// Fonction qui renvoie la puissance de défense d'une pièce pour le roi allié
-int Board::get_piece_defense_power(const int i, const int j) const
-{
-	const uint_fast8_t piece = _array[i][j];
-
-	// Renvoie 0 si la case est vide
-	if (piece == 0)
-		return 0;
-
-	//return 0;
-
-	// Tableaux des puissances d'attaque
-
-	// Pion
-	static constexpr int pawn_defensing_power_map[8][8] = {
-	{0, 200, 25, 0, 0, 0, 0, 0},
-	{250, 175, 35, 0, 0, 0, 0, 0},
-	{150, 100, 50, 0, 0, 0, 0, 0},
-	{75, 15, 10, 15, 0, 0, 0, 0},
-	{35, 0, 0, 0, 5, 0, 0, 0},
-	{15, 0, 0, 0, 0, 0, 0, 0},
-	{5, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0}
-	};
-
-	// Cavalier
-	static constexpr int knight_defensing_power_map[8][8] = {
-	{0, 45, 25, 10, 0, 0, 0, 0},
-	{95, 35, 10, 0, 0, 0, 0, 0},
-	{60, 50, 35, 5, 0, 0, 0, 0},
-	{35, 25, 10, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0}
-	};
-
-	// Fou
-	static constexpr int bishop_defensing_power_map[8][8] = {
-	{   0,   35,   25,    0,    0,    0,    0,    0 },
-	{  65,   35,   15,    0,    0,    0,    0,    0 },
-	{  55,   35,   15,    5,    0,    0,    0,    0 },
-	{  25,   20,   15,    5,    5,    0,    0,    0 },
-	{   0,    0,    0,    5,    10,    5,    0,    0 },
-	{   0,    0,    0,    0,    5,    10,    5,    0 },
-	{   0,    0,    0,    0,    0,    5,    10,    5 },
-	{   0,    0,    0,    0,    0,    0,    5,    10 }
-	};
-
-	// Tour
-	static constexpr int rook_defensing_power_map[8][8] = {
-	{0, 15, 5, 5, 5, 5, 5, 5},
-	{30, 25, 10, 10, 10, 10, 10, 10},
-	{25, 10, 0, 0, 0, 0, 0, 0},
-	{10, 5, 0, 0, 0, 0, 0, 0},
-	{10, 5, 0, 0, 0, 0, 0, 0},
-	{10, 5, 0, 0, 0, 0, 0, 0},
-	{10, 5, 0, 0, 0, 0, 0, 0},
-	{10, 5, 0, 0, 0, 0, 0, 0}
-	};
-
-	// Dame
-	static constexpr int queen_defensing_power_map[8][8] = {
-	{0, 95, 45, 15, 0, 0, 0, 0},
-	{150, 120, 60, 15, 0, 0, 0, 0},
-	{185, 150, 90, 30, 0, 0, 0, 0},
-	{60, 95, 75, 15, 0, 0, 0, 0},
-	{30, 15, 5, 0, 0, 0, 0, 0},
-	{15, 0, 0, 0, 0, 0, 0, 0},
-	{5, 0, 0, 0, 0, 0, 0, 0},
-	{5, 0, 0, 0, 0, 0, 0, 0}
-	};
-
-	// Renvoie la valeur correspondante à la puissance d'attaque de la pièce
-
-	// Pièces blanches
-	if (piece == 1)
-		return (i < _white_king_pos.row) ? 0 : pawn_defensing_power_map[i - _white_king_pos.row][abs(j - _white_king_pos.col)];
-	if (piece == 2)
-		return (i < _white_king_pos.row) ? 0 : knight_defensing_power_map[i - _white_king_pos.row][abs(j - _white_king_pos.col)];
-	if (piece == 3)
-		return (i < _white_king_pos.row) ? 0 : bishop_defensing_power_map[i - _white_king_pos.row][abs(j - _white_king_pos.col)];
-	if (piece == 4)
-		return (i < _white_king_pos.row) ? 0 : rook_defensing_power_map[i - _white_king_pos.row][abs(j - _white_king_pos.col)];
-	if (piece == 5)
-		return (i < _white_king_pos.row) ? 0 : queen_defensing_power_map[i - _white_king_pos.row][abs(j - _white_king_pos.col)];
-
-	// Pièces noires
-	if (piece == 7)
-		return (i > _black_king_pos.row) ? 0 : pawn_defensing_power_map[_black_king_pos.row - i][abs(j - _black_king_pos.col)];
-	if (piece == 8)
-		return (i > _black_king_pos.row) ? 0 : knight_defensing_power_map[_black_king_pos.row - i][abs(j - _black_king_pos.col)];
-	if (piece == 9)
-		return (i > _black_king_pos.row) ? 0 : bishop_defensing_power_map[_black_king_pos.row - i][abs(j - _black_king_pos.col)];
-	if (piece == 10)
-		return (i > _black_king_pos.row) ? 0 : rook_defensing_power_map[_black_king_pos.row - i][abs(j - _black_king_pos.col)];
-	if (piece == 11)
-		return (i > _black_king_pos.row) ? 0 : queen_defensing_power_map[_black_king_pos.row - i][abs(j - _black_king_pos.col)];
-
-	return 0;
-}
-
 // Fonction qui renvoie l'activité des pièces
 int Board::get_piece_activity() const
 {
@@ -4240,7 +4262,9 @@ Map Board::get_white_controls_map() const
 	for (uint_fast8_t i = 0; i < 8; i++)
 		for (uint_fast8_t j = 0; j < 8; j++) {
 			const uint_fast8_t piece = _array[i][j];
-			piece > none && piece <= w_king && add_piece_controls(&controls_map, i, j, piece);
+			if (is_white(piece)) {
+				add_piece_controls(&controls_map, i, j, piece);
+			}
 		}
 
 	return controls_map;
@@ -4258,7 +4282,9 @@ Map Board::get_black_controls_map() const
 	for (uint_fast8_t i = 0; i < 8; i++)
 		for (uint_fast8_t j = 0; j < 8; j++) {
 			const uint_fast8_t piece = _array[i][j];
-			piece >= b_pawn && add_piece_controls(&controls_map, i, j, piece);
+			if (is_black(piece)) {
+				add_piece_controls(&controls_map, i, j, piece);
+			}
 		}
 
 	return controls_map;
@@ -4285,7 +4311,7 @@ bool Board::add_piece_controls(Map* map, int i, int j, int piece) const
 	}
 
 	// Cavaliers
-	if (piece == w_knight || piece == b_knight) {
+	if (is_knight(piece)) {
 		for (uint_fast8_t k = 0; k < 8; k++) {
 			const uint_fast8_t i2 = i + knight_moves[k][0];
 			const uint_fast8_t j2 = j + knight_moves[k][1];
@@ -4295,7 +4321,7 @@ bool Board::add_piece_controls(Map* map, int i, int j, int piece) const
 	}
 
 	// Fous
-	if (piece == w_bishop || piece == b_bishop) {
+	if (is_bishop(piece)) {
 		for (uint_fast8_t k = 0; k < 4; k++) {
 			const uint_fast8_t mi = diag_moves[k][0];
 			const uint_fast8_t mj = diag_moves[k][1];
@@ -4315,7 +4341,7 @@ bool Board::add_piece_controls(Map* map, int i, int j, int piece) const
 	}
 
 	// Tours
-	if (piece == w_rook || piece == b_rook) {
+	if (is_rook(piece)) {
 		for (uint_fast8_t k = 0; k < 4; k++) {
 			const uint_fast8_t mi = rect_moves[k][0];
 			const uint_fast8_t mj = rect_moves[k][1];
@@ -4334,7 +4360,7 @@ bool Board::add_piece_controls(Map* map, int i, int j, int piece) const
 	}
 
 	// Dames
-	if (piece == w_queen || piece == b_queen) {
+	if (is_queen(piece)) {
 		for (uint_fast8_t k = 0; k < 8; k++) {
 			const uint_fast8_t mi = all_directions[k][0];
 			const uint_fast8_t mj = all_directions[k][1];
@@ -4355,7 +4381,7 @@ bool Board::add_piece_controls(Map* map, int i, int j, int piece) const
 	}
 
 	// Rois
-	if (piece == w_king || piece == b_king) {
+	if (is_king(piece)) {
 		for (uint_fast8_t k = 0; k < 8; k++) {
 			uint_fast8_t i2 = i + all_directions[k][0];
 			uint_fast8_t j2 = j + all_directions[k][1];
@@ -4403,12 +4429,15 @@ int Board::get_king_virtual_mobility(bool color) {
 // Fonction qui renvoie le nombre d'échecs 'safe' dans la position pour les deux joueurs
 int Board::get_checks_value(Map white_controls, Map black_controls, bool color)
 {
-	constexpr int initial_safe_check_value = 350;
-	constexpr int initial_unsafe_check_value = 35;
-	constexpr float no_escape_multiplier = 2.0f;
+	constexpr int initial_safe_check_value = 250;
+	constexpr int initial_unsafe_check_value = 25;
+	constexpr float no_escape_multiplier = 2.5f;
 	constexpr float inital_division = 1.0f;
 	constexpr float king_escape_division_add = 0.25f;
 	constexpr float piece_block_division_add = 0.75f;
+
+	// Valeur augmentée si le joueur a le trait? A tester
+	constexpr float has_trait_multiplier = 2.0f;
 
 	//3r2k1/pp3r2/2q2pp1/3n3P/7Q/7R/1B5P/4R2K b - - 0 33 : il y a énormément de découvertes!
 
@@ -4508,7 +4537,7 @@ int Board::get_checks_value(Map white_controls, Map black_controls, bool color)
 		}
 	}
 
-	return safe_checks_value + unsafe_checks_value;
+	return (safe_checks_value + unsafe_checks_value) * (_player == color ? has_trait_multiplier : 1.0f);
 }
 
 // Fonction qui renvoie la vitesse de génération des coups
@@ -5036,7 +5065,7 @@ int Board::get_rook_activity() const
 	constexpr int horizontal_mobility_bonus = 15;
 
 	// Bonus si elle attaque le camp adverse
-	constexpr float row_bonus[8] = { 1.0f, 1.0f, 1.1f, 1.2f, 1.5f, 2.5f, 5.0f, 3.5f };
+	constexpr float row_bonus[8] = { 1.0f, 1.0f, 1.2f, 1.5f, 1.75f, 2.0f, 2.5f, 2.5f };
 
 	// Malus pour manque de mobilité
 	constexpr int bad_mobility_min = 3;
@@ -5046,7 +5075,7 @@ int Board::get_rook_activity() const
 	constexpr int normal_activity = 8 * vertical_mobility_bonus + 8 * horizontal_mobility_bonus;
 
 
-	int activity = 0;
+	float activity = 0.0f;
 
 	for (uint_fast8_t row = 0; row < 8; row++) {
 		for (uint_fast8_t col = 0; col < 8; col++) {
@@ -5058,13 +5087,13 @@ int Board::get_rook_activity() const
 				activity -= normal_activity;
 				
 				// Mobilité horizontale
-				int h_mobility = 0;
+				float h_mobility = 0.0f;
 
 				// Vers la droite
 				for (uint_fast8_t k = col + 1; k < 8; k++) {
 					const uint_fast8_t p2 = _array[row][k];
 					if (p2 != w_pawn && p2 != b_pawn && p2 != w_king)
-						h_mobility++;
+						h_mobility += row_bonus[row];
 					else
 						break;
 				}
@@ -5073,19 +5102,19 @@ int Board::get_rook_activity() const
 				for (int_fast8_t k = col - 1; k >= 0; k--) {
 					const uint_fast8_t p2 = _array[row][k];
 					if (p2 != w_pawn && p2 != b_pawn && p2 != w_king)
-						h_mobility++;
+						h_mobility += row_bonus[row];
 					else
 						break;
 				}
 
 				// Mobilité verticale
-				int v_mobility = 0;
+				float v_mobility = 0.0f;
 
 				// Vers le haut
 				for (uint_fast8_t k = row + 1; k < 8; k++) {
 					const uint_fast8_t p2 = _array[k][col];
 					if (p2 != w_pawn && p2 != b_pawn)
-						v_mobility++;
+						v_mobility += row_bonus[k];
 					else
 						break;
 				}
@@ -5094,7 +5123,7 @@ int Board::get_rook_activity() const
 				for (int_fast8_t k = row - 1; k >= 0; k--) {
 					const uint_fast8_t p2 = _array[k][col];
 					if (p2 != w_pawn && p2 != b_pawn)
-						v_mobility++;
+						v_mobility += row_bonus[k];
 					else
 						break;
 				}
@@ -5103,7 +5132,7 @@ int Board::get_rook_activity() const
 				activity += vertical_mobility_bonus * v_mobility;
 
 				// Bonus pour la mobilité horizontale
-				activity += horizontal_mobility_bonus * h_mobility * row_bonus[row];
+				activity += horizontal_mobility_bonus * h_mobility;
 
 				// Malus pour manque de mobilité
 				const int total_mobility = h_mobility + v_mobility;
@@ -5114,6 +5143,7 @@ int Board::get_rook_activity() const
 				//cout << "White rook (" << (int)i << ", " << (int)j << "): h_mobility = " << h_mobility << ", v_mobility = " << v_mobility << "total_mobility = " << total_mobility << ", total_activity = " << activity << endl;
 			}
 
+			//1r2q2k/4p1b1/p1n1Q1p1/1pp2p1p/3p4/3P1N1P/PPP1RPP1/4R1K1 b - - 3 26
 
 			// Tour noire
 			else if (p == b_rook) {
@@ -5121,13 +5151,13 @@ int Board::get_rook_activity() const
 				activity += normal_activity;
 
 				// Mobilité horizontale
-				int h_mobility = 0;
+				float h_mobility = 0.0f;
 
 				// Vers la droite
 				for (uint_fast8_t k = col + 1; k < 8; k++) {
 					const uint_fast8_t p2 = _array[row][k];
 					if (p2 != w_pawn && p2 != b_pawn && p2 != b_king)
-						h_mobility++;
+						h_mobility += row_bonus[7 - row];
 					else
 						break;
 				}
@@ -5136,19 +5166,19 @@ int Board::get_rook_activity() const
 				for (int_fast8_t k = col - 1; k >= 0; k--) {
 					const uint_fast8_t p2 = _array[row][k];
 					if (p2 != w_pawn && p2 != b_pawn && p2 != b_king)
-						h_mobility++;
+						h_mobility += row_bonus[7 - row];
 					else
 						break;
 				}
 
 				// Mobilité verticale
-				int v_mobility = 0;
+				float v_mobility = 0.0f;
 
 				// Vers le haut
 				for (uint_fast8_t k = row + 1; k < 8; k++) {
 					const uint_fast8_t p2 = _array[k][col];
 					if (p2 != w_pawn && p2 != b_pawn)
-						v_mobility++;
+						v_mobility += row_bonus[7 - k];
 					else
 						break;
 				}
@@ -5157,7 +5187,7 @@ int Board::get_rook_activity() const
 				for (int_fast8_t k = row - 1; k >= 0; k--) {
 					const uint_fast8_t p2 = _array[k][col];
 					if (p2 != w_pawn && p2 != b_pawn)
-						v_mobility++;
+						v_mobility += row_bonus[7 - k];
 					else
 						break;
 				}
@@ -5166,7 +5196,7 @@ int Board::get_rook_activity() const
 				activity -= vertical_mobility_bonus * v_mobility;
 
 				// Bonus pour la mobilité horizontale
-				activity -= horizontal_mobility_bonus * h_mobility * row_bonus[7 - row];
+				activity -= horizontal_mobility_bonus * h_mobility;
 
 				// Malus pour manque de mobilité
 				const int total_mobility = h_mobility + v_mobility;
@@ -5389,24 +5419,25 @@ int Board::get_weak_squares(bool color, bool around_king) {
 	// r2qkb1r/pp1b1ppp/4p3/1PPp4/3QnP2/4P3/P1P3PP/RNB1KB1R w KQkq - 1 12 : e4 gratos...
 	// 2r1brk1/6bp/p2pPpp1/qppN4/8/1P3NP1/P1Q2PP1/4RBK1 b - - 1 25 vs 2r1brk1/6bp/p2p1pp1/qppN4/8/1P3NP1/P1Q2PP1/4RBK1 b - - 1 25
 	// 2r5/pp6/3pkp2/2p1p1p1/2P3Pp/3PPP1P/PP2K3/2R5 w - - 0 1 : beaucoup de cases faibles, mais aucune utilisable...
+	// r1bq1rk1/pp1n1ppp/2pbpn2/3p4/3P4/2NBPN2/PPP2PPP/R1BQ1RK1 w - - 4 9 : pas vraiment de case faible...
 
 	//https://chessmood.com/blog/weak-squares-in-chess
 
 	bool display = false;
 
-	// Valeur des cases faibles (vu du point de vue du joueur ayant les cases faibles)
+	// Valeur des cases faibles (point de vue du joueur ayant les cases faibles)
 	constexpr static int weak_square_values[8][8] = {
 		{ 0,  0,  0,  0,  0,  0,  0,  0},
 		{ 0,  0,  5, 10, 10,  5,  0,  0}, 
 		{ 0,  5, 10, 20, 20, 10,  5,  0},
 		{ 5, 20, 35, 50, 50, 35, 20,  5},
 		{ 5, 20, 40, 60, 60, 40, 20,  5},
-		{ 5, 10, 15, 40, 40, 15, 10,  5},
+		{ 5, 10, 15, 25, 25, 15, 10,  5},
 		{ 0,  0,  0,  0,  0,  0,  0,  0},
 		{ 0,  0,  0,  0,  0,  0,  0,  0}
 	};
 
-	// Valeur des outposts sur les cases faibles (vu du point de vue du joueur ayant les cases faibles)
+	// Valeur des outposts sur les cases faibles (point de vue du joueur ayant les cases faibles)
 	constexpr static int outpost_square_values[8][8] = {
 		{ 0,  0,   0,  0,  0,  0,  0,  0 },
 		{ 0,  0,   0,  0,  0,  0,  0,  0 },
@@ -5481,7 +5512,7 @@ int Board::get_weak_squares(bool color, bool around_king) {
 					int can_control = -1;
 					bool blocking_pawn = false;
 
-					for (uint_fast8_t k = row - 1; k > 0; k--) {
+					for (int_fast8_t k = row - 1; k > 0; k--) {
 						if (_array[k][col - 1] == w_pawn) {
 							weak = false;
 							if (!blocking_pawn) {
@@ -5500,7 +5531,7 @@ int Board::get_weak_squares(bool color, bool around_king) {
 					bool no_control = false;
 
 					if (can_control != -1) {
-						for (uint_fast8_t k = row; k > can_control + 1; k--) {
+						for (int_fast8_t k = row; k > can_control + 1; k--) {
 							if (_array[k][col] == b_pawn || (col > 1 && _array[k][col - 2] == b_pawn)) {
 								no_control = true;
 								break;
@@ -5527,7 +5558,7 @@ int Board::get_weak_squares(bool color, bool around_king) {
 					int can_control = -1;
 					bool blocking_pawn = false;
 
-					for (uint_fast8_t k = row - 1; k > 0; k--) {
+					for (int_fast8_t k = row - 1; k > 0; k--) {
 						if (_array[k][col + 1] == w_pawn) {
 							weak = false;
 							if (!blocking_pawn) {
@@ -5546,7 +5577,7 @@ int Board::get_weak_squares(bool color, bool around_king) {
 					bool no_control = false;
 
 					if (can_control != -1) {
-						for (uint_fast8_t k = row; k > can_control + 1; k--) {
+						for (int_fast8_t k = row; k > can_control + 1; k--) {
 							if (_array[k][col] == b_pawn || (col < 6 && _array[k][col + 2] == b_pawn)) {
 								no_control = true;
 								break;
@@ -5567,7 +5598,7 @@ int Board::get_weak_squares(bool color, bool around_king) {
 					continue;
 
 				if (display)
-					cout << "***\nBonus for black, square: " << Pos(row, col).square() << ": " << (weak ? "weak " : "safe") << endl;
+					cout << "W weak square: " << Pos(row, col).square() << ": " << (weak ? "weak " : "safe");
 
 				// C'est une case faible
 				int square_value = 0;
@@ -5578,20 +5609,20 @@ int Board::get_weak_squares(bool color, bool around_king) {
 						square_value = king_weak_square[dist - 1];
 
 					if (display)
-						cout << "distance to king: " << dist << endl;
+						cout << " | d_king: " << dist;
 				}
 				else {
 					square_value = weak_square_values[7 - row][col];
 				}
 
 				if (display)
-					cout << "square value: " << square_value << endl;
+					cout << " | value: " << square_value;
 
 				// Contrôle de la case par un (des) pions adverses
 				const int pawn_controls = (col > 0 && _array[row + 1][col - 1] == b_pawn) + (col < 7 && _array[row + 1][col + 1] == b_pawn);
 
 				if (display)
-					cout << "pawn controls: " << pawn_controls << endl;
+					cout << " | pawn controls: " << pawn_controls;
 
 				// Outposts
 				if (pawn_controls > 0 || true) {
@@ -5614,12 +5645,12 @@ int Board::get_weak_squares(bool color, bool around_king) {
 					square_value += outpost_value * (p == b_knight ? knight_outpost_value : (p == b_bishop ? bishop_outpost_value : (p == b_rook ? rook_outpost_value : 0) + (p == b_queen ? queen_outpost_value : 0) + (p == b_king ? king_outpost_value : 0)));
 
 					if (display)
-						cout << "outpost value: " << outpost_value << " for piece: " << p << " -> " << (p == b_knight ? knight_outpost_value : (p == b_bishop ? bishop_outpost_value : (p == b_rook ? rook_outpost_value : 0) + (p == b_queen ? queen_outpost_value : 0) + (p == b_king ? king_outpost_value : 0))) << endl;
+						cout << " | outpost: " << outpost_value << " for piece: " << piece_name(p) << " -> " << (p == b_knight ? knight_outpost_value : (p == b_bishop ? bishop_outpost_value : (p == b_rook ? rook_outpost_value : 0) + (p == b_queen ? queen_outpost_value : 0) + (p == b_king ? king_outpost_value : 0)));
 					//cout << "square value: " << square_value << endl;
 				}
 
 				// Valeur du contrôle de la case faible par un pion adverse
-				square_value *= (0.75f + (pawn_controls > 0));
+				square_value *= (1.25f + (pawn_controls > 0));
 
 				square_value *= (weak ? 1.0f : safe_square_bonus);
 
@@ -5628,19 +5659,19 @@ int Board::get_weak_squares(bool color, bool around_king) {
 				int control_diff = white_controls._array[row][col];
 
 				if (display)
-					cout << "control diff: " << control_diff << endl;
+					cout << " | control diff: " << control_diff;
 
 				square_value /= (1.0f + control_diff / 1.0f);
 
 				if (display)
-					cout << "with controls, square value: " << square_value << endl;
+					cout << " | with controls: " << square_value;
 
 				// Bonus si ça bloque un pion
 				if (_array[row - 1][col] == w_pawn)
 					square_value *= blocked_pawn_bonus;
 
 				if (display)
-					cout << "with blocked pawn, square value: " << square_value << endl;
+					cout << " | with blocked pawn: " << square_value << endl;
 
 				weak_squares_value += square_value;
 			}
@@ -5669,7 +5700,7 @@ int Board::get_weak_squares(bool color, bool around_king) {
 					int can_control = -1;
 					bool blocking_pawn = false;
 
-					for (uint_fast8_t k = row + 1; k < 7; k++) {
+					for (int_fast8_t k = row + 1; k < 7; k++) {
 						if (_array[k][col - 1] == b_pawn) {
 							weak = false;
 							if (!blocking_pawn) {
@@ -5688,7 +5719,7 @@ int Board::get_weak_squares(bool color, bool around_king) {
 					bool no_control = false;
 
 					if (can_control != -1) {
-						for (uint_fast8_t k = row; k < can_control - 1; k++) {
+						for (int_fast8_t k = row; k < can_control - 1; k++) {
 							if (_array[k][col] == w_pawn || (col > 1 && _array[k][col - 2] == w_pawn)) {
 								no_control = true;
 								break;
@@ -5715,7 +5746,7 @@ int Board::get_weak_squares(bool color, bool around_king) {
 					int can_control = -1;
 					bool blocking_pawn = false;
 
-					for (uint_fast8_t k = row + 1; k < 7; k++) {
+					for (int_fast8_t k = row + 1; k < 7; k++) {
 						if (_array[k][col + 1] == b_pawn) {
 							weak = false;
 							if (!blocking_pawn) {
@@ -5734,7 +5765,7 @@ int Board::get_weak_squares(bool color, bool around_king) {
 					bool no_control = false;
 
 					if (can_control != -1) {
-						for (uint_fast8_t k = row; k < can_control - 1; k++) {
+						for (int_fast8_t k = row; k < can_control - 1; k++) {
 							if (_array[k][col] == w_pawn || (col < 6 && _array[k][col + 2] == w_pawn)) {
 								no_control = true;
 								break;
@@ -5755,7 +5786,7 @@ int Board::get_weak_squares(bool color, bool around_king) {
 					continue;
 
 				if (display)
-					cout << "***\nBonus for white, square: " << Pos(row, col).square() << ": " << (weak ? "weak" : "safe") << endl;
+					cout << "B weak square: " << Pos(row, col).square() << ": " << (weak ? "weak " : "safe");
 
 				// C'est une case faible
 				int square_value = 0;
@@ -5766,20 +5797,20 @@ int Board::get_weak_squares(bool color, bool around_king) {
 						square_value = king_weak_square[dist - 1];
 
 					if (display)
-						cout << "distance to king: " << dist << endl;
+						cout << " | d_king: " << dist;
 				}
 				else {
 					square_value = weak_square_values[row][col];
 				}
 
 				if (display)
-					cout << "square value: " << square_value << endl;
+					cout << " | value: " << square_value;
 
 				// Contrôle de la case par un (des) pions adverses
 				const int pawn_controls = (col > 0 && _array[row - 1][col - 1] == w_pawn) + (col < 7 && _array[row - 1][col + 1] == w_pawn);
 
 				if (display)
-					cout << "pawn controls: " << pawn_controls << endl;
+					cout << " | pawn controls: " << pawn_controls;
 
 				// Outposts
 				if (pawn_controls > 0 || true) {
@@ -5802,12 +5833,12 @@ int Board::get_weak_squares(bool color, bool around_king) {
 					square_value += outpost_value * (p == w_knight ? knight_outpost_value : (p == w_bishop ? bishop_outpost_value : (p == w_rook ? rook_outpost_value : 0) + (p == w_queen ? queen_outpost_value : 0) + (p == w_king ? king_outpost_value : 0)));
 
 					if (display)
-						cout << "outpost value: " << outpost_value << " for piece: " << p << " -> " << (p == w_knight ? knight_outpost_value : (p == w_bishop ? bishop_outpost_value : (p == w_rook ? rook_outpost_value : 0) + (p == w_queen ? queen_outpost_value : 0) + (p == w_king ? king_outpost_value : 0))) << endl;
+						cout << " | outpost: " << outpost_value << " for piece: " << piece_name(p) << " -> " << (p == w_knight ? knight_outpost_value : (p == w_bishop ? bishop_outpost_value : (p == w_rook ? rook_outpost_value : 0) + (p == w_queen ? queen_outpost_value : 0) + (p == w_king ? king_outpost_value : 0)));
 					//cout << "square value: " << square_value << endl;
 				}
 
 				// Valeur du contrôle de la case faible par un pion adverse
-				square_value *= (0.75f + (pawn_controls > 0));
+				square_value *= (1.25f + (pawn_controls > 0));
 
 				square_value *= (weak ? 1.0f : safe_square_bonus);
 
@@ -5816,19 +5847,19 @@ int Board::get_weak_squares(bool color, bool around_king) {
 				int control_diff = black_controls._array[row][col];
 
 				if (display)
-					cout << "control diff: " << control_diff << endl;
+					cout << " | control diff: " << control_diff;
 
 				square_value /= (1.0f + control_diff / 1.0f);
 
 				if (display)
-					cout << "with controls, square value: " << square_value << endl;
+					cout << " | with controls: " << square_value;
 
 				// Bonus si ça bloque un pion
 				if (_array[row + 1][col] == b_pawn)
 					square_value *= blocked_pawn_bonus;
 
 				if (display)
-					cout << "with blocked pawn, square value: " << square_value << endl;
+					cout << " | with blocked pawn: " << square_value << endl;
 
 				weak_squares_value += square_value;
 			}
@@ -6046,6 +6077,9 @@ float Board::get_winnable(bool color) const {
 int Board::get_bishop_activity() const {
 	// Mobilité d'un fou = nombre de cases non-pion sur les diagonales du fou
 
+	// Activité "normale" d'un fou
+	constexpr int normal_bishop_activity = 3;
+
 	// Bonus pour le fou blanc
 	int w_bishop_activity = 0;
 
@@ -6058,6 +6092,9 @@ int Board::get_bishop_activity() const {
 
 			// Fou blanc
 			if (p == w_bishop) {
+
+				w_bishop_activity -= normal_bishop_activity;
+
 				// Diagonale haut-gauche
 				for (uint_fast8_t k = 1; k < min(i, j) + 1; k++) {
 					if (_array[i - k][j - k] != 1 && _array[i - k][j - k] != 7)
@@ -6093,6 +6130,9 @@ int Board::get_bishop_activity() const {
 
 			// Fou noir
 			else if (p == b_bishop) {
+
+				b_bishop_activity -= normal_bishop_activity;
+
 				// Diagonale haut-gauche
 				for (uint_fast8_t k = 1; k < min(i, j) + 1; k++) {
 					if (_array[i - k][j - k] != 1 && _array[i - k][j - k] != 7)
@@ -6337,7 +6377,8 @@ void Board::display_positions_history() const
 				const float malus = p == w_pawn ? pawn_malus : (p == w_knight ? knight_malus : (p == w_bishop ? bishop_malus : (p == w_rook ? rook_malus : (p == w_queen ? queen_malus : king_malus))));
 
 				// Pénalité en fonction de la distance
-				float isolated_piece = distance * malus * max(1.0f - _adv / max_adv, 0.0f);
+				//float isolated_piece = distance * malus * max(1.0f - _adv / max_adv, 0.0f);
+				float isolated_piece = 0.0f;
 
 				//cout << Pos(row, col).square() << ", distance: " << distance << ", trapped_piece: " << trapped_piece;
 
@@ -6431,6 +6472,8 @@ void Board::display_positions_history() const
 
 				//2rq1rk1/1p1b1pp1/p1n2b1p/P2p3n/1P4P1/2PB1N1P/1Q1N1P1B/R2R2K1 b - g3 0 21 : cavalier enfermé en h5
 				//rn2kbnr/pp3ppp/1q2p3/2ppPb2/2PP4/4BN2/PP2BPPP/RN1QK2R b KQkq - 0 7 : tests avec une dame enfermée
+
+				// r1bqkb1Q/ppp5/2n1p1p1/3pP3/8/2P5/PP3PPP/RNB1K2R b KQq - 0 11 : la dame blanche n'est pas enfermée ici...
 			}
 
 			// Si c'est une pièce noire
@@ -6448,7 +6491,8 @@ void Board::display_positions_history() const
 				const float malus = p == b_pawn ? pawn_malus : (p == b_knight ? knight_malus : (p == b_bishop ? bishop_malus : (p == b_rook ? rook_malus : (p == b_queen ? queen_malus : king_malus))));
 
 				// Pénalité en fonction de la distance
-				float isolated_piece = distance * malus * max(1.0f - _adv / max_adv, 0.0f);
+				//float isolated_piece = distance * malus * max(1.0f - _adv / max_adv, 0.0f);
+				float isolated_piece = 0.0f;
 
 				//cout << Pos(row, col).square() << ", distance: " << distance << ", trapped_piece: " << trapped_piece;
 
@@ -7270,6 +7314,8 @@ void Board::display_positions_history() const
 	// 3rr3/1kpn1p1p/p1p1qbb1/2Pp2p1/QP1Pp3/P1N1P1NP/3B1PP1/1R2R1K1 b - - 0 24
 	// 1k1r2nr/p7/Pqpb2p1/4p2p/5p2/2NP4/1PP1QPKP/R1B1R3 b - - 0 22 : +333??
 
+	// r2qk2r/pp1n1ppp/3bpn2/2pp4/3P4/2N1PN2/PPP2PPP/R1BQ1RK1 b kq - 3 8 : ici y'a roque au prochain, donc pas vraiment de storm
+
 	// Position du roi
 	update_kings_pos();
 
@@ -7525,7 +7571,7 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 
 	// Niveau de protection auquel on peut considérer que le roi est safe
 	//const int king_base_protection = 600 * (1 - _adv) - 200;
-	int needed_protection = 600 * opponent_attacking_potential - 100;
+	int needed_protection = 800 * opponent_attacking_potential - 300;
 
 	// Bonus de protection selon la colonne
 	constexpr int column_protection_bonus[8] = { 120, 100, 50, 0, 0, 50, 100, 120 };
@@ -7805,7 +7851,7 @@ bool Board::validate_nodes_count_at_depth(string fen, int depth, vector<int> exp
     static const int* virtual_mobilities[6] = { pawn_virtual_mobility, knight_virtual_mobility, bishop_virtual_mobility, rook_virtual_mobility, queen_virtual_mobility, king_virtual_mobility };
 
 	// Importance de la mobilité réelle (en fonction des coups possibles réels; ne traverse aucune pièce)
-	static constexpr int pawn_real_mobility[5] = { -35, 0, 0, 0, 0 };
+	static constexpr int pawn_real_mobility[5] = { 0, 0, 0, 0, 0 };
 	static constexpr int knight_real_mobility[9] = { -250, -100, -35, 0, 28, 37, 43, 47, 50 };
 	static constexpr int bishop_real_mobility[15] = { -350, -180, -85, -10, 15, 20, 25, 30, 35, 37, 40, 42, 45, 47, 50 };
 	static constexpr int rook_real_mobility[15] = { -135, -85, -50, 10, 15, 20, 25, 30, 35, 37, 40, 42, 45, 47, 50 };
@@ -8358,7 +8404,7 @@ bool Board::pawn_can_move(uint_fast8_t row, uint_fast8_t col, bool color) const 
 }
 
 // Fonction qui renvoie l'incertiude de la position
-float Board::get_uncertainty(int material_eval) {
+float Board::get_uncertainty(int material_eval, int winning_eval) {
 
 	// r2r4/8/1p1q2P1/2b5/3k1pP1/pP2pP2/2Q4P/1K6 w - - 9 11 : exemple d'une position à grosse incertitude
 	// r2r4/4q3/1p4P1/2b5/5pPk/pP2pP2/8/1K6 w - - 0 18 : plus du tout d'incertitude !!
@@ -8447,13 +8493,16 @@ float Board::get_uncertainty(int material_eval) {
 
 
 	// Incertitude par type de pièce
-	int piece_uncertitudes[6] = { 1, 5, 7, 15, 35, 0 };
+	int piece_uncertitudes[6] = { 1, 5, 7, 10, 50, 0 };
 
 	// Incertitude max (environ... si y'a plusieurs dames?)
-	constexpr int max_piece_uncertainty = 200;
+	//constexpr int max_piece_uncertainty = 204;
+	constexpr int max_piece_uncertainty_per_side = 102;
 
 	// Incertitude par pièce
-	int total_piece_uncertitude = 0;
+	//int total_piece_uncertitude = 0;
+	int white_piece_uncertainty = 0;
+	int black_piece_uncertainty = 0;
 
 	for (uint_fast8_t row = 0; row < 8; row++) {
 		for (uint_fast8_t col = 0; col < 8; col++) {
@@ -8462,12 +8511,20 @@ float Board::get_uncertainty(int material_eval) {
 				continue;
 			}
 
-			total_piece_uncertitude += piece_uncertitudes[(piece - 1) % 6];
+			//total_piece_uncertitude += piece_uncertitudes[(piece - 1) % 6];
+
+			if (is_white(piece)) {
+				white_piece_uncertainty += piece_uncertitudes[(piece - 1) % 6];
+			}
+			else {
+				black_piece_uncertainty += piece_uncertitudes[(piece - 1) % 6];
+			}
 		}
 	}
 
 	// Incertitude en fonction du nombre de pièces
-	float piece_uncertainty = total_piece_uncertitude / static_cast<float>(max_piece_uncertainty);
+	//float piece_uncertainty = total_piece_uncertitude / static_cast<float>(max_piece_uncertainty);
+	float piece_uncertainty = _evaluation > 0 ? black_piece_uncertainty / static_cast<float>(max_piece_uncertainty_per_side) : white_piece_uncertainty / static_cast<float>(max_piece_uncertainty_per_side);
 
 	// Importance de cette incertitude
 	float piece_uncertainty_factor = 0.25f;
@@ -8481,9 +8538,16 @@ float Board::get_uncertainty(int material_eval) {
 
 	// Prise en compte de l'avancement de la partie
 
+	float alpha = 1 + abs(_evaluation) / static_cast<float>(winning_eval) / 2.0f;
+	float new_raw_incertitude = pow(raw_incertitude, alpha);
+
 	//float value = raw_incertitude * piece_uncertainty;
-	float value = raw_incertitude * non_material_factor + piece_uncertainty * piece_uncertainty_factor;
+	//float value = raw_incertitude * non_material_factor + piece_uncertainty * piece_uncertainty_factor;
+	float value = new_raw_incertitude * non_material_factor + piece_uncertainty * piece_uncertainty_factor;
 	
+	//float alpha = 1 + abs(_evaluation) / static_cast<float>(winning_eval) / 10.0f;
+	//float relative_uncertainity = pow(value, alpha);
+
 
 	_uncertainty = value;
 
@@ -8503,8 +8567,8 @@ void Board::get_WDL(float uncertainity, int winning_eval, float beta) {
 	// pour beta = 0.75,  f(2 * winning_eval) = 0.62
 
 	// TEST
-	float up_beta = 0.5f;
-	float down_beta = 1.0f;
+	//const float up_beta = 0.35f;
+	//const float down_beta = 1.0f;
 
 	// rnbqkb1r/ppp1pp1p/5p2/3p4/3P4/8/PPP2PPP/RNBQKBNR b KQkq - 0 4 proche de 100% wr pour confiance max
 
@@ -8515,11 +8579,19 @@ void Board::get_WDL(float uncertainity, int winning_eval, float beta) {
 
 	//cout << "eval: " << eval << ", winning_eval: " << winning_eval << ", beta: " << beta << endl;
 
-	const float base_win_chance = (eval / (eval + winning_eval));
+	const float beta_up = 2.5f;
+	const float beta_down = 1.5f;
+
+	const float base_win_chance_factor = eval / winning_eval;
+	const float win_chance_factor = base_win_chance_factor > 1.0f ? pow(base_win_chance_factor, beta_up) : pow(base_win_chance_factor, beta_down);
+	const float base_win_chance = 1.0f - 1.0f / (1.0f + win_chance_factor);
+
+	//const float base_win_chance = (eval / (eval + winning_eval));
 
 	// On écrase un peu si on est complètement gagnant
 	const float threshold_win_chance = base_win_chance - 0.5f;
-	const float updated_threshold = threshold_win_chance > 0 ? pow(abs(threshold_win_chance) * 2, up_beta) / 2 : -pow(abs(threshold_win_chance) * 2, down_beta) / 2;
+	//const float updated_threshold = threshold_win_chance > 0 ? pow(abs(threshold_win_chance) * 2, up_beta) / 2 : -pow(abs(threshold_win_chance) * 2, down_beta) / 2;
+	const float updated_threshold = threshold_win_chance;
 
 	float certain_win_chance = updated_threshold + 0.5f;
 
@@ -8532,14 +8604,15 @@ void Board::get_WDL(float uncertainity, int winning_eval, float beta) {
 	float white_lose_chance = (is_eval_positive ? 0.0f : certain_win_chance);
 
 	// Fonction non-linéaire sur l'incertitude
-	float alpha = 1 + eval / winning_eval;
+	//float alpha = 1 + eval / winning_eval / 25.0f;
+	float alpha = 1.0f;
 	float relative_uncertainity = pow(uncertainity, alpha);
 
 	//cout << "relative uncertainity: " << relative_uncertainity << endl;
 
-	float win_chance = white_win_chance * (1 - relative_uncertainity) + relative_uncertainity / 2.0f;
-	float draw_chance = certain_draw_chance * (1 - relative_uncertainity);
-	float lose_chance = white_lose_chance * (1 - relative_uncertainity) + relative_uncertainity / 2.0f;
+	float win_chance = white_win_chance * (1 - relative_uncertainity) + relative_uncertainity / 3.0f;
+	float draw_chance = certain_draw_chance * (1 - relative_uncertainity) + relative_uncertainity / 3.0f;
+	float lose_chance = white_lose_chance * (1 - relative_uncertainity) + relative_uncertainity / 3.0f;
 
 	//cout << "win chance: " << win_chance << ", draw chance: " << draw_chance << ", lose chance: " << lose_chance << endl;
 
@@ -8563,7 +8636,7 @@ float get_average_score(WDL wdl, float draw_score) {
 string score_string(float avg_score) {
 	//float score = get_average_score(wdl, draw_score);
 	stringstream stream;
-	stream << fixed << setprecision(2) << avg_score;
+	stream << fixed << setprecision(3) << avg_score;
 	return stream.str();
 }
 
@@ -8856,6 +8929,7 @@ int Board::get_long_term_king_weakness(bool player, int current_weakness, int ki
 	}
 
 	//cout << "kingside: " << (int)kingside_castle_distance << ", queenside: " << (int)queenside_castle_distance << endl;
+	//cout << "castling distance factor, kingside: " << max(0.0, 1.0 - (1.0 + kingside_castle_distance) / 7.0) << ", queenside: " << max(0.0, 1.0 - (1.0 + queenside_castle_distance) / 7.0) << endl;
 
 	// TODO *** peut être améliorable si d'autres pièces que le fou de base bloquent le roque
 
@@ -8867,10 +8941,12 @@ int Board::get_long_term_king_weakness(bool player, int current_weakness, int ki
 	const int kingside_castling_bonus = max(0, current_weakness - kingside_weakness);
 	const int queenside_castling_bonus = max(0, current_weakness - queenside_weakness);
 
+	//3qkb1r/p1pbnppp/2p5/4N3/Q7/2N5/Pr3PPP/3RR1K1 b k - 1 14 : distance au roque: au moins 3
+
 	// FIXME *** un peu aribitraire... 0.9 quand on peut roquer, et se rapproche linéairement de 0 sinon. En partant du principe que la distance ne sera pas au delà de 8...
 	// Fonction largement améliorable
-	double kingside_castling_factor = can_kingside_castle ? max(0.0, 1.0 - (1.0 + kingside_castle_distance) / 7.0) : 0.0;
-	double queenside_castling_factor = can_queenside_castle ? max(0.0, 1.0 - (1.0 + queenside_castle_distance) / 7.0) : 0.0;
+	double kingside_castling_factor = can_kingside_castle ? max(0.0, 1.0 - (1.0 + kingside_castle_distance) / 5.0) : 0.0;
+	double queenside_castling_factor = can_queenside_castle ? max(0.0, 1.0 - (1.0 + queenside_castle_distance) / 5.0) : 0.0;
 
 	int total_kingside_bonus = kingside_castling_bonus * kingside_castling_factor;
 	int total_queenside_bonus = queenside_castling_bonus * queenside_castling_factor;
@@ -8970,7 +9046,7 @@ int Board::get_open_files_on_opponent_king_at_column(bool player, int king_col) 
 	}
 
 	// En fonction de l'avancement de la partie
-	constexpr float advancement_factor = 0.5f;
+	constexpr float advancement_factor = 0.0f;
 
 	return eval_from_progress(total_bonus, _adv, advancement_factor);
 }
@@ -8994,7 +9070,7 @@ int Board::get_king_placement_weakness_at_column(bool player, Pos king_pos) cons
 	const double base_factor = edge_defense * (edge_adv - _adv);
 
 	const double row_malus = 0.5f;
-	const double row_factor = row_malus * player ? (king_pos.row * king_pos.row) : ((7 - king_pos.row) * (7 - king_pos.row));
+	const double row_factor = row_malus * (player ? (king_pos.row * king_pos.row) : ((7 - king_pos.row) * (7 - king_pos.row)));
 
 	const double placement_weakness = base_factor * ((_adv < edge_adv) ? (max(0, col_dist - 1) + row_factor / 2.0f) : (mult_endgame / (edge_adv - 1.0f) * (center_col_dist * center_col_dist + center_row_dist * center_row_dist)));
 
