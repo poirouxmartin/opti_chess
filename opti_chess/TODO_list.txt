@@ -392,7 +392,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 Qnkr3r/1p3ppp/3bq3/3p4/3B4/2P5/PP1N1PPP/R4RK1 w - - 6 16 : comprend rien à cette position... aucun bon coup n'est regardé
 Qnkr3r/1p3pBp/3bq3/3p4/8/2P5/PP1N1PPP/R4RK1 b - - 0 16 : Thg8 gagne
 Qnkr2r1/1p3p1p/3b4/3p4/3B4/2P3Pq/PP1N1P1P/4RRK1 b - - 0 19 : Fxg3!! gagne
-1nkr4/1p4rp/3b2q1/3p4/Q4p2/2P2NP1/PP3P1P/4RRK1 w - - 0 21 : roi noir foutu
+1nkr4/1p4rp/3b2q1/3p4/Q4p2/2P2NP1/PP3P1P/4RRK1 w - - 0 21 : roi blanc foutu
 r1bqk1nr/pppp1ppp/2n5/8/1bB1P3/2P2N2/P4PPP/RNBQK2R b KQkq - 0 6 : Fa5??.. :(
 r1b2bkr/pp2Rppp/2q2n2/2p5/2B5/2N2PP1/PP2Q2P/R1B3K1 b - - 8 19 : Fxe7??
 3rkb1r/pQ1b1ppp/2pp4/4q3/4n3/3N4/PPPBBPPP/R4RK1 b k - 1 14 : il a fait Df6 au lieu de Db5 après avoir vu que Db5 était meilleur...
@@ -424,6 +424,7 @@ rnbqk1nr/ppp2ppp/3b4/8/3P4/8/PPP1P1PP/RNBQKBNR b KQkq - 0 4 : Dh4+??
 Parfois y'a des game reset...
 3r1rk1/1p2p1b1/8/p1pp1p2/P2P4/1PP1P1R1/4Q3/R3KN1q w Q - 0 30 : faut roquer!!!!! -> vis à vis roi/dame => tour/dame
 k2r2nr/q6p/6p1/3P1p2/3Q4/5p2/PR2N1PP/4K2R w K - 0 23 : faut prendre h8!!
+1kn5/2Rpppnp/pp6/1p6/1b6/1b1K1B2/1p5q/8 w - - 0 1 : quand on a une nulle, et qu'on peut prendre du matériel tout en conservant la nulle, autant le faire. En soi le WR augmente quand-même
 
 NEW BUG:
 Parfois on a des eval qui sont égales à +/-INT_MAX, et ça ne devrait pas être le cas...
@@ -506,6 +507,8 @@ Changer l'incertitude pour prendre en compte l'activité / king safety etc.. des 
 
 Quand le meilleur coup est déjà complètement exploré, faut-il refaire une exploration sans prendre en compte de coup? sinon tous les autres coups sont regardés de la même manière car tous pourris comparé au meilleur
 
+4r1k1/5p2/2pq1np1/1p1p1b2/1PnP3p/2QNPP1P/2B1R1P1/5N1K w - - 3 37 : cavalier très fort en c4: sur un outpost doublement protégé, bloque la colonne c (faiblesse en c6), et attaque e3
+
 Re-faut-il du k_add? FIXME *** est-ce que c'est mieux avec?
 rnbq1b1r/pppp2pp/8/3Q4/4nk2/2p5/PPP2PPP/R4RK1 b - - 1 10 : la confiance passe de 92% à 5% après Cg5.. normal?
 3b2rk/3P2pp/8/p7/8/2Q1p3/PP1p1pPP/3RqR1K b - - 1 36 : e2 gagne certes, mais il faut quand-même regarder un peu les autres coups...
@@ -571,8 +574,45 @@ Remettre dans la compensation long terme court terme des faiblesses du roi, le p
 Réseaux de neurones combinés à l'évaluation??
 Activité de la dame!!
 Bishop pawns: beaucoup plus graves si le fou est resté derrière la structure
+Le but, ça reste quand-même de rentrer dans le campt adverse... donc l'espace, c'est bien, mais seulement si ça ne créé pas de faiblesses et qu'il n'y a pas de point d'entrée pour l'adversaire
+1r2q2k/4p1b1/p1n1Q1p1/1pp2p1p/3p4/3P1N1P/PPP1RPP1/4R1K1 b - - 3 26 : ici, les blancs peuvent rentrer de partout!
+
+!!!
+Pour la puissance d'attaque, il faut voir les combinaisons de pièces qui peuvent mater:
+Dame + n'importe quelle pièce (y compris roi ou pion).
+Dame + cavalier +++
+Dame + tour ++
+Dame + fou +
+Tour + roi / ...
+A définir, et ça fait des bonus...
+!!!
+
+King safety long terme: ajouter la prise en compte des distances au roque pour:
+- pawn storm
+- weak squares
+- (diags)
+- (exposure)
+- autres
+Et tout rassembler pour faire une valeur globale par roque
+
+
+Rajouter des facteurs pour le calcul d'incertitude? grand roque par exmeple rend les positions plus incertaines?
+
+Refaire le get_best_move au passage pour correspondre aux vraies valeurs utilisées pour l'exploration de Grogros (qui prenne en compte le WDL)
+Sinon, il va jouer trop vite des coups suboptimaux...
+
+Prise en compte du numéro de coup dans l'évaluation? Si 2 positions mènent à une évaluation gagnante, autant aller sur celle qui mène à la victoire plus rapidement...
+Comment intégrer la profondeur pour mieux comparer les coups?
+
+FIX: le temps vraiment utilisé pour la réflexion n'est pas toujours le bon
 
 Revoir de manière générale l'activité des pièces... ça reste le facteur le plus important pour l'éval...
+FIX *** pièce sans mouvement -> beaucoup plus grave si c'est pour toujours (pièce morte). Mais dans l'ouverture c'est pas toujours si grave...
+
+Faire un éditeur de position
+
+Refaire un peu tout le code proprement
+Optimiser les fonctions (notamment l'évaluation)
 
 King safety: quand un roi est safe, c'est ok d'affaiblir un peu le sien pour essayer de mater l'autre...
 r2qr1k1/5p2/2p1bb1B/p2pp2Q/1p2P3/1P1P3P/1PP2PP1/R4RK1 w - - 0 22 : ici, f4 est le meilleur coup!
@@ -630,6 +670,8 @@ r4r1k/p3pp2/2p5/5R2/5B2/8/PPP2P2/1K6 b - - 0 28 : placement +600???
 
 En finale, que les pions soient passés ou non, faut les pousser!
 
+Retirer toutes les méthodes inutiles
+
 FIXME: bon il est encore tout cassé et tout pourri... merde
 
 6k1/5p2/1n5p/1P1qb1p1/8/B3P1P1/5P1P/1Q4K1 b - - 0 30 : Fianchetto exagéré?
@@ -637,8 +679,71 @@ FIXME: bon il est encore tout cassé et tout pourri... merde
 4r1k1/p1p2ppp/1p2bn2/8/1r6/1PN1B3/P3BPPP/R2R2K1 b - - 1 16 : la confiance augmente après c5, alors que ça donne de l'avantage aux noirs..??
 
 
+3qkb1r/p1pbnppp/2p5/4N3/Q7/2N5/Pr3PPP/3RR1K1 b k - 1 14 vs 3qkb1r/p1pbnppp/2p5/4N3/Q7/2N5/Pr3PPP/3RR1K1 b - - 1 14
+
+8/2p2kp1/R2b4/3K1P2/p2B2P1/8/8/4r3 b - - 7 65 : test
+
+r1bq2kr/1pp1n1pp/1b2p3/pP1pP1Q1/P4P2/B1PB4/6PP/RN2K2R b KQ - 4 15 : gagnant pour les blancs. Le roi blanc est en fait plus safe, grâce à l'espace. le pion e5 est en fait une pièce quasi entière dans l'attaque!
+
+r6r/p1kb2p1/1p2p3/3pP3/2p2P2/2P1R1P1/PP1N2P1/R5K1 b - - 0 20 : c'est un pion net de plus pour les blancs! complètement gagnant!
+6rr/p1kb4/1p2p3/3pP1P1/2p5/2P1RNP1/PP4P1/R5K1 b - - 2 22 : bien gagnant pour les blancs
+
+r1bq1rk1/ppp1bppp/2n1p3/3p4/2PPn3/2NBPN2/PP1B1PPP/R2Q1RK1 b - - 2 10 : faut prendre d2 pas c3!
+
+Comparaison de positions quasi symétriques:
+r1bq1rk1/pp3ppp/2pbpn2/8/3P4/2PB1N2/PP3PPP/R1BQ1RK1 w - - 1 14 : gagnant pour les blancs: pion en d4 vs e6 -> Fou c1 >> Fou c8 + centre
+r1bq1rk1/pp1n1ppp/2pbpn2/3p4/3P4/2NBPN2/PPP2PPP/R1BQ1RK1 w - - 4 9 : Cc3 vs Cd7 et pion c3. Attention, ça donne weak_squares +25..? Normalement, blancs légèrement mieux si e4 est joué. Moins bien sinon
+
+revoir la valeur d'une attaque de pion sur pièce? sinon en fin de chaque variante il en a peur, et joue pleutre
+
+rnb1r1k1/ppp3pp/5p2/3p4/3PP3/P2B1N2/P2K1PPP/1R5R w - - 1 16 : exd5 qui augmente l'éval pour les noirs?......
+
+8/4q1k1/2R5/5Q2/6PK/8/8/8 w - - 7 86 : Dg5 professionnel! la confiance passe à 98% -> en gros = 100% win...
+
+Un centre fort est un centre qui ne peut pas être contesté! Les ruptures adverses sont fortes si elles sont possibles...
+
+Nulle, c'est nulle... si on a possibilité de faire une nulle, faut-il instaurer le "nul en x coups", comme pour les mats?
+
+FIX
+REGLER LE TEMPS DE REFLEXION QUI EST INCORRECT
+BEAUCOUP DE TEMPS EST PASSE SUR LA GUI!
+FIX
+
+
+3n1k2/1p3pp1/pb5p/7b/2BN1n2/5N1P/PP3PP1/4R1K1 w - - 0 1 : Ce5!! gagne une pièce (Td8, Cf8, Cg6, Cxf4 et double attaque (h5 et e8))
+3rr1k1/2p2pp1/1pn2q1p/p2p4/2bPnB2/2P2NP1/P1Q1PPBP/3RR1K1 b - - 3 18 : Td7 est bien plus harmonieux que Te7...
+rn2kb1r/ppp2ppp/4qn2/8/3Pp3/2N2B2/PPP2PPP/R1BQ1RK1 w kq - 0 9 : Cxe4!
+r7/p4B1k/5Qpb/q2p1N2/5p2/7n/2P3PK/8 b - - 0 32 : mat imparrable pour les blancs
+4rk2/ppp1r3/2q5/3p1pNP/3B4/5N2/P4PK1/R6R w - - 2 25 : h6 et c'est l'autoroute pour ce pion passé
+2Q5/q3krR1/rp6/p2pB3/8/P7/P1p2P1P/4n2K w - - 3 38 : Fd6!! #9
+8/q4r2/rp6/pk1p4/6R1/P3Q3/P1p2P1P/4n2K w - - 8 43 : Dc3 et #4 imparrable
+r3r1k1/1ppq1ppp/p1np1n2/2b1p2b/P1B1P3/2PP1NNP/1P3PP1/R1BQR1K1 b - - 3 12 : ici faut mettre le fou en g6 et ne pas le donner contre le cavalier
+8/8/6k1/5p2/8/4K3/R7/5r2 w - - 0 60 : il faut absolument rester au contact du pion passé avec le roi. Rd4, ça perd!
+2r2rk1/1pq3p1/p4np1/3p2Q1/3PpR2/PP2P2P/2P3PK/1NR5 b - - 1 30 : Ch5 ça gagne juste la tour! il faut absolument taper sur les pièces clouées!
+r2q1rk1/1p4p1/p2p1np1/3p1b2/3P3Q/P1N1P2P/1PPN2P1/R4RK1 w - - 1 24 : Cf3 pour Cg5 gagne
+r2q1rk1/1p2npp1/p2p1n1p/3p4/3P2b1/P1NBP3/1PPN1QPP/R4RK1 w - - 2 18 : Dg3 seul coup qui gagne (menace Txf6, puis h3 pour gagner le fou en g4)
+r1q2rk1/pp2np2/3p1p1p/1B1p4/3P2b1/P1N1P1Q1/1PPN2PP/R5K1 w - - 2 19 : h3, c'est une pièce
+r2q1rk1/pp2npp1/3p1n1p/1B1p4/3P2b1/P1N1P3/1PPN2PP/R3QRK1 w - - 5 17 : Txf6!! gagne (Dg3 ensuite va gagner le fou en g4)
+rnbqk2r/pp3ppp/3ppn2/3p4/3P4/4PN2/PPP2PPP/RN1QKB1R w KQkq - 0 6 : c4 meilleur coup: il faut attaquer ce centre si possible
+Q1Q5/5k2/3b1r2/2pK4/8/2P5/1P6/5q2 w - - 0 71 : roi noir mat (car les blancs ont le trait). Augmenter la valeur des échecs si on a le trait?
+3b1k2/7p/1p2Kp1P/p1pQp1r1/P7/2P5/1P6/8 b - - 3 49 : c'est le roi noir qui est mat
+r4r2/3q1pk1/1p1b1p2/p1p5/8/5Q2/PP3PPP/3RR1K1 w - - 1 23 : Txd6 gagne (pour Dg4 puis Te3)
+r1r3k1/pp1n1p2/3q2p1/P1pP1p2/5P2/1Q4P1/1P3PB1/2RR2K1 w - - 1 2 : Db7
+1r4k1/p1qn1p2/2P3p1/P1p2p2/5P2/6P1/1P3PB1/2RR2K1 w - - 1 5 : Td7 seul coup qui gagne
+2r3k1/pRP2p2/6p1/q1p2p2/5P2/6P1/1P3PB1/2R3K1 w - - 1 8 : b4 seul coup qui gagne
+2r4r/4k1pp/1n1bp3/p1p1p3/1p1nB3/1P2BP2/NKP3PP/3RR3 b - - 1 22 : complètement perdant pour les blancs
+8/1N2k2p/p3p3/P2pP3/3P1qPp/2R2P2/1P2b3/3R3K w - - 1 40 : gagnant pour les blancs
+r1b1kb1r/pp1p1ppp/2n2n2/qN2p3/4P3/2N5/PPP2PPP/R1BQKB1R w KQkq - 2 7 : Fd2 gagne
+rnbq1rk1/pp3pp1/2pbpn1p/3p4/3P4/2NBPN2/PPP2PPP/R1BQ1RK1 w - - 2 9 : e4 c'est la seule idée de la position! :'( implémenter backwards pawns? il à peur de f5 en fin de variante...
+rnbq1rk1/pp2bppp/2p1pn2/3p4/3P4/2NBPN2/PPP2PPP/R1BQ1RK1 w - d6 0 7 : e4 important! : rnbq1rk1/pp2bppp/2p1pn2/3p4/3P4/2NBPN2/PPP2PPP/R1BQ1RK1 w - - 0 7 vs rnbq1rk1/pp2bppp/2p1p3/8/3PB3/5N2/PPP2PPP/R1BQ1RK1 b - - 0 9
+r3k1nr/4p1b1/p1n1P1p1/1ppq1p1p/3p4/3P1N2/PPPNQPPP/R1B1R1K1 w kq - 4 17 : gagnant pour les blancs
+2rr3k/5pp1/8/nB6/8/P4P2/1B3P1P/4R1K1 b - - 0 29 noirs un peu mieux (qualité de plus)
+r2q1k1r/pppb2pp/1bn1p3/P2pP2Q/1P3P2/2PB4/6PP/RNB1K2R b KQ - 0 13 : fou en b6 enfermé!
+r1bk1bnr/p1p2ppp/2p5/8/8/2N2N2/PP3PPP/R1B2RK1 b - - 0 10 : égal, légèrement mieux aux noirs
+r1b2bnr/pp3k1p/3p4/2pN1n2/2Q5/4B3/PPP3PP/5RK1 w - - 1 18 : y'a quand-même beaucoup d'attaque ici
 1r4k1/p2Q1ppp/8/8/2qPbB2/4P3/3R1PPP/4KB1R b - - 2 23 : mat imparrable pour les noirs
 1rr3k1/p2Q1ppp/6b1/8/1q1P1B2/4P3/4KPPP/3R1BNR b - - 1 19 : Fe4 gagne
+1r4k1/p2Q1ppp/8/8/1q1PbB2/4P3/2rNKPPP/3R1B1R b - - 5 21 : Txd2 #6
 1q4rr/1p1bkn1p/1Pp1p1pP/2Pp1pP1/3P1P2/Q2BPN2/5K1R/R7 b - - 2 40 : aucun jeu possible pour les noirs, ils sont complètement enfermés
 3b2kr/1p3pp1/1q2bn2/1Np4p/5Q2/P1N5/1PP1BPPP/1K5R b - - 1 20 : complètement gagnant aux blancs
 rnb1kbnr/ppp2ppp/8/3q4/3N4/8/PPP2PPP/RNBQKB1R b KQkq - 0 5 : c5 erreur... le roi reste trop longtemps au centre...

@@ -297,8 +297,18 @@ void GUI::draw_exploration_arrows()
 	// Vecteur de flèches à afficher
 	_grogros_arrows.clear();
 
+	if (_root_exploration_node->_nodes <= 1 || _root_exploration_node->_is_terminal)
+		return;
+
 	// Coup à surligner
 	const Move best_move = _root_exploration_node->get_most_explored_child_move();
+
+	// Coup avec la meilleure évaluation
+	const Move best_eval_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
+
+	if (best_eval_move.is_null_move()) {
+		cout << "null best eval move" << endl;
+	}
 
 	// Une pièce est-elle sélectionnée?
 	const bool is_selected = _selected_pos.row != -1 && _selected_pos.col != -1;
@@ -315,10 +325,15 @@ void GUI::draw_exploration_arrows()
 
 		// Sinon, dessine les flèches pour les coups les plus explorés
 		else {
+			// On ne rajoute pas pour le moment les coups en surbrillance
+			if (move == best_move || move == best_eval_move)
+				continue;
+
 			// Le coup a-t-il été exploré par GrogrosZero, ou seulement la quiescence?
 			if (_root_exploration_node->_iterations > 0) {
-				if (static_cast<float>(child->_chosen_iterations) / static_cast<float>(_root_exploration_node->_iterations) > _arrow_rate)
+				if (static_cast<float>(child->_chosen_iterations) / static_cast<float>(_root_exploration_node->_iterations) > _arrow_rate) {
 					iterated_moves_vector.push_back(move);
+				}
 			}
 			else {
 				// TODO: quiescence arrows
@@ -327,8 +342,6 @@ void GUI::draw_exploration_arrows()
 					iterated_moves_vector.push_back(move);
 				}
 			}
-
-			
 		}
 	}
 
@@ -337,11 +350,20 @@ void GUI::draw_exploration_arrows()
 		return this->compare_arrows(m1, m2); }
 	);
 
+	if (!is_selected) {
+		// Ajoute les coups à afficher dans tous les cas
+		iterated_moves_vector.push_back(best_eval_move);
+
+		if (best_eval_move != best_move) {
+			iterated_moves_vector.push_back(best_move);
+		}
+	}
+
 	// Dessine les flèches
 	for (const Move move : iterated_moves_vector) {
 		const int mate = _root_exploration_node->_board->is_eval_mate(_root_exploration_node->_children[move]->_deep_evaluation._value);
 		Node const *child = _root_exploration_node->_children[move];
-		draw_arrow(move, _root_exploration_node->_board->_player, move_color(child->_chosen_iterations, _root_exploration_node->_iterations, child->_iterations == 0), -1.0f, true, child->_deep_evaluation._avg_score, mate, move == best_move);
+		draw_arrow(move, _root_exploration_node->_board->_player, move_color(child->_chosen_iterations, _root_exploration_node->_iterations, child->_iterations == 0), -1.0f, true, child->_deep_evaluation._avg_score, mate, move == best_move, move == best_eval_move);
 	}
 }
 
@@ -366,36 +388,51 @@ int GUI::orientation_index(const int i) const {
 }
 
 // Fonction qui dessine la flèche d'un coup
-void GUI::draw_arrow(const Move move, const bool player, Color c, float thickness, const bool use_value, const float avg_score, const int mate, const bool outline)
+void GUI::draw_arrow(const Move move, const bool player, Color c, float thickness, const bool use_value, const float avg_score, const int mate, const bool is_most_explored, const bool is_best_eval)
 {
-	const uint_fast8_t i1 = move.start_row;
-	const uint_fast8_t j1 = move.start_col;
-	const uint_fast8_t i2 = move.end_row;
-	const uint_fast8_t j2 = move.end_col;
+	const uint_fast8_t start_row = move.start_row;
+	const uint_fast8_t start_col = move.start_col;
+	const uint_fast8_t end_row = move.end_row;
+	const uint_fast8_t end_col = move.end_col;
 
 	if (thickness == -1.0f)
 		thickness = _arrow_thickness;
 
-	const float x1 = _board_padding_x + _tile_size * orientation_index(j1) + _tile_size / 2;
-	const float y1 = _board_padding_y + _tile_size * orientation_index(7 - i1) + _tile_size / 2;
-	const float x2 = _board_padding_x + _tile_size * orientation_index(j2) + _tile_size / 2;
-	const float y2 = _board_padding_y + _tile_size * orientation_index(7 - i2) + _tile_size / 2;
+	const float x1 = _board_padding_x + _tile_size * orientation_index(start_col) + _tile_size / 2;
+	const float y1 = _board_padding_y + _tile_size * orientation_index(7 - start_row) + _tile_size / 2;
+	const float x2 = _board_padding_x + _tile_size * orientation_index(end_col) + _tile_size / 2;
+	const float y2 = _board_padding_y + _tile_size * orientation_index(7 - end_row) + _tile_size / 2;
 
 	// Transparence nulle
 	//c.a = 255;
 
-	// Outline pour le coup choisi
-	if (outline) {
-		if (abs(j2 - j1) != abs(i2 - i1))
+	int d_row = end_row - start_row;
+	int d_col = end_col - start_col;
+
+	bool is_knight_move = (abs(d_row) == 2 && abs(d_col) == 1) || (abs(d_row) == 1 && abs(d_col) == 2);
+
+	// Outline pour le coup le plus exploré
+	if (is_most_explored) {
+		if (is_knight_move)
 			draw_line_bezier(x1, y1, x2, y2, thickness * 1.4f, BLACK);
 		else
 			draw_line_ex(x1, y1, x2, y2, thickness * 1.4f, BLACK);
 		draw_circle(x1, y1, thickness * 1.2f, BLACK);
 		draw_circle(x2, y2, thickness * 2.0f * 1.1f, BLACK);
 	}
+	
+	// Outline pour le coup avec la meilleure évaluation
+	if (is_best_eval) {
+		if (is_knight_move)
+			draw_line_bezier(x1, y1, x2, y2, thickness * 1.4f, WHITE);
+		else
+			draw_line_ex(x1, y1, x2, y2, thickness * 1.4f, WHITE);
+		draw_circle(x1, y1, thickness * 1.2f, WHITE);
+		draw_circle(x2, y2, thickness * 2.0f * 1.1f, WHITE);
+	}
 
 	// "Flèche"
-	if (abs(j2 - j1) != abs(i2 - i1))
+	if (is_knight_move)
 		draw_line_bezier(x1, y1, x2, y2, thickness, c);
 	else
 		draw_line_ex(x1, y1, x2, y2, thickness, c);
@@ -438,7 +475,7 @@ void GUI::draw_arrow(const Move move, const bool player, Color c, float thicknes
 	}
 
 	// Ajoute la flèche au vecteur
-	_grogros_arrows.push_back(Move(i1, j1, i2, j2));
+	_grogros_arrows.push_back(Move(start_row, start_col, end_row, end_col));
 
 	return;
 }
@@ -948,7 +985,7 @@ void GUI::grogros_analysis(int iterations) {
 	//	iterations_per_second = 0;
 	//}
 
-	int iterations_to_explore = iterations_per_second / 60;
+	int iterations_to_explore = iterations_per_second / _target_fps;
 	if (iterations_to_explore == 0)
 		iterations_to_explore = 1;
 
@@ -1317,7 +1354,17 @@ void GUI::draw()
 	if (_root_exploration_node->children_count() && _drawing_arrows) {
 
 		// Meilleure évaluation
-		int best_eval = _root_exploration_node->_deep_evaluation._value;
+		//int best_eval = _root_exploration_node->_deep_evaluation._value;
+		Move best_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
+		Evaluation best_evaluation = _root_exploration_node->_children[best_move]->_deep_evaluation;
+
+		bool all_moves_explored = _root_exploration_node->get_fully_explored_children_count() == _root_exploration_node->_board->_got_moves;
+
+		if (!all_moves_explored && ((_board._player && _root_exploration_node->_static_evaluation > best_evaluation) || (!_board._player && _root_exploration_node->_static_evaluation < best_evaluation))) {
+			best_evaluation = _root_exploration_node->_static_evaluation;
+		}
+
+		int best_eval = best_evaluation._value;
 
 		string eval;
 		int mate = _board.is_eval_mate(best_eval);
@@ -1341,7 +1388,7 @@ void GUI::draw()
 		//	win_chance = 1 - win_chance;
 		//string win_chances = "W/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/0/" + to_string(static_cast<int>(100 * (1 - win_chance))) + "\%";
 
-		_wdl = _root_exploration_node->_deep_evaluation._wdl;
+		_wdl = best_evaluation._wdl;
 
 		// Pour l'évaluation statique
 		if (!_board._displayed_components) {
@@ -1353,10 +1400,10 @@ void GUI::draw()
 		int max_depth = _root_exploration_node->get_main_depth();
 		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\nTime: " + clock_to_string(_root_exploration_node->_time_spent, true) +
 			"\nDepth: " + to_string(max_depth) + "\nEval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) +
-			eval + "\nConfidence: " + to_string(100 - (int)(100 * _root_exploration_node->_deep_evaluation._uncertainty)) + "%\n" + _wdl.to_string() + "\nScore: " + score_string(_root_exploration_node->_deep_evaluation._avg_score) + "\nNodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) +
-			" (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 0.01) / 1000.0)) + "N/s)" +
+			eval + "\nConfidence: " + to_string(100 - (int)(100 * best_evaluation._uncertainty)) + "%\n" + _wdl.to_string() + "\nScore: " + score_string(best_evaluation._avg_score) + "\nNodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) +
+			" (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 1E-6) / CLOCKS_PER_SEC)) + "N/s)" +
 			"\nIterations: " + int_to_round_string(_root_exploration_node->_iterations) + " (" +
-			int_to_round_string(_root_exploration_node->_iterations / (static_cast<float>(_root_exploration_node->_time_spent + 0.01) / 1000.0)) + "I/s)";
+			int_to_round_string(_root_exploration_node->_iterations / (static_cast<float>(_root_exploration_node->_time_spent + 1E-6) / CLOCKS_PER_SEC)) + "I/s)";
 		
 		// Affichage des paramètres d'analyse de GrogrosZero
 		slider_text(monte_carlo_text, _board_padding_x + _board_size + _text_size / 2, _text_size, _screen_width - _text_size - _board_padding_x - _board_size, _board_size * 9 / 16, _text_size / 4, &_monte_carlo_slider, _text_color);
@@ -1494,17 +1541,40 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 	// Noeud avec la meilleure évaluation
 	//Node const* best_eval_node;
-	int best_eval_colored = -INT_MAX;
+	//int best_eval_colored = -INT_MAX;
+	//Move best_move;
+
+	//for (auto const& child : _root_exploration_node->_children)
+	//{
+	//	if (child.second->_deep_evaluation._value * color > best_eval_colored) {
+	//		best_eval_colored = child.second->_deep_evaluation._value * color;
+	//		//best_eval_node = child.second;
+	//		best_move = child.first;
+	//	}
+	//}
+
+	const Move most_explored_move = _root_exploration_node->get_most_explored_child_move();
+
+	map<Move, double> move_scores = _root_exploration_node->get_move_scores(_alpha, _beta);
+
+	double most_explored_score = -DBL_MAX;
+	double best_score = -DBL_MAX;
 	Move best_move;
 
-	for (auto const& child : _root_exploration_node->_children)
-	{
-		if (child.second->_deep_evaluation._value * color > best_eval_colored) {
-			best_eval_colored = child.second->_deep_evaluation._value * color;
-			//best_eval_node = child.second;
-			best_move = child.first;
+	// Meilleur coup
+	for (auto const& [move, score] : move_scores) {
+		if (score > best_score) {
+			best_score = score;
+			best_move = move;
+		}
+		if (move == most_explored_move) {
+			most_explored_score = score;
 		}
 	}
+
+	bool most_explored_move_is_best = best_score == most_explored_score;
+
+	// FIXME *** revoir la notion de best move ici
 
 	//cout << "best eval : " << best_eval_colored << ", color : " << color << ", best move : " << _board.move_label(best_move) << endl;
 
@@ -1522,10 +1592,10 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 	//cout << "max move time : " << max_move_time << endl;
 
-	int most_explored_child_eval = most_explored_child->_deep_evaluation._value * color;
+	//int most_explored_child_eval = most_explored_child->_deep_evaluation._value * color;
 
 	// On veut être sûr de jouer le meilleur coup de Grogros: s'il y a un meilleur coup que celui avec le plus de noeuds, attendre...
-	bool wait_for_best_move = most_explored_child_eval < (best_eval_colored);
+	bool wait_for_best_move = !most_explored_move_is_best;
 
 	// FIXME: des choses à améliorer ici!
 	// A quel point faut-il attendre pour être sûr de jouer le meilleur coup?
@@ -1552,7 +1622,8 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	// Peut-on se permettre d'attendre? Dépend du temps restant (1 minute = limite...)
 	int time_left = _board._player ? _time_white : _time_black;
 
-	float move_wait_factor = min(100.0f, 1.0f + abs(most_explored_child_eval - best_eval_colored) / 50.0f * time_left / 60000.0f);
+	//float move_wait_factor = min(100.0f, 1.0f + abs(most_explored_child_eval - best_eval_colored) / 50.0f * time_left / 60000.0f);
+	float move_wait_factor = 1.0f + ((best_score + 1E-6) / (most_explored_score + 1E-6) - 1.0f) * 5.0f;
 
 
 
@@ -1569,7 +1640,16 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 	// Nombre d'itérations supposées par seconde
 	//constexpr int supposed_ips = 1000;
-	const int supposed_ips = max(1500, _root_exploration_node->get_ips());
+	//const int supposed_ips = max(750, _root_exploration_node->get_ips());
+
+	constexpr int average_nps = 750; // Pour une position semi-complexe
+	constexpr float consistent_factor = 0.5f; // Plus ce facteur est grand, plus le temps utilisé sera constant, quelle que soit la complexité de la position
+
+	const int actual_ips = _root_exploration_node->get_ips();
+
+	const int supposed_ips = average_nps + (actual_ips - average_nps) * consistent_factor;
+
+
 
 	// Nombre de noeuds que Grogros doit calculer (en fonction des contraintes de temps)
 	//int grogros_nps = _root_exploration_node->get_avg_nps();
@@ -1596,12 +1676,12 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 		//}
 
 		if (wait_for_best_move) {
-			cout << "Position: " << _board.to_fen() << " : played the sub-optimal " << _board._moves_count << ". " << _board.move_label(_root_exploration_node->get_best_move()) << " because it was taking too long to wait for it... best move was probably:" << _board.move_label(best_move) << endl;
-			cout << "Evaluations: " << most_explored_child_eval << " | " << best_eval_colored << " -> wait factor: " << move_wait_factor << endl;
+			cout << "Position: " << _board.to_fen() << " : played the sub-optimal " << _board._moves_count << ". " << _board.move_label(_root_exploration_node->get_most_explored_child_move()) << " because it was taking too long to wait for it... best move was probably:" << _board.move_label(best_move) << endl;
+			cout << "Scores: " << most_explored_score << " | " << best_score << " -> wait factor: " << move_wait_factor << endl;
 		}
 
 		//cout << nodes_to_play << ", max move time : " << max_move_time << ", supposed speed : " << supposed_grogros_speed << ", nodes : " << _root_exploration_node->_nodes << endl;
-		((_click_bind && _board.click_m_move(_root_exploration_node->get_best_move(), get_board_orientation())) || true) && play_move_keep(_root_exploration_node->get_best_move());
+		((_click_bind && _board.click_m_move(_root_exploration_node->get_most_explored_child_move(), get_board_orientation())) || true) && play_move_keep(_root_exploration_node->get_most_explored_child_move());
 	}
 
 	return;

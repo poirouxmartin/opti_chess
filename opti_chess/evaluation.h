@@ -8,36 +8,36 @@ public:
 	// Paramètres d'évaluation
 
 	// Coefficients des heuristiques
-	float _piece_value = 1.35f;
-	float _piece_mobility = 0.075f;
-	float _piece_positioning = 0.15f;
-	float _bishop_pair = 35.0f;
+	float _piece_value = 1.0f;
+	float _piece_mobility = 0.055f;
+	float _piece_positioning = 0.12f;
+	float _bishop_pair = 25.0f;
 	float _castling_rights = 0.0f; // Redondant
-	float _player_trait = 25.0f;
-	float _king_safety = 1.0f;
-	float _pawn_structure = 0.4f;
-	float _attacks = 1.15f;
-	float _kings_opposition = 75.0f;
+	float _player_trait = 20.0f;
+	float _king_safety = 0.85f;
+	float _pawn_structure = 0.25f;
+	float _attacks = 0.65f;
+	float _kings_opposition = 50.0f;
 	float _push = 1.0f;
-	float _rook_open = 0.5f;
-	float _square_controls = 0.5f;
-	float _space_advantage = 4.0f;
-	float _alignments = 0.5f;
-	float _piece_activity = 0.035f;
-	float _fianchetto = 1.35f;
+	float _open_files = 0.75f;
+	float _square_controls = 0.20f;
+	float _space_advantage = 1.0f;
+	float _alignments = 0.35f;
+	float _piece_activity = 0.03f;
+	float _fianchetto = 1.0f;
 	float _pawn_push_threats = 0.15f; // A refaire
-	float _king_proximity = 0.5f;
-	float _king_centralization = 5.0f;
-	float _rook_activity = 0.12f;
-	float _bishop_pawns = 5.0f;
-	float _weak_squares = 1.0f;
+	float _king_proximity = 0.35f;
+	float _king_centralization = 3.5f;
+	float _rook_activity = 0.085f;
+	float _bishop_pawns = 3.5f;
+	float _weak_squares = 0.75f;
 	float _castling_distance = 1.0f;
-	float _bishop_activity = 3.0f;
-	float _trapped_pieces = 0.75f;
-	float _knight_activity = 0.45f;
+	float _bishop_activity = 2.2f;
+	float _trapped_pieces = 0.55f;
+	float _knight_activity = 0.3f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
-	int _pieces_value_begin[6] = { 85, 360, 410, 540, 1175, 0 };
+	int _pieces_value_begin[6] = { 90, 380, 410, 600, 1175, 0 };
 
 	// Valeurs en fin de partie
 	int _pieces_value_end[6] = { 95, 370, 420, 660, 1280, 0 };

@@ -6,6 +6,7 @@
 //	_board = new Board();
 //}
 
+
 Tests::Tests(GUI *gui) {
 	_gui = gui;
 }
@@ -69,7 +70,7 @@ bool Tests::problem_test(string fen, map<Move, double> moves, double time) {
 	clock_t end = clock();
 
 	// Récupère le meilleur coup
-	Move chosen_move = _gui->_root_exploration_node->get_best_move();
+	Move chosen_move = _gui->_root_exploration_node->get_most_explored_child_move();
 
 	// Récupère le score de ce coup (s'il y en a un)
 	double move_score = moves.find(chosen_move) != moves.end() ? moves[chosen_move] : 0.0;
@@ -88,8 +89,8 @@ void Tests::run_all_tests() {
 	// 1. Perft test
 	cout << endl << "*** PERFT TESTS ***" << endl;
 
-	perft_test("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 5, { 1, 20, 400, 8902, 197281, 4865609, 119060324 });
-	perft_test("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 5, { 1, 48, 2039, 97862, 4085603, 193690690 });
+	perft_test("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, { 1, 20, 400, 8902, 197281, 4865609, 119060324 });
+	perft_test("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 6, { 1, 48, 2039, 97862, 4085603, 193690690 });
 
 	// 2. Evaluation test
 	cout << endl << "*** EVALUATION TESTS ***" << endl;

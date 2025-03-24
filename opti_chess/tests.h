@@ -24,6 +24,11 @@
 // Tests de quiescence
 
 
+// TODO ***
+// Faire des fonctions pour chaque type de test: run_all_problems, etc...
+// Faire des exercices par THEME, pour voir sur quel thème il pêche (problème stratégique à théme, évaluation d'un paramètre spécifique, etc...)
+// Vérifier sur des échanges de pièces, si elles sont toutes évaluées correctement selon les positions
+
 // Implémentation d'un score par critère
 // Score global représentant la puissance de la configuration (génération de coups, évaluation, algorithme, paramètres de recherche...)
 

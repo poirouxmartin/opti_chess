@@ -649,11 +649,6 @@ Node::~Node() {
 	//}
 }
 
-// Fonction qui renvoie le meilleur coup
-[[nodiscard]] Move Node::get_best_move() {
-	return get_most_explored_child_move();
-}
-
 // Fonction qui renvoie le fils le plus exploré
 [[nodiscard]] Node* Node::get_most_explored_child(bool decide_by_eval) {
 	return _children[get_most_explored_child_move(decide_by_eval)];
@@ -1105,7 +1100,7 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 
 	// Facteur 2: score moyen
 	const double avg_score = player ? _deep_evaluation._avg_score : 1 - _deep_evaluation._avg_score;
-	const double score_score = exp(-beta * (1 - avg_score) / (1 - max_avg_score) * max_avg_score / avg_score) + min_constant;
+	const double score_score = exp(-beta * (1 - avg_score) / (1 - max_avg_score + min_constant) * max_avg_score / (avg_score + min_constant)) + min_constant;
 
 	//cout << "eval: " << eval_score << ", score: " << score_score << endl;
 
@@ -1116,4 +1111,25 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 	const double score = eval_score * score_score + adding;
 
 	return score;
+}
+
+// Fonction qui renvoie le coup avec le meilleur score
+Move Node::get_best_score_move(const double alpha, const double beta) {
+
+	// Meilleur coup
+	Move best_move = Move();
+	double best_score = -DBL_MAX;
+
+	// Scores des coups
+	map<Move, double> move_scores = get_move_scores(alpha, beta);
+
+	// Regarde chaque coup
+	for (auto const& [move, score] : move_scores) {
+		if (score > best_score) {
+			best_score = score;
+			best_move = move;
+		}
+	}
+
+	return best_move;
 }
