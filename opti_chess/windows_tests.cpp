@@ -122,6 +122,9 @@ uint_fast8_t* get_board_move(const int x1, const int y1, const int x2, const int
 	if (0 == GetDIBits(hdc, h_bitmap, 0, my_bm_info.bmiHeader.biHeight, (LPVOID)lp_pixels, &my_bm_info, DIB_RGB_COLORS))
 		cout << "error2" << endl;
 
+	bool found_start_square = false;
+	bool found_end_square = false;
+
 	// Regarde chaque case de l'échiquier
 	for (int i = 0; i < 8; i++) {
 		for (int j = 0; j < 8; j++) {
@@ -155,11 +158,16 @@ uint_fast8_t* get_board_move(const int x1, const int y1, const int x2, const int
 				}
 
 				// Si c'est le cas, alors c'est la case de départ
-				if (color.equals(website._white_tile_played_color, 0.98f) || color.equals(website._black_tile_played_color, 0.98f)) {
+				if (!found_start_square && (color.equals(website._white_tile_played_color, 0.98f) || color.equals(website._black_tile_played_color, 0.98f))) {
 					y_begin = orientation ? i : 7 - i;
 					x_begin = orientation ? j : 7 - j;
 					if (display)
 						cout << "begin tile" << endl;
+
+					if (found_end_square)
+						goto found;
+
+					found_start_square = true;
 				}
 
 				// Sinon, c'est la case de fin
@@ -168,10 +176,17 @@ uint_fast8_t* get_board_move(const int x1, const int y1, const int x2, const int
 					x_end = orientation ? j : 7 - j;
 					if (display)
 						cout << "end tile" << endl;
+
+					if (found_start_square)
+						goto found;
+
+					found_end_square = true;
 				}
 			}
 		}
 	}
+
+	found:
 
 	// Release le screen
 	DeleteObject(h_bitmap);

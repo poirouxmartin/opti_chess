@@ -434,12 +434,12 @@ void Node::explore_random_child(Buffer* buffer, Evaluator* eval, double alpha, d
 
 // Fonction qui renvoie le fils le plus exploré
 [[nodiscard]] Move Node::get_most_explored_child_move(bool decide_by_eval) {
-	int max = 0;
+	int max = -1;
 
 	// Tri simple, on ne départage pas les égalités
 	if (!decide_by_eval) {
 
-		auto best_move = Move();
+		Move best_move = Move();
 
 		for (auto const& [move, child] : _children) {
 			if (child->_chosen_iterations > max) {

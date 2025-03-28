@@ -50,21 +50,6 @@ public:
 	// GUI? (pour importer tous les paramètres et tester direct)
 	GUI *_gui;
 
-	// Valeurs des tests
-
-	// Perft
-	int perft_tests = 0;
-	int perft_tests_passed = 0;
-
-	// Evaluation
-	int evaluation_tests = 0;
-	double evaluation_tests_score = 0.0;
-
-	// Problèmes
-	int problem_tests = 0;
-	double problem_tests_score = 0.0;
-
-
 	// Constructeur
 	//Tests(Evaluator* eval);
 
@@ -77,10 +62,13 @@ public:
 	bool perft_test(string fen, int depth, vector<int> expected_nodes);
 
 	// Renvoie une valeur entre 0 et 1, 1 étant la position évaluée correctement
-	double evaluation_test(string fen, int evaluation, double win_rate);
+	double evaluation_test(string fen, pair<int, int> evaluation_range, pair<double, double> score_range);
 
 	// Renvoie une valeur entre 0 et 1 (1 = problème résolu) (faut-il prendre en compte si le coup joué est quand-même bon?)
-	bool problem_test(string fen, map<Move, double> moves, double time);
+	double problem_test(string fen, map<Move, double> moves, double time);
+
+	// Mise à jour de la GUI
+	void update_GUI();
 
 
 	// Fonction qui fait tous les tests
