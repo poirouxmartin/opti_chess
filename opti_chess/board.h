@@ -94,6 +94,11 @@ static bool is_diagonal(uint_fast8_t piece) {
 	return is_bishop(piece) || is_queen(piece);
 }
 
+// Renvoie si c'est une sliding piece
+static bool is_sliding(uint_fast8_t piece) {
+	return is_bishop(piece) || is_rook(piece) || is_queen(piece);
+}
+
 // Coup (défini par ses coordonnées)
 // TODO : l'utiliser !!
 // Utilise 2 bytes (16 bits)
