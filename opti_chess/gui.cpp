@@ -972,7 +972,7 @@ uint_fast8_t GUI::clicked_piece() const
 
 // Fonction qui lance une analyse de GrogrosZero
 void GUI::grogros_analysis(int iterations) {
-	// Noeuds à explorer par frame, en visant 60 FPS
+	// Noeuds à explorer par frame, en visant _target_fps FPS
 
 	// Iterations par seconde
 	int iterations_per_second = _root_exploration_node->get_ips();
@@ -1401,9 +1401,9 @@ void GUI::draw()
 		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\nTime: " + clock_to_string(_root_exploration_node->_time_spent, true) +
 			"\nDepth: " + to_string(max_depth) + "\nEval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) +
 			eval + "\nConfidence: " + to_string(100 - (int)(100 * best_evaluation._uncertainty)) + "%\n" + _wdl.to_string() + "\nScore: " + score_string(best_evaluation._avg_score) + "\nNodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) +
-			" (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 1E-6) / CLOCKS_PER_SEC)) + "N/s)" +
+			" (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 1E-4) / CLOCKS_PER_SEC)) + "N/s)" +
 			"\nIterations: " + int_to_round_string(_root_exploration_node->_iterations) + " (" +
-			int_to_round_string(_root_exploration_node->_iterations / (static_cast<float>(_root_exploration_node->_time_spent + 1E-6) / CLOCKS_PER_SEC)) + "I/s)";
+			int_to_round_string(_root_exploration_node->_iterations / (static_cast<float>(_root_exploration_node->_time_spent + 1E-4) / CLOCKS_PER_SEC)) + "I/s)";
 		
 		// Affichage des paramètres d'analyse de GrogrosZero
 		slider_text(monte_carlo_text, _board_padding_x + _board_size + _text_size / 2, _text_size, _screen_width - _text_size - _board_padding_x - _board_size, _board_size * 9 / 16, _text_size / 4, &_monte_carlo_slider, _text_color);
@@ -1705,11 +1705,21 @@ void GUI::init_chess_sites() {
 
 	_chess_sites.push_back(chess_com);
 
-	// Lichess.org (TODO)
-	// Cases:
-	// blanches : 240, 217, 181
-	// noires : 181, 136, 99
+	// Lichess.org (plateau vert et blanc, avec brightness réduite)
+	// Piece set "alpha"
+	ChessSite lichess_org;
+	lichess_org._name = "lichess.org";
+	lichess_org._white_tile_color = SimpleColor(191, 191, 166);
+	lichess_org._black_tile_color = SimpleColor(100, 124, 76);
+	lichess_org._white_piece_color = SimpleColor(185, 185, 185);
+	lichess_org._black_piece_color = SimpleColor(12, 12, 12);
+	lichess_org._white_tile_played_color = SimpleColor(112, 160, 159);
+	lichess_org._black_tile_played_color = SimpleColor(59, 120, 106);
+	lichess_org._piece_location_on_tile = { 0.17f, 0.66f };
+	lichess_org._tile_location_on_tile = { 0.90f, 0.90f };
+	lichess_org._time_lost_per_move = 100;
 
+	_chess_sites.push_back(lichess_org);
 
 	// Internet Chess Club (setup avec cases marrons et pièces 'Default')
 	ChessSite internet_chess_club;
@@ -1726,4 +1736,54 @@ void GUI::init_chess_sites() {
 
 	_chess_sites.push_back(internet_chess_club);
 
+}
+
+
+// Fonction qui update le binding move à partir du plateau en ligne. Renvoie vrai si le coup a été modifié et s'il est valide
+bool GUI::update_binding_move() {
+
+	//cout << "updating binding move" << endl;
+
+	// Récupération des coordonnées du coup
+	uint_fast8_t *move_coords = get_board_move(_binding_left, _binding_top, _binding_right, _binding_bottom, _current_site, get_board_orientation());
+
+	//cout << "binding move: " << (int)move_coords[0] << ", " << (int)move_coords[1] << ", " << (int)move_coords[2] << ", " << (int)move_coords[3] << endl;
+
+	// Adaptation du coup selon les sites:
+	// Sur lichess, pour roquer, les cases surlignées sont le roi et la tour (et non la case de destination du roi)
+	uint_fast8_t start_row = move_coords[0];
+	uint_fast8_t start_col = move_coords[1];
+	uint_fast8_t end_row = move_coords[2];
+	uint_fast8_t end_col = move_coords[3];
+
+	// Pour les roques sur certains sites, on ne peut pas determiner la case de départ et d'arrivée, ça peut donc être inversé
+	if (is_king(_root_exploration_node->_board->_array[end_row][end_col]) && abs(start_col - end_col) > 2) {
+		//cout << "king move inverted" << endl;
+		start_row = end_row;
+		start_col = end_col;
+		end_row = move_coords[0];
+		end_col = move_coords[1];
+	}
+
+	if (is_king(_root_exploration_node->_board->_array[start_row][start_col]) && abs(start_col - end_col) > 2) {
+		//cout << "castling attempt: " << (int)start_row << ", " << (int)start_col << ", " << (int)end_row << ", " << (int)end_col << endl;
+		end_col = start_col + 2 * ((end_col > start_col) ? 1 : -1);
+		//cout << "castling move: " << (int)start_row << ", " << (int)start_col << ", " << (int)end_row << ", " << (int)end_col << endl;
+	}
+
+	Move move = Move(start_row, start_col, end_row, end_col);
+
+	if (move == _binding_move) {
+		return false;
+	}
+
+	// Si le coup est existant
+	for (int i = 0; i < _root_exploration_node->_board->_got_moves; i++) {
+		if (_root_exploration_node->_board->_moves[i] == move) {
+			_binding_move = move;
+			return true;
+		}
+	}
+
+	return false;
 }

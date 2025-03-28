@@ -709,7 +709,25 @@ REGLER LE TEMPS DE REFLEXION QUI EST INCORRECT
 BEAUCOUP DE TEMPS EST PASSE SUR LA GUI!
 FIX
 
+LENT SUR GUI:
+SLIDER TEXT (MEASURETEXT TRES LENT)
 
+MONTRER LE RATIO DE TEMPS PRIS PAR L'UI!!
+
+GET ALIGNMENTS EST LE PLUS LENT (à cause des push back et les vecteurs.......)
+
+VIRER TOUS LES VECTEURS... c'est beaucoup trop lent...
+Toutes les opérations de texte sont hyper lentes! notamment dans score_string, et tous les to_string qui utilisent du sstream
+
+
+1r2r1k1/p4p1p/5pb1/2P5/1p1P1B2/1P5P/P5B1/R5K1 b - - 1 33 : pions passés liés inarrêtables... blancs gagnants (grâce aux fous qui contrôlent les cases d'avancée des pions)
+TODO *** bonus pour les pions qu'on peut pousser (cases d'avancées protégées)
+
+1r3rk1/p3bppp/2p3b1/1pPqN3/3P2P1/1PB1pP2/P5BP/R3Q1K1 w - - 0 23 : Dxe3?? ça gagne juste facilement...
+rn1q1rk1/pb2bppp/1pp1pn2/3pN3/3P1B1P/2N3P1/PP2PPB1/R2QR1K1 w - - 2 12 : mieux aux noirs (pion de plus)
+3r1qkr/1bpP1pbp/p7/1p1N3Q/4P3/6PB/PPP4P/5R1K w - - 1 3 : Fe6! gagne
+3r2k1/5pp1/ppb3P1/8/5Q2/Pq6/1P3PP1/4R1K1 w - - 1 29 : Dh4 gagne! 3r2k1/6p1/ppb2pP1/8/7Q/Pq6/1P3PP1/4R1K1 w - - 0 30 -> Te7 seul coup gagnant
+8/8/1p4pk/p4p1p/Pr1R3P/4KPP1/8/8 w - - 8 45 : Txb4 gagne!
 3n1k2/1p3pp1/pb5p/7b/2BN1n2/5N1P/PP3PP1/4R1K1 w - - 0 1 : Ce5!! gagne une pièce (Td8, Cf8, Cg6, Cxf4 et double attaque (h5 et e8))
 3rr1k1/2p2pp1/1pn2q1p/p2p4/2bPnB2/2P2NP1/P1Q1PPBP/3RR1K1 b - - 3 18 : Td7 est bien plus harmonieux que Te7...
 rn2kb1r/ppp2ppp/4qn2/8/3Pp3/2N2B2/PPP2PPP/R1BQ1RK1 w kq - 0 9 : Cxe4!

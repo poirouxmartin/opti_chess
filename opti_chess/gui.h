@@ -43,7 +43,7 @@ public:
 	clock_t _last_binding_check = clock();
 
 	// Coup récupéré par le binding
-	uint_fast8_t* _binding_move = new uint_fast8_t[4];
+	Move _binding_move;
 
 	// Coordonnées du plateau sur chess.com
 	int _binding_left = 108; // (+10 si barre d'éval)
@@ -196,7 +196,7 @@ public:
 
 	// Nombre de FPS
 	int _max_fps = 120;
-	int _target_fps = 90;
+	int _target_fps = 60;
 	clock_t _last_drawing_time = 0;
 
 	// Couleur de fond
@@ -564,6 +564,9 @@ public:
 
 	// Fonction qui initialise les couleurs des sites de jeux d'échecs
 	void init_chess_sites();
+
+	// Fonction qui update le binding move à partir du plateau en ligne
+	bool update_binding_move();
 
 
 	// TODO

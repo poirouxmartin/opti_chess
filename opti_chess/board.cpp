@@ -30,6 +30,7 @@ Board::Board(const Board& b, bool full, bool copy_history) {
 
 // Fonction qui copie les attributs d'un tableau
 void Board::copy_data(const Board& b, bool full, bool copy_history) {
+
 	// Copie du plateau
 	memcpy(_array, b._array, sizeof(_array));
 	_got_moves = b._got_moves;
@@ -362,7 +363,7 @@ bool Board::in_check()
 	for (int j = king_j - 1; j >= 0; j--)
 	{
 		// Si y'a une pièce
-		if (const uint_fast8_t piece = _array[king_i][j]; piece != 0)
+		if (const uint_fast8_t piece = _array[king_i][j]; piece != none)
 		{
 			// Si la pièce n'est pas au joueur, regarde si c'est une tour, une dame, ou un roi avec une distance de 1
 			if (piece < 7 != _player)
@@ -4006,83 +4007,75 @@ int Board::get_alignments() const
 
 	// Directions possibles pour les clouages
 
-	// Rectilignes
-	const vector<pair<int, int>> straight = { {1, 0}, {0, 1}, {-1, 0}, {0, -1} };
-
-	// Diagonales
-	const vector<pair<int, int>> diagonal = { {1, 1}, {1, -1}, {-1, 1}, {-1, -1} };
-
 	// Valeur des alignements
 	int w_pins = 0;
 	int b_pins = 0;
 
 	// Parcourt le plateau
-	for (uint_fast8_t i = 0; i < 8; i++) {
-		for (uint_fast8_t j = 0; j < 8; j++) {
+	for (uint_fast8_t row = 0; row < 8; row++) {
+		for (uint_fast8_t col = 0; col < 8; col++) {
+
 			// Si la case contient une pièce
-			const uint_fast8_t piece = _array[i][j];
+			const uint_fast8_t piece = _array[row][col];
 
-			// Directions possible pour la pièce
-			vector<pair<int, int>> directions;
-
-			// Fous
-			if (piece == w_bishop || piece == b_bishop) {
-				directions = diagonal;
-			}
-
-			// Tours
-			else if (piece == w_rook || piece == b_rook) {
-				directions = straight;
-			}
-
-			// Dames 
-			// TODO: prendre en compte dans certains cas (pin sur un roi?)
-			// 8/2p2kp1/3bp2p/4p3/1pP1P2P/1P2RPP1/q3Q1K1/1r6 w - - 0 39 : marche pas?
-			else if (piece == w_queen || piece == b_queen) {
-				directions = straight;
-				directions.insert(directions.end(), diagonal.begin(), diagonal.end());
-			}
-
-			// Pas de clouage possible pour les autres pièces
-			else {
+			// Si ça n'est pas une sliding piece, on skip
+			if (!is_sliding(piece))
 				continue;
-			}
 
 			// Couleur de la pièce
 			const bool pinning_piece_color = piece < b_pawn;
 
 			// Pour chaque direction
-			for (const auto& dir : directions) {
+			for (uint_fast8_t d = 0; d < 8; d++) {
+
+				// 4 premières directions: diagonales
+				// 4 dernières directions: rectilignes
+
+				if (!is_diagonal(piece) && d < 4)
+					continue;
+
+				if (!is_rectilinear(piece) && d >= 4)
+					continue;
+
+				// Direction
+				int_fast8_t d_row = all_directions[d][0];
+				int_fast8_t d_col = all_directions[d][1];
+
 				// Position de la pièce
-				int i2 = i + dir.first;
-				int j2 = j + dir.second;
+				uint_fast8_t current_row = row + d_row;
+				uint_fast8_t current_col = col + d_col;
 
 				// Liste des pièces rencontrées
-				vector<uint_fast8_t> pieces;
+				uint_fast8_t pieces[7] = { 0 };
+
+				// Avancement dans la direction
+				uint_fast8_t i = 0;
+
 
 				// Tant que la case est dans le plateau
-				while (i2 >= 0 && i2 <= 7 && j2 >= 0 && j2 <= 7) {
+				while (current_row >= 0 && current_row <= 7 && current_col >= 0 && current_col <= 7) {
 					// Si la case contient une pièce
-					const uint_fast8_t piece2 = _array[i2][j2];
+					const uint_fast8_t piece2 = _array[current_row][current_col];
+
+					// On continue
+					current_row += d_row;
+					current_col += d_col;
 
 					// Ajoute la pièce à la liste
 					if (piece2 != none) {
-						pieces.push_back(piece2);
+						pieces[i] = piece2;
+						i++;
 					}
-
-					// On continue
-					i2 += dir.first;
-					j2 += dir.second;
 				}
 
 				// Calcule la valeur totale du clouage pour cette direction en fonction des pièces rencontrées
 				int total_value = 0;
 
 				// Valeur de la pièce qui cloue
-				const int pinning_piece_value = pieces_values[(piece - 1) % 6];
+				const uint_fast8_t pinning_piece_value = pieces_values[(piece - 1) % 6];
 
 				// Puissance de la pièce qui cloue
-				const float pinning_piece_power = (piece == w_bishop || piece == b_bishop) ? bishop_power : ((piece == w_rook || piece == b_rook) ? rook_power : queen_power);
+				const float pinning_piece_power = is_bishop(piece) ? bishop_power : (is_rook(piece) ? rook_power : queen_power);
 
 				//cout << "color: " << pinning_piece_color << ", square: " << square_name(i, j) << endl;
 
@@ -4092,11 +4085,12 @@ int Board::get_alignments() const
 				// Les premières pièces compte plus que les dernières
 
 				// TENTATIVE: pour chaque pièce, on multiplie par la valeur de la précédente, et on divise par une constante d'éloignement
-				int previous_piece = 0;
+				uint_fast8_t previous_piece = 0;
 				bool is_previous_ally = true;
-				int distance = 1;
+				uint_fast8_t distance = 1;
 
-				for (const auto& pinned_piece : pieces) {
+				for (int j = 0; j < i; j++) {
+					uint_fast8_t pinned_piece = pieces[j];
 					const bool pinned_piece_color = pinned_piece < b_pawn;
 					const bool ally_piece = pinned_piece_color == pinning_piece_color;
 
@@ -4117,6 +4111,11 @@ int Board::get_alignments() const
 					previous_piece = pinned_piece_value;
 					is_previous_ally = ally_piece;
 					distance++;
+				}
+
+				// DEBUG:
+				if (total_value < 0) {
+					cout << "negative value (overflow) in piece alignments" << endl;
 				}
 
 				if (pinning_piece_color) {
@@ -4151,19 +4150,15 @@ bool Board::update_kings_pos()
 		return true;
 
 	// Parcourt le plateau
-	for (uint_fast8_t i = 0; i < 8; i++)
-	{
-		for (uint_fast8_t j = 0; j < 8; j++)
-		{
-			if (const uint_fast8_t piece = _array[i][j]; search_white && piece == w_king)
-			{
+	for (uint_fast8_t i = 0; i < 8; i++) {
+		for (uint_fast8_t j = 0; j < 8; j++) {
+			if (const uint_fast8_t piece = _array[i][j]; search_white && piece == w_king) {
 				_white_king_pos = { i, j };
 				if (!search_black)
 					return true;
 				search_white = false;
 			}
-			else if (search_black && piece == b_king)
-			{
+			else if (search_black && piece == b_king) {
 				_black_king_pos = { i, j };
 				if (!search_white)
 					return true;
@@ -7767,7 +7762,7 @@ bool Board::validate_nodes_count_at_depth(string fen, int depth, vector<int> exp
 	// Met en place la position
 	if (fen != "") {
 		if (display) {
-			cout << "Position : " << fen << endl;
+			cout << endl << fen << endl;
 		}
 
 		from_fen(fen);

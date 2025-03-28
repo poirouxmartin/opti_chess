@@ -618,7 +618,7 @@ inline int main_ui() {
 				main_GUI.play_grogros_zero_move();
 			}
 
-			if (main_GUI._board.is_game_over(3) != 0)
+			if (main_GUI._board.is_game_over(3) != unterminated)
 				goto game_over;
 
 			// GrogrosFish (seulement lorsque c'est son tour)
@@ -645,23 +645,23 @@ inline int main_ui() {
 		if (main_GUI._binding_full || (main_GUI._binding_solo && main_GUI.get_board_orientation() != main_GUI._board._player)) {
 			// Le fait à chaque intervalle de temps 'binding_interval_check'
 			if (clock() - main_GUI._last_binding_check > main_GUI._binding_interval_check) {
-				// Coup joué sur le plateau
-				main_GUI._binding_move = get_board_move(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom, main_GUI._current_site, main_GUI.get_board_orientation());
+
+				// Mise à jour du coup joué sur le plateau
+				bool got_new_move = main_GUI.update_binding_move();
 
 				// Vérifie que le coup est légal avant de le jouer
-				for (int i = 0; i < main_GUI._board._got_moves; i++) {
-					if (main_GUI._board._moves[i].start_row == main_GUI._binding_move[0] && main_GUI._board._moves[i].start_col == main_GUI._binding_move[1] && main_GUI._board._moves[i].end_row == main_GUI._binding_move[2] && main_GUI._board._moves[i].end_col == main_GUI._binding_move[3]) {
-						//main_GUI._board.play_move_sound(Move(main_GUI._binding_move[0], main_GUI._binding_move[1], main_GUI._binding_move[2], main_GUI._binding_move[3]));
-						main_GUI.play_move_keep(main_GUI._board._moves[i]);
+				if (got_new_move) {
+					//cout << "Binding move : " << main_GUI._root_exploration_node->_board->move_label(main_GUI._binding_move) << endl;
 
-						// Retire du temps en fonction du temps perdu par coup
-						if (main_GUI._board._player)
-							main_GUI._time_white -= main_GUI._current_site._time_lost_per_move;
-						else
-							main_GUI._time_black -= main_GUI._current_site._time_lost_per_move;
+					main_GUI.play_move_keep(main_GUI._binding_move);
 
-						break;
-					}
+					//cout << "Binding move played" << endl;
+
+					// Retire du temps en fonction du temps perdu par coup
+					if (main_GUI._board._player)
+						main_GUI._time_white -= main_GUI._current_site._time_lost_per_move;
+					else
+						main_GUI._time_black -= main_GUI._current_site._time_lost_per_move;
 				}
 
 				main_GUI._last_binding_check = clock();

@@ -166,13 +166,13 @@ public:
 	void grogros_zero(Buffer* buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int nodes, int quiescence_depth, Network* network = nullptr);
 
 	// Fonction qui explore un nouveau coup
-	void explore_new_move(Buffer* buffer, Evaluator* eval, double alpha, double beta, double gamman, int quiescence_depth, Network* network = nullptr);
+	void explore_new_move(Buffer* buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr);
 
 	// Fonction qui explore dans un plateau fils pseudo-aléatoire
 	void explore_random_child(Buffer* buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr);
 
 	// Fonction qui renvoie le fils le plus exploré
-	[[nodiscard]] Move get_most_explored_child_move(bool decide_by_eval = true);
+	[[nodiscard]] Move get_most_explored_child_move(bool decide_by_eval = false);
 
 	// Reset le noeud et ses enfants, et les supprime tous
 	void reset();
