@@ -1401,9 +1401,9 @@ void GUI::draw()
 		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\nTime: " + clock_to_string(_root_exploration_node->_time_spent, true) +
 			"\nDepth: " + to_string(max_depth) + "\nEval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) +
 			eval + "\nConfidence: " + to_string(100 - (int)(100 * best_evaluation._uncertainty)) + "%\n" + _wdl.to_string() + "\nScore: " + score_string(best_evaluation._avg_score) + "\nNodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) +
-			" (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 1E-4) / CLOCKS_PER_SEC)) + "N/s)" +
+			" (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 1) / CLOCKS_PER_SEC)) + "N/s)" +
 			"\nIterations: " + int_to_round_string(_root_exploration_node->_iterations) + " (" +
-			int_to_round_string(_root_exploration_node->_iterations / (static_cast<float>(_root_exploration_node->_time_spent + 1E-4) / CLOCKS_PER_SEC)) + "I/s)";
+			int_to_round_string(_root_exploration_node->_iterations / (static_cast<float>(_root_exploration_node->_time_spent + 1) / CLOCKS_PER_SEC)) + "I/s)";
 		
 		// Affichage des paramètres d'analyse de GrogrosZero
 		slider_text(monte_carlo_text, _board_padding_x + _board_size + _text_size / 2, _text_size, _screen_width - _text_size - _board_padding_x - _board_size, _board_size * 9 / 16, _text_size / 4, &_monte_carlo_slider, _text_color);
@@ -1411,7 +1411,7 @@ void GUI::draw()
 		// Lignes d'analyse de GrogrosZero
 		// TODO: on devrait utiliser ça aussi pour éviter de recalculer les autres paramètres
 		if (_update_variants) {
-			_exploration_variants = _root_exploration_node->get_exploration_variants();
+			_exploration_variants = _root_exploration_node->get_exploration_variants(_alpha, _beta);
 			_update_variants = false;
 		}
 
@@ -1582,7 +1582,8 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	float best_move_percentage = static_cast<float>(most_explored_child->_chosen_iterations) / static_cast<float>(_root_exploration_node->_iterations);
 
 	// Temps idéal qu'il faut prendre sur ce coup
-	int max_move_time = _board._player ? time_to_play_move(_time_white, _time_black, time_proportion_per_move * (1.0f - best_move_percentage)) : time_to_play_move(_time_black, _time_white, time_proportion_per_move * (1.0f - best_move_percentage));
+	//int max_move_time = _board._player ? time_to_play_move(_time_white, _time_black, time_proportion_per_move * (1.0f - best_move_percentage)) : time_to_play_move(_time_black, _time_white, time_proportion_per_move * (1.0f - best_move_percentage));
+	double max_move_time = _board._player ? time_to_play_move(_time_white, _time_black, time_proportion_per_move) : time_to_play_move(_time_black, _time_white, time_proportion_per_move);
 
 	//cout << "best move percentage : " << best_move_percentage << " | max move time : " << max_move_time << " | supposed speed : " << grogros_nps << " | nodes : " << _root_exploration_node->_nodes << " | time spent : " << _root_exploration_node->_time_spent << endl;	
 
@@ -1620,29 +1621,45 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	// FIXME: la différence d'éval devrait être relative?
 
 	// Peut-on se permettre d'attendre? Dépend du temps restant (1 minute = limite...)
-	int time_left = _board._player ? _time_white : _time_black;
+	//int time_left = _board._player ? _time_white : _time_black;
 
 	//float move_wait_factor = min(100.0f, 1.0f + abs(most_explored_child_eval - best_eval_colored) / 50.0f * time_left / 60000.0f);
 	float move_wait_factor = 1.0f + ((best_score + 1E-6) / (most_explored_score + 1E-6) - 1.0f) * 5.0f;
 
+	//cout << "move wait factor : " << move_wait_factor << endl;
+
+	// 4r1k1/2Q2ppp/3p4/2p5/2B1P3/2P1q2P/PPP3P1/1K4R1 w - - 1 25
 
 
 	//float move_wait_factor = wait_for_best_move ? wait_factor : 1.0f; // C'est beaucoup mais bon, il faut trouver un truc pour améliorer ça
 
 	//cout << "base time : " << max_move_time << " | wait for best move : " << wait_for_best_move << " | eval diff : " << eval_diff << " | move wait factor : " << move_wait_factor << " | final time : " << max_move_time * move_wait_factor << endl;
+	
+	//cout << "max move time : " << max_move_time << endl;
+
 	max_move_time = max_move_time * move_wait_factor;
+
+	//cout << "new max move time : " << max_move_time << endl;
+
+	// Réduit le temps passé sur le coup si on est sûr que c'est le bon coup
+	if (most_explored_move_is_best) {
+		max_move_time *= 1.0f - best_move_percentage;
+
+		//cout << "is best move, new max move time : " << max_move_time << endl;
+	}
 
 	// Parfois on a un overflow
 	if (max_move_time < 0) {
 		cout << "overflow in max move time" << endl;
-		max_move_time = 0;
+		cout << "max move time : " << max_move_time << endl;
+		max_move_time = DBL_MAX;
 	}
 
 	// Nombre d'itérations supposées par seconde
 	//constexpr int supposed_ips = 1000;
 	//const int supposed_ips = max(750, _root_exploration_node->get_ips());
 
-	constexpr int average_nps = 750; // Pour une position semi-complexe
+	constexpr int average_nps = 1250; // Pour une position semi-complexe
 	constexpr float consistent_factor = 0.5f; // Plus ce facteur est grand, plus le temps utilisé sera constant, quelle que soit la complexité de la position
 
 	const int actual_ips = _root_exploration_node->get_ips();
@@ -1655,9 +1672,9 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	//int grogros_nps = _root_exploration_node->get_avg_nps();
 
 	// Equivalent en nombre de noeuds
-	float seconds_to_play = max_move_time / 1000.0f;
+	double seconds_to_play = max_move_time / 1000.0;
 	//int nodes_to_play = grogros_nps * seconds_to_play;
-	int iterations_to_play = supposed_ips * seconds_to_play;
+	double iterations_to_play = supposed_ips * seconds_to_play;
 
 	// Overflow (FIXME: faut mieux gérer ça...)
 	//if (nodes_to_play < 0) {

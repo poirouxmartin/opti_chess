@@ -152,7 +152,8 @@ inline int main_ui() {
 
 			//main_GUI.grogros_analysis(1);
 
-			//main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, 6);
+			//r3kqr1/1pp2p1p/2b1p3/p1b1P3/P4P2/2N1p2Q/1PP3PP/1RBR3K w - - 0 20
+			//main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, main_GUI._quiescence_depth, main_GUI._alpha, main_GUI._beta);
 			//main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, 6, -2147483647, 2147483647, nullptr, true, -1000);
 
 			//main_GUI._root_exploration_node->_board->switch_colors();
@@ -165,6 +166,17 @@ inline int main_ui() {
 			//main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, 6);
 			// r1bqk2r/ppp2ppp/1b6/nP1nP3/2P5/5P2/P5PP/RNBQKBNR b KQkq - 0 9 : Cxc4? ça devrait être vu...
 			// r1bqk2r/ppp2ppp/1b6/1P1nP3/2B5/5P2/P5PP/RNBQK1NR b KQkq - 0 10 : il voit rien après Dh4?? -> Pas de standpat en échec!!
+
+			//Map w_blocked_pieces = main_GUI._root_exploration_node->_board->get_all_blocked_pieces(true);
+			//w_blocked_pieces.print();
+			//Map b_blocked_pieces = main_GUI._root_exploration_node->_board->get_all_blocked_pieces(false);
+			//b_blocked_pieces.print();
+
+			//int short_term_piece_mobility = main_GUI._root_exploration_node->_board->get_short_term_piece_mobility(true);
+			//cout << "Short term piece mobility: " << short_term_piece_mobility << endl;
+
+			//int long_term_piece_mobility = main_GUI._root_exploration_node->_board->get_long_term_piece_mobility(true);
+			//cout << "Long term piece mobility: " << long_term_piece_mobility << endl;
 		}
 
 		// CTRL-T - Cherche le plateau du site d'échecs sur l'écran, et lance une partie
