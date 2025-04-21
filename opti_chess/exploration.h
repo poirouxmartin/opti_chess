@@ -178,7 +178,7 @@ public:
 	void reset();
 
 	// Fonction qui renvoie les variantes d'exploration
-	[[nodiscard]] string get_exploration_variants(bool main = true, bool quiescence = false);
+	[[nodiscard]] string get_exploration_variants(const double alpha, const double beta, bool main = true, bool quiescence = false);
 
 	// Fonction qui renvoie la profondeur de la variante principale
 	[[nodiscard]] int get_main_depth();
@@ -193,7 +193,7 @@ public:
 	[[nodiscard]] int get_ips() const;
 
 	// Quiescence search intégré à l'exploration
-	int quiescence(Buffer* buffer, Evaluator* eval, int depth, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr, bool use_custom_stand_pat = false, int stand_pat_value = 0);
+	int quiescence(Buffer* buffer, Evaluator* eval, int depth, int search_alpha, int search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr, bool use_custom_stand_pat = false, int stand_pat_value = 0);
 	//void grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth);
 
 	// Fonction qui renvoie le nombre de noeuds fils complètement explorés
@@ -212,13 +212,16 @@ public:
 	Move pick_random_child(const double alpha, const double beta, const double gamma);
 
 	// Fonction qui renvoie le score d'un coup. Alpha augmente l'importance de l'évaluation, et beta augmente l'importance du winrate
-	map<Move, double> get_move_scores(const double alpha, const double beta);
+	map<Move, double> get_move_scores(const double alpha, const double beta, const bool consider_standpat = false);
 
 	// Fonction qui renvoie la valeur du noeud
 	double get_node_score(const double alpha, const double beta, const int max_eval, const double max_avg_score, const bool player) const;
 
 	// Fonction qui renvoie le coup avec le meilleur score
-	Move get_best_score_move(const double alpha, const double beta);
+	Move get_best_score_move(const double alpha, const double beta, const bool consider_standpat = false);
+
+	// Fonction qui renvoie une valeur prévisionnelle du score du noeud, lorsqu'on ne connait pas les évaluations max (pour la quiecence)
+	int get_previsonal_node_score(const double alpha, const double beta, const bool player) const;
 
 	// Fonctions à rajouter: destruction des fils et de soi...
 

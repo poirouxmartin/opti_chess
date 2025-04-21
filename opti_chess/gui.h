@@ -94,9 +94,9 @@ public:
 	//double _alpha = 0.0075;
 	//double _beta = 2.5;
 	//double _gamma = 0.65;
-	double _alpha = 0.015;
-	double _beta = 3.0;
-	double _gamma = 1.0;
+	double _alpha = 0.005; // Augmente l'impact de l'évaluation
+	double _beta = 3.5; // Augmente l'impact du winrate
+	double _gamma = 1.25; // Augmente la diversité des coups explorés
 
 	// Profondeur de la recherche
 	int _quiescence_depth = 6;

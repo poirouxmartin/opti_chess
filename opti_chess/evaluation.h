@@ -9,12 +9,12 @@ public:
 
 	// Coefficients des heuristiques
 	float _piece_value = 1.0f;
-	float _piece_mobility = 0.055f;
-	float _piece_positioning = 0.12f;
-	float _bishop_pair = 25.0f;
+	float _piece_mobility = 0.0f; // Redondant
+	float _piece_positioning = 0.05f;
+	float _bishop_pair = 30.0f;
 	float _castling_rights = 0.0f; // Redondant
-	float _player_trait = 20.0f;
-	float _king_safety = 0.85f;
+	float _player_trait = 35.0f;
+	float _king_safety = 1.0f;
 	float _pawn_structure = 0.25f;
 	float _attacks = 0.65f;
 	float _kings_opposition = 50.0f;
@@ -22,25 +22,27 @@ public:
 	float _open_files = 0.75f;
 	float _square_controls = 0.20f;
 	float _space_advantage = 1.0f;
-	float _alignments = 0.35f;
-	float _piece_activity = 0.03f;
+	float _alignments = 0.5f;
+	float _piece_activity = 0.5f;
 	float _fianchetto = 1.0f;
-	float _pawn_push_threats = 0.15f; // A refaire
+	float _pawn_push_threats = 0.15f;
 	float _king_proximity = 0.35f;
 	float _king_centralization = 3.5f;
-	float _rook_activity = 0.085f;
-	float _bishop_pawns = 3.5f;
-	float _weak_squares = 0.75f;
+	float _rook_activity = 0.035f;
+	float _bishop_pawns = 2.0f;
+	float _weak_squares = 1.0f;
 	float _castling_distance = 1.0f;
-	float _bishop_activity = 2.2f;
+	float _bishop_activity = 2.0f;
 	float _trapped_pieces = 0.55f;
-	float _knight_activity = 0.3f;
+	float _knight_activity = 0.75f;
+	float _short_term_piece_mobility = 0.05f;
+	float _long_term_piece_mobility = 0.13f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi)
-	int _pieces_value_begin[6] = { 90, 380, 410, 600, 1175, 0 };
+	int _pieces_value_begin[6] = { 90, 380, 430, 600, 1175, 0 };
 
 	// Valeurs en fin de partie
-	int _pieces_value_end[6] = { 95, 370, 420, 660, 1280, 0 };
+	int _pieces_value_end[6] = { 95, 390, 420, 660, 1280, 0 };
 
 	// Valeur des pièces en cas de position fermée
 	float _pieces_value_closed[6] = { 1.0f, 1.1f, 0.9f, 0.85f, 0.75f, 1.0f };
@@ -342,7 +344,7 @@ public:
 	Evaluator(const Evaluator &evaluator);
 
 	// Constructeur avec paramètres
-	Evaluator(const float piece_value, const float piece_mobility = 0.0f, const float piece_positioning = 0.0f, const float bishop_pair = 0.0f, const float castling_rights = 0.0f, const float player_trait = 0.0f, const float king_safety = 0.0f, const float pawn_structure = 0.0f, const float attacks = 0.0f, const float defenses = 0.0f, const float kings_opposition = 0.0f, const float push = 0.0f, const float rook_open = 0.0f, const float square_controls = 0.0f, const float space_advantage = 0.0f, const float alignments = 0.0f, const float piece_activity = 0.0f, const float fianchetto = 0.0f, const float pawn_push_threats = 0.0f, const float king_proximity = 0.0f, const float rook_activity = 0.0f, const float bishop_pawns = 0.0f, const float weak_squares = 0.0f, const float castling_distance = 0.0f, const float bishop_activity = 0.0f, const float trapped_pieces = 0.0f, const float knight_activity = 0.0f, const float king_centralization = 0.0f);
+	Evaluator(const float piece_value, const float piece_mobility = 0.0f, const float piece_positioning = 0.0f, const float bishop_pair = 0.0f, const float castling_rights = 0.0f, const float player_trait = 0.0f, const float king_safety = 0.0f, const float pawn_structure = 0.0f, const float attacks = 0.0f, const float defenses = 0.0f, const float kings_opposition = 0.0f, const float push = 0.0f, const float rook_open = 0.0f, const float square_controls = 0.0f, const float space_advantage = 0.0f, const float alignments = 0.0f, const float piece_activity = 0.0f, const float fianchetto = 0.0f, const float pawn_push_threats = 0.0f, const float king_proximity = 0.0f, const float rook_activity = 0.0f, const float bishop_pawns = 0.0f, const float weak_squares = 0.0f, const float castling_distance = 0.0f, const float bishop_activity = 0.0f, const float trapped_pieces = 0.0f, const float knight_activity = 0.0f, const float king_centralization = 0.0f, const float short_term_piece_mobility = 0.0f, const float long_term_piece_mobility = 0.0f);
 
 	// Opérateur de copie
 	Evaluator& operator=(const Evaluator &evaluator);
