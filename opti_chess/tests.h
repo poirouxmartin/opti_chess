@@ -22,6 +22,7 @@
 // Coups d'instinct
 // Vitesse de jeu
 // Tests de quiescence
+// Vitesse d'évaluation
 
 
 // TODO ***
@@ -62,7 +63,7 @@ public:
 	bool perft_test(string fen, int depth, vector<int> expected_nodes);
 
 	// Renvoie une valeur entre 0 et 1, 1 étant la position évaluée correctement
-	double evaluation_test(string fen, pair<int, int> evaluation_range, pair<double, double> score_range);
+	double evaluation_test(string fen, int expected_evaluation, pair<int, int> evaluation_range, double expected_score, pair<double, double> score_range);
 
 	// Renvoie une valeur entre 0 et 1 (1 = problème résolu) (faut-il prendre en compte si le coup joué est quand-même bon?)
 	double problem_test(string fen, map<Move, double> moves, double time);

@@ -24,7 +24,7 @@ constexpr uint_fast8_t max_half_moves = 100;
 
 // Nombre maximum de coups légaux par position estimé
 // const int max_moves = 218;
-constexpr uint_fast8_t max_moves = 80; // ça n'arrivera quasi jamais que ça dépasse ce nombre
+constexpr uint_fast8_t max_moves = 100; // ça n'arrivera quasi jamais que ça dépasse ce nombre
 
 // Valeur d'un échec et mat
 constexpr int mate_value = 1e8;
@@ -33,13 +33,13 @@ constexpr int mate_value = 1e8;
 constexpr int mate_ply = 1e5;
 
 // Coups possibles pour un cavalier
-constexpr int_fast8_t knight_moves[8][2] = { {1, 2}, {1, -2}, {-1, 2}, {-1, -2}, {2, 1}, {2, -1}, {-2, 1}, {-2, -1} };
+constexpr int_fast8_t knight_directions[8][2] = { {1, 2}, {1, -2}, {-1, 2}, {-1, -2}, {2, 1}, {2, -1}, {-2, 1}, {-2, -1} };
 
 // Coups rectilignes
-constexpr int_fast8_t rect_moves[4][2] = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
+constexpr int_fast8_t rect_directions[4][2] = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
 
 // Coups diagonaux
-constexpr int_fast8_t diag_moves[4][2] = { {1, 1}, {1, -1}, {-1, 1}, {-1, -1} };
+constexpr int_fast8_t diag_directions[4][2] = { {1, 1}, {1, -1}, {-1, 1}, {-1, -1} };
 
 // Coups dans toutes les directions
 constexpr int_fast8_t all_directions[8][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1}, {-1, 0}, {0, -1}, {0, 1}, {1, 0} };
@@ -717,6 +717,24 @@ public:
 
 	// Fonction qui renvoie la valeur des bonus liés au placement du roi
 	[[nodiscard]] int get_king_placement_weakness(bool player);
+
+	// Fonction qui renvoie une map de tous les pions bloqués
+	[[nodiscard]] Map get_blocked_pawns(bool color) const;
+
+	// Fonction qui prend une map de pions/pièces bloquées, la met à jour en fonction des nouvelles pièces bloquées, et renvoie si une ou plusieurs pièces y ont été ajoutées
+	[[nodiscard]] bool update_blocked_pieces(Map& blocked_pieces, bool color) const;
+
+	// Fonction qui renvoie toutes la map de toutes les pièces bloquées
+	[[nodiscard]] Map get_all_blocked_pieces(bool color) const;
+
+	// Fonction qui renvoie la map des cases controlées par les pions
+	[[nodiscard]] Map get_pawns_controls(bool color) const;
+
+	// Fonction qui renvoie la mobilité réelle des pièces (court terme)
+	[[nodiscard]] int get_short_term_piece_mobility(bool display = false) const;
+
+	// Fonction qui renvoie la mobilité virtuelle des pièces (long terme)
+	[[nodiscard]] int get_long_term_piece_mobility(bool display = false) const;
 
 	// TODO: génération plus rapide des coups
 
