@@ -378,6 +378,10 @@ public:
 	// Incertitude
 	float _uncertainty = 0.0f;
 
+	// Winnable
+	float _winnable_white = 1.0f;
+	float _winnable_black = 1.0f;
+
 
 	// Constructeur par défaut
 	Board();
@@ -449,7 +453,7 @@ public:
 	int game_over(int max_repetitions);
 
 	// Fonction qui renvoie le gagnant si la partie est finie (-1/1, et 2 pour nulle), et 0 sinon -> et stocke la valeur dans _game_over_value
-	int is_game_over(int max_repetitions = 1);
+	int is_game_over(int max_repetitions = 2);
 
 	// Fonction qui renvoie le label d'un coup
 	string move_label(Move move, bool use_uft8 = false);
@@ -595,8 +599,11 @@ public:
 	// Fonction qui génère la clé de Zobrist du plateau
 	[[nodiscard]] void get_zobrist_key();
 
-	// Fonction qui renvoie à quel point la partie est gagnable (de 0 à 1), pour une couleur
-	[[nodiscard]] float get_winnable(bool color) const;
+	// Fonction qui renvoie à quel point la partie est gagnable (de 0 à 1), pour une couleur donnée
+	[[nodiscard]] float get_winnable(bool color, float position_nature) const;
+
+	// Fonction qui calcule les valeurs de possibilités de gain pour chaque côté
+	[[nodiscard]] void get_winnable_values(float position_nature = 0.0f);
 
 	// Fonction qui renvoie l'activité des fous sur les diagonales
 	[[nodiscard]] int get_bishop_activity() const;
@@ -627,9 +634,6 @@ public:
 
 	// Fonction qui renvoie la nature de la position de manière chiffrée: 0 = ouverte, 1 = fermée
 	[[nodiscard]] float get_position_nature() const;
-
-	// Fonction qui renvoie la probabilité de nulle de la position
-	[[nodiscard]] float get_draw_chance() const;
 
 	// Fonction qui renvoie la valeur des bonus liés aux colonnes ouvertes et semi-ouvertes sur le roi adverse
 	[[nodiscard]] int get_open_files_on_opponent_king(bool color);
@@ -671,10 +675,10 @@ public:
 	[[nodiscard]] bool pawn_can_move(uint_fast8_t row, uint_fast8_t col, bool color) const;
 
 	// Fonction qui renvoie l'incertiude de la position
-	[[nodiscard]] float get_uncertainty(int material_eval, int winning_eval = 125);
+	[[nodiscard]] float get_uncertainty(int material_eval, int winning_eval = 110);
 
 	// Fonction qui renvoie le WDL de la position
-	[[nodiscard]] void get_WDL(float uncertainity = 0.0f, int winning_eval = 125, float beta = 0.75f);
+	[[nodiscard]] void get_WDL(int winning_eval = 110, float beta = 0.75f);
 
 	// Fonction qui renvoie l'espérance de gain (en points) de la position (fondé sur les probas de WDL) pour les blancs
 	[[nodiscard]] float get_average_score(float draw_score = 0.5f) const;
@@ -736,13 +740,12 @@ public:
 	// Fonction qui renvoie la mobilité virtuelle des pièces (long terme)
 	[[nodiscard]] int get_long_term_piece_mobility(bool display = false) const;
 
-	// TODO: génération plus rapide des coups
+	// Fonction qui renvoie la valeur correspondante à la sécurité des dames du joueur donné
+	[[nodiscard]] int get_queen_safety(bool color) const;
 
-	// TODO: test de puzzles et problèmes stratégiques, évaluations... avec un certain temps imparti
-	// Donner un score par catégorie: problèmes tactiques -> avec thèmes -> avec différentes cadences
-	// Problèmes stratégiques -> avec thèmes -> avec différentes cadences
-	// Test de positions pour évaluer le jeu; évaluation du coup joué et différence avec le meilleur coup
-	// Test d'évaluation: comparaison avec l'évaluation profonde de Stockfish/Leela -> test de l'évaluation statique + dynamique avec différentes cadences
+	// TODO *** faire un piece_safety plus générique?
+
+	// TODO *** génération plus rapide des coups
 };
 
 // Fonction qui renvoie si deux positions (en format FEN) sont les mêmes

@@ -1358,7 +1358,8 @@ void GUI::draw()
 		Move best_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
 		Evaluation best_evaluation = _root_exploration_node->_children[best_move]->_deep_evaluation;
 
-		bool all_moves_explored = _root_exploration_node->get_fully_explored_children_count() == _root_exploration_node->_board->_got_moves;
+		//bool all_moves_explored = _root_exploration_node->get_fully_explored_children_count() == _root_exploration_node->_board->_got_moves;
+		bool all_moves_explored = _root_exploration_node->children_count() == _root_exploration_node->_board->_got_moves;
 
 		if (!all_moves_explored && ((_board._player && _root_exploration_node->_static_evaluation > best_evaluation) || (!_board._player && _root_exploration_node->_static_evaluation < best_evaluation))) {
 			best_evaluation = _root_exploration_node->_static_evaluation;
@@ -1388,6 +1389,8 @@ void GUI::draw()
 		//	win_chance = 1 - win_chance;
 		//string win_chances = "W/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/0/" + to_string(static_cast<int>(100 * (1 - win_chance))) + "\%";
 
+		//2bk1r2/4b1Qp/8/1P6/3P4/2p5/1q2NPPP/R1K2B1R w - - 1 26
+
 		_wdl = best_evaluation._wdl;
 
 		// Pour l'évaluation statique
@@ -1398,12 +1401,16 @@ void GUI::draw()
 		}
 		
 		int max_depth = _root_exploration_node->get_main_depth();
-		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components + "\nTime: " + clock_to_string(_root_exploration_node->_time_spent, true) +
-			"\nDepth: " + to_string(max_depth) + "\nEval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) +
-			eval + "\nConfidence: " + to_string(100 - (int)(100 * best_evaluation._uncertainty)) + "%\n" + _wdl.to_string() + "\nScore: " + score_string(best_evaluation._avg_score) + "\nNodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) +
-			" (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 1) / CLOCKS_PER_SEC)) + "N/s)" +
-			"\nIterations: " + int_to_round_string(_root_exploration_node->_iterations) + " (" +
-			int_to_round_string(_root_exploration_node->_iterations / (static_cast<float>(_root_exploration_node->_time_spent + 1) / CLOCKS_PER_SEC)) + "I/s)";
+		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components +
+			"\nTime: " + clock_to_string(_root_exploration_node->_time_spent, true) +
+			"\nDepth: " + to_string(max_depth) +
+			"\nQdepth: " + (_root_exploration_node->_iterations == 0 ? to_string(_root_exploration_node->_quiescence_depth) : "N/A") +
+			"\nEval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) + eval +
+			"\nConfidence: " + to_string(100 - (int)(100 * best_evaluation._uncertainty)) + "%" +
+			"\nWinnable: " + to_string(static_cast<int>(best_evaluation._winnable_white * 100)) + "% / " + to_string(static_cast<int>(best_evaluation._winnable_black * 100)) + "%" +
+			"\n" + _wdl.to_string() + "\nScore: " + score_string(best_evaluation._avg_score) +
+			"\nNodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) + " (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 1) / CLOCKS_PER_SEC)) + "N/s)" +
+			"\nIterations: " + int_to_round_string(_root_exploration_node->_iterations) + " (" + int_to_round_string(_root_exploration_node->_iterations / (static_cast<float>(_root_exploration_node->_time_spent + 1) / CLOCKS_PER_SEC)) + "I/s)";
 		
 		// Affichage des paramètres d'analyse de GrogrosZero
 		slider_text(monte_carlo_text, _board_padding_x + _board_size + _text_size / 2, _text_size, _screen_width - _text_size - _board_padding_x - _board_size, _board_size * 9 / 16, _text_size / 4, &_monte_carlo_slider, _text_color);
@@ -1537,7 +1544,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	int color = _board.get_color();
 
 	// Noeud le plus exploré
-	Node const *most_explored_child = _root_exploration_node->get_most_explored_child();
+	//Node const *most_explored_child = _root_exploration_node->get_most_explored_child();
 
 	// Noeud avec la meilleure évaluation
 	//Node const* best_eval_node;
@@ -1554,6 +1561,12 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	//}
 
 	const Move most_explored_move = _root_exploration_node->get_most_explored_child_move();
+
+	if (most_explored_move.is_null_move()) {
+		return;
+	}
+
+	Node const* most_explored_child = _root_exploration_node->_children[most_explored_move];
 
 	map<Move, double> move_scores = _root_exploration_node->get_move_scores(_alpha, _beta);
 
