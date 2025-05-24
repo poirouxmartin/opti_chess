@@ -160,10 +160,15 @@ inline int main_ui() {
 			//main_GUI._root_exploration_node->_board->get_king_squares_distance(true).print();
 			//main_GUI._root_exploration_node->_board->get_king_squares_distance(false).print();
 
-			Tests tests(&main_GUI);
-			tests.run_all_tests();
+			//Tests tests(&main_GUI);
+			//tests.run_all_tests();
 
-			//main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, 6);
+			main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, main_GUI._quiescence_depth, main_GUI._alpha, main_GUI._beta);
+			//cout << "deep eval: " << main_GUI._root_exploration_node->_deep_evaluation._value << endl;
+			//auto move_scores = main_GUI._root_exploration_node->get_move_scores(main_GUI._alpha, main_GUI._beta);
+			//for (auto const& [move, score] : move_scores) {
+			//	cout << move.to_string() << ": " << score << endl;
+			//}
 			// r1bqk2r/ppp2ppp/1b6/nP1nP3/2P5/5P2/P5PP/RNBQKBNR b KQkq - 0 9 : Cxc4? ça devrait être vu...
 			// r1bqk2r/ppp2ppp/1b6/1P1nP3/2B5/5P2/P5PP/RNBQK1NR b KQkq - 0 10 : il voit rien après Dh4?? -> Pas de standpat en échec!!
 
@@ -177,6 +182,12 @@ inline int main_ui() {
 
 			//int long_term_piece_mobility = main_GUI._root_exploration_node->_board->get_long_term_piece_mobility(true);
 			//cout << "Long term piece mobility: " << long_term_piece_mobility << endl;
+
+			//1k6/p3r2p/1nBq2p1/2NP1nP1/5p1P/P1Q5/1PKR1P2/8 w - - 5 38 : il met #2 sur Dh8+..?
+			//1k2r2Q/p6p/1nBq2p1/2NP1nP1/5p1P/P7/1PKR1P2/8 w - - 7 39 : pareil sur quiescence, il met #2 au lieu de 3
+			//1k2Q3/p6p/1nBq2p1/2NP1nP1/5p1P/P7/1PKR1P2/8 b - - 0 39 : ici pour la deep eval il met -96000000 au lieu de -95900000 (en gros il dit -#1 au lieu de -#2)
+
+			//r1b2r2/1ppqbppk/p1n1p3/3P4/1P1Pn3/P3PN1P/R1QN1PP1/2B2K1R b - - 0 14
 		}
 
 		// CTRL-T - Cherche le plateau du site d'échecs sur l'écran, et lance une partie
@@ -594,22 +605,23 @@ inline int main_ui() {
 
 		// TODO: il faut améliorer tout ça, et faire passer des choses dans la GUI
 
-		int new_game_over = 0;
-
 		// Fait jouer l'IA automatiquement en fonction des paramètres
-		if (main_GUI._board._game_over_checked && main_GUI._board._game_over_value != 0) {
+
+		// Ici on re-vérifie, car les nulles par répétition sont écourtées par l'algo
+		if (main_GUI._board._game_over_checked && main_GUI._board._game_over_value == draw) {
 			//cout << "Game seems to be over... or is it?" << endl;
 			main_GUI._board._game_over_checked = false;
-			new_game_over = main_GUI._board.is_game_over(3);
+			main_GUI._board.is_game_over(3);
 			main_GUI._root_exploration_node->_iterations = 0;
 			main_GUI._root_exploration_node->_chosen_iterations = 0;
+			main_GUI._root_exploration_node->_is_terminal = false;
 			//cout << "New game over value : " << new_game_over << endl;
 			//cout << "exploration game over value : " << (int)main_GUI._root_exploration_node->_board->_game_over_value << endl;
 		}
 
 		//main_GUI._board._game_over_checked = false;  // On recheck, pour les threefold (car dans la réflexion on dit que la partie est finie si y'a une seule répétition)
 		//if (main_GUI._board.is_game_over(3) == 0) {
-		if (new_game_over == 0) {
+		if (main_GUI._board._game_over_value == unterminated) {
 			// GrogrosZero
 
 			//cout << "test" << endl;
@@ -639,6 +651,8 @@ inline int main_ui() {
 
 			//if (!main_GUI._board._player && main_GUI._black_player.substr(0, 11) == "GrogrosFish")
 			//	main_GUI._board.grogrosfish(search_depth, &eval_black, true);
+
+			main_game_over = false;
 		}
 
 		// Si la partie est terminée
