@@ -223,7 +223,7 @@ public:
 	map<Move, double> get_move_scores(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100);
 
 	// Fonction qui renvoie la valeur du noeud
-	double get_node_score(const double alpha, const double beta, const int max_eval, const double max_avg_score, const bool player) const;
+	double get_node_score(const double alpha, const double beta, const int max_eval, const double max_avg_score, const bool player, Evaluation *custom_eval = nullptr) const;
 
 	// Fonction qui renvoie le coup avec le meilleur score
 	Move get_best_score_move(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100);

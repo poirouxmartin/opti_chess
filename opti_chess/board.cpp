@@ -1996,6 +1996,8 @@ int Board::get_king_safety(float display_factor) {
 	//1r1q1k2/2n5/p2p4/2pp4/6QN/8/1PP1N1PP/7K b - - 0 29
 	// r3r1k1/5p2/2p2b1B/p2bpP1Q/8/1Pq4P/6PK/4RR2 w - - 2 29 : en mangeant b3, le potentiel des blancs diminue???
 
+	// 3rr1k1/2p2ppp/1bp2n2/pp6/4PB2/2PPN2q/PPQ1BP2/R4RK1 b - - 3 9 : ici il reste du potentiel de draw pour les noirs
+
 	// Fonction non linéaire
 	constexpr double alpha = 0.5;
 	w_attacking_potential = pow(w_attacking_potential, alpha);
@@ -6235,6 +6237,10 @@ float Board::get_winnable(bool color, float position_nature) const {
 				if (p == (color ? w_pawn : b_pawn))
 					pawns_count++;
 
+				if (p == (color ? w_queen : b_queen)) {
+					pawns_count += 2;
+				}
+
 				mating_potential += mating_potentials[_array[row][col] - (color ? 1 : 7)];
 			}
 		}
@@ -6257,6 +6263,9 @@ float Board::get_winnable(bool color, float position_nature) const {
 
 	// Valeur winnable de base
 	float winnable_value = (1.0f - no_pawns_winnable) * pawns_factor + no_pawns_winnable;
+
+	// 8/PK6/3k4/8/8/8/8/8 w - - 0 79 : FIXME *** a8 ne devrait pas baisser le winnable!
+	// K1k5/P7/3N4/8/8/8/8/8 b - - 2 77 : Rc7 seul coup qui tient
 
 
 	// Certaines finales sont plus annulantes que d'autres, même lorsqu'il y a des pions:
@@ -10218,7 +10227,7 @@ int Board::get_queen_safety(bool color) const {
 	int queens_attacks_value[9] = { 0 };
 
 	// TODO *** ne regarder seulement les safe moves
-	Map base_controls = color ? get_black_controls_map() : get_white_controls_map();
+	//Map base_controls = color ? get_black_controls_map() : get_white_controls_map();
 
 	Map opponent_controls = color ? get_white_controls_map() : get_black_controls_map();
 
@@ -10234,14 +10243,15 @@ int Board::get_queen_safety(bool color) const {
 		uint_fast8_t piece = b2._array[move.end_row][move.end_col];
 
 		// Regarde les contrôles du joueur après le coup
-		//Map controls;
-		//add_piece_controls(&controls, move.end_row, move.end_col, piece);
+		Map controls;
+		add_piece_controls(&controls, move.end_row, move.end_col, piece);
 
-		Map controls = color ? b2.get_black_controls_map() : b2.get_white_controls_map();
+		//Map controls = color ? b2.get_black_controls_map() : b2.get_white_controls_map();
 
 		// On regarde si certaines dames sont attaquées
 		for (uint_fast8_t q = 0; q < queens_count; q++) {
-			if (controls._array[queens_pos[q].row][queens_pos[q].col] > (color == _player ? base_controls._array[queens_pos[q].row][queens_pos[q].col] : 0)) {
+			//if (controls._array[queens_pos[q].row][queens_pos[q].col] > (color == _player ? base_controls._array[queens_pos[q].row][queens_pos[q].col] : 0)) {
+			if (controls._array[queens_pos[q].row][queens_pos[q].col]) {
 				float safe_factor = opponent_controls._array[move.end_row][move.end_col] ? unsafe_attack_factor : 1.0f;
 				queens_attacks_value[q] += tempo_values[(piece - 1) % 6] * safe_factor;
 			}
