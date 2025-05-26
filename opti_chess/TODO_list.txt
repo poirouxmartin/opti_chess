@@ -677,6 +677,15 @@ r1b2b2/ppp1q2Q/1n1p1k2/8/4PP2/8/PPP3PP/R3K2R w KQ - 1 18 : pas suffiant pour les
 
 Même chose pour les trapped pieces que pour queen safety: on regarde pas les cases controllées en général, mais seulement les cases controllées par des pièces de valeur inférieure?
 
+FIXME *** parfois ça crash encore??
+
+Problème de quiescence!! ici Dxc4 est moins bon que le standpat, alors il va lui donner la valeur moins bonne du standpat après Dxc4, alors que c'est un coup pourri...
+Ce qui fait que le coup précédent f6 est trop peu regardé (4rrk1/1p1b1p2/2np4/p1q1bPpQ/2PpP3/PP1P3P/5RB1/4BR1K w - - 0 30)
+4rrk1/1p1b1p2/2np1P2/p1q1b1pQ/2PpP3/PP1P3P/5RB1/4BR1K b - - 0 30
+
+FIXME *** 
+8/PK6/3k4/8/8/8/8/8 w - - 0 79 : a8=Q diminue le WR??? (FIXED)
+
 Gros fix:
 - Quiescence
 - Lenteur de l'éval et de l'UI
@@ -685,15 +694,22 @@ Gros fix:
 - Réglages algo
 - Idéalement, on veut une majorité de la reflexion sur 1 seul coup pour la profondeur. Mais pour les autres coups, on répartit assez large...
 - Utilisation des vraies valeurs des coups au lieu de l'éval pour la quiescence
+- Amélioration de la comparaison d'évaluations, pour ne pas suelement prendre en compte la valeur numérique de base
+- Très lent après queen safety... en plus dans la GUI, le calcul de la valeur des coups est faite en permanance...
 
 Gros ajouts:
 - Queen safety: r1b1k2r/ppp1ppbp/2n2np1/5q2/3P4/2N1BNR1/PPPQBP1P/2KR4 w kq - 2 12 ici par exemple, elle est au milieu de toutes les pièces... au moins un exposed_queen pour éviter qu'il la mette au centre de l'échiquier dès le début...
 - Winnable: 6k1/2p5/N7/8/4K3/8/8/8 b - - 0 61 : ici c'est nulle. 6k1/2p5/8/P1N5/1n2K3/8/8/8 w - - 0 61 : Cd3 seul coup qui gagne
+- 7k/1p4pp/p1p3p1/1P5q/P2PpPn1/6P1/4Q3/R5K1 b - - 1 29 : draw
+- 1n4k1/2p5/8/P2K4/8/3N4/8/8 w - - 4 63 : Ce5 ou Cb4 seuls coups
 - Potentiel défensif pour king safety (finales de pièces lourdes -> king safety compte beaucoup plus)
 - Point d'entrée dans la position: 1r2q2k/4p1b1/p1n1Q1p1/1pp2p1p/3p4/3P1N1P/PPP1RPP1/4R1K1 b - - 3 26 : ici, les blancs peuvent rentrer de partout!
 - Tours liées?
 - Pions candidats passés / Avancée des pions en finales / Majorités de pions: 8/1p2bk1p/4p1p1/PPrpP3/5P2/3K4/3B2PP/R7 w - - 1 27 (a6 gagne) (les cases sont aussi protégées par la tour en a1)
 - Roi en face du pion adverse en finale -> draw
+
+
+4r3/8/1b4PP/2k5/3p1N2/4rb2/1PPRp3/1K2R3 w - - 1 47 : h7 gagne...
 
 Afficher le winnable dans la deep_eval? r4rk1/pp4pp/2p3p1/3p3q/3P1N2/4P1P1/PPQ2nP1/R1R3K1 b - - 5 20 : pourquoi draw sur Txf4? pas de winnable?
 8/1R1b1k2/2n2p2/3NpPp1/2PpP1Pp/3P3P/8/2r2BK1 b - - 20 38 : clouage sur une pièce non défendue = gros bonus de manière générale

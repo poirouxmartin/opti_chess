@@ -1015,6 +1015,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	// r2qr1k1/3bbp1p/p2pn1p1/3QP3/3P4/3B1N2/1P1B1PPP/R3R1K1 w - - 1 24 : pareil
 	// 3b2rk/3P2pp/8/p7/8/2Q1p3/PP1p1pPP/3RqR1K b - - 1 36 : il faut pas 100% de reflexion sur un coup, quand tous les coups gagnent
 	// 8/8/8/1r5p/2p2k2/2Kb4/8/8 b - - 5 71 : pareil...
+	// R3r1k1/1P3p2/3p2p1/5nb1/4r3/2P1p2P/4N3/2BK4 w - - 2 36 : il faut regarder Tc8 si toutes les réponses adverses sont pourries
 
 	// r1r3k1/pp2bppp/3q4/3Pnp2/4nB2/2NB4/PP3PPP/R2QR1K1 w - - 5 16 : ???
 
@@ -1027,6 +1028,25 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	double explorable_best_score = -DBL_MAX;
 
 	// Scores des coups
+
+	int color = _board->get_color();
+
+	// Meilleure valeur d'évaluation
+	int max_eval = -INT_MAX;
+
+	// Meilleure chance de gagner
+	double max_avg_score = 0.0;
+
+	for (auto const& [_, child] : _children) {
+		if (child->_deep_evaluation._value * color > max_eval) {
+			max_eval = child->_deep_evaluation._value * color;
+		}
+
+		if (_board->_player ? child->_deep_evaluation._avg_score > max_avg_score : 1 - child->_deep_evaluation._avg_score > max_avg_score) {
+			max_avg_score = _board->_player ? child->_deep_evaluation._avg_score : 1 - child->_deep_evaluation._avg_score;
+		}
+	}
+
 	map<Move, double> move_scores = get_move_scores(alpha, beta);
 
 	// TEST: boost pour les meilleurs coups, pour qu'il évite de tout regarder à faible profondeur...
@@ -1078,26 +1098,41 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		//}
 
 		// r2qk2r/1pp1b3/p3p3/n2P1bp1/4N2p/P3QP1B/1P6/2KR3R w kq - 1 21 : il faut régler ça...
+		// R3r1k1/1P3p2/3p2p1/5nb1/4r3/2P1p2P/4N3/2BK4 w - - 2 36 : Tc8...
 
 		// Tant qu'on a pas regardé tous les coups, on met un bonus
 		if (child->_is_stand_pat_eval) {
 			Evaluation best_eval = Evaluation();
+			//Evaluation best_eval = child->_deep_evaluation;
 
-			for (auto const& [_, child2] : child->_children) {
-				if (!child2->_fully_explored) {
-					continue;
-				}
-				if (child->_board->_player ? child2->_deep_evaluation > best_eval : child2->_deep_evaluation < best_eval) {
+			//cout << "move: " << _board->move_label(move) << endl;
+
+			for (auto const& [move2, child2] : child->_children) {
+				//cout << "sub-move: " << child->_board->move_label(move2) << " | fully explored: " << child2->_fully_explored << " | eval: " << child2->_deep_evaluation._value << " / " << best_eval._value << endl;
+
+				//if (!child2->_fully_explored) {
+				//	continue;
+				//}
+
+				if (child->_board->_player ? (child2->_deep_evaluation > best_eval) : (child2->_deep_evaluation < best_eval)) {
 					best_eval = child2->_deep_evaluation;
 				}
 			}
 
-			const float multiplier = 1.0 + abs(best_eval._value - child->_deep_evaluation._value) / 1.0;
+			// FIXME *** what to do if there no fully explored move?
+			// FIXME *** should we just change the overall score to the potential eval we are getting here instead of a multiplier?
 
-			//cout << "move: " << _board->move_label(move) << " | move_score: " << move_score << " | exploration_score : " << exploration_score << " moves explored " << child->get_fully_explored_children_count() << "/" << (int)child->_board->_got_moves << " = score : " << score << " | stand pat : " << child->_deep_evaluation._value << " | best eval : " << best_eval._value << " | multiplier : " << multiplier << endl;
+			//const float multiplier = best_eval._evaluated ? 1.0f + abs(best_eval._value - child->_deep_evaluation._value) / 0.000001f : 1.0f;
 
+			//cout << "move: " << _board->move_label(move) << " | move_score: " << score << " | moves explored " << child->get_fully_explored_children_count() << "/" << (int)child->_board->_got_moves << " = score : " << score << " | stand pat : " << child->_deep_evaluation._value << " | best eval : " << (best_eval._evaluated ? to_string(best_eval._value) : "N/A") << " | multiplier : " << multiplier << endl;
+			//cout << "move: " << _board->move_label(move) << " | move_score: " << score << " | stand pat : " << child->_deep_evaluation._value << " | best eval : " << (best_eval._evaluated ? to_string(best_eval._value) : "N/A") << endl;
 			//score *= 10.0;
-			score *= multiplier;
+			//score *= multiplier;
+
+			if (best_eval._evaluated) {
+				score = get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player, &best_eval) * exploration_score;
+				//cout << "new score: " << score << endl;
+			}
 		}
 		// Utiliser la différence d'évaluation entre les coups et le stand pat?
 
@@ -1183,7 +1218,7 @@ map<Move, double> Node::get_move_scores(const double alpha, const double beta, c
 }
 
 // Fonction qui renvoie la valeur du noeud
-double Node::get_node_score(const double alpha, const double beta, const int max_eval, const double max_avg_score, const bool player) const {
+double Node::get_node_score(const double alpha, const double beta, const int max_eval, const double max_avg_score, const bool player, Evaluation *custom_eval) const {
 
 	const double min_constant = 1E-100;
 	//const double add_constant = 0.05f;
@@ -1192,15 +1227,18 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 
 	int color = player ? 1 : -1;
 
+	// Evaluation à utiliser
+	Evaluation eval = custom_eval != nullptr ? *custom_eval : _deep_evaluation;
+
 	// Facteur 1: évaluation
-	double eval_score = _deep_evaluation._value * color;
+	double eval_score = eval._value * color;
 	//int is_eval_mate = _board->is_eval_mate(_deep_evaluation._value) * color;
 	
 	//eval_score = (is_eval_mate == 0 ? exp(alpha * (eval_score - max_eval)) : 1.0f / (float)is_eval_mate) + min_constant;
 	eval_score = exp(alpha * (eval_score - max_eval)) + min_constant;
 
 	// Facteur 2: score moyen
-	const double avg_score = player ? _deep_evaluation._avg_score : 1 - _deep_evaluation._avg_score;
+	const double avg_score = player ? eval._avg_score : 1 - eval._avg_score;
 	const double score_score = exp(-beta * (1 - avg_score) / (1 - max_avg_score + min_constant) * max_avg_score / (avg_score + min_constant)) + min_constant;
 
 	//cout << "eval: " << eval_score << ", score: " << score_score << endl;
