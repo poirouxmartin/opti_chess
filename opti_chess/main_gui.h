@@ -160,10 +160,10 @@ inline int main_ui() {
 			//main_GUI._root_exploration_node->_board->get_king_squares_distance(true).print();
 			//main_GUI._root_exploration_node->_board->get_king_squares_distance(false).print();
 
-			//Tests tests(&main_GUI);
-			//tests.run_all_tests();
+			Tests tests(&main_GUI);
+			tests.run_all_tests();
 
-			main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, main_GUI._quiescence_depth, main_GUI._alpha, main_GUI._beta);
+			//main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, main_GUI._quiescence_depth, main_GUI._alpha, main_GUI._beta);
 			//cout << "deep eval: " << main_GUI._root_exploration_node->_deep_evaluation._value << endl;
 			//auto move_scores = main_GUI._root_exploration_node->get_move_scores(main_GUI._alpha, main_GUI._beta);
 			//for (auto const& [move, score] : move_scores) {
@@ -188,6 +188,11 @@ inline int main_ui() {
 			//1k2Q3/p6p/1nBq2p1/2NP1nP1/5p1P/P7/1PKR1P2/8 b - - 0 39 : ici pour la deep eval il met -96000000 au lieu de -95900000 (en gros il dit -#1 au lieu de -#2)
 
 			//r1b2r2/1ppqbppk/p1n1p3/3P4/1P1Pn3/P3PN1P/R1QN1PP1/2B2K1R b - - 0 14
+		}
+
+		// Q - Quiescence
+		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_A)) {
+			main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, main_GUI._quiescence_depth, main_GUI._alpha, main_GUI._beta);
 		}
 
 		// CTRL-T - Cherche le plateau du site d'échecs sur l'écran, et lance une partie
@@ -286,7 +291,7 @@ inline int main_ui() {
 			OpenURL("https://www.chess.com/analysis");
 		}
 
-		// A - Analyse de partie sur chess.com en direct, par GrogrosZero
+		// LCTRL-A - Analyse de partie sur chess.com en direct, par GrogrosZero
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_Q)) {
 			main_GUI.new_bind_analysis();
 		}
@@ -300,10 +305,10 @@ inline int main_ui() {
 			// Mettre le screenshot dans le presse-papier?
 		}
 
-		// D - Dessine ou non
-		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_D)) {
-			main_GUI._draw = false;
-		}
+		// LCTRL-D - Dessine ou non
+		//if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_D)) {
+		//	main_GUI._draw = false;
+		//}
 
 		// B - Création du buffer
 		if (IsKeyPressed(KEY_B)) {
@@ -330,11 +335,11 @@ inline int main_ui() {
 			main_GUI._grogros_analysis = true;
 		}
 
-		// Espace - GrogrosZero 1 noeud : DEBUG
-		if (IsKeyPressed(KEY_SPACE)) {
-			/*if (!monte_buffer._init)
+		// Entrée - GrogrosZero 1 noeud : DEBUG
+		if (IsKeyPressed(KEY_ENTER)) {
+			if (!monte_buffer._init)
 				monte_buffer.init(buffer_size);
-			main_GUI._board.grogros_zero(&monte_evaluator, 1, true, main_GUI._beta, main_GUI._k_add);*/
+			main_GUI.grogros_analysis(1);
 		}
 
 		// LCTRL-H - Arrêt de la recherche automatique de GrogrosZero
