@@ -55,10 +55,10 @@ public:
 	//SimpleRectangle _binding_coord;
 
 	// Temps initial des joueurs
-	//clock_t _initial_time_white = 180000;
-	//clock_t _initial_time_black = 180000;
-	clock_t _initial_time_white = 60000;
-	clock_t _initial_time_black = 60000;
+	clock_t _initial_time_white = 180000;
+	clock_t _initial_time_black = 180000;
+	//clock_t _initial_time_white = 60000;
+	//clock_t _initial_time_black = 60000;
 
 	// Temps des joueurs
 	clock_t _time_white;
@@ -96,7 +96,7 @@ public:
 	//double _gamma = 0.65;
 	double _alpha = 0.005; // Augmente l'impact de l'évaluation
 	double _beta = 3.5; // Augmente l'impact du winrate
-	double _gamma = 1.5; // Augmente la diversité des coups explorés
+	double _gamma = 1.00; // Augmente la diversité des coups explorés
 
 	// Profondeur de la recherche
 	//int _quiescence_depth = 4; // Regarde tous les échecs et prises

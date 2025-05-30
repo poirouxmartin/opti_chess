@@ -709,6 +709,33 @@ Gros ajouts:
 - Roi en face du pion adverse en finale -> draw
 
 
+Notation des coups:
+Cb8d2 -> Cbd2
+Roque + échec: O-O+
+
+r6r/1p1k3p/p2p1npb/4p3/4P3/4NP2/PPP1K1PP/R1B4R w - - 2 17 : l'avantage du pion est suffisant pour les blancs de gagner
+8/5pk1/p3p1p1/Pp5p/1P1R3P/5bP1/7K/8 w - - 0 59 : gagnant pour les blancs! (fou avec les mauvais pions), mais qualité d'avance, et a6 va tomber
+8/5p2/PR2pk2/1p5p/1Pb4P/8/7K/8 w - - 1 64 : gagnant aux blancs!! évaluation du roi bof
+
+R4Q2/6pk/1q6/8/3P4/2N3r1/1K6/8 w - - 5 49 : Ra2 gagne
+1rb5/3r1p1Q/np1qpk2/8/2p5/2P3P1/4PPBP/R4RK1 w - - 1 22 : mieux pour les noirs
+
+FIXME *** (cas très rare): rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 99 2 : ici Dh4 ça reste mate, c'est pas 50 moves rule (FIXED)
+
+Mode analyse ne fonctionne pas sur la POV des noirs? (seulement parfois?)
+
+FIX!!!
+
+1nb2rk1/r4ppp/p4q2/1Bp1bN2/8/2N2Q2/PPP2PPP/3RK2R w K - 1 17 : pb de quiescence -> Fd3 tient!
+Quiescence OK, mais si Fd3 puis 1 noeud sur Fxc3 -> mauvaise quiescence
+
+r1bq1rk1/pp3p2/2nbpp2/1Bp4Q/5P2/8/PBPP2PP/R4RK1 w - - 2 14 : beaucoup de coups gagnent, mais Dg4+ puis Tf3 ça mate
+
+Régler les problèmes d'exploration de variantes dans l'UI quand on fait LCTRL-L
+
+rnbqk2r/ppp2ppp/3b1n2/3P4/3p4/2N2N2/PPP2PPP/R1BQKB1R w KQkq - 0 6 : Dd4 le bon coup... faut qu'il arrête avec ses De2 pourris!
+r2qr1k1/pp3pp1/2nb1n1p/8/6bB/2N2N2/PPPQBPPP/2KR3R b - - 3 12 : Roi -166 exagéré?
+
 4r3/8/1b4PP/2k5/3p1N2/4rb2/1PPRp3/1K2R3 w - - 1 47 : h7 gagne...
 
 Afficher le winnable dans la deep_eval? r4rk1/pp4pp/2p3p1/3p3q/3P1N2/4P1P1/PPQ2nP1/R1R3K1 b - - 5 20 : pourquoi draw sur Txf4? pas de winnable?

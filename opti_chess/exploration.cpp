@@ -672,8 +672,10 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 	// - Traitement différent des échecs
 	// - Standpat différent s'il y'a beaucoup de menaces adverses (voir test standpat = quiecsence adverse)
 	// - Emergency cutoff (si on est vraiment trop profond...)
+	// - Tri des captures: on regarde en priorité celles qui valent le plus le coup?
 
 	// 2bk1r2/4b1Qp/8/1P6/3P4/1qp5/4NPPP/R1K2B1R b - - 0 25 : il voit pas le mat en 2?? Db2+ Rd1 Dd2#
+	// 2brr2k/1ppqbppB/p6p/2PP4/1n6/4B2P/3N1PP1/RQ2R1K1 w - - 1 27 : pour mieux comprendre ce genre de positions, rajouter les hanging pieces?
 
 	// YA DES BUGS DE PRUNING...
 	//r1bqr2k/1pp2p1B/p3p2Q/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 3 26
@@ -755,7 +757,8 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 		return stand_pat;
 	}
 
-	//1r1q1r1k/2n4p/p2p1p1Q/2ppn3/7N/4R3/1PP1N1PP/5R1K w - - 1 24 : quiescence buggée après Txe5??????????
+	// 1r1q1r1k/2n4p/p2p1p1Q/2ppn3/7N/4R3/1PP1N1PP/5R1K w - - 1 24 : quiescence buggée après Txe5??????????
+	// 1nb2rk1/r4ppp/p4q2/1Bp1bN2/8/2N2Q2/PPP2PPP/3RK2R w K - 1 17 : après Fxc3, ça va pas au bout des variantes...
 
 	// Beta cut-off
 	
@@ -1060,7 +1063,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	constexpr double constant_add = 0.000;
 
 	for (int i = 0; i < sorted_moves.size(); i++) {
-		double boost = 1.0 + 10.0 / pow(i + 1, 4);
+		double boost = 1.0 + 20.0 / pow(i + 1, 1.5);
 		move_scores[sorted_moves[i].first] = boost * move_scores[sorted_moves[i].first] + constant_add;
 		//cout << "boosted move score: " << _board->move_label(sorted_moves[i].first) << " : " << move_scores[sorted_moves[i].first] << endl;
 	}
@@ -1079,7 +1082,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		int child_iterations = max(child->_chosen_iterations, child->_iterations);
 
 		// FIXME *** gamma devrait changer en fonction de l'incertitude: plus on est incertain, plus on explore large?
-		const double new_gamma = gamma / (1.00f - _board->_uncertainty / 2.0f) / (1.00f - _board->_adv / 2.0f);
+		const double new_gamma = gamma / (1.00f - _board->_uncertainty / 3.0f) / (1.00f - _board->_adv / 3.0f);
 		//const double new_gamma = gamma;
 		//cout << "gamma: " << gamma << ", uncertainty: " << _board->_uncertainty << ", new_gamma: " << new_gamma << endl;
 
@@ -1224,6 +1227,8 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 	//const double add_constant = 0.05f;
 	//const double add_constant = 5.0E-5;
 	const double add_constant = 0.000f;
+	//const double pure_win_chance_adding = 0.05f; // Bonus si on a des chances de gagner pures
+	const double pure_win_chance_adding = 0.0f; // Bonus si on a des chances de gagner pures
 
 	int color = player ? 1 : -1;
 
@@ -1241,13 +1246,17 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 	const double avg_score = player ? eval._avg_score : 1 - eval._avg_score;
 	const double score_score = exp(-beta * (1 - avg_score) / (1 - max_avg_score + min_constant) * max_avg_score / (avg_score + min_constant)) + min_constant;
 
+	// Bonus si t'as des chances pures de gain?
+	// R4Q2/6pk/1q6/8/3P4/2N3r1/1K6/8 w - - 5 49 : ici pour trouver Ra2?
+	const double win_adding = (player ? eval._wdl.win_chance : eval._wdl.lose_chance) * pure_win_chance_adding;
+
 	//cout << "eval: " << eval_score << ", score: " << score_score << endl;
 
 	// Facteur 3: rajout quasi constant? à tester...
 	const double adding = (avg_score == 0.0f) ? 0.0f : avg_score / max_avg_score * add_constant;
 
 	// Score final
-	const double score = eval_score * score_score + adding;
+	const double score = eval_score * score_score + adding + win_adding;
 
 	return score;
 }

@@ -1552,14 +1552,10 @@ int Board::game_over(int max_repetitions) {
 	// Pour ne pas le recalculer
 	_game_over_checked = true;
 
-	// Règle des 50 coups
-	if (_half_moves_count >= max_half_moves)
-		return 2;
-
 	// Règle des 3 répétitions
 	//if (repetition_count() >= main_GUI._max_repetition)
 	if (repetition_count() >= max_repetitions)
-		return 2;
+		return draw;
 
 	// Calcule les coups légaux
 	if (_got_moves == -1)
@@ -1570,11 +1566,15 @@ int Board::game_over(int max_repetitions) {
 		
 		// Mat
 		if (in_check())
-			return _player ? -1 : 1;
+			return _player ? black_win : white_win;
 
 		// Pat
-		return 2;
+		return draw;
 	}
+
+	// Règle des 50 coups
+	if (_half_moves_count >= max_half_moves)
+		return draw;
 
 	// Matériel insuffisant
 	uint_fast8_t count_w_knight = 0;
@@ -1595,17 +1595,17 @@ int Board::game_over(int max_repetitions) {
 				count_b_bishop++;
 			// Pièces majeures ou pion -> possibilité de mater
 			else if (p != 6 && p != 12 && p != 0)
-				return 0;
+				return unterminated;
 
 			// Si on a au moins 1 fou, et un cheval/fou ou plus -> plus de nulle par manque de matériel
 			if ((count_w_bishop > 0) && (count_w_knight > 0 || count_w_bishop > 1))
-				return 0;
+				return unterminated;
 		}
 	}
 
 	// Possibilités de nulles par manque de matériel
 	if (count_w_knight + count_w_bishop < 2 && count_b_knight + count_b_bishop < 2)
-		return 2;
+		return draw;
 
 	// On ne peut pas mater avec seulement 2 cavaliers
 	// TODO: est-ce que la partie est déclarée nulle?
@@ -1614,7 +1614,7 @@ int Board::game_over(int max_repetitions) {
 		return 2;
 	}*/
 
-	return 0;
+	return unterminated;
 }
 
 // Fonction qui renvoie le gagnant si la partie est finie (-1/1, et 2 pour nulle), et 0 sinon
@@ -1627,69 +1627,76 @@ int Board::is_game_over(int max_repetitions) {
 // En passant manquant... échecs aussi, puis roques, promotions, mats/pats
 string Board::move_label(Move move, bool use_uft8)
 {
-	const uint_fast8_t i = move.start_row;
-	const uint_fast8_t j = move.start_col;
-	const uint_fast8_t k = move.end_row;
-	const uint_fast8_t l = move.end_col;
+	const uint_fast8_t start_row = move.start_row;
+	const uint_fast8_t start_col = move.start_col;
+	const uint_fast8_t end_row = move.end_row;
+	const uint_fast8_t end_col = move.end_col;
 
-	const uint_fast8_t p1 = _array[i][j]; // Pièce qui bouge
-	const uint_fast8_t p2 = _array[k][l];
+	const uint_fast8_t p1 = _array[start_row][start_col]; // Pièce qui bouge
+	const uint_fast8_t p2 = _array[end_row][end_col];
 
 	// Pour savoir si une autre pièce similaire peut aller sur la même case
 	bool spec_col = false;
-	bool spec_line = false;
+	bool spec_row = false;
+
 	if (_got_moves == -1)
 		get_moves(true);
 
-	uint_fast8_t i1; uint_fast8_t j1; uint_fast8_t k1; uint_fast8_t l1; uint_fast8_t p11;
+	uint_fast8_t new_start_row; uint_fast8_t new_start_col; uint_fast8_t new_end_row; uint_fast8_t new_end_col; uint_fast8_t new_p;
 	for (int m = 0; m < _got_moves; m++) {
-		i1 = _moves[m].start_row;
-		j1 = _moves[m].start_col;
-		k1 = _moves[m].end_row;
-		l1 = _moves[m].end_col;
-		p11 = _array[i1][j1];
+		new_start_row = _moves[m].start_row;
+		new_start_col = _moves[m].start_col;
+		new_end_row = _moves[m].end_row;
+		new_end_col = _moves[m].end_col;
+		new_p = _array[new_start_row][new_start_col];
+
 		// Si c'est une pièce différente que celle à bouger, mais du même type, et peut aller sur la même case
-		if ((i1 != i || j1 != j) && p11 == p1 && k1 == k && l1 == l) {
-			if (i1 != i)
+		if ((new_start_row != start_row || new_start_col != start_col) && new_p == p1 && new_end_row == end_row && new_end_col == end_col) {
+
+			// Même colonne, il faut spécifier la rangée
+			if (new_start_col == start_col)
+				spec_row = true;
+			else {
 				spec_col = true;
-			if (j1 != j)
-				spec_line = true;
+			}
 		}
 	}
 
 	string s;
 
-	switch (p1)
-	{
-	case 2: case 8: s += use_uft8 ? (_player ? main_GUI.N_symbol : main_GUI.n_symbol) : "N"; if (spec_line) s += main_GUI._abc8[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
-	case 3: case 9: s += use_uft8 ? (_player ? main_GUI.B_symbol : main_GUI.b_symbol) : "B"; if (spec_line) s += main_GUI._abc8[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
-	case 4: case 10: s += use_uft8 ? (_player ? main_GUI.R_symbol : main_GUI.r_symbol) : "R"; if (spec_line) s += main_GUI._abc8[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
-	case 5: case 11: s += use_uft8 ? (_player ? main_GUI.Q_symbol : main_GUI.q_symbol) : "Q"; if (spec_line) s += main_GUI._abc8[j]; if (spec_col) s += static_cast<char>(i + 1 + 48); break;
-	case 6: case 12:
-		if (l - j == 2) {
-			s += "O-O"; return s;
+	bool is_castle = false;
+
+	switch (p1)	{
+	case w_knight: case b_knight: s += use_uft8 ? (_player ? main_GUI.N_symbol : main_GUI.n_symbol) : "N"; if (spec_col) s += main_GUI._abc8[start_col]; if (spec_row) s += static_cast<char>(start_row + 1 + 48); break;
+	case w_bishop: case b_bishop: s += use_uft8 ? (_player ? main_GUI.B_symbol : main_GUI.b_symbol) : "B"; if (spec_col) s += main_GUI._abc8[start_col]; if (spec_row) s += static_cast<char>(start_row + 1 + 48); break;
+	case w_rook: case b_rook: s += use_uft8 ? (_player ? main_GUI.R_symbol : main_GUI.r_symbol) : "R"; if (spec_col) s += main_GUI._abc8[start_col]; if (spec_row) s += static_cast<char>(start_row + 1 + 48); break;
+	case w_queen: case b_queen: s += use_uft8 ? (_player ? main_GUI.Q_symbol : main_GUI.q_symbol) : "Q"; if (spec_col) s += main_GUI._abc8[start_col]; if (spec_row) s += static_cast<char>(start_row + 1 + 48); break;
+	case w_king: case b_king:
+		if (end_col - start_col == 2) {
+			s += "O-O"; is_castle = true; break;
 		}
-		if (j - l == 2) {
-			s += "O-O-O"; return s;
+		if (start_col - end_col == 2) {
+			s += "O-O-O"; is_castle = true; break;
 		}
 		s += use_uft8 ? (_player ? main_GUI.K_symbol : main_GUI.k_symbol) : "K"; break;
 	}
 
-	if (p2 || ((p1 == 1 || p1 == 7) && j != l)) {
-		if (p1 == 1 || p1 == 7)
-			s += main_GUI._abc8[j];
+	// Prise (ou en passant)
+	if (p2 != none || (is_pawn(p1) && start_col != end_col)) {
+		if (is_pawn(p1))
+			s += main_GUI._abc8[start_col];
 		s += "x";
-		s += main_GUI._abc8[l];
-		s += static_cast<char>(k + 1 + 48);
+		s += main_GUI._abc8[end_col];
+		s += static_cast<char>(end_row + 1 + 48);
 	}
 
-	else {
-		s += main_GUI._abc8[l];
-		s += static_cast<char>(k + 1 + 48);
+	else if (!is_castle) {
+		s += main_GUI._abc8[end_col];
+		s += static_cast<char>(end_row + 1 + 48);
 	}
 
 	// Promotion (seulement en dame pour le moment)
-	if ((p1 == 1 && k == 7) || (p1 == 7 && k == 0)) {
+	if ((p1 == w_pawn && end_row == 7) || (p1 == b_pawn && end_row == 0)) {
 		s += "=";
 		s += use_uft8 ? (_player ? main_GUI.Q_symbol : main_GUI.q_symbol) : "Q";
 	}
@@ -1702,15 +1709,15 @@ string Board::move_label(Move move, bool use_uft8)
 	b.is_game_over();
 
 	// En cas de mat pour les blancs
-	if (b._game_over_value == 1)
+	if (b._game_over_value == white_win)
 		return s + "# 1-0";
 
 	// En cas de mat pour les noirs
-	else if (b._game_over_value == -1)
+	else if (b._game_over_value == black_win)
 		return s + "# 0-1";
 
 	// En cas d'égalité
-	else if (b._game_over_value == 2)
+	else if (b._game_over_value == draw)
 		return s + (b._got_moves == 0 ? "@ 1/2-1/2" : " 1/2-1/2"); // Pat -> "@"
 
 	// Échec
@@ -6367,12 +6374,13 @@ float Board::get_winnable(bool color, float position_nature) const {
 
 		//cout << "draw value: " << draw_value << ", draw pieces: " << draw_pieces << endl;
 
-		draw_value /= (draw_pieces == 0) ? 1.0f : draw_pieces;
+		draw_value /= (draw_pieces == 0) ? 1.0f : (draw_pieces + pawns_count / 2.0f);
 
 		// Met à jour la valeur winnable, en fonction de la valeur annulante et des possibilités de gain restantes
 		winnable_value *= (1.0f - draw_value * _adv);
 	}
 
+	// r6r/1p1k3p/p2p1npb/4p3/4P3/4NP2/PPP1K1PP/R1B4R w - - 2 17 : plus y'a de pions, plus on a de chances de gagner
 	
 	// TODO *** implémenter les possibilités de nulles dans les rapports matériels déséquilibrés en finale
 	// TODO *** fou vs cavalier
@@ -8905,7 +8913,7 @@ float Board::get_uncertainty(int material_eval, int winning_eval) {
 	int eval = abs(_evaluation);
 	//float piece_uncertainty_factor = 0.25f;
 	//float piece_uncertainty_factor = 0.5 * raw_incertitude;
-	float piece_uncertainty_factor = 0.5f / (1 + static_cast<float>(eval) / winning_eval);
+	float piece_uncertainty_factor = 0.65f / (1 + static_cast<float>(eval) / winning_eval);
 
 
 	// Autres facteurs à prendre en compte:
