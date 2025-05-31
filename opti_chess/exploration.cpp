@@ -674,6 +674,9 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 	// - Emergency cutoff (si on est vraiment trop profond...)
 	// - Tri des captures: on regarde en priorité celles qui valent le plus le coup?
 
+	//1nb2rk1/r4ppp/p4q2/2p2N2/8/2bB1Q2/PPP2PPP/3RK2R w K - 0 18 : quiescence pourrie ici
+	//r1b2rk1/1p1p2pp/p3p3/2P1p3/nR1K1P2/6B1/P5PP/5B1R w - - 0 3 : ici aussi
+
 	// 2bk1r2/4b1Qp/8/1P6/3P4/1qp5/4NPPP/R1K2B1R b - - 0 25 : il voit pas le mat en 2?? Db2+ Rd1 Dd2#
 	// 2brr2k/1ppqbppB/p6p/2PP4/1n6/4B2P/3N1PP1/RQ2R1K1 w - - 1 27 : pour mieux comprendre ce genre de positions, rajouter les hanging pieces?
 
@@ -763,8 +766,9 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 	// Beta cut-off
 	
 	// Marge (TEST)
-	constexpr double beta_margin = 200;
-	constexpr double in_check_margin = 800; // Evite de trop calculer quand y'a déjà un gros delta
+	//constexpr double beta_margin = 200;
+	constexpr double beta_margin = 0;
+	constexpr double in_check_margin = 500; // Evite de trop calculer quand y'a déjà un gros delta
 
 	// FIXME: ça casse un peu tout
 	//bool test_full_checks = false;
@@ -811,7 +815,7 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 
 		// TEST
 		//constexpr int max_depth = main_GUI._quiescence_depth;
-		constexpr int max_depth = 6;
+		//constexpr int max_depth = 6;
 
 		//8/3P4/3r3p/P4p2/8/P2P1k1P/7K/1R6 b - - 4 49
 
@@ -842,12 +846,12 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 			}
 
 
-			else if (true || depth >= max_depth - 2) {
-				// Si le coup met en échec
-				Board b(*_board);
-				b.make_move(move);
-				should_explore = b.in_check();
-			}
+			//else if (true || depth >= max_depth - 2) {
+			//	// Si le coup met en échec
+			//	Board b(*_board);
+			//	b.make_move(move);
+			//	should_explore = b.in_check();
+			//}
 		}
 
 		/*if (should_explore)

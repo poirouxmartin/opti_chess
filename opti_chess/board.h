@@ -743,6 +743,9 @@ public:
 	// Fonction qui renvoie la valeur correspondante à la sécurité des dames du joueur donné
 	[[nodiscard]] int get_queen_safety(bool color) const;
 
+	// Fonction qui renvoie à quel point une position est quiet ou non: renvoie le nombre de captures disponibles, d'échecs disponibles et de promotions disponibles
+	[[nodiscard]] int get_quietness() const;
+
 	// TODO *** faire un piece_safety plus générique?
 
 	// TODO *** génération plus rapide des coups

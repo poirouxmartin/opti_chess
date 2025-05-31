@@ -2360,7 +2360,7 @@ int Board::get_king_safety(float display_factor) {
 	// Short term = 1000 -> factor = 0.5
 
 	// Valeur pour laquelle la compensation est de 0.5
-	constexpr int short_term_compensation_value = 850;
+	constexpr int short_term_compensation_value = 700;
 
 	//const float w_short_term_compensation_factor = 1 - 1 / (1 + abs(w_short_term_weakness) / short_term_compensation_value);
 
@@ -5184,18 +5184,20 @@ int Board::get_rook_activity() const
 	// ça doit dimunuer en fonction du nombre de colonnes ouvertes...
 
 	constexpr int vertical_mobility_bonus = 50;
-	constexpr int horizontal_mobility_bonus = 15;
+	constexpr int horizontal_mobility_bonus = 35;
 
 	// Bonus si elle attaque le camp adverse
 	constexpr float row_bonus[8] = { 1.0f, 1.0f, 1.2f, 1.5f, 1.75f, 2.0f, 2.5f, 2.5f };
 
 	// Malus pour manque de mobilité
 	constexpr int bad_mobility_min = 3;
-	constexpr int bad_mobility_malus = 350;
+	constexpr int bad_mobility_malus = 250;
 
-	// Valeur normale d'une activité de tour (4 en vertical et 8 en horizontal)
+	// Valeur normale d'une activité de tour
 	constexpr int normal_activity = 8 * vertical_mobility_bonus + 8 * horizontal_mobility_bonus;
 
+
+	//1r5k/3n2p1/5nbp/1Np5/P4b2/1P1P4/1BP2PP1/R3R1K1 w - - 0 25
 
 	float activity = 0.0f;
 
@@ -5206,7 +5208,7 @@ int Board::get_rook_activity() const
 			// Tour blanche
 			if (p == w_rook) {
 
-				activity -= normal_activity;
+				int rook_activity = -normal_activity;
 				
 				// Mobilité horizontale
 				float h_mobility = 0.0f;
@@ -5235,7 +5237,7 @@ int Board::get_rook_activity() const
 				// Vers le haut
 				for (uint_fast8_t k = row + 1; k < 8; k++) {
 					const uint_fast8_t p2 = _array[k][col];
-					if (p2 != w_pawn && p2 != b_pawn)
+					if (p2 != w_pawn && p2 != b_pawn && p2 != w_king)
 						v_mobility += row_bonus[k];
 					else
 						break;
@@ -5244,25 +5246,30 @@ int Board::get_rook_activity() const
 				// Vers le bas
 				for (int_fast8_t k = row - 1; k >= 0; k--) {
 					const uint_fast8_t p2 = _array[k][col];
-					if (p2 != w_pawn && p2 != b_pawn)
+					if (p2 != w_pawn && p2 != b_pawn && p2 != w_king)
 						v_mobility += row_bonus[k];
 					else
 						break;
 				}
 
 				// Bonus pour la mobilité verticale
-				activity += vertical_mobility_bonus * v_mobility;
+				rook_activity += vertical_mobility_bonus * v_mobility;
 
 				// Bonus pour la mobilité horizontale
-				activity += horizontal_mobility_bonus * h_mobility;
+				rook_activity += horizontal_mobility_bonus * h_mobility;
 
 				// Malus pour manque de mobilité
 				const int total_mobility = h_mobility + v_mobility;
-				if (total_mobility < bad_mobility_min)
-					activity -= bad_mobility_malus;
-					//activity -= bad_mobility_malus * (bad_mobility_min - total_mobility);
 
-				//cout << "White rook (" << (int)i << ", " << (int)j << "): h_mobility = " << h_mobility << ", v_mobility = " << v_mobility << "total_mobility = " << total_mobility << ", total_activity = " << activity << endl;
+				// FIXME *** en faire une fonction plus linéaire?
+				if (total_mobility < bad_mobility_min) {
+					//rook_activity -= bad_mobility_malus;
+					rook_activity -= bad_mobility_malus * (bad_mobility_min - total_mobility);
+				}
+
+				//cout << "White rook (" << square_name(row, col) << "): h_mobility = " << h_mobility << ", v_mobility = " << v_mobility << ", total_mobility = " << total_mobility << "/" << bad_mobility_min << " (-" << to_string((total_mobility < bad_mobility_min) ? bad_mobility_malus : 0) << "), activity = " << rook_activity << endl;
+			
+				activity += rook_activity;
 			}
 
 			//1r2q2k/4p1b1/p1n1Q1p1/1pp2p1p/3p4/3P1N1P/PPP1RPP1/4R1K1 b - - 3 26
@@ -5270,7 +5277,7 @@ int Board::get_rook_activity() const
 			// Tour noire
 			else if (p == b_rook) {
 
-				activity += normal_activity;
+				int rook_activity = -normal_activity;
 
 				// Mobilité horizontale
 				float h_mobility = 0.0f;
@@ -5299,7 +5306,7 @@ int Board::get_rook_activity() const
 				// Vers le haut
 				for (uint_fast8_t k = row + 1; k < 8; k++) {
 					const uint_fast8_t p2 = _array[k][col];
-					if (p2 != w_pawn && p2 != b_pawn)
+					if (p2 != w_pawn && p2 != b_pawn && p2 != b_king)
 						v_mobility += row_bonus[7 - k];
 					else
 						break;
@@ -5308,25 +5315,30 @@ int Board::get_rook_activity() const
 				// Vers le bas
 				for (int_fast8_t k = row - 1; k >= 0; k--) {
 					const uint_fast8_t p2 = _array[k][col];
-					if (p2 != w_pawn && p2 != b_pawn)
+					if (p2 != w_pawn && p2 != b_pawn && p2 != b_king)
 						v_mobility += row_bonus[7 - k];
 					else
 						break;
 				}
 
 				// Bonus pour la mobilité verticale
-				activity -= vertical_mobility_bonus * v_mobility;
+				rook_activity += vertical_mobility_bonus * v_mobility;
 
 				// Bonus pour la mobilité horizontale
-				activity -= horizontal_mobility_bonus * h_mobility;
+				rook_activity += horizontal_mobility_bonus * h_mobility;
 
 				// Malus pour manque de mobilité
 				const int total_mobility = h_mobility + v_mobility;
-				if (total_mobility < bad_mobility_min)
-					activity += bad_mobility_malus;
-					//activity += bad_mobility_malus * (bad_mobility_min - total_mobility);
 
-				//cout << "Black rook (" << (int)i << ", " << (int)j << "): h_mobility = " << h_mobility << ", v_mobility = " << v_mobility << "total_mobility = " << total_mobility << ", total_activity = " << activity << endl;
+				// FIXME *** en faire une fonction plus linéaire?
+				if (total_mobility < bad_mobility_min) {
+					//rook_activity -= bad_mobility_malus;
+					rook_activity -= bad_mobility_malus * (bad_mobility_min - total_mobility);
+				}
+
+				//cout << "Black rook (" << square_name(row, col) << "): h_mobility = " << h_mobility << ", v_mobility = " << v_mobility << ", total_mobility = " << total_mobility << "/" << bad_mobility_min << " (-" << to_string((total_mobility < bad_mobility_min) ? bad_mobility_malus : 0) << "), activity = " << rook_activity << endl;
+
+				activity -= rook_activity;
 			}
 
 		}
@@ -5334,6 +5346,8 @@ int Board::get_rook_activity() const
 
 	// Facteur multiplicatif en fonction de l'avancement de la partie
 	float advancement_factor = 0.5f;
+
+	//cout << "Final rook activity: " << activity << ", advancement factor: " << advancement_factor << " => " << eval_from_progress(activity, _adv, advancement_factor) << endl;
 
 	return eval_from_progress(activity, _adv, advancement_factor);
 }
@@ -10290,4 +10304,48 @@ int Board::get_queen_safety(bool color) const {
 
 
 	return queen_safety_value;
+}
+
+// Fonction qui renvoie à quel point une position est quiet ou non: renvoie le nombre de captures disponibles, d'échecs disponibles et de promotions disponibles
+int Board::get_quietness() const {
+
+	int captures = 0;
+	int checks = 0;
+	int promotions = 0;
+
+	// On regarde chaque coup
+	for (uint_fast8_t m = 0; m < _got_moves; m++) {
+
+		Move move = _moves[m];
+
+		// Si c'est une capture
+		if (_array[move.end_row][move.end_col] != none) {
+			captures++;
+		}
+
+		// Attention ! En passant est aussi une capture
+		else if (is_pawn(_array[move.start_row][move.start_col]) && move.start_col != move.end_col) {
+			captures++;
+		}
+
+		// Si c'est une promotion
+		else if ((_array[move.start_row][move.start_col] == w_pawn && move.end_row == 7) || (_array[move.start_row][move.start_col] == b_pawn && move.end_row == 0)) {
+			promotions++;
+		}
+
+
+		else {
+
+			// Si le coup met en échec
+			Board b(*this);
+			b.make_move(move);
+			if (b.in_check()) {
+				checks++;
+			}
+		}
+	}
+
+	int quietness = captures + checks + promotions;
+
+	return quietness;
 }
