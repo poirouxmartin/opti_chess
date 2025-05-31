@@ -160,8 +160,7 @@ inline int main_ui() {
 			//main_GUI._root_exploration_node->_board->get_king_squares_distance(true).print();
 			//main_GUI._root_exploration_node->_board->get_king_squares_distance(false).print();
 
-			Tests tests(&main_GUI);
-			tests.run_all_tests();
+
 
 			//main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, main_GUI._quiescence_depth, main_GUI._alpha, main_GUI._beta);
 			//cout << "deep eval: " << main_GUI._root_exploration_node->_deep_evaluation._value << endl;
@@ -188,6 +187,11 @@ inline int main_ui() {
 			//1k2Q3/p6p/1nBq2p1/2NP1nP1/5p1P/P7/1PKR1P2/8 b - - 0 39 : ici pour la deep eval il met -96000000 au lieu de -95900000 (en gros il dit -#1 au lieu de -#2)
 
 			//r1b2r2/1ppqbppk/p1n1p3/3P4/1P1Pn3/P3PN1P/R1QN1PP1/2B2K1R b - - 0 14
+
+			//Tests tests(&main_GUI);
+			//tests.run_all_tests();
+
+			cout << "Quietness: " << main_GUI._root_exploration_node->_board->get_quietness() << endl;
 		}
 
 		// Q - Quiescence
@@ -657,7 +661,10 @@ inline int main_ui() {
 			//if (!main_GUI._board._player && main_GUI._black_player.substr(0, 11) == "GrogrosFish")
 			//	main_GUI._board.grogrosfish(search_depth, &eval_black, true);
 
-			main_game_over = false;
+			if (main_game_over) {
+				main_game_over = false;
+			}
+
 		}
 
 		// Si la partie est terminée
