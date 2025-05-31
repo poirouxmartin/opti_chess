@@ -28,7 +28,7 @@ public:
 	float _pawn_push_threats = 0.15f;
 	float _king_proximity = 0.35f;
 	float _king_centralization = 3.5f;
-	float _rook_activity = 0.035f;
+	float _rook_activity = 0.05f;
 	float _bishop_pawns = 2.0f;
 	float _weak_squares = 1.0f;
 	float _castling_distance = 1.0f;

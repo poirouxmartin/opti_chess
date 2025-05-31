@@ -96,11 +96,12 @@ public:
 	//double _gamma = 0.65;
 	double _alpha = 0.005; // Augmente l'impact de l'évaluation
 	double _beta = 3.5; // Augmente l'impact du winrate
-	double _gamma = 1.00; // Augmente la diversité des coups explorés
+	double _gamma = 1.10; // Augmente la diversité des coups explorés
 
 	// Profondeur de la recherche
 	//int _quiescence_depth = 4; // Regarde tous les échecs et prises
-	int _quiescence_depth = 6;
+	//int _quiescence_depth = 6;
+	int _quiescence_depth = 10;
 	//int _max_depth = 10; // Seulement pour les standpat en échecs et prises restantes
 
 	bool _explore_checks = true; // FIXME? faut-il vraiment explorer les échecs?
