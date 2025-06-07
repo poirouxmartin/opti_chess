@@ -733,10 +733,16 @@ Optimisation du quiescence
 r7/6pk/2P1P1qp/3Q4/8/6P1/4R1K1/8 b - - 0 51 : De4 gagne facile
 r1b1kb1r/ppp2ppp/3q1n2/4p3/3N4/2N5/PPP1BPPP/R1BQR1K1 b kq - 0 9 : Dxd4 puis dxd4 pendant la réflexion -> mauvais son utilisé (coup normal au lieu de prise...): DONE
 
+********
 FIX: certaines positions sont évaluées plusieurs fois?...
 2rqr1k1/pNbnnpp1/2p1p1p1/P2pP3/Q2P4/B1P4P/4BPP1/RR4K1 b - - 6 22 : RE bug!!! : DONE
 En plus ça prend des places dans le buffer... MAUVAIS!!!! FIIIIIXX
 FIXXX
+- Revoir structure moves
+- Virer toutes les maps -> robin_map à la place
+********
+
+
 
 r1bqkbnr/5ppp/p1np4/3Np3/4P3/p7/PPP1BPPP/R1BQ1RK1 b kq - 1 10 : weak squares exagérés... pas +250 pour ça...
 r1bqkbnr/5ppp/p1np4/1p2p3/4P3/N1N5/PPP1BPPP/R1BQK2R b KQkq - 1 8 : b4 gagne! c'est une fourchette de cavaliers

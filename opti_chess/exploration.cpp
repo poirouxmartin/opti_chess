@@ -519,36 +519,71 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 			std::ranges::sort(children_iterations.begin(), children_iterations.end());
 
 			for (auto const& [neg_child_iterations, move] : children_iterations) {
-				//const Move move = children_moves[i];
 				Node* child = _children[move];
-
-				//const int child_iterations = child->_iterations;
 				const int child_iterations = -neg_child_iterations;
 				const int child_chosen_iterations = child->_chosen_iterations;
 				const bool new_quiescence = !quiescence && child_iterations == 0;
 
-				variants += (new_quiescence ? "(" : "") + to_string(_board->_moves_count) +
-					(_board->_player ? ". " : "... ") + _board->move_label(move, true) + 
-					" " + child->get_exploration_variants(alpha, beta, false, new_quiescence || quiescence) + (new_quiescence ? ")" : "") + "\n";
-				variants += "Eval: " + _board->evaluation_to_string(child->_deep_evaluation._value) +
-					" (" + to_string(100 - (int)(100.0 * child->_deep_evaluation._uncertainty)) +
-					"%) | " + child->_deep_evaluation._wdl.to_string() +
-					" | Score: " + score_string(child->_deep_evaluation._avg_score) + "\n";
+				string child_variants;
+				child_variants.reserve(1024); // estimation raisonnable, ajuste si nécessaire
 
+				char buf[128];
+
+				// Ligne 1 : move + variant
+				if (new_quiescence)
+					child_variants += '(';
+
+				child_variants += to_string(_board->_moves_count);
+				child_variants += _board->_player ? ". " : "... ";
+				child_variants += _board->move_label(move, true);
+				child_variants += " ";
+				child_variants += child->get_exploration_variants(alpha, beta, false, new_quiescence || quiescence);
+
+				if (new_quiescence)
+					child_variants += ')';
+
+				child_variants += '\n';
+
+				// Ligne 2 : Eval
+				const int confidence = 100 - static_cast<int>(100.0 * child->_deep_evaluation._uncertainty);
+				snprintf(buf, sizeof(buf), "Eval: %s (%d%%) | %s | Score: %s\n",
+					_board->evaluation_to_string(child->_deep_evaluation._value).c_str(),
+					confidence,
+					child->_deep_evaluation._wdl.to_string().c_str(),
+					score_string(child->_deep_evaluation._avg_score).c_str()
+				);
+				child_variants += buf;
+
+				// Calculs de ratios
 				const int nodes = _nodes;
 				const int child_nodes = child->_nodes;
-				const int nodes_ratio = _nodes == 0 ? 0 : child_nodes * 100 / nodes;
-				if (_nodes == 0) {
-					cout << "nodes == 0?? le bug est peut-être ici..." << endl;
-				}
+				const int nodes_ratio = nodes == 0 ? 0 : child_nodes * 100 / nodes;
 
 				const int iterations = _iterations;
-				const int iterations_ratio = _iterations == 0 ? 0 : child_iterations * 100 / iterations;
-
+				const int iterations_ratio = iterations == 0 ? 0 : child_iterations * 100 / iterations;
 				const int chosen_iterations_ratio = iterations == 0 ? 0 : child_chosen_iterations * 100 / iterations;
 
-				variants += "C: " + int_to_round_string(child_chosen_iterations) + " (" + int_to_round_string(chosen_iterations_ratio) + "%) | I: " + int_to_round_string(child_iterations) + " (" + int_to_round_string(iterations_ratio) + "%) | N: " + int_to_round_string(child_nodes) + " (" + int_to_round_string(nodes_ratio) + "%) | D: " + int_to_round_string(child->get_main_depth() + 1) + " | T: " + clock_to_string(child->_time_spent, true) + "\n\n";
+				if (nodes == 0) {
+					cout << "nodes == 0?? le bug est peut-être ici..." << std::endl;
+				}
+
+				// Ligne 3 : stats
+				snprintf(buf, sizeof(buf),
+					"C: %s (%s%%) | I: %s (%s%%) | N: %s (%s%%) | D: %s | T: %s\n\n",
+					int_to_round_string(child_chosen_iterations).c_str(),
+					int_to_round_string(chosen_iterations_ratio).c_str(),
+					int_to_round_string(child_iterations).c_str(),
+					int_to_round_string(iterations_ratio).c_str(),
+					int_to_round_string(child_nodes).c_str(),
+					int_to_round_string(nodes_ratio).c_str(),
+					int_to_round_string(child->get_main_depth() + 1).c_str(),
+					clock_to_string(child->_time_spent, true).c_str()
+				);
+				child_variants += buf;
+
+				variants += std::move(child_variants);
 			}
+
 		}
 
 		// Sinon, on affiche seulement le coup le plus exploré
