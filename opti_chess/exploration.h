@@ -2,7 +2,9 @@
 
 #include "board.h"
 #include "buffer.h"
-#include <unordered_map>
+#include <robin_map.h>
+
+using namespace tsl;
 
 // TODO:
 // Au lieu d'avoir un plateau, stocker seulement l'indice du plateau dans le buffer?
@@ -220,7 +222,7 @@ public:
 	Move pick_random_child(const double alpha, const double beta, const double gamma);
 
 	// Fonction qui renvoie le score d'un coup. Alpha augmente l'importance de l'évaluation, et beta augmente l'importance du winrate
-	unordered_map<Move, double> get_move_scores(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100);
+	robin_map<Move, double> get_move_scores(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100);
 
 	// Fonction qui renvoie la valeur du noeud
 	double get_node_score(const double alpha, const double beta, const int max_eval, const double max_avg_score, const bool player, Evaluation *custom_eval = nullptr) const;

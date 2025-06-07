@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ranges"
-#include <unordered_map>
 
 // Fonction qui met à jour le temps des joueurs
 void GUI::update_time() {
@@ -1562,7 +1561,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 	Node const* most_explored_child = _root_exploration_node->_children[most_explored_move];
 
-	unordered_map<Move, double> move_scores = _root_exploration_node->get_move_scores(_alpha, _beta);
+	robin_map<Move, double> move_scores = _root_exploration_node->get_move_scores(_alpha, _beta);
 
 	double most_explored_score = -DBL_MAX;
 	double best_score = -DBL_MAX;
