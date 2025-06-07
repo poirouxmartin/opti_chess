@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <unordered_map>
 #include "exploration.h"
 
 using namespace std;
@@ -79,7 +78,7 @@ public:
 class TranspositionTable {
 public:
 	// Table de transposition
-	unordered_map<uint64_t, ZobristEntry> _hash_table; // FIXME: il faut gérer la taille de la table de transposition
+	robin_map<uint64_t, ZobristEntry> _hash_table; // FIXME: il faut gérer la taille de la table de transposition
 
 	// Zobrist utilisé
 	Zobrist _zobrist;

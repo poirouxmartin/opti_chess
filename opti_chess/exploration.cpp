@@ -1,7 +1,6 @@
 ﻿#include "exploration.h"
 #include "useful_functions.h"
 #include "zobrist.h"
-#include <unordered_map>
 
 // Constructeur avec un plateau, un indice et un coup
 Node::Node(Board *board) {
@@ -1058,7 +1057,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		}
 	}
 
-	unordered_map<Move, double> move_scores = get_move_scores(alpha, beta);
+	robin_map<Move, double> move_scores = get_move_scores(alpha, beta);
 
 	// TEST: boost pour les meilleurs coups, pour qu'il évite de tout regarder à faible profondeur...
 	// Trie les coups par score
@@ -1175,7 +1174,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 }
 
 // Fonction qui renvoie le score des coup
-unordered_map<Move, double> Node::get_move_scores(const double alpha, const double beta, const bool consider_standpat, const int qdepth) {
+robin_map<Move, double> Node::get_move_scores(const double alpha, const double beta, const bool consider_standpat, const int qdepth) {
 
 	// Pour le standpat, on l'associe au null move
 
@@ -1210,8 +1209,8 @@ unordered_map<Move, double> Node::get_move_scores(const double alpha, const doub
 		}
 	}
 
-	unordered_map<Move, double> move_scores;
-	move_scores.reserve(128);
+	robin_map<Move, double> move_scores;
+	move_scores.reserve(children_count() + consider_standpat);
 
 	// Valeur du stand pat
 	if (consider_standpat) {
@@ -1278,7 +1277,7 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 	double best_score = -DBL_MAX;
 
 	// Scores des coups
-	unordered_map<Move, double> move_scores = get_move_scores(alpha, beta, consider_standpat, qdepth);
+	robin_map<Move, double> move_scores = get_move_scores(alpha, beta, consider_standpat, qdepth);
 
 	// Regarde chaque coup
 	for (auto const& [move, score] : move_scores) {
