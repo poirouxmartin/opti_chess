@@ -858,7 +858,7 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 		// *** FAUT-IL EXPLORER CE COUP? ***
 
 		// Si on est en échec, on explore tous les coups
-		const bool should_explore = in_check || move.is_capture || move.is_promotion || move.is_checkmate;
+		const bool should_explore = in_check || move.is_capture() || move.is_promotion() || move.is_checkmate();
 
 		//cout << "move: " << _board->move_label(move) << ", should_explore: " << should_explore << ", already_explored: " << already_explored << endl;
 
