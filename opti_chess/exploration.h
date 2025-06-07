@@ -2,7 +2,7 @@
 
 #include "board.h"
 #include "buffer.h"
-
+#include <unordered_map>
 
 // TODO:
 // Au lieu d'avoir un plateau, stocker seulement l'indice du plateau dans le buffer?
@@ -201,7 +201,7 @@ public:
 	[[nodiscard]] int get_ips() const;
 
 	// Quiescence search intégré à l'exploration
-	int quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr, bool use_custom_stand_pat = false, int stand_pat_value = 0);
+	int quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr, bool evaluate_threats = true, double beta_margin = 0.0);
 	//void grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth);
 
 	// Fonction qui renvoie le nombre de noeuds fils complètement explorés
@@ -220,7 +220,7 @@ public:
 	Move pick_random_child(const double alpha, const double beta, const double gamma);
 
 	// Fonction qui renvoie le score d'un coup. Alpha augmente l'importance de l'évaluation, et beta augmente l'importance du winrate
-	map<Move, double> get_move_scores(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100);
+	unordered_map<Move, double> get_move_scores(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100);
 
 	// Fonction qui renvoie la valeur du noeud
 	double get_node_score(const double alpha, const double beta, const int max_eval, const double max_avg_score, const bool player, Evaluation *custom_eval = nullptr) const;

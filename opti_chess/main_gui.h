@@ -191,7 +191,21 @@ inline int main_ui() {
 			//Tests tests(&main_GUI);
 			//tests.run_all_tests();
 
-			cout << "Quietness: " << main_GUI._root_exploration_node->_board->get_quietness() << endl;
+			//cout << "Quietness: " << main_GUI._root_exploration_node->_board->get_quietness() << endl;
+			
+			// Test du tri des coups
+			main_GUI._root_exploration_node->_board->get_moves();
+			main_GUI._root_exploration_node->_board->assign_all_move_flags();
+			main_GUI._root_exploration_node->_board->sort_moves();
+
+			//2rqr1k1/pNbnnpp1/2p1p1p1/P2pP3/Q2P4/B1P4P/4BPP1/RR4K1 b - - 6 22 : ???
+			//Board b(*main_GUI._root_exploration_node->_board);
+			//b._player = !b._player; // Tour de l'adversaire
+			//b.get_moves();
+			//Node* stand_pat_node = new Node(&b);
+			////cout << "player: " << b._player << endl;
+			//stand_pat_node->quiescence(&monte_buffer, main_GUI._grogros_eval, 2, main_GUI._alpha, main_GUI._beta, -INT32_MAX, INT32_MAX, nullptr, false);
+			//cout << "Stand pat eval: " << stand_pat_node->_deep_evaluation._value << endl;
 		}
 
 		// Q - Quiescence

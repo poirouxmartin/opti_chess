@@ -101,7 +101,7 @@ public:
 	// Profondeur de la recherche
 	//int _quiescence_depth = 4; // Regarde tous les échecs et prises
 	//int _quiescence_depth = 6;
-	int _quiescence_depth = 10;
+	int _quiescence_depth = 14;
 	//int _max_depth = 10; // Seulement pour les standpat en échecs et prises restantes
 
 	bool _explore_checks = true; // FIXME? faut-il vraiment explorer les échecs?
@@ -536,7 +536,7 @@ public:
 	int orientation_index(int) const;
 
 	// Joue un coup en gardant la réflexion de GrogrosZero
-	bool play_move_keep(const Move move);
+	bool play_move_keep(Move move);
 
 	// Fonction qui renvoie le type de pièce sélectionnée
 	uint_fast8_t selected_piece() const;

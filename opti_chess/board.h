@@ -111,11 +111,20 @@ typedef struct Move {
 	uint_fast8_t end_row : 3;
 	uint_fast8_t end_col : 3;
 
+	// TODO *** piece begin, piece end?
+
 	//Pos init; utiliser ça?
-	//bool capture_flag : 1;
-	//bool promotion_flag : 1;
 	bool is_null : 1;
-	// Reste 2 bytes à utiliser : check? castling? en passant? is null?
+
+	// Flags
+	bool is_capture : 1;
+	bool is_promotion : 1;
+	bool is_check : 1;
+	bool is_checkmate : 1;
+
+	// FIXME *** 20 bits sont utilisés sur les 24 disponibles
+
+	uint_fast8_t game_result : 2; // 0 = pas fini, 1 = victoire blanche, 2 = draw, 3 = victoire noire
 
 	bool operator== (const Move& other) const {
 		return (start_row == other.start_row) && (start_col == other.start_col) && (end_row == other.end_row) && (end_col == other.end_col);
@@ -128,17 +137,6 @@ typedef struct Move {
 		if (end_row != other.end_row) return end_row < other.end_row;
 		return end_col < other.end_col;
 	}
-
-	// Fonction de hash
-	size_t hash() const {
-		size_t hashValue = 0;
-		hashValue ^= std::hash<uint_fast8_t>()(start_row);
-		hashValue ^= std::hash<uint_fast8_t>()(start_col) << 1;
-		hashValue ^= std::hash<uint_fast8_t>()(end_row) << 2;
-		hashValue ^= std::hash<uint_fast8_t>()(end_col) << 3;
-		return hashValue;
-	}
-
 
 	void display() const
 	{
@@ -156,6 +154,15 @@ typedef struct Move {
 	}
 };
 
+namespace std {
+	template <>
+	struct hash<Move> {
+		size_t operator()(const Move& m) const noexcept {
+			uint16_t key = (m.start_row << 0) | (m.start_col << 3) | (m.end_row << 6) | (m.end_col << 9);
+			return hash<uint16_t>()(key);
+		}
+	};
+}
 
 // Droits de roque (pour optimiser la place mémoire)
 // 1 byte
@@ -178,6 +185,7 @@ struct CastlingRights {
 };
 
 // Tests pour une représentation plus compacte d'un plateau
+// TODO *** à utiliser
 #pragma pack(push, 1)
 struct Piece
 {
@@ -283,7 +291,7 @@ struct WDL {
 };
 
 // Fins de partie
-enum game_termination { black_win = -1, unterminated = 0, white_win = 1, draw = 2 };
+enum game_termination { unterminated = 0, white_win = 1, draw = 2, black_win = 3 };
 
 
 // Plateau
@@ -316,6 +324,9 @@ public:
 	// En supposant que le nombre de coups n'excède pas 127
 	// 1 byte
 	int_fast8_t _got_moves = -1;
+
+	// Les flags des coups ont-ils été assignés?
+	bool _moves_flags_assigned = false;
 
 	// Les coups sont-ils triés?
 	bool _sorted_moves = false;
@@ -355,7 +366,7 @@ public:
 
 	// Est-ce que le calcul de game over a déjà été fait?
 	bool _game_over_checked = false;
-	int_fast8_t _game_over_value = 0;
+	int_fast8_t _game_over_value = unterminated;
 
 	// On stocke les positions des rois
 	Pos _white_king_pos = { 0, 4 };
@@ -424,9 +435,6 @@ public:
 
 	// Fonction qui joue un coup
 	void make_move(Move, const bool pgn = false, const bool new_board = false, const bool add_to_history = false);
-
-	// Fonction qui joue le coup i de la liste des coups possibles
-	void make_index_move(int, const bool pgn = false, const bool new_board = false, const bool add_to_history = false);
 
 	// Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
 	void game_advancement();
@@ -745,6 +753,16 @@ public:
 
 	// Fonction qui renvoie à quel point une position est quiet ou non: renvoie le nombre de captures disponibles, d'échecs disponibles et de promotions disponibles
 	[[nodiscard]] int get_quietness() const;
+
+	// Fonction qui assigne les flags aux coups possibles
+	void assign_all_move_flags();
+
+	// Fonction qui change le trait du joueur
+	void switch_trait();
+
+	// Fonction qui assigne les flags à un coup donné
+	void assign_move_flags(Move *move) const;
+
 
 	// TODO *** faire un piece_safety plus générique?
 
