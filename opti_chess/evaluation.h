@@ -13,7 +13,7 @@ public:
 	float _piece_positioning = 0.25f;
 	float _bishop_pair = 50.0f;
 	float _castling_rights = 0.0f; // Redondant
-	float _player_trait = 50.0f;
+	float _player_trait = 35.0f;
 	float _king_safety = 1.0f;
 	float _pawn_structure = 0.25f;
 	float _attacks = 0.65f;
@@ -30,7 +30,7 @@ public:
 	float _king_centralization = 3.5f;
 	float _rook_activity = 0.05f;
 	float _bishop_pawns = 2.0f;
-	float _weak_squares = 1.0f;
+	float _weak_squares = 0.25f;
 	float _castling_distance = 1.0f;
 	float _bishop_activity = 4.0f;
 	float _trapped_pieces = 0.55f;

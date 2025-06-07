@@ -1,6 +1,7 @@
 ﻿#include "exploration.h"
 #include "useful_functions.h"
 #include "zobrist.h"
+#include <unordered_map>
 
 // Constructeur avec un plateau, un indice et un coup
 Node::Node(Board *board) {
@@ -54,6 +55,7 @@ void Node::init_node() {
 
 	_initialized = true;
 
+	_board->get_moves();
 	_board->is_game_over();
 
 	// Si la partie est finie
@@ -66,7 +68,7 @@ void Node::init_node() {
 	}
 
 	// Génère et trie les coups
-	_board->get_moves();
+	_board->assign_all_move_flags();
 	_board->sort_moves();
 
 	return;
@@ -659,7 +661,7 @@ Node::~Node() {
 }
 
 // Quiescence search intégré à l'exploration
-int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network, bool custom_stand_pat, int stand_pat_value) {
+int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network, bool evaluate_threats, double beta_margin) {
 	// TODO: comment gérer la profondeur? faire en fonction de l'importance de la branche?
 	// mettre aucune profondeur limite?
 	// pourquoi en endgame ça va si loin? il fait full échecs...
@@ -710,6 +712,8 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 	// Initialisation du noeud
 	init_node();
 
+	//cout << "quiescence: " << _board->_moves_flags_assigned << endl;
+
 	// Couleur du joueur
 	int color = _board->get_color();
 
@@ -734,7 +738,8 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 	}
 
 	// Stand pat
-	int stand_pat = (custom_stand_pat ? stand_pat_value : _deep_evaluation._value) * color;
+	//int stand_pat = (custom_stand_pat ? stand_pat_value : _deep_evaluation._value) * color;
+	int stand_pat = _deep_evaluation._value * color;
 	
 	// FIXME *** we can't have the actual usable score of this standpat, since it would require to know the evaluations of all the children
 	// Instead we use a previsional value, assuming that the standpat is the best move
@@ -749,7 +754,7 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 	// Emergency cutoff: depth - 4
 	if (depth <= -4) {
 		_time_spent += clock() - begin_monte_time;
-		//cout << "stand pat" << endl;
+		cout << "emergency cutoff" << endl;
 		return stand_pat;
 	}
 
@@ -767,14 +772,46 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 	
 	// Marge (TEST)
 	//constexpr double beta_margin = 200;
-	constexpr double beta_margin = 0;
-	constexpr double in_check_margin = 500; // Evite de trop calculer quand y'a déjà un gros delta
+	//constexpr double beta_margin = 200; // TEST: = valeur de la menace (quiescence peu profonde?)
+	//constexpr double in_check_margin = 500; // Evite de trop calculer quand y'a déjà un gros delta
+	//constexpr double in_check_margin = DBL_MAX; // Evite de trop calculer quand y'a déjà un gros delta
 
 	// FIXME: ça casse un peu tout
 	//bool test_full_checks = false;
 
+	//double beta_margin = 0;
+
+	//2rqr1k1/pNbnnpp1/2p1p1p1/P2pP3/Q2P4/B1P4P/4BPP1/RR4K1 b - - 6 22 : menace la dame en d8
+
+	// Marge, qui dépend de la menace adverse (jugée grâce à la valeur de la quiescence sur le tour de l'adversaire)
+	if (evaluate_threats) {
+		if (in_check) {
+			// Pas de cut-off si on est en échec
+			beta_margin = DBL_MAX;
+		}
+		else {
+			// Fait une courte quiescence pour évaluer la menace
+			Board b(*_board);
+			b.switch_trait();
+			Node* stand_pat_node = new Node(&b);
+			stand_pat_node->quiescence(buffer, eval, 2, search_alpha, search_beta, -INT32_MAX, INT32_MAX, network, false);
+
+			// Marge correspondant à la valeur de la menace
+			int new_stand_pat = stand_pat_node->_deep_evaluation._value * color;
+
+			// FIXME *** il faut aussi prendre en compte que le trait ayant changé de camp, il y a une petite variation d'évaluation due à cela...
+			// Marge de 100 en moins
+			new_stand_pat += 100;
+
+			beta_margin = max(0, stand_pat - new_stand_pat);
+
+			//cout << "Pos: " << _board->to_fen() << ", stand_pat: " << stand_pat << ", new_stand_pat: " << new_stand_pat << ", beta_margin: " << beta_margin << endl;
+		}
+	}
+
 	//if (stand_pat >= (beta + beta_margin) && (!in_check || !test_full_checks)) {
-	if (stand_pat >= (beta + beta_margin + (in_check ? in_check_margin : 0))) {
+	//if (stand_pat >= (beta + beta_margin + (in_check ? in_check_margin : 0))) {
+	if (stand_pat >= beta + beta_margin) {
 		_time_spent += clock() - begin_monte_time;
 		//cout << "beta cut-off1: " << stand_pat << " >= " << beta << endl;
 		return beta;
@@ -784,8 +821,8 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 	}
 
 	// Mise à jour de alpha si l'éval statique est plus grande
-	if (stand_pat > alpha && !in_check) {
-	//if (stand_pat > alpha) {
+	//if (stand_pat > alpha && !in_check) {
+	if (stand_pat > alpha) {
 		alpha = stand_pat;
 	}
 
@@ -798,6 +835,8 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 		// Coup
 		const Move move = _board->_moves[i];
 
+		//cout << "move: " << _board->move_label(move) << ", flags: " << move.is_capture << endl;
+
 		// Ce coup a-t-il déjà été exploré?
 		//int child_index = get_child_index(move);
 		//bool already_explored = child_index != -1;
@@ -809,50 +848,15 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 		//	// FIXME: IL FAUT GERER CE CAS-LA!!!
 		//	continue;
 		//}
-
-		// *** FAUT-IL EXPLORER CE COUP? ***
-		bool should_explore = false;
-
-		// TEST
-		//constexpr int max_depth = main_GUI._quiescence_depth;
-		//constexpr int max_depth = 6;
-
+		// 
 		//8/3P4/3r3p/P4p2/8/P2P1k1P/7K/1R6 b - - 4 49
 
+		// *** FAUT-IL EXPLORER CE COUP? ***
+
 		// Si on est en échec, on explore tous les coups
-		if (in_check) {
-			should_explore = true;
-		}
-		else {
-			// Si c'est une capture
-			if (_board->_array[move.end_row][move.end_col] != none) {
-				should_explore = true;
-			}
+		const bool should_explore = in_check || move.is_capture || move.is_promotion || move.is_checkmate;
 
-			// Attention ! En passant est aussi une capture
-			else if (is_pawn(_board->_array[move.start_row][move.start_col]) && move.start_col != move.end_col) {
-				should_explore = true;
-			}
-
-			// Si c'est un roque (EXPÉRIMENTAL)
-			//else if (is_king(_board->_array[move.start_row][move.start_col]) && abs(move.start_col - move.end_col) == 2) {
-			////else if (is_king(_board->_array[move.i1][move.j1]) && (abs(move.j1 - move.j2) == 2 || true)) {
-			//	should_explore = true;
-			//}
-
-			// Si c'est une promotion
-			else if ((_board->_array[move.start_row][move.start_col] == w_pawn && move.end_row == 7) || (_board->_array[move.start_row][move.start_col] == b_pawn && move.end_row == 0)) {
-				should_explore = true;
-			}
-
-
-			//else if (true || depth >= max_depth - 2) {
-			//	// Si le coup met en échec
-			//	Board b(*_board);
-			//	b.make_move(move);
-			//	should_explore = b.in_check();
-			//}
-		}
+		//cout << "move: " << _board->move_label(move) << ", should_explore: " << should_explore << ", already_explored: " << already_explored << endl;
 
 		/*if (should_explore)
 			cout << "depth: " << depth << " | move: " << _board->move_label(move) << " | check_extension: " << check_extension << endl;*/
@@ -898,7 +902,7 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 			//cout << "beta: " << beta << " | alpha: " << alpha << endl;
 
 			// Appel récursif sur le fils
-			int score = - child->quiescence(buffer, eval, depth - 1, search_alpha, search_beta, -beta, -alpha, network);
+			int score = - child->quiescence(buffer, eval, depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, beta_margin);
 			//child->grogros_quiescence(buffer, eval, depth - 1);
 			_nodes += child->_nodes;
 
@@ -1054,7 +1058,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		}
 	}
 
-	map<Move, double> move_scores = get_move_scores(alpha, beta);
+	unordered_map<Move, double> move_scores = get_move_scores(alpha, beta);
 
 	// TEST: boost pour les meilleurs coups, pour qu'il évite de tout regarder à faible profondeur...
 	// Trie les coups par score
@@ -1171,7 +1175,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 }
 
 // Fonction qui renvoie le score des coup
-map<Move, double> Node::get_move_scores(const double alpha, const double beta, const bool consider_standpat, const int qdepth) {
+unordered_map<Move, double> Node::get_move_scores(const double alpha, const double beta, const bool consider_standpat, const int qdepth) {
 
 	// Pour le standpat, on l'associe au null move
 
@@ -1206,11 +1210,12 @@ map<Move, double> Node::get_move_scores(const double alpha, const double beta, c
 		}
 	}
 
-    map<Move, double> move_scores;
+	unordered_map<Move, double> move_scores;
+	move_scores.reserve(128);
 
 	// Valeur du stand pat
 	if (consider_standpat) {
-		move_scores[Move()] = get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player);
+		move_scores.emplace(Move(), get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player));
 	}
 
 	// Regarde chaque coup
@@ -1218,7 +1223,7 @@ map<Move, double> Node::get_move_scores(const double alpha, const double beta, c
 		if (qdepth != -100 && child->_quiescence_depth != qdepth) {
 			continue;
 		}
-		move_scores[move] = child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player);
+		move_scores.emplace(move, child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player));
 	}
 
 	return move_scores;
@@ -1273,7 +1278,7 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 	double best_score = -DBL_MAX;
 
 	// Scores des coups
-	map<Move, double> move_scores = get_move_scores(alpha, beta, consider_standpat, qdepth);
+	unordered_map<Move, double> move_scores = get_move_scores(alpha, beta, consider_standpat, qdepth);
 
 	// Regarde chaque coup
 	for (auto const& [move, score] : move_scores) {

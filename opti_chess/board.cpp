@@ -36,6 +36,7 @@ void Board::copy_data(const Board& b, bool full, bool copy_history) {
 	_got_moves = b._got_moves;
 	_player = b._player;
 	memcpy(_moves, b._moves, sizeof(_moves));
+	_moves_flags_assigned = b._moves_flags_assigned;
 	_sorted_moves = b._sorted_moves;
 	_evaluation = b._evaluation;
 	_castling_rights = b._castling_rights;
@@ -315,7 +316,6 @@ bool Board::get_moves(const bool forbide_check) {
 
 		_got_moves = n_moves;
 	}
-
 
 	return true;
 }
@@ -620,6 +620,9 @@ void Board::make_move(Move move, const bool pgn, const bool new_board, const boo
 	// Reset le nombre de coups possibles
 	_got_moves = -1;
 
+	// Les flags des coups sont réinitialisés
+	_moves_flags_assigned = false;
+
 	// Les coups ne sont plus triés
 	_sorted_moves = false;
 
@@ -629,11 +632,6 @@ void Board::make_move(Move move, const bool pgn, const bool new_board, const boo
 	reset_eval();
 
 	return;
-}
-
-// Fonction qui joue le coup i
-void Board::make_index_move(const int i, const bool pgn, const bool new_board, const bool add_to_history) {
-	make_move(_moves[i], pgn, new_board, add_to_history);
 }
 
 // Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
@@ -660,8 +658,8 @@ void Board::game_advancement() {
 	static constexpr int values[6] = { 0, adv_pawn, adv_knight, adv_bishop, adv_rook, adv_queen };
 
 	// Pièces
-	for (int row = 0; row < 8; row++) {
-		for (int col = 0; col < 8; col++) {
+	for (uint_fast8_t row = 0; row < 8; row++) {
+		for (uint_fast8_t col = 0; col < 8; col++) {
 			const uint_fast8_t piece = _array[row][col];
 			piece && (p += values[piece % 6]);
 		}
@@ -769,6 +767,9 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	//	}
 	//}
 
+	//if (_evaluated) {
+	//	cout << "already evaluated: " << to_fen() << ", eval: " << _evaluation << endl;
+	//}
 
 
 
@@ -1030,6 +1031,27 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 
 	_evaluation += total_activity;
 
+	// *** TACTIQUE ***
+
+	if (display)
+		main_GUI._eval_components += "\nTACTICS\n";
+
+	int total_tactics = 0;
+
+	// Fourchettes
+	if (display)
+		main_GUI._eval_components += "forks: TODO\n";
+	//if (eval->_forks != 0.0f) {
+	//	const int forks = get_forks() * eval->_forks;
+	//	if (display)
+	//		main_GUI._eval_components += "forks: " + (forks >= 0 ? string("+") : string()) + to_string(forks) + "\n";
+	//	total_tactics += forks;
+	//}
+
+	// Clouages (TODO *** à bouger ici)
+
+	if (display)
+		main_GUI._eval_components += "--- TOTAL: " + (total_tactics >= 0 ? string("+") : string()) + to_string(total_tactics) + " ---\n";
 
 	// *** STRUCTURE DE PIONS ***
 
@@ -1073,7 +1095,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 
 	// Cases faibles et avant-postes
 	if (eval->_weak_squares != 0.0f) {
-		const int weak_squares = (-get_weak_squares(true) + get_weak_squares(false)) * eval->_weak_squares * position_nature;
+		const int weak_squares = (-get_weak_squares(true) + get_weak_squares(false)) * eval->_weak_squares * (1.0f + position_nature);
 		if (display)
 			main_GUI._eval_components += "weak squares: " + (weak_squares >= 0 ? string("+") : string()) + to_string(weak_squares) + "\n";
 		total_pawn_structure += weak_squares;
@@ -1200,6 +1222,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 		main_GUI._eval_components += "Material: " + (total_material >= 0 ? string("+") : string()) + to_string(total_material) + "\n";
 		main_GUI._eval_components += "Positioning: " + (total_positioning >= 0 ? string("+") : string()) + to_string(total_positioning) + "\n";
 		main_GUI._eval_components += "Activity: " + (total_activity >= 0 ? string("+") : string()) + to_string(total_activity) + "\n";
+		main_GUI._eval_components += "Tactics: " + (total_tactics >= 0 ? string("+") : string()) + to_string(total_tactics) + "\n";
 		main_GUI._eval_components += "Pawn structure: " + (total_pawn_structure >= 0 ? string("+") : string()) + to_string(total_pawn_structure) + "\n";
 		main_GUI._eval_components += "King: " + (total_king >= 0 ? string("+") : string()) + to_string(total_king) + "\n";
 		main_GUI._eval_components += "Endgame: " + (total_endgame >= 0 ? string("+") : string()) + to_string(total_endgame) + "\n";
@@ -1238,119 +1261,6 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	return false;
 }
 
-// Fonction qui joue le coup d'une position, renvoyant la meilleure évaluation à l'aide d'un negamax (similaire à un minimax)
-//int Board::negamax(const int depth, int alpha, const int beta, const bool max_depth, Evaluator* eval, const bool play, const bool display, const int quiescence_depth, const int null_depth) 
-//{
-//	// Nombre de noeuds
-//	if (max_depth) {
-//		main_GUI._visited_nodes = 1;
-//		main_GUI._begin_time = clock();
-//	}
-//	else {
-//		main_GUI._visited_nodes++;
-//	}
-//
-//	// Vérifie si la position est terminée
-//	is_game_over();
-//
-//	if (_game_over_value == 2)
-//		return 0;
-//	if (_game_over_value != 0)
-//		return -mate_value + _moves_count * mate_ply;
-//
-//	// Evaluation de la position via quiescence
-//	if (depth <= 0)
-//		return quiescence(eval, -INT_MAX, INT_MAX, quiescence_depth, false);
-//
-//
-//	// Null move pruning
-//	/*if (null_depth > 0 && depth > 1 && !in_check())
-//	{
-//		_player = !_player;
-//		int null_move_value = -negamax(depth - 1 - null_depth, -beta, -beta + 1, false, eval, false, false, quiescence_depth, 0);
-//		_player = !_player;
-//
-//		if (null_move_value >= beta)
-//			return null_move_value;
-//	}*/
-//
-//
-//	int value = -1e9;
-//	Board b;
-//
-//	int best_move = 0;
-//
-//	if (depth > 1)
-//		sort_moves();
-//		
-//	if (max_depth)
-//		display_moves();
-//		
-//
-//	for (int i = 0; i < _got_moves; i++) {
-//		b.copy_data(*this, false, true);
-//		b.make_index_move(i);
-//
-//		int tmp_value = -b.negamax(depth - 1, -beta, -alpha, false, eval, false, false, quiescence_depth);
-//		// threads.emplace_back(std::thread([&]() {
-//		//     tmp_value = -b.negamax(depth - 1, -beta, -alpha, -color, false, eval, a, use_agent);
-//		// })); // Test de OpenAI
-//
-//		if (max_depth) {
-//			if (display)
-//				cout << "move : " << move_label_from_index(i) << ", value : " << tmp_value << endl;
-//			if (tmp_value > value)
-//				best_move = i;
-//		}
-//
-//		value = max(value, tmp_value);
-//		alpha = max(alpha, value);
-//		// undo move
-//		// b.undo();
-//
-//		if (alpha >= beta)
-//			break;
-//	}
-//
-//	// Attendre la fin des threads
-//	// for (auto &thread : threads) {
-//	//     thread.join();
-//	// } // Test de OpenAI
-//
-//	if (max_depth) {
-//		if (display) {
-//			cout << "visited nodes : " << main_GUI._visited_nodes / 1000 << "k" << endl;
-//			const auto spent_time = static_cast<double>(clock() - main_GUI._begin_time);
-//			cout << "time spend : " << spent_time << "ms" << endl;
-//			cout << "speed : " << main_GUI._visited_nodes / spent_time << "kN/s" << endl;
-//		}
-//		if (play) {
-//			//play_index_move_sound(best_move);
-//			if (display)
-//				if (_tested_moves > 0)
-//					((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], main_GUI.get_board_orientation())) || true) && play_monte_carlo_move_keep(_moves[best_move], true, true, true);
-//				else
-//					make_index_move(best_move, true);
-//		}
-//
-//		return value;
-//	}
-//
-//	return value;
-//}
-
-// Grogrosfish
-//bool Board::grogrosfish(const int depth, Evaluator* eval, const bool display = false) {
-//	negamax(depth, -1e9, 1e9, true, eval, true, display);
-//	if (display) {
-//		evaluate(eval);
-//		cout << main_GUI._current_fen << endl;
-//		cout << main_GUI._global_pgn << endl;
-//	}
-//
-//	return true;
-//}
-
 // Fonction qui récupère le plateau d'un FEN
 // TODO : à refaire
 void Board::from_fen(string fen)
@@ -1367,35 +1277,35 @@ void Board::from_fen(string fen)
 	int iterator = 0;
 
 	// Position à itérer dans le plateau
-	int i = 7;
-	int j = 0;
+	int row = 7;
+	int col = 0;
 
 	char c;
 
 	// Positionnement des pièces
-	while (i >= 0) {
+	while (row >= 0) {
 		c = fen[iterator];
 		switch (c) {
-		case '/': case ' ': i -= 1; j = 0; break;
-		case 'P': _array[i][j] = 1; j += 1; break;
-		case 'N': _array[i][j] = 2; j += 1; break;
-		case 'B': _array[i][j] = 3; j += 1; break;
-		case 'R': _array[i][j] = 4; j += 1; break;
-		case 'Q': _array[i][j] = 5; j += 1; break;
-		case 'K': _array[i][j] = 6; j += 1; break;
-		case 'p': _array[i][j] = 7; j += 1; break;
-		case 'n': _array[i][j] = 8; j += 1; break;
-		case 'b': _array[i][j] = 9; j += 1; break;
-		case 'r': _array[i][j] = 10; j += 1; break;
-		case 'q': _array[i][j] = 11; j += 1; break;
-		case 'k': _array[i][j] = 12; j += 1; break;
+		case '/': case ' ': row -= 1; col = 0; break;
+		case 'P': _array[row][col] = w_pawn; col++; break;
+		case 'N': _array[row][col] = w_knight; col++; break;
+		case 'B': _array[row][col] = w_bishop; col++; break;
+		case 'R': _array[row][col] = w_rook; col++; break;
+		case 'Q': _array[row][col] = w_queen; col++; break;
+		case 'K': _array[row][col] = w_king; col++; break;
+		case 'p': _array[row][col] = b_pawn; col++; break;
+		case 'n': _array[row][col] = b_knight; col++; break;
+		case 'b': _array[row][col] = b_bishop; col++; break;
+		case 'r': _array[row][col] = b_rook; col++; break;
+		case 'q': _array[row][col] = b_queen; col++; break;
+		case 'k': _array[row][col] = b_king; col++; break;
 		default:
 			if (isdigit(c)) {
 				const int digit = (static_cast<int>(c)) - (static_cast<int>('0'));
-				for (int k = j; k < j + digit; k++) {
-					_array[i][k] = 0;
+				for (int k = col; k < col + digit; k++) {
+					_array[row][k] = 0;
 				}
-				j += digit;
+				col += digit;
 				break;
 			}
 
@@ -1405,18 +1315,13 @@ void Board::from_fen(string fen)
 			}
 		}
 
-		iterator += 1;
+		iterator++;
 	}
 
 	// A qui de jouer
 	c = fen[iterator];
 
-	if (c == 'w') {
-		_player = true;
-	}
-	else {
-		_player = false;
-	}
+	_player = c == 'w';
 
 	iterator += 2;
 
@@ -1437,7 +1342,7 @@ void Board::from_fen(string fen)
 		default: next = false; break;
 		}
 
-		iterator += 1;
+		iterator++;
 	}
 
 	c = fen[iterator];
@@ -1447,32 +1352,27 @@ void Board::from_fen(string fen)
 		_en_passant_col = -1;
 	else {
 		_en_passant_col = fen[iterator] - 'a';
-		iterator += 1;
+		iterator++;
 	}
 
 	iterator += 2;
 	string s;
 	while (fen[iterator] != ' ') {
 		s += fen[iterator];
-		iterator += 1;
+		iterator++;
 	}
 	_half_moves_count = stoi(s);
 
-	iterator += 1;
+	iterator++;
 	fen += ' ';
 	s = "";
 	while (fen[iterator] != ' ') {
 		s += fen[iterator];
-		iterator += 1;
+		iterator++;
 	}
 	_moves_count = stoi(s);
 
 	_got_moves = -1;
-
-	//_new_board = true;
-	//_quiescence_nodes = 0;
-	//_nodes = 0;
-	//_transpositions = 0;
 
 	reset_eval();
 
@@ -1493,8 +1393,8 @@ string Board::to_fen() const
 
 	for (int i = 7; i >= 0; i--) {
 		for (int j = 0; j < 8; j++) {
-			if (const int p = _array[i][j]; p == 0)
-				it += 1;
+			if (const uint_fast8_t p = _array[i][j]; p == none)
+				it++;
 			else {
 				constexpr auto piece_letters = "PNBRQKpnbrqk";
 
@@ -1541,7 +1441,7 @@ string Board::to_fen() const
 	return s;
 }
 
-// Fonction qui renvoie le gagnant si la partie est finie (-1/1, et 2 pour nulle), et 0 sinon
+// Fonction qui renvoie le gagnant si la partie est finie
 // Génère également les coups légaux, s'il y en a
 int Board::game_over(int max_repetitions) {
 
@@ -1559,7 +1459,7 @@ int Board::game_over(int max_repetitions) {
 
 	// Calcule les coups légaux
 	if (_got_moves == -1)
-		get_moves(true);
+		get_moves();
 
 	// S'il n'y a pas de coups légaux, c'est soit mat, soit pat
 	if (_got_moves == 0) {
@@ -1585,16 +1485,16 @@ int Board::game_over(int max_repetitions) {
 	for (uint_fast8_t i = 0; i < 8; i++) {
 		for (uint_fast8_t j = 0; j < 8; j++) {
 			const uint_fast8_t p = _array[i][j];
-			if (p == 2)
+			if (p == w_knight)
 				count_w_knight++;
-			else if (p == 3)
+			else if (p == w_bishop)
 				count_w_bishop++;
-			else if (p == 8)
+			else if (p == b_knight)
 				count_b_knight++;
-			else if (p == 9)
+			else if (p == b_bishop)
 				count_b_bishop++;
 			// Pièces majeures ou pion -> possibilité de mater
-			else if (p != 6 && p != 12 && p != 0)
+			else if (p != w_king && p != b_king && p != none)
 				return unterminated;
 
 			// Si on a au moins 1 fou, et un cheval/fou ou plus -> plus de nulle par manque de matériel
@@ -1617,9 +1517,10 @@ int Board::game_over(int max_repetitions) {
 	return unterminated;
 }
 
-// Fonction qui renvoie le gagnant si la partie est finie (-1/1, et 2 pour nulle), et 0 sinon
+// Fonction qui renvoie le gagnant si la partie est finie
 int Board::is_game_over(int max_repetitions) {
 	_game_over_value = game_over(max_repetitions);
+	//cout << "Game over value: " << (int)_game_over_value << endl;
 	return _game_over_value;
 }
 
@@ -1627,6 +1528,10 @@ int Board::is_game_over(int max_repetitions) {
 // En passant manquant... échecs aussi, puis roques, promotions, mats/pats
 string Board::move_label(Move move, bool use_uft8)
 {
+	if (!_moves_flags_assigned) {
+		assign_move_flags(&move);
+	}
+
 	const uint_fast8_t start_row = move.start_row;
 	const uint_fast8_t start_col = move.start_col;
 	const uint_fast8_t end_row = move.end_row;
@@ -1682,7 +1587,7 @@ string Board::move_label(Move move, bool use_uft8)
 	}
 
 	// Prise (ou en passant)
-	if (p2 != none || (is_pawn(p1) && start_col != end_col)) {
+	if (move.is_capture) {
 		if (is_pawn(p1))
 			s += main_GUI._abc8[start_col];
 		s += "x";
@@ -1701,34 +1606,25 @@ string Board::move_label(Move move, bool use_uft8)
 		s += use_uft8 ? (_player ? main_GUI.Q_symbol : main_GUI.q_symbol) : "Q";
 	}
 
-	// Mats, pats, échecs...
-	Board b(*this);
-	b.make_move(move);
-
-	// Le coup termine-t-il la partie?
-	b.is_game_over();
-
-	// En cas de mat pour les blancs
-	if (b._game_over_value == white_win)
+	if (move.game_result == white_win)
 		return s + "# 1-0";
 
-	// En cas de mat pour les noirs
-	else if (b._game_over_value == black_win)
+	if (move.game_result == black_win)
 		return s + "# 0-1";
 
-	// En cas d'égalité
-	else if (b._game_over_value == draw)
-		return s + (b._got_moves == 0 ? "@ 1/2-1/2" : " 1/2-1/2"); // Pat -> "@"
+	if (move.game_result == draw)
+		return s + " 1/2-1/2";
 
-	// Échec
-	if (b.in_check())
+	if (move.is_check)
 		s += "+";
+
 
 	return s;
 }
 
 // Fonction qui affiche un texte dans une zone donnée
 void Board::draw_text_rect(const string& s, const float pos_x, const float pos_y, const float width, const float height, const float size) {
+
 	// Division du texte
 	const int sub_div = (1.5f * width) / size;
 
@@ -1750,6 +1646,14 @@ void Board::draw_text_rect(const string& s, const float pos_x, const float pos_y
 // Fonction qui joue le son d'un coup
 void Board::play_move_sound(Move move) const
 {
+	//cout << "Assigned flags: " << _moves_flags_assigned << endl;
+
+	if (!_moves_flags_assigned) {
+		assign_move_flags(&move);
+	}
+
+	//cout << "Flags: " << move.is_capture << " " << move.is_check << " " << move.is_promotion << endl;
+
 	const uint_fast8_t i = move.start_row;
 	const uint_fast8_t j = move.start_col;
 	const uint_fast8_t k = move.end_row;
@@ -1759,18 +1663,13 @@ void Board::play_move_sound(Move move) const
 	const uint_fast8_t p1 = _array[i][j];
 	const uint_fast8_t p2 = _array[k][l];
 
-	// Echecs
-	Board b(*this);
-	b.make_move(move);
-
-	const int mate = b.is_game_over();
-
-	if (mate == 2)
+	// Sons de fin de partie
+	if (move.game_result == draw)
 		return PlaySound(main_GUI._stealmate_sound);
-	if (mate != 0)
+	if (move.game_result != unterminated)
 		return PlaySound(main_GUI._checkmate_sound);
 
-	if (b.in_check()) {
+	if (move.is_check) {
 		if (_player)
 			PlaySound(main_GUI._check_1_sound);
 		else
@@ -1780,11 +1679,11 @@ void Board::play_move_sound(Move move) const
 	// Si pas d'échecs
 	else {
 		// Promotions
-		if ((p1 == 1 || p1 == 7) && (k == 0 || k == 7))
+		if (move.is_promotion)
 			return PlaySound(main_GUI._promotion_sound);
 
 		// Prises (ou en passant)
-		if (p2 != 0 || ((p1 == 1 || p1 == 7) && j != l)) {
+		if (move.is_capture) {
 			if (_player)
 				return PlaySound(main_GUI._capture_1_sound);
 			else
@@ -1792,9 +1691,9 @@ void Board::play_move_sound(Move move) const
 		}
 
 		// Roques
-		if (p1 == 6 && abs(j - l) == 2)
+		if (p1 == w_king && abs(j - l) == 2)
 			return PlaySound(main_GUI._castle_1_sound);
-		if (p1 == 12 && abs(j - l) == 2)
+		if (p1 == b_king && abs(j - l) == 2)
 			return PlaySound(main_GUI._castle_2_sound);
 
 		// Coup "normal"
@@ -1803,8 +1702,6 @@ void Board::play_move_sound(Move move) const
 		if (!_player)
 			return PlaySound(main_GUI._move_2_sound);
 	}
-
-	// Mats à rajouter
 
 	return;
 }
@@ -1819,6 +1716,7 @@ void Board::reset_board(const bool display) {
 	_game_over_value = unterminated;
 	_static_evaluation = 0;
 	_evaluation = 0;
+	_moves_flags_assigned = false;
 	_sorted_moves = false;
 	_zobrist_key = 0;
 	_uncertainty = 0.0f;
@@ -2566,11 +2464,13 @@ int Board::get_king_safety(float display_factor) {
 }
 
 // Fonction qui dit si une pièce est capturable par l'ennemi (pour les affichages GUI)
-bool Board::is_capturable(const int i, const int j) {
+bool Board::is_capturable(const int row, const int col) {
 	_got_moves == -1 && get_moves(true);
 
+	// FIXME *** manque l'en-passant
+
 	for (int k = 0; k < _got_moves; k++)
-		if (_moves[k].end_row == i && _moves[k].end_col == j)
+		if (_moves[k].end_row == row && _moves[k].end_col == col)
 			return true;
 
 	return false;
@@ -2647,9 +2547,9 @@ bool equal_positions(const Board& a, const Board& b) {
 string Board::simple_position() const
 {
 	string s;
-	for (int i = 0; i < 8; i++)
-		for (int j = 0; j < 8; j++)
-			s += _array[i][j];
+	for (int row = 0; row < 8; row++)
+		for (int col = 0; col < 8; col++)
+			s += _array[row][col];
 
 	s += _player + _castling_rights.k_b + _castling_rights.k_w + _castling_rights.q_b + _castling_rights.q_w;
 	s += _en_passant_col;
@@ -2887,7 +2787,7 @@ int Board::get_pawn_structure(float display_factor)
 	static constexpr float self_block_division = 1.5f;
 
 	// Bonus pour les pions passés connectés
-	constexpr int connected_passed_pawn_bonus = 2.0f;
+	constexpr float connected_passed_pawn_bonus = 2.0f;
 
 
 	// Pion passé - chemin controllé par une pièce adverse
@@ -3089,27 +2989,27 @@ int Board::get_pawn_structure(float display_factor)
 	float connected_pawns_value = 0.0f;
 
 	// Pour chaque colonne
-	for (uint_fast8_t j = 0; j < 8; j++) {
-		for (uint_fast8_t i = 1; i < 7; i++) {
-			if (pawns_white[i][j]) {
-				if ((j > 0 && (pawns_white[i][j - 1] || pawns_white[i - 1][j - 1])) || (j < 7 && (pawns_white[i][j + 1] || pawns_white[i - 1][j + 1]))) {
+	for (uint_fast8_t col = 0; col < 8; col++) {
+		for (uint_fast8_t row = 1; row < 7; row++) {
+			if (pawns_white[row][col]) {
+				if ((col > 0 && (pawns_white[row][col - 1] || pawns_white[row - 1][col - 1])) || (col < 7 && (pawns_white[row][col + 1] || pawns_white[row - 1][col + 1]))) {
 					// S'il est contesté par un pion adverse, on retire le bonus
-					if (j > 0 && pawns_black[i + 1][j - 1] || j < 7 && pawns_black[i + 1][j + 1]) {
+					if (col > 0 && pawns_black[row + 1][col - 1] || col < 7 && pawns_black[row + 1][col + 1]) {
 						// TODO
 					}
 					else {
-						connected_pawns_value += connected_pawns[i] * connected_pawns_adv;
+						connected_pawns_value += connected_pawns[row] * connected_pawns_adv;
 					}
 				}
 			}
-			else if (pawns_black[i][j]) {
-				if ((j > 0 && (pawns_black[i][j - 1] || pawns_black[i + 1][j - 1])) || (j < 7 && (pawns_black[i][j + 1] || pawns_black[i + 1][j + 1]))) {
+			else if (pawns_black[row][col]) {
+				if ((col > 0 && (pawns_black[row][col - 1] || pawns_black[row + 1][col - 1])) || (col < 7 && (pawns_black[row][col + 1] || pawns_black[row + 1][col + 1]))) {
 					// S'il est contesté par un pion adverse, on retire le bonus
-					if (j > 0 && pawns_white[i - 1][j - 1] || j < 7 && pawns_white[i - 1][j + 1]) {
+					if (col > 0 && pawns_white[row - 1][col - 1] || col < 7 && pawns_white[row - 1][col + 1]) {
 						// TODO
 					}
 					else {
-						connected_pawns_value -= connected_pawns[7 - i] * connected_pawns_adv;
+						connected_pawns_value -= connected_pawns[7 - row] * connected_pawns_adv;
 					}
 				}
 			}
@@ -3498,11 +3398,11 @@ float Board::get_attacks_and_defenses() const
 	int black_attacks_eval = 0;
 
 	// Valeur max de défense
-	int max_defense = 10;
+	constexpr int max_defense = 10;
 
 	// Malus pour les pièces non-défendues (pions, cavaliers, fous, tours, dames, rois)
 	//int undefended_malus[6] = { 0, 20, 8, 10, 5, 0 };
-	int undefended_malus[6] = { 0, 0, 0, 0, 0, 0 };
+	constexpr int undefended_malus[6] = { 0, 0, 0, 0, 0, 0 };
 
 	// TESTS
 	//rnbqkbnr/ppp2ppp/4p3/3p4/3P4/2N5/PPP1PPPP/R1BQKBNR w KQkq - 0 3
@@ -3565,9 +3465,9 @@ int Board::get_kings_opposition() {
 	update_kings_pos();
 
 	// Les rois sont-ils opposés?
-	const int di = abs(_white_king_pos.row - _black_king_pos.row);
-	const int dj = abs(_white_king_pos.col - _black_king_pos.col);
-	if (!((di == 0 || di == 2) && (dj == 0 || dj == 2)))
+	const int d_row = abs(_white_king_pos.row - _black_king_pos.row);
+	const int d_col = abs(_white_king_pos.col - _black_king_pos.col);
+	if (!((d_row == 0 || d_row == 2) && (d_col == 0 || d_col == 2)))
 		return 0;
 
 	// S'ils sont opposés, le joueur qui a l'opposition, est celui qui n'a pas le trait
@@ -3630,9 +3530,9 @@ int Board::material_difference() const
 	int w_material[6] = { 0, 0, 0, 0, 0, 0 };
 	int b_material[6] = { 0, 0, 0, 0, 0, 0 };
 
-	for (int i = 0; i < 8; i++) {
-		for (int j = 0; j < 8; j++) {
-			const int p = _array[i][j];
+	for (uint_fast8_t row = 0; row < 8; row++) {
+		for (uint_fast8_t col = 0; col < 8; col++) {
+			const uint_fast8_t p = _array[row][col];
 			if (p > 0) {
 				if (p < 6)
 					w_material[p]++;
@@ -3644,7 +3544,7 @@ int Board::material_difference() const
 		}
 	}
 
-	for (int i = 0; i < 6; i++) {
+	for (uint_fast8_t i = 0; i < 6; i++) {
 		main_GUI._missing_w_material[i] = max(0, main_GUI._base_material[i] - w_material[i]);
 		main_GUI._missing_b_material[i] = max(0, main_GUI._base_material[i] - b_material[i]);
 	}
@@ -3825,121 +3725,64 @@ float uct(const float win_chance, const float c, const int nodes_parent, const i
 	return win_chance + c * static_cast<float>(sqrt(log(nodes_parent) / nodes_child));
 }
 
-// Fonction qui fait un tri rapide des coups (en plaçant les captures en premier)
-// TODO : à faire lors de la génération de coups?
 bool Board::sort_moves() {
-
-	// Si le tri a déjà été fait
 	if (_sorted_moves)
 		return false;
 
-	// Captures, promotions.. échecs?
-	// TODO : ajouter les échecs? les mats?
-	// TODO : faire en fonction de la pièce qui prend?
+	if (!_moves_flags_assigned) {
+		assign_all_move_flags();
+	}
 
-	// Liste des valeurs de chaque coup
-	int *moves_values = new int[_got_moves];
+	// Piece values (static is fine here, could also be constexpr)
+	static const int piece_values[13] = { 0, 100, 320, 330, 500, 900, 10000, 100, 320, 330, 500, 900, 10000 };
 
-	//cout << "test0.2" << endl;
+	// Vector of pairs: (Move, score)
+	std::vector<std::pair<Move, int>> scored_moves;
+	scored_moves.reserve(_got_moves);
 
-	// Valeurs assignées
+	for (int i = 0; i < _got_moves; ++i) {
+		const Move& move = _moves[i];
+		int from = _array[move.start_row][move.start_col];
+		int to = _array[move.end_row][move.end_col];
 
-	// Prises
-	static const int captures_values[13] = { 0, 100, 300, 300, 500, 900, 10000, 100, 300, 300, 500, 900, 10000 }; // rien,   |pion, cavalier, fou, tour, dame, roi| (blancs, puis noirs)
+		int score = 0;
 
-	// Promotions
-	static constexpr int promotion_value = 500;
-
-	// Valeur des pièces en jeu
-
-	// Pour chaque coup
-	for (int i = 0; i < _got_moves; i++) {
-
-		// Constantes pour éviter les accès mémoire
-		const Move move = _moves[i];
-		const int piece = _array[move.start_row][move.start_col];
-
-		// Prise
-		const int captured_value = captures_values[_array[move.end_row][move.end_col]];
-
-		// Valeur de la pièce qui prend
-		const int capturer_value = captures_values[piece];
-
-		// Valeur du coup
-		//int move_value = captured_value == 0 ? 0 : captured_value / capturer_value;
-
-		// Alternative plus précise
-		int move_value = 0;
-		if (captured_value != 0) {
-			move_value = captured_value - capturer_value;
-			move_value += (move_value < 0 && is_controlled(move.end_row, move.end_col, _player)) ? move_value : 10000;
-		}
+		// MVV-LVA
+		if (to != 0)
+			score += 10 * piece_values[to] - piece_values[from];
 
 		// Promotion
-		// Blancs
-		move_value += (piece == w_pawn && move.end_row == 7) * promotion_value;
+		if (move.is_promotion)
+			score += 800;
 
-		// Noirs
-		move_value += (piece == b_pawn && move.end_row == 0) * promotion_value;
+		// Checkmate
+		if (move.is_checkmate)
+			score += 10000;
 
-		// Assignation de la valeur
-		moves_values[i] = move_value;
+		// Check
+		else if (move.is_check)
+			score += 1000;
 
-		//cout << move_label(move) << " : " << move_value << endl;
+		//cout << "Move: " << move_label(move) << " | Score: " << score << endl;
+
+		scored_moves.emplace_back(move, score);
 	}
 
-	//print_array(moves_values, _got_moves);
+	// Sort by descending score
+	std::sort(scored_moves.begin(), scored_moves.end(),
+		[](const std::pair<Move, int>& a, const std::pair<Move, int>& b) {
+			return a.second > b.second;
+		});
 
-
-	//print_array(moves_values, _got_moves);
-
-	// Plus lent??
-
-	//// Paires (coups, valeurs)
-	//vector<pair<Move, int>> pairs;
-	//for (int i = 0; i < _got_moves; i++)
-	//	pairs.emplace_back(_moves[i], moves_values[i]);
-
-	//// Trie les paires par ordre décroissant de valeur
-	//sort(pairs.begin(), pairs.end(), [](const auto& a, const auto& b) { return a.second > b.second; });
-
-	//// Update the original key and value lists
-	//for (int i = 0; i < _got_moves; i++)
-	//	_moves[i] = pairs[i].first;
-
-	//// Suppression des tableaux
-	//delete[] moves_values;
-
-
-	// Construction des nouveaux coups
-
-	// Liste des index des coups triés par ordre décroissant de valeur
-	const auto moves_indexes = new int[_got_moves];
-
-	for (int i = 0; i < _got_moves; i++) {
-		const int max_ind = max_index(moves_values, _got_moves);
-		moves_indexes[i] = max_ind;
-		moves_values[max_ind] = -INT_MAX;
+	// Overwrite _moves with sorted results
+	for (int i = 0; i < _got_moves; ++i) {
+		_moves[i] = scored_moves[i].first;
 	}
-
-	//print_array(moves_indexes, _got_moves);
-
-	// Génération de la liste de coups de façon ordonnée
-	Move* new_moves = new Move[_got_moves];
-	copy(_moves, _moves + _got_moves, new_moves);
-
-	for (int i = 0; i < _got_moves; i++)
-		_moves[i] = new_moves[moves_indexes[i]];
-
-	// Suppression des tableaux
-	delete[] moves_values;
-	delete[] new_moves;
-	delete[] moves_indexes;
 
 	_sorted_moves = true;
-
 	return true;
 }
+
 
 // Fonction qui fait cliquer le coup m
 bool Board::click_m_move(const Move m, const bool orientation) const
@@ -4552,6 +4395,9 @@ int Board::get_checks_value(Map white_controls, Map black_controls, bool color)
 	if (b.in_check()) // FIXME?
 		return 0;
 
+
+	// FIXME *** pourquoi on utilise un autre plateau ici?
+	// + utiliser les flags des coups pour savoir si ça fait échec
 	b._player = color;
 	b.get_moves();
 
@@ -4661,8 +4507,9 @@ int Board::get_checks_value(Map white_controls, Map black_controls, bool color)
 	get_moves(true);
 
 	for (uint_fast8_t i = 0; i < _got_moves; i++) {
+		Move m = _moves[i];
 		Board b(*this);
-		b.make_index_move(i);
+		b.make_move(m);
 		nodes += b.moves_generation_benchmark(depth - 1, false);
 	}
 
@@ -5557,6 +5404,8 @@ int Board::get_weak_squares(bool color, bool around_king) {
 	// 2r5/pp6/3pkp2/2p1p1p1/2P3Pp/3PPP1P/PP2K3/2R5 w - - 0 1 : beaucoup de cases faibles, mais aucune utilisable...
 	// r1bq1rk1/pp1n1ppp/2pbpn2/3p4/3P4/2NBPN2/PPP2PPP/R1BQ1RK1 w - - 4 9 : pas vraiment de case faible...
 
+	// r1bqkbnr/5ppp/p1np4/4p3/1p2P3/N1N5/PPP1BPPP/R1BQK2R w KQkq - 0 9 : ici après Cd5 puis après bxa3...?
+
 	//https://chessmood.com/blog/weak-squares-in-chess
 
 	bool display = false;
@@ -5592,13 +5441,13 @@ int Board::get_weak_squares(bool color, bool around_king) {
 	constexpr static int king_outpost_square[3] = { 45, 30, 15 };
 
 	// Valeur des outposts (pion, cavalier, fou, tour, dame, roi)
-	constexpr static float outpost_values[6] = { 0.0f, 2.0f, 0.85f, 0.5f, 0.35f, 0.24f };
+	constexpr static float outpost_values[6] = { 0.0f, 1.45f, 0.65f, 0.5f, 0.35f, 0.24f };
 
 	// Si c'est simplement une case "sécurisée", mais pas faible à proprement parler
 	constexpr static float safe_square_bonus = 0.3f;
 
 	// Bonus s'il y a un pion adverse juste devant
-	constexpr static float blocked_pawn_bonus = 1.65f;
+	constexpr static float blocked_pawn_bonus = 1.55f;
 
 
 	// Valeur des cases faibles
@@ -9058,9 +8907,13 @@ float get_average_score(WDL wdl, float draw_score) {
 // Fonction qui renvoie le score d'un WDL avec une précision de 0.01
 string score_string(float avg_score) {
 	//float score = get_average_score(wdl, draw_score);
-	stringstream stream;
-	stream << fixed << setprecision(3) << avg_score;
-	return stream.str();
+	//stringstream stream;
+	//stream << fixed << setprecision(3) << avg_score;
+	//return stream.str();
+
+	char buffer[32];
+	int len = snprintf(buffer, sizeof(buffer), "%.3f", avg_score);
+	return std::string(buffer, len);
 }
 
 // Fonction qui inverse les couleurs des joueurs (y compris le trait et les roques)
@@ -9083,6 +8936,8 @@ void Board::switch_colors() {
 	_castling_rights.q_w = b_queen_castling;
 
 	_got_moves = -1;
+	_moves_flags_assigned = false;
+	_sorted_moves = false;
 
 	// TODO
 
@@ -10319,33 +10174,76 @@ int Board::get_quietness() const {
 		Move move = _moves[m];
 
 		// Si c'est une capture
-		if (_array[move.end_row][move.end_col] != none) {
-			captures++;
-		}
-
-		// Attention ! En passant est aussi une capture
-		else if (is_pawn(_array[move.start_row][move.start_col]) && move.start_col != move.end_col) {
+		if (move.is_capture) {
 			captures++;
 		}
 
 		// Si c'est une promotion
-		else if ((_array[move.start_row][move.start_col] == w_pawn && move.end_row == 7) || (_array[move.start_row][move.start_col] == b_pawn && move.end_row == 0)) {
+		else if (move.is_promotion) {
 			promotions++;
 		}
 
-
-		else {
-
-			// Si le coup met en échec
-			Board b(*this);
-			b.make_move(move);
-			if (b.in_check()) {
-				checks++;
-			}
+		// Si c'est un échec
+		else if (move.is_check) {
+			checks++;
 		}
 	}
 
 	int quietness = captures + checks + promotions;
 
 	return quietness;
+}
+
+// Fonction qui assigne les flags aux coups possibles
+void Board::assign_all_move_flags() {
+
+	if (_moves_flags_assigned) {
+		return; // Les flags ont déjà été assignés
+	}
+
+	for (uint_fast8_t m = 0; m < _got_moves; m++) {
+		Move& move = _moves[m];
+		assign_move_flags(&move);
+	}
+
+	// On a assigné les flags
+	_moves_flags_assigned = true;
+}
+
+// Fonction qui change le trait du joueur
+void Board::switch_trait() {
+	_player = !_player;
+	_evaluated = false;
+	_got_moves = -1;
+	_moves_flags_assigned = false;
+	_sorted_moves = false;
+	_game_over_checked = false;
+}
+
+// Fonction qui assigne les flags à un coup donné
+void Board::assign_move_flags(Move *move) const {
+
+	// Si c'est une promotion
+	if ((_array[move->start_row][move->start_col] == w_pawn && move->end_row == 7) || (_array[move->start_row][move->start_col] == b_pawn && move->end_row == 0)) {
+		move->is_promotion = true;
+	}
+
+	// Capture (en passant possible aussi)
+	if (_array[move->end_row][move->end_col] != none || (is_pawn(_array[move->start_row][move->start_col]) && move->start_col != move->end_col)) {
+		move->is_capture = true;
+	}
+
+	// Si le coup met en échec
+	Board b(*this);
+	b.make_move(*move);
+
+	// Echec
+	move->is_check = b.in_check();
+
+	// Mat
+	b.is_game_over();
+	move->is_checkmate = (b._game_over_value == white_win && _player) || (b._game_over_value == black_win && !_player);
+
+	// Fin de partie
+	move->game_result = b._game_over_value;
 }
