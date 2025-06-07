@@ -708,7 +708,37 @@ Gros ajouts:
 - Pions candidats passés / Avancée des pions en finales / Majorités de pions: 8/1p2bk1p/4p1p1/PPrpP3/5P2/3K4/3B2PP/R7 w - - 1 27 (a6 gagne) (les cases sont aussi protégées par la tour en a1)
 - Roi en face du pion adverse en finale -> draw
 - Bon tri des coups! r1bqr1k1/1pp2p2/p3p1BQ/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 5 27 : ici, il faut regarder les menaces en premier! Dh7+ #2
+- Finir la quiescence avec d'autres optimisations, et vérfier que les positions de fin sont toujours quiet. et ne regarder que les prises vraiment intéressantes?
+- Prendre en compte les fourchettes dans l'évaluation: r4rk1/ppp2ppp/2nq1b2/2np4/2P5/2NBQ2P/PP1B1PP1/R3R1K1 b - - 2 1. Fourchette sur pièce non défendues, ou SEE positif
+- Quand on est en réflexion sur un coup un peu pourri, peut-être diminuer la quiescence depth, car ça prend beaucoup de temps pour pas grand chose...
+- Winnable pour les finales asymétriques (fou contre cavalier, ou pièce mineure et pion vs tour...)
+- Si y'a pas de plan -> plutôt draw? ou au moins winnable--?
 
+
+Quiescence:
+3rr1k1/1p1b1pnp/pqpPn1p1/8/8/1PQ2N2/PBB2PP1/3RR1K1 w - - 0 1 : ici faut voir qu'après Txe6 y'a une menace de mat en 1... comment anticiper ça? en triant les coups?
+r4rk1/pppq1ppp/2n2n2/3P4/1bQ5/2N2N2/PP3PPP/R1B2RK1 b - - 0 13 : ici??
+r4rk1/ppp2ppp/2nq1b2/2n5/2Pp4/2NBQ2P/PP1B1PP1/R3R1K1 w - - 0 16 : ..........
+4rrk1/1p1b1p2/2np1P1Q/p1q3p1/2PpP3/PP1P3P/5RBb/4BR1K b - - 2 31 : ??? problème de tri des coups? le mat devrait TOUJOURS être en premier!
+4rrk1/1p1b1p2/2np1P1Q/p1q3p1/2PpP3/PP1P3P/5RBb/4BR1K b - - 2 31 : mat imparable
+2rqr1k1/pNbnnpp1/2p1p1p1/P2pP3/Q2P4/B1P4P/4BPP1/RR4K1 b - - 6 2 : dame en prise...
+TEST: mettre la beta margin seulement s'il y a une grosse menace détectée? -> et grandir le margin en fonction de la taille de la menace? DONE
+TEST: quiescence moins profonde pour les coups pourris: DONE
+r1bqr1k1/1pp2p1Q/p3p1B1/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 b - - 6 27 : il regarde Rf8 puis Fxf7 et s'arrête...? -> Si tri des coups, ça devrait aller...
+Vérifier que les move sounds fonctionnent
+Faire du cleaning grâce à l'implémentation des flags pour les coups
+Cleaning global rapide en utilisant toutes les nouvelles implémentations
+Optimisation du quiescence
+
+r7/6pk/2P1P1qp/3Q4/8/6P1/4R1K1/8 b - - 0 51 : De4 gagne facile
+r1b1kb1r/ppp2ppp/3q1n2/4p3/3N4/2N5/PPP1BPPP/R1BQR1K1 b kq - 0 9 : Dxd4 puis dxd4 pendant la réflexion -> mauvais son utilisé (coup normal au lieu de prise...): DONE
+
+FIX: certaines positions sont évaluées plusieurs fois?...
+2rqr1k1/pNbnnpp1/2p1p1p1/P2pP3/Q2P4/B1P4P/4BPP1/RR4K1 b - - 6 22 : RE bug!!! : DONE
+En plus ça prend des places dans le buffer... MAUVAIS!!!! FIIIIIXX
+
+r1bqkbnr/5ppp/p1np4/3Np3/4P3/p7/PPP1BPPP/R1BQ1RK1 b kq - 1 10 : weak squares exagérés... pas +250 pour ça...
+r1bqkbnr/5ppp/p1np4/1p2p3/4P3/N1N5/PPP1BPPP/R1BQK2R b KQkq - 1 8 : b4 gagne! c'est une fourchette de cavaliers
 
 Notation des coups:
 Cb8d2 -> Cbd2 DONE
@@ -716,7 +746,16 @@ Roque + échec: O-O+ DONE
 
 Parfois, une pièce qui bloque la colonne (genre un cavalier protégé), ça peut rendre pour l'adversaire la colonne quasi mauvaise
 
+1r1k4/q2p1p2/3b1Pr1/8/4P2P/6P1/PPP1N3/R1Q1KR2 b Q - 0 27 : Fxg3+ gagne!
+3k4/3p1p2/5P2/8/4P2P/4q3/PQP3r1/R2K1R2 b - - 2 32 : ?? c'est mat en 1 pour les noirs!!
+r3kbnr/pp3ppp/2n1p3/2ppPb2/2PP4/1Q2BN2/P3BPPP/qN3RK1 w kq - 2 10 : trop lent pour calculer dans ce genre de positions! il n'évalue que très peu de coups
+8/7k/8/7K/7P/7P/8/8 b - - 8 131 : ça c'est une nulle...
+6R1/8/5kp1/5b1p/7P/5PKP/8/8 w - - 12 56 : faut toujours monter le roi... f4 est une grosse erreur ici!
+8/7k/6R1/6Kp/5p1P/7P/4b3/8 w - - 2 79 : Td6 seul coup qui gagne
+8/5k2/1R4p1/7p/4bP1P/6KP/8/8 w - - 11 62 : faut garder le roi adverse loin pour gagner
+r4rk1/pppq1ppp/2n1pn2/8/1bQPP3/2N2N2/PP3PPP/R1B2RK1 w - - 1 12 : d5! gagne
 
+r1bqr1k1/1pp2ppp/2p2bn1/p7/3PP3/4BN1P/PPQN1PP1/R3R1K1 w - - 0 15 : ici la tour a est en fait mieux en d1 que c1 (malgré la colonne semi ouverte c). Car en face de la dame, et prépare les poussées au centre
 r6r/1p1k3p/p2p1npb/4p3/4P3/4NP2/PPP1K1PP/R1B4R w - - 2 17 : l'avantage du pion est suffisant pour les blancs de gagner
 8/5pk1/p3p1p1/Pp5p/1P1R3P/5bP1/7K/8 w - - 0 59 : gagnant pour les blancs! (fou avec les mauvais pions), mais qualité d'avance, et a6 va tomber
 8/5p2/PR2pk2/1p5p/1Pb4P/8/7K/8 w - - 1 64 : gagnant aux blancs!! évaluation du roi bof

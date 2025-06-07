@@ -341,8 +341,55 @@ string long_int_to_round_string(const unsigned long long k)
 }
 
 // Fonction qui transforme un clock en string (pour les timestamps dans les PGN)
-string clock_to_string(const clock_t t, bool full)
-{
+//string clock_to_string(const clock_t t, bool full)
+//{
+//	double elapsed_seconds = static_cast<double>(t) / CLOCKS_PER_SEC;
+//
+//	int days = static_cast<int>(elapsed_seconds) / (24 * 3600);
+//	elapsed_seconds -= days * 24 * 3600;
+//
+//	int hours = static_cast<int>(elapsed_seconds) / 3600;
+//	elapsed_seconds -= hours * 3600;
+//
+//	int minutes = static_cast<int>(elapsed_seconds) / 60;
+//	double seconds = elapsed_seconds - (minutes * 60);
+//
+//	ostringstream oss;
+//	oss << fixed << setprecision(3);
+//
+//	if (full) {
+//		if (days > 0) {
+//			oss << days << "d " << hours << "h " << minutes << "min " << setw(2) << setfill('0') << setprecision(0) << seconds << "s";
+//		}
+//		else if (hours > 0) {
+//			oss << hours << "h " << minutes << "min " << setw(2) << setfill('0') << setprecision(0) << seconds << "s";
+//		}
+//		else if (minutes > 0) {
+//			oss << minutes << "min " << setw(2) << setfill('0') << setprecision(0) << seconds << "s";
+//		}
+//		else {
+//			oss << setprecision(3) << seconds << "s";
+//		}
+//	}
+//	else {
+//		if (days > 0) {
+//			oss << days << ":" << setw(2) << setfill('0') << hours << ":" << setw(2) << setfill('0') << minutes << ":" << setw(2) << setfill('0') << setprecision(0) << seconds;
+//		}
+//		else if (hours > 0) {
+//			oss << hours << ":" << setw(2) << setfill('0') << minutes << ":" << setw(2) << setfill('0') << setprecision(0) << seconds;
+//		}
+//		else if (minutes > 0) {
+//			oss << minutes << ":" << setw(2) << setfill('0') << setprecision(0) << seconds;
+//		}
+//		else {
+//			oss << setw(2) << setfill('0') << setprecision(3) << seconds;
+//		}
+//	}
+//
+//	return oss.str();
+//}
+
+string clock_to_string(const clock_t t, bool full) {
 	double elapsed_seconds = static_cast<double>(t) / CLOCKS_PER_SEC;
 
 	int days = static_cast<int>(elapsed_seconds) / (24 * 3600);
@@ -354,39 +401,54 @@ string clock_to_string(const clock_t t, bool full)
 	int minutes = static_cast<int>(elapsed_seconds) / 60;
 	double seconds = elapsed_seconds - (minutes * 60);
 
-	ostringstream oss;
-	oss << fixed << setprecision(3);
+	// Un buffer suffisamment grand pour toutes les combinaisons possibles
+	// Exemple : "999d 23h 59min 59s" ou "99:59:59:59.999"
+	// Un char[64] est très sécuritaire.
+	char buffer[64];
+	int len;
 
 	if (full) {
 		if (days > 0) {
-			oss << days << "d " << hours << "h " << minutes << "min " << setw(2) << setfill('0') << setprecision(0) << seconds << "s";
+			len = std::snprintf(buffer, sizeof(buffer), "%dd %dh %dmin %02.0fs",
+				days, hours, minutes, seconds);
 		}
 		else if (hours > 0) {
-			oss << hours << "h " << minutes << "min " << setw(2) << setfill('0') << setprecision(0) << seconds << "s";
+			len = std::snprintf(buffer, sizeof(buffer), "%dh %dmin %02.0fs",
+				hours, minutes, seconds);
 		}
 		else if (minutes > 0) {
-			oss << minutes << "min " << setw(2) << setfill('0') << setprecision(0) << seconds << "s";
+			len = std::snprintf(buffer, sizeof(buffer), "%dmin %02.0fs",
+				minutes, seconds);
 		}
 		else {
-			oss << setprecision(3) << seconds << "s";
+			len = std::snprintf(buffer, sizeof(buffer), "%.3fs", seconds);
 		}
 	}
-	else {
+	else { // Format compact (ex: 1:23:45)
 		if (days > 0) {
-			oss << days << ":" << setw(2) << setfill('0') << hours << ":" << setw(2) << setfill('0') << minutes << ":" << setw(2) << setfill('0') << setprecision(0) << seconds;
+			len = std::snprintf(buffer, sizeof(buffer), "%d:%02d:%02d:%02.0f",
+				days, hours, minutes, seconds);
 		}
 		else if (hours > 0) {
-			oss << hours << ":" << setw(2) << setfill('0') << minutes << ":" << setw(2) << setfill('0') << setprecision(0) << seconds;
+			len = std::snprintf(buffer, sizeof(buffer), "%d:%02d:%02.0f",
+				hours, minutes, seconds);
 		}
 		else if (minutes > 0) {
-			oss << minutes << ":" << setw(2) << setfill('0') << setprecision(0) << seconds;
+			len = std::snprintf(buffer, sizeof(buffer), "%d:%02.0f",
+				minutes, seconds);
 		}
 		else {
-			oss << setw(2) << setfill('0') << setprecision(3) << seconds;
+			len = std::snprintf(buffer, sizeof(buffer), "%.3f", seconds);
 		}
 	}
 
-	return oss.str();
+	// Gérer le cas où snprintf échoue ou tronque (très rare avec un buffer suffisant)
+	if (len < 0 || len >= sizeof(buffer)) {
+		// Fallback ou gestion d'erreur, par exemple retourner une chaîne vide ou une erreur
+		return "ERROR";
+	}
+
+	return std::string(buffer, len);
 }
 
 // Fonction qui arrondit un flottant en entier

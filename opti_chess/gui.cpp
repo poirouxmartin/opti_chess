@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ranges"
+#include <unordered_map>
 
 // Fonction qui met à jour le temps des joueurs
 void GUI::update_time() {
@@ -475,7 +476,7 @@ void GUI::draw_arrow(const Move move, const bool player, Color c, float thicknes
 	}
 
 	// Ajoute la flèche au vecteur
-	_grogros_arrows.push_back(Move(start_row, start_col, end_row, end_col));
+	_grogros_arrows.push_back(move);
 
 	return;
 }
@@ -627,65 +628,56 @@ void GUI::switch_arrow_drawing() {
 
 // Fonction qui affiche un texte dans une zone donnée avec un slider
 void GUI::slider_text(const string& s, float pos_x, float pos_y, float width, float height, float size, float* slider_value, Color t_color, float slider_width, float slider_height) {
-	Rectangle rect_text = { pos_x, pos_y, width, height };
-	DrawRectangleRec(rect_text, _background_text_color);
+
+	// FIXME *** test: si rien a changé dans le texte et les dimensions, on pourrait stocker ce texte, non?
+
+	// Dessine le canvas, rectangle
+	DrawRectangleRec({ pos_x, pos_y, width, height }, _background_text_color);
 
 	// Taille des sliders
 	if (slider_width == -1.0f)
-		slider_width = _screen_width / static_cast<float>(100);
+		slider_width = _screen_width / 100.0f;
 
 	if (slider_height == -1.0f)
 		slider_height = height;
 
+	// Split le texte en parties égales
+
+	// Estimation du nombre de caractères par ligne
+	const Vector2 estimated_size = MeasureTextEx(_text_font, "A", size, _font_spacing * size);
+
+	int split_length = static_cast<int>(width / estimated_size.x);
+	int margin = split_length * 1.2f; // Pour forcer le split
 	string new_string;
-	float new_width = width - slider_width;
+	int rows = 0;
+	int k = 0;
 
-	// Pour chaque bout de texte
-	stringstream ss(s);
-	string line;
-
-	// FIXME: il peut y avoir des boucles infinies ici
-	while (getline(ss, line, '\n')) {
-		// Taille horizontale du texte
-
-		// Split le texte en parties égales
-		if (float horizontal_text_size = MeasureTextEx(_text_font, line.c_str(), size, _font_spacing * size).x; horizontal_text_size > new_width) {
-			int split_length = line.length() * new_width / horizontal_text_size;
-			for (int i = split_length - 1; i < line.length() - 1; i += split_length) {
-				bool can_split = true;
-				while (line[i] != ' ') {
-					i--;
-					if (i <= 0) {
-						can_split = false;
-						cout << "FIXME: can't split text too tight!!" << endl;
-						break;
-					}
-				}
-
-				if (can_split)
-					line.insert(i, "\n");
-			}
+	for (int i = 0; i < s.length(); i++) {
+		if (s[i] == '\n' || (k >= split_length && s[i] == ' ') || k > margin) {
+			new_string += "\n";
+			k = 0;
+			rows++;
+			continue;
 		}
-
-		new_string += line + "\n";
+		new_string += s[i];
+		k++;
 	}
 
 	// Taille verticale totale du texte
 
+	// Estimation de la taille verticale d'une ligne
+	const float space_size = MeasureTextEx(_text_font, "\n", size, _font_spacing * size).y - estimated_size.y;
+
+	float text_height = estimated_size.y + space_size * rows;
+
 	// Si le texte prend plus de place verticalement que l'espace alloué
-	if (float vertical_text_size = MeasureTextEx(_text_font, new_string.c_str(), size, _font_spacing * size).y; vertical_text_size > height) {
-		int n_lines;
+	if (text_height > height) {
 
-		// Nombre de lignes total
-		int total_lines = 1;
-		for (int i = 0; i < new_string.length() - 1; i++) {
-			if (new_string.substr(i, 1) == "\n")
-				total_lines++;
-		}
+		// Nombre de lignes à afficher
+		int n_lines = 1 + (height - estimated_size.y) / space_size;
 
-		n_lines = total_lines * height / MeasureTextEx(_text_font, new_string.c_str(), size, _font_spacing * size).y;
-
-		int starting_line = (total_lines - n_lines) * *slider_value;
+		// Numéro de ligne à laquelle commencer
+		int starting_line = (rows + 1 - n_lines) * *slider_value;
 
 		string final_text;
 		int current_line = 0;
@@ -703,7 +695,7 @@ void GUI::slider_text(const string& s, float pos_x, float pos_y, float width, fl
 		}
 
 		new_string = final_text;
-		slider_height = height / sqrtf(total_lines - n_lines + 1);
+		slider_height = height / sqrtf(rows - n_lines + 1);
 
 		// Background
 		Rectangle slider_background_rect = { pos_x + width - slider_width, pos_y, slider_width, height };
@@ -717,7 +709,7 @@ void GUI::slider_text(const string& s, float pos_x, float pos_y, float width, fl
 
 		// Avec la molette
 		if (is_cursor_in_rect({ pos_x, pos_y, width, height })) {
-			*slider_value -= GetMouseWheelMove() * GetFrameTime() * 100 / (total_lines - n_lines);
+			*slider_value -= GetMouseWheelMove() * GetFrameTime() * 100 / (rows - n_lines);
 			if (*slider_value < 0.0f)
 				*slider_value = 0.0f;
 			if (*slider_value > 1.0f)
@@ -865,8 +857,10 @@ void GUI::draw_simple_arrow_from_coord(const int i1, const int j1, const int i2,
 }
 
 // Joue un coup en gardant la réflexion de GrogrosZero
-bool GUI::play_move_keep(const Move move)
+bool GUI::play_move_keep(Move move)
 {
+	_board.assign_move_flags(&move);
+
 	// S'assure que le coup est légal
 	if (!_board.is_legal(move))
 		return false;
@@ -1568,7 +1562,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 	Node const* most_explored_child = _root_exploration_node->_children[most_explored_move];
 
-	map<Move, double> move_scores = _root_exploration_node->get_move_scores(_alpha, _beta);
+	unordered_map<Move, double> move_scores = _root_exploration_node->get_move_scores(_alpha, _beta);
 
 	double most_explored_score = -DBL_MAX;
 	double best_score = -DBL_MAX;
