@@ -111,6 +111,12 @@ typedef struct Move {
 	uint_fast8_t end_row : 3;
 	uint_fast8_t end_col : 3;
 
+	//uint8_t start_row;
+	//uint8_t start_col;
+	//uint8_t end_row;
+	//uint8_t end_col;
+
+
 	// TODO *** piece begin, piece end?
 
 	//Pos init; utiliser ça?
@@ -238,9 +244,9 @@ struct Map
 
 	// Constructeurs
 	Map() {
-		for (uint_fast8_t i = 0; i < 8; i++) {
-			for (uint_fast8_t j = 0; j < 8; j++) {
-				_array[i][j] = 0;
+		for (uint_fast8_t row = 0; row < 8; row++) {
+			for (uint_fast8_t col = 0; col < 8; col++) {
+				_array[row][col] = 0;
 			}
 		}
 	}
@@ -250,9 +256,9 @@ struct Map
 	// Soustraction
 	Map operator- (const Map& other) const {
 		Map result;
-		for (int i = 0; i < 8; i++) {
-			for (int j = 0; j < 8; j++) {
-				result._array[i][j] = _array[i][j] - other._array[i][j];
+		for (int row = 0; row < 8; row++) {
+			for (int col = 0; col < 8; col++) {
+				result._array[row][col] = _array[row][col] - other._array[row][col];
 			}
 		}
 		return result;
@@ -264,9 +270,9 @@ struct Map
 	// Affichage de façon alignée
 	void print() const {
 		cout << "Map : " << endl;
-		for (int i = 7; i >= 0; i--) {
-			for (int j = 0; j < 8; j++) {
-				cout << setw(3) << _array[i][j] << " ";
+		for (int row = 7; row >= 0; row--) {
+			for (int col = 0; col < 8; col++) {
+				cout << setw(3) << _array[row][col] << " ";
 			}
 			cout << endl;
 		}
