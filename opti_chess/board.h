@@ -99,64 +99,79 @@ static bool is_sliding(uint_fast8_t piece) {
 	return is_bishop(piece) || is_rook(piece) || is_queen(piece);
 }
 
-// Coup (défini par ses coordonnées)
-// TODO : l'utiliser !!
-// Utilise 2 bytes (16 bits)
-// On peut utiliser 2 bits en plus, car on en utilise seulement 14 là (promotion flag -> sur 4 bits, et on retire capture flag?) (castling flag * 2? en passant?)
-// check flag?
-// TODO : Faut-il mettre la pièce concérnée? ça éviterait de devoir la rechercher dans le plateau (coûteux)
-typedef struct Move {
+// TODO *** il reste 1 bit de libre, à utiliser pour un flag supplémentaire si besoin
+enum MoveFlags : uint8_t {
+	IS_NULL = 1 << 0,
+	IS_CAPTURE = 1 << 1,
+	IS_PROMOTION = 1 << 2,
+	IS_CHECK = 1 << 3,
+	IS_MATE = 1 << 4,
+	RESULT_MASK = 0b1100000,
+	FLAGS_EVALUATED = 1 << 7
+};
+
+struct Move {
 	uint_fast8_t start_row : 3;
 	uint_fast8_t start_col : 3;
 	uint_fast8_t end_row : 3;
 	uint_fast8_t end_col : 3;
+	uint_fast8_t flags;
 
-	//uint8_t start_row;
-	//uint8_t start_col;
-	//uint8_t end_row;
-	//uint8_t end_col;
+	// --- Flag Accessors ---
+	inline bool is_null() const { return flags & IS_NULL; }
+	inline bool is_capture() const { return flags & IS_CAPTURE; }
+	inline bool is_promotion() const { return flags & IS_PROMOTION; }
+	inline bool is_check() const { return flags & IS_CHECK; }
+	inline bool is_checkmate() const { return flags & IS_MATE; }
+	inline bool has_flags() const { return flags & FLAGS_EVALUATED; }
 
+	inline uint8_t game_result() const { return (flags & RESULT_MASK) >> 5; }
 
-	// TODO *** piece begin, piece end?
-
-	//Pos init; utiliser ça?
-	bool is_null : 1;
-
-	// Flags
-	bool is_capture : 1;
-	bool is_promotion : 1;
-	bool is_check : 1;
-	bool is_checkmate : 1;
-
-	// FIXME *** 20 bits sont utilisés sur les 24 disponibles
-
-	uint_fast8_t game_result : 2; // 0 = pas fini, 1 = victoire blanche, 2 = draw, 3 = victoire noire
-
-	bool operator== (const Move& other) const {
-		return (start_row == other.start_row) && (start_col == other.start_col) && (end_row == other.end_row) && (end_col == other.end_col);
+	inline void set_game_result(uint8_t result) {
+		flags = (flags & ~RESULT_MASK) | ((result & 0b11) << 5);
 	}
 
-	// Il faut pouvoir trier les coups dans un dictionnaire
-	bool operator<(const Move& other) const {
+	// --- Helpers ---
+	inline void set_flag(MoveFlags f) { flags |= f; }
+	inline void clear_flag(MoveFlags f) { flags &= ~f; }
+	inline bool has_flag(MoveFlags f) const { return flags & f; }
+
+	inline void set_result(uint8_t result) {
+		flags = (flags & ~RESULT_MASK) | ((result & 0x03) << 5);
+	}
+
+	inline uint8_t get_result() const {
+		return (flags & RESULT_MASK) >> 5;
+	}
+
+	// --- Comparisons ---
+	inline bool operator==(const Move& other) const {
+		return start_row == other.start_row &&
+			start_col == other.start_col &&
+			end_row == other.end_row &&
+			end_col == other.end_col;
+	}
+
+	inline bool operator<(const Move& other) const {
 		if (start_row != other.start_row) return start_row < other.start_row;
 		if (start_col != other.start_col) return start_col < other.start_col;
-		if (end_row != other.end_row) return end_row < other.end_row;
+		if (end_row != other.end_row)   return end_row < other.end_row;
 		return end_col < other.end_col;
-	}
-
-	void display() const
-	{
-		cout << "(" << static_cast<int>(start_row) << ", " << static_cast<int>(start_col) << ") -> (" << static_cast<int>(end_row) << ", " << static_cast<int>(end_col) << ")" << endl;
-	}
-
-	string to_string() const
-	{
-		return "(" + std::to_string(start_row) + ", " + std::to_string(start_col) + ") -> (" + std::to_string(end_row) + ", " + std::to_string(end_col) + ")";
 	}
 
 	// Renvoie si c'est un coup nul
 	bool is_null_move() const {
-		return (is_null || (start_row == 0 && start_col == 0 && end_row == 0 && end_col == 0));
+		return (is_null() || (start_row == 0 && start_col == 0 && end_row == 0 && end_col == 0));
+	}
+
+	// --- Display (debug only) ---
+	std::string to_string() const {
+		return "(" + std::to_string(start_row) + ", " + std::to_string(start_col) +
+			") -> (" + std::to_string(end_row) + ", " + std::to_string(end_col) + ")";
+	}
+
+	void display() const {
+		std::cout << to_string() << std::endl;
 	}
 };
 
@@ -332,7 +347,7 @@ public:
 	int_fast8_t _got_moves = -1;
 
 	// Les flags des coups ont-ils été assignés?
-	bool _moves_flags_assigned = false;
+	//bool _moves_flags_assigned = false;
 
 	// Les coups sont-ils triés?
 	bool _sorted_moves = false;
@@ -758,7 +773,7 @@ public:
 	[[nodiscard]] int get_queen_safety(bool color) const;
 
 	// Fonction qui renvoie à quel point une position est quiet ou non: renvoie le nombre de captures disponibles, d'échecs disponibles et de promotions disponibles
-	[[nodiscard]] int get_quietness() const;
+	[[nodiscard]] int get_quietness();
 
 	// Fonction qui assigne les flags aux coups possibles
 	void assign_all_move_flags();

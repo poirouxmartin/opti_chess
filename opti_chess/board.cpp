@@ -36,7 +36,7 @@ void Board::copy_data(const Board& b, bool full, bool copy_history) {
 	_got_moves = b._got_moves;
 	_player = b._player;
 	memcpy(_moves, b._moves, sizeof(_moves));
-	_moves_flags_assigned = b._moves_flags_assigned;
+	//_moves_flags_assigned = b._moves_flags_assigned;
 	_sorted_moves = b._sorted_moves;
 	_evaluation = b._evaluation;
 	_castling_rights = b._castling_rights;
@@ -621,7 +621,7 @@ void Board::make_move(Move move, const bool pgn, const bool new_board, const boo
 	_got_moves = -1;
 
 	// Les flags des coups sont réinitialisés
-	_moves_flags_assigned = false;
+	//_moves_flags_assigned = false;
 
 	// Les coups ne sont plus triés
 	_sorted_moves = false;
@@ -1528,9 +1528,7 @@ int Board::is_game_over(int max_repetitions) {
 // En passant manquant... échecs aussi, puis roques, promotions, mats/pats
 string Board::move_label(Move move, bool use_uft8)
 {
-	if (!_moves_flags_assigned) {
-		assign_move_flags(&move);
-	}
+	assign_move_flags(&move);
 
 	const uint_fast8_t start_row = move.start_row;
 	const uint_fast8_t start_col = move.start_col;
@@ -1587,7 +1585,7 @@ string Board::move_label(Move move, bool use_uft8)
 	}
 
 	// Prise (ou en passant)
-	if (move.is_capture) {
+	if (move.is_capture()) {
 		if (is_pawn(p1))
 			s += main_GUI._abc8[start_col];
 		s += "x";
@@ -1606,16 +1604,16 @@ string Board::move_label(Move move, bool use_uft8)
 		s += use_uft8 ? (_player ? main_GUI.Q_symbol : main_GUI.q_symbol) : "Q";
 	}
 
-	if (move.game_result == white_win)
+	if (move.game_result() == white_win)
 		return s + "# 1-0";
 
-	if (move.game_result == black_win)
+	if (move.game_result() == black_win)
 		return s + "# 0-1";
 
-	if (move.game_result == draw)
+	if (move.game_result() == draw)
 		return s + " 1/2-1/2";
 
-	if (move.is_check)
+	if (move.is_check())
 		s += "+";
 
 
@@ -1646,11 +1644,7 @@ void Board::draw_text_rect(const string& s, const float pos_x, const float pos_y
 // Fonction qui joue le son d'un coup
 void Board::play_move_sound(Move move) const
 {
-	//cout << "Assigned flags: " << _moves_flags_assigned << endl;
-
-	if (!_moves_flags_assigned) {
-		assign_move_flags(&move);
-	}
+	assign_move_flags(&move);
 
 	//cout << "Flags: " << move.is_capture << " " << move.is_check << " " << move.is_promotion << endl;
 
@@ -1664,12 +1658,12 @@ void Board::play_move_sound(Move move) const
 	const uint_fast8_t p2 = _array[k][l];
 
 	// Sons de fin de partie
-	if (move.game_result == draw)
+	if (move.game_result() == draw)
 		return PlaySound(main_GUI._stealmate_sound);
-	if (move.game_result != unterminated)
+	if (move.game_result() != unterminated)
 		return PlaySound(main_GUI._checkmate_sound);
 
-	if (move.is_check) {
+	if (move.is_check()) {
 		if (_player)
 			PlaySound(main_GUI._check_1_sound);
 		else
@@ -1679,11 +1673,11 @@ void Board::play_move_sound(Move move) const
 	// Si pas d'échecs
 	else {
 		// Promotions
-		if (move.is_promotion)
+		if (move.is_promotion())
 			return PlaySound(main_GUI._promotion_sound);
 
 		// Prises (ou en passant)
-		if (move.is_capture) {
+		if (move.is_capture()) {
 			if (_player)
 				return PlaySound(main_GUI._capture_1_sound);
 			else
@@ -1716,7 +1710,7 @@ void Board::reset_board(const bool display) {
 	_game_over_value = unterminated;
 	_static_evaluation = 0;
 	_evaluation = 0;
-	_moves_flags_assigned = false;
+	//_moves_flags_assigned = false;
 	_sorted_moves = false;
 	_zobrist_key = 0;
 	_uncertainty = 0.0f;
@@ -3729,10 +3723,6 @@ bool Board::sort_moves() {
 	if (_sorted_moves)
 		return false;
 
-	if (!_moves_flags_assigned) {
-		assign_all_move_flags();
-	}
-
 	// Piece values (static is fine here, could also be constexpr)
 	static const int piece_values[13] = { 0, 100, 320, 330, 500, 900, 10000, 100, 320, 330, 500, 900, 10000 };
 
@@ -3741,9 +3731,11 @@ bool Board::sort_moves() {
 	scored_moves.reserve(_got_moves);
 
 	for (int i = 0; i < _got_moves; ++i) {
-		const Move& move = _moves[i];
+		Move& move = _moves[i];
 		int from = _array[move.start_row][move.start_col];
 		int to = _array[move.end_row][move.end_col];
+
+		assign_move_flags(&move);
 
 		int score = 0;
 
@@ -3752,15 +3744,15 @@ bool Board::sort_moves() {
 			score += 10 * piece_values[to] - piece_values[from];
 
 		// Promotion
-		if (move.is_promotion)
+		if (move.is_promotion())
 			score += 800;
 
 		// Checkmate
-		if (move.is_checkmate)
+		if (move.is_checkmate())
 			score += 10000;
 
 		// Check
-		else if (move.is_check)
+		else if (move.is_check())
 			score += 1000;
 
 		//cout << "Move: " << move_label(move) << " | Score: " << score << endl;
@@ -4404,7 +4396,7 @@ int Board::get_checks_value(Map white_controls, Map black_controls, bool color)
 	for (uint_fast8_t i = 0; i < b._got_moves; i++) {
 		
 		// Coup
-		const Move move = b._moves[i];
+		const Move& move = b._moves[i];
 
 		// Case de destination du coup
 		const uint_fast8_t i2 = move.end_row;
@@ -4507,7 +4499,7 @@ int Board::get_checks_value(Map white_controls, Map black_controls, bool color)
 	get_moves(true);
 
 	for (uint_fast8_t i = 0; i < _got_moves; i++) {
-		Move m = _moves[i];
+		Move& m = _moves[i];
 		Board b(*this);
 		b.make_move(m);
 		nodes += b.moves_generation_benchmark(depth - 1, false);
@@ -8936,7 +8928,7 @@ void Board::switch_colors() {
 	_castling_rights.q_w = b_queen_castling;
 
 	_got_moves = -1;
-	_moves_flags_assigned = false;
+	//_moves_flags_assigned = false;
 	_sorted_moves = false;
 
 	// TODO
@@ -10110,7 +10102,7 @@ int Board::get_queen_safety(bool color) const {
 
 	// On regarde le nombre de coups qui attaquent la dame
 	for (uint_fast8_t m = 0; m < b._got_moves; m++) {
-		Move move = b._moves[m];
+		Move& move = b._moves[m];
 
 		// Joue le coup
 		Board b2(b);
@@ -10162,7 +10154,7 @@ int Board::get_queen_safety(bool color) const {
 }
 
 // Fonction qui renvoie à quel point une position est quiet ou non: renvoie le nombre de captures disponibles, d'échecs disponibles et de promotions disponibles
-int Board::get_quietness() const {
+int Board::get_quietness() {
 
 	int captures = 0;
 	int checks = 0;
@@ -10171,20 +10163,20 @@ int Board::get_quietness() const {
 	// On regarde chaque coup
 	for (uint_fast8_t m = 0; m < _got_moves; m++) {
 
-		Move move = _moves[m];
+		Move& move = _moves[m];
 
 		// Si c'est une capture
-		if (move.is_capture) {
+		if (move.is_capture()) {
 			captures++;
 		}
 
 		// Si c'est une promotion
-		else if (move.is_promotion) {
+		else if (move.is_promotion()) {
 			promotions++;
 		}
 
 		// Si c'est un échec
-		else if (move.is_check) {
+		else if (move.is_check()) {
 			checks++;
 		}
 	}
@@ -10197,17 +10189,17 @@ int Board::get_quietness() const {
 // Fonction qui assigne les flags aux coups possibles
 void Board::assign_all_move_flags() {
 
-	if (_moves_flags_assigned) {
-		return; // Les flags ont déjà été assignés
-	}
+	//if (_moves_flags_assigned) {
+	//	return; // Les flags ont déjà été assignés
+	//}
 
 	for (uint_fast8_t m = 0; m < _got_moves; m++) {
 		Move& move = _moves[m];
 		assign_move_flags(&move);
 	}
 
-	// On a assigné les flags
-	_moves_flags_assigned = true;
+	//// On a assigné les flags
+	//_moves_flags_assigned = true;
 }
 
 // Fonction qui change le trait du joueur
@@ -10215,35 +10207,53 @@ void Board::switch_trait() {
 	_player = !_player;
 	_evaluated = false;
 	_got_moves = -1;
-	_moves_flags_assigned = false;
+	//_moves_flags_assigned = false;
 	_sorted_moves = false;
 	_game_over_checked = false;
 }
 
 // Fonction qui assigne les flags à un coup donné
-void Board::assign_move_flags(Move *move) const {
+void Board::assign_move_flags(Move* move) const {
 
-	// Si c'est une promotion
-	if ((_array[move->start_row][move->start_col] == w_pawn && move->end_row == 7) || (_array[move->start_row][move->start_col] == b_pawn && move->end_row == 0)) {
-		move->is_promotion = true;
+	// Si les flags ont déjà été calculés
+	if (move->has_flags()) {
+		return;
 	}
 
-	// Capture (en passant possible aussi)
-	if (_array[move->end_row][move->end_col] != none || (is_pawn(_array[move->start_row][move->start_col]) && move->start_col != move->end_col)) {
-		move->is_capture = true;
+	move->flags = 0;  // Réinitialiser les flags
+
+	const uint_fast8_t piece = _array[move->start_row][move->start_col];
+	const uint_fast8_t dest = _array[move->end_row][move->end_col];
+
+	// Promotion
+	if ((piece == w_pawn && move->end_row == 7) ||
+		(piece == b_pawn && move->end_row == 0)) {
+		move->set_flag(IS_PROMOTION);
 	}
 
-	// Si le coup met en échec
+	// Capture normale ou en passant
+	if (dest != none || (is_pawn(piece) && move->start_col != move->end_col)) {
+		move->set_flag(IS_CAPTURE);
+	}
+
+	// Évaluation sur une copie
 	Board b(*this);
 	b.make_move(*move);
 
-	// Echec
-	move->is_check = b.in_check();
+	// Échec
+	if (b.in_check()) {
+		move->set_flag(IS_CHECK);
+	}
 
 	// Mat
 	b.is_game_over();
-	move->is_checkmate = (b._game_over_value == white_win && _player) || (b._game_over_value == black_win && !_player);
+	if ((b._game_over_value == white_win && _player) ||
+		(b._game_over_value == black_win && !_player)) {
+		move->set_flag(IS_MATE);
+	}
 
-	// Fin de partie
-	move->game_result = b._game_over_value;
+	// Résultat de la partie
+	move->set_result(static_cast<uint8_t>(b._game_over_value));
+
+	move->set_flag(FLAGS_EVALUATED);
 }
