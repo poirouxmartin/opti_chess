@@ -96,7 +96,7 @@ public:
 	//Move _move;
 
 	// Fils avec leur coup associé
-	map<Move, Node*> _children;
+	robin_map<Move, Node*> _children;
 
 	// Fils
 	//vector<Node*> _children;
