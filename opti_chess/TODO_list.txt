@@ -743,7 +743,7 @@ FIXXX
 ********
 
 
-
+Q7/8/8/1P2p3/6k1/1q3pP1/8/5QK1 b - - 0 63 : De3 draw
 r1bqkbnr/5ppp/p1np4/3Np3/4P3/p7/PPP1BPPP/R1BQ1RK1 b kq - 1 10 : weak squares exagérés... pas +250 pour ça...
 r1bqkbnr/5ppp/p1np4/1p2p3/4P3/N1N5/PPP1BPPP/R1BQK2R b KQkq - 1 8 : b4 gagne! c'est une fourchette de cavaliers
 
