@@ -518,36 +518,6 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 
 			std::ranges::sort(children_iterations.begin(), children_iterations.end());
 
-			// En cas d'égalité, on trie par évaluation
-			//vector<Move> children_moves;
-
-			//vector<pair<int, Move>> children_evaluations;
-
-			//int color = _board->get_color();
-
-			//children_evaluations.push_back(make_pair(-_children[children_iterations[0].second]->_deep_evaluation._value * color, children_iterations[0].second));
-
-			//for (int i = 1; i < children_count() + 1; i++) {
-
-			//	// Fin des égalités, on trie par évaluation
-			//	if (i == children_count() || children_iterations[i].first != children_iterations[i - 1].first) {
-			//		std::ranges::sort(children_evaluations.begin(), children_evaluations.end());
-			//		for (auto const& [eval, move] : children_evaluations) {
-			//			children_moves.push_back(move);
-			//		}
-
-			//		children_evaluations.clear();
-
-			//		// Enfant à trier
-			//		if (i < children_count()) {
-			//			children_evaluations.push_back(make_pair(-_children[children_iterations[i].second]->_deep_evaluation._value * color, children_iterations[i].second));
-			//		}
-			//	}
-			//	else {
-			//		children_evaluations.push_back(make_pair(-_children[children_iterations[i].second]->_deep_evaluation._value * color, children_iterations[i].second));
-			//	}
-			//}
-
 			for (auto const& [neg_child_iterations, move] : children_iterations) {
 				//const Move move = children_moves[i];
 				Node* child = _children[move];
@@ -1272,21 +1242,58 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 // Fonction qui renvoie le coup avec le meilleur score
 Move Node::get_best_score_move(const double alpha, const double beta, const bool consider_standpat, const int qdepth) {
 
+	int color = _board->get_color();
+
+	// Meilleure valeur d'évaluation
+	int max_eval = -INT_MAX;
+
+	// Meilleure chance de gagner
+	double max_avg_score = 0.0;
+
+	// Cherche la meilleure eval et le meilleure score parmi tous les coups possibles
+	for (auto const& [_, child] : _children) {
+		if (child->_deep_evaluation._value * color > max_eval) {
+			max_eval = child->_deep_evaluation._value * color;
+		}
+
+		if (_board->_player ? child->_deep_evaluation._avg_score > max_avg_score : 1 - child->_deep_evaluation._avg_score > max_avg_score) {
+			max_avg_score = _board->_player ? child->_deep_evaluation._avg_score : 1 - child->_deep_evaluation._avg_score;
+		}
+	}
+
+	if (consider_standpat) {
+		// Si le stand pat est meilleur que le meilleur coup
+		if (_deep_evaluation._value * color > max_eval) {
+			max_eval = _deep_evaluation._value * color;
+		}
+		if (_board->_player ? _deep_evaluation._avg_score > max_avg_score : 1 - _deep_evaluation._avg_score > max_avg_score) {
+			max_avg_score = _board->_player ? _deep_evaluation._avg_score : 1 - _deep_evaluation._avg_score;
+		}
+	}
+
+
 	// Meilleur coup
 	Move best_move = Move();
 	double best_score = -DBL_MAX;
 
-	// Scores des coups
-	robin_map<Move, double> move_scores = get_move_scores(alpha, beta, consider_standpat, qdepth);
+	if (consider_standpat) {
+		best_score = get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player);
+		best_move = Move();
+	}
 
-	// Regarde chaque coup
-	for (auto const& [move, score] : move_scores) {
+	for (auto const& [move, child] : _children) {
+		if (qdepth != -100 && child->_quiescence_depth != qdepth) {
+			continue;
+		}
+		double score = child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player);
 		//cout << "move: " << _board->move_label(move) << " | score: " << score << endl;
 		if (score > best_score || (best_move.is_null_move() && score == best_score)) {
 			best_score = score;
 			best_move = move;
 		}
 	}
+
+	//cout << "best move: " << _board->move_label(best_move) << " | best score: " << best_score << endl;
 
 	return best_move;
 }
