@@ -313,7 +313,6 @@ Q4bn1/2k1ppp1/p7/2q3p1/p5Pr/2N5/PP3P1P/2K4R w - - 2 21 : Td1!
 rn3rk1/1b1p1ppp/p1pP4/1pP5/P7/8/3B1PPP/1R1K1B1R w - - 0 18 : a5 gagne juste stratégiquement: les trois pièces noirs sur l'aile dame sont bloquées à vie
 1nb1k3/1r1p1ppp/p1pP4/PpP5/1B6/3B4/3K1PPP/8 w - - 0 26 : c'est gagnant pour les blancs
 1nb2k2/1r1p4/p1pP2p1/PpP5/1B6/4K3/5PPP/8 w - - 0 29 : toujours gagnant !
-c : ça devrait être évident que ça gagne
 1r3rk1/4bpp1/pn1p1n2/4p1Np/1Pb4P/R4B2/2QB1PP1/6K1 b - - 1 25 : c'est plutôt égal
 8/8/1Pp5/2P5/3K4/8/4k3/1r6 w - - 0 64 : c'est nulle
 8/1r6/2K5/2P5/8/4k3/8/8 b - - 0 69 : nulle

@@ -233,6 +233,12 @@ public:
 	// Fonction qui renvoie une valeur prévisionnelle du score du noeud, lorsqu'on ne connait pas les évaluations max (pour la quiecence)
 	int get_previsonal_node_score(const double alpha, const double beta, const bool player) const;
 
+	// Fonction qui évalue la menace en utilisant une quiesence sur le tour de l'adversaire
+	int evaluate_quiescence_threat(Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr) const;
+
+	// Quiescence minimale (sans stockage des noeuds)
+	int minimal_quiescence(Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr);
+
 	// Fonctions à rajouter: destruction des fils et de soi...
 
 	// Destructeur : TODO (supprimer tous les tableaux dynamiques...)

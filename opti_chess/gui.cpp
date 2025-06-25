@@ -708,7 +708,7 @@ void GUI::slider_text(const string& s, float pos_x, float pos_y, float width, fl
 
 		// Avec la molette
 		if (is_cursor_in_rect({ pos_x, pos_y, width, height })) {
-			*slider_value -= GetMouseWheelMove() * GetFrameTime() * 100 / (rows - n_lines);
+			*slider_value -= GetMouseWheelMove() * 3.0 / (rows - n_lines);
 			if (*slider_value < 0.0f)
 				*slider_value = 0.0f;
 			if (*slider_value > 1.0f)
@@ -1451,6 +1451,7 @@ void GUI::load_FEN(const string fen, bool display) {
 	_root_exploration_node->reset();
 	_root_exploration_node->_board = &_board;
 	_update_variants = true;
+	monte_buffer.reset();
 
 	if (display)
 		cout << "loaded FEN : " << fen << endl;
@@ -1469,6 +1470,7 @@ void GUI::reset_game() {
 	_root_exploration_node->reset();
 	_root_exploration_node->_board = &_board;
 	_update_variants = true;
+	monte_buffer.reset();
 
 	PlaySound(_game_begin_sound);
 
@@ -1665,7 +1667,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	//constexpr int supposed_ips = 1000;
 	//const int supposed_ips = max(750, _root_exploration_node->get_ips());
 
-	constexpr int average_nps = 1250; // Pour une position semi-complexe
+	constexpr int average_nps = 2500; // Pour une position semi-complexe
 	constexpr float consistent_factor = 0.5f; // Plus ce facteur est grand, plus le temps utilisé sera constant, quelle que soit la complexité de la position
 
 	const int actual_ips = _root_exploration_node->get_ips();

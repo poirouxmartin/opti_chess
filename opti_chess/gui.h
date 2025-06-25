@@ -198,7 +198,7 @@ public:
 	GameTree _game_tree = GameTree(_board);
 
 	// Nombre de FPS
-	int _max_fps = 120;
+	int _max_fps = 180;
 	int _target_fps = 60;
 	clock_t _last_drawing_time = 0;
 

@@ -222,6 +222,8 @@ void click_move(const int j1, const int i1, const int j2, const int i2, const in
 // Fonction qui récupère l'orientation du plateau. Renvoie 1 si les blancs sont en bas, 0 si c'est les noirs, -1 sinon
 int bind_board_orientation(const int x1, const int y1, const int x2, const int y2, ChessSite website) {
 
+	cout << "looking for " << website._name << " board orientation..." << endl;
+
 	// Taille d'une case
 	const float tile_size = static_cast<float>((x2 - x1)) / 8.0f;
 
@@ -250,7 +252,13 @@ int bind_board_orientation(const int x1, const int y1, const int x2, const int y
 	const BYTE* pixel_address = lp_pixels + pixel_offset * (my_bm_info.bmiHeader.biBitCount / 8);
 	const auto color = SimpleColor(static_cast<int>(pixel_address[2]), static_cast<int>(pixel_address[1]), static_cast<int>(pixel_address[0]));
 
-	return color.equals(website._white_piece_color, 0.98f) ? 1 : color.equals(website._black_piece_color, 0.98f) ? 0 : -1;
+	cout << "color of the piece: " << color._r << ", " << color._g << ", " << color._b << ", expected: " << website._white_piece_color._r << ", " << website._white_piece_color._g << ", " << website._white_piece_color._b << ", or " << website._black_piece_color._r << ", " << website._black_piece_color._g << ", " << website._black_piece_color._b << endl;
+
+	const int orientation = color.equals(website._white_piece_color, 0.95f) ? 1 : (color.equals(website._black_piece_color, 0.95f) ? 0 : -1);
+
+	cout << "board orientation: " << (orientation == 1 ? "white" : orientation == 0 ? "black" : "unknown") << endl << endl;
+
+	return orientation;
 }
 
 // Fonction qui cherche la position du plateau de chess.com sur l'écran
@@ -338,7 +346,7 @@ bool locate_chessboard(int& top_left_x, int& top_left_y, int& bottom_right_x, in
 
 	if (located) {
 
-		cout << website._name << " chessboard has been located:";
+		cout << website._name << " chessboard has been located: ";
 		printf("Top-Left: (%d, %d), ", top_left_x, top_left_y);
 		printf("Bottom-Right: (%d, %d)\n", bottom_right_x, bottom_right_y);
 	}
