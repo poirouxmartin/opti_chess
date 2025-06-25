@@ -37,19 +37,19 @@ public:
 	float _knight_activity = 0.75f;
 	float _short_term_piece_mobility = 0.05f;
 	float _long_term_piece_mobility = 0.13f;
-	float _queen_safety = 0.4f;
+	float _queen_safety = 1.0f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi), en position ouverte
-	int _pieces_value_begin_open[6] = { 90, 380, 430, 600, 1175, 0 };
+	int _pieces_value_begin_open[6] = { 90, 380, 430, 600, 1185, 0 };
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi), en position fermée
-	int _pieces_value_begin_closed[6] = { 90, 420, 410, 550, 1000, 0 };
+	int _pieces_value_begin_closed[6] = { 90, 420, 410, 550, 1100, 0 };
 
 	// Valeurs en fin de partie, en position ouverte
-	int _pieces_value_end_open[6] = { 95, 390, 440, 690, 1280, 0 };
+	int _pieces_value_end_open[6] = { 95, 390, 440, 690, 1350, 0 };
 
 	// Valeurs des pièces en fin de partie, en position fermée
-	int _pieces_value_end_closed[6] = { 95, 430, 410, 600, 1100, 0 };
+	int _pieces_value_end_closed[6] = { 95, 430, 410, 600, 1150, 0 };
 
 	// Positionnement des pièces
 

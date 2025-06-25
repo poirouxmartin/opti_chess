@@ -69,8 +69,6 @@ void Node::init_node() {
 	// Génère et trie les coups
 	_board->assign_all_move_flags();
 	_board->sort_moves();
-
-	return;
 }
 
 // Nouveau GrogrosZero
@@ -235,33 +233,7 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, double alpha, doubl
 	}
 
 	if (!child->_fully_explored) {
-
-		//r4rk1/ppp2ppp/2nq1b2/2np4/2P5/2NBQ2P/PP1B1PP1/R3R1K1 b - - 2 15 : ici faut jouer d4!!!
-
-		// Stand pat: quiescence du point de vue de l'adversaire (EXPERIMENTAL)
-		//bool experiment = false;
-
-		//int stand_pat_eval = 0;
-		//
-		//if (experiment) {
-		//	Board b(*child->_board);
-		//	b._player = !b._player;
-		//	Node* stand_pat = new Node(&b);
-		//	stand_pat_eval = stand_pat->quiescence(buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network) * stand_pat->_board->get_color();
-
-		//	// FIXME: prendre la meilleure eval pour standpat? (si la statique est meilleure?)
-		//	child->_deep_evaluation._value = stand_pat_eval;
-		//	child->_static_evaluation._value = stand_pat_eval;
-		//	child->_deep_evaluation._value = true;
-		//	child->_static_evaluation._value = true;
-		//}
-
-
-		//child->quiescence(buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network, experiment, stand_pat_eval);
 		child->quiescence(buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network);
-		//child->_board->evaluate(eval, false, nullptr, true);
-		//child->_nodes = 1;
-
 		child->_fully_explored = true;
 	}
 
@@ -466,7 +438,6 @@ void Node::explore_random_child(Buffer* buffer, Evaluator* eval, double alpha, d
 
 // Reset le noeud et ses enfants, et les supprime tous
 void Node::reset() {
-	//cout << "resetting node" << endl;
 	_latest_first_move_explored = -1;
 	_nodes = 0;
 	_iterations = 0;
@@ -480,16 +451,12 @@ void Node::reset() {
 	_static_evaluation.reset();
 	_deep_evaluation.reset();
 	_quiescence_depth = 0;
-	//cout << "resetting children" << endl;
 
 	for (auto const& [_, child] : _children) {
-		child->reset();
+		delete child;
 	}
 
-	//cout << "clearing children" << endl;
 	_children.clear();
-
-	//cout << "done" << endl;
 }
 
 // Fonction qui renvoie les variantes d'exploration
@@ -513,7 +480,7 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 			vector<pair<int, Move>> children_iterations;
 
 			for (auto const& [move, child] : _children) {
-				children_iterations.push_back(make_pair(-child->_chosen_iterations, move)); // On met un moins pour trier dans l'ordre décroissant
+				children_iterations.emplace_back(-child->_chosen_iterations, move); // On met un moins pour trier dans l'ordre décroissant
 			}
 
 			std::ranges::sort(children_iterations.begin(), children_iterations.end());
@@ -679,6 +646,7 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 	// - Standpat différent s'il y'a beaucoup de menaces adverses (voir test standpat = quiecsence adverse)
 	// - Emergency cutoff (si on est vraiment trop profond...)
 	// - Tri des captures: on regarde en priorité celles qui valent le plus le coup?
+	// - Ne pas regarder les mauvaises captures? à voir si ça casse pas tout...
 
 	//1nb2rk1/r4ppp/p4q2/2p2N2/8/2bB1Q2/PPP2PPP/3RK2R w K - 0 18 : quiescence pourrie ici
 	//r1b2rk1/1p1p2pp/p3p3/2P1p3/nR1K1P2/6B1/P5PP/5B1R w - - 0 3 : ici aussi
@@ -795,13 +763,20 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 		}
 		else {
 			// Fait une courte quiescence pour évaluer la menace
-			Board b(*_board);
-			b.switch_trait();
-			Node* stand_pat_node = new Node(&b);
-			stand_pat_node->quiescence(buffer, eval, 2, search_alpha, search_beta, -INT32_MAX, INT32_MAX, network, false);
 
-			// Marge correspondant à la valeur de la menace
-			int new_stand_pat = stand_pat_node->_deep_evaluation._value * color;
+			//int new_stand_pat = evaluate_quiescence_threat(eval, 2, search_alpha, search_beta, -INT32_MAX, INT32_MAX, network);
+
+			//Board b(*_board);
+			//b.switch_trait();
+			//Node* stand_pat_node = new Node(&b);
+			//stand_pat_node->quiescence(buffer, eval, 2, search_alpha, search_beta, -INT32_MAX, INT32_MAX, network, false);
+
+			//// Marge correspondant à la valeur de la menace
+			//int new_stand_pat = stand_pat_node->_deep_evaluation._value * color;
+
+			int new_stand_pat = -evaluate_quiescence_threat(eval, 2, search_alpha, search_beta, -INT32_MAX, INT32_MAX, network);
+
+			//cout << "new_stand_pat: " << new_stand_pat << ", test: " << test << endl;
 
 			// FIXME *** il faut aussi prendre en compte que le trait ayant changé de camp, il y a une petite variation d'évaluation due à cela...
 			// Marge de 100 en moins
@@ -1336,4 +1311,83 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 // Fonction qui renvoie une valeur prévisionnelle du score du noeud, lorsqu'on ne connait pas les évaluations max (pour la quiecence)
 int Node::get_previsonal_node_score(const double alpha, const double beta, const bool player) const {
 	return 1E6 * get_node_score(alpha, beta, _deep_evaluation._value, _deep_evaluation._avg_score, player);
+}
+
+// Fonction qui évalue la menace en utilisant une quiesence sur le tour de l'adversaire
+int Node::evaluate_quiescence_threat(Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network) const {
+
+	Board b(*_board);
+	b.switch_trait();
+
+	Node stand_pat_node(&b);
+
+	int stand_pat_value = stand_pat_node.minimal_quiescence(eval, depth, search_alpha, search_beta, alpha, beta, network);
+
+	return stand_pat_value;
+}
+
+// Quiescence minimale (sans stockage des noeuds)
+int Node::minimal_quiescence(Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network) {
+	// REVIEW *** ça reste quand-même très basique (simplement l'évaluation est jugée)
+
+	// Initialisation du noeud
+	init_node();
+
+	// Couleur du joueur
+	int color = _board->get_color();
+
+	// Evalue la position
+	evaluate_position(eval, false, network, true);
+
+	// Stand pat
+	int stand_pat = _deep_evaluation._value * color;
+
+	// Si on est en échec (pour ne pas terminer les variantes sur un échec)
+	// REVIEW *** est-ce que c'est de trop, si on veut simplement regarder rapidement?
+	bool in_check = _board->in_check();
+
+	if (depth <= 0 && !in_check) {
+		return stand_pat;
+	}
+
+	// Beta cut-off
+	if (stand_pat >= beta) {
+		return beta;
+	}
+
+	// Alpha cut-off
+	if (stand_pat > alpha) {
+		alpha = stand_pat;
+	}
+
+	// Regarde toutes les captures
+	for (int i = 0; i < _board->_got_moves; i++) {
+
+		// Coup
+		const Move move = _board->_moves[i];
+
+		// Si c'est une capture/échec/promotion, on explore
+		if (move.is_capture() || move.is_promotion() || move.is_checkmate()) {
+
+			// Prend une place dans le buffer
+			Board new_board(*_board);
+			new_board.make_move(move, false, false, true);
+			Node child(&new_board);
+
+			// Appel récursif sur le fils
+			int score = -child.minimal_quiescence(eval, depth - 1, search_alpha, search_beta, -beta, -alpha, network);
+
+			// Beta cut-off
+			if (score >= beta) {
+				return beta;
+			}
+
+			// Mise à jour de alpha si l'éval statique est plus grande
+			if (score > alpha) {
+				alpha = score;
+			}
+		}
+	}
+
+	return alpha;
 }
