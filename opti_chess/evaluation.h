@@ -10,7 +10,7 @@ public:
 	// Coefficients des heuristiques
 	float _piece_value = 1.0f;
 	float _piece_mobility = 0.0f; // Redondant
-	float _piece_positioning = 0.25f;
+	float _piece_positioning = 0.15f;
 	float _bishop_pair = 50.0f;
 	float _castling_rights = 0.0f; // Redondant
 	float _player_trait = 35.0f;
@@ -23,7 +23,7 @@ public:
 	float _square_controls = 0.3f;
 	float _space_advantage = 1.0f;
 	float _alignments = 0.75f;
-	float _piece_activity = 0.5f;
+	float _piece_activity = 1.0f;
 	float _fianchetto = 1.0f;
 	float _pawn_push_threats = 0.15f;
 	float _king_proximity = 0.35f;
@@ -225,7 +225,7 @@ public:
 			{-5, 11, 35, 39, 39, 35, 11, -5},
 			{-7, 21, 15, 30, 30, 15, 21, -7},
 			{-15, 20, 19, 4, 4, 19, 20, -15},
-			{-53, -5, -8, -23, -23, -50, -5, -53}
+			{-20, -5, -8, -23, -23, -50, -5, -20}
 		},
 
 		// Rook MG

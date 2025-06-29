@@ -517,7 +517,7 @@ R7/5k2/p3p1b1/3pB1p1/3P2P1/1P3P2/1qr5/4Q1K1 w - - 15 41 : les noirs ont plus d'a
 ********************************************************************************
 TODO *** utilisation de la valeur réelle des coups plutôt que leur évaluation
 à l'inverse de la proximité, il faut les carrés des pions passés adverses pour donner des gros malus quand le roi en est loin!
-ici 8/7p/p7/2k1Pp2/Pp3P1p/2p5/2P3P1/3K4 w - - 2 21 par exemple, a5 est le seul coup qui gagn
+ici 8/7p/p7/2k1Pp2/Pp3P1p/2p5/2P3P1/3K4 w - - 2 21 par exemple, a5 est le seul coup qui gagne
 8/7p/p7/P1k1Pp2/1p3P1p/1Kp5/2P3P1/8 w - - 9 26 : e6 seul coup qui gagne (Ra4 draw)
 Y'a des memory leak... ça vient des maps?? à vérifier
 Pour les chemins, doit-on vraiment interdire les cases controllées comme inatteignables? un rapprochement peut quand même aider... sinon il met des 0 partout.. comment adapter l'algo?
@@ -532,8 +532,13 @@ VERIFIER LA SYMETRIE DE L'EVALUATION!! -> Faire un framework de test (ça parait 
 Agrandir le buffer? Le réinitialiser régulièrement? Ne pas l'utiliser pour la quiescence 'threat'? Afficher à quel point le buffer est rempli?
 Slider PGN buggé?
 Optimiser la quiescence
-La quiescence 'threat' remplit tout le buffer de manière cachée
+La quiescence 'threat' remplit tout le buffer de manière cachée (FIXED)
+Buffer qui est parfois full quand-même...
 Tracker les fuites mémoire. Il faut potentiellement supprimer un certain nombre d'objets initialisés...
+Pour les sliders, vérifier leurs taille, car le texte dépasse en hauteur, mais prend pas toute la largeur (dépasse parfois)
+FIX!! r3r3/P2k2pp/1Bb5/6N1/3P1n2/1Q1q4/PP3PPP/1KR5 w - - 3 27 : quiescence qui ne va pas jusqu'au bout?
+3k4/3p1p2/5P2/8/3qP2P/6r1/PrPQ1R2/R3K3 b Q - 3 31 : pareil, la quiescence?
+Ne plus utiliser des maps, mais des robin_maps pour aller plus vite?
 
 8/2p3pk/1p1p4/2p5/6B1/1P2B1K1/r6P/8 w - - 0 15 : blancs gagnants
 1r3rk1/5pp1/1b1pq1n1/1N2p3/1P2P2p/4P1PP/1B2QPBK/3R4 w - - 0 26 : noirs mieux
@@ -559,6 +564,16 @@ r2q1rk1/5pb1/1p1p2p1/1N1Ppb1p/1p5P/5P2/PP1QN1P1/K2R1B1R b - - 2 17 : Ta4 seul co
 Fait des Ce5 (ou Ce4) trop tôt dans la partie, avant même d'avoir développé ses autres pièces
 rbbq1knr/1p1p2pp/3P1pn1/1p2P3/1P6/2N2N2/4RPPP/2BQR1K1 w - - 3 18 : la différence de coordination des pièces est énorme, les blancs sont largement gagnant
 8/1r3p2/3kp2p/8/3P1p2/1p1K1P2/1R3P1P/8 w - - 2 36 : Rc4 tient
+3r3k/pp1r2pp/2n5/4pP2/4Q3/q1P1BP1R/4N2P/2R1K3 b - - 0 27 : blancs gagnants. le roi blanc n'est pas si pourri
+r1bq1rk1/pp2n1bp/4ppp1/4B3/2B1NP2/3P4/P1P3PP/1R1QR1K1 w - - 0 18 : le fou est mieux en a1 que b2! coordination des pièces!
+rnbqkb1r/ppp2ppp/5n2/3pP3/1P6/4P3/PBP2PPP/RN1QKBNR b KQkq - 0 5 : Fxb4+ -> c3 c'est une double attaque...
+4k2r/p4ppp/2p2b2/2Bp4/8/2P1P2P/P2KQP1P/6r1 b k - 0 17 : blancs quasi gagnants
+r3r1k1/1ppn1ppp/p2p1q2/3P1b2/2P5/PP2BB1P/5PP1/2RQR1K1 w - - 1 21 avantage blancs OK, mais pas du tout gagnant
+r1bqk2r/pppp1ppp/2n5/2bN4/2Bpn3/3Q1N2/PPP2PPP/R1B1K2R b KQkq - 1 7 : il met 1 seul noeud dans O-O et ne voit pas que c'est jouable (Dxe4 -> Te8 gagne la dame...)
+r1b3k1/ppp1qppp/2n5/8/8/P2QPNbP/1P2B1P1/RN3K1R b - - 4 14 : Ff5!! seul coup (sinon, les blancs peuvent protéger le roi et auront juste une pièce de plus)
+3r3k/1p3p1p/1p1P1p2/p1P1n3/1P6/6R1/6PP/1B5K w - - 2 34 : noirs gagnants (l'éval de Grogros est à +2... la finale est très mal évaluée)
+rnb1kb1r/ppp2ppp/8/3q4/4n3/5N2/PPP1QPPP/RNB1KB1R w KQkq - 0 7 : gagnant aux blancs (clouage sur la colonne e)
+3k4/3p1p2/5P2/8/3qP2P/6r1/PrPQ1R2/R3K3 b Q - 3 31 : il regarde pas Tg1+?
 
 1r3rk1/p2b1pp1/2nbp2p/q2p4/2pP2n1/2P1PNP1/PRQN1PBP/1RB3K1 b - - 3 16 : e4 c'est l'idée de la position pour les blancs. il faut donc faire le très fort f5 pour l'empêcher!
 Faut qu'il arrête les Cc6 dans les positions à d4... ça bloque le pion c
