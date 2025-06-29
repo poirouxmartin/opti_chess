@@ -6,7 +6,6 @@
 #include <string>
 #include "evaluation.h"
 #include "neural_network.h"
-#include <map>
 #include <cstdint>
 #include "raylib.h"
 #include <iomanip>
@@ -253,12 +252,12 @@ struct Pos
 };
 
 // Map d'un plateau (pour stocker les cases controllées, etc...)
-struct Map
+struct SquareMap
 {
 	int _array[8][8];
 
 	// Constructeurs
-	Map() {
+	SquareMap() {
 		for (uint_fast8_t row = 0; row < 8; row++) {
 			for (uint_fast8_t col = 0; col < 8; col++) {
 				_array[row][col] = 0;
@@ -269,8 +268,8 @@ struct Map
 	// Opérateurs
 
 	// Soustraction
-	Map operator- (const Map& other) const {
-		Map result;
+	SquareMap operator- (const SquareMap& other) const {
+		SquareMap result;
 		for (int row = 0; row < 8; row++) {
 			for (int col = 0; col < 8; col++) {
 				result._array[row][col] = _array[row][col] - other._array[row][col];
@@ -575,19 +574,19 @@ public:
 	[[nodiscard]] int get_piece_activity() const;
 
 	// Fonction qui renvoie la map correspondante au nombre de contrôles pour chaque case de l'échiquier pour le joueur blanc
-	[[nodiscard]] Map get_white_controls_map() const;
+	[[nodiscard]] SquareMap get_white_controls_map() const;
 
 	// Fonction qui renvoie la map correspondante au nombre de contrôles pour chaque case de l'échiquier pour le joueur noir
-	[[nodiscard]] Map get_black_controls_map() const;
+	[[nodiscard]] SquareMap get_black_controls_map() const;
 
 	// Fonction qui ajoute à une map les contrôles d'une pièce
-	[[nodiscard]] bool add_piece_controls(Map* map, int i, int j, int piece) const;
+	[[nodiscard]] bool add_piece_controls(SquareMap* map, int i, int j, int piece) const;
 
 	// Fonction qui renvoie la mobilité virtuelle d'un roi
 	[[nodiscard]] int get_king_virtual_mobility(bool color);
 
 	// Fonction qui renvoie le nombre d'échecs 'safe' dans la position pour les deux joueurs
-	[[nodiscard]] int get_checks_value(Map white_controls, Map black_controls, bool color);
+	[[nodiscard]] int get_checks_value(SquareMap white_controls, SquareMap black_controls, bool color);
 
 	// Fonction qui renvoie la vitesse de génération des coups
 	[[nodiscard]] int moves_generation_benchmark(uint_fast8_t depth, bool main_call = true);
@@ -716,10 +715,10 @@ public:
 	void switch_colors();
 
 	// Fonction qui itère sur la map des distances à partir d'une position donnée, et renvoie les nouvelles cases contrôlées
-	[[nodiscard]] vector<Pos> get_next_king_squares(Map& map, Pos start_pos, int distance, bool color) const;
+	[[nodiscard]] vector<Pos> get_next_king_squares(SquareMap& map, Pos start_pos, int distance, bool color) const;
 
 	// Fonction qui renvoie une map des distances entre le roi et chaque point de l'échiquier (nombre de coups pour y arriver, en fonction des contrôles actuels du plateau)
-	[[nodiscard]] Map get_king_squares_distance(bool color);
+	[[nodiscard]] SquareMap get_king_squares_distance(bool color);
 
 	// Fonction qui renvoie la faiblesse sur les rangées du roi
 	[[nodiscard]] int get_king_row_weakness(bool color);
@@ -752,16 +751,16 @@ public:
 	[[nodiscard]] int get_king_placement_weakness(bool player);
 
 	// Fonction qui renvoie une map de tous les pions bloqués
-	[[nodiscard]] Map get_blocked_pawns(bool color) const;
+	[[nodiscard]] SquareMap get_blocked_pawns(bool color) const;
 
 	// Fonction qui prend une map de pions/pièces bloquées, la met à jour en fonction des nouvelles pièces bloquées, et renvoie si une ou plusieurs pièces y ont été ajoutées
-	[[nodiscard]] bool update_blocked_pieces(Map& blocked_pieces, bool color) const;
+	[[nodiscard]] bool update_blocked_pieces(SquareMap& blocked_pieces, bool color) const;
 
 	// Fonction qui renvoie toutes la map de toutes les pièces bloquées
-	[[nodiscard]] Map get_all_blocked_pieces(bool color) const;
+	[[nodiscard]] SquareMap get_all_blocked_pieces(bool color) const;
 
 	// Fonction qui renvoie la map des cases controlées par les pions
-	[[nodiscard]] Map get_pawns_controls(bool color) const;
+	[[nodiscard]] SquareMap get_pawns_controls(bool color) const;
 
 	// Fonction qui renvoie la mobilité réelle des pièces (court terme)
 	[[nodiscard]] int get_short_term_piece_mobility(bool display = false) const;

@@ -75,7 +75,7 @@ double Tests::evaluation_test(string fen, int expected_evaluation, pair<int, int
 
 // Renvoie une valeur entre 0 et 1 (1 = problème résolu) (faut-il prendre en compte si le coup joué est quand-même bon?)
 // TODO *** faire un panel de coups accepptés avec une valeur pour chacun
-double Tests::problem_test(string fen, map<Move, double> moves, double time) {
+double Tests::problem_test(string fen, robin_map<Move, double> moves, double time) {
 
 	// Met la position
 	_gui->load_FEN(fen, false);

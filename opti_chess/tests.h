@@ -66,7 +66,7 @@ public:
 	double evaluation_test(string fen, int expected_evaluation, pair<int, int> evaluation_range, double expected_score, pair<double, double> score_range);
 
 	// Renvoie une valeur entre 0 et 1 (1 = problème résolu) (faut-il prendre en compte si le coup joué est quand-même bon?)
-	double problem_test(string fen, map<Move, double> moves, double time);
+	double problem_test(string fen, robin_map<Move, double> moves, double time);
 
 	// Mise à jour de la GUI
 	void update_GUI();
