@@ -1987,15 +1987,15 @@ int Board::get_king_safety(float display_factor) {
 	// r3k2r/ppqn3n/3b1p2/2ppp1p1/4P2p/P2P1P1P/1PPBBN1K/R1NQ1R2 b kq - 5 22 : overload +495???
 
 	// Récupère les maps de contrôle des cases
-	Map white_controls_map = get_white_controls_map();
-	Map black_controls_map = get_black_controls_map();
+	SquareMap white_controls_map = get_white_controls_map();
+	SquareMap black_controls_map = get_black_controls_map();
 
 	// Est-ce utile?
 	//white_controls_map.print();
 	//black_controls_map.print();
 
 	// Résultante des contrôles
-	Map controls_map = white_controls_map - black_controls_map;
+	SquareMap controls_map = white_controls_map - black_controls_map;
 
 	//controls_map.print();
 
@@ -2856,8 +2856,8 @@ int Board::get_pawn_structure(float display_factor)
 						// On retire le pion pour regarder si la case est controlée par rayon X
 						_array[row][col] = none;
 
-						Map white_controls_map = get_white_controls_map();
-						Map black_controls_map = get_black_controls_map();
+						SquareMap white_controls_map = get_white_controls_map();
+						SquareMap black_controls_map = get_black_controls_map();
 
 						for (uint_fast8_t k = row + 1; k <= 7; k++) {
 							int controls_diff = max(0, black_controls_map._array[k][col] - white_controls_map._array[k][col]);
@@ -2929,8 +2929,8 @@ int Board::get_pawn_structure(float display_factor)
 						// On retire le pion pour regarder si la case est controlée par rayon X
 						_array[row][col] = none;
 
-						Map white_controls_map = get_white_controls_map();
-						Map black_controls_map = get_black_controls_map();
+						SquareMap white_controls_map = get_white_controls_map();
+						SquareMap black_controls_map = get_black_controls_map();
 
 						for (int_fast8_t k = row - 1; k >= 0; k--) {
 							int controls_diff = max(0, white_controls_map._array[k][col] - black_controls_map._array[k][col]);
@@ -4137,8 +4137,8 @@ bool Board::update_kings_pos()
 // Fonction qui renvoie l'activité des pièces
 int Board::get_piece_activity() const
 {
-	Map white_map = get_white_controls_map();
-	Map black_map = get_black_controls_map();
+	SquareMap white_map = get_white_controls_map();
+	SquareMap black_map = get_black_controls_map();
 
 	// 2r2b2/q4p1k/P1P3p1/1p1rBpPp/1P1NbP1P/2Q5/4R3/R4K2 w - - 4 37 : pas mieux aux blancs??
 
@@ -4184,10 +4184,10 @@ bool Buffer::reset() const
 }
 
 // Fonction qui renvoie la map correspondante au nombre de contrôles pour chaque case de l'échiquier pour le joueur blanc
-Map Board::get_white_controls_map() const
+SquareMap Board::get_white_controls_map() const
 {
 	// Map de contrôles
-	Map controls_map;
+	SquareMap controls_map;
 
 	// Itère sur toutes les pièces, et ajoute les contrôles de la pièce pour chaque case
 	for (uint_fast8_t row = 0; row < 8; row++)
@@ -4202,12 +4202,12 @@ Map Board::get_white_controls_map() const
 }
 
 // Fonction qui renvoie la map correspondante au nombre de contrôles pour chaque case de l'échiquier pour le joueur noir
-Map Board::get_black_controls_map() const
+SquareMap Board::get_black_controls_map() const
 {
 	// FIXME : si y'a une tour derrière une autre, normalement les cases devraient être comptées 2 fois, hors ce n'est pas le cas
 
 	// Map de contrôles
-	Map controls_map;
+	SquareMap controls_map;
 
 	// Itère sur toutes les pièces, et ajoute les contrôles de la pièce pour chaque case
 	for (uint_fast8_t row = 0; row < 8; row++)
@@ -4222,7 +4222,7 @@ Map Board::get_black_controls_map() const
 }
 
 // Fonction qui ajoute à une map les contrôles d'une pièce
-bool Board::add_piece_controls(Map* map, int row, int col, int piece) const
+bool Board::add_piece_controls(SquareMap* map, int row, int col, int piece) const
 {
 	if (piece == none)
 		return false;
@@ -4358,7 +4358,7 @@ int Board::get_king_virtual_mobility(bool color) {
 }
 
 // Fonction qui renvoie le nombre d'échecs 'safe' dans la position pour les deux joueurs
-int Board::get_checks_value(Map white_controls, Map black_controls, bool color)
+int Board::get_checks_value(SquareMap white_controls, SquareMap black_controls, bool color)
 {
 	constexpr int initial_safe_check_value = 250;
 	constexpr int initial_unsafe_check_value = 25;
@@ -4749,8 +4749,8 @@ int Board::get_pawn_push_threats() const {
 	// Il faut vérifier que rien ne bloque la poussée (ni une pièce, ni un contrôle adverse)
 	// TODO améliorer les contrôles... car ça veut dire qu'il n'y a jamais de menaces contre un fou, même si le pion est protégé
 	
-	Map white_controls = get_white_controls_map();
-	Map black_controls = get_black_controls_map();
+	SquareMap white_controls = get_white_controls_map();
+	SquareMap black_controls = get_black_controls_map();
 
 	int w_threats = 0;
 	int b_threats = 0;
@@ -4903,8 +4903,8 @@ int Board::get_king_proximity()
 
 	constexpr float self_pawn_multiplier = 1.0f;
 
-	Map white_king_distances = get_king_squares_distance(true);
-	Map black_king_distances = get_king_squares_distance(false);
+	SquareMap white_king_distances = get_king_squares_distance(true);
+	SquareMap black_king_distances = get_king_squares_distance(false);
 
 	for (uint_fast8_t row = 1; row < 7; row++) {
 		for (uint_fast8_t col = 0; col < 8; col++) {
@@ -4999,8 +4999,8 @@ int Board::get_king_proximity()
 	}
 
 	// Supprime les maps
-	white_king_distances.~Map();
-	black_king_distances.~Map();
+	white_king_distances.~SquareMap();
+	black_king_distances.~SquareMap();
 	
 	return 100 * proximity * (_adv - min_advancement) / (1.0f - min_advancement);
 }
@@ -5446,8 +5446,8 @@ int Board::get_weak_squares(bool color, bool around_king) {
 	int weak_squares_value = 0;
 
 	// Contrôles des cases
-	Map white_controls = get_white_controls_map();
-	Map black_controls = get_black_controls_map();
+	SquareMap white_controls = get_white_controls_map();
+	SquareMap black_controls = get_black_controls_map();
 
 
 	if (around_king) {
@@ -6545,8 +6545,8 @@ void Board::display_positions_history() const
 
 	// Facteur attenuant si la pièce peut en prendre une adverse en retour (TODO)
 
-	const Map w_controls = get_white_controls_map();
-	const Map b_controls = get_black_controls_map();
+	const SquareMap w_controls = get_white_controls_map();
+	const SquareMap b_controls = get_black_controls_map();
 
 	//w_controls.print();
 	//b_controls.print();
@@ -7011,7 +7011,7 @@ void Board::display_positions_history() const
 [[nodiscard]] int Board::get_king_escape_squares(bool color) {
 
 	// Contrôle des cases par les pièces adverses
-	Map control_map = color ? get_black_controls_map() : get_white_controls_map();
+	SquareMap control_map = color ? get_black_controls_map() : get_white_controls_map();
 
 	// Position du roi
 	update_kings_pos();
@@ -8958,7 +8958,7 @@ void Board::switch_colors() {
 }
 
 // Fonction qui itère sur la map des distances à partir d'une position donnée, et renvoie les nouvelles cases contrôlées
-[[nodiscard]] vector<Pos> Board::get_next_king_squares(Map& map, Pos start_pos, int distance, bool color) const {
+[[nodiscard]] vector<Pos> Board::get_next_king_squares(SquareMap& map, Pos start_pos, int distance, bool color) const {
 
 	// Initialisation de la liste des nouvelles cases contrôlées
 	vector<Pos> new_controlled_squares;
@@ -8990,7 +8990,7 @@ void Board::switch_colors() {
 }
 
 // Fonction qui renvoie une map des distances entre le roi et chaque point de l'échiquier (nombre de coups pour y arriver, en fonction des contrôles actuels du plateau)
-[[nodiscard]] Map Board::get_king_squares_distance(bool color) {
+[[nodiscard]] SquareMap Board::get_king_squares_distance(bool color) {
 	// TODO *** chiant, mais sûrement très fort...
 
 	//8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7 : ici, le roi noir ne peut pas taper a4 ni d5 ni d4... (ou alors il doit faire tout le tour...)
@@ -9005,14 +9005,14 @@ void Board::switch_colors() {
 
 
 	// Map des contrôles adverses
-	Map control_map = color ? get_black_controls_map() : get_white_controls_map();
+	SquareMap control_map = color ? get_black_controls_map() : get_white_controls_map();
 
 	// Initialisation de la map
 
 	// -64 = case innaccessible (pièce alliée, ou contrôlée par l'adversaire)
 	// k = case à distance k du roi
 	// -k = case contrôlée par l'adversaire (ou pièce alliée) à distance k
-	Map distance_map;
+	SquareMap distance_map;
 
 	for (uint_fast8_t row = 0; row < 8; row++) {
 		for (uint_fast8_t col = 0; col < 8; col++) {
@@ -9030,7 +9030,7 @@ void Board::switch_colors() {
 	}
 
 	// Supprime la map
-	control_map.~Map();
+	control_map.~SquareMap();
 
 	// Position du roi
 	update_kings_pos();
@@ -9393,12 +9393,12 @@ int Board::get_king_placement_weakness(bool player) {
 }
 
 // Fonction qui renvoie une map de tous les pions bloqués
-Map Board::get_blocked_pawns(bool color) const {
+SquareMap Board::get_blocked_pawns(bool color) const {
 
 	// On considère le roi comme bloquant, quel que soit ses coups possibles
 
 	// Initialisation de la map
-	Map blocked_pawns;
+	SquareMap blocked_pawns;
 
 	// Pour chaque pion
 	for (uint_fast8_t row = 0; row < 8; row++) {
@@ -9439,7 +9439,7 @@ Map Board::get_blocked_pawns(bool color) const {
 
 
 // Fonction qui prend une map de pions/pièces bloquées, la met à jour en fonction des nouvelles pièces bloquées, et renvoie si une ou plusieurs pièces y ont été ajoutées
-bool Board::update_blocked_pieces(Map& blocked_pieces, bool color) const {
+bool Board::update_blocked_pieces(SquareMap& blocked_pieces, bool color) const {
 
 	// rn1qkbnr/pbp1p1p1/1p1pPpPp/3P1P2/8/8/PPP4P/RNBQKBNR b KQkq - 0 10
 
@@ -9544,13 +9544,13 @@ bool Board::update_blocked_pieces(Map& blocked_pieces, bool color) const {
 }
 
 // Fonction qui renvoie toutes la map de toutes les pièces bloquées
-Map Board::get_all_blocked_pieces(bool color) const {
+SquareMap Board::get_all_blocked_pieces(bool color) const {
 
 	// rn1qkbnr/pbp1p1pr/1p1pPpPp/3P1P1P/8/8/PPP5/RNBQKBNR b KQkq - 0 12 : ici sont bloqués: Fou f8, Cavalier g8, Tour h8 et Tour h7. Problème, les tours ne se considèrent pas entre elles comme bloquantes...
 	// rn1qkbnr/pbp1p1pn/1p1pPpPp/3P1PpP/6P1/8/PPP5/RNBQKBNR b KQkq - 0 12 : ici sont bloqués: Fou f8, Cavalier g8, Tour h8 et le cavalier en h7
 
 	// Map des pions bloqués
-	Map blocked_pieces = get_blocked_pawns(color);
+	SquareMap blocked_pieces = get_blocked_pawns(color);
 
 	//cout << "initial " << (color ? "white" : "black") << " blocked pawns:" << endl;
 	//blocked_pieces.print();
@@ -9572,10 +9572,10 @@ Map Board::get_all_blocked_pieces(bool color) const {
 }
 
 // Fonction qui renvoie la map des cases controlées par les pions
-[[nodiscard]] Map Board::get_pawns_controls(bool color) const {
+[[nodiscard]] SquareMap Board::get_pawns_controls(bool color) const {
 
 	// Map des contrôles
-	Map controls;
+	SquareMap controls;
 
 	// Pion allié
 	uint_fast8_t player_pawn = color ? w_pawn : b_pawn;
@@ -9612,8 +9612,8 @@ Map Board::get_all_blocked_pieces(bool color) const {
 	static const int* real_mobilities[6] = { pawn_real_mobility, knight_real_mobility, bishop_real_mobility, rook_real_mobility, queen_real_mobility, king_real_mobility };
 
 	// Map des contrôles de pions
-	Map white_pawns_controls = get_pawns_controls(true);
-	Map black_pawns_controls = get_pawns_controls(false);
+	SquareMap white_pawns_controls = get_pawns_controls(true);
+	SquareMap black_pawns_controls = get_pawns_controls(false);
 
 	// Mobilité des pièces
 	int white_mobility = 0;
@@ -9836,12 +9836,12 @@ Map Board::get_all_blocked_pieces(bool color) const {
 	static const int* virtual_mobilities[6] = { pawn_virtual_mobility, knight_virtual_mobility, bishop_virtual_mobility, rook_virtual_mobility, queen_virtual_mobility, king_virtual_mobility };
 
 	// Map des pièces bloquées
-	Map white_blocked_pieces = get_all_blocked_pieces(true);
-	Map black_blocked_pieces = get_all_blocked_pieces(false);
+	SquareMap white_blocked_pieces = get_all_blocked_pieces(true);
+	SquareMap black_blocked_pieces = get_all_blocked_pieces(false);
 
 	// Map des contrôles de pions
-	Map white_pawns_controls = get_pawns_controls(true);
-	Map black_pawns_controls = get_pawns_controls(false);
+	SquareMap white_pawns_controls = get_pawns_controls(true);
+	SquareMap black_pawns_controls = get_pawns_controls(false);
 
 	// Mobilité des pièces
 	int white_mobility = 0;
@@ -10098,7 +10098,7 @@ int Board::get_queen_safety(bool color) const {
 	// TODO *** ne regarder seulement les safe moves
 	//Map base_controls = color ? get_black_controls_map() : get_white_controls_map();
 
-	Map opponent_controls = color ? get_white_controls_map() : get_black_controls_map();
+	SquareMap opponent_controls = color ? get_white_controls_map() : get_black_controls_map();
 
 	// On regarde le nombre de coups qui attaquent la dame
 	for (uint_fast8_t m = 0; m < b._got_moves; m++) {
@@ -10112,7 +10112,7 @@ int Board::get_queen_safety(bool color) const {
 		uint_fast8_t piece = b2._array[move.end_row][move.end_col];
 
 		// Regarde les contrôles du joueur après le coup
-		Map controls;
+		SquareMap controls;
 		add_piece_controls(&controls, move.end_row, move.end_col, piece);
 
 		//Map controls = color ? b2.get_black_controls_map() : b2.get_white_controls_map();
