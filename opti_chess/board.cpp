@@ -10067,7 +10067,7 @@ int Board::get_queen_safety(bool color) const {
 
 	// Positions des dames
 	// Nombre théorique maximum de dames par joueur: 9
-	Pos queens_pos[9];
+	Pos queens_pos[9]{};
 	uint_fast8_t queens_count = 0;
 
 	for (uint_fast8_t row = 0; row < 8; row++) {

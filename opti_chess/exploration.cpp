@@ -467,7 +467,7 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 		return "";
 	}
 
-	string variants = "";
+	string variants;
 
 	// S'il y a des coups explorés
 	if (children_count() > 0) {
@@ -485,6 +485,8 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 
 			std::ranges::sort(children_iterations.begin(), children_iterations.end());
 
+			// TODO *** trier secondairement par score de coup
+
 			for (auto const& [neg_child_iterations, move] : children_iterations) {
 				Node* child = _children[move];
 				const int child_iterations = -neg_child_iterations;
@@ -492,7 +494,7 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 				const bool new_quiescence = !quiescence && child_iterations == 0;
 
 				string child_variants;
-				child_variants.reserve(1024); // estimation raisonnable, ajuste si nécessaire
+				child_variants.reserve(1024);
 
 				char buf[128];
 
@@ -543,12 +545,12 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 					int_to_round_string(iterations_ratio).c_str(),
 					int_to_round_string(child_nodes).c_str(),
 					int_to_round_string(nodes_ratio).c_str(),
-					int_to_round_string(child->get_main_depth() + 1).c_str(),
+					int_to_round_string(child->get_main_depth(alpha, beta) + 1).c_str(),
 					clock_to_string(child->_time_spent, true).c_str()
 				);
 				child_variants += buf;
 
-				variants += std::move(child_variants);
+				variants += child_variants;
 			}
 
 		}
@@ -585,18 +587,19 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 }
 
 // Fonction qui renvoie la profondeur de la variante principale
-[[nodiscard]] int Node::get_main_depth() {
+[[nodiscard]] int Node::get_main_depth(const double alpha, const double beta) {
 	if (children_count() > 0) {
-		Move main_move = get_most_explored_child_move();
+		//Move main_move = get_most_explored_child_move();
+		Move main_move = get_best_score_move(alpha, beta, true);
 
 		if (main_move.is_null_move()) {
-			cout << "most_explored move is null???" << endl;
+			//cout << "most_explored move is null???" << endl;
 			return 0;
 		}
 
 		Node* main_child = _children[main_move];
 
-		return main_child->get_main_depth() + 1;
+		return main_child->get_main_depth(alpha, beta) + 1;
 	}
 
 	return 0;

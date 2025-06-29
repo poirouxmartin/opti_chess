@@ -1393,7 +1393,7 @@ void GUI::draw()
 			_board._evaluation = evaluation;
 		}
 		
-		int max_depth = _root_exploration_node->get_main_depth();
+		int max_depth = _root_exploration_node->get_main_depth(_alpha, _beta);
 		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components +
 			"\nTime: " + clock_to_string(_root_exploration_node->_time_spent, true) +
 			"\nDepth: " + to_string(max_depth) +

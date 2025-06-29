@@ -191,7 +191,7 @@ public:
 	[[nodiscard]] string get_exploration_variants(const double alpha, const double beta, bool main = true, bool quiescence = false);
 
 	// Fonction qui renvoie la profondeur de la variante principale
-	[[nodiscard]] int get_main_depth();
+	[[nodiscard]] int get_main_depth(const double alpha, const double beta);
 
 	// Fonction qui renvoie le fils le plus exploré
 	[[nodiscard]] Node* get_most_explored_child(bool decide_by_eval = true);
