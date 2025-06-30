@@ -101,10 +101,10 @@ inline int main_ui() {
 	//testFunc(main_GUI._board);
 
 	// Taille du buffer de Monte-Carlo
-	constexpr int buffer_size = 5000000;
+	constexpr int buffer_size = 10000000;
 
 	// Taille de la table de transposition
-	constexpr int transposition_table_size = 5000000;
+	constexpr int transposition_table_size = 10000000;
 
 	// Initialisation de la table de transposition
 	transposition_table.init(transposition_table_size, nullptr, true);

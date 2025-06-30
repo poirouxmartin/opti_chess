@@ -635,7 +635,7 @@ Node::~Node() {
 }
 
 // Quiescence search intégré à l'exploration
-int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network, bool evaluate_threats, double beta_margin) {
+int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network, bool evaluate_threats, int beta_margin) {
 	// TODO: comment gérer la profondeur? faire en fonction de l'importance de la branche?
 	// mettre aucune profondeur limite?
 	// pourquoi en endgame ça va si loin? il fait full échecs...
@@ -671,6 +671,12 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 
 	// r1bqk2r/ppp2ppp/1b6/1P1nP3/2B5/5P2/P5PP/RNBQK1NR b KQkq - 0 10
 
+	//FIX!! r3r3/P2k2pp/1Bb5/6N1/3P1n2/1Q1q4/PP3PPP/1KR5 w - - 3 27 : quiescence qui ne va pas jusqu'au bout? (peut-être car c'est moins bon que le standpat?)
+	// 3k4/3p1p2/5P2/8/3qP2P/8/PrPQ1R2/R3K1r1 w Q - 4 32 : pareil, la quiescence?
+	// 3k4/3p4/8/8/3q4/8/3Q1R2/4K1r1 w - - 4 32 : test
+
+	// 3k4/3p1p2/5P2/8/3qP2P/8/PrPQ4/R4K2 b - - 0 33 : 0 quiescence ici?
+
 	// On a au moins évalué le plateau du noeud
 	if (_nodes > 0) {
 		//cout << "quiescence nodes from already explored:" << _nodes << endl;
@@ -681,8 +687,6 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 
 	// Temps de calcul
 	const clock_t begin_monte_time = clock();
-
-	//cout << _new_node << ", " << _board->_evaluated << ", " << (int)_board->_got_moves << ", " << (int)_board->_sorted_moves << ", " << _board->_game_over_checked << endl;
 
 	// Initialisation du noeud
 	init_node();
@@ -722,7 +726,7 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 	//cout << "evaluation: " << _deep_evaluation._value << ", score: " << _deep_evaluation._avg_score << ", standpat: " << stand_pat << endl;
 
 	// Si on est en échec (pour ne pas terminer les variantes sur un échec)
-	bool in_check = _board->in_check();
+	const bool in_check = _board->in_check();
 
 	//r1bqr1k1/1pp2p2/p3p1BQ/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 5 27 : le check extension fonctionne pas?
 
@@ -742,72 +746,40 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 
 	// 1r1q1r1k/2n4p/p2p1p1Q/2ppn3/7N/4R3/1PP1N1PP/5R1K w - - 1 24 : quiescence buggée après Txe5??????????
 	// 1nb2rk1/r4ppp/p4q2/1Bp1bN2/8/2N2Q2/PPP2PPP/3RK2R w K - 1 17 : après Fxc3, ça va pas au bout des variantes...
-
-	// Beta cut-off
-	
-	// Marge (TEST)
-	//constexpr double beta_margin = 200;
-	//constexpr double beta_margin = 200; // TEST: = valeur de la menace (quiescence peu profonde?)
-	//constexpr double in_check_margin = 500; // Evite de trop calculer quand y'a déjà un gros delta
-	//constexpr double in_check_margin = DBL_MAX; // Evite de trop calculer quand y'a déjà un gros delta
-
-	// FIXME: ça casse un peu tout
-	//bool test_full_checks = false;
-
-	//double beta_margin = 0;
-
 	//2rqr1k1/pNbnnpp1/2p1p1p1/P2pP3/Q2P4/B1P4P/4BPP1/RR4K1 b - - 6 22 : menace la dame en d8
 
 	// Marge, qui dépend de la menace adverse (jugée grâce à la valeur de la quiescence sur le tour de l'adversaire)
-	if (evaluate_threats) {
-		if (in_check) {
-			// Pas de cut-off si on est en échec
-			beta_margin = DBL_MAX;
-		}
-		else {
-			// Fait une courte quiescence pour évaluer la menace
+	if (evaluate_threats && !in_check) {
+		// Fait une courte quiescence pour évaluer la menace
+		int new_stand_pat = -evaluate_quiescence_threat(eval, 2, search_alpha, search_beta, -INT32_MAX, INT32_MAX, network);
 
-			//int new_stand_pat = evaluate_quiescence_threat(eval, 2, search_alpha, search_beta, -INT32_MAX, INT32_MAX, network);
+		//cout << "new_stand_pat: " << new_stand_pat << ", test: " << test << endl;
 
-			//Board b(*_board);
-			//b.switch_trait();
-			//Node* stand_pat_node = new Node(&b);
-			//stand_pat_node->quiescence(buffer, eval, 2, search_alpha, search_beta, -INT32_MAX, INT32_MAX, network, false);
+		// FIXME *** il faut aussi prendre en compte que le trait ayant changé de camp, il y a une petite variation d'évaluation due à cela...
+		// Marge de 100 en moins
+		new_stand_pat += 100;
 
-			//// Marge correspondant à la valeur de la menace
-			//int new_stand_pat = stand_pat_node->_deep_evaluation._value * color;
+		beta_margin = max(0, stand_pat - new_stand_pat);
 
-			int new_stand_pat = -evaluate_quiescence_threat(eval, 2, search_alpha, search_beta, -INT32_MAX, INT32_MAX, network);
-
-			//cout << "new_stand_pat: " << new_stand_pat << ", test: " << test << endl;
-
-			// FIXME *** il faut aussi prendre en compte que le trait ayant changé de camp, il y a une petite variation d'évaluation due à cela...
-			// Marge de 100 en moins
-			new_stand_pat += 100;
-
-			beta_margin = max(0, stand_pat - new_stand_pat);
-
-			//cout << "Pos: " << _board->to_fen() << ", stand_pat: " << stand_pat << ", new_stand_pat: " << new_stand_pat << ", beta_margin: " << beta_margin << endl;
-		}
+		//cout << "Pos: " << _board->to_fen() << ", stand_pat: " << stand_pat << ", new_stand_pat: " << new_stand_pat << ", beta_margin: " << beta_margin << endl;
 	}
 
-	//if (stand_pat >= (beta + beta_margin) && (!in_check || !test_full_checks)) {
-	//if (stand_pat >= (beta + beta_margin + (in_check ? in_check_margin : 0))) {
-	if (stand_pat >= beta + beta_margin) {
+	// Si on est en échec, il ne faut jamais faire de beta cutoff
+	double total_beta = in_check ? INT_MAX : (double)beta + beta_margin;
+
+	// FIXME *** normal qu'on envoie la beta margin sur toute la profondeur?
+
+	if (stand_pat >= total_beta) {
 		_time_spent += clock() - begin_monte_time;
-		//cout << "beta cut-off1: " << stand_pat << " >= " << beta << endl;
+		//cout << "beta cutoff1: " << stand_pat << " >= " << beta << " + " << beta_margin << endl;
 		return beta;
-	}
-	else {
-		//cout << "no beta cut-off1: " << stand_pat << " < " << beta << endl;
 	}
 
 	// Mise à jour de alpha si l'éval statique est plus grande
-	//if (stand_pat > alpha && !in_check) {
-	if (stand_pat > alpha) {
+	if (stand_pat > alpha && !in_check) {
+	//if (stand_pat > alpha) {
 		alpha = stand_pat;
 	}
-
 
 	// Regarde toutes les captures
 	// FIXME: faudra regarder que les coups non explorés? (ou gérer avec la profondeur...)
@@ -879,39 +851,16 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 				add_child(child, move);
 			}
 
-			
-
-			//cout << "beta: " << beta << " | alpha: " << alpha << endl;
-
 			// Appel récursif sur le fils
+			// FIXME *** à backpropagate seulement sur une profondeur plus petite que la profondeur utilisée pour la threat evaluation?
 			int score = - child->quiescence(buffer, eval, depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, beta_margin);
-			//child->grogros_quiescence(buffer, eval, depth - 1);
+			//int score = - child->quiescence(buffer, eval, depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, 0);
 			_nodes += child->_nodes;
 
 			// Mise à jour de l'évaluation du plateau
 			// FIXME: ici, s'il y'a un seul coup, il faut mettre à jour l'évaluation du plateau même si l'évaluation fils est moins bonne
 			// Ou alors: si tous les coups ont été explorés, on met à jour l'évaluation du plateau avec le meilleur coup
-			//bool all_moves_explored = get_fully_explored_children_count() == _board->_got_moves;
 			bool all_moves_explored = children_count() == _board->_got_moves;
-
-			//if (all_moves_explored) { // FIXMEEEEEEEEE
-			//	Evaluation best_eval = Evaluation();
-
-			//	for (auto const& [move_2, child_2] : _children) {
-			//		if (_board->_player ? child_2->_deep_evaluation > best_eval : child_2->_deep_evaluation < best_eval) {
-			//			best_eval = child_2->_deep_evaluation;
-			//		}
-			//	}
-
-			//	_deep_evaluation = best_eval;
-			//	_is_stand_pat_eval = false;
-			//}
-			//else {
-			//	if (_board->_player ? child->_deep_evaluation._value > _deep_evaluation._value : child->_deep_evaluation._value < _deep_evaluation._value) {
-			//		_deep_evaluation = child->_deep_evaluation;
-			//		_is_stand_pat_eval = false;
-			//	}
-			//}
 
 			// 1r1q1r1k/2n4p/p2p1p1Q/2ppR3/7N/8/1PP1N1PP/5R1K b - - 0 24 : quiescence ici
 
@@ -932,17 +881,17 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 
 			// Beta cut-off
 			if (score >= beta) {
+			//if (score >= total_beta) {
 				_time_spent += clock() - begin_monte_time;
-				//cout << "move: " << _board->move_label(move) << " | beta cut-off2: " << score << " >= " << beta << endl;
+				//cout << "move: " << _board->move_label(move) << " | beta cut-off2: " << score << " >= " << beta << " + " << beta_margin << endl;
 				return beta;
 			}
 
 			// Mise à jour de alpha si l'éval statique est plus grande
+			//if (stand_pat > alpha && !in_check) {
 			if (score > alpha) {
 				alpha = score;
 			}
-
-			
 		}
 	}
 
