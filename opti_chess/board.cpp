@@ -3745,15 +3745,15 @@ bool Board::sort_moves() {
 
 		// Promotion
 		if (move.is_promotion())
-			score += 800;
+			score += 500;
 
 		// Checkmate
 		if (move.is_checkmate())
-			score += 10000;
+			score += 100000;
 
 		// Check
 		else if (move.is_check())
-			score += 1000;
+			score += 3000;
 
 		//cout << "Move: " << move_label(move) << " | Score: " << score << endl;
 
