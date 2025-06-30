@@ -203,7 +203,7 @@ public:
 	[[nodiscard]] int get_ips() const;
 
 	// Quiescence search intégré à l'exploration
-	int quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr, bool evaluate_threats = true, double beta_margin = 0.0);
+	int quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr, bool evaluate_threats = true, int beta_margin = 0);
 	//void grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth);
 
 	// Fonction qui renvoie le nombre de noeuds fils complètement explorés

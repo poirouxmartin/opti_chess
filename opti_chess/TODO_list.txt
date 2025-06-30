@@ -320,7 +320,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Désélectionner les pièces lors d'un chargement de position
 -> Utiliser des checkCollision de raylib pour la GUI
 -> Afficher l'incrément de temps sur la GUI, et pouvoir le modifier
--> O-O+ dans les move label à prendre en compte
+-> O-O+ dans les move label à prendre en compte (DONE)
 -> Revoir les update du temps quand on le change pendant que ça joue
 -> Afficher des traits autour du plateau chess.com?
 -> Affichage de la réflexion de Grogros sur le PGN : {N: 10.29% of 544}
@@ -529,6 +529,7 @@ Remettre la proximité entre le roi est ses pions alliés? 6RK/8/1k6/8/2p5/8/8/8 w
 
 VERIFIER LA SYMETRIE DE L'EVALUATION!! -> Faire un framework de test (ça parait ok en général...)
 
+FIX!!
 Agrandir le buffer? Le réinitialiser régulièrement? Ne pas l'utiliser pour la quiescence 'threat'? Afficher à quel point le buffer est rempli?
 Slider PGN buggé?
 Optimiser la quiescence
@@ -539,6 +540,7 @@ Pour les sliders, vérifier leurs taille, car le texte dépasse en hauteur, mais p
 FIX!! r3r3/P2k2pp/1Bb5/6N1/3P1n2/1Q1q4/PP3PPP/1KR5 w - - 3 27 : quiescence qui ne va pas jusqu'au bout?
 3k4/3p1p2/5P2/8/3qP2P/6r1/PrPQ1R2/R3K3 b Q - 3 31 : pareil, la quiescence?
 Ne plus utiliser des maps, mais des robin_maps pour aller plus vite?
+Virer certaines propriétés de board? Faire un buffer de noeuds? car il prennent un peu de place aussi...
 
 8/2p3pk/1p1p4/2p5/6B1/1P2B1K1/r6P/8 w - - 0 15 : blancs gagnants
 1r3rk1/5pp1/1b1pq1n1/1N2p3/1P2P2p/4P1PP/1B2QPBK/3R4 w - - 0 26 : noirs mieux
@@ -617,6 +619,11 @@ Activité de la dame!!
 Bishop pawns: beaucoup plus graves si le fou est resté derrière la structure
 Le but, ça reste quand-même de rentrer dans le campt adverse... donc l'espace, c'est bien, mais seulement si ça ne créé pas de faiblesses et qu'il n'y a pas de point d'entrée pour l'adversaire
 1r2q2k/4p1b1/p1n1Q1p1/1pp2p1p/3p4/3P1N1P/PPP1RPP1/4R1K1 b - - 3 26 : ici, les blancs peuvent rentrer de partout!
+r1bq1b1r/pppk4/2n1pp2/3p2pB/3Pn3/4P2P/PPP2PPB/RN1QK1NR w KQ - 1 10 : proche de gagnant aux blancs
+rnbq2nr/pppp3p/8/3Q4/1k2Pp2/8/P5PP/R3K2R w KQ - 6 16 : ça reste mat (donc 8% de potentiel, c'est pas suffisant)
+3k2r1/3p1p2/5P2/8/3qP2P/8/PrPQ1R2/R3K3 b Q - 7 33 : Tg1+?
+FIX cette quiescence une bonne fois pour toutes... (DONE? mais lent!)
+8/6pk/3Q3p/2P4q/8/8/8/4K3 w - - 0 68 : c6! gagne. Les pions passés sont très forts en finale de dame (car difficile à arrêter sans donner la dame)
 
 !!!
 Pour la puissance d'attaque, il faut voir les combinaisons de pièces qui peuvent mater:
@@ -794,6 +801,7 @@ Roque + échec: O-O+ DONE
 Parfois, une pièce qui bloque la colonne (genre un cavalier protégé), ça peut rendre pour l'adversaire la colonne quasi mauvaise
 
 1r1k4/q2p1p2/3b1Pr1/8/4P2P/6P1/PPP1N3/R1Q1KR2 b Q - 0 27 : Fxg3+ gagne!
+1r1k4/q2p1p2/5P2/8/4P2P/8/PPP3r1/R1Q1KR2 w Q - 4 31 : c'est le roi blanc qui est dans la merde ici
 3k4/3p1p2/5P2/8/4P2P/4q3/PQP3r1/R2K1R2 b - - 2 32 : ?? c'est mat en 1 pour les noirs!!
 r3kbnr/pp3ppp/2n1p3/2ppPb2/2PP4/1Q2BN2/P3BPPP/qN3RK1 w kq - 2 10 : trop lent pour calculer dans ce genre de positions! il n'évalue que très peu de coups
 8/7k/8/7K/7P/7P/8/8 b - - 8 131 : ça c'est une nulle...
@@ -826,6 +834,8 @@ FIX!!!
 
 1nb2rk1/r4ppp/p4q2/2p2N2/8/2bB1Q2/PPP2PPP/3RK2R w K - 0 18 : quiescence pourrie ici
 r1b2rk1/1p1p2pp/p3p3/2P1p3/nR1K1P2/6B1/P5PP/5B1R w - - 0 3 : ici aussi
+
+r5k1/1pq2rp1/p1p1QnNp/8/3P1b2/P1NB4/1PP3PP/R6K w - - 1 21 : Fc4 meilleur coup (Cxf4 plutôt draw)
 
 1nb2rk1/r4ppp/p4q2/1Bp1bN2/8/2N2Q2/PPP2PPP/3RK2R w K - 1 17 : pb de quiescence -> Fd3 tient!
 r1b2rk1/1p1p1ppp/p3p3/4P3/n1PK1P2/6B1/P5PP/1R3B1R w - - 3 18 : c5 gagne!
