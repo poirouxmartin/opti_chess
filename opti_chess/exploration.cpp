@@ -453,6 +453,7 @@ void Node::reset() {
 	_quiescence_depth = 0;
 
 	for (auto const& [_, child] : _children) {
+		child->reset();
 		delete child;
 	}
 
@@ -641,15 +642,32 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 	// pourquoi en endgame ça va si loin? il fait full échecs...
 
 	// Améliorations:
-	// - Aucun cutoff quand on est en échec
-	// - Marge pour les beta cutoffs
-	// - SEE filtering
-	// - Delta pruning
+	// - Aucun cutoff quand on est en échec (DONE?)
+	// - Marge pour les beta cutoffs (DONE?)
+	// - SEE filtering -> profondeur réduite pour les mauvaises captures
+	// - Delta pruning (DONE?)
+	// - Futility pruning
 	// - Traitement différent des échecs
-	// - Standpat différent s'il y'a beaucoup de menaces adverses (voir test standpat = quiecsence adverse)
-	// - Emergency cutoff (si on est vraiment trop profond...)
-	// - Tri des captures: on regarde en priorité celles qui valent le plus le coup?
+	// - Standpat différent s'il y'a beaucoup de menaces adverses (voir test standpat = quiecsence adverse) (DONE?)
+	// - Emergency cutoff (si on est vraiment trop profond...) (DONE?)
+	// - Tri des captures: on regarde en priorité celles qui valent le plus le coup? (DONE?)
 	// - Ne pas regarder les mauvaises captures? à voir si ça casse pas tout...
+	// - Late move reduction (on réduit la profondeur pour les coups les moins prometteurs) (DONE?)
+	// https://medwinpublishers.com/OAJDA/an-optimization-method-for-quiescence-in-chess-playing-automata.pdf : essayer de placer le meilleur coup calme en premier dans la liste des coups à explorer?
+	// - Couper une variante si elle est beaucoup trop en dessous... (delta pruning?)
+	// - Transpositions (beaucoup de positions sont déjà évaluées, on peut les réutiliser)
+	// - Implémenter un générateur de coups spécifique pour la quiescence (seulement les prises par exemple, pour aller plus vite)
+	// - Réduire la profondeur de la quiescence?
+	// - Pruner plus agressivement si on est à faible profondeur restante?
+	// - On peut paramétrer plus ou moins agressivement les facteurs de pruning (delta plus fort par exemple)
+	// - Standpat pruning (voir dans la partie du l'alpha cut au niveau du standpat)
+	// - Optimiser aussi la minimal_quiescence?
+	// - Profondeur générale plus faible, et rendre plus profond quelques coups prometteurs?
+	// - Remettre les échecs?
+	// - History pruning
+	// - Check extensions
+	// - Trier les coups pour parer les échecs avec le meilleur en premier
+	// - A la place des captures, mettre tous les coups qui augmentent l'éval d'un certain facteur? (et faire le tri par évaluation)?
 
 	//1nb2rk1/r4ppp/p4q2/2p2N2/8/2bB1Q2/PPP2PPP/3RK2R w K - 0 18 : quiescence pourrie ici
 	//r1b2rk1/1p1p2pp/p3p3/2P1p3/nR1K1P2/6B1/P5PP/5B1R w - - 0 3 : ici aussi
@@ -733,25 +751,30 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 	// Emergency cutoff: depth - 4
 	if (depth <= -4) {
 		_time_spent += clock() - begin_monte_time;
-		cout << "emergency cutoff" << endl;
+		cout << "emergency cutoff: " << _board->to_fen() << ", in_check: " << in_check << endl;
 		return stand_pat;
 	}
 
 	// Profondeur nulle, on renvoie le standpat
 	if (depth <= 0 && !in_check) {
 		_time_spent += clock() - begin_monte_time;
+
+		if (depth < 0) {
+			//cout << "quiescence depth < 0: " << depth << ", " << _board->to_fen() << ", in_check: " << in_check << endl;
+		}
 		//cout << "stand pat" << endl;
 		return stand_pat;
 	}
 
 	// 1r1q1r1k/2n4p/p2p1p1Q/2ppn3/7N/4R3/1PP1N1PP/5R1K w - - 1 24 : quiescence buggée après Txe5??????????
 	// 1nb2rk1/r4ppp/p4q2/1Bp1bN2/8/2N2Q2/PPP2PPP/3RK2R w K - 1 17 : après Fxc3, ça va pas au bout des variantes...
-	//2rqr1k1/pNbnnpp1/2p1p1p1/P2pP3/Q2P4/B1P4P/4BPP1/RR4K1 b - - 6 22 : menace la dame en d8
+	// 2rqr1k1/pNbnnpp1/2p1p1p1/P2pP3/Q2P4/B1P4P/4BPP1/RR4K1 b - - 6 22 : menace la dame en d8
 
 	// Marge, qui dépend de la menace adverse (jugée grâce à la valeur de la quiescence sur le tour de l'adversaire)
 	if (evaluate_threats && !in_check) {
 		// Fait une courte quiescence pour évaluer la menace
 		int new_stand_pat = -evaluate_quiescence_threat(eval, 2, search_alpha, search_beta, -INT32_MAX, INT32_MAX, network);
+		//int new_stand_pat = -evaluate_quiescence_threat(eval, 4, search_alpha, search_beta, -INT32_MAX, INT32_MAX, network);
 
 		//cout << "new_stand_pat: " << new_stand_pat << ", test: " << test << endl;
 
@@ -764,6 +787,14 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 		//cout << "Pos: " << _board->to_fen() << ", stand_pat: " << stand_pat << ", new_stand_pat: " << new_stand_pat << ", beta_margin: " << beta_margin << endl;
 	}
 
+	// TODO *** ne propager la margin seulement sur une profondeur plus petite que la profondeur utilisée pour la threat evaluation?
+	// Experimental
+	//if (!evaluate_threats) {
+	//	// Réduit la marge
+	//	beta_margin *= 0.5;
+	//	//cout << "test margin: " << beta_margin << endl;
+	//}
+
 	// Si on est en échec, il ne faut jamais faire de beta cutoff
 	double total_beta = in_check ? INT_MAX : (double)beta + beta_margin;
 
@@ -775,11 +806,19 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 		return beta;
 	}
 
+	// Test du standpat pruning (futility pruning)
+	//constexpr int standpat_pruning_threshold = 300;
+
+	//if (!in_check && stand_pat + standpat_pruning_threshold <= alpha)
+	//	return stand_pat; // Trop pourri pour améliorer quoi que ce soit
+
 	// Mise à jour de alpha si l'éval statique est plus grande
 	if (stand_pat > alpha && !in_check) {
 	//if (stand_pat > alpha) {
 		alpha = stand_pat;
 	}
+
+	int move_index = 0;
 
 	// Regarde toutes les captures
 	// FIXME: faudra regarder que les coups non explorés? (ou gérer avec la profondeur...)
@@ -808,7 +847,10 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 		// *** FAUT-IL EXPLORER CE COUP? ***
 
 		// Si on est en échec, on explore tous les coups
-		const bool should_explore = in_check || move.is_capture() || move.is_promotion() || move.is_checkmate();
+		//const bool should_explore = in_check || move.is_capture() || move.is_promotion() || move.is_checkmate();
+		const bool should_explore = in_check || move.is_capture() || move.is_promotion() || move.is_checkmate() || move.is_check();
+
+		// 1knr4/8/Qp3R1p/1N1r4/1P4p1/5P2/6PP/R6K b - - 0 36 : il regarde pas Td1+?
 
 		//cout << "move: " << _board->move_label(move) << ", should_explore: " << should_explore << ", already_explored: " << already_explored << endl;
 
@@ -818,6 +860,63 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 		// *** EXPLORATION ***
 		// Si c'est une capture/échec/promotion, on explore
 		if (should_explore) {
+
+			constexpr int check_extension = 0; // On prolonge la profondeur de 1 si on est en échec
+
+			//cout << endl << "position: " << _board->to_fen() << endl;
+			//cout << "initial depth: " << depth << ", move_index: " << move_index << ", move: " << _board->move_label(move) << endl;
+
+			int new_depth = depth;
+
+			new_depth += move.is_check() ? check_extension : 0;
+
+			// Réduction de la profondeur pour les coups moins prometteurs
+			new_depth -= in_check ? 0 : move_index;
+
+			// FIXME : ne pas réduire si on est à depth < 2?
+
+			//cout << "reduction: " << (in_check ? 0 : move_index) << endl;
+
+			//cout << "depth after reduction: " << depth << endl;
+
+			if (new_depth <= 0 && !in_check) {
+				//cout << "depth <= 0, skipping move" << endl;
+				continue; // On ne regarde plus les coups si on est trop profond
+			}
+
+			move_index++;
+
+			if (!move.is_checkmate() && !in_check) {
+				// Test du delta pruning
+				constexpr int delta = 500;
+
+				constexpr int piece_values[6] = { 100, 300, 300, 500, 900, 10000 }; // P, N, B, R, Q, K
+				constexpr int promotion_value = 1000;
+				constexpr int check_value = 500; // Valeur d'un échec
+
+				// Estimation rapide de ce que le coup peut apporter
+				int best_estimation = 0;
+
+				// Si c'est une promotion, on ajoute la valeur de la promotion
+				if (move.is_promotion()) {
+					best_estimation += promotion_value;
+				}
+
+				// Si c'est une capture, on ajoute la valeur de la pièce capturée
+				else if (move.is_capture()) {
+					best_estimation += piece_values[(_board->_array[move.end_row][move.end_col] - 1) % 6];
+				}
+
+				// Si c'est un échec, on ajoute la valeur de l'échec
+				else if (move.is_check()) {
+					best_estimation += check_value;
+				}
+
+				if (stand_pat + best_estimation + delta < alpha) {
+					//cout << "delta pruning: " << _board->move_label(move) << ", stand_pat: " << stand_pat << ", best_estimation: " << best_estimation << ", delta: " << delta << ", alpha: " << alpha << endl;
+					continue; // On ne regarde pas ce coup
+				}
+			}
 
 			Node *child = nullptr;
 
@@ -853,7 +952,7 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 
 			// Appel récursif sur le fils
 			// FIXME *** à backpropagate seulement sur une profondeur plus petite que la profondeur utilisée pour la threat evaluation?
-			int score = - child->quiescence(buffer, eval, depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, beta_margin);
+			int score = - child->quiescence(buffer, eval, new_depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, beta_margin);
 			//int score = - child->quiescence(buffer, eval, depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, 0);
 			_nodes += child->_nodes;
 
@@ -865,7 +964,7 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 			// 1r1q1r1k/2n4p/p2p1p1Q/2ppR3/7N/8/1PP1N1PP/5R1K b - - 0 24 : quiescence ici
 
 			// Tous les coups ont été explorés, donc on met à jour l'évaluation du plateau avec le meilleur coup
-			Move best_move = get_best_score_move(search_alpha, search_beta, !all_moves_explored, depth - 1);
+			Move best_move = get_best_score_move(search_alpha, search_beta, !all_moves_explored, new_depth - 1);
 
 			// Standpat = le meilleur
 			if (best_move.is_null_move()) {
@@ -874,8 +973,8 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 			else {
 				//_is_stand_pat_eval = false;
 				_deep_evaluation = _children[best_move]->_deep_evaluation;
-				if (_children[best_move]->_quiescence_depth != depth - 1) {
-					cout << "expected depth: " << depth - 1 << ", actual depth: " << _children[best_move]->_quiescence_depth << endl;
+				if (_children[best_move]->_quiescence_depth != new_depth - 1) {
+					cout << "expected depth: " << new_depth - 1 << ", actual depth: " << _children[best_move]->_quiescence_depth << endl;
 				}
 			}
 
@@ -1021,7 +1120,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		int child_iterations = max(child->_chosen_iterations, child->_iterations);
 
 		// FIXME *** gamma devrait changer en fonction de l'incertitude: plus on est incertain, plus on explore large?
-		const double new_gamma = gamma / (1.00f - _board->_uncertainty / 3.0f) / (1.00f - _board->_adv / 3.0f);
+		const double new_gamma = gamma / (1.00f - _board->_uncertainty / 2.0f) / (1.00f - _board->_adv / 2.0f);
 		//const double new_gamma = gamma;
 		//cout << "gamma: " << gamma << ", uncertainty: " << _board->_uncertainty << ", new_gamma: " << new_gamma << endl;
 
@@ -1167,8 +1266,8 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 	//const double add_constant = 0.05f;
 	//const double add_constant = 5.0E-5;
 	const double add_constant = 0.000f;
-	//const double pure_win_chance_adding = 0.05f; // Bonus si on a des chances de gagner pures
-	const double pure_win_chance_adding = 0.0f; // Bonus si on a des chances de gagner pures
+	const double pure_win_chance_adding = 0.0001f; // Bonus si on a des chances de gagner pures
+	//const double pure_win_chance_adding = 0.0f; // Bonus si on a des chances de gagner pures
 
 	int color = player ? 1 : -1;
 
@@ -1188,7 +1287,9 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 
 	// Bonus si t'as des chances pures de gain?
 	// R4Q2/6pk/1q6/8/3P4/2N3r1/1K6/8 w - - 5 49 : ici pour trouver Ra2?
+	// 8/6pk/7p/8/4p2P/1R1r2P1/5PK1/8 w - - 5 33 : Txd3?? ça gagne!
 	const double win_adding = (player ? eval._wdl.win_chance : eval._wdl.lose_chance) * pure_win_chance_adding;
+	//cout << "win chance: " << (player ? eval._wdl.win_chance : eval._wdl.lose_chance) << ", win_adding: " << win_adding << endl;
 
 	//cout << "eval: " << eval_score << ", score: " << score_score << endl;
 
@@ -1197,6 +1298,8 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 
 	// Score final
 	const double score = eval_score * score_score + adding + win_adding;
+
+	//cout << "Node score: " << score << " | eval: " << eval_score << ", score: " << score_score << ", adding: " << adding << ", win_adding: " << win_adding << endl;
 
 	return score;
 }
@@ -1320,6 +1423,20 @@ int Node::minimal_quiescence(Evaluator* eval, int depth, double search_alpha, do
 
 		// Si c'est une capture/échec/promotion, on explore
 		if (move.is_capture() || move.is_promotion() || move.is_checkmate()) {
+
+			// Test du delta pruning
+			//constexpr int delta = 250;
+
+			//constexpr int piece_values[6] = { 100, 300, 300, 500, 900, 10000 }; // P, N, B, R, Q, K
+			//constexpr int promotion_value = 1000;
+
+			//// Estimation rapide de ce que le coup peut apporter
+			//const int best_estimation = move.is_promotion() ? promotion_value : move.is_capture() ? piece_values[(_board->_array[move.end_col][move.end_col] - 1) % 6] : 0;
+
+			//if (!move.is_checkmate() && !in_check && stand_pat + best_estimation + delta < alpha) {
+			//	// On ne regarde pas ce coup
+			//	continue;
+			//}
 
 			// Prend une place dans le buffer
 			Board new_board(*_board);
