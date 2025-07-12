@@ -1711,6 +1711,7 @@ void Board::reset_board(const bool display) {
 	_static_evaluation = 0;
 	_evaluation = 0;
 	//_moves_flags_assigned = false;
+	_en_passant_col = -1;
 	_sorted_moves = false;
 	_zobrist_key = 0;
 	_uncertainty = 0.0f;
@@ -1795,18 +1796,19 @@ int Board::get_king_safety(float display_factor) {
 	// ---------------------------
 
 	// rnb2bnr/pppp1k1p/5q2/8/5B2/5Q2/PPP3PP/RN3RK1 b - - 0 11
+	// 8/8/8/2r2pp1/1k5p/2b4P/4K3/1Q6 b - - 81 133 : la dame a plus de potentiel que tour et fou réunis
 
 	// Potentiel d'attaque de chaque pièce (pion, caval, fou, tour, dame)
-	static constexpr int attack_potentials[6] = { 5, 35, 30, 50, 125, 0 };
-	constexpr int reference_attack_potential = 395; // Si y'a toutes les pièces de base sur l'échiquier
+	static constexpr int attack_potentials[6] = { 5, 30, 35, 55, 125, 0 };
+	constexpr int reference_attack_potential = 405; // Si y'a toutes les pièces de base sur l'échiquier
 
 	// Potentiel de défense
-	static constexpr int defense_potentials[6] = { 5, 30, 25, 15, 30, 0 };
-	constexpr int reference_defense_potential = 210; // Si y'a toutes les pièces de base sur l'échiquier
+	static constexpr int defense_potentials[6] = { 5, 25, 20, 10, 5, 0 };
+	constexpr int reference_defense_potential = 155; // Si y'a toutes les pièces de base sur l'échiquier
 
 	// Potentiel d'attaque requis pour pouvoir mater facilement
 	// r1b3nr/ppppk2p/2n5/8/5N2/1Q6/PPP3PP/R6K w - - 1 18
-	constexpr int needed_potential = 80;
+	constexpr int needed_potential = 40;
 	//constexpr int needed_potential = 0;
 
 	// Valeurs des potentiels d'attaque
@@ -1873,20 +1875,40 @@ int Board::get_king_safety(float display_factor) {
 	//cout << "w_total_defense_potential: " << w_total_defense_potential << endl;
 	//cout << "b_total_defense_potential: " << b_total_defense_potential << endl;
 
+	// Potentiel d'attaque normalisé
+	const float w_attack_potential_normalized = (float)(w_total_attack_potential - needed_potential) / (reference_attack_potential - needed_potential);
+	const float b_attack_potential_normalized = (float)(b_total_attack_potential - needed_potential) / (reference_attack_potential - needed_potential);
 
-	// Potentiel total
-	const int w_total_potential = max(0, w_total_attack_potential - b_total_defense_potential - needed_potential);
-	const int b_total_potential = max(0, b_total_attack_potential - w_total_defense_potential - needed_potential);
+	//cout << "w_attack_potential_normalized: " << w_attack_potential_normalized << endl;
+	//cout << "b_attack_potential_normalized: " << b_attack_potential_normalized << endl;
+
+	// Potentiel de défense normalisé
+	const float w_defense_potential_normalized = (float)w_total_defense_potential / reference_defense_potential;
+	const float b_defense_potential_normalized = (float)b_total_defense_potential / reference_defense_potential;
+
+	//cout << "w_defense_potential_normalized: " << w_defense_potential_normalized << endl;
+	//cout << "b_defense_potential_normalized: " << b_defense_potential_normalized << endl;
+
+	// Potentiel minimum d'attaque
+	//const float min_attack_potential = -needed_potential / (float)reference_attack_potential;
+
+	// Potentiel final d'attaque
+	float w_attacking_potential = 2.0f * max(0.0f, w_attack_potential_normalized) / (1.0f + w_defense_potential_normalized);
+	float b_attacking_potential = 2.0f * max(0.0f, b_attack_potential_normalized) / (1.0f + b_defense_potential_normalized);
+
+	//// Potentiel total
+	//const int w_total_potential = max(0, w_total_attack_potential - b_total_defense_potential - needed_potential);
+	//const int b_total_potential = max(0, b_total_attack_potential - w_total_defense_potential - needed_potential);
 
 	//cout << "w_total_potential: " << w_total_potential << endl;
 	//cout << "b_total_potential: " << b_total_potential << endl;
 
-	// Potentiel total de référence
-	const int reference_potential = reference_attack_potential - reference_defense_potential - needed_potential;
+	//// Potentiel total de référence
+	//const int reference_potential = reference_attack_potential - reference_defense_potential - needed_potential;
 
-	// Potentiel normalisé
-	float w_attacking_potential = (float)w_total_potential / reference_potential;
-	float b_attacking_potential = (float)b_total_potential / reference_potential;
+	//// Potentiel normalisé
+	//float w_attacking_potential = (float)w_total_potential / reference_potential;
+	//float b_attacking_potential = (float)b_total_potential / reference_potential;
 
 	//cout << "w_attacking_potential: " << w_attacking_potential << endl;
 	//cout << "b_attacking_potential: " << b_attacking_potential << endl;
@@ -1898,7 +1920,7 @@ int Board::get_king_safety(float display_factor) {
 	// 3rr1k1/2p2ppp/1bp2n2/pp6/4PB2/2PPN2q/PPQ1BP2/R4RK1 b - - 3 9 : ici il reste du potentiel de draw pour les noirs
 
 	// Fonction non linéaire
-	constexpr double alpha = 0.5;
+	constexpr double alpha = 2.0;
 	w_attacking_potential = pow(w_attacking_potential, alpha);
 	b_attacking_potential = pow(b_attacking_potential, alpha);
 
@@ -1906,7 +1928,7 @@ int Board::get_king_safety(float display_factor) {
 	//cout << "b_attacking_potential: " << b_attacking_potential << endl;
 
 	// Constante pour garder un minimum de potentiel...
-	constexpr float min_potential = 0.1f;
+	constexpr float min_potential = 0.0f;
 
 	// 2k5/ppp3Bp/2p4r/8/b3Pp2/3B1Pn1/PP3KP1/RQ6 b - - 0 1
 
@@ -1927,7 +1949,7 @@ int Board::get_king_safety(float display_factor) {
 	// Facteurs multiplicatifs
 	constexpr float piece_attack_factor = 1.0f;
 	constexpr float piece_defense_factor = 1.0f;
-	constexpr float pawn_protection_factor = 0.75f;
+	constexpr float pawn_protection_factor = 0.70f;
 
 	// En cas de résultante positive ou négative...
 	constexpr float piece_overload_multiplicator = 1.0f; // TODO: à utiliser
@@ -1949,9 +1971,9 @@ int Board::get_king_safety(float display_factor) {
 
 	// Plus y'a d'attaque, plus c'est difficile de défendre (même s'il y a beaucoup de défenseurs) -> exponentielle?
 	// Constante à partir de laquelle on considère un *2 sur la puissance d'attaque
-	constexpr int double_attack = 750;
-	float w_mult_attack = 1.0f + w_attacking_power * w_attacking_potential / static_cast<float>(double_attack);
-	float b_mult_attack = 1.0f + b_attacking_power * b_attacking_potential/ static_cast<float>(double_attack);
+	constexpr int doubled_attack = 750;
+	float w_mult_attack = 1.0f + w_attacking_power * w_attacking_potential / static_cast<float>(doubled_attack);
+	float b_mult_attack = 1.0f + b_attacking_power * b_attacking_potential/ static_cast<float>(doubled_attack);
 
 	w_attacking_power *= w_mult_attack;
 	b_attacking_power *= b_mult_attack;
@@ -3723,8 +3745,8 @@ bool Board::sort_moves() {
 	if (_sorted_moves)
 		return false;
 
-	// Piece values (static is fine here, could also be constexpr)
-	static const int piece_values[13] = { 0, 100, 320, 330, 500, 900, 10000, 100, 320, 330, 500, 900, 10000 };
+	// Valeur des pièces
+	static constexpr int piece_values[13] = { 0, 100, 320, 330, 500, 900, 10000, 100, 320, 330, 500, 900, 10000 };
 
 	// Vector of pairs: (Move, score)
 	std::vector<std::pair<Move, int>> scored_moves;
@@ -3741,11 +3763,11 @@ bool Board::sort_moves() {
 
 		// MVV-LVA
 		if (to != 0)
-			score += 10 * piece_values[to] - piece_values[from];
+			score += 100 * piece_values[to] - piece_values[from];
 
 		// Promotion
 		if (move.is_promotion())
-			score += 500;
+			score += 80000;
 
 		// Checkmate
 		if (move.is_checkmate())
@@ -3753,7 +3775,7 @@ bool Board::sort_moves() {
 
 		// Check
 		else if (move.is_check())
-			score += 3000;
+			score += 5000;
 
 		//cout << "Move: " << move_label(move) << " | Score: " << score << endl;
 
@@ -3774,7 +3796,6 @@ bool Board::sort_moves() {
 	_sorted_moves = true;
 	return true;
 }
-
 
 // Fonction qui fait cliquer le coup m
 bool Board::click_m_move(const Move m, const bool orientation) const
@@ -5427,7 +5448,7 @@ int Board::get_weak_squares(bool color, bool around_king) {
 	};
 
 	// Valeur des cases faibles proches du roi
-	constexpr static int king_weak_square[3] = { 45, 28, 15 };
+	constexpr static int king_weak_square[3] = { 35, 18, 8 };
 
 	// Valeur d'outpost proche du roi (décroit en fonction de la distance)
 	constexpr static int king_outpost_square[3] = { 45, 30, 15 };
@@ -7060,6 +7081,7 @@ void Board::display_positions_history() const
 
 	// TODO: prendre en compte distance 2??
 
+	//8/8/8/2r2pp1/1k5p/2b4P/4K3/1Q6 b - - 81 133
 	//rnbr3k/ppp1qppB/4p2p/1P2P3/2Pn4/P4N2/2Q2PPP/RN2K2R w KQ - 3 15
 	//6rk/1p3p1p/2nN1q2/2Q2p2/3p4/PP5P/5PP1/2R3K1 b - - 1 28 : la dame attaque quand on la met en e6??
 	//6rk/1p3p1p/2nNq3/2Q2p2/3p4/PP5P/5PP1/2R3K1 w - - 2 29 : bug?
@@ -7069,6 +7091,7 @@ void Board::display_positions_history() const
 	//1r6/7p/p1P1p3/4kp2/1P1Rp3/4KPP1/8/8 b - - 0 49 ...
 	//rnb4r/ppppbk1p/5n2/6Q1/8/2N1p3/PPP3PP/5RK1 w - - 4 16 : Cd5 ajoute une grosse pièce en attaque!!
 	//1rbq1r2/2p2pk1/p2p1nn1/4p1N1/p3P2p/2PPP3/RPB3PP/3QBRK1 b - - 1 2 : h3 diminue l'attaque des noirs...? car ça retire le fou de la case h3?
+	// 1rbq3r/b4pk1/p1p3n1/4p1PQ/P3P3/1BP3P1/3N1P2/R4K1R w - - 1 8
 
 	// rn1q1rkn/pb2bpp1/1ppp4/5P2/3P4/2N2B2/PPP3PP/R1BQR1K1 b - - 4 14 vs rn1q1rkn/pb2bpp1/1ppp4/5P2/3P4/2N2B1R/PPP3PP/R1BQ2K1 b - - 4 14
 
@@ -7081,7 +7104,10 @@ void Board::display_positions_history() const
 	constexpr int semi_attack_value = 40;
 
 	// Facteur d'attaque par pièce (pion, cavalier, fou, tour, dame, roi)
-	constexpr float piece_attack_factor[6] = { 0.35f, 1.35f, 1.25f, 1.45f, 1.75f, 1.15f };
+	constexpr float piece_attack_factor[6] = { 0.60f, 1.00f, 0.95f, 1.10f, 1.30f, 0.85f };
+
+	// Facteur de semi-attaque par pièce (pion, cavalier, fou, tour, dame, roi)
+	constexpr float piece_semi_attack_factor[6] = { 0.75f, 1.00f, 0.95f, 1.10f, 1.01f, 0.70f };
 
 	// Facteur d'attaque en fonction de la distance au roi
 
@@ -7192,11 +7218,6 @@ void Board::display_positions_history() const
 						if (p2 == (color ? w_pawn : b_pawn))
 							break;
 
-						// Si une pièce bloque la case
-						if (p2 != none) {
-							blocked = true;
-						}
-
 						// Si la pièce contrôle une case du roi
 						if (di <= 2 && dj <= 2) {
 							if (di <= 1 && dj <= 1 && !blocked) {
@@ -7205,6 +7226,11 @@ void Board::display_positions_history() const
 							else {
 								semi_attacks++;
 							}
+						}
+
+						// Si une pièce bloque la case
+						if (p2 != none) {
+							blocked = true;
 						}
 
 						// Si un pion bloque la case
@@ -7241,11 +7267,6 @@ void Board::display_positions_history() const
 						if (p2 == (color ? w_pawn : b_pawn))
 							break;
 
-						// Si une pièce bloque la case
-						if (p2 != none) {
-							blocked = true;
-						}
-
 						// Si la pièce contrôle une case du roi
 						if (di <= 2 && dj <= 2) {
 							if (di <= 1 && dj <= 1 && !blocked) {
@@ -7254,6 +7275,11 @@ void Board::display_positions_history() const
 							else {
 								semi_attacks++;
 							}
+						}
+
+						// Si une pièce bloque la case
+						if (p2 != none) {
+							blocked = true;
 						}
 
 						// Si un pion bloque la case
@@ -7307,8 +7333,8 @@ void Board::display_positions_history() const
 					//cout << "color: " << color << ", piece: " << piece_name(p) << "(" << square_name(row, col) << "), attacks : " << (int)attacks << ", value : " << attacking_value[attacks] << ", piece factor : " << piece_attack_factor[(p - 1) % 6] << ", total : " << attacking_value[attacks] * piece_attack_factor[(p - 1) % 6] << endl;
 				}
 				else if (semi_attacks > 0) {
-					king_attackers += semi_attack_value * piece_attack_factor[(p - 1) % 6] * pow(semi_attacks, 0.3);
-					//cout << "color: " << color << ", piece: " << piece_name(p) << "(" << square_name(row, col) << "), semi-attacks : " << (int)semi_attacks << ", value : " << semi_attack_value * piece_attack_factor[(p - 1) % 6] * pow(semi_attacks, 0.3) << endl;
+					king_attackers += semi_attack_value * piece_semi_attack_factor[(p - 1) % 6] * pow(semi_attacks, 0.3);
+					//cout << "color: " << color << ", piece: " << piece_name(p) << "(" << square_name(row, col) << "), semi-attacks : " << (int)semi_attacks << ", value : " << semi_attack_value * piece_semi_attack_factor[(p - 1) % 6] * pow(semi_attacks, 0.3) << endl;
 				}
 			}
 		}
@@ -7335,7 +7361,7 @@ void Board::display_positions_history() const
 	constexpr int semi_defense_value = 30;
 
 	// Facteur de défense par pièce (pion, cavalier, fou, tour, dame, roi)
-	constexpr float piece_defense_factor[6] = { 0.5f, 1.5f, 1.35f, 1.2f, 1.15f, 1.5f };
+	constexpr float piece_defense_factor[6] = { 0.5f, 1.5f, 1.35f, 1.2f, 0.75f, 1.0f };
 
 	// La dame est un très mauvais défenseur, puisqu'elle est très facilement exposée
 
@@ -7809,10 +7835,12 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 
 	// Niveau de protection auquel on peut considérer que le roi est safe
 	//const int king_base_protection = 600 * (1 - _adv) - 200;
-	int needed_protection = 400 * opponent_attacking_potential;
+	int needed_protection = 470 * opponent_attacking_potential - 100;
+
+	// r3r3/P2k2pp/1Bb5/6N1/3P4/3n4/PP3PPP/1KR5 w - - 0 28
 
 	// Bonus de protection selon la colonne
-	constexpr int column_protection_bonus[8] = { 65, 75, 50, 0, 0, 50, 75, 65 };
+	constexpr int column_protection_bonus[8] = { 85, 75, 50, 0, 0, 50, 75, 85 };
 
 	if (add_column_bonus)
 		needed_protection -= column_protection_bonus[column];
@@ -7836,7 +7864,7 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 
 		open_files[col - king_pos.col + 2] = true;
 
-		// Pour chaque pion allié sur la colonne
+		// Pour chaque pion allié sur la colonne1rbq1r1k/b4p1p/p1p2pn1/4p3/P3P2P/1BP2NP1/3NQP2/R4K1R b - - 0 4
 		for (uint_fast8_t row = 0; row < 8; row++) {
 			if (_array[row][col] == (color ? w_pawn : b_pawn)) {
 				pawns[row][col - king_pos.col + 2] = true;
@@ -7939,7 +7967,7 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 		}
 	}
 
-	//cout << "files: " << open_files_total << endl;
+	open_files_total *= opponent_attacking_potential;
 
 	// Protection par les bords de l'échiquier
 
@@ -7949,7 +7977,7 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 	// Bord horizontal
 	constexpr int h_edge_protection = 25;
 
-	const int edge_protection = v_edge_protection * (min(king_pos.row, 7 - king_pos.row) == 0) + h_edge_protection * (min(king_pos.col, 7 - king_pos.col) == 0);
+	const int edge_protection = opponent_attacking_potential * (v_edge_protection * (min(king_pos.row, 7 - king_pos.row) == 0) + h_edge_protection * (min(king_pos.col, 7 - king_pos.col) == 0));
 
 	//cout << "edges: " << edge_protection << endl;
 

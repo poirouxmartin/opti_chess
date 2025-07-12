@@ -39,7 +39,13 @@ bool SimpleColor::equals(const SimpleColor c) const
 // Fonction qui renvoie si deux couleurs sont assez proches
 bool SimpleColor::equals(const SimpleColor c, const float alike) const
 {
-	return (abs(static_cast<int>(_r) - static_cast<int>(c._r)) + abs(static_cast<int>(_g) - static_cast<int>(c._g)) + abs(static_cast<int>(_b) - static_cast<int>(c._b))) / 255.0f / 3.0f <= 1 - alike;
+	return color_distance(c) <= 1 - alike;
+}
+
+// Fonction qui renvoie à quel point deux couleurs sont proches
+float SimpleColor::color_distance(const SimpleColor c) const
+{
+	return (abs(_r - c._r) + abs(_g - c._g) + abs(_b - c._b)) / 255.0f / 3.0f;
 }
 
 // Fonction qui simule un clic de souris à une position donnée
@@ -141,7 +147,7 @@ uint_fast8_t* get_board_move(const int x1, const int y1, const int x2, const int
 			}
 
 			// Si la couleur correspond à une couleur de case jouée
-			if (color.equals(website._white_tile_played_color, 0.98f) || color.equals(website._black_tile_played_color, 0.98f)) {
+			if (color.equals(website._white_tile_played_color, 1.0f - website._tile_color_tolerance) || color.equals(website._black_tile_played_color, 1.0f - website._tile_color_tolerance)) {
 				if (display) {
 					cout << "moved tile : ";
 				}
@@ -158,7 +164,7 @@ uint_fast8_t* get_board_move(const int x1, const int y1, const int x2, const int
 				}
 
 				// Si c'est le cas, alors c'est la case de départ
-				if (!found_start_square && (color.equals(website._white_tile_played_color, 0.98f) || color.equals(website._black_tile_played_color, 0.98f))) {
+				if (!found_start_square && (color.equals(website._white_tile_played_color, 1.0f - website._tile_color_tolerance) || color.equals(website._black_tile_played_color, 1.0f - website._tile_color_tolerance))) {
 					y_begin = orientation ? i : 7 - i;
 					x_begin = orientation ? j : 7 - j;
 					if (display)
@@ -192,6 +198,11 @@ uint_fast8_t* get_board_move(const int x1, const int y1, const int x2, const int
 	DeleteObject(h_bitmap);
 	ReleaseDC(nullptr, hdc);
 	delete[] lp_pixels;
+
+	if (y_begin == -1 || x_begin == -1 || y_end == -1 || x_end == -1) {
+		//cout << "No move found on the board" << endl;
+		return nullptr; // Pas de coup trouvé
+	}
 
 	// Coordonnées du coup joué
 	const auto coord = new uint_fast8_t[4];
@@ -254,7 +265,7 @@ int bind_board_orientation(const int x1, const int y1, const int x2, const int y
 
 	cout << "color of the piece: " << color._r << ", " << color._g << ", " << color._b << ", expected: " << website._white_piece_color._r << ", " << website._white_piece_color._g << ", " << website._white_piece_color._b << ", or " << website._black_piece_color._r << ", " << website._black_piece_color._g << ", " << website._black_piece_color._b << endl;
 
-	const int orientation = color.equals(website._white_piece_color, 0.95f) ? 1 : (color.equals(website._black_piece_color, 0.95f) ? 0 : -1);
+	const int orientation = color.equals(website._white_piece_color, 1.0f - website._piece_color_tolerance) ? 1 : (color.equals(website._black_piece_color, 1.0f - website._piece_color_tolerance) ? 0 : -1);
 
 	cout << "board orientation: " << (orientation == 1 ? "white" : orientation == 0 ? "black" : "unknown") << endl << endl;
 
@@ -302,9 +313,13 @@ bool locate_chessboard(int& top_left_x, int& top_left_y, int& bottom_right_x, in
 		pixel_address = lp_pixels + pixel_offset * (my_bm_info.bmiHeader.biBitCount / 8);
 		color = SimpleColor(static_cast<int>(pixel_address[2]), static_cast<int>(pixel_address[1]), static_cast<int>(pixel_address[0]));
 
-		if (color.equals(website._black_tile_color, 0.98f) || color.equals(website._white_tile_color, 0.98f)) {
+		bool is_black_tile = color.equals(website._black_tile_color, 1.0f - website._tile_color_tolerance);
+		bool is_white_tile = color.equals(website._white_tile_color, 1.0f - website._tile_color_tolerance);
+
+		if (is_black_tile || is_white_tile) {
 			top_left_x = y;
 			found_left = true;
+			cout << "left side of the chessboard found at x = " << top_left_x << " (color proximity: " << (is_black_tile ? "white - " : "black - ") << color.color_distance(is_black_tile ? website._black_tile_color : website._white_tile_color) << ")" << endl;
 			break;
 		}
 	}
@@ -317,9 +332,13 @@ bool locate_chessboard(int& top_left_x, int& top_left_y, int& bottom_right_x, in
 		pixel_address = lp_pixels + pixel_offset * (my_bm_info.bmiHeader.biBitCount / 8);
 		color = SimpleColor(static_cast<int>(pixel_address[2]), static_cast<int>(pixel_address[1]), static_cast<int>(pixel_address[0]));
 
-		if (color.equals(website._black_tile_color, 0.98f) || color.equals(website._white_tile_color, 0.98f)) {
+		bool is_black_tile = color.equals(website._black_tile_color, 1.0f - website._tile_color_tolerance);
+		bool is_white_tile = color.equals(website._white_tile_color, 1.0f - website._tile_color_tolerance);
+
+		if (is_black_tile || is_white_tile) {
 			bottom_right_y = screen_height - x;
 			found_bottom = true;
+			cout << "bottom side of the chessboard found at y = " << bottom_right_y << " (color proximity: " << (is_black_tile ? "white - " : "black - ") << color.color_distance(is_black_tile ? website._black_tile_color : website._white_tile_color) << ")" << endl;
 			break;
 		}
 	}
@@ -332,9 +351,13 @@ bool locate_chessboard(int& top_left_x, int& top_left_y, int& bottom_right_x, in
 		pixel_address = lp_pixels + pixel_offset * (my_bm_info.bmiHeader.biBitCount / 8);
 		color = SimpleColor(static_cast<int>(pixel_address[2]), static_cast<int>(pixel_address[1]), static_cast<int>(pixel_address[0]));
 
-		if (color.equals(website._black_tile_color, 0.98f) || color.equals(website._white_tile_color, 0.98f)) {
+		bool is_black_tile = color.equals(website._black_tile_color, 1.0f - website._tile_color_tolerance);
+		bool is_white_tile = color.equals(website._white_tile_color, 1.0f - website._tile_color_tolerance);
+
+		if (is_black_tile || is_white_tile) {
 			top_left_y = screen_height - x;
 			found_top = true;
+			cout << "top side of the chessboard found at y = " << top_left_y << " (color proximity: " << (is_black_tile ? "white - " : "black - ") << color.color_distance(is_black_tile ? website._black_tile_color : website._white_tile_color) << ")" << endl;
 			break;
 		}
 	}

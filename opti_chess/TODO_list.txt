@@ -131,6 +131,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 	- Tours liées, important
 	- Colonne ouverte/semi-ouverte contre le roi adverse combiné avec diagonale ouverte = grand avantage (+2?)
 	- Jouer du côté où la chaîne de pions pointe
+	- Evaluation globale des faiblesses de la position
  
 
 
@@ -576,6 +577,8 @@ r1b3k1/ppp1qppp/2n5/8/8/P2QPNbP/1P2B1P1/RN3K1R b - - 4 14 : Ff5!! seul coup (sin
 3r3k/1p3p1p/1p1P1p2/p1P1n3/1P6/6R1/6PP/1B5K w - - 2 34 : noirs gagnants (l'éval de Grogros est à +2... la finale est très mal évaluée)
 rnb1kb1r/ppp2ppp/8/3q4/4n3/5N2/PPP1QPPP/RNB1KB1R w KQkq - 0 7 : gagnant aux blancs (clouage sur la colonne e)
 3k4/3p1p2/5P2/8/3qP2P/6r1/PrPQ1R2/R3K3 b Q - 3 31 : il regarde pas Tg1+?
+r2qkb1r/ppp2ppp/2n1bn2/P3p3/3pP1P1/3P1P2/1PPB3P/RN1QKBNR b KQkq g3 0 8 : Cxe4 et Cxg4 gagnent (Suivi de Dh4+, Fxg4, Fxf3+ et Dh5 qui gagne la dame en d1)
+rn1qkbnr/p4ppp/3pb3/1pp5/4P3/1B3N2/PPP2PPP/RNBQK2R b KQkq - 1 8 : c4?? c'est une pièce!
 
 1r3rk1/p2b1pp1/2nbp2p/q2p4/2pP2n1/2P1PNP1/PRQN1PBP/1RB3K1 b - - 3 16 : e4 c'est l'idée de la position pour les blancs. il faut donc faire le très fort f5 pour l'empêcher!
 Faut qu'il arrête les Cc6 dans les positions à d4... ça bloque le pion c
@@ -760,6 +763,7 @@ Gros ajouts:
 - Quand on est en réflexion sur un coup un peu pourri, peut-être diminuer la quiescence depth, car ça prend beaucoup de temps pour pas grand chose...
 - Winnable pour les finales asymétriques (fou contre cavalier, ou pièce mineure et pion vs tour...)
 - Si y'a pas de plan -> plutôt draw? ou au moins winnable--?
+- S'assurer que la réflexion d'un point de vue micro est parfaite. Ensuite on optimisera le macro (augmentation des ressources -> vitesse de génération des coups, etc.)
 
 
 Quiescence:
@@ -809,6 +813,68 @@ r3kbnr/pp3ppp/2n1p3/2ppPb2/2PP4/1Q2BN2/P3BPPP/qN3RK1 w kq - 2 10 : trop lent pou
 8/7k/6R1/6Kp/5p1P/7P/4b3/8 w - - 2 79 : Td6 seul coup qui gagne
 8/5k2/1R4p1/7p/4bP1P/6KP/8/8 w - - 11 62 : faut garder le roi adverse loin pour gagner
 r4rk1/pppq1ppp/2n1pn2/8/1bQPP3/2N2N2/PP3PPP/R1B2RK1 w - - 1 12 : d5! gagne
+r1b2rk1/3nppbp/p2p1np1/qppN4/2PPP3/4BP2/PP1QN1PP/1K1R1B1R b - - 1 1 : Cxd5!! quasi gagnant
+r1b2rk1/3nppbp/p2p2p1/Qpp5/2nPP3/5P2/PP2N1PP/1KR2B1R w - - 0 4 : quasi gagnant pour les noirs
+r4rk1/4ppbp/p2pb1p1/Q1n5/2p1P3/2N2P2/PP4PP/1K3B1R w - - 2 7 : roi blanc très faible
+r1b2rk1/3nppbp/p2p2p1/Q1p5/2pPP3/5P2/PP2N1PP/1K3B1R w - - 0 2 : Cf4! seul coup qui tient
+1rr3k1/4ppbp/1n1p2p1/8/1Qp1P3/1N3P2/PP4PP/1KR5 b - - 1 8 : trop d'attaque, complètement gagnant pour les noirs
+1rb2rk1/4ppbp/pn1p2p1/8/2p1P3/5P2/PPBQN1PP/1K5R b - - 1 7 : c3!!
+1r4k1/4ppbp/Q2p2p1/8/4P3/1Pr2P2/1p4PP/1K1R4 b - - 0 15 : Tbc8 ça ferme
+Opti la quiescence!!
+Bizarre que le buffer se remplisse (normalement on devrait le vider en même temps qu'on l'utilise...) (FIXED?)
+Afficher plus d'infos pour les emergency cutoff... car 14 en profondeur, c'est déjà beaucoup! Parfois une même position est évaluée plusieurs fois
+r5k1/p3Qpp1/bp5p/8/4PP2/1N1r4/Pq3RPP/2R3K1 b - - 5 22 : Dxc1!!
+r5k1/p4pp1/1p2b2p/4P3/5P2/1N2r3/P5PP/2R2RK1 w - - 1 23 : il faut voir les majorités: 2v1 aile dame pour les noirs (et 4v3 aile roi pour les blancs) (Tf3 est pas bon à cause de Txf3)
+r2qr1k1/1ppb1pbn/p2pn1p1/2P5/4P1P1/1PN1BP2/P2QN1B1/3RR1K1 b - - 0 5 : dxc5!! (Dxd7 Fd4! gagne)
+Regarder les depth < 0 dans la quiescence pour comprendre ce qui se passe vraiment...
+Un exemple: rnbqkb1r/p1pp1ppp/5n2/1p2p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1 -> une des lignes de quiescence reargdée profondeur 15 : 1. Bxb5 Nxe4 2. Nxe5 Nxf2 3. Nxd7 Nxd1 4. Nxb8+ c6 5. Bxc6+ Ke7 6. Bxa8 Nxb2 7. Bxb2 Qxd2+ 8. Nxd2
+2r1r1k1/6pp/5pN1/p2R4/3Q4/q4PP1/P2R3P/6K1 b - - 0 31 : Dxf3!!
+8/R5pp/5pk1/p3r3/8/6P1/P6P/6K1 b - - 4 38 : cette finale tient pour les blancs
+R7/8/5p2/p1r1k2p/P5pP/4K1P1/8/8 b - - 9 46 : Tc3+ gagne
+le winnable doit-il influencer l'évaluation en elle-même? 
+8/5n1k/1K6/8/P7/8/8/8 w - - 3 1 : les blancs sont forcément mieux, et Rc7 gagne par ailleurs. Ne plus utiliser du tout l'évaluation pour choisir les coups?
+Pour le choix des coups -> bonus pour le score global + bonus pour les chances réelles de gagner? (pour éviter qu'il regarde à fond les positions nulles)
+R4Q2/6pk/8/8/K2P4/2q5/6r1/8 w - - 0 52 : ici ça gagne, faut pas chercher la nulle...
+r1b1k1nr/pp1p1pp1/2nP3p/bq2P3/1p6/PQ3N1P/1P1B1PP1/RN3RK1 b kq - 1 15 : rechercher les killer moves dans la quiescence? r1b1k1nr/pp1p1pp1/2nP3p/bq2P3/1p6/PQ3N1P/1P1B1PP1/RN3RK1 b kq - 1 15 : ici après Cxe5 Cxe5 Dxe5 -> Te1! gagne
+1kn1Rb1r/3r2p1/Qpq2p1p/1N6/1P1B4/5P2/6PP/3R2K1 b - - 0 26 : +1200 pour le roi c'est peut-être un peu exagéré
+1knr4/1q6/1p3R1p/1N1r4/QP4p1/5P2/6PP/R6K b - - 1 35 : Da6!! gagne 1knr4/8/qp3R1p/1N1r4/QP4p1/5P1P/6P1/R6K b - - 0 36 : g3!!
+8/1p3p2/p4k2/2B5/8/5K1P/8/8 w - - 1 50 : finale intéressante très difficile à gagner (faut à la fois empêcher les pions adverses, et garder le sien. zugzwang au long terme?)
+8/1p4B1/8/8/4k2P/5p1K/p7/8 b - - 7 62 : Re3!
+Bug avec la case h8 dans les get_moves sur un site? assez souvent il croit que la pièce est partie en h8 alors que c'est pas le cas... r3r3/2k1pnbp/p1p3p1/8/1P3PN1/1BP5/PBK4P/3RR3 b - - 5 26 : ici sur Cd6 il a vu Ch8 (FIXED)
+8/2pk2p1/p1p2pP1/P1R5/1P1PPK1r/2P5/8/8 w - - 3 44 : le roi doit aller du côté où il a le pion de plus (aile dame)
+8/2pk2p1/p1R4r/P1KP1p2/1P6/2P5/8/8 w - - 0 51 : prise h6 et b5 seule manière de gagner
+1k6/1Pp5/p1P5/P5p1/5p2/2P2K2/8/8 w - - 4 58 : nulle x)
+8/8/8/2r2pp1/1k5p/2b4P/4K3/1Q6 b - - 81 133 : c'est plutôt le roi noir qui se prendra des échecs...
+r1bq1r1k/bpp1np1p/p2p1p2/4p3/P1BPP3/2P2N1P/1P1N1PP1/R2QK2R b KQ - 0 1 : noirs mieux ici
+r1bq1r1k/bp2np1p/p1pp1p2/4P3/P1B1P3/2P2N1P/1P1N1PP1/R2QK2R b KQ - 0 2 : d5!
+1rbq3r/b4pk1/p1p3n1/4p1PQ/P3P3/1BP3P1/3N1P2/R4K1R w - - 1 8 : le cavalier et la tour défendent bien le roi
+7k/5R1P/p1p5/4p3/P3r3/6P1/6K1/8 w - - 2 25 : c'est nulle
+rnb1kbnr/pp1p2pp/2p1p3/4Pp1q/8/3B1N2/PPPBNPPP/R2Q1RK1 w kq - 0 10 : Cf4!
+8/6pk/7p/8/4p2P/1R1r2P1/5PK1/8 w - - 5 33 : Txd3?? ça gagne!
+q4rk1/3n1ppb/4p2p/ppp1Pn2/4NP2/PPQP2P1/5N1P/R3R2K b - - 0 21 : qualité compensée par le manque de colonnes ouvertes
+q1r3k1/5ppb/4p2p/1P2P3/n1pnNP2/6P1/5N1P/1QR1R2K b - - 0 28 : Cb3! gagne
+8/8/7p/1p2k1p1/6P1/2PR2KP/2r2P2/8 w - - 0 41 : position qui fait bugger Grogros? (il dit parfois f4! est le mieux mais envoie aucun noeud dessus, et donc ne joue jamais...?)
+r2q1rk1/1p2ppbp/p2p1np1/n1pP2B1/2P5/1PN2bPP/P3PPB1/R2Q1RK1 w - - 0 3 : exf3 jouable (et mieux que Fxf3, car ça ouvre une colonne semi ouverte pour les tours)
+1r2r1k1/1p2ppbp/p2p1n2/n1pP1pB1/P1P5/1PN2PPP/4RPB1/1R4K1 b - - 1 10 : gagnant pour les blancs (les tours noires n'ont aucune colonne)
+1r3rk1/3nppbp/bq1p2p1/nNpP2B1/P3P3/1P1Q1NPP/5PB1/1R3RK1 w - - 1 8 : b4! gagne
+1r2r1kb/4pp1p/b1qp2pB/2n1P1N1/1p6/1P2Q1PP/5PB1/1R2R1K1 b - - 1 16 : Db6 seul coup (Dd7 perd après Tbc1, et y'a des Cxf7 qui rôdent)
+2r1r1kb/3qpp1p/b2p2pB/2n1P1N1/1p6/1P2Q1PP/5PB1/2R1R1K1 w - - 4 18 : Cxf7!! (Rxf7 Txc5! et e6+ arrive)
+1r2rk2/4ppbQ/3pR1p1/2q2bN1/1p5P/1P4P1/5PB1/4R1K1 w - - 1 25 : Ff1! (quasi gagnant)
+4rk2/4ppbQ/3pR1p1/5bN1/1pBq3P/1P2R1P1/r4P2/6K1 w - - 7 28 : Txg6!! gagne
+4rk2/4ppqQ/4R1p1/3p1bN1/1pB5/1P4P1/5P2/r3R1K1 w - - 0 30 : Txa1!!
+7R/6kP/8/7r/8/5K2/8/8 w - - 5 61 : beaucoup trop de temps passé dans la quiescence ici!
+2R5/7k/8/7r/8/5K2/8/8 w - - 0 62 : ça sert à rien de calculer des tas d'échecs ici
+rnb1kb1r/ppp2ppp/5n2/3q4/4P3/5N2/PPP1QPPP/RNB1KB1R b KQkq - 0 6 : faut arrêter avec ce Cxe4 qui perd direct...
+rnb2rk1/ppp3pp/8/3q4/1b2p3/2P5/PP1NQ1PP/RNB1KB1R w KQ - 0 11 : y'a rien pour les noirs ici
+
+FIX: rqb2rk1/3pbppp/2n1p3/1n4P1/4P2P/P3BP2/1PP4Q/2KR1B1R w - - 0 17 : quiescence pas bonne ici? -> en passant le delta de 250 à 500, ça passe
+FIX: 8/2K5/k6p/1p1P1p2/8/2P5/8/8 w - - 1 57 : revoir le carré du pion -> voir la distance réelle pour intercépter le pion, car ici le roi protège la case de promotion
+FIX: remettre échecs et profondeur-- pour la quiescence?
+FIX: re-explorer un peu tous les coups? il en rate beaucoup...
+FIX: eval endgame: 8/1p4B1/8/8/4k2P/5p1K/p7/8 b - - 7 62 : revoir le carré du pion quand les cases sont protégées
+FIX: 2r1r2b/3qpk1p/b2p2pB/2R1P3/1p6/1P2Q1PP/5PB1/4R1K1 b - - 0 19 : quiescence ne voit pas e6+ après Txc5 (même si les échecs sont activés)
+4r2b/3qpk1p/b2p2pB/2r1P3/1p6/1P2Q1PP/5PB1/4R1K1 w - - 0 20 : ici il faut que e6 soit un des coups regardés en priorité
+
 
 r1bqr1k1/1pp2ppp/2p2bn1/p7/3PP3/4BN1P/PPQN1PP1/R3R1K1 w - - 0 15 : ici la tour a est en fait mieux en d1 que c1 (malgré la colonne semi ouverte c). Car en face de la dame, et prépare les poussées au centre
 r6r/1p1k3p/p2p1npb/4p3/4P3/4NP2/PPP1K1PP/R1B4R w - - 2 17 : l'avantage du pion est suffisant pour les blancs de gagner

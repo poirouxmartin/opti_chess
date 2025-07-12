@@ -99,6 +99,7 @@ static bool is_sliding(uint_fast8_t piece) {
 }
 
 // TODO *** il reste 1 bit de libre, à utiliser pour un flag supplémentaire si besoin
+// Stalemate?
 enum MoveFlags : uint8_t {
 	IS_NULL = 1 << 0,
 	IS_CAPTURE = 1 << 1,
