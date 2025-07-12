@@ -146,7 +146,7 @@ inline int main_ui() {
 
 		// T - Tests
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_T)) {
-			main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, { 1, 20, 400, 8902, 197281, 4865609, 119060324 }, true);
+			//main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, { 1, 20, 400, 8902, 197281, 4865609, 119060324 }, true);
 			//main_GUI._board.validate_nodes_count_at_depth("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 5, { 1, 48, 2039, 97862, 4085603, 193690690 }, true);
 			//main_GUI._board.validate_nodes_count_at_depth("", 5, { }, true);
 
@@ -188,8 +188,8 @@ inline int main_ui() {
 
 			//r1b2r2/1ppqbppk/p1n1p3/3P4/1P1Pn3/P3PN1P/R1QN1PP1/2B2K1R b - - 0 14
 
-			//Tests tests(&main_GUI);
-			//tests.run_all_tests();
+			Tests tests(&main_GUI);
+			tests.run_all_tests();
 
 			//cout << "Quietness: " << main_GUI._root_exploration_node->_board->get_quietness() << endl;
 			

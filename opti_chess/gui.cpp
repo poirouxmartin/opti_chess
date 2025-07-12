@@ -1718,15 +1718,17 @@ void GUI::init_chess_sites() {
 	// Chess.com (setup avec cases vertes et pièces de base)
 	ChessSite chess_com;
 	chess_com._name = "chess.com";
-	chess_com._white_tile_color = SimpleColor(233, 237, 204);
-	chess_com._black_tile_color = SimpleColor(119, 153, 84);
-	chess_com._white_piece_color = SimpleColor(248, 248, 248);
-	chess_com._black_piece_color = SimpleColor(86, 83, 82);
-	chess_com._white_tile_played_color = SimpleColor(244, 246, 127);
-	chess_com._black_tile_played_color = SimpleColor(187, 204, 67);
+	chess_com._white_tile_color = SimpleColor(235, 236, 208);
+	chess_com._black_tile_color = SimpleColor(115, 149, 82);
+	chess_com._white_piece_color = SimpleColor(249, 249, 249);
+	chess_com._black_piece_color = SimpleColor(92, 89, 87);
+	chess_com._white_tile_played_color = SimpleColor(245, 246, 130);
+	chess_com._black_tile_played_color = SimpleColor(185, 202, 67);
 	chess_com._piece_location_on_tile = { 0.15f, 0.50f };
 	chess_com._tile_location_on_tile = { 0.85f, 0.85f };
 	chess_com._time_lost_per_move = 125;
+	chess_com._tile_color_tolerance = 0.02f;
+	chess_com._piece_color_tolerance = 0.05f;
 
 	_chess_sites.push_back(chess_com);
 
@@ -1743,6 +1745,8 @@ void GUI::init_chess_sites() {
 	lichess_org._piece_location_on_tile = { 0.17f, 0.66f };
 	lichess_org._tile_location_on_tile = { 0.90f, 0.90f };
 	lichess_org._time_lost_per_move = 100;
+	lichess_org._tile_color_tolerance = 0.02f;
+	lichess_org._piece_color_tolerance = 0.05f;
 
 	_chess_sites.push_back(lichess_org);
 
@@ -1758,6 +1762,8 @@ void GUI::init_chess_sites() {
 	internet_chess_club._piece_location_on_tile = { 0.25f, 0.50f };
 	internet_chess_club._tile_location_on_tile = { 0.85f, 0.90f };
 	internet_chess_club._time_lost_per_move = 425;
+	internet_chess_club._tile_color_tolerance = 0.02f;
+	internet_chess_club._piece_color_tolerance = 0.05f;
 
 	_chess_sites.push_back(internet_chess_club);
 
@@ -1771,6 +1777,11 @@ bool GUI::update_binding_move() {
 
 	// Récupération des coordonnées du coup
 	uint_fast8_t *move_coords = get_board_move(_binding_left, _binding_top, _binding_right, _binding_bottom, _current_site, get_board_orientation());
+
+	if (move_coords == nullptr) {
+		//cout << "no move coords found" << endl;
+		return false;
+	}
 
 	//cout << "binding move: " << (int)move_coords[0] << ", " << (int)move_coords[1] << ", " << (int)move_coords[2] << ", " << (int)move_coords[3] << endl;
 

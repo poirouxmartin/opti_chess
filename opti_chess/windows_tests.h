@@ -17,6 +17,7 @@ public:
 	void print() const;
 	[[nodiscard]] bool equals(SimpleColor c) const;
 	[[nodiscard]] bool equals(SimpleColor c, float alike) const;
+	[[nodiscard]] float color_distance(SimpleColor c) const;
 };
 
 // Rectangle
@@ -60,6 +61,12 @@ public:
 
 	// Temps perdu par coup
 	int _time_lost_per_move;
+
+	// Tolérance de couleur pour les cases
+	float _tile_color_tolerance;
+
+	// Tolérance de couleur pour les pièces
+	float _piece_color_tolerance;
 
 
 	// Constructeur
