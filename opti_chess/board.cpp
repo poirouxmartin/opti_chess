@@ -1803,8 +1803,8 @@ int Board::get_king_safety(float display_factor) {
 	constexpr int reference_attack_potential = 405; // Si y'a toutes les pièces de base sur l'échiquier
 
 	// Potentiel de défense
-	static constexpr int defense_potentials[6] = { 5, 25, 20, 10, 5, 0 };
-	constexpr int reference_defense_potential = 155; // Si y'a toutes les pièces de base sur l'échiquier
+	static constexpr int defense_potentials[6] = { 5, 25, 20, 15, 10, 0 };
+	constexpr int reference_defense_potential = 170; // Si y'a toutes les pièces de base sur l'échiquier
 
 	// Potentiel d'attaque requis pour pouvoir mater facilement
 	// r1b3nr/ppppk2p/2n5/8/5N2/1Q6/PPP3PP/R6K w - - 1 18
@@ -1949,11 +1949,23 @@ int Board::get_king_safety(float display_factor) {
 	// Facteurs multiplicatifs
 	constexpr float piece_attack_factor = 1.0f;
 	constexpr float piece_defense_factor = 1.0f;
-	constexpr float pawn_protection_factor = 0.70f;
+	constexpr float pawn_protection_factor = 0.6f;
 
 	// En cas de résultante positive ou négative...
 	constexpr float piece_overload_multiplicator = 1.0f; // TODO: à utiliser
 	constexpr float piece_defense_multiplicator = 1.0f;
+
+	// --------------------------
+	// *** ESPACE DE MOBILITE ***
+	// --------------------------
+
+	// TEST (pas sûr)
+		constexpr float space_safety_factor = 0.5f;
+
+		const int space = get_space();
+
+		const int w_space = space_safety_factor * space;
+		const int b_space = -space_safety_factor * space;
 
 
 	// -------------------------------------
@@ -1962,8 +1974,8 @@ int Board::get_king_safety(float display_factor) {
 	// -------------------------------------
 
 	// Protection des rois
-	int w_king_protection = get_pawn_shield_protection(true, b_attacking_potential) * pawn_protection_factor;
-	int b_king_protection = get_pawn_shield_protection(false, w_attacking_potential) * pawn_protection_factor;
+	int w_king_protection = get_pawn_shield_protection(true, b_attacking_potential, w_space) * pawn_protection_factor;
+	int b_king_protection = get_pawn_shield_protection(false, w_attacking_potential, b_space) * pawn_protection_factor;
 
 	// Attaquants
 	int w_attacking_power = get_king_attackers(true);
@@ -2061,7 +2073,7 @@ int Board::get_king_safety(float display_factor) {
 		}
 	}
 
-	const float overload_factor = 1.5f;
+	const float overload_factor = 2.5f;
 	//const float overload_factor = 0.0f;
 
 	w_king_overloaded *= overload_factor * b_attacking_potential;
@@ -2133,19 +2145,6 @@ int Board::get_king_safety(float display_factor) {
 	//if (display_factor != 0.0f) {
 	//	main_GUI._eval_components += "King placement weakness: " + to_string(w_placement_weakness) + " / " + to_string(b_placement_weakness) + "\n";
 	//}
-
-
-	// --------------------------
-	// *** ESPACE DE MOBILITE ***
-	// --------------------------
-
-	// TEST (pas sûr)
-	constexpr float space_safety_factor = 1.0f;
-
-	const int space = get_space();
-
-	const int w_space = space_safety_factor * space;
-	const int b_space = - space_safety_factor * space;
 
 	// ---------------------------------
 	// *** MOBILITE VIRTUELLE DU ROI ***
@@ -2245,13 +2244,15 @@ int Board::get_king_safety(float display_factor) {
 
 
 	// Augmentation des faiblesses long-terme quand les rois sont éloignés
-	const float king_distance_factor = 0.25f * (1 - _adv);
+	const float king_distance_factor = 1.0f * (1 - _adv);
+
+	constexpr float col_diff_factors[8] = { 0.0f, 0.02f, 0.12f, 0.35f, 0.75f, 0.85f, 0.90f, 0.95f };
 
 	// Faiblesse accentuée quand les rois sont éloignés
-	const float long_term_weakness_distance_factor = 0.75 * (1 + king_distance_factor * sqrt(king_columns_diff));
+	const float long_term_weakness_distance_factor = 0.75f * (1 + king_distance_factor * col_diff_factors[king_columns_diff]);
 
 	// Attaque court terme accentuée quand les rois sont éloignés
-	const float short_term_weakness_distance_factor = 0.75 * (1 + king_distance_factor * sqrt(king_columns_diff));
+	const float short_term_weakness_distance_factor = 0.75f * (1 + king_distance_factor * col_diff_factors[king_columns_diff]);
 
 
 
@@ -7564,8 +7565,8 @@ void Board::display_positions_history() const
 	return king_defenders;
 }
 
-// Fonction qui renvoie un bonus correspondant au pawn storm sur le roi adverse
-[[nodiscard]] int Board::get_pawn_storm(bool color) {
+// Fonction qui renvoie un bonus correspondant au pawn storm sur le roi adverse à une colonne donnée
+[[nodiscard]] int Board::get_pawn_storm_at_col(bool color, uint_fast8_t king_row, uint_fast8_t king_col) const {
 	// FIXME: faut-il un bonus si le pion a déjà passé le roi adverse? en soit, cela veut dire que le roi adverse est sur une colonne "ouverte" sans vraiment être ouverte?
 	// FIXME: est-ce qu'une pièce adverse bloque le pawn storm? ou seulement les pions?
 
@@ -7574,13 +7575,8 @@ void Board::display_positions_history() const
 
 	// r2qk2r/pp1n1ppp/3bpn2/2pp4/3P4/2N1PN2/PPP2PPP/R1BQ1RK1 b kq - 3 8 : ici y'a roque au prochain, donc pas vraiment de storm
 
-	// Position du roi
-	update_kings_pos();
-
-	Pos opponent_king_pos = color ? _black_king_pos : _white_king_pos;
-
 	// Bonus en fonction de la distance verticale entre les pions et le roi
-	int bonus[7] = { 85, 75, 55, 38, 21, 10, 0};
+	int bonus[7] = { 85, 75, 55, 38, 21, 0, 0};
 
 	// Bonus des pions sur une colonne quasi adjacente
 	float semi_adjacent_bonus = 0.25f;
@@ -7588,7 +7584,7 @@ void Board::display_positions_history() const
 	int total_bonus = 0;
 
 	// Regarde sur les trois colonnes adjacentes au roi
-	for (int_fast8_t col = opponent_king_pos.col - 2; col <= opponent_king_pos.col + 2; col++) {
+	for (int_fast8_t col = king_col - 2; col <= king_col + 2; col++) {
 		if (col < 0 || col > 7) {
 			continue;
 		}
@@ -7632,7 +7628,7 @@ void Board::display_positions_history() const
 
 				// FIXME??
 				if (!blocked) { // En théorie, l'indice ne devrait pas sortir de [|0, 7|] puisque les pions ne peuvent pas se situer sur les lignes extrëmes
-					total_bonus += bonus[abs(row - opponent_king_pos.row)] * (abs(col - opponent_king_pos.col) < 2 ? 1.0f : semi_adjacent_bonus);
+					total_bonus += bonus[abs(row - king_row)] * (abs(col - king_col) < 2 ? 1.0f : semi_adjacent_bonus);
 				}
 			}
 		}
@@ -7642,6 +7638,30 @@ void Board::display_positions_history() const
 	float pawn_storm_advancement_factor = 0.0f;
 
 	return eval_from_progress(total_bonus, _adv, pawn_storm_advancement_factor);
+}
+
+// Fonction qui renvoie la puissance de protection de la structure de pions du roi
+int Board::get_pawn_storm(bool color) {
+
+	// Position du roi
+	update_kings_pos();
+
+	// TODO: Cas spécifique quand il n'est pas roqué: on estime ses positions possibles après le roque (colonne c ou g), et on en déduit la puissance de protection de la structure de pions
+
+	Pos opponent_king_pos = color ? _black_king_pos : _white_king_pos;
+
+	bool can_kingside_castle = color ? _castling_rights.k_w : _castling_rights.k_b;
+	bool can_queenside_castle = color ? _castling_rights.q_w : _castling_rights.q_b;
+
+	const int main_malus = get_pawn_storm_at_col(color, opponent_king_pos.row, opponent_king_pos.col);
+	const int kingside_malus = can_kingside_castle ? get_pawn_storm_at_col(color, opponent_king_pos.row, 6) : 0;
+	const int queenside_malus = can_queenside_castle ? get_pawn_storm_at_col(color, opponent_king_pos.row, 2) : 0;
+
+	//cout << "main malus: " << main_malus << ", kingside malus: " << kingside_malus << ", queenside malus: " << queenside_malus << endl;
+
+	int total_bonus = get_long_term_king_weakness(!color, main_malus, kingside_malus, queenside_malus);
+
+	return total_bonus;
 }
 
 // Fonction qui renvoie le nom de la case
@@ -7737,7 +7757,7 @@ int Board::get_knight_activity() const {
 }
 
 // Fonction qui renvoie la puissance de protection de la structure de pions du roi
-int Board::get_pawn_shield_protection(bool color, float opponent_attacking_potential) {
+int Board::get_pawn_shield_protection(bool color, float opponent_attacking_potential, int space) {
 
 	// Position du roi
 	update_kings_pos();
@@ -7749,9 +7769,9 @@ int Board::get_pawn_shield_protection(bool color, float opponent_attacking_poten
 	bool can_kingside_castle = color ? _castling_rights.k_w : _castling_rights.k_b;
 	bool can_queenside_castle = color ? _castling_rights.q_w : _castling_rights.q_b;
 
-	const int main_bonus = get_pawn_shield_protection_at_column(color, king_pos.col, opponent_attacking_potential, true);
-	const int kingside_bonus = can_kingside_castle ? get_pawn_shield_protection_at_column(color, 6, opponent_attacking_potential, true) : 0;
-	const int queenside_bonus = can_queenside_castle ? get_pawn_shield_protection_at_column(color, 2, opponent_attacking_potential, true) : 0;
+	const int main_bonus = get_pawn_shield_protection_at_column(color, king_pos.col, opponent_attacking_potential, true, space);
+	const int kingside_bonus = can_kingside_castle ? get_pawn_shield_protection_at_column(color, 6, opponent_attacking_potential, true, space) : 0;
+	const int queenside_bonus = can_queenside_castle ? get_pawn_shield_protection_at_column(color, 2, opponent_attacking_potential, true, space) : 0;
 
 	// 4k1r1/2pp4/1p2pq2/6r1/p2P2Pp/2PB1b1P/PPQ5/R4RK1 b - g3 0 24
 	// r3k2r/pppnbppp/2n5/3N1q2/5B2/8/PPPQBP1P/1K1R2R1 b kq - 2 15
@@ -7829,18 +7849,18 @@ int Board::get_pawn_shield_protection(bool color, float opponent_attacking_poten
 }
 
 // Fonction qui renvoie la puissance de protection de la structure de pions du roi, s'il est sur la colonne donnée
-int Board::get_pawn_shield_protection_at_column(bool color, int column, float opponent_attacking_potential, bool add_column_bonus) {
+int Board::get_pawn_shield_protection_at_column(bool color, int column, float opponent_attacking_potential, bool add_column_bonus, int space) {
 
 	// r1bqr1k1/pp3pp1/2pp1b1p/8/4P3/2N1Q3/PPP2PPP/1K2RB1R b - - 1 15 ??????
 
 	// Niveau de protection auquel on peut considérer que le roi est safe
 	//const int king_base_protection = 600 * (1 - _adv) - 200;
-	int needed_protection = 470 * opponent_attacking_potential - 100;
+	int needed_protection = 450 * opponent_attacking_potential - 100 - (space > 0 ? space * 2 : space * 0.5);
 
 	// r3r3/P2k2pp/1Bb5/6N1/3P4/3n4/PP3PPP/1KR5 w - - 0 28
 
 	// Bonus de protection selon la colonne
-	constexpr int column_protection_bonus[8] = { 85, 75, 50, 0, 0, 50, 75, 85 };
+	constexpr int column_protection_bonus[8] = { 50, 50, 25, 0, 0, 25, 50, 50 };
 
 	if (add_column_bonus)
 		needed_protection -= column_protection_bonus[column];
@@ -7914,6 +7934,8 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 
 	// r1bq1rk1/ppp2ppp/2n2n2/3p4/1bPP4/1PN3P1/P3NPBP/R1BQ1RK1 b - - 2 10 : ??
 
+	// r2r4/pp1b1pkp/1qn1p1n1/3pP3/3P2P1/2N2N2/PP1QBP2/1RR4K b - - 1 20 : pourquoi f2 vaut encore 75 ici?
+
 	for (uint_fast8_t col = 0; col < 5; col++) {
 		for (uint_fast8_t row = 0; row < 8; row++) {
 
@@ -7938,20 +7960,23 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 				// En fait non?
 				if ((col > 0 && (pawns[row][col - 1] || pawns[row - dir][col - 1] || pawns[row + dir][col - 1])) || (col < 4 && (pawns[row][col + 1] || pawns[row - dir][col + 1] || pawns[row + dir][col + 1]))) {
 				//if ((col > 0 && (pawns[row][col - 1] || pawns[row - dir][col - 1])) || (col < 2 && (pawns[row][col + 1] || pawns[row - dir][col + 1]))) {
-					//cout << "connected pawns on " << square_name(row, col + king_pos.col - 2) << " : " << connected_pawns_bonus * distance_factor << endl;
-					connected_pawns_bonus_total += connected_pawns_bonus * distance_factor * adjacent_factor;
+					const int connected_bonus = connected_pawns_bonus * distance_factor * adjacent_factor;
+
+					//cout << "connected pawns on " << square_name(row, col + king_pos.col - 2) << " : " << connected_bonus << endl;
+					connected_pawns_bonus_total += connected_bonus;
 				}
 
-				//cout << "pawn bonus on " << square_name(row, col + king_pos.col - 2) << " : " << pawn_bonus * distance_factor << endl;
 
 				// Colonne adjacente ou semi-adjacente
-				int bonus = pawn_bonus * distance_factor * adjacent_factor;
+				const int bonus = pawn_bonus * distance_factor * adjacent_factor;
 
-				pawns_bonus_total += pawn_bonus * distance_factor;
+				//cout << "pawn bonus on " << square_name(row, col + king_pos.col - 2) << " : " << bonus << endl;
+				pawns_bonus_total += bonus;
 			}
 		}
 	}
 
+	// r2r4/pp1b1pkp/1qn1p1n1/3pP3/3P2P1/2N2N2/PP1QBP2/1RR3K1 w - - 0 20
 	// rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w kq - 4 4
 
 	//cout << "connected pawns: " << connected_pawns_bonus_total << endl;
@@ -7972,10 +7997,10 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 	// Protection par les bords de l'échiquier
 
 	// Bord vertical
-	constexpr int v_edge_protection = 20;
+	constexpr int v_edge_protection = 0;
 
 	// Bord horizontal
-	constexpr int h_edge_protection = 25;
+	constexpr int h_edge_protection = 15;
 
 	const int edge_protection = opponent_attacking_potential * (v_edge_protection * (min(king_pos.row, 7 - king_pos.row) == 0) + h_edge_protection * (min(king_pos.col, 7 - king_pos.col) == 0));
 
@@ -9298,7 +9323,7 @@ int Board::get_open_files_on_opponent_king_at_column(bool player, int king_col) 
 	constexpr float king_file_bonus = 1.0f;
 
 	// Si le roi est sur une colonne adjacente, le bonus est réduit
-	constexpr float king_adjacent_file_bonus = 0.4f;
+	constexpr float king_adjacent_file_bonus = 0.75f;
 
 	// Bonus en plus pour les pièces présentes dessus (tours/dame)
 	constexpr int rook_open_bonus = 40;
@@ -9315,6 +9340,8 @@ int Board::get_open_files_on_opponent_king_at_column(bool player, int king_col) 
 
 	// Pion adverse
 	const int opponent_pawn = player ? b_pawn : w_pawn;
+
+	//r1r1b1k1/pp3p1p/1q2p1nQ/3pP1N1/3n2P1/2N5/PP2BPK1/1R5R w - - 2 24
 
 	// Pour chaque colonne adjacente au roi noir
 	for (uint_fast8_t col = king_col - 1; col < king_col + 2; col++) {
@@ -9380,7 +9407,7 @@ int Board::get_king_placement_weakness_at_column(bool player, Pos king_pos) cons
 	constexpr float mult_endgame = 0.25f;
 
 	// Version additive, adaptée pour l'endgame
-	constexpr int edge_defense = 75;
+	constexpr int edge_defense = 50;
 
 	const int col_dist = min(king_pos.col, 7 - king_pos.col);
 	const int row_dist = min(king_pos.row, 7 - king_pos.row);
