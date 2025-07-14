@@ -627,6 +627,10 @@ rnbq2nr/pppp3p/8/3Q4/1k2Pp2/8/P5PP/R3K2R w KQ - 6 16 : ça reste mat (donc 8% de 
 3k2r1/3p1p2/5P2/8/3qP2P/8/PrPQ1R2/R3K3 b Q - 7 33 : Tg1+?
 FIX cette quiescence une bonne fois pour toutes... (DONE? mais lent!)
 8/6pk/3Q3p/2P4q/8/8/8/4K3 w - - 0 68 : c6! gagne. Les pions passés sont très forts en finale de dame (car difficile à arrêter sans donner la dame)
+r3k1r1/pppq1p1p/3p1pnb/3Pp3/4P3/5N2/PPP1NPPP/R2Q1RK1 w q - 4 12 : Cg3!
+EVAL FIX: r1bqkbnr/pppp1ppp/2n5/3Pp3/4P3/8/PPP2PPP/RNBQKBNR b KQkq - 0 3 : ici faut surtout pas donner le cavalier, ça devient tout de suite complètement perdant!
+Voir avec le mode debug toutes les optimisations qui peuvent être faites
+r1bq1b1r/pp4pp/2p1k3/3np3/1nBP4/2N2Q2/PPP2PPP/R1B2RK1 b - - 0 10 : Df6 est le bon coup ici. Il faut réussir à modéliser le fait que le roi est mauvais s'il est seul
 
 !!!
 Pour la puissance d'attaque, il faut voir les combinaisons de pièces qui peuvent mater:
@@ -866,6 +870,7 @@ r2q1rk1/1p2ppbp/p2p1np1/n1pP2B1/2P5/1PN2bPP/P3PPB1/R2Q1RK1 w - - 0 3 : exf3 joua
 2R5/7k/8/7r/8/5K2/8/8 w - - 0 62 : ça sert à rien de calculer des tas d'échecs ici
 rnb1kb1r/ppp2ppp/5n2/3q4/4P3/5N2/PPP1QPPP/RNB1KB1R b KQkq - 0 6 : faut arrêter avec ce Cxe4 qui perd direct...
 rnb2rk1/ppp3pp/8/3q4/1b2p3/2P5/PP1NQ1PP/RNB1KB1R w KQ - 0 11 : y'a rien pour les noirs ici
+1r1k4/q2p1p2/5P2/8/4P2P/2P3r1/PP6/R1Q1KR2 b Q - 0 29 : Tg2 créé ici le réseau de mat
 
 FIX: rqb2rk1/3pbppp/2n1p3/1n4P1/4P2P/P3BP2/1PP4Q/2KR1B1R w - - 0 17 : quiescence pas bonne ici? -> en passant le delta de 250 à 500, ça passe
 FIX: 8/2K5/k6p/1p1P1p2/8/2P5/8/8 w - - 1 57 : revoir le carré du pion -> voir la distance réelle pour intercépter le pion, car ici le roi protège la case de promotion
@@ -1064,6 +1069,8 @@ Un centre fort est un centre qui ne peut pas être contesté! Les ruptures adverse
 
 Nulle, c'est nulle... si on a possibilité de faire une nulle, faut-il instaurer le "nul en x coups", comme pour les mats?
 
+Avoir des dynamqiues dans les coups à évaluer? -> les coups qui descendent en éval: on les explore moins, et ceux qui montent en éval: on les explore plus?
+
 FIX
 REGLER LE TEMPS DE REFLEXION QUI EST INCORRECT
 BEAUCOUP DE TEMPS EST PASSE SUR LA GUI!
@@ -1101,8 +1108,13 @@ r1bq1rk1/pp3ppp/2n2n2/P1bpp3/8/3BPN2/1PP2PPP/RNBQ1RK1 w - - 0 9 : a6 perd direct
 2r3k1/5pp1/7p/pP6/8/1P6/5PPP/4R1K1 w - - 1 29 : f4 gagne (Tc5 -> Te5)
 2r3k1/5pp1/7p/pP6/8/1P5P/5PP1/4R1K1 b - - 0 29 : Tc5 fait nulle direct...
 r3k2r/5p2/p3pp2/8/P5qp/3Q4/1PP2P1K/3R1R2 w kq - 0 21 : Dd7+ gagne
-r4rk1/p4pbp/1q1p1np1/8/1B2p2R/5N2/PPP2PPP/R2Q2K1 w - - 0 19 : Dxd6 gagne...
+r4rk1/p4pbp/1q1Q1np1/8/1B2p2R/5N2/PPP2PPP/R5K1 b - - 0 19 : Dxd6 gagne...
 r2r2k1/p3Bpbp/5np1/8/4p2R/5N2/PPP2PPP/R5K1 b - - 2 21 : Te8 gagne...
+r4rk1/pp1b2b1/2n1pq2/2pp2p1/8/2PP1NP1/PP1NQPB1/R3R1K1 b - - 1 17 : blancs mieux
+r1bq1k1r/4p1bp/p5p1/P2pPpP1/B2Pn3/1Q6/4N1PP/R1B2RK1 b - - 0 19 : si on fait e6, il n'y a plus de bons coups à jouer -> hyper gagnant pour les blancs, aucun contre jeu (implémenter une fonction qui détermine le contre jeu possible?)
+1k3rr1/pppq4/2n1p3/3p2Pp/PP1P4/2PQ1NP1/6K1/4R2R b - - 0 22 : blancs gagnants
+1k3rr1/pppq4/8/3pR1Pp/PP1P4/2PQ2P1/6K1/7R b - - 0 24 : roi pas si faible en fait
+1rb2rk1/p1p1q1pp/1bpp4/5p2/1P2P3/2P4P/P1Q1BNP1/R1B1K2R b KQ - 0 16 : Dh4 finit la partie
 
 8/1p2bkpp/2r1p3/P2pP3/5P2/3K4/1P1B2PP/R7 w - - 4 25 : majorité de pions à l'aile dame: b4, b5 et a6 puis ça va gagner facilement
 8/1p2bk1p/4p1p1/PPrpP3/5P2/3K4/3B2PP/R7 w - - 1 27 : a6!

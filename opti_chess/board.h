@@ -679,17 +679,20 @@ public:
 	// Fonction qui renvoie une valeur correspondante aux pièces défendant le roi
 	[[nodiscard]] int get_king_defenders(bool color);
 
-	// Fonction qui renvoie un bonus correspondant au pawn storm sur le roi adverse
+	// Fonction qui renvoie un bonus correspondant au pawn storm sur le roi adverse à une colonne donnée
+	[[nodiscard]] int get_pawn_storm_at_col(bool color, uint_fast8_t king_row, uint_fast8_t king_col) const;
+
+	// Fonction qui renvoie la puissance de protection de la structure de pions du roi
 	[[nodiscard]] int get_pawn_storm(bool color);
 
 	// Fonction qui renvoie un bonus d'activité pour les cavaliers
 	[[nodiscard]] int get_knight_activity() const;
 
 	// Fonction qui renvoie la puissance de protection de la structure de pions du roi
-	[[nodiscard]] int get_pawn_shield_protection(bool color, float opponent_attacking_potential);
+	[[nodiscard]] int get_pawn_shield_protection(bool color, float opponent_attacking_potential, int space);
 
 	// Fonction qui renvoie la puissance de protection de la structure de pions du roi, s'il est sur la colonne donnée
-	[[nodiscard]] int get_pawn_shield_protection_at_column(bool color, int column, float opponent_attacking_potential, bool add_column_bonus = false);
+	[[nodiscard]] int get_pawn_shield_protection_at_column(bool color, int column, float opponent_attacking_potential, bool add_column_bonus = false, int space = 0);
 
 	// Fonction qui calcule tous les coups à une certaine profondeur, et renvoie le nombre de noeuds total
 	int count_nodes_at_depth(int depth, bool display = true);
