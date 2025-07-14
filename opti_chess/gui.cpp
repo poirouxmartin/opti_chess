@@ -694,7 +694,7 @@ void GUI::slider_text(const string& s, float pos_x, float pos_y, float width, fl
 		}
 
 		new_string = final_text;
-		slider_height = height / sqrtf(rows - n_lines + 1);
+		slider_height = height / sqrtf(rows - n_lines + 1) / 2;
 
 		// Background
 		Rectangle slider_background_rect = { pos_x + width - slider_width, pos_y, slider_width, height };
@@ -708,7 +708,7 @@ void GUI::slider_text(const string& s, float pos_x, float pos_y, float width, fl
 
 		// Avec la molette
 		if (is_cursor_in_rect({ pos_x, pos_y, width, height })) {
-			*slider_value -= GetMouseWheelMove() * 3.0 / (rows - n_lines);
+			*slider_value -= GetMouseWheelMove() * 3.0 / (rows - n_lines + 1);
 			if (*slider_value < 0.0f)
 				*slider_value = 0.0f;
 			if (*slider_value > 1.0f)

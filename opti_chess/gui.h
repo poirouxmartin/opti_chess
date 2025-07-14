@@ -20,8 +20,8 @@ public:
 	// Variables
 
 	// Dimensions de la fenêtre
-	int _screen_width = 1800;
-	int _screen_height = 945;
+	int _screen_width = 1920;
+	int _screen_height = 1080;
 
 	// Plateau affiché
 	Board _board;
