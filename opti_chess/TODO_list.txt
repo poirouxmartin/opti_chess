@@ -871,6 +871,12 @@ r2q1rk1/1p2ppbp/p2p1np1/n1pP2B1/2P5/1PN2bPP/P3PPB1/R2Q1RK1 w - - 0 3 : exf3 joua
 rnb1kb1r/ppp2ppp/5n2/3q4/4P3/5N2/PPP1QPPP/RNB1KB1R b KQkq - 0 6 : faut arrêter avec ce Cxe4 qui perd direct...
 rnb2rk1/ppp3pp/8/3q4/1b2p3/2P5/PP1NQ1PP/RNB1KB1R w KQ - 0 11 : y'a rien pour les noirs ici
 1r1k4/q2p1p2/5P2/8/4P2P/2P3r1/PP6/R1Q1KR2 b Q - 0 29 : Tg2 créé ici le réseau de mat
+2rr2k1/pbq1bppp/1p2p3/4P2P/4NP2/3Bp3/PPP1Q2P/2KR3R w - - 1 18 : ici faut prendre e3. Le fou en d3 défend tout pour le moment
+r1q2r1k/p3bpp1/1p2p3/2pbP1N1/1n2B1P1/4B3/1PP1QP1P/1K1R3R w - - 2 19 : Txd5!! gagne
+r4r1k/p3bpp1/qp6/2ppPBN1/1n4P1/4B3/1PP1QP1P/1K5R w - - 2 21 : Df3!
+r1q2r1k/pb2bppB/1p2p3/2pnP1N1/1n2N1P1/4B3/1PP1QP1P/1K1R3R w - - 2 18 : faut ramener la dame dans l'attaque par h3 (via f3 ou f1)
+r1q2r1k/p4ppB/1p2p3/2p1P1NQ/1n4n1/8/1PP2PbP/1K1R3R w - - 0 22 : Dxg4 (puis on revient sur la colonne h)
+rnbk1bnr/ppp2Bpp/8/4N3/3Pp3/8/PPP2PqP/RNBQKR2 b Q - 1 7 : bien gagnant aux blancs
 
 FIX: rqb2rk1/3pbppp/2n1p3/1n4P1/4P2P/P3BP2/1PP4Q/2KR1B1R w - - 0 17 : quiescence pas bonne ici? -> en passant le delta de 250 à 500, ça passe
 FIX: 8/2K5/k6p/1p1P1p2/8/2P5/8/8 w - - 1 57 : revoir le carré du pion -> voir la distance réelle pour intercépter le pion, car ici le roi protège la case de promotion
@@ -879,6 +885,12 @@ FIX: re-explorer un peu tous les coups? il en rate beaucoup...
 FIX: eval endgame: 8/1p4B1/8/8/4k2P/5p1K/p7/8 b - - 7 62 : revoir le carré du pion quand les cases sont protégées
 FIX: 2r1r2b/3qpk1p/b2p2pB/2R1P3/1p6/1P2Q1PP/5PB1/4R1K1 b - - 0 19 : quiescence ne voit pas e6+ après Txc5 (même si les échecs sont activés)
 4r2b/3qpk1p/b2p2pB/2r1P3/1p6/1P2Q1PP/5PB1/4R1K1 w - - 0 20 : ici il faut que e6 soit un des coups regardés en priorité
+FIX: rnbq1bnr/pppkpppp/8/3p4/4P3/3B4/PPPP1PPP/RNBQK1NR w KQ - 0 1 -> une des variantes regardées par la quiescence 1. Qg4+ Kc6 2. exd5+ Qxd5 3. Qe6+ Qxe6+ 4. Be4+ Qxe4+ 5. Kd1
+Tri des coups dans cette position: rnb2bnr/ppp1pppp/2k5/3q4/6Q1/3B4/PPPP1PPP/RNB1K1NR w KQ - 0 3 : Dxc8!; Fxh7?, Dxg7??? (donne la dame), De6+??? (donne la dame), Fb5+?!, Dd7+??? (donne la dame)
+Case test pour la quiescence: rnbq1bnr/pppkpppp/8/3p4/4P3/3B4/PPPP1PPP/RNBQK1NR w KQ - 0 1
+Inspecter les emergency cutoff pour voir quelles variantes sont regardées trop longtemps: r1bqk2r/p1pp1ppp/2p2n2/8/1b2P3/2NB4/PPP2PPP/R1BQK2R b KQkq - 1 7 y'en a dans la réflexion de cette position
+QUIESCENCE: tenter une shallow quiescence pour la première exploration, puis en faire une plus profonde si la position est intéressante
+couper tous les coups qui sont complètement foutus de manière générale
 
 
 r1bqr1k1/1pp2ppp/2p2bn1/p7/3PP3/4BN1P/PPQN1PP1/R3R1K1 w - - 0 15 : ici la tour a est en fait mieux en d1 que c1 (malgré la colonne semi ouverte c). Car en face de la dame, et prépare les poussées au centre

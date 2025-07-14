@@ -13,7 +13,7 @@ public:
 	float _piece_positioning = 0.10f;
 	float _bishop_pair = 35.0f;
 	float _castling_rights = 0.0f; // Redondant
-	float _player_trait = 30.0f;
+	float _player_trait = 25.0f;
 	float _king_safety = 1.0f;
 	float _pawn_structure = 0.2f;
 	float _attacks = 0.5f;
@@ -26,17 +26,17 @@ public:
 	float _piece_activity = 0.75f;
 	float _fianchetto = 0.75f;
 	float _pawn_push_threats = 0.15f;
-	float _king_proximity = 0.35f;
-	float _king_centralization = 3.5f;
+	float _king_proximity = 0.15f;
+	float _king_centralization = 2.5f;
 	float _rook_activity = 0.05f;
-	float _bishop_pawns = 3.0f;
+	float _bishop_pawns = 2.0f;
 	float _weak_squares = 0.25f;
 	float _bishop_activity = 2.5f;
 	float _trapped_pieces = 0.55f;
 	float _knight_activity = 0.5f;
 	float _short_term_piece_mobility = 0.03f;
 	float _long_term_piece_mobility = 0.12f;
-	float _queen_safety = 0.85f;
+	float _queen_safety = 0.7f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi), en position ouverte
 	int _pieces_value_begin_open[6] = { 90, 400, 430, 600, 1185, 0 };
@@ -45,7 +45,7 @@ public:
 	int _pieces_value_begin_closed[6] = { 90, 420, 410, 550, 1100, 0 };
 
 	// Valeurs en fin de partie, en position ouverte
-	int _pieces_value_end_open[6] = { 95, 390, 440, 690, 1350, 0 };
+	int _pieces_value_end_open[6] = { 95, 425, 440, 690, 1350, 0 };
 
 	// Valeurs des pièces en fin de partie, en position fermée
 	int _pieces_value_end_closed[6] = { 95, 430, 410, 600, 1150, 0 };
