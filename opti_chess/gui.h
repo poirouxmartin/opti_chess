@@ -96,7 +96,7 @@ public:
 	//double _gamma = 0.65;
 	//double _alpha = 0.005; // Augmente l'impact de l'évaluation
 	double _alpha = 0.00001; // Augmente l'impact de l'évaluation
-	double _beta = 3.5; // Augmente l'impact du winrate
+	double _beta = 5.0; // Augmente l'impact du winrate
 	double _gamma = 1.10; // Augmente la diversité des coups explorés
 
 	// Profondeur de la recherche
