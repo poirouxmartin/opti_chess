@@ -234,6 +234,15 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, double alpha, doubl
 
 	if (!child->_fully_explored) {
 		child->quiescence(buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network);
+		//child->quiescence(buffer, eval, quiescence_depth / 2, alpha, beta, -INT32_MAX, INT32_MAX, network);
+
+		//// Si la quiescence est bonne, on recommande à vraie profondeur
+		//constexpr int quiescence_threshold = 1000; // TODO: à revoir
+		//if (child->_board->_player ? child->_deep_evaluation._value > _deep_evaluation._value + quiescence_threshold : child->_deep_evaluation._value < _deep_evaluation._value - quiescence_threshold) {
+		//	//child->reset(); // FIXME *** faut-il reset? faut-il ré-utilisé ce qui a été fait lors de cette quiescence?
+		//	child->quiescence(buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network);
+		//}
+
 		child->_fully_explored = true;
 	}
 
@@ -796,7 +805,12 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 	//}
 
 	// Si on est en échec, il ne faut jamais faire de beta cutoff
-	double total_beta = in_check ? INT_MAX : (double)beta + beta_margin;
+	//double total_beta = in_check ? INT_MAX : (double)beta + beta_margin;
+
+	// Si la branche est vraiment trop pourrie, on peut peut-être quand-même accepter un standpat
+	double total_beta = in_check ? (double)beta + 500 : (double)beta + beta_margin;
+
+	//rnb2bnr/ppp1pppp/2k1q3/8/8/3B4/PPPP1PPP/RNB1K1NR w KQ - 0 4
 
 	// FIXME *** normal qu'on envoie la beta margin sur toute la profondeur?
 
@@ -807,10 +821,11 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 	}
 
 	// Test du standpat pruning (futility pruning)
-	//constexpr int standpat_pruning_threshold = 300;
+	//constexpr int standpat_pruning_threshold = 1000;
 
-	//if (!in_check && stand_pat + standpat_pruning_threshold <= alpha)
-	//	return stand_pat; // Trop pourri pour améliorer quoi que ce soit
+	//if (stand_pat + standpat_pruning_threshold <= alpha)
+	//	_time_spent += clock() - begin_monte_time;
+	//	return stand_pat;
 
 	// Mise à jour de alpha si l'éval statique est plus grande
 	if (stand_pat > alpha && !in_check) {
@@ -871,7 +886,7 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 			new_depth += move.is_check() ? check_extension : 0;
 
 			// Réduction de la profondeur pour les coups moins prometteurs
-			new_depth -= in_check ? 0 : move_index;
+			new_depth -= in_check ? 0 : move_index * 2;
 
 			// FIXME : ne pas réduire si on est à depth < 2?
 
@@ -886,13 +901,15 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 
 			move_index++;
 
-			if (!move.is_checkmate() && !in_check) {
+			//if (!move.is_checkmate() && !in_check) {
+			if (!move.is_checkmate()) {
 				// Test du delta pruning
 				constexpr int delta = 500;
 
 				constexpr int piece_values[6] = { 100, 300, 300, 500, 900, 10000 }; // P, N, B, R, Q, K
 				constexpr int promotion_value = 1000;
 				constexpr int check_value = 500; // Valeur d'un échec
+				constexpr int escape_check_value = 500;
 
 				// Estimation rapide de ce que le coup peut apporter
 				int best_estimation = 0;

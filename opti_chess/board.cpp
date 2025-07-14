@@ -501,6 +501,7 @@ void Board::display_moves(const bool pseudo) {
 		return;
 	}
 
+	sort_moves();
 	cout << "total moves : " << (int)_got_moves << endl;
 	cout << "moves : [|";
 	for (int i = 0; i < _got_moves; i++)
@@ -2203,7 +2204,7 @@ int Board::get_king_safety(float display_factor) {
 	//5rk1/5ppp/4bn2/q2p4/2p5/b1P1BN2/3Q1PPP/1K1RRB2 w - - 2 9
 	//r1b2k1r/ppp1qpp1/3bP1pn/3P4/4N3/8/PPPBQ1PP/2KR1R2 b - - 6 18
 
-	constexpr float open_lines_danger = 3.0f;
+	constexpr float open_lines_danger = 2.5f;
 
 	int w_open_lines = get_open_files_on_opponent_king(true) * open_lines_danger;
 	int b_open_lines = get_open_files_on_opponent_king(false) * open_lines_danger;
@@ -2275,7 +2276,7 @@ int Board::get_king_safety(float display_factor) {
 	// Short term = 1000 -> factor = 0.5
 
 	// Valeur pour laquelle la compensation est de 0.5
-	constexpr int short_term_compensation_value = 700;
+	constexpr int short_term_compensation_value = 500;
 
 	//const float w_short_term_compensation_factor = 1 - 1 / (1 + abs(w_short_term_weakness) / short_term_compensation_value);
 
@@ -3749,6 +3750,9 @@ bool Board::sort_moves() {
 	// Valeur des pièces
 	static constexpr int piece_values[13] = { 0, 100, 320, 330, 500, 900, 10000, 100, 320, 330, 500, 900, 10000 };
 
+	// Contrôles par les pièces adverses
+	SquareMap opponent_controls = _player ? get_black_controls_map() : get_white_controls_map();
+
 	// Vector of pairs: (Move, score)
 	std::vector<std::pair<Move, int>> scored_moves;
 	scored_moves.reserve(_got_moves);
@@ -3758,13 +3762,22 @@ bool Board::sort_moves() {
 		int from = _array[move.start_row][move.start_col];
 		int to = _array[move.end_row][move.end_col];
 
+		// La case est-elle contrôlée par l'adversaire?
+		int opponent_control = opponent_controls._array[move.end_row][move.end_col];
+
 		assign_move_flags(&move);
 
 		int score = 0;
 
+		// Valeur de la pièce qui bouge
+		int piece_value = piece_values[from];
+
+		// Valeur de la pièce qui est capturée (s'il y en a une)
+		int captured_value = piece_values[to];
+
 		// MVV-LVA
-		if (to != 0)
-			score += 100 * piece_values[to] - piece_values[from];
+		if (to != none)
+			score += 100 * captured_value - piece_value;
 
 		// Promotion
 		if (move.is_promotion())
@@ -3777,6 +3790,23 @@ bool Board::sort_moves() {
 		// Check
 		else if (move.is_check())
 			score += 5000;
+
+		// La pièce est sûrement en prise
+		if (opponent_control > 0) {
+			score -= min(50.0 * piece_value, sqrt(opponent_control) * 35 * piece_value);
+		}
+
+		// Malus pour les coups de roi
+		if (is_king(from)) {
+
+			// Roque
+			if (abs(move.end_col - move.start_col) == 2) {
+				score += 4000;
+			}
+			else {
+				score -= 10000;
+			}
+		}
 
 		//cout << "Move: " << move_label(move) << " | Score: " << score << endl;
 
@@ -4191,7 +4221,7 @@ int Board::get_piece_activity() const
 	}
 
 	// Facteur multiplicatif en fonction de l'avancement
-	float advancement_factor = 0.5f;
+	float advancement_factor = 0.3f;
 
 	return eval_from_progress(white_activity - black_activity, _adv, advancement_factor);
 }
@@ -9323,11 +9353,11 @@ int Board::get_open_files_on_opponent_king_at_column(bool player, int king_col) 
 	constexpr float king_file_bonus = 1.0f;
 
 	// Si le roi est sur une colonne adjacente, le bonus est réduit
-	constexpr float king_adjacent_file_bonus = 0.75f;
+	constexpr float king_adjacent_file_bonus = 0.65f;
 
 	// Bonus en plus pour les pièces présentes dessus (tours/dame)
-	constexpr int rook_open_bonus = 40;
-	constexpr int queen_open_bonus = 45;
+	constexpr int rook_open_bonus = 35;
+	constexpr int queen_open_bonus = 35;
 
 	constexpr int rook_semi_open_bonus = 25;
 	constexpr int queen_semi_open_bonus = 20;
@@ -9386,6 +9416,7 @@ int Board::get_open_files_on_opponent_king_at_column(bool player, int king_col) 
 
 		// 4k1r1/2pp4/1p2pq2/6r1/p2P3p/2PB1b1P/PPQ3P1/R4RK1 w - - 2 24
 		// 4k2r/2pp3B/1p2pq2/6r1/p2P4/2P2b1P/PPQ2Rp1/4R1K1 b - - 3 27
+		// r2q1rk1/pb2bppp/1pn1p3/2p4n/4P3/2NBBN2/PPP1QPPP/2KR3R b - - 11 11
 
 		// Bonus en fonction de la proximité du roi
 		bonus *= (col == king_col ? king_file_bonus : king_adjacent_file_bonus);
@@ -10145,7 +10176,7 @@ int Board::get_queen_safety(bool color) const {
 	constexpr int tempo_values[6] = { 35, 100, 65, 50, 0, 0 };
 
 	// REVIEW *** pour simpplifier tous les calculs de prises...
-	constexpr float unsafe_attack_factor = 0.2f;
+	constexpr int unsafe_attack_values[6] = { 15, 12, 10, 5, 0, 0 };
 
 	// Valeur totale des coups pouvant attaquer chaque dame
 	int queens_attacks_value[9] = { 0 };
@@ -10176,8 +10207,7 @@ int Board::get_queen_safety(bool color) const {
 		for (uint_fast8_t q = 0; q < queens_count; q++) {
 			//if (controls._array[queens_pos[q].row][queens_pos[q].col] > (color == _player ? base_controls._array[queens_pos[q].row][queens_pos[q].col] : 0)) {
 			if (controls._array[queens_pos[q].row][queens_pos[q].col]) {
-				float safe_factor = opponent_controls._array[move.end_row][move.end_col] ? unsafe_attack_factor : 1.0f;
-				queens_attacks_value[q] += tempo_values[(piece - 1) % 6] * safe_factor;
+				queens_attacks_value[q] += opponent_controls._array[move.end_row][move.end_col] ? unsafe_attack_values[(piece - 1) % 6] : tempo_values[(piece - 1) % 6];
 			}
 		}
 	}
