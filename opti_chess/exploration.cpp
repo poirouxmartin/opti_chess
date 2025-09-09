@@ -233,15 +233,30 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, double alpha, doubl
 	}
 
 	if (!child->_fully_explored) {
-		child->quiescence(buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network);
-		//child->quiescence(buffer, eval, quiescence_depth / 2, alpha, beta, -INT32_MAX, INT32_MAX, network);
 
-		//// Si la quiescence est bonne, on recommande à vraie profondeur
-		//constexpr int quiescence_threshold = 1000; // TODO: à revoir
-		//if (child->_board->_player ? child->_deep_evaluation._value > _deep_evaluation._value + quiescence_threshold : child->_deep_evaluation._value < _deep_evaluation._value - quiescence_threshold) {
-		//	//child->reset(); // FIXME *** faut-il reset? faut-il ré-utilisé ce qui a été fait lors de cette quiescence?
-		//	child->quiescence(buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network);
-		//}
+		// Fait une première évaluation rapide pour savoir si ça vaut le coup de faire la quiescence ou non
+		//child->evaluate_position(eval, false, nullptr, true);
+		// 
+		bool test = false;
+
+		if (test) {
+			child->quiescence(buffer, eval, 2, alpha, beta, -INT32_MAX, INT32_MAX, network); // TODO *** faire un cutoff plus facile, si l'éval de base est déjà mauvaise? par rapport à l'évaluation statique
+		}
+
+		// Si l'évaluation est meilleure que celle de base, on regarde la quiescence
+		if (!test || child->_static_evaluation._value * _board->get_color() > _static_evaluation._value * _board->get_color()) {
+
+			child->quiescence(buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network);
+			//child->quiescence(buffer, eval, quiescence_depth / 2, alpha, beta, -INT32_MAX, INT32_MAX, network);
+
+			//// Si la quiescence est bonne, on recommande à vraie profondeur
+			//constexpr int quiescence_threshold = 1000; // TODO: à revoir
+			//if (child->_board->_player ? child->_deep_evaluation._value > _deep_evaluation._value + quiescence_threshold : child->_deep_evaluation._value < _deep_evaluation._value - quiescence_threshold) {
+			//	//child->reset(); // FIXME *** faut-il reset? faut-il ré-utilisé ce qui a été fait lors de cette quiescence?
+			//	child->quiescence(buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network);
+			//}
+
+		}
 
 		child->_fully_explored = true;
 	}
@@ -515,7 +530,7 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 				child_variants += to_string(_board->_moves_count);
 				child_variants += _board->_player ? ". " : "... ";
 				child_variants += _board->move_label(move, true);
-				child_variants += " ";
+				child_variants += child->children_count() > 0 ? " " : "";
 				child_variants += child->get_exploration_variants(alpha, beta, false, new_quiescence || quiescence);
 
 				if (new_quiescence)
@@ -579,7 +594,7 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 				const bool new_quiescence = !quiescence && _children[best_move]->_iterations == 0;
 
 				//variants += (new_quiescence ? "(" + _board->evaluation_to_string(_deep_evaluation._value) + ") (" : "") + (_board->_player ? to_string(_board->_moves_count) + ". " : "") + _board->move_label(best_move, true) + " " + _children[best_move]->get_exploration_variants(alpha, beta, false, new_quiescence || quiescence) + (new_quiescence ? ")" : "");
-				variants += (new_quiescence ? "(" : "") + (_board->_player ? to_string(_board->_moves_count) + ". " : "") + _board->move_label(best_move, true) + " " + _children[best_move]->get_exploration_variants(alpha, beta, false, new_quiescence || quiescence) + (new_quiescence ? ")" : "");
+				variants += (new_quiescence ? "(" : "") + (_board->_player ? to_string(_board->_moves_count) + ". " : "") + _board->move_label(best_move, true) + (_children[best_move]->children_count() > 0 ? " " : "") + _children[best_move]->get_exploration_variants(alpha, beta, false, new_quiescence || quiescence) + (new_quiescence ? ")" : "");
 			}
 		}
 		
@@ -1188,6 +1203,14 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 			//score *= multiplier;
 
 			if (best_eval._evaluated) {
+				if (best_eval._value * color > max_eval) {
+					max_eval = best_eval._value * color;
+				}
+
+				if (_board->_player ? best_eval._avg_score > max_avg_score : 1 - best_eval._avg_score > max_avg_score) {
+					max_avg_score = _board->_player ? best_eval._avg_score : 1 - best_eval._avg_score;
+				}
+
 				score = get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player, &best_eval) * exploration_score;
 				//cout << "new score: " << score << endl;
 			}
@@ -1210,6 +1233,10 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	}
 
 	//cout << "best move: " << _board->move_label(best_move) << " | best score: " << best_score << endl << endl;
+
+	if (best_move.is_null_move()) {
+		cout << "null move considered to be the best??" << endl;
+	}
 
 	// Meilleur coup global
 	_children.at(best_move)->_chosen_iterations++;
@@ -1305,7 +1332,7 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 	// Bonus si t'as des chances pures de gain?
 	// R4Q2/6pk/1q6/8/3P4/2N3r1/1K6/8 w - - 5 49 : ici pour trouver Ra2?
 	// 8/6pk/7p/8/4p2P/1R1r2P1/5PK1/8 w - - 5 33 : Txd3?? ça gagne!
-	const double win_adding = (player ? eval._wdl.win_chance : eval._wdl.lose_chance) * pure_win_chance_adding;
+	const double win_adding = ((player ? eval._wdl.win_chance : eval._wdl.lose_chance) + 0.5 * avg_score) * pure_win_chance_adding;
 	//cout << "win chance: " << (player ? eval._wdl.win_chance : eval._wdl.lose_chance) << ", win_adding: " << win_adding << endl;
 
 	//cout << "eval: " << eval_score << ", score: " << score_score << endl;

@@ -461,7 +461,7 @@ void GUI::draw_arrow(const Move move, const bool player, Color c, float thicknes
 			}
 		}
 
-		float size = thickness * 1.5f;
+		float size = thickness * 1.85f;
 		const float max_size = thickness * 3.25f;
 		float width = MeasureTextEx(_text_font, v, size, _font_spacing * size).x;
 		if (width > max_size) {
@@ -534,22 +534,27 @@ void GUI::load_resources() {
 	_mini_piece_images[11] = LoadImage("resources/images/mini_pieces/b_king.png");
 
 	// Chargement du son
-	_move_1_sound = LoadSound("resources/sounds/move_1.mp3");
-	_move_2_sound = LoadSound("resources/sounds/move_2.mp3");
-	_castle_1_sound = LoadSound("resources/sounds/castle_1.mp3");
-	_castle_2_sound = LoadSound("resources/sounds/castle_2.mp3");
-	_check_1_sound = LoadSound("resources/sounds/check_1.mp3");
-	_check_2_sound = LoadSound("resources/sounds/check_2.mp3");
-	_capture_1_sound = LoadSound("resources/sounds/capture_1.mp3");
-	_capture_2_sound = LoadSound("resources/sounds/capture_2.mp3");
-	_checkmate_sound = LoadSound("resources/sounds/checkmate.mp3");
-	_stealmate_sound = LoadSound("resources/sounds/stealmate.mp3");
-	_game_begin_sound = LoadSound("resources/sounds/game_begin.mp3");
-	_game_end_sound = LoadSound("resources/sounds/game_end.mp3");
-	_promotion_sound = LoadSound("resources/sounds/promotion.mp3");
+	_move_sound = LoadSound((_sounds_path + "move.mp3").c_str());
+	_castle_sound = LoadSound((_sounds_path + "castle.mp3").c_str());
+	_check_sound = LoadSound((_sounds_path + "check.mp3").c_str());
+	_capture_sound = LoadSound((_sounds_path + "capture.mp3").c_str());
+	_checkmate_sound = LoadSound((_sounds_path + "checkmate.mp3").c_str());
+	_stalemate_sound = LoadSound((_sounds_path + "stalemate.mp3").c_str());
+	_game_begin_sound = LoadSound((_sounds_path + "game_begin.mp3").c_str());
+	_promotion_sound = LoadSound((_sounds_path + "promotion.mp3").c_str());
 
 	// Police de l'écriture
-	_text_font = LoadFontEx("resources/fonts/SFTransRobotics.otf", 128, nullptr, 1000);
+	//_text_font = LoadFontEx("resources/fonts/SFTransRobotics.otf", 128, nullptr, 1000);
+	_text_font = LoadFontEx("resources/fonts/Montserrat-Bold.otf", 128, nullptr, 256);
+	//_text_font = LoadFontEx("resources/fonts/Montserrat-Medium.ttf", 128, nullptr, 0);
+	GenTextureMipmaps(&_text_font.texture);
+	SetTextureFilter(_text_font.texture, TEXTURE_FILTER_TRILINEAR);
+	//SetTextureFilter(_text_font.texture, TEXTURE_FILTER_ANISOTROPIC_4X);
+
+	// Shader pour le texte
+	//_text_shader = LoadShader(nullptr, "resources/shaders/font_sdf.fs");
+	//_text_shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(_text_shader, "view");
+	//_text_font.texture.sg
 
 	// Icône
 	_icon = LoadImage("resources/images/grogros_zero.png"); // TODO essayer de charger le .ico, pour que l'icone s'affiche tout le temps (pas seulement lors du build)
@@ -582,7 +587,11 @@ void GUI::resize_GUI() {
 	for (int i = 0; i < 12; i++) {
 		Image piece_image = ImageCopy(_piece_images[i]);
 		ImageResize(&piece_image, _piece_size, _piece_size);
-		_piece_textures[i] = LoadTextureFromImage(piece_image);
+		Texture2D texture = LoadTextureFromImage(piece_image);
+		//GenTextureMipmaps(&texture);
+		//SetTextureFilter(texture, TEXTURE_FILTER_TRILINEAR);
+		//SetTextureWrap(texture, TEXTURE_WRAP_CLAMP);
+		_piece_textures[i] = texture;
 	}
 
 	// Taille du texte
@@ -615,7 +624,7 @@ void GUI::get_window_size() {
 }
 
 // Fonction qui renvoie si le joueur est en train de jouer (pour que l'IA arrête de réflechir à ce moment sinon ça lagge)
-bool GUI::is_playing() {
+bool GUI::is_playing() const {
 	const auto [x, y] = GetMousePosition();
 	return (_selected_pos.row != -1 || x != _mouse_pos.x || y != _mouse_pos.y);
 }
@@ -723,7 +732,7 @@ void GUI::slider_text(const string& s, float pos_x, float pos_y, float width, fl
 }
 
 // Fonction pour obtenir l'orientation du plateau
-bool GUI::get_board_orientation() {
+bool GUI::get_board_orientation() const {
 	return _board_orientation;
 }
 
@@ -824,11 +833,6 @@ void GUI::highlight_tile(const int a, const int b) {
 // Fonction qui déselectionne
 void GUI::unselect() {
 	_selected_pos = Pos(-1, -1);
-}
-
-// Fonction qui joue le son de fin de partie
-void GUI::play_end_sound() {
-	PlaySound(_game_end_sound);
 }
 
 // A partir de coordonnées sur le plateau
@@ -932,6 +936,7 @@ bool GUI::play_move_keep(Move move)
 
 	_root_exploration_node->_board = &_board;
 
+	_board.get_moves();
 
 	//cout << "same board: " << (_root_exploration_node->_board == &_board) << endl;
 	//cout << "same board2: " << (*_root_exploration_node->_board == _board) << endl;
@@ -940,6 +945,9 @@ bool GUI::play_move_keep(Move move)
 	// Update le PGN
 	_game_tree.select_next_node(move);
 	_pgn = _game_tree.tree_display();
+
+	if (!_board.selected_piece_has_trait())
+		_selected_pos = Pos(-1, -1);
 
 	return true;
 }
@@ -1024,6 +1032,7 @@ void GUI::draw()
 		// Stocke la case cliquée sur le plateau
 		_clicked_pos = get_pos_from_GUI(_mouse_pos.x, _mouse_pos.y);
 		_clicked = true;
+		bool has_played = false;
 
 		// S'il y'a les flèches de réflexion de GrogrosZero, et qu'aucune pièce n'est sélectionnée
 		if (_drawing_arrows && !selected_piece()) {
@@ -1035,6 +1044,7 @@ void GUI::draw()
 					if (_click_bind)
 						_board.click_m_move(move, get_board_orientation());
 					play_move_keep(move);
+					has_played = true;
 					continue;
 				}
 			}
@@ -1042,8 +1052,11 @@ void GUI::draw()
 
 		// Si aucune pièce n'est sélectionnée et que l'on clique sur une pièce, la sélectionne
 		if (!selected_piece() && clicked_piece()) {
-			if (_board.clicked_piece_has_trait())
+			if (!has_played || _board.clicked_piece_has_trait()) {
 				_selected_pos = _clicked_pos;
+				if (_board._got_moves == -1)
+					_board.get_moves();
+			}
 		}
 
 		// Si une pièce est déjà sélectionnée
@@ -1156,7 +1169,7 @@ void GUI::draw()
 	ClearBackground(_background_color);
 
 	// Nombre de FPS
-	DrawTextEx(_text_font, ("FPS : " + to_string(GetFPS())).c_str(), { _screen_width - 3 * _text_size, _text_size / 3 }, _text_size / 3, _font_spacing, _text_color);
+	DrawTextEx(_text_font, ("FPS : " + to_string(GetFPS())).c_str(), { _screen_width - 2 * _text_size, _text_size / 3 }, _text_size / 3, _font_spacing, _text_color);
 
 	// Plateau
 	draw_rectangle(_board_padding_x, _board_padding_y, _tile_size * 8, _tile_size * 8, _board_color_light);
@@ -1236,7 +1249,7 @@ void GUI::draw()
 		draw_simple_arrow_from_coord(arrow[0], arrow[1], arrow[2], arrow[3], -1, _arrow_color);
 
 	// Titre
-	DrawTextEx(_text_font, "GROGROS CHESS", { _board_padding_x + _grogros_size / 2 + _text_size / 2.8f, _text_size / 4.0f }, _text_size / 1.4f, _font_spacing * _text_size / 1.4f, _text_color);
+	DrawTextEx(_text_font, "GROGROS CHESS", { _board_padding_x + _grogros_size / 2 + _text_size / 4.0f, _text_size / 4.0f }, _text_size / 1.25f, _font_spacing * _text_size / 1.25f, _text_color);
 
 	// Grogros
 	draw_texture(_grogros_texture, _board_padding_x, _text_size / 4.0f - _text_size / 5.6f, WHITE);
@@ -1436,7 +1449,7 @@ void GUI::draw()
 		controls_information = "Controls:\n\n" + keys_information + binding_information;
 
 		// TODO : ajout d'une valeur de slider
-		slider_text(controls_information, _board_padding_x + _board_size + _text_size / 2, _board_padding_y, _screen_width - _text_size - _board_padding_x - _board_size, _board_size, _text_size / 3, 0, _text_color_info);
+		slider_text(controls_information, _board_padding_x + _board_size + _text_size / 2, _board_padding_y, _screen_width - _text_size - _board_padding_x - _board_size, _board_size, _text_size / 3, &_variants_slider, _text_color_info);
 	}
 
 	// Affichage du curseur

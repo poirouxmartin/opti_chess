@@ -1377,6 +1377,7 @@ void Board::from_fen(string fen)
 
 	reset_eval();
 
+
 	// Oriente le plateau dans pour le joueur qui joue
 	main_GUI._board_orientation = _player;
 
@@ -1660,42 +1661,33 @@ void Board::play_move_sound(Move move) const
 
 	// Sons de fin de partie
 	if (move.game_result() == draw)
-		return PlaySound(main_GUI._stealmate_sound);
-	if (move.game_result() != unterminated)
-		return PlaySound(main_GUI._checkmate_sound);
+		PlaySound(main_GUI._stalemate_sound);
 
-	if (move.is_check()) {
-		if (_player)
-			PlaySound(main_GUI._check_1_sound);
-		else
-			PlaySound(main_GUI._check_2_sound);
+	// Mat
+	else if (move.game_result() != unterminated)
+		PlaySound(main_GUI._checkmate_sound);
+
+	// Echec
+	else if (move.is_check()) {
+		PlaySound(main_GUI._check_sound);
 	}
 
-	// Si pas d'échecs
-	else {
-		// Promotions
-		if (move.is_promotion())
-			return PlaySound(main_GUI._promotion_sound);
+	// Promotion
+	if (move.is_promotion())
+		PlaySound(main_GUI._promotion_sound);
 
-		// Prises (ou en passant)
-		if (move.is_capture()) {
-			if (_player)
-				return PlaySound(main_GUI._capture_1_sound);
-			else
-				return PlaySound(main_GUI._capture_2_sound);
-		}
+	// Prise
+	if (move.is_capture()) {
+		PlaySound(main_GUI._capture_sound);
+	}
 
-		// Roques
-		if (p1 == w_king && abs(j - l) == 2)
-			return PlaySound(main_GUI._castle_1_sound);
-		if (p1 == b_king && abs(j - l) == 2)
-			return PlaySound(main_GUI._castle_2_sound);
+	// Roques
+	if (p1 == w_king && abs(j - l) == 2 || (p1 == b_king && abs(j - l) == 2))
+		PlaySound(main_GUI._castle_sound);
 
-		// Coup "normal"
-		if (_player)
-			return PlaySound(main_GUI._move_1_sound);
-		if (!_player)
-			return PlaySound(main_GUI._move_2_sound);
+	// Coup "normal"
+	if (!move.is_check()) {
+		PlaySound(main_GUI._move_sound);
 	}
 
 	return;
@@ -2204,7 +2196,7 @@ int Board::get_king_safety(float display_factor) {
 	//5rk1/5ppp/4bn2/q2p4/2p5/b1P1BN2/3Q1PPP/1K1RRB2 w - - 2 9
 	//r1b2k1r/ppp1qpp1/3bP1pn/3P4/4N3/8/PPPBQ1PP/2KR1R2 b - - 6 18
 
-	constexpr float open_lines_danger = 2.5f;
+	constexpr float open_lines_danger = 3.0f;
 
 	int w_open_lines = get_open_files_on_opponent_king(true) * open_lines_danger;
 	int b_open_lines = get_open_files_on_opponent_king(false) * open_lines_danger;
@@ -3000,35 +2992,118 @@ int Board::get_pawn_structure(float display_factor)
 
 	// Pions connectés
 	// Un pion est dit connecté, s'il y a un pion de la même couleur sur une colonne adjacente sur la même rangée ou la rangée inférieure
-	constexpr int connected_pawns[8] = { 0, 25, 35, 70, 120, 180, 275, 0 };
+	constexpr int connected_pawns[8] = { 0, 10, 25, 70, 120, 180, 275, 0 };
 	constexpr float connected_pawns_factor = 0.3f; // En fonction de l'advancement de la partie
 	const float connected_pawns_adv = eval_from_progress(1, _adv, connected_pawns_factor);
 
 	float connected_pawns_value = 0.0f;
 
+	constexpr float multiple_connections[4] = { 1.0f, 1.25f, 1.35f, 1.4f }; // Bonus si le pion est connecté par plusieurs côtés
+
 	// Pour chaque colonne
 	for (uint_fast8_t col = 0; col < 8; col++) {
 		for (uint_fast8_t row = 1; row < 7; row++) {
+
+			// Pions blancs
 			if (pawns_white[row][col]) {
-				if ((col > 0 && (pawns_white[row][col - 1] || pawns_white[row - 1][col - 1])) || (col < 7 && (pawns_white[row][col + 1] || pawns_white[row - 1][col + 1]))) {
-					// S'il est contesté par un pion adverse, on retire le bonus
-					if (col > 0 && pawns_black[row + 1][col - 1] || col < 7 && pawns_black[row + 1][col + 1]) {
-						// TODO
-					}
-					else {
-						connected_pawns_value += connected_pawns[row] * connected_pawns_adv;
-					}
+
+				// Connexion par colonne gauche
+
+				// Pion connecté derrière
+				bool is_left_connected_behind = (col > 0 && pawns_white[row - 1][col - 1]);
+
+				// S'il est contesté par un pion adverse, on retire le bonus
+				if (is_left_connected_behind && (col > 1 && pawns_black[row][col - 2])) {
+					is_left_connected_behind = false;
+				}
+
+				// Pion connecté sur la même rangée
+				bool is_left_connected_side = (col > 0 && pawns_white[row][col - 1]);
+
+				// S'il est contesté par un pion adverse, on retire le bonus
+				if (is_left_connected_side && (col > 1 && pawns_black[row + 1][col - 2] || pawns_black[row + 1][col])) {
+					is_left_connected_side = false;
+				}
+
+
+				// Connexion par colonne droite
+				
+				// Pion connecté derrière
+				bool is_right_connected_behind = (col < 7 && pawns_white[row - 1][col + 1]);
+
+				// S'il est contesté par un pion adverse, on retire le bonus
+				if (is_right_connected_behind && (col < 6 && pawns_black[row][col + 2])) {
+					is_right_connected_behind = false;
+				}
+
+				// Pion connecté sur la même rangée
+				bool is_right_connected_side = (col < 7 && pawns_white[row][col + 1]);
+
+				// S'il est contesté par un pion adverse, on retire le bonus
+				if (is_right_connected_side && (col < 6 && pawns_black[row + 1][col + 2] || pawns_black[row + 1][col])) {
+					is_right_connected_side = false;
+				}
+
+				int behind_connections = is_left_connected_behind + is_right_connected_behind;
+				int side_connections = is_left_connected_side + is_right_connected_side;
+
+				// S'il est connecté par au moins un côté
+				if (behind_connections + side_connections > 0) {
+
+					bool is_contested = col > 0 && pawns_black[row + 1][col - 1] || col < 7 && pawns_black[row + 1][col + 1];
+
+					connected_pawns_value += connected_pawns[row] * connected_pawns_adv * multiple_connections[behind_connections + side_connections - is_contested];
 				}
 			}
+
+			// Pions noirs
 			else if (pawns_black[row][col]) {
-				if ((col > 0 && (pawns_black[row][col - 1] || pawns_black[row + 1][col - 1])) || (col < 7 && (pawns_black[row][col + 1] || pawns_black[row + 1][col + 1]))) {
-					// S'il est contesté par un pion adverse, on retire le bonus
-					if (col > 0 && pawns_white[row - 1][col - 1] || col < 7 && pawns_white[row - 1][col + 1]) {
-						// TODO
-					}
-					else {
-						connected_pawns_value -= connected_pawns[7 - row] * connected_pawns_adv;
-					}
+
+				// Connexion par colonne gauche
+				
+				// Pion connecté derrière
+				bool is_left_connected_behind = (col > 0 && pawns_black[row + 1][col - 1]);
+
+				// S'il est contesté par un pion adverse, on retire le bonus
+				if (is_left_connected_behind && (col > 1 && pawns_white[row][col - 2])) {
+					is_left_connected_behind = false;
+				}
+
+				// Pion connecté sur la même rangée
+				bool is_left_connected_side = (col > 0 && pawns_black[row][col - 1]);
+
+				// S'il est contesté par un pion adverse, on retire le bonus
+				if (is_left_connected_side && (col > 1 && pawns_white[row - 1][col - 2] || pawns_white[row - 1][col])) {
+					is_left_connected_side = false;
+				}
+
+				// Connexion par colonne droite
+				
+				// Pion connecté derrière
+				bool is_right_connected_behind = (col < 7 && pawns_black[row + 1][col + 1]);
+
+				// S'il est contesté par un pion adverse, on retire le bonus
+				if (is_right_connected_behind && (col < 6 && pawns_white[row][col + 2])) {
+					is_right_connected_behind = false;
+				}
+
+				// Pion connecté sur la même rangée
+				bool is_right_connected_side = (col < 7 && pawns_black[row][col + 1]);
+
+				// S'il est contesté par un pion adverse, on retire le bonus
+				if (is_right_connected_side && (col < 6 && pawns_white[row - 1][col + 2] || pawns_white[row - 1][col])) {
+					is_right_connected_side = false;
+				}
+
+				int behind_connections = is_left_connected_behind + is_right_connected_behind;
+				int side_connections = is_left_connected_side + is_right_connected_side;
+
+				// S'il est connecté par au moins un côté
+				if (behind_connections + side_connections > 0) {
+
+					bool is_contested = col > 0 && pawns_white[row - 1][col - 1] || col < 7 && pawns_white[row - 1][col + 1];
+
+					connected_pawns_value -= connected_pawns[7 - row] * connected_pawns_adv * multiple_connections[behind_connections + side_connections - is_contested];
 				}
 			}
 		}
@@ -3732,7 +3807,7 @@ int Board::get_square_controls() const
 			total_control += (white_controls[i][j] - black_controls[i][j]) * square_controls[i][j];
 
 	// L'importance de ce paramètre dépend de l'avancement de la partie : l'espace est d'autant plus important que le nombre de pièces est grand
-	constexpr float control_adv_factor = 0.5f; // En fonction de l'advancement de la partie
+	constexpr float control_adv_factor = 0.2f; // En fonction de l'advancement de la partie
 
 	return eval_from_progress(total_control, _adv, control_adv_factor);
 }
@@ -4012,6 +4087,14 @@ int Board::get_alignments() const
 
 	constexpr int pieces_values[6] = { pinned_pawn, pinned_knight, pinned_bishop, pinned_rook, pinned_queen, pinned_king };
 
+	// Valeurs des pièces qui mettent une pression sur un clouage de pièces à valeurs supérieures
+	// A prendre en compte dans le calcul: 
+	// - valeur min des deux pièces importantes prises en compte dans le clouage
+	// - valeur de la pièce faisant le clouage (si elle peut être prise par la pièce clouée)
+	// - valeur de la pièce mettant la pression sur la pièce clouée, si elle est de valeur inférieure (menace la prise)
+	constexpr int pressuring_values[6] = { 100, 300, 300, 500, 900, 10000};
+	constexpr float pressuring_factor = 1.5f;
+
 	// Valeurs pour les pièces alliées
 	constexpr int ally_piece_value = 15;
 	constexpr int ally_pawn_value = 5;
@@ -4040,6 +4123,10 @@ int Board::get_alignments() const
 
 			// Couleur de la pièce
 			const bool pinning_piece_color = piece < b_pawn;
+			const int pinning_int_color = pinning_piece_color ? 1 : -1;
+
+			// Valeur de pression du cloueur
+			const int pinning_pressure_value = pressuring_values[(piece - 1) % 6];
 
 			// Pour chaque direction
 			for (uint_fast8_t d = 0; d < 8; d++) {
@@ -4064,6 +4151,9 @@ int Board::get_alignments() const
 				// Liste des pièces rencontrées
 				uint_fast8_t pieces[7] = { 0 };
 
+				// Liste des valeurs des pressions sur les clouages
+				int pressures[7] = { 0 };
+
 				// Avancement dans la direction
 				uint_fast8_t i = 0;
 
@@ -4073,15 +4163,24 @@ int Board::get_alignments() const
 					// Si la case contient une pièce
 					const uint_fast8_t piece2 = _array[current_row][current_col];
 
-					// On continue
-					current_row += d_row;
-					current_col += d_col;
-
 					// Ajoute la pièce à la liste
 					if (piece2 != none) {
 						pieces[i] = piece2;
+
+						// Valeur de pression sur le clouage (valeur de la pièce de plus petite valeur qui met une pression sur cette pièce)
+						// Pour le moment, on teste seulement avec les pions
+						//cout << (int)current_row << ", " << (int)current_col << ": " << square_name(current_row, current_col) << ", pawns for " << (pinning_piece_color ? "white?" : "black?") << endl;
+						if ((current_col > 0 && _array[current_row - pinning_int_color][current_col - 1] == (pinning_piece_color ? w_pawn : b_pawn)) || (current_col < 7 && _array[current_row - pinning_int_color][current_col + 1] == (pinning_piece_color ? w_pawn : b_pawn))) {
+							pressures[i] = pressuring_values[0];
+							//cout << "pawn !" << endl;
+						}
+
 						i++;
 					}
+
+					// On continue
+					current_row += d_row;
+					current_col += d_col;
 				}
 
 				// Calcule la valeur totale du clouage pour cette direction en fonction des pièces rencontrées
@@ -4097,6 +4196,9 @@ int Board::get_alignments() const
 
 				// TODO: trouver formule...
 				//rnb1kbnr/1p2pppp/p1qp4/2p5/B3P3/P1N2N2/1PPP1PPP/R1BQK2R b KQkq - 1 6
+
+				//r1bqk2r/ppp2ppp/2nb4/8/2B1n3/3P1N2/PP3PPP/RNBQR1K1 b kq - 0 9
+				//r3n3/1p1q4/1Qp2pk1/8/P1B1P1br/2P1K3/1P3P2/R5R1 w - - 2 31
 
 				// Les premières pièces compte plus que les dernières
 
@@ -4119,7 +4221,27 @@ int Board::get_alignments() const
 					const int pinned_piece_value = ally_piece ? ((pinned_piece - 1) % 6 == 0 ? ally_pawn_value : ally_piece_value) : pieces_values[(pinned_piece - 1) % 6];
 
 					if (!ally_piece || !is_previous_ally) {
-						total_value += pinning_piece_power * pinned_piece_value * previous_piece / division_factor;
+						const int pin_value = pinning_piece_power * pinned_piece_value * previous_piece / division_factor;
+
+						// Regarde s'il y a une pièce de valeur plus faible qui met la pression sur ce clouage
+						// Pour le moment on teste seulement avec les pions, sinon ça risque d'être vraiment lent
+						// TODO *** rajouter les pressions par les autres pièces...
+						// TODO *** rajouter la pression naturelle du clouage si la pièce clouée n'est pas défendue
+
+						// Valeur brute de pression sur la pièce (si elle venait à être prise)
+						const int pressure_value = pressures[j] != 0 ? max(0, pressuring_values[(pinned_piece - 1) % 6] - pressures[j]) : 0;
+
+						// Valeur de la pression sur la pièce derrière dans le clouage (si la pièce clouée se retire)
+						const int secondary_pressure = j > 6 ? 0 : max(0, pressuring_values[(pieces[j + 1] - 1) % 6] - pinning_pressure_value);
+
+						// Pression finale = pression minimale entre les deux
+						const int result_pressure = min(pressure_value, secondary_pressure);
+
+						// N1b3R1/p2kp3/1pnp4/1B6/3PP3/8/P1P2PP1/b3K3 w - - 1 18
+
+						//cout << piece_name(pinned_piece) << ", base pressure: " << pressure_value << ", secondary pressure: " << secondary_pressure << " = " << result_pressure << endl;
+
+						total_value += pin_value + pressuring_factor * result_pressure;
 					}
 
 					//cout << "pinned: " << (int)pinned_piece << "total: " << total_value << endl;
@@ -4145,7 +4267,7 @@ int Board::get_alignments() const
 	}
 
 	// En fonction de l'avancement de la partie
-	constexpr float alignment_adv_factor = 0.5f;
+	constexpr float alignment_adv_factor = 1.0f;
 
 	return eval_from_progress(w_pins - b_pins, _adv, alignment_adv_factor);
 }
@@ -5236,7 +5358,7 @@ int Board::get_rook_activity() const
 	}
 
 	// Facteur multiplicatif en fonction de l'avancement de la partie
-	float advancement_factor = 0.5f;
+	float advancement_factor = 0.3f;
 
 	//cout << "Final rook activity: " << activity << ", advancement factor: " << advancement_factor << " => " << eval_from_progress(activity, _adv, advancement_factor) << endl;
 
@@ -5329,13 +5451,13 @@ int Board::get_bishop_pawns() const {
 
 	float bishop_pawns_value = 0.0f;
 
-	for (uint_fast8_t i = 0; i < 8; i++) {
-		for (uint_fast8_t j = 0; j < 8; j++) {
-			const uint_fast8_t p = _array[i][j];
+	for (uint_fast8_t row = 0; row < 8; row++) {
+		for (uint_fast8_t col = 0; col < 8; col++) {
+			const uint_fast8_t p = _array[row][col];
 
 			// Fou blanc
 			if (p == w_bishop) {
-				if ((i + j) % 2) // Case blanche
+				if ((row + col) % 2) // Case blanche
 					bishop_pawns_value -= (white_pawns_w - white_pawns_b) * (2 + white_central_pawns_blocked) * ally_bishop_pawn_malus + (black_pawns_w - black_pawns_b) * enemy_bishop_pawn_bonus;
 				else // Case noire
 					bishop_pawns_value -= (white_pawns_b - white_pawns_w) * (2 + white_central_pawns_blocked) * ally_bishop_pawn_malus + (black_pawns_b - black_pawns_w) * enemy_bishop_pawn_bonus;
@@ -5343,7 +5465,7 @@ int Board::get_bishop_pawns() const {
 
 			// Fou noir
 			else if (p == b_bishop) {
-				if ((i + j) % 2) // Case blanche
+				if ((row + col) % 2) // Case blanche
 					bishop_pawns_value += (black_pawns_w - black_pawns_b) * (2 + black_central_pawns_blocked) * ally_bishop_pawn_malus + (white_pawns_w - white_pawns_b) * enemy_bishop_pawn_bonus;
 				else // Case noire
 					bishop_pawns_value += (black_pawns_b - black_pawns_w) * (2 + black_central_pawns_blocked) * ally_bishop_pawn_malus + (white_pawns_b - white_pawns_w) * enemy_bishop_pawn_bonus;
@@ -5354,7 +5476,7 @@ int Board::get_bishop_pawns() const {
 	//cout << "bishop_pawns_value: " << bishop_pawns_value << endl;
 
 	// Facteur multiplicatif en fonction de l'avancement de la partie
-	float advancement_factor = 0.5f;
+	float advancement_factor = 0.8f;
 
 	return eval_from_progress(bishop_pawns_value, _adv, advancement_factor);
 }
@@ -6300,8 +6422,8 @@ float Board::get_winnable(bool color, float position_nature) const {
 	// TODO *** implémenter la suite de la logique pour évaluer les possibilités de gain en milieu de jeu
 
 	// En fonction de la nature de la position
-	constexpr float closed_position_draw_factor = 0.5f;
-	winnable_value *= 1.0f - position_nature * (1.0f - _adv) * closed_position_draw_factor;
+	constexpr float closed_position_draw_factor = 1.0f;
+	winnable_value *= 1.0f - pow(position_nature, 1.0) * (1.0f - _adv) * closed_position_draw_factor;
 	// FIXME *** être encore plus important? car ça va rarement à 0% ou 100%?
 
 	// TODO *** prise en compte de l'incertitude (-> winnable++?)
@@ -9187,7 +9309,7 @@ int Board::get_king_centralization(bool color) {
 	float pawns_factor = (2.0f + pawns_count) / 10.0f;
 
 	// Avancement où ça commence à être intéressant
-	constexpr float begin_adv = 0.85f;
+	constexpr float begin_adv = 0.65f;
 
 	// Malus en fonction de la distance
 	return (10 - distance) * pawns_factor * max(0.0f, (_adv - begin_adv) / (1 - begin_adv));
@@ -9362,6 +9484,8 @@ int Board::get_open_files_on_opponent_king_at_column(bool player, int king_col) 
 	constexpr int rook_semi_open_bonus = 25;
 	constexpr int queen_semi_open_bonus = 20;
 
+	constexpr int opponent_guarding_malus = 20;
+
 	// Bonus pour le joueur
 	int total_bonus = 0;
 
@@ -9409,6 +9533,8 @@ int Board::get_open_files_on_opponent_king_at_column(bool player, int king_col) 
 					bonus += open ? rook_open_bonus : rook_semi_open_bonus;
 				else if (p == (player ? w_queen : b_queen))
 					bonus += open ? queen_open_bonus : queen_semi_open_bonus;
+				else if (is_rectilinear(p))
+					bonus -= opponent_guarding_malus;
 			}
 
 			//cout << "col: " << (int)col << ", open: " << open << ", semi_open: " << semi_open << ", bonus: " << bonus << endl;
@@ -9427,7 +9553,7 @@ int Board::get_open_files_on_opponent_king_at_column(bool player, int king_col) 
 	// En fonction de l'avancement de la partie
 	constexpr float advancement_factor = 0.0f;
 
-	return eval_from_progress(total_bonus, _adv, advancement_factor);
+	return eval_from_progress(max(0, total_bonus), _adv, advancement_factor);
 }
 
 // Fonction qui renvoie la valeur des bonus liés au placement du roi, s'il était sur une certaine colonne
@@ -9913,10 +10039,10 @@ SquareMap Board::get_all_blocked_pieces(bool color) const {
 
 	// Importance de la mobilité virtuelle (à travers toutes les pièces non bloquées)
 	static constexpr int pawn_virtual_mobility[5] = { 0, 0, 0, 0, 0 };
-	static constexpr int knight_virtual_mobility[9] = { -1350, -450, 0, 65, 110, 125, 135, 143, 150 };
-	static constexpr int bishop_virtual_mobility[15] = { -1350, -500, 0, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180 };
-	static constexpr int rook_virtual_mobility[15] = { -1750, -750, 0, 35, 50, 65, 75, 85, 95, 105, 115, 125, 135, 145, 155 };
-	static constexpr int queen_virtual_mobility[29] = { -3000, -1500, 0, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250 };
+	static constexpr int knight_virtual_mobility[9] = { -1350, -500, 0, 65, 110, 125, 135, 143, 150 };
+	static constexpr int bishop_virtual_mobility[15] = { -1350, -750, 0, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180 };
+	static constexpr int rook_virtual_mobility[15] = { -2350, -1000, 0, 35, 50, 65, 75, 85, 95, 105, 115, 125, 135, 145, 155 };
+	static constexpr int queen_virtual_mobility[29] = { -4500, -2000, 0, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250 };
 	static constexpr int king_virtual_mobility[9] = { -1000, -500, 0, 10, 20, 29, 37, 44, 50 };
 
 	static const int* virtual_mobilities[6] = { pawn_virtual_mobility, knight_virtual_mobility, bishop_virtual_mobility, rook_virtual_mobility, queen_virtual_mobility, king_virtual_mobility };
@@ -10341,4 +10467,61 @@ void Board::assign_move_flags(Move* move) const {
 	move->set_result(static_cast<uint8_t>(b._game_over_value));
 
 	move->set_flag(FLAGS_EVALUATED);
+}
+
+// Fonction qui remet à 0 les bitboards
+void Board::reset_bitboards() {
+	for (int i = 0; i < 12; i++)
+		_bitboards[i] = 0ULL;
+	for (int i = 0; i < 3; i++)
+		_occupancies[i] = 0ULL;
+}
+
+// Fonction qui affiche tous les bitboards
+void Board::update_bitboards() {
+	reset_bitboards();
+
+	for (int row = 0; row < 8; row++) {
+		for (int col = 0; col < 8; col++) {
+			int piece = _array[row][col];
+			if (piece == none)
+				continue;
+
+			int square = row * 8 + col;
+			_bitboards[piece - 1] |= 1ULL << square;
+
+			int color = (piece > 6) ? 1 : 0;
+			_occupancies[color] |= 1ULL << square;
+			_occupancies[2] |= 1ULL << square;
+		}
+	}
+}
+
+// Fonction qui affiche toutes les valeurs d'un bitboard
+void print_bitboard(uint64_t bitboard) {
+	for (int row = 7; row >= 0; row--) {
+		for (int col = 0; col < 8; col++) {
+			int square = row * 8 + col;
+			cout << ((bitboard >> square) & 1ULL) << " ";
+		}
+		cout << "\n";
+	}
+	cout << "\n";
+}
+
+// Fonction qui affiche tous les bitboards
+void Board::print_all_bitboards() const {
+	for (int i = 0; i < 12; i++) {
+		cout << piece_name(i + 1) << endl;
+		print_bitboard(_bitboards[i]);
+	}
+
+	cout << "White: " << endl;
+	print_bitboard(_occupancies[0]);
+
+	cout << "Black: " << endl;
+	print_bitboard(_occupancies[1]);
+
+	cout << "Both: " << endl;
+	print_bitboard(_occupancies[2]);
 }
