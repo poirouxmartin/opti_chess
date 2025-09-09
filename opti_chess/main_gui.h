@@ -43,6 +43,7 @@ inline int main_ui() {
 	SetConfigFlags(FLAG_MSAA_4X_HINT);
 	SetConfigFlags(FLAG_WINDOW_ALWAYS_RUN);
 	SetConfigFlags(FLAG_VSYNC_HINT);
+	SetConfigFlags(FLAG_WINDOW_HIGHDPI);
 
 	// Pour ne pas afficher toutes les infos (on peut mettre le log level de 0 à 7 -> 7 = rien)
 	SetTraceLogLevel(LOG_ALL);
@@ -59,6 +60,7 @@ inline int main_ui() {
 
 	// Espace entre les lignes de texte
 	SetTextLineSpacing(4);
+	//BeginShaderMode(main_GUI._text_shader);
 
 	// Curseur
 	HideCursor();
@@ -101,10 +103,10 @@ inline int main_ui() {
 	//testFunc(main_GUI._board);
 
 	// Taille du buffer de Monte-Carlo
-	constexpr int buffer_size = 10000000;
+	constexpr int buffer_size = 1E7;
 
 	// Taille de la table de transposition
-	constexpr int transposition_table_size = 10000000;
+	constexpr int transposition_table_size = 1E7;
 
 	// Initialisation de la table de transposition
 	transposition_table.init(transposition_table_size, nullptr, true);
@@ -188,9 +190,6 @@ inline int main_ui() {
 
 			//r1b2r2/1ppqbppk/p1n1p3/3P4/1P1Pn3/P3PN1P/R1QN1PP1/2B2K1R b - - 0 14
 
-			Tests tests(&main_GUI);
-			tests.run_all_tests();
-
 			//cout << "Quietness: " << main_GUI._root_exploration_node->_board->get_quietness() << endl;
 			
 			// Test du tri des coups
@@ -206,11 +205,18 @@ inline int main_ui() {
 			////cout << "player: " << b._player << endl;
 			//stand_pat_node->quiescence(&monte_buffer, main_GUI._grogros_eval, 2, main_GUI._alpha, main_GUI._beta, -INT32_MAX, INT32_MAX, nullptr, false);
 			//cout << "Stand pat eval: " << stand_pat_node->_deep_evaluation._value << endl;
+
+			//Tests tests(&main_GUI);
+			//tests.run_all_tests();
+
+			main_GUI._board.update_bitboards();
+			main_GUI._board.print_all_bitboards();
 		}
 
 		// Q - Quiescence
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_A)) {
 			main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, main_GUI._quiescence_depth, main_GUI._alpha, main_GUI._beta);
+			main_GUI._update_variants = true;
 		}
 
 		// CTRL-T - Cherche le plateau du site d'échecs sur l'écran, et lance une partie
@@ -381,6 +387,7 @@ inline int main_ui() {
 			//main_GUI._board.reset_all(true, true);
 			main_GUI._root_exploration_node->reset(); // FIXME... ça fait rien??
 			//main_GUI._root_exploration_node = new Node(&main_GUI._board, Move());
+			cout << "Grogros's thought deleted... current moves explored: " << main_GUI._root_exploration_node->children_count() << endl;
 		}
 
 		// CTRL - Suppr. - Supprime le buffer de Monte-Carlo
@@ -632,6 +639,8 @@ inline int main_ui() {
 
 		// Ici on re-vérifie, car les nulles par répétition sont écourtées par l'algo
 		if (main_GUI._board._game_over_checked && main_GUI._board._game_over_value == draw) {
+			game_over:
+
 			//cout << "Game seems to be over... or is it?" << endl;
 			main_GUI._board._game_over_checked = false;
 			main_GUI._board.is_game_over(3);
@@ -665,7 +674,7 @@ inline int main_ui() {
 				main_GUI.play_grogros_zero_move();
 			}
 
-			if (main_GUI._board.is_game_over(3) != unterminated)
+			if (main_GUI._board._game_over_value != unterminated)
 				goto game_over;
 
 			// GrogrosFish (seulement lorsque c'est son tour)
@@ -681,10 +690,10 @@ inline int main_ui() {
 
 		}
 
+		// Test pour les répétitions qui arrêtent le timer mais ne devraient pas: r1bqkb1r/pppppppp/2n5/8/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 9 8
+
 		// Si la partie est terminée
 		else {
-
-		game_over:
 
 			if (!main_game_over) {
 				main_GUI._time = false;

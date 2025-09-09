@@ -101,7 +101,7 @@ void TranspositionTable::init(const int length, const Zobrist* zobrist, bool dis
 
 	if (display) {
 		cout << "transposition table initialized" << endl;
-		cout << _length << " entries (" << int_to_round_string(_hash_table.max_size()) << "b)" << endl;
+		cout << _length << " entries (" << long_int_to_round_string(_hash_table.size()) << "b)" << endl;
 	}
 		
 }

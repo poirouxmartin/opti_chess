@@ -311,33 +311,43 @@ float proximity(const int row_1, const int col_1, const int row_2, const int col
 // TODO : cas négatif à gérer
 string int_to_round_string(const int k)
 {
-	if (k < 1000)
+	if (k < 1E3)
 		return to_string(k);
-	if (k < 10000)
-		return to_string(static_cast<float>(k) / 1000).substr(0, 3) + "k";
-	if (k < 100000)
-		return to_string(static_cast<float>(k) / 1000).substr(0, 4) + "k";
-	if (k < 1000000)
-		return to_string(static_cast<float>(k) / 1000).substr(0, 3) + "k";
+	if (k < 1E4)
+		return to_string(k / 1E3).substr(0, 3) + "k";
+	if (k < 1E5)
+		return to_string(k / 1E3).substr(0, 4) + "k";
+	if (k < 1E6)
+		return to_string(k / 1E3).substr(0, 3) + "k";
+	if (k < 1E7)
+		return to_string(k / 1E6).substr(0, 3) + "M";
+	if (k < 1E8)
+		return to_string(k / 1E6).substr(0, 4) + "M";
+	if (k < 1E9)
+		return to_string(k / 1E6).substr(0, 3) + "M";
 
-	return to_string(static_cast<float>(k) / 1000000).substr(0, 3) + "M"; // FIXME: "10.M" -> "10M"
+	return to_string(k / 1E9).substr(0, 4) + "G";
 }
 
 // Fonction qui transforme un entier en string (et arrondit s'il est supérieur à 1000)
 string long_int_to_round_string(const unsigned long long k)
 {
-	if (k < 1000)
+	if (k < 1E3)
 		return to_string(k);
-	if (k < 10000)
-		return to_string(static_cast<float>(k) / 1000).substr(0, 3) + "k";
-	if (k < 100000)
-		return to_string(static_cast<float>(k) / 1000).substr(0, 4) + "k";
-	if (k < 1000000)
-		return to_string(static_cast<float>(k) / 1000).substr(0, 3) + "k";
-	if (k < 1000000000)
-		return to_string(static_cast<float>(k) / 1000000).substr(0, 3) + "M";
+	if (k < 1E4)
+		return to_string(k / 1E3).substr(0, 3) + "k";
+	if (k < 1E5)
+		return to_string(k / 1E3).substr(0, 4) + "k";
+	if (k < 1E6)
+		return to_string(k / 1E3).substr(0, 3) + "k";
+	if (k < 1E7)
+		return to_string(k / 1E6).substr(0, 3) + "M";
+	if (k < 1E8)
+		return to_string(k / 1E6).substr(0, 4) + "M";
+	if (k < 1E9)
+		return to_string(k / 1E6).substr(0, 3) + "M";
 
-	return to_string(static_cast<float>(k) / 1000000000).substr(0, 4) + "G";
+	return to_string(k / 1E9).substr(0, 4) + "G";
 }
 
 // Fonction qui transforme un clock en string (pour les timestamps dans les PGN)

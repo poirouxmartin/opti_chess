@@ -848,6 +848,8 @@ r1q4r/p2nbpNk/1p2p3/1PppP3/3P1Q2/2P5/1P3PPP/n1B1R1K1 w - - 1 5 : Cxe6!! #9
 b2brkr1/p3pppR/2qn2n1/1pNR4/8/1B4N1/P2PPPP1/BQ3K2 w - - 0 1 : Dxg6!!
 5r1k/7B/4KpQp/5Pb1/8/8/2p3P1/8 w - - 0 1 : Fg8 #6
 2r1r1k1/1p3p1p/p3p2B/3pp3/P2q4/2N2Q2/1PP2bPP/5R1K w - - 2 25 : Cxd5!! seul coup qui gagne
+r2qk2r/pp3ppp/5n2/8/1QP2P2/5K2/PP2p1PP/RN2R3 b - - 0 1 : Dd3+ #7
+r3k2r/pp3ppp/8/8/1QPq1P2/8/PP2pnPP/RN2R1K1 b - - 8 5 : Ch3+! #3
 
 
 --- Mauvaises évaluation (ou variantes longues) pour tester le correcteur d'évaluation ---
