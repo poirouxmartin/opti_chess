@@ -55,10 +55,10 @@ public:
 	//SimpleRectangle _binding_coord;
 
 	// Temps initial des joueurs
-	clock_t _initial_time_white = 180000;
-	clock_t _initial_time_black = 180000;
-	//clock_t _initial_time_white = 60000;
-	//clock_t _initial_time_black = 60000;
+	//clock_t _initial_time_white = 180000;
+	//clock_t _initial_time_black = 180000;
+	clock_t _initial_time_white = 60000;
+	clock_t _initial_time_black = 60000;
 
 	// Temps des joueurs
 	clock_t _time_white;
@@ -280,16 +280,12 @@ public:
 	int _mini_piece_size;
 
 	// Sons
-	Sound _move_1_sound;
-	Sound _move_2_sound;
-	Sound _castle_1_sound;
-	Sound _castle_2_sound;
-	Sound _check_1_sound;
-	Sound _check_2_sound;
-	Sound _capture_1_sound;
-	Sound _capture_2_sound;
+	Sound _move_sound;
+	Sound _castle_sound;
+	Sound _check_sound;
+	Sound _capture_sound;
 	Sound _checkmate_sound;
-	Sound _stealmate_sound;
+	Sound _stalemate_sound;
 	Sound _game_begin_sound;
 	Sound _game_end_sound;
 	Sound _promotion_sound;
@@ -311,11 +307,14 @@ public:
 	// Police du texte
 	Font _text_font;
 
+	// Shader pour le texte
+	Shader _text_shader;
+
 	// Police pour les symboles d'échecs
 	Font _chess_font;
 
 	// Espacement entre les caractères
-	float _font_spacing = 0.05f;
+	float _font_spacing = 0.03f;
 
 	// Orientation du plateau
 	bool _board_orientation = true;
@@ -409,6 +408,9 @@ public:
 	// Site de jeu d'échecs actuel
 	ChessSite _current_site;
 
+	// Sons à utiliser
+	string _sounds_path = "resources/sounds/lisp/";
+
 	// Constructeurs
 
 	// Par défaut
@@ -474,7 +476,7 @@ public:
 	void get_window_size();
 
 	// Fonction qui renvoie si le joueur est en train de jouer (pour que l'IA arrête de réflechir à ce moment sinon ça lagge)
-	bool is_playing();
+	bool is_playing() const;
 
 	// Fonction qui change le mode d'affichage des flèches (oui/non)
 	void switch_arrow_drawing();
@@ -483,7 +485,7 @@ public:
 	void slider_text(const string&, float, float, float, float, float size, float* slider_value, Color t_color, float slider_width = -1.0f, float slider_height = -1.0f);
 
 	// Fonction pour obtenir l'orientation du plateau
-	bool get_board_orientation();
+	bool get_board_orientation() const;
 
 	// Fonction qui renvoie si le curseur de la souris se trouve dans le rectangle
 	bool is_cursor_in_rect(Rectangle);
@@ -520,9 +522,6 @@ public:
 
 	// Fonction qui déselectionne
 	void unselect();
-
-	// Fonction qui joue le son de fin de partie
-	void play_end_sound();
 
 	// A partir de coordonnées sur le plateau
 	void draw_simple_arrow_from_coord(int, int, int, int, float, Color);

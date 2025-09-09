@@ -247,6 +247,7 @@ struct Pos
 	}
 
 	// Renvoie la notation de la case
+	// TODO *** mettre des constantes statiques pour que ça soit précalculé
 	string square() const {
 		return string(1, 'a' + col) + string(1, '1' + row);
 	}
@@ -334,6 +335,16 @@ public:
 
 	//Array _array; // TODO utiliser
 
+	// Bitboard!! (TODO)
+	// w_pawn -> b_king
+	uint64_t _bitboards[12];
+
+	// Pièces blanches, noires, et toutes
+	uint64_t _occupancies[3];
+
+	// TODO *** Optionnel : roi en cache (remplacera les _white_king_pos ?)
+	//int _square_king[2];
+
 	// Coups possibles
 	// Nombre max de coups légaux dans une position : 218
 
@@ -381,7 +392,7 @@ public:
 	int _static_evaluation = 0;
 
 	// Avancement de la partie
-	// TODO changer en uint_fast8_t
+	// TODO *** à mettre dans les noeuds plutôt que plateaux?
 	float _adv = 0.0f;
 	bool _advancement = false;
 
@@ -787,6 +798,15 @@ public:
 	// Fonction qui assigne les flags à un coup donné
 	void assign_move_flags(Move *move) const;
 
+	// Fonction qui remet à 0 les bitboards
+	void reset_bitboards();
+
+	// Fonction qui met à jour les bitboards
+	void update_bitboards();
+
+	// Fonction qui affiche tous les bitboards
+	void print_all_bitboards() const;
+
 
 	// TODO *** faire un piece_safety plus générique?
 
@@ -801,6 +821,9 @@ bool equal_positions(const Board&, const Board&);
 
 // Fonction qui renvoie le temps que l'IA doit passer sur le prochain coup (en ms), en fonction d'un facteur k, et des temps restant
 int time_to_play_move(int t1, int t2, float k = 0.05f);
+
+// Fonction qui affiche toutes les valeurs d'un bitboard
+void print_bitboard(uint64_t bitboard);
 
 // std::map<string, int> _positions_history = {
 //     { "A", 1 },
