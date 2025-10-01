@@ -542,10 +542,10 @@ public:
 	bool play_move_keep(Move move);
 
 	// Fonction qui renvoie le type de pièce sélectionnée
-	uint_fast8_t selected_piece() const;
+	uint8_t selected_piece() const;
 
 	// Fonction qui renvoie le type de pièce où la souris vient de cliquer
-	uint_fast8_t clicked_piece() const;
+	uint8_t clicked_piece() const;
 
 	// Fonction qui lance une analyse de GrogrosZero
 	void grogros_analysis(int nodes = -1);

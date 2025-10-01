@@ -12,8 +12,8 @@ bool is_in(int x, int min, int max);
 // Fonction qui renvoie si un flottant appartient à un intervalle
 bool is_in(float x, float min, float max);
 
-// Fonction qui renvoie si un entier uint_fast8_t appartient à un intervalle
-bool is_in_fast(uint_fast8_t x, uint_fast8_t min, uint_fast8_t max);
+// Fonction qui renvoie si un entier uint8_t appartient à un intervalle
+bool is_in_fast(uint8_t x, uint8_t min, uint8_t max);
 
 // Fonction qui renvoie le maximum de deux entiers
 int max_int(int, int);
@@ -58,7 +58,7 @@ void print_array(long long int*, const int);
 void print_array(int_fast8_t*, const int);
 
 // Fonction qui affiche une liste d'entiers positifs 8 bits fast (array)
-void print_array(uint_fast8_t*, const int);
+void print_array(uint8_t*, const int);
 
 // Fonction qui affiche une liste de flottants (array)
 void print_array(float*, const int);
@@ -75,8 +75,8 @@ int max_index(int*, const int);
 // Fonction qui renvoie l'index de la valeur maximale d'une liste de flottants
 int max_index(float*, const int);
 
-// Fonction qui renvoie l'index de la valeur maximale d'une liste d'entiers uint_fast8_t
-int max_index(uint_fast8_t*, const int);
+// Fonction qui renvoie l'index de la valeur maximale d'une liste d'entiers uint8_t
+int max_index(uint8_t*, const int);
 
 // Fonction qui renvoie l'index de la valeur maximale de deux listes d'entiers (la seconde est là pour départager en cas d'égalité)
 int max_index(const int*, int, const int*, int);

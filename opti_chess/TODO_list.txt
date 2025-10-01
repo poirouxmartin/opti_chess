@@ -200,7 +200,7 @@ https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Moveg
 -> Evaluations en finales : un cavalier seul sans pions ni rien = nul
 -> Mettre les noms de version sur le nom de Grogros
 -> Utiliser toutes les améliorations/optimisations possibles sur VisualStudio
--> Mettre des uint_fast8_t partout
+-> Mettre des uint8_t partout
 -> Negamax : utiliser les plateaux tout faits du buffer?
 -> Mettre des variables globales partout !
 -> Virer les attributs inutiles des plateaux

@@ -103,7 +103,7 @@ HBITMAP get_screen_bmp(const HDC hdc, const int x1, const int y1, const int x2, 
 }
 
 // Fonction qui affiche la couleur de chacune des cases de l'échiquier sur l'écran, en donnant ses coordonnées (top-left, bottom-right)
-uint_fast8_t* get_board_move(const int x1, const int y1, const int x2, const int y2, ChessSite website, const bool orientation, const bool display) {
+uint8_t* get_board_move(const int x1, const int y1, const int x2, const int y2, ChessSite website, const bool orientation, const bool display) {
 
 	int x_begin = -1;
 	int y_begin = -1;
@@ -205,7 +205,7 @@ uint_fast8_t* get_board_move(const int x1, const int y1, const int x2, const int
 	}
 
 	// Coordonnées du coup joué
-	const auto coord = new uint_fast8_t[4];
+	const auto coord = new uint8_t[4];
 	coord[0] = y_begin;
 	coord[1] = x_begin;
 	coord[2] = y_end;
