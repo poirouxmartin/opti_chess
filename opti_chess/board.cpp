@@ -28,6 +28,20 @@ Board::Board(const Board& b, bool full, bool copy_history) {
 	copy_data(b, full, copy_history);
 }
 
+// Fonction qui copie le strict minimum de la position
+void Board::minimal_copy_data(const Board& b) {
+
+	// Copie des pièces, du joueur, droits de roques, numéros de coups, en passant, et positions des rois
+	memcpy(_array, b._array, sizeof(_array));
+	_player = b._player;
+	_castling_rights = b._castling_rights;
+	_half_moves_count = b._half_moves_count;
+	_moves_count = b._moves_count;
+	_en_passant_col = b._en_passant_col;
+	_white_king_pos = b._white_king_pos;
+	_black_king_pos = b._black_king_pos;
+}
+
 // Fonction qui copie les attributs d'un tableau
 void Board::copy_data(const Board& b, bool full, bool copy_history) {
 
@@ -302,16 +316,32 @@ bool Board::get_moves(const bool forbide_check) {
 	if (forbide_check) {
 		uint_fast8_t n_moves = 0;
 		Board b;
+		//b.minimal_copy_data(*this);
+
+		//bool k_castle = _player ? _castling_rights.k_w : _castling_rights.k_b;
+		//bool q_castle = _player ? _castling_rights.q_w : _castling_rights.q_b;
 
 		for (uint_fast8_t i = 0; i < _got_moves; i++) {
-			b.copy_data(*this);
-			b.make_move(_moves[i]);
+			//b.copy_data(*this);
+			b.minimal_copy_data(*this);
+			// TODO *** utiliser un undo ici plutôt
+
+			Move move = _moves[i];
+
+			b.make_move(move);
 			b._player = !b._player;
 
-			if (!b.in_check()) {
-				_moves[n_moves] = _moves[i];  // On écrase les coups invalides
+			if (!b.in_check(false)) {
+				_moves[n_moves] = move;  // On écrase les coups invalides
 				n_moves++;
 			}
+
+			//b._player = !b._player;
+			//uint_fast8_t p1 = _array[move.start_row][move.start_col];
+			//uint_fast8_t p2 = _array[move.end_row][move.end_col];
+
+			//b.unmake_move(move, p1, p2, _en_passant_col, _half_moves_count, k_castle, q_castle,
+			//	is_king(p1) && abs(move.end_col - move.start_col) == 2, is_pawn(p1) && (move.end_row == 0 || move.end_row == 7), is_pawn(p1) && move.start_col != move.end_col && p2 == none);
 		}
 
 		_got_moves = n_moves;
@@ -320,21 +350,308 @@ bool Board::get_moves(const bool forbide_check) {
 	return true;
 }
 
-// Fonction qui dit s'il y'a échec
-bool Board::in_check()
-{
+// Fonction qui renvoie la liste des coups légaux
+bool Board::get_moves_fast() {
+
+	// Logique
+	// 1: évaluation des clouages -> renvoie la liste des directions pour chaque clouage (en faire une structure?)
+	// 2: génère un tableau des cases controllées autour du roi (et sur le roi)
+	// 3: est-on en échec? (-> si contrôles case roi > 0)
+	//	3a: pas en échec
+	//		moves = coups de toutes les pièces, restreints sur la direction du clouage pour les pièces clouées
+	//	3b: en échec
+	//		moves = coups de rois de distance 1 sur les cases vides ET non-controllées
+	//		2: échec simple (pas double ou plus)
+	//			moves += manger la pièce qui attaque (comment la retrouver?)
+	//			moves += interposition de l'échec (si ça ne vient pas d'un cavalier) -> à voir rapidement grâce aux pins?
+
+	// Choses à optimiser:
+	// - Génération des coups pour toutes les pièces, à regarder...
+	// - Regarder comment générer le tableau des contrôles des cases autour du roi de la manière la plus efficace possible
+	// - Avoir un tableau des cases vides, ou de pièces non-alliées, pour savoir où les pièces peuvent physiquement aller plus rapidement?
+	// - Réduire au maximum le nombre d'appels sur les cases du plateau (un peu couteux à force...)
+	// - Pour les roques, utiliser la map des contrôles pour savoir si c'est légal ou non
+	// - Utiliser la structure Piece pour accéder plus rapidement aux types de pièces et leur couleur
+
+
+	// Cas tests:
+	// r1bq1b1r/pp4pp/2p1k3/3np3/1nBP4/2N2Q2/PPP2PPP/R1B2RK1 b - - 0 10 
+
+	// FIXME *** y'a t-il besoin d'update la position des rois?
+	// FIXME *** au moins la position du roi de l'adversaire peut être évitée
 	update_kings_pos();
 
-	const int king_i = _player ? _white_king_pos.row : _black_king_pos.row;
-	const int king_j = _player ? _white_king_pos.col : _black_king_pos.col;
+	// Clouages de la position, pour le joueur à jouer
+	PinsMap pins = get_pins(_player);
+
+	// Génération des contrôles autour du roi (et des pièces attaquant le roi)
+
+
+	return true;
+}
+
+// Fonction qui renvoie la map des contrôles autour du roi du joueur donné (et les cases pour le roque, si besoin)
+//BoolMap Board::get_controls(bool player, BoolMap king_attackers) const {
+//}
+
+// Fonction qui renvoie une des pièces qui la case (si plus d'une)
+PieceSquare Board::get_square_attacker(Pos square, int* n_attackers) const {
+	const int enemy_knight = 2 + _player * 6;
+
+	int square_row = square.row;
+	int square_col = square.col;
+
+	//for (int k = 0; k < 8; k++) {
+
+	//	// Si le cavalier est hors du plateau, on passe
+	//	const int nrow = square_row + knight_directions[k][0];
+	//	if (!is_in(nrow, 0, 7))
+	//		continue;
+
+	//	const int ncol = square_col + knight_directions[k][1];
+	//	if (!is_in(ncol, 0, 7))
+	//		continue;
+
+	//	// S'il y a un cavalier qui attaque, renvoie vrai (en échec)
+	//	if (_array[nrow][ncol] == enemy_knight)
+	//		return true;
+	//}
+
+	//// TODO : Faut-il regarder les lignes dans un certain ordre, pour faire moins de calcul (car l'adversaire a plus de chances d'attaquer par le milieu de l'échiquier?)
+
+	//// Regarde les lignes horizontales et verticales
+
+	//// Gauche
+	//for (int col = square_col - 1; col >= 0; col--)
+	//{
+	//	// Si y'a une pièce
+	//	if (const uint_fast8_t piece = _array[square_row][col]; piece != none)
+	//	{
+	//		// Si la pièce n'est pas au joueur, regarde si c'est une tour, une dame, ou un roi avec une distance de 1
+	//		if (piece < 7 != _player)
+	//			if (is_rectilinear(piece) || (is_king(piece) && col == square_col - 1))
+	//				return true;
+
+	//		break;
+	//	}
+	//}
+
+	//// Droite
+	//for (int col = square_col + 1; col < 8; col++)
+	//{
+	//	if (const uint_fast8_t piece = _array[square_row][col]; piece != none)
+	//	{
+	//		if (piece < 7 != _player)
+	//			if (is_rectilinear(piece) || (is_king(piece) && col == square_col + 1))
+	//				return true;
+
+	//		break;
+	//	}
+	//}
+
+	//// Haut
+	//for (int row = square_row - 1; row >= 0; row--)
+	//{
+	//	if (const uint_fast8_t piece = _array[row][square_col]; piece != none)
+	//	{
+	//		if (piece < 7 != _player)
+	//			if (is_rectilinear(piece) || (is_king(piece) && row == square_row - 1))
+	//				return true;
+
+	//		break;
+	//	}
+	//}
+
+	//// Bas
+	//for (int row = square_row + 1; row < 8; row++)
+	//{
+	//	if (const uint_fast8_t piece = _array[row][square_col]; piece != none)
+	//	{
+	//		if (piece < 7 != _player)
+	//			if (is_rectilinear(piece) || (is_king(piece) && row == square_row + 1))
+	//				return true;
+
+	//		break;
+	//	}
+	//}
+
+	//// Regarde les diagonales
+
+	//// Diagonale bas-gauche
+	//for (int row = square_row - 1, col = square_col - 1; row >= 0 && col >= 0; row--, col--)
+	//{
+	//	if (const uint_fast8_t piece = _array[row][col]; piece != none)
+	//	{
+	//		if (piece < 7 != _player)
+	//		{
+	//			if (is_diagonal(piece) || (is_king(piece) && (abs(square_row - row) == 1)))
+	//				return true;
+
+	//			// Cas spécial pour les pions
+	//			if (piece == w_pawn && abs(square_col - col) == 1)
+	//				return true;
+	//		}
+
+	//		break;
+	//	}
+	//}
+
+	//// Diagonal bas-droite
+	//for (int row = square_row - 1, col = square_col + 1; row >= 0 && col < 8; row--, col++)
+	//{
+	//	if (const uint_fast8_t piece = _array[row][col]; piece != none)
+	//	{
+	//		if ((piece < 7) != _player)
+	//		{
+	//			if (is_diagonal(piece) || (is_king(piece) && (abs(square_row - row) == 1)))
+	//				return true;
+
+	//			// Special case for pawns
+	//			if (piece == w_pawn && abs(square_col - col) == 1)
+	//				return true;
+	//		}
+
+	//		break;
+	//	}
+	//}
+
+	//// Diagonale haut-gauche
+	//for (int row = square_row + 1, col = square_col - 1; row < 8 && col >= 0; row++, col--)
+	//{
+	//	if (const uint_fast8_t piece = _array[row][col]; piece != none)
+	//	{
+	//		if ((piece < 7) != _player)
+	//		{
+	//			if (is_diagonal(piece) || (is_king(piece) && (abs(square_row - row) == 1)))
+	//				return true;
+
+	//			// Special case for pawns
+	//			if (piece == b_pawn && abs(square_col - col) == 1)
+	//				return true;
+	//		}
+
+	//		break;
+	//	}
+	//}
+
+	//// Diagonale haut-droite
+	//for (int row = square_row + 1, col = square_col + 1; row < 8 && col < 8; row++, col++)
+	//{
+	//	if (const uint_fast8_t piece = _array[row][col]; piece != none)
+	//	{
+	//		if ((piece < 7) != _player)
+	//		{
+	//			if (is_diagonal(piece) || (is_king(piece) && (abs(square_row - row) == 1)))
+	//				return true;
+
+	//			// Special case for pawns
+	//			if (piece == b_pawn && abs(square_col - col) == 1)
+	//				return true;
+	//		}
+
+	//		break;
+	//	}
+	//}
+
+	// Pas d'attaquant
+	return { none, { -1, -1 } };
+}
+
+// Fonction qui renvoie la liste des clouages pour le joueur donné
+PinsMap Board::get_pins(bool player) const {
+
+	// Liste des pièces clouée, par direction (il peut y en avoir max 8: 2 par direction, de part et d'autre du roi)
+	PinsMap pins;
+
+	// Logique: on part du roi du joueur
+	// On regarde dans chacune des directions possible
+
+	// Pour chaque direction, on avance jusqu'à trouver une pièce, ou être en dehors du plateau (break)
+	// Si la pièce n'est pas alliée, alors on passe à la direction suivante
+	// On note la case, si elle va être pin ou non
+	// On continue encore dans la direction jusqu'à la prochaine pièce, ou en dehors du plateau (break)
+	// On considère la case notée comme pin ssi la seconde pièce trouvée est un slider ennemi de la direction regardée
+
+	// Position du roi du joueur concerné
+	Pos king_pos = player ? _white_king_pos : _black_king_pos;
+
+	// Parcours des directions
+	for (int d = 0; d < 8; d++) {
+
+		// Direction visitée
+		int d_row = all_directions[d][0];
+		int d_col = all_directions[d][1];
+
+		// Position (à incrémenter)
+		int row = king_pos.row + d_row;
+		int col = king_pos.col + d_col;
+
+		// A t-on déjà trouvé une pièce clouable
+		bool found_candidate = false;
+
+		// Position de la pièce clouable
+		Pos candidate_pos;
+
+		// Itération sur le plateau
+		while (row >= 0 && row < 8 && col >= 0 && col < 8) {
+			uint_fast8_t piece = _array[row][col];
+
+			// On tombe sur une pièce
+			if (piece != none) {
+
+				// Si on n'a pas déjà trouvé de pièce clouable
+				if (!found_candidate) {
+
+					// Pas de clouage possible sur une pièce ennemie, on passe à la direction suivante
+					if (!is_ally(piece, player)) {
+						break;
+						
+					}
+
+					// La pièce est clouable
+					candidate_pos = { row, col };
+					found_candidate = true;
+				}
+
+				// On a déjà une pièce clouable
+				else {
+
+					// Pas de clouage possible si c'est couvert par une pièce alliée
+					if (is_ally(piece, player)) {
+						break;
+					}
+
+					// Le mouvement est-il rectiligne (sinon il est diagonal)
+					bool is_rect = abs(d_row) + abs(d_col) == 1;
+
+					if ((is_rect && is_rectilinear(piece)) || (!is_rect && is_diagonal(piece))) {
+						pins.pins[candidate_pos.row][candidate_pos.col].pinned = true;
+						pins.pins[candidate_pos.row][candidate_pos.col].dir = static_cast<Direction>(d);
+					}
+				}
+			}
+
+			row += d_row;
+			col += d_col;
+		}
+	}
+
+
+	return pins;
+}
+
+// Fonction qui dit s'il y'a échec
+bool Board::in_check(bool update_king_pos)
+{
+	if (update_king_pos)
+		update_kings_pos();
+
+	const int king_row = _player ? _white_king_pos.row : _black_king_pos.row;
+	const int king_col = _player ? _white_king_pos.col : _black_king_pos.col;
 
 	// Comment aller plus vite : partir du roi, pour trouver les potentiels attaquants :
 	// Regarder les diagonales, les lignes/colonnes, et voit si une pièce adverse attaque le roi par cette direction
 
-	//return attacked(king_i, king_j);
-
-	// Regarde les potentielles attaques de cavalier
-	static constexpr int knight_offsets[8][2] = { {-1, -2}, {-2, -1}, {-2, 1}, {-1, 2}, {1, -2}, {2, -1}, {2, 1}, {1, 2} };
 	// TODO : regrouper avec ceux des autres fonctions?
 
 	const int enemy_knight = 2 + _player * 6;
@@ -342,16 +659,16 @@ bool Board::in_check()
 	for (int k = 0; k < 8; k++) {
 
 		// Si le cavalier est hors du plateau, on passe
-		const int ni = king_i + knight_offsets[k][0];
-		if (!is_in(ni, 0, 7))
+		const int nrow = king_row + knight_directions[k][0];
+		if (!is_in(nrow, 0, 7))
 			continue;
 
-		const int nj = king_j + knight_offsets[k][1];
-		if (!is_in(nj, 0, 7))
+		const int ncol = king_col + knight_directions[k][1];
+		if (!is_in(ncol, 0, 7))
 			continue;
 
 		// S'il y a un cavalier qui attaque, renvoie vrai (en échec)
-		if (_array[ni][nj] == enemy_knight)
+		if (_array[nrow][ncol] == enemy_knight)
 			return true;
 	}
 
@@ -360,14 +677,14 @@ bool Board::in_check()
 	// Regarde les lignes horizontales et verticales
 
 	// Gauche
-	for (int j = king_j - 1; j >= 0; j--)
+	for (int col = king_col - 1; col >= 0; col--)
 	{
 		// Si y'a une pièce
-		if (const uint_fast8_t piece = _array[king_i][j]; piece != none)
+		if (const uint_fast8_t piece = _array[king_row][col]; piece != none)
 		{
 			// Si la pièce n'est pas au joueur, regarde si c'est une tour, une dame, ou un roi avec une distance de 1
 			if (piece < 7 != _player)
-				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 4 || simple_piece == 5 || (simple_piece == 6 && j == king_j - 1))
+				if (is_rectilinear(piece) || (is_king(piece) && col == king_col - 1))
 					return true;
 
 			break;
@@ -375,12 +692,12 @@ bool Board::in_check()
 	}
 
 	// Droite
-	for (int j = king_j + 1; j < 8; j++)
+	for (int col = king_col + 1; col < 8; col++)
 	{
-		if (const uint_fast8_t piece = _array[king_i][j]; piece != 0)
+		if (const uint_fast8_t piece = _array[king_row][col]; piece != none)
 		{
 			if (piece < 7 != _player)
-				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 4 || simple_piece == 5 || (simple_piece == 6 && j == king_j + 1))
+				if (is_rectilinear(piece) || (is_king(piece) && col == king_col + 1))
 					return true;
 
 			break;
@@ -388,12 +705,12 @@ bool Board::in_check()
 	}
 
 	// Haut
-	for (int i = king_i - 1; i >= 0; i--)
+	for (int row = king_row - 1; row >= 0; row--)
 	{
-		if (const uint_fast8_t piece = _array[i][king_j]; piece != 0)
+		if (const uint_fast8_t piece = _array[row][king_col]; piece != none)
 		{
 			if (piece < 7 != _player)
-				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 4 || simple_piece == 5 || (simple_piece == 6 && i == king_i - 1))
+				if (is_rectilinear(piece) || (is_king(piece) && row == king_row - 1))
 					return true;
 
 			break;
@@ -401,12 +718,12 @@ bool Board::in_check()
 	}
 
 	// Bas
-	for (int i = king_i + 1; i < 8; i++)
+	for (int row = king_row + 1; row < 8; row++)
 	{
-		if (const uint_fast8_t piece = _array[i][king_j]; piece != 0)
+		if (const uint_fast8_t piece = _array[row][king_col]; piece != none)
 		{
 			if (piece < 7 != _player)
-				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 4 || simple_piece == 5 || (simple_piece == 6 && i == king_i + 1))
+				if (is_rectilinear(piece) || (is_king(piece) && row == king_row + 1))
 					return true;
 
 			break;
@@ -416,17 +733,17 @@ bool Board::in_check()
 	// Regarde les diagonales
 
 	// Diagonale bas-gauche
-	for (int i = king_i - 1, j = king_j - 1; i >= 0 && j >= 0; i--, j--)
+	for (int row = king_row - 1, col = king_col - 1; row >= 0 && col >= 0; row--, col--)
 	{
-		if (const uint_fast8_t piece = _array[i][j]; piece != 0)
+		if (const uint_fast8_t piece = _array[row][col]; piece != none)
 		{
 			if (piece < 7 != _player)
 			{
-				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 3 || simple_piece == 5 || (simple_piece == 6 && (abs(king_i - i) == 1)))
+				if (is_diagonal(piece) || (is_king(piece) && (abs(king_row - row) == 1)))
 					return true;
 
 				// Cas spécial pour les pions
-				if (piece == 1 && abs(king_j - j) == 1)
+				if (piece == w_pawn && abs(king_col - col) == 1)
 					return true;
 			}
 
@@ -435,55 +752,58 @@ bool Board::in_check()
 	}
 
 	// Diagonal bas-droite
-	for (int i = king_i - 1, j = king_j + 1; i >= 0 && j < 8; i--, j++)
+	for (int row = king_row - 1, col = king_col + 1; row >= 0 && col < 8; row--, col++)
 	{
-		if (const uint_fast8_t piece = _array[i][j]; piece != 0)
+		if (const uint_fast8_t piece = _array[row][col]; piece != none)
 		{
 			if ((piece < 7) != _player)
 			{
-				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 3 || simple_piece == 5 || (simple_piece == 6 && abs(king_i - i) == 1))
+				if (is_diagonal(piece) || (is_king(piece) && (abs(king_row - row) == 1)))
 					return true;
 
 				// Special case for pawns
-				if (piece == 1 && abs(king_j - j) == 1)
+				if (piece == w_pawn && abs(king_col - col) == 1)
 					return true;
 			}
+
 			break;
 		}
 	}
 
 	// Diagonale haut-gauche
-	for (int i = king_i + 1, j = king_j - 1; i < 8 && j >= 0; i++, j--)
+	for (int row = king_row + 1, col = king_col - 1; row < 8 && col >= 0; row++, col--)
 	{
-		if (const uint_fast8_t piece = _array[i][j]; piece != 0)
+		if (const uint_fast8_t piece = _array[row][col]; piece != none)
 		{
 			if ((piece < 7) != _player)
 			{
-				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 3 || simple_piece == 5 || (simple_piece == 6 && abs(king_i - i) == 1))
+				if (is_diagonal(piece) || (is_king(piece) && (abs(king_row - row) == 1)))
 					return true;
 
 				// Special case for pawns
-				if (piece == 7 && abs(king_j - j) == 1)
+				if (piece == b_pawn && abs(king_col - col) == 1)
 					return true;
 			}
+
 			break;
 		}
 	}
 
 	// Diagonale haut-droite
-	for (int i = king_i + 1, j = king_j + 1; i < 8 && j < 8; i++, j++)
+	for (int row = king_row + 1, col = king_col + 1; row < 8 && col < 8; row++, col++)
 	{
-		if (const uint_fast8_t piece = _array[i][j]; piece != 0)
+		if (const uint_fast8_t piece = _array[row][col]; piece != none)
 		{
 			if ((piece < 7) != _player)
 			{
-				if (const int simple_piece = (piece - 1) % 6 + 1; simple_piece == 3 || simple_piece == 5 || (simple_piece == 6 && abs(king_i - i) == 1))
+				if (is_diagonal(piece) || (is_king(piece) && (abs(king_row - row) == 1)))
 					return true;
 
 				// Special case for pawns
-				if (piece == 7 && abs(king_j - j) == 1)
+				if (piece == b_pawn && abs(king_col - col) == 1)
 					return true;
 			}
+
 			break;
 		}
 	}
@@ -538,8 +858,6 @@ void Board::make_move(Move move, const bool pgn, const bool new_board, const boo
 
 
 
-	// Incrémentation des demi-coups
-	_half_moves_count++;
 
 	// Reset des demi-coups si un pion est bougé ou si une pièce est prise
 	if (is_pawn(p) || p_last) {
@@ -547,6 +865,9 @@ void Board::make_move(Move move, const bool pgn, const bool new_board, const boo
 		reset_positions_history();
 	}
 	else {
+		// Incrémentation des demi-coups
+		_half_moves_count++;
+
 		// Ajoute la position actuelle dans l'historique
 		if (add_to_history) {
 			get_zobrist_key();
@@ -633,6 +954,65 @@ void Board::make_move(Move move, const bool pgn, const bool new_board, const boo
 	reset_eval();
 
 	return;
+}
+
+// Fonction qui annule un coup
+void Board::unmake_move(Move move, uint_fast8_t p1, uint_fast8_t p2, int en_passant_col, int prev_half_count, bool k_castle, bool q_castle, bool is_castle, bool is_promotion, bool is_en_passant) {
+	// TODO
+
+	// TODO *** voir si on fait toutes les opérations comme dans make_move (reset eval etc...)
+	// TODO *** faut-il faire un make_move_minimal qui soit plus rapide?
+
+	// Joueur ayant joué le coup
+	_player = !_player;
+
+	// On remet les pièces en place
+	_array[move.start_row][move.start_col] = p1;
+
+	// TODO *** voir pour les cas spéciaux (roque, en passant, promotion?)
+	if (is_castle) {
+
+		// Il faut remettre aussi la tour en place, puis vider la case où était le roi avant l'unmake
+		int direction = (move.end_col - move.start_col) / 2;
+		_array[move.end_row][move.end_col + direction] = w_rook + 6 * _player;
+		_array[move.end_row][move.end_col] = none;
+	}
+	else if (is_en_passant) {
+
+		// Il faut remettre le pion adverse au bon endroit
+		_array[move.start_row][move.end_col] = w_pawn + 6 * _player;
+
+		// On vide la case de prise
+		_array[move.end_row][move.end_col] = none;
+	}
+
+	// Par défaut, on remet la pièce mangée sur sa case
+	else {
+		_array[move.end_row][move.end_col] = p2;
+	}
+
+
+	if (_player) {
+		_castling_rights.k_w = k_castle;
+		_castling_rights.q_w = q_castle;
+	}
+	else {
+		_castling_rights.k_b = k_castle;
+		_castling_rights.q_b = q_castle;
+	}
+
+	_half_moves_count = prev_half_count;
+	!_player && _moves_count--;
+	_en_passant_col = en_passant_col;
+
+	if (p1 == w_king) {
+		_white_king_pos.row = move.start_row;
+		_white_king_pos.col = move.start_col;
+	}
+	else if (p1 == b_king) {
+		_black_king_pos.row = move.start_row;
+		_black_king_pos.col = move.start_col;
+	}
 }
 
 // Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
@@ -1377,6 +1757,8 @@ void Board::from_fen(string fen)
 
 	reset_eval();
 
+	update_kings_pos();
+
 
 	// Oriente le plateau dans pour le joueur qui joue
 	main_GUI._board_orientation = _player;
@@ -1545,7 +1927,7 @@ string Board::move_label(Move move, bool use_uft8)
 	bool spec_row = false;
 
 	if (_got_moves == -1)
-		get_moves(true);
+		get_moves();
 
 	uint_fast8_t new_start_row; uint_fast8_t new_start_col; uint_fast8_t new_end_row; uint_fast8_t new_end_col; uint_fast8_t new_p;
 	for (int m = 0; m < _got_moves; m++) {
@@ -4768,13 +5150,11 @@ int Board::get_fianchetto_value() const
 bool Board::is_controlled(int square_i, int square_j, bool player) const
 {
 	// Regarde les potentielles attaques de cavalier
-	constexpr int knight_offsets[8][2] = { {-1, -2}, {-2, -1}, {-2, 1}, {-1, 2}, {1, -2}, {2, -1}, {2, 1}, {1, 2} };
-
 	for (int k = 0; k < 8; k++) {
-		const int ni = square_i + knight_offsets[k][0];
+		const int ni = square_i + knight_directions[k][0];
 
 		// S'il y a un cavalier qui attaque, renvoie vrai (en échec)
-		if (const int nj = square_j + knight_offsets[k][1]; ni >= 0 && ni < 8 && nj >= 0 && nj < 8 && _array[ni][nj] == (2 + player * 6))
+		if (const int nj = square_j + knight_directions[k][1]; ni >= 0 && ni < 8 && nj >= 0 && nj < 8 && _array[ni][nj] == (2 + player * 6))
 			return true;
 	}
 
@@ -9101,6 +9481,33 @@ float get_average_score(WDL wdl, float draw_score) {
 	return wdl.win_chance + draw_score * wdl.draw_chance;
 }
 
+// Fonction qui renvoie l'évaluation re-normalisée en fonction du score moyen
+string get_renormalized_evaluation(float avg_score, float winning_eval, float winning_score) {
+
+	// avg_score = 0.5 -> eval = 0
+	// avg_score = 1.0 -> eval = +inf
+	// avg_score = 0.0 -> eval = -inf
+	// avg_score = 0.67 -> eval = winning_eval
+	// avg_score = 0.33 -> eval = -winning_eval
+
+	if (avg_score == 1.0f) {
+		return "+Inf";
+	}
+	if (avg_score == 0.0f) {
+		return "-Inf";
+	}
+
+	// Fonction symétrique autour de 0.5
+	const float winning_score_diff = 1.0f - winning_score;
+	const float score_diff = min(avg_score, 1.0f - avg_score);
+
+	float eval = winning_eval * (avg_score - 0.5f) / (winning_score - 0.5f) * pow(winning_score_diff / score_diff, 0.5f);
+
+	stringstream stream;
+	stream << fixed << setprecision(1) << eval;
+	return eval > 0 ? "+" + stream.str() : stream.str();
+}
+
 // Fonction qui renvoie le score d'un WDL avec une précision de 0.01
 string score_string(float avg_score) {
 	//float score = get_average_score(wdl, draw_score);
@@ -9608,6 +10015,7 @@ int Board::get_king_placement_weakness(bool player) {
 SquareMap Board::get_blocked_pawns(bool color) const {
 
 	// On considère le roi comme bloquant, quel que soit ses coups possibles
+	// FIXME *** en fait non? ça ferait un peu de sens en début de partie, mais pas à la fin où le roi est mobile
 
 	// Initialisation de la map
 	SquareMap blocked_pawns;
@@ -9620,29 +10028,29 @@ SquareMap Board::get_blocked_pawns(bool color) const {
 
 			// Pion blanc
 			if (color && piece == w_pawn) {
-				// Si le pion est bloqué
-				if (_array[row + 1][col] != none && !(col > 0 && is_black(_array[row + 1][col - 1])) && !(col < 7 && is_black(_array[row + 1][col + 1]))) {
+				// Si le pion est bloqué (pièce adverse ou pion allié devant, et pas de prise possible)
+				if ((is_black(_array[row + 1][col]) || _array[row + 1][col] == w_pawn) && !(col > 0 && is_black(_array[row + 1][col - 1])) && !(col < 7 && is_black(_array[row + 1][col + 1]))) {
 					blocked_pawns._array[row][col] = 1;
 				}
 			}
 
 			// Roi blanc
-			else if (color && piece == w_king) {
-					blocked_pawns._array[row][col] = 1;
-			}
+			//else if (color && piece == w_king) {
+			//	blocked_pawns._array[row][col] = 1;
+			//}
 
 			// Pion noir
 			else if (!color && piece == b_pawn) {
 				// Si le pion est bloqué
-				if (_array[row - 1][col] != none && !(col > 0 && is_white(_array[row - 1][col - 1])) && !(col < 7 && is_white(_array[row - 1][col + 1]))) {
+				if ((is_white(_array[row - 1][col]) || _array[row - 1][col] == b_pawn) && !(col > 0 && is_white(_array[row - 1][col - 1])) && !(col < 7 && is_white(_array[row - 1][col + 1]))) {
 					blocked_pawns._array[row][col] = 1;
 				}
 			}
 
 			// Roi noir
-			else if (!color && piece == b_king) {
-				blocked_pawns._array[row][col] = 1;
-			}
+			//else if (!color && piece == b_king) {
+			//	blocked_pawns._array[row][col] = 1;
+			//}
 		}
 	}
 
@@ -10039,11 +10447,11 @@ SquareMap Board::get_all_blocked_pieces(bool color) const {
 
 	// Importance de la mobilité virtuelle (à travers toutes les pièces non bloquées)
 	static constexpr int pawn_virtual_mobility[5] = { 0, 0, 0, 0, 0 };
-	static constexpr int knight_virtual_mobility[9] = { -1350, -500, 0, 65, 110, 125, 135, 143, 150 };
-	static constexpr int bishop_virtual_mobility[15] = { -1350, -750, 0, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180 };
-	static constexpr int rook_virtual_mobility[15] = { -2350, -1000, 0, 35, 50, 65, 75, 85, 95, 105, 115, 125, 135, 145, 155 };
-	static constexpr int queen_virtual_mobility[29] = { -4500, -2000, 0, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250 };
-	static constexpr int king_virtual_mobility[9] = { -1000, -500, 0, 10, 20, 29, 37, 44, 50 };
+	static constexpr int knight_virtual_mobility[9] = { -1350, -500, -100, 65, 110, 125, 135, 143, 150 };
+	static constexpr int bishop_virtual_mobility[15] = { -1350, -750, -200, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180 };
+	static constexpr int rook_virtual_mobility[15] = { -2350, -1000, -300, 35, 50, 65, 75, 85, 95, 105, 115, 125, 135, 145, 155 };
+	static constexpr int queen_virtual_mobility[29] = { -4500, -2000, -500, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250 };
+	static constexpr int king_virtual_mobility[9] = { -1000, -300, 0, 10, 20, 29, 37, 44, 50 };
 
 	static const int* virtual_mobilities[6] = { pawn_virtual_mobility, knight_virtual_mobility, bishop_virtual_mobility, rook_virtual_mobility, queen_virtual_mobility, king_virtual_mobility };
 
@@ -10471,30 +10879,30 @@ void Board::assign_move_flags(Move* move) const {
 
 // Fonction qui remet à 0 les bitboards
 void Board::reset_bitboards() {
-	for (int i = 0; i < 12; i++)
-		_bitboards[i] = 0ULL;
-	for (int i = 0; i < 3; i++)
-		_occupancies[i] = 0ULL;
+	//for (int i = 0; i < 12; i++)
+	//	_bitboards[i] = 0ULL;
+	//for (int i = 0; i < 3; i++)
+	//	_occupancies[i] = 0ULL;
 }
 
 // Fonction qui affiche tous les bitboards
 void Board::update_bitboards() {
-	reset_bitboards();
+	//reset_bitboards();
 
-	for (int row = 0; row < 8; row++) {
-		for (int col = 0; col < 8; col++) {
-			int piece = _array[row][col];
-			if (piece == none)
-				continue;
+	//for (int row = 0; row < 8; row++) {
+	//	for (int col = 0; col < 8; col++) {
+	//		int piece = _array[row][col];
+	//		if (piece == none)
+	//			continue;
 
-			int square = row * 8 + col;
-			_bitboards[piece - 1] |= 1ULL << square;
+	//		int square = row * 8 + col;
+	//		_bitboards[piece - 1] |= 1ULL << square;
 
-			int color = (piece > 6) ? 1 : 0;
-			_occupancies[color] |= 1ULL << square;
-			_occupancies[2] |= 1ULL << square;
-		}
-	}
+	//		int color = (piece > 6) ? 1 : 0;
+	//		_occupancies[color] |= 1ULL << square;
+	//		_occupancies[2] |= 1ULL << square;
+	//	}
+	//}
 }
 
 // Fonction qui affiche toutes les valeurs d'un bitboard
@@ -10511,17 +10919,17 @@ void print_bitboard(uint64_t bitboard) {
 
 // Fonction qui affiche tous les bitboards
 void Board::print_all_bitboards() const {
-	for (int i = 0; i < 12; i++) {
-		cout << piece_name(i + 1) << endl;
-		print_bitboard(_bitboards[i]);
-	}
-
-	cout << "White: " << endl;
-	print_bitboard(_occupancies[0]);
-
-	cout << "Black: " << endl;
-	print_bitboard(_occupancies[1]);
-
-	cout << "Both: " << endl;
-	print_bitboard(_occupancies[2]);
+//	for (int i = 0; i < 12; i++) {
+//		cout << piece_name(i + 1) << endl;
+//		print_bitboard(_bitboards[i]);
+//	}
+//
+//	cout << "White: " << endl;
+//	print_bitboard(_occupancies[0]);
+//
+//	cout << "Black: " << endl;
+//	print_bitboard(_occupancies[1]);
+//
+//	cout << "Both: " << endl;
+//	print_bitboard(_occupancies[2]);
 }

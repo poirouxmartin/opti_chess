@@ -66,21 +66,26 @@ inline int main_ui() {
 	HideCursor();
 	//SetMouseCursor(3);
 
+	// Shader pour les pièces sélectionnées
+	main_GUI._selected_shader = LoadShader(0, "resources/shaders/outline.fs");
+
+	int outline_size_loc = GetShaderLocation(main_GUI._selected_shader, "outlineSize");
+	int outline_color_loc = GetShaderLocation(main_GUI._selected_shader, "outlineColor");
+	int texture_size_loc = GetShaderLocation(main_GUI._selected_shader, "textureSize");
+
+	// Taille du contout
+	float outline_size = 16.0f;
+	float outline_color[4] = { 1.0f, 0.0f, 0.0f, 0.5f };
+	float texture_size[2] = { 1024.0f, 1024.0f };
+
+	SetShaderValue(main_GUI._selected_shader, outline_size_loc, &outline_size, SHADER_UNIFORM_FLOAT);
+	SetShaderValue(main_GUI._selected_shader, outline_color_loc, outline_color, SHADER_UNIFORM_VEC4);
+	SetShaderValue(main_GUI._selected_shader, texture_size_loc, texture_size, SHADER_UNIFORM_VEC2);
+
+
 	// Evaluateur de position
 	Evaluator eval_white(1.0f);
 	Evaluator eval_black;
-
-	// Nombre de noeuds max pour le jeu automatique de GrogrosZero
-	int grogros_nodes = 3000000;
-
-	// Nombre de noeuds calculés par frame
-	// Si c'est sur son tour
-	int nodes_per_frame = 100;
-
-	// Sur le tour de l'autre (pour que ça plante moins)
-	int nodes_per_user_frame = 25;
-
-
 
 	//monte_evaluator = eval_white;
 
@@ -148,7 +153,10 @@ inline int main_ui() {
 
 		// T - Tests
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_T)) {
-			//main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, { 1, 20, 400, 8902, 197281, 4865609, 119060324 }, true);
+
+			//main_GUI._board.get_pins(main_GUI._board._player).print();
+
+			main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, { 1, 20, 400, 8902, 197281, 4865609, 119060324 }, true);
 			//main_GUI._board.validate_nodes_count_at_depth("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 5, { 1, 48, 2039, 97862, 4085603, 193690690 }, true);
 			//main_GUI._board.validate_nodes_count_at_depth("", 5, { }, true);
 
@@ -209,8 +217,8 @@ inline int main_ui() {
 			//Tests tests(&main_GUI);
 			//tests.run_all_tests();
 
-			main_GUI._board.update_bitboards();
-			main_GUI._board.print_all_bitboards();
+			//main_GUI._board.update_bitboards();
+			//main_GUI._board.print_all_bitboards();
 		}
 
 		// Q - Quiescence
@@ -322,9 +330,11 @@ inline int main_ui() {
 
 		// TAB - Screenshot
 		if (IsKeyPressed(KEY_TAB)) {
-			string screenshot_name = "resources/screenshots/" + to_string(time(nullptr)) + ".png";
-			cout << "Screenshot : " << screenshot_name << endl;
-			TakeScreenshot(screenshot_name.c_str());
+			string screenshot_name = "resources/screenshots/screenshot_" + to_string(time(nullptr)) + ".png";
+			//const char* full_screenshot_name = (GetWorkingDirectory() + screenshot_name).c_str();
+			const char* full_screenshot_name = screenshot_name.c_str();
+			cout << "Screenshot : " << full_screenshot_name << endl;
+			TakeScreenshot(full_screenshot_name);
 
 			// Mettre le screenshot dans le presse-papier?
 		}

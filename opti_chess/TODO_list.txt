@@ -1083,7 +1083,7 @@ r1bqkb1r/1pp1n1pp/p1p2p2/4p3/4P3/2NPBN2/PPP2PPP/R2QK2R b KQkq - 2 7 : Rf7 quasi 
 EXPLORATION:
 Leela semble faire: recharche main: un peu sur tous les coups (même 4/5 noeuds sur les pires), mais regarde aussi profond que le nombre de noeuds (1 noeud = 1 coup...)
 2krr3/1ppq1bpp/p1pb1p2/8/P2PPp2/1PN2N1P/2P1QPP1/R2R2K1 w - - 1 16 : ici après 5 minutes, Grogros est profondeur 6, alors qu'en 16 secondes, Leela est profondeur 37 (46.8k noeuds seulement)
-2krr3/1ppq1bpp/p1p2p2/8/Pb1PPp2/1PN2N1P/2P1QPP1/1R1R2K1 w - - 3 17 : ici sur 173 noeud, 171 sont sur Ca2, 1 sur Dd3 (1 sur la position de base), et 0 sur le reste... 
+2krr3/1ppq1bpp/p1p2p2/8/Pb1PPp2/1PN2N1P/2P1QPP1/1R1R2K1 w - - 3 17 : ici pour Lc0, sur 173 noeud, 171 sont sur Ca2, 1 sur Dd3 (1 sur la position de base), et 0 sur le reste... 
 Revoir la reflexion de Grogros pour qu'il ne regarde pas tous les coups, et regarde seulement certains coups en fonction d'une policy?
 rnbqkbnr/ppp2ppp/8/3P4/4p3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 4 : il faut absolument optimiser la réflexion... Lc0 met 99% dans le premier coup, quasi rien dans les autres. Grogros regarde avec une grosse quiescence Re2... (plus de 1k noeuds, alors que Re2 -> exf3+ ça devrait cut)
 Regarder si on peut mettre 0 reflexion dans certains coups pour économiser du temps de recherche
@@ -1092,6 +1092,94 @@ FIXED *** Petit problème de GUI, quand grogros n'est pas actif et qu'on séléctio
 
 8/k1p3p1/1b5p/5p2/3q4/6P1/5P1P/Q6K b - - 0 42 : crash sur la reflexion? -> FIXED?
 
+r1bn1rk1/3p1pp1/p1pb1q1p/Pp1Pp3/4P3/2N5/1PPNBPPP/R2Q1R1K b - - 3 14 : blocages long-terme exagés: ici après 2 coups seulements, les pièces noires se débloquent
+r1bn1rk1/1p1p1p2/pp1p1pqp/p1pPp3/Pb2P3/2N5/1PPNBPPP/R2Q1R1K b - - 3 14 : par contre là c'est effectivement bien bloqué
+r3r1k1/pp3ppp/3b4/8/n7/PpPpPbPP/3P1P2/RNB1K1R1 w - - 4 25 : aucune pièce ne peut bouger
+3r2k1/1p1P1p2/8/7p/p1r3pP/PpPpPbP1/1B1P1P2/RN2K1R1 w - - 0 34 : là encore pire. après, difficile de gagner aux noirs car tout est un peu bloqué
+4r3/6k1/8/1p3p1p/p1r3pP/PpPpPbP1/3P1P2/RNB2KR1 w - - 32 62 : forteresse..?
+8/4r1k1/8/1p5p/p1r1PPpP/PpPp2R1/1B1PbP2/RN2K3 w - - 1 91 : Te3 seul coup (Lc0 pensait gagnant, mais sûrement draw en fait, 8/4r1k1/8/1p5p/p1r1PPpP/PpPpR3/1B1PbP2/RN2K3 b - - 2 91 : g3! tient)
+8/5rk1/8/1p5p/p1r1PPpP/PpPpR3/1B1PbP2/RN2K3 w - - 3 92 : Txe2 gagne
+8/6k1/8/1p5p/p1r1P1pP/PpPr4/1B1PKP2/RN6 b - - 1 95 : g3!!
+8/6k1/8/1p5p/p1r1P1pP/PpPpRr2/1B1P1P2/RN2K3 w - - 2 94 : Rf1!! seul coup qui gagne
+8/8/4k3/1p5p/p1r1P2P/PpPpKP2/3P4/RNB5 w - - 9 103 : libère enfin toutes les pièces après avoir pris d3
+2r5/8/4k3/7p/p1p1P2P/PpPpKP2/3P4/RNB5 w - - 9 103 : ici position pas claire,  sûrement nulle
+8/8/2K5/4r2p/p1p1Pk1P/PpPp1P2/1B1P4/RN6 w - - 27 112 : gagne aux noirs (stockfish pense que c'est nulle pendant un bon bout de temps)
+8/8/2K2k2/4r2p/p1p1P2P/PpPp1P2/1B1P4/RN6 w - - 27 112 : f4 gagne pour les blancs
+8/8/2K1k3/7p/p1p1rP1P/PpPp4/1B1P4/RN6 w - - 0 115 : f5!! seul coup qui gagne (sinon, sur Rb5, on coincera le roi en a5 et menaces de mat avec la tour)
+8/8/3K4/r3P2p/p1p4P/PpPp1k2/3P4/RNB5 b - - 0 114 : Re2! (ou Ta8) gagne
+r1r3k1/2q1bppp/p2p4/1pnQp3/4P1B1/8/PPPN1PPP/1K1R1R2 b - - 3 20 : ici il regarde peu de coups car il a peur des menaces en 1 (Fh5 qui menace Dxh7+), donc il coupe la ligne tôt à chaque fois
+rr4k1/2q2ppp/p2p4/1pnQb2B/4P3/8/PPPN2PP/1K1R1R2 b - - 1 23 : g6?? ça gagne
+r4rk1/5ppp/p7/1p6/3Rn1B1/8/PPP3PP/1K3R2 b - - 1 28 : quasi gagnant (fou contre cavaliuer + majorité à l'aile dame qui va bientôt créer un pion passé)
+5k2/6pp/8/1p6/4p3/8/1PP3PP/1K6 w - - 0 35 : gagnant pour les blancs (candidats pions passés loins du jeu?), et roi noir trop loin des pions
+8/8/6p1/6P1/4k3/1P2p3/4K3/8 w - - 2 46 : b4 gagne
+5R2/2rq2kp/1Qp3p1/1p1p4/7P/1B1P2P1/1bP2P2/R5K1 b - - 0 27 : Fxa1 seul coup qui tient
+1rbqk2r/pp3pbp/2n1p1p1/3n2N1/2N1B3/1PP5/3P1PPP/R1BQ1RK1 w k - 0 16 : Fa3! gagne
+1rb1k2r/pp2npbp/2n1pqp1/8/2N1BP2/BPP5/3PQ1PP/R4RK1 w k - 3 19 : Cd6+! possiblement gagnant
+1rb2k1r/p3npbp/2pNpqp1/8/5P2/BPPQ4/3P2PP/R4RK1 b - - 1 21 : gagnant pour les blancs
+rnb2bnr/pppp1k1p/5q2/8/5p2/2N1BQ2/PPP3PP/R4RK1 b - - 3 11 : sécurité du roi trop sous-estimée (et trop de confiance pour cette position?)
+7Q/p4kr1/8/8/2K5/PP6/8/8 w - - 0 1 : Dxg7+ simplifie en une finale facilement gagnante
+7Q/5kr1/8/8/2K5/8/P7/8 w - - 0 1 : encore plus simple à comprendre ici (le roi n'est pas dans le carré!)
+6k1/7p/PR4p1/3pr3/r2N1n2/5P2/7P/5RK1 w - - 1 33 : pion passé a6 très fort: au poin que le cavalier en d4 n'est pas prenable. Ici, h4!! est le meileur coup
+8/4bp2/7k/6p1/4B2q/2PK3Q/7p/8 w - - 4 60 : Dxh4+ fait nulle
+8/8/8/2b5/8/4kp1p/7p/5K1B w - - 0 74 : nulle
+r1b1k2r/pp3pbp/1qnpp1p1/1B6/P1NpPP2/3P4/1PP3PP/R1BQ1RK1 b kq - 4 12 : Dc5 perd (b4 et puis la dame se fait enfermer après Fa3...)
+r1b2rk1/p4pbp/1pq1p1p1/4P1B1/P1Np4/3P4/1PP3PP/R2Q1RK1 w - - 0 17 : cases noires hyper faibles autour du roi noir -> Ff6 gagne
+r7/pbr2p1k/1p2pP1p/3q2pQ/PPNp4/3P4/2P2RPP/4R1K1 w - - 2 26 : tout gagne déjà, la position est hyper gagnante pour les blancs, mais Te5 finit la partie sur le champ
+r4r2/p4pbk/1p2pBp1/4P2p/P1qp4/7R/1PPQ2PP/5RK1 w - - 2 22 : Txh5+!! gagne immédiatement (suivi de Fxg7 puis Dg5 et Tf6 ou Tf4) (b3 avant Txh5+ peut-être encore plus fort)
+r4rk1/p1p1bpp1/3p4/4pPP1/2q5/P3QP2/1PP3P1/2KR3R w - - 0 20 : Th3 (ou Th2) gagne (Df4, prises f4, Tdh1 et ça mate en force)
+r4rk1/p1p1bp2/3p2pR/5PP1/5p2/P4P2/1PP3P1/2KR4 w - - 0 23 : f6! #6
+rr4k1/p1p1bppP/3p1n2/4pP2/6p1/P1P1BP2/qP1Q2P1/2KR3R b - - 0 21 : Rh8 retire tout contre jeu de l'adversaire: le pion h7 sert de bouclier pour le roi noir
+r1bq1rk1/ppp1n1b1/3p4/3Pp3/PPP1Np2/R7/5P1P/2BQRBK1 b - - 0 17 : blancs bien mieux ici (meilleur développement qui accentue la faiblesse du roi adverse)
+r2q1k2/ppp3b1/3pBr2/3Pp2Q/PPP1Np1n/8/5P1P/2B1R1K1 w - - 3 22 : Rh1 beaucoup plus fort que Cxf6 (Dh7! sur Tg6)
+r2q1k2/ppp3b1/3pB3/3Pp2Q/PPP1Np1n/8/5P1P/2B3K1 b - - 0 24 : De8!
+1q5k/2p3pp/6n1/2nPpQ2/5p2/7P/PP3PP1/R1B1R1K1 w - - 0 24 : Fxf4!!
+7r/2q1bkp1/2p2pnp/2Pp1Q2/PP6/6PP/1B1N1P2/4R1K1 w - - 2 27 : g4? erreur, ça redonne beaucoup de cases pour les pièces (notamment le cavalier g6) autour du roi blanc
+3rr1k1/bppq2pp/p1n2p2/P3p3/1PPN4/BQ1P2N1/5PPP/3R1RK1 b - - 0 21 : ici mieux vaut reprendre avec le cheval qui sera bien placé au centre, pas avec le fou!
+3rr1k1/1ppq2pp/p7/P3pp2/1PPn4/3P2N1/1Q3PPP/3R1RK1 b - - 1 24 : f4 (avec idée f3) gagne
+rnbqkbnr/pp1p1ppp/2p1p3/8/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3 : horrible de jouer e5 en reflexe là...
+rnbqkb1r/pp1pnppp/8/2pNP3/5B2/8/PPP2PPP/R2QKBNR w KQkq - 3 8 : e6!
+4r1k1/1p3pp1/p2b1q2/P1pP1b1p/2Q5/2N2N1P/1P3PP1/3R2K1 b - - 0 21 : Fxh3!
+5rk1/ppb2rp1/2p4p/6q1/3QPNb1/P1N3P1/1PP4P/1R3R1K b - - 2 22 : Fxf4! termine la game
+r1b2rk1/bp3pp1/p1pp1q1p/P3p3/1P2Pn2/2NP1N1P/2PQBPP1/R4RK1 w - - 1 15 : le cavalier en f4 fait la partie à lui seul... indélogable, et il tape partout sur le roi blanc
+6k1/2p4p/p5p1/1pqP4/4B2P/2b2QP1/P4P2/6K1 w - - 2 29 : d6! gagne
+1n2k2r/2r1bppp/p2pb3/N3p3/P3P3/1pP1BP2/1P4PP/2KR1B1R w k - 1 16 : Td5!! gagne
+1r1b4/2rn2kp/B2p2p1/P2Pp3/R4p2/1NP2P2/1PK2BPP/8 w - - 2 25 : hyper gagnant pour les blancs -> les pions passés aile dame ont leurs cases bien protégées et ne sont pas arrêtables
+1r1b4/2r3kp/2Bp1np1/P2Pp3/R4p2/1NP2P2/1PK2BPP/8 w - - 8 28 : a6 a7 a8...
+r1bqk1nr/pp2ppbp/2n3p1/4P3/3P4/5N2/PP4PP/RNBQKB1R b KQkq - 2 8 : noirs mieux!
+3k3r/1p2pQ1p/pqr3pb/4P3/3P4/2N5/PP4PP/R4RK1 w - - 0 17 : Cd5! pas Ce2...
+2kr3r/pppn1ppp/3bpn2/q7/2BP4/P1N1B3/1PP1QPPP/R4RK1 w - - 3 11 : Cb5! très fort (d5 pas mal aussi) -> retire beaucoup de cases à la dame noire
+1k1r3r/pppn1ppp/3bpn2/qN6/2BP4/P3B3/1PP1QPPP/R4RK1 w - - 5 12 : b4 pas mal (gagne)
+8/6p1/4k2p/1K5P/8/3B4/8/8 b - - 2 48 : g6 ou g5 font nulle (prise g6 et h5!)
+8/KP1n2p1/7p/3k3P/8/8/8/5B2 w - - 1 51 : b8=D fait nulle
+r4r1k/ppb3p1/1qn1R2p/2pB4/3P4/2P3P1/PP3P1P/R1BQ2K1 w - - 1 17 : Fxh6!!
+r1b2r2/ppp1k1p1/2np1nqp/2b1p3/4P3/1B1P1N1P/PPP2PP1/RNBQ1R1K b - - 1 11 : Dh5 ou Fg4!! sont très forts
+5R2/5pkp/2p1p3/Q1p1P1pq/5P2/4K3/6PP/2r5 w - - 1 3 : Tg8! perpet
+rn3rk1/ppp2ppp/4b3/3pN3/3P4/4Q3/q3BPPP/2R2RK1 w - - 0 2 : Ta1 et la dame est enfermée... améliorer trapped pieces pour la dame pour qu'on prenne le contrôle de toutes les pièces plutôt que seulement les pions?
+r3r1k1/ppp2ppp/2n5/3q4/3P2b1/P4N2/1P2BPPP/R2Q1RK1 b - - 4 15 : Txe2!!
+r5k1/ppp2ppp/8/3q4/8/P1Q2P2/1P5P/R6K b - - 0 22 : mieux vaut éviter Dc6 (même si ça semble gagner) car la finale n'est pas si claire (tour v tour). En plus le roi blanc est faible, donc autant en profiter
+rr4k1/3n1pbp/3B2p1/qBpPn3/P3P3/2N5/1P1Q1PPP/R4RK1 b - - 0 17 : Txb5!! (perd quand-même, mais est pas mal)
+3r4/5p1k/1pQq1np1/p2P3p/P6P/5BP1/5PK1/3R4 w - - 3 36 : Tb1 gagne
+8/5pk1/1p4p1/p6p/P2r3P/5KP1/1R3P2/8 b - - 1 43 : Tb4 ça ne gagne pas
+8/5p2/1p4p1/7p/P3k2P/2K3P1/5P2/8 w - - 7 52 : Rb4 ou Rc4 gagne
+8/5pk1/1pR3p1/p6p/P2r3P/5KP1/5P2/8 b - - 1 43 : Tb4! seul coup qui peut gagner (sûrement draw quand-même, mais bel avantage). Txa4 -> nulle théorique
+8/4k3/5p2/R7/pr4Pp/7K/8/8 b - - 1 55 : Tf4! seul coup
+8/4k3/5p2/R7/6PK/pr6/8/8 w - - 0 57 : Ta6! seul coup qui tient
+8/1p2B3/pPb4R/2P2kpP/8/5p2/2P2r2/2K5 w - - 0 40 : Txc6!! gagne
+2rr4/1b1p1p1k/p4p1B/4p3/4P3/2q5/2P1QPPP/R2B2K1 w - - 5 25 : Ta3! force la perpet
+3r2k1/1b1p1p2/p4p2/4p2Q/4P3/2r5/2P2PPP/3B2K1 w - - 0 29 : h4! gagne
+3r2k1/1b3p2/p4p1Q/4p3/6BP/2r1p3/2P2PP1/6K1 w - - 0 32 : Ff5! gagne
+rn2r1kb/p3p3/4p1pB/q2p4/1pB1nQ2/8/PPP3P1/1K1R2NR w - - 2 21 : Dxe4!!
+7r/p3p3/6p1/8/1p1P1B2/kP6/Pb4P1/1K2R3 b - - 0 39 : a5! seul coup qui tient
+8/8/6p1/p7/1p1b4/kP6/P5P1/1K2B3 w - - 0 44 : Fd2! -> zug long terme pour les noirs
+r2r2k1/1p1b1pp1/2pq1P1p/p7/P2PR3/2QB4/1P4PP/5RK1 b - - 0 25 : Te8! seul coup qui tient
+rqr3k1/5ppp/3bpn2/1Pnp4/P1p5/2B1PN2/2QN1PPP/R4RK1 w - - 4 17 : blancs quasi gagnants
+rqr3k1/5ppp/4p3/1Pn5/P1pNp3/2B1P3/2Q2PPb/RR3K2 b - - 1 20 : pions passés très forts -> gagnant pour les blancs
+
+8/r7/8/5R2/2q5/1p6/1P4k1/1K6 w - - 0 1 : Tf2! tour folle (mais en fait le problème est pourri car ça ne fait pas nulle) -> bug de réflexion sur la quiescence? il affiche du 1M de noeuds par secondes xD
+8/8/8/7k/8/qp6/p7/K5R1 w - - 0 1 : tour folle qui fonctionne -> nulle. Question, pourquoi tous les coups ne sont pas regardés de la même manière? il devrait regarder en priorité les coups qui ne mènent pas à la nulle directe. Un peu comme un mat en X, mais là c'est pat en X en considérant qu'il a une meilleure position
+
+rr4k1/2q2p1p/p2p2p1/1pnQb2B/4P3/8/PPPN2PP/1K1R1R2 w - - 0 24 : quiescence qui met +700?? il regarde pas Dxf7+ après Txf7
+
 !!!
 UI: regarder pour les textures pour que ça s'affiche sur le GPU et que ça soit beau
 On peut aussi utiliser des shaders pour les outline de coups, ou pièces sélectionnées
@@ -1099,6 +1187,14 @@ Utiliser les shaders pour que l'affichage du texte soit moins flou
 FIXED *** Parfois, problème d'affichage pour les variantes (ça n'affiche pas les bons coups), notamment quand on fait la quiescence après une reflexion normale (ou inversement)
 Plus de couleurs/contrastes dans l'affichage du texte
 !!!
+
+- Bitboards
+- UNDO plus rapide que copy? -> en fait non... le minimal copy est déjà plutôt rapide (à voir si on peut accélerer le memcpy juste pour les pièces qui ont bougées, mais ça n'est pas le point le plus bloquant pour les performances)
+- Transposition simple (stockage de l'éval)
+- Recherche opti comme Lc0 -> évaluation très rapide et simple pour les coups les plus pourris. Garder de base le standpat de l'évaluation principale pour les autres coups?
+- Très lent: regarder quelle pièces est située sur une case, tout le temps... -> Faire des maps d'occupancies?
+
+Structure de pion, différencier si la chaine est cassable ou non pas l'adversaire (rnbqk2r/pp3ppp/2pb1n2/3p4/3Pp3/2N1P3/PPPBBPPP/R2QK1NR w KQkq - 4 7 : ici par exemple après f4, y'a plus moyen de la casser)
 
 Activité des pièces, bien différencier si la pièce tape dans des pions ou cases controllées, ou sur des pièces ou cases fortes
 
