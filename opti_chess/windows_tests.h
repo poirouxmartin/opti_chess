@@ -89,7 +89,7 @@ void set_mouse_pos(int x, int y);
 unsigned long long  get_total_system_memory();
 
 // Fonction qui affiche la couleur de chacune des cases de l'échiquier sur l'écran, en donnant ses coordonnées (top-left, bottom-right)
-uint_fast8_t* get_board_move(int x1, int y1, int x2, int y2, ChessSite website, bool orientation = false, bool display = false);
+uint8_t* get_board_move(int x1, int y1, int x2, int y2, ChessSite website, bool orientation = false, bool display = false);
 
 // Fonction qui clique un coup en fonction de l'orientation du plateau
 void click_move(int j1, int i1, int j2, int i2, int x1, int y1, int x2, int y2, bool orientation = false);

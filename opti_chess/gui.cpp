@@ -390,10 +390,10 @@ int GUI::orientation_index(const int i) const {
 // Fonction qui dessine la flèche d'un coup
 void GUI::draw_arrow(const Move move, const bool player, Color c, float thickness, const bool use_value, const float avg_score, const int mate, const bool is_most_explored, const bool is_best_eval)
 {
-	const uint_fast8_t start_row = move.start_row;
-	const uint_fast8_t start_col = move.start_col;
-	const uint_fast8_t end_row = move.end_row;
-	const uint_fast8_t end_col = move.end_col;
+	const uint8_t start_row = move.start_row;
+	const uint8_t start_col = move.start_col;
+	const uint8_t end_row = move.end_row;
+	const uint8_t end_col = move.end_col;
 
 	if (thickness == -1.0f)
 		thickness = _arrow_thickness;
@@ -963,7 +963,7 @@ bool GUI::play_move_keep(Move move)
 }
 
 // Fonction qui renvoie le type de pièce sélectionnée
-uint_fast8_t GUI::selected_piece() const
+uint8_t GUI::selected_piece() const
 {
 	// Faut-il stocker cela pour éviter de le re-calculer?
 	if (_selected_pos.row == -1 || _selected_pos.col == -1)
@@ -973,7 +973,7 @@ uint_fast8_t GUI::selected_piece() const
 }
 
 // Fonction qui renvoie le type de pièce où la souris vient de cliquer
-uint_fast8_t GUI::clicked_piece() const
+uint8_t GUI::clicked_piece() const
 {
 	if (_clicked_pos.row == -1 || _clicked_pos.col == -1)
 		return 0;
@@ -1226,7 +1226,7 @@ void GUI::draw()
 	// Dessine les pièces adverses
 	for (int row = 0; row < 8; row++) {
 		for (int col = 0; col < 8; col++) {
-			uint_fast8_t piece = _board._array[row][col];
+			uint8_t piece = _board._array[row][col];
 			if (is_white(piece) && !_board._player || is_black(piece) && _board._player) {
 				if (!_clicked || row != _clicked_pos.row || col != _clicked_pos.col)
 					draw_texture(_piece_textures[piece - 1], _board_padding_x + _tile_size * orientation_index(col) + (_tile_size - _piece_size) / 2, _board_padding_y + _tile_size * orientation_index(7 - row) + (_tile_size - _piece_size) / 2, WHITE);
@@ -1242,7 +1242,7 @@ void GUI::draw()
 	// Dessine les pièces alliées
 	for (int row = 0; row < 8; row++) {
 		for (int col = 0; col < 8; col++) {
-			uint_fast8_t piece = _board._array[row][col];
+			uint8_t piece = _board._array[row][col];
 			if (is_white(piece) && _board._player || is_black(piece) && !_board._player) {
 				if (!_clicked || row != _clicked_pos.row || col != _clicked_pos.col)
 					draw_texture(_piece_textures[piece - 1], _board_padding_x + _tile_size * orientation_index(col) + (_tile_size - _piece_size) / 2, _board_padding_y + _tile_size * orientation_index(7 - row) + (_tile_size - _piece_size) / 2, WHITE);
@@ -1253,7 +1253,7 @@ void GUI::draw()
 	// Dessine la pièce cliquée (si on clique sur une pièce)
 	for (int row = 0; row < 8; row++) {
 		for (int col = 0; col < 8; col++) {
-			uint_fast8_t piece = _board._array[row][col];
+			uint8_t piece = _board._array[row][col];
 			if (_clicked && piece != none && row == _clicked_pos.row && col == _clicked_pos.col) {
 				BeginShaderMode(_selected_shader);
 				draw_texture(_piece_textures[piece - 1], _mouse_pos.x - _piece_size / 2, _mouse_pos.y - _piece_size / 2, WHITE);
@@ -1807,7 +1807,7 @@ bool GUI::update_binding_move() {
 	//cout << "updating binding move" << endl;
 
 	// Récupération des coordonnées du coup
-	uint_fast8_t *move_coords = get_board_move(_binding_left, _binding_top, _binding_right, _binding_bottom, _current_site, get_board_orientation());
+	uint8_t *move_coords = get_board_move(_binding_left, _binding_top, _binding_right, _binding_bottom, _current_site, get_board_orientation());
 
 	if (move_coords == nullptr) {
 		//cout << "no move coords found" << endl;
@@ -1818,10 +1818,10 @@ bool GUI::update_binding_move() {
 
 	// Adaptation du coup selon les sites:
 	// Sur lichess, pour roquer, les cases surlignées sont le roi et la tour (et non la case de destination du roi)
-	uint_fast8_t start_row = move_coords[0];
-	uint_fast8_t start_col = move_coords[1];
-	uint_fast8_t end_row = move_coords[2];
-	uint_fast8_t end_col = move_coords[3];
+	uint8_t start_row = move_coords[0];
+	uint8_t start_col = move_coords[1];
+	uint8_t end_row = move_coords[2];
+	uint8_t end_col = move_coords[3];
 
 	// Pour les roques sur certains sites, on ne peut pas determiner la case de départ et d'arrivée, ça peut donc être inversé
 	if (is_king(_root_exploration_node->_board->_array[end_row][end_col]) && abs(start_col - end_col) > 2) {

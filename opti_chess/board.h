@@ -19,11 +19,11 @@ using namespace std;
 constexpr enum piece_type { none = 0, w_pawn = 1, w_knight = 2, w_bishop = 3, w_rook = 4, w_queen = 5, w_king = 6, b_pawn = 7, b_knight = 8, b_bishop = 9, b_rook = 10, b_queen = 11, b_king = 12 };
 
 // Nombre de demi-coups avant de déclarer la partie nulle
-constexpr uint_fast8_t max_half_moves = 100;
+constexpr uint8_t max_half_moves = 100;
 
 // Nombre maximum de coups légaux par position estimé
 // const int max_moves = 218;
-constexpr uint_fast8_t max_moves = 100; // ça n'arrivera quasi jamais que ça dépasse ce nombre
+constexpr uint8_t max_moves = 100; // ça n'arrivera quasi jamais que ça dépasse ce nombre
 
 // Valeur d'un échec et mat
 constexpr int mate_value = 1e8;
@@ -91,11 +91,11 @@ enum MoveFlags : uint8_t {
 };
 
 struct Move {
-	uint_fast8_t start_row : 3;
-	uint_fast8_t start_col : 3;
-	uint_fast8_t end_row : 3;
-	uint_fast8_t end_col : 3;
-	uint_fast8_t flags;
+	uint8_t start_row : 3;
+	uint8_t start_col : 3;
+	uint8_t end_row : 3;
+	uint8_t end_col : 3;
+	uint8_t flags;
 
 	// --- Flag Accessors ---
 	inline bool is_null() const { return flags & IS_NULL; }
@@ -240,8 +240,8 @@ struct SquareMap
 
 	// Constructeurs
 	SquareMap() {
-		for (uint_fast8_t row = 0; row < 8; row++) {
-			for (uint_fast8_t col = 0; col < 8; col++) {
+		for (uint8_t row = 0; row < 8; row++) {
+			for (uint8_t col = 0; col < 8; col++) {
 				_array[row][col] = 0;
 			}
 		}
@@ -282,8 +282,8 @@ struct BoolMap
 
 	// Constructeurs
 	BoolMap() {
-		for (uint_fast8_t row = 0; row < 8; row++) {
-			for (uint_fast8_t col = 0; col < 8; col++) {
+		for (uint8_t row = 0; row < 8; row++) {
+			for (uint8_t col = 0; col < 8; col++) {
 				_array[row][col] = false;
 			}
 		}
@@ -304,7 +304,7 @@ struct BoolMap
 };
 
 struct PieceSquare {
-	uint_fast8_t piece;
+	uint8_t piece;
 	Pos square;
 };
 	
@@ -429,7 +429,7 @@ public:
 	int_fast8_t _en_passant_col = -1;
 
 	// Nombre de demi-coups (depuis le dernier déplacement de pion, ou la dernière capture, et reste nul à chacun de ces coups)
-	uint_fast8_t _half_moves_count = 0;
+	uint8_t _half_moves_count = 0;
 
 	// Nombre de coups de la partie
 	uint_fast16_t _moves_count = 1;
@@ -495,22 +495,22 @@ public:
 	void copy_data(const Board&, bool full = false, bool copy_history = false);
 
 	// Fonction qui ajoute un coup dans la liste de coups
-	bool add_move(uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t, uint_fast8_t*, uint_fast8_t);
+	bool add_move(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t*, uint8_t);
 
 	// Fonction qui ajoute les coups "pions" dans la liste de coups
-	bool add_pawn_moves(uint_fast8_t, uint_fast8_t, uint_fast8_t*);
+	bool add_pawn_moves(uint8_t, uint8_t, uint8_t*);
 
 	// Fonction qui ajoute les coups "cavaliers" dans la liste de coups
-	bool add_knight_moves(uint_fast8_t, uint_fast8_t, uint_fast8_t*, uint_fast8_t);
+	bool add_knight_moves(uint8_t, uint8_t, uint8_t*, uint8_t);
 
 	// Fonction qui ajoute les coups diagonaux dans la liste de coups
-	bool add_diag_moves(uint_fast8_t, uint_fast8_t, uint_fast8_t*, uint_fast8_t);
+	bool add_diag_moves(uint8_t, uint8_t, uint8_t*, uint8_t);
 
 	// Fonction qui ajoute les coups horizontaux et verticaux dans la liste de coups
-	bool add_rect_moves(uint_fast8_t, uint_fast8_t, uint_fast8_t*, uint_fast8_t);
+	bool add_rect_moves(uint8_t, uint8_t, uint8_t*, uint8_t);
 
 	// Fonction qui ajoute les coups "roi" dans la liste de coups
-	bool add_king_moves(uint_fast8_t, uint_fast8_t, uint_fast8_t*, uint_fast8_t);
+	bool add_king_moves(uint8_t, uint8_t, uint8_t*, uint8_t);
 
 	// Renvoie la liste des coups possibles
 	bool get_moves(const bool forbide_check = true);
@@ -534,7 +534,7 @@ public:
 	void make_move(Move, const bool pgn = false, const bool new_board = false, const bool add_to_history = false);
 
 	// Fonction qui annule un coup
-	void unmake_move(Move move, uint_fast8_t p1, uint_fast8_t p2, int en_passant_col, int prev_half_count, bool k_castle, bool q_castle, bool is_castle, bool is_promotion, bool is_en_passant);
+	void unmake_move(Move move, uint8_t p1, uint8_t p2, int en_passant_col, int prev_half_count, bool k_castle, bool q_castle, bool is_castle, bool is_promotion, bool is_en_passant);
 
 	// Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
 	void game_advancement();
@@ -603,10 +603,10 @@ public:
 	int get_kings_opposition();
 
 	// Fonction qui renvoie le type de pièce sélectionnée
-	[[nodiscard]] uint_fast8_t selected_piece() const;
+	[[nodiscard]] uint8_t selected_piece() const;
 
 	// Fonction qui renvoie le type de pièce où la souris vient de cliquer
-	[[nodiscard]] uint_fast8_t clicked_piece() const;
+	[[nodiscard]] uint8_t clicked_piece() const;
 
 	// Fonction qui renvoie si la pièce sélectionnée est au joueur ayant trait ou non
 	[[nodiscard]] bool selected_piece_has_trait() const;
@@ -669,7 +669,7 @@ public:
 	[[nodiscard]] int get_checks_value(SquareMap white_controls, SquareMap black_controls, bool color);
 
 	// Fonction qui renvoie la vitesse de génération des coups
-	[[nodiscard]] int moves_generation_benchmark(uint_fast8_t depth, bool main_call = true);
+	[[nodiscard]] int moves_generation_benchmark(uint8_t depth, bool main_call = true);
 
 	// Fonction qui renvoie la valeur des fous en fianchetto
 	[[nodiscard]] int get_fianchetto_value() const;
@@ -759,7 +759,7 @@ public:
 	[[nodiscard]] int get_king_defenders(bool color);
 
 	// Fonction qui renvoie un bonus correspondant au pawn storm sur le roi adverse à une colonne donnée
-	[[nodiscard]] int get_pawn_storm_at_col(bool color, uint_fast8_t king_row, uint_fast8_t king_col) const;
+	[[nodiscard]] int get_pawn_storm_at_col(bool color, uint8_t king_row, uint8_t king_col) const;
 
 	// Fonction qui renvoie la puissance de protection de la structure de pions du roi
 	[[nodiscard]] int get_pawn_storm(bool color);
@@ -783,7 +783,7 @@ public:
 	[[nodiscard]] int get_piece_mobility(bool display = false) const;
 
 	// Fonction qui renvoie si le pion peut bouger
-	[[nodiscard]] bool pawn_can_move(uint_fast8_t row, uint_fast8_t col, bool color) const;
+	[[nodiscard]] bool pawn_can_move(uint8_t row, uint8_t col, bool color) const;
 
 	// Fonction qui renvoie l'incertiude de la position
 	[[nodiscard]] float get_uncertainty(int material_eval, int winning_eval = 110);
@@ -946,10 +946,10 @@ void draw_text_box(const TextBox& text_box);
 //bool compare_move_arrows(int m1, int m2);
 // 
 // Fonction qui renvoie le nom de la case
-string square_name(uint_fast8_t i, uint_fast8_t j);
+string square_name(uint8_t i, uint8_t j);
 
 // Fonction qui renvoie le nom d'une pièce
-string piece_name(uint_fast8_t piece);
+string piece_name(uint8_t piece);
 
 // Fonction qui renvoie l'espérance de gain d'un WDL
 float get_average_score(WDL wdl, float draw_score = 0.5f);
