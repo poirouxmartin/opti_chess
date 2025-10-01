@@ -43,59 +43,39 @@ constexpr int_fast8_t diag_directions[4][2] = { {1, 1}, {1, -1}, {-1, 1}, {-1, -
 // Coups dans toutes les directions
 constexpr int_fast8_t all_directions[8][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1}, {-1, 0}, {0, -1}, {0, 1}, {1, 0} };
 
-// Renvoie si la pièce est blanche
-static bool is_white(uint_fast8_t piece) {
-	return piece >= w_pawn && piece <= w_king;
+// ------------------- Couleur -------------------
+constexpr bool is_white(uint8_t piece) {
+	return piece && piece <= w_king;
 }
 
-// Renvoie si la pièce est noire
-static bool is_black(uint_fast8_t piece) {
-	return piece >= b_pawn && piece <= b_king;
+constexpr bool is_black(uint8_t piece) {
+	return piece >= b_pawn;
 }
 
-// Renvoie si la pièce est un pion
-static bool is_pawn(uint_fast8_t piece) {
-	return piece == w_pawn || piece == b_pawn;
+// ------------------- Type -------------------
+constexpr bool is_pawn(uint8_t piece) { return piece == w_pawn || piece == b_pawn; }
+constexpr bool is_knight(uint8_t piece) { return piece == w_knight || piece == b_knight; }
+constexpr bool is_bishop(uint8_t piece) { return piece == w_bishop || piece == b_bishop; }
+constexpr bool is_rook(uint8_t piece) { return piece == w_rook || piece == b_rook; }
+constexpr bool is_queen(uint8_t piece) { return piece == w_queen || piece == b_queen; }
+constexpr bool is_king(uint8_t piece) { return piece == w_king || piece == b_king; }
+
+// ------------------- Mouvement -------------------
+constexpr bool is_rectilinear(uint8_t piece) {
+	return piece == w_rook || piece == b_rook || piece == w_queen || piece == b_queen;
 }
 
-// Renvoie si la pièce est un cavalier
-static bool is_knight(uint_fast8_t piece) {
-	return piece == w_knight || piece == b_knight;
+constexpr bool is_diagonal(uint8_t piece) {
+	return piece == w_bishop || piece == b_bishop || piece == w_queen || piece == b_queen;
 }
 
-// Renvoie si la pièce est un fou
-static bool is_bishop(uint_fast8_t piece) {
-	return piece == w_bishop || piece == b_bishop;
+constexpr bool is_sliding(uint8_t piece) {
+	return (piece >= w_bishop && piece <= w_queen) || (piece >= b_bishop && piece <= b_queen);
 }
 
-// Renvoie si la pièce est une tour
-static bool is_rook(uint_fast8_t piece) {
-	return piece == w_rook || piece == b_rook;
-}
-
-// Renvoie si la pièce est une dame
-static bool is_queen(uint_fast8_t piece) {
-	return piece == w_queen || piece == b_queen;
-}
-
-// Renvoie si la pièce est un roi
-static bool is_king(uint_fast8_t piece) {
-	return piece == w_king || piece == b_king;
-}
-
-// Renvoie si la pièce a un mouvement rectiligne
-static bool is_rectilinear(uint_fast8_t piece) {
-	return is_rook(piece) || is_queen(piece);
-}
-
-// Renvoie si la pièce a un mouvement diagonal
-static bool is_diagonal(uint_fast8_t piece) {
-	return is_bishop(piece) || is_queen(piece);
-}
-
-// Renvoie si c'est une sliding piece
-static bool is_sliding(uint_fast8_t piece) {
-	return is_bishop(piece) || is_rook(piece) || is_queen(piece);
+// ------------------- Alliés -------------------
+constexpr bool is_ally(uint8_t piece, bool player_white) {
+	return piece && ((piece <= w_king) == player_white);
 }
 
 // TODO *** il reste 1 bit de libre, à utiliser pour un flag supplémentaire si besoin
@@ -171,7 +151,7 @@ struct Move {
 	}
 
 	void display() const {
-		std::cout << to_string() << std::endl;
+		cout << to_string() << endl;
 	}
 };
 
@@ -295,6 +275,38 @@ struct SquareMap
 		cout << endl;
 	}
 };
+
+struct BoolMap
+{
+	bool _array[8][8];
+
+	// Constructeurs
+	BoolMap() {
+		for (uint_fast8_t row = 0; row < 8; row++) {
+			for (uint_fast8_t col = 0; col < 8; col++) {
+				_array[row][col] = false;
+			}
+		}
+	}
+
+	// Opérateurs
+	// 
+	// Soustraction
+	BoolMap operator- (const BoolMap& other) const {
+		BoolMap result;
+		for (int row = 0; row < 8; row++) {
+			for (int col = 0; col < 8; col++) {
+				result._array[row][col] = _array[row][col] && !other._array[row][col];
+			}
+		}
+		return result;
+	}
+};
+
+struct PieceSquare {
+	uint_fast8_t piece;
+	Pos square;
+};
 	
 // WDL chance
 struct WDL {
@@ -313,8 +325,49 @@ struct WDL {
 };
 
 // Fins de partie
-enum game_termination { unterminated = 0, white_win = 1, draw = 2, black_win = 3 };
+static constexpr enum game_termination { unterminated = 0, white_win = 1, draw = 2, black_win = 3 };
 
+// Directions
+struct Direction {
+	int d_row;
+	int d_col;
+};
+
+// Case clouée ou non, et dans quelle direction?
+struct PinnedSquare {
+	bool pinned = false;
+	Direction dir;
+};
+
+// Tableau des clouages de la position
+struct PinsMap {
+	PinnedSquare pins[8][8];
+
+	// Affichage de façon alignée
+	void print() const {
+		cout << "Pins map : " << endl;
+		for (int row = 7; row >= 0; row--) {
+			for (int col = 0; col < 8; col++) {
+				cout << setw(3) << pins[row][col].pinned << " ";
+			}
+			cout << endl;
+		}
+		cout << endl;
+	}
+};
+
+// Les directions sont-elles alignées
+inline bool is_aligned(const int d_row, const int d_col, Direction d) {
+	return d_row * d.d_row == d_col * d.d_col;
+}
+
+// La direction d'un coup est-elle alignée avec le clouage?
+inline bool is_aligned(const Move& m, Direction d) {
+	int dr = m.end_row - m.start_row;
+	int dc = m.end_col - m.start_col;
+
+	return dr * d.d_row == dc * d.d_col;
+}
 
 // Plateau
 class Board {
@@ -324,7 +377,7 @@ public:
 
 	// Plateau
 	// 64 bytes
-	uint_fast8_t _array[8][8]{	{	w_rook,		w_knight,	w_bishop,   w_queen,    w_king,		w_bishop,   w_knight,   w_rook	},
+	uint8_t _array[8][8]{	{	w_rook,		w_knight,	w_bishop,   w_queen,    w_king,		w_bishop,   w_knight,   w_rook	},
 								{   w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn	},
 								{	none,		none,		none,		none,		none,		none,		none,		none	},
 								{	none,		none,		none,		none,		none,		none,		none,		none	},
@@ -337,10 +390,10 @@ public:
 
 	// Bitboard!! (TODO)
 	// w_pawn -> b_king
-	uint64_t _bitboards[12];
+	//uint64_t _bitboards[12];
 
-	// Pièces blanches, noires, et toutes
-	uint64_t _occupancies[3];
+	//// Pièces blanches, noires, et toutes
+	//uint64_t _occupancies[3];
 
 	// TODO *** Optionnel : roi en cache (remplacera les _white_king_pos ?)
 	//int _square_king[2];
@@ -435,6 +488,9 @@ public:
 	// Opérateur d'égalité (compare seulement le placement des pièces, droits de roques, et nombre de coups)
 	bool operator== (const Board&) const;
 
+	// Fonction qui copie le strict minimum de la position
+	void minimal_copy_data(const Board& b);
+
 	// Fonction qui copie les attributs d'un plateau (full copy: on copie tout)
 	void copy_data(const Board&, bool full = false, bool copy_history = false);
 
@@ -459,14 +515,26 @@ public:
 	// Renvoie la liste des coups possibles
 	bool get_moves(const bool forbide_check = true);
 
+	// Fonction qui renvoie la liste des coups légaux
+	bool get_moves_fast();
+
+	// Fonction qui renvoie une des pièces qui la case (si plus d'une)
+	PieceSquare get_square_attacker(Pos square, int* n_attackers) const;
+
+	// Fonction qui renvoie la liste des clouages pour le joueur donné
+	PinsMap get_pins(bool player) const;
+
 	// Fonction qui dit s'il y'a échec
-	[[nodiscard]] bool in_check();
+	[[nodiscard]] bool in_check(bool update_king_pos = true);
 
 	// Fonction qui affiche la liste des coups
 	void display_moves(bool pseudo = false);
 
 	// Fonction qui joue un coup
 	void make_move(Move, const bool pgn = false, const bool new_board = false, const bool add_to_history = false);
+
+	// Fonction qui annule un coup
+	void unmake_move(Move move, uint_fast8_t p1, uint_fast8_t p2, int en_passant_col, int prev_half_count, bool k_castle, bool q_castle, bool is_castle, bool is_promotion, bool is_en_passant);
 
 	// Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
 	void game_advancement();
@@ -885,6 +953,9 @@ string piece_name(uint_fast8_t piece);
 
 // Fonction qui renvoie l'espérance de gain d'un WDL
 float get_average_score(WDL wdl, float draw_score = 0.5f);
+
+// Fonction qui renvoie l'évaluation re-normalisée en fonction du score moyen
+string get_renormalized_evaluation(float avg_score, float winning_eval = 1, float winning_score = 0.70f);
 
 // Fonction qui renvoie le score d'un WDL avec une précision de 0.01
 string score_string(float avg_score);
