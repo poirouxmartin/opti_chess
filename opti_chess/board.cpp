@@ -381,180 +381,116 @@ bool Board::get_moves_fast() {
 	// FIXME *** au moins la position du roi de l'adversaire peut être évitée
 	update_kings_pos();
 
+	// Position du roi
+	Pos king_pos = _player ? _white_king_pos : _black_king_pos;
+
 	// Clouages de la position, pour le joueur à jouer
 	PinsMap pins = get_pins(_player);
 
-	// Génération des contrôles autour du roi (et des pièces attaquant le roi)
+	// On regarde les attackants du roi (s'il y en a)
+	int n_attackers = 0;
+	PieceSquare attacker = get_square_attacker(king_pos, &n_attackers);
 
+	// Génération des contrôles autour du roi (et des pièces attaquant le roi)
+	// Les 8 cases autour du roi + les cases de déplacement du roi en cas de roque (si les droits sont là) -> BoolMap
+	BoolMap controls = get_controls_around_king(_player); // TODO *** à implémenter
+
+	// S'il y a pas d'attaquandts -> pas en échec
+	if (n_attackers == 0) {
+		// Génération des coups de toutes les pièces, en tenant compte des clouages (et des cases de contrôle autour du roi)
+		// TODO *** à faire
+	}
+	else {
+		// Ajout des coups du roi, sur les cases vides et non-controllées
+		// TODO *** à faire
+
+		if (n_attackers == 1) {
+		// Génération des coups pour les autres pièces, qui doivent soit capturer l'attaquant, soit s'interposer
+		// TODO *** à faire
+		}
+
+		// Pas d'autre coup possible en cas de double échec
+	}
 
 	return true;
 }
 
 // Fonction qui renvoie la map des contrôles autour du roi du joueur donné (et les cases pour le roque, si besoin)
-//BoolMap Board::get_controls(bool player, BoolMap king_attackers) const {
-//}
+BoolMap Board::get_controls_around_king(bool player) const {
+	// TODO *** à implémenter
+	BoolMap controls;
+
+	return controls;
+}
 
 // Fonction qui renvoie une des pièces qui la case (si plus d'une)
 PieceSquare Board::get_square_attacker(Pos square, int* n_attackers) const {
-	const int enemy_knight = 2 + _player * 6;
+	const int square_row = square.row;
+	const int square_col = square.col;
 
-	int square_row = square.row;
-	int square_col = square.col;
+	PieceSquare attacker = PieceSquare(none, { -1, -1 });
 
-	//for (int k = 0; k < 8; k++) {
+	// Direction des pions selon le joueur (pour capture)
+	const int pawn_dir = _player ? 1 : -1;
 
-	//	// Si le cavalier est hors du plateau, on passe
-	//	const int nrow = square_row + knight_directions[k][0];
-	//	if (!is_in(nrow, 0, 7))
-	//		continue;
+	// Vérification des cavaliers
+	for (int k = 0; k < 8; k++) {
+		const int row_knight = square_row + knight_directions[k][0];
+		const int col_knight = square_col + knight_directions[k][1];
+		if (!is_in(row_knight, 0, 7) || !is_in(col_knight, 0, 7))
+			continue;
 
-	//	const int ncol = square_col + knight_directions[k][1];
-	//	if (!is_in(ncol, 0, 7))
-	//		continue;
+		if (_array[row_knight][col_knight] == (2 + _player * 6)) {
+			(*n_attackers)++;
+			if (*n_attackers == 2) return attacker;
+			attacker = PieceSquare(_array[row_knight][col_knight], { (uint8_t)row_knight, (uint8_t)col_knight });
+		}
+	}
 
-	//	// S'il y a un cavalier qui attaque, renvoie vrai (en échec)
-	//	if (_array[nrow][ncol] == enemy_knight)
-	//		return true;
-	//}
+	// Vérification des sliders et diagonales
+	for (int d = 0; d < 8; d++) {
+		const int drow = all_directions[d][0];
+		const int dcol = all_directions[d][1];
 
-	//// TODO : Faut-il regarder les lignes dans un certain ordre, pour faire moins de calcul (car l'adversaire a plus de chances d'attaquer par le milieu de l'échiquier?)
+		int row = square_row + drow;
+		int col = square_col + dcol;
 
-	//// Regarde les lignes horizontales et verticales
+		while (row >= 0 && row < 8 && col >= 0 && col < 8) {
+			const uint8_t piece = _array[row][col];
 
-	//// Gauche
-	//for (int col = square_col - 1; col >= 0; col--)
-	//{
-	//	// Si y'a une pièce
-	//	if (const uint8_t piece = _array[square_row][col]; piece != none)
-	//	{
-	//		// Si la pièce n'est pas au joueur, regarde si c'est une tour, une dame, ou un roi avec une distance de 1
-	//		if (piece < 7 != _player)
-	//			if (is_rectilinear(piece) || (is_king(piece) && col == square_col - 1))
-	//				return true;
+			if (piece != none) {
+				if (!is_ally(piece, _player)) {
+					bool valid_attack = false;
 
-	//		break;
-	//	}
-	//}
+					// Roi à distance 1
+					if (is_king(piece) && abs(row - square_row) <= 1 && abs(col - square_col) <= 1)
+						valid_attack = true;
 
-	//// Droite
-	//for (int col = square_col + 1; col < 8; col++)
-	//{
-	//	if (const uint8_t piece = _array[square_row][col]; piece != none)
-	//	{
-	//		if (piece < 7 != _player)
-	//			if (is_rectilinear(piece) || (is_king(piece) && col == square_col + 1))
-	//				return true;
+					// Pion ennemi capturant la case
+					if ((piece == w_pawn && !_player && row - square_row == pawn_dir && abs(col - square_col) == 1)
+						|| (piece == b_pawn && _player && row - square_row == pawn_dir && abs(col - square_col) == 1))
+						valid_attack = true;
 
-	//		break;
-	//	}
-	//}
+					// Slider selon direction
+					if ((abs(drow) + abs(dcol) == 1) && is_rectilinear(piece)) valid_attack = true;
+					if ((abs(drow) == 1 && abs(dcol) == 1) && is_diagonal(piece)) valid_attack = true;
 
-	//// Haut
-	//for (int row = square_row - 1; row >= 0; row--)
-	//{
-	//	if (const uint8_t piece = _array[row][square_col]; piece != none)
-	//	{
-	//		if (piece < 7 != _player)
-	//			if (is_rectilinear(piece) || (is_king(piece) && row == square_row - 1))
-	//				return true;
+					if (valid_attack) {
+						(*n_attackers)++;
+						if (*n_attackers == 2) return attacker;
+						attacker = PieceSquare(piece, { (uint8_t)row, (uint8_t)col });
+					}
+				}
 
-	//		break;
-	//	}
-	//}
+				break; // Stop dès qu'une pièce est rencontrée
+			}
 
-	//// Bas
-	//for (int row = square_row + 1; row < 8; row++)
-	//{
-	//	if (const uint8_t piece = _array[row][square_col]; piece != none)
-	//	{
-	//		if (piece < 7 != _player)
-	//			if (is_rectilinear(piece) || (is_king(piece) && row == square_row + 1))
-	//				return true;
+			row += drow;
+			col += dcol;
+		}
+	}
 
-	//		break;
-	//	}
-	//}
-
-	//// Regarde les diagonales
-
-	//// Diagonale bas-gauche
-	//for (int row = square_row - 1, col = square_col - 1; row >= 0 && col >= 0; row--, col--)
-	//{
-	//	if (const uint8_t piece = _array[row][col]; piece != none)
-	//	{
-	//		if (piece < 7 != _player)
-	//		{
-	//			if (is_diagonal(piece) || (is_king(piece) && (abs(square_row - row) == 1)))
-	//				return true;
-
-	//			// Cas spécial pour les pions
-	//			if (piece == w_pawn && abs(square_col - col) == 1)
-	//				return true;
-	//		}
-
-	//		break;
-	//	}
-	//}
-
-	//// Diagonal bas-droite
-	//for (int row = square_row - 1, col = square_col + 1; row >= 0 && col < 8; row--, col++)
-	//{
-	//	if (const uint8_t piece = _array[row][col]; piece != none)
-	//	{
-	//		if ((piece < 7) != _player)
-	//		{
-	//			if (is_diagonal(piece) || (is_king(piece) && (abs(square_row - row) == 1)))
-	//				return true;
-
-	//			// Special case for pawns
-	//			if (piece == w_pawn && abs(square_col - col) == 1)
-	//				return true;
-	//		}
-
-	//		break;
-	//	}
-	//}
-
-	//// Diagonale haut-gauche
-	//for (int row = square_row + 1, col = square_col - 1; row < 8 && col >= 0; row++, col--)
-	//{
-	//	if (const uint8_t piece = _array[row][col]; piece != none)
-	//	{
-	//		if ((piece < 7) != _player)
-	//		{
-	//			if (is_diagonal(piece) || (is_king(piece) && (abs(square_row - row) == 1)))
-	//				return true;
-
-	//			// Special case for pawns
-	//			if (piece == b_pawn && abs(square_col - col) == 1)
-	//				return true;
-	//		}
-
-	//		break;
-	//	}
-	//}
-
-	//// Diagonale haut-droite
-	//for (int row = square_row + 1, col = square_col + 1; row < 8 && col < 8; row++, col++)
-	//{
-	//	if (const uint8_t piece = _array[row][col]; piece != none)
-	//	{
-	//		if ((piece < 7) != _player)
-	//		{
-	//			if (is_diagonal(piece) || (is_king(piece) && (abs(square_row - row) == 1)))
-	//				return true;
-
-	//			// Special case for pawns
-	//			if (piece == b_pawn && abs(square_col - col) == 1)
-	//				return true;
-	//		}
-
-	//		break;
-	//	}
-	//}
-
-	// Pas d'attaquant
-	return { none, { -1, -1 } };
+	return attacker;
 }
 
 // Fonction qui renvoie la liste des clouages pour le joueur donné
@@ -626,7 +562,7 @@ PinsMap Board::get_pins(bool player) const {
 
 					if ((is_rect && is_rectilinear(piece)) || (!is_rect && is_diagonal(piece))) {
 						pins.pins[candidate_pos.row][candidate_pos.col].pinned = true;
-						pins.pins[candidate_pos.row][candidate_pos.col].dir = static_cast<Direction>(d);
+						pins.pins[candidate_pos.row][candidate_pos.col].dir = { d_row, d_col };
 					}
 				}
 			}
