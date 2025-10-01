@@ -518,6 +518,9 @@ public:
 	// Fonction qui renvoie la liste des coups légaux
 	bool get_moves_fast();
 
+	// Fonction qui renvoie la map des contrôles autour du roi du joueur donné (et les cases pour le roque, si besoin)
+	BoolMap get_controls_around_king(bool player) const;
+
 	// Fonction qui renvoie une des pièces qui la case (si plus d'une)
 	PieceSquare get_square_attacker(Pos square, int* n_attackers) const;
 
