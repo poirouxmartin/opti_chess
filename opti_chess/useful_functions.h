@@ -9,11 +9,11 @@ using namespace std;
 // Fonction qui renvoie si un entier appartient à un intervalle
 bool is_in(int x, int min, int max);
 
-// Fonction qui renvoie si un entier uint_fast8_t appartient à un intervalle
-bool is_in_fast(uint_fast8_t x, uint_fast8_t min, uint_fast8_t max);
-
 // Fonction qui renvoie si un flottant appartient à un intervalle
 bool is_in(float x, float min, float max);
+
+// Fonction qui renvoie si un entier uint_fast8_t appartient à un intervalle
+bool is_in_fast(uint_fast8_t x, uint_fast8_t min, uint_fast8_t max);
 
 // Fonction qui renvoie le maximum de deux entiers
 int max_int(int, int);

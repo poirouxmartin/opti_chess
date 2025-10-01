@@ -775,7 +775,7 @@ void GUI::draw_texture(const Texture& texture, const float pos_x, const float po
 }
 
 // Fonction qui affiche la barre d'evaluation
-void GUI::draw_eval_bar(const float eval, WDL wdl, const string& text_eval, const float x, const float y, const float width, const float height, const float max_eval, const Color white, const Color gray, Color black, float max_height) {
+void GUI::draw_eval_bar(const float eval, WDL wdl, float avg_score, const string& text_eval, const float x, const float y, const float width, const float height, const float max_eval, const Color white, const Color gray, Color black, float max_height) {
 	const bool is_mate = text_eval.find('M') != -1;
 
 	// Taille max de la barre
@@ -810,7 +810,17 @@ void GUI::draw_eval_bar(const float eval, WDL wdl, const string& text_eval, cons
 	if (text_dimensions.x > max_text_width)
 		t_size = t_size * max_text_width / text_dimensions.x;
 	text_dimensions = MeasureTextEx(_text_font, eval_text.c_str(), t_size, _font_spacing);
-	DrawTextEx(_text_font, eval_text.c_str(), { x + (width - text_dimensions.x) / 2.0f, y + (y_margin + text_pos * (1.0f - y_margin * 2.0f)) * height - text_dimensions.y * text_pos }, t_size, _font_spacing, (eval < 0) ? white : black);
+
+	float text_pos_x = x + (width - text_dimensions.x) / 2.0f;
+	float text_pos_y = y + (y_margin + text_pos * (1.0f - y_margin * 2.0f)) * (height * 0.95f) - text_dimensions.y * text_pos;
+
+	DrawTextEx(_text_font, eval_text.c_str(), { text_pos_x, text_pos_y }, t_size, _font_spacing, (eval < 0) ? white : black);
+
+	// Score moyen
+	DrawTextEx(_text_font, score_string(avg_score).c_str(), { text_pos_x, text_pos_y + t_size }, t_size * 0.75f, _font_spacing, (eval < 0) ? white : black);
+
+	// Evaluation re-normalisée
+	DrawTextEx(_text_font, get_renormalized_evaluation(avg_score).c_str(), { text_pos_x, text_pos_y + 1.75f * t_size }, t_size * 0.75f, _font_spacing, (eval < 0) ? white : black);
 }
 
 // Fonction qui retire les surlignages de toutes les cases
@@ -1214,14 +1224,12 @@ void GUI::draw()
 	}
 
 	// Dessine les pièces adverses
-	for (int i = 0; i < 8; i++) {
-		for (int j = 0; j < 8; j++) {
-			uint_fast8_t piece = _board._array[i][j];
-			if (piece > 0 && ((_board._player && piece >= 7) || (!_board._player && piece < 7))) {
-				if (_clicked && i == _clicked_pos.row && j == _clicked_pos.col)
-					draw_texture(_piece_textures[piece - 1], _mouse_pos.x - _piece_size / 2, _mouse_pos.y - _piece_size / 2, WHITE);
-				else
-					draw_texture(_piece_textures[piece - 1], _board_padding_x + _tile_size * orientation_index(j) + (_tile_size - _piece_size) / 2, _board_padding_y + _tile_size * orientation_index(7 - i) + (_tile_size - _piece_size) / 2, WHITE);
+	for (int row = 0; row < 8; row++) {
+		for (int col = 0; col < 8; col++) {
+			uint_fast8_t piece = _board._array[row][col];
+			if (is_white(piece) && !_board._player || is_black(piece) && _board._player) {
+				if (!_clicked || row != _clicked_pos.row || col != _clicked_pos.col)
+					draw_texture(_piece_textures[piece - 1], _board_padding_x + _tile_size * orientation_index(col) + (_tile_size - _piece_size) / 2, _board_padding_y + _tile_size * orientation_index(7 - row) + (_tile_size - _piece_size) / 2, WHITE);
 			}
 		}
 	}
@@ -1232,14 +1240,24 @@ void GUI::draw()
 	}
 
 	// Dessine les pièces alliées
-	for (int i = 0; i < 8; i++) {
-		for (int j = 0; j < 8; j++) {
-			uint_fast8_t piece = _board._array[i][j];
-			if (piece > 0 && ((_board._player && piece < 7) || (!_board._player && piece >= 7))) {
-				if (_clicked && i == _clicked_pos.row && j == _clicked_pos.col)
-					draw_texture(_piece_textures[piece - 1], _mouse_pos.x - _piece_size / 2, _mouse_pos.y - _piece_size / 2, WHITE);
-				else
-					draw_texture(_piece_textures[piece - 1], _board_padding_x + _tile_size * orientation_index(j) + (_tile_size - _piece_size) / 2, _board_padding_y + _tile_size * orientation_index(7 - i) + (_tile_size - _piece_size) / 2, WHITE);
+	for (int row = 0; row < 8; row++) {
+		for (int col = 0; col < 8; col++) {
+			uint_fast8_t piece = _board._array[row][col];
+			if (is_white(piece) && _board._player || is_black(piece) && !_board._player) {
+				if (!_clicked || row != _clicked_pos.row || col != _clicked_pos.col)
+					draw_texture(_piece_textures[piece - 1], _board_padding_x + _tile_size * orientation_index(col) + (_tile_size - _piece_size) / 2, _board_padding_y + _tile_size * orientation_index(7 - row) + (_tile_size - _piece_size) / 2, WHITE);
+			}
+		}
+	}
+
+	// Dessine la pièce cliquée (si on clique sur une pièce)
+	for (int row = 0; row < 8; row++) {
+		for (int col = 0; col < 8; col++) {
+			uint_fast8_t piece = _board._array[row][col];
+			if (_clicked && piece != none && row == _clicked_pos.row && col == _clicked_pos.col) {
+				BeginShaderMode(_selected_shader);
+				draw_texture(_piece_textures[piece - 1], _mouse_pos.x - _piece_size / 2, _mouse_pos.y - _piece_size / 2, WHITE);
+				EndShaderMode();
 			}
 		}
 	}
@@ -1432,7 +1450,7 @@ void GUI::draw()
 		slider_text(_exploration_variants, _board_padding_x + _board_size + _text_size / 2, _board_padding_y + _board_size * 9 / 16, _screen_width - _text_size - _board_padding_x - _board_size, _board_size / 2, _text_size / 3, &_variants_slider, _text_color);
 
 		// Affichage de la barre d'évaluation
-		draw_eval_bar(_global_eval, _wdl, _global_eval_text, _board_padding_x / 6, _board_padding_y, 2 * _board_padding_x / 3, _board_size, 800, _eval_bar_color_light, _eval_bar_color_gray, _eval_bar_color_dark);
+		draw_eval_bar(_global_eval, _wdl, get_average_score(_wdl), _global_eval_text, _board_padding_x / 6, _board_padding_y, 2 * _board_padding_x / 3, _board_size, 800, _eval_bar_color_light, _eval_bar_color_gray, _eval_bar_color_dark);
 	}
 
 	// Affichage des contrôles et autres informations

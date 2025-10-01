@@ -301,6 +301,9 @@ public:
 	float _piece_size;
 	float _piece_scale = 0.8f;
 
+	// Shader pour la pièce sélectionnée
+	Shader _selected_shader;
+
 	// Taille standard du texte
 	float _text_size;
 
@@ -509,7 +512,7 @@ public:
 	void draw_texture(const Texture&, float, float, Color);
 
 	// Fonction qui affiche la barre d'evaluation
-	void draw_eval_bar(float eval, WDL wdl, const string&, float, float, float, float, float max_eval, Color white, Color gray, Color black, float max_height = -1.0f);
+	void draw_eval_bar(float eval, WDL wdl, float avg_score, const string&, float, float, float, float, float max_eval, Color white, Color gray, Color black, float max_height = -1.0f);
 
 	// Fonction qui retire les surlignages de toutes les cases
 	void remove_highlighted_tiles();
