@@ -19,8 +19,8 @@ bool is_in(const int x, const int min, const int max)
 	return (x >= min && x <= max);
 }
 
-// Fonction qui renvoie si un entier uint_fast8_t appartient à un intervalle
-bool is_in_fast(const uint_fast8_t x, const uint_fast8_t min, const uint_fast8_t max)
+// Fonction qui renvoie si un entier uint8_t appartient à un intervalle
+bool is_in_fast(const uint8_t x, const uint8_t min, const uint8_t max)
 {
 	return (x >= min && x <= max);
 }
@@ -168,7 +168,7 @@ void print_array(int_fast8_t *l, const int n)
 }
 
 // Fonction qui affiche une liste d'entiers 8 bits fast (array)
-void print_array(uint_fast8_t *l, const int n)
+void print_array(uint8_t *l, const int n)
 {
 	cout << "[|";
 	for (int i = 0; i < n; i++)
@@ -236,7 +236,7 @@ int max_index(float* l, const int n)
 }
 
 // Fonction qui renvoie l'index de la valeur maximale d'une liste d'entiers
-int max_index(uint_fast8_t* l, const int n)
+int max_index(uint8_t* l, const int n)
 {
 	int max = -UINT8_MAX;
 	int max_i = 0;
