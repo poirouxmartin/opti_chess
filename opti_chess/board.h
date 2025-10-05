@@ -542,41 +542,23 @@ public:
 	// Fonction qui ajoute un coup dans la liste de coups
 	bool add_move(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t*, uint8_t);
 
-	// Fonction qui ajoute les coups "pions" dans la liste de coups
-	bool add_pawn_moves(uint8_t, uint8_t, uint8_t*);
+	// Fonction qui ajoute tous les coups de roi, en tenant compte des contrôles et des roques
+	bool add_king_moves(const bool player, const Pos king_pos, uint16_t controls_around_king, uint8_t* iterator, const bool kingside_castle_check, const bool queenside_castle_check);
 
-	// Fonction qui ajoute les coups "cavaliers" dans la liste de coups
-	bool add_knight_moves(uint8_t, uint8_t, uint8_t*, uint8_t);
+	// Fonction qui ajoute les coups d'un pion, en tenant compte des clouages, et des échecs
+	bool add_pawn_moves(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask);
 
-	// Fonction qui ajoute les coups diagonaux dans la liste de coups
-	bool add_diag_moves(uint8_t, uint8_t, uint8_t*, uint8_t);
+	// Fonction qui ajoute les coups d'un cavalier, en tenant compte des clouages, et des échecs
+	bool add_knight_moves(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask);
 
-	// Fonction qui ajoute les coups horizontaux et verticaux dans la liste de coups
-	bool add_rect_moves(uint8_t, uint8_t, uint8_t*, uint8_t);
+	// Fonction qui ajoute les coups d'une pièce rectiligne, en tenant compte des clouages, et des échecs
+	bool add_rect_moves(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask);
 
-	// Fonction qui ajoute les coups "roi" dans la liste de coups
-	bool add_king_moves(uint8_t, uint8_t, uint8_t*, uint8_t);
-
-	// Renvoie la liste des coups possibles
-	bool get_moves(const bool forbide_check = true);
-
-	// Fonction qui ajoute rapidement tous les coups de roi, en tenant compte des contrôles et des roques
-	bool add_king_moves_fast(const bool player, const Pos king_pos, uint16_t controls_around_king, uint8_t* iterator, const bool kingside_castle_check, const bool queenside_castle_check);
-
-	// Fonction qui ajoute rapidement les coups d'un pion, en tenant compte des clouages, et des échecs
-	bool add_pawn_moves_fast(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask);
-
-	// Fonction qui ajoute rapidement les coups d'un cavalier, en tenant compte des clouages, et des échecs
-	bool add_knight_moves_fast(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask);
-
-	// Fonction qui ajoute rapidement les coups d'une pièce rectiligne, en tenant compte des clouages, et des échecs
-	bool add_rect_moves_fast(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask);
-
-	// Fonction qui ajoute rapidement les coups d'une pièce diagonale, en tenant compte des clouages, et des échecs
-	bool add_diag_moves_fast(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask);
+	// Fonction qui ajoute les coups d'une pièce diagonale, en tenant compte des clouages, et des échecs
+	bool add_diag_moves(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask);
 
 	// Fonction qui renvoie la liste des coups légaux
-	bool get_moves_fast();
+	bool get_moves();
 
 	// Fonction qui renvoie la map des contrôles autour du roi du joueur donné (et les cases pour le roque, si besoin)
 	uint16_t get_controls_around_king(Pos king_pos, bool player, bool kingside_castle_check, bool queenside_castle_check) const;
@@ -594,7 +576,7 @@ public:
 	[[nodiscard]] bool in_check(bool update_king_pos = true);
 
 	// Fonction qui affiche la liste des coups
-	void display_moves(bool pseudo = false);
+	void display_moves();
 
 	// Fonction qui joue un coup
 	void make_move(Move, const bool pgn = false, const bool new_board = false, const bool add_to_history = false);
