@@ -423,7 +423,7 @@ inline int main_ui() {
 		// D - Affichage dans la console de tous les coups légaux de la position
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_D)) {
 			//main_GUI._draw = true;
-			main_GUI._board.display_moves(true);
+			main_GUI._board.display_moves();
 			//cout << main_GUI._board._positions_history.size() << endl;
 		}
 
