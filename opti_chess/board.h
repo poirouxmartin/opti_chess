@@ -78,6 +78,10 @@ constexpr bool is_ally(uint8_t piece, bool player_white) {
 	return piece && ((piece <= w_king) == player_white);
 }
 
+constexpr bool is_enemy(uint8_t piece, bool player_white) {
+	return piece && ((piece <= w_king) != player_white);
+}
+
 // TODO *** il reste 1 bit de libre, à utiliser pour un flag supplémentaire si besoin
 // Stalemate?
 enum MoveFlags : uint8_t {
@@ -333,6 +337,33 @@ struct Direction {
 	int d_col;
 };
 
+// Directions existantes
+static constexpr Direction vertical_up = { 1, 0 };
+static constexpr Direction vertical_down = { -1, 0 };
+static constexpr Direction horizontal_right = { 0, 1 };
+static constexpr Direction horizontal_left = { 0, -1 };
+static constexpr Direction diagonal_up_right = { 1, 1 };
+static constexpr Direction diagonal_up_left = { 1, -1 };
+static constexpr Direction diagonal_down_right = { -1, 1 };
+static constexpr Direction diagonal_down_left = { -1, -1 };
+
+// Types de direction
+inline bool is_vertical(Direction d) {
+	return (d.d_row != 0 && d.d_col == 0);
+}
+
+inline bool is_horizontal(Direction d) {
+	return (d.d_row == 0 && d.d_col != 0);
+}
+
+inline bool is_diagonal(Direction d) {
+	return (abs(d.d_row) == abs(d.d_col));
+}
+
+inline bool is_straight(Direction d) {
+	return is_vertical(d) || is_horizontal(d);
+}
+
 // Case clouée ou non, et dans quelle direction?
 struct PinnedSquare {
 	bool pinned = false;
@@ -357,16 +388,30 @@ struct PinsMap {
 };
 
 // Les directions sont-elles alignées
-inline bool is_aligned(const int d_row, const int d_col, Direction d) {
-	return d_row * d.d_row == d_col * d.d_col;
+inline bool is_aligned(int d_row, int d_col, Direction dir) {
+	return (d_row * dir.d_col == d_col * dir.d_row);
 }
 
-// La direction d'un coup est-elle alignée avec le clouage?
-inline bool is_aligned(const Move& m, Direction d) {
-	int dr = m.end_row - m.start_row;
-	int dc = m.end_col - m.start_col;
+void print_controls(uint16_t controls);
 
-	return dr * d.d_row == dc * d.d_col;
+// Disposition de base des cases autour du roi
+// 0   1   2   3   4
+// 5   6   7   8   9
+// 10  11  12  13  14
+
+// On utilise un entier 16 bits pour stocker les contrôles autour du roi
+inline uint16_t control_bit(int8_t rel_row, int8_t rel_col) {
+	return 1u << ((rel_row + 1) * 5 + (rel_col + 2));
+}
+
+// Renvoie si une case autour du roi est contrôlée
+inline bool is_controlled_around_king(uint16_t controls, int8_t rel_row, int8_t rel_col) {
+	return (controls & control_bit(rel_row, rel_col)) != 0;
+}
+
+// row et col doivent être dans [0,7]
+inline bool is_in_interpose_mask(uint64_t interpose_mask, uint8_t row, uint8_t col) {
+	return (interpose_mask & (1ULL << (row * 8 + col))) != 0;
 }
 
 // Plateau
@@ -515,14 +560,32 @@ public:
 	// Renvoie la liste des coups possibles
 	bool get_moves(const bool forbide_check = true);
 
+	// Fonction qui ajoute rapidement tous les coups de roi, en tenant compte des contrôles et des roques
+	bool add_king_moves_fast(const bool player, const Pos king_pos, uint16_t controls_around_king, uint8_t* iterator, const bool kingside_castle_check, const bool queenside_castle_check);
+
+	// Fonction qui ajoute rapidement les coups d'un pion, en tenant compte des clouages, et des échecs
+	bool add_pawn_moves_fast(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask);
+
+	// Fonction qui ajoute rapidement les coups d'un cavalier, en tenant compte des clouages, et des échecs
+	bool add_knight_moves_fast(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask);
+
+	// Fonction qui ajoute rapidement les coups d'une pièce rectiligne, en tenant compte des clouages, et des échecs
+	bool add_rect_moves_fast(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask);
+
+	// Fonction qui ajoute rapidement les coups d'une pièce diagonale, en tenant compte des clouages, et des échecs
+	bool add_diag_moves_fast(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask);
+
 	// Fonction qui renvoie la liste des coups légaux
 	bool get_moves_fast();
 
 	// Fonction qui renvoie la map des contrôles autour du roi du joueur donné (et les cases pour le roque, si besoin)
-	BoolMap get_controls_around_king(bool player) const;
+	uint16_t get_controls_around_king(Pos king_pos, bool player, bool kingside_castle_check, bool queenside_castle_check) const;
 
 	// Fonction qui renvoie une des pièces qui la case (si plus d'une)
 	PieceSquare get_square_attacker(Pos square, int* n_attackers) const;
+
+	// Retourne un bitboard des cases d'interposition entre le roi et l'attaquant (incluant l'attaquant)
+	uint64_t get_interpose_mask(Pos king_pos, PieceSquare attacker) const;
 
 	// Fonction qui renvoie la liste des clouages pour le joueur donné
 	PinsMap get_pins(bool player) const;
@@ -780,7 +843,7 @@ public:
 	int count_nodes_at_depth(int depth, bool display = true);
 
 	// Fonction qui renvoie si le nombre de noeuds calculés pour une position à une certaine profondeur correspond au nombre attendu
-	bool validate_nodes_count_at_depth(string fen, int depth, vector<int> expected_nodes, bool display = false);
+	bool validate_nodes_count_at_depth(string fen, int depth, vector<int> expected_nodes, bool display = false, bool display_full = false);
 
 	// Fonction test: nouvelle mobilité des pièces
 	[[nodiscard]] int get_piece_mobility(bool display = false) const;
