@@ -10,7 +10,6 @@
 #include <fcntl.h>
 #include "tests.h"
 
-
 // Fonction de test
 inline void launch_eval() {
 	main_GUI._board.reset_board();
@@ -156,8 +155,21 @@ inline int main_ui() {
 
 			//main_GUI._board.get_pins(main_GUI._board._player).print();
 			//main_GUI._board.get_moves_fast();
+			//main_GUI._board.update_kings_pos();
+			//Pos king_pos = main_GUI._board._player ? main_GUI._board._white_king_pos : main_GUI._board._black_king_pos;
+			//bool player = main_GUI._board._player;
+			//CastlingRights castling_rights = main_GUI._board._castling_rights;
+			//
+			//uint16_t controls_around_king = main_GUI._board.get_controls_around_king(king_pos, player, player ? castling_rights.k_w : castling_rights.k_b, player ? castling_rights.q_w : castling_rights.q_b);
+			//print_controls(controls_around_king);
 
 			main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, { 1, 20, 400, 8902, 197281, 4865609, 119060324 }, true);
+			//main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/3P4/PPP1PPPP/RNBQKBNR b KQkq - 0 1", 6, { 1, 20, 539, 11959, 328511, 8073082, 227598692 }, true, true);
+			//main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pp1ppppp/8/2p5/8/3P4/PPP1PPPP/RNBQKBNR w KQkq - 0 2", 3, { 1, 27, 593, 15971 }, true, true);
+			//main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pp1ppppp/8/2p5/8/3P4/PPPKPPPP/RNBQ1BNR b kq - 1 2", 2, { 1, 22, 487 }, true, true);
+			//main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pp1ppppp/8/8/2p5/3P4/PPPKPPPP/RNBQ1BNR w kq - 0 3", 1, { 1, 23 }, true, true);
+
+
 			//main_GUI._board.validate_nodes_count_at_depth("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 5, { 1, 48, 2039, 97862, 4085603, 193690690 }, true);
 			//main_GUI._board.validate_nodes_count_at_depth("", 5, { }, true);
 
