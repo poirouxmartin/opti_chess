@@ -1174,6 +1174,19 @@ rn2r1kb/p3p3/4p1pB/q2p4/1pB1nQ2/8/PPP3P1/1K1R2NR w - - 2 21 : Dxe4!!
 r2r2k1/1p1b1pp1/2pq1P1p/p7/P2PR3/2QB4/1P4PP/5RK1 b - - 0 25 : Te8! seul coup qui tient
 rqr3k1/5ppp/3bpn2/1Pnp4/P1p5/2B1PN2/2QN1PPP/R4RK1 w - - 4 17 : blancs quasi gagnants
 rqr3k1/5ppp/4p3/1Pn5/P1pNp3/2B1P3/2Q2PPb/RR3K2 b - - 1 20 : pions passés très forts -> gagnant pour les blancs
+r4N1k/6bp/p1bp4/1p2pp2/7q/2P5/PPNQ1PPP/R4RK1 b - - 0 20 : Fxg2!! tient
+6k1/6b1/3p3p/3P1p1P/p2q1P2/P5Q1/6RK/8 w - - 1 55 : Dxg7+!! gagne facilement la finale de pions
+8/5pk1/5p1p/1R6/8/4P1PP/r4PK1/8 w - - 3 39 : nulle facile
+2r2b1k/3n1p2/R3b3/3Np1p1/1Nr1Pp2/2P2B1P/5PP1/4R1K1 b - - 2 30 : Txc3! mieux aux noirs
+8/1R6/3rpk2/4p2P/3bPp1n/5B2/5PK1/6N1 w - - 1 50 : Rh3 seul coup qui tient
+r2qkbnr/p5pp/2n2p2/1p1p1b2/P1pP4/1P2PN2/3BBPPP/RN1QK2R b KQkq - 0 10 : gagnant pour les blancs, et Ca5 seul coup qui tient un peu
+4rk1r/p2q2pp/3b1pn1/1P1B1b1Q/R2P4/2N5/3B1PRP/3K4 b - - 6 21 : blanc gagnants -> pièces noires qui ne peuvent pas bouger
+1b3k1r/pP2r1p1/2B4p/3P2p1/4N3/5P2/1R1R3P/3K1b2 b - - 0 32 : pions passés qui avancent -> gagnant pour les blancs
+r1b2b1r/1pp1kBpp/p7/4P3/3qnB2/1Q6/PP3PPP/R4RK1 b - - 2 14 : blancs bien gagnants: aucune coordination chez les noirs, et l'activité des blancs rendent le roi en e7 des noirs très faible
+r2qkb1r/3b1ppp/p1p2n2/3p2B1/Q7/2N3P1/PPP2P1P/2KR2NR w kq - 2 12 : Cf3! gagne
+r1bqk2r/p1p2pp1/3b1n2/1p2p3/3n4/1B1P3p/PPP2PP1/RNBQK2R b KQkq - 1 13 : hxg2!! gagne très largement
+8/2PK1p2/8/8/5pkp/8/7R/2r5 b - - 8 60 : gagnant pour les noirs
+r1bqk2r/pp2bppp/2n2n2/2pNp3/3pP3/3P1NP1/PPP2PBP/R1BQ1RK1 b kq - 1 8 : faut prendre d5
 
 8/r7/8/5R2/2q5/1p6/1P4k1/1K6 w - - 0 1 : Tf2! tour folle (mais en fait le problème est pourri car ça ne fait pas nulle) -> bug de réflexion sur la quiescence? il affiche du 1M de noeuds par secondes xD
 8/8/8/7k/8/qp6/p7/K5R1 w - - 0 1 : tour folle qui fonctionne -> nulle. Question, pourquoi tous les coups ne sont pas regardés de la même manière? il devrait regarder en priorité les coups qui ne mènent pas à la nulle directe. Un peu comme un mat en X, mais là c'est pat en X en considérant qu'il a une meilleure position
@@ -1193,6 +1206,9 @@ Plus de couleurs/contrastes dans l'affichage du texte
 - Transposition simple (stockage de l'éval)
 - Recherche opti comme Lc0 -> évaluation très rapide et simple pour les coups les plus pourris. Garder de base le standpat de l'évaluation principale pour les autres coups?
 - Très lent: regarder quelle pièces est située sur une case, tout le temps... -> Faire des maps d'occupancies?
+
+Lc0 ne choisit pas toujours ce qui gagne avec le plus de proba, mais ce qui gagne le plus rapidement. ex: 3r4/pB1Pk1p1/7p/2R3p1/5b2/3R1P2/7P/3K4 w - - 3 40 : Fc6, pas 100%, choisi au lieu de Fe4 100% (qui gagne aussi, mais plus lentement)
+prendre en compte l'activité des pièces dans la sécurité du roi (surtout s'il est au centre?)
 
 Structure de pion, différencier si la chaine est cassable ou non pas l'adversaire (rnbqk2r/pp3ppp/2pb1n2/3p4/3Pp3/2N1P3/PPPBBPPP/R2QK1NR w KQkq - 4 7 : ici par exemple après f4, y'a plus moyen de la casser)
 

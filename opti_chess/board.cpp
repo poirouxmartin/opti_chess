@@ -81,8 +81,10 @@ void Board::copy_data(const Board& b, bool full, bool copy_history) {
 bool Board::add_move(const uint8_t start_row, const uint8_t start_col, const uint8_t end_row, const uint8_t end_col, uint8_t* iterator, const uint8_t piece)
 {
 	// Si on dépasse le nombre de coups que l'on pensait possible dans une position
-	if (*iterator >= max_moves)
+	if (*iterator >= max_moves) {
+		cout << "Error: too many moves generated (" << (int)(*iterator) << ")!" << endl;
 		return false;
+	}
 
 	const Move m(start_row, start_col, end_row, end_col); // Si on utilise pas les flag, autant éviter les calculs inutiles
 	//const Move m(i, j, k, l, _array[k][l] != 0, (piece == 1 && i == 7) || (piece == 7 && i == 1));
@@ -212,7 +214,6 @@ bool Board::add_king_moves(const uint8_t row, const uint8_t col, uint8_t* iterat
 	const uint8_t ally_min = _player ? w_pawn : b_pawn;
 	const uint8_t ally_max = _player ? w_king : b_king;
 
-	// TODO *** utiliser les all_directions?
 	for (uint8_t m = 0; m < 8; m++) {
 
 		// Direction
@@ -232,6 +233,8 @@ bool Board::add_king_moves(const uint8_t row, const uint8_t col, uint8_t* iterat
 
 // Calcule la liste des coups possibles. pseudo ici fait référence au droit de roquer en passant par une position illégale.
 bool Board::get_moves(const bool forbide_check) {
+	get_moves_fast();
+	return true;
 
 	// Itérateur
 	uint8_t iterator = 0;
@@ -350,6 +353,255 @@ bool Board::get_moves(const bool forbide_check) {
 	return true;
 }
 
+// Fonction qui ajoute rapidement tous les coups de roi, en tenant compte des contrôles et des roques
+bool Board::add_king_moves_fast(const bool player, const Pos king_pos, uint16_t controls_around_king, uint8_t* iterator, const bool kingside_castle_check, const bool queenside_castle_check) {
+
+	// Pièce
+	const uint8_t piece = _player ? w_king : b_king;
+	const uint8_t row = king_pos.row;
+	const uint8_t col = king_pos.col;
+
+	// Tous les coups de roi normaux
+	for (uint8_t m = 0; m < 8; m++) {
+
+		// Direction
+		const int8_t new_row = row + all_directions[m][0];
+		if (!is_in_fast(new_row, 0, 7))
+			continue;
+
+		const int8_t new_col = col + all_directions[m][1];
+		if (!is_in_fast(new_col, 0, 7))
+			continue;
+
+		// Si la case n'est pas contrôlée
+		if (!is_controlled_around_king(controls_around_king, all_directions[m][0], all_directions[m][1])) {
+			!is_ally(_array[new_row][new_col], player) && add_move(row, col, new_row, new_col, iterator, piece);
+		}
+	}
+
+	// Roques
+
+	// Petit roque
+	if (kingside_castle_check) {
+		if ((!is_controlled_around_king(controls_around_king, 0, 0) && !is_controlled_around_king(controls_around_king, 0, 1) && !is_controlled_around_king(controls_around_king, 0, 2)) && _array[row][col + 1] == none && _array[row][col + 2] == none)
+			add_move(row, col, row, col + 2, iterator, piece);
+	}
+
+	// Grand roque
+	if (queenside_castle_check) {
+		if ((!is_controlled_around_king(controls_around_king, 0, 0) && !is_controlled_around_king(controls_around_king, 0, -1) && !is_controlled_around_king(controls_around_king, 0, -2)) && _array[row][col - 1] == none && _array[row][col - 2] == none && _array[row][col - 3] == none)
+			add_move(row, col, row, col - 2, iterator, piece);
+	}
+
+	return true;
+}
+
+// Fonction qui ajoute rapidement les coups d'un pion, en tenant compte des clouages, et des échecs
+bool Board::add_pawn_moves_fast(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask) {
+
+	// Pièce
+	const uint8_t piece = player ? w_pawn : b_pawn;
+	const int8_t direction = player ? 1 : -1;
+	bool is_pinned = pin.pinned;
+	Direction pin_dir = pin.dir;
+
+	// Si le pion  est cloué horizontalement, il ne peut pas bouger
+	if (is_pinned && is_horizontal(pin_dir))
+		return true;
+
+	// Poussées
+	if (!is_pinned || is_vertical(pin_dir)) {
+
+		// Poussée de 1
+		uint8_t new_row = row + direction;
+
+		// S'il n'y a pas de pièce devant
+		if (_array[new_row][col] == none) {
+
+			// Si on est en échec, il faut que le coup interpose
+			(!in_check || is_in_interpose_mask(interposition_mask, new_row, col)) && add_move(row, col, new_row, col, iterator, piece);
+
+			// Poussée de 2
+			if (row == 1 + 5 * !player) {
+				new_row += direction;
+
+				if (_array[new_row][col] == none) {
+					(!in_check || is_in_interpose_mask(interposition_mask, new_row, col)) && add_move(row, col, new_row, col, iterator, piece);
+				}
+			}
+		}
+	}
+
+	// Prises
+
+	// Prise gauche
+	if (col > 0 && (!is_pinned || is_aligned(direction, -1, pin_dir))) {
+
+		// Nouvelle position
+		uint8_t new_row = row + direction;
+		uint8_t new_col = col - 1;
+
+		// S'il y a une pièce ennemie ou si c'est une prise en passant
+		if (is_enemy(_array[new_row][new_col], player) || (row == 3 + player && _en_passant_col == new_col)) {
+
+			// Si on est en échec, il faut que le coup interpose
+			(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(row, col, new_row, new_col, iterator, piece);
+		}
+	}
+
+	// Prise droite
+	if (col < 7 && (!is_pinned || is_aligned(direction, 1, pin_dir))) {
+
+		// Nouvelle position
+		uint8_t new_row = row + direction;
+		uint8_t new_col = col + 1;
+
+		// S'il y a une pièce ennemie ou si c'est une prise en passant
+		if (is_enemy(_array[new_row][new_col], player) || (row == 3 + player && _en_passant_col == new_col)) {
+
+			// Si on est en échec, il faut que le coup interpose
+			(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(row, col, new_row, new_col, iterator, piece);
+		}
+	}
+
+	return true;
+}
+
+// Fonction qui ajoute rapidement les coups d'un cavalier, en tenant compte des clouages, et des échecs
+bool Board::add_knight_moves_fast(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask) {
+
+	// Pièce
+	const uint8_t piece = player ? w_knight : b_knight;
+	bool is_pinned = pin.pinned;
+
+	// Si le cavalier est cloué, il ne peut pas bouger
+	if (is_pinned)
+		return true;
+
+	// Tous les coups possibles
+	for (uint8_t m = 0; m < 8; m++) {
+
+		// Direction
+		const uint8_t new_row = row + knight_directions[m][0];
+		if (!is_in_fast(new_row, 0, 7))
+			continue;
+
+		const uint8_t new_col = col + knight_directions[m][1];
+		if (!is_in_fast(new_col, 0, 7))
+			continue;
+
+		// Si la case n'est pas occupée par une pièce alliée
+		if (!is_ally(_array[new_row][new_col], player)) {
+			// Si on est en échec, il faut que le coup interpose
+			(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(row, col, new_row, new_col, iterator, piece);
+		}
+	}
+
+	return true;
+}
+
+// Fonction qui ajoute rapidement les coups d'une pièce rectiligne, en tenant compte des clouages, et des échecs
+bool Board::add_rect_moves_fast(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask) {
+
+	// Pièce
+	const uint8_t piece = player ? w_rook : b_rook;
+	bool is_pinned = pin.pinned;
+	Direction pin_dir = pin.dir;
+	const uint8_t ally_min = player ? w_pawn : b_pawn;
+	const uint8_t ally_max = player ? w_king : b_king;
+
+	// Itération sur les 4 directions
+	for (uint8_t m = 0; m < 4; m++) {
+
+		// Direction
+		const int8_t d_row = rect_directions[m][0];
+		const int8_t d_col = rect_directions[m][1];
+
+		// Si la pièce est clouée, on ne regarde que dans la direction du clouage
+		if (is_pinned && !is_aligned(d_row, d_col, pin_dir))
+			continue;
+
+		// Itération sur la direction
+		uint8_t current_row = row + d_row;
+		uint8_t current_col = col + d_col;
+
+		while (current_row >= 0 && current_row < 8 && current_col >= 0 && current_col < 8) {
+
+			// Pièce sur la case
+			const uint8_t p2 = _array[current_row][current_col];
+
+			// Si y'a une pièce alliée, on arrête
+			if (is_ally(p2, player))
+				break;
+
+			// Si on est en échec, il faut que le coup interpose
+			if (!in_check || is_in_interpose_mask(interposition_mask, current_row, current_col)) {
+				add_move(row, col, current_row, current_col, iterator, piece);
+			}
+
+			// Si y'a une pièce ennemie, on arrête
+			if (p2 != none)
+				break;
+
+			current_row += d_row;
+			current_col += d_col;
+		}
+	}
+
+	return true;
+}
+
+// Fonction qui ajoute rapidement les coups d'une pièce diagonale, en tenant compte des clouages, et des échecs
+bool Board::add_diag_moves_fast(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask) {
+
+	// Pièce
+	const uint8_t piece = player ? w_bishop : b_bishop;
+	bool is_pinned = pin.pinned;
+	Direction pin_dir = pin.dir;
+	const uint8_t ally_min = player ? w_pawn : b_pawn;
+	const uint8_t ally_max = player ? w_king : b_king;
+
+	// Itération sur les 4 directions
+	for (uint8_t m = 0; m < 4; m++) {
+
+		// Direction
+		const int8_t d_row = diag_directions[m][0];
+		const int8_t d_col = diag_directions[m][1];
+
+		// Si la pièce est clouée, on ne regarde que dans la direction du clouage
+		if (is_pinned && !is_aligned(d_row, d_col, pin_dir))
+			continue;
+
+		// Itération sur la direction
+		uint8_t current_row = row + d_row;
+		uint8_t current_col = col + d_col;
+
+		while (current_row >= 0 && current_row < 8 && current_col >= 0 && current_col < 8) {
+
+			// Pièce sur la case
+			const uint8_t p2 = _array[current_row][current_col];
+
+			// Si y'a une pièce alliée, on arrête
+			if (is_ally(p2, player))
+				break;
+
+			// Si on est en échec, il faut que le coup interpose
+			if (!in_check || is_in_interpose_mask(interposition_mask, current_row, current_col)) {
+				add_move(row, col, current_row, current_col, iterator, piece);
+			}
+
+			// Si y'a une pièce ennemie, on arrête
+			if (p2 != none)
+				break;
+
+			current_row += d_row;
+			current_col += d_col;
+		}
+	}
+
+	return true;
+}
+
 // Fonction qui renvoie la liste des coups légaux
 bool Board::get_moves_fast() {
 
@@ -372,53 +624,301 @@ bool Board::get_moves_fast() {
 	// - Réduire au maximum le nombre d'appels sur les cases du plateau (un peu couteux à force...)
 	// - Pour les roques, utiliser la map des contrôles pour savoir si c'est légal ou non
 	// - Utiliser la structure Piece pour accéder plus rapidement aux types de pièces et leur couleur
+	// - Intégration de la fonction get_square_attacker dans get_controls_around_king?
+	// - Re-utiliser des choses de la position précédente? (pins, contrôles, attaquants...?)
+	// - Parmi les cases controllées autour du roi, pas besoin de regarder celles qui sont occupées par une pièce alliée
+	// - Garder en mémoire où sont les pièces pour éviter d'itérer sur tout le plateau? (assez lourd sinon)
+	// - Itérer de bas en haut pour les blancs, et de haut en bas pour les noirs? et cut à la 16e pièce? pour éviter de regarder tout le plateau (à voir si c'est utile si on a la position des pièces alliées stockée)
 
 
 	// Cas tests:
-	// r1bq1b1r/pp4pp/2p1k3/3np3/1nBP4/2N2Q2/PPP2PPP/R1B2RK1 b - - 0 10 
+	// r1bq1b1r/pp4pp/2p1k3/3np3/1nBP4/2N2Q2/PPP2PPP/R1B2RK1 b - - 0 10
+	// 2Qr3k/pp2R1pr/2p2N2/4p3/4N3/1P2B3/P4PPP/6K1 b - - 2 31 : pin de la dame c8 sur la tour en d8
+	// rnbqkbnr/pp1ppppp/8/8/2p5/3P4/PPPKPPPP/RNBQ1BNR w kq - 0 3 : il oublie que prendre c4 est possible
 
 	// FIXME *** y'a t-il besoin d'update la position des rois?
 	// FIXME *** au moins la position du roi de l'adversaire peut être évitée
 	update_kings_pos();
 
+	// Joueur
+	const bool player = _player;
+
 	// Position du roi
-	Pos king_pos = _player ? _white_king_pos : _black_king_pos;
+	Pos king_pos = player ? _white_king_pos : _black_king_pos;
 
 	// Clouages de la position, pour le joueur à jouer
-	PinsMap pins = get_pins(_player);
+	PinsMap pins = get_pins(player);
 
 	// On regarde les attackants du roi (s'il y en a)
 	int n_attackers = 0;
 	PieceSquare attacker = get_square_attacker(king_pos, &n_attackers);
 
+	// On est en échec ssi y'a au moins un attaquant
+	bool in_check = n_attackers > 0;
+
+	// Si on est en échec, on ne regarde pas les roques
+	bool check_kingside = in_check ? false : (player ? _castling_rights.k_w : _castling_rights.k_b);
+	bool check_queenside = in_check ? false : (player ? _castling_rights.q_w : _castling_rights.q_b);
+
 	// Génération des contrôles autour du roi (et des pièces attaquant le roi)
-	// Les 8 cases autour du roi + les cases de déplacement du roi en cas de roque (si les droits sont là) -> BoolMap
-	BoolMap controls = get_controls_around_king(_player); // TODO *** à implémenter
+	uint16_t controls_around_king = get_controls_around_king(king_pos, player, check_kingside, check_queenside);
 
-	// S'il y a pas d'attaquandts -> pas en échec
-	if (n_attackers == 0) {
-		// Génération des coups de toutes les pièces, en tenant compte des clouages (et des cases de contrôle autour du roi)
-		// TODO *** à faire
-	}
-	else {
-		// Ajout des coups du roi, sur les cases vides et non-controllées
-		// TODO *** à faire
+	// Itérateur
+	uint8_t iterator = 0;
 
-		if (n_attackers == 1) {
-		// Génération des coups pour les autres pièces, qui doivent soit capturer l'attaquant, soit s'interposer
-		// TODO *** à faire
+	// Ajout des coups du roi, sur les cases vides et non-controllées
+	add_king_moves_fast(player, king_pos, controls_around_king, &iterator, check_kingside, check_queenside);
+
+	// Si on a un attaquant, on peut stocker la liste des cases entre le roi et l'attaquant (pour les interpositions)
+	uint64_t interposition_mask = in_check ? get_interpose_mask(king_pos, attacker) : 0;
+
+	// Si on est pas en double échec, on peut regarder les autres pièces
+	if (n_attackers < 2) {
+
+		// Itération sur les pièces
+		for (uint8_t row = 0; row < 8; row++) {
+			for (uint8_t col = 0; col < 8; col++) {
+
+				// Pièce
+				const uint8_t piece = _array[row][col];
+
+				// Le joueur doit correspondre à la couleur de la pièce
+				if (!is_ally(piece, player))
+					continue;
+
+				// Si c'est le roi, on skip (déjà fait)
+				if (is_king(piece))
+					continue;
+
+				// TODO *** Distinctions de cas à faire si on est en échec ou non
+				// Si échec, seulement les coups qui capturent l'attaquant ou s'interposent devant son attaque sur le roi
+				// Dans tous les cas, tenir compte des clouages
+
+				// Pion
+				if (is_pawn(piece)) {
+					add_pawn_moves_fast(player, row, col, &iterator, pins.pins[row][col], in_check, interposition_mask);
+					continue;
+				}
+
+				// Cavalier
+				if (is_knight(piece)) {
+					add_knight_moves_fast(player, row, col, &iterator, pins.pins[row][col], in_check, interposition_mask);
+					continue;
+				}
+
+				// Pièce rectiligne
+				if (is_rectilinear(piece)) {
+					add_rect_moves_fast(player, row, col, &iterator, pins.pins[row][col], in_check, interposition_mask);
+				}
+
+				// Pièce diagonale
+				if (is_diagonal(piece)) {
+					add_diag_moves_fast(player, row, col, &iterator, pins.pins[row][col], in_check, interposition_mask);
+				}
+			}
 		}
-
-		// Pas d'autre coup possible en cas de double échec
 	}
+
+	_got_moves = iterator;
 
 	return true;
 }
 
-// Fonction qui renvoie la map des contrôles autour du roi du joueur donné (et les cases pour le roque, si besoin)
-BoolMap Board::get_controls_around_king(bool player) const {
+
+// Affiche le map des contrôles autour du roi
+void print_controls(uint16_t controls) {
+	// On a une "grille" 3x5
+	cout << "Controls around the king:" << endl;
+
+	for (int row = 2; row >= 0; --row) {
+		for (int col = 0; col < 5; ++col) {
+			int bit_index = row * 5 + col;
+			bool controlled = (controls & (1 << bit_index)) != 0;
+			cout << (controlled ? "X " : ". ");
+		}
+		cout << endl;
+	}
+
+	cout << endl;
+}
+
+// Fonction pour générer la map de contrôles autour du roi
+uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingside_castle_check, bool queenside_castle_check) const {
 	// TODO *** à implémenter
-	BoolMap controls;
+
+	// FIXME *** pas besoin d'une boolmap toute entière
+	// Faire une distinction de cas entre s'il reste des roques ou non? car si pas de roque, 8 bits suffisent
+	// uint8_t + 2 bools en pointeur par argument?
+
+	// Logique:
+	// On itère sur les pièces adverses
+	// On cut rapidement les coups (et directions) qui ne vont pas sûr les cases concernées
+	// On remplit la map des contrôles
+
+	// Zone d'action (cases qu'on souhaite regarder)
+	const int min_row = max(0, king_pos.row - 1);
+	const int max_row = min(7, king_pos.row + 1);
+	const int min_col = max(0, king_pos.col - 1 - queenside_castle_check);
+	const int max_col = min(7, king_pos.col + 1 + kingside_castle_check);
+
+	// Map des contrôles autour du roi
+	uint16_t controls = 0;
+
+	// Roi que l'on regarde
+	uint8_t piece_king = player ? w_king : b_king;
+
+	// Direction des pions selon le joueur (pour zone de contrôle)
+	const int8_t pawn_dir = player ? -1 : 1;
+
+	// Itération sur les pièces adverses
+	for (uint8_t row = 0; row < 8; row++) {
+		for (uint8_t col = 0; col < 8; col++) {
+
+			// Pièce sur la case
+			const uint8_t piece = _array[row][col];
+
+			// Si case vide ou pièce alliée, on skip
+			if (piece == none || is_ally(piece, player))
+				continue;
+
+			// Pion
+			if (is_pawn(piece)) {
+
+				int8_t control_row = row + pawn_dir;
+
+				// Skip si le pion ne peut pas contrôler la zone
+				if (!is_in(control_row, min_row, max_row))
+					continue;
+
+				// Contrôle gauche
+				if (is_in(col - 1, min_col, max_col))
+					controls |= control_bit(control_row - king_pos.row, col - 1 - king_pos.col);
+
+				// Contrôle droit
+				if (is_in(col + 1, min_col, max_col))
+					controls |= control_bit(control_row - king_pos.row, col + 1 - king_pos.col);
+
+				continue;
+			}
+
+			// Cavalier
+			if (is_knight(piece)) {
+
+				// Itération sur les directions
+				for (int k = 0; k < 8; k++) {
+					
+					// FIXME *** possible d'optimiser en coupant certaines directions?
+
+					// Skip si le cavalier ne peut pas contrôler la zone
+					const int new_row = row + knight_directions[k][0];
+					if (!is_in(new_row, min_row, max_row))
+						continue;
+
+					const int new_col = col + knight_directions[k][1];
+					if (!is_in(new_col, min_col, max_col))
+						continue;
+
+					controls |= control_bit(new_row - king_pos.row, new_col - king_pos.col);
+				}
+
+				continue;
+			}
+
+			// Slider rectiligne
+			if (is_rectilinear(piece)) {
+
+				// Itération sur les directions
+				for (int d = 0; d < 4; d++) {
+
+					// Direction
+					const int d_row = rect_directions[d][0];
+					const int d_col = rect_directions[d][1];
+
+					int current_row = row + d_row;
+					int current_col = col + d_col;
+
+					// Skip si la direction ne peut pas contrôler la zone
+					if ((d_row == -1 && current_row < min_row) || (d_row == 1 && current_row > max_row) || (d_col == -1 && current_col < min_col) || (d_col == 1 && current_col > max_col))
+						continue;
+
+					// Avance dans la direction
+					while (current_row >= 0 && current_row < 8 && current_col >= 0 && current_col < 8) {
+
+						// Si on est dans la zone, on ajoute le contrôle
+						if (is_in(current_row, min_row, max_row) && is_in(current_col, min_col, max_col))
+							controls |= control_bit(current_row - king_pos.row, current_col - king_pos.col);
+
+						// Si on rencontre une pièce, on arrête (sauf si c'est le roi, on continue)
+						uint8_t p2 = _array[current_row][current_col];
+						if (p2 != none && p2 != piece_king)
+							break;
+
+						current_row += d_row;
+						current_col += d_col;
+					}
+				}
+			}
+
+			// Slider diagonal
+			if (is_diagonal(piece)) {
+
+				// Itération sur les directions
+				for (int d = 0; d < 4; d++) {
+
+					// Direction
+					const int d_row = diag_directions[d][0];
+					const int d_col = diag_directions[d][1];
+
+					int current_row = row + d_row;
+					int current_col = col + d_col;
+
+					// Skip si la direction ne peut pas contrôler la zone
+					if ((d_row == -1 && current_row < min_row) || (d_row == 1 && current_row > max_row) || (d_col == -1 && current_col < min_col) || (d_col == 1 && current_col > max_col))
+						continue;
+
+					// Avance dans la direction
+					while (current_row >= 0 && current_row < 8 && current_col >= 0 && current_col < 8) {
+
+						// Si on est dans la zone, on ajoute le contrôle
+						if (is_in(current_row, min_row, max_row) && is_in(current_col, min_col, max_col))
+							controls |= control_bit(current_row - king_pos.row, current_col - king_pos.col);
+
+						// Si on rencontre une pièce, on arrête (sauf si c'est le roi, on continue)
+						uint8_t p2 = _array[current_row][current_col];
+						if (p2 != none && p2 != piece_king)
+							break;
+
+						current_row += d_row;
+						current_col += d_col;
+					}
+				}
+
+				continue;
+			}
+
+			// Roi
+			if (is_king(piece)) {
+
+				// Itération sur les directions
+				for (int k = 0; k < 8; k++) {
+
+					// Skip si le roi ne peut pas contrôler la zone
+					const int new_row = row + all_directions[k][0];
+
+					if (!is_in(new_row, min_row, max_row))
+						continue;
+
+					const int new_col = col + all_directions[k][1];
+					if (!is_in(new_col, min_col, max_col))
+						continue;
+
+					controls |= control_bit(new_row - king_pos.row, new_col - king_pos.col);
+				}
+
+				continue;
+			}
+		}
+	}
 
 	return controls;
 }
@@ -493,6 +993,44 @@ PieceSquare Board::get_square_attacker(Pos square, int* n_attackers) const {
 	return attacker;
 }
 
+// Retourne un bitboard des cases d'interposition entre le roi et l'attaquant (incluant l'attaquant)
+uint64_t Board::get_interpose_mask(Pos king_pos, PieceSquare attacker) const {
+	uint64_t mask = 0ULL;
+	const uint8_t attacker_piece = attacker.piece;
+	const Pos attacker_pos = attacker.square;
+
+	// Si l'attaquant est un cavalier, seule sa case compte
+	if (is_knight(attacker_piece)) {
+		mask |= 1ULL << (attacker_pos.row * 8 + attacker_pos.col);
+		return mask;
+	}
+
+	// Déterminer la direction du slider
+	int d_row = (attacker_pos.row == king_pos.row) ? 0 : (attacker_pos.row > king_pos.row ? 1 : -1);
+	int d_col = (attacker_pos.col == king_pos.col) ? 0 : (attacker_pos.col > king_pos.col ? 1 : -1);
+
+	int r = king_pos.row + d_row;
+	int c = king_pos.col + d_col;
+
+	// Ajouter toutes les cases jusqu'à l'attaquant
+	while (r != attacker_pos.row || c != attacker_pos.col) {
+		mask |= 1ULL << (r * 8 + c);
+		r += d_row;
+		c += d_col;
+	}
+
+	// Ajouter la case de l'attaquant
+	mask |= 1ULL << (attacker_pos.row * 8 + attacker_pos.col);
+
+	return mask;
+}
+
+
+//// row et col doivent être dans [0,7]
+//inline static bool is_in_interpose_mask(uint64_t interpose_mask, uint8_t row, uint8_t col) {
+//	return (interpose_mask & (1ULL << (row * 8 + col))) != 0;
+//}
+
 // Fonction qui renvoie la liste des clouages pour le joueur donné
 PinsMap Board::get_pins(bool player) const {
 
@@ -541,7 +1079,6 @@ PinsMap Board::get_pins(bool player) const {
 					// Pas de clouage possible sur une pièce ennemie, on passe à la direction suivante
 					if (!is_ally(piece, player)) {
 						break;
-						
 					}
 
 					// La pièce est clouable
@@ -564,6 +1101,8 @@ PinsMap Board::get_pins(bool player) const {
 						pins.pins[candidate_pos.row][candidate_pos.col].pinned = true;
 						pins.pins[candidate_pos.row][candidate_pos.col].dir = { d_row, d_col };
 					}
+
+					break; // On arrête la recherche dans cette direction, qu'il y ait clouage ou non
 				}
 			}
 
@@ -8521,7 +9060,7 @@ int Board::count_nodes_at_depth(int depth, bool display) {
 }
 
 // Fonction qui renvoie si le nombre de noeuds calculés pour une position à une certaine profondeur correspond au nombre attendu
-bool Board::validate_nodes_count_at_depth(string fen, int depth, vector<int> expected_nodes, bool display) {
+bool Board::validate_nodes_count_at_depth(string fen, int depth, vector<int> expected_nodes, bool display, bool display_full) {
 
 	// Met en place la position
 	if (fen != "") {
@@ -8544,7 +9083,7 @@ bool Board::validate_nodes_count_at_depth(string fen, int depth, vector<int> exp
 		}
 
 		//int nodes = count_nodes_at_depth(d);
-		int nodes = count_nodes_at_depth(d, false);
+		int nodes = count_nodes_at_depth(d, display_full);
 		
 		if (expected_nodes.size() <= d) {
 			cout << "Missing expected nodes in nodes count validation" << endl;
@@ -10854,7 +11393,7 @@ void print_bitboard(uint64_t bitboard) {
 }
 
 // Fonction qui affiche tous les bitboards
-void Board::print_all_bitboards() const {
+//void Board::print_all_bitboards() const {
 //	for (int i = 0; i < 12; i++) {
 //		cout << piece_name(i + 1) << endl;
 //		print_bitboard(_bitboards[i]);
@@ -10868,4 +11407,4 @@ void Board::print_all_bitboards() const {
 //
 //	cout << "Both: " << endl;
 //	print_bitboard(_occupancies[2]);
-}
+//}
