@@ -96,265 +96,8 @@ bool Board::add_move(const uint8_t start_row, const uint8_t start_col, const uin
 	return true;
 }
 
-// Fonction qui ajoute les coups "pions" dans la liste de coups
-bool Board::add_pawn_moves(const uint8_t row, const uint8_t col, uint8_t* iterator) {
-
-	// Joueur avec les pièces blanches
-	if (_player) {
-		_array[row + 1][col] == none && add_move(row, col, row + 1, col, iterator, w_pawn) && row == 1 && _array[row + 2][col] == none && add_move(row, col, row + 2, col, iterator, w_pawn); // Poussées
-		col > 0 && (is_black(_array[row + 1][col - 1]) || (_en_passant_col == col - 1 && row == 4)) && add_move(row, col, row + 1, col - 1, iterator, w_pawn); // Prise (gauche)
-		col < 7 && (is_black(_array[row + 1][col + 1]) || (_en_passant_col == col + 1 && row == 4)) && add_move(row, col, row + 1, col + 1, iterator, w_pawn); // Prise (droite)
-	}
-
-	// Joueur avec les pièces noires
-	else {
-		_array[row - 1][col] == none && add_move(row, col, row - 1, col, iterator, b_pawn) && row == 6 && _array[row - 2][col] == none && add_move(row, col, row - 2, col, iterator, b_pawn); // Poussées
-		col > 0 && (is_white(_array[row - 1][col - 1]) || (_en_passant_col == col - 1 && row == 3)) && add_move(row, col, row - 1, col - 1, iterator, b_pawn); // Prise (gauche)
-		col < 7 && (is_white(_array[row - 1][col + 1]) || (_en_passant_col == col + 1 && row == 3)) && add_move(row, col, row - 1, col + 1, iterator, b_pawn); // Prise (droite)
-	}
-
-	return true;
-}
-
-// Fonction qui ajoute les coups "cavaliers" dans la liste de coups
-bool Board::add_knight_moves(const uint8_t row, const uint8_t col, uint8_t* iterator, const uint8_t piece) {
-
-	for (uint8_t m = 0; m < 8; m++) {
-		const uint8_t new_row = row + knight_directions[m][0];
-		if (!is_in_fast(new_row, 0, 7))
-			continue;
-
-		const uint8_t new_col = col + knight_directions[m][1];
-		if (!is_in_fast(new_col, 0, 7))
-			continue;
-
-		((_player && !is_white(_array[new_row][new_col])) || (!_player && !is_black(_array[new_row][new_col]))) && add_move(row, col, new_row, new_col, iterator, piece);
-	}
-
-	return true;
-}
-
-// Fonction qui ajoute les coups diagonaux dans la liste de coups
-bool Board::add_diag_moves(const uint8_t row, const uint8_t col, uint8_t* iterator, const uint8_t piece) {
-
-	const uint8_t ally_min = _player ? w_pawn : b_pawn;
-	const uint8_t ally_max = _player ? w_king : b_king;
-
-	for (uint8_t m = 0; m < 4; m++) {
-
-		// Direction
-		const uint8_t d_row = diag_directions[m][0];
-		const uint8_t d_col = diag_directions[m][1];
-
-		uint8_t current_row = row + d_row;
-		uint8_t current_col = col + d_col;
-
-		while (current_row >= 0 && current_row < 8 && current_col >= 0 && current_col < 8) {
-			const uint8_t p2 = _array[current_row][current_col];
-
-			// Si y'a une pièce alliée, on arrête
-			if (is_in_fast(p2, ally_min, ally_max))
-				break;
-
-			// Coup possible
-			add_move(row, col, current_row, current_col, iterator, piece);
-
-			// Si y'a une pièce ennemie, on arrête
-			if (p2 != none)
-				break;
-
-			current_row += d_row;
-			current_col += d_col;
-		}
-	}
-
-	return true;
-}
-
-// Fonction qui ajoute les coups horizontaux et verticaux dans la liste de coups
-bool Board::add_rect_moves(const uint8_t row, const uint8_t col, uint8_t* iterator, const uint8_t piece) {
-
-	const uint8_t ally_min = _player ? w_pawn : b_pawn;
-	const uint8_t ally_max = _player ? w_king : b_king;
-
-	for (uint8_t m = 0; m < 4; m++) {
-
-		// Direction
-		const uint8_t d_row = rect_directions[m][0];
-		const uint8_t d_col = rect_directions[m][1];
-
-		uint8_t current_row = row + d_row;
-		uint8_t current_col = col + d_col;
-
-		while (current_row >= 0 && current_row < 8 && current_col >= 0 && current_col < 8) {
-			const uint8_t p2 = _array[current_row][current_col];
-
-			// Si y'a une pièce alliée, on arrête
-			if (is_in_fast(p2, ally_min, ally_max))
-				break;
-
-			// Coup possible
-			add_move(row, col, current_row, current_col, iterator, piece);
-
-			// Si y'a une pièce ennemie, on arrête
-			if (p2 != none)
-				break;
-
-			current_row += d_row;
-			current_col += d_col;
-		}
-	}
-
-	return true;
-}
-
-// Fonction qui ajoute les coups "roi" dans la liste de coups
-bool Board::add_king_moves(const uint8_t row, const uint8_t col, uint8_t* iterator, const uint8_t piece) {
-
-	const uint8_t ally_min = _player ? w_pawn : b_pawn;
-	const uint8_t ally_max = _player ? w_king : b_king;
-
-	for (uint8_t m = 0; m < 8; m++) {
-
-		// Direction
-		const uint8_t new_row = row + all_directions[m][0];
-		if (!is_in_fast(new_row, 0, 7))
-			continue;
-
-		const uint8_t new_col = col + all_directions[m][1];
-		if (!is_in_fast(new_col, 0, 7))
-			continue;
-
-		((_player && !is_white(_array[new_row][new_col])) || (!_player && !is_black(_array[new_row][new_col]))) && add_move(row, col, new_row, new_col, iterator, piece);
-	}
-
-	return true;
-}
-
-// Calcule la liste des coups possibles. pseudo ici fait référence au droit de roquer en passant par une position illégale.
-bool Board::get_moves(const bool forbide_check) {
-	get_moves_fast();
-	return true;
-
-	// Itérateur
-	uint8_t iterator = 0;
-
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-
-			// Pièce
-			const uint8_t piece = _array[row][col];
-
-			// Si on dépasse le nombre de coups que l'on pensait possible dans une position
-			if (iterator >= max_moves) {
-				cout << "Too many moves in the position : " << to_fen() << " : moves > " << (int)iterator << endl;
-				return false;
-			}
-
-			// Le joueur doit correspondre à la couleur de la pièce
-			if ((_player && !is_white(piece) || (!_player && !is_black(piece))))
-				continue;
-
-			switch (piece) {
-				case none:
-					break;
-				case w_pawn:
-					add_pawn_moves(row, col, &iterator);
-					break;
-				case w_knight:
-					add_knight_moves(row, col, &iterator, w_knight);
-					break;
-				case w_bishop:
-					add_diag_moves(row, col, &iterator, w_bishop);
-					break;
-				case w_rook:
-					add_rect_moves(row, col, &iterator, w_rook);
-					break;
-				case w_queen:
-					add_diag_moves(row, col, &iterator, w_queen) && add_rect_moves(row, col, &iterator, w_queen);
-					break;
-				case w_king:
-					add_king_moves(row, col, &iterator, w_king);
-
-					// Roques (TODO *** optimisable)
-					// Grand
-					if (_castling_rights.q_w && _array[row][col - 1] == none && _array[row][col - 2] == none && _array[row][col - 3] == none && (!is_controlled(row, col, true) && !is_controlled(row, col - 1, true) && !is_controlled(row, col - 2, true)))
-						add_move(row, col, row, col - 2, &iterator, w_king);
-					// Petit
-					if (_castling_rights.k_w && _array[row][col + 1] == none && _array[row][col + 2] == none && (!is_controlled(row, col, true) && !is_controlled(row, col + 1, true) && !is_controlled(row, col + 2, true)))
-						add_move(row, col, row, col + 2, &iterator, w_king);
-					break;
-				case b_pawn: // Pion noir
-					add_pawn_moves(row, col, &iterator);
-					break;
-				case b_knight: // Cavalier noir
-					add_knight_moves(row, col, &iterator, b_knight);
-					break;
-				case b_bishop: // Fou noir
-					add_diag_moves(row, col, &iterator, b_bishop);
-					break;
-				case b_rook: // Tour noire
-					add_rect_moves(row, col, &iterator, b_rook);
-					break;
-				case b_queen: // Dame noire
-					add_diag_moves(row, col, &iterator, b_queen) && add_rect_moves(row, col, &iterator, b_queen);
-					break;
-				case b_king: // Roi noir
-					add_king_moves(row, col, &iterator, b_king);
-					// Roques
-					// Grand
-					if (_castling_rights.q_b && _array[row][col - 1] == none && _array[row][col - 2] == none && _array[row][col - 3] == none && (!is_controlled(row, col, false) && !is_controlled(row, col - 1, false) && !is_controlled(row, col - 2, false)))
-						add_move(row, col, row, col - 2, &iterator, b_king);
-					// Petit
-					if (_castling_rights.k_b && _array[row][col + 1] == none && _array[row][col + 2] == none && (!is_controlled(row, col, false) && !is_controlled(row, col + 1, false) && !is_controlled(row, col + 2, false)))
-						add_move(row, col, row, col + 2, &iterator, b_king);
-					break;
-			}
-		}
-	}
-
-	_got_moves = iterator;
-
-	// Vérification échecs (TODO *** optimisable)
-	if (forbide_check) {
-		uint8_t n_moves = 0;
-		Board b;
-		//b.minimal_copy_data(*this);
-
-		//bool k_castle = _player ? _castling_rights.k_w : _castling_rights.k_b;
-		//bool q_castle = _player ? _castling_rights.q_w : _castling_rights.q_b;
-
-		for (uint8_t i = 0; i < _got_moves; i++) {
-			//b.copy_data(*this);
-			b.minimal_copy_data(*this);
-			// TODO *** utiliser un undo ici plutôt
-
-			Move move = _moves[i];
-
-			b.make_move(move);
-			b._player = !b._player;
-
-			if (!b.in_check(false)) {
-				_moves[n_moves] = move;  // On écrase les coups invalides
-				n_moves++;
-			}
-
-			//b._player = !b._player;
-			//uint8_t p1 = _array[move.start_row][move.start_col];
-			//uint8_t p2 = _array[move.end_row][move.end_col];
-
-			//b.unmake_move(move, p1, p2, _en_passant_col, _half_moves_count, k_castle, q_castle,
-			//	is_king(p1) && abs(move.end_col - move.start_col) == 2, is_pawn(p1) && (move.end_row == 0 || move.end_row == 7), is_pawn(p1) && move.start_col != move.end_col && p2 == none);
-		}
-
-		_got_moves = n_moves;
-	}
-
-	return true;
-}
-
-// Fonction qui ajoute rapidement tous les coups de roi, en tenant compte des contrôles et des roques
-bool Board::add_king_moves_fast(const bool player, const Pos king_pos, uint16_t controls_around_king, uint8_t* iterator, const bool kingside_castle_check, const bool queenside_castle_check) {
+// Fonction qui ajoute tous les coups de roi, en tenant compte des contrôles et des roques
+bool Board::add_king_moves(const bool player, const Pos king_pos, uint16_t controls_around_king, uint8_t* iterator, const bool kingside_castle_check, const bool queenside_castle_check) {
 
 	// Pièce
 	const uint8_t piece = _player ? w_king : b_king;
@@ -396,8 +139,8 @@ bool Board::add_king_moves_fast(const bool player, const Pos king_pos, uint16_t 
 	return true;
 }
 
-// Fonction qui ajoute rapidement les coups d'un pion, en tenant compte des clouages, et des échecs
-bool Board::add_pawn_moves_fast(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask) {
+// Fonction qui ajoute les coups d'un pion, en tenant compte des clouages, et des échecs
+bool Board::add_pawn_moves(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask) {
 
 	// Pièce
 	const uint8_t piece = player ? w_pawn : b_pawn;
@@ -467,8 +210,8 @@ bool Board::add_pawn_moves_fast(const bool player, uint8_t row, uint8_t col, uin
 	return true;
 }
 
-// Fonction qui ajoute rapidement les coups d'un cavalier, en tenant compte des clouages, et des échecs
-bool Board::add_knight_moves_fast(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask) {
+// Fonction qui ajoute les coups d'un cavalier, en tenant compte des clouages, et des échecs
+bool Board::add_knight_moves(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask) {
 
 	// Pièce
 	const uint8_t piece = player ? w_knight : b_knight;
@@ -500,8 +243,8 @@ bool Board::add_knight_moves_fast(const bool player, uint8_t row, uint8_t col, u
 	return true;
 }
 
-// Fonction qui ajoute rapidement les coups d'une pièce rectiligne, en tenant compte des clouages, et des échecs
-bool Board::add_rect_moves_fast(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask) {
+// Fonction qui ajoute les coups d'une pièce rectiligne, en tenant compte des clouages, et des échecs
+bool Board::add_rect_moves(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask) {
 
 	// Pièce
 	const uint8_t piece = player ? w_rook : b_rook;
@@ -551,8 +294,8 @@ bool Board::add_rect_moves_fast(const bool player, uint8_t row, uint8_t col, uin
 	return true;
 }
 
-// Fonction qui ajoute rapidement les coups d'une pièce diagonale, en tenant compte des clouages, et des échecs
-bool Board::add_diag_moves_fast(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask) {
+// Fonction qui ajoute les coups d'une pièce diagonale, en tenant compte des clouages, et des échecs
+bool Board::add_diag_moves(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask) {
 
 	// Pièce
 	const uint8_t piece = player ? w_bishop : b_bishop;
@@ -603,7 +346,7 @@ bool Board::add_diag_moves_fast(const bool player, uint8_t row, uint8_t col, uin
 }
 
 // Fonction qui renvoie la liste des coups légaux
-bool Board::get_moves_fast() {
+bool Board::get_moves() {
 
 	// Logique
 	// 1: évaluation des clouages -> renvoie la liste des directions pour chaque clouage (en faire une structure?)
@@ -667,7 +410,7 @@ bool Board::get_moves_fast() {
 	uint8_t iterator = 0;
 
 	// Ajout des coups du roi, sur les cases vides et non-controllées
-	add_king_moves_fast(player, king_pos, controls_around_king, &iterator, check_kingside, check_queenside);
+	add_king_moves(player, king_pos, controls_around_king, &iterator, check_kingside, check_queenside);
 
 	// Si on a un attaquant, on peut stocker la liste des cases entre le roi et l'attaquant (pour les interpositions)
 	uint64_t interposition_mask = in_check ? get_interpose_mask(king_pos, attacker) : 0;
@@ -690,30 +433,26 @@ bool Board::get_moves_fast() {
 				if (is_king(piece))
 					continue;
 
-				// TODO *** Distinctions de cas à faire si on est en échec ou non
-				// Si échec, seulement les coups qui capturent l'attaquant ou s'interposent devant son attaque sur le roi
-				// Dans tous les cas, tenir compte des clouages
-
 				// Pion
 				if (is_pawn(piece)) {
-					add_pawn_moves_fast(player, row, col, &iterator, pins.pins[row][col], in_check, interposition_mask);
+					add_pawn_moves(player, row, col, &iterator, pins.pins[row][col], in_check, interposition_mask);
 					continue;
 				}
 
 				// Cavalier
 				if (is_knight(piece)) {
-					add_knight_moves_fast(player, row, col, &iterator, pins.pins[row][col], in_check, interposition_mask);
+					add_knight_moves(player, row, col, &iterator, pins.pins[row][col], in_check, interposition_mask);
 					continue;
 				}
 
 				// Pièce rectiligne
 				if (is_rectilinear(piece)) {
-					add_rect_moves_fast(player, row, col, &iterator, pins.pins[row][col], in_check, interposition_mask);
+					add_rect_moves(player, row, col, &iterator, pins.pins[row][col], in_check, interposition_mask);
 				}
 
 				// Pièce diagonale
 				if (is_diagonal(piece)) {
-					add_diag_moves_fast(player, row, col, &iterator, pins.pins[row][col], in_check, interposition_mask);
+					add_diag_moves(player, row, col, &iterator, pins.pins[row][col], in_check, interposition_mask);
 				}
 			}
 		}
@@ -744,11 +483,6 @@ void print_controls(uint16_t controls) {
 
 // Fonction pour générer la map de contrôles autour du roi
 uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingside_castle_check, bool queenside_castle_check) const {
-	// TODO *** à implémenter
-
-	// FIXME *** pas besoin d'une boolmap toute entière
-	// Faire une distinction de cas entre s'il reste des roques ou non? car si pas de roque, 8 bits suffisent
-	// uint8_t + 2 bools en pointeur par argument?
 
 	// Logique:
 	// On itère sur les pièces adverses
@@ -1287,9 +1021,9 @@ bool Board::in_check(bool update_king_pos)
 }
 
 // Fonction qui affiche la liste des coups donnée en argument
-void Board::display_moves(const bool pseudo) {
+void Board::display_moves() {
 	if (_got_moves == -1)
-		get_moves(!pseudo);
+		get_moves();
 
 	if (_got_moves == 0) {
 		cout << "no legal moves" << endl;
@@ -3332,7 +3066,7 @@ int Board::get_king_safety(float display_factor) {
 
 // Fonction qui dit si une pièce est capturable par l'ennemi (pour les affichages GUI)
 bool Board::is_capturable(const int row, const int col) {
-	_got_moves == -1 && get_moves(true);
+	_got_moves == -1 && get_moves();
 
 	// FIXME *** manque l'en-passant
 
@@ -5449,7 +5183,7 @@ int Board::get_checks_value(SquareMap white_controls, SquareMap black_controls, 
 
 			// TODO : à remplacer par 'est-ce que le coup attaque le roi'?
 			if (b_check.in_check()) {
-				b_check.get_moves(true); // FIMXE: BOF
+				b_check.get_moves(); // FIMXE: BOF
 
 				// Nombre d'échapatoires pour le roi
 				int king_escapes = 0;
@@ -5527,7 +5261,7 @@ int Board::get_checks_value(SquareMap white_controls, SquareMap black_controls, 
 	}
 
 	int nodes = 0;
-	get_moves(true);
+	get_moves();
 
 	for (uint8_t i = 0; i < _got_moves; i++) {
 		Move& m = _moves[i];
@@ -9033,7 +8767,7 @@ int Board::count_nodes_at_depth(int depth, bool display) {
 	//	cout << "toto" << endl;
 	//}
 
-	get_moves(true);
+	get_moves();
 	int nodes_count = 0;
 
 	for (int m = 0; m < _got_moves; m++) {
