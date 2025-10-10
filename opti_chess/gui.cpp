@@ -897,7 +897,7 @@ bool GUI::play_move_keep(Move move)
 
 	if (_root_exploration_node->children_count() == 0) {
 		// On joue simplement le coup
-		_board.make_move(move, false, false, true);
+		_board.make_move(move, false, true);
 
 		// On met à jour le plateau de recherche
 		//_root_exploration_node->_board = &_board;
@@ -941,7 +941,7 @@ bool GUI::play_move_keep(Move move)
 			_root_exploration_node->reset();
 
 			// On joue simplement le coup
-			_board.make_move(move, false, false, true);
+			_board.make_move(move, false, true);
 
 			// On met à jour le plateau de recherche
 			//_root_exploration_node->_board = &_board;

@@ -25,7 +25,7 @@ int Match::play(string initial_position, bool display) const {
 		if (display)
 			cout << " " << board.move_label(move);
 
-		board.make_move(move, false, false, true);
+		board.make_move(move, false, true);
 
 	}
 

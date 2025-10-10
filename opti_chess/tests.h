@@ -60,7 +60,7 @@ public:
 	// Fonctions
 
 	// Perft test
-	bool perft_test(string fen, int depth, vector<int> expected_nodes);
+	bool perft_test(string fen, int depth, vector<long long int> expected_nodes);
 
 	// Renvoie une valeur entre 0 et 1, 1 étant la position évaluée correctement
 	double evaluation_test(string fen, int expected_evaluation, pair<int, int> evaluation_range, double expected_score, pair<double, double> score_range);
