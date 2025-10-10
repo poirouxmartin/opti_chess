@@ -581,6 +581,8 @@ public:
 	// Fonction qui joue un coup
 	void make_move(Move, const bool pgn = false, const bool new_board = false, const bool add_to_history = false);
 
+	inline void make_move_fast(const Move move);
+
 	// Fonction qui annule un coup
 	void unmake_move(Move move, uint8_t p1, uint8_t p2, int en_passant_col, int prev_half_count, bool k_castle, bool q_castle, bool is_castle, bool is_promotion, bool is_en_passant);
 

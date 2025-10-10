@@ -97,6 +97,9 @@ string int_to_round_string(int);
 string long_int_to_round_string(unsigned long long);
 
 // Fonction qui transforme un clock en string (pour les timestamps dans les PGN)
+string clock_to_timestamp(const clock_t t, bool full);
+
+// Fonction qui transforme un clock en string (pour les timestamps dans les PGN)
 string clock_to_string(clock_t, bool full = false);
 
 // Fonction qui arrondit un flottant en entier

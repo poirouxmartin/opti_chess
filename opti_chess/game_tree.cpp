@@ -127,7 +127,7 @@ void GameTree::add_child(Board board, Move move, string move_label) {
 }
 
 // Ajout d'un fils à partir d'un coup
-void GameTree::add_child(Move move) {
+void GameTree::add_child(Move move, string additional_label) {
 
 	// Vérifie que ce n'est pas un coup nul
 	if (move.is_null_move()) {
@@ -141,7 +141,7 @@ void GameTree::add_child(Move move) {
 			return;
 
 	Board board = _current_node->_board;
-	string move_label = board.move_label(move);
+	string move_label = board.move_label(move) + (additional_label.empty() ? "" : " " + additional_label);
 	board.make_move(move, false, false, true);
 
 	_current_node->add_child(GameTreeNode(board, move, move_label, *_current_node));

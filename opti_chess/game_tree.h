@@ -82,7 +82,7 @@ class GameTree {
 	void add_child(Board, Move, string);
 
 	// Ajout d'un fils à partir d'un coup
-	void add_child(Move move);
+	void add_child(Move move, string additionnal_label);
 
 	// Affichage de l'arbre
 	string tree_display();
