@@ -78,26 +78,26 @@ void Board::copy_data(const Board& b, bool full, bool copy_history) {
 }
 
 // Fonction qui ajoute un coup dans une liste de coups
-bool Board::add_move(const uint8_t start_row, const uint8_t start_col, const uint8_t end_row, const uint8_t end_col, uint8_t* iterator, const uint8_t piece)
+inline bool Board::add_move(const uint8_t start_row, const uint8_t start_col, const uint8_t end_row, const uint8_t end_col, uint8_t &iterator, const uint8_t piece) noexcept
 {
 	// Si on dépasse le nombre de coups que l'on pensait possible dans une position
-	if (*iterator >= max_moves) {
-		cout << "Error: too many moves generated (" << (int)(*iterator) << ")!" << endl;
-		return false;
-	}
+	//if (*iterator >= max_moves) {
+	//	cout << "Error: too many moves generated (" << (int)(*iterator) << ")!" << endl;
+	//	return false;
+	//}
 
-	const Move m(start_row, start_col, end_row, end_col); // Si on utilise pas les flag, autant éviter les calculs inutiles
+	//const Move m(start_row, start_col, end_row, end_col); // Si on utilise pas les flag, autant éviter les calculs inutiles
 	//const Move m(i, j, k, l, _array[k][l] != 0, (piece == 1 && i == 7) || (piece == 7 && i == 1));
-	_moves[*iterator] = m;
+	_moves[iterator] = Move(start_row, start_col, end_row, end_col);
 
 	// Incrémentation du nombre de coups
-	(*iterator)++;
+	iterator++;
 
 	return true;
 }
 
 // Fonction qui ajoute tous les coups de roi, en tenant compte des contrôles et des roques
-bool Board::add_king_moves(const bool player, const Pos king_pos, uint16_t controls_around_king, uint8_t* iterator, const bool kingside_castle_check, const bool queenside_castle_check) {
+inline bool Board::add_king_moves(const bool player, const Pos king_pos, const uint16_t controls_around_king, uint8_t& iterator, const bool kingside_castle_check, const bool queenside_castle_check) noexcept {
 
 	// Pièce
 	const uint8_t piece = _player ? w_king : b_king;
@@ -140,20 +140,18 @@ bool Board::add_king_moves(const bool player, const Pos king_pos, uint16_t contr
 }
 
 // Fonction qui ajoute les coups d'un pion, en tenant compte des clouages, et des échecs
-bool Board::add_pawn_moves(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask) {
+inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const uint8_t col, uint8_t& iterator, const PinnedSquare& pin, const bool in_check, const uint64_t& interposition_mask) noexcept {
 
 	// Pièce
 	const uint8_t piece = player ? w_pawn : b_pawn;
 	const int8_t direction = player ? 1 : -1;
-	bool is_pinned = pin.pinned;
-	Direction pin_dir = pin.dir;
 
-	// Si le pion  est cloué horizontalement, il ne peut pas bouger
-	if (is_pinned && is_horizontal(pin_dir))
+	// Si le pion est cloué horizontalement, il ne peut pas bouger
+	if (pin.pinned && pin.dir.d_row == 0 && pin.dir.d_col != 0)
 		return true;
 
-	// Poussées
-	if (!is_pinned || is_vertical(pin_dir)) {
+	// Poussées, si le pion n'est pas cloué, ou s'il est cloué verticalement
+	if (!pin.pinned || (pin.dir.d_row != 0 && pin.dir.d_col == 0)) {
 
 		// Poussée de 1
 		uint8_t new_row = row + direction;
@@ -178,7 +176,7 @@ bool Board::add_pawn_moves(const bool player, uint8_t row, uint8_t col, uint8_t*
 	// Prises
 
 	// Prise gauche
-	if (col > 0 && (!is_pinned || is_aligned(direction, -1, pin_dir))) {
+	if (col > 0 && (!pin.pinned || is_aligned(direction, -1, pin.dir))) {
 
 		// Nouvelle position
 		uint8_t new_row = row + direction;
@@ -193,7 +191,7 @@ bool Board::add_pawn_moves(const bool player, uint8_t row, uint8_t col, uint8_t*
 	}
 
 	// Prise droite
-	if (col < 7 && (!is_pinned || is_aligned(direction, 1, pin_dir))) {
+	if (col < 7 && (!pin.pinned || is_aligned(direction, 1, pin.dir))) {
 
 		// Nouvelle position
 		uint8_t new_row = row + direction;
@@ -211,7 +209,7 @@ bool Board::add_pawn_moves(const bool player, uint8_t row, uint8_t col, uint8_t*
 }
 
 // Fonction qui ajoute les coups d'un cavalier, en tenant compte des clouages, et des échecs
-bool Board::add_knight_moves(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask) {
+inline bool Board::add_knight_moves(const bool player, const uint8_t row, const uint8_t col, uint8_t& iterator, const PinnedSquare& pin, const bool in_check, const uint64_t& interposition_mask) noexcept {
 
 	// Pièce
 	const uint8_t piece = player ? w_knight : b_knight;
@@ -244,7 +242,7 @@ bool Board::add_knight_moves(const bool player, uint8_t row, uint8_t col, uint8_
 }
 
 // Fonction qui ajoute les coups d'une pièce rectiligne, en tenant compte des clouages, et des échecs
-bool Board::add_rect_moves(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask) {
+inline bool Board::add_rect_moves(const bool player, const uint8_t row, const uint8_t col, uint8_t& iterator, const PinnedSquare& pin, const bool in_check, const uint64_t& interposition_mask) noexcept {
 
 	// Pièce
 	const uint8_t piece = player ? w_rook : b_rook;
@@ -295,7 +293,7 @@ bool Board::add_rect_moves(const bool player, uint8_t row, uint8_t col, uint8_t*
 }
 
 // Fonction qui ajoute les coups d'une pièce diagonale, en tenant compte des clouages, et des échecs
-bool Board::add_diag_moves(const bool player, uint8_t row, uint8_t col, uint8_t* iterator, PinnedSquare pin, bool in_check, uint64_t interposition_mask) {
+inline bool Board::add_diag_moves(const bool player, const uint8_t row, const uint8_t col, uint8_t& iterator, const PinnedSquare& pin, const bool in_check, const uint64_t& interposition_mask) noexcept {
 
 	// Pièce
 	const uint8_t piece = player ? w_bishop : b_bishop;
@@ -406,7 +404,7 @@ bool Board::get_moves() {
 	uint8_t iterator = 0;
 
 	// Ajout des coups du roi, sur les cases vides et non-controllées
-	add_king_moves(player, king_pos, controls_around_king, &iterator, check_kingside, check_queenside);
+	add_king_moves(player, king_pos, controls_around_king, iterator, check_kingside, check_queenside);
 
 	// Si on a un attaquant, on peut stocker la liste des cases entre le roi et l'attaquant (pour les interpositions)
 	uint64_t interposition_mask = in_check ? get_interpose_mask(king_pos, attacker) : 0;
@@ -431,24 +429,24 @@ bool Board::get_moves() {
 
 				// Pion
 				if (is_pawn(piece)) {
-					add_pawn_moves(player, row, col, &iterator, pins.pins[row][col], in_check, interposition_mask);
+					add_pawn_moves(player, row, col, iterator, pins.pins[row][col], in_check, interposition_mask);
 					continue;
 				}
 
 				// Cavalier
 				if (is_knight(piece)) {
-					add_knight_moves(player, row, col, &iterator, pins.pins[row][col], in_check, interposition_mask);
+					add_knight_moves(player, row, col, iterator, pins.pins[row][col], in_check, interposition_mask);
 					continue;
 				}
 
 				// Pièce rectiligne
 				if (is_rectilinear(piece)) {
-					add_rect_moves(player, row, col, &iterator, pins.pins[row][col], in_check, interposition_mask);
+					add_rect_moves(player, row, col, iterator, pins.pins[row][col], in_check, interposition_mask);
 				}
 
 				// Pièce diagonale
 				if (is_diagonal(piece)) {
-					add_diag_moves(player, row, col, &iterator, pins.pins[row][col], in_check, interposition_mask);
+					add_diag_moves(player, row, col, iterator, pins.pins[row][col], in_check, interposition_mask);
 				}
 			}
 		}
@@ -478,7 +476,7 @@ void print_controls(uint16_t controls) {
 }
 
 // Fonction pour générer la map de contrôles autour du roi
-uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingside_castle_check, bool queenside_castle_check) const {
+uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingside_castle_check, bool queenside_castle_check) const noexcept {
 
 	// Logique:
 	// On itère sur les pièces adverses
@@ -508,7 +506,7 @@ uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingsid
 			const uint8_t piece = _array[row][col];
 
 			// Si case vide ou pièce alliée, on skip
-			if (piece == none || is_ally(piece, player))
+			if (piece == none || (piece <= w_king) == player)
 				continue;
 
 			// Pion
@@ -654,7 +652,7 @@ uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingsid
 }
 
 // Fonction qui renvoie une des pièces qui la case (si plus d'une)
-PieceSquare Board::get_square_attacker(Pos square, int* n_attackers) const {
+PieceSquare Board::get_square_attacker(Pos square, int* n_attackers) const noexcept {
 	const int square_row = square.row;
 	const int square_col = square.col;
 
@@ -724,7 +722,7 @@ PieceSquare Board::get_square_attacker(Pos square, int* n_attackers) const {
 }
 
 // Retourne un bitboard des cases d'interposition entre le roi et l'attaquant (incluant l'attaquant)
-uint64_t Board::get_interpose_mask(Pos king_pos, PieceSquare attacker) const {
+uint64_t Board::get_interpose_mask(Pos king_pos, const PieceSquare &attacker) const noexcept {
 	uint64_t mask = 0ULL;
 	const uint8_t attacker_piece = attacker.piece;
 	const Pos attacker_pos = attacker.square;
@@ -762,7 +760,7 @@ uint64_t Board::get_interpose_mask(Pos king_pos, PieceSquare attacker) const {
 //}
 
 // Fonction qui renvoie la liste des clouages pour le joueur donné
-PinsMap Board::get_pins(bool player) const {
+PinsMap Board::get_pins(bool player) const noexcept {
 
 	// Liste des pièces clouée, par direction (il peut y en avoir max 8: 2 par direction, de part et d'autre du roi)
 	PinsMap pins;
@@ -846,7 +844,7 @@ PinsMap Board::get_pins(bool player) const {
 }
 
 // Fonction qui dit s'il y'a échec
-bool Board::in_check(bool update_king_pos)
+bool Board::in_check(bool update_king_pos) noexcept
 {
 	if (update_king_pos)
 		update_kings_pos();
@@ -985,7 +983,8 @@ bool Board::in_check(bool update_king_pos)
 				if (is_diagonal(piece) || (is_king(piece) && (abs(king_row - row) == 1)))
 					return true;
 
-				// Special case for pawns
+				// Pions
+
 				if (piece == b_pawn && abs(king_col - col) == 1)
 					return true;
 			}
@@ -1004,7 +1003,7 @@ bool Board::in_check(bool update_king_pos)
 				if (is_diagonal(piece) || (is_king(piece) && (abs(king_row - row) == 1)))
 					return true;
 
-				// Special case for pawns
+				// Pions
 				if (piece == b_pawn && abs(king_col - col) == 1)
 					return true;
 			}
@@ -1035,7 +1034,7 @@ void Board::display_moves() {
 }
 
 // Fonction qui joue un coup
-void Board::make_move(Move move, const bool pgn, const bool new_board, const bool add_to_history)
+inline void Board::make_move(const Move& move, const bool pgn, const bool add_to_history) noexcept
 {
 	// TODO *** à voir si ça rend plus rapide ou non
 	const uint8_t row1 = move.start_row;
@@ -1044,7 +1043,6 @@ void Board::make_move(Move move, const bool pgn, const bool new_board, const boo
 	const uint8_t col2 = move.end_col;
 	const uint8_t p = _array[row1][col1];
 	const uint8_t p_last = _array[row2][col2];
-
 
 	// TODO *** rendre plus efficace
 	if (pgn) {
@@ -1064,7 +1062,9 @@ void Board::make_move(Move move, const bool pgn, const bool new_board, const boo
 	// Reset des demi-coups si un pion est bougé ou si une pièce est prise
 	if (is_pawn(p) || p_last) {
 		_half_moves_count = 0;
-		reset_positions_history();
+		if (add_to_history) {
+			reset_positions_history();
+		}
 	}
 	else {
 		// Incrémentation des demi-coups
@@ -1081,12 +1081,12 @@ void Board::make_move(Move move, const bool pgn, const bool new_board, const boo
 	_en_passant_col = -1;
 
 	// Pion qui avance de 2 cases, et pion adverse à gauche ou à droite -> possibilité d'en passant
-	(p == w_pawn && row2 == row1 + 2 && (_array[row2][col2 - 1] == b_pawn || _array[row2][col2 + 1] == b_pawn)) && ((_en_passant_col = col1)); // FIXME: si l - 1 ou l + 1 est hors du plateau?
-	(p == b_pawn && row2 == row1 - 2 && (_array[row2][col2 - 1] == w_pawn || _array[row2][col2 + 1] == w_pawn)) && ((_en_passant_col = col1));
+	(p == w_pawn && row2 == row1 + 2 && ((col2 > 0 && _array[row2][col2 - 1] == b_pawn) || (col2 < 7 && _array[row2][col2 + 1] == b_pawn))) && (_en_passant_col = col1);
+	(p == b_pawn && row2 == row1 - 2 && ((col2 > 0 && _array[row2][col2 - 1] == w_pawn) || (col2 < 7 && _array[row2][col2 + 1] == w_pawn))) && (_en_passant_col = col1);
 
 	// En passant
-	(p == w_pawn && col1 != col2 && p_last == 0) && ((_array[row2 - 1][col2] = 0));
-	(p == b_pawn && col1 != col2 && p_last == 0) && ((_array[row2 + 1][col2] = 0));
+	(p == w_pawn && col1 != col2 && p_last == none) && (_array[row2 - 1][col2] = none);
+	(p == b_pawn && col1 != col2 && p_last == none) && (_array[row2 + 1][col2] = none);
 
 
 	// Roi blanc
@@ -5368,7 +5368,7 @@ int Board::get_checks_value(SquareMap white_controls, SquareMap black_controls, 
 }
 
 // Fonction qui renvoie la vitesse de génération des coups
-[[nodiscard]] int Board::moves_generation_benchmark(uint8_t depth, bool main_call)
+int Board::moves_generation_benchmark(uint8_t depth, bool main_call)
 {
 	if (depth == 0)
 		return 1;
@@ -7298,7 +7298,7 @@ void Board::display_positions_history() const
 }
 
 // Fonction qui renvoie l'affichage de l'évaluation
-[[nodiscard]] string Board::evaluation_to_string(int eval) const {
+string Board::evaluation_to_string(int eval) const {
 	string eval_string = "";
 
 	if (eval > 0)
@@ -7320,7 +7320,7 @@ void Board::display_positions_history() const
 }
 
 // Fonction qui renvoie l'évaluation des pièces enfermées
-[[nodiscard]] int Board::get_trapped_pieces() const {
+int Board::get_trapped_pieces() const {
 	// Pièce isolée: pièce éloignée des autres pièces alliées
 
 	// TODO: adapter ça pour les endgames aussi? pour que le roi se rapproche des pions? pareil pour les chevaux...
@@ -7694,7 +7694,7 @@ void Board::display_positions_history() const
 }
 
 // Fonction qui ajuste les valeurs des pièces (malus/bonus), en fonction du type de position
-[[nodiscard]] int Board::get_updated_piece_values() const {
+int Board::get_updated_piece_values() const {
 	// Malus pour les tours en fonction du nombre de colonnes non-ouvertes
 	// Malus pour les fous si la position est fermée (diagonales non-ouvertes)
 	// Pareil pour la dame. Bonus dans les cas contraires
@@ -7704,7 +7704,7 @@ void Board::display_positions_history() const
 }
 
 // Fonction qui renvoie la nature de la position de manière chiffrée: 0 = ouverte, 1 = fermée
-[[nodiscard]] float Board::get_position_nature() const {
+float Board::get_position_nature() const {
 	// Exemples à tester:
 	// rnbqkbnr/8/p1p1p1p1/PpPpPpPp/1P1P1P1P/8/8/RNBQKBNR w KQkq - 1 13 : complètement fermée
 	// r1bqkb1r/pp1n1ppp/2n1p3/2ppP3/3P1P2/2N1BN2/PPP3PP/R2QKB1R b KQkq - 3 7 : structure type française -> plutôt fermée
@@ -7776,7 +7776,7 @@ void Board::display_positions_history() const
 }
 
 // Fonction qui renvoie la valeur des bonus liés aux colonnes ouvertes et semi-ouvertes sur le roi adverse
-[[nodiscard]] int Board::get_open_files_on_opponent_king(bool player) {
+int Board::get_open_files_on_opponent_king(bool player) {
 	
 	// Possibilités de roque
 	bool can_kingside_castle = player ? _castling_rights.k_w : _castling_rights.k_b;
@@ -7793,7 +7793,7 @@ void Board::display_positions_history() const
 }
 
 // Fonction qui renvoie la valeur des bonus liés aux diagonales ouvertes et semi-ouvertes sur le roi adverse
-[[nodiscard]] int Board::get_open_diagonals_on_opponent_king(bool color) {
+int Board::get_open_diagonals_on_opponent_king(bool color) {
 	// *** TODO: à fix?
 
 	// Bonus pour les diagonales ouvertes et semi-ouvertes
@@ -7897,7 +7897,7 @@ void Board::display_positions_history() const
 }
 
 // Fonction qui renvoie le nombre de cases de retrait pour le roi
-[[nodiscard]] int Board::get_king_escape_squares(bool color) {
+int Board::get_king_escape_squares(bool color) {
 
 	// Contrôle des cases par les pièces adverses
 	SquareMap control_map = color ? get_black_controls_map() : get_white_controls_map();
@@ -7940,7 +7940,7 @@ void Board::display_positions_history() const
 }
 
 // Fonction qui renvoie une valeur correspondante aux pièces attaquant le roi adverse
-[[nodiscard]] int Board::get_king_attackers(bool color) {
+int Board::get_king_attackers(bool color) {
 	// Pour les sliding pieces: regarde simplement sur la ligne/colonne/diagonale: s'il y a un pion qui bloque: est-ce un pion à proximité du roi? sinon: est-ce que il contrôle des cases du roi?
 
 	// FIXME: faut-il compter seulement le nombre de pièces?
@@ -8215,7 +8215,7 @@ void Board::display_positions_history() const
 	return king_attackers;
 }
 
-[[nodiscard]] int Board::get_king_defenders(bool color) {
+int Board::get_king_defenders(bool color) {
 	// Pour les sliding pieces: regarde simplement sur la ligne/colonne/diagonale: s'il y a un pion qui bloque: est-ce un pion à proximité du roi? sinon: est-ce que il contrôle des cases du roi?
 
 	// r1b2b1r/ppN3pp/1k6/2p5/3Q1B2/8/PP3PPP/n1R3K1 w - - 0 20 : ici y'a pas beaucoup de défenseurs pour les noirs
@@ -8433,7 +8433,7 @@ void Board::display_positions_history() const
 }
 
 // Fonction qui renvoie un bonus correspondant au pawn storm sur le roi adverse à une colonne donnée
-[[nodiscard]] int Board::get_pawn_storm_at_col(bool color, uint8_t king_row, uint8_t king_col) const {
+int Board::get_pawn_storm_at_col(bool color, uint8_t king_row, uint8_t king_col) const {
 	// FIXME: faut-il un bonus si le pion a déjà passé le roi adverse? en soit, cela veut dire que le roi adverse est sur une colonne "ouverte" sans vraiment être ouverte?
 	// FIXME: est-ce qu'une pièce adverse bloque le pawn storm? ou seulement les pions?
 
@@ -8881,7 +8881,7 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 }
 
 // Fonction qui calcule tous les coups à une certaine profondeur, et renvoie le nombre de noeuds total
-int Board::count_nodes_at_depth(int depth, bool display) {
+long long int Board::count_nodes_at_depth(int depth, bool display) {
 
 	if (depth == 0) {
 		return 1;
@@ -8894,7 +8894,7 @@ int Board::count_nodes_at_depth(int depth, bool display) {
 	//}
 
 	get_moves();
-	int nodes_count = 0;
+	long long int nodes_count = 0;
 
 	Board b;
 
@@ -8910,7 +8910,7 @@ int Board::count_nodes_at_depth(int depth, bool display) {
 		//b.make_move_fast(_moves[m]);
 		//b.make_move(_moves[m], false, false, true);
 
-		int below_nodes = b.count_nodes_at_depth(depth - 1, false);
+		long long int below_nodes = b.count_nodes_at_depth(depth - 1, false);
 
 		if (display) {
 			cout << below_nodes << endl;
@@ -8923,7 +8923,7 @@ int Board::count_nodes_at_depth(int depth, bool display) {
 }
 
 // Fonction qui renvoie si le nombre de noeuds calculés pour une position à une certaine profondeur correspond au nombre attendu
-bool Board::validate_nodes_count_at_depth(string fen, int depth, vector<int> expected_nodes, bool display, bool display_full) {
+bool Board::validate_nodes_count_at_depth(string fen, int depth, vector<long long int> expected_nodes, bool display, bool display_full) {
 
 	// Met en place la position
 	if (fen != "") {
@@ -8946,7 +8946,7 @@ bool Board::validate_nodes_count_at_depth(string fen, int depth, vector<int> exp
 		}
 
 		//int nodes = count_nodes_at_depth(d);
-		int nodes = count_nodes_at_depth(d, display_full);
+		long long int nodes = count_nodes_at_depth(d, display_full);
 		
 		if (expected_nodes.size() <= d) {
 			cout << "Missing expected nodes in nodes count validation" << endl;
@@ -8979,7 +8979,7 @@ bool Board::validate_nodes_count_at_depth(string fen, int depth, vector<int> exp
 }
 
 // Fonction test: nouvelle mobilité des pièces
-[[nodiscard]] int Board::get_piece_mobility(bool display) const {
+int Board::get_piece_mobility(bool display) const {
 	// Points à prendre en compte:
 	// - Nombre de cases virtuellement atteignables (en fonction des pions seulement)
 	// - Cases réellement atteignables (en fonction des pièces qui peuvent gêner)
@@ -9908,7 +9908,7 @@ void Board::switch_colors() {
 }
 
 // Fonction qui itère sur la map des distances à partir d'une position donnée, et renvoie les nouvelles cases contrôlées
-[[nodiscard]] vector<Pos> Board::get_next_king_squares(SquareMap& map, Pos start_pos, int distance, bool color) const {
+vector<Pos> Board::get_next_king_squares(SquareMap& map, Pos start_pos, int distance, bool color) const {
 
 	// Initialisation de la liste des nouvelles cases contrôlées
 	vector<Pos> new_controlled_squares;
@@ -9940,7 +9940,7 @@ void Board::switch_colors() {
 }
 
 // Fonction qui renvoie une map des distances entre le roi et chaque point de l'échiquier (nombre de coups pour y arriver, en fonction des contrôles actuels du plateau)
-[[nodiscard]] SquareMap Board::get_king_squares_distance(bool color) {
+SquareMap Board::get_king_squares_distance(bool color) {
 	// TODO *** chiant, mais sûrement très fort...
 
 	//8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7 : ici, le roi noir ne peut pas taper a4 ni d5 ni d4... (ou alors il doit faire tout le tour...)
@@ -10530,7 +10530,7 @@ SquareMap Board::get_all_blocked_pieces(bool color) const {
 }
 
 // Fonction qui renvoie la map des cases controlées par les pions
-[[nodiscard]] SquareMap Board::get_pawns_controls(bool color) const {
+SquareMap Board::get_pawns_controls(bool color) const {
 
 	// Map des contrôles
 	SquareMap controls;
@@ -10557,7 +10557,7 @@ SquareMap Board::get_all_blocked_pieces(bool color) const {
 
 
 // Fonction qui renvoie la mobilité réelle des pièces (court terme)
-[[nodiscard]] int Board::get_short_term_piece_mobility(bool display) const {
+int Board::get_short_term_piece_mobility(bool display) const {
 
 	// Importance de la mobilité réelle (en fonction des coups possibles réels; ne traverse aucune pièce)
 	static constexpr int pawn_real_mobility[5] = { 0, 0, 0, 0, 0 };
@@ -10781,7 +10781,7 @@ SquareMap Board::get_all_blocked_pieces(bool color) const {
 }
 
 // Fonction qui renvoie la mobilité virtuelle des pièces (long terme)
-[[nodiscard]] int Board::get_long_term_piece_mobility(bool display) const {
+int Board::get_long_term_piece_mobility(bool display) const {
 
 	// Importance de la mobilité virtuelle (à travers toutes les pièces non bloquées)
 	static constexpr int pawn_virtual_mobility[5] = { 0, 0, 0, 0, 0 };

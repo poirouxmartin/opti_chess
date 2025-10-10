@@ -12,7 +12,7 @@ Tests::Tests(GUI *gui) {
 }
 
 // Perft test
-bool Tests::perft_test(string fen, int depth, vector<int> expected_nodes) {
+bool Tests::perft_test(string fen, int depth, vector<long long int> expected_nodes) {
 
 	// TODO *** lier ça à la GUI directement, pour qu'on voit la position et les tests qui avancent
 	_gui->load_FEN(fen, false);

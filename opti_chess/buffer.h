@@ -32,7 +32,7 @@ public:
 	void remove();
 
 	// Fonction qui reset le buffer
-	[[nodiscard]] bool reset() const;
+	bool reset() const;
 };
 
 // Buffer pour monte-carlo
