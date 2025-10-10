@@ -333,8 +333,8 @@ static constexpr enum game_termination { unterminated = 0, white_win = 1, draw =
 
 // Directions
 struct Direction {
-	int d_row;
-	int d_col;
+	int8_t d_row;
+	int8_t d_col;
 };
 
 // Directions existantes
@@ -540,7 +540,7 @@ public:
 	void copy_data(const Board&, bool full = false, bool copy_history = false);
 
 	// Fonction qui ajoute un coup dans la liste de coups
-	bool add_move(const uint8_t start_row, const uint8_t start_col, const uint8_t end_row, const uint8_t end_col, uint8_t& iterator, const uint8_t piece) noexcept;
+	bool add_move(const Move move, uint8_t& iterator, const uint8_t piece) noexcept;
 
 	// Fonction qui ajoute tous les coups de roi, en tenant compte des contrôles et des roques
 	bool add_king_moves(const bool player, const Pos king_pos, const uint16_t controls_around_king, uint8_t &iterator, const bool kingside_castle_check, const bool queenside_castle_check) noexcept;
