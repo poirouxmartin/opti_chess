@@ -351,53 +351,24 @@ string long_int_to_round_string(const unsigned long long k)
 }
 
 // Fonction qui transforme un clock en string (pour les timestamps dans les PGN)
-//string clock_to_string(const clock_t t, bool full)
-//{
-//	double elapsed_seconds = static_cast<double>(t) / CLOCKS_PER_SEC;
-//
-//	int days = static_cast<int>(elapsed_seconds) / (24 * 3600);
-//	elapsed_seconds -= days * 24 * 3600;
-//
-//	int hours = static_cast<int>(elapsed_seconds) / 3600;
-//	elapsed_seconds -= hours * 3600;
-//
-//	int minutes = static_cast<int>(elapsed_seconds) / 60;
-//	double seconds = elapsed_seconds - (minutes * 60);
-//
-//	ostringstream oss;
-//	oss << fixed << setprecision(3);
-//
-//	if (full) {
-//		if (days > 0) {
-//			oss << days << "d " << hours << "h " << minutes << "min " << setw(2) << setfill('0') << setprecision(0) << seconds << "s";
-//		}
-//		else if (hours > 0) {
-//			oss << hours << "h " << minutes << "min " << setw(2) << setfill('0') << setprecision(0) << seconds << "s";
-//		}
-//		else if (minutes > 0) {
-//			oss << minutes << "min " << setw(2) << setfill('0') << setprecision(0) << seconds << "s";
-//		}
-//		else {
-//			oss << setprecision(3) << seconds << "s";
-//		}
-//	}
-//	else {
-//		if (days > 0) {
-//			oss << days << ":" << setw(2) << setfill('0') << hours << ":" << setw(2) << setfill('0') << minutes << ":" << setw(2) << setfill('0') << setprecision(0) << seconds;
-//		}
-//		else if (hours > 0) {
-//			oss << hours << ":" << setw(2) << setfill('0') << minutes << ":" << setw(2) << setfill('0') << setprecision(0) << seconds;
-//		}
-//		else if (minutes > 0) {
-//			oss << minutes << ":" << setw(2) << setfill('0') << setprecision(0) << seconds;
-//		}
-//		else {
-//			oss << setw(2) << setfill('0') << setprecision(3) << seconds;
-//		}
-//	}
-//
-//	return oss.str();
-//}
+string clock_to_timestamp(const clock_t t, bool full)
+{
+	// Format: {[%clk 0:09:59.6]}
+	double elapsed_seconds = static_cast<double>(t) / CLOCKS_PER_SEC;
+
+	int hours = static_cast<int>(elapsed_seconds / 3600);
+	int minutes = static_cast<int>((elapsed_seconds - hours * 3600) / 60);
+	double seconds = elapsed_seconds - hours * 3600 - minutes * 60;
+
+	char buffer[32];
+
+	if (full)
+		std::snprintf(buffer, sizeof(buffer), "{[%%clk %d:%02d:%04.1f]}", hours, minutes, seconds);
+	else
+		std::snprintf(buffer, sizeof(buffer), "{[%%clk %d:%02d]}", hours, minutes);
+
+	return std::string(buffer);
+}
 
 string clock_to_string(const clock_t t, bool full) {
 	double elapsed_seconds = static_cast<double>(t) / CLOCKS_PER_SEC;

@@ -215,7 +215,7 @@ uint8_t* get_board_move(const int x1, const int y1, const int x2, const int y2, 
 }
 
 // Fonction qui clique un coup en fonction de l'orientation du plateau
-void click_move(const int j1, const int i1, const int j2, const int i2, const int x1, const int y1, const int x2, int y2, const bool orientation) {
+void click_move(const int j1, const int i1, const int j2, const int i2, const int x1, const int y1, const int x2, int y2, const bool orientation, const bool is_promotion) {
 	const float tile_size = static_cast<float>((x2 - x1)) / 8.0f;
 	constexpr float tile_click = 0.5f; // Pour que ça clique au milieu de la case
 
@@ -226,6 +226,10 @@ void click_move(const int j1, const int i1, const int j2, const int i2, const in
 
 	simulate_mouse_click(cx1, cy1);
 	simulate_mouse_click(cx2, cy2);
+
+	// Promomtion, il faut peut-être cliquer une seconde fois
+	if (is_promotion)
+		simulate_mouse_click(cx2, cy2);
 
 	return;
 }

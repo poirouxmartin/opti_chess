@@ -92,7 +92,7 @@ unsigned long long  get_total_system_memory();
 uint8_t* get_board_move(int x1, int y1, int x2, int y2, ChessSite website, bool orientation = false, bool display = false);
 
 // Fonction qui clique un coup en fonction de l'orientation du plateau
-void click_move(int j1, int i1, int j2, int i2, int x1, int y1, int x2, int y2, bool orientation = false);
+void click_move(int j1, int i1, int j2, int i2, int x1, int y1, int x2, int y2, bool orientation = false, const bool is_promotion = false);
 
 // Fonction qui récupère l'orientation du plateau. Renvoie 1 si les blancs sont en bas, 0 si c'est les noirs, -1 sinon
 int bind_board_orientation(int x1, int y1, int x2, int y2, ChessSite website);
