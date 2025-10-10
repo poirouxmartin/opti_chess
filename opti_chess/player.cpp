@@ -27,7 +27,7 @@ Move Player::best_move(Board* board) const {
 
 	for (int i = 0; i < board->_got_moves; i++) {
 		Board b(*board, false, true);
-		b.make_move(board->_moves[i], false, false, true);
+		b.make_move(board->_moves[i], false, true);
 		_network->input_from_fen(b.to_fen());
 		_network->calculate_output();
 

@@ -158,16 +158,16 @@ public:
 	void add_child(Node* child, Move move);
 
 	// Fonction qui renvoie le nombre de fils
-	[[nodiscard]] size_t children_count() const;
+	size_t children_count() const;
 
 	// Fonction qui renvoie l'indice du fils associé au coup s'il existe, -1 sinon (dans le vecteur _children)
-	//[[nodiscard]] int get_child_index(Move move) const;
+	//int get_child_index(Move move) const;
 
 	// Fonction qui renvoie l'indice du premier coup qui n'a pas encore été ajouté, -1 sinon
-	//[[nodiscard]] int get_first_unexplored_move_index(bool fully_explored = false);
+	//int get_first_unexplored_move_index(bool fully_explored = false);
 
 	// Fonction qui renvoie le premier coup qui n'a pas encore été ajouté
-	[[nodiscard]] Move get_first_unexplored_move(bool fully_explored = false);
+	Move get_first_unexplored_move(bool fully_explored = false);
 
 	// Initie le noeud en fonction de son plateau
 	void init_node();
@@ -182,32 +182,32 @@ public:
 	void explore_random_child(Buffer* buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr);
 
 	// Fonction qui renvoie le fils le plus exploré
-	[[nodiscard]] Move get_most_explored_child_move(bool decide_by_eval = false);
+	Move get_most_explored_child_move(bool decide_by_eval = false);
 
 	// Reset le noeud et ses enfants, et les supprime tous
 	void reset();
 
 	// Fonction qui renvoie les variantes d'exploration
-	[[nodiscard]] string get_exploration_variants(const double alpha, const double beta, bool main = true, bool quiescence = false);
+	string get_exploration_variants(const double alpha, const double beta, bool main = true, bool quiescence = false);
 
 	// Fonction qui renvoie la profondeur de la variante principale
-	[[nodiscard]] int get_main_depth(const double alpha, const double beta);
+	int get_main_depth(const double alpha, const double beta);
 
 	// Fonction qui renvoie le fils le plus exploré
-	[[nodiscard]] Node* get_most_explored_child(bool decide_by_eval = true);
+	Node* get_most_explored_child(bool decide_by_eval = true);
 
 	// Fonction qui renvoie la vitesse de calcul moyenne en noeuds par seconde
-	[[nodiscard]] int get_avg_nps() const;
+	int get_avg_nps() const;
 
 	// Fonction qui renvoie le nombre d'itérations par seconde
-	[[nodiscard]] int get_ips() const;
+	int get_ips() const;
 
 	// Quiescence search intégré à l'exploration
 	int quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr, bool evaluate_threats = true, int beta_margin = 0);
 	//void grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth);
 
 	// Fonction qui renvoie le nombre de noeuds fils complètement explorés
-	[[nodiscard]] int get_fully_explored_children_count() const;
+	int get_fully_explored_children_count() const;
 
 	// Fonction qui renvoie la somme des noeuds des fils
 	int count_children_nodes() const;

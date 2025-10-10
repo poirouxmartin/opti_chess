@@ -29,12 +29,12 @@ void Node::add_child(Node* child, Move move) {
 }
 
 // Fonction qui renvoie le nombre de fils
-[[nodiscard]] size_t Node::children_count() const {
+size_t Node::children_count() const {
 	return _children.size();
 }
 
 // Fonction qui renvoie le premier coup qui n'a pas encore été ajouté
-[[nodiscard]] Move Node::get_first_unexplored_move(bool fully_explored) {
+Move Node::get_first_unexplored_move(bool fully_explored) {
 	for (int i = 0; i < _board->_got_moves; i++) {
 		Move move = _board->_moves[i];
 		if (!_children.contains(move) || (fully_explored && !_children[move]->_fully_explored)) {
@@ -182,7 +182,7 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, double alpha, doubl
 		Board* new_board = &buffer->_heap_boards[buffer_index];
 		new_board->copy_data(*_board, false, true);
 		new_board->_is_active = true;
-		new_board->make_move(move, false, false, true);
+		new_board->make_move(move, false, true);
 
 		// Cela transpose t-il dans une autre branche?
 		new_board->get_zobrist_key();
@@ -409,7 +409,7 @@ void Node::explore_random_child(Buffer* buffer, Evaluator* eval, double alpha, d
 }
 
 // Fonction qui renvoie le fils le plus exploré
-[[nodiscard]] Move Node::get_most_explored_child_move(bool decide_by_eval) {
+Move Node::get_most_explored_child_move(bool decide_by_eval) {
 	int max = -1;
 
 	// Tri simple, on ne départage pas les égalités
@@ -612,7 +612,7 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 }
 
 // Fonction qui renvoie la profondeur de la variante principale
-[[nodiscard]] int Node::get_main_depth(const double alpha, const double beta) {
+int Node::get_main_depth(const double alpha, const double beta) {
 	if (children_count() > 0) {
 		//Move main_move = get_most_explored_child_move();
 		Move main_move = get_best_score_move(alpha, beta, true);
@@ -639,7 +639,7 @@ Node::~Node() {
 }
 
 // Fonction qui renvoie le fils le plus exploré
-[[nodiscard]] Node* Node::get_most_explored_child(bool decide_by_eval) {
+Node* Node::get_most_explored_child(bool decide_by_eval) {
 	Move most_explored_move = get_most_explored_child_move(decide_by_eval);
 
 	if (most_explored_move.is_null_move()) {
@@ -650,12 +650,12 @@ Node::~Node() {
 }
 
 // Fonction qui renvoie la vitesse de calcul moyenne en noeuds par seconde
-[[nodiscard]] int Node::get_avg_nps() const {
+int Node::get_avg_nps() const {
 	return _time_spent == 0 ? 0 : ((double)_nodes / (double)_time_spent * CLOCKS_PER_SEC);
 }
 
 // Fonction qui renvoie le nombre d'itérations par seconde
-[[nodiscard]] int Node::get_ips() const {
+int Node::get_ips() const {
 	return _time_spent == 0 ? 0 : ((double)_iterations / (double)_time_spent * CLOCKS_PER_SEC);
 }
 
@@ -974,7 +974,7 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 				Board* new_board = &buffer->_heap_boards[buffer_index];
 				new_board->copy_data(*_board, false, true);
 				new_board->_is_active = true;
-				new_board->make_move(move, false, false, true);
+				new_board->make_move(move, false, true);
 
 				// Création du noeud fils
 				child = new Node(new_board);
@@ -1036,7 +1036,7 @@ int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_a
 }
 
 // Fonction qui renvoie le nombre de noeuds fils complètement explorés
-[[nodiscard]] int Node::get_fully_explored_children_count() const {
+int Node::get_fully_explored_children_count() const {
 	int count = 0;
 
 	for (auto const& [_, child] : _children) {
@@ -1484,7 +1484,7 @@ int Node::minimal_quiescence(Evaluator* eval, int depth, double search_alpha, do
 
 			// Prend une place dans le buffer
 			Board new_board(*_board);
-			new_board.make_move(move, false, false, true);
+			new_board.make_move(move, false, true);
 			Node child(&new_board);
 
 			// Appel récursif sur le fils

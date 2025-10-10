@@ -121,7 +121,7 @@ void GameTree::add_child(Board board, Move move, string move_label) {
 		if (_current_node->_children[i]._move == move)
 			return;
 
-	board.make_move(move, false, false, true);
+	board.make_move(move, false, true);
 
 	_current_node->add_child(GameTreeNode(board, move, move_label, *_current_node));
 }
@@ -142,7 +142,7 @@ void GameTree::add_child(Move move, string additional_label) {
 
 	Board board = _current_node->_board;
 	string move_label = board.move_label(move) + (additional_label.empty() ? "" : " " + additional_label);
-	board.make_move(move, false, false, true);
+	board.make_move(move, false, true);
 
 	_current_node->add_child(GameTreeNode(board, move, move_label, *_current_node));
 }
