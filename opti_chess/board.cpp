@@ -78,7 +78,7 @@ void Board::copy_data(const Board& b, bool full, bool copy_history) {
 }
 
 // Fonction qui ajoute un coup dans une liste de coups
-inline bool Board::add_move(const uint8_t start_row, const uint8_t start_col, const uint8_t end_row, const uint8_t end_col, uint8_t &iterator, const uint8_t piece) noexcept
+inline bool Board::add_move(const Move move, uint8_t &iterator, const uint8_t piece) noexcept
 {
 	// Si on dépasse le nombre de coups que l'on pensait possible dans une position
 	//if (*iterator >= max_moves) {
@@ -88,7 +88,8 @@ inline bool Board::add_move(const uint8_t start_row, const uint8_t start_col, co
 
 	//const Move m(start_row, start_col, end_row, end_col); // Si on utilise pas les flag, autant éviter les calculs inutiles
 	//const Move m(i, j, k, l, _array[k][l] != 0, (piece == 1 && i == 7) || (piece == 7 && i == 1));
-	_moves[iterator] = Move(start_row, start_col, end_row, end_col);
+	//_moves[iterator] = Move(start_row, start_col, end_row, end_col);
+	_moves[iterator] = move;
 
 	// Incrémentation du nombre de coups
 	iterator++;
@@ -118,7 +119,7 @@ inline bool Board::add_king_moves(const bool player, const Pos king_pos, const u
 
 		// Si la case n'est pas contrôlée
 		if (!is_controlled_around_king(controls_around_king, all_directions[m][0], all_directions[m][1])) {
-			!is_ally(_array[new_row][new_col], player) && add_move(row, col, new_row, new_col, iterator, piece);
+			!is_ally(_array[new_row][new_col], player) && add_move(Move(row, col, new_row, new_col), iterator, piece);
 		}
 	}
 
@@ -127,13 +128,13 @@ inline bool Board::add_king_moves(const bool player, const Pos king_pos, const u
 	// Petit roque
 	if (kingside_castle_check) {
 		if ((!is_controlled_around_king(controls_around_king, 0, 0) && !is_controlled_around_king(controls_around_king, 0, 1) && !is_controlled_around_king(controls_around_king, 0, 2)) && _array[row][col + 1] == none && _array[row][col + 2] == none)
-			add_move(row, col, row, col + 2, iterator, piece);
+			add_move(Move(row, col, row, col + 2), iterator, piece);
 	}
 
 	// Grand roque
 	if (queenside_castle_check) {
 		if ((!is_controlled_around_king(controls_around_king, 0, 0) && !is_controlled_around_king(controls_around_king, 0, -1) && !is_controlled_around_king(controls_around_king, 0, -2)) && _array[row][col - 1] == none && _array[row][col - 2] == none && _array[row][col - 3] == none)
-			add_move(row, col, row, col - 2, iterator, piece);
+			add_move(Move(row, col, row, col - 2), iterator, piece);
 	}
 
 	return true;
@@ -160,14 +161,14 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 		if (_array[new_row][col] == none) {
 
 			// Si on est en échec, il faut que le coup interpose
-			(!in_check || is_in_interpose_mask(interposition_mask, new_row, col)) && add_move(row, col, new_row, col, iterator, piece);
+			(!in_check || is_in_interpose_mask(interposition_mask, new_row, col)) && add_move(Move(row, col, new_row, col), iterator, piece);
 
 			// Poussée de 2
 			if (row == 1 + 5 * !player) {
 				new_row += direction;
 
 				if (_array[new_row][col] == none) {
-					(!in_check || is_in_interpose_mask(interposition_mask, new_row, col)) && add_move(row, col, new_row, col, iterator, piece);
+					(!in_check || is_in_interpose_mask(interposition_mask, new_row, col)) && add_move(Move(row, col, new_row, col), iterator, piece);
 				}
 			}
 		}
@@ -186,7 +187,7 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 		if (is_enemy(_array[new_row][new_col], player) || (row == 3 + player && _en_passant_col == new_col)) {
 
 			// Si on est en échec, il faut que le coup interpose
-			(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(row, col, new_row, new_col, iterator, piece);
+			(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(Move(row, col, new_row, new_col), iterator, piece);
 		}
 	}
 
@@ -201,7 +202,7 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 		if (is_enemy(_array[new_row][new_col], player) || (row == 3 + player && _en_passant_col == new_col)) {
 
 			// Si on est en échec, il faut que le coup interpose
-			(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(row, col, new_row, new_col, iterator, piece);
+			(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(Move(row, col, new_row, new_col), iterator, piece);
 		}
 	}
 
@@ -234,7 +235,7 @@ inline bool Board::add_knight_moves(const bool player, const uint8_t row, const 
 		// Si la case n'est pas occupée par une pièce alliée
 		if (!is_ally(_array[new_row][new_col], player)) {
 			// Si on est en échec, il faut que le coup interpose
-			(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(row, col, new_row, new_col, iterator, piece);
+			(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(Move(row, col, new_row, new_col), iterator, piece);
 		}
 	}
 
@@ -277,7 +278,7 @@ inline bool Board::add_rect_moves(const bool player, const uint8_t row, const ui
 
 			// Si on est en échec, il faut que le coup interpose
 			if (!in_check || is_in_interpose_mask(interposition_mask, current_row, current_col)) {
-				add_move(row, col, current_row, current_col, iterator, piece);
+				add_move(Move(row, col, current_row, current_col), iterator, piece);
 			}
 
 			// Si y'a une pièce ennemie, on arrête
@@ -328,7 +329,7 @@ inline bool Board::add_diag_moves(const bool player, const uint8_t row, const ui
 
 			// Si on est en échec, il faut que le coup interpose
 			if (!in_check || is_in_interpose_mask(interposition_mask, current_row, current_col)) {
-				add_move(row, col, current_row, current_col, iterator, piece);
+				add_move(Move(row, col, current_row, current_col), iterator, piece);
 			}
 
 			// Si y'a une pièce ennemie, on arrête
@@ -781,8 +782,8 @@ PinsMap Board::get_pins(bool player) const noexcept {
 	for (int d = 0; d < 8; d++) {
 
 		// Direction visitée
-		int d_row = all_directions[d][0];
-		int d_col = all_directions[d][1];
+		int8_t d_row = all_directions[d][0];
+		int8_t d_col = all_directions[d][1];
 
 		// Position (à incrémenter)
 		int row = king_pos.row + d_row;
