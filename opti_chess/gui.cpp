@@ -884,8 +884,12 @@ bool GUI::play_move_keep(Move move)
 	// On update les variantes
 	_update_variants = true;
 
+	// Timestamp du coup
+	clock_t move_timestamp = _board._player ? _time_white : _time_black;
+	string additional_time_str = _time ? clock_to_timestamp(move_timestamp, true) : "";
+
 	// Arbre de la partie
-	_game_tree.add_child(move);
+	_game_tree.add_child(move, additional_time_str);
 
 	// FIXME: les vraies distinctions de cas à faire: 
 	// y'a t-il eu des coups calculés? -> oui/non

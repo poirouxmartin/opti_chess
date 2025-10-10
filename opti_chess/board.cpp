@@ -379,10 +379,6 @@ bool Board::get_moves() {
 	// 2Qr3k/pp2R1pr/2p2N2/4p3/4N3/1P2B3/P4PPP/6K1 b - - 2 31 : pin de la dame c8 sur la tour en d8
 	// rnbqkbnr/pp1ppppp/8/8/2p5/3P4/PPPKPPPP/RNBQ1BNR w kq - 0 3 : il oublie que prendre c4 est possible
 
-	// FIXME *** y'a t-il besoin d'update la position des rois?
-	// FIXME *** au moins la position du roi de l'adversaire peut être évitée
-	update_kings_pos();
-
 	// Joueur
 	const bool player = _player;
 
@@ -1041,7 +1037,7 @@ void Board::display_moves() {
 // Fonction qui joue un coup
 void Board::make_move(Move move, const bool pgn, const bool new_board, const bool add_to_history)
 {
-	// TODO : à voir si ça rend plus rapide ou non
+	// TODO *** à voir si ça rend plus rapide ou non
 	const uint8_t row1 = move.start_row;
 	const uint8_t col1 = move.start_col;
 	const uint8_t row2 = move.end_row;
@@ -1050,7 +1046,7 @@ void Board::make_move(Move move, const bool pgn, const bool new_board, const boo
 	const uint8_t p_last = _array[row2][col2];
 
 
-	// TODO : rendre plus efficace
+	// TODO *** rendre plus efficace
 	if (pgn) {
 		if (_moves_count != 0 || _half_moves_count != 0)
 			main_GUI._pgn += " ";
@@ -1065,9 +1061,6 @@ void Board::make_move(Move move, const bool pgn, const bool new_board, const boo
 		main_GUI._pgn += move_label(move);
 	}
 
-
-
-
 	// Reset des demi-coups si un pion est bougé ou si une pièce est prise
 	if (is_pawn(p) || p_last) {
 		_half_moves_count = 0;
@@ -1081,10 +1074,8 @@ void Board::make_move(Move move, const bool pgn, const bool new_board, const boo
 		if (add_to_history) {
 			get_zobrist_key();
 			_positions_history.push_back(_zobrist_key);
-			//_positions_history[_zobrist_key] += 1;
 		}
 	}
-
 
 	// Coups donnant la possibilité d'un en passant
 	_en_passant_col = -1;
@@ -1164,6 +1155,139 @@ void Board::make_move(Move move, const bool pgn, const bool new_board, const boo
 
 	return;
 }
+
+inline void Board::make_move_fast(const Move move)
+{
+	const uint8_t row1 = move.start_row;
+	const uint8_t col1 = move.start_col;
+	const uint8_t row2 = move.end_row;
+	const uint8_t col2 = move.end_col;
+
+	const uint8_t p = _array[row1][col1];
+	const uint8_t captured = _array[row2][col2];
+
+	// Reset en passant par défaut
+	_en_passant_col = -1;
+
+	// Efface pièce capturée
+	if (captured)
+		_half_moves_count = 0;
+	else if (is_pawn(p))
+		_half_moves_count = 0;
+	else
+		++_half_moves_count;
+
+	// --- Pion blanc ---
+	if (p == w_pawn) {
+		// En passant capture
+		if (col1 != col2 && captured == 0)
+			_array[row2 - 1][col2] = 0;
+
+		// En passant possible
+		else if (row2 == row1 + 2)
+			if (row1 == 1 && ((_array[row2][col2 - 1] == b_pawn) || (_array[row2][col2 + 1] == b_pawn)))
+				_en_passant_col = col1;
+
+		// Promotion (reine par défaut)
+		if (row2 == 7)
+			_array[row2][col2] = w_queen;
+		else
+			_array[row2][col2] = p;
+	}
+
+	// --- Pion noir ---
+	else if (p == b_pawn) {
+		// En passant capture
+		if (col1 != col2 && captured == 0)
+			_array[row2 + 1][col2] = 0;
+
+		// En passant possible
+		else if (row2 == row1 - 2)
+			if (row1 == 6 && ((_array[row2][col2 - 1] == w_pawn) || (_array[row2][col2 + 1] == w_pawn)))
+				_en_passant_col = col1;
+
+		// Promotion (reine)
+		if (row2 == 0)
+			_array[row2][col2] = b_queen;
+		else
+			_array[row2][col2] = p;
+	}
+
+	// --- Rois ---
+	else if (p == w_king) {
+		_white_king_pos = { row2, col2 };
+		_castling_rights.k_w = false;
+		_castling_rights.q_w = false;
+
+		// Petit roque
+		if (col2 == col1 + 2) {
+			_array[0][5] = w_rook;
+			_array[0][7] = none;
+		}
+		// Grand roque
+		else if (col2 == col1 - 2) {
+			_array[0][3] = w_rook;
+			_array[0][0] = none;
+		}
+
+		_array[row2][col2] = p;
+	}
+	else if (p == b_king) {
+		_black_king_pos = { row2, col2 };
+		_castling_rights.k_b = false;
+		_castling_rights.q_b = false;
+
+		// Petit roque
+		if (col2 == col1 + 2) {
+			_array[7][5] = b_rook;
+			_array[7][7] = none;
+		}
+		// Grand roque
+		else if (col2 == col1 - 2) {
+			_array[7][3] = b_rook;
+			_array[7][0] = none;
+		}
+
+		_array[row2][col2] = p;
+	}
+
+	// --- Tours et roques perdus ---
+	else if (p == w_rook) {
+		if (row1 == 0 && col1 == 0) _castling_rights.q_w = false;
+		else if (row1 == 0 && col1 == 7) _castling_rights.k_w = false;
+		_array[row2][col2] = p;
+	}
+	else if (p == b_rook) {
+		if (row1 == 7 && col1 == 0) _castling_rights.q_b = false;
+		else if (row1 == 7 && col1 == 7) _castling_rights.k_b = false;
+		_array[row2][col2] = p;
+	}
+	else {
+		// Pièces normales
+		_array[row2][col2] = p;
+	}
+
+	// Roque capturé
+	if (captured == w_rook) {
+		if (row2 == 0 && col2 == 0) _castling_rights.q_w = false;
+		else if (row2 == 0 && col2 == 7) _castling_rights.k_w = false;
+	}
+	else if (captured == b_rook) {
+		if (row2 == 7 && col2 == 0) _castling_rights.q_b = false;
+		else if (row2 == 7 && col2 == 7) _castling_rights.k_b = false;
+	}
+
+	// Vide case de départ
+	_array[row1][col1] = none;
+
+	// Flip du joueur
+	_player = !_player;
+
+	// Incrément du compteur de coups complets
+	if (_player)
+		++_moves_count;
+}
+
 
 // Fonction qui annule un coup
 void Board::unmake_move(Move move, uint8_t p1, uint8_t p2, int en_passant_col, int prev_half_count, bool k_castle, bool q_castle, bool is_castle, bool is_promotion, bool is_en_passant) {
@@ -4498,7 +4622,7 @@ bool Board::sort_moves() {
 bool Board::click_m_move(const Move m, const bool orientation) const
 {
 	simulate_mouse_release();
-	click_move(m.start_row, m.start_col, m.end_row, m.end_col , main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom, orientation);
+	click_move(m.start_row, m.start_col, m.end_row, m.end_col , main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom, orientation, m.is_promotion());
 	SetWindowFocused();
 
 	return true;
@@ -4706,18 +4830,18 @@ int Board::get_alignments() const
 		for (uint8_t col = 0; col < 8; col++) {
 
 			// Si la case contient une pièce
-			const uint8_t piece = _array[row][col];
+			const uint8_t pinning_piece = _array[row][col];
 
 			// Si ça n'est pas une sliding piece, on skip
-			if (!is_sliding(piece))
+			if (!is_sliding(pinning_piece))
 				continue;
 
 			// Couleur de la pièce
-			const bool pinning_piece_color = piece < b_pawn;
+			const bool pinning_piece_color = pinning_piece < b_pawn;
 			const int pinning_int_color = pinning_piece_color ? 1 : -1;
 
 			// Valeur de pression du cloueur
-			const int pinning_pressure_value = pressuring_values[(piece - 1) % 6];
+			const int pinning_pressure_value = pressuring_values[(pinning_piece - 1) % 6];
 
 			// Pour chaque direction
 			for (uint8_t d = 0; d < 8; d++) {
@@ -4725,10 +4849,10 @@ int Board::get_alignments() const
 				// 4 premières directions: diagonales
 				// 4 dernières directions: rectilignes
 
-				if (!is_diagonal(piece) && d < 4)
+				if (!is_diagonal(pinning_piece) && d < 4)
 					continue;
 
-				if (!is_rectilinear(piece) && d >= 4)
+				if (!is_rectilinear(pinning_piece) && d >= 4)
 					continue;
 
 				// Direction
@@ -4778,10 +4902,10 @@ int Board::get_alignments() const
 				int total_value = 0;
 
 				// Valeur de la pièce qui cloue
-				const uint8_t pinning_piece_value = pieces_values[(piece - 1) % 6];
+				const uint8_t pinning_piece_value = pieces_values[(pinning_piece - 1) % 6];
 
 				// Puissance de la pièce qui cloue
-				const float pinning_piece_power = is_bishop(piece) ? bishop_power : (is_rook(piece) ? rook_power : queen_power);
+				const float pinning_piece_power = is_bishop(pinning_piece) ? bishop_power : (is_rook(pinning_piece) ? rook_power : queen_power);
 
 				//cout << "color: " << pinning_piece_color << ", square: " << square_name(i, j) << endl;
 
@@ -4803,8 +4927,8 @@ int Board::get_alignments() const
 					const bool pinned_piece_color = pinned_piece < b_pawn;
 					const bool ally_piece = pinned_piece_color == pinning_piece_color;
 
-					// Si on tombe sur une pièce adverse du même type, on arrête
-					if ((pinned_piece - 1) % 6 == (piece - 1) % 6 && !ally_piece) {
+					// Si on tombe sur une pièce adverse du même type, on arrête (FIXME *** il faudrait dire que type <-> type de déplacement, pas forcément même pièce)
+					if ((pinned_piece - 1) % 6 == (pinning_piece - 1) % 6 && !ally_piece) {
 						break;
 					}
 
@@ -4823,19 +4947,21 @@ int Board::get_alignments() const
 						const int pressure_value = pressures[j] != 0 ? max(0, pressuring_values[(pinned_piece - 1) % 6] - pressures[j]) : 0;
 
 						// Valeur de la pression sur la pièce derrière dans le clouage (si la pièce clouée se retire)
-						const int secondary_pressure = j > 6 ? 0 : max(0, pressuring_values[(pieces[j + 1] - 1) % 6] - pinning_pressure_value);
+						uint8_t secondary_piece = pieces[j + 1];
+						const int secondary_pressure = (j >= 6 || !secondary_piece) ? 0 : max(0, pressuring_values[(pieces[j + 1] - 1) % 6] - pinning_pressure_value);
 
 						// Pression finale = pression minimale entre les deux
 						const int result_pressure = min(pressure_value, secondary_pressure);
 
 						// N1b3R1/p2kp3/1pnp4/1B6/3PP3/8/P1P2PP1/b3K3 w - - 1 18
 
-						//cout << piece_name(pinned_piece) << ", base pressure: " << pressure_value << ", secondary pressure: " << secondary_pressure << " = " << result_pressure << endl;
+						//cout << piece_name(pinned_piece) << (pinned_piece_color ? " (white) " : " (black) ") << " pinned by " << piece_name(pinning_piece) << (pinning_piece_color ? " (white)" : " (black)") << " on " << square_name(row, col) << ", base pressure: " << pressure_value << ", secondary pressure: " << secondary_pressure << " = " << result_pressure << " * " << pressuring_factor << " = " << pressuring_factor * result_pressure << " + pin value: " << pin_value << endl;
 
-						total_value += pin_value + pressuring_factor * result_pressure;
+						// FIXME *** un clouage ne devrait pas dépasser la valeur de la pièce clouée
+						total_value += pin_value + pressuring_factor * result_pressure * !ally_piece;
 					}
 
-					//cout << "pinned: " << (int)pinned_piece << "total: " << total_value << endl;
+					//2brr3/kpQn2p1/p4p2/5P1p/6nP/1P3B2/2P5/1K1R4 w - - 6 35 : bug??
 
 					previous_piece = pinned_piece_value;
 					is_previous_ally = ally_piece;
@@ -8770,15 +8896,18 @@ int Board::count_nodes_at_depth(int depth, bool display) {
 	get_moves();
 	int nodes_count = 0;
 
+	Board b;
+
 	for (int m = 0; m < _got_moves; m++) {
-		Board b(*this);
 		//Board b(*this, false, true);
+		b.minimal_copy_data(*this);
 
 		if (display) {
 			cout << move_label(_moves[m]) << ", ";
 		}
 
 		b.make_move(_moves[m]);
+		//b.make_move_fast(_moves[m]);
 		//b.make_move(_moves[m], false, false, true);
 
 		int below_nodes = b.count_nodes_at_depth(depth - 1, false);
