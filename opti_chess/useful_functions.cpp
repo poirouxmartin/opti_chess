@@ -8,25 +8,31 @@
 
 
 // Fonction qui renvoie si une valeur est comprise dans un intervalle
-bool is_in(const auto x, const auto min, const auto max)
-{
-	return (x >= min && x <= max);
-}
+//bool is_in(const auto x, const auto min, const auto max)
+//{
+//	return (x >= min && x <= max);
+//}
 
 // Fonction qui renvoie si un entier appartient à un intervalle
-bool is_in(const int x, const int min, const int max)
+bool is_in(const int x, const int min, const int max) noexcept
 {
 	return (x >= min && x <= max);
 }
 
 // Fonction qui renvoie si un entier uint8_t appartient à un intervalle
-bool is_in_fast(const uint8_t x, const uint8_t min, const uint8_t max)
+bool is_in_fast(const uint8_t x, const uint8_t min, const uint8_t max) noexcept
 {
+	//return static_cast<uint8_t>(x - min) <= static_cast<uint8_t>(max - min);
 	return (x >= min && x <= max);
 }
 
+//inline constexpr bool is_in_fast(uint8_t x, uint8_t min, uint8_t max) noexcept {
+//	return static_cast<uint8_t>(x - min) <= static_cast<uint8_t>(max - min);
+//}
+
+
 // Fonction qui renvoie si un flottant appartient à un intervalle
-bool is_in(const float x, const float min, const float max)
+bool is_in(const float x, const float min, const float max) noexcept
 {
 	return (x >= min && x <= max);
 }

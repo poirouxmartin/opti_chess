@@ -485,10 +485,10 @@ uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingsid
 	// On remplit la map des contrôles
 
 	// Zone d'action (cases qu'on souhaite regarder)
-	const int min_row = max(0, king_pos.row - 1);
-	const int max_row = min(7, king_pos.row + 1);
-	const int min_col = max(0, king_pos.col - 1 - queenside_castle_check);
-	const int max_col = min(7, king_pos.col + 1 + kingside_castle_check);
+	const uint8_t min_row = max(0, king_pos.row - 1);
+	const uint8_t max_row = min(7, king_pos.row + 1);
+	const uint8_t min_col = max(0, king_pos.col - 1 - queenside_castle_check);
+	const uint8_t max_col = min(7, king_pos.col + 1 + kingside_castle_check);
 
 	// Map des contrôles autour du roi
 	uint16_t controls = 0;
@@ -513,18 +513,18 @@ uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingsid
 			// Pion
 			if (is_pawn(piece)) {
 
-				int8_t control_row = row + pawn_dir;
+				uint8_t control_row = row + pawn_dir;
 
 				// Skip si le pion ne peut pas contrôler la zone
-				if (!is_in(control_row, min_row, max_row))
+				if (!is_in_fast(control_row, min_row, max_row))
 					continue;
 
 				// Contrôle gauche
-				if (is_in(col - 1, min_col, max_col))
+				if (is_in_fast(col - 1, min_col, max_col))
 					controls |= control_bit(control_row - king_pos.row, col - 1 - king_pos.col);
 
 				// Contrôle droit
-				if (is_in(col + 1, min_col, max_col))
+				if (is_in_fast(col + 1, min_col, max_col))
 					controls |= control_bit(control_row - king_pos.row, col + 1 - king_pos.col);
 
 				continue;
@@ -539,12 +539,12 @@ uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingsid
 					// FIXME *** possible d'optimiser en coupant certaines directions?
 
 					// Skip si le cavalier ne peut pas contrôler la zone
-					const int new_row = row + knight_directions[k][0];
-					if (!is_in(new_row, min_row, max_row))
+					const uint8_t new_row = row + knight_directions[k][0];
+					if (!is_in_fast(new_row, min_row, max_row))
 						continue;
 
-					const int new_col = col + knight_directions[k][1];
-					if (!is_in(new_col, min_col, max_col))
+					const uint8_t new_col = col + knight_directions[k][1];
+					if (!is_in_fast(new_col, min_col, max_col))
 						continue;
 
 					controls |= control_bit(new_row - king_pos.row, new_col - king_pos.col);
@@ -560,11 +560,11 @@ uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingsid
 				for (int d = 0; d < 4; d++) {
 
 					// Direction
-					const int d_row = rect_directions[d][0];
-					const int d_col = rect_directions[d][1];
+					const uint8_t d_row = rect_directions[d][0];
+					const uint8_t d_col = rect_directions[d][1];
 
-					int current_row = row + d_row;
-					int current_col = col + d_col;
+					uint8_t current_row = row + d_row;
+					uint8_t current_col = col + d_col;
 
 					// Skip si la direction ne peut pas contrôler la zone
 					if ((d_row == -1 && current_row < min_row) || (d_row == 1 && current_row > max_row) || (d_col == -1 && current_col < min_col) || (d_col == 1 && current_col > max_col))
@@ -574,7 +574,7 @@ uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingsid
 					while (current_row >= 0 && current_row < 8 && current_col >= 0 && current_col < 8) {
 
 						// Si on est dans la zone, on ajoute le contrôle
-						if (is_in(current_row, min_row, max_row) && is_in(current_col, min_col, max_col))
+						if (is_in_fast(current_row, min_row, max_row) && is_in_fast(current_col, min_col, max_col))
 							controls |= control_bit(current_row - king_pos.row, current_col - king_pos.col);
 
 						// Si on rencontre une pièce, on arrête (sauf si c'est le roi, on continue)
@@ -595,11 +595,11 @@ uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingsid
 				for (int d = 0; d < 4; d++) {
 
 					// Direction
-					const int d_row = diag_directions[d][0];
-					const int d_col = diag_directions[d][1];
+					const uint8_t d_row = diag_directions[d][0];
+					const uint8_t d_col = diag_directions[d][1];
 
-					int current_row = row + d_row;
-					int current_col = col + d_col;
+					uint8_t current_row = row + d_row;
+					uint8_t current_col = col + d_col;
 
 					// Skip si la direction ne peut pas contrôler la zone
 					if ((d_row == -1 && current_row < min_row) || (d_row == 1 && current_row > max_row) || (d_col == -1 && current_col < min_col) || (d_col == 1 && current_col > max_col))
@@ -632,13 +632,13 @@ uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingsid
 				for (int k = 0; k < 8; k++) {
 
 					// Skip si le roi ne peut pas contrôler la zone
-					const int new_row = row + all_directions[k][0];
+					const uint8_t new_row = row + all_directions[k][0];
 
-					if (!is_in(new_row, min_row, max_row))
+					if (!is_in_fast(new_row, min_row, max_row))
 						continue;
 
-					const int new_col = col + all_directions[k][1];
-					if (!is_in(new_col, min_col, max_col))
+					const uint8_t new_col = col + all_directions[k][1];
+					if (!is_in_fast(new_col, min_col, max_col))
 						continue;
 
 					controls |= control_bit(new_row - king_pos.row, new_col - king_pos.col);
@@ -654,35 +654,38 @@ uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingsid
 
 // Fonction qui renvoie une des pièces qui la case (si plus d'une)
 PieceSquare Board::get_square_attacker(Pos square, int* n_attackers) const noexcept {
-	const int square_row = square.row;
-	const int square_col = square.col;
+	const uint8_t square_row = square.row;
+	const uint8_t square_col = square.col;
 
 	PieceSquare attacker = PieceSquare(none, { -1, -1 });
 
 	// Direction des pions selon le joueur (pour capture)
 	const int pawn_dir = _player ? 1 : -1;
+	const uint8_t knight = 2 + _player * 6;
 
 	// Vérification des cavaliers
 	for (int k = 0; k < 8; k++) {
-		const int row_knight = square_row + knight_directions[k][0];
-		const int col_knight = square_col + knight_directions[k][1];
-		if (!is_in(row_knight, 0, 7) || !is_in(col_knight, 0, 7))
+		const uint8_t row_knight = square_row + knight_directions[k][0];
+		const uint8_t col_knight = square_col + knight_directions[k][1];
+
+		// Vérifie qu'on est bien sur le plateau
+		if (!on_board_unsigned_short(row_knight, col_knight))
 			continue;
 
-		if (_array[row_knight][col_knight] == (2 + _player * 6)) {
+		if (_array[row_knight][col_knight] == knight) {
 			(*n_attackers)++;
 			if (*n_attackers == 2) return attacker;
-			attacker = PieceSquare(_array[row_knight][col_knight], { (uint8_t)row_knight, (uint8_t)col_knight });
+			attacker = PieceSquare(knight, { row_knight, col_knight });
 		}
 	}
 
 	// Vérification des sliders et diagonales
 	for (int d = 0; d < 8; d++) {
-		const int drow = all_directions[d][0];
-		const int dcol = all_directions[d][1];
+		const int8_t drow = all_directions[d][0];
+		const int8_t dcol = all_directions[d][1];
 
-		int row = square_row + drow;
-		int col = square_col + dcol;
+		uint8_t row = square_row + drow;
+		uint8_t col = square_col + dcol;
 
 		while (row >= 0 && row < 8 && col >= 0 && col < 8) {
 			const uint8_t piece = _array[row][col];
@@ -707,7 +710,7 @@ PieceSquare Board::get_square_attacker(Pos square, int* n_attackers) const noexc
 					if (valid_attack) {
 						(*n_attackers)++;
 						if (*n_attackers == 2) return attacker;
-						attacker = PieceSquare(piece, { (uint8_t)row, (uint8_t)col });
+						attacker = PieceSquare(piece, { row, col });
 					}
 				}
 
@@ -726,30 +729,31 @@ PieceSquare Board::get_square_attacker(Pos square, int* n_attackers) const noexc
 uint64_t Board::get_interpose_mask(Pos king_pos, const PieceSquare &attacker) const noexcept {
 	uint64_t mask = 0ULL;
 	const uint8_t attacker_piece = attacker.piece;
-	const Pos attacker_pos = attacker.square;
+	const uint8_t row = attacker.square.row;
+	const uint8_t col = attacker.square.col;
 
 	// Si l'attaquant est un cavalier, seule sa case compte
 	if (is_knight(attacker_piece)) {
-		mask |= 1ULL << (attacker_pos.row * 8 + attacker_pos.col);
+		mask |= 1ULL << (row * 8 + col);
 		return mask;
 	}
 
 	// Déterminer la direction du slider
-	int d_row = (attacker_pos.row == king_pos.row) ? 0 : (attacker_pos.row > king_pos.row ? 1 : -1);
-	int d_col = (attacker_pos.col == king_pos.col) ? 0 : (attacker_pos.col > king_pos.col ? 1 : -1);
+	int d_row = (row == king_pos.row) ? 0 : (row > king_pos.row ? 1 : -1);
+	int d_col = (col == king_pos.col) ? 0 : (col > king_pos.col ? 1 : -1);
 
 	int r = king_pos.row + d_row;
 	int c = king_pos.col + d_col;
 
 	// Ajouter toutes les cases jusqu'à l'attaquant
-	while (r != attacker_pos.row || c != attacker_pos.col) {
+	while (r != row || c != col) {
 		mask |= 1ULL << (r * 8 + c);
 		r += d_row;
 		c += d_col;
 	}
 
 	// Ajouter la case de l'attaquant
-	mask |= 1ULL << (attacker_pos.row * 8 + attacker_pos.col);
+	mask |= 1ULL << (row * 8 + col);
 
 	return mask;
 }
@@ -770,7 +774,8 @@ PinsMap Board::get_pins(bool player) const noexcept {
 	// On considère la case notée comme pin ssi la seconde pièce trouvée est un slider ennemi de la direction regardée
 
 	// Position du roi du joueur concerné
-	Pos king_pos = player ? _white_king_pos : _black_king_pos;
+	uint8_t king_row = player ? _white_king_pos.row : _black_king_pos.row;
+	uint8_t king_col = player ? _white_king_pos.col : _black_king_pos.col;
 
 	// Parcours des directions
 	for (int d = 0; d < 8; d++) {
@@ -780,8 +785,8 @@ PinsMap Board::get_pins(bool player) const noexcept {
 		int8_t d_col = all_directions[d][1];
 
 		// Position (à incrémenter)
-		int row = king_pos.row + d_row;
-		int col = king_pos.col + d_col;
+		int row = king_row + d_row;
+		int col = king_col + d_col;
 
 		// A t-on déjà trouvé une pièce clouable
 		bool found_candidate = false;
