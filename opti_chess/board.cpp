@@ -754,12 +754,6 @@ uint64_t Board::get_interpose_mask(Pos king_pos, const PieceSquare &attacker) co
 	return mask;
 }
 
-
-//// row et col doivent être dans [0,7]
-//inline static bool is_in_interpose_mask(uint64_t interpose_mask, uint8_t row, uint8_t col) {
-//	return (interpose_mask & (1ULL << (row * 8 + col))) != 0;
-//}
-
 // Fonction qui renvoie la liste des clouages pour le joueur donné
 PinsMap Board::get_pins(bool player) const noexcept {
 
@@ -8955,7 +8949,7 @@ bool Board::validate_nodes_count_at_depth(string fen, int depth, vector<long lon
 			validation_existence = false;
 		}
 
-		int expected_nodes_at_depth = validation_existence ? expected_nodes[d] : 0;
+		long long int expected_nodes_at_depth = validation_existence ? expected_nodes[d] : 0;
 
 		if (display) {
 			int total_time = clock() - begin_time;
