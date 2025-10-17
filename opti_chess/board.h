@@ -44,11 +44,11 @@ constexpr int_fast8_t diag_directions[4][2] = { {1, 1}, {1, -1}, {-1, 1}, {-1, -
 constexpr int_fast8_t all_directions[8][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1}, {-1, 0}, {0, -1}, {0, 1}, {1, 0} };
 
 // ------------------- Couleur -------------------
-constexpr bool is_white(uint8_t piece) {
+constexpr bool is_white(uint8_t piece) noexcept {
 	return piece && piece <= w_king;
 }
 
-constexpr bool is_black(uint8_t piece) {
+constexpr bool is_black(uint8_t piece) noexcept {
 	return piece >= b_pawn;
 }
 
@@ -61,24 +61,24 @@ constexpr inline bool is_queen(uint8_t piece) noexcept { return piece == w_queen
 constexpr inline bool is_king(uint8_t piece) noexcept { return piece == w_king || piece == b_king; }
 
 // ------------------- Mouvement -------------------
-constexpr bool is_rectilinear(uint8_t piece) {
+constexpr bool is_rectilinear(uint8_t piece) noexcept {
 	return piece == w_rook || piece == b_rook || piece == w_queen || piece == b_queen;
 }
 
-constexpr bool is_diagonal(uint8_t piece) {
+constexpr bool is_diagonal(uint8_t piece) noexcept {
 	return piece == w_bishop || piece == b_bishop || piece == w_queen || piece == b_queen;
 }
 
-constexpr bool is_sliding(uint8_t piece) {
+constexpr bool is_sliding(uint8_t piece) noexcept {
 	return (piece >= w_bishop && piece <= w_queen) || (piece >= b_bishop && piece <= b_queen);
 }
 
 // ------------------- Alliés -------------------
-constexpr bool is_ally(uint8_t piece, bool player_white) {
+constexpr bool is_ally(uint8_t piece, bool player_white) noexcept {
 	return piece && ((piece <= w_king) == player_white);
 }
 
-constexpr bool is_enemy(uint8_t piece, bool player_white) {
+constexpr bool is_enemy(uint8_t piece, bool player_white) noexcept {
 	return piece && ((piece <= w_king) != player_white);
 }
 
