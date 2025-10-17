@@ -165,7 +165,7 @@ inline int main_ui() {
 
 			// Position test pour la reflexion en milieu de partie: r1bq1b1r/pp4pp/2p1k3/3np3/1nBP4/2N2Q2/PPP2PPP/R1B2RK1 b - - 0 10
 
-			main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, { 1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860 }, true);
+			main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 7, { 1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860 }, true);
 			//main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/3P4/PPP1PPPP/RNBQKBNR b KQkq - 0 1", 6, { 1, 20, 539, 11959, 328511, 8073082, 227598692 }, true, true);
 			//main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pp1ppppp/8/2p5/8/3P4/PPP1PPPP/RNBQKBNR w KQkq - 0 2", 3, { 1, 27, 593, 15971 }, true, true);
 			//main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pp1ppppp/8/2p5/8/3P4/PPPKPPPP/RNBQ1BNR b kq - 1 2", 2, { 1, 22, 487 }, true, true);

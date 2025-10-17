@@ -337,16 +337,6 @@ struct Direction {
 	int8_t d_col;
 };
 
-// Directions existantes
-static constexpr Direction vertical_up = { 1, 0 };
-static constexpr Direction vertical_down = { -1, 0 };
-static constexpr Direction horizontal_right = { 0, 1 };
-static constexpr Direction horizontal_left = { 0, -1 };
-static constexpr Direction diagonal_up_right = { 1, 1 };
-static constexpr Direction diagonal_up_left = { 1, -1 };
-static constexpr Direction diagonal_down_right = { -1, 1 };
-static constexpr Direction diagonal_down_left = { -1, -1 };
-
 // Types de direction
 inline bool is_vertical(Direction d) {
 	return (d.d_row != 0 && d.d_col == 0);
@@ -413,6 +403,31 @@ inline bool is_controlled_around_king(uint16_t controls, int8_t rel_row, int8_t 
 inline bool is_in_interpose_mask(uint64_t interpose_mask, uint8_t row, uint8_t col) {
 	return (interpose_mask & (1ULL << (row * 8 + col))) != 0;
 }
+
+inline constexpr bool on_board(int row, int col) noexcept {
+	return static_cast<unsigned>(row | col) < 8;
+}
+
+inline constexpr bool on_board_short(int8_t row, int8_t col) noexcept {
+	return static_cast<unsigned>(row | col) < 8;
+}
+
+inline constexpr bool on_board_unsigned_short(uint8_t row, uint8_t col) noexcept {
+	return (row | col) < 8;
+}
+
+inline constexpr bool on_board(int coord) noexcept {
+    return static_cast<unsigned>(coord) < 8;
+}
+
+inline constexpr bool on_board_short(int8_t coord) noexcept {
+	return static_cast<unsigned>(coord) < 8;
+}
+
+inline constexpr bool on_board_usigned_short(uint8_t coord) noexcept {
+	return coord < 8;
+}
+
 
 // Plateau
 class Board {
