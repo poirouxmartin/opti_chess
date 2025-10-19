@@ -204,10 +204,6 @@ struct Piece
 	// Opérateurs
 
 	// Méthodes
-
-
-
-
 };
 
 // TODO: utiliser!!
@@ -839,10 +835,13 @@ public:
 	int get_pawn_shield_protection_at_column(bool color, int column, float opponent_attacking_potential, bool add_column_bonus = false, int space = 0);
 
 	// Fonction qui calcule tous les coups à une certaine profondeur, et renvoie le nombre de noeuds total
-	long long int count_nodes_at_depth(int depth, bool display = true);
+	long long int count_nodes_at_depth(int depth, bool display = true, bool main = false);
+
+	// Version parallelisée
+	long long int count_nodes_at_depth_parallelized(int depth, bool display, bool main = false);
 
 	// Fonction qui renvoie si le nombre de noeuds calculés pour une position à une certaine profondeur correspond au nombre attendu
-	bool validate_nodes_count_at_depth(string fen, int depth, vector<long long int> expected_nodes, bool display = false, bool display_full = false);
+	bool validate_nodes_count_at_depth(string fen, int depth, vector<long long int> expected_nodes, bool display = false, bool display_full = false, bool parallel = false);
 
 	// Fonction test: nouvelle mobilité des pièces
 	int get_piece_mobility(bool display = false) const;
