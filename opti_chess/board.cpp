@@ -14,6 +14,8 @@
 #include <cmath>
 #include <utility>
 #include <iomanip>
+#include <future>
+#include <vector>
 
 
 // Tests pour la parallélisation
@@ -364,7 +366,7 @@ bool Board::get_moves() {
 	// - Regarder comment générer le tableau des contrôles des cases autour du roi de la manière la plus efficace possible
 	// - Avoir un tableau des cases vides, ou de pièces non-alliées, pour savoir où les pièces peuvent physiquement aller plus rapidement?
 	// - Réduire au maximum le nombre d'appels sur les cases du plateau (un peu couteux à force...)
-	// - Pour les roques, utiliser la map des contrôles pour savoir si c'est légal ou non
+	// - DONE *** Pour les roques, utiliser la map des contrôles pour savoir si c'est légal ou non
 	// - Utiliser la structure Piece pour accéder plus rapidement aux types de pièces et leur couleur
 	// - Intégration de la fonction get_square_attacker dans get_controls_around_king?
 	// - Re-utiliser des choses de la position précédente? (pins, contrôles, attaquants...?)
@@ -501,10 +503,13 @@ uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingsid
 
 	// Itération sur les pièces adverses
 	for (uint8_t row = 0; row < 8; row++) {
+
+		//const uint8_t* board_row = _array[row];
 		for (uint8_t col = 0; col < 8; col++) {
 
 			// Pièce sur la case
 			const uint8_t piece = _array[row][col];
+			//const uint8_t piece = board_row[col];
 
 			// Si case vide ou pièce alliée, on skip
 			if (piece == none || (piece <= w_king) == player)
@@ -578,7 +583,7 @@ uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingsid
 							controls |= control_bit(current_row - king_pos.row, current_col - king_pos.col);
 
 						// Si on rencontre une pièce, on arrête (sauf si c'est le roi, on continue)
-						uint8_t p2 = _array[current_row][current_col];
+						const uint8_t p2 = _array[current_row][current_col];
 						if (p2 != none && p2 != piece_king)
 							break;
 
@@ -613,7 +618,7 @@ uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingsid
 							controls |= control_bit(current_row - king_pos.row, current_col - king_pos.col);
 
 						// Si on rencontre une pièce, on arrête (sauf si c'est le roi, on continue)
-						uint8_t p2 = _array[current_row][current_col];
+						const uint8_t p2 = _array[current_row][current_col];
 						if (p2 != none && p2 != piece_king)
 							break;
 
@@ -8881,17 +8886,11 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 }
 
 // Fonction qui calcule tous les coups à une certaine profondeur, et renvoie le nombre de noeuds total
-long long int Board::count_nodes_at_depth(int depth, bool display) {
+long long int Board::count_nodes_at_depth(int depth, bool display, bool main) {
 
 	if (depth == 0) {
 		return 1;
 	}
-
-	// FIXME: ne marche pas?
-	//int game_over = is_game_over(2);
-	//if (game_over != 0) {
-	//	cout << "toto" << endl;
-	//}
 
 	get_moves();
 	long long int nodes_count = 0;
@@ -8899,7 +8898,6 @@ long long int Board::count_nodes_at_depth(int depth, bool display) {
 	Board b;
 
 	for (int m = 0; m < _got_moves; m++) {
-		//Board b(*this, false, true);
 		b.minimal_copy_data(*this);
 
 		if (display) {
@@ -8922,13 +8920,52 @@ long long int Board::count_nodes_at_depth(int depth, bool display) {
 	return nodes_count;
 }
 
+// Version parallelisée
+long long int Board::count_nodes_at_depth_parallelized(int depth, bool display, bool main) {
+	if (depth == 0)
+		return 1;
+
+	get_moves();
+	long long int nodes_count = 0;
+
+	if (main) {
+		vector<future<long long int>> futures;
+		futures.reserve(_got_moves);
+
+		for (int m = 0; m < _got_moves; m++) {
+			Board copy;
+			copy.minimal_copy_data(*this);
+			copy.make_move(_moves[m]);
+
+			futures.emplace_back(async(launch::async, [copy, depth]() mutable {
+				return copy.count_nodes_at_depth_parallelized(depth - 1, false);
+				}));
+		}
+
+		for (auto& f : futures)
+			nodes_count += f.get();
+
+		return nodes_count;
+	}
+
+	Board b;
+	for (int m = 0; m < _got_moves; m++) {
+		b.minimal_copy_data(*this);
+		b.make_move(_moves[m]);
+		nodes_count += b.count_nodes_at_depth(depth - 1, false);
+	}
+
+	return nodes_count;
+}
+
 // Fonction qui renvoie si le nombre de noeuds calculés pour une position à une certaine profondeur correspond au nombre attendu
-bool Board::validate_nodes_count_at_depth(string fen, int depth, vector<long long int> expected_nodes, bool display, bool display_full) {
+bool Board::validate_nodes_count_at_depth(string fen, int depth, vector<long long int> expected_nodes, bool display, bool display_full, bool parallel) {
 
 	// Met en place la position
 	if (fen != "") {
 		if (display) {
-			cout << endl << fen << endl;
+			cout << endl << (parallel ? "*** parallel execution ***" : "*** single thread execution ***") << endl;
+			cout << fen << endl;
 		}
 
 		from_fen(fen);
@@ -8946,7 +8983,7 @@ bool Board::validate_nodes_count_at_depth(string fen, int depth, vector<long lon
 		}
 
 		//int nodes = count_nodes_at_depth(d);
-		long long int nodes = count_nodes_at_depth(d, display_full);
+		long long int nodes = parallel ? count_nodes_at_depth_parallelized(d, display_full, true) : count_nodes_at_depth(d, display_full, true);
 		
 		if (expected_nodes.size() <= d) {
 			cout << "Missing expected nodes in nodes count validation" << endl;
