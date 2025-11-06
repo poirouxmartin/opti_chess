@@ -569,7 +569,7 @@ public:
 	bool add_diag_moves(const bool player, const uint8_t row, const uint8_t col, uint8_t &iterator, const PinnedSquare &pin, const bool in_check, const uint64_t& interposition_mask) noexcept;
 
 	// Fonction qui renvoie la liste des coups légaux
-	bool get_moves();
+	bool get_moves() noexcept;
 
 	// Fonction qui renvoie la map des contrôles autour du roi du joueur donné (et les cases pour le roque, si besoin)
 	uint16_t get_controls_around_king(Pos king_pos, bool player, bool kingside_castle_check, bool queenside_castle_check) const noexcept;
