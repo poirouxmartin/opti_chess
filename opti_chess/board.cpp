@@ -221,7 +221,7 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 							// Si on tombe sur une pièce ennemie qui est un slider rectiligne, échec découvert
 							if (is_rectilinear(p)) {
 								en_passant = false;
-	}
+							}
 
 							break;
 						}
@@ -278,7 +278,7 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 							// Si on tombe sur une pièce ennemie qui est un slider rectiligne, échec découvert
 							if (is_rectilinear(p)) {
 								en_passant = false;
-	}
+							}
 
 							break;
 						}
