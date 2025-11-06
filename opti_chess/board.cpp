@@ -186,10 +186,53 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 		uint8_t new_col = col - 1;
 
 		// S'il y a une pièce ennemie ou si c'est une prise en passant
-		if (is_enemy(_array[new_row][new_col], player) || (row == 3 + player && _en_passant_col == new_col)) {
+		bool take = is_enemy(_array[new_row][new_col], player);
 
+		// Si c'est une prise normale
+		if (take) {
 			// Si on est en échec, il faut que le coup interpose
 			(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(Move(row, col, new_row, new_col), iterator, piece);
+		}
+
+		// Possibilité d'en passant
+		else {
+			bool en_passant = (row == 3 + player && _en_passant_col == new_col);
+
+			if (en_passant) {
+				// TODO *** vérifier que la prise en passant ne découvre pas un échec latéral: rnbqkbn1/ppppp3/6p1/3KPp1r/8/7p/PPPP1PPP/RNBQ1BNR w q f6 0 7
+				// Seul cas possible:
+				// Rangée: ... Slider rect ... Pion adverse Pion allié ... King ...
+
+				// Si le roi est sur la même rangée, et à droite du pion
+				Pos king_pos = player ? _white_king_pos : _black_king_pos;
+				if (king_pos.row == row && king_pos.col > col) {
+
+					// Itération vers la gauche
+					for (uint8_t c = new_col - 1; c >= 0; c--) {
+						uint8_t p = _array[row][c];
+
+						// Si on tombe sur une pièce
+						if (p != none) {
+
+							// Si on tombe sur une pièce alliée, on arrête
+							if (is_ally(p, player))
+								break;
+
+							// Si on tombe sur une pièce ennemie qui est un slider rectiligne, échec découvert
+							if (is_rectilinear(p)) {
+								en_passant = false;
+	}
+
+							break;
+						}
+					}
+				}
+
+
+				// Si on est en échec, il faut que le coup interpose (ou prenne le pion qui met en échec)
+				if (en_passant)
+					(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col) || (king_pos.row == row - direction && abs(king_pos.col - new_col) == 1)) && add_move(Move(row, col, new_row, new_col), iterator, piece);
+			}
 		}
 	}
 
@@ -201,10 +244,51 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 		uint8_t new_col = col + 1;
 
 		// S'il y a une pièce ennemie ou si c'est une prise en passant
-		if (is_enemy(_array[new_row][new_col], player) || (row == 3 + player && _en_passant_col == new_col)) {
+		bool take = is_enemy(_array[new_row][new_col], player);
 
+		// Si c'est une prise normale
+		if (take) {
 			// Si on est en échec, il faut que le coup interpose
 			(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(Move(row, col, new_row, new_col), iterator, piece);
+		}
+		// Possibilité d'en passant
+		else {
+			bool en_passant = (row == 3 + player && _en_passant_col == new_col);
+
+			if (en_passant) {
+				// TODO *** vérifier que la prise en passant ne découvre pas un échec latéral: rnbqkbn1/ppppp3/6p1/3KPp1r/8/7p/PPPP1PPP/RNBQ1BNR w q f6 0 7
+				// Seul cas possible:
+				// Rangée: ... King ... Pion allié Pion adverse ... Slider rect ...
+				
+				// Si le roi est sur la même rangée, et à gauche du pion
+				Pos king_pos = player ? _white_king_pos : _black_king_pos;
+				if (king_pos.row == row && king_pos.col < col) {
+
+					// Itération vers la droite
+					for (uint8_t c = new_col + 1; c < 8; c++) {
+						uint8_t p = _array[row][c];
+
+						// Si on tombe sur une pièce
+						if (p != none) {
+
+							// Si on tombe sur une pièce alliée, on arrête
+							if (is_ally(p, player))
+								break;
+
+							// Si on tombe sur une pièce ennemie qui est un slider rectiligne, échec découvert
+							if (is_rectilinear(p)) {
+								en_passant = false;
+	}
+
+							break;
+						}
+					}
+				}
+
+				// Si on est en échec, il faut que le coup interpose
+				if (en_passant)
+					(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col) || (king_pos.row == row - direction && abs(king_pos.col - new_col) == 1)) && add_move(Move(row, col, new_row, new_col), iterator, piece);
+			}
 		}
 	}
 
@@ -347,7 +431,7 @@ inline bool Board::add_diag_moves(const bool player, const uint8_t row, const ui
 }
 
 // Fonction qui renvoie la liste des coups légaux
-bool Board::get_moves() {
+bool Board::get_moves() noexcept {
 
 	// Logique
 	// 1: évaluation des clouages -> renvoie la liste des directions pour chaque clouage (en faire une structure?)
@@ -373,7 +457,21 @@ bool Board::get_moves() {
 	// - Parmi les cases controllées autour du roi, pas besoin de regarder celles qui sont occupées par une pièce alliée
 	// - Garder en mémoire où sont les pièces pour éviter d'itérer sur tout le plateau? (assez lourd sinon)
 	// - Itérer de bas en haut pour les blancs, et de haut en bas pour les noirs? et cut à la 16e pièce? pour éviter de regarder tout le plateau (à voir si c'est utile si on a la position des pièces alliées stockée)
+	// - Utiliser une structure différente pour les pins? car il n'y en a que 8 possibles... Les appels peuvent être couteux...
+	// - Tables d'attaques pré-calculées pour les pièces (cavalier, pion, roi) (voir BBC)
+	// - Tables de contrôles pre-calculées + stockées pour chaque position pour réutiliser
 
+
+	// TODO *** minimal_copy qui devrait copier aussi les bitboards, occupancies, etc.
+
+	// TODO *** gérer le cas de l'en passant qui découvre un échec latéral (très rare mais possible): rnbqkbn1/ppppp3/6p1/3KPp1r/8/7p/PPPP1PPP/RNBQ1BNR w q f6 0 7 (DONE)
+	// FIXME *** possibilité d'en passant si mis en échec par un pion adverse qui avance: 8/8/n1p1kp2/PpP1p2p/2K1p1pP/4P3/2P2PP1/6B1 w - b6 0 39 (DONE)
+
+	// BITBOARDS:
+	// - Plus besoin de _king_pos? maintenant que c'est déjà stocké?
+	// - Eviter les itérations sur tout le plateau, regarder seulement là où y'a les pièces
+	// - Eviter de rergarder _array[][] tout le temps (couteux)
+	// - Magic bitboards
 
 	// Cas tests:
 	// r1bq1b1r/pp4pp/2p1k3/3np3/1nBP4/2N2Q2/PPP2PPP/R1B2RK1 b - - 0 10
@@ -459,7 +557,6 @@ bool Board::get_moves() {
 
 	return true;
 }
-
 
 // Affiche le map des contrôles autour du roi
 void print_controls(uint16_t controls) {
