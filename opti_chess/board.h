@@ -424,6 +424,18 @@ inline constexpr bool on_board_usigned_short(uint8_t coord) noexcept {
 	return coord < 8;
 }
 
+inline constexpr int square_index(const int row, const int col) noexcept {
+	return row * 8 + col; // 0..63
+}
+
+inline constexpr void set_bit(uint64_t& bb, const int square) noexcept {
+	bb |= (1ULL << square);
+}
+
+inline constexpr void clear_bit(uint64_t& bb, const int square) noexcept {
+	bb &= ~(1ULL << square);
+}
+
 
 // Plateau
 class Board {
@@ -434,22 +446,25 @@ public:
 	// Plateau
 	// 64 bytes
 	uint8_t _array[8][8]{	{	w_rook,		w_knight,	w_bishop,   w_queen,    w_king,		w_bishop,   w_knight,   w_rook	},
-								{   w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn	},
-								{	none,		none,		none,		none,		none,		none,		none,		none	},
-								{	none,		none,		none,		none,		none,		none,		none,		none	},
-								{	none,		none,		none,		none,		none,		none,		none,		none	},
-								{	none,		none,		none,		none,		none,		none,		none,		none	},
-								{   b_pawn,		b_pawn,		b_pawn,		b_pawn,		b_pawn,		b_pawn,		b_pawn,		b_pawn	},
-								{   b_rook,		b_knight,   b_bishop,   b_queen,    b_king,		b_bishop,   b_knight,   b_rook	} };
+							{   w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn	},
+							{	none,		none,		none,		none,		none,		none,		none,		none	},
+							{	none,		none,		none,		none,		none,		none,		none,		none	},
+							{	none,		none,		none,		none,		none,		none,		none,		none	},
+							{	none,		none,		none,		none,		none,		none,		none,		none	},
+							{   b_pawn,		b_pawn,		b_pawn,		b_pawn,		b_pawn,		b_pawn,		b_pawn,		b_pawn	},
+							{   b_rook,		b_knight,   b_bishop,   b_queen,    b_king,		b_bishop,   b_knight,   b_rook	} };
 
 	//Array _array; // TODO utiliser
 
 	// Bitboard!! (TODO)
-	// w_pawn -> b_king
-	//uint64_t _bitboards[12];
+	// none -> w_pawn -> b_king
+	uint64_t _bitboards[13];
 
-	//// Pièces blanches, noires, et toutes
-	//uint64_t _occupancies[3];
+	// Pièces blanches, noires, et toutes
+	uint64_t _occupancies[3];
+
+	// TODO *** rajouter des masks pour les contrôles
+	// TODO *** magic bitboards à utiliser
 
 	// TODO *** Optionnel : roi en cache (remplacera les _white_king_pos ?)
 	//int _square_king[2];
@@ -843,6 +858,9 @@ public:
 	// Fonction qui renvoie si le nombre de noeuds calculés pour une position à une certaine profondeur correspond au nombre attendu
 	bool validate_nodes_count_at_depth(string fen, int depth, vector<long long int> expected_nodes, bool display = false, bool display_full = false, bool parallel = false);
 
+	// Fonction qui execute une même validation plusieurs fois, et affiche le temps moyen, min, max, écart-type...
+	void benchmark_nodes_count_at_depth(string fen, int depth, vector<long long int> expected_nodes, int iterations = 10, bool display = false, bool parallel = false);
+
 	// Fonction test: nouvelle mobilité des pièces
 	int get_piece_mobility(bool display = false) const;
 
@@ -938,6 +956,9 @@ public:
 
 	// Fonction qui affiche tous les bitboards
 	void print_all_bitboards() const;
+
+	// Fonction qui met à jour les bitboards en fonction d'un coup
+	void update_bitboards(int row1, int col1, int row2, int col2, int p, int p_last) noexcept;
 
 
 	// TODO *** faire un piece_safety plus générique?
