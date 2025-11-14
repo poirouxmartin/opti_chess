@@ -871,7 +871,7 @@ r2q1rk1/1p2ppbp/p2p1np1/n1pP2B1/2P5/1PN2bPP/P3PPB1/R2Q1RK1 w - - 0 3 : exf3 joua
 2R5/7k/8/7r/8/5K2/8/8 w - - 0 62 : ça sert à rien de calculer des tas d'échecs ici
 rnb1kb1r/ppp2ppp/5n2/3q4/4P3/5N2/PPP1QPPP/RNB1KB1R b KQkq - 0 6 : faut arrêter avec ce Cxe4 qui perd direct...
 rnb2rk1/ppp3pp/8/3q4/1b2p3/2P5/PP1NQ1PP/RNB1KB1R w KQ - 0 11 : y'a rien pour les noirs ici
-1r1k4/q2p1p2/5P2/8/4P2P/2P3r1/PP6/R1Q1KR2 b Q - 0 29 : Tg2 créé ici le réseau de mat
+1r1k4/q2p1p2/5P2/8/4P2P/2P3r1/PP6/R1Q1KR2 b Q - 0 29 : Tg2 crée ici le réseau de mat
 2rr2k1/pbq1bppp/1p2p3/4P2P/4NP2/3Bp3/PPP1Q2P/2KR3R w - - 1 18 : ici faut prendre e3. Le fou en d3 défend tout pour le moment
 r1q2r1k/p3bpp1/1p2p3/2pbP1N1/1n2B1P1/4B3/1PP1QP1P/1K1R3R w - - 2 19 : Txd5!! gagne
 r4r1k/p3bpp1/qp6/2ppPBN1/1n4P1/4B3/1PP1QP1P/1K5R w - - 2 21 : Df3!
@@ -1043,7 +1043,7 @@ r2q1rbk/2p3pp/2n5/1p1Np1NQ/8/1Bp1B3/P5PP/R5K1 b - - 3 3 : Cd4 le plus fort, gagn
 2k5/pp3p1p/2p1pP2/8/3P1K2/P6r/1PPQN1q1/R4R2 b - - 6 5 : h6!
 2k5/pp3p1p/2pKp3/6q1/3P4/P2Q3r/1PP1N3/R4R2 b - - 5 9 : blancs légèrement mieux
 8/8/8/8/2kp4/8/2K5/8 b - - 1 62 : nulle
-r2r2k1/1p3ppp/3p4/PB1P4/2P1p3/R2n4/1P3PPP/2R2K2 w - - 1 24 : Txd3!! simplifie la position dans quelque chose de gagnant facilement (pion d3 va tomber, et marrée de pions à l'aile dame)
+r2r2k1/1p3ppp/3p4/PB1P4/2P1p3/R2n4/1P3PPP/2R2K2 w - - 1 24 : Txd3!! simplifie la position dans quelque chose de gagnant facilement (pion d3 va tomber, et marrée de pions à l'aile dame) (en plus pas de colonnes pour les tours noires)
 3r2k1/1pr2ppp/3p4/PB1P4/1PP5/3R4/5PPP/5K2 b - - 0 27 : candidats pions passés -> gagnant aux blancs
 8/r4pkp/4p1b1/ppp1P3/5P1p/2P2B2/P2R1KPP/8 b - - 0 29 : b4 gagne facilement
 8/3r1pkp/6b1/pp1BP3/2pR3p/2P5/P4KPP/8 b - - 2 32 : b4 gagne encore
@@ -1234,6 +1234,39 @@ rn3rk1/ppbb1p2/3q2pp/3p3N/2pP1P2/2N1P2P/PPB2QP1/R4RK1 w - - 0 1 : e4!! gagne (e5
 8/2n2p1p/1pN1k3/p3pp2/2K5/P3P1P1/1P3P1P/8 b - - 3 11 : blancs mieux: structure un peu mieux, roi plus actif et cavalier aussi
 r4r1k/1b2qppp/pp2pn2/6B1/P7/2N3Q1/1PP3PP/3R1R1K w - - 4 20 : Txf6!! gagne (gxf6 Td7!!)
 1b3rk1/p4p2/6p1/R5Pp/1p2P3/1B6/PPP5/1K6 w - - 2 36 : pion h inarrêtable
+8/8/1p2kP2/6pp/1pK5/1P4PP/8/8 w - - 2 53 : f7 et g4 seuls coups qui gagnent
+8/5k2/1p6/6pp/1pK5/1P4PP/8/8 w - - 0 54 : Rd5! seul coup
+8/q3r1kp/2p3p1/2PpNQ2/1P2nP2/4P3/6RP/7K w - - 2 37 : Cxg6!! gagne
+5k2/2q1r1bp/2p3pN/2Pp3Q/1P2nP2/4P3/1R5P/6RK w - - 3 36 : Txg6!! seul coup qui tient
+7k/2q1r1bp/2p3pN/2Pp3Q/1P2nP2/4P3/1R5P/6RK w - - 3 36 : Ta2! seul coup qui gagne
+r2q1rk1/3nbppp/p2p1n2/1p2pP2/4P3/1bN1B2P/PPPQ2P1/2KR1B1R w - - 0 13 : cxb3 meilleure option que axb3
+r2q1rk1/3nbppp/p2p4/3Npn2/1Q6/1P5P/PP3BP1/2KR1BR1 b - - 1 17 : position étonnament meilleure pour les blancs
+8/6K1/6p1/1k2R3/7P/8/6r1/8 b - - 66 89 : Rc6! seul coup qui tient
+3Q4/p7/8/KPpBr1k1/3q4/P3p2P/8/8 b - - 5 44 : quiescence pas bonnne -> il pense que Rf4 perd
+r3k2r/1bp2ppp/p1p1pq2/8/3P4/5N2/PPP1QPPP/R3K2R w KQkq - 0 1 : il faut roquer aile dame ici, pas aile roi
+8/2p2p1p/p1k1p1p1/P1P5/1Pr1P3/2P1R3/5P1P/5K2 b - - 2 2 : tour enfermée en c4
+4rrk1/pp3ppp/8/2b1pP2/4P1n1/1P3NR1/P3p1B1/1RB4K b - - 3 6 : h5! le plus clean pour gagner
+4rrk1/pp3ppp/8/2b1pP2/6R1/1Pn2N2/P3p1BK/1RB5 w - - 2 9 : Fh6!! tient
+4rr1k/pp3pRp/7B/2b1pPN1/8/1P6/P3p1BK/1n6 b - - 2 11 : perpet!
+r5r1/p1qk1p2/1pn1bBp1/3pPpNp/2pP4/P1P5/1RP1QPPP/1R4K1 w - - 0 19 : roi noir effectivemennt mal placé, mais position fermée, donc pas mat encore
+r4r2/pb1q1kp1/1p1ppb1p/3n4/3P3P/P2Q1N1R/1P1B1PP1/1BR1K3 w - - 6 20 : g4 ou Cg5!! gagnent (Cg5 pas vraiment en fait après Re7!)
+rn1qkbnr/pbpp2pp/1p2p3/5p2/2PPP3/3B4/PP3PPP/RNBQK1NR w KQkq - 0 5 : exf5! gagne
+rn1q1knr/p1pp2bP/1p2p3/7Q/2PP4/3B4/PP3PbP/RNB1K1NR w KQ - 1 9 : Ce2 et Fg5 les seuls coups qui gagnent
+r2q1k1r/p1pp2bP/1pn1pn2/6B1/2PP3Q/3B4/PP2NP1P/RN2K2b w Q - 2 12 : Cd2! seul coup qui gagne
+r4k1r/pbppq1bP/4pnB1/1P1n2BN/3P3Q/8/PP1N1P1P/R3K3 w Q - 7 17 : Cxg7!
+r2q1k1r/p1pp2bP/1pn1pn2/6B1/2PP3Q/2NB4/PP2NP1P/R3K2b b Q - 3 12 : e5! seul coup qui tient
+r2q1k1r/p1pp2bP/1pn2n2/6B1/2P4Q/2pB4/PP2NP1P/2K4R w - - 0 15 : Cf4! seul coup qui tient
+r2q3r/p1pp1kbP/1p3n2/4n1B1/2P2N1Q/2p5/PPB2P1P/2K4R w - - 4 17 : Ch5!
+r4q1r/p1pp1kbP/1p3n2/6QN/2P5/2p5/PPB2P1P/2K4R w - - 1 20 : Fg6! termine la partie
+k2r4/3r1pp1/1np3p1/p5P1/P3P2q/2NR4/1PQ5/1K1R4 w - - 0 33 : Cb5!! gagne
+r1bq3r/pp3kp1/2n2Q1p/2bpp3/4P3/8/PPPP1PPP/RNB1K2R b KQ - 0 9 : pourquoi il préfère Rxf6 au lieu de Dxf6?
+r1bq1rk1/7p/p2b4/1ppP1ppQ/5p2/2N5/PPPB2PP/R3R1K1 w - c6 0 17 : dxc6 gagne...
+8/8/8/8/8/1p4kP/p5P1/K7 b - - 7 53 : Rxg2 perd (évaluation des pions passés à revoir?)
+r1bq1rk1/1p3ppp/p1np1n2/2b1p3/Q3P3/3BNN2/PPP2PPP/R1B2RK1 b - - 1 10 : b5! important
+rkb2b1r/pp3Qp1/2p1pp1p/8/8/8/PqPBBPPP/3R1RK1 b - - 3 16 : gagnant aux blancs
+6kr/pp1rR1pp/2p2pb1/8/1Q3R2/6PP/PP3PBK/3q4 w - - 9 25 : Fxc6!! gagne
+
+rnbqkbn1/ppppp3/6p1/3KPp1r/8/7p/PPPP1PPP/RNBQ1BNR w q f6 0 7 : FIX en passant illégal (cas similaire possible sur une diago ou non?)
 
 8/r7/8/5R2/2q5/1p6/1P4k1/1K6 w - - 0 1 : Tf2! tour folle (mais en fait le problème est pourri car ça ne fait pas nulle) -> bug de réflexion sur la quiescence? il affiche du 1M de noeuds par secondes xD
 8/8/8/7k/8/qp6/p7/K5R1 w - - 0 1 : tour folle qui fonctionne -> nulle. Question, pourquoi tous les coups ne sont pas regardés de la même manière? il devrait regarder en priorité les coups qui ne mènent pas à la nulle directe. Un peu comme un mat en X, mais là c'est pat en X en considérant qu'il a une meilleure position
