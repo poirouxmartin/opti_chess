@@ -42,6 +42,10 @@ void Board::minimal_copy_data(const Board& b) {
 	_en_passant_col = b._en_passant_col;
 	_white_king_pos = b._white_king_pos;
 	_black_king_pos = b._black_king_pos;
+
+	// Copie des bitboards
+	memcpy(_bitboards, b._bitboards, sizeof(_bitboards));
+	memcpy(_occupancies, b._occupancies, sizeof(_occupancies));
 }
 
 // Fonction qui copie les attributs d'un tableau
@@ -64,6 +68,10 @@ void Board::copy_data(const Board& b, bool full, bool copy_history) {
 	_evaluated = b._evaluated;
 	_static_evaluation = b._static_evaluation;
 	_zobrist_key = b._zobrist_key;
+
+	// Copie des bitboards
+	memcpy(_bitboards, b._bitboards, sizeof(_bitboards));
+	memcpy(_occupancies, b._occupancies, sizeof(_occupancies));
 
 	if (copy_history) {
 		_positions_history = b._positions_history;
@@ -1139,12 +1147,12 @@ void Board::display_moves() {
 inline void Board::make_move(const Move& move, const bool pgn, const bool add_to_history) noexcept
 {
 	// TODO *** à voir si ça rend plus rapide ou non
-	const uint8_t row1 = move.start_row;
-	const uint8_t col1 = move.start_col;
-	const uint8_t row2 = move.end_row;
-	const uint8_t col2 = move.end_col;
-	const uint8_t p = _array[row1][col1];
-	const uint8_t p_last = _array[row2][col2];
+	const int row1 = move.start_row;
+	const int col1 = move.start_col;
+	const int row2 = move.end_row;
+	const int col2 = move.end_col;
+	const int p = _array[row1][col1];
+	const int p_last = _array[row2][col2];
 
 	// TODO *** rendre plus efficace
 	if (pgn) {
@@ -1235,6 +1243,9 @@ inline void Board::make_move(const Move& move, const bool pgn, const bool add_to
 	// Vide la case de départ
 	_array[row1][col1] = none;
 
+	// Met à jour les bitboards
+	update_bitboards(row1, col1, row2, col2, p, p_last);
+
 	// Change le trait du joueur
 	_player = !_player;
 
@@ -1254,6 +1265,7 @@ inline void Board::make_move(const Move& move, const bool pgn, const bool add_to
 	_game_over_checked = false;
 
 	reset_eval();
+
 
 	return;
 }
@@ -2194,6 +2206,7 @@ void Board::from_fen(string fen)
 
 	update_kings_pos();
 
+	update_bitboards();
 
 	// Oriente le plateau dans pour le joueur qui joue
 	main_GUI._board_orientation = _player;
@@ -3635,7 +3648,7 @@ int Board::get_pawn_structure(float display_factor)
 	//Map black_controls_map = get_black_controls_map();
 
 	// Bonus quand le roi n'est pas dans le carré du pion passé
-	constexpr int out_of_square_bonus[8] = { 0, 500, 500, 750, 1000, 1250, 1500, 0 };
+	constexpr int out_of_square_bonus[8] = { 0, 1000, 1050, 1100, 1200, 1325, 1500, 0 };
 	//constexpr int out_of_square_bonus[8] = { 0, 500, 500, 500, 500, 500, 500, 0 };
 
 	// Est-on dans une finale de pions?
@@ -3701,7 +3714,7 @@ int Board::get_pawn_structure(float display_factor)
 						_array[row][col] = w_pawn;
 
 
-						int passed_value = passed_pawns[row] * (!has_black_pieces ? 2.0f : 1.0f);
+						int passed_value = passed_pawns[row] * (!has_black_pieces ? 1.0f : 1.0f);
 
 						// Est-il connecté avec un autre pion?
 						if ((col > 0 && (pawns_white[row][col - 1] || pawns_white[row - 1][col - 1])) || (col < 7 && (pawns_white[row][col + 1] || pawns_white[row - 1][col + 1]))) {
@@ -3717,6 +3730,8 @@ int Board::get_pawn_structure(float display_factor)
 
 						// Ajoute la valeur du pion passé
 						passed_pawns_value += (passed_value / division_factor + out_of_square * out_of_square_bonus[row]) * passed_adv;
+
+						//cout << "Passed pawn: " << square_name(row, col) << ", Value: " << (passed_value / division_factor + out_of_square * out_of_square_bonus[row]) * passed_adv << " (passed_value: " << passed_value << ", division_factor: " << division_factor << ", out_of_square bonus: " << out_of_square * out_of_square_bonus[row] << ") * passed_adv: " << passed_adv << endl;
 					}
 
 				}
@@ -3773,7 +3788,7 @@ int Board::get_pawn_structure(float display_factor)
 						// On remet le pion
 						_array[row][col] = b_pawn;
 
-						int passed_value = passed_pawns[7 - row] * (!has_white_pieces ? 2.0f : 1.0f);
+						int passed_value = passed_pawns[7 - row] * (!has_white_pieces ? 1.0f : 1.0f);
 
 						// Est-il connecté avec un autre pion?
 						if ((col > 0 && (pawns_black[row][col - 1] || pawns_black[row + 1][col - 1])) || (col < 7 && (pawns_black[row][col + 1] || pawns_black[row + 1][col + 1]))) {
@@ -3790,8 +3805,12 @@ int Board::get_pawn_structure(float display_factor)
 
 						// 8/8/7P/6p1/pP1p4/P7/3Kpk2/8 w - - 2 8
 
+						// 8/8/8/8/8/1p5P/p5k1/K7 w - - 0 54
+
 						// Ajoute la valeur du pion passé
 						passed_pawns_value -= (passed_value / division_factor + out_of_square * out_of_square_bonus[7 - row]) * passed_adv;
+
+						//cout << "Passed pawn: " << square_name(row, col) << ", Value: " << -(passed_value / division_factor + out_of_square * out_of_square_bonus[7 - row]) * passed_adv << " (passed_value: " << passed_value << ", division_factor: " << division_factor << ", out_of_square bonus: " << out_of_square * out_of_square_bonus[7 - row] << ") * passed_adv: " << passed_adv << endl;
 					}
 
 				}
@@ -3799,7 +3818,7 @@ int Board::get_pawn_structure(float display_factor)
 		}
 	}
 
-	// Valeur qui diminue quand on pousse c3??
+	//cout << "Passed pawns total value: " << passed_pawns_value << endl;
 
 	if (display_factor != 0.0f)
 		main_GUI._eval_components += "passed pawns: " + (passed_pawns_value >= 0 ? string("+") : string()) + to_string(static_cast<int>(passed_pawns_value * display_factor)) + "\n";
@@ -6021,10 +6040,12 @@ int Board::get_rook_activity() const
 
 	// Malus pour manque de mobilité
 	constexpr int bad_mobility_min = 3;
-	constexpr int bad_mobility_malus = 250;
+	constexpr int bad_mobility_malus = 1000;
 
 	// Valeur normale d'une activité de tour
-	constexpr int normal_activity = 8 * vertical_mobility_bonus + 8 * horizontal_mobility_bonus;
+	constexpr int normal_activity = 5 * vertical_mobility_bonus + 7 * horizontal_mobility_bonus;
+
+	// r2q3r/ppp2kpp/2n2n2/2b1p3/4P1b1/2N2N2/PPPP2PP/R1BQ1R1K b - - 3 9 : après Rg8, la tour se retrouve bloquée en h8...
 
 
 	//1r5k/3n2p1/5nbp/1Np5/P4b2/1P1P4/1BP2PP1/R3R1K1 w - - 0 25
@@ -6170,7 +6191,6 @@ int Board::get_rook_activity() const
 
 				activity -= rook_activity;
 			}
-
 		}
 	}
 
@@ -9112,6 +9132,46 @@ bool Board::validate_nodes_count_at_depth(string fen, int depth, vector<long lon
 	return success;
 }
 
+// Fonction qui execute une même validation plusieurs fois, et affiche le temps moyen, min, max, écart-type...
+void Board::benchmark_nodes_count_at_depth(string fen, int depth, vector<long long int> expected_nodes, int iterations, bool display, bool parallel) {
+
+	// Met en place la position
+	if (fen != "") {
+		cout << endl << "*** Benchmarking nodes count at depth " << depth << " over " << iterations << " iterations ***" << endl;
+		cout << (parallel ? "*** parallel execution ***" : "*** single thread execution ***") << endl;
+		cout << fen << endl;
+		from_fen(fen);
+	}
+
+	vector<double> times;
+	times.reserve(iterations);
+
+	for (int it = 0; it < iterations; it++) {
+		clock_t begin_time = clock();
+
+		// Validation
+		validate_nodes_count_at_depth("", depth, expected_nodes, display, false, parallel);
+		double total_time = double(clock() - begin_time) / CLOCKS_PER_SEC;
+		times.push_back(total_time);
+		cout << "Iteration " << (it + 1) << " / " << iterations << " completed in " << total_time << " s" << endl;
+	}
+
+	// Calcul des statistiques
+	double sum = accumulate(times.begin(), times.end(), 0.0);
+	double mean = sum / times.size();
+	double sq_sum = inner_product(times.begin(), times.end(), times.begin(), 0.0);
+	double stdev = sqrt(sq_sum / times.size() - mean * mean);
+	auto [min_it, max_it] = minmax_element(times.begin(), times.end());
+	double min_time = *min_it;
+	double max_time = *max_it;
+
+	cout << "Benchmark results over " << iterations << " iterations :" << endl;
+	cout << "Average time: " << mean << " s" << endl;
+	cout << "Minimum time: " << min_time << " s" << endl;
+	cout << "Maximum time: " << max_time << " s" << endl;
+	cout << "Standard deviation: " << stdev << " s" << endl;
+}
+
 // Fonction test: nouvelle mobilité des pièces
 int Board::get_piece_mobility(bool display) const {
 	// Points à prendre en compte:
@@ -10923,7 +10983,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 	static constexpr int bishop_virtual_mobility[15] = { -1350, -750, -200, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180 };
 	static constexpr int rook_virtual_mobility[15] = { -2350, -1000, -300, 35, 50, 65, 75, 85, 95, 105, 115, 125, 135, 145, 155 };
 	static constexpr int queen_virtual_mobility[29] = { -4500, -2000, -500, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250 };
-	static constexpr int king_virtual_mobility[9] = { -1000, -300, 0, 10, 20, 29, 37, 44, 50 };
+	static constexpr int king_virtual_mobility[9] = { -500, -100, 0, 10, 20, 29, 37, 44, 50 };
 
 	static const int* virtual_mobilities[6] = { pawn_virtual_mobility, knight_virtual_mobility, bishop_virtual_mobility, rook_virtual_mobility, queen_virtual_mobility, king_virtual_mobility };
 
@@ -11351,30 +11411,30 @@ void Board::assign_move_flags(Move* move) const {
 
 // Fonction qui remet à 0 les bitboards
 void Board::reset_bitboards() {
-	//for (int i = 0; i < 12; i++)
-	//	_bitboards[i] = 0ULL;
-	//for (int i = 0; i < 3; i++)
-	//	_occupancies[i] = 0ULL;
+	for (int i = 0; i < 12; i++)
+		_bitboards[i] = 0ULL;
+	for (int i = 0; i < 3; i++)
+		_occupancies[i] = 0ULL;
 }
 
 // Fonction qui affiche tous les bitboards
 void Board::update_bitboards() {
-	//reset_bitboards();
+	reset_bitboards();
 
-	//for (int row = 0; row < 8; row++) {
-	//	for (int col = 0; col < 8; col++) {
-	//		int piece = _array[row][col];
-	//		if (piece == none)
-	//			continue;
+	for (int row = 0; row < 8; row++) {
+		for (int col = 0; col < 8; col++) {
+			int piece = _array[row][col];
 
-	//		int square = row * 8 + col;
-	//		_bitboards[piece - 1] |= 1ULL << square;
+			int square = row * 8 + col;
+			_bitboards[piece] |= 1ULL << square;
 
-	//		int color = (piece > 6) ? 1 : 0;
-	//		_occupancies[color] |= 1ULL << square;
-	//		_occupancies[2] |= 1ULL << square;
-	//	}
-	//}
+			if (piece) {
+				int color = (piece > 6) ? 1 : 0;
+				_occupancies[color] |= 1ULL << square;
+				_occupancies[2] |= 1ULL << square;
+			}
+		}
+	}
 }
 
 // Fonction qui affiche toutes les valeurs d'un bitboard
@@ -11390,18 +11450,288 @@ void print_bitboard(uint64_t bitboard) {
 }
 
 // Fonction qui affiche tous les bitboards
-//void Board::print_all_bitboards() const {
-//	for (int i = 0; i < 12; i++) {
-//		cout << piece_name(i + 1) << endl;
-//		print_bitboard(_bitboards[i]);
-//	}
-//
-//	cout << "White: " << endl;
-//	print_bitboard(_occupancies[0]);
-//
-//	cout << "Black: " << endl;
-//	print_bitboard(_occupancies[1]);
-//
-//	cout << "Both: " << endl;
-//	print_bitboard(_occupancies[2]);
-//}
+void Board::print_all_bitboards() const {
+	auto print_row = [&](int row, int offset, int count) {
+		for (int i = 0; i < count; ++i) {
+			uint64_t bb = _bitboards[offset + i];
+			for (int col = 0; col < 8; ++col) {
+				int sq = row * 8 + col;
+				cout << (((bb >> sq) & 1ULL) ? "1 " : ". ");
+			}
+			cout << "   ";
+		}
+		cout << endl;
+		};
+
+	auto print_occ_row = [&](int row) {
+		for (int i = 0; i < 3; ++i) {
+			uint64_t bb = _occupancies[i];
+			for (int col = 0; col < 8; ++col) {
+				int sq = row * 8 + col;
+				cout << (((bb >> sq) & 1ULL) ? "1 " : ". ");
+			}
+			cout << "   ";
+		}
+		cout << endl;
+		};
+
+	cout << "\n=== BITBOARDS (none + white pieces) ===" << endl;
+	cout << left << setw(19) << "None"
+		<< setw(19) << "w_pawn"
+		<< setw(19) << "w_knight"
+		<< setw(19) << "w_bishop"
+		<< setw(19) << "w_rook"
+		<< setw(19) << "w_queen"
+		<< setw(19) << "w_king" << endl;
+
+	for (int row = 7; row >= 0; --row)
+		print_row(row, 0, 7);
+
+	cout << "\n=== BITBOARDS (black pieces) ===" << endl;
+	cout << left << setw(19) << "b_pawn"
+		<< setw(19) << "b_knight"
+		<< setw(19) << "b_bishop"
+		<< setw(19) << "b_rook"
+		<< setw(19) << "b_queen"
+		<< setw(19) << "b_king" << endl;
+
+	for (int row = 7; row >= 0; --row)
+		print_row(row, 7, 6);
+
+	cout << "\n=== OCCUPANCIES ===" << endl;
+	cout << left << setw(19) << "White"
+		<< setw(19) << "Black"
+		<< setw(19) << "Both" << endl;
+
+	for (int row = 7; row >= 0; --row)
+		print_occ_row(row);
+}
+
+static constexpr uint64_t SQUARE_MASKS[64] = {
+	1ULL << 0,  1ULL << 1,  1ULL << 2,  1ULL << 3,  1ULL << 4,  1ULL << 5,  1ULL << 6,  1ULL << 7,
+	1ULL << 8,  1ULL << 9,  1ULL << 10, 1ULL << 11, 1ULL << 12, 1ULL << 13, 1ULL << 14, 1ULL << 15,
+	1ULL << 16, 1ULL << 17, 1ULL << 18, 1ULL << 19, 1ULL << 20, 1ULL << 21, 1ULL << 22, 1ULL << 23,
+	1ULL << 24, 1ULL << 25, 1ULL << 26, 1ULL << 27, 1ULL << 28, 1ULL << 29, 1ULL << 30, 1ULL << 31,
+	1ULL << 32, 1ULL << 33, 1ULL << 34, 1ULL << 35, 1ULL << 36, 1ULL << 37, 1ULL << 38, 1ULL << 39,
+	1ULL << 40, 1ULL << 41, 1ULL << 42, 1ULL << 43, 1ULL << 44, 1ULL << 45, 1ULL << 46, 1ULL << 47,
+	1ULL << 48, 1ULL << 49, 1ULL << 50, 1ULL << 51, 1ULL << 52, 1ULL << 53, 1ULL << 54, 1ULL << 55,
+	1ULL << 56, 1ULL << 57, 1ULL << 58, 1ULL << 59, 1ULL << 60, 1ULL << 61, 1ULL << 62, 1ULL << 63
+};
+
+// Fonction qui met à jour les bitboards en fonction d'un coup
+inline void Board::update_bitboards(int row1, int col1, int row2, int col2, int p, int p_last) noexcept {
+
+	// TODO *** set les occupancies en même temps que les autres bitboards pour éviter de tout recalculer ensuite?
+
+	// Coordonnées 0-63
+	const int from = row1 * 8 + col1;
+	const int to = row2 * 8 + col2;
+	const int color_idx_from = !_player;
+	const int color_idx_to = p_last != 0;
+
+	// 1. Enlève la pièce de sa case d'origine
+	clear_bit(_bitboards[p], from);
+	clear_bit(_occupancies[color_idx_from], from);
+	clear_bit(_occupancies[2], from);
+
+	//const uint64_t from_mask = SQUARE_MASKS[from];
+	//const uint64_t to_mask = SQUARE_MASKS[to];
+
+	//// Retire la pièce déplacée de son ancienne case
+	//_bitboards[p] ^= from_mask;
+	//_occupancies[color_idx_from] ^= from_mask;
+	//_occupancies[2] ^= from_mask;
+
+	// 2. Si une pièce est capturée, retire-la aussi
+	if (p_last != none) {
+		clear_bit(_bitboards[p_last], to);
+		clear_bit(_occupancies[color_idx_to], to);
+	}
+
+	// 3. Si promotion
+	//const int final_piece = (p == w_pawn && row2 == 7) || (p == b_pawn && row2 == 0) ? (_player ? w_queen : b_queen) : p;
+	//set_bit(_bitboards[final_piece], to);
+
+	if ((p == w_pawn && row2 == 7) || (p == b_pawn && row2 == 0)) {
+		set_bit(_bitboards[_player ? w_queen : b_queen], to); // En dame seulement pour le moment
+	}
+
+	// 4. Sinon, la même pièce se déplace simplement
+	else {
+		set_bit(_bitboards[p], to);
+	}
+
+	// Déplacement de la pièce dans les occupancies
+	set_bit(_occupancies[color_idx_from], to);
+	set_bit(_occupancies[2], to);
+
+	// 5. Cas spéciaux : en passant
+	if (p == w_pawn && col1 != col2 && p_last == none) {
+		const int captured_square = square_index(row2 - 1, col2);
+		clear_bit(_bitboards[b_pawn], captured_square);
+		clear_bit(_occupancies[1], captured_square);
+		clear_bit(_occupancies[2], captured_square);
+		return;
+	}
+	if (p == b_pawn && col1 != col2 && p_last == none) {
+		const int captured_square = square_index(row2 + 1, col2);
+		clear_bit(_bitboards[w_pawn], captured_square);
+		clear_bit(_occupancies[0], captured_square);
+		clear_bit(_occupancies[2], captured_square);
+		return;
+	}
+
+	// 6. Cas spéciaux : roques
+	if (p == w_king && col2 == col1 + 2) { // Petit roque blanc
+		clear_bit(_bitboards[w_rook], 7);
+		clear_bit(_occupancies[0], 7);
+		clear_bit(_occupancies[2], 7);
+		set_bit(_bitboards[w_rook], 5);
+		set_bit(_occupancies[0], 5);
+		set_bit(_occupancies[2], 5);
+		return;
+	}
+	if (p == w_king && col2 == col1 - 2) { // Grand roque blanc
+		clear_bit(_bitboards[w_rook], 0);
+		clear_bit(_occupancies[0], 0);
+		clear_bit(_occupancies[2], 0);
+		set_bit(_bitboards[w_rook], 3);
+		set_bit(_occupancies[0], 3);
+		set_bit(_occupancies[2], 3);
+		return;
+	}
+	if (p == b_king && col2 == col1 + 2) { // Petit roque noir
+		clear_bit(_bitboards[b_rook], 63);
+		clear_bit(_occupancies[1], 63);
+		clear_bit(_occupancies[2], 63);
+		set_bit(_bitboards[b_rook], 61);
+		set_bit(_occupancies[1], 61);
+		set_bit(_occupancies[2], 61);
+		return;
+	}
+	if (p == b_king && col2 == col1 - 2) { // Prand roque noir
+		clear_bit(_bitboards[b_rook], 56);
+		clear_bit(_occupancies[1], 56);
+		clear_bit(_occupancies[2], 56);
+		set_bit(_bitboards[b_rook], 59);
+		set_bit(_occupancies[1], 59);
+		set_bit(_occupancies[2], 59);
+		return;
+	}
+
+	// 7. Recalcule les occupancies
+	// FIXME *** peut-être très lent? à voir...
+	//_occupancies[0] = _bitboards[w_pawn] | _bitboards[w_knight] | _bitboards[w_bishop] | _bitboards[w_rook] | _bitboards[w_queen] | _bitboards[w_king];
+	//_occupancies[1] = _bitboards[b_pawn] | _bitboards[b_knight] | _bitboards[b_bishop] | _bitboards[b_rook] | _bitboards[b_queen] | _bitboards[b_king];
+	//_occupancies[2] = _occupancies[0] | _occupancies[1];
+
+
+	/// Version 2
+
+	//const int from = square_index(row1, col1);
+	//const int to = square_index(row2, col2);
+	//const bool white = is_white(p);
+	//const int color_idx = white ? 0 : 1;
+	//const int opp_idx = white ? 1 : 0;
+
+	//const uint64_t from_mask = SQUARE_MASKS[from];
+	//const uint64_t to_mask = SQUARE_MASKS[to];
+
+	//// Retire la pièce déplacée de son ancienne case
+	////_bitboards[p] ^= from_mask;
+	////_occupancies[color_idx] ^= from_mask;
+	////_occupancies[2] ^= from_mask;
+
+	//uint64_t bb = _bitboards[p];
+	//uint64_t occ_color = _occupancies[color_idx];
+	//uint64_t occ_all = _occupancies[2];
+
+	//bb ^= from_mask;
+	//occ_color ^= from_mask;
+	//occ_all ^= from_mask;
+
+	////bb &= ~from_mask;
+	////occ_color &= ~from_mask;
+	////occ_all &= ~from_mask;
+
+	//_bitboards[p] = bb;
+	//_occupancies[color_idx] = occ_color;
+	//_occupancies[2] = occ_all;
+
+	//// Si capture : retire la pièce capturée
+	//if (p_last != none) {
+	//	_bitboards[p_last] ^= to_mask;
+	//	_occupancies[opp_idx] ^= to_mask;
+	//	_occupancies[2] ^= to_mask;
+	//}
+
+	//// Si en passant
+	//if (is_pawn(p) && col1 != col2 && p_last == none) {
+	//	const int cap_sq = square_index(row2 + (white ? -1 : 1), col2);
+	//	const uint64_t ep_mask = SQUARE_MASKS[cap_sq];
+	//	_bitboards[white ? b_pawn : w_pawn] ^= ep_mask;
+	//	_occupancies[opp_idx] ^= ep_mask;
+	//	_occupancies[2] ^= ep_mask;
+	//}
+
+	//// Si roque
+	//if (is_king(p)) {
+	//	// Blancs
+	//	 if (white && row1 == 0) {
+	//		if (col2 == col1 + 2) { // Petit roque
+	//			constexpr uint64_t rook_from = SQUARE_MASKS[square_index(0, 7)];
+	//			constexpr uint64_t rook_to = SQUARE_MASKS[square_index(0, 5)];
+	//			_bitboards[w_rook] ^= rook_from | rook_to;
+	//			_occupancies[0] ^= rook_from | rook_to;
+	//			_occupancies[2] ^= rook_from | rook_to;
+	//		}
+	//		else if (col2 == col1 - 2) { // Grand roque
+	//			constexpr uint64_t rook_from = SQUARE_MASKS[square_index(0, 0)];
+	//			constexpr uint64_t rook_to = SQUARE_MASKS[square_index(0, 3)];
+	//			_bitboards[w_rook] ^= rook_from | rook_to;
+	//			_occupancies[0] ^= rook_from | rook_to;
+	//			_occupancies[2] ^= rook_from | rook_to;
+	//		}
+	//	}
+	//	// Noir
+	//	else if (!white && row1 == 7) {
+	//		if (col2 == col1 + 2) { // Petit roque
+	//			constexpr uint64_t rook_from = SQUARE_MASKS[square_index(7, 7)];
+	//			constexpr uint64_t rook_to = SQUARE_MASKS[square_index(7, 5)];
+	//			_bitboards[b_rook] ^= rook_from | rook_to;
+	//			_occupancies[1] ^= rook_from | rook_to;
+	//			_occupancies[2] ^= rook_from | rook_to;
+	//		}
+	//		else if (col2 == col1 - 2) { // Grand roque
+	//			constexpr uint64_t rook_from = SQUARE_MASKS[square_index(7, 0)];
+	//			constexpr uint64_t rook_to = SQUARE_MASKS[square_index(7, 3)];
+	//			_bitboards[b_rook] ^= rook_from | rook_to;
+	//			_occupancies[1] ^= rook_from | rook_to;
+	//			_occupancies[2] ^= rook_from | rook_to;
+	//		}
+	//	}
+	//}
+
+	//// Ajoute la nouvelle pièce (ou la pièce promue)
+	//if (promotion) {
+	//	const uint8_t promo_piece = white ? w_queen : b_queen;
+	//	_bitboards[promo_piece] |= to_mask;
+	//}
+	//else {
+	//	_bitboards[p] |= to_mask;
+	//}
+
+	//_occupancies[color_idx] |= to_mask;
+	//_occupancies[2] |= to_mask;
+
+
+	/// Version 3: très simple et optimisée
+
+	// Vire la pièce de sa case d'origine
+
+	//const int from = square_index(row1, col1);
+	//const int to = square_index(row2, col2);
+
+	//clear_bit(_bitboards[p], from);
+	//clear_bit(_occupancies[is_white(p) ? 0 : 1], from);
+}

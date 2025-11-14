@@ -1481,10 +1481,12 @@ void GUI::draw()
 // Fonction qui charge une position à partir d'une FEN
 void GUI::load_FEN(const string fen, bool display) {
 	// TODO: il faut vériifer que la FEN est valide
-	_board.from_fen(fen);
-	update_global_pgn();
+	//_board.from_fen(fen);
+	//update_global_pgn();
 	_root_exploration_node->reset();
 	_root_exploration_node->_board = &_board;
+	_root_exploration_node->_board->from_fen(fen);
+	update_global_pgn();
 	_update_variants = true;
 	monte_buffer.reset();
 
