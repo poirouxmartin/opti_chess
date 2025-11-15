@@ -508,7 +508,7 @@ r1b5/pppp2qk/2nb4/6Pp/4R3/2P1Q3/P1P3P1/5RK1 w - - 1 14 : Tf6 +3
 r2n2k1/2p2Rpp/1p2P3/3p4/8/2P4P/p5P1/R5K1 w - - 2 34 : Txa2 gagne
 8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1 : Rb1 seul coup gagnant
 8/2k5/3p4/p2P1p2/P2P1P2/8/3K4/8 w - - 10 6 : Rd3
-8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7 : Re3 (Grogros trouve pas avec 5M de noeuds)
+8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7 : Re3 (Grogros trouve pas avec 5M de noeuds) -> 20251115: il trouve en 1.1M noeuds (un peu plus de 30 secondes)
 8/2k5/3p4/p2P1p2/P2P1P2/4K3/8/8 w - - 14 8 : Rf2/Rf3 gagnent (grogros met 7 secondes à trouver)
 rb6/rpp1R2p/3p1np1/pP1k1b2/P2P1B2/2P4P/3N1KP1/8 w - - 1 23 : Re3 #4
 1k1r4/1pp1q1pp/p1nb1r2/2Nb1p2/PP1Pp3/2Q1P3/4BPPP/1RB2RK1 b - b3 0 19 : Fxh2+ pour Th6 Dh4 gagne
@@ -612,7 +612,7 @@ r2q1r2/pp4kp/2p1Qbp1/3pB3/3P4/8/PPP3PP/R4RK1 w - - 4 19 : Txf6 gagne
 8/8/1k2p3/1p1p4/1KpPP1p1/2P3P1/2bN4/8 b - - 0 43 : Fd3 seul coup qui gagne
 8/8/8/8/1p2N1K1/8/5Q2/2qk4 w - - 4 3 : Rh5 seul coup qui gagne
 8/8/p7/q1kbN3/P3P3/2N5/PPK5/8 w - - 0 1 : b4+ gagne
-3r2k1/pp3p1p/7b/2p5/8/2P4P/P1PR2P1/2KR4 b - - 0 1 : c4 zugzwang
+3r2k1/pp3p1p/7b/2p5/8/2P4P/P1PR2P1/2KR4 b - - 0 1 : c4 zugzwang (faut empêcher c4 des blancs, sinon ils font c3 Rc2 rapidement. ils doivent rester dans le clouage pour être paralysés)
 r1b1qrk1/1pppnpp1/1b5p/p3P3/1P5B/1Bp2N2/P4PPP/R2QR1K1 w - a6 0 15 : Ff6 quasi gagnant
 r3qrk1/1pp2pp1/1b1PbBnp/8/pPB5/2pQ1N2/P4PPP/R3R1K1 w - - 1 19 : Dxg6!! quasi gagnant
 r4r1k/1pp3p1/1b1P2pp/5q2/pPB1R3/2B2N2/P4PPP/R5K1 w - - 3 23 : Te7 quasi gagnant
@@ -645,7 +645,7 @@ r2q1rk1/p5bp/2n3bp/1p1pp3/2p4P/2PP1NN1/PPQ1BPP1/2KR3R b - - 0 14 : Cb4 gagne
 r2r2k1/1b3p2/p3pn2/2b1q2p/4P1p1/2N4P/PPBBQPP1/R2R2K1 w - - 0 19 : Rh1 seul coup pour avantage. Sinon, Fe3 pour égalité
 r2r2k1/1b3p2/p3pn2/2B1q2p/4P3/2N4p/PPB1QPP1/R2R2K1 b - - 0 20 : Cg4 gagne
 r4rk1/pp1bbppp/2q1p3/3pPn2/3P4/3B1N2/3BQPPP/R3R1K1 w - - 4 19 : g4 gagne (Ch4, Cxh4, Fxh4 et g5 enferme le fou)
-2q2rk1/5ppp/4p3/p2pP1B1/3P4/3B4/4QP1P/6K1 b - - 0 28 : Dc3 gagne
+2q2rk1/5ppp/4p3/p2pP1B1/3P4/3B4/4QP1P/6K1 b - - 0 28 : Dc3 gagne (semi gagne en fait...)
 2r3k1/5ppp/4p3/p2pP1B1/3P4/2qBQ3/5PKP/8 b - - 4 30 : h6 seul coup qui gagne
 r5k1/1pb2pp1/2bp1nnp/4p3/1PP1P3/q3BNNP/2BQ1PP1/1R4K1 w - - 0 26 : Fxh6 gagne
 r2q1rk1/1b3ppp/p7/1p1pnN2/4n3/4N2P/PPB2PP1/R2QR1K1 w - - 0 2 : Cxd5 et Dxd5 gagne
@@ -700,7 +700,7 @@ r3rn2/6pk/p2R3p/3BN1P1/3BP3/P4P2/1P5q/1K1R4 b - - 0 20 : Tac8 gagne
 3r1n2/5B1k/p4Rp1/4B3/6q1/P4N2/KP6/8 b - - 1 31 : Td3 gagne
 3r1rk1/1bq2ppp/pp2p3/4P3/2PpNP2/P2BnR2/1P2Q1PP/3R2K1 w - - 4 22 : Cf6+ gagne
 3r1rk1/2q2pp1/pp2p3/4P2Q/2Pp1P2/P3n2R/1P4PP/3R2K1 b - - 3 25 : f6 seul coup (f5 y a Dh7+ et Th6!!)
-3r1r2/5kpQ/pp2p2R/4Pp2/2qp1P2/P3n3/1P4PP/3R2K1 w - - 0 28 : Tf6+!! et Dxg7 gagne
+3r1r2/5kpQ/pp2p2R/4Pp2/2qp1P2/P3n3/1P4PP/3R2K1 w - - 0 28 : Tf6+! et Dxg7 gagne
 1q2rrk1/pb1n1ppp/1p2p3/1Nbp4/2P2P2/1P1BP3/PB2Q1PP/R4RK1 w - - 0 1 : Fxh7+ #12
 1q2rrk1/pb1n1pp1/1p2p3/1Nbp3Q/2P2P2/1P2P3/PB4PP/R4RK1 w - - 2 3 : Fxg7 #10
 r2q1r1k/2p2pb1/p1n1pNp1/4P2p/1p1P3P/2PBQP2/PP6/2KR3R w - - 2 20 : Cxh5 gagne
