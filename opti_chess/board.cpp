@@ -5875,6 +5875,7 @@ int Board::get_king_proximity()
 	// TEST: 8/8/8/1k1K3p/6p1/6P1/7P/8 w - - 0 25
 	// TEST: 8/8/3k2b1/1p5p/1P1K2p1/1B4P1/7P/8 w - - 6 12
 	// 8/8/8/3k3p/5Kp1/6P1/7P/8 w - - 4 4 : quand on fait Rg5, ça devrait le rapprocher du pion non protégé...
+	// 4k3/2p5/1p1p4/pP1Pp1p1/P3P1P1/2P1P1K1/8/8 b - - 0 41 : ici le roi ne peut toucher aucun pion adverse...
 
 	// TODO *** prendre en compte les cases controllées pour trouver le chemin le plus rapide... (pas facile à faire... mais ça peut beaucoup aider)
 
@@ -5886,7 +5887,7 @@ int Board::get_king_proximity()
 
 	// Bonus de proximité pour les pions adverse non protégés par un autre pion
 	// TODO
-	constexpr float unprotected_pawn_bonus = 2.5f;
+	constexpr float unprotected_pawn_bonus = 3.5f;
 
 	// Bonus de proximité pour les pions passés
 	// TODO
@@ -5909,12 +5910,14 @@ int Board::get_king_proximity()
 
 	// 6k1/p3r2p/3R3p/2p2N2/5P2/2P5/P5PP/6K1 b - - 0 31 : après Te2 et Td7...
 
-	constexpr float innaccessibility_multiplier = 0.5f;
+	constexpr float innaccessibility_multiplier = 0.65f;
 
-	constexpr float self_pawn_multiplier = 1.0f;
+	constexpr float self_pawn_multiplier = 0.35f;
 
 	SquareMap white_king_distances = get_king_squares_distance(true);
 	SquareMap black_king_distances = get_king_squares_distance(false);
+
+	int n_pawns = 0;
 
 	for (uint8_t row = 1; row < 7; row++) {
 		for (uint8_t col = 0; col < 8; col++) {
@@ -5938,7 +5941,7 @@ int Board::get_king_proximity()
 				}
 
 				// Valeur du pion (augmente avec son avancement, s'il est non protégé, et s'il est passé)
-				float w_pawn_value = sqrt(row) * self_pawn_multiplier;
+				float w_pawn_value = pow(row, 0.9) * self_pawn_multiplier;
 				float b_pawn_value = 1;
 				//float b_pawn_value = sqrt(row);
 
@@ -5965,6 +5968,8 @@ int Board::get_king_proximity()
 				//8/8/8/7p/3k1Kp1/6P1/7P/8 w - - 4 27
 
 				// 8/3k4/3p1K2/p2P1p2/P2P1P2/8/8/8 b - - 27 14 : roi blanc le plus proche...
+
+				n_pawns++;
 			}
 
 			// Pion noir
@@ -5986,7 +5991,7 @@ int Board::get_king_proximity()
 
 				// Valeur du pion (augmente avec son avancement, s'il est non protégé, et s'il est passé)
 				//float w_pawn_value = sqrt(7 - row);
-				float b_pawn_value = sqrt(7 - row) * self_pawn_multiplier;
+				float b_pawn_value = pow(7 - row, 0.9) * self_pawn_multiplier;
 				float w_pawn_value = 1;
 
 				// Le pion est-il non-protégé par un autre pion?
@@ -6003,6 +6008,8 @@ int Board::get_king_proximity()
 
 				proximity += w_proximity;
 				proximity -= b_proximity;
+
+				n_pawns++;
 			}
 
 		}
@@ -6011,8 +6018,11 @@ int Board::get_king_proximity()
 	// Supprime les maps
 	white_king_distances.~SquareMap();
 	black_king_distances.~SquareMap();
+
+	const int multiplier = 300;
+	const double average_proximity = n_pawns == 0 ? 0.0f : proximity / pow(n_pawns / 2.0, 0.75f);
 	
-	return 100 * proximity * (_adv - min_advancement) / (1.0f - min_advancement);
+	return multiplier * average_proximity * (_adv - min_advancement) / (1.0f - min_advancement);
 }
 
 
@@ -11518,10 +11528,19 @@ static constexpr uint64_t SQUARE_MASKS[64] = {
 	1ULL << 56, 1ULL << 57, 1ULL << 58, 1ULL << 59, 1ULL << 60, 1ULL << 61, 1ULL << 62, 1ULL << 63
 };
 
+// Branch hint macros: prefer C++20 [[likely]]/[[unlikely]] if available.
+#ifdef _MSC_VER
+#define LIKELY(x)   (x)
+#define UNLIKELY(x) (x)
+#else
+#define LIKELY(x)   (__builtin_expect(!!(x), 1))
+#define UNLIKELY(x) (__builtin_expect(!!(x), 0))
+#endif
+
 // Fonction qui met à jour les bitboards en fonction d'un coup
 inline void Board::update_bitboards(int row1, int col1, int row2, int col2, int p, int p_last) noexcept {
 
-	// TODO *** set les occupancies en même temps que les autres bitboards pour éviter de tout recalculer ensuite?
+	// TODO *** version blanc/noir séparée pour éviter les tests inutiles
 
 	// Coordonnées 0-63
 	const int from = row1 * 8 + col1;
@@ -11529,209 +11548,101 @@ inline void Board::update_bitboards(int row1, int col1, int row2, int col2, int 
 	const int color_idx_from = !_player;
 	const int color_idx_to = p_last != 0;
 
-	// 1. Enlève la pièce de sa case d'origine
-	clear_bit(_bitboards[p], from);
-	clear_bit(_occupancies[color_idx_from], from);
-	clear_bit(_occupancies[2], from);
+	const uint64_t from_mask = SQUARE_MASKS[from];
+	const uint64_t to_mask = SQUARE_MASKS[to];
 
-	//const uint64_t from_mask = SQUARE_MASKS[from];
-	//const uint64_t to_mask = SQUARE_MASKS[to];
-
-	//// Retire la pièce déplacée de son ancienne case
-	//_bitboards[p] ^= from_mask;
-	//_occupancies[color_idx_from] ^= from_mask;
-	//_occupancies[2] ^= from_mask;
-
-	// 2. Si une pièce est capturée, retire-la aussi
-	if (p_last != none) {
-		clear_bit(_bitboards[p_last], to);
-		clear_bit(_occupancies[color_idx_to], to);
-	}
-
-	// 3. Si promotion
-	//const int final_piece = (p == w_pawn && row2 == 7) || (p == b_pawn && row2 == 0) ? (_player ? w_queen : b_queen) : p;
-	//set_bit(_bitboards[final_piece], to);
-
-	if ((p == w_pawn && row2 == 7) || (p == b_pawn && row2 == 0)) {
-		set_bit(_bitboards[_player ? w_queen : b_queen], to); // En dame seulement pour le moment
-	}
-
-	// 4. Sinon, la même pièce se déplace simplement
-	else {
-		set_bit(_bitboards[p], to);
-	}
+	// Retire la pièce déplacée de son ancienne case
+	_bitboards[p] &= ~from_mask;
+	_occupancies[color_idx_from] &= ~from_mask;
+	_occupancies[2] &= ~from_mask;
 
 	// Déplacement de la pièce dans les occupancies
-	set_bit(_occupancies[color_idx_from], to);
-	set_bit(_occupancies[2], to);
+	_occupancies[color_idx_from] |= to_mask;
+	_occupancies[2] |= to_mask;
 
-	// 5. Cas spéciaux : en passant
+	// En passant (le moins probable)
 	if (p == w_pawn && col1 != col2 && p_last == none) {
-		const int captured_square = square_index(row2 - 1, col2);
-		clear_bit(_bitboards[b_pawn], captured_square);
-		clear_bit(_occupancies[1], captured_square);
-		clear_bit(_occupancies[2], captured_square);
-		return;
+		const int captured_square = (row2 - 1) * 8 + col2;
+		const uint64_t captured_square_mask = SQUARE_MASKS[captured_square];
+		_bitboards[b_pawn] &= ~captured_square_mask;
+		_occupancies[1] &= ~captured_square_mask;
+		_occupancies[2] &= ~captured_square_mask;
 	}
 	if (p == b_pawn && col1 != col2 && p_last == none) {
-		const int captured_square = square_index(row2 + 1, col2);
-		clear_bit(_bitboards[w_pawn], captured_square);
-		clear_bit(_occupancies[0], captured_square);
-		clear_bit(_occupancies[2], captured_square);
-		return;
+		const int captured_square = (row2 + 1) * 8 + col2;
+		const uint64_t captured_square_mask = SQUARE_MASKS[captured_square];
+		_bitboards[w_pawn] &= ~captured_square_mask;
+		_occupancies[0] &= ~captured_square_mask;
+		_occupancies[2] &= ~captured_square_mask;
 	}
 
-	// 6. Cas spéciaux : roques
-	if (p == w_king && col2 == col1 + 2) { // Petit roque blanc
-		clear_bit(_bitboards[w_rook], 7);
-		clear_bit(_occupancies[0], 7);
-		clear_bit(_occupancies[2], 7);
-		set_bit(_bitboards[w_rook], 5);
-		set_bit(_occupancies[0], 5);
-		set_bit(_occupancies[2], 5);
-		return;
-	}
-	if (p == w_king && col2 == col1 - 2) { // Grand roque blanc
-		clear_bit(_bitboards[w_rook], 0);
-		clear_bit(_occupancies[0], 0);
-		clear_bit(_occupancies[2], 0);
-		set_bit(_bitboards[w_rook], 3);
-		set_bit(_occupancies[0], 3);
-		set_bit(_occupancies[2], 3);
-		return;
-	}
-	if (p == b_king && col2 == col1 + 2) { // Petit roque noir
-		clear_bit(_bitboards[b_rook], 63);
-		clear_bit(_occupancies[1], 63);
-		clear_bit(_occupancies[2], 63);
-		set_bit(_bitboards[b_rook], 61);
-		set_bit(_occupancies[1], 61);
-		set_bit(_occupancies[2], 61);
-		return;
-	}
-	if (p == b_king && col2 == col1 - 2) { // Prand roque noir
-		clear_bit(_bitboards[b_rook], 56);
-		clear_bit(_occupancies[1], 56);
-		clear_bit(_occupancies[2], 56);
-		set_bit(_bitboards[b_rook], 59);
-		set_bit(_occupancies[1], 59);
-		set_bit(_occupancies[2], 59);
-		return;
+	// Promotion (peu probable)
+	if ((p == w_pawn && row2 == 7) || (p == b_pawn && row2 == 0)) {
+		_bitboards[_player ? w_queen : b_queen] |= to_mask; // En dame seulement pour le moment
 	}
 
-	// 7. Recalcule les occupancies
-	// FIXME *** peut-être très lent? à voir...
-	//_occupancies[0] = _bitboards[w_pawn] | _bitboards[w_knight] | _bitboards[w_bishop] | _bitboards[w_rook] | _bitboards[w_queen] | _bitboards[w_king];
-	//_occupancies[1] = _bitboards[b_pawn] | _bitboards[b_knight] | _bitboards[b_bishop] | _bitboards[b_rook] | _bitboards[b_queen] | _bitboards[b_king];
-	//_occupancies[2] = _occupancies[0] | _occupancies[1];
+	// Sinon, la même pièce se déplace simplement
+	else {
+		_bitboards[p] |= to_mask;
+	}
 
+	// Roques (assez peu probables)
 
-	/// Version 2
+	// Petit roque blanc
+	if (p == w_king && col2 == col1 + 2) {
+		constexpr uint64_t mask_from = SQUARE_MASKS[7];
+		constexpr uint64_t mask_to = SQUARE_MASKS[5];
 
-	//const int from = square_index(row1, col1);
-	//const int to = square_index(row2, col2);
-	//const bool white = is_white(p);
-	//const int color_idx = white ? 0 : 1;
-	//const int opp_idx = white ? 1 : 0;
+		_bitboards[w_rook] &= ~mask_from;
+		_bitboards[w_rook] |= mask_to;
+		_occupancies[0] &= ~mask_from;
+		_occupancies[0] |= mask_to;
+		_occupancies[2] &= ~mask_from;
+		_occupancies[2] |= mask_to;
+	}
 
-	//const uint64_t from_mask = SQUARE_MASKS[from];
-	//const uint64_t to_mask = SQUARE_MASKS[to];
+	// Grand roque blanc
+	if (p == w_king && col2 == col1 - 2) {
+		constexpr uint64_t mask_from = SQUARE_MASKS[0];
+		constexpr uint64_t mask_to = SQUARE_MASKS[3];
 
-	//// Retire la pièce déplacée de son ancienne case
-	////_bitboards[p] ^= from_mask;
-	////_occupancies[color_idx] ^= from_mask;
-	////_occupancies[2] ^= from_mask;
+		_bitboards[w_rook] &= ~mask_from;
+		_bitboards[w_rook] |= mask_to;
+		_occupancies[0] &= ~mask_from;
+		_occupancies[0] |= mask_to;
+		_occupancies[2] &= ~mask_from;
+		_occupancies[2] |= mask_to;
+	}
 
-	//uint64_t bb = _bitboards[p];
-	//uint64_t occ_color = _occupancies[color_idx];
-	//uint64_t occ_all = _occupancies[2];
+	// Petit roque noir
+	if (p == b_king && col2 == col1 + 2) {
+		constexpr uint64_t mask_from = SQUARE_MASKS[63];
+		constexpr uint64_t mask_to = SQUARE_MASKS[61];
 
-	//bb ^= from_mask;
-	//occ_color ^= from_mask;
-	//occ_all ^= from_mask;
+		_bitboards[b_rook] &= ~mask_from;
+		_bitboards[b_rook] |= mask_to;
+		_occupancies[0] &= ~mask_from;
+		_occupancies[0] |= mask_to;
+		_occupancies[2] &= ~mask_from;
+		_occupancies[2] |= mask_to;
+	}
 
-	////bb &= ~from_mask;
-	////occ_color &= ~from_mask;
-	////occ_all &= ~from_mask;
+	// Grand roque noir
+	if (p == b_king && col2 == col1 - 2) {
+		constexpr uint64_t mask_from = SQUARE_MASKS[56];
+		constexpr uint64_t mask_to = SQUARE_MASKS[59];
 
-	//_bitboards[p] = bb;
-	//_occupancies[color_idx] = occ_color;
-	//_occupancies[2] = occ_all;
+		_bitboards[b_rook] &= ~mask_from;
+		_bitboards[b_rook] |= mask_to;
+		_occupancies[0] &= ~mask_from;
+		_occupancies[0] |= mask_to;
+		_occupancies[2] &= ~mask_from;
+		_occupancies[2] |= mask_to;
+	}
 
-	//// Si capture : retire la pièce capturée
-	//if (p_last != none) {
-	//	_bitboards[p_last] ^= to_mask;
-	//	_occupancies[opp_idx] ^= to_mask;
-	//	_occupancies[2] ^= to_mask;
-	//}
-
-	//// Si en passant
-	//if (is_pawn(p) && col1 != col2 && p_last == none) {
-	//	const int cap_sq = square_index(row2 + (white ? -1 : 1), col2);
-	//	const uint64_t ep_mask = SQUARE_MASKS[cap_sq];
-	//	_bitboards[white ? b_pawn : w_pawn] ^= ep_mask;
-	//	_occupancies[opp_idx] ^= ep_mask;
-	//	_occupancies[2] ^= ep_mask;
-	//}
-
-	//// Si roque
-	//if (is_king(p)) {
-	//	// Blancs
-	//	 if (white && row1 == 0) {
-	//		if (col2 == col1 + 2) { // Petit roque
-	//			constexpr uint64_t rook_from = SQUARE_MASKS[square_index(0, 7)];
-	//			constexpr uint64_t rook_to = SQUARE_MASKS[square_index(0, 5)];
-	//			_bitboards[w_rook] ^= rook_from | rook_to;
-	//			_occupancies[0] ^= rook_from | rook_to;
-	//			_occupancies[2] ^= rook_from | rook_to;
-	//		}
-	//		else if (col2 == col1 - 2) { // Grand roque
-	//			constexpr uint64_t rook_from = SQUARE_MASKS[square_index(0, 0)];
-	//			constexpr uint64_t rook_to = SQUARE_MASKS[square_index(0, 3)];
-	//			_bitboards[w_rook] ^= rook_from | rook_to;
-	//			_occupancies[0] ^= rook_from | rook_to;
-	//			_occupancies[2] ^= rook_from | rook_to;
-	//		}
-	//	}
-	//	// Noir
-	//	else if (!white && row1 == 7) {
-	//		if (col2 == col1 + 2) { // Petit roque
-	//			constexpr uint64_t rook_from = SQUARE_MASKS[square_index(7, 7)];
-	//			constexpr uint64_t rook_to = SQUARE_MASKS[square_index(7, 5)];
-	//			_bitboards[b_rook] ^= rook_from | rook_to;
-	//			_occupancies[1] ^= rook_from | rook_to;
-	//			_occupancies[2] ^= rook_from | rook_to;
-	//		}
-	//		else if (col2 == col1 - 2) { // Grand roque
-	//			constexpr uint64_t rook_from = SQUARE_MASKS[square_index(7, 0)];
-	//			constexpr uint64_t rook_to = SQUARE_MASKS[square_index(7, 3)];
-	//			_bitboards[b_rook] ^= rook_from | rook_to;
-	//			_occupancies[1] ^= rook_from | rook_to;
-	//			_occupancies[2] ^= rook_from | rook_to;
-	//		}
-	//	}
-	//}
-
-	//// Ajoute la nouvelle pièce (ou la pièce promue)
-	//if (promotion) {
-	//	const uint8_t promo_piece = white ? w_queen : b_queen;
-	//	_bitboards[promo_piece] |= to_mask;
-	//}
-	//else {
-	//	_bitboards[p] |= to_mask;
-	//}
-
-	//_occupancies[color_idx] |= to_mask;
-	//_occupancies[2] |= to_mask;
-
-
-	/// Version 3: très simple et optimisée
-
-	// Vire la pièce de sa case d'origine
-
-	//const int from = square_index(row1, col1);
-	//const int to = square_index(row2, col2);
-
-	//clear_bit(_bitboards[p], from);
-	//clear_bit(_occupancies[is_white(p) ? 0 : 1], from);
+	// Si une pièce est capturée, retire-la aussi
+	if (p_last != none) {
+		_bitboards[p_last] &= ~to_mask;
+		_occupancies[color_idx_to] &= ~to_mask;
+	}
 }

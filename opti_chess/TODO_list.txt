@@ -1265,6 +1265,14 @@ r1bq1rk1/7p/p2b4/1ppP1ppQ/5p2/2N5/PPPB2PP/R3R1K1 w - c6 0 17 : dxc6 gagne...
 r1bq1rk1/1p3ppp/p1np1n2/2b1p3/Q3P3/3BNN2/PPP2PPP/R1B2RK1 b - - 1 10 : b5! important
 rkb2b1r/pp3Qp1/2p1pp1p/8/8/8/PqPBBPPP/3R1RK1 b - - 3 16 : gagnant aux blancs
 6kr/pp1rR1pp/2p2pb1/8/1Q3R2/6PP/PP3PBK/3q4 w - - 9 25 : Fxc6!! gagne
+rn1q1bnr/ppp1p1pp/5k2/8/6Q1/3P4/PPP2PPP/RNB1K2R w KQ - 1 9 : gagnant aux noirs
+3r1rk1/2pbqpp1/1p1p3p/pP1Pp3/P3P3/2PBPR1P/2Q3PK/3R4 b - - 0 25 : noirs mieux, structure pourrie pour les blancs + mauvais fou. le pion en e3 est pas considéré comme isolé, mais ne peut pas être protégé par un pion, et est bloqué
+4k3/2p5/1p1p4/pP1Pp1p1/P3P1P1/2P1P1K1/8/8 b - - 0 41 : position complètement nulle, pas de possibilité pour les rois de rentrer dans la position, ni d'avancer les pions. Le pion de plus en e3 est en plus bloqué
+8/8/8/8/8/5p2/7p/4K2k w - - 0 9 : Rf1 et Rf2 font nulle, mais faudrait privilégier Rf2 pat en 1, quand on a 0 chances de gagner
+8/8/5p2/5P2/8/1k6/3K4/8 w - - 0 74 : Rd3 gagne instant
+8/8/8/7K/8/8/1p1Q4/1k6 w - - 0 8 : finale à savoir gagner (dame contre pion)
+r4rk1/1pp2p2/p4P1R/Pq1pPpN1/3P4/2PK4/5P2/7R w - - 2 25 : ici il regarde bien Re3 s'il ne voit pas les perpets. Mais si ça vient d'ici r4rk1/1pp2p2/p4P1R/P2pPpN1/3P4/2PK4/1q3P2/7R b - - 5 26 : après Db5+, il ne regarde plus Re3, pensant que perpet est une bonne chose...
+1kn5/2Rpppnp/pp6/1p6/1b6/1b1K1B2/1p5q/8 w - - 0 1 : moulin: ici faut regarder toutes les options possibles au lieu de se contenter de la nulle
 
 rnbqkbn1/ppppp3/6p1/3KPp1r/8/7p/PPPP1PPP/RNBQ1BNR w q f6 0 7 : FIX en passant illégal (cas similaire possible sur une diago ou non?)
 
