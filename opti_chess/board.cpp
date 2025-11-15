@@ -1244,7 +1244,7 @@ inline void Board::make_move(const Move& move, const bool pgn, const bool add_to
 	_array[row1][col1] = none;
 
 	// Met à jour les bitboards
-	update_bitboards(row1, col1, row2, col2, p, p_last);
+	_player ? update_bitboards_white(row1, col1, row2, col2, p, p_last) : update_bitboards_black(row1, col1, row2, col2, p, p_last);
 
 	// Change le trait du joueur
 	_player = !_player;
@@ -11528,121 +11528,113 @@ static constexpr uint64_t SQUARE_MASKS[64] = {
 	1ULL << 56, 1ULL << 57, 1ULL << 58, 1ULL << 59, 1ULL << 60, 1ULL << 61, 1ULL << 62, 1ULL << 63
 };
 
-// Branch hint macros: prefer C++20 [[likely]]/[[unlikely]] if available.
-#ifdef _MSC_VER
-#define LIKELY(x)   (x)
-#define UNLIKELY(x) (x)
-#else
-#define LIKELY(x)   (__builtin_expect(!!(x), 1))
-#define UNLIKELY(x) (__builtin_expect(!!(x), 0))
-#endif
+static constexpr uint64_t w_kcastle_mask = SQUARE_MASKS[7] ^ SQUARE_MASKS[5];
+static constexpr uint64_t w_qcastle_mask = SQUARE_MASKS[0] ^ SQUARE_MASKS[3];
+static constexpr uint64_t b_kcastle_mask = SQUARE_MASKS[63] ^ SQUARE_MASKS[61];
+static constexpr uint64_t b_qcastle_mask = SQUARE_MASKS[56] ^ SQUARE_MASKS[59];
 
 // Fonction qui met à jour les bitboards en fonction d'un coup
-inline void Board::update_bitboards(int row1, int col1, int row2, int col2, int p, int p_last) noexcept {
-
-	// TODO *** version blanc/noir séparée pour éviter les tests inutiles
+inline void Board::update_bitboards_white(int row1, int col1, int row2, int col2, int p, int p_last) noexcept {
 
 	// Coordonnées 0-63
 	const int from = row1 * 8 + col1;
 	const int to = row2 * 8 + col2;
-	const int color_idx_from = !_player;
-	const int color_idx_to = p_last != 0;
 
 	const uint64_t from_mask = SQUARE_MASKS[from];
 	const uint64_t to_mask = SQUARE_MASKS[to];
 
 	// Retire la pièce déplacée de son ancienne case
 	_bitboards[p] &= ~from_mask;
-	_occupancies[color_idx_from] &= ~from_mask;
+	_occupancies[0] &= ~from_mask;
 	_occupancies[2] &= ~from_mask;
 
 	// Déplacement de la pièce dans les occupancies
-	_occupancies[color_idx_from] |= to_mask;
+	_occupancies[0] |= to_mask;
 	_occupancies[2] |= to_mask;
 
 	// En passant (le moins probable)
 	if (p == w_pawn && col1 != col2 && p_last == none) {
-		const int captured_square = (row2 - 1) * 8 + col2;
-		const uint64_t captured_square_mask = SQUARE_MASKS[captured_square];
+		const uint64_t captured_square_mask = SQUARE_MASKS[from + (col2 - col1)];
 		_bitboards[b_pawn] &= ~captured_square_mask;
 		_occupancies[1] &= ~captured_square_mask;
 		_occupancies[2] &= ~captured_square_mask;
 	}
+
+	// Promotion (peu probable)
+	_bitboards[p + (p == w_pawn) * (row2 == 7) * 4] |= to_mask;
+
+	// Roques (assez peu probables)
+
+	// Petit roque blanc
+	if (p == w_king && col2 == col1 + 2) {
+		_bitboards[w_rook] ^= w_kcastle_mask;
+		_occupancies[0] ^= w_kcastle_mask;
+		_occupancies[2] ^= w_kcastle_mask;
+	}
+
+	// Grand roque blanc
+	if (p == w_king && col2 == col1 - 2) {
+		_bitboards[w_rook] ^= w_qcastle_mask;
+		_occupancies[0] ^= w_qcastle_mask;
+		_occupancies[2] ^= w_qcastle_mask;
+	}
+
+	// Si une pièce est capturée, retire-la aussi
+	if (p_last != none) {
+		_bitboards[p_last] &= ~to_mask;
+		_occupancies[1] &= ~to_mask;
+	}
+}
+
+// Fonction qui met à jour les bitboards en fonction d'un coup
+inline void Board::update_bitboards_black(int row1, int col1, int row2, int col2, int p, int p_last) noexcept {
+
+	// Coordonnées 0-63
+	const int from = row1 * 8 + col1;
+	const int to = row2 * 8 + col2;
+
+	const uint64_t from_mask = SQUARE_MASKS[from];
+	const uint64_t to_mask = SQUARE_MASKS[to];
+
+	// Retire la pièce déplacée de son ancienne case
+	_bitboards[p] &= ~from_mask;
+	_occupancies[1] &= ~from_mask;
+	_occupancies[2] &= ~from_mask;
+
+	// Déplacement de la pièce dans les occupancies
+	_occupancies[1] |= to_mask;
+	_occupancies[2] |= to_mask;
+
+	// En passant (le moins probable)
 	if (p == b_pawn && col1 != col2 && p_last == none) {
-		const int captured_square = (row2 + 1) * 8 + col2;
-		const uint64_t captured_square_mask = SQUARE_MASKS[captured_square];
+		const uint64_t captured_square_mask = SQUARE_MASKS[from + (col2 - col1)];
 		_bitboards[w_pawn] &= ~captured_square_mask;
 		_occupancies[0] &= ~captured_square_mask;
 		_occupancies[2] &= ~captured_square_mask;
 	}
 
 	// Promotion (peu probable)
-	if ((p == w_pawn && row2 == 7) || (p == b_pawn && row2 == 0)) {
-		_bitboards[_player ? w_queen : b_queen] |= to_mask; // En dame seulement pour le moment
-	}
-
-	// Sinon, la même pièce se déplace simplement
-	else {
-		_bitboards[p] |= to_mask;
-	}
+	_bitboards[p + (p == b_pawn) * (row2 == 0) * 4] |= to_mask;
 
 	// Roques (assez peu probables)
 
-	// Petit roque blanc
-	if (p == w_king && col2 == col1 + 2) {
-		constexpr uint64_t mask_from = SQUARE_MASKS[7];
-		constexpr uint64_t mask_to = SQUARE_MASKS[5];
-
-		_bitboards[w_rook] &= ~mask_from;
-		_bitboards[w_rook] |= mask_to;
-		_occupancies[0] &= ~mask_from;
-		_occupancies[0] |= mask_to;
-		_occupancies[2] &= ~mask_from;
-		_occupancies[2] |= mask_to;
-	}
-
-	// Grand roque blanc
-	if (p == w_king && col2 == col1 - 2) {
-		constexpr uint64_t mask_from = SQUARE_MASKS[0];
-		constexpr uint64_t mask_to = SQUARE_MASKS[3];
-
-		_bitboards[w_rook] &= ~mask_from;
-		_bitboards[w_rook] |= mask_to;
-		_occupancies[0] &= ~mask_from;
-		_occupancies[0] |= mask_to;
-		_occupancies[2] &= ~mask_from;
-		_occupancies[2] |= mask_to;
-	}
-
 	// Petit roque noir
 	if (p == b_king && col2 == col1 + 2) {
-		constexpr uint64_t mask_from = SQUARE_MASKS[63];
-		constexpr uint64_t mask_to = SQUARE_MASKS[61];
-
-		_bitboards[b_rook] &= ~mask_from;
-		_bitboards[b_rook] |= mask_to;
-		_occupancies[0] &= ~mask_from;
-		_occupancies[0] |= mask_to;
-		_occupancies[2] &= ~mask_from;
-		_occupancies[2] |= mask_to;
+		_bitboards[b_rook] ^= b_kcastle_mask;
+		_occupancies[1] ^= b_kcastle_mask;
+		_occupancies[2] ^= b_kcastle_mask;
 	}
 
 	// Grand roque noir
 	if (p == b_king && col2 == col1 - 2) {
-		constexpr uint64_t mask_from = SQUARE_MASKS[56];
-		constexpr uint64_t mask_to = SQUARE_MASKS[59];
-
-		_bitboards[b_rook] &= ~mask_from;
-		_bitboards[b_rook] |= mask_to;
-		_occupancies[0] &= ~mask_from;
-		_occupancies[0] |= mask_to;
-		_occupancies[2] &= ~mask_from;
-		_occupancies[2] |= mask_to;
+		_bitboards[b_rook] ^= b_qcastle_mask;
+		_occupancies[1] ^= b_qcastle_mask;
+		_occupancies[2] ^= b_qcastle_mask;
 	}
 
 	// Si une pièce est capturée, retire-la aussi
 	if (p_last != none) {
 		_bitboards[p_last] &= ~to_mask;
-		_occupancies[color_idx_to] &= ~to_mask;
+		_occupancies[0] &= ~to_mask;
 	}
 }

@@ -1281,6 +1281,8 @@ rnbqkbn1/ppppp3/6p1/3KPp1r/8/7p/PPPP1PPP/RNBQ1BNR w q f6 0 7 : FIX en passant il
 
 rr4k1/2q2p1p/p2p2p1/1pnQb2B/4P3/8/PPPN2PP/1K1R1R2 w - - 0 24 : quiescence qui met +700?? il regarde pas Dxf7+ après Txf7
 
+TODO !!! quand on navigue dans les variantes, faut absolument remettre à jour les bitboards
+
 !!!
 UI: regarder pour les textures pour que ça s'affiche sur le GPU et que ça soit beau
 On peut aussi utiliser des shaders pour les outline de coups, ou pièces sélectionnées

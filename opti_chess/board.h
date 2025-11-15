@@ -957,8 +957,11 @@ public:
 	// Fonction qui affiche tous les bitboards
 	void print_all_bitboards() const;
 
-	// Fonction qui met à jour les bitboards en fonction d'un coup
-	void update_bitboards(int row1, int col1, int row2, int col2, int p, int p_last) noexcept;
+	// Fonction qui met à jour les bitboards en fonction d'un coup joué pour les blancs
+	void update_bitboards_white(int row1, int col1, int row2, int col2, int p, int p_last) noexcept;
+
+	// Fonction qui met à jour les bitboards en fonction d'un coup joué pour les noirs
+	void update_bitboards_black(int row1, int col1, int row2, int col2, int p, int p_last) noexcept;
 
 
 	// TODO *** faire un piece_safety plus générique?
