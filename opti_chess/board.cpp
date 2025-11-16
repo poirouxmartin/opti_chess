@@ -6049,7 +6049,7 @@ int Board::get_rook_activity() const
 	constexpr float row_bonus[8] = { 1.0f, 1.0f, 1.2f, 1.5f, 1.75f, 2.0f, 2.5f, 2.5f };
 
 	// Malus pour manque de mobilité
-	constexpr int bad_mobility_min = 3;
+	constexpr float bad_mobility_min = 2.5f;
 	constexpr int bad_mobility_malus = 1000;
 
 	// Valeur normale d'une activité de tour
