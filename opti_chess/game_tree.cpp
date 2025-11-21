@@ -94,6 +94,8 @@ bool GameTree::select_previous_node() {
 		main_GUI._root_exploration_node->reset();
 		main_GUI._root_exploration_node->_board = &_current_node->_board;
 		main_GUI._board = _current_node->_board;
+		main_GUI._board.reset_eval();
+		main_GUI._board.update_bitboards();
 
 		// Actualisation de l'affichage
 		main_GUI._pgn = tree_display();

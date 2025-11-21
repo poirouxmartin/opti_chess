@@ -436,6 +436,21 @@ inline constexpr void clear_bit(uint64_t& bb, const int square) noexcept {
 	bb &= ~(1ULL << square);
 }
 
+//inline int pop_lsb(uint64_t& bb) noexcept {
+//	const int sq = __builtin_ctzll(bb); // 1 cycle (BSF/TZCNT)
+//	bb &= bb - 1;                       // 1 cycle
+//	return sq;                          // total ≈ 3–4 cycles
+//}
+
+
+#include <immintrin.h>
+
+inline int pop_lsb(uint64_t& bb) noexcept {
+	int sq = _tzcnt_u64(bb);  // mappé sur TZCNT (AMD/Intel)
+	bb &= bb - 1;
+	return sq;
+}
+
 
 // Plateau
 class Board {

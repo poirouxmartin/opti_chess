@@ -1273,7 +1273,33 @@ rn1q1bnr/ppp1p1pp/5k2/8/6Q1/3P4/PPP2PPP/RNB1K2R w KQ - 1 9 : gagnant aux noirs
 8/8/8/7K/8/8/1p1Q4/1k6 w - - 0 8 : finale à savoir gagner (dame contre pion)
 r4rk1/1pp2p2/p4P1R/Pq1pPpN1/3P4/2PK4/5P2/7R w - - 2 25 : ici il regarde bien Re3 s'il ne voit pas les perpets. Mais si ça vient d'ici r4rk1/1pp2p2/p4P1R/P2pPpN1/3P4/2PK4/1q3P2/7R b - - 5 26 : après Db5+, il ne regarde plus Re3, pensant que perpet est une bonne chose...
 1kn5/2Rpppnp/pp6/1p6/1b6/1b1K1B2/1p5q/8 w - - 0 1 : moulin: ici faut regarder toutes les options possibles au lieu de se contenter de la nulle
-r2q1rk1/1p1bbpp1/p1nppn1p/2p5/P1B1P3/1PNP1N1P/1BP2PP1/R2Q1RK1 w - - 4 11 : le fou en c4 il a aucune case et il tape dans du dur
+FIX EVAL: r2q1rk1/1p1bbpp1/p1nppn1p/2p5/P1B1P3/1PNP1N1P/1BP2PP1/R2Q1RK1 w - - 4 11 : le fou en c4 il a aucune case et il tape dans du dur
+8/1p6/6pp/1kPK1p2/5P1P/5P2/8/8 b - - 0 53 : h5! seul coup qui gagne
+8/8/8/2k4p/5P1P/1p1K1P2/8/8 b - - 1 61 : Rb4! seul coup qui gagne
+8/8/8/5P1p/1k5P/1p1K1P2/8/8 b - - 0 62 : Ra3! il faut faire avancer ce pion passé
+8/8/5P2/7p/7P/5P2/kpK5/8 w - - 2 65 : course de pion -> ici c'est les noirs qui gagnent (revoir pions passés)
+1r3rk1/4ppbp/p1p1b1pn/q3p3/3P1PP1/2NBBN1P/P1P5/K2RQ2R w - - 0 21 : faut reprendre en e5!
+1r3rk1/4p1bp/p1p1b1pn/q3NpN1/1p1P1PP1/1PnBB2P/P1P5/1K1RQ2R w - - 2 21 : Dxc3!! quasi gagnant
+1r3rk1/4p2p/p1p1N1pn/q3bp2/3P1PP1/1PpBB2P/P1P5/1K1R3R w - - 0 23 : fxe5! seul coup
+5Nk1/4pn1p/p1p3p1/q3P3/1r1P2P1/1PpBB2P/P1P5/1K1R3R b - - 0 26 : Ta4!! gagne
+1rr3k1/4pn1p/p1p1N1p1/3qP3/3P1RP1/1PpB3P/P1P5/1KBR4 w - - 1 27 : Ra1!
+1r3rk1/4pn2/p1p1N2p/q3P1P1/3P1pP1/1PpB4/P1P5/1KBR1R2 b - - 0 27 : Cxg5! tient (hxg5 perd direct)
+5rk1/4p3/p1p4p/q3P1n1/3P1BP1/1PpB4/P1P5/1K1R1R2 b - - 0 29 : Txf4!! gagne, 6k1/4p3/p1p4p/q3P1n1/3P1BP1/1PpB4/P1P5/1K1R4 b - - 0 30 : égal
+5rk1/5n1R/p3p1B1/1Pp1P1p1/3q1pP1/BPp5/2P5/1K5R w - - 0 38 : bxa6! gagne
+5rk1/5n1R/p1p1p1B1/4P1p1/1P1q1pP1/BPp4R/K1P5/8 w - - 0 39 : b5! gagne
+5r1R/6k1/P3p1B1/2p1n1p1/3q1pP1/BPp4R/K1P5/8 w - - 2 42 : a7! seul coup qui gagne (Txf8 -> c4! perpet)
+7R/P5k1/4p1n1/2p3p1/3q1pP1/BPp5/K1P5/8 w - - 0 44 : Tc8! gagne
+Q1R5/6k1/4p1n1/2B3p1/K4pP1/1P6/1q6/2q5 w - - 0 49 : Tc7! seul coup qui gagne
+2k1rb1r/p1p1qppp/bnp5/4p3/2P5/1P4B1/PQ2BPPP/RN3RK1 b - - 1 14 : noirs mieux: roi pas si pourri, structure ça passe et y'a du pawn storm sur le roi blanc qui arrive
+b1k1rr2/7p/P1p3p1/2P1bq2/1Q3p1B/3RpP2/4n1PP/1R5K w - - 4 35 : +1000 sur le roi, c'est très mal évalué...
+
+KING SAFETY:
+2k1rb1r/p1ppqppp/bnp5/4P3/2P5/1P6/PQ2BPPP/RNB1K2R w KQ - 5 12 : il faut un point de contact pour le pion c pour qu'on considère qu'il y ait du pawn storm
+
+FIX
+r1b1k1nr/ppqnbppp/2p5/4p3/4P3/2NBBN2/PPP2PPP/R2Q1RK1 b kq - 3 8 : Nf6 -> préciser quel cavalier ! (FIXED)
+TODO !!! quand on navigue dans les variantes, faut absolument remettre à jour les bitboards (et l'éval)
+rn2k2r/pp1b1ppp/3b1n2/1B6/8/1NN5/PP3PPP/R1B2RK1 b kq - 6 12 : O-O seul coup qui tient... rn3k1r/pp1b1pp1/3b1n2/1B4Bp/8/1NN5/PP3PPP/R3R1K1 b - - 3 14 : pas Fxb5
 
 rnbqkbn1/ppppp3/6p1/3KPp1r/8/7p/PPPP1PPP/RNBQ1BNR w q f6 0 7 : FIX en passant illégal (cas similaire possible sur une diago ou non?)
 
@@ -1282,7 +1308,12 @@ rnbqkbn1/ppppp3/6p1/3KPp1r/8/7p/PPPP1PPP/RNBQ1BNR w q f6 0 7 : FIX en passant il
 
 rr4k1/2q2p1p/p2p2p1/1pnQb2B/4P3/8/PPPN2PP/1K1R1R2 w - - 0 24 : quiescence qui met +700?? il regarde pas Dxf7+ après Txf7
 
-TODO !!! quand on navigue dans les variantes, faut absolument remettre à jour les bitboards
+Structures de pions:
+Favoriser les structures en "A" plutôt qu'en "V" -> jouer du côté où la structure pointe
+Pawn race: compter le nombre de coups avant de pouvoir promouvoir pour évaluer qui est mieux
+Pas de pawn_push_threat si en_passant possible (pareil pour les menaces d'échecs)
+
+Pièce seule/isolée = malus (encore pire si mal protégée)
 
 !!!
 UI: regarder pour les textures pour que ça s'affiche sur le GPU et que ça soit beau
