@@ -889,6 +889,7 @@ bool GUI::play_move_keep(Move move)
 	string additional_time_str = _time ? clock_to_timestamp(move_timestamp, true) : "";
 
 	// Arbre de la partie
+	_game_tree._current_node->_board = _board;
 	_game_tree.add_child(move, additional_time_str);
 
 	// FIXME: les vraies distinctions de cas à faire: 
