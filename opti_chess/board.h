@@ -667,7 +667,7 @@ public:
 	void reset_board(bool display = false);
 
 	// Fonction qui calcule et renvoie la valeur correspondante à la sécurité des rois
-	int get_king_safety(float display_factor = 0.0f);
+	int get_king_safety(int activity_diff, float display_factor = 0.0f);
 
 	// Fonction qui dit si une pièce est capturable par l'ennemi (pour les affichages GUI)
 	bool is_capturable(int, int);
