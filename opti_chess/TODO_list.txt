@@ -1292,14 +1292,130 @@ FIX EVAL: r2q1rk1/1p1bbpp1/p1nppn1p/2p5/P1B1P3/1PNP1N1P/1BP2PP1/R2Q1RK1 w - - 4 
 Q1R5/6k1/4p1n1/2B3p1/K4pP1/1P6/1q6/2q5 w - - 0 49 : Tc7! seul coup qui gagne
 2k1rb1r/p1p1qppp/bnp5/4p3/2P5/1P4B1/PQ2BPPP/RN3RK1 b - - 1 14 : noirs mieux: roi pas si pourri, structure ça passe et y'a du pawn storm sur le roi blanc qui arrive
 b1k1rr2/7p/P1p3p1/2P1bq2/1Q3p1B/3RpP2/4n1PP/1R5K w - - 4 35 : +1000 sur le roi, c'est très mal évalué...
+3r1rk1/1b2p1bp/6p1/p2qNn2/3p1B2/1P1Q1P1P/P1N3P1/3RR1K1 b - - 0 21 : Ch4 pour Cxg2!! gagne
+r2q1rk1/1p2bppp/p1p1pn2/8/2PP4/5BP1/PP2QP1P/2BRR1K1 w - - 1 17 : d5! devrait être le coup réflexe ici: quand tour et dame sont alignés, il faut ouvrir la colonne
+8/5kp1/p7/r6p/2p3P1/1PPnB3/P3R1P1/3K4 b - - 0 35 : structure un peu exagéré: prendre g4 devrait quand-même être un avantage pour les noirs
+3r1k2/1p1bRppp/p7/2qP1P2/P2pQ1PP/1P1B4/2P5/6K1 w - - 3 29 : f6!! gagne (pour Txf7+!!)
+3r1k2/1p1b3Q/p4p2/2qP4/P2p2PP/1P1B4/2P5/6K1 w - - 1 32 : g5! seul coup qui gagne
+3r1k2/1p5Q/p4p2/2qP2P1/P2p3P/1P1B3b/2P5/6K1 w - - 1 33 : gxf6 ou g6 gagnent (pion passé instoppable)
+2rq1rk1/pb2bppp/1pn1pn2/8/2BP4/P1NQ1N2/1P3PPP/R1BR2K1 w - - 4 8 : les fous sont mieux placés en retrait (Fa2 meilleur coup), retire aussi le vis-à-vis avec la tour en c8 et part du centre
+2rr2k1/pbq1bppp/1pn1pn2/6B1/3P4/P1N2N2/BP2QPPP/R2R2K1 b - - 9 10 : fianchetto exagéré? faire bonus +0.5 si défend le roi et +0.5 si attaque le roi adverse?
+2rr2k1/pbq1bppp/1pn1B3/6B1/3P2n1/P1N2N2/1P2QPPP/R2R2K1 b - - 0 11 : Cxd4 gagne instant
+2rr2k1/pbq1bppp/1p2B3/6B1/3N2n1/P1N5/1P2QPPP/R2R2K1 b - - 0 12 : 3k noeuds pour voir un mat en 2... un peu abusé
+2rr2k1/pbq1bppp/1pn5/3p2B1/3P4/P2Q1N2/BP3PPP/R2R2K1 b - - 1 12 : blancs mieux
+4rnk1/pb4pp/1p3p2/3pN1qP/3P4/P4QP1/BP3P2/R5K1 w - - 0 21 : Cc4 ou Cg4 sont les meilleurs coups
+3r1nk1/2R2bpp/pp3p1q/3p4/3P4/P3NQP1/BP3P2/6K1 w - - 0 27 : Txf7 gagne facilement, le roi est trop faible
+3r2k1/R5pp/1p3pn1/3b2q1/3P4/P4QP1/BP3P2/6K1 w - - 0 29 : Ta8!!
+8/8/1p1Pk3/3b4/5Q2/5PPK/8/1q6 w - - 5 56 : position foutue pour les blancs
+8/8/k7/8/6p1/5pP1/3K1P2/8 w - - 0 43 : Re3! seul coup qui gagne
+8/8/8/1k6/6p1/3K1pP1/5P2/8 w - - 2 44 : Re4 perd (sinon nulle)
+8/1p3rkp/1Nrpb1p1/p3p1P1/P1P1P3/1P2BPK1/8/6R1 b - - 11 39 : pas de plan de gain pour les blancs, et pas de colonne ouverte pour les tours -> nulle
+r1b4r/ppp1k1p1/3p3p/8/8/5N2/PQP2PPP/6K1 b - - 0 17 : mieux aux blancs (roi un peu seul)
+r2q1k1r/pppbn1p1/3p3p/1Q6/4R2N/8/PpP2PPP/4R1K1 w - - 4 16 : Db3! seul coup qui gagne
+r1bqkbnr/3p1ppp/p3p3/1p6/3QP3/2N5/PPP2PPP/2KR1BNR w kq - 0 8 : noirs mieux
+rnb1r1k1/pp1pqppp/3b1n2/2pP4/8/5N2/PPP1BPPP/RNBQR1K1 w - - 9 9 : blancs complètement gagnants (au moins +3)
+rnb2qk1/pp1p2pp/5p2/1NpPb1B1/6n1/3B1N2/PPP1QPPP/4R1K1 b - - 5 15 : différence énorme d'activité des pièces
+5rk1/5pbp/2Q1r1p1/5q2/3PN3/2P4P/PB3PPK/4R3 w - - 7 32 : noirs gagnants
+r1bQkb1r/ppp2ppp/2n2n2/4p3/2B1P3/5N2/PPP2PPP/RNB1K2R b KQkq - 0 6 : quelle idée de merde de prendre du roi...
+r1bqk2r/p3bppp/2n1p3/1p1n4/P1pPN3/2P2N2/1PB1QPPP/R1B1K2R b KQkq - 0 11 : blancs gagnants
+2kr1bnr/1pp2ppp/p1nq4/4pb2/8/P1NPBN2/1PPQBPPP/R4RK1 w - e6 0 11 : b4 pour b5 et attaquer. a4 c'est pourri
+r5k1/pp4pp/2p5/3pP3/PQ6/2P2q2/7P/3RK2R b - - 1 22 : incertitude: 2 choix à premier abord: Dxh1+ position complexe mais 3 pions de plus et roi blanc faible (incertitude, mais grosse eval). De3+ puis Tf8+ (c5! mieux mais long à trouver): Dame contre les tours avec le roi faible, et pions passés (peu d'incertitude)
+r4rk1/p2q1ppp/1pp2n2/3P4/2P5/3QP3/PP1N2PP/R4RK1 w - - 0 15 : Txf6!!
+8/6p1/1p6/p5K1/P5P1/5k2/1P6/8 b - - 8 44 : Rg3! seul coup qui tient
+8/8/1p3K2/p7/P5k1/8/1P6/8 b - - 1 47 : roi blanc en avance pour aller chercher les pions -> gagnant
+2r5/2P3pp/1p1k1p2/p7/4P3/4KPP1/PP6/2R5 w - - 7 30 : Rd4! seul coup qui gagne
+r1bq1b1r/ppp1n1pp/4k3/3n4/2Bp4/2N2Q2/PPP2PPP/R1B1K2R w KQ - 0 10 : Ff4!! (plein de coups gagnent mais ça semble le plus fort)
+r1bq1b1r/ppp1n1pp/4k3/3n4/2B2B2/5Q2/PpP2PPP/1K1R3R b - - 1 12 : hyper gagnant pour les blancs
+r1bk1b1r/pp2n1pp/8/3p4/8/5Q2/PpP2PPP/1K1RR3 w - - 0 17 : roi encore très ouvert contre dame et tours -> Txd5! gagne largement
+6kq/p3Rpnp/1p1p2pQ/6P1/8/2P5/PP3P1P/6K1 b - - 3 29 : zugzwang géant pour les noirs, aucun coup n'est possible
+r2qr1k1/pbp2ppp/np1p4/6Q1/3N4/2PB4/PPP2PPP/R3R1K1 w - - 1 14 : Txe8! gagne
+r4q1k/pbp1Nppp/np1p4/6Q1/8/2PB4/PPP2PPP/R5K1 w - - 4 17 : Fxh7!! gagne (manque un peu de profondeur en quiescence on dirait)
+r5k1/p2R2pp/1p2p3/8/8/1P5P/P3rPP1/5R1K w - - 0 27 : Tc1! gagne (double sur la 7ème après et c'est fini)
+r5k1/p1RR2pp/1p2p3/8/8/1P5P/P4rP1/7K b - - 1 28 : complètement gagnant
+r1b1kbnB/ppp5/2n2pp1/3p4/4p3/1P2P3/P1PP1PPP/RN2KB1R w KQq - 0 11 : gagnant pour les blancs, mais seulement après Cc3 qui permet de se développer suffisamment pour sortir le fou de h8
+r1bqr1k1/ppp2ppp/2np1n2/2b5/2P1p3/1PN3N1/PB1PPPPP/R2QKB1R w KQ - 0 9 : e3! faut se développer et c'est quasi gagnant
+r1bqr1k1/1pp2pp1/2np1n1p/p1b5/2P1p3/1PN1P1N1/PB1PBPPP/R2Q1RK1 b - - 1 11 : complètement gagnant pour les blancs
+2nq1nk1/5p1p/4p1pQ/pb1pP1NP/1p1P2P1/1P4N1/P4PB1/6K1 w - - 3 22 : Fe4!! gagne (si pris, oy'a Cxe4 et Cf6+ qui arrive)
+2n3k1/4q3/4p1BQ/pb1pP1nN/1p1P2P1/1P6/P4P2/6K1 b - - 2 26 : case f6 trop faible, roi indéfendable
+rn2k2r/pbpq1ppp/1p1np3/6BQ/3P4/3B4/PPP3PP/RN3RK1 w kq - 1 12 : gagnant pour les blancs (Cc3, d5...)
+rn1qkb1r/pbp2pp1/1p1np2p/6N1/3P4/3BB3/PPP3PP/RN1Q1RK1 w kq - 0 10 : Cxf7!! gagne (Dh6 Fg6 et on regagne le cavalier)
+rn2kb1r/pbpq1np1/1p2p1Bp/7Q/3P4/4B3/PPP3PP/RN3RK1 b kq - 1 12 : rajouter ce genre de double pin sur les pressured pin (pièce mal défendue)
+rn3b1r/p1p1knp1/1p4Qp/3p4/3B4/8/PPP3PP/R5K1 b - - 1 18 : combinaison du développement des pièces et attaque sur le roi -> gagnant pour les blancs
+r5k1/5ppp/2b1p3/2p5/2P1P2R/1P3PP1/1B4P1/3K4 b - - 0 27 : gagnant car les pions sont sur blanc
+r1bqk2r/4b1pp/P1n2n2/2p3B1/Q2p4/2N2N2/PP3PPP/R3KB1R b KQkq - 1 2 : dxc3!! gagne (quasiment, au moins)
+2rqk2r/3p1pb1/p3p3/1p1P2Bn/2n2Q2/8/P1B2PPP/3RR1K1 w k - 3 21 : dxe6!! gagne
+r4N1k/4b1pp/P1q2n2/2p5/8/1Q6/Pp1B1PPP/3RK2R b K - 0 10 : Dxg2! seul coup (quasi gagne en plus)
+r1bqkb1r/5ppp/p1np4/3Np3/2N1n3/8/PP3PPP/R1BQKB1R w KQkq - 0 2 : Fe3! gagne
+rn1q1rk1/pb3ppp/3bpn2/1p6/2pPN3/2P2N2/PPB2PPP/R1BQ1RK1 w - - 1 11 : Cxf6+ gagne (sur Dxf6, Fg5!, Fxf3 Dd2!)
+2r2rk1/1p3ppp/p1b1pq2/4b3/2P2P2/1P6/PBP1Q1PP/3R1RK1 w - - 0 17 : fxe5! très fort (gagne)
+r3kb1r/1b3ppp/p1npp3/q1n3P1/1p1N1P2/4B1NB/PPPQ3P/1K1R2R1 b kq - 9 16 : gagnant pour les blancs
+r1b1kb1r/1p1p1p1p/pqn1p3/2pP4/4P2p/2NQPN2/PPP3PP/R3KB1R b KQkq - 0 1 : Fg7! seul coup qui tient
+4rr1k/2p3p1/q2p1b1p/p7/P3Q3/1P5P/2PB1PPK/3RR3 w - - 3 24 : mieux vaut garder la dame plutôt que prendre les deux tours
+3kr3/ppN2ppp/8/8/1P6/3q3P/PP1PBP1n/R1BQK3 b Q - 2 13 : Dg6! ça mate (N2kr3/pp3ppp/8/8/1P4n1/3q3P/PP1PBP2/R1BQK3 b Q - 0 12 : Ch2 #5)
+r6k/p1p3pp/6n1/3Bp3/4P3/5r1q/P2PNP2/R1B1QRK1 w - - 1 20 : roi blanc qui sue (gagnant pour les noirs)
+
+UI:
+Quand on reste appuyé sur une flèche, faire défiler la variante à vitesse constante
+Vérifer les promotions de variantes qui bug
+
+ENDGAME EVALUTION:
+8/p7/1p3p2/2p1p1k1/P1P1P3/1P3KP1/8/8 b - - 0 1 : gagnant pour les noirs
+Les coups d'attente sont hyper importants en finale roi+pion vs roi+pion. cela permet de créer des zugzwangs
+Dans la position ci-dessus, il faut en garder autant que possible -> seuls Rh5 ou Rh6 gagnent (Rh5 est l'idée gagnante)
+8/8/1p3p2/p1p1p3/P1P1P3/1P3KP1/7k/8 b - - 1 7 : Rg1 par derrière pour gagner les pions
+8/8/p4p2/p1p1p3/2P1P3/1P3KPk/8/8 b - - 1 6 : a4! permet de se re-donner un coup d'attente pour gagner par zugzwang (Rh2 avec la même idée gagne aussi)
+Chances de gain dans une position -> dépend souvent des pions passés
 
 KING SAFETY:
 2k1rb1r/p1ppqppp/bnp5/4P3/2P5/1P6/PQ2BPPP/RNB1K2R w KQ - 5 12 : il faut un point de contact pour le pion c pour qu'on considère qu'il y ait du pawn storm
+Activité -> king safety++ (mais proportionnel à quoi? l'exposition du roi adverse? rien? long terme/copurt terme?)
 
 FIX
 r1b1k1nr/ppqnbppp/2p5/4p3/4P3/2NBBN2/PPP2PPP/R2Q1RK1 b kq - 3 8 : Nf6 -> préciser quel cavalier ! (FIXED)
-TODO !!! quand on navigue dans les variantes, faut absolument remettre à jour les bitboards (et l'éval)
+TODO !!! quand on navigue dans les variantes, faut absolument remettre à jour les bitboards (et l'éval) (DONE)
 rn2k2r/pp1b1ppp/3b1n2/1B6/8/1NN5/PP3PPP/R1B2RK1 b kq - 6 12 : O-O seul coup qui tient... rn3k1r/pp1b1pp1/3b1n2/1B4Bp/8/1NN5/PP3PPP/R3R1K1 b - - 3 14 : pas Fxb5
+1k6/p7/2ppp2p/2p1n1p1/4P3/2P1B3/P1P2PPP/6K1 w - - 0 26 : finale gagnante pour les blancs... pourquoi?
+7r/p1k5/2ppp2p/2p1n1p1/4P3/1RP1B3/P1P2PPP/6K1 b - - 2 25 : ici: mieux aux noirs, mais si Tb8 -> Txb8 Rxb8, gagnant aux blancs
+1k6/p7/2ppp2p/2p3p1/4P3/2P1P3/P1P3PP/5K2 w - - 0 29 : ça c'est nulle
+1k6/p7/2ppp3/2p3p1/4P3/2P1P3/P1P3P1/6K1 w - - 0 29 : gagnant pour les blancs (pawn race: 10 pour les blancs et 13 pour les noirs...)
+Evaluation endgame: avoir une évaluation roi v roi, et faire en sorte qu'elle soit degressive en fonction du nombre de pièces restantes? ex: E = Ep + Er / (n_pièces)
+R2r2k1/6pp/1p3pn1/3b4/3P4/P4QP1/BP3P2/2q3K1 w - - 2 30 : quand on a une draw forcée, il faut regarder un peu autour pour chercher mieux... (il a peur de Rg2 car ça pin sa dame au roi...)
+1k6/p7/2pp3B/2p1p3/4P3/2n5/P1P2KPP/8 b - - 1 29 : Rc7! tient (prendre e4 prend un pion mais perd 2 tempos)
+8/p7/2ppp3/2p3K1/4P1PP/3kP3/P7/8 b - - 0 36 : bug de carré de pion? il veut pas faire c4...
+rnbqkbnr/pppppppp/8/8/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 1 3 : ici faut absolument que e5 et d5 soient considérés comme mauvais
+r4k1r/bq1p1ppp/2n1p3/4Pn2/p4P2/5B2/PPPN2PP/R1BQKR2 w Q - 2 18 : Ce4, pas Cb1... il rentre à l'écurie...
+r4rk1/pp4pp/n1p5/3pP3/PP6/1QP1qN2/6PP/3R1K1R b - - 0 19 : pourquoi il a fait Cxb4 avant Txf3+?? (en fait parce qu'il voit pas Tf8! (#4) après Rg1 (sliencieux), et après Cxb4 Dxb4 il aurait au moins Dxd1
+r5k1/pp4pp/2p5/3pP3/PQ6/2P1q3/7P/3R1K1R b - - 3 23 : c5!
+r1b2Q2/pp5p/6p1/1k6/8/8/PKP2PPP/8 b - - 0 23 : bien gagnant aux blancs: pièces pas développées et roi exposé contre la dame
+4r3/pp5p/1kbQ2p1/8/8/8/PKP2PPP/8 w - - 7 27 : même là, pièces développées y'a rien à faire pour les noirs
+r1bq1b1B/ppp2knp/2n3p1/3p4/4p3/1P2P3/P1PP1PPP/RN1QKB1R w KQ - 1 10 : pas vraiment trapped le fou, car il peut au moins s'échanger contre le cheval
+r1b2r1k/p2p1pb1/2p1pNp1/2p3Bp/q4PPQ/3P4/P1P3KP/R4R2 w - - 3 19 : gxh5 mate en force (Grogros ne voit pas le danger)
+r2k1b1r/pbpn2p1/1p1qp1Bp/7Q/3P4/4B3/PPP2RPP/RN4K1 w - - 3 5 : long term mobility qui augmente beaucoup avec c3? (Cc3 -> développement -> attaque sur le roi gagne plus facilement)
+
+TEST PERFORMANCE
+r1bq1b1r/pp4pp/2p1k3/3np3/2BP4/2N2Q2/PPn2PPP/R1B2RK1 w - - 0 11
+
+TODO
+Implémenter les nouveaux pions passés (fonction dédiée pour ça) + ajouter candidats pions passés -> evaluation de la structure globale de pions pour pré-évaluer facilement les chances de gains dans un futur endgame
+
+TEST ENDGAME:
+1k6/p7/2ppp2p/2p1n1p1/4P3/2P1B3/P1P2PPP/6K1 w - - 0 26 : perdant pour les noirs (roi trop loin?)
+
+Position du roi
+8/p1k5/2ppp2p/2p1n1p1/4P3/2P1B3/P1P2PPP/6K1 w - - 0 26 : pareil avec roi en c7 -> toujours gagnant mais plus difficile (seul f4! gagne)
+8/p2k4/2ppp2p/2p1n1p1/4P3/2P1B3/P1P2PPP/6K1 w - - 4 28 : roi en d7 -> draw
+3k4/p7/2ppp2p/2p1n1p1/4P3/2P1B3/P1P2PPP/6K1 w - - 8 30 : roi en d8 -> perd (mais un peu plus difficile qu'en c7)
+8/p7/1kppp2p/2p1n1p1/4P3/2P1B3/P1P2PPP/6K1 w - - 4 28 : roi en b6 -> perd (mais un peu plus difficile qu'en c7)
+Conclusion: Roi à partir de d7/e8 -> draw, sinon perd (trait du joueur change la donne de 1 coup)
+
+Position du cheval
+1k6/p7/2ppp1np/2p3p1/4P3/2P1B3/P1P2PPP/6K1 w - - 0 26 : en g6 -> perd mais de peu
+1k6/p7/2ppp2p/2p3p1/2n1P3/2P1B3/P1P2PPP/6K1 w - - 0 26 : en c4 -> perd? mais de très peu
+1k6/p7/2ppp2p/2p3p1/4P1n1/2P1B3/P1P2PPP/6K1 w - - 0 26 : en g4 -> perd: le cheval perd des tempo à cause des poussées de pion
+Conclusion pas trop d'importance, peut-être une différence de 1/2 tempo qu'il peut perdre sur les pions
+
+
+
 
 rnbqkbn1/ppppp3/6p1/3KPp1r/8/7p/PPPP1PPP/RNBQ1BNR w q f6 0 7 : FIX en passant illégal (cas similaire possible sur une diago ou non?)
 
