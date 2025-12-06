@@ -190,8 +190,8 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 	if (col > 0 && (!pin.pinned || is_aligned(direction, -1, pin.dir))) {
 
 		// Nouvelle position
-		uint8_t new_row = row + direction;
-		uint8_t new_col = col - 1;
+		int new_row = row + direction;
+		int new_col = col - 1;
 
 		// S'il y a une pièce ennemie ou si c'est une prise en passant
 		bool take = is_enemy(_array[new_row][new_col], player);
@@ -216,7 +216,7 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 				if (king_pos.row == row && king_pos.col > col) {
 
 					// Itération vers la gauche
-					for (uint8_t c = new_col - 1; c >= 0; c--) {
+					for (int c = new_col - 1; c >= 0; c--) {
 						uint8_t p = _array[row][c];
 
 						// Si on tombe sur une pièce
@@ -248,8 +248,8 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 	if (col < 7 && (!pin.pinned || is_aligned(direction, 1, pin.dir))) {
 
 		// Nouvelle position
-		uint8_t new_row = row + direction;
-		uint8_t new_col = col + 1;
+		int new_row = row + direction;
+		int new_col = col + 1;
 
 		// S'il y a une pièce ennemie ou si c'est une prise en passant
 		bool take = is_enemy(_array[new_row][new_col], player);
@@ -273,7 +273,7 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 				if (king_pos.row == row && king_pos.col < col) {
 
 					// Itération vers la droite
-					for (uint8_t c = new_col + 1; c < 8; c++) {
+					for (int c = new_col + 1; c < 8; c++) {
 						uint8_t p = _array[row][c];
 
 						// Si on tombe sur une pièce
@@ -545,22 +545,21 @@ bool Board::get_moves() noexcept {
 
 			// Récupère une case contenant une pièce alliée
 			int sq = pop_lsb(bb);  // 0..63
-			//const uint64_t sq_mask = SQUARE_MASKS[sq];
+			const uint64_t sq_mask = SQUARE_MASKS[sq];
 
 			// Déterminer le type de pièce en cherchant dans les bitboards
 			uint8_t piece = 0;
 			int first_type = player ? w_pawn : b_pawn;
 			for (int type = first_type; type <= first_type + 4; type++) {
-				//if (_bitboards[type] & sq_mask) {
-				if (_bitboards[type] & (1ULL << sq)) {
+				if (_bitboards[type] & sq_mask) {
 					piece = type;
 					break;
 				}
 			}
 
 			// Conversion en row/col
-			uint8_t row = sq / 8;
-			uint8_t col = sq % 8;
+			uint8_t row = sq >> 3;
+			uint8_t col = sq & 7;
 
 			// Pion
 			if (is_pawn(piece)) {
@@ -638,22 +637,21 @@ uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingsid
 
 		// Récupère une case contenant une pièce alliée
 		int sq = pop_lsb(bb);  // 0..63
-		//const uint64_t sq_mask = SQUARE_MASKS[sq];
+		const uint64_t sq_mask = SQUARE_MASKS[sq];
 
 		// Déterminer le type de pièce en cherchant dans les bitboards
 		uint8_t piece = 0;
 		int first_type = player ? b_pawn : w_pawn;
 		for (int type = first_type; type <= first_type + 5; type++) {
-			//if (_bitboards[type] & sq_mask) {
-			if (_bitboards[type] & (1ULL << sq)) {
+			if (_bitboards[type] & sq_mask) {
 				piece = type;
 				break;
 			}
 		}
 
 		// Conversion en row/col
-		uint8_t row = sq / 8;
-		uint8_t col = sq % 8;
+		uint8_t row = sq >> 3;
+		uint8_t col = sq & 7;
 
 		// Pion
 		if (is_pawn(piece)) {
@@ -1982,7 +1980,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 
 	// Sécurité du roi
 	if (eval->_king_safety != 0.0f) {
-		const int king_safety = get_king_safety(display * eval->_king_safety) * eval->_king_safety;
+		const int king_safety = get_king_safety(total_activity, display * eval->_king_safety) * eval->_king_safety;
 		if (display)
 			main_GUI._eval_components += "king safety: " + (king_safety >= 0 ? string("+") : string()) + to_string(king_safety) + "\n";
 		total_king += king_safety;
@@ -2589,7 +2587,7 @@ void Board::reset_board(const bool display) {
 }
 
 // Fonction qui calcule et renvoie la valeur correspondante à la sécurité des rois
-int Board::get_king_safety(float display_factor) {
+int Board::get_king_safety(int activity_diff, float display_factor) {
 
 	// ----------------------
 	// *** POSITIONS TEST ***
@@ -2828,6 +2826,20 @@ int Board::get_king_safety(float display_factor) {
 	const int w_space = space_safety_factor * space;
 	const int b_space = -space_safety_factor * space;
 
+	// ---------------------------
+	// *** ACTIVITE DES PIECES ***
+	// ---------------------------
+
+	// TEST (pas sûr)
+	constexpr float activity_attacking_factor = 1.0f;
+	constexpr float activity_protection_factor = 0.5f;
+
+	const int activity = activity_diff;
+
+	const int w_activity = activity > 0 ? activity * activity_protection_factor : activity * activity_attacking_factor;
+	const int b_activity = activity < 0 ? -activity * activity_protection_factor : -activity * activity_attacking_factor;
+
+	//rnbqkbnr/ppp2ppp/3p4/4p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w kq - 3 7 faut pas faire g8 ou des trucs du genre, même si on a plus d'activité
 
 	// -------------------------------------
 	// *** CALCUL DES PUISSANCES ***
@@ -3155,7 +3167,7 @@ int Board::get_king_safety(float display_factor) {
 	
 
 	// Faiblesses long terme:
-	int b_long_term_weakness = w_pawn_storm + w_open_lines + w_open_diagonals - b_king_protection + b_placement_weakness + b_virtual_mobility + b_weak_squares + b_rank_weakness - b_space;
+	int b_long_term_weakness = w_pawn_storm + w_open_lines + w_open_diagonals - b_king_protection + b_placement_weakness + b_virtual_mobility + b_weak_squares + b_rank_weakness - b_space - b_activity;
 
 	// Faiblesse accentuée quand les rois sont éloignés
 	b_long_term_weakness *= long_term_weakness_distance_factor;
@@ -3186,6 +3198,7 @@ int Board::get_king_safety(float display_factor) {
 		main_GUI._eval_components += " + Rank weakness (TODO): " + to_string(b_rank_weakness);
 		main_GUI._eval_components += " + Mating nets (TODO): " + to_string(0);
 		main_GUI._eval_components += " - Space: " + to_string(b_space);
+		main_GUI._eval_components += " - Activity: " + to_string(b_activity);
 		main_GUI._eval_components += ") * Kings distance : " + to_string(long_term_weakness_distance_factor);
 		main_GUI._eval_components += " = " + to_string(b_long_term_weakness) + "\n";
 	}
@@ -3237,7 +3250,7 @@ int Board::get_king_safety(float display_factor) {
 	}
 
 	// Faiblesses long terme:
-	int w_long_term_weakness = b_pawn_storm + b_open_lines + b_open_diagonals - w_king_protection + w_placement_weakness + w_virtual_mobility + w_weak_squares + w_rank_weakness - w_space;
+	int w_long_term_weakness = b_pawn_storm + b_open_lines + b_open_diagonals - w_king_protection + w_placement_weakness + w_virtual_mobility + w_weak_squares + w_rank_weakness - w_space - w_activity;
 
 	// Faiblesse accentuée quand les rois sont éloignés
 	w_long_term_weakness *= long_term_weakness_distance_factor;
@@ -3267,6 +3280,7 @@ int Board::get_king_safety(float display_factor) {
 		main_GUI._eval_components += " + Rank weakness (TODO): " + to_string(w_rank_weakness);
 		main_GUI._eval_components += " + Mating nets (TODO): " + to_string(0);
 		main_GUI._eval_components += " - Space: " + to_string(w_space);
+		main_GUI._eval_components += " - Activity: " + to_string(w_activity);
 		main_GUI._eval_components += ") * Kings distance : " + to_string(long_term_weakness_distance_factor);
 		main_GUI._eval_components += " = " + to_string(w_long_term_weakness) + "\n";
 	}
@@ -3467,9 +3481,9 @@ int Board::get_pawn_structure(float display_factor)
 	// TEST: r4rk1/pp2qppp/3b1n2/8/P2pP3/3B1P2/P2B2PP/2RQ1RK1 b - - 0 17 : pourquoi isolated positif?
 
 	// Pions isolés
-	constexpr int isolated_pawn = -35;
+	constexpr int isolated_pawn = -25;
 	constexpr float open_row_factor = 1.5f; // Si le pion isolé est sur une colonne ouverte, il est beaucoup plus faible
-	constexpr float isolated_adv_factor = 1.5f; // En fonction de l'advancement de la partie
+	constexpr float isolated_adv_factor = 1.0f; // En fonction de l'advancement de la partie
 	const float isolated_adv = eval_from_progress(1, _adv, isolated_adv_factor);
 	float isolated_pawns = 0.0f;
 
@@ -3539,9 +3553,9 @@ int Board::get_pawn_structure(float display_factor)
 
 	// Pions arrierés
 	// Pion qui ne peut être défendu par aucun autre pion, et qui est fixé par un pion adverse (la case devant est controlée par un pion adverse)
-	constexpr int backward_pawn = -20;
+	constexpr int backward_pawn = -35;
 	constexpr float backward_adv_factor = 0.5f; // En fonction de l'advancement de la partie
-	constexpr float backward_open_factor = 2.5f; // Si le pion arriéré est sur une colonne ouverte, il est beaucoup plus faible
+	constexpr float backward_open_factor = 1.5f; // Si le pion arriéré est sur une colonne ouverte, il est beaucoup plus faible
 	constexpr float blocked_factor = 2.0f; // Si le pion est bloqué par une pièce adverse, ou si la case devant est controlée par un pion adverse
 	const float backward_adv = eval_from_progress(1, _adv, backward_adv_factor);
 	float backward_pawns = 0.0f;
@@ -3654,7 +3668,7 @@ int Board::get_pawn_structure(float display_factor)
 	// 8/5bB1/8/5PP1/8/4K3/p7/1k6 w - - 1 9 : blancs gagnants! la case est controllée pour l'autre pion passé...
 
 	// Table de valeur des pions passés en fonction de leur avancement sur le plateau
-	static constexpr int passed_pawns[8] = { 0, 175, 175, 250, 370, 650, 1250, 0 };
+	static constexpr int passed_pawns[8] = { 0, 175, 175, 280, 450, 750, 1250, 0 };
 
 	// Facteur de division par pièce qui contrôle (cavalier, fou, tour, dame, roi)
 	//static constexpr float control_division_per_piece[5] = { 1.5f, 1.75f, 1.35f, 1.2f, 1.35f };
@@ -3667,7 +3681,7 @@ int Board::get_pawn_structure(float display_factor)
 	static constexpr float self_block_division = 1.5f;
 
 	// Bonus pour les pions passés connectés
-	constexpr float connected_passed_pawn_bonus = 2.0f;
+	constexpr float connected_passed_pawn_bonus = 1.5f;
 
 
 	// Pion passé - chemin controllé par une pièce adverse
@@ -3868,13 +3882,19 @@ int Board::get_pawn_structure(float display_factor)
 
 	// Pions connectés
 	// Un pion est dit connecté, s'il y a un pion de la même couleur sur une colonne adjacente sur la même rangée ou la rangée inférieure
-	constexpr int connected_pawns[8] = { 0, 10, 25, 70, 120, 180, 275, 0 };
-	constexpr float connected_pawns_factor = 0.5f; // En fonction de l'advancement de la partie
+	constexpr int connected_pawns[8] = { 0, 10, 65, 135, 150, 200, 275, 0 };
+	constexpr float connected_pawns_factor = 0.2f; // En fonction de l'advancement de la partie
 	const float connected_pawns_adv = eval_from_progress(1, _adv, connected_pawns_factor);
+	constexpr float column_connection_value[8] = { 0.15f, 0.25f, 0.55f, 1.25f, 1.25f, 0.55f, 0.25f, 0.15f };
 
 	float connected_pawns_value = 0.0f;
 
-	constexpr float multiple_connections[4] = { 1.0f, 1.25f, 1.35f, 1.4f }; // Bonus si le pion est connecté par plusieurs côtés
+	constexpr float multiple_connections[5] = { 0.0, 1.0f, 1.25f, 1.35f, 1.4f }; // Bonus si le pion est connecté par plusieurs côtés
+
+	// TODO *** pour favoriser les structures en "A" plutôt qu'en "V":
+	// Multiple connection+?
+	// Pions connectés au centre plus forts?
+	// Pions arriérés++
 
 	// Pour chaque colonne
 	for (uint8_t col = 0; col < 8; col++) {
@@ -3888,16 +3908,17 @@ int Board::get_pawn_structure(float display_factor)
 				// Pion connecté derrière
 				bool is_left_connected_behind = (col > 0 && pawns_white[row - 1][col - 1]);
 
-				// S'il est contesté par un pion adverse, on retire le bonus
-				if (is_left_connected_behind && (col > 1 && pawns_black[row][col - 2])) {
+				// S'il est contesté par un pion adverse et qu'il n'est pas soutenu par un pion allié, on retire le bonus
+				//rnbqkbnr/pp3ppp/4p3/2ppP3/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 0 4 : faut faire c3 (pour reconnecter e5 indirectement)
+				if (is_left_connected_behind && (col > 1 && pawns_black[row][col - 2]) && !pawns_white[row - 2][col - 2] && !pawns_white[row - 2][col]) {
 					is_left_connected_behind = false;
 				}
 
 				// Pion connecté sur la même rangée
 				bool is_left_connected_side = (col > 0 && pawns_white[row][col - 1]);
 
-				// S'il est contesté par un pion adverse, on retire le bonus
-				if (is_left_connected_side && (col > 1 && pawns_black[row + 1][col - 2] || pawns_black[row + 1][col])) {
+				// S'il est contesté par un pion adverse et qu'il n'est pas soutenu par un pion allié, on retire le bonus
+				if (is_left_connected_side && (col > 1 && pawns_black[row + 1][col - 2] || pawns_black[row + 1][col]) && !pawns_white[row - 2][col - 2] && !pawns_white[row - 2][col]) {
 					is_left_connected_side = false;
 				}
 
@@ -3907,16 +3928,16 @@ int Board::get_pawn_structure(float display_factor)
 				// Pion connecté derrière
 				bool is_right_connected_behind = (col < 7 && pawns_white[row - 1][col + 1]);
 
-				// S'il est contesté par un pion adverse, on retire le bonus
-				if (is_right_connected_behind && (col < 6 && pawns_black[row][col + 2])) {
+				// S'il est contesté par un pion adverse et qu'il n'est pas soutenu par un pion allié, on retire le bonus
+				if (is_right_connected_behind && (col < 6 && pawns_black[row][col + 2]) && !pawns_white[row - 2][col + 2] && !pawns_white[row - 2][col]) {
 					is_right_connected_behind = false;
 				}
 
 				// Pion connecté sur la même rangée
 				bool is_right_connected_side = (col < 7 && pawns_white[row][col + 1]);
 
-				// S'il est contesté par un pion adverse, on retire le bonus
-				if (is_right_connected_side && (col < 6 && pawns_black[row + 1][col + 2] || pawns_black[row + 1][col])) {
+				// S'il est contesté par un pion adverse et qu'il n'est pas soutenu par un pion allié, on retire le bonus
+				if (is_right_connected_side && (col < 6 && pawns_black[row + 1][col + 2] || pawns_black[row + 1][col]) && !pawns_white[row - 2][col + 2] && !pawns_white[row - 2][col]) {
 					is_right_connected_side = false;
 				}
 
@@ -3926,9 +3947,11 @@ int Board::get_pawn_structure(float display_factor)
 				// S'il est connecté par au moins un côté
 				if (behind_connections + side_connections > 0) {
 
-					bool is_contested = col > 0 && pawns_black[row + 1][col - 1] || col < 7 && pawns_black[row + 1][col + 1];
-
-					connected_pawns_value += connected_pawns[row] * connected_pawns_adv * multiple_connections[behind_connections + side_connections - is_contested];
+					bool is_contested = (col > 0 && pawns_black[row + 1][col - 1]) || (col < 7 && pawns_black[row + 1][col + 1]);
+					float value = connected_pawns[row] * connected_pawns_adv * column_connection_value[col] * multiple_connections[behind_connections + side_connections - is_contested];
+					connected_pawns_value += value;
+					//std::cout << square_name(row, col) << ", behind: " << behind_connections << ", side: " << side_connections << ", contests: " << is_contested << " = " << behind_connections + side_connections - is_contested << ": " << value << endl;
+					//rnbqkb1r/pp1n2pp/4pp2/2ppP3/3P1P2/2NB1N2/PPP3PP/R1BQK2R b KQkq - 1 7: vérifier que jouer c4 est bien stratégiquement pourri (reconnecte e5)
 				}
 			}
 
@@ -3940,16 +3963,17 @@ int Board::get_pawn_structure(float display_factor)
 				// Pion connecté derrière
 				bool is_left_connected_behind = (col > 0 && pawns_black[row + 1][col - 1]);
 
-				// S'il est contesté par un pion adverse, on retire le bonus
-				if (is_left_connected_behind && (col > 1 && pawns_white[row][col - 2])) {
+				// S'il est contesté par un pion adverse et qu'il n'est pas soutenu par un pion allié, on retire le bonus
+				//rnbqkb1r/ppp2ppp/5n2/3p4/2PPp3/4P3/PP3PPP/RNBQKBNR b KQkq - 0 5 : faut jouer c6
+				if (is_left_connected_behind && (col > 1 && pawns_white[row][col - 2] && !pawns_black[row + 2][col - 2] && !pawns_black[row + 2][col])) {
 					is_left_connected_behind = false;
 				}
 
 				// Pion connecté sur la même rangée
 				bool is_left_connected_side = (col > 0 && pawns_black[row][col - 1]);
 
-				// S'il est contesté par un pion adverse, on retire le bonus
-				if (is_left_connected_side && (col > 1 && pawns_white[row - 1][col - 2] || pawns_white[row - 1][col])) {
+				// S'il est contesté par un pion adverse et qu'il n'est pas soutenu par un pion allié, on retire le bonus
+				if (is_left_connected_side && (col > 1 && pawns_white[row - 1][col - 2] || pawns_white[row - 1][col]) && !pawns_black[row + 2][col - 2] && !pawns_black[row + 2][col]) {
 					is_left_connected_side = false;
 				}
 
@@ -3958,16 +3982,16 @@ int Board::get_pawn_structure(float display_factor)
 				// Pion connecté derrière
 				bool is_right_connected_behind = (col < 7 && pawns_black[row + 1][col + 1]);
 
-				// S'il est contesté par un pion adverse, on retire le bonus
-				if (is_right_connected_behind && (col < 6 && pawns_white[row][col + 2])) {
+				// S'il est contesté par un pion adverse et qu'il n'est pas soutenu par un pion allié, on retire le bonus
+				if (is_right_connected_behind && (col < 6 && pawns_white[row][col + 2]) && !pawns_black[row + 2][col + 2] && !pawns_black[row + 2][col]) {
 					is_right_connected_behind = false;
 				}
 
 				// Pion connecté sur la même rangée
 				bool is_right_connected_side = (col < 7 && pawns_black[row][col + 1]);
 
-				// S'il est contesté par un pion adverse, on retire le bonus
-				if (is_right_connected_side && (col < 6 && pawns_white[row - 1][col + 2] || pawns_white[row - 1][col])) {
+				// S'il est contesté par un pion adverse et qu'il n'est pas soutenu par un pion allié, on retire le bonus
+				if (is_right_connected_side && (col < 6 && pawns_white[row - 1][col + 2] || pawns_white[row - 1][col]) && !pawns_black[row + 2][col + 2] && !pawns_black[row + 2][col]) {
 					is_right_connected_side = false;
 				}
 
@@ -3978,8 +4002,9 @@ int Board::get_pawn_structure(float display_factor)
 				if (behind_connections + side_connections > 0) {
 
 					bool is_contested = col > 0 && pawns_white[row - 1][col - 1] || col < 7 && pawns_white[row - 1][col + 1];
-
-					connected_pawns_value -= connected_pawns[7 - row] * connected_pawns_adv * multiple_connections[behind_connections + side_connections - is_contested];
+					float value = connected_pawns[7 - row] * connected_pawns_adv * column_connection_value[col] * multiple_connections[behind_connections + side_connections - is_contested];
+					connected_pawns_value -= value;
+					//std::cout << square_name(row, col) << ", behind: " << behind_connections << ", side: " << side_connections << ", contests: " << is_contested << " = " << behind_connections + side_connections - is_contested << ": " << value << endl;
 				}
 			}
 		}
@@ -4652,8 +4677,8 @@ int Board::get_square_controls() const
 		{10,  10,  10,  10,  10,  10,  10,  10},
 		{20,  20,  30,  40,  40,  30,  20,  20},
 		{10,  25,  45,  65,  65,  45,  25,  10},
-		{5,   35,  55,  75,  75,  55,  35,   5},
-		{0,   15,  25,  30,  30,  25,  15,   0},
+		{5,   35,  65, 100, 100,  65,  35,   5},
+		{0,   15,  25,  50,  50,  25,  15,   0},
 		{5,    5,  10,  20,  20,  10,   5,   5},
 		{0,    0,   0,   0,   0,   0,   0,   0},
 		{0,    0,   0,   0,   0,   0,   0,   0}
@@ -5919,6 +5944,8 @@ int Board::get_king_proximity()
 
 	// TODO *** prendre en compte les cases controllées pour trouver le chemin le plus rapide... (pas facile à faire... mais ça peut beaucoup aider)
 
+	// TODO *** prendre en compte si c'est un pion passé ou non
+
 	// Met à jour la position des rois
 	update_kings_pos();
 
@@ -5927,7 +5954,7 @@ int Board::get_king_proximity()
 
 	// Bonus de proximité pour les pions adverse non protégés par un autre pion
 	// TODO
-	constexpr float unprotected_pawn_bonus = 3.5f;
+	constexpr float unprotected_pawn_bonus = 1.0f;
 
 	// Bonus de proximité pour les pions passés
 	// TODO
@@ -5950,9 +5977,9 @@ int Board::get_king_proximity()
 
 	// 6k1/p3r2p/3R3p/2p2N2/5P2/2P5/P5PP/6K1 b - - 0 31 : après Te2 et Td7...
 
-	constexpr float innaccessibility_multiplier = 0.65f;
+	constexpr float innaccessibility_multiplier = 0.5f;
 
-	constexpr float self_pawn_multiplier = 0.35f;
+	constexpr float self_pawn_multiplier = 0.25f;
 
 	SquareMap white_king_distances = get_king_squares_distance(true);
 	SquareMap black_king_distances = get_king_squares_distance(false);
@@ -5981,7 +6008,7 @@ int Board::get_king_proximity()
 				}
 
 				// Valeur du pion (augmente avec son avancement, s'il est non protégé, et s'il est passé)
-				float w_pawn_value = pow(row, 0.9) * self_pawn_multiplier;
+				float w_pawn_value = pow(row, 1.1) * self_pawn_multiplier;
 				float b_pawn_value = 1;
 				//float b_pawn_value = sqrt(row);
 
@@ -5998,7 +6025,9 @@ int Board::get_king_proximity()
 				float w_proximity = w_distance == 0.0f ? 0.0f : w_pawn_value / w_distance; // FIXME *** Faire un - plutôt qu'un / ?
 				float b_proximity = b_distance == 0.0f ? 0.0f : b_pawn_value / b_distance;
 
-				//cout << square_name(row, col) << ": " << "w_value: " << w_pawn_value << ", w_distance: " << w_distance << ", w_proximity: " << w_proximity << " / " << "b_value: " << b_pawn_value << ", b_distance: " << b_distance << ", b_proximity: " << b_proximity << endl;
+				//cout << endl << "w_pawn on " << square_name(row, col) << ": " << endl
+				//	<< "WHITE: value: " << w_pawn_value << " / distance: " << w_distance << ": proximity = " << w_proximity << endl
+				//	<< "BLACK: value: " << b_pawn_value << " / distance: " << b_distance << ": proximity = " << b_proximity << endl;
 
 				//8/8/8/6Kp/3k2p1/6P1/7P/8 b - - 5 27
 				
@@ -6031,7 +6060,7 @@ int Board::get_king_proximity()
 
 				// Valeur du pion (augmente avec son avancement, s'il est non protégé, et s'il est passé)
 				//float w_pawn_value = sqrt(7 - row);
-				float b_pawn_value = pow(7 - row, 0.9) * self_pawn_multiplier;
+				float b_pawn_value = pow(7 - row, 1.1) * self_pawn_multiplier;
 				float w_pawn_value = 1;
 
 				// Le pion est-il non-protégé par un autre pion?
@@ -6044,7 +6073,9 @@ int Board::get_king_proximity()
 				float w_proximity = w_distance == 0.0f ? 0.0f : w_pawn_value / w_distance; // FIXME *** Faire un - plutôt qu'un / ?
 				float b_proximity = b_distance == 0.0f ? 0.0f : b_pawn_value / b_distance;
 
-				//cout << square_name(row, col) << ": " << "w_value: " << w_pawn_value << ", w_distance: " << w_distance << ", w_proximity: " << w_proximity << " / " << "b_value: " << b_pawn_value << ", b_distance: " << b_distance << ", b_proximity: " << b_proximity << endl;
+				//cout << endl << "b_pawn on " << square_name(row, col) << ": " << endl
+				//	<< "WHITE: value: " << w_pawn_value << " / distance: " << w_distance << ": proximity = " << w_proximity << endl
+				//	<< "BLACK: value: " << b_pawn_value << " / distance: " << b_distance << ": proximity = " << b_proximity << endl;
 
 				proximity += w_proximity;
 				proximity -= b_proximity;
@@ -6086,7 +6117,7 @@ int Board::get_rook_activity() const
 	constexpr int horizontal_mobility_bonus = 35;
 
 	// Bonus si elle attaque le camp adverse
-	constexpr float row_bonus[8] = { 1.0f, 1.0f, 1.2f, 1.5f, 1.75f, 2.0f, 2.5f, 2.5f };
+	constexpr float row_bonus[8] = { 1.0f, 1.0f, 1.2f, 1.5f, 1.75f, 2.0f, 3.5f, 2.5f };
 
 	// Malus pour manque de mobilité
 	constexpr float bad_mobility_min = 2.5f;
@@ -6245,7 +6276,7 @@ int Board::get_rook_activity() const
 	}
 
 	// Facteur multiplicatif en fonction de l'avancement de la partie
-	float advancement_factor = 0.3f;
+	float advancement_factor = 0.6f;
 
 	//cout << "Final rook activity: " << activity << ", advancement factor: " << advancement_factor << " => " << eval_from_progress(activity, _adv, advancement_factor) << endl;
 
@@ -11031,9 +11062,9 @@ int Board::get_long_term_piece_mobility(bool display) const {
 
 	// Importance de la mobilité virtuelle (à travers toutes les pièces non bloquées)
 	static constexpr int pawn_virtual_mobility[5] = { 0, 0, 0, 0, 0 };
-	static constexpr int knight_virtual_mobility[9] = { -1350, -500, -100, 65, 110, 125, 135, 143, 150 };
-	static constexpr int bishop_virtual_mobility[15] = { -1350, -750, -200, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180 };
-	static constexpr int rook_virtual_mobility[15] = { -2350, -1000, -300, 35, 50, 65, 75, 85, 95, 105, 115, 125, 135, 145, 155 };
+	static constexpr int knight_virtual_mobility[9] = { -1350, -350, -100, 65, 110, 125, 135, 143, 150 };
+	static constexpr int bishop_virtual_mobility[15] = { -1350, -450, -200, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180 };
+	static constexpr int rook_virtual_mobility[15] = { -2350, -750, -300, 35, 50, 65, 75, 85, 95, 105, 115, 125, 135, 145, 155 };
 	static constexpr int queen_virtual_mobility[29] = { -4500, -2000, -500, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250 };
 	static constexpr int king_virtual_mobility[9] = { -500, -100, 0, 10, 20, 29, 37, 44, 50 };
 

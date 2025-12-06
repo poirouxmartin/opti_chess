@@ -1501,6 +1501,7 @@ void GUI::reset_game() {
 
 	cout << _global_pgn << endl;
 	cout << _pgn << endl;
+	bool current_orientation = get_board_orientation();
 	_board.reset_board();
 	_board.restart();
 	_game_tree.reset();
@@ -1509,6 +1510,7 @@ void GUI::reset_game() {
 	_root_exploration_node->_board = &_board;
 	_update_variants = true;
 	monte_buffer.reset();
+	_board_orientation = current_orientation;
 
 	PlaySound(_game_begin_sound);
 
