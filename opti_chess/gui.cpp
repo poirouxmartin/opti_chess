@@ -105,8 +105,8 @@ bool GUI::new_bind_game() {
 	_binding_solo = true;
 	_binding_full = false;
 	_click_bind = true;
-	if (!monte_buffer._init)
-		monte_buffer.init();
+	if (!monte_board_buffer._init)
+		monte_board_buffer.init();
 	start_time();
 	_grogros_analysis = false;
 
@@ -137,8 +137,8 @@ bool GUI::new_bind_analysis() {
 	_binding_solo = false;
 	_binding_full = true;
 	_click_bind = false;
-	if (!monte_buffer._init)
-		monte_buffer.init();
+	if (!monte_board_buffer._init)
+		monte_board_buffer.init();
 	_grogros_analysis = true;
 
 	return true;
@@ -1011,11 +1011,11 @@ void GUI::grogros_analysis(int iterations) {
 
 	// Il faut pas dépasser la taille du buffer
 	// FIXME: meilleure façon de gérer cela?
-	iterations_to_explore = min(iterations_to_explore, monte_buffer._length - _root_exploration_node->_nodes);
+	iterations_to_explore = min(iterations_to_explore, monte_board_buffer._length - _root_exploration_node->_nodes);
 
 	//cout << "IPS: " << _root_exploration_node->get_ips() << ", exploring " << iterations_to_explore << " nodes" << endl;
 
-	_root_exploration_node->grogros_zero(&monte_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations == -1 ? iterations_to_explore : iterations, _quiescence_depth); // TODO: nombre de noeuds à paramétrer
+	_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations == -1 ? iterations_to_explore : iterations, _quiescence_depth); // TODO: nombre de noeuds à paramétrer
 	_update_variants = true;
 }
 
@@ -1424,9 +1424,7 @@ void GUI::draw()
 
 		// Pour l'évaluation statique
 		if (!_board._displayed_components) {
-			int evaluation = _board._evaluation;
-			_board.evaluate(_grogros_eval, true, nullptr, true);
-			_board._evaluation = evaluation;
+			evaluate_position();
 		}
 		
 		int max_depth = _root_exploration_node->get_main_depth(_alpha, _beta);
@@ -1438,7 +1436,7 @@ void GUI::draw()
 			"\nConfidence: " + to_string(100 - (int)(100 * best_evaluation._uncertainty)) + "%" +
 			"\nWinnable: " + to_string(static_cast<int>(best_evaluation._winnable_white * 100)) + "% / " + to_string(static_cast<int>(best_evaluation._winnable_black * 100)) + "%" +
 			"\n" + _wdl.to_string() + "\nScore: " + score_string(best_evaluation._avg_score) +
-			"\nNodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_buffer._length) + " (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 1) / CLOCKS_PER_SEC)) + "N/s)" +
+			"\nNodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_board_buffer._length) + " (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 1) / CLOCKS_PER_SEC)) + "N/s)" +
 			"\nIterations: " + int_to_round_string(_root_exploration_node->_iterations) + " (" + int_to_round_string(_root_exploration_node->_iterations / (static_cast<float>(_root_exploration_node->_time_spent + 1) / CLOCKS_PER_SEC)) + "I/s)";
 		
 		// Affichage des paramètres d'analyse de GrogrosZero
@@ -1455,7 +1453,7 @@ void GUI::draw()
 		slider_text(_exploration_variants, _board_padding_x + _board_size + _text_size / 2, _board_padding_y + _board_size * 9 / 16, _screen_width - _text_size - _board_padding_x - _board_size, _board_size / 2, _text_size / 3, &_variants_slider, _text_color);
 
 		// Affichage de la barre d'évaluation
-		draw_eval_bar(_global_eval, _wdl, get_average_score(_wdl), _global_eval_text, _board_padding_x / 6, _board_padding_y, 2 * _board_padding_x / 3, _board_size, 800, _eval_bar_color_light, _eval_bar_color_gray, _eval_bar_color_dark);
+		draw_eval_bar(_global_eval, _wdl, _root_exploration_node->_deep_evaluation._avg_score, _global_eval_text, _board_padding_x / 6, _board_padding_y, 2 * _board_padding_x / 3, _board_size, 800, _eval_bar_color_light, _eval_bar_color_gray, _eval_bar_color_dark);
 	}
 
 	// Affichage des contrôles et autres informations
@@ -1489,7 +1487,7 @@ void GUI::load_FEN(const string fen, bool display) {
 	_root_exploration_node->_board->from_fen(fen);
 	update_global_pgn();
 	_update_variants = true;
-	monte_buffer.reset();
+	monte_board_buffer.reset();
 
 	if (display)
 		cout << "loaded FEN : " << fen << endl;
@@ -1509,7 +1507,7 @@ void GUI::reset_game() {
 	_root_exploration_node->reset();
 	_root_exploration_node->_board = &_board;
 	_update_variants = true;
-	monte_buffer.reset();
+	monte_board_buffer.reset();
 	_board_orientation = current_orientation;
 
 	PlaySound(_game_begin_sound);
@@ -1778,8 +1776,8 @@ void GUI::init_chess_sites() {
 	lichess_org._name = "lichess.org";
 	lichess_org._white_tile_color = SimpleColor(191, 191, 166);
 	lichess_org._black_tile_color = SimpleColor(100, 124, 76);
-	lichess_org._white_piece_color = SimpleColor(185, 185, 185);
-	lichess_org._black_piece_color = SimpleColor(12, 12, 12);
+	lichess_org._white_piece_color = SimpleColor(208, 208, 208);
+	lichess_org._black_piece_color = SimpleColor(13, 13, 13);
 	lichess_org._white_tile_played_color = SimpleColor(112, 160, 159);
 	lichess_org._black_tile_played_color = SimpleColor(59, 120, 106);
 	lichess_org._piece_location_on_tile = { 0.17f, 0.66f };
@@ -1862,4 +1860,9 @@ bool GUI::update_binding_move() {
 	}
 
 	return false;
+}
+
+// Fonction qui évalue (et affiche les composantes)
+void GUI::evaluate_position(bool display) {
+	_root_exploration_node->evaluate_position(_grogros_eval, display);
 }

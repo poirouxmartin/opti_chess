@@ -286,7 +286,7 @@ inline int main_lichess() {
     static constexpr int transposition_table_size = 5000000;
 
 	// Initialisation du buffer
-	monte_buffer.init(buffer_size, false);
+	monte_board_buffer.init(buffer_size, false);
 
     // Initialisation de la table de transposition
     transposition_table.init(transposition_table_size);

@@ -14,7 +14,7 @@
 inline void launch_eval() {
 	main_GUI._board.reset_board();
 	main_GUI._board.is_game_over();
-	main_GUI._board.evaluate(main_GUI._grogros_eval);
+	main_GUI.evaluate_position();
 	/*main_GUI._board._quick_sorted_moves = false;
 	main_GUI._board.quick_moves_sort();*/
 	//main_GUI._board.is_controlled(3, 3);
@@ -107,16 +107,16 @@ inline int main_ui() {
 	//testFunc(main_GUI._board);
 
 	// Taille du buffer de Monte-Carlo
-	constexpr int buffer_size = 1E7;
+	constexpr int buffer_size = 5E6;
 
 	// Taille de la table de transposition
-	constexpr int transposition_table_size = 1E7;
+	constexpr int transposition_table_size = 5E6;
 
 	// Initialisation de la table de transposition
 	transposition_table.init(transposition_table_size, nullptr, true);
 
 	// Initialisation du buffer de Monte-Carlo
-	monte_buffer.init(buffer_size);
+	monte_board_buffer.init(buffer_size);
 
 	// Noeud d'exploration
 	// Plateau test: rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2
@@ -173,7 +173,7 @@ inline int main_ui() {
 			cout << "Benchmarking evaluation function for 1 second..." << endl;
 
 			while (clock() - start < 1000) {
-				main_GUI._board.evaluate(main_GUI._grogros_eval);
+				main_GUI.evaluate_position();
 				iterations++;
 			}
 
@@ -264,7 +264,7 @@ inline int main_ui() {
 
 		// Q - Quiescence
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_A)) {
-			main_GUI._root_exploration_node->quiescence(&monte_buffer, main_GUI._grogros_eval, main_GUI._quiescence_depth, main_GUI._alpha, main_GUI._beta);
+			main_GUI._root_exploration_node->quiescence(&monte_board_buffer, main_GUI._grogros_eval, main_GUI._quiescence_depth, main_GUI._alpha, main_GUI._beta);
 			main_GUI._update_variants = true;
 		}
 
@@ -388,13 +388,13 @@ inline int main_ui() {
 		// B - Création du buffer
 		if (IsKeyPressed(KEY_B)) {
 			cout << "available memory : " << long_int_to_round_string(get_total_system_memory()) << "b" << endl;
-			monte_buffer.init(buffer_size);
+			monte_board_buffer.init(buffer_size);
 		}
 
 		// G - GrogrosZero
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyDown(KEY_G)) {
-			if (!monte_buffer._init)
-				monte_buffer.init(buffer_size);
+			if (!monte_board_buffer._init)
+				monte_board_buffer.init(buffer_size);
 			// LSHIFT - Utilisation du réseau de neurones
 			if (IsKeyDown(KEY_LEFT_SHIFT))
 				//main_GUI._board.grogros_zero(nullptr, nodes_per_frame, main_GUI._beta, main_GUI._k_add, false, 0, &grogros_network);
@@ -405,15 +405,15 @@ inline int main_ui() {
 
 		// LCTRL-G - Lancement de GrogrosZero en recherche automatique
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_G)) {
-			if (!monte_buffer._init)
-				monte_buffer.init(buffer_size);
+			if (!monte_board_buffer._init)
+				monte_board_buffer.init(buffer_size);
 			main_GUI._grogros_analysis = true;
 		}
 
 		// Entrée - GrogrosZero 1 noeud : DEBUG
 		if (IsKeyPressed(KEY_ENTER)) {
-			if (!monte_buffer._init)
-				monte_buffer.init(buffer_size);
+			if (!monte_board_buffer._init)
+				monte_board_buffer.init(buffer_size);
 			main_GUI.grogros_analysis(1);
 		}
 
@@ -445,7 +445,7 @@ inline int main_ui() {
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_DELETE)) {
 			//main_GUI._board.reset_all(true, true);
 			main_GUI._root_exploration_node->reset();
-			monte_buffer.remove();
+			monte_board_buffer.remove();
 		}
 
 		// D - Affichage dans la console de tous les coups légaux de la position
@@ -457,7 +457,7 @@ inline int main_ui() {
 
 		// E - Évalue la position et renvoie les composantes dans la console
 		if (IsKeyPressed(KEY_E)) {
-			main_GUI._board.evaluate(main_GUI._grogros_eval, true);
+			main_GUI.evaluate_position();
 			cout << "Evaluation : \n" << main_GUI._eval_components << endl;
 		}
 
@@ -711,16 +711,16 @@ inline int main_ui() {
 
 			// Analyse de GrogrosZero
 			if (main_GUI._grogros_analysis || main_GUI._white_player == main_GUI._grogros_zero_name || main_GUI._black_player == main_GUI._grogros_zero_name) {
-				if (!monte_buffer._init)
-					monte_buffer.init(buffer_size);
+				if (!monte_board_buffer._init)
+					monte_board_buffer.init(buffer_size);
 
 				main_GUI.grogros_analysis();
 			}
 
 			// Quand c'est son tour (TODO: fonction pour ça)
 			if ((main_GUI._board._player && main_GUI._white_player == main_GUI._grogros_zero_name) || (!main_GUI._board._player && main_GUI._black_player == main_GUI._grogros_zero_name)) {
-				if (!monte_buffer._init)
-					monte_buffer.init(buffer_size);
+				if (!monte_board_buffer._init)
+					monte_board_buffer.init(buffer_size);
 
 				main_GUI.play_grogros_zero_move();
 			}

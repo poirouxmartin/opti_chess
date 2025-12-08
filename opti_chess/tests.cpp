@@ -35,11 +35,11 @@ double Tests::evaluation_test(string fen, int expected_evaluation, pair<int, int
 	clock_t begin = clock();
 
 	// Evalue la position
-	_gui->_board.evaluate(_gui->_grogros_eval, false, nullptr, true);
-	int evaluation = _gui->_board._evaluation;
+	_gui->evaluate_position(false);
+	int evaluation = _gui->_root_exploration_node->_static_evaluation._value;
 
 	// Evalue le win rate
-	double score = _gui->_board.get_average_score();
+	double score = _gui->_root_exploration_node->_static_evaluation._avg_score;
 
 	// Arrête le chrono
 	clock_t end = clock();
