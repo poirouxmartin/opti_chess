@@ -109,24 +109,24 @@ struct Move {
 	inline bool is_checkmate() const { return flags & IS_MATE; }
 	inline bool has_flags() const { return flags & FLAGS_EVALUATED; }
 
-	inline uint8_t game_result() const { return (flags & RESULT_MASK) >> 5; }
+	//inline uint8_t game_result() const { return (flags & RESULT_MASK) >> 5; }
 
-	inline void set_game_result(uint8_t result) {
-		flags = (flags & ~RESULT_MASK) | ((result & 0b11) << 5);
-	}
+	//inline void set_game_result(uint8_t result) {
+	//	flags = (flags & ~RESULT_MASK) | ((result & 0b11) << 5);
+	//}
 
 	// --- Helpers ---
 	inline void set_flag(MoveFlags f) { flags |= f; }
 	inline void clear_flag(MoveFlags f) { flags &= ~f; }
 	inline bool has_flag(MoveFlags f) const { return flags & f; }
 
-	inline void set_result(uint8_t result) {
-		flags = (flags & ~RESULT_MASK) | ((result & 0x03) << 5);
-	}
+	//inline void set_result(uint8_t result) {
+	//	flags = (flags & ~RESULT_MASK) | ((result & 0x03) << 5);
+	//}
 
-	inline uint8_t get_result() const {
-		return (flags & RESULT_MASK) >> 5;
-	}
+	//inline uint8_t get_result() const {
+	//	return (flags & RESULT_MASK) >> 5;
+	//}
 
 	// --- Comparisons ---
 	inline bool operator==(const Move& other) const {
@@ -661,7 +661,7 @@ public:
 	static void draw_text_rect(const string&, float, float, float, float, float);
 
 	// Fonction qui joue le son d'un coup
-	void play_move_sound(Move) const;
+	void play_move_sound(Move);
 
 	// Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
 	void reset_board(bool display = false);
