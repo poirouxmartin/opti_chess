@@ -451,6 +451,85 @@ inline int pop_lsb(uint64_t& bb) noexcept {
 	return sq;
 }
 
+struct Evaluation {
+
+	// Variables
+
+	// Valeur de l'évaluation
+	int _value;
+
+	// Incertitude de l'évaluation
+	float _uncertainty;
+
+	// Valeur winnable
+	float _winnable_white;
+	float _winnable_black;
+
+	// WDL
+	WDL _wdl;
+
+	// Score moyen
+	float _avg_score;
+
+	// TODO *** add total value (-> move score?)
+
+	// Evalué?
+	bool _evaluated = false;
+
+
+	// Copie de l'évaluation
+	Evaluation& operator=(const Evaluation& other) {
+		// Recopie les paramètres d'évaluation
+		_value = other._value;
+		_uncertainty = other._uncertainty;
+		_winnable_white = other._winnable_white;
+		_winnable_black = other._winnable_black;
+		_wdl = other._wdl;
+		_avg_score = other._avg_score;
+		_evaluated = other._evaluated;
+
+		return *this;
+	}
+
+	// Comparateur
+	bool operator>(Evaluation& other) {
+		if (!other._evaluated)
+			return true;
+
+		if (!_evaluated)
+			return false;
+
+		return _value > other._value;
+	}
+
+	bool operator<(Evaluation& other) {
+		if (!other._evaluated)
+			return true;
+
+		if (!_evaluated)
+			return false;
+
+		return _value < other._value;
+	}
+
+	// Reset
+	void reset() {
+		_value = 0;
+		_uncertainty = 0.0f;
+		_winnable_white = 1.0f;
+		_winnable_black = 1.0f;
+		_wdl = WDL();
+		_avg_score = 0.0f;
+		_evaluated = false;
+	}
+
+	// Fonction qui renvoie le WDL de la position
+	void get_WDL(int winning_eval = 110, float beta = 0.75f);
+
+	// Fonction qui renvoie l'espérance de gain (en points) de la position (fondé sur les probas de WDL) pour les blancs
+	void get_average_score(float draw_score = 0.5f);
+};
+
 
 // Plateau
 class Board {
@@ -505,9 +584,6 @@ public:
 	// Tour du joueur (true pour les blancs, false pour les noirs)
 	bool _player = true;
 
-	// Peut-être utile pour les optimisations?
-	int _evaluation = 0;
-
 	// Droits de roque
 	CastlingRights _castling_rights;
 
@@ -522,13 +598,6 @@ public:
 
 	// Plateau libre ou actif? (pour le buffer)
 	bool _is_active = false;
-
-	// Est-ce que le plateau a été évalué?
-	bool _evaluated = false;
-
-	// Pour l'affichage 
-	// FIXME: ça prend de la place, à voir si on peut s'en passer
-	int _static_evaluation = 0;
 
 	// Avancement de la partie
 	// TODO *** à mettre dans les noeuds plutôt que plateaux?
@@ -552,17 +621,6 @@ public:
 	// Historique des positions
 	vector<uint64_t> _positions_history = {};
 	//unordered_map<uint_fast64_t, int> _positions_history = {};
-
-	// WDL
-	// TODO *** faudra les retirer à terme...
-	WDL _wdl;
-
-	// Incertitude
-	float _uncertainty = 0.0f;
-
-	// Winnable
-	float _winnable_white = 1.0f;
-	float _winnable_black = 1.0f;
 
 
 	// Constructeur par défaut
@@ -622,8 +680,6 @@ public:
 	// Fonction qui joue un coup
 	void make_move(const Move& move, const bool pgn = false, const bool add_to_history = false) noexcept;
 
-	inline void make_move_fast(const Move move);
-
 	// Fonction qui annule un coup
 	void unmake_move(Move move, uint8_t p1, uint8_t p2, int en_passant_col, int prev_half_count, bool k_castle, bool q_castle, bool is_castle, bool is_promotion, bool is_en_passant);
 
@@ -640,7 +696,7 @@ public:
 	int pieces_positioning(const Evaluator* eval = nullptr) const;
 
 	// Fonction qui évalue la position à l'aide d'heuristiques
-	bool evaluate(Evaluator* eval = nullptr, bool display = false, Network* n = nullptr, bool check_game_over = false);
+	void evaluate(Evaluation* eval, Evaluator* evaluator = nullptr, bool display = false, Network* n = nullptr, bool check_game_over = false);
 
 	// Fonction qui récupère le plateau d'un FEN
 	void from_fen(string);
@@ -757,7 +813,7 @@ public:
 	int get_king_virtual_mobility(bool color);
 
 	// Fonction qui renvoie le nombre d'échecs 'safe' dans la position pour les deux joueurs
-	int get_checks_value(SquareMap white_controls, SquareMap black_controls, bool color);
+	int get_checks_value(SquareMap* white_controls, SquareMap* black_controls, bool color);
 
 	// Fonction qui renvoie la vitesse de génération des coups
 	int moves_generation_benchmark(uint8_t depth, bool main_call = true);
@@ -799,10 +855,10 @@ public:
 	void get_zobrist_key();
 
 	// Fonction qui renvoie à quel point la partie est gagnable (de 0 à 1), pour une couleur donnée
-	float get_winnable(bool color, float position_nature) const;
+	float get_winnable(Evaluation* eval, bool color, float position_nature) const;
 
 	// Fonction qui calcule les valeurs de possibilités de gain pour chaque côté
-	void get_winnable_values(float position_nature = 0.0f);
+	void get_winnable_values(Evaluation* eval, float position_nature = 0.0f);
 
 	// Fonction qui renvoie l'activité des fous sur les diagonales
 	int get_bishop_activity() const;
@@ -883,13 +939,7 @@ public:
 	bool pawn_can_move(uint8_t row, uint8_t col, bool color) const;
 
 	// Fonction qui renvoie l'incertiude de la position
-	float get_uncertainty(int material_eval, int winning_eval = 110);
-
-	// Fonction qui renvoie le WDL de la position
-	void get_WDL(int winning_eval = 110, float beta = 0.75f);
-
-	// Fonction qui renvoie l'espérance de gain (en points) de la position (fondé sur les probas de WDL) pour les blancs
-	float get_average_score(float draw_score = 0.5f) const;
+	void get_uncertainty(Evaluation *eval, int material_eval, int winning_eval = 110) const;
 
 	// Fonction qui inverse les couleurs des joueurs (y compris le trait)
 	void switch_colors();
@@ -1053,9 +1103,6 @@ string square_name(uint8_t i, uint8_t j);
 
 // Fonction qui renvoie le nom d'une pièce
 string piece_name(uint8_t piece);
-
-// Fonction qui renvoie l'espérance de gain d'un WDL
-float get_average_score(WDL wdl, float draw_score = 0.5f);
 
 // Fonction qui renvoie l'évaluation re-normalisée en fonction du score moyen
 string get_renormalized_evaluation(float avg_score, float winning_eval = 1, float winning_score = 0.70f);

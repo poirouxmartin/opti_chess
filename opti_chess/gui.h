@@ -574,6 +574,9 @@ public:
 	// Fonction qui update le binding move à partir du plateau en ligne
 	bool update_binding_move();
 
+	// Fonction qui évalue (et affiche les composantes)
+	void evaluate_position(bool display = true);
+
 
 	// TODO
 	void draw();

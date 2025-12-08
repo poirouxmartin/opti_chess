@@ -72,7 +72,7 @@ void Node::init_node() {
 }
 
 // Nouveau GrogrosZero
-void Node::grogros_zero(Buffer* buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network) {
+void Node::grogros_zero(BoardBuffer* buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network) {
 	// TODO:
 	// On peut rajouter la profondeur
 	// Garder le temps de calcul
@@ -145,7 +145,7 @@ void Node::grogros_zero(Buffer* buffer, Evaluator* eval, const double alpha, con
 }
 
 // Fonction qui explore un nouveau coup
-void Node::explore_new_move(Buffer* buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network) {
+void Node::explore_new_move(BoardBuffer* buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network) {
 
 	// On prend le premier coup non exploré
 	const Move move = get_first_unexplored_move(true);
@@ -364,7 +364,7 @@ void Node::explore_new_move(Buffer* buffer, Evaluator* eval, double alpha, doubl
 }
 
 // Fonction qui explore dans un plateau fils pseudo-aléatoire
-void Node::explore_random_child(Buffer* buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network) {
+void Node::explore_random_child(BoardBuffer* buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network) {
 
 	// Prend un fils aléatoire
 	const Move move = pick_random_child(alpha, beta, gamma);
@@ -660,7 +660,7 @@ int Node::get_ips() const {
 }
 
 // Quiescence search intégré à l'exploration
-int Node::quiescence(Buffer* buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network, bool evaluate_threats, int beta_margin) {
+int Node::quiescence(BoardBuffer* buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network, bool evaluate_threats, int beta_margin) {
 	// TODO: comment gérer la profondeur? faire en fonction de l'importance de la branche?
 	// mettre aucune profondeur limite?
 	// pourquoi en endgame ça va si loin? il fait full échecs...
@@ -1068,17 +1068,9 @@ int Node::get_total_nodes() const {
 }
 
 // Fonction qui évalue la position
-void Node::evaluate_position(Evaluator* eval, bool display, Network * network, bool game_over_check) {
-	_board->evaluate(eval, display, network, game_over_check);
-	_deep_evaluation._value = _board->_evaluation;
-	_deep_evaluation._uncertainty = _board->_uncertainty;
-	_deep_evaluation._winnable_white = _board->_winnable_white;
-	_deep_evaluation._winnable_black = _board->_winnable_black;
-	_deep_evaluation._wdl = _board->_wdl;
-	_deep_evaluation._avg_score = _board->get_average_score();
-	_deep_evaluation._evaluated = true;
-
-	_static_evaluation = _deep_evaluation;
+void Node::evaluate_position(Evaluator* evaluator, bool display, Network * network, bool game_over_check) {
+	_board->evaluate(&_static_evaluation, evaluator, display, network, game_over_check);
+	_deep_evaluation = _static_evaluation;
 }
 
 // Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
@@ -1152,7 +1144,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		int child_iterations = max(child->_chosen_iterations, child->_iterations);
 
 		// FIXME *** gamma devrait changer en fonction de l'incertitude: plus on est incertain, plus on explore large?
-		const double new_gamma = gamma / (1.00f - _board->_uncertainty / 2.0f) / (1.00f - _board->_adv / 2.0f);
+		const double new_gamma = gamma / (1.00f - _deep_evaluation._uncertainty / 2.0f) / (1.00f - _board->_adv / 2.0f);
 		//const double new_gamma = gamma;
 		//cout << "gamma: " << gamma << ", uncertainty: " << _board->_uncertainty << ", new_gamma: " << new_gamma << endl;
 
