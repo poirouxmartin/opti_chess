@@ -2472,18 +2472,18 @@ string Board::move_label(Move move, bool use_uft8)
 		s += use_uft8 ? (_player ? main_GUI.Q_symbol : main_GUI.q_symbol) : "Q";
 	}
 
-	if (move.game_result() == white_win)
-		return s + "# 1-0";
-
-	if (move.game_result() == black_win)
-		return s + "# 0-1";
-
-	if (move.game_result() == draw)
-		return s + " 1/2-1/2";
+	if (move.is_checkmate())
+		return _player ? s + "# 1-0" : s + "# 0-1";
 
 	if (move.is_check())
-		s += "+";
+		return s + "+";
 
+	Board temp_board = *this;
+	temp_board.make_move(move, false);
+
+	if (temp_board.is_game_over() == draw) {
+		return s + " 1/2-1/2";
+	}
 
 	return s;
 }
@@ -2510,8 +2510,7 @@ void Board::draw_text_rect(const string& s, const float pos_x, const float pos_y
 }
 
 // Fonction qui joue le son d'un coup
-void Board::play_move_sound(Move move) const
-{
+void Board::play_move_sound(Move move) {
 	assign_move_flags(&move);
 
 	//cout << "Flags: " << move.is_capture << " " << move.is_check << " " << move.is_promotion << endl;
@@ -2525,17 +2524,25 @@ void Board::play_move_sound(Move move) const
 	const uint8_t p1 = _array[i][j];
 	const uint8_t p2 = _array[k][l];
 
+
 	// Sons de fin de partie
-	if (move.game_result() == draw)
-		PlaySound(main_GUI._stalemate_sound);
 
 	// Mat
-	else if (move.game_result() != unterminated)
+	if (move.is_checkmate())
 		PlaySound(main_GUI._checkmate_sound);
 
 	// Echec
 	else if (move.is_check()) {
 		PlaySound(main_GUI._check_sound);
+	}
+
+	else {
+		Board temp_board = *this;
+		temp_board.make_move(move, false);
+
+		if (temp_board.is_game_over() == draw) {
+			PlaySound(main_GUI._stalemate_sound);
+		}
 	}
 
 	// Promotion
@@ -4726,29 +4733,23 @@ bool Board::sort_moves() {
 	// Valeur des pièces
 	static constexpr int piece_values[13] = { 0, 100, 320, 330, 500, 900, 10000, 100, 320, 330, 500, 900, 10000 };
 
-	// Contrôles par les pièces adverses
-	SquareMap opponent_controls = _player ? get_black_controls_map() : get_white_controls_map();
+	// Contrôles adverses
+	const SquareMap& opponent_controls = _player ? get_black_controls_map() : get_white_controls_map();
 
-	// Vector of pairs: (Move, score)
-	std::vector<std::pair<Move, int>> scored_moves;
-	scored_moves.reserve(_got_moves);
+	// Tableau temporaire statique sur stack pour les indices et scores
+	struct MoveScore { int index; int score; };
+	MoveScore scored_moves[128]; // 128 suffit largement pour un coup d'échecs
+	int move_count = 0;
 
 	for (int i = 0; i < _got_moves; ++i) {
 		Move& move = _moves[i];
 		int from = _array[move.start_row][move.start_col];
 		int to = _array[move.end_row][move.end_col];
 
-		// La case est-elle contrôlée par l'adversaire?
-		int opponent_control = opponent_controls._array[move.end_row][move.end_col];
-
-		assign_move_flags(&move);
+		assign_move_flags(&move); // si assign_move_flags est light ou bitboards
 
 		int score = 0;
-
-		// Valeur de la pièce qui bouge
 		int piece_value = piece_values[from];
-
-		// Valeur de la pièce qui est capturée (s'il y en a une)
 		int captured_value = piece_values[to];
 
 		// MVV-LVA
@@ -4759,50 +4760,42 @@ bool Board::sort_moves() {
 		if (move.is_promotion())
 			score += 80000;
 
-		// Checkmate
-		if (move.is_checkmate())
-			score += 100000;
-
 		// Check
 		else if (move.is_check())
 			score += 5000;
 
-		// La pièce est sûrement en prise
-		if (opponent_control > 0) {
-			score -= min(50.0 * piece_value, sqrt(opponent_control) * 35 * piece_value);
-		}
+		// La pièce est menacée
+		int opponent_control = opponent_controls._array[move.end_row][move.end_col];
+		if (opponent_control > 0)
+			score -= std::min(50.0 * piece_value, sqrt(opponent_control) * 35 * piece_value);
 
-		// Malus pour les coups de roi
+		// Roque / roi
 		if (is_king(from)) {
-
-			// Roque
-			if (abs(move.end_col - move.start_col) == 2) {
-				score += 4000;
-			}
-			else {
-				score -= 10000;
-			}
+			if (abs(move.end_col - move.start_col) == 2)
+				score += 4000; // Roque
+			else
+				score -= 10000; // Déplacement du roi
 		}
 
-		//cout << "Move: " << move_label(move) << " | Score: " << score << endl;
-
-		scored_moves.emplace_back(move, score);
+		scored_moves[move_count++] = { i, score };
 	}
 
-	// Sort by descending score
-	std::sort(scored_moves.begin(), scored_moves.end(),
-		[](const std::pair<Move, int>& a, const std::pair<Move, int>& b) {
-			return a.second > b.second;
-		});
+	// Tri par score descendant
+	std::sort(scored_moves, scored_moves + move_count,
+		[](const MoveScore& a, const MoveScore& b) { return a.score > b.score; });
 
-	// Overwrite _moves with sorted results
-	for (int i = 0; i < _got_moves; ++i) {
-		_moves[i] = scored_moves[i].first;
-	}
+	// Réécriture des _moves triés
+	Move temp_moves[max_moves]; // stack temp
+	for (int i = 0; i < move_count; ++i)
+		temp_moves[i] = _moves[scored_moves[i].index];
+
+	for (int i = 0; i < move_count; ++i)
+		_moves[i] = temp_moves[i];
 
 	_sorted_moves = true;
 	return true;
 }
+
 
 // Fonction qui fait cliquer le coup m
 bool Board::click_m_move(const Move m, const bool orientation) const
@@ -11471,23 +11464,29 @@ void Board::assign_move_flags(Move* move) const {
 	}
 
 	// Évaluation sur une copie
-	Board b(*this);
+	Board b;
+	b.copy_data(*this);
 	b.make_move(*move);
+
+	// TODO *** à optimiser
+	// TODO *** voir si on peut rapidement detecter un pat
 
 	// Échec
 	if (b.in_check()) {
 		move->set_flag(IS_CHECK);
+
+		// Mat
+		b.is_game_over();
+		if ((b._game_over_value == white_win && _player) ||
+			(b._game_over_value == black_win && !_player)) {
+			move->set_flag(IS_MATE);
+		}
 	}
 
-	// Mat
-	b.is_game_over();
-	if ((b._game_over_value == white_win && _player) ||
-		(b._game_over_value == black_win && !_player)) {
-		move->set_flag(IS_MATE);
-	}
+
 
 	// Résultat de la partie
-	move->set_result(static_cast<uint8_t>(b._game_over_value));
+	//move->set_result(static_cast<uint8_t>(b._game_over_value));
 
 	move->set_flag(FLAGS_EVALUATED);
 }

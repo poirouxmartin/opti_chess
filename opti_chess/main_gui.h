@@ -165,6 +165,21 @@ inline int main_ui() {
 			//print_controls(controls_around_king);
 
 			// Position test pour la reflexion en milieu de partie: r1bq1b1r/pp4pp/2p1k3/3np3/1nBP4/2N2Q2/PPP2PPP/R1B2RK1 b - - 0 10
+
+			// Benchmark de la fonction d'évaluation
+			clock_t start = clock();
+			uint64_t iterations = 0;
+
+			cout << "Benchmarking evaluation function for 1 second..." << endl;
+
+			while (clock() - start < 1000) {
+				main_GUI._board.evaluate(main_GUI._grogros_eval);
+				iterations++;
+			}
+
+			clock_t end = clock();
+			double duration = double(end - start) / CLOCKS_PER_SEC;
+			cout << "Function executed " << iterations << " times in " << duration << " seconds. (" << (iterations / duration) << " calls per second, average " << (duration / iterations * 1e6) << " microseconds per call)" << endl;
 			
 			main_GUI._board.benchmark_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, { 1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860 }, 10, true);
 			//main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, { 1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860 }, true);
@@ -173,6 +188,8 @@ inline int main_ui() {
 			//main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pp1ppppp/8/2p5/8/3P4/PPP1PPPP/RNBQKBNR w KQkq - 0 2", 3, { 1, 27, 593, 15971 }, true, true);
 			//main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pp1ppppp/8/2p5/8/3P4/PPPKPPPP/RNBQ1BNR b kq - 1 2", 2, { 1, 22, 487 }, true, true);
 			//main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pp1ppppp/8/8/2p5/3P4/PPPKPPPP/RNBQ1BNR w kq - 0 3", 1, { 1, 23 }, true, true);
+
+
 
 
 			//main_GUI._board.validate_nodes_count_at_depth("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 5, { 1, 48, 2039, 97862, 4085603, 193690690 }, true);

@@ -1353,6 +1353,8 @@ r1b1kb1r/1p1p1p1p/pqn1p3/2pP4/4P2p/2NQPN2/PPP3PP/R3KB1R b KQkq - 0 1 : Fg7! seul
 4rr1k/2p3p1/q2p1b1p/p7/P3Q3/1P5P/2PB1PPK/3RR3 w - - 3 24 : mieux vaut garder la dame plutôt que prendre les deux tours
 3kr3/ppN2ppp/8/8/1P6/3q3P/PP1PBP1n/R1BQK3 b Q - 2 13 : Dg6! ça mate (N2kr3/pp3ppp/8/8/1P4n1/3q3P/PP1PBP2/R1BQK3 b Q - 0 12 : Ch2 #5)
 r6k/p1p3pp/6n1/3Bp3/4P3/5r1q/P2PNP2/R1B1QRK1 w - - 1 20 : roi blanc qui sue (gagnant pour les noirs)
+r1b1qbkr/ppp3pp/2n2n2/1B1pP3/3P4/2N5/PPP2PPP/R1BQ1RK1 b - - 4 9 : gagnant pour les blancs
+8/k1p5/2Q5/1pN5/p4K2/P7/q7/8 b - - 0 77 : c'est nulle (perpet partout)
 
 UI:
 Quand on reste appuyé sur une flèche, faire défiler la variante à vitesse constante
@@ -1391,6 +1393,11 @@ r1b2Q2/pp5p/6p1/1k6/8/8/PKP2PPP/8 b - - 0 23 : bien gagnant aux blancs: pièces p
 r1bq1b1B/ppp2knp/2n3p1/3p4/4p3/1P2P3/P1PP1PPP/RN1QKB1R w KQ - 1 10 : pas vraiment trapped le fou, car il peut au moins s'échanger contre le cheval
 r1b2r1k/p2p1pb1/2p1pNp1/2p3Bp/q4PPQ/3P4/P1P3KP/R4R2 w - - 3 19 : gxh5 mate en force (Grogros ne voit pas le danger)
 r2k1b1r/pbpn2p1/1p1qp1Bp/7Q/3P4/4B3/PPP2RPP/RN4K1 w - - 3 5 : long term mobility qui augmente beaucoup avec c3? (Cc3 -> développement -> attaque sur le roi gagne plus facilement)
+rn1q1rk1/p1p1bppp/2p1p3/2Pp4/Q2P4/2N1P3/PP3PPP/R1B2RK1 w - - 2 13 : ici il a fait f3 e4 qui affaiblit la chaine de pions. il faudrait plutôt jouer b4
+r2qk2r/pp4pp/2n1b3/2b1pp2/4p3/1PN1P3/PBPN1PPP/R2Q1RK1 b kq - 1 11 : le roi est mieux après O-O que Rf7...
+8/bkp4p/2p1P3/1pP3p1/pP2q1N1/P4R2/BB3K2/8 b - - 0 52 : pas une bonne idée de prendre le cheval en g4, le pion e passé devient trop fort pour la dame à défendre
+
+rnbqkb1r/ppp2ppp/4pn2/3p4/2PP4/4PN2/PP3PPP/RNBQKB1R b KQkq - 0 4 : pourquoi Ce4
 
 TEST PERFORMANCE
 r1bq1b1r/pp4pp/2p1k3/3np3/2BP4/2N2Q2/PPn2PPP/R1B2RK1 w - - 0 11

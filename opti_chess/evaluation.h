@@ -16,14 +16,14 @@ public:
 	float _player_trait = 37.0f;
 	float _king_safety = 1.0f;
 	float _pawn_structure = 0.2f;
-	float _attacks = 0.6f;
+	float _attacks = 0.5f;
 	float _kings_opposition = 50.0f;
 	float _push = 1.0f;
 	float _open_files = 0.5f;
 	float _square_controls = 0.2f;
 	float _space_advantage = 1.0f;
 	float _alignments = 0.7f;
-	float _piece_activity = 0.5f;
+	float _piece_activity = 0.35f;
 	float _fianchetto = 0.75f;
 	float _pawn_push_threats = 0.15f;
 	float _king_proximity = 0.4f;
@@ -33,7 +33,7 @@ public:
 	float _weak_squares = 0.25f;
 	float _bishop_activity = 2.0f;
 	float _trapped_pieces = 0.55f;
-	float _knight_activity = 0.4f;
+	float _knight_activity = 0.5f;
 	float _short_term_piece_mobility = 0.05f;
 	float _long_term_piece_mobility = 0.2f;
 	float _queen_safety = 0.7f;
