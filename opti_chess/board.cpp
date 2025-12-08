@@ -58,15 +58,12 @@ void Board::copy_data(const Board& b, bool full, bool copy_history) {
 	memcpy(_moves, b._moves, sizeof(_moves));
 	//_moves_flags_assigned = b._moves_flags_assigned;
 	_sorted_moves = b._sorted_moves;
-	_evaluation = b._evaluation;
 	_castling_rights = b._castling_rights;
 	_half_moves_count = b._half_moves_count;
 	_moves_count = b._moves_count;
 	_white_king_pos = b._white_king_pos;
 	_black_king_pos = b._black_king_pos;
 	_en_passant_col = b._en_passant_col;
-	_evaluated = b._evaluated;
-	_static_evaluation = b._static_evaluation;
 	_zobrist_key = b._zobrist_key;
 
 	// Copie des bitboards
@@ -1305,139 +1302,6 @@ inline void Board::make_move(const Move& move, const bool pgn, const bool add_to
 	return;
 }
 
-inline void Board::make_move_fast(const Move move)
-{
-	const uint8_t row1 = move.start_row;
-	const uint8_t col1 = move.start_col;
-	const uint8_t row2 = move.end_row;
-	const uint8_t col2 = move.end_col;
-
-	const uint8_t p = _array[row1][col1];
-	const uint8_t captured = _array[row2][col2];
-
-	// Reset en passant par défaut
-	_en_passant_col = -1;
-
-	// Efface pièce capturée
-	if (captured)
-		_half_moves_count = 0;
-	else if (is_pawn(p))
-		_half_moves_count = 0;
-	else
-		++_half_moves_count;
-
-	// --- Pion blanc ---
-	if (p == w_pawn) {
-		// En passant capture
-		if (col1 != col2 && captured == 0)
-			_array[row2 - 1][col2] = 0;
-
-		// En passant possible
-		else if (row2 == row1 + 2)
-			if (row1 == 1 && ((_array[row2][col2 - 1] == b_pawn) || (_array[row2][col2 + 1] == b_pawn)))
-				_en_passant_col = col1;
-
-		// Promotion (reine par défaut)
-		if (row2 == 7)
-			_array[row2][col2] = w_queen;
-		else
-			_array[row2][col2] = p;
-	}
-
-	// --- Pion noir ---
-	else if (p == b_pawn) {
-		// En passant capture
-		if (col1 != col2 && captured == 0)
-			_array[row2 + 1][col2] = 0;
-
-		// En passant possible
-		else if (row2 == row1 - 2)
-			if (row1 == 6 && ((_array[row2][col2 - 1] == w_pawn) || (_array[row2][col2 + 1] == w_pawn)))
-				_en_passant_col = col1;
-
-		// Promotion (reine)
-		if (row2 == 0)
-			_array[row2][col2] = b_queen;
-		else
-			_array[row2][col2] = p;
-	}
-
-	// --- Rois ---
-	else if (p == w_king) {
-		_white_king_pos = { row2, col2 };
-		_castling_rights.k_w = false;
-		_castling_rights.q_w = false;
-
-		// Petit roque
-		if (col2 == col1 + 2) {
-			_array[0][5] = w_rook;
-			_array[0][7] = none;
-		}
-		// Grand roque
-		else if (col2 == col1 - 2) {
-			_array[0][3] = w_rook;
-			_array[0][0] = none;
-		}
-
-		_array[row2][col2] = p;
-	}
-	else if (p == b_king) {
-		_black_king_pos = { row2, col2 };
-		_castling_rights.k_b = false;
-		_castling_rights.q_b = false;
-
-		// Petit roque
-		if (col2 == col1 + 2) {
-			_array[7][5] = b_rook;
-			_array[7][7] = none;
-		}
-		// Grand roque
-		else if (col2 == col1 - 2) {
-			_array[7][3] = b_rook;
-			_array[7][0] = none;
-		}
-
-		_array[row2][col2] = p;
-	}
-
-	// --- Tours et roques perdus ---
-	else if (p == w_rook) {
-		if (row1 == 0 && col1 == 0) _castling_rights.q_w = false;
-		else if (row1 == 0 && col1 == 7) _castling_rights.k_w = false;
-		_array[row2][col2] = p;
-	}
-	else if (p == b_rook) {
-		if (row1 == 7 && col1 == 0) _castling_rights.q_b = false;
-		else if (row1 == 7 && col1 == 7) _castling_rights.k_b = false;
-		_array[row2][col2] = p;
-	}
-	else {
-		// Pièces normales
-		_array[row2][col2] = p;
-	}
-
-	// Roque capturé
-	if (captured == w_rook) {
-		if (row2 == 0 && col2 == 0) _castling_rights.q_w = false;
-		else if (row2 == 0 && col2 == 7) _castling_rights.k_w = false;
-	}
-	else if (captured == b_rook) {
-		if (row2 == 7 && col2 == 0) _castling_rights.q_b = false;
-		else if (row2 == 7 && col2 == 7) _castling_rights.k_b = false;
-	}
-
-	// Vide case de départ
-	_array[row1][col1] = none;
-
-	// Flip du joueur
-	_player = !_player;
-
-	// Incrément du compteur de coups complets
-	if (_player)
-		++_moves_count;
-}
-
-
 // Fonction qui annule un coup
 void Board::unmake_move(Move move, uint8_t p1, uint8_t p2, int en_passant_col, int prev_half_count, bool k_castle, bool q_castle, bool is_castle, bool is_promotion, bool is_en_passant) {
 	// TODO
@@ -1609,7 +1473,7 @@ int Board::pieces_positioning(const Evaluator* eval) const
 }
 
 // Fonction qui évalue la position à l'aide d'heuristiques
-bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check_game_over)
+void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Network* n, bool check_game_over)
 {
 	/*if (_evaluated)
 		return false;*/
@@ -1634,37 +1498,41 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	//	cout << "already evaluated: " << to_fen() << ", eval: " << _evaluation << endl;
 	//}
 
-
-
 	if (check_game_over) {
 		//is_game_over();
 
 		// Nulle
 		if (_game_over_value == draw) {
-			_evaluation = 0;
-			_static_evaluation = 0;
-			_evaluated = true;
+			eval->_value = 0;
+			eval->_evaluated = true;
 
 			if (display)
 				main_GUI._eval_components = "DRAW\n";
 
-			get_WDL();
+			eval->_uncertainty = 0;
+			eval->_winnable_black = 0;
+			eval->_winnable_white = 0;
+			eval->get_WDL();
+			eval->get_average_score();
 
-			return true;
+			return;
 		}
 
 		// Mat
 		if (_game_over_value != unterminated) {
-			_evaluation = (-mate_value + _moves_count * mate_ply) * get_color();
-			_static_evaluation = _evaluation;
-			_evaluated = true;
+			eval->_value = (-mate_value + _moves_count * mate_ply) * get_color();
+			eval->_evaluated = true;
 
 			if (display)
 				main_GUI._eval_components = "CHECKMATE\n";
 
-			get_WDL();
+			eval->_uncertainty = 0;
+			eval->_winnable_white = (_game_over_value == white_win) ? 1 : 0;
+			eval->_winnable_black = (_game_over_value == black_win) ? 1 : 0;
+			eval->get_WDL();
+			eval->get_average_score();
 
-			return true;
+			return;
 		}
 	}
 
@@ -1673,16 +1541,19 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 		n->input_from_fen(to_fen());
 		n->calculate_output();
 		//_evaluation = n->_output;
-		_evaluation = n->output_eval(mate_value);
+		eval->_value = n->output_eval(mate_value);
+
+		eval->_uncertainty = 0;
+		eval->_winnable_black = 1;
+		eval->_winnable_white = 1;
+		eval->get_WDL();
+		eval->get_average_score();
 
 		// L'évaluation a été effectuée
-		_evaluated = true;
-
-		// Met à jour l'évaluation statique
-		_static_evaluation = _evaluation;
+		eval->_evaluated = true;
 
 		// Partie non finie
-		return false;
+		return;
 	}
 
 	_displayed_components = display;
@@ -1690,7 +1561,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 		main_GUI._eval_components = "";
 
 	// Reset l'évaluation
-	_evaluation = 0;
+	eval->_value = 0;
 
 	// Avancement de la partie
 	game_advancement();
@@ -1710,16 +1581,16 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	int total_material = 0;
 
 	// Matériel
-	if (eval->_piece_value != 0.0f) {
-		const int material = count_material(eval, position_nature) * eval->_piece_value;
+	if (evaluator->_piece_value != 0.0f) {
+		const int material = count_material(evaluator, position_nature) * evaluator->_piece_value;
 		if (display)
 			main_GUI._eval_components += "material: " + (material >= 0 ? string("+") : string()) + to_string(material) + "\n";
 		total_material += material;
 	}	
 
 	// Paire de oufs
-	if (eval->_bishop_pair != 0.0f) {
-		const int bishop_pair = count_bishop_pairs() * eval->_bishop_pair * (1 - position_nature);
+	if (evaluator->_bishop_pair != 0.0f) {
+		const int bishop_pair = count_bishop_pairs() * evaluator->_bishop_pair * (1 - position_nature);
 		if (display)
 			main_GUI._eval_components += "bishop pair: " + (bishop_pair >= 0 ? string("+") : string()) + to_string(bishop_pair) + "\n";
 		total_material += bishop_pair;
@@ -1728,7 +1599,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	if (display)
 		main_GUI._eval_components += "--- TOTAL: " + (total_material >= 0 ? string("+") : string()) + to_string(total_material) + " ---\n";
 
-	_evaluation += total_material;
+	eval->_value += total_material;
 
 	// *** POSITIONNEMENT ***
 
@@ -1738,57 +1609,57 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	int total_positioning = 0;
 
 	// Positionnement des pièces
-	if (eval->_piece_positioning != 0.0f) {
-		const int positioning = pieces_positioning(eval) * eval->_piece_positioning;
+	if (evaluator->_piece_positioning != 0.0f) {
+		const int positioning = pieces_positioning(evaluator) * evaluator->_piece_positioning;
 		if (display)
 			main_GUI._eval_components += "piece positioning: " + (positioning >= 0 ? string("+") : string()) + to_string(positioning) + "\n";
 		total_positioning += positioning;
 	}
 
 	// Tours sur les colonnes ouvertes / semi-ouvertes
-	if (eval->_open_files != 0.0f) {
-		const int rook_open = get_sliders_on_open_file() * eval->_open_files;
+	if (evaluator->_open_files != 0.0f) {
+		const int rook_open = get_sliders_on_open_file() * evaluator->_open_files;
 		if (display)
 			main_GUI._eval_components += "sliders on open/semi files: " + (rook_open >= 0 ? string("+") : string()) + to_string(rook_open) + "\n";
 		total_positioning += rook_open;
 	}
 
 	// Fous en fianchetto
-	if (eval->_fianchetto != 0.0f) {
-		const int fianchetto = get_fianchetto_value() * eval->_fianchetto * (1.0f - position_nature);
+	if (evaluator->_fianchetto != 0.0f) {
+		const int fianchetto = get_fianchetto_value() * evaluator->_fianchetto * (1.0f - position_nature);
 		if (display)
 			main_GUI._eval_components += "fianchetto bishops: " + (fianchetto >= 0 ? string("+") : string()) + to_string(fianchetto) + "\n";
 		total_positioning += fianchetto;
 	}
 
 	// Alignement des pièces (fou-tour/dame-roi)
-	if (eval->_alignments != 0.0f)
+	if (evaluator->_alignments != 0.0f)
 	{
-		const int pieces_alignment = get_alignments() * eval->_alignments;
+		const int pieces_alignment = get_alignments() * evaluator->_alignments;
 		if (display)
 			main_GUI._eval_components += "pieces alignment: " + (pieces_alignment >= 0 ? string("+") : string()) + to_string(pieces_alignment) + "\n";
 		total_positioning += pieces_alignment;
 	}
 
 	// Pièces enfermées
-	if (eval->_trapped_pieces != 0.0f) {
-		const int trapped_pieces = get_trapped_pieces() * eval->_trapped_pieces;
+	if (evaluator->_trapped_pieces != 0.0f) {
+		const int trapped_pieces = get_trapped_pieces() * evaluator->_trapped_pieces;
 		if (display)
 			main_GUI._eval_components += "trapped pieces: " + (trapped_pieces >= 0 ? string("+") : string()) + to_string(trapped_pieces) + "\n";
 		total_positioning += trapped_pieces;
 	}
 
 	// Menace de poussée de pion sur une pièce adverse
-	if (eval->_pawn_push_threats != 0.0f) {
-		const int pawn_push_threat = get_pawn_push_threats() * eval->_pawn_push_threats;
+	if (evaluator->_pawn_push_threats != 0.0f) {
+		const int pawn_push_threat = get_pawn_push_threats() * evaluator->_pawn_push_threats;
 		if (display)
 			main_GUI._eval_components += "pawn push threats: " + (pawn_push_threat >= 0 ? string("+") : string()) + to_string(pawn_push_threat) + "\n";
 		total_positioning += pawn_push_threat;
 	}
 
 	// Sécurité des dames
-	if (eval->_queen_safety != 0.0f) {
-		const int queen_safety = (get_queen_safety(true) - get_queen_safety(false)) * eval->_queen_safety;
+	if (evaluator->_queen_safety != 0.0f) {
+		const int queen_safety = (get_queen_safety(true) - get_queen_safety(false)) * evaluator->_queen_safety;
 		if (display)
 			main_GUI._eval_components += "queen safety: " + (queen_safety >= 0 ? string("+") : string()) + to_string(queen_safety) + "\n";
 		total_positioning += queen_safety;
@@ -1797,7 +1668,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	if (display)
 		main_GUI._eval_components += "--- TOTAL: " + (total_positioning >= 0 ? string("+") : string()) + to_string(total_positioning) + " ---\n";
 
-	_evaluation += total_positioning;
+	eval->_value += total_positioning;
 
 
 	// *** ACTIVITE ***
@@ -1816,64 +1687,64 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	//}
 
 	// Mobilité long-terme des pièces
-	if (eval->_long_term_piece_mobility != 0.0f) {
-		const int long_term_mobility = get_long_term_piece_mobility() * eval->_long_term_piece_mobility;
+	if (evaluator->_long_term_piece_mobility != 0.0f) {
+		const int long_term_mobility = get_long_term_piece_mobility() * evaluator->_long_term_piece_mobility;
 		if (display)
 			main_GUI._eval_components += "long-term piece mobility: " + (long_term_mobility >= 0 ? string("+") : string()) + to_string(long_term_mobility) + "\n";
 		total_activity += long_term_mobility;
 	}
 
 	// Mobilité court-terme des pièces
-	if (eval->_short_term_piece_mobility != 0.0f) {
-		const int short_term_mobility = get_short_term_piece_mobility() * eval->_short_term_piece_mobility;
+	if (evaluator->_short_term_piece_mobility != 0.0f) {
+		const int short_term_mobility = get_short_term_piece_mobility() * evaluator->_short_term_piece_mobility;
 		if (display)
 			main_GUI._eval_components += "short-term piece mobility: " + (short_term_mobility >= 0 ? string("+") : string()) + to_string(short_term_mobility) + "\n";
 		total_activity += short_term_mobility;
 	}
 
 	// Activité des pièces
-	if (eval->_piece_activity != 0.0f) {
-		const int piece_activity = get_piece_activity() * eval->_piece_activity;
+	if (evaluator->_piece_activity != 0.0f) {
+		const int piece_activity = get_piece_activity() * evaluator->_piece_activity;
 		if (display)
 			main_GUI._eval_components += "piece activity: " + (piece_activity >= 0 ? string("+") : string()) + to_string(piece_activity) + "\n";
 		total_activity += piece_activity;
 	}
 
 	// Activité des cavaliers
-	if (eval->_knight_activity != 0.0f) {
-		const int knight_activity = get_knight_activity() * eval->_knight_activity;
+	if (evaluator->_knight_activity != 0.0f) {
+		const int knight_activity = get_knight_activity() * evaluator->_knight_activity;
 		if (display)
 			main_GUI._eval_components += "knight activity: " + (knight_activity >= 0 ? string("+") : string()) + to_string(knight_activity) + "\n";
 		total_activity += knight_activity;
 	}
 
 	// Activité des fous
-	if (eval->_bishop_activity != 0.0f) {
-		const int bishop_activity = get_bishop_activity() * eval->_bishop_activity;
+	if (evaluator->_bishop_activity != 0.0f) {
+		const int bishop_activity = get_bishop_activity() * evaluator->_bishop_activity;
 		if (display)
 			main_GUI._eval_components += "bishop activity: " + (bishop_activity >= 0 ? string("+") : string()) + to_string(bishop_activity) + "\n";
 		total_activity += bishop_activity;
 	}
 
 	// Activité des tours
-	if (eval->_rook_activity != 0.0f) {
-		const int rook_activity = get_rook_activity() * eval->_rook_activity;
+	if (evaluator->_rook_activity != 0.0f) {
+		const int rook_activity = get_rook_activity() * evaluator->_rook_activity;
 		if (display)
 			main_GUI._eval_components += "rook activity: " + (rook_activity >= 0 ? string("+") : string()) + to_string(rook_activity) + "\n";
 		total_activity += rook_activity;
 	}
 
 	// Attaques et défenses de pièces
-	if (eval->_attacks != 0.0f) {
-		const int pieces_attacks_and_defenses = get_attacks_and_defenses() * eval->_attacks;
+	if (evaluator->_attacks != 0.0f) {
+		const int pieces_attacks_and_defenses = get_attacks_and_defenses() * evaluator->_attacks;
 		if (display)
 			main_GUI._eval_components += "attacks/defenses: " + (pieces_attacks_and_defenses >= 0 ? string("+") : string()) + to_string(pieces_attacks_and_defenses) + "\n";
 		total_activity += pieces_attacks_and_defenses;
 	}
 
 	// Trait du joueur
-	if (eval->_player_trait != 0.0f) {
-		const int player_trait = eval->_player_trait * get_color() * (1 - position_nature);
+	if (evaluator->_player_trait != 0.0f) {
+		const int player_trait = evaluator->_player_trait * get_color() * (1 - position_nature);
 		//const int player_trait = eval->_player_trait * get_color() * (1 - position_nature) * (1.0f + 1.0f * _adv);
 		if (display)
 			main_GUI._eval_components += "player trait: " + (player_trait >= 0 ? string("+") : string()) + to_string(player_trait) + "\n";
@@ -1892,7 +1763,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	if (display)
 		main_GUI._eval_components += "--- TOTAL: " + (total_activity >= 0 ? string("+") : string()) + to_string(total_activity) + " ---\n";
 
-	_evaluation += total_activity;
+	eval->_value += total_activity;
 
 	// *** TACTIQUE ***
 
@@ -1924,41 +1795,41 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	int total_pawn_structure = 0;
 
 	// Contrôle des cases
-	if (eval->_square_controls != 0.0f) {
-		const int square_controls = get_square_controls() * eval->_square_controls;
+	if (evaluator->_square_controls != 0.0f) {
+		const int square_controls = get_square_controls() * evaluator->_square_controls;
 		if (display)
 			main_GUI._eval_components += "square controls: " + (square_controls >= 0 ? string("+") : string()) + to_string(square_controls) + "\n";
 		total_pawn_structure += square_controls;
 	}
 
 	// Avantage d'espace
-	if (eval->_space_advantage != 0.0f)
+	if (evaluator->_space_advantage != 0.0f)
 	{
-		const int space = get_space() * eval->_space_advantage * position_nature;
+		const int space = get_space() * evaluator->_space_advantage * position_nature;
 		if (display)
 			main_GUI._eval_components += "space: " + (space >= 0 ? string("+") : string()) + to_string(space) + "\n";
 		total_pawn_structure += space;
 	}
 
 	// Structure de pions
-	if (eval->_pawn_structure != 0.0f) {
-		const int pawn_structure = get_pawn_structure(display * eval->_pawn_structure) * eval->_pawn_structure;
+	if (evaluator->_pawn_structure != 0.0f) {
+		const int pawn_structure = get_pawn_structure(display * evaluator->_pawn_structure) * evaluator->_pawn_structure;
 		//if (display)
 		//	main_GUI._eval_components += "pawn structure: " + (pawn_structure >= 0 ? string("+") : string()) + to_string(pawn_structure) + "\n";
 		total_pawn_structure += pawn_structure;
 	}
 
 	// Bons/Mauvais fous
-	if (eval->_bishop_pawns != 0.0f) {
-		const int bishop_pawns = get_bishop_pawns() * eval->_bishop_pawns;
+	if (evaluator->_bishop_pawns != 0.0f) {
+		const int bishop_pawns = get_bishop_pawns() * evaluator->_bishop_pawns;
 		if (display)
 			main_GUI._eval_components += "bishop pawns: " + (bishop_pawns >= 0 ? string("+") : string()) + to_string(bishop_pawns) + "\n";
 		total_pawn_structure += bishop_pawns;
 	}
 
 	// Cases faibles et avant-postes
-	if (eval->_weak_squares != 0.0f) {
-		const int weak_squares = (-get_weak_squares(true) + get_weak_squares(false)) * eval->_weak_squares * (1.0f + position_nature);
+	if (evaluator->_weak_squares != 0.0f) {
+		const int weak_squares = (-get_weak_squares(true) + get_weak_squares(false)) * evaluator->_weak_squares * (1.0f + position_nature);
 		if (display)
 			main_GUI._eval_components += "weak squares: " + (weak_squares >= 0 ? string("+") : string()) + to_string(weak_squares) + "\n";
 		total_pawn_structure += weak_squares;
@@ -1968,7 +1839,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	if (display)
 		main_GUI._eval_components += "--- TOTAL: " + (total_pawn_structure >= 0 ? string("+") : string()) + to_string(total_pawn_structure) + " ---\n";
 
-	_evaluation += total_pawn_structure;
+	eval->_value += total_pawn_structure;
 
 
 	// *** ROI ***
@@ -1979,16 +1850,16 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	int total_king = 0;
 
 	// Sécurité du roi
-	if (eval->_king_safety != 0.0f) {
-		const int king_safety = get_king_safety(total_activity, display * eval->_king_safety) * eval->_king_safety;
+	if (evaluator->_king_safety != 0.0f) {
+		const int king_safety = get_king_safety(total_activity, display * evaluator->_king_safety) * evaluator->_king_safety;
 		if (display)
 			main_GUI._eval_components += "king safety: " + (king_safety >= 0 ? string("+") : string()) + to_string(king_safety) + "\n";
 		total_king += king_safety;
 	}
 
 	// Droits de roques
-	if (eval->_castling_rights != 0.0f) {
-		const int castling_rights = eval->_castling_rights * (_castling_rights.k_w + _castling_rights.q_w - _castling_rights.k_b - _castling_rights.q_b) * (1 - _adv);
+	if (evaluator->_castling_rights != 0.0f) {
+		const int castling_rights = evaluator->_castling_rights * (_castling_rights.k_w + _castling_rights.q_w - _castling_rights.k_b - _castling_rights.q_b) * (1 - _adv);
 		if (display)
 			main_GUI._eval_components += "castling rights: " + (castling_rights >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(castling_rights))) + "\n";
 		total_king += castling_rights;
@@ -2005,7 +1876,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	if (display)
 		main_GUI._eval_components += "--- TOTAL: " + (total_king >= 0 ? string("+") : string()) + to_string(total_king) + " ---\n";
 
-	_evaluation += total_king;
+	eval->_value += total_king;
 
 
 	// *** FINALES ***
@@ -2016,24 +1887,24 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	int total_endgame = 0;
 
 	// Opposition des rois
-	if (eval->_kings_opposition != 0.0f) {
-		const int kings_opposition = get_kings_opposition() * eval->_kings_opposition;
+	if (evaluator->_kings_opposition != 0.0f) {
+		const int kings_opposition = get_kings_opposition() * evaluator->_kings_opposition;
 		if (display)
 			main_GUI._eval_components += "king opposition: " + (kings_opposition >= 0 ? string("+") : string()) + to_string(kings_opposition) + "\n";
 		total_endgame += kings_opposition;
 	}
 
 	// Proximité du roi avec les pions en finale
-	if (eval->_king_proximity != 0.0f) {
-		const int king_proximity = get_king_proximity() * eval->_king_proximity;
+	if (evaluator->_king_proximity != 0.0f) {
+		const int king_proximity = get_king_proximity() * evaluator->_king_proximity;
 		if (display)
 			main_GUI._eval_components += "king proximity: " + (king_proximity >= 0 ? string("+") : string()) + to_string(king_proximity) + "\n";
 		total_endgame += king_proximity;
 	}
 
 	// Centralisation du roi
-	if (eval->_king_centralization != 0.0f) {
-		const int king_centralization = (get_king_centralization(true) - get_king_centralization(false)) * eval->_king_centralization;
+	if (evaluator->_king_centralization != 0.0f) {
+		const int king_centralization = (get_king_centralization(true) - get_king_centralization(false)) * evaluator->_king_centralization;
 		if (display)
 			main_GUI._eval_components += "king centralization: " + (king_centralization >= 0 ? string("+") : string()) + to_string(king_centralization) + "\n";
 		total_endgame += king_centralization;
@@ -2042,7 +1913,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	if (display)
 		main_GUI._eval_components += "--- TOTAL: " + (total_endgame >= 0 ? string("+") : string()) + to_string(total_endgame) + " ---\n";
 
-	_evaluation += total_endgame;
+	eval->_value += total_endgame;
 
 	// *** NATURE DE LA POSITION ***
 
@@ -2052,31 +1923,31 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	int total_nature = 0;
 
 	// Forteresse
-	if (eval->_push != 0.0f) {
-		const float push = 1 - static_cast<float>(_half_moves_count) * eval->_push / max_half_moves;
+	if (evaluator->_push != 0.0f) {
+		const float push = 1 - static_cast<float>(_half_moves_count) * evaluator->_push / max_half_moves;
 		const int fortress = 100.0f - push * 100.0f;
-		const int fortress_value = _evaluation * (push - 1);
+		const int fortress_value = eval->_value * (push - 1);
 		if (display)
 			main_GUI._eval_components += "fortress: " + to_string(fortress) + "% (" + (fortress_value >= 0 ? string("+") : string()) + to_string(fortress_value) + ")\n";
 		total_nature += fortress_value;
 	}
 
 	// Incertitude de l'évaluation
-	const float uncertainty = get_uncertainty(total_material);
-	const int uncertainty_percent = (int)(100 * uncertainty);
+	get_uncertainty(eval, total_material);
+	const int uncertainty_percent = (int)(100 * eval->_uncertainty);
 	if (display)
 		main_GUI._eval_components += "uncertainty: " + to_string(uncertainty_percent) + "%\n";
 
 	// La position est-elle gagnable?
-	get_winnable_values(position_nature);
+	get_winnable_values(eval, position_nature);
 
 	if (display)
-		main_GUI._eval_components += "winnable: " + to_string(static_cast<int>(_winnable_white * 100)) + "% / " + to_string(static_cast<int>(_winnable_black * 100)) + "%\n";
+		main_GUI._eval_components += "winnable: " + to_string(static_cast<int>(eval->_winnable_white * 100)) + "% / " + to_string(static_cast<int>(eval->_winnable_black * 100)) + "%\n";
 
 	if (display)
 		main_GUI._eval_components += "--- TOTAL: " + (total_nature >= 0 ? string("+") : string()) + to_string(total_nature) + " ---\n";
 
-	_evaluation += total_nature;
+	eval->_value += total_nature;
 
 
 	// *** TOTAL ***
@@ -2091,7 +1962,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 		main_GUI._eval_components += "Endgame: " + (total_endgame >= 0 ? string("+") : string()) + to_string(total_endgame) + "\n";
 		main_GUI._eval_components += "Nature: " + (total_nature >= 0 ? string("+") : string()) + to_string(total_nature) + "\n";
 
-		main_GUI._eval_components += "_______________\nTOTAL: " + (_evaluation >= 0 ? string("+") : string()) + to_string(_evaluation) + "\n";
+		main_GUI._eval_components += "_______________\nTOTAL: " + (eval->_value >= 0 ? string("+") : string()) + to_string(eval->_value) + "\n";
 
 	}
 
@@ -2100,20 +1971,17 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 	//if (display)
 	//	main_GUI._eval_components += "W/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/" + to_string(static_cast<int>(100 * 0)) + "/" + to_string(static_cast<int>(100 * (1.0f - win_chance))) + "%\n";
 
-	get_WDL();
+	eval->get_WDL();
+	eval->get_average_score();
+
 	if (display) {
 		main_GUI._eval_components += "Confidence: " + to_string(100 - uncertainty_percent) + "%\n";
-		main_GUI._eval_components += _wdl.to_string() + "\n";
-		main_GUI._eval_components += "Score: " + score_string(get_average_score()) + "\n";
+		main_GUI._eval_components += eval->_wdl.to_string() + "\n";
+		main_GUI._eval_components += "Score: " + score_string(eval->_avg_score) + "\n";
 	}
 
-
 	// L'évaluation a été effectuée
-	_evaluated = true;
-
-	// Met à jour l'évaluation statique
-	_static_evaluation = _evaluation;
-
+	eval->_evaluated = true;
 
 	// EXPERIMENTAL
 	//Node node(this);
@@ -2121,7 +1989,7 @@ bool Board::evaluate(Evaluator* eval, const bool display, Network* n, bool check
 
 
 	// Partie non finie
-	return false;
+	return;
 }
 
 // Fonction qui récupère le plateau d'un FEN
@@ -2571,19 +2439,12 @@ void Board::play_move_sound(Move move) {
 void Board::reset_board(const bool display) {
 	_got_moves = -1;
 	_is_active = false;
-	_evaluated = false;
 	_game_over_checked = false;
 	_game_over_value = unterminated;
-	_static_evaluation = 0;
-	_evaluation = 0;
 	//_moves_flags_assigned = false;
 	_en_passant_col = -1;
 	_sorted_moves = false;
 	_zobrist_key = 0;
-	_uncertainty = 0.0f;
-	_wdl = WDL();
-	_winnable_white = 1.0f;
-	_winnable_black = 1.0f;
 
 	reset_positions_history();
 
@@ -3111,8 +2972,8 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	// *** CHECKS ***
 	// --------------
 
-	const int w_checks = get_checks_value(white_controls_map, black_controls_map, true) * w_attacking_potential;
-	const int b_checks = get_checks_value(white_controls_map, black_controls_map, false) * b_attacking_potential;
+	const int w_checks = get_checks_value(&white_controls_map, &black_controls_map, true) * w_attacking_potential;
+	const int b_checks = get_checks_value(&white_controls_map, &black_controls_map, false) * b_attacking_potential;
 
 	//if (display_factor != 0.0f) {
 	//	main_GUI._eval_components += "Checks: " + to_string(w_checks) + " / " + to_string(b_checks) + "\n";
@@ -4556,7 +4417,6 @@ int Board::material_difference() const
 // Fonction qui réinitialise les composantes de l'évaluation
 void Board::reset_eval() {
 	_displayed_components = false;
-	_evaluated = false; _evaluation = 0;
 	_advancement = false; _adv = 0;
 }
 
@@ -5245,7 +5105,7 @@ int Board::get_piece_activity() const
 }
 
 // Fonction qui reset le buffer
-bool Buffer::reset() const
+bool BoardBuffer::reset() const
 {
 	for (int i = 0; i < _length; i++)
 		_heap_boards[i].reset_board();
@@ -5428,7 +5288,7 @@ int Board::get_king_virtual_mobility(bool color) {
 }
 
 // Fonction qui renvoie le nombre d'échecs 'safe' dans la position pour les deux joueurs
-int Board::get_checks_value(SquareMap white_controls, SquareMap black_controls, bool color)
+int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls, bool color)
 {
 	constexpr int initial_safe_check_value = 250;
 	constexpr int initial_unsafe_check_value = 25;
@@ -7121,7 +6981,7 @@ void Board::get_zobrist_key()
 }
 
 // Fonction qui renvoie à quel point la partie est gagnable (de 0 à 1), pour une couleur donnée
-float Board::get_winnable(bool color, float position_nature) const {
+float Board::get_winnable(Evaluation* eval, bool color, float position_nature) const {
 	// TODO *** à implémenter
 	
 	// MIDDLEGAME:
@@ -7338,16 +7198,16 @@ float Board::get_winnable(bool color, float position_nature) const {
 	// FIXME *** être encore plus important? car ça va rarement à 0% ou 100%?
 
 	// TODO *** prise en compte de l'incertitude (-> winnable++?)
-	winnable_value = 1.0f - (1.0f - winnable_value) * (1.0f - _uncertainty);
+	winnable_value = 1.0f - (1.0f - winnable_value) * (1.0f - eval->_uncertainty);
 
 
 	return winnable_value;
 }
 
 // Fonction qui calcule les valeurs de possibilités de gain pour chaque côté
-void Board::get_winnable_values(float position_nature) {
-	_winnable_white = get_winnable(true, position_nature);
-	_winnable_black = get_winnable(false, position_nature);
+void Board::get_winnable_values(Evaluation* eval, float position_nature) {
+	eval->_winnable_white = get_winnable(eval, true, position_nature);
+	eval->_winnable_black = get_winnable(eval, false, position_nature);
 }
 
 // Fonction qui renvoie l'activité des fous sur les diagonales
@@ -9835,7 +9695,7 @@ bool Board::pawn_can_move(uint8_t row, uint8_t col, bool color) const {
 }
 
 // Fonction qui renvoie l'incertiude de la position
-float Board::get_uncertainty(int material_eval, int winning_eval) {
+void Board::get_uncertainty(Evaluation* eval, int material_eval, int winning_eval) const {
 
 	// r2r4/8/1p1q2P1/2b5/3k1pP1/pP2pP2/2Q4P/1K6 w - - 9 11 : exemple d'une position à grosse incertitude
 	// r2r4/4q3/1p4P1/2b5/5pPk/pP2pP2/8/1K6 w - - 0 18 : plus du tout d'incertitude !!
@@ -9864,7 +9724,7 @@ float Board::get_uncertainty(int material_eval, int winning_eval) {
 	float raw_incertitude = 0.0f;
 
 	// TODO *** faut réussir à trouver une bonne formule pour l'incertitude ***
-	int non_material_eval = _evaluation - material_eval;
+	int non_material_eval = eval->_value - material_eval;
 
 	if (non_material_eval != 0) {
 		int abs_non_material_eval = abs(non_material_eval);
@@ -9902,7 +9762,7 @@ float Board::get_uncertainty(int material_eval, int winning_eval) {
 
 		// Normalise entre 0 et 1 ce facteur non-matériel à l'aide d'une fonction non-linéaire
 		//float norm_non_material_eval = abs_non_material_eval / (static_cast<float>(half_uncertainty_constant) + abs_non_material_eval + abs(material_eval) / 2.0f);
-		float norm_non_material_eval = abs_non_material_eval / (static_cast<float>(half_uncertainty_constant) + abs_non_material_eval + abs(_evaluation));
+		float norm_non_material_eval = abs_non_material_eval / (static_cast<float>(half_uncertainty_constant) + abs_non_material_eval + abs(eval->_value));
 		//float norm_non_material_eval = abs_non_material_eval / (static_cast<float>(half_uncertainty_constant) + abs_non_material_eval);
 
 
@@ -9924,7 +9784,7 @@ float Board::get_uncertainty(int material_eval, int winning_eval) {
 
 
 	// Incertitude par type de pièce
-	int piece_uncertitudes[6] = { 1, 5, 7, 10, 50, 0 };
+	constexpr int piece_uncertitudes[6] = { 1, 5, 7, 10, 50, 0 };
 
 	// Incertitude max (environ... si y'a plusieurs dames?)
 	//constexpr int max_piece_uncertainty = 204;
@@ -9955,13 +9815,13 @@ float Board::get_uncertainty(int material_eval, int winning_eval) {
 
 	// Incertitude en fonction du nombre de pièces
 	//float piece_uncertainty = total_piece_uncertitude / static_cast<float>(max_piece_uncertainty);
-	float piece_uncertainty = _evaluation > 0 ? black_piece_uncertainty / static_cast<float>(max_piece_uncertainty_per_side) : white_piece_uncertainty / static_cast<float>(max_piece_uncertainty_per_side);
+	float piece_uncertainty = eval->_value > 0 ? black_piece_uncertainty / static_cast<float>(max_piece_uncertainty_per_side) : white_piece_uncertainty / static_cast<float>(max_piece_uncertainty_per_side);
 
 	// Importance de cette incertitude
-	int eval = abs(_evaluation);
+	int eval_val = abs(eval->_value);
 	//float piece_uncertainty_factor = 0.25f;
 	//float piece_uncertainty_factor = 0.5 * raw_incertitude;
-	float piece_uncertainty_factor = 0.65f / (1 + static_cast<float>(eval) / winning_eval);
+	float piece_uncertainty_factor = 0.65f / (1 + static_cast<float>(eval_val) / winning_eval);
 
 
 	// Autres facteurs à prendre en compte:
@@ -9972,7 +9832,7 @@ float Board::get_uncertainty(int material_eval, int winning_eval) {
 
 	// Prise en compte de l'avancement de la partie
 
-	float alpha = 1 + abs(_evaluation) / static_cast<float>(winning_eval) / 2.0f;
+	float alpha = 1 + abs(eval->_value) / static_cast<float>(winning_eval) / 2.0f;
 	float new_raw_incertitude = pow(raw_incertitude, alpha);
 
 	//float value = raw_incertitude * piece_uncertainty;
@@ -9983,13 +9843,11 @@ float Board::get_uncertainty(int material_eval, int winning_eval) {
 	//float relative_uncertainty = pow(value, alpha);
 
 
-	_uncertainty = value;
-
-	return value;
+	eval->_uncertainty = value;
 }
 
 // Fonction qui stocke le WDL de la position (pour les blancs)
-void Board::get_WDL(int winning_eval, float beta) {
+void Evaluation::get_WDL(int winning_eval, float beta) {
 	
 	// r2r4/8/1p1q2P1/2b5/3k1pP1/pP2pP2/2Q4P/1K6 w - - 9 11 : ici si on va dans les lignes de nulles, ça devrait être 0, 1000, 0, pas 333, 333, 333
 
@@ -10008,13 +9866,13 @@ void Board::get_WDL(int winning_eval, float beta) {
 
 	// Winning eval = eval pour laquelle, la chance certaine de gagner est égale à la chance certaine de nulle (0.5)
 
-	bool is_eval_positive = _evaluation > 0;
-	float eval = abs(_evaluation);
+	bool is_eval_positive = _value > 0;
+	float eval = abs(_value);
 
 	//cout << "eval: " << eval << ", winning_eval: " << winning_eval << ", beta: " << beta << endl;
 
-	const float beta_up = 2.5f;
-	const float beta_down = 1.5f;
+	constexpr float beta_up = 2.5f;
+	constexpr float beta_down = 1.5f;
 
 	// TEST
 	const float white_winning_eval = _winnable_white == 0.0f ? FLT_MAX : winning_eval / _winnable_white;
@@ -10078,15 +9936,10 @@ void Board::get_WDL(int winning_eval, float beta) {
 }
 
 // Fonction qui renvoie l'espérance de gain (en points) de la position (fondé sur les probas de WDL)
-float Board::get_average_score(float draw_score) const {
+void Evaluation::get_average_score(float draw_score) {
 	// TODO: utiliser ce score plutôt que l'évaluation pour choisir quel coup jouer?
 
-	return _wdl.win_chance + draw_score * _wdl.draw_chance;
-}
-
-// Fonction qui renvoie l'espérance de gain d'un WDL
-float get_average_score(WDL wdl, float draw_score) {
-	return wdl.win_chance + draw_score * wdl.draw_chance;
+	_avg_score = _wdl.win_chance + draw_score * _wdl.draw_chance;
 }
 
 // Fonction qui renvoie l'évaluation re-normalisée en fonction du score moyen
@@ -11432,7 +11285,6 @@ void Board::assign_all_move_flags() {
 // Fonction qui change le trait du joueur
 void Board::switch_trait() {
 	_player = !_player;
-	_evaluated = false;
 	_got_moves = -1;
 	//_moves_flags_assigned = false;
 	_sorted_moves = false;

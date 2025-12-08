@@ -86,7 +86,7 @@ unsigned long long get_total_system_memory()
 }
 
 // Function that gets the screen as bitmap
-HBITMAP get_screen_bmp(const HDC hdc, const int x1, const int y1, const int x2, const int y2) {
+static HBITMAP get_screen_bmp(const HDC hdc, const int x1, const int y1, const int x2, const int y2) {
 	// Calculate the width and height of the capture area
 	const int capture_width = x2 - x1 + 1;
 	const int capture_height = y2 - y1 + 1;
