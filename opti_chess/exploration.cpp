@@ -1306,8 +1306,8 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 	//const double add_constant = 0.05f;
 	//const double add_constant = 5.0E-5;
 	const double add_constant = 0.000f;
-	const double pure_win_chance_adding = 0.0001f; // Bonus si on a des chances de gagner pures
-	//const double pure_win_chance_adding = 0.0f; // Bonus si on a des chances de gagner pures
+	//const double pure_win_chance_adding = 0.001f; // Bonus si on a des chances de gagner pures
+	const double pure_win_chance_adding = 0.00025f; // Bonus si on a des chances de gagner pures
 
 	int color = player ? 1 : -1;
 
@@ -1328,7 +1328,11 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 	// Bonus si t'as des chances pures de gain?
 	// R4Q2/6pk/1q6/8/3P4/2N3r1/1K6/8 w - - 5 49 : ici pour trouver Ra2?
 	// 8/6pk/7p/8/4p2P/1R1r2P1/5PK1/8 w - - 5 33 : Txd3?? ça gagne!
-	const double win_adding = ((player ? eval._wdl.win_chance : eval._wdl.lose_chance) + 0.5 * avg_score) * pure_win_chance_adding;
+	//const float k_avg_score = 0.25f;
+	const float k_avg_score = 0.25f;
+
+	const double win_adding = ((player ? eval._wdl.win_chance : eval._wdl.lose_chance) + k_avg_score * avg_score) * pure_win_chance_adding;
+	//const double win_adding = (player ? eval._wdl.win_chance : eval._wdl.lose_chance) * pure_win_chance_adding;
 	//cout << "win chance: " << (player ? eval._wdl.win_chance : eval._wdl.lose_chance) << ", win_adding: " << win_adding << endl;
 
 	//cout << "eval: " << eval_score << ", score: " << score_score << endl;
@@ -1338,6 +1342,9 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 
 	// Score final
 	const double score = eval_score * score_score + adding + win_adding;
+	//double score = eval_score * score_score + adding;
+
+	//score *= (1.0f + win_adding);
 
 	//cout << "Node score: " << score << " | eval: " << eval_score << ", score: " << score_score << ", adding: " << adding << ", win_adding: " << win_adding << endl;
 
