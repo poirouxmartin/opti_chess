@@ -1705,8 +1705,8 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	//constexpr int supposed_ips = 1000;
 	//const int supposed_ips = max(750, _root_exploration_node->get_ips());
 
-	constexpr int average_nps = 2500; // Pour une position semi-complexe
-	constexpr float consistent_factor = 0.5f; // Plus ce facteur est grand, plus le temps utilisé sera constant, quelle que soit la complexité de la position
+	constexpr int average_nps = 5000; // Pour une position semi-complexe
+	constexpr float consistent_factor = 0.35f; // Plus ce facteur est grand, plus le temps utilisé sera constant, quelle que soit la complexité de la position
 
 	const int actual_ips = _root_exploration_node->get_ips();
 
