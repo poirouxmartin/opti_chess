@@ -619,8 +619,14 @@ public:
 	uint_fast64_t _zobrist_key = 0;
 
 	// Historique des positions
+	// FIXME *** pourquoi parfois c'est hyper lent? et pourquoi j'utilise un vecteur plutôt qu'un robin hash?
 	vector<uint64_t> _positions_history = {};
 	//unordered_map<uint_fast64_t, int> _positions_history = {};
+
+	// FIXME *** des variables dummy pour l'alignement mémoire, sinon il fait des new vector hyper lents à chaque création de plateau
+	float _dummy1 = 1.0f;
+	float _dummy2 = 1.0f;
+
 
 
 	// Constructeur par défaut

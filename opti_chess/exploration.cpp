@@ -1068,13 +1068,16 @@ int Node::get_total_nodes() const {
 }
 
 // Fonction qui évalue la position
-void Node::evaluate_position(Evaluator* evaluator, bool display, Network * network, bool game_over_check) {
+void Node::evaluate_position(Evaluator* evaluator, bool display, Network * network, bool game_over_check, bool static_only) {
 	_board->evaluate(&_static_evaluation, evaluator, display, network, game_over_check);
-	_deep_evaluation = _static_evaluation;
+
+	if (!static_only) {
+		_deep_evaluation = _static_evaluation;
+	}
 }
 
 // Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
-Move Node::pick_random_child(const double alpha, const double beta, const double gamma) {
+Move Node::pick_random_child(const double alpha, const double beta, const double gamma) const {
 	// TESTS
 	// 8/8/8/1r5p/2p4k/2Kb4/8/8 b - - 1 69 : tout égal quand tout gagne...
 	// r2qr1k1/3bbp1p/p2pn1p1/3QP3/3P4/3B1N2/1P1B1PPP/R3R1K1 w - - 1 24 : pareil
@@ -1116,6 +1119,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 
 	// TEST: boost pour les meilleurs coups, pour qu'il évite de tout regarder à faible profondeur...
 	// Trie les coups par score
+	// FIXME *** vector lent?
 	vector<pair<Move, double>> sorted_moves(move_scores.begin(), move_scores.end());
 
 	// Tri par valeur décroissante
@@ -1144,7 +1148,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		int child_iterations = max(child->_chosen_iterations, child->_iterations);
 
 		// FIXME *** gamma devrait changer en fonction de l'incertitude: plus on est incertain, plus on explore large?
-		const double new_gamma = gamma / (1.00f - _deep_evaluation._uncertainty / 2.0f) / (1.00f - _board->_adv / 2.0f);
+		const double new_gamma = gamma / (1.00f - _static_evaluation._uncertainty / 2.0f) / (1.00f - _board->_adv / 2.0f);
 		//const double new_gamma = gamma;
 		//cout << "gamma: " << gamma << ", uncertainty: " << _board->_uncertainty << ", new_gamma: " << new_gamma << endl;
 
@@ -1241,7 +1245,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 }
 
 // Fonction qui renvoie le score des coup
-robin_map<Move, double> Node::get_move_scores(const double alpha, const double beta, const bool consider_standpat, const int qdepth) {
+robin_map<Move, double> Node::get_move_scores(const double alpha, const double beta, const bool consider_standpat, const int qdepth) const {
 
 	// Pour le standpat, on l'associe au null move
 

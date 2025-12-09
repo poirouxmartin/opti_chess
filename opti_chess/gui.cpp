@@ -1424,7 +1424,7 @@ void GUI::draw()
 
 		// Pour l'évaluation statique
 		if (!_board._displayed_components) {
-			evaluate_position();
+			evaluate_position(true, true);
 		}
 		
 		int max_depth = _root_exploration_node->get_main_depth(_alpha, _beta);
@@ -1863,6 +1863,6 @@ bool GUI::update_binding_move() {
 }
 
 // Fonction qui évalue (et affiche les composantes)
-void GUI::evaluate_position(bool display) {
-	_root_exploration_node->evaluate_position(_grogros_eval, display);
+void GUI::evaluate_position(bool display, bool static_only) {
+	_root_exploration_node->evaluate_position(_grogros_eval, display, nullptr, true, static_only);
 }

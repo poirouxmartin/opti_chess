@@ -173,7 +173,7 @@ inline int main_ui() {
 			cout << "Benchmarking evaluation function for 1 second..." << endl;
 
 			while (clock() - start < 1000) {
-				main_GUI.evaluate_position();
+				main_GUI.evaluate_position(false);
 				iterations++;
 			}
 
@@ -414,7 +414,8 @@ inline int main_ui() {
 		if (IsKeyPressed(KEY_ENTER)) {
 			if (!monte_board_buffer._init)
 				monte_board_buffer.init(buffer_size);
-			main_GUI.grogros_analysis(1);
+
+			main_GUI.grogros_analysis(IsKeyPressed(KEY_LEFT_SHIFT) ? 10 : 1);
 		}
 
 		// LCTRL-H - Arrêt de la recherche automatique de GrogrosZero
