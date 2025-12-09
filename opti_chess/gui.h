@@ -575,7 +575,7 @@ public:
 	bool update_binding_move();
 
 	// Fonction qui évalue (et affiche les composantes)
-	void evaluate_position(bool display = true);
+	void evaluate_position(bool display = true, bool static_only = false);
 
 
 	// TODO

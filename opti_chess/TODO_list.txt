@@ -1399,14 +1399,28 @@ rn1q1rk1/p1p1bppp/2p1p3/2Pp4/Q2P4/2N1P3/PP3PPP/R1B2RK1 w - - 2 13 : ici il a fai
 r2qk2r/pp4pp/2n1b3/2b1pp2/4p3/1PN1P3/PBPN1PPP/R2Q1RK1 b kq - 1 11 : le roi est mieux après O-O que Rf7...
 8/bkp4p/2p1P3/1pP3p1/pP2q1N1/P4R2/BB3K2/8 b - - 0 52 : pas une bonne idée de prendre le cheval en g4, le pion e passé devient trop fort pour la dame à défendre
 
+FIXED
 8/8/8/2k5/2pp1p2/3P1P2/3K4/8 w - - 2 82 : crash parfois après quelques coups?
 8/8/1K6/8/8/4k3/8/3q1q2 w - - 0 100 : ???
 
 rnbqkb1r/ppp2ppp/4pn2/3p4/2PP4/4PN2/PP3PPP/RNBQKB1R b KQkq - 0 4 : pourquoi Ce4
 
+URGENT:
+pourquoi on a perdu beaucoup de perf en perfttest?? -> new vector quand la mémoire des plateaux n'est pas bien alignée... FIXME
+et pourquoi il faut beaucoup plus de noeuds pour faire la même chose qu'avant??
+
 TEST PERFORMANCE
 r1bq1b1r/pp4pp/2p1k3/3np3/2BP4/2N2Q2/PPn2PPP/R1B2RK1 w - - 0 11 : beaucoup de prises et d'échecs
 8/2k5/3p4/p2P1p2/P2P1P2/4K3/8/8 w - - 14 8 : endgame
+
+TEST MICRO REFLEXION:
+FIXED: 8/3k4/3p4/p2P1p2/P2P1P2/6K1/8/8 b - - 17 9 : ici il met desormais plus de noeuds qu'avant pour comprendre que ça gagne pour les blancs... du à des changement sur l'évaluation des repet? -> on dirait qu'il met plus de noeuds sur les nulles, mais pourquoi?..
+FIXED: 8/4k3/3p4/p2P1p2/P2P1P2/6K1/8/8 w - - 18 10 : ici il met plus de noeuds pensant que Rh4 fait repet... il met 12 noeuds sur Rg3 après Rh4 Rf6, tandis que l'autre en met que 10...
+FIXED: 8/8/3p1k2/p2P1p2/P2P1P1K/8/8/8 w - - 20 11 : combien de noeuds pour trouver que Rh5 gagne?
+FIXED: rn3r2/pbppq1p1/1p2pN2/8/3P1kNP/3B4/PPP2PP1/R3K2R w KQ - 1 5 : ici il regarde plus large qu'avant, alors que les paramètres n'ont pas changé... pourquoi?
+TODO *** En augmentant pure_win_chance_adding de *10, ça semble bien accélérer les détections de gains... mais pourquoi depuis l'update c'est plus lent si on garde ce paramètre constant?
+TODO *** D'ailleurs pourquoi après jouer les coups sur le plateau et lancer la réflexion depuis un autre point, le résultat n'est plus le même? vérifier comment sont faites les repets, il faut tout clarifier...
+TODO *** Vérifier que quand on arrive sur une repet, il considère bien le _can_explore comme false (pareil pour les mats ou branches pleines, par récursion)
 
 TODO
 Implémenter les nouveaux pions passés (fonction dédiée pour ça) + ajouter candidats pions passés -> evaluation de la structure globale de pions pour pré-évaluer facilement les chances de gains dans un futur endgame
