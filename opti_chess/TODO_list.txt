@@ -1355,6 +1355,7 @@ r1b1kb1r/1p1p1p1p/pqn1p3/2pP4/4P2p/2NQPN2/PPP3PP/R3KB1R b KQkq - 0 1 : Fg7! seul
 r6k/p1p3pp/6n1/3Bp3/4P3/5r1q/P2PNP2/R1B1QRK1 w - - 1 20 : roi blanc qui sue (gagnant pour les noirs)
 r1b1qbkr/ppp3pp/2n2n2/1B1pP3/3P4/2N5/PPP2PPP/R1BQ1RK1 b - - 4 9 : gagnant pour les blancs
 8/k1p5/2Q5/1pN5/p4K2/P7/q7/8 b - - 0 77 : c'est nulle (perpet partout)
+8/3k2b1/4p3/1p1pP1p1/pPpPp1Pp/K1P1P2P/5B2/8 w - - 0 47 : nulle (forteresse)
 
 UI:
 Quand on reste appuyé sur une flèche, faire défiler la variante à vitesse constante
@@ -1399,6 +1400,10 @@ rn1q1rk1/p1p1bppp/2p1p3/2Pp4/Q2P4/2N1P3/PP3PPP/R1B2RK1 w - - 2 13 : ici il a fai
 r2qk2r/pp4pp/2n1b3/2b1pp2/4p3/1PN1P3/PBPN1PPP/R2Q1RK1 b kq - 1 11 : le roi est mieux après O-O que Rf7...
 8/bkp4p/2p1P3/1pP3p1/pP2q1N1/P4R2/BB3K2/8 b - - 0 52 : pas une bonne idée de prendre le cheval en g4, le pion e passé devient trop fort pour la dame à défendre
 2r1k3/1p1bppb1/p2p1np1/q3n1P1/3NP3/2N1BP2/PPPQB3/1K1R3r w - - 0 5 : gxf6!! (2r1k3/1p1bppb1/p2p1Pp1/q3n3/3NP3/2N1BP2/PPPQB3/1K1r4 w - - 0 6 : Cxd1!!)
+2kr3r/pppqnppp/8/2bn4/3N4/2P2P2/PP4PP/RNBQR1K1 w - - 1 12 : perdant pour les blancs
+
+Buffer:
+Pour les noeuds, stocker l'indice du plateau dans le buffer plutôt que le pointeur vers le plateau
 
 Recherche Lc0:
 2r1k2r/1p1bppb1/p2p1npp/q3n3/3NP1PP/2N1BP2/PPPQB3/1K1R3R w k - 2 3 : ici il met 3 ans à regarder chaque coup...

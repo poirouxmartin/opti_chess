@@ -93,9 +93,10 @@ bool GameTree::select_previous_node() {
 		// Il faut aussi remonter le plateau pour l'exploration
 		main_GUI._root_exploration_node->reset();
 		main_GUI._root_exploration_node->_board = &_current_node->_board;
-		main_GUI._board = _current_node->_board;
-		main_GUI._board.reset_eval();
-		main_GUI._board.update_bitboards();
+		main_GUI._root_exploration_node->_is_active = true;
+		main_GUI._board = &_current_node->_board;
+		main_GUI._board->reset_eval();
+		main_GUI._board->update_bitboards();
 
 		// Actualisation de l'affichage
 		main_GUI._pgn = tree_display();

@@ -2,7 +2,11 @@
 #include "useful_functions.h"
 #include "zobrist.h"
 
-// Constructeur avec un plateau, un indice et un coup
+// Constructeur par défaut
+Node::Node() {
+}
+
+// Constructeur avec un plateau
 Node::Node(Board *board) {
 	_board = board;
 }
@@ -54,6 +58,11 @@ void Node::init_node() {
 
 	_initialized = true;
 
+	if (_board == nullptr) {
+		cout << "null board in init_node" << endl;
+		return;
+	}
+
 	_board->get_moves();
 	_board->is_game_over();
 
@@ -72,7 +81,7 @@ void Node::init_node() {
 }
 
 // Nouveau GrogrosZero
-void Node::grogros_zero(BoardBuffer* buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network) {
+void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network) {
 	// TODO:
 	// On peut rajouter la profondeur
 	// Garder le temps de calcul
@@ -96,8 +105,8 @@ void Node::grogros_zero(BoardBuffer* buffer, Evaluator* eval, const double alpha
 	if (!_initialized) {
 		// FIXME *** faut-il return ici?
 
-		quiescence(buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network);
-		//_iterations++;
+		quiescence(board_buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network);
+		_iterations++;
 		//_time_spent += clock() - begin_monte_time;
 
 		//return;
@@ -123,12 +132,12 @@ void Node::grogros_zero(BoardBuffer* buffer, Evaluator* eval, const double alpha
 
 		// EXPLORATION D'UN NOUVEAU COUP
 		if (get_fully_explored_children_count() < _board->_got_moves) {
-			explore_new_move(buffer, eval, alpha, beta, gamma, quiescence_depth, network);
+			explore_new_move(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network);
 		}
 
 		// EXPLORATION D'UN COUP DÉJÀ EXPLORÉ
 		else {
-			explore_random_child(buffer, eval, alpha, beta, gamma, quiescence_depth, network);
+			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network);
 		}
 
 		iterations--;
@@ -145,7 +154,7 @@ void Node::grogros_zero(BoardBuffer* buffer, Evaluator* eval, const double alpha
 }
 
 // Fonction qui explore un nouveau coup
-void Node::explore_new_move(BoardBuffer* buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network) {
+void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network) {
 
 	// On prend le premier coup non exploré
 	const Move move = get_first_unexplored_move(true);
@@ -168,18 +177,14 @@ void Node::explore_new_move(BoardBuffer* buffer, Evaluator* eval, double alpha, 
 		//cout << "move already explored, but considered as a new move?" << endl;
 	}
 	else {
-		// FIXME *** fonction pour ça !!
-
 		// Prend une place dans le buffer
-		const int buffer_index = buffer->get_first_free_index();
+		Board* new_board = board_buffer->get_first_free_board();
 
-		// FIXME: faut peut-être check ça autre part...
-		if (buffer_index == -1) {
-			cout << "Buffer is full" << endl;
+		if (new_board == nullptr) {
+			cout << "null new board in explore_new_move" << endl;
 			return;
 		}
 
-		Board* new_board = &buffer->_heap_boards[buffer_index];
 		new_board->copy_data(*_board, false, true);
 		new_board->_is_active = true;
 		new_board->make_move(move, false, true);
@@ -195,7 +200,7 @@ void Node::explore_new_move(BoardBuffer* buffer, Evaluator* eval, double alpha, 
 
 
 		// Si la position est déjà dans la table de transposition
-		if (transposition_table.contains(new_board->_zobrist_key) && transpositions) {
+		if (transpositions && transposition_table.contains(new_board->_zobrist_key)) {
 			cout << "transposition: "<< new_board->to_fen() << endl;
 
 			child = transposition_table._hash_table[new_board->_zobrist_key]._node;
@@ -211,10 +216,17 @@ void Node::explore_new_move(BoardBuffer* buffer, Evaluator* eval, double alpha, 
 		// Sinon, on crée un nouveau noeud
 		else {
 			// Création du noeud fils
-			child = new Node(new_board);
+			child = monte_node_buffer.get_first_free_node();
+
+			if (child == nullptr) {
+				cout << "null child in explore_new_move" << endl;
+				return;
+			}
+
+			child->_board = new_board;
+
 
 			// Ajoute la position dans la table
-			
 			if (transpositions) {
 				transposition_table._hash_table[new_board->_zobrist_key] = ZobristEntry(child);
 			}
@@ -240,13 +252,13 @@ void Node::explore_new_move(BoardBuffer* buffer, Evaluator* eval, double alpha, 
 		bool test = false;
 
 		if (test) {
-			child->quiescence(buffer, eval, 2, alpha, beta, -INT32_MAX, INT32_MAX, network); // TODO *** faire un cutoff plus facile, si l'éval de base est déjà mauvaise? par rapport à l'évaluation statique
+			child->quiescence(board_buffer, eval, 2, alpha, beta, -INT32_MAX, INT32_MAX, network); // TODO *** faire un cutoff plus facile, si l'éval de base est déjà mauvaise? par rapport à l'évaluation statique
 		}
 
 		// Si l'évaluation est meilleure que celle de base, on regarde la quiescence
 		if (!test || child->_static_evaluation._value * _board->get_color() > _static_evaluation._value * _board->get_color()) {
 
-			child->quiescence(buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network);
+			child->quiescence(board_buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network);
 			//child->quiescence(buffer, eval, quiescence_depth / 2, alpha, beta, -INT32_MAX, INT32_MAX, network);
 
 			//// Si la quiescence est bonne, on recommande à vraie profondeur
@@ -364,7 +376,7 @@ void Node::explore_new_move(BoardBuffer* buffer, Evaluator* eval, double alpha, 
 }
 
 // Fonction qui explore dans un plateau fils pseudo-aléatoire
-void Node::explore_random_child(BoardBuffer* buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network) {
+void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network) {
 
 	// Prend un fils aléatoire
 	const Move move = pick_random_child(alpha, beta, gamma);
@@ -378,7 +390,7 @@ void Node::explore_random_child(BoardBuffer* buffer, Evaluator* eval, double alp
 	const int initial_child_nodes = child->_nodes;
 
 	// On explore ce fils
-	child->grogros_zero(buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network); // L'évaluation du fils est mise à jour ici
+	child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network); // L'évaluation du fils est mise à jour ici
 
 	// Met à jour l'évaluation du plateau
 	//Evaluation best_eval = Evaluation();
@@ -461,12 +473,16 @@ Move Node::get_most_explored_child_move(bool decide_by_eval) {
 }
 
 // Reset le noeud et ses enfants, et les supprime tous
-void Node::reset() {
+void Node::reset(bool recursive) {
 	_latest_first_move_explored = -1;
 	_nodes = 0;
 	_iterations = 0;
 	_chosen_iterations = 0;
-	_board->reset_board();
+
+	if (_board != nullptr) {
+		_board->reset_board();
+	}
+
 	_initialized = false;
 	_is_terminal = false;
 	_can_explore = true;
@@ -475,13 +491,20 @@ void Node::reset() {
 	_static_evaluation.reset();
 	_deep_evaluation.reset();
 	_quiescence_depth = 0;
+	_is_active = false;
+	_is_stand_pat_eval = true;
+
+	if (!recursive) {
+		return;
+	}
 
 	for (auto const& [_, child] : _children) {
 		child->reset();
-		delete child;
+		//delete child;
 	}
 
 	_children.clear();
+	//_children = robin_map<Move, Node*>();
 }
 
 // Fonction qui renvoie les variantes d'exploration
@@ -660,7 +683,7 @@ int Node::get_ips() const {
 }
 
 // Quiescence search intégré à l'exploration
-int Node::quiescence(BoardBuffer* buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network, bool evaluate_threats, int beta_margin) {
+int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network, bool evaluate_threats, int beta_margin) {
 	// TODO: comment gérer la profondeur? faire en fonction de l'importance de la branche?
 	// mettre aucune profondeur limite?
 	// pourquoi en endgame ça va si loin? il fait full échecs...
@@ -924,7 +947,7 @@ int Node::quiescence(BoardBuffer* buffer, Evaluator* eval, int depth, double sea
 				constexpr int piece_values[6] = { 100, 300, 300, 500, 900, 10000 }; // P, N, B, R, Q, K
 				constexpr int promotion_value = 1000;
 				constexpr int check_value = 500; // Valeur d'un échec
-				constexpr int escape_check_value = 500;
+				//constexpr int escape_check_value = 500;
 
 				// Estimation rapide de ce que le coup peut apporter
 				int best_estimation = 0;
@@ -961,30 +984,39 @@ int Node::quiescence(BoardBuffer* buffer, Evaluator* eval, int depth, double sea
 
 			else {
 				// Prend une place dans le buffer
-				const int buffer_index = buffer->get_first_free_index();
+				Board* new_board = board_buffer->get_first_free_board();
 
-				// FIXME: faut peut-être check ça autre part...
-				if (buffer_index == -1) {
-					cout << "Buffer is full" << endl;
+				if (new_board == nullptr) {
+					// Buffer plein
 					_time_spent += clock() - begin_monte_time;
-
-					return alpha; // faut renvoyer quoi?
+					cout << "board buffer full during quiescence!" << endl;
+					return alpha;
 				}
 
-				Board* new_board = &buffer->_heap_boards[buffer_index];
 				new_board->copy_data(*_board, false, true);
 				new_board->_is_active = true;
 				new_board->make_move(move, false, true);
 
 				// Création du noeud fils
-				child = new Node(new_board);
+				// REVIEW *** faut-il initialiser le noeud ici?
+				child = monte_node_buffer.get_first_free_node();
+
+				if (child == nullptr) {
+					// Buffer plein
+					_time_spent += clock() - begin_monte_time;
+					cout << "node buffer full during quiescence!" << endl;
+					return alpha;
+				}
+
+				child->_board = new_board;
+
 				//cout << get_child_index(move) << endl;
 				add_child(child, move);
 			}
 
 			// Appel récursif sur le fils
 			// FIXME *** à backpropagate seulement sur une profondeur plus petite que la profondeur utilisée pour la threat evaluation?
-			int score = - child->quiescence(buffer, eval, new_depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, beta_margin);
+			int score = - child->quiescence(board_buffer, eval, new_depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, beta_margin);
 			//int score = - child->quiescence(buffer, eval, depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, 0);
 			_nodes += child->_nodes;
 
@@ -1507,3 +1539,100 @@ int Node::minimal_quiescence(Evaluator* eval, int depth, double search_alpha, do
 
 	return alpha;
 }
+
+// Constructeur par défaut
+NodeBuffer::NodeBuffer() {
+	// Crée un gros buffer, de 4GB
+	constexpr unsigned long int _size_buffer = 4000000000;
+	_length = _size_buffer / sizeof(Node);
+	_length = 0;
+
+	_nodes = new Node[_length];
+}
+
+// Constructeur utilisant la taille max (en bits) du buffer
+NodeBuffer::NodeBuffer(const unsigned long int size) {
+	_length = size / sizeof(Node);
+	_nodes = new Node[_length];
+}
+
+// Initialize l'allocation de n plateaux
+void NodeBuffer::init(const int length, bool display) {
+	if (_init) {
+		if (display)
+			cout << "node buffer already initialized" << endl;
+		return;
+	}
+
+	if (display)
+		cout << "\ninitializing node buffer..." << endl;
+
+	_length = length;
+	_nodes = new Node[_length];
+	_init = true;
+
+	if (display) {
+		cout << "node buffer initialized" << endl;
+		cout << "node size: " << int_to_round_string(sizeof(Node)) << "b" << endl;
+		cout << "length: " << int_to_round_string(_length) << endl;
+		cout << "approximate buffer size: " << long_int_to_round_string(monte_node_buffer._length * sizeof(Node)) << "b\n\n";
+	}
+}
+
+// Fonction qui donne l'index du premier plateau de libre dans le buffer
+int NodeBuffer::get_first_free_index() {
+	for (int i = 0; i < _length; i++) {
+		_iterator++;
+		if (_iterator >= _length)
+			_iterator -= _length;
+		if (!_nodes[_iterator]._is_active)
+			return _iterator;
+	}
+
+	return -1;
+}
+
+// Fonction qui désalloue toute la mémoire
+void NodeBuffer::remove() {
+	delete[] _nodes;
+	_init = false;
+	_length = 0;
+	_iterator = -1;
+}
+
+// Fonction qui reset le buffer
+bool NodeBuffer::reset()
+{
+	for (int i = 0; i < _length; i++)
+		_nodes[i].reset();
+
+	return true;
+}
+
+// Fonction qui renvoie le premier noeud disponible dans le buffer
+Node* NodeBuffer::get_first_free_node() {
+	const int index = get_first_free_index();
+
+	if (index == -1) {
+		cout << "Node buffer is full!" << endl;
+		return nullptr;
+	}
+
+	Node* node = &_nodes[index];
+	node->_is_active = true;
+
+	return node;
+}
+
+// DEBUG *** fonction qui affiche l'état du buffer (combien de plateaux sont utilisés)
+void NodeBuffer::display_buffer_state() const {
+	int used_boards = 0;
+	for (int i = 0; i < _length; i++) {
+		if (_nodes[i]._is_active)
+			used_boards++;
+	}
+	cout << "Node buffer state: " << used_boards << " / " << _length << " boards used (" << (used_boards * 100.0 / _length) << "%)" << endl;
+}
+
+// Buffer pour l'algo de Monte-Carlo
+NodeBuffer monte_node_buffer;

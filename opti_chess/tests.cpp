@@ -19,7 +19,7 @@ bool Tests::perft_test(string fen, int depth, vector<long long int> expected_nod
 	update_GUI();
 
 	// Teste le nombre de noeuds générés
-	return _gui->_board.validate_nodes_count_at_depth(fen, depth, expected_nodes, true);
+	return _gui->_board->validate_nodes_count_at_depth(fen, depth, expected_nodes, true);
 }
 
 // Renvoie une valeur entre 0 et 1, 1 étant la position évaluée correctement
@@ -100,7 +100,7 @@ double Tests::problem_test(string fen, robin_map<Move, double> moves, double tim
 	// Récupère le score de ce coup (s'il y en a un)
 	double move_score = moves.find(chosen_move) != moves.end() ? moves[chosen_move] : 0.0;
 
-	cout << "PUZZLE: " << move_score << "/1 (" << fen << " | Played: " << _gui->_board.move_label(chosen_move) << " (" << move_score << "/1) - Expected: " << _gui->_board.move_label(moves.begin()->first) << " | Time: " << (double)(end - begin) / CLOCKS_PER_SEC << ")" << endl;
+	cout << "PUZZLE: " << move_score << "/1 (" << fen << " | Played: " << _gui->_board->move_label(chosen_move) << " (" << move_score << "/1) - Expected: " << _gui->_board->move_label(moves.begin()->first) << " | Time: " << (double)(end - begin) / CLOCKS_PER_SEC << ")" << endl;
 
 	return move_score;
 }
