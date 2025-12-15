@@ -10,25 +10,11 @@
 #include <fcntl.h>
 #include "tests.h"
 
-// Fonction de test
-inline void launch_eval() {
-	main_GUI._board.reset_board();
-	main_GUI._board.is_game_over();
-	main_GUI.evaluate_position();
-	/*main_GUI._board._quick_sorted_moves = false;
-	main_GUI._board.quick_moves_sort();*/
-	//main_GUI._board.is_controlled(3, 3);
-	//main_GUI._board.attacked(3, 3);
-}
-
-
-
 // Fonction qui fait le dessin de la GUI
 inline void gui_draw() {
 	if (!main_GUI._draw)
 		return;
 	BeginDrawing();
-	//main_GUI._board.draw();
 	main_GUI.draw();
 	EndDrawing();
 }
@@ -59,11 +45,9 @@ inline int main_ui() {
 
 	// Espace entre les lignes de texte
 	SetTextLineSpacing(4);
-	//BeginShaderMode(main_GUI._text_shader);
 
 	// Curseur
 	HideCursor();
-	//SetMouseCursor(3);
 
 	// Shader pour les pièces sélectionnées
 	main_GUI._selected_shader = LoadShader(0, "resources/shaders/outline.fs");
@@ -81,13 +65,6 @@ inline int main_ui() {
 	SetShaderValue(main_GUI._selected_shader, outline_color_loc, outline_color, SHADER_UNIFORM_VEC4);
 	SetShaderValue(main_GUI._selected_shader, texture_size_loc, texture_size, SHADER_UNIFORM_VEC2);
 
-
-	// Evaluateur de position
-	Evaluator eval_white(1.0f);
-	Evaluator eval_black;
-
-	//monte_evaluator = eval_white;
-
 	// Paramètres pour l'IA
 	int search_depth = 6;
 
@@ -95,7 +72,7 @@ inline int main_ui() {
 	bool main_game_over = false;
 
 	// Met les timers en place
-	main_GUI._board.reset_timers();
+	main_GUI._board->reset_timers();
 
 	// Met le PGN à la date du jour
 	main_GUI.update_date();
@@ -103,27 +80,26 @@ inline int main_ui() {
 	// Met à jour le nom de bot de GrogrosZero
 	main_GUI.update_grogros_zero_name();
 
-	//printAttributeSizes(main_GUI._board);
-	//testFunc(main_GUI._board);
-
-	// Taille du buffer de Monte-Carlo
-	constexpr int buffer_size = 5E6;
-
 	// Taille de la table de transposition
 	constexpr int transposition_table_size = 5E6;
 
 	// Initialisation de la table de transposition
 	transposition_table.init(transposition_table_size, nullptr, true);
 
+
 	// Initialisation du buffer de Monte-Carlo
-	monte_board_buffer.init(buffer_size);
+	main_GUI.init_buffers();
+
+	main_GUI._board = new Board();
+	main_GUI._root_exploration_node = new Node();
+	main_GUI._game_tree = GameTree(*main_GUI._board);
+
+	main_GUI.reset_game();
 
 	// Noeud d'exploration
 	// Plateau test: rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2
-	Board test_board;
 	//test_board.from_fen("rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2");
-	main_GUI._root_exploration_node = new Node(&test_board); // FIXME: à faire autre part (dans la GUI?)
-	main_GUI.reset_game();
+
 
 
 	// Test de réseaux de neurones
@@ -154,14 +130,14 @@ inline int main_ui() {
 		// T - Tests
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_T)) {
 
-			//main_GUI._board.get_pins(main_GUI._board._player).print();
-			//main_GUI._board.get_moves_fast();
-			//main_GUI._board.update_kings_pos();
-			//Pos king_pos = main_GUI._board._player ? main_GUI._board._white_king_pos : main_GUI._board._black_king_pos;
-			//bool player = main_GUI._board._player;
-			//CastlingRights castling_rights = main_GUI._board._castling_rights;
+			//main_GUI._board->get_pins(main_GUI._board->_player).print();
+			//main_GUI._board->get_moves_fast();
+			//main_GUI._board->update_kings_pos();
+			//Pos king_pos = main_GUI._board->_player ? main_GUI._board->_white_king_pos : main_GUI._board->_black_king_pos;
+			//bool player = main_GUI._board->_player;
+			//CastlingRights castling_rights = main_GUI._board->_castling_rights;
 			//
-			//uint16_t controls_around_king = main_GUI._board.get_controls_around_king(king_pos, player, player ? castling_rights.k_w : castling_rights.k_b, player ? castling_rights.q_w : castling_rights.q_b);
+			//uint16_t controls_around_king = main_GUI._board->get_controls_around_king(king_pos, player, player ? castling_rights.k_w : castling_rights.k_b, player ? castling_rights.q_w : castling_rights.q_b);
 			//print_controls(controls_around_king);
 
 			// Position test pour la reflexion en milieu de partie: r1bq1b1r/pp4pp/2p1k3/3np3/1nBP4/2N2Q2/PPP2PPP/R1B2RK1 b - - 0 10
@@ -181,19 +157,19 @@ inline int main_ui() {
 			double duration = double(end - start) / CLOCKS_PER_SEC;
 			cout << "Function executed " << iterations << " times in " << duration << " seconds. (" << (iterations / duration) << " calls per second, average " << (duration / iterations * 1e6) << " microseconds per call)" << endl;
 			
-			main_GUI._board.benchmark_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, { 1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860 }, 10, true);
-			//main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, { 1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860 }, true);
-			//main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 7, { 1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860 }, true, false, true);
-			//main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/3P4/PPP1PPPP/RNBQKBNR b KQkq - 0 1", 6, { 1, 20, 539, 11959, 328511, 8073082, 227598692 }, true, true);
-			//main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pp1ppppp/8/2p5/8/3P4/PPP1PPPP/RNBQKBNR w KQkq - 0 2", 3, { 1, 27, 593, 15971 }, true, true);
-			//main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pp1ppppp/8/2p5/8/3P4/PPPKPPPP/RNBQ1BNR b kq - 1 2", 2, { 1, 22, 487 }, true, true);
-			//main_GUI._board.validate_nodes_count_at_depth("rnbqkbnr/pp1ppppp/8/8/2p5/3P4/PPPKPPPP/RNBQ1BNR w kq - 0 3", 1, { 1, 23 }, true, true);
+			main_GUI._board->benchmark_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, { 1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860 }, 10, true);
+			//main_GUI._board->validate_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, { 1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860 }, true);
+			//main_GUI._board->validate_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 7, { 1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860 }, true, false, true);
+			//main_GUI._board->validate_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/3P4/PPP1PPPP/RNBQKBNR b KQkq - 0 1", 6, { 1, 20, 539, 11959, 328511, 8073082, 227598692 }, true, true);
+			//main_GUI._board->validate_nodes_count_at_depth("rnbqkbnr/pp1ppppp/8/2p5/8/3P4/PPP1PPPP/RNBQKBNR w KQkq - 0 2", 3, { 1, 27, 593, 15971 }, true, true);
+			//main_GUI._board->validate_nodes_count_at_depth("rnbqkbnr/pp1ppppp/8/2p5/8/3P4/PPPKPPPP/RNBQ1BNR b kq - 1 2", 2, { 1, 22, 487 }, true, true);
+			//main_GUI._board->validate_nodes_count_at_depth("rnbqkbnr/pp1ppppp/8/8/2p5/3P4/PPPKPPPP/RNBQ1BNR w kq - 0 3", 1, { 1, 23 }, true, true);
 
 
 
 
-			//main_GUI._board.validate_nodes_count_at_depth("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 5, { 1, 48, 2039, 97862, 4085603, 193690690 }, true);
-			//main_GUI._board.validate_nodes_count_at_depth("", 5, { }, true);
+			//main_GUI._board->validate_nodes_count_at_depth("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 5, { 1, 48, 2039, 97862, 4085603, 193690690 }, true);
+			//main_GUI._board->validate_nodes_count_at_depth("", 5, { }, true);
 
 			//main_GUI.grogros_analysis(1);
 
@@ -252,14 +228,14 @@ inline int main_ui() {
 			//Tests tests(&main_GUI);
 			//tests.run_all_tests();
 
-			//main_GUI._board.update_bitboards();
-			//main_GUI._board.print_all_bitboards();
+			//main_GUI._board->update_bitboards();
+			//main_GUI._board->print_all_bitboards();
 		}
 
 		// B - Bitboards
 		if (IsKeyPressed(KEY_B)) {
-			//main_GUI._board.update_bitboards();
-			main_GUI._board.print_all_bitboards();
+			//main_GUI._board->update_bitboards();
+			main_GUI._board->print_all_bitboards();
 		}
 
 		// Q - Quiescence
@@ -353,7 +329,7 @@ inline int main_ui() {
 		// // Colle le PGN du clipboard (le charge)
 		// if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_V)) {
 		//     string pgn = GetClipboardText();
-		//     main_GUI._board.from_pgn(pgn);
+		//     main_GUI._board->from_pgn(pgn);
 		//     cout << "loaded PGN : " << pgn << endl;
 		// }
 
@@ -380,24 +356,19 @@ inline int main_ui() {
 			// Mettre le screenshot dans le presse-papier?
 		}
 
-		// LCTRL-D - Dessine ou non
-		//if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_D)) {
-		//	main_GUI._draw = false;
-		//}
-
 		// B - Création du buffer
 		if (IsKeyPressed(KEY_B)) {
 			cout << "available memory : " << long_int_to_round_string(get_total_system_memory()) << "b" << endl;
-			monte_board_buffer.init(buffer_size);
+			main_GUI.init_buffers();
 		}
 
 		// G - GrogrosZero
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyDown(KEY_G)) {
-			if (!monte_board_buffer._init)
-				monte_board_buffer.init(buffer_size);
+			main_GUI.init_buffers();
+
 			// LSHIFT - Utilisation du réseau de neurones
 			if (IsKeyDown(KEY_LEFT_SHIFT))
-				//main_GUI._board.grogros_zero(nullptr, nodes_per_frame, main_GUI._beta, main_GUI._k_add, false, 0, &grogros_network);
+				//main_GUI._board->grogros_zero(nullptr, nodes_per_frame, main_GUI._beta, main_GUI._k_add, false, 0, &grogros_network);
 				false;
 			else
 				main_GUI.grogros_analysis();
@@ -405,16 +376,13 @@ inline int main_ui() {
 
 		// LCTRL-G - Lancement de GrogrosZero en recherche automatique
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_G)) {
-			if (!monte_board_buffer._init)
-				monte_board_buffer.init(buffer_size);
+			main_GUI.init_buffers();
 			main_GUI._grogros_analysis = true;
 		}
 
 		// Entrée - GrogrosZero 1 noeud : DEBUG
 		if (IsKeyPressed(KEY_ENTER)) {
-			if (!monte_board_buffer._init)
-				monte_board_buffer.init(buffer_size);
-
+			main_GUI.init_buffers();
 			main_GUI.grogros_analysis(IsKeyPressed(KEY_LEFT_SHIFT) ? 10 : 1);
 		}
 
@@ -430,30 +398,42 @@ inline int main_ui() {
 
 		// R - Réinitialisation des timers
 		if (IsKeyPressed(KEY_R)) {
-			main_GUI._board.reset_timers();
+			main_GUI._board->reset_timers();
 			main_GUI._time = false;
 		}
 
 		// Suppr. - Supprime les reflexions de GrogrosZero
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_DELETE)) {
-			//main_GUI._board.reset_all(true, true);
+			//main_GUI._board->reset_all(true, true);
 			main_GUI._root_exploration_node->reset(); // FIXME... ça fait rien??
+			main_GUI._root_exploration_node->_is_active = true;
+			main_GUI._root_exploration_node->_board->_is_active = true;
 			//main_GUI._root_exploration_node = new Node(&main_GUI._board, Move());
 			cout << "Grogros's thought deleted... current moves explored: " << main_GUI._root_exploration_node->children_count() << endl;
 		}
 
 		// CTRL - Suppr. - Supprime le buffer de Monte-Carlo
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_DELETE)) {
-			//main_GUI._board.reset_all(true, true);
-			main_GUI._root_exploration_node->reset();
-			monte_board_buffer.remove();
+			cout << "FIXME BEFORE USING" << endl;
+
+			//main_GUI._board->reset_all(true, true);
+			//monte_node_buffer.remove();
+			//monte_board_buffer.remove();
+			//main_GUI._root_exploration_node->_is_active = true;
+
+			//main_GUI._board = Board();
+			//main_GUI._root_exploration_node = new Node();
+
+			//main_GUI.reset_game();
 		}
 
 		// D - Affichage dans la console de tous les coups légaux de la position
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_D)) {
 			//main_GUI._draw = true;
-			main_GUI._board.display_moves();
-			//cout << main_GUI._board._positions_history.size() << endl;
+			main_GUI._board->display_moves();
+			monte_board_buffer.display_buffer_state();
+			monte_node_buffer.display_buffer_state();
+			//cout << main_GUI._board->_positions_history.size() << endl;
 		}
 
 		// E - Évalue la position et renvoie les composantes dans la console
@@ -528,24 +508,24 @@ inline int main_ui() {
 
 		// P - Joue le coup recommandé par l'algorithme de GrogrosZero
 		if (!IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_P)) {
-			/*if (main_GUI._board._tested_moves > 0)
-				((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], main_GUI.get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false);
+			/*if (main_GUI._board->_tested_moves > 0)
+				((main_GUI._click_bind && main_GUI._board->click_m_move(main_GUI._board->_moves[main_GUI._board->best_monte_carlo_move()], main_GUI.get_board_orientation())) || true) && main_GUI._board->play_monte_carlo_move_keep(main_GUI._board->_moves[main_GUI._board->best_monte_carlo_move()], true, true, false);
 			else
 				cout << "no more moves are in memory" << endl;*/
 			if (main_GUI._root_exploration_node->children_count() > 0)
-				((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._root_exploration_node->get_most_explored_child_move(), main_GUI.get_board_orientation())) || true) && main_GUI.play_move_keep(main_GUI._root_exploration_node->get_most_explored_child_move());
+				((main_GUI._click_bind && main_GUI._board->click_m_move(main_GUI._root_exploration_node->get_most_explored_child_move(), main_GUI.get_board_orientation())) || true) && main_GUI.play_move_keep(main_GUI._root_exploration_node->get_most_explored_child_move());
 			else
 				cout << "no more moves are in memory" << endl;
 		}
 
 		// LShift-P - Joue les coups recommandés par l'algorithme de GrogrosZero
 		if (IsKeyDown(KEY_LEFT_SHIFT) && IsKeyDown(KEY_P)) {
-			/*if (main_GUI._board._tested_moves > 0)
-				((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], main_GUI.get_board_orientation())) || true) && main_GUI._board.play_monte_carlo_move_keep(main_GUI._board._moves[main_GUI._board.best_monte_carlo_move()], true, true, false);
+			/*if (main_GUI._board->_tested_moves > 0)
+				((main_GUI._click_bind && main_GUI._board->click_m_move(main_GUI._board->_moves[main_GUI._board->best_monte_carlo_move()], main_GUI.get_board_orientation())) || true) && main_GUI._board->play_monte_carlo_move_keep(main_GUI._board->_moves[main_GUI._board->best_monte_carlo_move()], true, true, false);
 			else
 				cout << "no more moves are in memory" << endl;*/
 			if (main_GUI._root_exploration_node->children_count() > 0)
-				((main_GUI._click_bind && main_GUI._board.click_m_move(main_GUI._root_exploration_node->get_most_explored_child_move(), main_GUI.get_board_orientation())) || true) && main_GUI.play_move_keep(main_GUI._root_exploration_node->get_most_explored_child_move());
+				((main_GUI._click_bind && main_GUI._board->click_m_move(main_GUI._root_exploration_node->get_most_explored_child_move(), main_GUI.get_board_orientation())) || true) && main_GUI.play_move_keep(main_GUI._root_exploration_node->get_most_explored_child_move());
 			else
 				cout << "no more moves are in memory" << endl;
 		}
@@ -560,7 +540,7 @@ inline int main_ui() {
 
 		// Z - Clé de Zobrist de la position actuelle
 		if (IsKeyPressed(KEY_W)) {
-			cout << "Zobrist key : " << main_GUI._board._zobrist_key << endl;
+			cout << "Zobrist key : " << main_GUI._board->_zobrist_key << endl;
 			cout << main_game_over << endl;
 		}
 
@@ -652,19 +632,19 @@ inline int main_ui() {
 		// Calculer la fin de la partie ici une fois, pour éviter de la refaire?
 
 		// Plus de temps... (en faire une fonction)
-		// if (main_GUI._board._time) {
-		//     if (main_GUI._board._time_black < 0) {
-		//         main_GUI._board._time = false;
-		//         main_GUI._board._time_black = 0;
+		// if (main_GUI._board->_time) {
+		//     if (main_GUI._board->_time_black < 0) {
+		//         main_GUI._board->_time = false;
+		//         main_GUI._board->_time_black = 0;
 		//         play_end_sound();
-		//         main_GUI._board._is_game_over = true;
+		//         main_GUI._board->_is_game_over = true;
 		//         cout << "White won on time" << endl; // Pas toujours vrai car il peut y avoir des manques de matériel
 		//     }
-		//     if (main_GUI._board._time_white < 0) {
-		//         main_GUI._board._time = false;
-		//         main_GUI._board._time_white = 0;
+		//     if (main_GUI._board->_time_white < 0) {
+		//         main_GUI._board->_time = false;
+		//         main_GUI._board->_time_white = 0;
 		//         play_end_sound();
-		//         main_GUI._board._is_game_over = true;
+		//         main_GUI._board->_is_game_over = true;
 		//         cout << "Black won on time" << endl;
 		//     }
 
@@ -690,12 +670,12 @@ inline int main_ui() {
 		// Fait jouer l'IA automatiquement en fonction des paramètres
 
 		// Ici on re-vérifie, car les nulles par répétition sont écourtées par l'algo
-		if (main_GUI._board._game_over_checked && main_GUI._board._game_over_value == draw) {
+		if (main_GUI._board->_game_over_checked && main_GUI._board->_game_over_value == draw) {
 			game_over:
 
 			//cout << "Game seems to be over... or is it?" << endl;
-			main_GUI._board._game_over_checked = false;
-			main_GUI._board.is_game_over(3);
+			main_GUI._board->_game_over_checked = false;
+			main_GUI._board->is_game_over(3);
 			main_GUI._root_exploration_node->_iterations = 0;
 			main_GUI._root_exploration_node->_chosen_iterations = 0;
 			main_GUI._root_exploration_node->_is_terminal = false;
@@ -703,38 +683,34 @@ inline int main_ui() {
 			//cout << "exploration game over value : " << (int)main_GUI._root_exploration_node->_board->_game_over_value << endl;
 		}
 
-		//main_GUI._board._game_over_checked = false;  // On recheck, pour les threefold (car dans la réflexion on dit que la partie est finie si y'a une seule répétition)
-		//if (main_GUI._board.is_game_over(3) == 0) {
-		if (main_GUI._board._game_over_value == unterminated) {
+		//main_GUI._board->_game_over_checked = false;  // On recheck, pour les threefold (car dans la réflexion on dit que la partie est finie si y'a une seule répétition)
+		//if (main_GUI._board->is_game_over(3) == 0) {
+		if (main_GUI._board->_game_over_value == unterminated) {
 			// GrogrosZero
 
 			//cout << "test" << endl;
 
 			// Analyse de GrogrosZero
 			if (main_GUI._grogros_analysis || main_GUI._white_player == main_GUI._grogros_zero_name || main_GUI._black_player == main_GUI._grogros_zero_name) {
-				if (!monte_board_buffer._init)
-					monte_board_buffer.init(buffer_size);
-
+				main_GUI.init_buffers();
 				main_GUI.grogros_analysis();
 			}
 
 			// Quand c'est son tour (TODO: fonction pour ça)
-			if ((main_GUI._board._player && main_GUI._white_player == main_GUI._grogros_zero_name) || (!main_GUI._board._player && main_GUI._black_player == main_GUI._grogros_zero_name)) {
-				if (!monte_board_buffer._init)
-					monte_board_buffer.init(buffer_size);
-
+			if ((main_GUI._board->_player && main_GUI._white_player == main_GUI._grogros_zero_name) || (!main_GUI._board->_player && main_GUI._black_player == main_GUI._grogros_zero_name)) {
+				main_GUI.init_buffers();
 				main_GUI.play_grogros_zero_move();
 			}
 
-			if (main_GUI._board._game_over_value != unterminated)
+			if (main_GUI._board->_game_over_value != unterminated)
 				goto game_over;
 
 			// GrogrosFish (seulement lorsque c'est son tour)
-			//if (main_GUI._board._player && main_GUI._white_player.substr(0, 11) == "GrogrosFish")
-			//	main_GUI._board.grogrosfish(search_depth, &eval_white, true);
+			//if (main_GUI._board->_player && main_GUI._white_player.substr(0, 11) == "GrogrosFish")
+			//	main_GUI._board->grogrosfish(search_depth, &eval_white, true);
 
-			//if (!main_GUI._board._player && main_GUI._black_player.substr(0, 11) == "GrogrosFish")
-			//	main_GUI._board.grogrosfish(search_depth, &eval_black, true);
+			//if (!main_GUI._board->_player && main_GUI._black_player.substr(0, 11) == "GrogrosFish")
+			//	main_GUI._board->grogrosfish(search_depth, &eval_black, true);
 
 			if (main_game_over) {
 				main_game_over = false;
@@ -749,13 +725,13 @@ inline int main_ui() {
 
 			if (!main_game_over) {
 				main_GUI._time = false;
-				main_GUI._board.display_pgn();
+				main_GUI._board->display_pgn();
 				main_game_over = true;
 			}
 		}
 
 		// Jeu automatique sur sites d'échecs
-		if (main_GUI._binding_full || (main_GUI._binding_solo && main_GUI.get_board_orientation() != main_GUI._board._player)) {
+		if (main_GUI._binding_full || (main_GUI._binding_solo && main_GUI.get_board_orientation() != main_GUI._board->_player)) {
 			// Le fait à chaque intervalle de temps 'binding_interval_check'
 			if (clock() - main_GUI._last_binding_check > main_GUI._binding_interval_check) {
 
@@ -771,7 +747,7 @@ inline int main_ui() {
 					//cout << "Binding move played" << endl;
 
 					// Retire du temps en fonction du temps perdu par coup
-					if (main_GUI._board._player)
+					if (main_GUI._board->_player)
 						main_GUI._time_white -= main_GUI._current_site._time_lost_per_move;
 					else
 						main_GUI._time_black -= main_GUI._current_site._time_lost_per_move;
