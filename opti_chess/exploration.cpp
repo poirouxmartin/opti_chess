@@ -421,55 +421,20 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 }
 
 // Fonction qui renvoie le fils le plus exploré
-Move Node::get_most_explored_child_move(bool decide_by_eval) {
+Move Node::get_most_explored_child_move() {
 	int max = -1;
 
 	// Tri simple, on ne départage pas les égalités
-	if (!decide_by_eval) {
+	Move best_move = Move();
 
-		Move best_move = Move();
-
-		for (auto const& [move, child] : _children) {
-			if (child->_chosen_iterations > max) {
-				max = child->_chosen_iterations;
-				best_move = move;
-			}
+	for (auto const& [move, child] : _children) {
+		if (child->_chosen_iterations > max) {
+			max = child->_chosen_iterations;
+			best_move = move;
 		}
-
-		return best_move;
 	}
 
-	// Avec un départage par égalité
-	else {
-		vector<Move> max_iterations_moves;
-		int color = _board->get_color();
-
-		for (auto const& [move, child] : _children) {
-			if (child->_chosen_iterations == max) {
-				max_iterations_moves.push_back(move);
-			}
-			else if (child->_chosen_iterations > max) {
-				max = child->_chosen_iterations;
-				max_iterations_moves.clear();
-				max_iterations_moves.push_back(move);
-			}
-		}
-
-		// En cas d'égalité, on trie par évaluation
-		long long int max_eval = -LLONG_MAX;
-		auto best_move = Move();
-
-		for (auto const& move : max_iterations_moves) {
-			Node const* child = _children[move];
-
-			if (child->_deep_evaluation._value * color > max_eval) {
-				max_eval = child->_deep_evaluation._value * color;
-				best_move = move;
-			}
-		}
-
-		return best_move;
-	}
+	return best_move;
 }
 
 // Reset le noeud et ses enfants, et les supprime tous
@@ -662,8 +627,8 @@ Node::~Node() {
 }
 
 // Fonction qui renvoie le fils le plus exploré
-Node* Node::get_most_explored_child(bool decide_by_eval) {
-	Move most_explored_move = get_most_explored_child_move(decide_by_eval);
+Node* Node::get_most_explored_child() {
+	Move most_explored_move = get_most_explored_child_move();
 
 	if (most_explored_move.is_null_move()) {
 		return nullptr;
@@ -1119,10 +1084,6 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 
 	// r1r3k1/pp2bppp/3q4/3Pnp2/4nB2/2NB4/PP3PPP/R2QR1K1 w - - 5 16 : ???
 
-	// Meilleur coup global
-	Move best_move = Move();
-	double best_score = -DBL_MAX;
-
 	// Meilleur coup explorable
 	Move move_to_play = Move();
 	double explorable_best_score = -DBL_MAX;
@@ -1149,30 +1110,67 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 
 	robin_map<Move, double> move_scores = get_move_scores(alpha, beta);
 
-	// TEST: boost pour les meilleurs coups, pour qu'il évite de tout regarder à faible profondeur...
-	// Trie les coups par score
-	// FIXME *** vector lent?
-	vector<pair<Move, double>> sorted_moves(move_scores.begin(), move_scores.end());
+	//// Boost pour le premier coup
+	//constexpr double best_move_boost = 25.0;
 
-	// Tri par valeur décroissante
-	sort(sorted_moves.begin(), sorted_moves.end(), [](const auto& a, const auto& b) { return a.second > b.second; });
+	//Move best_move;
+	//double best_score = 0.0;
 
-	// Boost pour les premiers coups: *2, *1.5, *1.25, *1.1
-	constexpr double constant_add = 0.000;
+	//for (auto const& [move, score] : move_scores) {
+	//	if (score > best_score) {
+	//		best_move = move;
+	//		best_score = score;
+	//	}
+	//}
 
-	for (int i = 0; i < sorted_moves.size(); i++) {
-		double boost = 1.0 + 20.0 / pow(i + 1, 1.5);
-		move_scores[sorted_moves[i].first] = boost * move_scores[sorted_moves[i].first] + constant_add;
-		//cout << "boosted move score: " << _board->move_label(sorted_moves[i].first) << " : " << move_scores[sorted_moves[i].first] << endl;
+	//move_scores[best_move] *= best_move_boost;
+
+
+	struct ScoredMove {
+		Move move;
+		double score;
+	};
+
+	// Boost les valeurs de chaque coup en fonction de leur position
+	static constexpr double boost_table[5] = { 25.0, 8.0, 4.0, 3.0,	2.0 };
+
+	ScoredMove top[5];
+	int top_count = 0;
+
+	// Tri par insertion
+	for (auto const& [move, score] : move_scores) {
+
+		int j = top_count;
+		if (j < 5) {
+			top[j] = { move, score };
+			++top_count;
+		}
+		else if (score <= top[j - 1].score) {
+			continue;
+		}
+
+		while (j > 0 && top[j - 1].score < score) {
+			if (j < 5)
+				top[j] = top[j - 1];
+			--j;
+		}
+
+		if (j < 5)
+			top[j] = { move, score };
 	}
 
+	// Application du bonus
+	for (int i = 0; i < top_count; ++i) {
+		Move m = top[i].move;
+		move_scores[m] = top[i].score * boost_table[i];
+	}
+
+	Move best_move;
+	double best_score = 0.0;
 
 	// Regarde chaque coup
 	for (auto const& [move, child] : _children) {
-	//for (auto const& [move, move_score] : sorted_moves) {
 		
-		//Node* child = _children[move];
-
 		// Score du coup
 		double move_score = move_scores[move];
 
