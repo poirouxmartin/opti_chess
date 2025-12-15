@@ -3,6 +3,7 @@
 #include "board.h"
 #include "buffer.h"
 #include <robin_map.h>
+#include <robin_hash.h>
 
 using namespace tsl;
 
@@ -16,7 +17,7 @@ public:
 	// Variables
 
 	// Plateau : FIXME -> indice du plateau dans le buffer?
-	Board* _board;
+	Board* _board = nullptr;
 
 	// Coup joué pour arriver à ce plateau (FIXME: est-ce déjà stocké dans le plateau?)
 	//Move _move;
@@ -70,11 +71,17 @@ public:
 	// La valeur d'évaluation est le standpat
 	bool _is_stand_pat_eval = true;
 
+	// Pour savoir si il est actif dans le buffer
+	bool _is_active = false;
+
 	// A rajouter : évaluation?, nombre de noeuds?...
 
 	// Constructeurs
 
-	// Constructeur avec un plateau, un indice et un coup
+	// Constructeur
+	Node();
+
+	// Constructeur avec un plateau
 	Node(Board* board);
 
 
@@ -99,19 +106,19 @@ public:
 	void init_node();
 
 	// Nouveau GrogrosZero
-	void grogros_zero(BoardBuffer* buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int nodes, int quiescence_depth, Network* network = nullptr);
+	void grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int nodes, int quiescence_depth, Network* network = nullptr);
 
 	// Fonction qui explore un nouveau coup
-	void explore_new_move(BoardBuffer* buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr);
+	void explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr);
 
 	// Fonction qui explore dans un plateau fils pseudo-aléatoire
-	void explore_random_child(BoardBuffer* buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr);
+	void explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr);
 
 	// Fonction qui renvoie le fils le plus exploré
 	Move get_most_explored_child_move(bool decide_by_eval = false);
 
 	// Reset le noeud et ses enfants, et les supprime tous
-	void reset();
+	void reset(bool recursive = true);
 
 	// Fonction qui renvoie les variantes d'exploration
 	string get_exploration_variants(const double alpha, const double beta, bool main = true, bool quiescence = false);
@@ -129,7 +136,7 @@ public:
 	int get_ips() const;
 
 	// Quiescence search intégré à l'exploration
-	int quiescence(BoardBuffer* buffer, Evaluator* evaluator, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr, bool evaluate_threats = true, int beta_margin = 0);
+	int quiescence(BoardBuffer* board_buffer, Evaluator* evaluator, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr, bool evaluate_threats = true, int beta_margin = 0);
 	//void grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth);
 
 	// Fonction qui renvoie le nombre de noeuds fils complètement explorés
@@ -173,3 +180,46 @@ public:
 	// Destructeur
 	~Node();
 };
+
+
+class NodeBuffer {
+public:
+
+	// Le buffer est-il initialisé ?
+	bool _init = false;
+
+	// Longueur du buffer
+	int _length = 0;
+
+	// Tableau de plateaux
+	Node* _nodes;
+
+	// Itérateur pour rechercher moins longtemps un index de plateau libre
+	int _iterator = -1;
+
+	// Constructeur par défaut
+	NodeBuffer();
+
+	// Constructeur utilisant la taille max (en bits) du buffer
+	explicit NodeBuffer(unsigned long int);
+
+	// Initialize l'allocation de n plateaux
+	void init(int length = 10000000, bool display = true);
+
+	// Fonction qui donne l'index du premier plateau de libre dans le buffer
+	int get_first_free_index();
+
+	// Fonction qui désalloue toute la mémoire
+	void remove();
+
+	// Fonction qui reset le buffer
+	bool reset();
+
+	// Fonction qui renvoie le premier noeud disponible dans le buffer
+	Node* get_first_free_node();
+
+	// DEBUG *** fonction qui affiche l'état du buffer (combien de noeuds sont utilisés)
+	void display_buffer_state() const;
+};
+
+extern NodeBuffer monte_node_buffer;

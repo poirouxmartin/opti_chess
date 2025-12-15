@@ -1172,6 +1172,20 @@ void Board::display_moves() {
 	cout << "]" << endl;
 }
 
+// Fonction qui affiche le plateau
+void Board::display() const {
+	cout << "  +-----------------+" << endl;
+	for (int row = 7; row >= 0; row--) {
+		cout << row + 1 << " | ";
+		for (int col = 0; col < 8; col++) {
+			cout << short_piece_name(_array[row][col]) << " ";
+		}
+		cout << "|" << endl;
+	}
+	cout << "  +-----------------+" << endl;
+	cout << "    a b c d e f g h" << endl;
+}
+
 // Fonction qui joue un coup
 inline void Board::make_move(const Move& move, const bool pgn, const bool add_to_history) noexcept
 {
@@ -2188,7 +2202,6 @@ int Board::game_over(int max_repetitions) {
 	_game_over_checked = true;
 
 	// Règle des 3 répétitions
-	//if (repetition_count() >= main_GUI._max_repetition)
 	if (repetition_count() >= max_repetitions)
 		return draw;
 
@@ -5079,8 +5092,8 @@ int Board::get_piece_activity() const
 	// Puissance du contrôle de chaque case
 	static constexpr uint8_t activity_controlled_squares[8][8] = {
 	{30, 30, 30, 30, 30, 30, 30, 30},
-	{30, 30, 30, 30, 30, 30, 30, 30},
-	{30, 30, 30, 30, 30, 30, 30, 30},
+	{30, 30, 40, 60, 60, 40, 30, 30},
+	{30, 30, 35, 50, 50, 35, 30, 30},
 	{30, 30, 30, 30, 30, 30, 30, 30},
 	{0,  0,  10, 20, 20, 10,  0,  0},
 	{0,  0,  0,   5,  5,  0,  0,  0},
@@ -5102,15 +5115,6 @@ int Board::get_piece_activity() const
 	float advancement_factor = 0.3f;
 
 	return eval_from_progress(white_activity - black_activity, _adv, advancement_factor);
-}
-
-// Fonction qui reset le buffer
-bool BoardBuffer::reset() const
-{
-	for (int i = 0; i < _length; i++)
-		_heap_boards[i].reset_board();
-
-	return true;
 }
 
 // Fonction qui renvoie la map correspondante au nombre de contrôles pour chaque case de l'échiquier pour le joueur blanc
@@ -8623,6 +8627,38 @@ string piece_name(uint8_t piece) {
 		return "b_king";
 	default:
 		return "none";
+	}
+}
+
+// Fonction qui renvoie le nom d'une pièce
+string short_piece_name(uint8_t piece) {
+	switch (piece) {
+	case w_pawn:
+		return "P";
+	case w_knight:
+		return "N";
+	case w_bishop:
+		return "B";
+	case w_rook:
+		return "R";
+	case w_queen:
+		return "Q";
+	case w_king:
+		return "K";
+	case b_pawn:
+		return "p";
+	case b_knight:
+		return "n";
+	case b_bishop:
+		return "b";
+	case b_rook:
+		return "r";
+	case b_queen:
+		return "q";
+	case b_king:
+		return "k";
+	default:
+		return ".";
 	}
 }
 

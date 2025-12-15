@@ -24,7 +24,7 @@ public:
 	int _screen_height = 1080;
 
 	// Plateau affiché
-	Board _board;
+	Board *_board;
 
 	// Faut-il faire l'affichage?
 	bool _draw = true;
@@ -196,7 +196,7 @@ public:
 	vector<thread> _threads_grogros_zero;
 
 	// Arbre de recherche, variantes jouées dans le PGN
-	GameTree _game_tree = GameTree(_board);
+	GameTree _game_tree;
 
 	// Nombre de FPS
 	int _max_fps = 180;
@@ -374,13 +374,10 @@ public:
 	string _eval_components;
 
 	// Gris
-	Color _gray = { 100, 100, 100, 255 };
+	const Color _gray = { 100, 100, 100, 255 };
 
 	// Gris foncé
-	Color _dark_gray = { 50, 50, 50, 255 };
-
-	// Nombre de coups pour une répétition
-	int _max_repetition = 1;
+	const Color _dark_gray = { 50, 50, 50, 255 };
 
 	// Noeud de l'arbre d'exploration
 	Node *_root_exploration_node;
@@ -389,7 +386,7 @@ public:
 	string _exploration_variants = "";
 
 	// Nombre de noeuds par frame pour l'exploration
-	int _nodes_per_frame = 1000;
+	const int _nodes_per_frame = 1000;
 
 	// Symboles des pièces
 	const string P_symbol = "\xC4\x80";
@@ -413,6 +410,12 @@ public:
 
 	// Sons à utiliser
 	string _sounds_path = "resources/sounds/lisp/";
+
+	// Taille des buffers à utilser
+	const int _board_buffer_length = 5E6;
+	//const int _board_buffer_length = 2;
+	const int _node_buffer_length = 5E6;
+	//const int _node_buffer_length = 2;
 
 	// Constructeurs
 
@@ -577,8 +580,13 @@ public:
 	// Fonction qui évalue (et affiche les composantes)
 	void evaluate_position(bool display = true, bool static_only = false);
 
+	// Fonction qui initialise les buffers
+	void init_buffers() const;
 
-	// TODO
+	// Fonction qui reset les buffers
+	void reset_buffers() const;
+
+	// Fonction qui dessine la GUI
 	void draw();
 };
 

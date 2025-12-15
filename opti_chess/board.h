@@ -683,6 +683,9 @@ public:
 	// Fonction qui affiche la liste des coups
 	void display_moves();
 
+	// Fonction qui affiche le plateau
+	void display() const;
+
 	// Fonction qui joue un coup
 	void make_move(const Move& move, const bool pgn = false, const bool add_to_history = false) noexcept;
 
@@ -1109,6 +1112,9 @@ string square_name(uint8_t i, uint8_t j);
 
 // Fonction qui renvoie le nom d'une pièce
 string piece_name(uint8_t piece);
+
+// Fonction qui renvoie le nom d'une pièce
+string short_piece_name(uint8_t piece);
 
 // Fonction qui renvoie l'évaluation re-normalisée en fonction du score moyen
 string get_renormalized_evaluation(float avg_score, float winning_eval = 1, float winning_score = 0.70f);
