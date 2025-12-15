@@ -115,7 +115,7 @@ public:
 	void explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr);
 
 	// Fonction qui renvoie le fils le plus exploré
-	Move get_most_explored_child_move(bool decide_by_eval = false);
+	Move get_most_explored_child_move();
 
 	// Reset le noeud et ses enfants, et les supprime tous
 	void reset(bool recursive = true);
@@ -127,7 +127,7 @@ public:
 	int get_main_depth(const double alpha, const double beta);
 
 	// Fonction qui renvoie le fils le plus exploré
-	Node* get_most_explored_child(bool decide_by_eval = true);
+	Node* get_most_explored_child();
 
 	// Fonction qui renvoie la vitesse de calcul moyenne en noeuds par seconde
 	int get_avg_nps() const;

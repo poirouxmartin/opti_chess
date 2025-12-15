@@ -1419,6 +1419,10 @@ FIXED: pourquoi on a perdu beaucoup de perf en perfttest?? -> new vector quand l
 FIXED: et pourquoi il faut beaucoup plus de noeuds pour faire la même chose qu'avant??
 FIXME *** l'ordi qui plante parfois quand on est sur grogros et qu'on passe sur une autre fenêtre... et faut redémarrer l'ordi ensuite
 
+FIX HISTORIQUE:
+Mettre l'historique des coups (pour détection de répétitions) dans les noeuds plutôt que plateaux?
+Utiliser *parent pour détecter ça plutôt que de tout stocker?
+
 TEST PERFORMANCE
 r1bq1b1r/pp4pp/2p1k3/3np3/2BP4/2N2Q2/PPn2PPP/R1B2RK1 w - - 0 11 : beaucoup de prises et d'échecs
 8/2k5/3p4/p2P1p2/P2P1P2/4K3/8/8 w - - 14 8 : endgame
