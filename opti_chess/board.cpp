@@ -1216,6 +1216,7 @@ inline void Board::make_move(const Move& move, const bool pgn, const bool add_to
 	}
 
 	// Reset des demi-coups si un pion est bougé ou si une pièce est prise
+	// TODO *** si on roque, on peut aussi reset l'historique
 	if (is_pawn(p) || p_last) {
 		_half_moves_count = 0;
 		if (add_to_history) {
@@ -7335,6 +7336,7 @@ bool Board::is_legal(Move move) {
 // Fonction qui reset l'historique des positions
 void Board::reset_positions_history() {
 	_positions_history.clear();
+	_positions_history.shrink_to_fit();
 }
 
 // Fonction qui renvoie combien de fois la position actuelle a été répétée
