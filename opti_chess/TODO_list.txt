@@ -1401,6 +1401,11 @@ r2qk2r/pp4pp/2n1b3/2b1pp2/4p3/1PN1P3/PBPN1PPP/R2Q1RK1 b kq - 1 11 : le roi est m
 8/bkp4p/2p1P3/1pP3p1/pP2q1N1/P4R2/BB3K2/8 b - - 0 52 : pas une bonne idée de prendre le cheval en g4, le pion e passé devient trop fort pour la dame à défendre
 2r1k3/1p1bppb1/p2p1np1/q3n1P1/3NP3/2N1BP2/PPPQB3/1K1R3r w - - 0 5 : gxf6!! (2r1k3/1p1bppb1/p2p1Pp1/q3n3/3NP3/2N1BP2/PPPQB3/1K1r4 w - - 0 6 : Cxd1!!)
 2kr3r/pppqnppp/8/2bn4/3N4/2P2P2/PP4PP/RNBQR1K1 w - - 1 12 : perdant pour les blancs
+1R3b2/3k1p2/7p/p6p/P1n5/2N2K1P/1p3P1P/8 b - - 0 1 : Cd2+! gagne
+2r3k1/6p1/4ppp1/pp1p4/2rP1PPP/P1PR4/1KP2R2/8 b - - 0 1 : ne pas jouer a4! ça bloque toute poussée possible (donc retire les chances de gain des noirs)
+r1bqk2r/ppp2pp1/2p5/2b4p/4P1n1/2N4P/PPPPBPP1/R1BQ1RK1 b kq - 0 8 : Dd4! (ou Df6) gagne
+r1b1k2r/ppp2pp1/2p5/2b1q3/4P1p1/2N3P1/PPPPBPK1/R1BQ1R2 b kq - 2 11 : Fxf2!! seul coup qui gagne
+
 
 Buffer:
 Pour les noeuds, stocker l'indice du plateau dans le buffer plutôt que le pointeur vers le plateau
@@ -1411,6 +1416,8 @@ Recherche Lc0:
 FIXED
 8/8/8/2k5/2pp1p2/3P1P2/3K4/8 w - - 2 82 : crash parfois après quelques coups?
 8/8/1K6/8/8/4k3/8/3q1q2 w - - 0 100 : ???
+r3k3/p1p1qpp1/2p5/1p2P3/3K4/7r/PPPPR3/R1BQ4 b q - 2 21 : Db4+ #2.. (fix quiescence?)
+r3k3/p1p2pp1/2p5/1p2P3/1qPK4/7r/PP1PR3/R1BQ4 b q - 0 22 : Dxc4# pas regardé par la quiescence?
 
 rnbqkb1r/ppp2ppp/4pn2/3p4/2PP4/4PN2/PP3PPP/RNBQKB1R b KQkq - 0 4 : pourquoi Ce4
 

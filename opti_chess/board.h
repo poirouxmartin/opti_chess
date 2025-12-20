@@ -616,7 +616,7 @@ public:
 	bool _displayed_components = false;
 
 	// Clé de Zobrist de la position
-	uint_fast64_t _zobrist_key = 0;
+	uint64_t _zobrist_key = 0;
 
 	// Historique des positions
 	// FIXME *** pourquoi parfois c'est hyper lent? et pourquoi j'utilise un vecteur plutôt qu'un robin hash?
