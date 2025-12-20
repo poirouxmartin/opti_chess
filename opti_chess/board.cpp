@@ -23,6 +23,7 @@
 
 // Constructeur par défaut
 Board::Board() {
+	//_positions_history.reserve(100);
 }
 
 // Constructeur de copie
@@ -4634,21 +4635,26 @@ bool Board::sort_moves() {
 		if (move.is_promotion())
 			score += 80000;
 
-		// Check
-		else if (move.is_check())
+		// Echec
+		else if (move.is_check()) {
 			score += 5000;
+
+			// Et mat
+			if (move.is_checkmate())
+				score += 1000000;
+		}
 
 		// La pièce est menacée
 		int opponent_control = opponent_controls._array[move.end_row][move.end_col];
 		if (opponent_control > 0)
-			score -= std::min(50.0 * piece_value, sqrt(opponent_control) * 35 * piece_value);
+			score -= min(50.0 * piece_value, sqrt(opponent_control) * 35 * piece_value);
 
 		// Roque / roi
 		if (is_king(from)) {
 			if (abs(move.end_col - move.start_col) == 2)
 				score += 4000; // Roque
 			else
-				score -= 10000; // Déplacement du roi
+				score -= 10000 * (1.0f - _adv);
 		}
 
 		scored_moves[move_count++] = { i, score };
@@ -4659,7 +4665,7 @@ bool Board::sort_moves() {
 		[](const MoveScore& a, const MoveScore& b) { return a.score > b.score; });
 
 	// Réécriture des _moves triés
-	Move temp_moves[max_moves]; // stack temp
+	Move temp_moves[max_moves];
 	for (int i = 0; i < move_count; ++i)
 		temp_moves[i] = _moves[scored_moves[i].index];
 
@@ -11331,6 +11337,8 @@ void Board::switch_trait() {
 
 // Fonction qui assigne les flags à un coup donné
 void Board::assign_move_flags(Move* move) const {
+
+	// r3k3/p1p2pp1/2p5/1p2P3/1qPK4/7r/PP1PR3/R1BQ4 b q - 0 22 : Dxc4# ?
 
 	// Si les flags ont déjà été calculés
 	if (move->has_flags()) {
