@@ -701,6 +701,9 @@ public:
 	// Fonction qui compte les paires de fous et renvoie la valeur
 	int count_bishop_pairs() const;
 
+	// Fonction qui compte et renvoie la valeur des malus liés aux pièces doublons
+	int count_doubled_pieces(const Evaluator* eval) const;
+
 	// Fonction qui calcule et renvoie la valeur de positionnement des pièces sur l'échiquier
 	int pieces_positioning(const Evaluator* eval = nullptr) const;
 
@@ -867,7 +870,7 @@ public:
 	float get_winnable(Evaluation* eval, bool color, float position_nature) const;
 
 	// Fonction qui calcule les valeurs de possibilités de gain pour chaque côté
-	void get_winnable_values(Evaluation* eval, float position_nature = 0.0f);
+	void get_winnable_values(Evaluation* eval, float position_nature = 0.0f) const;
 
 	// Fonction qui renvoie l'activité des fous sur les diagonales
 	int get_bishop_activity() const;
@@ -1036,6 +1039,12 @@ public:
 
 	// Fonction qui met à jour les bitboards en fonction d'un coup joué pour les noirs
 	void update_bitboards_black(int row1, int col1, int row2, int col2, int p, int p_last) noexcept;
+
+	// Fonction qui renvoie le nombre de pions passés pour une couleur donnée
+	int get_passed_pawns_count(bool color) const;
+
+	// Fonction qui renvoie la valeur de l'évaluation liée aux pions passés
+	int get_passed_pawns_value(bool color) const;
 
 
 	// TODO *** faire un piece_safety plus générique?

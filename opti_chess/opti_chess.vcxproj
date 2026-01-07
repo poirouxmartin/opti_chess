@@ -99,7 +99,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <TargetName>Grogros Chess</TargetName>
+    <TargetName>Grogros_Chess</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Lichess-release|x64'">
     <TargetName>Grogros Chess</TargetName>

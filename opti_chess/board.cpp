@@ -1471,6 +1471,33 @@ int Board::count_bishop_pairs() const
 	return min(w_bishop_light, w_bishop_dark) - min(b_bishop_light, b_bishop_dark);
 }
 
+// Fonction qui compte et renvoie la valeur des malus liés aux pièces doublons
+int Board::count_doubled_pieces(const Evaluator* eval) const
+{
+	int penalties = 0;
+
+	// Compteurs de pièces par type
+	uint8_t piece_counts[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+	for (uint8_t col = 0; col < 8; col++) {
+		for (uint8_t row = 0; row < 8; row++) {
+			if (const uint8_t piece = _array[row][col]) {
+				piece_counts[piece - 1]++;
+			}
+		}
+	}
+
+	for (uint8_t i = 0; i < 12; i++) {
+		if (piece_counts[i] > 1) {
+			const int piece_number = i % 6;
+			const int penalty = eval->_doubled_piece_penalty[piece_number];
+			penalties += (piece_counts[i] - 1) * penalty * ((i < 6) ? -1 : 1);
+		}
+	}
+
+	return penalties;
+}
+
 // Fonction qui calcule et renvoie la valeur de positionnement des pièces sur l'échiquier
 int Board::pieces_positioning(const Evaluator* eval) const
 {
@@ -1610,6 +1637,14 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 		if (display)
 			main_GUI._eval_components += "bishop pair: " + (bishop_pair >= 0 ? string("+") : string()) + to_string(bishop_pair) + "\n";
 		total_material += bishop_pair;
+	}
+
+	// Pièces doublons
+	if (evaluator->_doubled_pieces != 0.0f) {
+		const int doubled_pieces = count_doubled_pieces(evaluator) * evaluator->_doubled_pieces;
+		if (display)
+			main_GUI._eval_components += "doubled pieces: " + (doubled_pieces >= 0 ? string("+") : string()) + to_string(doubled_pieces) + "\n";
+		total_material += doubled_pieces;
 	}
 
 	if (display)
@@ -2717,7 +2752,7 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	constexpr float activity_attacking_factor = 1.0f;
 	constexpr float activity_protection_factor = 0.5f;
 
-	const int activity = activity_diff;
+	const int activity = activity_diff > 0 ? pow(activity_diff / 100, 0.5) * 100 : -pow(-activity_diff / 100, 0.5) * 100;
 
 	const int w_activity = activity > 0 ? activity * activity_protection_factor : activity * activity_attacking_factor;
 	const int b_activity = activity < 0 ? -activity * activity_protection_factor : -activity * activity_attacking_factor;
@@ -4442,7 +4477,7 @@ int Board::get_sliders_on_open_file() const
 
 	// Bonus
 	constexpr int rook_open_bonus = 50;
-	constexpr int rook_semi_open_bonus = 35;
+	constexpr int rook_semi_open_bonus = 30;
 	constexpr int queen_open_bonus = 30;
 	constexpr int queen_semi_open_bonus = 20;
 
@@ -6140,7 +6175,7 @@ int Board::get_rook_activity() const
 	}
 
 	// Facteur multiplicatif en fonction de l'avancement de la partie
-	float advancement_factor = 0.6f;
+	float advancement_factor = 1.0f;
 
 	//cout << "Final rook activity: " << activity << ", advancement factor: " << advancement_factor << " => " << eval_from_progress(activity, _adv, advancement_factor) << endl;
 
@@ -6993,8 +7028,12 @@ void Board::get_zobrist_key()
 
 // Fonction qui renvoie à quel point la partie est gagnable (de 0 à 1), pour une couleur donnée
 float Board::get_winnable(Evaluation* eval, bool color, float position_nature) const {
-	// TODO *** à implémenter
+	// TODO *** ajouter win conditions
+	// Mats
+	// Pions passés
 	
+	// rnbqkbnr/8/p3p3/Pp1pPp1p/1PpP1PpP/2P3P1/8/RNBQKBNR w KQkq - 0 11 : position complètement fermée, -> winnable devrait être nul (mais l'incertitude a pris le dessus)
+
 	// MIDDLEGAME:
 	// Facteurs donnant des chances de gain:
 	// - Déséquilibre matériel
@@ -7033,6 +7072,8 @@ float Board::get_winnable(Evaluation* eval, bool color, float position_nature) c
 	// - Rapports matériels annulants : tour contre cavalier etc...
 
 
+	bool display = false;
+
 	// Constantes
 	constexpr float mating_potentials[6] = { 1.0f, 0.4f, 0.6f, 1.2f, 2.0f, 0.0f };
 
@@ -7066,6 +7107,13 @@ float Board::get_winnable(Evaluation* eval, bool color, float position_nature) c
 
 	bool can_mate = mating_potential >= 1.0f;
 
+	if (display) {
+		cout << "Winnable eval for " << (color ? "white" : "black") << ":" << endl;
+		cout << "- pawns count: " << (int)pawns_count << endl;
+		cout << "- mating potential: " << mating_potential << endl;
+		cout << "- can mate: " << (can_mate ? "yes" : "no") << endl;
+	}
+
 	// Si on peut pas mater, on ne peut pas gagner.. logique
 	if (!can_mate) {
 		return 0.0f;
@@ -7073,14 +7121,25 @@ float Board::get_winnable(Evaluation* eval, bool color, float position_nature) c
 
 	// Ici on peut mater -> finales complexes ou milieu de jeu
 
+	// 8/5ppk/3R3p/8/8/1r5P/6PK/8 w - - 0 32 : nulle théorique: tour v tour et pions 3v2
+	// 2r5/2kb3K/8/8/8/1Q6/8/8 w - - 0 92 : nulle théorique aussi
+
+	// rn1qkbnr/ppp2ppp/4b3/8/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 4 : bug?
+
 	// Valeur winnable pour une finale, lorsqu'il n'y a pas de pions
-	constexpr float no_pawns_winnable = 0.33f;
+	constexpr float no_pawns_winnable = 0.15f;
 
 	// Plus y'a de pions, plus c'est gagnable
-	const float pawns_factor = 1.0f - 1.0f / (1.0f + pow(pawns_count, 2)) + 1.0f / 65.0f;
+	constexpr float n_pawns_winnable[11] = { 0.0f, 0.20f, 0.37f, 0.53f, 0.67f, 0.79f, 0.85f, 0.90f, 0.94f, 0.98f, 1.0f };
+	const float pawns_factor = n_pawns_winnable[pawns_count];
 
 	// Valeur winnable de base
-	float winnable_value = (1.0f - no_pawns_winnable) * pawns_factor + no_pawns_winnable;
+	float winnable_value = (1 - no_pawns_winnable) * pawns_factor + no_pawns_winnable;
+
+	if (display) {
+		cout << "- pawns factor: " << pawns_factor << endl;
+		cout << "- base winnable value: " << winnable_value << endl;
+	}
 
 	// 8/PK6/3k4/8/8/8/8/8 w - - 0 79 : FIXME *** a8 ne devrait pas baisser le winnable!
 	// K1k5/P7/3N4/8/8/8/8/8 b - - 2 77 : Rc7 seul coup qui tient
@@ -7189,6 +7248,11 @@ float Board::get_winnable(Evaluation* eval, bool color, float position_nature) c
 
 		// Met à jour la valeur winnable, en fonction de la valeur annulante et des possibilités de gain restantes
 		winnable_value *= (1.0f - draw_value * _adv);
+
+		if (display) {
+			cout << "- draw value: " << draw_value << endl;
+			cout << "- final winnable value after draw value: " << winnable_value << endl;
+		}
 	}
 
 	// r6r/1p1k3p/p2p1npb/4p3/4P3/4NP2/PPP1K1PP/R1B4R w - - 2 17 : plus y'a de pions, plus on a de chances de gagner
@@ -7203,20 +7267,50 @@ float Board::get_winnable(Evaluation* eval, bool color, float position_nature) c
 
 	// TODO *** implémenter la suite de la logique pour évaluer les possibilités de gain en milieu de jeu
 
+	// rnbqkb1r/4n3/p3p1p1/Pp1pPpPp/1PpP1P1P/2P5/8/RNBQKBNR b KQkq - 0 11 position fermée
+
 	// En fonction de la nature de la position
 	constexpr float closed_position_draw_factor = 1.0f;
-	winnable_value *= 1.0f - pow(position_nature, 1.0) * (1.0f - _adv) * closed_position_draw_factor;
+	winnable_value *= 1.0f - pow(position_nature, 1.0) * closed_position_draw_factor;
 	// FIXME *** être encore plus important? car ça va rarement à 0% ou 100%?
 
+	if (display) {
+		cout << "- position nature: " << position_nature << endl;
+		cout << "- final winnable value after position nature: " << winnable_value << endl;
+	}
+
 	// TODO *** prise en compte de l'incertitude (-> winnable++?)
-	winnable_value = 1.0f - (1.0f - winnable_value) * (1.0f - eval->_uncertainty);
+	winnable_value = 1.0f - (1.0f - winnable_value) * (1.0f - eval->_uncertainty * 0.35f);
+
+	if (display) {
+		cout << "- uncertainty: " << eval->_uncertainty << endl;
+		cout << "- final winnable value after uncertainty: " << winnable_value << endl;
+	}
+
+
+	// TODO *** win conditions
+	// - Mat
+	// - Pions passés
+	constexpr float passed_pawn_winnable_bonuses[8] = { 0.0f, 0.50f, 0.60f, 0.70f, 0.75f, 0.80f, 0.85f, 0.90f };
+	const int passed_pawns_count = get_passed_pawns_count(color);
+	//cout << "passed pawns count: " << passed_pawns_count << endl;
+	if (passed_pawns_count > 8) {
+		cout << "too many passed pawns" << endl;
+	}
+
+	winnable_value = 1.0f - (1.0f - winnable_value) * (1.0f - passed_pawn_winnable_bonuses[passed_pawns_count]);
+
+	if (display) {
+		cout << "- passed pawns count: " << (int)passed_pawns_count << endl;
+		cout << "- final winnable value after passed pawns: " << winnable_value << endl;
+	}
 
 
 	return winnable_value;
 }
 
 // Fonction qui calcule les valeurs de possibilités de gain pour chaque côté
-void Board::get_winnable_values(Evaluation* eval, float position_nature) {
+void Board::get_winnable_values(Evaluation* eval, float position_nature) const {
 	eval->_winnable_white = get_winnable(eval, true, position_nature);
 	eval->_winnable_black = get_winnable(eval, false, position_nature);
 }
@@ -9741,6 +9835,10 @@ bool Board::pawn_can_move(uint8_t row, uint8_t col, bool color) const {
 // Fonction qui renvoie l'incertiude de la position
 void Board::get_uncertainty(Evaluation* eval, int material_eval, int winning_eval) const {
 
+	// TODO ***
+	// Nombre d'échecs disponibles dans la position?
+	// Contre jeu
+
 	// r2r4/8/1p1q2P1/2b5/3k1pP1/pP2pP2/2Q4P/1K6 w - - 9 11 : exemple d'une position à grosse incertitude
 	// r2r4/4q3/1p4P1/2b5/5pPk/pP2pP2/8/1K6 w - - 0 18 : plus du tout d'incertitude !!
 	// rnb2bnr/pppp1k1p/5q2/8/5p2/4BQ2/PPP3PP/RN3RK1 w - - 2 11 : grosse incertitude
@@ -11596,4 +11694,57 @@ inline void Board::update_bitboards_black(int row1, int col1, int row2, int col2
 		_bitboards[p_last] &= ~to_mask;
 		_occupancies[0] &= ~to_mask;
 	}
+}
+
+// Fonction qui renvoie le nombre de pions passés pour une couleur donnée
+int Board::get_passed_pawns_count(bool color) const {
+
+	int passed_pawns_count = 0;
+
+	// Pour chaque case du plateau
+
+	for (uint8_t row = 0; row < 8; row++) {
+		for (uint8_t col = 0; col < 8; col++) {
+			uint8_t piece = _array[row][col];
+
+			// Si c'est un pion de la bonne couleur
+			if ((color && piece == w_pawn) || (!color && piece == b_pawn)) {
+				bool is_passed = true;
+
+				// Vérifie les colonnes adjacentes et la colonne du pion
+				for (int dc = -1; dc <= 1; dc++) {
+					int adj_col = col + dc;
+
+					// Vérifie les rangées devant le pion
+					for (int dr = 1; dr <= (color ? (7 - row) : row); dr++) {
+						int adj_row = color ? (row + dr) : (row - dr);
+
+						// Si une pièce adverse est trouvée dans la zone des pions passés
+						if (is_in(adj_row, 0, 7) && is_in(adj_col, 0, 7)) {
+							uint8_t adj_piece = _array[adj_row][adj_col];
+							if ((color && is_black(adj_piece) && is_pawn(adj_piece)) ||
+								(!color && is_white(adj_piece) && is_pawn(adj_piece))) {
+								is_passed = false;
+								break;
+							}
+						}
+					}
+
+					if (!is_passed) {
+						break;
+					}
+				}
+				if (is_passed) {
+					passed_pawns_count++;
+				}
+			}
+		}
+	}
+
+	return passed_pawns_count;
+}
+
+// Fonction qui renvoie la valeur de l'évaluation liée aux pions passés
+int Board::get_passed_pawns_value(bool color) const {
+	// TODO ***
 }

@@ -1405,6 +1405,109 @@ r2qk2r/pp4pp/2n1b3/2b1pp2/4p3/1PN1P3/PBPN1PPP/R2Q1RK1 b kq - 1 11 : le roi est m
 2r3k1/6p1/4ppp1/pp1p4/2rP1PPP/P1PR4/1KP2R2/8 b - - 0 1 : ne pas jouer a4! ça bloque toute poussée possible (donc retire les chances de gain des noirs)
 r1bqk2r/ppp2pp1/2p5/2b4p/4P1n1/2N4P/PPPPBPP1/R1BQ1RK1 b kq - 0 8 : Dd4! (ou Df6) gagne
 r1b1k2r/ppp2pp1/2p5/2b1q3/4P1p1/2N3P1/PPPPBPK1/R1BQ1R2 b kq - 2 11 : Fxf2!! seul coup qui gagne
+7r/2k2pb1/4bnp1/1p5p/1B2p3/8/1P3PPP/1N1B1RK1 w - - 0 25 : finale nulle
+2kr4/ppp2pp1/2p5/2q5/2B1P3/2P2PP1/PP1B4/R3K2R w Q - 2 20 : Fxf7 ne gagne pas (Txd2! et c'est perpet)
+4k3/2R5/2p5/1p6/4PB2/pPP2PP1/Pq5r/3RKB2 w - - 3 31 : position égale
+8/2R5/4k3/1p6/4P3/pPP1BPP1/2q4r/3RKB2 b - - 10 39 : a2! tient
+3r1r1k/ppq2pp1/2npbN1p/1B6/7Q/4R3/PPP2PPP/2KR4 w - - 7 19 : De4! gagne
+3r1rk1/ppq2p2/3pbp1Q/1B2n3/8/4R3/PPP2PPP/2KR4 w - - 1 22 : roi noir dans un réseau de mat
+8/6k1/4r1P1/6Q1/5K2/8/8/3r4 w - - 13 64 : Dc5 (ou b5 ou a5) seuls coups pour tenir
+rnbq1rk1/pp3p2/2pb1npQ/3p2N1/8/2NB4/PPP2PPP/2KRR3 w - - 2 14 : g3!! seul coup qui gagne (empêche Ff4+ -> menace Fxg6!)
+rnb2rk1/ppq2p2/2pb1npQ/3p2N1/8/2NB2P1/PPP2P1P/2KRR3 w - - 1 15 : Ce4!!
+r1bqkb1r/pppp2pp/2nn1p2/6B1/2Bp4/2N2N2/PPP2PPP/R2Q1RK1 w kq - 0 8 : Ch4! gagne
+r1bk1r2/pppp4/3q1p2/3Nn1Q1/2n5/2p5/PPP3PP/4RRK1 w - - 0 21 : Cxf6 gagne
+r1b2b1r/pppp2p1/2n2k1p/3Q2N1/4n3/q1P5/P1P2PPP/R4RK1 w - - 0 12 : Df7+ #8
+r1b2b1r/ppQp1qpp/k7/2n5/5B2/2P5/P1P2PPP/1R2R1K1 w - - 3 18 : Tb3! seul coup qui tient et gagne
+r1b1Qb1N/pppp2pp/2n5/2n2k2/5q1P/2P5/P1P2PP1/R4RK1 b - - 2 17 : activité -2? pas sûr...
+r1b4q/pppp3k/2nb4/6pp/4RP2/2P1Q3/P1P3P1/5RK1 w - - 1 23 : fxg5! gagne
+r1b2k2/pppp3Q/2n2P2/7p/8/2P3q1/P1P3P1/5R1K w - - 5 30 : gagnant pour les blancs: f7! #10
+r1b1qb1r/ppppn1p1/3n3p/1P2k3/3N4/2p2Q2/P1P2PPP/R4RK1 w - - 0 16 : Tfe1+ mate
+3rk2r/ppp2pp1/2p1b3/2P5/4P1P1/2P2KP1/PPQ1B2q/RNB2R2 b k - 4 8 : f5! seul coup qui tient
+3Bk2r/ppp5/2p1b3/2P5/4Pq2/2PK4/PPQ2p2/RN3R2 b k - 3 15 : Th3+! mate
+2k4r/ppp1qp1p/2p1b3/6pn/3bP3/5P2/PP1NB1PP/R1BQ1R1K b - - 1 13 : Cg3+! pas mal pour tenter quelque chose (perd quand-même)
+2k4r/ppp1q1pp/2p1b3/5p1n/3bP3/5P2/PP1NB1PP/R1BQ1R1K b - - 1 3 : Cg3+ suivi de f4 gagne
+2k2r2/ppp3pp/1bp1b3/8/4Pp1q/1N1B1Pn1/PP3RPP/2RQB1K1 b - - 9 8 : Dxh2+!! mate
+r2qr1k1/npp1Rp2/p2p1PpQ/5n2/2P2N2/8/PPb2PPP/R5K1 w - - 7 24 : Dxg6+!!! tient
+r2q1rk1/1pp1Rp2/p1np1Pp1/3N2Q1/2Pn4/8/PPb2PPP/4R1K1 w - - 9 25 : T1e3! gagne
+r3qrk1/1pp1Rp2/p1np1PpR/3N1nQ1/2P5/8/PP3PPP/3b2K1 w - - 15 28 : Te3!!! gagne
+r1bqk2r/ppppb1p1/2n4p/3Q4/4R3/2p2N2/PPP2PPP/R1B3K1 w - - 0 11 : Fxh6!! gagne
+8/8/1P6/8/P5k1/1K5R/6rp/8 w - - 1 52 : Txh2 gagne
+r4rk1/1pqb1ppp/p1nbpn2/3pN3/3P1B2/2N3Q1/PPP1BPPP/R4RK1 b - - 5 14 : Cxd4! gagne
+r1b1nrk1/1pq2ppp/p1nbp3/3pN3/3P1B2/2NB2Q1/PPP2PPP/3R1RK1 b - - 9 16 : f6! gagne
+r1b3k1/ppp2ppp/8/8/4r2q/2P1B3/PP2QPP1/R4RK1 b - - 1 16 : Fh3!! gagne
+r2q1b1r/pb2k1pp/1p1pp3/1B2p3/3QP3/2N2R2/PPP2PPP/R5K1 w - - 2 17 : Cd5!! gagne
+2r2b2/3R2p1/5pk1/2p5/1pP2BP1/pP5r/P6P/4R1K1 w - - 1 27 : Re2 Tc3 Te2 puis y'a plus de coups pour les noirs, la tour se fera enfermer
+N2q1k1r/1b1n1ppp/3P4/2b5/2Q1n3/4P3/PP3PPP/R1B1KBNR b KQ - 0 12 : Da5+! quasi gagnant
+q6r/3nkppp/3b4/8/2B5/4PN2/PP3KPP/R1BR4 w - - 2 19 : position quasi égale
+r1bqkb1r/ppp3pp/2n5/3pp3/2B1R3/5N2/PPPP1PPP/R1BQ2K1 w kq - 0 9 : Cxe5 gagne
+rnbqk2r/ppp2ppp/3bpn2/3p4/3P1B2/2P1PN2/PP3PPP/RN1QKB1R b KQkq - 0 5 : petite erreur stratégique de prendre en f4
+4r3/8/5pk1/3K2p1/7p/7P/2R3P1/8 b - - 15 50 : g4! gagne
+8/8/5pk1/3K2p1/7p/7P/3R2P1/4r3 b - - 23 54 : le roi blanc est bloqué par la tour, c'est le moment de pousser pour gagner !
+rnb1k3/pp2qppr/3b1n2/3pp3/8/1PN1PN2/PB1P1P2/R2QKBR1 w Qq - 0 18 : Cxd5!! gagne
+3b2k1/1pp2rpp/r2n1p1B/p2N1q2/3Q4/6R1/PPP2PPP/4R1K1 w - - 0 1 : Cb4!!! (axb4 -> Dxd6!!)
+3b2k1/1ppq1rpp/r2Q1p1B/8/1p6/6R1/PPP2PPP/4R1K1 w - - 1 3 : Dd5!! mate
+3N1qk1/6pp/5p2/8/1R2R3/K1p5/2Q2p2/4r2r w - - 0 1 : Da2+! #11
+r4rk1/1pp2ppp/3p1q2/p1nPpb2/P1P5/1PN2N2/1K2P1PP/R2Q1B1R b - - 2 11 : complètement gagnant pour les blancs
+r1b1k2r/p1p2ppp/3p4/2nPp3/2P1P3/8/PR1NBKPP/7R b kq - 6 15 : complètement gagnant pour les noirs
+r1bq1b1r/pppk4/2n2BQ1/8/3Pp3/8/PPP2PPP/RN2K2R b KQ - 0 11 : ça tient pour les noirs après Th6!
+7r/p1ppk1pp/1p2p3/2b1Pn2/4qP2/3B4/PPP3PP/RNB2Q1K b - - 0 1 : Cg3+!! pour Dg6!! (#7)
+rn2k2r/ppp1ppbp/4b1p1/3n2Bq/2NP3P/2N2P2/PPP1B1P1/R2QK2R b KQkq - 2 11 : dame noire enfermée (-> gagnant pour les blancs)
+rnb1k2r/ppp1ppbp/5np1/q7/2BP4/2N2N2/PPPB1PPP/R2QK2R b KQkq - 3 7 : c5! fort stratégiquement
+rnbq1rk1/2p1bppp/1pP1pn2/pP1p4/3P1B2/P1N1P2P/5PP1/R2QKBNR b KQ - 0 3 : pièces noirs aile dame enfermées à vie
+rn1q1rk1/2p1bppp/bp2pn2/pPPp4/3P1B2/P1N1P2P/5PP1/R2QKBNR b KQ - 0 2 : ici pas le choix, si on comprend que Fc8 on est enfermé, il faut faire Fb7 et sac en c6, ou sac direct en c5
+rnb3kr/ppppn1bp/5q2/8/5B2/2N2Q2/PPP3PP/4RRK1 w - - 3 14 : Ce4 ou Txe7!! gagnent (rnb3kr/pppp1qbp/8/3N4/5B2/5Q2/PPP3PP/5RK1 w - - 2 16 : Dg3! seul coup qui gagne, 1nb3kr/1ppp2bp/r6B/p7/3q4/2P3Q1/PP4PP/5R1K w - - 1 20 : Dg5!)
+2k5/r2p4/n7/P1r2b2/2p5/1pPp2Qq/3P3B/R3K1R1 w Q - 0 1 : Db8+!! #10
+r5k1/pp3pp1/1n1q3p/2pP1b2/8/1B3N2/PP3PPP/3RQ1K1 b - - 1 17 : c4!
+
+
+FIX:
+memory leak
+operateur new: 15-20% du temps de la reflexion...
+8/2R2k2/8/1p6/4P3/1PP2PP1/7r/q1B1KB2 b - - 1 45 : gagnant pour les noirs!
+r3k2r/pp1b1pp1/2n4p/1B2p3/7Q/2N5/PPP2PPP/2K5 w kq - 0 17 : gagnant pour les blancs
+r1b4r/ppp1k1p1/7p/3p4/8/5N2/PQP2PPP/6K1 b - - 0 18 : bien gagnant pour les blancs
+r1b3Q1/pp2k1pp/2pp1r2/8/8/5N2/P1P2PPP/6K1 b - - 1 19 : pareil
+r1b5/pp2k1pp/2p2r2/3p4/8/1Q3N2/P1P2PPP/6K1 w - - 0 19 : C+D en attaque contre 2 tours et fou en défense et différence de développement -> blancs mieux
+2r3k1/7p/7p/8/2r3P1/Q4P2/P4K2/8 w - - 0 35 : ici c'est nulle, car la dame ne fera pas souvent mieux que perpet si tout est défendu côté noir
+r7/5k2/7Q/8/6P1/6K1/8/r7 w - - 1 49 : nulle aussi
+r1bk1r2/ppppq3/5N2/4n1Q1/2n5/2p5/PPP3PP/4RRK1 w - - 1 22 : Cd5 gagne (quiescence trop courte)
+8/8/3k4/1p3R2/6PK/Pr6/8/8 b - - 2 66 : le roi doit rester proche du pion blanc passé (sinon ça perd)
+8/p6r/2pp1R2/6p1/2P1k3/8/P1PK4/8 b - - 3 31 : bien gagnant pour les noirs (faut savoir le gagner par contre...)
+2R5/8/8/2p3p1/p7/P3k3/1KP3r1/8 b - - 14 48 : pousse !!
+r1bq1b1r/ppp2Q2/2nk4/8/2BPp3/8/PPP2PPP/R1B3K1 b - d3 0 14 : gagnant pour les blancs
+6k1/4Npp1/3p1n1p/3p4/8/1P1R3P/5rPK/8 b - - 1 28 : faut aller en f8, pas h7! : 8/5ppk/3R3p/8/8/1r5P/6PK/8 w - - 0 32 ça c'est nulle (3v2 + tours), 8/4kpp1/3p3p/3R4/8/1P5P/5rPK/8 w - - 1 31 : ça non ! (pions passé -> win condition)
+Quand le buffer est plein, jouer le coup
+rnbqkb1r/5ppp/p3pn2/1p2P1B1/3N4/2N5/PPP3PP/R2QKB1R b KQkq - 0 9 : Dc7? ça tient
+Bug sur certains from_fen après réflexion
+rnbqk2r/pppp1ppp/8/3Pp1B1/2P1n3/8/PP2PKPP/RN1Q1BNR w kq - 1 3 : Re3 quasi gagne
+rnb1kb1r/ppp1pppp/5n2/q7/3P4/2N2N2/PPP2PPP/R1BQKB1R b KQkq - 2 5 : c6 ou Ff5 seuls coups qui tiennent (g6 aussi un peu)
+rnb2rk1/ppq1ppbp/5np1/2N5/2BP4/5N2/PPPB1PPP/R1Q1K2R b KQ - 2 10 : b6?? c'est juste une pièce
+r2q1rk1/pb2ppbp/1p3np1/2pP4/2Q2B2/2N2N2/PPP2PPP/3RR1K1 w - - 2 15 : blancs gagnants
+4rr1k/1ppq1pp1/1bnp3p/4Pb2/p2pNP2/P2BnNQ1/1PPB1RPP/4R2K b - - 1 18 : d5 enferme le cheval
+r1bq1rk1/pp2npp1/1b1p4/n5BQ/2pPP3/2NB3P/PP3PP1/3R1RK1 w - - 0 8 : Fb1 bien plus harmonieux que Fc2 (et bien meilleur): fou défendu et ne bloque rien
+2kr1b1r/1ppbn1p1/p2p3n/3Ppp1p/4P2q/N1PBBQ1P/PP2NP2/2K3RR w - - 0 14 : Fg5! pas vu? ça gagne la dame
+1k2Q3/2r5/p7/8/5PP1/8/P1p4K/8 b - - 9 52 : pion passé en c2 hyper fort...
+1r6/2p1rk2/2p3p1/p1N2bPp/P1PP4/8/5RKP/2R5 b - - 0 32 : noirs gagnants: tours très actives!
+r3r1k1/1qp1ppbp/p1p3p1/2BpN3/P2PbP2/1P2P3/2P3PP/2R1QRK1 w - - 0 17 : on a l'espace, il faut garder les dames avec les blancs. Db4 = faute!
+4r3/2p2k2/2p3p1/p1N2bPp/P1PP3P/8/2R2RK1/1r6 b - - 2 35 : Tee1 très fort
+king safety quand l'activité est si haute... à voir...
+rnb1r1k1/2p1qpnp/1pPbp1pB/pP1p4/3P2P1/P1NBPN1P/5P2/R2Q1RK1 w - - 3 9 : Ce5 est une erreur (long term activity surestimée? car on peut toujours sac une pièce pour sortir les 3)
+Améliorer les winnable avec des win conditions (en gros pions passés...) sinon il se retrouve dans des finales sans pions et ne trouve jamais de plan de gain
+Contre-jeu = incertitude: échecs ou menaces possibles... rnbk1r2/2p1q2p/1pP1p3/1P2Np1Q/2BPp3/4P2P/p4PP1/R3K2R b K - 3 19 : Db4 gagne...
+8/2kn4/2b5/8/8/7K/2Q3r1/5R2 w - - 0 54 : beaucoup plus difficile à gagner que 2b5/2kn1R2/2rp4/pp2p3/8/2P2Q2/PP4PP/7K w - b6 0 32 . pour tenir avec les noirs il faut tour garder défendu et attendre, c'est juste une forteresse
+2r5/2kb3K/8/8/8/1Q6/8/8 w - - 0 92 : nulle théorique
+1nb3kr/1ppp2bp/6rB/p5Q1/3q4/2P5/PP4PP/5R1K w - - 3 21 : ici la quiescence devrait voir mat en 2
+2R5/5pk1/3bp3/8/P4p1p/q5rP/5R1K/5Q2 b - - 1 60 : f3! : 8/5pk1/8/P2q4/4p2p/5prP/5R2/5Q1K w - - 0 69 cette position est clairement gagnante (#9)
+8/2kn4/2b5/8/2r5/P3Q1K1/2p3P1/5R2 b - - 3 48 : position nulle 6Q1/8/8/P7/2b5/1nr5/k1p5/2R3K1 w - - 1 60 : Txc2 seul coup qui tient (pion passé trop fort pour la dame)
+8/8/6Q1/P7/8/1b6/k1p4K/3r4 w - - 13 68 : pion passé inarrêtable, complètement sous-estimé!
+8/PK6/3k4/8/8/8/8/8 w - - 0 79 : a8 devrait augmenter le winnable (dame contre roi c'est gagnant)
+2b5/2kn1R2/2rp4/pp2p3/8/2P2Q2/PP4PP/7K w - b6 0 3 : regarder MadChess pour voir comment gagner proprement cette position...
+8/2k3p1/5p1p/3B3r/p3KP2/Bp6/6P1/8 w - - 0 37 : largement gagnant pour les noirs (pions passés)
+1kr4r/p4ppp/1p1Ppn2/1Bn1Nb2/8/Q3B3/P4PPP/5K2 b - - 1 19 : position hyper gagnante pour les blancs
+Re-augmenter le winnable en début de partie. Le fix de manière générale
+Passed pawns
+Ne plus stocker l'historique des positions -> into transpositions
+Opti eval
 
 
 Buffer:
@@ -1412,12 +1515,14 @@ Pour les noeuds, stocker l'indice du plateau dans le buffer plutôt que le pointe
 
 Recherche Lc0:
 2r1k2r/1p1bppb1/p2p1npp/q3n3/3NP1PP/2N1BP2/PPPQB3/1K1R3R w k - 2 3 : ici il met 3 ans à regarder chaque coup...
+rnbr2k1/2p1qp1p/1pPnp1pB/pP1pN3/3P2P1/2NBPQ1P/5PK1/R7 w - - 5 15 : ici encore pire...
 
 FIXED
 8/8/8/2k5/2pp1p2/3P1P2/3K4/8 w - - 2 82 : crash parfois après quelques coups?
 8/8/1K6/8/8/4k3/8/3q1q2 w - - 0 100 : ???
 r3k3/p1p1qpp1/2p5/1p2P3/3K4/7r/PPPPR3/R1BQ4 b q - 2 21 : Db4+ #2.. (fix quiescence?)
 r3k3/p1p2pp1/2p5/1p2P3/1qPK4/7r/PP1PR3/R1BQ4 b q - 0 22 : Dxc4# pas regardé par la quiescence?
+4rk2/7R/p3r1p1/1p3p2/3B3P/P1P2KP1/1P3P2/8 w - - 0 1 : gagant, 4r3/5k2/p5p1/1p3p2/3B3P/P1P2KP1/1P3P2/8 w - - 0 3 : moins bien, car on a echangé une paire de tours alors que les noirs l'avaient en double...
 
 rnbqkb1r/ppp2ppp/4pn2/3p4/2PP4/4PN2/PP3PPP/RNBQKB1R b KQkq - 0 4 : pourquoi Ce4
 
