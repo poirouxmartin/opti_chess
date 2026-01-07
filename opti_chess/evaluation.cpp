@@ -11,6 +11,7 @@ Evaluator::Evaluator(const Evaluator& other) {
 	_piece_mobility = other._piece_mobility;
 	_piece_positioning = other._piece_positioning;
 	_bishop_pair = other._bishop_pair;
+	_doubled_pieces = other._doubled_pieces;
 	_castling_rights = other._castling_rights;
 	_player_trait = other._player_trait;
 	_king_safety = other._king_safety;
@@ -39,12 +40,13 @@ Evaluator::Evaluator(const Evaluator& other) {
 }
 
 // Constructeur avec paramètres
-Evaluator::Evaluator(const float piece_value, const float piece_mobility, const float piece_positioning, const float bishop_pair, const float castling_rights, const float player_trait, const float king_safety, const float pawn_structure, const float attacks, const float defenses, const float kings_opposition, const float push, const float rook_open, const float square_controls, const float space_advantage, const float alignments, const float piece_activity, const float fianchetto, const float pawn_push_threats, const float king_proximity, const float rook_activity, const float bishop_pawns, const float weak_squares, const float bishop_activity, const float trapped_pieces, const float knight_activity, const float king_centralization, const float short_term_piece_mobility, const float long_term_piece_mobility, const float queen_safety) {
+Evaluator::Evaluator(const float piece_value, const float piece_mobility, const float piece_positioning, const float bishop_pair, const float doubled_pieces, const float castling_rights, const float player_trait, const float king_safety, const float pawn_structure, const float attacks, const float defenses, const float kings_opposition, const float push, const float rook_open, const float square_controls, const float space_advantage, const float alignments, const float piece_activity, const float fianchetto, const float pawn_push_threats, const float king_proximity, const float rook_activity, const float bishop_pawns, const float weak_squares, const float bishop_activity, const float trapped_pieces, const float knight_activity, const float king_centralization, const float short_term_piece_mobility, const float long_term_piece_mobility, const float queen_safety) {
 	// Initialise les paramètres d'évaluation
 	_piece_value = piece_value;
 	_piece_mobility = piece_mobility;
 	_piece_positioning = piece_positioning;
 	_bishop_pair = bishop_pair;
+	_doubled_pieces = doubled_pieces;
 	_castling_rights = castling_rights;
 	_player_trait = player_trait;
 	_king_safety = king_safety;
@@ -79,6 +81,7 @@ Evaluator& Evaluator::operator=(const Evaluator& other) {
 	_piece_mobility = other._piece_mobility;
 	_piece_positioning = other._piece_positioning;
 	_bishop_pair = other._bishop_pair;
+	_doubled_pieces = other._doubled_pieces;
 	_castling_rights = other._castling_rights;
 	_player_trait = other._player_trait;
 	_king_safety = other._king_safety;

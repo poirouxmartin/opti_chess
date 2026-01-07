@@ -12,6 +12,7 @@ public:
 	float _piece_mobility = 0.0f; // Redondant
 	float _piece_positioning = 0.10f;
 	float _bishop_pair = 35.0f;
+	float _doubled_pieces = 1.0f;
 	float _castling_rights = 0.0f; // Redondant
 	float _player_trait = 37.0f;
 	float _king_safety = 1.0f;
@@ -19,7 +20,7 @@ public:
 	float _attacks = 0.5f;
 	float _kings_opposition = 50.0f;
 	float _push = 1.0f;
-	float _open_files = 0.5f;
+	float _open_files = 1.0f;
 	float _square_controls = 0.2f;
 	float _space_advantage = 1.0f;
 	float _alignments = 0.7f;
@@ -28,7 +29,7 @@ public:
 	float _pawn_push_threats = 0.15f;
 	float _king_proximity = 0.4f;
 	float _king_centralization = 3.5f;
-	float _rook_activity = 0.04f;
+	float _rook_activity = 0.06f;
 	float _bishop_pawns = 1.5f;
 	float _weak_squares = 0.25f;
 	float _bishop_activity = 2.0f;
@@ -48,7 +49,10 @@ public:
 	int _pieces_value_end_open[6] = { 95, 425, 440, 680, 1350, 0 };
 
 	// Valeurs des pièces en fin de partie, en position fermée
-	int _pieces_value_end_closed[6] = { 105, 430, 410, 640, 1150, 0 };
+	int _pieces_value_end_closed[6] = { 105, 430, 410, 580, 1180, 0 };
+
+	// Malus pour le double d'une même pièce
+	int _doubled_piece_penalty[6] = { 0, 25, 0, 35, 50, 0 };
 
 	// Positionnement des pièces
 
@@ -347,7 +351,7 @@ public:
 	Evaluator(const Evaluator &evaluator);
 
 	// Constructeur avec paramètres
-	Evaluator(const float piece_value, const float piece_mobility = 0.0f, const float piece_positioning = 0.0f, const float bishop_pair = 0.0f, const float castling_rights = 0.0f, const float player_trait = 0.0f, const float king_safety = 0.0f, const float pawn_structure = 0.0f, const float attacks = 0.0f, const float defenses = 0.0f, const float kings_opposition = 0.0f, const float push = 0.0f, const float rook_open = 0.0f, const float square_controls = 0.0f, const float space_advantage = 0.0f, const float alignments = 0.0f, const float piece_activity = 0.0f, const float fianchetto = 0.0f, const float pawn_push_threats = 0.0f, const float king_proximity = 0.0f, const float rook_activity = 0.0f, const float bishop_pawns = 0.0f, const float weak_squares = 0.0f, const float bishop_activity = 0.0f, const float trapped_pieces = 0.0f, const float knight_activity = 0.0f, const float king_centralization = 0.0f, const float short_term_piece_mobility = 0.0f, const float long_term_piece_mobility = 0.0f, const float queen_safety = 0.0f);
+	Evaluator(const float piece_value, const float piece_mobility = 0.0f, const float piece_positioning = 0.0f, const float bishop_pair = 0.0f, const float doubled_pieces = 0.0f, const float castling_rights = 0.0f, const float player_trait = 0.0f, const float king_safety = 0.0f, const float pawn_structure = 0.0f, const float attacks = 0.0f, const float defenses = 0.0f, const float kings_opposition = 0.0f, const float push = 0.0f, const float rook_open = 0.0f, const float square_controls = 0.0f, const float space_advantage = 0.0f, const float alignments = 0.0f, const float piece_activity = 0.0f, const float fianchetto = 0.0f, const float pawn_push_threats = 0.0f, const float king_proximity = 0.0f, const float rook_activity = 0.0f, const float bishop_pawns = 0.0f, const float weak_squares = 0.0f, const float bishop_activity = 0.0f, const float trapped_pieces = 0.0f, const float knight_activity = 0.0f, const float king_centralization = 0.0f, const float short_term_piece_mobility = 0.0f, const float long_term_piece_mobility = 0.0f, const float queen_safety = 0.0f);
 
 	// Opérateur de copie
 	Evaluator& operator=(const Evaluator &evaluator);
