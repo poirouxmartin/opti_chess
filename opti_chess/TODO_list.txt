@@ -1458,6 +1458,20 @@ rn1q1rk1/2p1bppp/bp2pn2/pPPp4/3P1B2/P1N1P2P/5PP1/R2QKBNR b KQ - 0 2 : ici pas le
 rnb3kr/ppppn1bp/5q2/8/5B2/2N2Q2/PPP3PP/4RRK1 w - - 3 14 : Ce4 ou Txe7!! gagnent (rnb3kr/pppp1qbp/8/3N4/5B2/5Q2/PPP3PP/5RK1 w - - 2 16 : Dg3! seul coup qui gagne, 1nb3kr/1ppp2bp/r6B/p7/3q4/2P3Q1/PP4PP/5R1K w - - 1 20 : Dg5!)
 2k5/r2p4/n7/P1r2b2/2p5/1pPp2Qq/3P3B/R3K1R1 w Q - 0 1 : Db8+!! #10
 r5k1/pp3pp1/1n1q3p/2pP1b2/8/1B3N2/PP3PPP/3RQ1K1 b - - 1 17 : c4!
+2kr2nr/1ppn1ppp/p3pq2/2bP4/2P2P2/2N5/PP2B1PP/R1BQ1R1K b - - 3 16 : calmos avec le roi en c8: il est pas si pourri. Position quasi égale
+2kr4/1ppr1ppp/p4q2/B2P1n2/Q4PP1/5R2/Pb2B2P/2R4K w - - 0 26 : Tc6!! gagne (si Dd4 Txa6 est suivi)
+1k1r4/2pr1ppp/p7/B2P1n2/Q1Bq1PP1/5R2/Pb5P/7K w - - 0 29 : Tb3+! seul coup qui gagne
+8/1Qpk1p1p/3nr1p1/8/1B3PP1/P7/7P/3R3K w - - 5 42 : Fa5 le plus clean pour gagner: 4k3/2Q4p/3nr1p1/B4p2/5PP1/P7/7P/3R3K w - - 0 44 Fb4 #5
+8/8/5p2/1p1p2k1/p1pP1p2/P1P1nPpP/1P2R1P1/2K5 b - - 1 1 : Cxg2!! gagne
+r1bqk2r/pppp1ppp/2n2n2/2b1p3/4P3/P1N2N2/1PPP1PPP/R1BQKB1R w KQkq - 1 5 : Cxe5 important
+r1bqk2r/pppp1ppp/3b1n2/4n3/3PP3/P1N5/1PP2PPP/R1BQKB1R w KQkq - 1 7 : f4! seul coup pour avantage
+r1bqk2r/pppp1ppp/2n2b2/8/3P1P2/P1N5/1PP3PP/R1BQKB1R w KQkq - 0 10 : pareil, d5! important
+r1bqk2r/ppppnppp/8/3P4/5P2/P1P5/2P3PP/R1BQKB1R w KQkq - 1 12 : faut jouer avec Fb2 puis c4 sur d6
+r4rk1/p4ppp/1pqpb1n1/8/5P2/P1P3P1/2P2B1P/1R1QRBK1 w - - 0 22 : Fg2 seul coup qui gagne
+r1q2rk1/p4ppp/1p2b1n1/3p4/5P2/P1PQ2P1/2P2BBP/1R2R1K1 w - - 2 24 : h4! pour h5 h6 hyper fort
+r1qr1nk1/p4ppp/1p2b3/3p3P/5P2/P1PQ2P1/2P2BB1/1R2R1K1 w - - 1 26 : h6!! seul coup qui gagne
+r2r1nk1/p4p1p/1pq1b2p/3p4/3Q1P2/P1P3P1/2P2BB1/1R2R1K1 w - - 2 28 : De5! gagne profondément (Dh5 puis f5)
+r2r4/p4bk1/1p2np2/3p3B/5P2/P1q3PR/2P2B2/1R1Q2K1 b - - 0 34 : Th8 seul coup qui tient
 
 
 FIX:
