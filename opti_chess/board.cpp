@@ -2980,8 +2980,8 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 
 	constexpr float pawn_storm_danger = 1.5f;
 
-	int w_pawn_storm = get_pawn_storm(true) * pawn_storm_danger;
-	int b_pawn_storm = get_pawn_storm(false) * pawn_storm_danger;
+	int w_pawn_storm = get_pawn_storm(true) * pawn_storm_danger * w_attacking_potential;
+	int b_pawn_storm = get_pawn_storm(false) * pawn_storm_danger * b_attacking_potential;
 
 	//if (display_factor != 0.0f) {
 	//	main_GUI._eval_components += "Pawn storms: " + to_string(w_pawn_storm) + " / " + to_string(b_pawn_storm) + "\n";
@@ -4886,12 +4886,14 @@ int Board::get_alignments() const
 	// rnb1kbnr/pp1ppppp/2p5/q7/8/2NP4/PPPBPPPP/R2QKBNR b KQkq - 3 3
 	// r2qk2r/pb1pbpp1/1pn4n/2p1P2p/8/2NB1N1P/PP1BQPP1/3RR1K1 b kq - 2 13 : tour d1 en face de la dame
 
+	// r1b2b1r/pp3kpp/5q2/3pP3/8/P7/1PP1QPPP/R1B2RK1 b - - 0 16 : ????
+
 	// Valeurs des pièces clouées (TODO: prendre les autres valeurs par l'évaluation?)
 	constexpr int pinned_king = 120;
 	constexpr int pinned_queen = 100;
 	constexpr int pinned_rook = 25;
 	constexpr int pinned_bishop = 10;
-	constexpr int pinned_knight = 10;
+	constexpr int pinned_knight = 8;
 	constexpr int pinned_pawn = 3;
 
 	constexpr int pieces_values[6] = { pinned_pawn, pinned_knight, pinned_bishop, pinned_rook, pinned_queen, pinned_king };
@@ -4902,14 +4904,17 @@ int Board::get_alignments() const
 	// - valeur de la pièce faisant le clouage (si elle peut être prise par la pièce clouée)
 	// - valeur de la pièce mettant la pression sur la pièce clouée, si elle est de valeur inférieure (menace la prise)
 	constexpr int pressuring_values[6] = { 100, 300, 300, 500, 900, 10000};
-	constexpr float pressuring_factor = 1.5f;
+	constexpr float pressuring_factor = 1.5f; // FIXME *** trop?
+
+	// Puissance de bloquage des pièces alliées
+	constexpr float ally_block_values[6] = { 0.8f, 0.35f, 0.45f, 0.5f, 0.6f, 0.75f };
 
 	// Valeurs pour les pièces alliées
 	constexpr int ally_piece_value = 15;
 	constexpr int ally_pawn_value = 5;
 
 	// Puissance des clouages, par pièce
-	constexpr float bishop_power = 1.25f;
+	constexpr float bishop_power = 1.00f;
 	constexpr float rook_power = 1.0f;
 	constexpr float queen_power = 0.3f;
 
@@ -5015,6 +5020,7 @@ int Board::get_alignments() const
 				uint8_t previous_piece = 0;
 				bool is_previous_ally = true;
 				uint8_t distance = 1;
+				float ally_blocking_factor = 1.0f;
 
 				for (int j = 0; j < i; j++) {
 					uint8_t pinned_piece = pieces[j];
@@ -5028,9 +5034,10 @@ int Board::get_alignments() const
 
 					const float division_factor = pow(distance, 4);
 					const int pinned_piece_value = ally_piece ? ((pinned_piece - 1) % 6 == 0 ? ally_pawn_value : ally_piece_value) : pieces_values[(pinned_piece - 1) % 6];
+					ally_blocking_factor *= ally_piece ? (1 - ally_block_values[(pinned_piece - 1) % 6]) : 1.0f;
 
 					if (!ally_piece || !is_previous_ally) {
-						const int pin_value = pinning_piece_power * pinned_piece_value * previous_piece / division_factor;
+						const int pin_value = pinning_piece_power * pinned_piece_value * previous_piece / division_factor * ally_blocking_factor;
 
 						// Regarde s'il y a une pièce de valeur plus faible qui met la pression sur ce clouage
 						// Pour le moment on teste seulement avec les pions, sinon ça risque d'être vraiment lent
@@ -5045,11 +5052,14 @@ int Board::get_alignments() const
 						const int secondary_pressure = (j >= 6 || !secondary_piece) ? 0 : max(0, pressuring_values[(pieces[j + 1] - 1) % 6] - pinning_pressure_value);
 
 						// Pression finale = pression minimale entre les deux
-						const int result_pressure = min(pressure_value, secondary_pressure);
+						int result_pressure = min(pressure_value, secondary_pressure);
+
+						// Seulement en pression principale?
+						result_pressure *= distance == 1;
 
 						// N1b3R1/p2kp3/1pnp4/1B6/3PP3/8/P1P2PP1/b3K3 w - - 1 18
 
-						//cout << piece_name(pinned_piece) << (pinned_piece_color ? " (white) " : " (black) ") << " pinned by " << piece_name(pinning_piece) << (pinning_piece_color ? " (white)" : " (black)") << " on " << square_name(row, col) << ", base pressure: " << pressure_value << ", secondary pressure: " << secondary_pressure << " = " << result_pressure << " * " << pressuring_factor << " = " << pressuring_factor * result_pressure << " + pin value: " << pin_value << endl;
+						//cout << piece_name(pinned_piece) << (pinned_piece_color ? " (white) " : " (black) ") << " pinned by " << piece_name(pinning_piece) << (pinning_piece_color ? " (white)" : " (black)") << " on " << square_name(row, col) << ", base pressure: " << pressure_value << ", secondary pressure: " << secondary_pressure << " = " << result_pressure << " * " << pressuring_factor << " * d == 1 (d = " << (int)d << ") = " << pressuring_factor * result_pressure * (d == 1) << " + pin value: " << pin_value << endl;
 
 						// FIXME *** un clouage ne devrait pas dépasser la valeur de la pièce clouée
 						total_value += pin_value + pressuring_factor * result_pressure * !ally_piece;
@@ -10570,7 +10580,7 @@ int Board::get_open_files_on_opponent_king_at_column(bool player, int king_col) 
 int Board::get_king_placement_weakness_at_column(bool player, Pos king_pos) const {
 
 	// Paramétrage
-	constexpr float edge_adv = 0.9f;
+	constexpr float edge_adv = 0.7f;
 	constexpr float mult_endgame = 0.25f;
 
 	// Version additive, adaptée pour l'endgame
@@ -11747,4 +11757,6 @@ int Board::get_passed_pawns_count(bool color) const {
 // Fonction qui renvoie la valeur de l'évaluation liée aux pions passés
 int Board::get_passed_pawns_value(bool color) const {
 	// TODO ***
+
+	return 0;
 }
