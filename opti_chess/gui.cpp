@@ -1790,12 +1790,12 @@ void GUI::init_chess_sites() {
 	// Piece set "alpha"
 	ChessSite lichess_org;
 	lichess_org._name = "lichess.org";
-	lichess_org._white_tile_color = SimpleColor(191, 191, 166);
-	lichess_org._black_tile_color = SimpleColor(100, 124, 76);
-	lichess_org._white_piece_color = SimpleColor(208, 208, 208);
+	lichess_org._white_tile_color = SimpleColor(184, 184, 159);
+	lichess_org._black_tile_color = SimpleColor(96, 119, 73);
+	lichess_org._white_piece_color = SimpleColor(204, 204, 204);
 	lichess_org._black_piece_color = SimpleColor(13, 13, 13);
-	lichess_org._white_tile_played_color = SimpleColor(112, 160, 159);
-	lichess_org._black_tile_played_color = SimpleColor(59, 120, 106);
+	lichess_org._white_tile_played_color = SimpleColor(108, 160, 161);
+	lichess_org._black_tile_played_color = SimpleColor(56, 122, 110);
 	lichess_org._piece_location_on_tile = { 0.17f, 0.66f };
 	lichess_org._tile_location_on_tile = { 0.90f, 0.90f };
 	lichess_org._time_lost_per_move = 100;

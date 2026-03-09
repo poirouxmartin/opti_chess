@@ -16,7 +16,7 @@ void Node::add_child(Node* child, Move move) {
 	// FIXME: vérifier si le coup n'est pas déjà dans les enfants?
 	if (_children.contains(move)) {
 		cout << "move already in children" << endl;
-		return;
+        return;
 	}
 
 	if (child == nullptr) {
@@ -81,7 +81,7 @@ void Node::init_node() {
 }
 
 // Nouveau GrogrosZero
-void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network) {
+void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, robin_map<uint64_t, char> *position_history) {
 	// TODO:
 	// On peut rajouter la profondeur
 	// Garder le temps de calcul
@@ -101,11 +101,19 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	// Temps de calcul
 	const clock_t begin_monte_time = clock();
 
+	if (position_history == nullptr) {
+		position_history = new robin_map<uint64_t, char>();
+	}
+
+	// FIXME *** à voir si c'est nécessaire
+    _board->get_zobrist_key();
+    (*position_history)[_board->_zobrist_key] = 1;
+
 	// INITIALISATION
 	if (!_initialized) {
 		// FIXME *** faut-il return ici?
 
-		quiescence(board_buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network);
+		quiescence(board_buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, position_history);
 		_iterations++;
 		//_time_spent += clock() - begin_monte_time;
 
@@ -132,12 +140,12 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 
 		// EXPLORATION D'UN NOUVEAU COUP
 		if (get_fully_explored_children_count() < _board->_got_moves) {
-			explore_new_move(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network);
+			explore_new_move(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, position_history);
 		}
 
 		// EXPLORATION D'UN COUP DÉJÀ EXPLORÉ
 		else {
-			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network);
+			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, position_history);
 		}
 
 		iterations--;
@@ -154,10 +162,15 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 }
 
 // Fonction qui explore un nouveau coup
-void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network) {
+void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, robin_map<uint64_t, char> *position_history) {
 
 	// On prend le premier coup non exploré
 	const Move move = get_first_unexplored_move(true);
+
+    // Si le coup est irreversible, on vide l'historique des positions
+    if (_board->is_irreversible_move(move)) {
+        position_history->clear();
+    }
 
 	// Noeud fils
 	Node *child = nullptr;
@@ -185,36 +198,25 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 			return;
 		}
 
-		new_board->copy_data(*_board, false, true);
+        new_board->copy_data(*_board, false, true);
 		new_board->_is_active = true;
 		new_board->make_move(move, false, true);
 
-		// Cela transpose t-il dans une autre branche?
-		new_board->get_zobrist_key();
+        // Compute zobrist key for the new position before any history check
+		// FIXME *** pourquoi ça n'est pas recalculé?
+        new_board->get_zobrist_key();
 
-		// TEST: 8/2k5/3p4/p2P1p2/P2P1P2/8/3K4/8 w - - 10 6
-		// Quand on update un des noeuds, il faudra potentiellement backpropagate dans toutes les branches parentes...
-		// Gros problème de noeuds négatifs
+        // Si la position est déjà présente dans l'historique, on considère que c'est une nulle
+		// FIXME *** use contains?
+        //if (position_history->find(new_board->_zobrist_key) != position_history->end()) {
+        if (position_history->contains(new_board->_zobrist_key)) {
+			// TODO *** drawn evaluation
 
-		bool transpositions = false;
+			// 3Q2k1/5p1p/2p1p3/2p1P1pq/5P2/4K3/6PP/2r5 b - - 1 4 : position test
 
+			new_board->_game_over_value = draw;
+			new_board->_game_over_checked = true;
 
-		// Si la position est déjà dans la table de transposition
-		if (transpositions && transposition_table.contains(new_board->_zobrist_key)) {
-			cout << "transposition: "<< new_board->to_fen() << endl;
-
-			child = transposition_table._hash_table[new_board->_zobrist_key]._node;
-			
-			cout << "transposition nodes: " << child->_nodes << endl;
-			cout << "parent nodes: " << _nodes << endl;
-
-			//_nodes += child->_nodes;
-
-			//cout << "new transposition nodes: " << _nodes << endl;
-		}
-
-		// Sinon, on crée un nouveau noeud
-		else {
 			// Création du noeud fils
 			child = monte_node_buffer.get_first_free_node();
 
@@ -224,14 +226,57 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 			}
 
 			child->_board = new_board;
+			child->evaluate_position(eval, false, network, true);
+			child->_fully_explored = true;
+			child->_can_explore = false;
+			child->_is_terminal = true;
+		}
+
+        else {
+            // Add resulting position to history
+            (*position_history)[new_board->_zobrist_key] = 1;
+
+			// TEST: 8/2k5/3p4/p2P1p2/P2P1P2/8/3K4/8 w - - 10 6
+			// Quand on update un des noeuds, il faudra potentiellement backpropagate dans toutes les branches parentes...
+			// Gros problème de noeuds négatifs
+
+			bool transpositions = false;
 
 
-			// Ajoute la position dans la table
-			if (transpositions) {
-				transposition_table._hash_table[new_board->_zobrist_key] = ZobristEntry(child);
+			// Si la position est déjà dans la table de transposition
+			if (transpositions && transposition_table.contains(new_board->_zobrist_key)) {
+				cout << "transposition: " << new_board->to_fen() << endl;
+
+				child = transposition_table._hash_table[new_board->_zobrist_key]._node;
+
+				cout << "transposition nodes: " << child->_nodes << endl;
+				cout << "parent nodes: " << _nodes << endl;
+
+				//_nodes += child->_nodes;
+
+				//cout << "new transposition nodes: " << _nodes << endl;
 			}
 
-			//cout << "normal" << endl;
+			// Sinon, on crée un nouveau noeud
+			else {
+				// Création du noeud fils
+				child = monte_node_buffer.get_first_free_node();
+
+                if (child == nullptr) {
+                    cout << "null child in explore_new_move" << endl;
+                    return;
+                }
+
+				child->_board = new_board;
+
+
+				// Ajoute la position dans la table
+				if (transpositions) {
+					transposition_table._hash_table[new_board->_zobrist_key] = ZobristEntry(child);
+				}
+
+				//cout << "normal" << endl;
+			}
 		}
 	}
 
@@ -240,9 +285,10 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 	//child->_deep_evaluation._value = child->_board->quiescence(eval, -INT32_MAX, INT32_MAX, 4, true) * child->_board->get_color();
 	//child->_nodes = 1;
 
-	if (child == nullptr) {
-		cout << "null child and shouldn't be (explore_new_move)" << endl;
-	}
+    if (child == nullptr) {
+        cout << "null child and shouldn't be (explore_new_move)" << endl;
+        return;
+    }
 
 	if (!child->_fully_explored) {
 
@@ -252,13 +298,13 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		bool test = false;
 
 		if (test) {
-			child->quiescence(board_buffer, eval, 2, alpha, beta, -INT32_MAX, INT32_MAX, network); // TODO *** faire un cutoff plus facile, si l'éval de base est déjà mauvaise? par rapport à l'évaluation statique
+			child->quiescence(board_buffer, eval, 2, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, position_history); // TODO *** faire un cutoff plus facile, si l'éval de base est déjà mauvaise? par rapport à l'évaluation statique
 		}
 
 		// Si l'évaluation est meilleure que celle de base, on regarde la quiescence
 		if (!test || child->_static_evaluation._value * _board->get_color() > _static_evaluation._value * _board->get_color()) {
 
-			child->quiescence(board_buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network);
+			child->quiescence(board_buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, position_history);
 			//child->quiescence(buffer, eval, quiescence_depth / 2, alpha, beta, -INT32_MAX, INT32_MAX, network);
 
 			//// Si la quiescence est bonne, on recommande à vraie profondeur
@@ -376,7 +422,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 }
 
 // Fonction qui explore dans un plateau fils pseudo-aléatoire
-void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network) {
+void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, robin_map<uint64_t, char> *position_history) {
 
 	// Prend un fils aléatoire
 	const Move move = pick_random_child(alpha, beta, gamma);
@@ -389,8 +435,38 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	// Nombre de noeuds du fils
 	const int initial_child_nodes = child->_nodes;
 
-	// On explore ce fils
-	child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network); // L'évaluation du fils est mise à jour ici
+	// Si le coup est irreversible, on vide l'historique des positions
+	if (_board->is_irreversible_move(move)) {
+		position_history->clear();
+	}
+
+	// The child board should already have a zobrist key computed when created; ensure it
+	//child->_board->get_zobrist_key();
+
+	//3Q4/5pkp/2p1p3/2p1P1pq/5P2/4K3/6PP/2r5 w - - 2 5 : perpet
+
+	//// If resulting position already in history -> consider draw and do not recurse
+	//if (position_history->find(child->_board->_zobrist_key) != position_history->end()) {
+	//	// mark child as draw terminal (create or update)
+	//	child->_board->_game_over_value = draw;
+	//	child->_board->_game_over_checked = true;
+	//	child->evaluate_position(eval, false, network, true);
+	//	child->_fully_explored = true;
+	//	child->_can_explore = false;
+	//	child->_is_terminal = true;
+	//}
+	//else {
+	//	// Add child position to history
+	//	(*position_history)[child->_board->_zobrist_key] = 1;
+
+	//	// Explore child normally; grogros_zero will push/pop the child's key
+	//	child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, position_history); // L'évaluation du fils est mise à jour ici
+	//}
+
+
+	child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, position_history); // L'évaluation du fils est mise à jour ici
+
+
 
 	// Met à jour l'évaluation du plateau
 	//Evaluation best_eval = Evaluation();
@@ -648,7 +724,7 @@ int Node::get_ips() const {
 }
 
 // Quiescence search intégré à l'exploration
-int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network, bool evaluate_threats, int beta_margin) {
+int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network, bool evaluate_threats, int beta_margin, const robin_map<uint64_t, char>* position_history) { // FIXME *** why is it null here???
 	// TODO: comment gérer la profondeur? faire en fonction de l'importance de la branche?
 	// mettre aucune profondeur limite?
 	// pourquoi en endgame ça va si loin? il fait full échecs...
@@ -904,6 +980,20 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 			move_index++;
 
+
+			// 3Q4/5pkp/2p1p3/2p1P1pq/5P2/4K3/6PP/2r5 w - - 2 5 : perpet TEST
+
+			robin_map<uint64_t, char>* new_history = new robin_map<uint64_t, char>();
+
+			// Copy de l'historique pour le fils
+			if (position_history != nullptr) {
+				*new_history = *position_history;
+			}
+			
+			if (_board->is_irreversible_move(move)) {
+				new_history->clear();
+			}
+
 			//if (!move.is_checkmate() && !in_check) {
 			if (!move.is_checkmate()) {
 				// Test du delta pruning
@@ -962,18 +1052,54 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				new_board->_is_active = true;
 				new_board->make_move(move, false, true);
 
-				// Création du noeud fils
-				// REVIEW *** faut-il initialiser le noeud ici?
-				child = monte_node_buffer.get_first_free_node();
+				// Compute zobrist key for the new position before any history check
+				// FIXME *** pourquoi ça n'est pas recalculé?
+				new_board->get_zobrist_key();
 
-				if (child == nullptr) {
-					// Buffer plein
-					_time_spent += clock() - begin_monte_time;
-					cout << "node buffer full during quiescence!" << endl;
-					return alpha;
+				// Si la position est déjà présente dans l'historique, on considère que c'est une nulle
+				if (new_history->contains(new_board->_zobrist_key)) {
+					// TODO *** drawn evaluation
+
+					// 3Q2k1/5p1p/2p1p3/2p1P1pq/5P2/4K3/6PP/2r5 b - - 1 4 : position test
+
+					new_board->_game_over_value = draw;
+					new_board->_game_over_checked = true;
+
+					// Création du noeud fils
+					child = monte_node_buffer.get_first_free_node();
+
+					if (child == nullptr) {
+						cout << "null child in explore_new_move" << endl;
+						return alpha;
+					}
+
+					child->_board = new_board;
+					child->evaluate_position(eval, false, network, true);
+					child->_fully_explored = true;
+					child->_can_explore = false;
+					child->_is_terminal = true;
+
+					//cout << "quiescence: position already in history, draw by repetition after move " << _board->move_label(move) << ", from position " << _board->to_fen() << endl;
 				}
 
-				child->_board = new_board;
+				else {
+					// Add resulting position to history
+					(*new_history)[new_board->_zobrist_key] = 1;
+
+
+					// Création du noeud fils
+					// REVIEW *** faut-il initialiser le noeud ici?
+					child = monte_node_buffer.get_first_free_node();
+
+					if (child == nullptr) {
+						// Buffer plein
+						_time_spent += clock() - begin_monte_time;
+						cout << "node buffer full during quiescence!" << endl;
+						return alpha;
+					}
+
+					child->_board = new_board;
+				}
 
 				//cout << get_child_index(move) << endl;
 				add_child(child, move);
@@ -981,7 +1107,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 			// Appel récursif sur le fils
 			// FIXME *** à backpropagate seulement sur une profondeur plus petite que la profondeur utilisée pour la threat evaluation?
-			int score = - child->quiescence(board_buffer, eval, new_depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, beta_margin);
+			int score = - child->quiescence(board_buffer, eval, new_depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, beta_margin, new_history);
 			//int score = - child->quiescence(buffer, eval, depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, 0);
 			_nodes += child->_nodes;
 

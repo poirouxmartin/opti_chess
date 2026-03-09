@@ -106,13 +106,13 @@ public:
 	void init_node();
 
 	// Nouveau GrogrosZero
-	void grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int nodes, int quiescence_depth, Network* network = nullptr);
+	void grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int nodes, int quiescence_depth, Network* network = nullptr, robin_map<uint64_t, char> *position_history = nullptr);
 
 	// Fonction qui explore un nouveau coup
-	void explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr);
+	void explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, robin_map<uint64_t, char> *position_history = nullptr);
 
 	// Fonction qui explore dans un plateau fils pseudo-aléatoire
-	void explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr);
+	void explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, robin_map<uint64_t, char> *position_history = nullptr);
 
 	// Fonction qui renvoie le fils le plus exploré
 	Move get_most_explored_child_move();
@@ -136,7 +136,7 @@ public:
 	int get_ips() const;
 
 	// Quiescence search intégré à l'exploration
-	int quiescence(BoardBuffer* board_buffer, Evaluator* evaluator, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr, bool evaluate_threats = true, int beta_margin = 0);
+	int quiescence(BoardBuffer* board_buffer, Evaluator* evaluator, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr, bool evaluate_threats = true, int beta_margin = 0, const robin_map<uint64_t, char>* position_history = nullptr);
 	//void grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth);
 
 	// Fonction qui renvoie le nombre de noeuds fils complètement explorés
