@@ -1356,6 +1356,7 @@ r6k/p1p3pp/6n1/3Bp3/4P3/5r1q/P2PNP2/R1B1QRK1 w - - 1 20 : roi blanc qui sue (gag
 r1b1qbkr/ppp3pp/2n2n2/1B1pP3/3P4/2N5/PPP2PPP/R1BQ1RK1 b - - 4 9 : gagnant pour les blancs
 8/k1p5/2Q5/1pN5/p4K2/P7/q7/8 b - - 0 77 : c'est nulle (perpet partout)
 8/3k2b1/4p3/1p1pP1p1/pPpPp1Pp/K1P1P2P/5B2/8 w - - 0 47 : nulle (forteresse)
+r4rk1/pp1q1ppp/2pp1b2/3Pn3/P7/3B4/1PP1Q1PP/R1B2RK1 w - - 2 18 : Txf6 doit être tenté
 
 UI:
 Quand on reste appuyé sur une flèche, faire défiler la variante à vitesse constante
@@ -1458,7 +1459,7 @@ rn1q1rk1/2p1bppp/bp2pn2/pPPp4/3P1B2/P1N1P2P/5PP1/R2QKBNR b KQ - 0 2 : ici pas le
 rnb3kr/ppppn1bp/5q2/8/5B2/2N2Q2/PPP3PP/4RRK1 w - - 3 14 : Ce4 ou Txe7!! gagnent (rnb3kr/pppp1qbp/8/3N4/5B2/5Q2/PPP3PP/5RK1 w - - 2 16 : Dg3! seul coup qui gagne, 1nb3kr/1ppp2bp/r6B/p7/3q4/2P3Q1/PP4PP/5R1K w - - 1 20 : Dg5!)
 2k5/r2p4/n7/P1r2b2/2p5/1pPp2Qq/3P3B/R3K1R1 w Q - 0 1 : Db8+!! #10
 r5k1/pp3pp1/1n1q3p/2pP1b2/8/1B3N2/PP3PPP/3RQ1K1 b - - 1 17 : c4!
-2kr2nr/1ppn1ppp/p3pq2/2bP4/2P2P2/2N5/PP2B1PP/R1BQ1R1K b - - 3 16 : calmos avec le roi en c8: il est pas si pourri. Position quasi Ã©gale
+2kr2nr/1ppn1ppp/p3pq2/2bP4/2P2P2/2N5/PP2B1PP/R1BQ1R1K b - - 3 16 : calmos avec le roi en c8: il est pas si pourri. Position quasi égale
 2kr4/1ppr1ppp/p4q2/B2P1n2/Q4PP1/5R2/Pb2B2P/2R4K w - - 0 26 : Tc6!! gagne (si Dd4 Txa6 est suivi)
 1k1r4/2pr1ppp/p7/B2P1n2/Q1Bq1PP1/5R2/Pb5P/7K w - - 0 29 : Tb3+! seul coup qui gagne
 8/1Qpk1p1p/3nr1p1/8/1B3PP1/P7/7P/3R3K w - - 5 42 : Fa5 le plus clean pour gagner: 4k3/2Q4p/3nr1p1/B4p2/5PP1/P7/7P/3R3K w - - 0 44 Fb4 #5
@@ -1470,9 +1471,34 @@ r1bqk2r/ppppnppp/8/3P4/5P2/P1P5/2P3PP/R1BQKB1R w KQkq - 1 12 : faut jouer avec F
 r4rk1/p4ppp/1pqpb1n1/8/5P2/P1P3P1/2P2B1P/1R1QRBK1 w - - 0 22 : Fg2 seul coup qui gagne
 r1q2rk1/p4ppp/1p2b1n1/3p4/5P2/P1PQ2P1/2P2BBP/1R2R1K1 w - - 2 24 : h4! pour h5 h6 hyper fort
 r1qr1nk1/p4ppp/1p2b3/3p3P/5P2/P1PQ2P1/2P2BB1/1R2R1K1 w - - 1 26 : h6!! seul coup qui gagne
-r2r1nk1/p4p1p/1pq1b2p/3p4/3Q1P2/P1P3P1/2P2BB1/1R2R1K1 w - - 2 28 : De5! gagne profondÃ©ment (Dh5 puis f5)
+r2r1nk1/p4p1p/1pq1b2p/3p4/3Q1P2/P1P3P1/2P2BB1/1R2R1K1 w - - 2 28 : De5! gagne profondément (Dh5 puis f5)
 r2r4/p4bk1/1p2np2/3p3B/5P2/P1q3PR/2P2B2/1R1Q2K1 b - - 0 34 : Th8 seul coup qui tient
-
+r1b1r3/pp2kppp/8/2b1p3/3Nn3/2P1B3/PP3PPP/2KR1B1R w - - 0 7 : f3 ou Fd3 seuls coups
+r1b1rnk1/1pp1qppp/p2b1n2/3p4/3P4/2NBP1B1/PP2NPPP/2RQ1RK1 w - - 4 3 : Fh4 fort (clouage)
+r1b1kb1r/1p2p1pp/2n1P3/pB1q1p2/3N4/4Q3/PPP2PPP/3R1RK1 b kq - 1 14 : pas de coups pour les noirs
+r5nr/pb1k1pp1/7p/3N4/8/P2n4/Bb1BRPPP/R5K1 w - - 0 23 : Td1! gagne
+r5r1/pbq1kp2/4p3/1Qp4p/7P/2P3P1/PPB3P1/3RR1K1 b - - 0 3 : a6! suivi de Fxg2!! gagne
+Nettoyage du code
+8/ppk5/8/PPPp2p1/3Pp1P1/8/4K3/8 b - - 0 1 : a6! gagne
+3q3r/r5pp/bpnN3k/p1pp1Pb1/7P/1P1P1B2/P7/4Q1RK w Q - 0 1 : De7!! #3
+r5k1/1p3p1p/2p1r1pq/2Q5/N1P1Pn2/5P1P/PPBR4/5R1K b q - 0 1 : Cd3!! gagne
+6k1/5p2/8/1Q2p1p1/1p1qP1P1/5P1N/6KP/3b4 b - - 0 1 : bien gagnant pour les noirs (implémenter le pion passé). Ne surtout pas faire b3 (nulle)
+4Q3/5pk1/8/4p1p1/3qP1P1/1p3P2/2b2NKP/8 w - - 4 4 : Ch1!! seul coup qui tient
+2rq1r1k/4bp1p/p3np1Q/3pP3/3B3P/2p5/PPP5/2KR2R1 w - - 4 7 : Tg7!! seul coup (et qui gagne de loin en plus)
+2rqr1k1/p2nbppp/b4n2/2p5/3pP2N/1P4P1/PBQN1PBP/R3R1K1 w - - 0 16 : e5! quasi gagne (Cg4 -> e6!!)
+2rqr1k1/p2nbppp/b3P3/2p5/3p2nN/1P4P1/PBQN1PBP/R3R1K1 b - - 0 17 : Fxh4 seul coup pour tenter un peu de tenir (si Ce5, h3!)
+1nk5/b1p5/p1P5/K4N2/8/8/8/1R6 w - - 0 1 : Ce7! suivi de Txb8 et Cc8! gagne
+5bk1/1p3pp1/2p2n2/2Pp1P2/1PnN1q2/5P2/6KP/B3QB2 w - - 1 5 : foutu pour les blancs
+3qkb1r/p1r2ppp/2n1pn2/3p1b2/3P4/1QN1PN2/PP3PPP/R1B1KB1R w KQk - 0 10 : gagnant pour les blancs
+2rq1rk1/pb1nbppp/5n2/2pp2B1/8/P1NBPN2/1PQ2PPP/3R1RK1 w - - 0 8 : Ff5! gagne
+r1bqk2r/ppp2ppp/2n2n2/3pp3/Pb6/RPP1P3/3PNPPP/1NBQKB1R b Kkq - 0 6 : bon, faut quand-même prendre la tour ici...
+r3kb1r/pppq1ppp/2np4/3P1P2/P1B5/8/1PP3PP/R1BQ1RK1 b kq - 0 13 : eval buggée? à cause des alignements?
+r1bq1rk1/ppp1nppp/5n2/3p4/P2N4/BPP1P3/5PPP/1N1QKB1R w K - 1 10 : complètement gagnant pour les noirs, c'est une qualité sèche de plus
+r1b1k2r/pp1nb1pp/1qn1pp2/2ppP3/3P1P2/2PB1NK1/PP2N1PP/R1BQ3R b kq - 1 4 : quasi gagnant pour les blancs. mais il faut absolument ouvrir la position pour profiter du roi en g3 pour tenter quelque chose (g5!)
+r1b2rk1/pp1n2pp/1qn1pb2/3p4/3P1P2/3B1NK1/PP2N1PP/R1BQR3 b - - 2 7 : e5!! très important, on profite du roi blanc en g3!
+r1b2rk1/pp4pp/1qn2b2/3pP3/8/3B1NK1/PP2N1PP/R1BQR3 b - - 0 9 : Fh4+!!
+3r4/p4pkp/1p1rp1p1/3P4/3R4/1P3PKP/P4P2/3R4 w - - 0 14 : fxe6!! gagne
+r2r2k1/1b3p1p/pq1p2p1/1p2nN2/1P2P3/P6P/2BQ1PP1/R3R1K1 w - - 0 2 : Dh6!! (idée de poussser vers f6 et mater en g7)
 
 FIX:
 memory leak
@@ -1522,7 +1548,54 @@ Re-augmenter le winnable en début de partie. Le fix de manière générale
 Passed pawns
 Ne plus stocker l'historique des positions -> into transpositions
 Opti eval
+8/8/5p2/1p1p2k1/p1pP1p2/P1P1nPpP/1P2R1P1/2K5 b - - 1 1 : position qui fait bugger l'UI...
+r1bqk2r/1pp2pbp/p1n1p3/3pP2R/3P4/2N2N2/PPP2PP1/R1BQK3 b Qkq - 0 10 : il veut Rd7 qui perd instant?? -> remettre le roi comme bloquant long terme?
+FIXED: r1b2b1r/pp3kpp/5q2/3pP3/8/P7/1PP1QPPP/R1B2RK1 b - - 0 16 : piece alignment +1000??? bug
+FIXED: r1b2b1r/ppn2kp1/2p5/3nPq1p/4N3/PB6/1PP1QPPP/R1B2RK1 w - - 0 16 : regarder les alignements
+Opti les alignements (lent)
+r3q1r1/ppk5/2p1b3/4Pn1p/2P1Q3/1B6/PP3PPP/R2R2K1 b - - 1 23 : complètement gagnant pour les noirs, le roi noir est safe
+r1b2r2/pp2b3/4k1p1/3RP3/8/4B3/PP3PPP/R4K2 w - - 0 21 : complètement gagnant pour les noirs
+r2r1nk1/p4p1p/1pq1b2p/3pR3/3Q1P2/P1P3P1/2P2BB1/1R4K1 b - - 3 28 : f6 seul coup: les menaces ne sont pas vues! sur Cd7 il y aura du f5 pour enfermer le fou...
+r2r1nk1/p6p/1pq1bp1p/3p3R/3Q1P2/P1P3P1/2P2BB1/1R4K1 b - - 1 29 : pareil, Ff7 seul coup... ce fou est sur le point de se faire enfermer
+4r2r/p4k2/1pq1np2/3p3R/5PQ1/P5P1/2P2B2/4R1K1 w - - 4 39 : ça ça tient pour les noirs
+5rk1/4bp1p/2Q3pP/pBqPp3/P3P3/5P2/1r3P2/3R1RK1 b - - 0 12 : gagnant pour les blancs
+4r3/1p3pk1/p1p3p1/3p1n2/PP1P1P2/4P2p/5P1P/2R2RK1 w - - 0 20 : complètement gagnant pour les blancs
+6rk/4rppp/2q3P1/4p2P/1pNB3Q/1P6/2P2P2/4K1R1 b - - 0 2 : exd4?? complètement oublié
+6rk/5ppp/2qp2P1/7P/1pNBr1Qb/1P6/2P2P2/5KR1 w - - 0 2 : Dxe4!! aussi oublié
+4r1k1/b1p2pp1/1p5p/p1pP4/P1N5/1PPKBBP1/7P/8 w - - 0 27 complètement gagnant pour les blancs (fou en a7 perdu à vie)
+r2q1rk1/1pp2p2/p3pP1p/P2pPnNR/3P4/2PB4/1P1K1P2/2R5 b - - 1 20 : met 10 ans à comprendre qu'il est foutu
+8/pp1q1pk1/2p3pp/8/2P2Pb1/P2BR1P1/1P1R3P/6K1 b - - 2 28 : gagnant pour les noirs (Dd4!)
+r1b2rk1/pp3q1p/4p1pP/2ppp3/8/P1PB2Q1/2PB1PP1/R4K1R w - - 0 18 : hyper gagnant pour les blancs
+1r2n3/4bkp1/3pN3/p2Pp3/Pp6/1K1PB3/1P4RP/8 b - - 0 1 : gagnant pour les blancs
+2rr1k2/R3pp2/6p1/2P4p/3nN2P/5PP1/4PK2/3R4 b - - 0 2 : ça tient pour les noirs
+4n2R/1r3kp1/3pNb2/p2Pp3/PpK5/3PB3/1P5P/8 w - - 4 3 : gagnant pour les blancs (un simple Rb3 par exemple)
+R7/2rk2p1/3p1b2/p2Pp2P/Pp6/1K1PB3/1P6/8 b - - 1 11 : blancs gagnants
+8/4kp2/p3p3/2p4p/7P/2P1q3/PP4RK/3R4 b - - 2 11 : complètement gagnant pour les noirs
+Q2r4/1K4pp/5n2/8/1k6/3p4/6PP/R7 b - - 0 45 : juste gagnant hyper facilement pour les noirs
+3r2k1/1p3p1p/2p1r1p1/8/N1P1P3/Q4P1P/PP1q4/1B3R1K b - - 3 4 : tout gagne pour les noirs, et de beaucoup
+Ouvrir la position quand on a une avance de développement, ou un roi plus safe
+2rq1rk1/4bp1p/p4p1Q/2npP3/3B3P/2p5/PPP5/2KR3R b - - 1 5 : réseau de mat -> gagnant pour les blancs
+r2qr1k1/1pp2pp1/p3pnnp/8/P2PP3/5NPQ/1B3PKP/R3R3 w - - 3 23 : déjà quasi perdant pour les blancs
+4r1k1/3n1pp1/ppq1p1np/8/P3P3/2B2NPQ/5PKP/2R5 w - - 3 32 : hyper perdant pour les blancs, mais ne s'en rend pas compte, la dame ne fait rien en h3
+r1bq1rk1/pp2ppbp/2n3p1/2p5/4PP2/2PPpN1P/PPQ1N1P1/R3KB1R w KQ - 0 5 : roi blanc au centre, faut surtout pas ouvrir avec d4, faut garder la position fermée (g3 pour anticiper e5)
+r1bq1rk1/pp2ppbp/2n3p1/2p5/4PPP1/2PPpN1P/PPQ1N3/R3KB1R b KQ - 0 5 : e5! gagne
+r2q1rk1/pb3pbp/2n3p1/1pp1pP2/4P1PP/2PPpN2/PPQ1N3/R3KB1R w KQ - 1 8 : O-O-O y'a b5! faut faire Dc1! tient
+8/K1R5/8/3k4/8/8/8/8 b - - 0 6 : euuuuh?? il pense que c'est quasi draw là?? c'est tour v roi..
+Revoir le evaluate threat pour qu'il soir plus puissant?
+Nettoyer tout le code dans l'exploration
+r2qkbnr/1b1p1ppp/p1n1p3/1pp5/P3P3/2NP1N1P/1PP1BPP1/R1BQK2R b KQkq a3 0 7 : b4 pas vu?
+r3kbnr/1bqp1ppp/p1n1p3/2p5/P3P3/2BP1N1P/1PP1BPP1/R2QK2R w KQkq - 1 11 : complètement gagnant pour les noirs, 1r3rk1/1bqpn1pp/p1nb1p2/2p1p3/P1N1P3/2PPB2P/2P1BPP1/1R1QK2R b K - 11 16 : pareil
+3Q4/5pkp/2p1p3/2p1P1pq/5P2/4K3/6PP/2r5 w - - 6 7 : tri des coups pas si ouf ici ? Df6 est un safe check, il devrait être regardé plus tôt
 
+
+Comment intégrer la répétition de coups dans la quiescence? Puisque c'est une recherche en profondeur, la modification de l'historique risque de tout casser...
+Par ailleurs, il faudrait peut-être ne pas cut quand on est proche d'une perpet possible, pour la détecter plus rapidement
+
+Faire par IA:
+- Tests
+- Cleaning du code et des algos
+- Mettre toutes les fonctions d'évaluation dans evaluation.cpp
+- Mieux séparer tout le code contenu dans Board.cpp
 
 Buffer:
 Pour les noeuds, stocker l'indice du plateau dans le buffer plutôt que le pointeur vers le plateau

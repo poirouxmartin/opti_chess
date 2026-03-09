@@ -40,16 +40,16 @@ public:
 	float _queen_safety = 0.7f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi), en position ouverte
-	int _pieces_value_begin_open[6] = { 90, 400, 430, 580, 1185, 0 };
+	int _pieces_value_begin_open[6] = { 90, 400, 430, 610, 1185, 0 };
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi), en position fermée
-	int _pieces_value_begin_closed[6] = { 90, 420, 410, 520, 1050, 0 };
+	int _pieces_value_begin_closed[6] = { 90, 420, 410, 550, 1050, 0 };
 
 	// Valeurs en fin de partie, en position ouverte
-	int _pieces_value_end_open[6] = { 95, 425, 440, 750, 1350, 0 };
+	int _pieces_value_end_open[6] = { 95, 425, 440, 760, 1390, 0 };
 
 	// Valeurs des pièces en fin de partie, en position fermée
-	int _pieces_value_end_closed[6] = { 105, 430, 410, 620, 1180, 0 };
+	int _pieces_value_end_closed[6] = { 105, 430, 410, 660, 1280, 0 };
 
 	// Malus pour le double d'une même pièce
 	int _doubled_piece_penalty[6] = { 0, 25, 0, 35, 50, 0 };
