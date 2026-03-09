@@ -71,9 +71,9 @@ void Board::copy_data(const Board& b, bool full, bool copy_history) {
 	memcpy(_bitboards, b._bitboards, sizeof(_bitboards));
 	memcpy(_occupancies, b._occupancies, sizeof(_occupancies));
 
-	if (copy_history) {
-		_positions_history = b._positions_history;
-	}
+	//if (copy_history) {
+	//	_positions_history = b._positions_history;
+	//}
 
 	if (full) {
 		_is_active = b._is_active;
@@ -1221,7 +1221,7 @@ inline void Board::make_move(const Move& move, const bool pgn, const bool add_to
 	if (is_pawn(p) || p_last) {
 		_half_moves_count = 0;
 		if (add_to_history) {
-			reset_positions_history();
+			//reset_positions_history();
 		}
 	}
 	else {
@@ -1231,7 +1231,7 @@ inline void Board::make_move(const Move& move, const bool pgn, const bool add_to
 		// Ajoute la position actuelle dans l'historique
 		if (add_to_history) {
 			get_zobrist_key();
-			_positions_history.push_back(_zobrist_key);
+			//_positions_history.push_back(_zobrist_key);
 		}
 	}
 
@@ -2239,8 +2239,8 @@ int Board::game_over(int max_repetitions) {
 	_game_over_checked = true;
 
 	// Règle des 3 répétitions
-	if (repetition_count() >= max_repetitions)
-		return draw;
+	//if (repetition_count() >= max_repetitions)
+	//	return draw;
 
 	// Calcule les coups légaux
 	if (_got_moves == -1)
@@ -2496,7 +2496,7 @@ void Board::reset_board(const bool display) {
 	_sorted_moves = false;
 	_zobrist_key = 0;
 
-	reset_positions_history();
+	//reset_positions_history();
 
 	if (display)
 		cout << "board reset done" << endl;
@@ -7444,30 +7444,30 @@ bool Board::is_legal(Move move) {
 }
 
 // Fonction qui reset l'historique des positions
-void Board::reset_positions_history() {
-	_positions_history.clear();
-	_positions_history.shrink_to_fit();
-}
+//void Board::reset_positions_history() {
+//	//_positions_history.clear();
+//	_positions_history.shrink_to_fit();
+//}
 
 // Fonction qui renvoie combien de fois la position actuelle a été répétée
-int Board::repetition_count() {
-
-	// FIXME: faut-il faire ça là? ça a peut-être déjà été fait...
-	get_zobrist_key();
-
-	return count(_positions_history.begin(), _positions_history.end(), _zobrist_key) + 1; // +1 pour la position actuelle
-}
+//int Board::repetition_count() {
+//
+//	// FIXME: faut-il faire ça là? ça a peut-être déjà été fait...
+//	get_zobrist_key();
+//
+//	return count(_positions_history.begin(), _positions_history.end(), _zobrist_key) + 1; // +1 pour la position actuelle
+//}
 
 // Affiche l'histoirque des positions (les clés de Zobrist)
-void Board::display_positions_history() const
-{
-	cout << "Positions history:" << endl;
-
-	for (auto const& x : _positions_history)
-	{
-		cout << x << endl;
-	}
-}
+//void Board::display_positions_history() const
+//{
+//	cout << "Positions history:" << endl;
+//
+//	for (auto const& x : _positions_history)
+//	{
+//		cout << x << endl;
+//	}
+//}
 
 // Fonction qui renvoie l'affichage de l'évaluation
 string Board::evaluation_to_string(int eval) const {
@@ -11759,4 +11759,60 @@ int Board::get_passed_pawns_value(bool color) const {
 	// TODO ***
 
 	return 0;
+}
+
+// Fonction qui renvoie si un coup modifie (fait perdre) les droits de roque
+bool Board::does_move_change_castling_rights(const Move& move) const noexcept {
+	// Moving piece
+	const uint8_t p = _array[move.start_row][move.start_col];
+
+	// King move: only matters if that side still has any castling rights
+	if (is_king(p)) {
+		if ((p == w_king) && (_castling_rights.k_w || _castling_rights.q_w)) return true;
+		if ((p == b_king) && (_castling_rights.k_b || _castling_rights.q_b)) return true;
+		return false;
+	}
+
+	// Rook move from original square
+	if (is_rook(p)) {
+		if (p == w_rook) {
+			if (move.start_row == 0 && move.start_col == 0 && _castling_rights.q_w) return true;
+			if (move.start_row == 0 && move.start_col == 7 && _castling_rights.k_w) return true;
+		}
+		else if (p == b_rook) {
+			if (move.start_row == 7 && move.start_col == 0 && _castling_rights.q_b) return true;
+			if (move.start_row == 7 && move.start_col == 7 && _castling_rights.k_b) return true;
+		}
+	}
+
+	// Capture of rook on original square (normal captures)
+	if (move.is_capture()) {
+		const uint8_t captured = _array[move.end_row][move.end_col];
+		if (captured == w_rook) {
+			if (move.end_row == 0 && move.end_col == 0 && _castling_rights.q_w) return true;
+			if (move.end_row == 0 && move.end_col == 7 && _castling_rights.k_w) return true;
+		}
+		else if (captured == b_rook) {
+			if (move.end_row == 7 && move.end_col == 0 && _castling_rights.q_b) return true;
+			if (move.end_row == 7 && move.end_col == 7 && _castling_rights.k_b) return true;
+		}
+	}
+
+	return false;
+}
+
+// Fonction qui renvoie si un coup est irréversible (pour la détection rapide de répétitions)
+bool Board::is_irreversible_move(const Move& move) const noexcept {
+	const uint8_t p = _array[move.start_row][move.start_col];
+
+	// Any pawn move
+	if (is_pawn(p)) return true;
+
+	// Any capture
+	if (move.is_capture()) return true;
+
+	// Any move that changes castling rights
+	if (does_move_change_castling_rights(move)) return true;
+
+	return false;
 }

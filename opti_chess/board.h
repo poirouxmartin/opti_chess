@@ -620,7 +620,7 @@ public:
 
 	// Historique des positions
 	// FIXME *** pourquoi parfois c'est hyper lent? et pourquoi j'utilise un vecteur plutôt qu'un robin hash?
-	vector<uint64_t> _positions_history = {};
+	//vector<uint64_t> _positions_history = {};
 	//unordered_map<uint_fast64_t, int> _positions_history = {};
 
 	// FIXME *** des variables dummy pour l'alignement mémoire, sinon il fait des new vector hyper lents à chaque création de plateau
@@ -879,13 +879,13 @@ public:
 	bool is_legal(Move move);
 
 	// Fonction qui reset l'historique des positions
-	void reset_positions_history();
+	//void reset_positions_history();
 
 	// Fonction qui renvoie combien de fois la position actuelle a été répétée
-	int repetition_count();
+	//int repetition_count();
 
 	// Affiche l'histoirque des positions (les clés de Zobrist)
-	void display_positions_history() const;
+	//void display_positions_history() const;
 
 	// Quiescence search pour l'algo de GrogrosZero
 	//int grogros_quiescence(Evaluator* eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool explore_checks = true, bool main_player = true);
@@ -1044,8 +1044,15 @@ public:
 	int get_passed_pawns_count(bool color) const;
 
 	// Fonction qui renvoie la valeur de l'évaluation liée aux pions passés
+	// TODO
 	int get_passed_pawns_value(bool color) const;
 
+	// Fonction qui renvoie si un coup est irréversible (pour la détection rapide de répétitions)
+	// Irreversible = pawn move, capture (y compris en-passant), promotion, ou coup faisant perdre les droits de roque
+	bool is_irreversible_move(const Move& move) const noexcept;
+
+	// Fonction qui renvoie si un coup modifie (fait perdre) les droits de roque
+	bool does_move_change_castling_rights(const Move& move) const noexcept;
 
 	// TODO *** faire un piece_safety plus générique?
 
