@@ -10,7 +10,7 @@ public:
 	// Coefficients des heuristiques
 	float _piece_value = 1.0f;
 	float _piece_mobility = 0.0f; // Redondant
-	float _piece_positioning = 0.10f;
+	float _piece_positioning = 0.05f;
 	float _bishop_pair = 35.0f;
 	float _doubled_pieces = 1.0f;
 	float _castling_rights = 0.0f; // Redondant
@@ -36,23 +36,23 @@ public:
 	float _trapped_pieces = 0.55f;
 	float _knight_activity = 0.5f;
 	float _short_term_piece_mobility = 0.05f;
-	float _long_term_piece_mobility = 0.2f;
+	float _long_term_piece_mobility = 0.20f;
 	float _queen_safety = 0.7f;
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi), en position ouverte
-	int _pieces_value_begin_open[6] = { 90, 400, 430, 610, 1185, 0 };
+	int _pieces_value_begin_open[6] = { 100, 415, 430, 610, 1185, 0 };
 
 	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi), en position fermée
-	int _pieces_value_begin_closed[6] = { 90, 420, 410, 550, 1050, 0 };
+	int _pieces_value_begin_closed[6] = { 100, 430, 410, 550, 1050, 0 };
 
 	// Valeurs en fin de partie, en position ouverte
-	int _pieces_value_end_open[6] = { 95, 425, 440, 760, 1390, 0 };
+	int _pieces_value_end_open[6] = { 105, 425, 440, 760, 1390, 0 };
 
 	// Valeurs des pièces en fin de partie, en position fermée
 	int _pieces_value_end_closed[6] = { 105, 430, 410, 660, 1280, 0 };
 
 	// Malus pour le double d'une même pièce
-	int _doubled_piece_penalty[6] = { 0, 25, 0, 35, 50, 0 };
+	int _doubled_piece_penalty[6] = { 0, 10, 0, 25, 50, 0 };
 
 	// Positionnement des pièces
 

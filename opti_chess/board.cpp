@@ -2752,7 +2752,7 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	constexpr float activity_attacking_factor = 1.0f;
 	constexpr float activity_protection_factor = 0.5f;
 
-	const int activity = activity_diff > 0 ? pow(activity_diff / 100, 0.5) * 100 : -pow(-activity_diff / 100, 0.5) * 100;
+	const int activity = activity_diff > 0 ? pow(activity_diff / 100.0, 0.5) * 100 : -pow(-activity_diff / 100.0, 0.5) * 100;
 
 	const int w_activity = activity > 0 ? activity * activity_protection_factor : activity * activity_attacking_factor;
 	const int b_activity = activity < 0 ? -activity * activity_protection_factor : -activity * activity_attacking_factor;
@@ -2808,6 +2808,7 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	// *** OVERLOADS ***
 	// -----------------
 
+	// TODO *** fonction pour ça
 	//rnq1k2r/pp2bp2/2p5/3p4/5Pb1/P2P1NPp/1PP4K/R1BQ1R1N b kq - 0 17 : overload sur notre propre pion h3??...
 	// r3k2r/ppqn3n/3b1p2/2ppp1p1/4P2p/P2P1P1P/1PPBBN1K/R1NQ1R2 b kq - 5 22 : overload +495???
 
@@ -3085,7 +3086,7 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	
 
 	// Faiblesses long terme:
-	int b_long_term_weakness = w_pawn_storm + w_open_lines + w_open_diagonals - b_king_protection + b_placement_weakness + b_virtual_mobility + b_weak_squares + b_rank_weakness - b_space - b_activity;
+	int b_long_term_weakness = w_pawn_storm + w_open_lines + w_open_diagonals - b_king_protection + b_placement_weakness + b_virtual_mobility + b_weak_squares + b_rank_weakness - b_space;
 
 	// Faiblesse accentuée quand les rois sont éloignés
 	b_long_term_weakness *= long_term_weakness_distance_factor;
@@ -3116,13 +3117,12 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 		main_GUI._eval_components += " + Rank weakness (TODO): " + to_string(b_rank_weakness);
 		main_GUI._eval_components += " + Mating nets (TODO): " + to_string(0);
 		main_GUI._eval_components += " - Space: " + to_string(b_space);
-		main_GUI._eval_components += " - Activity: " + to_string(b_activity);
 		main_GUI._eval_components += ") * Kings distance : " + to_string(long_term_weakness_distance_factor);
 		main_GUI._eval_components += " = " + to_string(b_long_term_weakness) + "\n";
 	}
 
 	// Attaque court terme:
-	int b_short_term_weakness = w_checks + w_attacking_overload + b_king_overloaded;
+	int b_short_term_weakness = w_checks + w_attacking_overload + b_king_overloaded - b_activity;
 
 	// Faiblesse accentuée quand les rois sont éloignés
 	b_short_term_weakness *= short_term_weakness_distance_factor;
@@ -3146,6 +3146,7 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 		main_GUI._eval_components += "Checks: " + to_string(w_checks);
 		main_GUI._eval_components += " + Attack : " + to_string(w_attacking_overload);
 		main_GUI._eval_components += " + Overload : " + to_string(b_king_overloaded);
+		main_GUI._eval_components += " - Activity: " + to_string(b_activity);
 		main_GUI._eval_components += ") * Kings distance : " + to_string(short_term_weakness_distance_factor);
 		main_GUI._eval_components += " = " + to_string(b_short_term_weakness) + "\n";
 	}
@@ -3168,7 +3169,7 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	}
 
 	// Faiblesses long terme:
-	int w_long_term_weakness = b_pawn_storm + b_open_lines + b_open_diagonals - w_king_protection + w_placement_weakness + w_virtual_mobility + w_weak_squares + w_rank_weakness - w_space - w_activity;
+	int w_long_term_weakness = b_pawn_storm + b_open_lines + b_open_diagonals - w_king_protection + w_placement_weakness + w_virtual_mobility + w_weak_squares + w_rank_weakness - w_space;
 
 	// Faiblesse accentuée quand les rois sont éloignés
 	w_long_term_weakness *= long_term_weakness_distance_factor;
@@ -3198,13 +3199,12 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 		main_GUI._eval_components += " + Rank weakness (TODO): " + to_string(w_rank_weakness);
 		main_GUI._eval_components += " + Mating nets (TODO): " + to_string(0);
 		main_GUI._eval_components += " - Space: " + to_string(w_space);
-		main_GUI._eval_components += " - Activity: " + to_string(w_activity);
 		main_GUI._eval_components += ") * Kings distance : " + to_string(long_term_weakness_distance_factor);
 		main_GUI._eval_components += " = " + to_string(w_long_term_weakness) + "\n";
 	}
 
 	// Attaque court terme:
-	int w_short_term_weakness = b_checks + b_attacking_overload + w_king_overloaded;
+	int w_short_term_weakness = b_checks + b_attacking_overload + w_king_overloaded - w_activity;
 
 	// Faiblesse accentuée quand les rois sont éloignés
 	w_short_term_weakness *= short_term_weakness_distance_factor;
@@ -3229,6 +3229,7 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 		main_GUI._eval_components += "Checks: " + to_string(b_checks);
 		main_GUI._eval_components += " + Attack : " + to_string(b_attacking_overload);
 		main_GUI._eval_components += " + Overload : " + to_string(w_king_overloaded);
+		main_GUI._eval_components += " - Activity: " + to_string(w_activity);
 		main_GUI._eval_components += ") * Kings distance : " + to_string(short_term_weakness_distance_factor);
 		main_GUI._eval_components += " = " + to_string(w_short_term_weakness) + "\n";
 	}
@@ -3801,9 +3802,10 @@ int Board::get_pawn_structure(float display_factor)
 	// Pions connectés
 	// Un pion est dit connecté, s'il y a un pion de la même couleur sur une colonne adjacente sur la même rangée ou la rangée inférieure
 	constexpr int connected_pawns[8] = { 0, 10, 65, 135, 150, 200, 275, 0 };
-	constexpr float connected_pawns_factor = 0.2f; // En fonction de l'advancement de la partie
-	const float connected_pawns_adv = eval_from_progress(1, _adv, connected_pawns_factor);
+	constexpr float connected_pawns_adv_factor = 0.2f; // En fonction de l'advancement de la partie
+	const float connected_pawns_adv = eval_from_progress(1, _adv, connected_pawns_adv_factor);
 	constexpr float column_connection_value[8] = { 0.15f, 0.25f, 0.55f, 1.25f, 1.25f, 0.55f, 0.25f, 0.15f };
+	constexpr float connected_pawns_factor = 0.85f;
 
 	float connected_pawns_value = 0.0f;
 
@@ -3931,7 +3933,7 @@ int Board::get_pawn_structure(float display_factor)
 	if (display_factor != 0.0f)
 		main_GUI._eval_components += "connected pawns: " + (connected_pawns_value >= 0 ? string("+") : string()) + to_string(static_cast<int>(connected_pawns_value * display_factor)) + "\n";
 
-	pawn_structure += connected_pawns_value;
+	pawn_structure += connected_pawns_value * connected_pawns_factor;
 
 	// TODO *** les facteurs multiplicatifs par avancement devraient être ajoutés à la fin
 
@@ -10672,7 +10674,7 @@ SquareMap Board::get_blocked_pawns(bool color) const {
 
 
 // Fonction qui prend une map de pions/pièces bloquées, la met à jour en fonction des nouvelles pièces bloquées, et renvoie si une ou plusieurs pièces y ont été ajoutées
-bool Board::update_blocked_pieces(SquareMap& blocked_pieces, bool color) const {
+bool Board::update_blocked_pieces(SquareMap& blocked_pieces, bool color, SquareMap opponent_controls) const {
 
 	// rn1qkbnr/pbp1p1p1/1p1pPpPp/3P1P2/8/8/PPP4P/RNBQKBNR b KQkq - 0 10
 
@@ -10685,7 +10687,7 @@ bool Board::update_blocked_pieces(SquareMap& blocked_pieces, bool color) const {
 		for (uint8_t col = 0; col < 8; col++) {
 			uint8_t piece = _array[row][col];
 
-			if (!is_white(piece) == color || piece == none || is_king(piece) || blocked_pieces._array[row][col]) {
+			if (!is_white(piece) == color || piece == none || blocked_pieces._array[row][col]) {
 				continue;
 			}
 			
@@ -10751,7 +10753,6 @@ bool Board::update_blocked_pieces(SquareMap& blocked_pieces, bool color) const {
 
 			// Dame
 			else if (is_queen(piece)) {
-
 				bool is_blocked = true;
 
 				for (uint8_t m = 0; m < 8 && is_blocked; m++) {
@@ -10770,6 +10771,26 @@ bool Board::update_blocked_pieces(SquareMap& blocked_pieces, bool color) const {
 					new_blocked = true;
 				}
 			}
+
+			// Roi
+			else if (is_king(piece)) {
+				bool is_blocked = true;
+
+				for (uint8_t m = 0; m < 8 && is_blocked; m++) {
+
+					int new_row = row + all_directions[m][0];
+					int new_col = col + all_directions[m][1];
+
+					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && !blocked_pieces._array[new_row][new_col] && !opponent_controls._array[new_row][new_col]) {
+						is_blocked = false;
+						break;
+					}
+				}
+				if (is_blocked) {
+					blocked_pieces._array[row][col] = 1;
+					new_blocked = true;
+				}
+			}
 		}
 	}
 
@@ -10777,31 +10798,207 @@ bool Board::update_blocked_pieces(SquareMap& blocked_pieces, bool color) const {
 }
 
 // Fonction qui renvoie toutes la map de toutes les pièces bloquées
-SquareMap Board::get_all_blocked_pieces(bool color) const {
+SquareMap Board::get_all_blocked_pieces(bool color, SquareMap opponent_controls) const {
 
-	// rn1qkbnr/pbp1p1pr/1p1pPpPp/3P1P1P/8/8/PPP5/RNBQKBNR b KQkq - 0 12 : ici sont bloqués: Fou f8, Cavalier g8, Tour h8 et Tour h7. Problème, les tours ne se considèrent pas entre elles comme bloquantes...
+	// FIXME *** comment détcter quand deux pièces se bloquent mutuellement ? (ex: deux tours côte à côte, ou une tour et un cavalier côte à côte) -> actuellement, elles ne se considèrent pas comme bloquantes entre elles
+	// TODO *** autre façon de procéder :
+	// - map de toutes les pièces ayant aucun coup légal + map des "nouvelles" pièces ayant au moins un coup légal
+	// - tant que la map des nouvelles pièces débloquées n'est pas vide (et l'autre non plus)
+	// - on itère sur la map des pièces bloquées, et on regarde parmi les nouvelles pièces débloquées si elles débloquent une pièce bloquée
+	
+	// rn1qkbnr/pbp1p1pr/1p1pPpPp/3P1P1P/8/8/PPP5/RNBQKBNR b KQkq - 0 12 : ici sont bloqués: Fou f8, Cavalier g8, Tour h8 et Tour h7 et des pions. Problème, les tours ne se considèrent pas entre elles comme bloquantes...
 	// rn1qkbnr/pbp1p1pn/1p1pPpPp/3P1PpP/6P1/8/PPP5/RNBQKBNR b KQkq - 0 12 : ici sont bloqués: Fou f8, Cavalier g8, Tour h8 et le cavalier en h7
+	// b1N3kr/7p/6pB/4p3/8/8/PP3P1P/4K3 w - - 0 32 : roi bloqué et tour bloquée derrière (après Cd6)
+	// 6kr/7p/3N3B/3b4/8/8/8/6K1 w - - 0 1 : même cas, mais simplifié
 
-	// Map des pions bloqués
-	SquareMap blocked_pieces = get_blocked_pawns(color);
+	//// Map des pions bloqués
+	//SquareMap blocked_pieces = get_blocked_pawns(color);
 
-	//cout << "initial " << (color ? "white" : "black") << " blocked pawns:" << endl;
-	//blocked_pieces.print();
+	////cout << "initial " << (color ? "white" : "black") << " blocked pawns:" << endl;
+	////blocked_pieces.print();
 
-	// Tant qu'on trouve de nouvelles pièces bloquées
-	while (true) {
-		bool new_blocked = update_blocked_pieces(blocked_pieces, color);
+	//// TODO *** a reflechir: pourquoi on commencerait par les pions ?
+	//// Pourquoi on regarde par les rois dans l'update ? -> en fonction des cases controllées, le roi peut ne plus pouvoir bouger
 
-		if (!new_blocked) {
-			//cout << "done" << endl;
-			break;
-		}
+	//// Tant qu'on trouve de nouvelles pièces bloquées
+	//while (true) {
+	//	bool new_blocked = update_blocked_pieces(blocked_pieces, color, opponent_controls);
 
-		//cout << "new blocked pieces:" << endl;
+	//	if (!new_blocked) {
+	//		//cout << "done" << endl;
+	//		break;
+	//	}
+
+	//	//cout << "new blocked pieces:" << endl;
+	//	//blocked_pieces.print();
+	//}
+
+
+	SquareMap blocked_pieces;
+
+	bool update = true;
+
+	while (update) {
+		update = get_blocked_and_unblocked_pieces(blocked_pieces, color, opponent_controls);
+
+		//cout << "blocked pieces for " << (color ? "white" : "black") << ":" << endl;
 		//blocked_pieces.print();
 	}
 
+	// -1 -> 0 (pas considérées)
+	for (uint8_t row = 0; row < 8; row++) {
+		for (uint8_t col = 0; col < 8; col++) {
+			if (blocked_pieces._array[row][col] == -1) {
+				blocked_pieces._array[row][col] = 0;
+			}
+		}
+	}
+
+	//cout << "final blocked pieces for " << (color ? "white" : "black") << ":" << endl;
+	//blocked_pieces.print();
+
 	return blocked_pieces;
+}
+
+// Fonction qui renvoie la map de toutes les pièces actuellement bloquées (1), nouvellement débloquées (-1)
+bool Board::get_blocked_and_unblocked_pieces(SquareMap& pieces_states, bool color, SquareMap opponent_controls) const {
+	
+	// Blocked pieces: pieces with no legal moves, while allowing unblocked pieces' squares
+
+	// Y a t-il au moins une pièce débloquée ?
+	bool has_unblocked_pieces = false;
+	bool has_blocked_pieces = false;
+
+	for (uint8_t row = 0; row < 8; row++) {
+		for (uint8_t col = 0; col < 8; col++) {
+			uint8_t piece = _array[row][col];
+
+			if (!is_ally(piece, color) || piece == none || pieces_states._array[row][col] == -1) {
+				continue;
+			}
+
+			// Pion
+			if (is_pawn(piece)) {
+				int forward_row = row + (color ? 1 : -1);
+
+				// Si le pion est bloqué
+				if ((_array[forward_row][col] != none && pieces_states._array[forward_row][col] != -1) && !(col > 0 && is_enemy(_array[forward_row][col - 1], color)) && !(col < 7 && is_enemy(_array[forward_row][col + 1], color))) {
+					pieces_states._array[row][col] = 1;
+					has_blocked_pieces = true;
+				}
+				else {
+					pieces_states._array[row][col] = -1;
+					has_unblocked_pieces = true;
+				}
+			}
+
+			// Cavalier
+			else if (is_knight(piece)) {
+				pieces_states._array[row][col] = 1;
+
+				for (uint8_t m = 0; m < 8; m++) {
+					int new_row = row + knight_directions[m][0];
+					int new_col = col + knight_directions[m][1];
+
+					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && (!is_ally(_array[new_row][new_col], color) || pieces_states._array[new_row][new_col] == -1)) {
+						pieces_states._array[row][col] = -1;
+						has_unblocked_pieces = true;
+						break;
+					}
+				}
+
+				if (!has_blocked_pieces && pieces_states._array[row][col] == 1) {
+					has_blocked_pieces = true;
+				}
+			}
+
+			// Fou
+			else if (is_bishop(piece)) {
+				pieces_states._array[row][col] = 1;
+
+				for (uint8_t m = 0; m < 4; m++) {
+					int new_row = row + diag_directions[m][0];
+					int new_col = col + diag_directions[m][1];
+
+					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && (!is_ally(_array[new_row][new_col], color) || pieces_states._array[new_row][new_col] == -1)) {
+						pieces_states._array[row][col] = -1;
+						has_unblocked_pieces = true;
+						break;
+					}
+				}
+
+
+				if (!has_blocked_pieces && pieces_states._array[row][col] == 1) {
+					has_blocked_pieces = true;
+				}
+			}
+
+			// Tour
+			else if (is_rook(piece)) {
+				pieces_states._array[row][col] = 1;
+
+				for (uint8_t m = 0; m < 4; m++) {
+					int new_row = row + rect_directions[m][0];
+					int new_col = col + rect_directions[m][1];
+
+					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && (!is_ally(_array[new_row][new_col], color) || pieces_states._array[new_row][new_col] == -1)) {
+						pieces_states._array[row][col] = -1;
+						has_unblocked_pieces = true;
+						break;
+					}
+				}
+
+
+				if (!has_blocked_pieces && pieces_states._array[row][col] == 1) {
+					has_blocked_pieces = true;
+				}
+			}
+
+			// Dame
+			else if (is_queen(piece)) {
+				pieces_states._array[row][col] = 1;
+
+				for (uint8_t m = 0; m < 8; m++) {
+					int new_row = row + all_directions[m][0];
+					int new_col = col + all_directions[m][1];
+
+					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && (!is_ally(_array[new_row][new_col], color) || pieces_states._array[new_row][new_col] == -1)) {
+						pieces_states._array[row][col] = -1;
+						has_unblocked_pieces = true;
+						break;
+					}
+				}
+
+
+				if (!has_blocked_pieces && pieces_states._array[row][col] == 1) {
+					has_blocked_pieces = true;
+				}
+			}
+
+			// Roi
+			else if (is_king(piece)) {
+				pieces_states._array[row][col] = 1;
+
+				for (uint8_t m = 0; m < 8; m++) {
+
+					int new_row = row + all_directions[m][0];
+					int new_col = col + all_directions[m][1];
+
+					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && (!is_ally(_array[new_row][new_col], color) || pieces_states._array[new_row][new_col] == -1) && !opponent_controls._array[new_row][new_col]) {
+						pieces_states._array[row][col] = -1;
+						has_unblocked_pieces = true;
+						break;
+					}
+				}
+
+				if (!has_blocked_pieces && pieces_states._array[row][col] == 1) {
+					has_blocked_pieces = true;
+				}
+			}
+		}
+	}
+
+	return has_unblocked_pieces && has_blocked_pieces;
 }
 
 // Fonction qui renvoie la map des cases controlées par les pions
@@ -10834,8 +11031,10 @@ SquareMap Board::get_pawns_controls(bool color) const {
 // Fonction qui renvoie la mobilité réelle des pièces (court terme)
 int Board::get_short_term_piece_mobility(bool display) const {
 
+	// 3n1krr/1p1bq2p/1Pp1p1pP/2Pp1pP1/3P1P1N/3BP3/Q4K1R/R7 w - - 9 8 : ici elle est quand-même pourrie la mobilité des noirs...
+	
 	// Importance de la mobilité réelle (en fonction des coups possibles réels; ne traverse aucune pièce)
-	static constexpr int pawn_real_mobility[5] = { 0, 0, 0, 0, 0 };
+	static constexpr int pawn_real_mobility[5] = { -10, 0, 0, 0, 0 };
 	static constexpr int knight_real_mobility[9] = { -250, -100, -35, 0, 28, 37, 43, 47, 50 };
 	static constexpr int bishop_real_mobility[15] = { -300, -120, -50, -10, 15, 20, 25, 30, 35, 37, 40, 42, 45, 47, 50 };
 	static constexpr int rook_real_mobility[15] = { -230, -95, -50, 10, 15, 20, 25, 30, 35, 37, 40, 42, 45, 47, 50 };
@@ -11058,19 +11257,32 @@ int Board::get_short_term_piece_mobility(bool display) const {
 // Fonction qui renvoie la mobilité virtuelle des pièces (long terme)
 int Board::get_long_term_piece_mobility(bool display) const {
 
+	// TEST: b1N3kr/7p/6pB/4p3/8/8/PP3P1P/4K3 w - - 0 32 ici après Cd6, roi et tour bloqués
+	// 2r2rk1/1pqbb3/p3pp2/3pP1p1/7p/P1N1Q2P/1PP2PP1/3R1KBR w - - 0 24 : activité pourrie pour les blancs
+	// r1bqkbnr/pp3pp1/4p2p/3pP3/8/2N5/PPP2PPP/R1BQKB1R w KQkq - 0 8 : pas si grave pour les noirs
+	// r1bq1rk1/pp3ppp/2n2n2/1Bb1p3/8/2N2N2/PPPP1PPP/R1BQ1RK1 w - - 6 8
+	// r1bqkb1r/pppp1ppp/2n2n2/8/4P3/4QP2/PPP3PP/RNB1KBNR b KQkq - 0 5 : légèrement mieux aux noirs
+	//display = true;
 	// Importance de la mobilité virtuelle (à travers toutes les pièces non bloquées)
-	static constexpr int pawn_virtual_mobility[5] = { 0, 0, 0, 0, 0 };
-	static constexpr int knight_virtual_mobility[9] = { -1350, -350, -100, 65, 110, 125, 135, 143, 150 };
-	static constexpr int bishop_virtual_mobility[15] = { -1350, -450, -200, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180 };
-	static constexpr int rook_virtual_mobility[15] = { -2350, -750, -300, 35, 50, 65, 75, 85, 95, 105, 115, 125, 135, 145, 155 };
-	static constexpr int queen_virtual_mobility[29] = { -4500, -2000, -500, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250 };
-	static constexpr int king_virtual_mobility[9] = { -500, -100, 0, 10, 20, 29, 37, 44, 50 };
+	static constexpr int pawn_virtual_mobility[5] = { 0, 0, 0, 0, 0 }; // 2 de base
+	static constexpr int knight_virtual_mobility[9] = { -1350, -300, -80, 70, 110, 125, 135, 143, 150 }; // 2.35
+	static constexpr int bishop_virtual_mobility[15] = { -1350, -450, 0, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180 }; // 2.1
+	static constexpr int rook_virtual_mobility[15] = { -2350, -750, 0, 20, 50, 65, 75, 85, 95, 105, 115, 125, 135, 145, 155 }; // 2.7
+	static constexpr int queen_virtual_mobility[29] = { -4500, -2000, -1100, -500, -250, -50, 65, 100, 130, 145, 158, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250 }; // 5.3
+	static constexpr int king_virtual_mobility[9] = { -1000, -300, 0, 25, 45, 50, 55, 60, 65 }; // 2.35
 
 	static const int* virtual_mobilities[6] = { pawn_virtual_mobility, knight_virtual_mobility, bishop_virtual_mobility, rook_virtual_mobility, queen_virtual_mobility, king_virtual_mobility };
 
+	// Compte de la mobilité après avoir rencontré une pièce
+	static constexpr float blocking_piece_mult[7] = { 1.0f, 0.4f, 0.65f, 0.55f, 0.45f, 0.35f, 0.1f }; // En fonction du type de pièce rencontrée (rien, pion, cavalier, fou, tour, dame, roi)
+
+	// Map des contrôles des pièces (pour le roi)
+	SquareMap white_pieces_controls = get_white_controls_map();
+	SquareMap black_pieces_controls = get_black_controls_map();
+
 	// Map des pièces bloquées
-	SquareMap white_blocked_pieces = get_all_blocked_pieces(true);
-	SquareMap black_blocked_pieces = get_all_blocked_pieces(false);
+	SquareMap white_blocked_pieces = get_all_blocked_pieces(true, black_pieces_controls);
+	SquareMap black_blocked_pieces = get_all_blocked_pieces(false, white_pieces_controls);
 
 	// Map des contrôles de pions
 	SquareMap white_pawns_controls = get_pawns_controls(true);
@@ -11089,7 +11301,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 				continue;
 			}
 
-			int piece_mobility = 0;
+			float piece_mobility = 0.0f;
 
 			// Pion blanc
 			if (piece == w_pawn) {
@@ -11106,7 +11318,8 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					int new_col = col + knight_directions[m][1];
 
 					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && white_blocked_pieces._array[new_row][new_col] == 0 && !black_pawns_controls._array[new_row][new_col]) {
-						piece_mobility++;
+						uint8_t target_piece = _array[new_row][new_col];
+						piece_mobility += blocking_piece_mult[piece_type(target_piece)];
 					}
 				}
 			}
@@ -11120,6 +11333,8 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					int new_row = row + d_row;
 					int new_col = col + d_col;
 
+					float cumulative_blocking_factor = 1.0f;
+
 					while (is_in(new_row, 0, 7) && is_in(new_col, 0, 7)) {
 						uint8_t p = _array[new_row][new_col];
 
@@ -11127,8 +11342,12 @@ int Board::get_long_term_piece_mobility(bool display) const {
 							break;
 						}
 
+						if (p != none) {
+							cumulative_blocking_factor *= blocking_piece_mult[piece_type(p)];
+						}
+
 						if (!black_pawns_controls._array[new_row][new_col]) {
-							piece_mobility++;
+							piece_mobility += cumulative_blocking_factor;
 						}
 
 						new_row += d_row;
@@ -11146,6 +11365,8 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					int new_row = row + d_row;
 					int new_col = col + d_col;
 
+					float cumulative_blocking_factor = 1.0f;
+
 					while (is_in(new_row, 0, 7) && is_in(new_col, 0, 7)) {
 						uint8_t p = _array[new_row][new_col];
 
@@ -11153,8 +11374,12 @@ int Board::get_long_term_piece_mobility(bool display) const {
 							break;
 						}
 
+						if (p != none) {
+							cumulative_blocking_factor *= blocking_piece_mult[piece_type(p)];
+						}
+
 						if (!black_pawns_controls._array[new_row][new_col]) {
-							piece_mobility++;
+							piece_mobility += cumulative_blocking_factor;
 						}
 
 						new_row += d_row;
@@ -11169,8 +11394,9 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					int new_row = row + all_directions[m][0];
 					int new_col = col + all_directions[m][1];
 
-					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && white_blocked_pieces._array[new_row][new_col] == 0 && !black_pawns_controls._array[new_row][new_col]) {
-						piece_mobility++;
+					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && white_blocked_pieces._array[new_row][new_col] == 0 && !black_pieces_controls._array[new_row][new_col]) {
+						uint8_t target_piece = _array[new_row][new_col];
+						piece_mobility += blocking_piece_mult[piece_type(target_piece)];
 					}
 				}
 			}
@@ -11190,7 +11416,8 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					int new_col = col + knight_directions[m][1];
 
 					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && black_blocked_pieces._array[new_row][new_col] == 0 && !white_pawns_controls._array[new_row][new_col]) {
-						piece_mobility++;
+						uint8_t target_piece = _array[new_row][new_col];
+						piece_mobility += blocking_piece_mult[piece_type(target_piece)];
 					}
 				}
 			}
@@ -11204,6 +11431,8 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					int new_row = row + d_row;
 					int new_col = col + d_col;
 
+					float cumulative_blocking_factor = 1.0f;
+
 					while (is_in(new_row, 0, 7) && is_in(new_col, 0, 7)) {
 						uint8_t p = _array[new_row][new_col];
 
@@ -11211,8 +11440,12 @@ int Board::get_long_term_piece_mobility(bool display) const {
 							break;
 						}
 
+						if (p != none) {
+							cumulative_blocking_factor *= blocking_piece_mult[piece_type(p)];
+						}
+
 						if (!white_pawns_controls._array[new_row][new_col]) {
-							piece_mobility++;
+							piece_mobility += cumulative_blocking_factor;
 						}
 
 						new_row += d_row;
@@ -11230,6 +11463,8 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					int new_row = row + d_row;
 					int new_col = col + d_col;
 
+					float cumulative_blocking_factor = 1.0f;
+
 					while (is_in(new_row, 0, 7) && is_in(new_col, 0, 7)) {
 						uint8_t p = _array[new_row][new_col];
 
@@ -11237,8 +11472,12 @@ int Board::get_long_term_piece_mobility(bool display) const {
 							break;
 						}
 
+						if (p != none) {
+							cumulative_blocking_factor *= blocking_piece_mult[piece_type(p)];
+						}
+
 						if (!white_pawns_controls._array[new_row][new_col]) {
-							piece_mobility++;
+							piece_mobility += cumulative_blocking_factor;
 						}
 
 						new_row += d_row;
@@ -11253,22 +11492,48 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					int new_row = row + all_directions[m][0];
 					int new_col = col + all_directions[m][1];
 
-					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && black_blocked_pieces._array[new_row][new_col] == 0 && !white_pawns_controls._array[new_row][new_col]) {
-						piece_mobility++;
+					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && black_blocked_pieces._array[new_row][new_col] == 0 && !white_pieces_controls._array[new_row][new_col]) {
+						uint8_t target_piece = _array[new_row][new_col];
+						piece_mobility += blocking_piece_mult[piece_type(target_piece)];
 					}
 				}
 			}
 
-			if (display) {
-				cout << piece_name(piece) << " on " << square_name(row, col) << ", mobility: " << piece_mobility << endl;
-			}
+			//if (display) {
+			//	cout << piece_name(piece) << " on " << square_name(row, col) << ", mobility: " << piece_mobility << endl;
+			//}
+
+			const int low_bound = static_cast<int>(piece_mobility);
+			const int high_bound = low_bound + 1;
+			const float fractional_part = piece_mobility - low_bound;
+
 
 			// Ajout de la mobilité de la pièce
 			if (is_white(piece)) {
-				white_mobility += virtual_mobilities[piece - 1][piece_mobility];
+
+				// Moyenne entre les valeurs avant et après
+				const int lower_bound_value = virtual_mobilities[piece - 1][low_bound];
+				const int upper_bound_value = virtual_mobilities[piece - 1][high_bound];
+				const int interpolated_value = static_cast<int>(lower_bound_value + (upper_bound_value - lower_bound_value) * fractional_part);
+
+				white_mobility += interpolated_value;
+
+				if (display) {
+					cout << "WHITE: " << piece_name(piece) << " on " << square_name(row, col) << ", mobility: " << piece_mobility << ", bounds: [" << lower_bound_value << ", " << upper_bound_value << "], value: " << interpolated_value << endl;
+				}
 			}
 			else if (is_black(piece)) {
-				black_mobility += virtual_mobilities[piece - 7][piece_mobility];
+
+				// Moyenne entre les valeurs avant et après
+				const int lower_bound_value = virtual_mobilities[piece - 7][low_bound];
+				const int upper_bound_value = virtual_mobilities[piece - 7][high_bound];
+				const int interpolated_value = static_cast<int>(lower_bound_value + (upper_bound_value - lower_bound_value) * fractional_part);
+
+				black_mobility += interpolated_value;
+
+				if (display) {
+					cout << "BLACK: " << piece_name(piece) << " on " << square_name(row, col) << ", mobility: " << piece_mobility << ", bounds: [" << lower_bound_value << ", " << upper_bound_value << "], value: " << interpolated_value << endl;
+				}
 			}
 		}
 	}

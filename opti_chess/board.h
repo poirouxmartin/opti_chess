@@ -52,6 +52,11 @@ constexpr bool is_black(uint8_t piece) noexcept {
 	return piece >= b_pawn;
 }
 
+// Fonction qui renvoie le type de la pièce (none -> none, w_pawn -> pawn, b_pawn -> pawn, etc...)
+constexpr inline uint8_t piece_type(uint8_t piece) noexcept {
+	return piece ? ((piece - 1) % 6 + 1) : 0;
+}
+
 // ------------------- Type -------------------
 constexpr inline bool is_pawn(uint8_t piece) noexcept { return piece == w_pawn || piece == b_pawn; }
 constexpr inline bool is_knight(uint8_t piece) noexcept { return piece == w_knight || piece == b_knight; }
@@ -996,10 +1001,13 @@ public:
 	SquareMap get_blocked_pawns(bool color) const;
 
 	// Fonction qui prend une map de pions/pièces bloquées, la met à jour en fonction des nouvelles pièces bloquées, et renvoie si une ou plusieurs pièces y ont été ajoutées
-	bool update_blocked_pieces(SquareMap& blocked_pieces, bool color) const;
+	bool update_blocked_pieces(SquareMap& blocked_pieces, bool color, SquareMap opponent_controls) const;
 
 	// Fonction qui renvoie toutes la map de toutes les pièces bloquées
-	SquareMap get_all_blocked_pieces(bool color) const;
+	SquareMap get_all_blocked_pieces(bool color, SquareMap opponent_controls) const;
+
+	// Fonction qui update la map de toutes les pièces actuellement bloquées (1), nouvellement débloquées (-1), et renvoie si une ou plusieurs pièces ont été ajoutées ou retirées de la map
+	bool get_blocked_and_unblocked_pieces(SquareMap &pieces_states, bool color, SquareMap opponent_controls) const;
 
 	// Fonction qui renvoie la map des cases controlées par les pions
 	SquareMap get_pawns_controls(bool color) const;

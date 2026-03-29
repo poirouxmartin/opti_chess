@@ -1363,6 +1363,7 @@ Quand on reste appuyé sur une flèche, faire défiler la variante à vitesse consta
 Vérifer les promotions de variantes qui bug
 Bindings: afficher sur quel site il pense avoir bindé
 Pouvoir annuler les click/binding (CTRL+Y?)
+Afficher le numéro de version dans l'UI
 
 ENDGAME EVALUTION:
 8/p7/1p3p2/2p1p1k1/P1P1P3/1P3KP1/8/8 b - - 0 1 : gagnant pour les noirs
@@ -1437,7 +1438,7 @@ r4rk1/1pqb1ppp/p1nbpn2/3pN3/3P1B2/2N3Q1/PPP1BPPP/R4RK1 b - - 5 14 : Cxd4! gagne
 r1b1nrk1/1pq2ppp/p1nbp3/3pN3/3P1B2/2NB2Q1/PPP2PPP/3R1RK1 b - - 9 16 : f6! gagne
 r1b3k1/ppp2ppp/8/8/4r2q/2P1B3/PP2QPP1/R4RK1 b - - 1 16 : Fh3!! gagne
 r2q1b1r/pb2k1pp/1p1pp3/1B2p3/3QP3/2N2R2/PPP2PPP/R5K1 w - - 2 17 : Cd5!! gagne
-2r2b2/3R2p1/5pk1/2p5/1pP2BP1/pP5r/P6P/4R1K1 w - - 1 27 : Re2 Tc3 Te2 puis y'a plus de coups pour les noirs, la tour se fera enfermer
+2r2b2/3R2p1/5pk1/2p5/1pP2BP1/pP5r/P6P/4R1K1 w - - 1 27 : Rg2 Tc3 Te2 puis y'a plus de coups pour les noirs, la tour se fera enfermer
 N2q1k1r/1b1n1ppp/3P4/2b5/2Q1n3/4P3/PP3PPP/R1B1KBNR b KQ - 0 12 : Da5+! quasi gagnant
 q6r/3nkppp/3b4/8/2B5/4PN2/PP3KPP/R1BR4 w - - 2 19 : position quasi égale
 r1bqkb1r/ppp3pp/2n5/3pp3/2B1R3/5N2/PPPP1PPP/R1BQ2K1 w kq - 0 9 : Cxe5 gagne
@@ -1499,6 +1500,7 @@ r1b2rk1/pp1n2pp/1qn1pb2/3p4/3P1P2/3B1NK1/PP2N1PP/R1BQR3 b - - 2 7 : e5!! très im
 r1b2rk1/pp4pp/1qn2b2/3pP3/8/3B1NK1/PP2N1PP/R1BQR3 b - - 0 9 : Fh4+!!
 3r4/p4pkp/1p1rp1p1/3P4/3R4/1P3PKP/P4P2/3R4 w - - 0 14 : fxe6!! gagne
 r2r2k1/1b3p1p/pq1p2p1/1p2nN2/1P2P3/P6P/2BQ1PP1/R3R1K1 w - - 0 2 : Dh6!! (idée de poussser vers f6 et mater en g7)
+rnb2rk1/4q1pp/p7/3n1p2/1p2N3/3B1N1P/PP3PP1/R2QK2R w KQ f6 0 16 : O-O gagne
 
 FIX:
 memory leak
@@ -1581,12 +1583,33 @@ r1bq1rk1/pp2ppbp/2n3p1/2p5/4PP2/2PPpN1P/PPQ1N1P1/R3KB1R w KQ - 0 5 : roi blanc a
 r1bq1rk1/pp2ppbp/2n3p1/2p5/4PPP1/2PPpN1P/PPQ1N3/R3KB1R b KQ - 0 5 : e5! gagne
 r2q1rk1/pb3pbp/2n3p1/1pp1pP2/4P1PP/2PPpN2/PPQ1N3/R3KB1R w KQ - 1 8 : O-O-O y'a b5! faut faire Dc1! tient
 8/K1R5/8/3k4/8/8/8/8 b - - 0 6 : euuuuh?? il pense que c'est quasi draw là?? c'est tour v roi..
-Revoir le evaluate threat pour qu'il soir plus puissant?
+Revoir le evaluate threat pour qu'il soit plus puissant?
 Nettoyer tout le code dans l'exploration
 r2qkbnr/1b1p1ppp/p1n1p3/1pp5/P3P3/2NP1N1P/1PP1BPP1/R1BQK2R b KQkq a3 0 7 : b4 pas vu?
 r3kbnr/1bqp1ppp/p1n1p3/2p5/P3P3/2BP1N1P/1PP1BPP1/R2QK2R w KQkq - 1 11 : complètement gagnant pour les noirs, 1r3rk1/1bqpn1pp/p1nb1p2/2p1p3/P1N1P3/2PPB2P/2P1BPP1/1R1QK2R b K - 11 16 : pareil
 3Q4/5pkp/2p1p3/2p1P1pq/5P2/4K3/6PP/2r5 w - - 6 7 : tri des coups pas si ouf ici ? Df6 est un safe check, il devrait être regardé plus tôt
+r1bqkb1r/pppp1p1p/2n3pn/1N1Qp3/3P4/1B6/PPP2PPP/R1B1K1NR b KQkq - 0 9 : d6! tient
+r3k1r1/ppp2p1p/3p1Bp1/4p3/b2n4/N6N/PPP2PPP/R3K2R b KQq - 0 17 : g5! seul coup qui tient (difficile à trouver)
+FIXED b1N3kr/7p/6pB/4p3/8/8/PP3P1P/4K3 w - - 0 32 : Cd6!! le roi ne peut plus bouger, la tour non plus. c'est comme pièce de plus au moins (TODO *** voir activité long terme)
+r1b1kbnr/p4ppp/1qp1p3/3pP3/1P6/2P5/5PPP/RNBQKB1R b KQkq b3 0 10 : beaucoup mieux aux noirs
+r1b1r1k1/p1N2ppp/1pn2n2/2q5/3pP3/5P2/PPP2KPP/3RQBNR b - - 0 14 : roi blanc foutu -> Txe4!! gagne
 
+6kr/7p/3N3B/3b4/8/8/8/6K1 w - - 0 1 : c'est juste gagnant, le roi monte de façon imparable, et le roi en g8 sera maté. ni le roi ni la tour peuvent bouger
+3n1krr/1p1bq2p/1Pp1p1pP/2Pp1pP1/3P1P1N/3BP3/Q4K1R/R7 w - - 9 8 : à voir quel type de mobilité long terme on veut ici... rien ne peut vraiment bouger (même si on peut décaler les pièces une par une) (short term mobility sous-estimée ?)
+
+
+r2q1rk1/p4ppp/2p2n2/2b1p3/6b1/2NP1N2/PPP2PPP/R1BQR1K1 b - - 1 10 : material, ça reste pion de plus
+
+FIXED: 6kr/4K2p/7B/3bN3/8/8/8/8 b - - 19 10 : GROS BUG DE REPET
+FIXED: Regarder pourquoi certains cout se trigger (negative nodes...) : 6kr/7p/3N3B/3b4/8/8/8/6K1 w - - 0 1
+FIX: Vérifier pourquoi dans certaines position, il ne réfléchit plus comment avant (à cause des draws ?) r1bq1rk1/1p2npp1/p2bp2p/4N3/3QBB2/P7/1PP2PPP/R3R1K1 b - - 0 15 : long term mobility un peu exagérée ? et king safety aussi à cause de l'activité
+FIX: Bug qui fait parfois planter l'UI
+
+Clean global du code: 
+- Virer les commentaires inutiles
+- Tout factoriser
+- Faire les tests (-> demander IA)
+- Opti micro
 
 Comment intégrer la répétition de coups dans la quiescence? Puisque c'est une recherche en profondeur, la modification de l'historique risque de tout casser...
 Par ailleurs, il faudrait peut-être ne pas cut quand on est proche d'une perpet possible, pour la détecter plus rapidement
