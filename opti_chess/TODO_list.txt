@@ -1632,6 +1632,10 @@ Faire par IA:
 - Mieux séparer tout le code contenu dans Board.cpp
 - Traiter tous les TODO, REVIEW, FIXME en plein  milieu du code
 - Eviter de calculer plein de fois la zobrist key (faire un cout pour voir quand elle est re-calculée dans changement)
+- Amélioration de l'UI
+- Traduction en anglais
+
+Screenshot qui ne va pas dans les ressources
 
 Buffer:
 Pour les noeuds, stocker l'indice du plateau dans le buffer plutôt que le pointeur vers le plateau
