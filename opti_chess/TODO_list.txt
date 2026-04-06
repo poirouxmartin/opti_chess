@@ -1593,17 +1593,24 @@ r3k1r1/ppp2p1p/3p1Bp1/4p3/b2n4/N6N/PPP2PPP/R3K2R b KQq - 0 17 : g5! seul coup qu
 FIXED b1N3kr/7p/6pB/4p3/8/8/PP3P1P/4K3 w - - 0 32 : Cd6!! le roi ne peut plus bouger, la tour non plus. c'est comme pièce de plus au moins (TODO *** voir activité long terme)
 r1b1kbnr/p4ppp/1qp1p3/3pP3/1P6/2P5/5PPP/RNBQKB1R b KQkq b3 0 10 : beaucoup mieux aux noirs
 r1b1r1k1/p1N2ppp/1pn2n2/2q5/3pP3/5P2/PPP2KPP/3RQBNR b - - 0 14 : roi blanc foutu -> Txe4!! gagne
-
+8/1k5N/8/1r6/1p3R1n/3P3P/5KP1/8 b - - 0 13 : b3! gagne (revoir pions passés)
 6kr/7p/3N3B/3b4/8/8/8/6K1 w - - 0 1 : c'est juste gagnant, le roi monte de façon imparable, et le roi en g8 sera maté. ni le roi ni la tour peuvent bouger
 3n1krr/1p1bq2p/1Pp1p1pP/2Pp1pP1/3P1P1N/3BP3/Q4K1R/R7 w - - 9 8 : à voir quel type de mobilité long terme on veut ici... rien ne peut vraiment bouger (même si on peut décaler les pièces une par une) (short term mobility sous-estimée ?)
-
-
 r2q1rk1/p4ppp/2p2n2/2b1p3/6b1/2NP1N2/PPP2PPP/R1BQR1K1 b - - 1 10 : material, ça reste pion de plus
+6Q1/2q1k1p1/1p3bBp/p6P/P1Pp4/3P2P1/5P2/6K1 w - - 1 2 : c'est bien gagnant, mais tout est défendu...
+8/3k4/1p2Pp1p/p2K3P/P1Pp2Pb/3B4/8/8 b - - 0 2 : Rc7 seul coup qui tient
+r1b2rk1/1p1nqpb1/2p4p/p3p1pP/P1B1P3/2N1QN2/1PP2PP1/2KR3R w - - 0 16 : mieux aux noirs
+k1r5/1ppqn3/p2pN2r/3P3p/P3PPpR/1Q6/1P3KP1/2R5 b - - 1 25 : un peu mieux aux noirs
 
 FIXED: 6kr/4K2p/7B/3bN3/8/8/8/8 b - - 19 10 : GROS BUG DE REPET
 FIXED: Regarder pourquoi certains cout se trigger (negative nodes...) : 6kr/7p/3N3B/3b4/8/8/8/6K1 w - - 0 1
 FIX: Vérifier pourquoi dans certaines position, il ne réfléchit plus comment avant (à cause des draws ?) r1bq1rk1/1p2npp1/p2bp2p/4N3/3QBB2/P7/1PP2PPP/R3R1K1 b - - 0 15 : long term mobility un peu exagérée ? et king safety aussi à cause de l'activité
 FIX: Bug qui fait parfois planter l'UI
+FIX: Garder l'historique de la position de la partie, pour éviter les répét : r1b1k2r/ppp2pp1/2np1q2/2P1p3/N3P3/2P3P1/PP2NPBn/R1BQ1RK1 w kq - 1 12 ici par exemple, il pourrait y avoir Te1 -> Cg4 -> Tf1 -> Ch2 draw
+FIX: is_stand_pat_eval commenté dans la quiescence...
+
+FIX TRANSPOSITIONS:
+Quand on met à jour une position, faut mettre à jour tous ses parents...
 
 Clean global du code: 
 - Virer les commentaires inutiles
@@ -1615,10 +1622,16 @@ Comment intégrer la répétition de coups dans la quiescence? Puisque c'est une re
 Par ailleurs, il faudrait peut-être ne pas cut quand on est proche d'une perpet possible, pour la détecter plus rapidement
 
 Faire par IA:
-- Tests
+- Tests (à partir d'un fichier de positions avec les évaluations) (ou de Tests.txt + TODO list)
+- Fine-tuner l'évaluation et les paramètres en fonction des tests
+- Re-organiser la TODO list
+- Faire le readme.md
+- Deplacer les fonctions d'évaluation dans evaluation.cpp
 - Cleaning du code et des algos
 - Mettre toutes les fonctions d'évaluation dans evaluation.cpp
 - Mieux séparer tout le code contenu dans Board.cpp
+- Traiter tous les TODO, REVIEW, FIXME en plein  milieu du code
+- Eviter de calculer plein de fois la zobrist key (faire un cout pour voir quand elle est re-calculée dans changement)
 
 Buffer:
 Pour les noeuds, stocker l'indice du plateau dans le buffer plutôt que le pointeur vers le plateau

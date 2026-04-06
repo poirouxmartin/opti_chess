@@ -412,10 +412,8 @@ public:
 	string _sounds_path = "resources/sounds/lisp/";
 
 	// Taille des buffers à utilser
-	const int _board_buffer_length = 5E6;
-	//const int _board_buffer_length = 2;
-	const int _node_buffer_length = 5E6;
-	//const int _node_buffer_length = 2;
+	const int _board_buffer_length = 1E7;
+	const int _node_buffer_length = 1E7;
 
 	// Constructeurs
 
