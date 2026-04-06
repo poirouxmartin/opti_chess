@@ -1,6 +1,7 @@
 
 # OptiChess
 
+![Project Logo](./opti_chess/resources/images/grogros_zero.png)
 ![Latest screenshot](./opti_chess/resources/readme/project_highlight.png)
 
 OptiChess is an experimental C++ chess engine and research project implementing a hybrid search/exploration approach (GrogrosZero) with integrated quiescence search, position hashing (Zobrist), and an optional GUI built with raylib. The codebase mixes classical evaluation heuristics, WDL statistics and optional neural-network-driven evaluation with a Monte‑Carlo style exploration of the move tree.
