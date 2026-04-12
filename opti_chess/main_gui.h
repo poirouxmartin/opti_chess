@@ -143,21 +143,28 @@ inline int main_ui() {
 			// Position test pour la reflexion en milieu de partie: r1bq1b1r/pp4pp/2p1k3/3np3/1nBP4/2N2Q2/PPP2PPP/R1B2RK1 b - - 0 10
 
 			// Benchmark de la fonction d'évaluation
-			clock_t start = clock();
-			uint64_t iterations = 0;
+			bool do_benchmark = false;
 
-			cout << "Benchmarking evaluation function for 1 second..." << endl;
+			if (do_benchmark) {
+				clock_t start = clock();
+				uint64_t iterations = 0;
 
-			while (clock() - start < 1000) {
-				main_GUI.evaluate_position(false);
-				iterations++;
+				cout << "Benchmarking evaluation function for 1 second..." << endl;
+
+				while (clock() - start < 1000) {
+					main_GUI.evaluate_position(false);
+					iterations++;
+				}
+
+				clock_t end = clock();
+				double duration = double(end - start) / CLOCKS_PER_SEC;
+				cout << "Function executed " << iterations << " times in " << duration << " seconds. (" << (iterations / duration) << " calls per second, average " << (duration / iterations * 1e6) << " microseconds per call)" << endl;
+
+				main_GUI._board->benchmark_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, { 1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860 }, 10, true);
 			}
 
-			clock_t end = clock();
-			double duration = double(end - start) / CLOCKS_PER_SEC;
-			cout << "Function executed " << iterations << " times in " << duration << " seconds. (" << (iterations / duration) << " calls per second, average " << (duration / iterations * 1e6) << " microseconds per call)" << endl;
-			
-			main_GUI._board->benchmark_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, { 1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860 }, 10, true);
+
+
 			//main_GUI._board->validate_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, { 1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860 }, true);
 			//main_GUI._board->validate_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 7, { 1, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860 }, true, false, true);
 			//main_GUI._board->validate_nodes_count_at_depth("rnbqkbnr/pppppppp/8/8/8/3P4/PPP1PPPP/RNBQKBNR b KQkq - 0 1", 6, { 1, 20, 539, 11959, 328511, 8073082, 227598692 }, true, true);
@@ -225,8 +232,8 @@ inline int main_ui() {
 			//stand_pat_node->quiescence(&monte_buffer, main_GUI._grogros_eval, 2, main_GUI._alpha, main_GUI._beta, -INT32_MAX, INT32_MAX, nullptr, false);
 			//cout << "Stand pat eval: " << stand_pat_node->_deep_evaluation._value << endl;
 
-			//Tests tests(&main_GUI);
-			//tests.run_all_tests();
+			Tests tests(&main_GUI);
+			tests.run_all_tests();
 
 			//main_GUI._board->update_bitboards();
 			//main_GUI._board->print_all_bitboards();
@@ -234,7 +241,6 @@ inline int main_ui() {
 
 		// B - Bitboards
 		if (IsKeyPressed(KEY_B)) {
-			//main_GUI._board->update_bitboards();
 			main_GUI._board->print_all_bitboards();
 		}
 
