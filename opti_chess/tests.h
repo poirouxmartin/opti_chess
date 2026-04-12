@@ -51,6 +51,19 @@ public:
 	// GUI? (pour importer tous les paramètres et tester direct)
 	GUI *_gui;
 
+	// Imported tests control
+	bool _imported_tests_enabled = false;
+	bool _stop_imported_tests = false;
+
+	// Enable or disable imported tests
+	void set_imported_tests_enabled(bool enabled) { _imported_tests_enabled = enabled; }
+
+	// Request stop for imported tests (can be called from UI thread)
+	void stop_imported_tests() { _stop_imported_tests = true; }
+
+	// Run imported tests from a file, returns aggregate score (0..1)
+	double run_imported_tests(const string& tests_path = "opti_chess/Tests.txt", double time_per_puzzle = 2.0);
+
 	// Constructeur
 	//Tests(Evaluator* eval);
 
