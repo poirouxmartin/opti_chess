@@ -1297,6 +1297,7 @@ rnb1k2r/pppp2pp/5q2/2b5/2B5/2P2N2/P1P1K1PP/R1BQ3R w kq - 1 10 : Fg5 gagne
 r1b2r2/p4p1k/1q1p1Bp1/2p3P1/2P1PP2/2N5/PP2BKP1/R7 b - - 4 20 : mat imparrable
 r1bq1rk1/ppp5/3p3p/3P3R/2PB2p1/2NB4/PP3PP1/2KR4 b - - 3 18 : blancs gagnants
 r1bq4/ppp5/3p2r1/3P3R/2PBNkp1/3B4/PP1K1PP1/8 b - - 5 22 : roi noir foutu
+r1b2rk1/q2p1pp1/pp6/3pP2Q/3B1P2/8/PP4PP/2R2RK1 w - - 2 20 : f5! mate
 
 ----- Contenu historique de Tests.txt -----
 
