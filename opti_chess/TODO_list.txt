@@ -619,6 +619,7 @@ Clean global du code:
 - Opti micro
 Comment intégrer la répétition de coups dans la quiescence? Puisque c'est une recherche en profondeur, la modification de l'historique risque de tout casser...
 Par ailleurs, il faudrait peut-être ne pas cut quand on est proche d'une perpet possible, pour la détecter plus rapidement
+
 Faire par IA:
 - Tests (à partir d'un fichier de positions avec les évaluations) (ou de Tests.txt + TODO list)
 - Fine-tuner l'évaluation et les paramètres en fonction des tests
@@ -631,6 +632,7 @@ Faire par IA:
 - Eviter de calculer plein de fois la zobrist key (faire un cout pour voir quand elle est re-calculée dans changement)
 - Amélioration de l'UI
 - Traduction en anglais
+
 Screenshot qui ne va pas dans les ressources
 Buffer:
 Pour les noeuds, stocker l'indice du plateau dans le buffer plutôt que le pointeur vers le plateau
