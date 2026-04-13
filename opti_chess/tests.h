@@ -52,7 +52,7 @@ public:
 	GUI *_gui;
 
 	// Imported tests control
-	bool _imported_tests_enabled = false;
+	bool _imported_tests_enabled = true;
 	bool _stop_imported_tests = false;
 
 	// Enable or disable imported tests
@@ -62,7 +62,11 @@ public:
 	void stop_imported_tests() { _stop_imported_tests = true; }
 
 	// Run imported tests from a file, returns aggregate score (0..1)
-	double run_imported_tests(const string& tests_path = "opti_chess/Tests.txt", double time_per_puzzle = 2.0);
+	double run_imported_tests(const string& tests_path = "Tests.txt", double time_per_puzzle = 3.0, int base_total_tests = 0, double base_total_score = 0.0);
+
+	// Generate and run evaluation-only tests from Tests.txt and mark tested lines.
+	// Returns number of tests added.
+	int add_generated_evaluation_tests(const string& tests_path = "Tests.txt");
 
 	// Constructeur
 	//Tests(Evaluator* eval);
