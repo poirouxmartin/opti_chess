@@ -3591,7 +3591,7 @@ int Board::get_pawn_structure(float display_factor)
 
 	// Facteur de division par pièce qui contrôle (cavalier, fou, tour, dame, roi)
 	//static constexpr float control_division_per_piece[5] = { 1.5f, 1.75f, 1.35f, 1.2f, 1.35f };
-	static constexpr float control_division = 1.85f;
+	static constexpr float control_division = 1.75f;
 
 	// Facteur de division par pièce qui bloque (cavalier, fou, tour, dame, roi)
 	static constexpr float block_division_per_piece[5] = { 2.75f, 2.15f, 2.0f, 1.55f, 2.3f };
@@ -3600,7 +3600,7 @@ int Board::get_pawn_structure(float display_factor)
 	static constexpr float self_block_division = 1.5f;
 
 	// Bonus pour les pions passés connectés
-	constexpr float connected_passed_pawn_bonus = 1.5f;
+	constexpr float connected_passed_pawn_bonus = 1.65f;
 
 
 	// Pion passé - chemin controllé par une pièce adverse
