@@ -18,21 +18,27 @@
 - **Fix v2 (complet)** : avant `get_WDL()`, si `_value` franchit le seuil de mat (`10*abs > mate_value`, idiome de `is_eval_mate`), forcer `_uncertainty = 0` et `_winnable_white/black` selon le signe — comme le chemin terminal `board.cpp:1575-1577`. Couvre les 3 branches EXACT/BETA/ALPHA. Hors hot path d'éval → perf neutre.
 - **Confirmation utilisateur** : « Cela semble avoir corrigé le bug ».
 
+### #2 — `get_zobrist_key()` copiait toute la table Zobrist par appel
+- **Statut** : ✅ corrigé — validé runtime (commit `2026018`).
+- **Fix** : `const Zobrist& zobrist = transposition_table._zobrist;` (référence au lieu d'une copie ~6 Ko/appel) ; clés générées une fois au démarrage, garde-fou idempotent sans copie. Gain perf ; **n'était pas** la cause de #12 (hypothèse réfutée par test runtime).
+
+### #12 — Régression : chargement FEN lent / ne terminait parfois jamais
+- **Statut** : ✅ corrigé — validé runtime (2026-05-16, commit `d7a3554`).
+- **Cause racine** : `GUI::reset_buffers()` rebalayait 5 M `Board` + 10 M `Node` (chaque `reset` faisant un `robin_map::clear()` depuis `a258fb5`) à **chaque** `load_FEN` ⇒ O(capacité).
+- **Fix** : `reset_buffers()` ne fait plus que `transposition_table.clear()` ; la réclamation O(utilisé) reste assurée par le `_root_exploration_node->reset()` récursif déjà présent. Chargement FEN redevenu instantané, y compris après recherche. PERFT 1/2 inchangé.
+
+### #13 — Gel système global quand GrogrosChess tournait
+- **Statut** : ✅ corrigé — validé runtime utilisateur (2026-05-16, branche `fix/buffer-memory-perf`, PERFT 1/2 inchangé, pas de gel).
+- **Cause racine** : buffers préalloués gigantesques (`new Node[10M]` + `new Board[5M]` + TT, plusieurs Go) + allocation **O(n)** (scan linéaire à chaque `get_first_free_*`) ⇒ thrash disque + O(n²) CPU.
+- **Fix** (plan `docs/superpowers/plans/2026-05-16-optichess-memory-perf.md` ; commits `82c3b9f` `bf048ec` `3d2db54` `2081e10`) :
+  1. **free-list O(1)** (pile d'indices libres) remplaçant le scan O(n) ; chaque `Board`/`Node` porte son `_buffer_index` ; recyclage « Approche B » (seuls les enfants détachés pendant la récursion sont repoussés — jamais le nœud reseté en place).
+  2. **dimensionnement mémoire adaptatif** depuis la RAM physique dispo (`compute_pool_sizing`, budget = min(0.5×RAM, 4 Go) / facteur d'overhead RSS) — remplace les constantes magiques 1E7/5E6 ; RSS borné par construction.
+  3. **buffer plein → raffinage propre** de l'arbre existant (gate `can_expand` dans `grogros_zero`) au lieu d'un busy-spin ; retrait du `cout` par-itération.
+- **⚠️ Résiduel connu (non bloquant)** : un spam console subsiste en condition buffer-plein, d'une source distincte des `cout` retirés en T5 ; le gate de régression (PERFT 1/2 + EVALUATION stables) reste validé. À tracer séparément.
+
 ---
 
 ## ⬜ Ouverts — par sévérité
-
-### 🔴 #2 — `get_zobrist_key()` copie toute la table Zobrist par appel
-- **Fichier** : `board.cpp:6996-7043` (ligne 7004)
-- **Sévérité** : HAUTE (perf — axe prioritaire #1 du projet ; + correctness latente)
-- **Détail** :
-  - `Zobrist zobrist = transposition_table._zobrist;` copie `_board_keys[64][12]` (~6 Ko) **à chaque appel**. Hot path : `ensure/record/position_history_count` l'appellent chacun + appels explicites `_board->get_zobrist_key()`. Le refactor répétitions a multiplié ces appels.
-  - `if (!zobrist._keys_generated) zobrist.generate_zobrist_keys();` opère sur la **copie** → si table globale non init, clés aléatoires différentes à chaque appel (incohérence). Neutralisé aujourd'hui par `init()` au démarrage (`main_gui.h:87`), mais mine latente.
-  - Pas de cache (recalcul O(64) intégral même si clé à jour ; `if (_zobrist_key != 0) return;` est commenté).
-- **Fix proposé** :
-  1. Immédiat / zéro risque : `const Zobrist& zobrist = transposition_table._zobrist;` (référence).
-  2. Mieux : mise à jour **incrémentale** de `_zobrist_key` dans `make_move` (XOR pièce/trait/roque/ep), supprimer le recalcul intégral.
-  3. Sortir `generate_zobrist_keys()` du chemin chaud (garantir l'init au démarrage uniquement).
 
 ### 🔴 #3 — Scores de mat non normalisés au ply dans la TT
 - **Fichiers** : `board.cpp:1569` (encodage mate via `_moves_count`), `board.cpp:7014-7042` (`_moves_count` absent de la clé Zobrist)
@@ -96,29 +102,6 @@
   - **B. Partage de nœuds / DAG** : gain maximal (8→30), mais grosse refonte que le code a fuie. Infra à moitié posée (`ChildLink._propagated_nodes`, `_parent_count`). Risqué.
 - **Ordre** : #4 → #3 → A (mesurer), puis envisager B si A insuffisant.
 
-### 🔴 #12 — Régression : chargement FEN lent / ne termine parfois jamais
-- **Statut** : ✅ **corrigé — validé runtime** (2026-05-16, commit `d7a3554`). `GUI::reset_buffers()` ne fait plus que `transposition_table.clear()` ; la réclamation O(utilisé) reste assurée par `_root_exploration_node->reset()` récursif déjà présent. Chargement FEN redevenu instantané, y compris après recherche. PERFT 1/2 inchangé. Fix #2 indépendant (perf, conservé) — n'était PAS la cause de #12.
-- **Fichiers** : `gui.cpp:1499` (`load_FEN`) → `gui.cpp:1907` (`GUI::reset_buffers`) → `buffer.cpp:65` (`BoardBuffer::reset`) + `exploration.cpp:1566` (`NodeBuffer::reset`) ; `board.h:16` + `board.cpp:7457` (`reset_positions_history`).
-- **Sévérité** : HAUTE (régression user-facing depuis `a258fb5`).
-- **Symptôme** : depuis les commits TT + refactor répétitions, charger une FEN est souvent lent ; parfois « ne se charge jamais » (pire après une recherche / en Debug).
-- **Hypothèse #2 RÉFUTÉE** : le fix #2 (réf. au lieu de copie 6 Ko) a été appliqué et testé runtime → **aucune amélioration**. La copie Zobrist n'est pas en cause.
-- **Cause racine CONFIRMÉE** : `load_FEN` (et `reset_game`) appelle `reset_buffers()` à **chaque** chargement, qui fait `monte_board_buffer.reset()` (boucle sur **5 M** `Board::reset_board()`) + `monte_node_buffer.reset()` (boucle sur **10 M** `Node::reset(false)`) + `transposition_table.clear()`. C'est **O(capacité)**, pas O(utilisé). Le diff `a258fb5` a rendu chaque reset par-élément non trivial : `board.h` a activé `_positions_history` (`tsl::robin_map<uint64_t,uint8_t>`, avant : vecteur **commenté**) et `reset_board()` appelle désormais `reset_positions_history()` → `robin_map::clear()`. Avant : 15 M écritures scalaires (rapide). Après : **15 M opérations robin_map** à chaque `load_FEN` (désallocation réelle de buckets si les maps sont peuplées après une recherche → « ne termine jamais »). **Preuve runtime** : réduire la capacité des buffers (1E7 → 2E5, `gui.h:415-416`) rend le chargement **quasi instantané** ; cause = balayage O(capacité).
-- **Famille** : même nature que #13 (opérations O(capacité) sur buffers surdimensionnés).
-- **Fix** (lié au plan free-list, voir `docs/superpowers/plans/2026-05-16-optichess-memory-perf.md`) : `reset_buffers()` doit être **O(utilisé)**, pas O(capacité). S'appuyer sur le `_root_exploration_node->reset()` **récursif déjà présent** (gui.cpp:1504/1530) qui libère exactement l'arbre utilisé, + free-list pour recycler en O(1) ; **supprimer** les balayages `monte_*_buffer.reset()` du chemin par-FEN ; garder `transposition_table.clear()`.
-- **⚠️ Pièges identifiés (corrigent le plan)** : (a) une réécriture de `reset()` qui rebalaie `_length` ne corrige PAS #12 ; (b) un hook « free dans `Node::reset()` » double-libère car `load_FEN`/`gui.cpp:929` **resettent puis réutilisent le même nœud racine sans réallouer** → la libération free-list doit se faire sur les enfants **détachés pendant la récursion**, jamais sur le nœud reseté en place. Appelants de `reset_buffers()` : seulement `load_FEN` + `reset_game` (blast radius minime).
-
-### 🔴 #13 — Gel système global quand GrogrosChess tourne (arrière-plan / réflexion)
-- **Statut** : ⬜ ouvert — signalé utilisateur · 🔍 à investiguer (rare, repro difficile, non corrélé à une action précise)
-- **Sévérité** : HAUTE (rend **toute la machine** inutilisable 30 min+ jusqu'au redémarrage).
-- **Symptôme** : rare ; appli ouverte (parfois en arrière-plan) ou réflexion lancée → toute l'UI Windows lague (~5 s de délai par clic/input), Grogros affiché à **12 FPS**, persiste 30 min+ et ne se rétablit qu'au reboot.
-- **Cause racine probable (identifiée à l'audit)** : **buffers préalloués gigantesques + allocation O(n)**.
-  - Tailles par défaut : `NodeBuffer::init(length = 10_000_000)` (`exploration.h:225`), `BoardBuffer::init(length = 5_000_000)` (`buffer.h:26`), `TranspositionTable::init(5_000_000)` (`zobrist.h:61`). `new Node[10M]` + `new Board[5M]` + TT ⇒ **plusieurs Go committés**. À mesure que la réflexion (même en arrière-plan) touche le buffer, le RSS grimpe → quand il dépasse la RAM physique → swap disque → **thrash système global** (5 s/clic, 12 FPS) jusqu'au reboot. Le ctor par défaut `BoardBuffer` vise même un buffer « 4GB » (`buffer.cpp:6-7`).
-  - `BoardBuffer::get_first_free_index` (`buffer.cpp:44-54`) et `NodeBuffer::get_first_free_index` (`exploration.cpp:1545`) = **scan linéaire O(n) sur tout le buffer à chaque allocation**. Quand le buffer se remplit, chaque expansion scanne jusqu'à 10 M entrées ⇒ O(n²), CPU à fond (boucle de rendu encore vive = 12 FPS) — explique aussi #12.
-  - Buffer plein : `explore_new_move` fait `return;` silencieux (`exploration.cpp:239-242`), quiescence `return alpha` (`:924-928`). Aucune éviction / pruning de l'arbre ⇒ une fois plein, état dégradé permanent.
-- **Note correctness** : `Node::reset()` nettoie bien `_children.clear()` + `_is_active=false` (`exploration.cpp:421-457`) ⇒ le destructeur commenté (`:610-615`) n'est **pas** une fuite (pool). La fuite map n'est pas le coupable principal ; c'est la **taille des buffers**.
-- **Fix proposé** : (1) réduire/rendre configurables les tailles par défaut (≪ RAM physique) ; (2) remplacer le scan O(n) par une **free-list** (pile d'indices libres) → alloc/libération O(1) ; (3) borne + éviction quand le buffer sature au lieu d'un `return` silencieux. + #2.
-- **À confirmer** : surveiller le RSS du process pendant une réflexion longue (Gestionnaire des tâches / perfmon) → corréler pic RSS ↔ gel.
-
 ### 🔴 #14 — Incohérence éval/score persistante sur valeur issue de la TT (généralisation de #1, cas non-mat)
 - **Statut** : ⬜ ouvert — signalé utilisateur · même famille que **#1** (qui n'a corrigé que le cas *mat*).
 - **Fichiers** : bloc `if (tt_cutoff)` de `exploration.cpp` (cf. #1) ; champs dérivés de `Evaluation` recombinés par `get_node_score` et `Evaluation::get_WDL` (`board.cpp:10004`) / `get_average_score` (`board.cpp:10093`).
@@ -142,11 +125,10 @@
 ---
 
 ## Ordre de traitement recommandé
-1. **#2 + #12** — `get_zobrist_key` par référence : 1 ligne, gros gain perf, zéro risque, **et probable correctif de la régression user-facing #12** (chargement FEN). Re-mesurer le temps de chargement FEN juste après.
-2. **#13** (gel système) — impact utilisateur maximal (machine inutilisable). Investigation mémoire ; commencer **après #2** (qui réduit le churn et peut atténuer) avec instrumentation RAM + repro.
-3. **#4** (stand-pat ≠ EXACT) → **#3** (mate scores ply-relatifs) → **#14** (généraliser la cohérence des champs dérivés #1 au cas non-mat) — débloquent #11 et corrigent l'incohérence éval/score visible.
-4. **#11 plan A** (TT scalaire dans la recherche principale) — **l'objectif** : gain de profondeur. Mesurer après.
-5. **#6** puis **#5** (hygiène TT).
-6. **#7** (perf path-local + fuite map — re-tester #13) puis **#8** (operator<, rapide, latent).
-7. **#11 plan B** (DAG) — seulement si A insuffisant pour le gain visé.
-8. **#9** — décision de design à confirmer avec l'utilisateur.
+> #2, #12, #13 corrigés & validés runtime (cf. section ✅ Corrigés). Suite :
+1. **#4** (stand-pat ≠ EXACT) → **#3** (mate scores ply-relatifs) → **#14** (généraliser la cohérence des champs dérivés #1 au cas non-mat) → **#11** — débloquent #11 et corrigent l'incohérence éval/score visible.
+2. **#11 plan A** (TT scalaire dans la recherche principale) — **l'objectif** : gain de profondeur. Mesurer après.
+3. **#6** puis **#5** (hygiène TT).
+4. **#7** (perf path-local + fuite map — re-tester #13) puis **#8** (operator<, rapide, latent).
+5. **#11 plan B** (DAG) — seulement si A insuffisant pour le gain visé.
+6. **#9** — décision de design à confirmer avec l'utilisateur.
