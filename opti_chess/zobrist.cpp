@@ -1,43 +1,44 @@
 #include "zobrist.h"
 #include <random>
 #include <iostream>
+#include <sstream>
 #include "useful_functions.h"
 
 using namespace std;
 
-// Fonction qui génère les clés de Zobrist
+// Fonction qui gï¿½nï¿½re les clï¿½s de Zobrist
 void Zobrist::generate_zobrist_keys() {
 
-	// Si les clés ont déjà été générées, on ne fait rien
+	// Si les clï¿½s ont dï¿½jï¿½ ï¿½tï¿½ gï¿½nï¿½rï¿½es, on ne fait rien
 	if (_keys_generated)
 		return;
 	
-	// Initialisation du générateur aléatoire
+	// Initialisation du gï¿½nï¿½rateur alï¿½atoire
 	random_device rd;
 	mt19937_64 gen(rd());
 	uniform_int_distribution<uint_fast64_t> dis(0, UINT_FAST64_MAX);
 
-	// Génération des clés
+	// Gï¿½nï¿½ration des clï¿½s
 
-	// Valeur initiale de la clé
-	uint_fast64_t _initial_key = dis(gen);
+	// Valeur initiale de la clï¿½
+	_initial_key = dis(gen);
 	
-	// Clés des pièces
+	// Clï¿½s des piï¿½ces
 	for (int i = 0; i < 64; i++) {
 		for (int j = 0; j < 12; j++) {
 			_board_keys[i][j] = dis(gen);
 		}
 	}
 
-	// Clé du trait
+	// Clï¿½ du trait
 	_player_key = dis(gen);
 
-	// Clés des roques
+	// Clï¿½s des roques
 	for (int i = 0; i < 16; i++) {
 		_castling_keys[i] = dis(gen);
 	}
 
-	// Clés du en-passant
+	// Clï¿½s du en-passant
 	for (int i = 0; i < 8; i++) {
 		_en_passant_keys[i] = dis(gen);
 	}
@@ -46,33 +47,16 @@ void Zobrist::generate_zobrist_keys() {
 
 }
 
-// Constructeur par défaut de Zobrist
+// Constructeur par dï¿½faut de Zobrist
 Zobrist::Zobrist() {
 }
 
-// Constructeur par défaut de ZobristEntry
-ZobristEntry::ZobristEntry()
-{
-}
-
-// Constructeur à partir d'un indice
-//ZobristEntry::ZobristEntry(const int board_index)
-//{
-//	_board_index = board_index;
-//}
-
-// Constructeur à partir d'un noeud
-ZobristEntry::ZobristEntry(Node *node)
-{
-	_node = node;
-}
-
-// Constructeur par défaut de la table de transposition
+// Constructeur par dÃ©faut de la table de transposition
 TranspositionTable::TranspositionTable()
 {
 }
 
-// Fonction qui initialise la table de transposition à une taille donnée
+// Fonction qui initialise la table de transposition ï¿½ une taille donnï¿½e
 void TranspositionTable::init(const int length, const Zobrist* zobrist, bool display)
 {
 	if (_init) {
@@ -88,13 +72,13 @@ void TranspositionTable::init(const int length, const Zobrist* zobrist, bool dis
 	_hash_table.reserve(length);
 	_length = length;
 
-	// Initialisation du Zobrist (s'il n'est pas donné)
+	// Initialisation du Zobrist (s'il n'est pas donnï¿½)
 	if (zobrist != nullptr)
 		_zobrist = *zobrist;
 	else
 		_zobrist = Zobrist();
 
-	// Génération des clés de Zobrist
+	// Gï¿½nï¿½ration des clï¿½s de Zobrist
 	_zobrist.generate_zobrist_keys();
 
 	_init = true;
@@ -109,19 +93,43 @@ void TranspositionTable::init(const int length, const Zobrist* zobrist, bool dis
 // Instance de la table de transposition
 TranspositionTable transposition_table;
 
-// Fonction qui renvoie l'indice de la position dans le buffer si elle existe déjà
-//int TranspositionTable::get_zobrist_position_buffer_index(uint_fast64_t key) {
-//	auto it = _hash_table.find(key);
-//
-//	// Si l'entrée existe, renvoie l'indice du plateau dans le buffer
-//	if (it != _hash_table.end())
-//		return it->second._board_index;
-//
-//	// Sinon, renvoie -1
-//	return -1;
-//}
+bool TranspositionTable::contains(uint64_t key) const {
+	return _hash_table.find(key) != _hash_table.end();
+}
 
-// Fonction qui renvoie si une position est déjà dans la table de transposition
-bool TranspositionTable::contains(uint_fast64_t key) {
-	return _hash_table.find(key) != transposition_table._hash_table.end();
+const ZobristEntry* TranspositionTable::probe(uint64_t key) {
+	_stats._lookups++;
+	const auto it = _hash_table.find(key);
+	if (it == _hash_table.end())
+		return nullptr;
+	_stats._hits++;
+	return &it->second;
+}
+
+void TranspositionTable::store(uint64_t key, int eval, int depth, TTFlag flag) {
+	const auto it = _hash_table.find(key);
+	if (it != _hash_table.end()) {
+		// Remplacement : on garde l'entrÃ©e la plus profonde
+		if (it->second._depth > depth)
+			return;
+		_stats._overwrites++;
+	}
+	_stats._stores++;
+	_hash_table[key] = ZobristEntry(eval, depth, flag);
+}
+
+void TranspositionTable::clear() {
+	_hash_table.clear();
+	_stats.reset();
+}
+
+string TranspositionTable::stats_string() const {
+	ostringstream ss;
+	ss << "TT: " << long_int_to_round_string(_hash_table.size()) << " entrÃ©es"
+	   << "\nProbes: " << long_int_to_round_string(_stats._lookups)
+	   << " | Hits: " << long_int_to_round_string(_stats._hits) << " (" << (int)_stats.hit_rate() << "%)"
+	   << "\nCutoffs: " << long_int_to_round_string(_stats._cutoffs) << " (" << (int)_stats.cutoff_rate() << "%)"
+	   << "\nStores: " << long_int_to_round_string(_stats._stores)
+	   << " | Overwrites: " << long_int_to_round_string(_stats._overwrites);
+	return ss.str();
 }
