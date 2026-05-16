@@ -411,6 +411,7 @@ inline int main_ui() {
 		// Suppr. - Supprime les reflexions de GrogrosZero
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_DELETE)) {
 			//main_GUI._board->reset_all(true, true);
+			transposition_table.clear();
 			main_GUI._root_exploration_node->reset(); // FIXME... ça fait rien??
 			main_GUI._root_exploration_node->_is_active = true;
 			main_GUI._root_exploration_node->_board->_is_active = true;
@@ -683,7 +684,6 @@ inline int main_ui() {
 			main_GUI._board->_game_over_checked = false;
 			main_GUI._board->is_game_over(3);
 			main_GUI._root_exploration_node->_iterations = 0;
-			main_GUI._root_exploration_node->_chosen_iterations = 0;
 			main_GUI._root_exploration_node->_is_terminal = false;
 			//cout << "New game over value : " << new_game_over << endl;
 			//cout << "exploration game over value : " << (int)main_GUI._root_exploration_node->_board->_game_over_value << endl;

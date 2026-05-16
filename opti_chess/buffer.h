@@ -4,7 +4,7 @@
 class BoardBuffer {
 public:
 
-	// Le buffer est-il initialisé ?
+	// Le buffer est-il initialisÃ© ?
 	bool _init = false;
 
 	// Longueur du buffer
@@ -13,10 +13,10 @@ public:
 	// Tableau de plateaux
 	Board* _boards;
 
-	// Itérateur pour rechercher moins longtemps un index de plateau libre
+	// ItÃ©rateur pour rechercher moins longtemps un index de plateau libre
 	int _iterator = -1;
 
-	// Constructeur par défaut
+	// Constructeur par dÃ©faut
 	BoardBuffer();
 
 	// Constructeur utilisant la taille max (en bits) du buffer
@@ -28,7 +28,7 @@ public:
 	// Fonction qui donne l'index du premier plateau de libre dans le buffer
 	int get_first_free_index();
 
-	// Fonction qui désalloue toute la mémoire
+	// Fonction qui dÃ©salloue toute la mÃ©moire
 	void remove();
 
 	// Fonction qui reset le buffer
@@ -37,7 +37,7 @@ public:
 	// Fonction qui renvoie le premier plateau disponible dans le buffer
 	Board* get_first_free_board();
 
-	// DEBUG *** fonction qui affiche l'état du buffer (combien de plateaux sont utilisés)
+	// DEBUG *** fonction qui affiche l'Ã©tat du buffer (combien de plateaux sont utilisÃ©s)
 	void display_buffer_state() const;
 };
 

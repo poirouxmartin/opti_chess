@@ -1,6 +1,7 @@
 ﻿#include "gui.h"
 #include "buffer.h"
 #include "useful_functions.h"
+#include "zobrist.h"
 #include "windows_tests.h"
 #include <wchar.h>
 #include <sstream>
@@ -316,7 +317,8 @@ void GUI::draw_exploration_arrows()
 	// Crée un vecteur avec les coups explorés par GrogrosZero
 	vector<Move> iterated_moves_vector;
 
-	for (auto const& [move, child] : _root_exploration_node->_children) {
+	for (auto const& [move, child_link] : _root_exploration_node->_children) {
+		Node const* child = child_link._node;
 		// Si une pièce est sélectionnée, dessine toutes les flèches pour cette pièce
 		if (is_selected) {
 			if (_selected_pos.row == move.start_row && _selected_pos.col == move.start_col)
@@ -331,7 +333,7 @@ void GUI::draw_exploration_arrows()
 
 			// Le coup a-t-il été exploré par GrogrosZero, ou seulement la quiescence?
 			if (_root_exploration_node->_iterations > 0) {
-				if (static_cast<float>(child->_chosen_iterations) / static_cast<float>(_root_exploration_node->_iterations) > _arrow_rate) {
+				if (static_cast<float>(child_link._chosen_iterations) / static_cast<float>(_root_exploration_node->_iterations) > _arrow_rate) {
 					iterated_moves_vector.push_back(move);
 				}
 			}
@@ -361,9 +363,10 @@ void GUI::draw_exploration_arrows()
 
 	// Dessine les flèches
 	for (const Move move : iterated_moves_vector) {
-		const int mate = _root_exploration_node->_board->is_eval_mate(_root_exploration_node->_children[move]->_deep_evaluation._value);
-		Node const *child = _root_exploration_node->_children[move];
-		draw_arrow(move, _root_exploration_node->_board->_player, move_color(child->_chosen_iterations, _root_exploration_node->_iterations, child->_iterations == 0), -1.0f, true, child->_deep_evaluation._avg_score, mate, move == best_move, move == best_eval_move);
+		const ChildLink& child_link = _root_exploration_node->_children[move];
+		Node const *child = child_link._node;
+		const int mate = _root_exploration_node->_board->is_eval_mate(child->_deep_evaluation._value);
+		draw_arrow(move, _root_exploration_node->_board->_player, move_color(child_link._chosen_iterations, _root_exploration_node->_iterations, child->_iterations == 0), -1.0f, true, child->_deep_evaluation._avg_score, mate, move == best_move, move == best_eval_move);
 	}
 }
 
@@ -907,14 +910,15 @@ bool GUI::play_move_keep(Move move)
 	// Si le coup a effectivement été calculé
 	else {
 		if (_root_exploration_node->_children.contains(move)) {
-			//cout << "children nodes: " << _root_exploration_node->_children[move]->_nodes << endl;
+			Node* next_root = _root_exploration_node->_children[move]._node;
 
-			for (auto const& [m, child] : _root_exploration_node->_children) {
+			for (auto const& [m, child_link] : _root_exploration_node->_children) {
 				if (m != move) {
-					//cout << 0 << endl;
-					child->reset();
-					//cout << 1 << endl;
-					//delete child;
+					Node* child = child_link._node;
+					child->_parent_count--;
+					if (child->_parent_count <= 0) {
+						child->reset(true);
+					}
 				}
 			}
 
@@ -931,10 +935,8 @@ bool GUI::play_move_keep(Move move)
 			// Il faudra supprimer le parent et tous les fils (TODO)
 
 			// On met à jour le noeud de recherche
-			Node* child = _root_exploration_node->_children[move];
-			_root_exploration_node->_children.clear();
-
-			_root_exploration_node = child;
+			next_root->_parent_count--;
+			_root_exploration_node = next_root;
 
 			// On met à jour le plateau
 			_board = _root_exploration_node->_board;
@@ -957,6 +959,7 @@ bool GUI::play_move_keep(Move move)
 	}
 
 	_root_exploration_node->_board = _board;
+	transposition_table.clear();
 
 	_board->get_moves();
 
@@ -1016,11 +1019,14 @@ void GUI::grogros_analysis(int iterations) {
 	//if (iterations_to_explore == 0)
 	//	iterations_to_explore = _nodes_per_frame;
 
-	// Il faut pas dépasser la taille du buffer
-	// FIXME: meilleure façon de gérer cela?
-	iterations_to_explore = min(iterations_to_explore, monte_board_buffer._length - _root_exploration_node->_nodes);
+	// Avec les transpositions, _nodes représente le volume de recherche propagé,
+	// pas nécessairement le nombre de plateaux uniques encore actifs dans le buffer.
+	// On s'arrête seulement si le buffer est réellement plein.
+	if (monte_board_buffer.get_first_free_index() == -1) {
+		iterations_to_explore = 0;
+	}
 
-	if (iterations_to_explore == 0) {
+	if (iterations_to_explore <= 0) {
 		cout << "Buffer full, so no more to explore -> iterations <= 0 to be expected" << endl;
 	}
 
@@ -1396,7 +1402,7 @@ void GUI::draw()
 		// Meilleure évaluation
 		//int best_eval = _root_exploration_node->_deep_evaluation._value;
 		Move best_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
-		Evaluation best_evaluation = _root_exploration_node->_children[best_move]->_deep_evaluation;
+		Evaluation best_evaluation = _root_exploration_node->_children[best_move]._node->_deep_evaluation;
 
 		//bool all_moves_explored = _root_exploration_node->get_fully_explored_children_count() == _root_exploration_node->_board->_got_moves;
 		bool all_moves_explored = _root_exploration_node->children_count() == _root_exploration_node->_board->_got_moves;
@@ -1448,7 +1454,8 @@ void GUI::draw()
 			"\nWinnable: " + to_string(static_cast<int>(best_evaluation._winnable_white * 100)) + "% / " + to_string(static_cast<int>(best_evaluation._winnable_black * 100)) + "%" +
 			"\n" + _wdl.to_string() + "\nScore: " + score_string(best_evaluation._avg_score) +
 			"\nNodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_board_buffer._length) + " (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 1) / CLOCKS_PER_SEC)) + "N/s)" +
-			"\nIterations: " + int_to_round_string(_root_exploration_node->_iterations) + " (" + int_to_round_string(_root_exploration_node->_iterations / (static_cast<float>(_root_exploration_node->_time_spent + 1) / CLOCKS_PER_SEC)) + "I/s)";
+			"\nIterations: " + int_to_round_string(_root_exploration_node->_iterations) + " (" + int_to_round_string(_root_exploration_node->_iterations / (static_cast<float>(_root_exploration_node->_time_spent + 1) / CLOCKS_PER_SEC)) + "I/s)" +
+				"\n\n" + transposition_table.stats_string();
 		
 		// Affichage des paramètres d'analyse de GrogrosZero
 		slider_text(monte_carlo_text, _board_padding_x + _board_size + _text_size / 2, _text_size, _screen_width - _text_size - _board_padding_x - _board_size, _board_size * 9 / 16, _text_size / 4, &_monte_carlo_slider, _text_color);
@@ -1536,7 +1543,7 @@ bool GUI::compare_arrows(const Move m1, const Move m2) const {
 
 	// Si deux flèches finissent en un même point, affiche en dernier (au dessus), le "meilleur" coup
 	if (m1.end_row == m2.end_row && m1.end_col == m2.end_col)
-		return _root_exploration_node->_children[m1]->_nodes < _root_exploration_node->_children[m2]->_nodes;
+		return _root_exploration_node->_children[m1]._node->_nodes < _root_exploration_node->_children[m2]._node->_nodes;
 
 	// Si les deux flèches partent d'un même point, alors affiche par dessus la flèche la plus courte
 	if (m1.start_row == m2.start_row && m1.start_col == m2.start_col) {
@@ -1615,7 +1622,8 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 		return;
 	}
 
-	Node const* most_explored_child = _root_exploration_node->_children[most_explored_move];
+	const ChildLink& most_explored_link = _root_exploration_node->_children[most_explored_move];
+	Node const* most_explored_child = most_explored_link._node;
 
 	robin_map<Move, double> move_scores = _root_exploration_node->get_move_scores(_alpha, _beta);
 
@@ -1641,7 +1649,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	//cout << "best eval : " << best_eval_colored << ", color : " << color << ", best move : " << _board->move_label(best_move) << endl;
 
 	// Pourcentage de réflexion sur le meilleur coup
-	float best_move_percentage = static_cast<float>(most_explored_child->_chosen_iterations) / static_cast<float>(_root_exploration_node->_iterations);
+	float best_move_percentage = static_cast<float>(most_explored_link._chosen_iterations) / static_cast<float>(_root_exploration_node->_iterations);
 
 	// Temps idéal qu'il faut prendre sur ce coup
 	//int max_move_time = _board->_player ? time_to_play_move(_time_white, _time_black, time_proportion_per_move * (1.0f - best_move_percentage)) : time_to_play_move(_time_black, _time_white, time_proportion_per_move * (1.0f - best_move_percentage));
@@ -1899,5 +1907,6 @@ void GUI::init_buffers() const {
 void GUI::reset_buffers() const {
 	monte_board_buffer.reset();
 	monte_node_buffer.reset();
+	transposition_table.clear();
 }
 

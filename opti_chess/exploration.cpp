@@ -2,6 +2,57 @@
 #include "useful_functions.h"
 #include "zobrist.h"
 
+namespace {
+
+constexpr uint8_t search_repetition_limit = 2;
+
+uint8_t position_history_count(const PositionHistory& path_history, Board& board) {
+	board.get_zobrist_key();
+	const auto it = path_history.find(board._zobrist_key);
+	return it == path_history.end() ? 0 : it->second;
+}
+
+} // namespace
+
+// The repetition state is path-local: it depends on the exact move sequence that led to
+// the current node, so it must stay outside Node/Board state if we want transpositions later.
+void ensure_position_in_history(PositionHistory& path_history, Board& board) {
+	board.get_zobrist_key();
+	path_history.try_emplace(board._zobrist_key, 1);
+}
+
+void record_position_in_history(PositionHistory& path_history, Board& board) {
+	board.get_zobrist_key();
+	path_history[board._zobrist_key]++;
+}
+
+bool position_is_draw_by_repetition(const PositionHistory& path_history, Board& board, uint8_t repetition_limit = search_repetition_limit) {
+	return position_history_count(path_history, board) + 1 >= repetition_limit;
+}
+
+PositionHistory make_child_path_history(const PositionHistory* path_history, const Board& parent_board, const Move& move) {
+	if (path_history == nullptr || parent_board.is_irreversible_move(move)) {
+		return PositionHistory();
+	}
+
+	return *path_history;
+}
+
+void mark_position_as_draw(Board& board) {
+	board._game_over_value = draw;
+	board._game_over_checked = true;
+}
+
+void init_terminal_draw_child(Node* child, Board* board, Evaluator* eval, Network* network) {
+	mark_position_as_draw(*board);
+
+	child->_board = board;
+	child->evaluate_position(eval, false, network, true);
+	child->_fully_explored = true;
+	child->_can_explore = false;
+	child->_is_terminal = true;
+}
+
 // Constructeur par défaut
 Node::Node() {
 }
@@ -28,7 +79,11 @@ void Node::add_child(Node* child, Move move) {
 		cout << "null move added" << endl;
 	}
 
-	_children[move] = child;
+	child->_parent_count++;
+	ChildLink link;
+	link._node = child;
+	link._propagated_nodes = child->_nodes;
+	_children[move] = link;
 	//_nodes += child->_nodes;
 }
 
@@ -41,7 +96,7 @@ size_t Node::children_count() const {
 Move Node::get_first_unexplored_move(bool fully_explored) {
 	for (int i = 0; i < _board->_got_moves; i++) {
 		Move move = _board->_moves[i];
-		if (!_children.contains(move) || (fully_explored && !_children[move]->_fully_explored)) {
+		if (!_children.contains(move) || (fully_explored && _children[move]._node != nullptr && !_children[move]._node->_fully_explored)) {
 			return move;
 		}
 	}
@@ -81,7 +136,7 @@ void Node::init_node() {
 }
 
 // Nouveau GrogrosZero
-void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, robin_map<uint64_t, char> *position_history) {
+void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, PositionHistory *path_history) {
 	// TODO:
 	// On peut rajouter la profondeur
 	// Garder le temps de calcul
@@ -98,18 +153,16 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	// Temps de calcul
 	const clock_t begin_monte_time = clock();
 
-	// FIXME *** Initialisation de l'historique des positions, si pas déjà fait
-	if (position_history == nullptr) {
-		position_history = new robin_map<uint64_t, char>();
-	}
-
-	// FIXME *** à voir si c'est nécessaire
-    _board->get_zobrist_key();
-    (*position_history)[_board->_zobrist_key] = 1;
+	// Base path for this call. Each outer iteration clones it so branches never leak
+	// repetition state into one another.
+	PositionHistory local_path_history;
+	PositionHistory* base_path_history = path_history != nullptr ? path_history : &local_path_history;
+	ensure_position_in_history(*base_path_history, *_board);
+	_board->get_zobrist_key();
 
 	// INITIALISATION
 	if (!_initialized) {
-		quiescence(board_buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, position_history);
+		quiescence(board_buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, base_path_history);
 		_iterations++;
 	}
 
@@ -129,22 +182,19 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 
 	// Exploration
 	while (iterations > 0) {
+		PositionHistory iteration_path_history = *base_path_history;
 
 		// EXPLORATION D'UN NOUVEAU COUP
 		if (get_fully_explored_children_count() < _board->_got_moves) {
-			explore_new_move(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, position_history);
+			explore_new_move(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, &iteration_path_history);
 		}
 
 		// EXPLORATION D'UN COUP DÉJÀ EXPLORÉ
 		else {
-			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, position_history);
+			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, &iteration_path_history);
 		}
 
 		iterations--;
-
-		if (iterations > 0) {
-			position_history = new robin_map<uint64_t, char>();
-		}
 	}
 	
 	// FIXME *** cela ne devrait pas arriver
@@ -159,30 +209,28 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 }
 
 // Fonction qui explore un nouveau coup
-void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, robin_map<uint64_t, char> *position_history) {
+void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history) {
 
 	// On prend le premier coup non exploré
 	const Move move = get_first_unexplored_move(true);
-
-    // Si le coup est irreversible, on vide l'historique des positions
-    if (_board->is_irreversible_move(move)) {
-        position_history->clear();
-    }
+	PositionHistory child_path_history = make_child_path_history(path_history, *_board, move);
 
 	// Noeud fils
 	Node *child = nullptr;
 
 	// Si on a déjà exploré ce coup, mais pas complètement
 	bool already_explored = _children.contains(move);
+	ChildLink* child_link = already_explored ? &_children[move] : nullptr;
 
 	if (already_explored) {
-		child = _children[move];
+		child = child_link->_node;
+		record_position_in_history(child_path_history, *child->_board);
 
-		if (_nodes <= child->_nodes) {
+		if (_nodes <= child_link->_propagated_nodes) {
 			cout << "child nodes >= nodes???" << endl;
 		}
 
-		_nodes -= child->_nodes; // On enlève le nombre de noeuds de ce fils
+		_nodes -= child_link->_propagated_nodes;
 	}
 	else {
 		// Prend une place dans le buffer
@@ -193,21 +241,15 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 			return;
 		}
 
-        new_board->copy_data(*_board, false, true);
+		new_board->copy_data(*_board, false, true);
 		new_board->_is_active = true;
 		new_board->make_move(move, false, true);
 
-		// FIXME *** pourquoi ça n'est pas recalculé?
-        new_board->get_zobrist_key();
-
-        // Si la position est déjà présente dans l'historique, on considère que c'est une nulle
-        if (position_history->contains(new_board->_zobrist_key)) {
+		// Si la position est déjà présente dans l'historique du chemin, on considère que c'est une nulle.
+		// Cette information est propre au chemin courant; elle ne doit pas vivre dans les noeuds parents.
+		if (position_is_draw_by_repetition(child_path_history, *new_board)) {
 			// 3Q2k1/5p1p/2p1p3/2p1P1pq/5P2/4K3/6PP/2r5 b - - 1 4 : position test
 			// 6kr/4K2p/7B/3bN3/8/8/8/8 b - - 19 10 : bugs dans position test
-
-			// TODO *** faire une méthode pour refactoriser ça
-			new_board->_game_over_value = draw;
-			new_board->_game_over_checked = true;
 
 			// Création du noeud fils
 			child = monte_node_buffer.get_first_free_node();
@@ -217,57 +259,26 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 				return;
 			}
 
-			child->_board = new_board;
-			child->evaluate_position(eval, false, network, true);
-			child->_fully_explored = true;
-			child->_can_explore = false;
-			child->_is_terminal = true;
+			init_terminal_draw_child(child, new_board, eval, network);
 			child->_nodes = 1;
 			child->_iterations = 1;
 		}
 
 		// Sinon, on crée un nouveau noeud normalement
-        else {
-            (*position_history)[new_board->_zobrist_key] = 1;
+		else {
+			record_position_in_history(child_path_history, *new_board);
+			new_board->get_zobrist_key();
 
-			// TEST: 8/2k5/3p4/p2P1p2/P2P1P2/8/3K4/8 w - - 10 6
-			// Quand on update un des noeuds, il faudra potentiellement backpropagate dans toutes les branches parentes...
-			// Gros problème de noeuds négatifs
+			// Création du noeud fils (pas de partage via TT — un noeud partagé entre
+			// plusieurs parents casse _nodes, backpropagation et crée des cycles)
+			child = monte_node_buffer.get_first_free_node();
 
-			bool transpositions = false;
-
-
-			// Si la position est déjà dans la table de transposition
-			if (transpositions && transposition_table.contains(new_board->_zobrist_key)) {
-				cout << "transposition: " << new_board->to_fen() << endl;
-
-				child = transposition_table._hash_table[new_board->_zobrist_key]._node;
-				new_board->reset_board();
-
-				cout << "transposition nodes: " << child->_nodes << endl;
-				cout << "parent nodes: " << _nodes << endl;
+			if (child == nullptr) {
+				cout << "null child in explore_new_move" << endl;
+				return;
 			}
 
-			// Sinon, on crée un nouveau noeud
-			else {
-				// Création du noeud fils
-				child = monte_node_buffer.get_first_free_node();
-
-                if (child == nullptr) {
-                    cout << "null child in explore_new_move" << endl;
-                    return;
-                }
-
-				child->_board = new_board;
-
-
-				// Ajoute la position dans la table
-				if (transpositions) {
-					transposition_table._hash_table[new_board->_zobrist_key] = ZobristEntry(child);
-				}
-
-				//cout << "normal" << endl;
-			}
+			child->_board = new_board;
 		}
 	}
 
@@ -281,13 +292,13 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		bool test = false;
 
 		if (test) {
-			child->quiescence(board_buffer, eval, 2, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, position_history); // TODO *** faire un cutoff plus facile, si l'éval de base est déjà mauvaise? par rapport à l'évaluation statique
+			child->quiescence(board_buffer, eval, 2, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, &child_path_history); // TODO *** faire un cutoff plus facile, si l'éval de base est déjà mauvaise? par rapport à l'évaluation statique
 		}
 
 		// Si l'évaluation est meilleure que celle de base, on regarde la quiescence
 		else if (!test || child->_static_evaluation._value * _board->get_color() > _static_evaluation._value * _board->get_color()) {
 
-			child->quiescence(board_buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, position_history);
+			child->quiescence(board_buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, &child_path_history);
 		}
 
 		child->_fully_explored = true;
@@ -311,16 +322,18 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		child->_iterations = 1;
 	}
 
-	if (child->_chosen_iterations == 0) {
-		child->_chosen_iterations = 1;
-	}
-
-	_iterations += child->_iterations;
-
 	// Ajoute le fils
 	if (!already_explored) {
 		add_child(child, move);
+		child_link = &_children.at(move);
 	}
+
+	if (child_link->_chosen_iterations == 0) {
+		child_link->_chosen_iterations = 1;
+	}
+
+	child_link->_propagated_nodes = child->_nodes;
+	_iterations += child->_iterations;
 
 	// Tous les coups ont-ils déjà été explorés?
 	bool all_moves_explored = (get_fully_explored_children_count()) == _board->_got_moves;
@@ -339,7 +352,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 	}
 	else {
 		_is_stand_pat_eval = false;
-		_deep_evaluation = _children[best_move]->_deep_evaluation;
+		_deep_evaluation = _children[best_move]._node->_deep_evaluation;
 	}
 
 	// FIXME: si on a regardé tous les fils, et qu'aucun des coups n'améliore l'évaluation, on fait quoi?
@@ -349,32 +362,31 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 }
 
 // Fonction qui explore dans un plateau fils pseudo-aléatoire
-void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, robin_map<uint64_t, char> *position_history) {
+void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history) {
 
 	// Prend un fils aléatoire
 	const Move move = pick_random_child(alpha, beta, gamma);
-	Node *child = _children[move];
+	ChildLink& child_link = _children[move];
+	Node *child = child_link._node;
+	PositionHistory child_path_history = make_child_path_history(path_history, *_board, move);
+	record_position_in_history(child_path_history, *child->_board);
 
-	if (child->_nodes >= _nodes) {
+	if (child_link._propagated_nodes >= _nodes) {
 		cout << "child nodes >= nodes in random exploration??? main position: " << _board->to_fen() << ", child position: " << child->_board->to_fen() << endl;
 	}
 
 	// Nombre de noeuds du fils
-	const int initial_child_nodes = child->_nodes;
+	const int initial_child_nodes = child_link._propagated_nodes;
 
-	// Si le coup est irreversible, on vide l'historique des positions
-	if (_board->is_irreversible_move(move)) {
-		position_history->clear();
-	}
-	
 	// Explore le fils
-	child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, position_history); // L'évaluation du fils est mise à jour ici
+	child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &child_path_history); // L'évaluation du fils est mise à jour ici
 
 	// Met à jour l'évaluation du plateau avec le meilleur coup
-	_deep_evaluation = _children[get_best_score_move(alpha, beta)]->_deep_evaluation;
+	_deep_evaluation = _children[get_best_score_move(alpha, beta)]._node->_deep_evaluation;
 
 	// Augmente le nombre de noeuds
 	_nodes += child->_nodes - initial_child_nodes;
+	child_link._propagated_nodes = child->_nodes;
 
 	if (_nodes <= 0) {
 		cout << "negative nodes in explore_random_child???" << endl;
@@ -395,9 +407,9 @@ Move Node::get_most_explored_child_move() {
 	// Tri simple, on ne départage pas les égalités
 	Move best_move = Move();
 
-	for (auto const& [move, child] : _children) {
-		if (child->_chosen_iterations > max) {
-			max = child->_chosen_iterations;
+	for (auto const& [move, child_link] : _children) {
+		if (child_link._chosen_iterations > max) {
+			max = child_link._chosen_iterations;
 			best_move = move;
 		}
 	}
@@ -410,7 +422,7 @@ void Node::reset(bool recursive) {
 	_latest_first_move_explored = -1;
 	_nodes = 0;
 	_iterations = 0;
-	_chosen_iterations = 0;
+	_parent_count = 0;
 
 	if (_board != nullptr) {
 		_board->reset_board();
@@ -427,19 +439,30 @@ void Node::reset(bool recursive) {
 	_is_active = false;
 	_is_stand_pat_eval = true;
 
-	if (!recursive) {
-		return;
-	}
+	if (recursive) {
+		for (auto const& [_, child_link] : _children) {
+			if (child_link._node == nullptr) {
+				continue;
+			}
 
-	for (auto const& [_, child] : _children) {
-		child->reset();
+			child_link._node->_parent_count--;
+
+			if (child_link._node->_parent_count <= 0) {
+				child_link._node->reset(true);
+			}
+		}
 	}
 
 	_children.clear();
 }
 
 // Fonction qui renvoie les variantes d'exploration
-string Node::get_exploration_variants(const double alpha, const double beta, bool main, bool quiescence) {
+string Node::get_exploration_variants(const double alpha, const double beta, bool main, bool quiescence, int max_depth) {
+
+	// Protection contre les cycles de transposition
+	if (max_depth <= 0) {
+		return "...";
+	}
 
 	// Si on est en fin de variante
 	if (_board->_game_over_value) {
@@ -459,8 +482,8 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 			// REVIEW *** voir si le vecteur est trop lent
 			vector<pair<int, Move>> children_iterations;
 
-			for (auto const& [move, child] : _children) {
-				children_iterations.emplace_back(-child->_chosen_iterations, move); // On met un moins pour trier dans l'ordre décroissant
+			for (auto const& [move, child_link] : _children) {
+				children_iterations.emplace_back(-child_link._chosen_iterations, move); // On met un moins pour trier dans l'ordre décroissant
 			}
 
 			std::ranges::sort(children_iterations.begin(), children_iterations.end());
@@ -468,9 +491,9 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 			// TODO *** trier secondairement par score de coup
 
 			for (auto const& [neg_child_iterations, move] : children_iterations) {
-				Node* child = _children[move];
+				Node* child = _children[move]._node;
 				const int child_iterations = -neg_child_iterations;
-				const int child_chosen_iterations = child->_chosen_iterations;
+				const int child_chosen_iterations = _children[move]._chosen_iterations;
 				const bool new_quiescence = !quiescence && child_iterations == 0;
 
 				string child_variants;
@@ -486,7 +509,7 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 				child_variants += _board->_player ? ". " : "... ";
 				child_variants += _board->move_label(move, true);
 				child_variants += child->children_count() > 0 ? " " : "";
-				child_variants += child->get_exploration_variants(alpha, beta, false, new_quiescence || quiescence);
+				child_variants += child->get_exploration_variants(alpha, beta, false, new_quiescence || quiescence, max_depth - 1);
 
 				if (new_quiescence)
 					child_variants += ')';
@@ -545,8 +568,9 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 				variants += "...";
 			}
 			else {
-				const bool new_quiescence = !quiescence && _children[best_move]->_iterations == 0;
-				variants += (new_quiescence ? "(" : "") + (_board->_player ? to_string(_board->_moves_count) + ". " : "") + _board->move_label(best_move, true) + (_children[best_move]->children_count() > 0 ? " " : "") + _children[best_move]->get_exploration_variants(alpha, beta, false, new_quiescence || quiescence) + (new_quiescence ? ")" : "");
+				Node* best_child = _children[best_move]._node;
+				const bool new_quiescence = !quiescence && best_child->_iterations == 0;
+				variants += (new_quiescence ? "(" : "") + (_board->_player ? to_string(_board->_moves_count) + ". " : "") + _board->move_label(best_move, true) + (best_child->children_count() > 0 ? " " : "") + best_child->get_exploration_variants(alpha, beta, false, new_quiescence || quiescence, max_depth - 1) + (new_quiescence ? ")" : "");
 			}
 		}
 	}
@@ -562,7 +586,11 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 }
 
 // Fonction qui renvoie la profondeur de la variante principale
-int Node::get_main_depth(const double alpha, const double beta) {
+int Node::get_main_depth(const double alpha, const double beta, int max_depth) {
+	if (max_depth <= 0) {
+		return 0;
+	}
+
 	if (children_count() > 0) {
 		Move main_move = get_best_score_move(alpha, beta, true);
 
@@ -570,9 +598,9 @@ int Node::get_main_depth(const double alpha, const double beta) {
 			return 0;
 		}
 
-		Node* main_child = _children[main_move];
+		Node* main_child = _children[main_move]._node;
 
-		return main_child->get_main_depth(alpha, beta) + 1;
+		return main_child->get_main_depth(alpha, beta, max_depth - 1) + 1;
 	}
 
 	return 0;
@@ -594,7 +622,7 @@ Node* Node::get_most_explored_child() {
 		return nullptr;
 	}
 
-	return _children[most_explored_move];
+	return _children[most_explored_move]._node;
 }
 
 // Fonction qui renvoie la vitesse de calcul moyenne en noeuds par seconde
@@ -608,7 +636,7 @@ int Node::get_ips() const {
 }
 
 // Quiescence search intégré à l'exploration
-int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network, bool evaluate_threats, int beta_margin, const robin_map<uint64_t, char> *position_history) {
+int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network, bool evaluate_threats, int beta_margin, const PositionHistory *path_history) {
 	// TODO: comment gérer la profondeur? faire en fonction de l'importance de la branche?
 	// mettre aucune profondeur limite?
 	// pourquoi en endgame ça va si loin? il fait full échecs...
@@ -679,6 +707,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 	// Initialisation du noeud
 	init_node();
+	_board->get_zobrist_key();
 
 	// Couleur du joueur
 	int color = _board->get_color();
@@ -704,17 +733,49 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 	// Stand pat
 	const int stand_pat = _deep_evaluation._value * color;
-	
-	// FIXME *** we can't have the actual usable score of this standpat, since it would require to know the evaluations of all the children
-	// Instead we use a previsional value, assuming that the standpat is the best move
-	//int stand_pat = get_previsonal_node_score(search_alpha, search_beta, color);
-	//cout << "evaluation: " << _deep_evaluation._value << ", score: " << _deep_evaluation._avg_score << ", standpat: " << stand_pat << endl;
+	const int original_alpha = alpha;
+
+	// TT Probe
+	const ZobristEntry* tt_entry = transposition_table.probe(_board->_zobrist_key);
+	if (tt_entry != nullptr && tt_entry->_depth >= depth) {
+		const int tt_eval = tt_entry->_eval;
+		bool tt_cutoff = false;
+
+		if (tt_entry->_flag == TT_EXACT) {
+			_deep_evaluation._value = tt_eval * color;
+			tt_cutoff = true;
+		}
+		else if (tt_entry->_flag == TT_BETA && tt_eval >= beta) {
+			_deep_evaluation._value = beta * color;
+			tt_cutoff = true;
+		}
+		else if (tt_entry->_flag == TT_ALPHA && tt_eval <= alpha) {
+			_deep_evaluation._value = alpha * color;
+			tt_cutoff = true;
+		}
+
+		if (tt_cutoff) {
+			// Le cutoff n'a fixé que _value. Les champs dérivés (_wdl, _avg_score)
+			// venaient encore de l'éval statique : un parent héritant de cette
+			// _deep_evaluation voyait une éval incohérente (ex: _value = mat mais
+			// _avg_score d'une position normale), ce qui faussait get_node_score.
+			// On les recalcule à partir du _value de la TT.
+			_deep_evaluation.get_WDL();
+			_deep_evaluation.get_average_score();
+
+			transposition_table._stats._cutoffs++;
+			_time_spent += clock() - begin_monte_time;
+			if (tt_entry->_flag == TT_EXACT) return tt_eval;
+			return tt_entry->_flag == TT_BETA ? beta : alpha;
+		}
+	}
 
 	// Si on est en échec (pour ne pas terminer les variantes sur un échec)
 	const bool in_check = _board->in_check();
 
 	// Emergency cutoff: depth - 4
 	if (depth <= -4) {
+		transposition_table.store(_board->_zobrist_key, stand_pat, depth, TT_EXACT);
 		_time_spent += clock() - begin_monte_time;
 		cout << "emergency cutoff: " << _board->to_fen() << ", in_check: " << in_check << endl;
 		return stand_pat;
@@ -722,6 +783,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 	// Profondeur nulle, on renvoie le standpat
 	if (depth <= 0 && !in_check) {
+		transposition_table.store(_board->_zobrist_key, stand_pat, depth, TT_EXACT);
 		_time_spent += clock() - begin_monte_time;
 		return stand_pat;
 	}
@@ -744,6 +806,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	// FIXME *** normal qu'on envoie la beta margin sur toute la profondeur?
 
 	if (stand_pat >= total_beta) {
+		transposition_table.store(_board->_zobrist_key, beta, depth, TT_BETA);
 		_time_spent += clock() - begin_monte_time;
 		//cout << "beta cutoff1: " << stand_pat << " >= " << beta << " + " << beta_margin << endl;
 		return beta;
@@ -797,13 +860,9 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 			move_index++;
 			
-			// Historique indépendant des coups pour les répétitions
-			robin_map<uint64_t, char> new_history;
-
-			// Copy de l'historique pour le fils
-			if (position_history != nullptr && !_board->is_irreversible_move(move)) {
-				new_history = *position_history;
-			}
+			// Historique indépendant des coups pour les répétitions.
+			// Comme en recherche principale, il doit rester local à la branche.
+			PositionHistory child_path_history = make_child_path_history(path_history, *_board, move);
 
 			// Test du delta pruning
 			if (!move.is_checkmate()) {
@@ -839,10 +898,12 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 			// Création du noeud fils
 			Node *child = nullptr;
+			ChildLink* child_link = already_explored ? &_children[move] : nullptr;
 
 			// Si on a déjà exploré ce coup, mais pas complètement
 			if (already_explored) {
-				child = _children[move];
+				child = child_link->_node;
+				record_position_in_history(child_path_history, *child->_board);
 			}
 
 			// On crée un nouveau noeud pour ce coup
@@ -861,17 +922,9 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				new_board->_is_active = true;
 				new_board->make_move(move, false, true);
 
-				// Compute zobrist key for the new position before any history check
-				// FIXME *** pourquoi ça n'est pas recalculé?
-				// REVIEW *** en fait peut-être que si, mais pas pour les coups irreversibles... en même temps il faudrait reset tout l'historique...
-				new_board->get_zobrist_key();
-
-				// Si la position est déjà présente dans l'historique, on considère que c'est une nulle
-				if (new_history.contains(new_board->_zobrist_key)) {
-					// TODO *** fonction eval nulle à créer
-					new_board->_game_over_value = draw;
-					new_board->_game_over_checked = true;
-
+				// Si la position est déjà présente dans l'historique, on considère que c'est une nulle.
+				// Ici encore, l'information appartient au chemin courant et pas au noeud parent.
+				if (position_is_draw_by_repetition(child_path_history, *new_board)) {
 					// Création du noeud fils
 					child = monte_node_buffer.get_first_free_node();
 
@@ -882,19 +935,14 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 						return alpha;
 					}
 
-					child->_board = new_board;
-					child->evaluate_position(eval, false, network, true);
-					child->_fully_explored = true;
-					child->_can_explore = false;
-					child->_is_terminal = true;
+					init_terminal_draw_child(child, new_board, eval, network);
 				}
 
 				else {
-					// Add resulting position to history
-					new_history[new_board->_zobrist_key] = 1;
+					record_position_in_history(child_path_history, *new_board);
+					new_board->get_zobrist_key();
 
-					// Création du noeud fils
-					// REVIEW *** faut-il initialiser le noeud ici?
+					// Pas de partage via TT (même raison que explore_new_move)
 					child = monte_node_buffer.get_first_free_node();
 
 					// Buffer plein
@@ -908,11 +956,16 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				}
 
 				add_child(child, move);
+				child_link = &_children[move];
 			}
 
 			// Appel récursif sur le fils
-			int score = - child->quiescence(board_buffer, eval, new_depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, beta_margin, &new_history);
-			_nodes += child->_nodes;
+			int score = - child->quiescence(board_buffer, eval, new_depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, beta_margin, &child_path_history);
+			const int previous_child_nodes = child_link != nullptr ? child_link->_propagated_nodes : 0;
+			_nodes += child->_nodes - previous_child_nodes;
+			if (child_link != nullptr) {
+				child_link->_propagated_nodes = child->_nodes;
+			}
 
 			// Mise à jour de l'évaluation du plateau
 			bool all_moves_explored = children_count() == _board->_got_moves;
@@ -926,14 +979,15 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			}
 			else {
 				//_is_stand_pat_eval = false;
-				_deep_evaluation = _children[best_move]->_deep_evaluation;
-				if (_children[best_move]->_quiescence_depth != new_depth - 1) {
-					cout << "expected depth: " << new_depth - 1 << ", actual depth: " << _children[best_move]->_quiescence_depth << endl;
+				_deep_evaluation = _children[best_move]._node->_deep_evaluation;
+				if (_children[best_move]._node->_quiescence_depth != new_depth - 1) {
+					cout << "expected depth: " << new_depth - 1 << ", actual depth: " << _children[best_move]._node->_quiescence_depth << endl;
 				}
 			}
 
 			// Beta cut-off
 			if (score >= beta) {
+				transposition_table.store(_board->_zobrist_key, beta, depth, TT_BETA);
 				_time_spent += clock() - begin_monte_time;
 				return beta;
 			}
@@ -945,6 +999,10 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 		}
 	}
 
+	// TT Store
+	TTFlag tt_flag = (alpha <= original_alpha) ? TT_ALPHA : TT_EXACT;
+	transposition_table.store(_board->_zobrist_key, alpha, depth, tt_flag);
+
 	// Temps de calcul
 	_time_spent += clock() - begin_monte_time;
 
@@ -955,8 +1013,8 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 int Node::get_fully_explored_children_count() const {
 	int count = 0;
 
-	for (auto const& [_, child] : _children) {
-		if (child->_fully_explored) {
+	for (auto const& [_, child_link] : _children) {
+		if (child_link._node->_fully_explored) {
 			count++;
 		}
 	}
@@ -968,8 +1026,8 @@ int Node::get_fully_explored_children_count() const {
 int Node::count_children_nodes() const {
 	int sum = 0;
 
-	for (auto& [move, child] : _children) {
-		sum += child->get_total_nodes();
+	for (auto& [move, child_link] : _children) {
+		sum += child_link._node->get_total_nodes();
 	}
 
 	cout << "SUM: " << sum << endl;
@@ -993,7 +1051,7 @@ void Node::evaluate_position(Evaluator* evaluator, bool display, Network * netwo
 }
 
 // Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
-Move Node::pick_random_child(const double alpha, const double beta, const double gamma) const {
+Move Node::pick_random_child(const double alpha, const double beta, const double gamma) {
 	// TESTS
 	// 8/8/8/1r5p/2p4k/2Kb4/8/8 b - - 1 69 : tout égal quand tout gagne...
 	// r2qr1k1/3bbp1p/p2pn1p1/3QP3/3P4/3B1N2/1P1B1PPP/R3R1K1 w - - 1 24 : pareil
@@ -1016,7 +1074,8 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	// Meilleure chance de gagner
 	double max_avg_score = 0.0;
 
-	for (auto const& [_, child] : _children) {
+	for (auto const& [_, child_link] : _children) {
+		Node* child = child_link._node;
 		if (child->_deep_evaluation._value * color > max_eval) {
 			max_eval = child->_deep_evaluation._value * color;
 		}
@@ -1071,13 +1130,14 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	double best_score = 0.0;
 
 	// Regarde chaque coup
-	for (auto const& [move, child] : _children) {
+	for (auto const& [move, child_link] : _children) {
+		Node* child = child_link._node;
 		
 		// Score du coup
 		double move_score = move_scores[move];
 
 		// Facteur d'exploration
-		int child_iterations = max(child->_chosen_iterations, child->_iterations);
+		int child_iterations = max(child_link._chosen_iterations, child->_iterations);
 
 		// Gamma
 		const double new_gamma = gamma / (1.00f - _static_evaluation._uncertainty / 2.0f) / (1.00f - _board->_adv / 2.0f);
@@ -1103,9 +1163,9 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 			Evaluation best_eval = Evaluation();
 			//Evaluation best_eval = child->_deep_evaluation;
 
-			for (auto const& [move2, child2] : child->_children) {
-				if (child->_board->_player ? (child2->_deep_evaluation > best_eval) : (child2->_deep_evaluation < best_eval)) {
-					best_eval = child2->_deep_evaluation;
+			for (auto const& [move2, child_link2] : child->_children) {
+				if (child->_board->_player ? (child_link2._node->_deep_evaluation > best_eval) : (child_link2._node->_deep_evaluation < best_eval)) {
+					best_eval = child_link2._node->_deep_evaluation;
 				}
 			}
 
@@ -1156,7 +1216,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	}
 
 	// Meilleur coup global
-	_children.at(best_move)->_chosen_iterations++;
+	_children.at(best_move)._chosen_iterations++;
 
 	if (move_to_play.is_null_move()) {
 		return best_move;
@@ -1181,7 +1241,8 @@ robin_map<Move, double> Node::get_move_scores(const double alpha, const double b
 	double max_avg_score = 0.0;
 
 	// Cherche la meilleure eval et le meilleure score parmi tous les coups possibles
-	for (auto const& [_, child] : _children) {
+	for (auto const& [_, child_link] : _children) {
+		Node* child = child_link._node;
 		if (child->_deep_evaluation._value * color > max_eval) {
 			max_eval = child->_deep_evaluation._value * color;
 		}
@@ -1210,7 +1271,8 @@ robin_map<Move, double> Node::get_move_scores(const double alpha, const double b
 	}
 
 	// Regarde chaque coup
-	for (auto const& [move, child] : _children) {
+	for (auto const& [move, child_link] : _children) {
+		Node* child = child_link._node;
 		if (qdepth != -100 && child->_quiescence_depth != qdepth) {
 			continue;
 		}
@@ -1284,7 +1346,8 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 	double max_avg_score = 0.0;
 
 	// Cherche la meilleure eval et le meilleure score parmi tous les coups possibles
-	for (auto const& [_, child] : _children) {
+	for (auto const& [_, child_link] : _children) {
+		Node* child = child_link._node;
 		if (child->_deep_evaluation._value * color > max_eval) {
 			max_eval = child->_deep_evaluation._value * color;
 		}
@@ -1314,7 +1377,8 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 		best_move = Move();
 	}
 
-	for (auto const& [move, child] : _children) {
+	for (auto const& [move, child_link] : _children) {
+		Node* child = child_link._node;
 		if (qdepth != -100 && child->_quiescence_depth != qdepth) {
 			continue;
 		}
@@ -1493,7 +1557,7 @@ void NodeBuffer::remove() {
 bool NodeBuffer::reset()
 {
 	for (int i = 0; i < _length; i++)
-		_nodes[i].reset();
+		_nodes[i].reset(false);
 
 	return true;
 }

@@ -1,12 +1,13 @@
 #include "game_tree.h"
 #include "board.h"
 #include "gui.h"
+#include "zobrist.h"
 
-// Constructeur par défaut
+// Constructeur par dï¿½faut
 GameTreeNode::GameTreeNode() {
 }
 
-// Constructeur à partir d'un plateau et d'un coup
+// Constructeur ï¿½ partir d'un plateau et d'un coup
 GameTreeNode::GameTreeNode(Board board, Move move, string move_label, const GameTreeNode& parent) {
 	_move = move;
 	_move_label = move_label;
@@ -23,7 +24,7 @@ void GameTreeNode::add_child(GameTreeNode child) {
 string GameTreeNode::tree_display(GameTreeNode *current_node) {
 	bool is_current_node = this == current_node;
 	
-	string display = is_current_node ? "()" : ""; // FIXME: à améliorer
+	string display = is_current_node ? "()" : ""; // FIXME: ï¿½ amï¿½liorer
 
 	// Affichage des fils
 
@@ -42,7 +43,7 @@ string GameTreeNode::tree_display(GameTreeNode *current_node) {
 	return display;
 }
 
-// Reset (ne pas oublier de vider la mémoire)
+// Reset (ne pas oublier de vider la mï¿½moire)
 void GameTreeNode::reset() {
 	_move = Move();
 	_move_label = "";
@@ -51,17 +52,17 @@ void GameTreeNode::reset() {
 }
 
 
-// Constructeur par défaut
+// Constructeur par dï¿½faut
 GameTree::GameTree() {
 }
 
-// Constructeur à partir d'un plateau
+// Constructeur ï¿½ partir d'un plateau
 GameTree::GameTree(Board board) {
 	_root = new GameTreeNode(board, Move(), "", GameTreeNode());
 	_current_node = _root;
 }
 
-// Sélection du noeud suivant
+// Sï¿½lection du noeud suivant
 bool GameTree::select_next_node(Move move) {
 	for (int i = 0; i < _current_node->_children.size(); i++)
 		if (_current_node->_children[i]._move == move) {
@@ -72,7 +73,7 @@ bool GameTree::select_next_node(Move move) {
 	return false;
 }
 
-// Sélection du premier noeud suivant
+// Sï¿½lection du premier noeud suivant
 bool GameTree::select_first_next_node() {
 	bool can_go_forward = _current_node->_children.size() > 0;
 
@@ -83,7 +84,7 @@ bool GameTree::select_first_next_node() {
 	return can_go_forward;
 }
 
-// Sélection du noeud précédent
+// Sï¿½lection du noeud prï¿½cï¿½dent
 bool GameTree::select_previous_node() {
 	bool can_go_back = _current_node != _root;
 
@@ -91,6 +92,7 @@ bool GameTree::select_previous_node() {
 		_current_node = _current_node->_parent;
 
 		// Il faut aussi remonter le plateau pour l'exploration
+		transposition_table.clear();
 		main_GUI._root_exploration_node->reset();
 		main_GUI._root_exploration_node->_board = &_current_node->_board;
 		main_GUI._root_exploration_node->_is_active = true;
@@ -110,16 +112,16 @@ void GameTree::add_child(GameTreeNode child) {
 	_current_node->add_child(child);
 }
 
-// Ajout d'un fils à partir d'un plateau et d'un coup
+// Ajout d'un fils ï¿½ partir d'un plateau et d'un coup
 void GameTree::add_child(Board board, Move move, string move_label) {
 
-	// Vérifie que ce n'est pas un coup nul
+	// Vï¿½rifie que ce n'est pas un coup nul
 	if (move.is_null_move()) {
 		cout << "null move added, in position " << _current_node->_board.to_fen() << endl;
 		return;
 	}
 
-	// Vérifie que le coup n'existe pas déjà
+	// Vï¿½rifie que le coup n'existe pas dï¿½jï¿½
 	for (int i = 0; i < _current_node->_children.size(); i++)
 		if (_current_node->_children[i]._move == move)
 			return;
@@ -129,16 +131,16 @@ void GameTree::add_child(Board board, Move move, string move_label) {
 	_current_node->add_child(GameTreeNode(board, move, move_label, *_current_node));
 }
 
-// Ajout d'un fils à partir d'un coup
+// Ajout d'un fils ï¿½ partir d'un coup
 void GameTree::add_child(Move move, string additional_label) {
 
-	// Vérifie que ce n'est pas un coup nul
+	// Vï¿½rifie que ce n'est pas un coup nul
 	if (move.is_null_move()) {
 		cout << "null move added, in position " << _current_node->_board.to_fen() << endl;
 		return;
 	}
 
-	// Vérifie que le coup n'existe pas déjà
+	// Vï¿½rifie que le coup n'existe pas dï¿½jï¿½
 	for (int i = 0; i < _current_node->_children.size(); i++)
 		if (_current_node->_children[i]._move == move)
 			return;
@@ -161,7 +163,7 @@ void GameTree::reset() {
 	_current_node = _root;
 }
 
-// Nouvel arbre à partir d'un plateau
+// Nouvel arbre ï¿½ partir d'un plateau
 void GameTree::new_tree(Board& board) {
 	_root->reset();
 	_root = new GameTreeNode(board, Move(), "", GameTreeNode());
@@ -173,7 +175,7 @@ bool GameTree::promote_current_variation() {
 
 	// FIXME : y'a encore des bugs........
 
-	// Si on est à la racine, on ne peut pas promouvoir
+	// Si on est ï¿½ la racine, on ne peut pas promouvoir
 	if (_current_node == _root)
 		return false;
 
@@ -192,7 +194,7 @@ bool GameTree::promote_current_variation() {
 	// On stocke d'abord la variante actuelle
 	GameTreeNode temp = *_current_node;
 
-	// On décale les autres variantes jusqu'à la variante actuelle
+	// On dï¿½cale les autres variantes jusqu'ï¿½ la variante actuelle
 	
 	// On cherche la variante actuelle
 	int variant_position = 0;
@@ -203,15 +205,15 @@ bool GameTree::promote_current_variation() {
 		}
 	}
 		
-	// On décale les variantes
+	// On dï¿½cale les variantes
 	for (int j = variant_position; j > 0; j--)
 		_current_node->_parent->_children[j] = _current_node->_parent->_children[j - 1];
 
-	// On place la variante actuelle en première position
+	// On place la variante actuelle en premiï¿½re position
 	_current_node->_parent->_children[0] = temp;
 
 	//*_current_node = _current_node->_parent->_children[0];
-	// FIXME: ça marche pas, on est pas sur le bon noeud
+	// FIXME: ï¿½a marche pas, on est pas sur le bon noeud
 
 	return true;
 }
