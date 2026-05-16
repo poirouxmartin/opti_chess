@@ -1,9 +1,9 @@
 #include "buffer.h"
 #include "useful_functions.h"
 
-// Constructeur par défaut
+// Constructeur par dÃ©faut
 BoardBuffer::BoardBuffer() {
-	// Crée un gros buffer, de 4GB
+	// CrÃ©e un gros buffer, de 4GB
 	constexpr unsigned long int _size_buffer = 4000000000;
 	_length = _size_buffer / sizeof(Board);
 	_length = 0;
@@ -53,7 +53,7 @@ int BoardBuffer::get_first_free_index() {
 	return -1;
 }
 
-// Fonction qui désalloue toute la mémoire
+// Fonction qui dÃ©salloue toute la mÃ©moire
 void BoardBuffer::remove() {
 	delete[] _boards;
 	_init = false;
@@ -85,7 +85,7 @@ Board* BoardBuffer::get_first_free_board() {
 	return board;
 }
 
-// DEBUG *** fonction qui affiche l'état du buffer (combien de plateaux sont utilisés)
+// DEBUG *** fonction qui affiche l'Ã©tat du buffer (combien de plateaux sont utilisÃ©s)
 void BoardBuffer::display_buffer_state() const {
 	int used_boards = 0;
 	for (int i = 0; i < _length; i++) {

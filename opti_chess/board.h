@@ -9,9 +9,11 @@
 #include <cstdint>
 #include "raylib.h"
 #include <iomanip>
+#include <robin_map.h>
 #include "useful_functions.h"
 
 using namespace std;
+using RepetitionHistory = tsl::robin_map<uint64_t, uint8_t>;
 
 
 // TODO: les utiliser
@@ -623,10 +625,8 @@ public:
 	// Clé de Zobrist de la position
 	uint64_t _zobrist_key = 0;
 
-	// Historique des positions
-	// FIXME *** pourquoi parfois c'est hyper lent? et pourquoi j'utilise un vecteur plutôt qu'un robin hash?
-	//vector<uint64_t> _positions_history = {};
-	//unordered_map<uint_fast64_t, int> _positions_history = {};
+	// Historique des positions depuis le dernier coup irréversible
+	RepetitionHistory _positions_history = {};
 
 	// FIXME *** des variables dummy pour l'alignement mémoire, sinon il fait des new vector hyper lents à chaque création de plateau
 	float _dummy1 = 1.0f;
@@ -726,6 +726,7 @@ public:
 
 	// Fonction qui renvoie le gagnant si la partie est finie (-1/1, et 2 pour nulle), et 0 sinon -> et stocke la valeur dans _game_over_value
 	int is_game_over(int max_repetitions = 2);
+	//int is_game_over(int max_repetitions = 3);
 
 	// Fonction qui renvoie le label d'un coup
 	string move_label(Move move, bool use_uft8 = false);
@@ -884,10 +885,10 @@ public:
 	bool is_legal(Move move);
 
 	// Fonction qui reset l'historique des positions
-	//void reset_positions_history();
+	void reset_positions_history();
 
 	// Fonction qui renvoie combien de fois la position actuelle a été répétée
-	//int repetition_count();
+	int repetition_count();
 
 	// Affiche l'histoirque des positions (les clés de Zobrist)
 	//void display_positions_history() const;

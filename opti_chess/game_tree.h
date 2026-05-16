@@ -7,7 +7,7 @@
 class GameTreeNode {
 	public:
 
-	// Dernier coup joué
+	// Dernier coup jouÃ©
 	Move _move;
 
 	// Label du coup
@@ -26,15 +26,15 @@ class GameTreeNode {
 	clock_t _time; // TODO
 
 	// TODO: (pour rajouter sur le PGN)
-	// Nombre de noeuds, évaluation, notation spéciale du coup...
+	// Nombre de noeuds, Ã©valuation, notation spÃ©ciale du coup...
 
-	// Constructeur par défaut
+	// Constructeur par dÃ©faut
 	GameTreeNode();
 
-	// Constructeur à partir d'un plateau et d'un coup
+	// Constructeur Ã  partir d'un plateau et d'un coup
 	GameTreeNode(Board, Move, string, const GameTreeNode&);
 
-	// Méthodes
+	// MÃ©thodes
 
 	// Ajout d'un fils
 	void add_child(GameTreeNode);
@@ -42,7 +42,7 @@ class GameTreeNode {
 	// Affichage de l'arbre
 	string tree_display(GameTreeNode *current_node);
 
-	// Reset (ne pas oublier de vider la mémoire)
+	// Reset (ne pas oublier de vider la mÃ©moire)
 	void reset();
 };
 
@@ -58,30 +58,30 @@ class GameTree {
 	GameTreeNode* _current_node;
 
 
-	// Constructeur par défaut
+	// Constructeur par dÃ©faut
 	GameTree();
 
-	// Constructeur à partir d'un plateau
+	// Constructeur Ã  partir d'un plateau
 	GameTree(Board);
 
-	// Méthodes
+	// MÃ©thodes
 
-	// Sélection du noeud suivant
+	// SÃ©lection du noeud suivant
 	bool select_next_node(Move move);
 
-	// Sélection du premier noeud suivant
+	// SÃ©lection du premier noeud suivant
 	bool select_first_next_node();
 
-	// Sélection du noeud précédent
+	// SÃ©lection du noeud prÃ©cÃ©dent
 	bool select_previous_node();
 
 	// Ajout d'un fils
 	void add_child(GameTreeNode);
 
-	// Ajout d'un fils à partir d'un plateau et d'un coup
+	// Ajout d'un fils Ã  partir d'un plateau et d'un coup
 	void add_child(Board, Move, string);
 
-	// Ajout d'un fils à partir d'un coup
+	// Ajout d'un fils Ã  partir d'un coup
 	void add_child(Move move, string additionnal_label);
 
 	// Affichage de l'arbre
@@ -90,7 +90,7 @@ class GameTree {
 	// Reset
 	void reset();
 
-	// Nouvel arbre à partir d'un plateau
+	// Nouvel arbre Ã  partir d'un plateau
 	void new_tree(Board&);
 
 	// Promeut la variante actuelle en tant que variante principale

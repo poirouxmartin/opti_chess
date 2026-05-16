@@ -15,14 +15,14 @@ using namespace std;
 
 // TODO:
 // Rajouter le lien au bot lichess dans le readme
-// L'inscrire à des tournois
-// Rajouter d'autres paramètres (nodes, time...)
-// Afficher l'eval si demandée? profondeur?...
+// L'inscrire Ã  des tournois
+// Rajouter d'autres paramÃ¨tres (nodes, time...)
+// Afficher l'eval si demandÃ©e? profondeur?...
 // Faire parler Grogros dans la partie? en fonction de la partie en cours
 // Voir les TODO dans le code
 // Regarder si should_play prend trop de temps
-// Afficher le nombre de noeuds par seconde à la fin de la réflexion?
-// Tester d'autres paramètres d'exploration (exploration plus restreinte (beta plus grand), quiescence plus profonde...)
+// Afficher le nombre de noeuds par seconde Ã  la fin de la rÃ©flexion?
+// Tester d'autres paramÃ¨tres d'exploration (exploration plus restreinte (beta plus grand), quiescence plus profonde...)
 
 // COMMANDS:
 // cd .\Documents\Info\Echecs\opti_chess\lichess-bot\
@@ -31,30 +31,30 @@ using namespace std;
 
 // Bilans de parties:
 // Trop d'importance sur les colonnes des tours : FIXED
-// Trop d'échecs inutiles (batteries dame/fou -> Fh7+ -> Fou enfermé) : FIXED
+// Trop d'Ã©checs inutiles (batteries dame/fou -> Fh7+ -> Fou enfermÃ©) : FIXED
 // Manque d'importance pour les pions au centre? : FIXED
 // Trop de c3 inutiles : FIXED
 // Trop de sacrifices inutiles sur le roi adverse : FIXED
-// Bloque pas assez les pions passés
+// Bloque pas assez les pions passÃ©s
 // Donne trop de pions gratuitement : FIXED?
-// Mauvaise modélisation de la sécurité du roi (agglutine les pièces vers le roi inutilement en fin de partie)
+// Mauvaise modÃ©lisation de la sÃ©curitÃ© du roi (agglutine les piÃ¨ces vers le roi inutilement en fin de partie)
 // Ne roque pas assez vite : FIXED
-// Enfermement des pièces (fous/dames)
-// Donne des pièces trop facilement contre quelques pions
-// 1. e4 Cc6 2. d4 e5 3. d5 Cd4 4. c3 -> Gagne la pièce, et Grogros s'en fout un peu (eval: +7 pour les blancs...)
-// r1bq2k1/pppp2rp/2n3P1/3N1p1Q/2PP4/3pP3/PP3PP1/R3K2R w KQ - 1 16 : ici il faut surtout pas prendre h7 (ça ferme la colonne h)
-// 5r2/ppp5/3p1nk1/8/4P2R/5PP1/PP6/1K6 w - - 0 35 : ici faut pas abuser avec les ionps... le cheval reste plus fort (et faut pas échanger les tours) -> il faut implémenter winnable pour échanger les pions mais pas les pièces
-// Valeurs des structures de pions à revoir...
+// Enfermement des piÃ¨ces (fous/dames)
+// Donne des piÃ¨ces trop facilement contre quelques pions
+// 1. e4 Cc6 2. d4 e5 3. d5 Cd4 4. c3 -> Gagne la piÃ¨ce, et Grogros s'en fout un peu (eval: +7 pour les blancs...)
+// r1bq2k1/pppp2rp/2n3P1/3N1p1Q/2PP4/3pP3/PP3PP1/R3K2R w KQ - 1 16 : ici il faut surtout pas prendre h7 (Ã§a ferme la colonne h)
+// 5r2/ppp5/3p1nk1/8/4P2R/5PP1/PP6/1K6 w - - 0 35 : ici faut pas abuser avec les ionps... le cheval reste plus fort (et faut pas Ã©changer les tours) -> il faut implÃ©menter winnable pour Ã©changer les pions mais pas les piÃ¨ces
+// Valeurs des structures de pions Ã  revoir...
 // Gestion du temps aussi (voir fins de parties)
-// Trop de scandi et de d4 Cc3 (ou c3) plutôt que Cf3 ou c4
-// King safety à revoir absolument... weak squares trop importants (scandi qui prend le pion g2, weak squares quasi -1...)
+// Trop de scandi et de d4 Cc3 (ou c3) plutÃ´t que Cf3 ou c4
+// King safety Ã  revoir absolument... weak squares trop importants (scandi qui prend le pion g2, weak squares quasi -1...)
 
 
 // BUG:
-// Il plante parfois (quand y'a des répétitions...)
+// Il plante parfois (quand y'a des rÃ©pÃ©titions...)
 
 
-// Paramètres de Grogros
+// ParamÃ¨tres de Grogros
 struct Param {
 
     // Est-ce que Grogros doit jouer?
@@ -79,7 +79,7 @@ struct Param {
     int time_white = 600000;
     int time_black = 600000;
 
-    // Clock au début de la réflexion
+    // Clock au dÃ©but de la rÃ©flexion
     clock_t clock_start = 0;
 };
 
@@ -108,13 +108,13 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
         // Commandes UCI
         if (token == "uci") {
 
-            // Présentation de Grogros
+            // PrÃ©sentation de Grogros
             cout << "id name Grogros" << endl;
             cout << "id author Grobert" << endl;
             cout << "uciok" << endl;
         }
 
-        // Est-ce qu'il est prêt?
+        // Est-ce qu'il est prÃªt?
         else if (token == "isready") {
             cout << "readyok" << endl;
         }
@@ -127,7 +127,7 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
         // Move played by the opponent
         else if (token == "position") {
 
-            // On récupère le dernier coup
+            // On rÃ©cupÃ¨re le dernier coup
             string last_move = command.substr(command.length() - 5);
             if (last_move[0] == ' ')
                 last_move = last_move.substr(1);
@@ -141,11 +141,11 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
                 //cout << "test" << board._positions_history.size() << endl;
             }
 
-            // Sinon, on prend la position de départ ou le FEN
+            // Sinon, on prend la position de dÃ©part ou le FEN
             else {
                 //cout << "Illegal move by opponent: " << last_move << "; in position: " << board.to_fen() << endl;
 
-                // Position de départ
+                // Position de dÃ©part
                 if (command.substr(9, 8) == "startpos") {
                     board.restart();
                 }
@@ -160,13 +160,13 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
    //         // Si c'est des coups
    //         if (command.substr(9, 8) == "startpos") {
 
-   //             // Si c'est juste la position de départ ("position startpos")
+   //             // Si c'est juste la position de dÃ©part ("position startpos")
    //             if (command.length() <= 18) {
 			//		board.restart();
 			//		continue;
 			//	}
 
-   //             // Sinon, récupère le dernier coup
+   //             // Sinon, rÃ©cupÃ¨re le dernier coup
    //             string last_move = command.substr(command.length() - 5);
    //             if (last_move[0] == ' ')
    //                 last_move = last_move.substr(1);
@@ -182,11 +182,11 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
 			//}
         }
 
-        // Dit à Grogros de jouer
+        // Dit Ã  Grogros de jouer
         else if (token == "go") {
             param.play = true;
 
-            // Met à jour le temps restant
+            // Met Ã  jour le temps restant
             // Exemple: go wtime 100000 btime 100000
             while (iss >> token) {
                 if (token == "wtime") {
@@ -201,13 +201,13 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
 
             param.clock_start = clock();
 
-            // TODO: à vérifier
+            // TODO: Ã  vÃ©rifier
 
 
             // TODO: Prendre en compte la suite? (movetime...)
         }
 
-        // Dit à Grogros de s'arrêter
+        // Dit Ã  Grogros de s'arrÃªter
         else if (token == "stop") {
 		}
 
@@ -218,7 +218,7 @@ inline void parseUCICommand(const string& command, Param& param, Evaluator evalu
     }
 }
 
-// Fonction pour récupérer les inputs
+// Fonction pour rÃ©cupÃ©rer les inputs
 inline string GetLineFromCin() {
     string line;
     getline(cin, line);
@@ -231,14 +231,14 @@ inline bool should_play(const Board& board, Param param) {
     // Nombre de noueds que l'on suppose que Grogros va calculer par seconde
     static constexpr int supposed_grogros_speed = 3500;
 
-    // Nombre de noeuds déjà calculés
+    // Nombre de noeuds dÃ©jÃ  calculÃ©s
     //int tot_nodes = board.total_nodes();
 
-    // Pourcentage de réflexion utilisé pour le meilleur coup
+    // Pourcentage de rÃ©flexion utilisÃ© pour le meilleur coup
     //float best_move_percentage = tot_nodes == 0 ? 0.05f : static_cast<float>(board._nodes_children[board.best_monte_carlo_move()]) / static_cast<float>(tot_nodes);
     float best_move_percentage = 0;
 
-    // Mise à jour du temps de réflexion
+    // Mise Ã  jour du temps de rÃ©flexion
     if (board._player) {
 		param.time_white -= (clock() - param.clock_start) * 1000 / CLOCKS_PER_SEC;
 		param.clock_start = clock();
@@ -253,27 +253,27 @@ inline bool should_play(const Board& board, Param param) {
         time_to_play_move(param.time_white, param.time_black, 0.2f * (1.0f - best_move_percentage)) :
         time_to_play_move(param.time_black, param.time_white, 0.2f * (1.0f - best_move_percentage));
 
-    // Si il nous reste beaucoup de temps en fin de partie, on peut réfléchir plus longtemps
-    max_move_time *= (1 + board._adv); // Regarder si ça marche bien (TODO)
+    // Si il nous reste beaucoup de temps en fin de partie, on peut rÃ©flÃ©chir plus longtemps
+    max_move_time *= (1 + board._adv); // Regarder si Ã§a marche bien (TODO)
 
     // Equivalent en nombre de noeuds
     int nodes_to_play = supposed_grogros_speed * max_move_time / 1000;
 
-    // On veut être sûr de jouer le meilleur coup de Grogros
+    // On veut Ãªtre sÃ»r de jouer le meilleur coup de Grogros
     // Si il y a un meilleur coup que celui avec le plus de noeuds, attendre...
     bool wait_for_best_move = false;
     //bool wait_for_best_move = tot_nodes != 0 && board._eval_children[board.best_monte_carlo_move()] * board.get_color() < board._evaluation * board.get_color();
-    nodes_to_play = wait_for_best_move ? nodes_to_play : nodes_to_play / 4; // FIXME: on peut attendre en fonction de la différence d'évaluation entre le meilleur coup et le coup le plus réfléchi
+    nodes_to_play = wait_for_best_move ? nodes_to_play : nodes_to_play / 4; // FIXME: on peut attendre en fonction de la diffÃ©rence d'Ã©valuation entre le meilleur coup et le coup le plus rÃ©flÃ©chi
 
     //cout << "nodes to play: " << nodes_to_play << endl;
     return true;
     //return tot_nodes >= nodes_to_play && param.play == true;
 
 
-    // TODO: jouer le nombre de noeuds à la prochaine itération en fonction de l'estimation du nombre de noeuds restants
+    // TODO: jouer le nombre de noeuds Ã  la prochaine itÃ©ration en fonction de l'estimation du nombre de noeuds restants
     //int grogros_timed_nodes = min(nodes_per_frame, supposed_grogros_speed * max_move_time / 1000);
 
-    // TODO: prendre en compte l'incrément
+    // TODO: prendre en compte l'incrÃ©ment
 }
 
 // Main
@@ -294,7 +294,7 @@ inline int main_lichess() {
     // Input
     string input;
 
-    // Paramètres de Grogros
+    // ParamÃ¨tres de Grogros
     Param param;
 
     // Evaluation de Grogros
@@ -303,7 +303,7 @@ inline int main_lichess() {
     // Plateau
     Board board;
 
-    // Lance le thread pour récupérer les inputs
+    // Lance le thread pour rÃ©cupÃ©rer les inputs
     auto future = async(launch::async, GetLineFromCin);
 
     // UCI loop
@@ -321,7 +321,7 @@ inline int main_lichess() {
             }
         }
 
-        // Grogros réfléchit en attendant
+        // Grogros rÃ©flÃ©chit en attendant
         //board.grogros_zero(&evaluator, param.nodes, param.beta_grogros, param.k_add, param.quiescence_depth, param.explore_checks);
 
         if (should_play(board, param))
