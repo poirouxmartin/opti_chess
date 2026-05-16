@@ -184,14 +184,27 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	while (iterations > 0) {
 		PositionHistory iteration_path_history = *base_path_history;
 
+		// Si les buffers sont pleins, on n'étend plus : on raffine l'arbre existant.
+		const bool can_expand = !monte_board_buffer.is_full() && !monte_node_buffer.is_full();
+
 		// EXPLORATION D'UN NOUVEAU COUP
-		if (get_fully_explored_children_count() < _board->_got_moves) {
+		if (can_expand && get_fully_explored_children_count() < _board->_got_moves) {
 			explore_new_move(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, &iteration_path_history);
 		}
 
-		// EXPLORATION D'UN COUP DÉJÀ EXPLORÉ
-		else {
+		// EXPLORATION D'UN COUP DÉJÀ EXPLORÉ (raffinage)
+		else if (children_count() > 0) {
 			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, &iteration_path_history);
+		}
+
+		// Buffers pleins ET rien à raffiner ici : arrêt propre + log unique
+		else {
+			if (!g_buffers_full_logged) {
+				cout << "buffer plein - arbre plafonne a " << _nodes
+				     << " noeuds, on continue a raffiner l'existant" << endl;
+				g_buffers_full_logged = true;
+			}
+			break;
 		}
 
 		iterations--;
@@ -236,10 +249,8 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		// Prend une place dans le buffer
 		Board* new_board = board_buffer->get_first_free_board();
 
-		if (new_board == nullptr) {
-			cout << "null new board in explore_new_move" << endl;
+		if (new_board == nullptr)
 			return;
-		}
 
 		new_board->copy_data(*_board, false, true);
 		new_board->_is_active = true;
@@ -254,10 +265,8 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 			// Création du noeud fils
 			child = monte_node_buffer.get_first_free_node();
 
-			if (child == nullptr) {
-				cout << "null child in explore_new_move" << endl;
+			if (child == nullptr)
 				return;
-			}
 
 			init_terminal_draw_child(child, new_board, eval, network);
 			child->_nodes = 1;
@@ -273,10 +282,8 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 			// plusieurs parents casse _nodes, backpropagation et crée des cycles)
 			child = monte_node_buffer.get_first_free_node();
 
-			if (child == nullptr) {
-				cout << "null child in explore_new_move" << endl;
+			if (child == nullptr)
 				return;
-			}
 
 			child->_board = new_board;
 		}
@@ -940,7 +947,6 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				// Buffer plein
 				if (new_board == nullptr) {
 					_time_spent += clock() - begin_monte_time;
-					cout << "board buffer full during quiescence!" << endl;
 					return alpha;
 				}
 
@@ -957,7 +963,6 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 					// Buffer plein
 					if (child == nullptr) {
 						_time_spent += clock() - begin_monte_time;
-						cout << "node buffer full during quiescence!" << endl;
 						return alpha;
 					}
 
@@ -974,7 +979,6 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 					// Buffer plein
 					if (child == nullptr) {
 						_time_spent += clock() - begin_monte_time;
-						cout << "node buffer full during quiescence!" << endl;
 						return alpha;
 					}
 
@@ -1573,6 +1577,7 @@ int NodeBuffer::get_first_free_index() {
 
 // Fonction qui désalloue toute la mémoire
 void NodeBuffer::remove() {
+	g_buffers_full_logged = false;
 	delete[] _nodes;
 	_nodes = nullptr;
 	_init = false;
@@ -1585,6 +1590,7 @@ void NodeBuffer::remove() {
 // #12: NE PAS rebalayer _length avec reset(false) (chaque appel clearait un
 // robin_map => coût O(capacité)). Sans appelant depuis le fix #12.
 bool NodeBuffer::reset() {
+	g_buffers_full_logged = false;
 	_free_indices.clear();
 	_free_indices.reserve(_length);
 	for (int i = _length - 1; i >= 0; i--)
@@ -1616,3 +1622,7 @@ void NodeBuffer::display_buffer_state() const {
 
 // Buffer pour l'algo de Monte-Carlo
 NodeBuffer monte_node_buffer;
+
+// Log « buffer plein » une seule fois par session de saturation ;
+// remis à false dès qu'un reset/remove libère de la place.
+bool g_buffers_full_logged = false;

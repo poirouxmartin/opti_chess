@@ -5,6 +5,10 @@
 #include "windows_tests.h"   // get_available_physical_memory() — probe RAM isolée
                              // (pas de <windows.h> ici : board.h tire raylib.h)
 
+// Défini dans exploration.cpp : log « buffer plein » une seule fois.
+// Remis à false ici dès qu'un reset/remove de BoardBuffer libère de la place.
+extern bool g_buffers_full_logged;
+
 // Constructeur par défaut : n'alloue rien, init() est obligatoire
 BoardBuffer::BoardBuffer() {
 	_boards = nullptr;
@@ -59,6 +63,7 @@ int BoardBuffer::get_first_free_index() {
 
 // Fonction qui désalloue toute la mémoire
 void BoardBuffer::remove() {
+	g_buffers_full_logged = false;
 	delete[] _boards;
 	_boards = nullptr;
 	_init = false;
@@ -73,6 +78,7 @@ void BoardBuffer::remove() {
 // objet est réinitialisé paresseusement à la réutilisation. Sans appelant
 // depuis le fix #12 (reset_buffers ne l'appelle plus) — gardé cohérent.
 bool BoardBuffer::reset() {
+	g_buffers_full_logged = false;
 	_free_indices.clear();
 	_free_indices.reserve(_length);
 	for (int i = _length - 1; i >= 0; i--)
