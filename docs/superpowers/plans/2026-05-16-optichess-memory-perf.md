@@ -14,6 +14,26 @@
 
 ---
 
+## 🟢 ÉTAT D'AVANCEMENT — REPRENDRE ICI (2026-05-16, après /clear)
+
+**Branche :** `fix/buffer-memory-perf`.
+**Build :** `"C:\Program Files\Microsoft Visual Studio\18\Insiders\MSBuild\Current\Bin\MSBuild.exe" "<repo>\opti_chess\opti_chess.vcxproj" -p:Configuration=Release -p:Platform=x64 -m -nologo -verbosity:minimal` (toolset v145 = VS 18 Insiders ; le MSBuild de VS 2022 échoue).
+**Gate régression :** lancer l'exe, touche `T` → **PERFT 1/2** (la 2ᵉ position échoue *by design* : sous-promotions non implémentées) + scores EVALUATION stables. Vérif GUI = **manuelle côté utilisateur** (un agent ne peut pas piloter la fenêtre raylib) ; checkpoints après T3, T5, T6.
+
+**FAIT & validé runtime :**
+- ✅ **#2** — `get_zobrist_key` par référence (commit `2026018`). Gain perf ; **n'était PAS** la cause de #12 (hypothèse réfutée par test).
+- ✅ **#12** — chargement FEN lent/infini **CORRIGÉ & validé** (commit `d7a3554`). Cause racine confirmée : `GUI::reset_buffers()` balayait 5 M + 10 M entrées (`robin_map::clear()` par élément depuis `a258fb5`) à chaque `load_FEN`. Fix : `reset_buffers()` ne fait plus que `transposition_table.clear()` ; le `_root_exploration_node->reset()` récursif déjà présent réclame l'arbre utilisé en O(utilisé).
+
+**RESTE — #13 (gel système) + perf allocation O(n) = Tasks T2→T6 ci-dessous, AVEC CES CORRECTIONS OBLIGATOIRES :**
+- ⚠️ **T2** : `BoardBuffer::reset()`/`NodeBuffer::reset()` NE doivent PAS rebalayer `_length` (ré-introduit le coût O(capacité) de #12). Depuis le fix #12, ces `reset()` n'ont **plus d'appelant** (`reset_buffers()` ne les appelle plus ; vérifier qu'il n'en reste aucun). L'infra free-list = ajouter `_buffer_index` à Board/Node + free-list O(1) (`get_first_free_*` = pop) + recyclage.
+- ⚠️ **T3 — PIÈGE MAJEUR** : NE JAMAIS pousser `this` dans la free-list depuis `Node::reset()`. `load_FEN` et `gui.cpp:929` resettent puis **réutilisent le même nœud racine sans réallouer** → pousser son index = double-free/corruption. Conception correcte (« Approche B ») : recycler uniquement les **enfants détachés pendant la récursion** (ceux dont `_parent_count<=0` sur lesquels on appelle `reset(true)`) → pousser leur index node **et** board ; jamais le nœud reseté en place. Gérer explicitement la fuite d'1 nœud dans `reset_game` (ancien root remplacé par `get_first_free_node()` sans push). Observation : `reset(false)` (gui.cpp:929) clear `_children` sans recycler → fuite latente pré-existante, **désormais non masquée** par un balayage périodique → à adresser.
+- **T4** = plafond mémoire adaptatif (le vrai fix de #13, cf. §3.2). **T5** = buffer plein propre (§3.3). **T6** = validation + clôture #13.
+- Conséquence du fix #12 : le balayage périodique ayant disparu, le recyclage correct (T2/T3) est maintenant **nécessaire à la stabilité mémoire long terme**, pas seulement à la perf.
+
+Voir aussi `opti_chess/BUGFIXES.md` (#12 ✅ ; #13 ouvert, cause = O(capacité) buffers surdimensionnés) et la spec `docs/superpowers/specs/2026-05-16-optichess-memory-perf-design.md`.
+
+---
+
 ## Contexte testing (lire avant de commencer)
 
 Le projet **n'a pas de framework de tests unitaires**. La validation se fait via le harnais intégré `Tests::run_all_tests()` (`tests.cpp:159`) :
