@@ -1502,20 +1502,15 @@ int Node::minimal_quiescence(Evaluator* eval, int depth, double search_alpha, do
 	return alpha;
 }
 
-// Constructeur par défaut
+// Constructeur par défaut : n'alloue rien, init() est obligatoire
 NodeBuffer::NodeBuffer() {
-	// Crée un gros buffer, de 4GB
-	constexpr unsigned long int _size_buffer = 4000000000;
-	_length = _size_buffer / sizeof(Node);
+	_nodes = nullptr;
 	_length = 0;
-
-	_nodes = new Node[_length];
 }
 
-// Constructeur utilisant la taille max (en bits) du buffer
-NodeBuffer::NodeBuffer(const unsigned long int size) {
-	_length = size / sizeof(Node);
-	_nodes = new Node[_length];
+// Constructeur taille (octets) : alloue immédiatement
+NodeBuffer::NodeBuffer(const size_t size_bytes) {
+	init(static_cast<int>(size_bytes / sizeof(Node)), false);
 }
 
 // Initialize l'allocation de n plateaux
@@ -1531,42 +1526,52 @@ void NodeBuffer::init(const int length, bool display) {
 
 	_length = length;
 	_nodes = new Node[_length];
+
+	// Chaque noeud connaît son index ; free-list = tous les indices libres
+	_free_indices.clear();
+	_free_indices.reserve(_length);
+	for (int i = _length - 1; i >= 0; i--) {
+		_nodes[i]._buffer_index = i;
+		_free_indices.push_back(i);
+	}
+
 	_init = true;
 
 	if (display) {
 		cout << "node buffer initialized" << endl;
 		cout << "node size: " << int_to_round_string(sizeof(Node)) << "b" << endl;
 		cout << "length: " << int_to_round_string(_length) << endl;
-		cout << "approximate buffer size: " << long_int_to_round_string(monte_node_buffer._length * sizeof(Node)) << "b\n\n";
+		cout << "approximate buffer size: " << long_int_to_round_string((long long int)_length * sizeof(Node)) << "b\n\n";
 	}
 }
 
-// Fonction qui donne l'index du premier plateau de libre dans le buffer
+// Dépile un index libre — O(1). Pile vide => -1 (buffer plein)
 int NodeBuffer::get_first_free_index() {
-	for (int i = 0; i < _length; i++) {
-		_iterator++;
-		if (_iterator >= _length)
-			_iterator -= _length;
-		if (!_nodes[_iterator]._is_active)
-			return _iterator;
-	}
-
-	return -1;
+	if (_free_indices.empty())
+		return -1;
+	const int index = _free_indices.back();
+	_free_indices.pop_back();
+	return index;
 }
 
 // Fonction qui désalloue toute la mémoire
 void NodeBuffer::remove() {
 	delete[] _nodes;
+	_nodes = nullptr;
 	_init = false;
 	_length = 0;
 	_iterator = -1;
+	_free_indices.clear();
 }
 
-// Fonction qui reset le buffer
-bool NodeBuffer::reset()
-{
-	for (int i = 0; i < _length; i++)
-		_nodes[i].reset(false);
+// Reset global du buffer : reconstruit uniquement la pile d'indices libres.
+// #12: NE PAS rebalayer _length avec reset(false) (chaque appel clearait un
+// robin_map => coût O(capacité)). Sans appelant depuis le fix #12.
+bool NodeBuffer::reset() {
+	_free_indices.clear();
+	_free_indices.reserve(_length);
+	for (int i = _length - 1; i >= 0; i--)
+		_free_indices.push_back(i);
 
 	return true;
 }
@@ -1574,15 +1579,11 @@ bool NodeBuffer::reset()
 // Fonction qui renvoie le premier noeud disponible dans le buffer
 Node* NodeBuffer::get_first_free_node() {
 	const int index = get_first_free_index();
-
-	if (index == -1) {
-		cout << "Node buffer is full!" << endl;
+	if (index == -1)
 		return nullptr;
-	}
 
 	Node* node = &_nodes[index];
 	node->_is_active = true;
-
 	return node;
 }
 
