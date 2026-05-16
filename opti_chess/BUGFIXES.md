@@ -47,11 +47,13 @@
 - **⚠️ Régression de visibilité depuis #1 v2** : l'éval de mat est désormais *cohérente* (`uncertainty=0`, `winnable` net). Conséquence : une distance de mat **fausse** issue d'une transposition s'affiche maintenant *avec confiance* (score 1.000, conf 100 %) au lieu d'être visiblement cassée. Borné (mauvaise *distance*, jamais mauvaise *classification* — seuil `10*abs>mate_value` robuste face au terme `_moves_count`), mais le « tell » visuel a disparu → **#3 = prochain item correctness explicite**.
 - **Fix proposé** : au `store`, si valeur = mate, normaliser relatif au ply courant (`eval ± _moves_count * mate_ply`) ; au `probe`, dé-normaliser. Cohérent avec l'encodage existant.
 
-### 🟠 #4 — Stand-pat caché en `TT_EXACT`
-- **Fichiers** : `exploration.cpp:770`, `:778` (stockent `stand_pat` en `TT_EXACT`) ; `:815-817` + `:995` (stand_pat monte `alpha` sans fils gagnant → flag `TT_EXACT`)
-- **Sévérité** : MOYENNE (soundness)
-- **Détail** : une éval **statique** (stand pat) est cachée comme valeur exacte → cutoffs faux sur probes ultérieurs à profondeur ≤ stockée.
-- **Fix proposé** : flag dédié `TT_STANDPAT`, ou marquer ces cas `TT_ALPHA` (borne haute) au lieu de `TT_EXACT`.
+### 🔧 #4 — Stand-pat caché en `TT_EXACT`
+- **Statut** : 🔧 correctif appliqué, **compile OK** (Release x64, `Grogros_Chess.exe` généré) — gate runtime PERFT 1/2 + EVALUATION en attente (validation utilisateur, comme #1/#2/#12/#13).
+- **Fichiers (lignes corrigées — l'ancien doc était décalé par les commits depuis)** : stores `stand_pat` en `TT_EXACT` désormais `exploration.cpp:811` (emergency cutoff) & `:819` (depth≤0) ; au post-loop `:1033-1034`, `stand_pat` monte `alpha` en `:856-858` puis flag `TT_EXACT` si aucun fils ne dépasse le plancher. Probe/consommation des flags centralisée `:764-804`.
+- **Sévérité** : MOYENNE (soundness ; bloquant pour #11 plan A).
+- **Détail** : `stand_pat` est une **borne inférieure** sur la valeur vraie (le camp au trait peut toujours refuser les captures ; la boucle de captures sélective+élaguée ne la prouve jamais exhaustive). Stocké `TT_EXACT`, le probe coupe **inconditionnellement** (fenêtre-indépendant, `:768`/`:801`) en renvoyant une éval **statique** comme si recherchée → faux cutoffs masquant la tactique, et propagation d'une valeur statique dans #11 plan A.
+- **Fix appliqué** : flag dédié `TT_STANDPAT` (`zobrist.h:28`), consommé **comme borne inférieure** (= `TT_BETA` : cutoff seulement si `tt_eval >= beta`, renvoi `beta`). Stores `:811`/`:819` → `TT_STANDPAT` ; au `:1033`, si `alpha > original_alpha` **et** `alpha == stand_pat` → `TT_STANDPAT` (sinon `TT_ALPHA`/`TT_EXACT` inchangés). Égalité exacte fils==stand_pat rare → dégradée `TT_EXACT`→`TT_STANDPAT` : conservatif, toujours sain.
+- **Alternative rejetée** : « marquer `TT_ALPHA` » (proposé initialement) est **incorrect** — `TT_ALPHA` = borne *haute* (`zobrist.h:26`), or `stand_pat` est une borne *basse* ; cela aurait introduit des cutoffs fail-low faux (masquage tactique inverse). `TT_STANDPAT`/`TT_BETA` est la sémantique correcte.
 
 ### 🟠 #5 — `TT_BETA` stocke `beta` au lieu de `score`
 - **Fichiers** : `exploration.cpp:801`, `:982`
@@ -126,7 +128,7 @@
 
 ## Ordre de traitement recommandé
 > #2, #12, #13 corrigés & validés runtime (cf. section ✅ Corrigés). Suite :
-1. **#4** (stand-pat ≠ EXACT) → **#3** (mate scores ply-relatifs) → **#14** (généraliser la cohérence des champs dérivés #1 au cas non-mat) → **#11** — débloquent #11 et corrigent l'incohérence éval/score visible.
+1. ~~**#4** (stand-pat ≠ EXACT)~~ → correctif appliqué (🔧 gate runtime en attente) → **#3** (mate scores ply-relatifs) → **#14** (généraliser la cohérence des champs dérivés #1 au cas non-mat) → **#11** — débloquent #11 et corrigent l'incohérence éval/score visible.
 2. **#11 plan A** (TT scalaire dans la recherche principale) — **l'objectif** : gain de profondeur. Mesurer après.
 3. **#6** puis **#5** (hygiène TT).
 4. **#7** (perf path-local + fuite map — re-tester #13) puis **#8** (operator<, rapide, latent).

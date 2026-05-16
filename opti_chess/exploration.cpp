@@ -769,7 +769,10 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			_deep_evaluation._value = tt_eval * color;
 			tt_cutoff = true;
 		}
-		else if (tt_entry->_flag == TT_BETA && tt_eval >= beta) {
+		else if ((tt_entry->_flag == TT_BETA || tt_entry->_flag == TT_STANDPAT) && tt_eval >= beta) {
+			// TT_STANDPAT = borne inférieure statique : même consommation que TT_BETA
+			// (cutoff seulement si tt_eval >= beta -> fail-high sain). Jamais de cutoff
+			// "exact" fenêtre-indépendante sur une éval statique (BUGFIXES #4).
 			_deep_evaluation._value = beta * color;
 			tt_cutoff = true;
 		}
@@ -799,7 +802,8 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			transposition_table._stats._cutoffs++;
 			_time_spent += clock() - begin_monte_time;
 			if (tt_entry->_flag == TT_EXACT) return tt_eval;
-			return tt_entry->_flag == TT_BETA ? beta : alpha;
+			if (tt_entry->_flag == TT_ALPHA) return alpha;
+			return beta; // TT_BETA / TT_STANDPAT : borne inférieure (fail-high) -> beta
 		}
 	}
 
@@ -808,7 +812,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 	// Emergency cutoff: depth - 4
 	if (depth <= -4) {
-		transposition_table.store(_board->_zobrist_key, stand_pat, depth, TT_EXACT);
+		transposition_table.store(_board->_zobrist_key, stand_pat, depth, TT_STANDPAT); // éval statique = borne inférieure, jamais exacte (BUGFIXES #4)
 		_time_spent += clock() - begin_monte_time;
 		cout << "emergency cutoff: " << _board->to_fen() << ", in_check: " << in_check << endl;
 		return stand_pat;
@@ -816,7 +820,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 	// Profondeur nulle, on renvoie le standpat
 	if (depth <= 0 && !in_check) {
-		transposition_table.store(_board->_zobrist_key, stand_pat, depth, TT_EXACT);
+		transposition_table.store(_board->_zobrist_key, stand_pat, depth, TT_STANDPAT); // éval statique = borne inférieure, jamais exacte (BUGFIXES #4)
 		_time_spent += clock() - begin_monte_time;
 		return stand_pat;
 	}
@@ -1030,7 +1034,19 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	}
 
 	// TT Store
-	TTFlag tt_flag = (alpha <= original_alpha) ? TT_ALPHA : TT_EXACT;
+	// BUGFIXES #4 : si la valeur finale est le plancher stand-pat (aucun fils ne l'a
+	// dépassée -> alpha == stand_pat alors que alpha > original_alpha), ce n'est PAS
+	// une valeur exacte recherchée mais une borne inférieure statique. La marquer
+	// TT_STANDPAT (consommée comme TT_BETA) au lieu de TT_EXACT évite les faux cutoffs
+	// fenêtre-indépendants (déblocage #11 plan A). En cas d'égalité exacte rare
+	// fils==stand_pat, on dégrade TT_EXACT->TT_STANDPAT : conservatif donc toujours sain.
+	TTFlag tt_flag;
+	if (alpha <= original_alpha)
+		tt_flag = TT_ALPHA;
+	else if (alpha == stand_pat)
+		tt_flag = TT_STANDPAT;
+	else
+		tt_flag = TT_EXACT;
 	transposition_table.store(_board->_zobrist_key, alpha, depth, tt_flag);
 
 	// Temps de calcul

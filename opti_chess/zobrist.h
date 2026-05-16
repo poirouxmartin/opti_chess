@@ -25,6 +25,7 @@ enum TTFlag : uint8_t {
 	TT_EXACT = 0,
 	TT_ALPHA = 1,  // upper bound (fail-low)
 	TT_BETA  = 2,  // lower bound (fail-high)
+	TT_STANDPAT = 3,  // lower bound: static stand-pat floor, jamais une valeur exacte recherchée (cf. BUGFIXES #4) — consommée comme TT_BETA
 };
 
 struct ZobristEntry {
