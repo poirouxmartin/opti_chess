@@ -85,6 +85,15 @@ unsigned long long get_total_system_memory()
 	return status.ullTotalPhys;
 }
 
+// Mémoire physique disponible (libre) à l'instant de l'appel.
+unsigned long long get_available_physical_memory()
+{
+	MEMORYSTATUSEX status;
+	status.dwLength = sizeof(status);
+	GlobalMemoryStatusEx(&status);
+	return status.ullAvailPhys;
+}
+
 // Function that gets the screen as bitmap
 static HBITMAP get_screen_bmp(const HDC hdc, const int x1, const int y1, const int x2, const int y2) {
 	// Calculate the width and height of the capture area

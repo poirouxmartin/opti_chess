@@ -411,9 +411,8 @@ public:
 	// Sons à utiliser
 	string _sounds_path = "resources/sounds/lisp/";
 
-	// Taille des buffers à utilser
-	const int _board_buffer_length = 1E7;
-	const int _node_buffer_length = 1E7;
+	// Taille des buffers : dimensionnement adaptatif au démarrage
+	// (compute_pool_sizing depuis la RAM physique dispo — cf. buffer.h)
 
 	// Constructeurs
 

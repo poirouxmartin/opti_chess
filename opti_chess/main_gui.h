@@ -80,8 +80,8 @@ inline int main_ui() {
 	// Met à jour le nom de bot de GrogrosZero
 	main_GUI.update_grogros_zero_name();
 
-	// Taille de la table de transposition
-	constexpr int transposition_table_size = 5E6;
+	// Taille de la table de transposition : dimensionnement adaptatif (#13)
+	const int transposition_table_size = compute_pool_sizing().tt_length;
 
 	// Initialisation de la table de transposition
 	transposition_table.init(transposition_table_size, nullptr, true);
