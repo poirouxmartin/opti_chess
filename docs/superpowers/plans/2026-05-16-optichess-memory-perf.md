@@ -22,7 +22,7 @@ Le projet **n'a pas de framework de tests unitaires**. La validation se fait via
   `msbuild opti_chess.sln /p:Configuration=Release /p:Platform=x64 /m /nologo`
   (utiliser la config/plateforme que l'utilisateur compile d'habitude).
 - **Lancer la régression :** exécuter le binaire, puis dans la fenêtre GUI **appuyer sur la touche `T`** (sans Ctrl) — cela déclenche `Tests::run_all_tests()` (`main_gui.h:131` → `:236`).
-- **Gate de correctness (invariant absolu) :** la console doit afficher `*** PERFT RESULTS: 2/2 ***`. Le perft compte exactement les nœuds de génération de coups : s'il reste à 2/2, la génération de coups, `make_move`, FEN et Zobrist sont intacts. Toute autre valeur = régression à corriger avant de continuer.
+- **Gate de correctness (invariant absolu) :** la baseline saine est `*** PERFT RESULTS: 1/2 ***` — la **2ᵉ** position échoue **volontairement** (sous-promotions non implémentées, queen-only ; cf. TODO/CLAUDE.md), la **1ʳᵉ** passe. L'invariant à chaque task : **PERFT reste exactement `1/2`, la 1ʳᵉ position passe toujours**. Bascule à `0/2` = régression à corriger avant de continuer ; bascule à `2/2` = inattendu (on n'ajoute pas les sous-promotions) → investiguer. **Note :** partout dans ce plan, « PERFT RESULTS: 2/2 » dans les étapes de vérif doit se lire « PERFT inchangé vs baseline = `1/2` ».
 - **Note Zobrist (Task 1) :** vérifier en plus que les scores de la section `*** EVALUATION TESTS ***` sont **identiques** à la baseline (capturée en Task 0).
 
 Chaque task se termine par : build OK → `T` → `PERFT RESULTS: 2/2` → commit.
