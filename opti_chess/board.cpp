@@ -23,7 +23,7 @@
 
 // Constructeur par défaut
 Board::Board() {
-	//_positions_history.reserve(100);
+	_positions_history.reserve(16);
 }
 
 // Constructeur de copie
@@ -71,9 +71,12 @@ void Board::copy_data(const Board& b, bool full, bool copy_history) {
 	memcpy(_bitboards, b._bitboards, sizeof(_bitboards));
 	memcpy(_occupancies, b._occupancies, sizeof(_occupancies));
 
-	//if (copy_history) {
-	//	_positions_history = b._positions_history;
-	//}
+	if (copy_history) {
+		_positions_history = b._positions_history;
+	}
+	else {
+		_positions_history.clear();
+	}
 
 	if (full) {
 		_is_active = b._is_active;
@@ -1200,6 +1203,7 @@ inline void Board::make_move(const Move& move, const bool pgn, const bool add_to
 	const int col2 = move.end_col;
 	const int p = _array[row1][col1];
 	const int p_last = _array[row2][col2];
+	const bool irreversible_move = add_to_history && is_irreversible_move(move);
 
 	// TODO *** rendre plus efficace
 	if (pgn) {
@@ -1217,22 +1221,12 @@ inline void Board::make_move(const Move& move, const bool pgn, const bool add_to
 	}
 
 	// Reset des demi-coups si un pion est bougé ou si une pièce est prise
-	// TODO *** si on roque, on peut aussi reset l'historique
 	if (is_pawn(p) || p_last) {
 		_half_moves_count = 0;
-		if (add_to_history) {
-			//reset_positions_history();
-		}
 	}
 	else {
 		// Incrémentation des demi-coups
 		_half_moves_count++;
-
-		// Ajoute la position actuelle dans l'historique
-		if (add_to_history) {
-			get_zobrist_key();
-			//_positions_history.push_back(_zobrist_key);
-		}
 	}
 
 	// Coups donnant la possibilité d'un en passant
@@ -1313,6 +1307,15 @@ inline void Board::make_move(const Move& move, const bool pgn, const bool add_to
 	_game_over_checked = false;
 
 	reset_eval();
+
+	if (add_to_history) {
+		if (irreversible_move) {
+			reset_positions_history();
+		}
+
+		get_zobrist_key();
+		_positions_history[_zobrist_key]++;
+	}
 
 
 	return;
@@ -2157,6 +2160,9 @@ void Board::from_fen(string fen)
 	_got_moves = -1;
 
 	reset_eval();
+	reset_positions_history();
+	get_zobrist_key();
+	_positions_history[_zobrist_key] = 1;
 
 	update_kings_pos();
 
@@ -2238,9 +2244,8 @@ int Board::game_over(int max_repetitions) {
 	// Pour ne pas le recalculer
 	_game_over_checked = true;
 
-	// Règle des 3 répétitions
-	//if (repetition_count() >= max_repetitions)
-	//	return draw;
+	if (repetition_count() >= max_repetitions)
+		return draw;
 
 	// Calcule les coups légaux
 	if (_got_moves == -1)
@@ -2495,8 +2500,7 @@ void Board::reset_board(const bool display) {
 	_en_passant_col = -1;
 	_sorted_moves = false;
 	_zobrist_key = 0;
-
-	//reset_positions_history();
+	reset_positions_history();
 
 	if (display)
 		cout << "board reset done" << endl;
@@ -7017,8 +7021,8 @@ void Board::get_zobrist_key()
 				// Numéro de la case de la pièce
 				uint8_t square = i * 8 + j;
 
-				// Zobrist associé
-				zobrist_key ^= zobrist._board_keys[square][p];
+				// Zobrist associé (p est 1..12, indices du tableau 0..11)
+				zobrist_key ^= zobrist._board_keys[square][p - 1];
 			}
 		}
 	}
@@ -7442,23 +7446,19 @@ bool Board::is_legal(Move move) {
 		if (move == _moves[i])
 			return true;
 
-	return false;
+return false;
 }
 
-// Fonction qui reset l'historique des positions
-//void Board::reset_positions_history() {
-//	//_positions_history.clear();
-//	_positions_history.shrink_to_fit();
-//}
+void Board::reset_positions_history() {
+	_positions_history.clear();
+}
 
-// Fonction qui renvoie combien de fois la position actuelle a été répétée
-//int Board::repetition_count() {
-//
-//	// FIXME: faut-il faire ça là? ça a peut-être déjà été fait...
-//	get_zobrist_key();
-//
-//	return count(_positions_history.begin(), _positions_history.end(), _zobrist_key) + 1; // +1 pour la position actuelle
-//}
+int Board::repetition_count() {
+	get_zobrist_key();
+
+	const auto it = _positions_history.find(_zobrist_key);
+	return it == _positions_history.end() ? 1 : it->second;
+}
 
 // Affiche l'histoirque des positions (les clés de Zobrist)
 //void Board::display_positions_history() const
@@ -10181,6 +10181,7 @@ void Board::switch_colors() {
 
 
 	// Reset la réflexion
+	transposition_table.clear();
 	main_GUI._root_exploration_node->reset();
 }
 

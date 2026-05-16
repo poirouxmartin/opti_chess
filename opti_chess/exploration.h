@@ -6,11 +6,25 @@
 #include <robin_hash.h>
 
 using namespace tsl;
+using PositionHistory = RepetitionHistory;
+
+class Node;
+
+struct ChildLink {
+	Node* _node = nullptr;
+	int _chosen_iterations = 0;
+	int _propagated_nodes = 0;
+};
 
 // TODO:
 // Au lieu d'avoir un plateau, stocker seulement l'indice du plateau dans le buffer?
 
-// Noeud de l'arbre d'exploration
+// Noeud de l'arbre d'exploration.
+//
+// Important pour les repetitions et les futures transpositions:
+// - le noeud stocke l'etat "positionnel" de l'exploration (evaluations, enfants, compteurs),
+// - l'historique des positions repetees reste volontairement hors du noeud et est passe
+//   par la pile d'appels, car il depend du chemin courant et non de la position seule.
 class Node {
 public:
 
@@ -19,30 +33,34 @@ public:
 	// Plateau : FIXME -> indice du plateau dans le buffer?
 	Board* _board = nullptr;
 
-	// Coup joué pour arriver à ce plateau (FIXME: est-ce déjà stocké dans le plateau?)
+	// Coup jouï¿½ pour arriver ï¿½ ce plateau (FIXME: est-ce dï¿½jï¿½ stockï¿½ dans le plateau?)
 	//Move _move;
 
-	// Fils avec leur coup associé
-	robin_map<Move, Node*> _children;
+	// Fils avec leur coup associe.
+	// Les stats de selection et les compteurs de noeuds propages vivent sur l'arete pour
+	// rester corrects quand plusieurs parents partagent un meme noeud.
+	robin_map<Move, ChildLink> _children;
 
 	// Fils
 	//vector<Node*> _children;
 
-	// Pour accélérer la recherche du premier coup non exploré
+	// Pour accï¿½lï¿½rer la recherche du premier coup non explorï¿½
 	int _latest_first_move_explored = -1;
 
-	// Nombre de noeuds
+	// Nombre de noeuds dans le sous-arbre courant.
+	// Ce compteur est tree-local : il n'est correct que tant qu'un noeud n'est pas partage
+	// entre plusieurs parents.
 	int _nodes = 0;
 	//int _nodes = count_children_nodes() + 1;
 
 	// Nombre d'explorations par l'algorithme de GrogrosZero
 	int _iterations = 0;
 
-	// Nombre de fois que l'algorithme a voulu explorer ce noeud
-	int _chosen_iterations = 0;
+	// Nombre de parents qui referencent ce noeud.
+	int _parent_count = 0;
 
-	// TODO: il faut plusieurs types de noeuds: noeuds quiet (ceux recherchés par GrogrosZero), noeuds de quiescence, noeuds de transposition...
-	// On utilisera les research_nodes pour le temps de calcul de Grogros, l'affichage des flèches etc...
+	// TODO: il faut plusieurs types de noeuds: noeuds quiet (ceux recherchï¿½s par GrogrosZero), noeuds de quiescence, noeuds de transposition...
+	// On utilisera les research_nodes pour le temps de calcul de Grogros, l'affichage des flï¿½ches etc...
 
 	// Temps de calcul
 	clock_t _time_spent = 0;
@@ -50,31 +68,31 @@ public:
 	// Profondeur de la quiescence search
 	int _quiescence_depth = 0;
 
-	// Est-ce que ce noeud a été exploré de façon complète?
+	// Est-ce que ce noeud a ï¿½tï¿½ explorï¿½ de faï¿½on complï¿½te?
 	bool _fully_explored = false;
 
-	// Reste t-il encore quelque chose à explorer?
+	// Reste t-il encore quelque chose ï¿½ explorer?
 	bool _can_explore = true;
 
 	// Evaluation statique de la position
 	Evaluation _static_evaluation;
 
-	// Evaluation de la position après réflexion
+	// Evaluation de la position aprï¿½s rï¿½flexion
 	Evaluation _deep_evaluation;
 
 	// Est-ce un noeud final?
 	bool _is_terminal = false;
 
-	// Noeud initialisé?
+	// Noeud initialisï¿½?
 	bool _initialized = false;
 
-	// La valeur d'évaluation est le standpat
+	// La valeur d'ï¿½valuation est le standpat
 	bool _is_stand_pat_eval = true;
 
 	// Pour savoir si il est actif dans le buffer
 	bool _is_active = false;
 
-	// A rajouter : évaluation?, nombre de noeuds?...
+	// A rajouter : ï¿½valuation?, nombre de noeuds?...
 
 	// Constructeurs
 
@@ -93,53 +111,53 @@ public:
 	// Fonction qui renvoie le nombre de fils
 	size_t children_count() const;
 
-	// Fonction qui renvoie l'indice du fils associé au coup s'il existe, -1 sinon (dans le vecteur _children)
+	// Fonction qui renvoie l'indice du fils associï¿½ au coup s'il existe, -1 sinon (dans le vecteur _children)
 	//int get_child_index(Move move) const;
 
-	// Fonction qui renvoie l'indice du premier coup qui n'a pas encore été ajouté, -1 sinon
+	// Fonction qui renvoie l'indice du premier coup qui n'a pas encore ï¿½tï¿½ ajoutï¿½, -1 sinon
 	//int get_first_unexplored_move_index(bool fully_explored = false);
 
-	// Fonction qui renvoie le premier coup qui n'a pas encore été ajouté
+	// Fonction qui renvoie le premier coup qui n'a pas encore ï¿½tï¿½ ajoutï¿½
 	Move get_first_unexplored_move(bool fully_explored = false);
 
 	// Initie le noeud en fonction de son plateau
 	void init_node();
 
 	// Nouveau GrogrosZero
-	void grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int nodes, int quiescence_depth, Network* network = nullptr, robin_map<uint64_t, char> *position_history = nullptr);
+	void grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int nodes, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr);
 
 	// Fonction qui explore un nouveau coup
-	void explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, robin_map<uint64_t, char> *position_history = nullptr);
+	void explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr);
 
-	// Fonction qui explore dans un plateau fils pseudo-aléatoire
-	void explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, robin_map<uint64_t, char> *position_history = nullptr);
+	// Fonction qui explore dans un plateau fils pseudo-alï¿½atoire
+	void explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr);
 
-	// Fonction qui renvoie le fils le plus exploré
+	// Fonction qui renvoie le fils le plus explorï¿½
 	Move get_most_explored_child_move();
 
 	// Reset le noeud et ses enfants, et les supprime tous
 	void reset(bool recursive = true);
 
 	// Fonction qui renvoie les variantes d'exploration
-	string get_exploration_variants(const double alpha, const double beta, bool main = true, bool quiescence = false);
+	string get_exploration_variants(const double alpha, const double beta, bool main = true, bool quiescence = false, int max_depth = 500);
 
 	// Fonction qui renvoie la profondeur de la variante principale
-	int get_main_depth(const double alpha, const double beta);
+	int get_main_depth(const double alpha, const double beta, int max_depth = 500);
 
-	// Fonction qui renvoie le fils le plus exploré
+	// Fonction qui renvoie le fils le plus explorï¿½
 	Node* get_most_explored_child();
 
 	// Fonction qui renvoie la vitesse de calcul moyenne en noeuds par seconde
 	int get_avg_nps() const;
 
-	// Fonction qui renvoie le nombre d'itérations par seconde
+	// Fonction qui renvoie le nombre d'itï¿½rations par seconde
 	int get_ips() const;
 
-	// Quiescence search intégré à l'exploration
-	int quiescence(BoardBuffer* board_buffer, Evaluator* evaluator, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr, bool evaluate_threats = true, int beta_margin = 0, const robin_map<uint64_t, char> *position_history = nullptr);
+	// Quiescence search intï¿½grï¿½ ï¿½ l'exploration
+	int quiescence(BoardBuffer* board_buffer, Evaluator* evaluator, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr, bool evaluate_threats = true, int beta_margin = 0, const PositionHistory *path_history = nullptr);
 	//void grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth);
 
-	// Fonction qui renvoie le nombre de noeuds fils complètement explorés
+	// Fonction qui renvoie le nombre de noeuds fils complï¿½tement explorï¿½s
 	int get_fully_explored_children_count() const;
 
 	// Fonction qui renvoie la somme des noeuds des fils
@@ -148,13 +166,13 @@ public:
 	// Fonction qui renvoie le nombre de noeuds total
 	int get_total_nodes() const;
 
-	// Fonction qui évalue la position
+	// Fonction qui ï¿½value la position
 	void evaluate_position(Evaluator* evaluator, bool display = false, Network* network = nullptr, bool game_over_check = true, bool static_only = false);
 
-	// Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
-	Move pick_random_child(const double alpha, const double beta, const double gamma) const;
+	// Fonction qui renvoie un noeud fils pseudo-alï¿½atoire (en fonction des ï¿½valuations et du nombre de noeuds)
+	Move pick_random_child(const double alpha, const double beta, const double gamma);
 
-	// Fonction qui renvoie le score d'un coup. Alpha augmente l'importance de l'évaluation, et beta augmente l'importance du winrate
+	// Fonction qui renvoie le score d'un coup. Alpha augmente l'importance de l'ï¿½valuation, et beta augmente l'importance du winrate
 	robin_map<Move, double> get_move_scores(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100) const;
 
 	// Fonction qui renvoie la valeur du noeud
@@ -163,16 +181,16 @@ public:
 	// Fonction qui renvoie le coup avec le meilleur score
 	Move get_best_score_move(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100);
 
-	// Fonction qui renvoie une valeur prévisionnelle du score du noeud, lorsqu'on ne connait pas les évaluations max (pour la quiecence)
+	// Fonction qui renvoie une valeur prï¿½visionnelle du score du noeud, lorsqu'on ne connait pas les ï¿½valuations max (pour la quiecence)
 	int get_previsonal_node_score(const double alpha, const double beta, const bool player) const;
 
-	// Fonction qui évalue la menace en utilisant une quiesence sur le tour de l'adversaire
+	// Fonction qui ï¿½value la menace en utilisant une quiesence sur le tour de l'adversaire
 	int evaluate_quiescence_threat(Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr) const;
 
 	// Quiescence minimale (sans stockage des noeuds)
 	int minimal_quiescence(Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr);
 
-	// Fonctions à rajouter: destruction des fils et de soi...
+	// Fonctions ï¿½ rajouter: destruction des fils et de soi...
 
 	// Destructeur : TODO (supprimer tous les tableaux dynamiques...)
 	// Il faudra free tous les plateaux du buffer
@@ -185,7 +203,7 @@ public:
 class NodeBuffer {
 public:
 
-	// Le buffer est-il initialisé ?
+	// Le buffer est-il initialisï¿½ ?
 	bool _init = false;
 
 	// Longueur du buffer
@@ -194,10 +212,10 @@ public:
 	// Tableau de plateaux
 	Node* _nodes;
 
-	// Itérateur pour rechercher moins longtemps un index de plateau libre
+	// Itï¿½rateur pour rechercher moins longtemps un index de plateau libre
 	int _iterator = -1;
 
-	// Constructeur par défaut
+	// Constructeur par dï¿½faut
 	NodeBuffer();
 
 	// Constructeur utilisant la taille max (en bits) du buffer
@@ -209,7 +227,7 @@ public:
 	// Fonction qui donne l'index du premier plateau de libre dans le buffer
 	int get_first_free_index();
 
-	// Fonction qui désalloue toute la mémoire
+	// Fonction qui dï¿½salloue toute la mï¿½moire
 	void remove();
 
 	// Fonction qui reset le buffer
@@ -218,7 +236,7 @@ public:
 	// Fonction qui renvoie le premier noeud disponible dans le buffer
 	Node* get_first_free_node();
 
-	// DEBUG *** fonction qui affiche l'état du buffer (combien de noeuds sont utilisés)
+	// DEBUG *** fonction qui affiche l'ï¿½tat du buffer (combien de noeuds sont utilisï¿½s)
 	void display_buffer_state() const;
 };
 

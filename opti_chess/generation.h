@@ -2,5 +2,5 @@
 
 // Liste de n agents
 // - agents random
-// - meilleurs agents de la génération précédente
-// - agents clonés et mutés
+// - meilleurs agents de la gÃ©nÃ©ration prÃ©cÃ©dente
+// - agents clonÃ©s et mutÃ©s
