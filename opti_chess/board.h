@@ -606,6 +606,9 @@ public:
 	// Plateau libre ou actif? (pour le buffer)
 	bool _is_active = false;
 
+	// Index dans monte_board_buffer (-1 = objet hors buffer : ne pas recycler)
+	int _buffer_index = -1;
+
 	// Avancement de la partie
 	// TODO *** à mettre dans les noeuds plutôt que plateaux?
 	float _adv = 0.0f;
