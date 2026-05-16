@@ -1,20 +1,15 @@
 #include "buffer.h"
 #include "useful_functions.h"
 
-// Constructeur par défaut
+// Constructeur par défaut : n'alloue rien, init() est obligatoire
 BoardBuffer::BoardBuffer() {
-	// Crée un gros buffer, de 4GB
-	constexpr unsigned long int _size_buffer = 4000000000;
-	_length = _size_buffer / sizeof(Board);
+	_boards = nullptr;
 	_length = 0;
-
-	_boards = new Board[_length];
 }
 
-// Constructeur utilisant la taille max (en bits) du buffer
-BoardBuffer::BoardBuffer(const unsigned long int size) {
-	_length = size / sizeof(Board);
-	_boards = new Board[_length];
+// Constructeur taille (octets) : alloue immédiatement
+BoardBuffer::BoardBuffer(const size_t size_bytes) {
+	init(static_cast<int>(size_bytes / sizeof(Board)), false);
 }
 
 // Initialize l'allocation de n plateaux
@@ -30,58 +25,66 @@ void BoardBuffer::init(const int length, bool display) {
 
 	_length = length;
 	_boards = new Board[_length];
+
+	// Chaque plateau connaît son index ; free-list = tous les indices libres
+	_free_indices.clear();
+	_free_indices.reserve(_length);
+	for (int i = _length - 1; i >= 0; i--) {
+		_boards[i]._buffer_index = i;
+		_free_indices.push_back(i);
+	}
+
 	_init = true;
 
 	if (display) {
 		cout << "board buffer initialized" << endl;
 		cout << "board size: " << int_to_round_string(sizeof(Board)) << "b" << endl;
 		cout << "length: " << int_to_round_string(_length) << endl;
-		cout << "approximate buffer size: " << long_int_to_round_string(monte_board_buffer._length * sizeof(Board)) << "b\n\n";
+		cout << "approximate buffer size: " << long_int_to_round_string((long long int)_length * sizeof(Board)) << "b\n\n";
 	}
 }
 
-// Fonction qui donne l'index du premier plateau de libre dans le buffer
+// Dépile un index libre — O(1). Pile vide => -1 (buffer plein)
 int BoardBuffer::get_first_free_index() {
-	for (int i = 0; i < _length; i++) {
-		_iterator++;
-		if (_iterator >= _length)
-			_iterator -= _length;
-		if (!_boards[_iterator]._is_active)
-			return _iterator;
-	}
-
-	return -1;
+	if (_free_indices.empty())
+		return -1;
+	const int index = _free_indices.back();
+	_free_indices.pop_back();
+	return index;
 }
 
 // Fonction qui désalloue toute la mémoire
 void BoardBuffer::remove() {
 	delete[] _boards;
+	_boards = nullptr;
 	_init = false;
 	_length = 0;
 	_iterator = -1;
+	_free_indices.clear();
 }
 
-// Fonction qui reset le buffer
-bool BoardBuffer::reset()
-{
-	for (int i = 0; i < _length; i++)
-		_boards[i].reset_board();
+// Reset global du buffer : reconstruit uniquement la pile d'indices libres.
+// #12: NE PAS rebalayer _length avec reset_board() (chaque appel clearait un
+// robin_map => coût O(capacité) qui rendait load_FEN lent/infini). Le contenu
+// objet est réinitialisé paresseusement à la réutilisation. Sans appelant
+// depuis le fix #12 (reset_buffers ne l'appelle plus) — gardé cohérent.
+bool BoardBuffer::reset() {
+	_free_indices.clear();
+	_free_indices.reserve(_length);
+	for (int i = _length - 1; i >= 0; i--)
+		_free_indices.push_back(i);
 
 	return true;
 }
 
-// Fonction qui renvoie le premier noeud disponible dans le buffer
+// Fonction qui renvoie le premier plateau disponible dans le buffer
 Board* BoardBuffer::get_first_free_board() {
 	const int index = get_first_free_index();
-
-	if (index == -1) {
-		cout << "Board buffer is full!" << endl;
+	if (index == -1)
 		return nullptr;
-	}
 
 	Board* board = &_boards[index];
 	board->_is_active = true;
-
 	return board;
 }
 
