@@ -7001,11 +7001,16 @@ void Board::get_zobrist_key()
 
 	// FIXME: elle est calculée plusieurs fois?
 
-	Zobrist zobrist = transposition_table._zobrist;
+	// #2: pas de copie du struct Zobrist (~6 Ko) à chaque appel — référence.
+	// Les clés sont générées une fois au démarrage (TranspositionTable::init).
+	// Garde-fou idempotent (generate_zobrist_keys() early-return si déjà fait) :
+	// opère sur l'objet réel, jamais une copie.
+	if (!transposition_table._zobrist._keys_generated)
+		transposition_table._zobrist.generate_zobrist_keys();
+
+	const Zobrist& zobrist = transposition_table._zobrist;
 	
-	// Génération des clés de Zobrist si ce n'est pas déjà fait
-	if (!zobrist._keys_generated)
-		zobrist.generate_zobrist_keys();
+	// (clés garanties générées ci-dessus — #2)
 
 	// Clé de Zobrist
 	uint_fast64_t zobrist_key = zobrist._initial_key;
