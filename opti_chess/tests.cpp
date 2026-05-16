@@ -61,15 +61,15 @@ Tests::Tests(GUI *gui) {
 
 // Perft test
 bool Tests::perft_test(string fen, int depth, vector<long long int> expected_nodes) {
-    // TODO: lier ça à la GUI directement, pour qu'on voit la position et les tests qui avancent
+    // TODO: lier Ã§a Ã  la GUI directement, pour qu'on voit la position et les tests qui avancent
     _gui->load_FEN(fen, false);
     update_GUI();
 
-    // Teste le nombre de noeuds générés
+    // Teste le nombre de noeuds gÃ©nÃ©rÃ©s
     return _gui->_board->validate_nodes_count_at_depth(fen, depth, expected_nodes, true);
 }
 
-// Renvoie une valeur entre 0 et 1, 1 étant la position évaluée correctement
+// Renvoie une valeur entre 0 et 1, 1 Ã©tant la position Ã©valuÃ©e correctement
 double Tests::evaluation_test(string fen, int expected_evaluation, pair<int, int> evaluation_range, double expected_score, pair<double, double> score_range) {
     // Met la position
     _gui->load_FEN(fen, false);
@@ -85,15 +85,15 @@ double Tests::evaluation_test(string fen, int expected_evaluation, pair<int, int
     // Evalue le win rate
     double score = _gui->_root_exploration_node->_static_evaluation._avg_score;
 
-    // Arrête le chrono
+    // ArrÃªte le chrono
     clock_t end = clock();
 
     constexpr double range_factor = 2.0;
 
-    // L'évaluation est-elle dans la plage attendue?
+    // L'Ã©valuation est-elle dans la plage attendue?
     bool correct_evaluation = evaluation >= evaluation_range.first && evaluation <= evaluation_range.second;
 
-    // Si elle est dans la plage attendue, calcule sa proximité avec la valeur attendue
+    // Si elle est dans la plage attendue, calcule sa proximitÃ© avec la valeur attendue
     double acceptable_eval_range = evaluation > expected_evaluation ? evaluation_range.second - expected_evaluation : expected_evaluation - evaluation_range.first;
     double eval_diff = abs(evaluation - expected_evaluation);
     double evaluation_proximity = max(0.0, 1.0 - pow(eval_diff / (acceptable_eval_range + 1e-9), 2.0) / range_factor);
@@ -101,7 +101,7 @@ double Tests::evaluation_test(string fen, int expected_evaluation, pair<int, int
     // Le score est-il dans la plage attendue?
     bool correct_score = score >= score_range.first && score <= score_range.second;
 
-    // Si il est dans la plage attendue, calcule sa proximité avec la valeur attendue
+    // Si il est dans la plage attendue, calcule sa proximitÃ© avec la valeur attendue
     double acceptable_score_range = score > expected_score ? score_range.second - expected_score : expected_score - score_range.first;
     double score_diff = abs(score - expected_score);
     double score_proximity = max(0.0, 1.0 - pow(score_diff / (acceptable_score_range + 1e-9), 2.0) / range_factor);
@@ -118,7 +118,7 @@ double Tests::evaluation_test(string fen, int expected_evaluation, pair<int, int
     return score_final;
 }
 
-// Renvoie une valeur entre 0 et 1 (1 = problème résolu)
+// Renvoie une valeur entre 0 et 1 (1 = problÃ¨me rÃ©solu)
 double Tests::problem_test(string fen, robin_map<Move, double> moves, double time) {
     // Met la position
     _gui->load_FEN(fen, false);
@@ -139,13 +139,13 @@ double Tests::problem_test(string fen, robin_map<Move, double> moves, double tim
         }
     }
 
-    // Arrête le chrono
+    // ArrÃªte le chrono
     clock_t end = clock();
 
-    // Récupère le meilleur coup
+    // RÃ©cupÃ¨re le meilleur coup
     Move chosen_move = _gui->_root_exploration_node->get_most_explored_child_move();
 
-    // Récupère le score de ce coup (s'il y en a un)
+    // RÃ©cupÃ¨re le score de ce coup (s'il y en a un)
     double move_score = moves.find(chosen_move) != moves.end() ? moves[chosen_move] : 0.0;
 
     cout << "PUZZLE: " << fixed << setprecision(3) << move_score << "/1" << endl;
@@ -160,7 +160,7 @@ void Tests::run_all_tests() {
     // Ensure console outputs use UTF-8/locale so french characters print correctly
     ensure_utf8_output();
 
-    // TODO: faire en sorte que la GUI reste à jour au fur et a mesure des tests
+    // TODO: faire en sorte que la GUI reste Ã  jour au fur et a mesure des tests
 
     int total_tests = 0;
     double total_score = 0.0;
@@ -201,20 +201,20 @@ void Tests::run_all_tests() {
     evaluation_tests += usual_positions;
     evaluation_tests_score += usual_positions_score;
 
-    // 2.b *** Pièces enfermées (ou non) ***
+    // 2.b *** PiÃ¨ces enfermÃ©es (ou non) ***
     cout << endl << "Trapped pieces evaluation tests" << endl;
 
     int trapped_pieces = 0;
     double trapped_pieces_score = 0.0;
 
-    trapped_pieces++, trapped_pieces_score += evaluation_test("5rk1/r3npbp/2p2np1/2N1p3/2B1P1P1/1P2BP2/b1P4P/2KR2NR b - - 2 19", 400, { 300, 600 }, 0.9, { 0.85, 0.95 }); // Fou enfermé en a2
+    trapped_pieces++, trapped_pieces_score += evaluation_test("5rk1/r3npbp/2p2np1/2N1p3/2B1P1P1/1P2BP2/b1P4P/2KR2NR b - - 2 19", 400, { 300, 600 }, 0.9, { 0.85, 0.95 }); // Fou enfermÃ© en a2
 
     cout << "Trapped pieces evaluation results: " << trapped_pieces_score << "/" << trapped_pieces << endl;
 
     evaluation_tests += trapped_pieces;
     evaluation_tests_score += trapped_pieces_score;
 
-    // 2.c *** Sécurité du roi ***
+    // 2.c *** SÃ©curitÃ© du roi ***
     cout << endl << "King safety evaluation tests" << endl;
 
     int king_safety = 0;
@@ -246,7 +246,7 @@ void Tests::run_all_tests() {
     int others = 0;
     double others_score = 0.0;
 
-    others++, others_score += evaluation_test("r2qrbk1/5ppp/pn3n2/4N3/1ppP1P2/4PQ2/PB2N1PP/2R2RK1 b - - 1 20", -350, { -500, -200 }, 0.08, { 0.03, 0.15 }); // Complètement gagnant pour les noirs
+    others++, others_score += evaluation_test("r2qrbk1/5ppp/pn3n2/4N3/1ppP1P2/4PQ2/PB2N1PP/2R2RK1 b - - 1 20", -350, { -500, -200 }, 0.08, { 0.03, 0.15 }); // ComplÃ¨tement gagnant pour les noirs
 
     cout << "Other evaluation results: " << others_score << "/" << others << endl;
 
@@ -274,7 +274,7 @@ void Tests::run_all_tests() {
     problem_tests += tactical_problems;
     problem_tests_score += tactical_problems_score;
 
-    // 3.b *** Coups stratégiques forts ***
+    // 3.b *** Coups stratÃ©giques forts ***
     cout << endl << "Strong strategic moves tests" << endl;
 
     int strong_strategic_moves = 0;
@@ -319,7 +319,7 @@ void Tests::run_all_tests() {
     cout << "Generated evaluation tests added: " << added << endl;
 }
 
-// Mise à jour de la GUI
+// Mise Ã  jour de la GUI
 void Tests::update_GUI() {
     BeginDrawing();
     _gui->draw();
