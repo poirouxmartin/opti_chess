@@ -49,9 +49,17 @@ Remplacer le scan linéaire par une **pile d'indices libres** :
 
 ### 3.3 Comportement « buffer plein » propre
 
-- Plus de `cout` par appel : log **une seule fois** (flag/état) « buffer plein, arbre plafonné à N nœuds ».
-- Quand plein : **arrêter l'expansion, continuer à raffiner l'arbre existant** (comportement MCTS acceptable), pas d'état cassé.
-- **Pas** d'éviction LRU dans ce périmètre (reportée — voir §6).
+**Défaut actuel** : la boucle GrogrosZero (`exploration.cpp:184-198`) choisit expansion vs exploitation via `if (get_fully_explored_children_count() < _got_moves) explore_new_move(); else explore_random_child();`. Quand le buffer est plein, `explore_new_move` fait `return;` mais la condition reste vraie (le coup n'a jamais été créé) ⇒ chaque itération restante rappelle `explore_new_move` → no-op → **busy-spin** (toutes les itérations brûlées à vide + `cout` par tour). CPU saturé.
+
+**Mécanisme retenu :**
+
+1. **Requête "plein" O(1)** : la free-list expose `is_full()` (pile d'indices vide).
+2. **Reroutage au point de décision** (`exploration.cpp:188`) : `if (!buffers_full() && get_fully_explored_children_count() < _got_moves) explore_new_move(); else explore_random_child();`. Dès que plein, **chaque itération raffine l'arbre existant** (ré-éval + backprop, 0 allocation) — vrai progrès MCTS, RSS figé au plafond, CPU utile.
+3. **Arrêt propre** : si plein **et** aucun enfant exploitable (nœud frontière), sortir de la boucle `while` au lieu de tourner à vide, + log **une seule fois** (flag) « buffer plein, arbre plafonné à N nœuds » (plus de `cout` par appel).
+4. **Récursion sûre** : `explore_random_child` recurse `grogros_zero` sur un enfant **déjà existant** (0 alloc) ; la même condition s'applique à chaque niveau. Borné par la profondeur.
+5. **Reprise auto** : `Node::reset()` rend les indices à la free-list → `buffers_full()` redevient faux → expansion reprend seule.
+
+Iso-comportement tant que le buffer n'est pas plein (`!buffers_full()` vrai en régime normal). Portée : 1 condition à `exploration.cpp:188` + helper `is_full()` + early-out/log. Aucun changement de sélection/éval/backprop. **Pas** d'éviction LRU dans ce périmètre (reportée — voir §6).
 
 ### 3.4 Fix #2 (référence seule)
 
@@ -85,4 +93,5 @@ Remplacer le scan linéaire par une **pile d'indices libres** :
 - Buffers *growable* par blocs ; éviction LRU de sous-arbres.
 - Clé Zobrist **incrémentale** dans `make_move` (#2 profond).
 - Découpage de `board.cpp` (point 2 du cleanup global).
+- **Affichage UI sur thread séparé + parallélisation de la recherche (multi-cœurs/threads)** — point de cleanup à traiter bientôt. ⚠️ **Interaction forte avec cette spec** : la free-list (§3.1), la requête `is_full()`/reroutage (§3.3) et la TT sont conçues **mono-thread** ici (choix assumé). Le passage parallèle devra les rendre thread-safe : pools/free-list par thread ou lock-free, TT shardée/atomique, `buffers_full()` thread-safe. À cadrer dans sa propre spec, en s'appuyant sur celle-ci comme base mono-thread saine.
 - Correctness TT : **#4** (stand-pat en `TT_EXACT`) → **#3** (mate scores ply-relatifs) → **#14** (généraliser la cohérence des champs dérivés `_wdl/_avg_score/_uncertainty/_winnable_*` au cas non-mat — incohérence éval/score signalée par l'utilisateur, qui se corrige à la ré-exploration) → **#11** (gain de profondeur). Passe correctness séparée, après ce cleanup.
