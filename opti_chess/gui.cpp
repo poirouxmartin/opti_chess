@@ -1904,9 +1904,14 @@ void GUI::init_buffers() const {
 }
 
 // Fonction qui reset les buffers
+// #12: NE PAS balayer toute la capacité. monte_*_buffer.reset() bouclait sur
+// 5 M Board::reset_board() + 10 M Node::reset(false) — chacun clearant un
+// robin_map depuis a258fb5 (_positions_history / _children) → chargement FEN
+// lent / "ne termine jamais". La réclamation réelle de l'arbre *utilisé* est
+// faite en O(utilisé) par le _root_exploration_node->reset() récursif déjà
+// appelé juste après par load_FEN (gui.cpp:1504) et reset_game (gui.cpp:1530).
+// Le balayage O(capacité) était purement redondant.
 void GUI::reset_buffers() const {
-	monte_board_buffer.reset();
-	monte_node_buffer.reset();
 	transposition_table.clear();
 }
 
