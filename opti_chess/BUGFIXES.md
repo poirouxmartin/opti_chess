@@ -47,8 +47,8 @@
 - **⚠️ Régression de visibilité depuis #1 v2** : l'éval de mat est désormais *cohérente* (`uncertainty=0`, `winnable` net). Conséquence : une distance de mat **fausse** issue d'une transposition s'affiche maintenant *avec confiance* (score 1.000, conf 100 %) au lieu d'être visiblement cassée. Borné (mauvaise *distance*, jamais mauvaise *classification* — seuil `10*abs>mate_value` robuste face au terme `_moves_count`), mais le « tell » visuel a disparu → **#3 = prochain item correctness explicite**.
 - **Fix proposé** : au `store`, si valeur = mate, normaliser relatif au ply courant (`eval ± _moves_count * mate_ply`) ; au `probe`, dé-normaliser. Cohérent avec l'encodage existant.
 
-### 🔧 #4 — Stand-pat caché en `TT_EXACT`
-- **Statut** : 🔧 correctif appliqué, **compile OK** (Release x64, `Grogros_Chess.exe` généré) — gate runtime PERFT 1/2 + EVALUATION en attente (validation utilisateur, comme #1/#2/#12/#13).
+### ✅ #4 — Stand-pat caché en `TT_EXACT`
+- **Statut** : ✅ corrigé — **validé runtime utilisateur** (commit `783135d`).
 - **Fichiers (lignes corrigées — l'ancien doc était décalé par les commits depuis)** : stores `stand_pat` en `TT_EXACT` désormais `exploration.cpp:811` (emergency cutoff) & `:819` (depth≤0) ; au post-loop `:1033-1034`, `stand_pat` monte `alpha` en `:856-858` puis flag `TT_EXACT` si aucun fils ne dépasse le plancher. Probe/consommation des flags centralisée `:764-804`.
 - **Sévérité** : MOYENNE (soundness ; bloquant pour #11 plan A).
 - **Détail** : `stand_pat` est une **borne inférieure** sur la valeur vraie (le camp au trait peut toujours refuser les captures ; la boucle de captures sélective+élaguée ne la prouve jamais exhaustive). Stocké `TT_EXACT`, le probe coupe **inconditionnellement** (fenêtre-indépendant, `:768`/`:801`) en renvoyant une éval **statique** comme si recherchée → faux cutoffs masquant la tactique, et propagation d'une valeur statique dans #11 plan A.
@@ -104,14 +104,15 @@
   - **B. Partage de nœuds / DAG** : gain maximal (8→30), mais grosse refonte que le code a fuie. Infra à moitié posée (`ChildLink._propagated_nodes`, `_parent_count`). Risqué.
 - **Ordre** : #4 → #3 → A (mesurer), puis envisager B si A insuffisant.
 
-### 🔴 #14 — Incohérence éval/score persistante sur valeur issue de la TT (généralisation de #1, cas non-mat)
-- **Statut** : ⬜ ouvert — signalé utilisateur · même famille que **#1** (qui n'a corrigé que le cas *mat*).
-- **Fichiers** : bloc `if (tt_cutoff)` de `exploration.cpp` (cf. #1) ; champs dérivés de `Evaluation` recombinés par `get_node_score` et `Evaluation::get_WDL` (`board.cpp:10004`) / `get_average_score` (`board.cpp:10093`).
+### ✅ #14 — Incohérence éval/score persistante sur valeur issue de la TT (généralisation de #1, cas non-mat)
+- **Statut** : ✅ corrigé — **validé runtime utilisateur** (« seems to be working fine »).
+- **Fichiers** : bloc `if (tt_cutoff)` `exploration.cpp:781-810` ; `Evaluation::get_WDL` (`board.cpp:10009`) recombine `_value` avec `_uncertainty`/`_winnable_*` ; `get_average_score` (`board.cpp:10098`) dérive `_avg_score = _wdl.win + 0.5·_wdl.draw` ; affichage `exploration.cpp:546-549` (value=`_value`, score=`_avg_score`).
 - **Sévérité** : HAUTE (correctness, visible utilisateur).
-- **Symptôme** : parfois `_value` et le **score affiché** du nœud ne sont pas cohérents ; **dès qu'on explore la variante** (ré-exploration réelle du nœud) il **redevient correct**. Même nature que les « -M4 fantômes » de #1, mais sur des évals **non-mat** quelconques, et plus général.
-- **Cause probable** : le fix #1 v2 ne force la cohérence (`_uncertainty=0`, `_winnable_*`) **que** au franchissement du seuil de mat. Pour une valeur **non-mat** issue d'un cutoff / d'une relecture TT, `_value` est mis à jour mais les champs dérivés (`_wdl`, `_avg_score`, `_uncertainty`, `_winnable_*`) restent ceux de l'éval statique/précédente → `get_node_score`/affichage incohérents **jusqu'à** ré-exploration (qui recalcule tout proprement). Couplé à #4 (stand-pat en `TT_EXACT`) et #3.
-- **Fix proposé** : au cutoff / à la relecture TT, **recalculer systématiquement** (ou invalider→recalculer) tous les champs dérivés à partir de `_value`, pas seulement sur le seuil de mat — généralisation du fix #1 v2 au cas non-mat. À cadrer avec #4 puis #3.
-- **Périmètre** : **hors** du cleanup mémoire/perf en cours (point 1) ; à traiter dans la passe correctness TT (avec #4/#3).
+- **Symptôme** : parfois `_value` et le **score affiché** ne corrèlent pas ; **dès qu'on explore la variante** il **redevient correct**.
+- **Cause racine (précisée)** : depuis #1, le bloc cutoff appelle déjà `get_WDL()`+`get_average_score()` — donc `_wdl`/`_avg_score` *sont* recalculés depuis le nouveau `_value`. Le résidu : `_uncertainty` (et `_winnable_*`) restaient ceux de l'**éval statique** (l'incertitude statique encode la complexité matérielle de la position, board.cpp:9975-10005 — **pas** la fiabilité d'une valeur recherchée). `get_WDL` filtrait donc le `_value` profond de la TT à travers l'incertitude statique → score amorti/divergent jusqu'à ce qu'une ré-exploration réelle (copie `Evaluation` complète du meilleur fils résolu, `exploration.cpp:362/392/1016`) restaure un `_uncertainty` cohérent.
+- **Fix appliqué** : généralisation du fix #1 v2 au cas non-mat — `_uncertainty = 0` forcé pour **tout** cutoff TT (cohérent avec les chemins *trusted* terminal/mat/NN, `board.cpp:1558/1575/1592`, qui mettent tous `_uncertainty=0` puis recalculent WDL). L'override `_winnable_* = 0/1 par signe` reste **mat-only** (évite le scaling `winning_eval/_winnable` sur un score de mat géant ; hors mat les `_winnable_*` statiques sont une propriété de position légitime et conservée). `_avg_score` devient une fonction déterministe monotone de `_value` → value↔score corrèlent toujours.
+- **⚠️ Effet attendu sur la recherche** : `get_node_score` consomme `_uncertainty` ; les feuilles de quiescence cutoff passent d'incertitude statique à 0 → leur WDL/score devient plus tranché. Régression de *display* voulue ; impact sur l'ordonnancement à valider au gate runtime (force de jeu / EVALUATION).
+- **Interaction #3 (non corrigée ici)** : #3 (distance de mat fausse via transposition, `_moves_count` non hashé) reste ouvert et indépendant — il affecte la *magnitude* dans la bande de mat, pas la corrélation value↔score. À traiter séparément.
 
 ---
 
@@ -128,7 +129,7 @@
 
 ## Ordre de traitement recommandé
 > #2, #12, #13 corrigés & validés runtime (cf. section ✅ Corrigés). Suite :
-1. ~~**#4** (stand-pat ≠ EXACT)~~ → correctif appliqué (🔧 gate runtime en attente) → **#3** (mate scores ply-relatifs) → **#14** (généraliser la cohérence des champs dérivés #1 au cas non-mat) → **#11** — débloquent #11 et corrigent l'incohérence éval/score visible.
+1. ~~**#4** (stand-pat ≠ EXACT)~~ ✅ validé runtime (`783135d`) · ~~**#14** (cohérence value↔score, cas non-mat)~~ ✅ validé runtime · reste **#3** (mate scores ply-relatifs) → **#11** — débloque #11.
 2. **#11 plan A** (TT scalaire dans la recherche principale) — **l'objectif** : gain de profondeur. Mesurer après.
 3. **#6** puis **#5** (hygiène TT).
 4. **#7** (perf path-local + fuite map — re-tester #13) puis **#8** (operator<, rapide, latent).
