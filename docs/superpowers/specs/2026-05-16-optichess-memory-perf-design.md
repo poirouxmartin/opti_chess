@@ -44,7 +44,7 @@ Remplacer le scan linéaire par une **pile d'indices libres** :
 - Au démarrage, interroger la RAM physique (Windows : `GlobalMemoryStatusEx`).
 - `budget = min(fraction × RAM_physique_dispo, plafond_dur)`.
 - Constantes de config regroupées dans un bloc unique. **Valeurs par défaut** : `fraction = 0.5`, `plafond_dur = 4 Go`.
-- Répartition `budget` → Board / Node / TT selon un **ratio configurable** ; `length_T = part_T / sizeof(T)`.
+- Répartition `budget` → Board / Node / TT selon un **ratio configurable** ; `length_T = part_T / sizeof(T)`. **Défaut explicite** : TT = `min(taille_TT_demandée, part_TT_max)` (part dédiée plafonnée), puis le reste réparti pour obtenir **autant d'entrées Node que d'entrées Board** (un `Board` ≈ un `Node` expansé). Le plan d'implémentation fixera les `sizeof` réels.
 - Supprime les défauts magiques (`buffer.h:26` 5M, `exploration.h:225` 10M, `buffer.cpp:6` « 4GB »).
 
 ### 3.3 Comportement « buffer plein » propre
