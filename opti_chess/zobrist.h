@@ -1,106 +1,69 @@
 #pragma once
 
 #include <cstdint>
-#include "exploration.h"
+#include <string>
+#include <robin_map.h>
 
 using namespace std;
+using namespace tsl;
 
-// Possibilités d'optimisation
-// -> Les pions ne peuvent pas être sur la première et dernière rangée
-// -> On utilise des entiers 32 bits au lieu de 64 bits (4.29e9 clés au lieu de 1.84e19)
-
-// A gérer:
-// Quand y'a plus de place dans la table, on fait quoi? Quelles entrées supprimer?
-// Il faut un historique des positions; la manière qui prend le moins de place est de stocker les indices des positions dans la table de transpo?
-
-
-// Classe qui gère les clés de Zobrist
 class Zobrist {
 public:
-	// Variables
-
-	// Valeur de la clé initiale de Zobrist
-	uint_fast64_t _initial_key = 0; // TODO: à initialiser avec une valeur aléatoire
-
-	// Clés des pièces
+	uint_fast64_t _initial_key = 0;
 	uint_fast64_t _board_keys[64][12];
-
-	// Clé du trait
 	uint_fast64_t _player_key;
-
-	// Clés des roques
 	uint_fast64_t _castling_keys[16];
-
-	// Clés du en-passant
 	uint_fast64_t _en_passant_keys[8];
-
-	// Les clés sont-elles générées ?
 	bool _keys_generated = false;
 
-	// Constructeur par défaut
 	Zobrist();
-
-	// Fonction qui génère les clés de Zobrist
 	void generate_zobrist_keys();
-
 };
 
-// Entrée dans la table de transposition
+
+enum TTFlag : uint8_t {
+	TT_EXACT = 0,
+	TT_ALPHA = 1,  // upper bound (fail-low)
+	TT_BETA  = 2,  // lower bound (fail-high)
+};
+
 struct ZobristEntry {
 public:
+	int _eval = 0;
+	int _depth = 0;
+	TTFlag _flag = TT_EXACT;
 
-	// Indice du plateau dans le buffer
-	//int _board_index = -1;
-
-	// Potentiellement utile pour le quiescence search
-
-	// Profondeur de la recherche
-	//int _depth = 0;
-
-	// Noeud correspondant
-	Node *_node = nullptr;
-
-	// Pruning?
-
-
-	// Constructeur par défaut
-	ZobristEntry();
-
-	// Constructeur à partir d'un indice
-	//ZobristEntry(const int board_index);
-
-	// Constructeur à partir d'un noeud
-	ZobristEntry(Node *node);
-
+	ZobristEntry() = default;
+	ZobristEntry(int eval, int depth, TTFlag flag) : _eval(eval), _depth(depth), _flag(flag) {}
 };
 
-// Table de transposition (structure: unordered_map)
+struct TTStats {
+	uint64_t _lookups = 0;
+	uint64_t _hits = 0;
+	uint64_t _cutoffs = 0;
+	uint64_t _stores = 0;
+	uint64_t _overwrites = 0;
+
+	void reset() { _lookups = 0; _hits = 0; _cutoffs = 0; _stores = 0; _overwrites = 0; }
+	double hit_rate() const { return _lookups == 0 ? 0.0 : 100.0 * _hits / _lookups; }
+	double cutoff_rate() const { return _lookups == 0 ? 0.0 : 100.0 * _cutoffs / _lookups; }
+};
+
 class TranspositionTable {
 public:
-	// Table de transposition
-	robin_map<uint64_t, ZobristEntry> _hash_table; // FIXME: il faut gérer la taille de la table de transposition
-
-	// Zobrist utilisé
+	robin_map<uint64_t, ZobristEntry> _hash_table;
 	Zobrist _zobrist;
-
-	// La table est-elle initialisée?
 	bool _init = false;
-
-	// Taille de la table de transposition
 	int _length = 0;
+	TTStats _stats;
 
-	// Constructeur par défaut de la table de transposition
 	TranspositionTable();
-
-	// Fonction qui initialise la table de transposition d'une longueur donnée (nombre d'éléments)
 	void init(const int length = 5000000, const Zobrist* zobrist = nullptr, bool display = false);
-
-	// Fonction qui renvoie l'indice du plateau dans le buffer (s'il existe)
-	//int get_zobrist_position_buffer_index(uint_fast64_t key);
-
-	// Fonction qui renvoie si une clé est présente dans la table de transposition
-	bool contains(uint_fast64_t key);
+	bool contains(uint64_t key) const;
+	const ZobristEntry* probe(uint64_t key);
+	void store(uint64_t key, int eval, int depth, TTFlag flag);
+	void clear();
+	string stats_string() const;
 };
 
-// Instance de la table de transposition
 extern TranspositionTable transposition_table;
