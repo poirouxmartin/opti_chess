@@ -6,3 +6,7 @@ opti_chess/Release
 opti_chess.vcxproj.*
 /CppProperties.json
 /builds
+.claude/
+.github/
+CLAUDE.md
+**/CLAUDE.md
