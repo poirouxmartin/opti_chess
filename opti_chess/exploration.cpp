@@ -791,8 +791,18 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			// _winnable_* restés statiques (board.cpp:10061-10070) -> le score ne
 			// converge pas vers 0/1 (ex: M4 affiché mais score 0.934, conf 87%).
 			// On remet ces champs cohérents comme le chemin terminal (board.cpp:1575-1577).
+			// #14 : une valeur issue d'un cutoff TT est une valeur *recherchée*
+			// jugée fiable au point d'arrêter la recherche. Son score affiché
+			// (_avg_score via get_WDL) doit dériver du _value de la TT, pas de
+			// l'_uncertainty de l'éval *statique* restée en place (sinon value et
+			// score divergent jusqu'à ré-exploration). On force _uncertainty=0
+			// pour TOUT cutoff — généralisation du fix #1 v2 au cas non-mat,
+			// cohérent avec les chemins terminal/mat/NN (board.cpp:1558/1575/1592).
+			_deep_evaluation._uncertainty = 0.0f;
+			// Mat : on garde l'idiome terminal (0/1 par signe) qui évite le
+			// scaling winning_eval/_winnable sur un score de mat géant. Hors mat
+			// on conserve les _winnable_* statiques (propriété de position).
 			if (10 * abs(_deep_evaluation._value) > mate_value) {
-				_deep_evaluation._uncertainty = 0.0f;
 				_deep_evaluation._winnable_white = _deep_evaluation._value > 0 ? 1.0f : 0.0f;
 				_deep_evaluation._winnable_black = _deep_evaluation._value < 0 ? 1.0f : 0.0f;
 			}
