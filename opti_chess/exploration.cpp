@@ -760,6 +760,15 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			// _deep_evaluation voyait une éval incohérente (ex: _value = mat mais
 			// _avg_score d'une position normale), ce qui faussait get_node_score.
 			// On les recalcule à partir du _value de la TT.
+			// Si _value est un score de mat, get_WDL le remixe avec _uncertainty et
+			// _winnable_* restés statiques (board.cpp:10061-10070) -> le score ne
+			// converge pas vers 0/1 (ex: M4 affiché mais score 0.934, conf 87%).
+			// On remet ces champs cohérents comme le chemin terminal (board.cpp:1575-1577).
+			if (10 * abs(_deep_evaluation._value) > mate_value) {
+				_deep_evaluation._uncertainty = 0.0f;
+				_deep_evaluation._winnable_white = _deep_evaluation._value > 0 ? 1.0f : 0.0f;
+				_deep_evaluation._winnable_black = _deep_evaluation._value < 0 ? 1.0f : 0.0f;
+			}
 			_deep_evaluation.get_WDL();
 			_deep_evaluation.get_average_score();
 
