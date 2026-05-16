@@ -632,6 +632,7 @@ Faire par IA:
 - Eviter de calculer plein de fois la zobrist key (faire un cout pour voir quand elle est re-calculée dans changement)
 - Amélioration de l'UI
 - Traduction en anglais
+- Download des positions pour les tests... car le parsing semble tout pourri
 
 Screenshot qui ne va pas dans les ressources
 Buffer:
@@ -811,6 +812,17 @@ EVAL:
 -> Utiliser ça pour entraîner les réseaux de neurones (au lieu de jouer contre d'autres réseaux? combiner les deux?)
 -> Simplifier le softmax: delta entre le meilleur coup et l'actuel, et voir en fonction du pourcentage de réflexion déjà fait
 
+FIX: 
+-> 8/6pk/7p/8/1bQB3P/p1p3P1/5P1K/1q6 w - - 0 14 : il croit que Df7 gagne par moments
+-> Gros bug quand on revient en arrière ça crash
+-> Bugs quand la transpo est pleine ? y a des positions où ça fait des trucs bizarres -> 8/2Q3pk/7p/8/1b1B3P/p1p3P1/5P1K/1q6 b - - 1 14 : ici Ff8 passe à "0%" au bout d'un moment à cause du bug
+-> Pourquoi la transpo n'augmente pas beaucoup la profondeur en endgame?
+-> r3k1nr/ppp2ppp/1b1p1q2/n3p3/1PB1P1b1/2P2N2/3P1PPP/RNBQ1RK1 w kq - 0 9 : bxa5 pas regardé quasi... quiescence ?
+
+BUG:
+-> 2Q5/4b1pk/7p/7P/3B4/p1p3P1/5P1K/1q6 b - - 0 16 : bugs de transposition parfois -> ça met temporairement des -M4 sur un coup qui ne va pas du tout en mat en 4
+-> r1b3k1/p4ppp/5n2/1Rp4q/4B3/2P5/P1PQ2PP/4R1K1 b - - 3 21 : pareil, Fa6 met -M4, et quand on le joue, l'éval est : +M4, confidence = 87%... score = 0.934.
+
 En cours / ---
 
 -> Pour le softmax, faut-il un gradient absolu ou relatif? pour le moment il y a la même différence entre -100 et +100 qu'entre +1800 et +2000? pas optimal...
@@ -840,6 +852,16 @@ Réseaux de neurones
 ----- FIXES -----
 
 Intelligences artificielles / Améliorations
+
+-> Fix le bug de l'UI qui fait que tout passe à 12 FPS et ne répond plus
+-> Unit tests pour les fonctions, et vérifier que tout fonctionne bien
+-> Tests de fonctionnement "micro" de l'algorithme pour être sûre qu'il est efficient à temps de réflexion minimal
+-> Documentation complète du code, refactorisation, et re organisation dans plus de fichiers
+-> Affichage de l'UI sur un thread à part
+-> Possibilité de parallélisation de manière propre
+
+-> 8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7 : test transpositions
+
 
 	- Colonnes fermées -> tour mauvaises. Si beaucoup de colonnes ouvertes, bonus pour les tours. Pareil pour les diagonales et les fous
 -> Evaluation endgame très mauvaise
