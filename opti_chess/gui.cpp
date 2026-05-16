@@ -912,12 +912,18 @@ bool GUI::play_move_keep(Move move)
 		if (_root_exploration_node->_children.contains(move)) {
 			Node* next_root = _root_exploration_node->_children[move]._node;
 
+			// Ancien root : detache plus bas (remplace par next_root), pas
+			// reutilise en place -> a recycler explicitement (Approche B).
+			Node* const old_root = _root_exploration_node;
+
 			for (auto const& [m, child_link] : _root_exploration_node->_children) {
 				if (m != move) {
 					Node* child = child_link._node;
 					child->_parent_count--;
 					if (child->_parent_count <= 0) {
 						child->reset(true);
+						// Enfant non choisi definitivement detache -> recyclage.
+						recycle_detached_node(child);
 					}
 				}
 			}
@@ -937,6 +943,10 @@ bool GUI::play_move_keep(Move move)
 			// On met à jour le noeud de recherche
 			next_root->_parent_count--;
 			_root_exploration_node = next_root;
+
+			// Ancien root devenu orphelin (next_root est le nouveau root) :
+			// recyclage de son noeud + plateau (B_R), distincts de next_root.
+			recycle_detached_node(old_root);
 
 			// On met à jour le plateau
 			_board = _root_exploration_node->_board;
@@ -1527,7 +1537,12 @@ void GUI::reset_game() {
 	_board->_is_active = true;
 	_game_tree.reset();
 	reset_pgn();
+	// Ancien root : reset recursif (recycle ses sous-arbres via Approche B),
+	// puis remplace par un nouveau noeud -> recyclage explicite de l'ancien
+	// (noeud + plateau), sinon fuite d'1 noeud + 1 plateau a chaque reset.
+	Node* const old_root = _root_exploration_node;
 	_root_exploration_node->reset();
+	recycle_detached_node(old_root);
 	_update_variants = true;
 	_board_orientation = current_orientation;
 	_root_exploration_node = monte_node_buffer.get_first_free_node();
