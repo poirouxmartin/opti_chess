@@ -4,6 +4,7 @@
 #include "buffer.h"
 #include <robin_map.h>
 #include <robin_hash.h>
+#include <vector>
 
 using namespace tsl;
 using PositionHistory = RepetitionHistory;
@@ -91,6 +92,9 @@ public:
 
 	// Pour savoir si il est actif dans le buffer
 	bool _is_active = false;
+
+	// Index dans monte_node_buffer (-1 = objet hors buffer : ne pas recycler)
+	int _buffer_index = -1;
 
 	// A rajouter : �valuation?, nombre de noeuds?...
 
@@ -215,11 +219,23 @@ public:
 	// It�rateur pour rechercher moins longtemps un index de plateau libre
 	int _iterator = -1;
 
+	// Free-list : pile d'indices de noeuds libres (allocation/libération O(1))
+	std::vector<int> _free_indices;
+
+	// Vrai pendant reset()/remove() : les hooks de libération ne repoussent pas
+	bool _bulk_resetting = false;
+
+	// Le buffer est-il plein ? (O(1))
+	bool is_full() const { return _free_indices.empty(); }
+
+	// Repousse un index libéré (appelé depuis les hooks de recyclage)
+	void free_index(int index) { _free_indices.push_back(index); }
+
 	// Constructeur par d�faut
 	NodeBuffer();
 
-	// Constructeur utilisant la taille max (en bits) du buffer
-	explicit NodeBuffer(unsigned long int);
+	// Constructeur utilisant la taille (en octets) du buffer
+	explicit NodeBuffer(size_t);
 
 	// Initialize l'allocation de n plateaux
 	void init(int length = 10000000, bool display = true);

@@ -1,5 +1,6 @@
 #pragma once
 #include "board.h"
+#include <vector>
 
 class BoardBuffer {
 public:
@@ -16,11 +17,23 @@ public:
 	// Itérateur pour rechercher moins longtemps un index de plateau libre
 	int _iterator = -1;
 
+	// Free-list : pile d'indices de plateaux libres (allocation/libération O(1))
+	std::vector<int> _free_indices;
+
+	// Vrai pendant reset()/remove() : les hooks de libération ne repoussent pas
+	bool _bulk_resetting = false;
+
+	// Le buffer est-il plein ? (O(1))
+	bool is_full() const { return _free_indices.empty(); }
+
+	// Repousse un index libéré (appelé depuis les hooks de recyclage)
+	void free_index(int index) { _free_indices.push_back(index); }
+
 	// Constructeur par défaut
 	BoardBuffer();
 
-	// Constructeur utilisant la taille max (en bits) du buffer
-	explicit BoardBuffer(unsigned long int);
+	// Constructeur utilisant la taille (en octets) du buffer
+	explicit BoardBuffer(size_t);
 
 	// Initialize l'allocation de n plateaux
 	void init(int length = 5000000, bool display = true);
