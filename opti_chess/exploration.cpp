@@ -417,6 +417,20 @@ Move Node::get_most_explored_child_move() {
 	return best_move;
 }
 
+// Recyclage free-list d'un noeud detache + son plateau (spec §5).
+// Garde : index dans le buffer (>=0) et pas pendant un reset global.
+void recycle_detached_node(Node* node) {
+	if (node == nullptr)
+		return;
+
+	Board* board = node->_board;
+	if (board != nullptr && board->_buffer_index >= 0 && !monte_board_buffer._bulk_resetting)
+		monte_board_buffer.free_index(board->_buffer_index);
+
+	if (node->_buffer_index >= 0 && !monte_node_buffer._bulk_resetting)
+		monte_node_buffer.free_index(node->_buffer_index);
+}
+
 // Reset le noeud et ses enfants, et les supprime tous
 void Node::reset(bool recursive) {
 	_latest_first_move_explored = -1;
@@ -449,6 +463,9 @@ void Node::reset(bool recursive) {
 
 			if (child_link._node->_parent_count <= 0) {
 				child_link._node->reset(true);
+				// Approche B : l'enfant est definitivement detache -> on le
+				// recycle (lui + son plateau). JAMAIS `this` (reuse en place).
+				recycle_detached_node(child_link._node);
 			}
 		}
 	}

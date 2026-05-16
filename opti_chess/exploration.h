@@ -257,3 +257,9 @@ public:
 };
 
 extern NodeBuffer monte_node_buffer;
+
+// Recyclage free-list O(1) d'un noeud DETACHE (plus aucun parent) et de son
+// plateau. Point de passage unique (spec §5). A n'appeler QUE sur un noeud
+// definitivement detache, JAMAIS sur un noeud reset puis reutilise en place
+// (root de load_FEN / branche "else" de play-move) -> double-free sinon.
+void recycle_detached_node(Node* node);
