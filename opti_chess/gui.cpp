@@ -106,8 +106,13 @@ bool GUI::new_bind_game() {
 	_binding_solo = true;
 	_binding_full = false;
 	_click_bind = true;
-	if (!monte_board_buffer._init)
-		monte_board_buffer.init();
+	if (!monte_board_buffer._init || !monte_node_buffer._init) {
+		const PoolSizing ps = compute_pool_sizing();
+		if (!monte_board_buffer._init)
+			monte_board_buffer.init(ps.board_length);
+		if (!monte_node_buffer._init)
+			monte_node_buffer.init(ps.node_length);
+	}
 	start_time();
 	_grogros_analysis = false;
 
@@ -138,8 +143,13 @@ bool GUI::new_bind_analysis() {
 	_binding_solo = false;
 	_binding_full = true;
 	_click_bind = false;
-	if (!monte_board_buffer._init)
-		monte_board_buffer.init();
+	if (!monte_board_buffer._init || !monte_node_buffer._init) {
+		const PoolSizing ps = compute_pool_sizing();
+		if (!monte_board_buffer._init)
+			monte_board_buffer.init(ps.board_length);
+		if (!monte_node_buffer._init)
+			monte_node_buffer.init(ps.node_length);
+	}
 	_grogros_analysis = true;
 
 	return true;
@@ -1909,13 +1919,14 @@ void GUI::evaluate_position(bool display, bool static_only) {
 // Fonction qui initialise les buffers
 void GUI::init_buffers() const {
 
-	// Buffer de plateaux
-	if (!monte_board_buffer._init)
-		monte_board_buffer.init(_board_buffer_length);
-
-	// Buffer de noeuds
-	if (!monte_node_buffer._init)
-		monte_node_buffer.init(_node_buffer_length);
+	// Dimensionnement adaptatif depuis la RAM physique dispo (#13)
+	if (!monte_board_buffer._init || !monte_node_buffer._init) {
+		const PoolSizing ps = compute_pool_sizing();
+		if (!monte_board_buffer._init)
+			monte_board_buffer.init(ps.board_length);
+		if (!monte_node_buffer._init)
+			monte_node_buffer.init(ps.node_length);
+	}
 }
 
 // Fonction qui reset les buffers

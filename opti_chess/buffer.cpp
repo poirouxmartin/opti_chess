@@ -1,5 +1,9 @@
 #include "buffer.h"
 #include "useful_functions.h"
+#include "exploration.h"     // sizeof(Node)
+#include "zobrist.h"         // sizeof(ZobristEntry)
+#include "windows_tests.h"   // get_available_physical_memory() — probe RAM isolée
+                             // (pas de <windows.h> ici : board.h tire raylib.h)
 
 // Constructeur par défaut : n'alloue rien, init() est obligatoire
 BoardBuffer::BoardBuffer() {
@@ -104,3 +108,43 @@ void BoardBuffer::display_buffer_state() const {
 
 // Buffer pour l'algo de Monte-Carlo
 BoardBuffer monte_board_buffer;
+
+// Dimensionnement adaptatif des pools depuis la RAM physique disponible.
+// budget = min(ram_fraction × RAM dispo, hard_cap) ; TT plafonnée à budget/4 ;
+// reste réparti à parts égales en NOMBRE d'entrées Node et Board.
+// Tout le calcul en unsigned long long (portable Win32/x64).
+PoolSizing compute_pool_sizing(double ram_fraction, unsigned long long hard_cap_bytes, int tt_max_entries, double rss_overhead_factor) {
+	const unsigned long long avail = get_available_physical_memory();
+
+	// Budget = cible de RSS TOTAL du process.
+	unsigned long long budget = (unsigned long long)((double)avail * ram_fraction);
+	if (budget > hard_cap_bytes)
+		budget = hard_cap_bytes;
+
+	// Le RSS réel ≈ rss_overhead_factor × (tableaux plats + TT plate), car
+	// les robin_map _children/_positions_history/TT grossissent en heap hors
+	// sizeof. On alloue donc les structures plates à budget/facteur : le RSS
+	// total (plat + heap dynamique) converge vers `budget`. Borné sur toute
+	// machine, pas seulement les tableaux (vrai correctif #13).
+	if (rss_overhead_factor < 1.0)
+		rss_overhead_factor = 1.0;
+	budget = (unsigned long long)((double)budget / rss_overhead_factor);
+
+	// Coût approché d'une entrée robin_map<uint64_t, ZobristEntry> (overhead ~2x)
+	const unsigned long long tt_entry_bytes = (unsigned long long)(sizeof(uint64_t) + sizeof(ZobristEntry)) * 2;
+	unsigned long long tt_bytes = (unsigned long long)tt_max_entries * tt_entry_bytes;
+	if (tt_bytes > budget / 4)
+		tt_bytes = budget / 4;
+	const int tt_length = (int)(tt_bytes / tt_entry_bytes);
+
+	// Reste réparti : autant d'entrées Node que Board (un Board ≈ un Node expansé)
+	const unsigned long long rest = budget - tt_bytes;
+	const unsigned long long pair_bytes = (unsigned long long)(sizeof(Board) + sizeof(Node));
+	const int count = (int)(rest / pair_bytes);
+
+	PoolSizing ps;
+	ps.board_length = count;
+	ps.node_length = count;
+	ps.tt_length = tt_length;
+	return ps;
+}

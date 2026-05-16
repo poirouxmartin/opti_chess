@@ -1,6 +1,33 @@
 #pragma once
 #include "board.h"
 #include <vector>
+#include <cstddef>
+
+// Résultat du dimensionnement des pools (nombre d'entrées)
+struct PoolSizing {
+	int board_length;
+	int node_length;
+	int tt_length;
+};
+
+// Calcule les tailles des pools depuis la RAM physique dispo au démarrage.
+// ram_fraction : part de la RAM dispo = cible de RSS TOTAL du process.
+// hard_cap_bytes : plafond dur du RSS total visé.
+// tt_max_entries : plafond du nombre d'entrées de la table de transposition.
+// rss_overhead_factor : RSS réel / taille des tableaux plats. Les tableaux
+//     Board[]/Node[] ne sont pas le seul coût : chaque Node a une robin_map
+//     _children, chaque Board une robin_map _positions_history, et la TT
+//     elle-même grossit jusqu'à tt_max_entries — heap dynamique NON modélisé
+//     par sizeof(Board)+sizeof(Node). Mesuré ≈ 2.0 (4 Go tableaux => 8 Go RSS).
+//     On dimensionne donc les tableaux à budget/facteur pour que le RSS
+//     TOTAL (tableaux + maps dynamiques) tienne dans le budget, sur toute
+//     machine (#13 borné par construction, pas seulement les tableaux plats).
+// NB: tout le calcul en unsigned long long — 4 Gio déborderait un size_t
+//     32-bit (exactement le bug mémoire que ce cleanup corrige).
+PoolSizing compute_pool_sizing(double ram_fraction = 0.5,
+                               unsigned long long hard_cap_bytes = 4ull * 1024 * 1024 * 1024,
+                               int tt_max_entries = 5000000,
+                               double rss_overhead_factor = 2.0);
 
 class BoardBuffer {
 public:

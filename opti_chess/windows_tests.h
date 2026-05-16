@@ -85,8 +85,12 @@ void simulate_mouse_release();
 // Fonction qui palce la souris à une position donnée
 void set_mouse_pos(int x, int y);
 
-// Fonction qui renvoie la mémoire disponible dans l'ordinateur
+// Fonction qui renvoie la mémoire totale physique de l'ordinateur
 unsigned long long  get_total_system_memory();
+
+// Fonction qui renvoie la mémoire physique DISPONIBLE (libre) — base du
+// dimensionnement adaptatif des pools (évite de saturer la RAM => #13).
+unsigned long long  get_available_physical_memory();
 
 // Fonction qui affiche la couleur de chacune des cases de l'échiquier sur l'écran, en donnant ses coordonnées (top-left, bottom-right)
 uint8_t* get_board_move(int x1, int y1, int x2, int y2, ChessSite website, bool orientation = false, bool display = false);
