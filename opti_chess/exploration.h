@@ -158,7 +158,7 @@ public:
 	int get_ips() const;
 
 	// Quiescence search int�gr� � l'exploration
-	int quiescence(BoardBuffer* board_buffer, Evaluator* evaluator, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr, bool evaluate_threats = true, int beta_margin = 0, const PositionHistory *path_history = nullptr);
+	int quiescence(BoardBuffer* board_buffer, Evaluator* evaluator, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr, bool evaluate_threats = true, int beta_margin = 0, PositionHistory *path_history = nullptr);
 	//void grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth);
 
 	// Fonction qui renvoie le nombre de noeuds fils compl�tement explor�s
