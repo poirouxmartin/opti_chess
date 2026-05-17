@@ -160,7 +160,21 @@ Deux constantes compile-time, ajustées au gate runtime utilisateur.
 
 - `_nodes=1` garde `_nodes += child->_nodes` et les asserts
   `child_nodes >= nodes` corrects (comme la feuille de nulle).
-- `_can_explore=false` ⇒ `pick_random_child:1281` ne redescend jamais.
+- **Durabilité du gel (mécanisme en deux parties).** `_can_explore=false`
+  empêche `pick_random_child` de choisir la feuille comme `move_to_play`,
+  mais elle peut rester le `best_move` de fallback (si aucun fils explorable)
+  et donc être passée à `grogros_zero` par `explore_random_child`. Sans
+  garde, `grogros_zero` (a) relancerait `quiescence` car `!_initialized`
+  (écrasant la valeur TT profonde par une éval quiescence superficielle),
+  puis (b) l'étendrait via `explore_new_move`. Pour que la feuille reste
+  réellement gelée (stance utilisateur retenue), `init_tt_leaf_child` pose
+  donc **`_initialized=true`** (saute la quiescence), et `grogros_zero`
+  acquiert un retour anticipé **`if (!_can_explore) { _iterations++;
+  _time_spent += …; return; }`** placé juste après le retour `_is_terminal`
+  existant. OFF-safe : tout nœud `_can_explore=false` existant est aussi
+  `_is_terminal=true` (feuille de nulle `:107`, fin de partie `init_node`)
+  et déjà capté par le retour `_is_terminal` qui précède — la nouvelle garde
+  ne se déclenche donc que pour la feuille TT non-terminale (toggle ON).
 - `_iterations=1` / `_chosen_iterations=1` (clampé `:357-358`) ⇒ le terme
   d'exploration UCT (`:1221`, sur `_iterations`/`_chosen_iterations`, **pas**
   `_nodes`) se comporte comme pour les feuilles terminales/nulles actuelles.
