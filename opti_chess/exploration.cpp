@@ -25,6 +25,41 @@ inline int tt_denormalize_mate(int eval, int moves_count) {
 	return eval;
 }
 
+// #11 Plan A — TT scalaire dans la recherche principale.
+// QDEPTH_BAND : décale toute profondeur de write-back MCTS au-dessus de la
+// bande de quiescence (depth quiescence <= _quiescence_depth, ~10). Le
+// remplacement depth-preferred (zobrist.cpp:113) garde ainsi toujours une
+// entrée raffinée plutôt qu'une feuille de quiescence, et la porte de
+// réutilisation peut exiger un vrai sous-arbre raffiné.
+constexpr int QDEPTH_BAND = 256;
+// MIN_REUSE_LOG2 : on ne réutilise que les entrées représentant >= 2^N noeuds
+// raffinés (jamais une simple feuille de quiescence). Ajustable au gate.
+constexpr int MIN_REUSE_LOG2 = 4;
+
+// log2 entier de (nodes+1), borné. Pas de float (hot-path-friendly, MSVC).
+inline int tt_writeback_depth(int nodes) {
+	int v = nodes + 1;
+	int log2v = 0;
+	while (v > 1) { v >>= 1; ++log2v; }
+	return QDEPTH_BAND + log2v;
+}
+
+// Cohérence des champs dérivés d'une Evaluation dont _value vient de la TT.
+// Factorisation EXACTE du bloc de synthèse du cutoff quiescence (#1 v2 / #14) :
+// _value est supposé déjà posé (white-relative). On force _uncertainty=0 (une
+// valeur TT fiable ne doit pas être filtrée par l'incertitude statique), on
+// remet _winnable_* par signe si mat (évite le scaling sur un score de mat
+// géant), puis on redérive _wdl / _avg_score depuis _value.
+inline void tt_fixup_derived(Evaluation& e) {
+	e._uncertainty = 0.0f;
+	if (10 * abs(e._value) > mate_value) {
+		e._winnable_white = e._value > 0 ? 1.0f : 0.0f;
+		e._winnable_black = e._value < 0 ? 1.0f : 0.0f;
+	}
+	e.get_WDL();
+	e.get_average_score();
+}
+
 uint8_t position_history_count(const PositionHistory& path_history, Board& board) {
 	board.get_zobrist_key();
 	const auto it = path_history.find(board._zobrist_key);
@@ -1671,3 +1706,4 @@ NodeBuffer monte_node_buffer;
 // Log « buffer plein » une seule fois par session de saturation ;
 // remis à false dès qu'un reset/remove libère de la place.
 bool g_buffers_full_logged = false;
+bool g_tt_main_search = false;
