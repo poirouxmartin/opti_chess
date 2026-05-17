@@ -40,12 +40,13 @@
 
 ## ⬜ Ouverts — par sévérité
 
-### 🔴 #3 — Scores de mat non normalisés au ply dans la TT
-- **Fichiers** : `board.cpp:1569` (encodage mate via `_moves_count`), `board.cpp:7014-7042` (`_moves_count` absent de la clé Zobrist)
-- **Sévérité** : HAUTE (correctness — cause probable des "fantômes" résiduels)
-- **Détail** : mate score = `(-mate_value + _moves_count * mate_ply) * color`. `_moves_count` (n° de coup absolu) n'est pas hashé. Même position physique atteinte via chemins de longueurs différentes ⇒ même clé Zobrist, mate scores différents stockés/relus.
-- **⚠️ Régression de visibilité depuis #1 v2** : l'éval de mat est désormais *cohérente* (`uncertainty=0`, `winnable` net). Conséquence : une distance de mat **fausse** issue d'une transposition s'affiche maintenant *avec confiance* (score 1.000, conf 100 %) au lieu d'être visiblement cassée. Borné (mauvaise *distance*, jamais mauvaise *classification* — seuil `10*abs>mate_value` robuste face au terme `_moves_count`), mais le « tell » visuel a disparu → **#3 = prochain item correctness explicite**.
-- **Fix proposé** : au `store`, si valeur = mate, normaliser relatif au ply courant (`eval ± _moves_count * mate_ply`) ; au `probe`, dé-normaliser. Cohérent avec l'encodage existant.
+### ✅ #3 — Scores de mat non normalisés au ply dans la TT
+- **Statut** : ✅ corrigé — **validé runtime utilisateur**.
+- **Fichiers** : encodage `board.cpp:1569` `(-mate_value + _moves_count·mate_ply)·get_color()` ; décodage `board.cpp:3301` `is_eval_mate` (utilise `_moves_count` du plateau courant) ; clé Zobrist sans `_moves_count`. Stores TT `exploration.cpp:844/852/875/1053/1079`, probe consommé `:784`.
+- **Sévérité** : HAUTE (correctness — cause des "fantômes" de distance de mat résiduels).
+- **Détail** : la magnitude du score de mat encode `_moves_count` du *terminal* ; `is_eval_mate` la décode avec `_moves_count` du *nœud courant* → distance `D = mc_terminal − mc_nœud`. Système cohérent **le long d'un chemin** (mc croît monotone). Mais la clé Zobrist exclut `_moves_count` : une même position atteinte via deux chemins de longueurs différentes (ex. Cg1-f3-g1) partage la clé ; un mat stocké via le chemin A (mc_A) puis relu via le chemin B (mc_B≠mc_A) décode une distance fausse de `mc_A−mc_B` plies (« fantôme » de distance, affiché *avec confiance* depuis #1 v2 qui a supprimé le tell visuel).
+- **Fix appliqué** : canonisation ply-relative. Au store `tt_normalize_mate(eval, mc) = eval + sign(eval)·mc·mate_ply` si mat (seuil `10·|e|>mate_value`, idiome `is_eval_mate`/#1) ⇒ `|stored| = mate_value − D·mate_ply`, indépendant de `_moves_count` (propriété de position). Au probe `tt_denormalize_mate(stored, mc_probe) = stored − sign·mc_probe·mate_ply` ⇒ reconstruit la valeur cohérente avec le `_moves_count` du nœud qui relit (identité si même chemin). Helpers anonymes `exploration.cpp` ; entrée TT inchangée (pas de mutation du `ZobristEntry` partagé, dé-normalisation sur copie locale `tt_eval`). Non-mat : no-op (seuil), perf neutre.
+- **Robustesse seuil** : `|stored| ≈ mate_value(1e8) − D·mate_ply + mc·mate_ply`, `D`/`mc` petits (centaines) vs `mate_ply=1e5` ⇒ `10·|stored| > mate_value` reste vrai (mat re-détecté au probe) et les évals non-mat (≪1e7) jamais reclassées — cohérent avec `is_eval_mate` et #1.
 
 ### ✅ #4 — Stand-pat caché en `TT_EXACT`
 - **Statut** : ✅ corrigé — **validé runtime utilisateur** (commit `783135d`).
@@ -129,7 +130,7 @@
 
 ## Ordre de traitement recommandé
 > #2, #12, #13 corrigés & validés runtime (cf. section ✅ Corrigés). Suite :
-1. ~~**#4** (stand-pat ≠ EXACT)~~ ✅ validé runtime (`783135d`) · ~~**#14** (cohérence value↔score, cas non-mat)~~ ✅ validé runtime · reste **#3** (mate scores ply-relatifs) → **#11** — débloque #11.
+1. ~~**#4** (stand-pat ≠ EXACT)~~ ✅ validé runtime (`783135d`) · ~~**#14** (cohérence value↔score, cas non-mat)~~ ✅ validé runtime (`1e56a68`) · ~~**#3** (mate scores ply-relatifs)~~ ✅ validé runtime — passe correctness TT complète : reste **#11**.
 2. **#11 plan A** (TT scalaire dans la recherche principale) — **l'objectif** : gain de profondeur. Mesurer après.
 3. **#6** puis **#5** (hygiène TT).
 4. **#7** (perf path-local + fuite map — re-tester #13) puis **#8** (operator<, rapide, latent).
