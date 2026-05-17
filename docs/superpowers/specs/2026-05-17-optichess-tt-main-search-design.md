@@ -22,23 +22,30 @@ profondeur visible. Behavior-preserving autant que possible.
 
 ## Constat de conception (de-risk majeur)
 
-La sélection MCTS ne dépend **pas** de `_nodes`. Dans `pick_random_child`
-(`exploration.cpp:1224`) : `score = move_score × exploration_score` avec
+La sélection MCTS (`pick_random_child`, lecture ligne à ligne 1129-1301) ne
+référence **jamais** `_nodes` ni `_propagated_nodes`.
+`score = move_score × exploration_score` avec
 - `move_score = get_node_score(...)` = fonction **pure** de `_deep_evaluation`
-  (value / avg_score / wdl) — aucun terme `_nodes` (`:1361-1410`) ;
-- `exploration_score = pow(_iterations / child_iterations, γ)` —
-  `child_iterations = max(_chosen_iterations, child->_iterations)`, **pas
-  `_nodes`** (`:1215-1221`) ;
+  (value / avg_score / wdl) — aucun terme `_nodes` (`:1163`,`:1361-1410`) ;
+- `exploration_score = pow(_iterations / child_iterations, γ)`,
+  `child_iterations = max(_chosen_iterations, child->_iterations)`
+  (`:1215-1221`) : terme d'exploration **type UCT** sur un compteur de
+  visites — mais ce compteur est `_iterations`/`_chosen_iterations`, un
+  **compteur distinct de `_nodes`** ;
 - `child->_can_explore` (`:1281`) garde déjà la descente : un fils non
   explorable contribue son éval au backup parent mais n'est jamais redescendu.
 
-Conséquence : un fils réutilisé depuis la TT n'a besoin d'**aucun** proxy de
-visites/`_nodes` synthétique pour la sélection. Il lui faut seulement une
-`_deep_evaluation` cohérente. Structurellement il est **identique à la feuille
-de nulle-par-répétition existante** (`exploration.cpp:285-292` :
-`_nodes=1`, `_iterations=1`, non expansible). Le gain combinatoire est gratuit :
-le fils reste `_nodes=1` (pas de sous-arbre redondant) tout en portant la
-valeur *profonde* issue du write-back.
+Conséquence (vérifiée par grep exhaustif + lecture intégrale) : un fils
+réutilisé depuis la TT n'a besoin d'**aucun proxy `_nodes` synthétique** pour
+la sélection ; il lui faut une `_deep_evaluation` cohérente **et** des
+compteurs `_iterations`/`_chosen_iterations` sains. Les deux sont fournis en
+mimant **la feuille de nulle-par-répétition existante**
+(`exploration.cpp:285-292` : `_nodes=1`, `_iterations=1`, non expansible ;
+`:357-358` clampe `_chosen_iterations ≥ 1`) : le terme d'exploration se
+comporte alors exactement comme pour les feuilles terminales/nulles actuelles
+(constant, ne croît jamais car `_can_explore=false`). Le gain combinatoire est
+gratuit : le fils reste `_nodes=1` (pas de sous-arbre redondant) tout en
+portant la valeur *profonde* issue du write-back.
 
 Le seul vrai point de conception restant : le **proxy de profondeur du
 write-back** + le **seuil de confiance**, parce que `ZobristEntry._depth` est
@@ -131,8 +138,12 @@ Deux constantes compile-time, ajustées au gate runtime utilisateur.
 - `_nodes=1` garde `_nodes += child->_nodes` et les asserts
   `child_nodes >= nodes` corrects (comme la feuille de nulle).
 - `_can_explore=false` ⇒ `pick_random_child:1281` ne redescend jamais.
-- Sélection purement éval-driven ⇒ la `_deep_evaluation` synthétisée suffit ;
-  aucun proxy de visites/`_nodes` synthétique nécessaire.
+- `_iterations=1` / `_chosen_iterations=1` (clampé `:357-358`) ⇒ le terme
+  d'exploration UCT (`:1221`, sur `_iterations`/`_chosen_iterations`, **pas**
+  `_nodes`) se comporte comme pour les feuilles terminales/nulles actuelles.
+  La sélection ne lisant jamais `_nodes`, aucun proxy `_nodes` synthétique
+  n'est nécessaire ; la `_deep_evaluation` synthétisée + ces compteurs
+  suffisent.
 - Hérite de #6 (TT non clearée entre racines) **inchangé** — non aggravé,
   OFF par défaut, l'utilisateur clear à l'A/B.
 - Perf : deux opérations TT O(1) sans allocation, à des points qui scannent
