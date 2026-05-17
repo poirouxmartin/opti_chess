@@ -137,6 +137,10 @@ void init_tt_leaf_child(Node* child, Board* board, Evaluator* eval, Network* net
 		child->_is_terminal = true;
 	}
 	else {
+		// _deep_evaluation == _static_evaluation ici (evaluate_position le copie
+		// quand static_only=false) ; copie explicite conservée à dessein : si
+		// ce défaut changeait, c'est elle qui garantit une base cohérente avant
+		// de substituer la valeur TT et d'appliquer tt_fixup_derived (#1/#14).
 		child->_deep_evaluation = child->_static_evaluation;
 		child->_deep_evaluation._value = white_relative_value;
 		child->_deep_evaluation._evaluated = true;
