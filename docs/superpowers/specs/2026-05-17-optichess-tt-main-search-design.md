@@ -94,13 +94,23 @@ Après `new_board->get_zobrist_key()` (`exploration.cpp:298`) et la création du
   une simple feuille de quiescence comme valeur profonde ;
 - sur hit ⇒ **feuille TT gelée**, structurellement la feuille de
   nulle-par-répétition existante (`:285-292`) :
-  - synthèse de `_deep_evaluation` en **réutilisant exactement** la logique de
-    synthèse du bloc `tt_cutoff` (`:781-810`, conventions #1/#14), factorisée
-    en un helper partagé : `_value` = valeur dé-canonisée, `_evaluated=true`,
-    `_uncertainty=0` ; si mat (`10·|value| > mate_value`) `_winnable_*` par le
-    signe ; puis `get_WDL()` + `get_average_score()` pour dériver
-    `_wdl` / `_avg_score` de façon cohérente ;
-  - `_nodes=1`, `_iterations=1`, `_can_explore=false`,
+  - détection terminale d'abord : `Board::evaluate(check_game_over=true)` ne
+    **calcule pas** la fin de partie (`is_game_over()` y est commenté,
+    `board.cpp:1548`), il ne fait que **lire** `_game_over_value`. On le
+    calcule donc explicitement comme `init_node` (`get_moves()` puis
+    `is_game_over()`) avant d'évaluer ;
+  - si la position est réellement terminale
+    (`_board->_game_over_value != unterminated`) : `Board::evaluate` a déjà
+    posé l'éval exacte (mat/nulle), meilleure que le scalaire TT — on la garde
+    et on pose `_is_terminal=true` (mécanisme de `init_node`, *pas* via
+    l'éval statique) ;
+  - sinon : synthèse de `_deep_evaluation` en **réutilisant exactement** la
+    logique de synthèse du bloc `tt_cutoff` (`:781-810`, conventions #1/#14),
+    factorisée en un helper partagé : `_value` = valeur dé-canonisée,
+    `_evaluated=true`, `_uncertainty=0` ; si mat (`10·|value| > mate_value`)
+    `_winnable_*` par le signe ; puis `get_WDL()` + `get_average_score()`
+    pour dériver `_wdl` / `_avg_score` de façon cohérente ;
+  - dans les deux cas : `_nodes=1`, `_iterations=1`, `_can_explore=false`,
     `_fully_explored=true`, `_is_stand_pat_eval=false` ;
   - **on saute l'appel `quiescence()`**.
 - Le `Board` alloué est conservé (c'est le board de la feuille) ; **pas de
