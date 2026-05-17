@@ -81,33 +81,37 @@ void record_position_in_history(PositionHistory& path_history, Board& board) {
 	path_history[board._zobrist_key]++;
 }
 
-// #7 / Plan B-1 — annule un record_position_in_history (pop). Symétrique exact :
-// décrémente le compteur, efface l'entrée à 0 pour borner la taille de la map.
-void unrecord_position_in_history(PositionHistory& path_history, Board& board) {
-	board.get_zobrist_key();
-	auto it = path_history.find(board._zobrist_key);
+// #7 / Plan B-1 — annule un push (record) du path history (pop). Clé passée
+// directement (pas de Board) : symétrique exact de record, simple lookup,
+// efface l'entrée à 0 pour borner la taille de la map.
+void unrecord_position_in_history(PositionHistory& path_history, uint64_t key) {
+	const auto it = path_history.find(key);
 	if (it == path_history.end()) {
-		return;
+		return; // appel non équilibré : ne devrait jamais arriver
 	}
 	if (it->second <= 1) {
 		path_history.erase(it);
 	}
 	else {
-		path_history[board._zobrist_key]--;
+		it.value()--;
 	}
 }
 
-// RAII : push (record) la position du board dans l'historique à la construction,
-// pop (unrecord) à la destruction. Garantit l'équilibrage sur TOUT chemin de
-// sortie (returns anticipés inclus) — voir « Balance invariant » du plan.
+// RAII : push (record) la position du board à la construction, pop à la
+// destruction. La clé Zobrist est capturée À LA CONSTRUCTION (get_zobrist_key
+// n'est pas idempotent : recalcul O(64)) — le dtor ne retouche pas le Board,
+// l'appariement push/pop est structurel. Équilibrage garanti sur TOUT chemin
+// de sortie (returns anticipés inclus) — voir « Balance invariant » du plan.
 struct PathScope {
 	PositionHistory& _history;
-	Board& _board;
-	PathScope(PositionHistory& history, Board& board) : _history(history), _board(board) {
-		record_position_in_history(_history, _board);
+	uint64_t _key;
+	PathScope(PositionHistory& history, Board& board) : _history(history) {
+		board.get_zobrist_key();
+		_key = board._zobrist_key;
+		_history[_key]++;
 	}
 	~PathScope() {
-		unrecord_position_in_history(_history, _board);
+		unrecord_position_in_history(_history, _key);
 	}
 	PathScope(const PathScope&) = delete;
 	PathScope& operator=(const PathScope&) = delete;
