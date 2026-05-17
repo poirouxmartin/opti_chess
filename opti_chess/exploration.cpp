@@ -853,16 +853,10 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			// score divergent jusqu'à ré-exploration). On force _uncertainty=0
 			// pour TOUT cutoff — généralisation du fix #1 v2 au cas non-mat,
 			// cohérent avec les chemins terminal/mat/NN (board.cpp:1558/1575/1592).
-			_deep_evaluation._uncertainty = 0.0f;
-			// Mat : on garde l'idiome terminal (0/1 par signe) qui évite le
-			// scaling winning_eval/_winnable sur un score de mat géant. Hors mat
-			// on conserve les _winnable_* statiques (propriété de position).
-			if (10 * abs(_deep_evaluation._value) > mate_value) {
-				_deep_evaluation._winnable_white = _deep_evaluation._value > 0 ? 1.0f : 0.0f;
-				_deep_evaluation._winnable_black = _deep_evaluation._value < 0 ? 1.0f : 0.0f;
-			}
-			_deep_evaluation.get_WDL();
-			_deep_evaluation.get_average_score();
+			// #1 v2 / #14 : champs dérivés cohérents depuis le _value de la TT.
+			// Logique factorisée dans tt_fixup_derived (réutilisée par la
+			// feuille TT de la recherche principale, #11 Plan A).
+			tt_fixup_derived(_deep_evaluation);
 
 			transposition_table._stats._cutoffs++;
 			_time_spent += clock() - begin_monte_time;
