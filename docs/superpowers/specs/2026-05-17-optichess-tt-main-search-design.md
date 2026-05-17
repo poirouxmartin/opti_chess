@@ -130,13 +130,23 @@ meilleur fils :
   par répétition (path-dependent — ne doivent pas être cachées en EXACT de
   position) ; côté probe c'est déjà sain car la répétition est court-circuitée
   avant le probe (`:280`) ;
+- **convention de valeur** : la TT est uniformément *side-to-move* (les stores
+  quiescence stockent `stand_pat = _deep_evaluation._value * color`,
+  `exploration.cpp:902`, et relisent `_value = tt_eval * color`, `:912`). Le
+  write-back doit donc stocker `_deep_evaluation._value * _board->get_color()`
+  (et **pas** `_value` brut white-relative) — sinon double-conversion / signe
+  inversé pour les Noirs. Les entrées write-back (depth ≥ `QDEPTH_BAND`) sont
+  consommées **à la fois** par le probe Task 4 *et* par le cutoff quiescence
+  existant (`:912`, car `_depth >= depth`) ; les deux relisent en `* color`,
+  d'où l'obligation d'un store side-to-move uniforme ;
 - `transposition_table.store(_board->_zobrist_key,
-  tt_normalize_mate(_deep_evaluation._value, _board->_moves_count),
-  QDEPTH_BAND + floor(log2(_nodes+1)), TT_EXACT)`. Le remplacement
-  depth-preferred (`zobrist.cpp:113`) garde l'entrée la plus profonde ;
-  l'offset `QDEPTH_BAND` (au-dessus de toute profondeur de quiescence possible)
-  classe chaque write-back MCTS au-dessus de chaque entrée de quiescence et
-  permet à la porte de réutilisation d'exiger un *vrai sous-arbre raffiné*.
+  tt_normalize_mate(_deep_evaluation._value * _board->get_color(),
+  _board->_moves_count), QDEPTH_BAND + floor(log2(_nodes+1)), TT_EXACT)`. Le
+  remplacement depth-preferred (`zobrist.cpp:113`) garde l'entrée la plus
+  profonde ; l'offset `QDEPTH_BAND` (au-dessus de toute profondeur de
+  quiescence possible) classe chaque write-back MCTS au-dessus de chaque
+  entrée de quiescence et permet à la porte de réutilisation d'exiger un
+  *vrai sous-arbre raffiné*.
 
 ### 4. Constantes ajustables
 
