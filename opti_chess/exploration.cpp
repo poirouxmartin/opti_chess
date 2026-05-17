@@ -108,6 +108,33 @@ void init_terminal_draw_child(Node* child, Board* board, Evaluator* eval, Networ
 	child->_is_terminal = true;
 }
 
+// #11 Plan A — feuille gelée portant une valeur fiable issue de la TT.
+// Structurellement calquée sur init_terminal_draw_child : on initialise via
+// l'éval statique (peu coûteux, garnit _static_evaluation + flags game-over),
+// puis on remplace _deep_evaluation par la valeur TT (white-relative) avec les
+// champs dérivés cohérents (#1/#14). Si la position est terminale, on garde
+// l'éval terminale exacte (meilleure que le scalaire) et on ne l'écrase pas.
+// Compteurs identiques à la feuille de nulle (_nodes=1, _iterations=1) : le
+// terme d'exploration UCT (exploration.cpp:1221, sur _iterations) se comporte
+// alors comme pour les feuilles terminales/nulles existantes.
+void init_tt_leaf_child(Node* child, Board* board, Evaluator* eval, Network* network, int white_relative_value) {
+	child->_board = board;
+	child->evaluate_position(eval, false, network, true);
+
+	if (!child->_is_terminal) {
+		child->_deep_evaluation = child->_static_evaluation;
+		child->_deep_evaluation._value = white_relative_value;
+		child->_deep_evaluation._evaluated = true;
+		tt_fixup_derived(child->_deep_evaluation);
+	}
+
+	child->_nodes = 1;
+	child->_iterations = 1;
+	child->_is_stand_pat_eval = false;
+	child->_fully_explored = true;
+	child->_can_explore = false;
+}
+
 // Constructeur par défaut
 Node::Node() {
 }
