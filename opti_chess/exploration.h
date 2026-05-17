@@ -260,6 +260,9 @@ extern NodeBuffer monte_node_buffer;
 
 // Log « buffer plein » une seule fois par session de saturation
 extern bool g_buffers_full_logged;
+// #11 Plan A — active probe + write-back TT dans la recherche principale.
+// Défaut OFF : comportement actuel au byte près, A/B même binaire.
+extern bool g_tt_main_search;
 
 // Recyclage free-list O(1) d'un noeud DETACHE (plus aucun parent) et de son
 // plateau. Point de passage unique (spec §5). A n'appeler QUE sur un noeud
