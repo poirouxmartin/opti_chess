@@ -344,14 +344,16 @@ Insérer entre la `}` du null-check (l.314) et le `if (!child->_fully_explored)`
 	// valeur de position. Bornes (STANDPAT/BETA/ALPHA) jamais réutilisées comme
 	// valeur de noeud (sémantique de borne sans fenêtre en MCTS). On exige
 	// _depth dans la bande write-back : un vrai sous-arbre raffiné, pas une
-	// feuille de quiescence.
+	// feuille de quiescence. NB : on lit child->_board (et non new_board, hors
+	// portée ici car déclaré dans la branche else) ; created_new_node garantit
+	// child->_board == le new_board fraîchement créé, zobrist déjà calculée.
 	if (g_tt_main_search && created_new_node) {
-		const ZobristEntry* tt_entry = transposition_table.probe(new_board->_zobrist_key);
+		const ZobristEntry* tt_entry = transposition_table.probe(child->_board->_zobrist_key);
 		if (tt_entry != nullptr
 			&& tt_entry->_flag == TT_EXACT
 			&& tt_entry->_depth >= QDEPTH_BAND + MIN_REUSE_LOG2) {
-			const int tt_eval = tt_denormalize_mate(tt_entry->_eval, new_board->_moves_count); // #3
-			init_tt_leaf_child(child, new_board, eval, network, tt_eval * new_board->get_color());
+			const int tt_eval = tt_denormalize_mate(tt_entry->_eval, child->_board->_moves_count); // #3
+			init_tt_leaf_child(child, child->_board, eval, network, tt_eval * child->_board->get_color());
 		}
 	}
 
