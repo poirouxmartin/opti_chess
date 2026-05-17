@@ -485,6 +485,16 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 	else {
 		_is_stand_pat_eval = false;
 		_deep_evaluation = _children[best_move]._node->_deep_evaluation;
+
+		// #11 Plan A — write-back de la valeur raffinée (le levier réel).
+		// Garde : toggle ON, pas terminal (exclut les nulles path-dependent),
+		// pas stand-pat (borne inf déjà gérée en TT_STANDPAT par la quiescence),
+		// éval évaluée. Profondeur-proxy au-dessus de la bande quiescence.
+		if (g_tt_main_search && !_is_terminal && !_is_stand_pat_eval && _deep_evaluation._evaluated) {
+			transposition_table.store(_board->_zobrist_key,
+				tt_normalize_mate(_deep_evaluation._value, _board->_moves_count), // #3
+				tt_writeback_depth(_nodes), TT_EXACT);
+		}
 	}
 
 	// FIXME: si on a regardé tous les fils, et qu'aucun des coups n'améliore l'évaluation, on fait quoi?
@@ -515,6 +525,14 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 
 	// Met à jour l'évaluation du plateau avec le meilleur coup
 	_deep_evaluation = _children[get_best_score_move(alpha, beta)]._node->_deep_evaluation;
+
+	// #11 Plan A — write-back de la valeur raffinée (le levier réel).
+	// Mêmes gardes que dans explore_new_move.
+	if (g_tt_main_search && !_is_terminal && !_is_stand_pat_eval && _deep_evaluation._evaluated) {
+		transposition_table.store(_board->_zobrist_key,
+			tt_normalize_mate(_deep_evaluation._value, _board->_moves_count), // #3
+			tt_writeback_depth(_nodes), TT_EXACT);
+	}
 
 	// Augmente le nombre de noeuds
 	_nodes += child->_nodes - initial_child_nodes;
