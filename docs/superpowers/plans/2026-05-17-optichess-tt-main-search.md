@@ -198,19 +198,34 @@ void init_terminal_draw_child(Node* child, Board* board, Evaluator* eval, Networ
 Insérer juste après :
 ```cpp
 // #11 Plan A — feuille gelée portant une valeur fiable issue de la TT.
-// Structurellement calquée sur init_terminal_draw_child : on initialise via
-// l'éval statique (peu coûteux, garnit _static_evaluation + flags game-over),
-// puis on remplace _deep_evaluation par la valeur TT (white-relative) avec les
-// champs dérivés cohérents (#1/#14). Si la position est terminale, on garde
-// l'éval terminale exacte (meilleure que le scalaire) et on ne l'écrase pas.
-// Compteurs identiques à la feuille de nulle (_nodes=1, _iterations=1) : le
-// terme d'exploration UCT (exploration.cpp:1221, sur _iterations) se comporte
-// alors comme pour les feuilles terminales/nulles existantes.
+// Structurellement calquée sur init_terminal_draw_child. Détection terminale
+// d'abord : Board::evaluate(check_game_over=true) ne CALCULE pas la fin de
+// partie (is_game_over() y est commenté, board.cpp:1548) ; il ne fait que LIRE
+// _game_over_value. On le calcule donc explicitement comme init_node
+// (get_moves puis is_game_over) avant d'évaluer. Si la position est réellement
+// terminale, Board::evaluate a déjà posé l'éval exacte (mat/nulle), meilleure
+// que le scalaire TT : on la garde et on pose _is_terminal=true. Sinon on
+// remplace _deep_evaluation par la valeur TT (white-relative) avec les champs
+// dérivés cohérents (#1/#14). Compteurs identiques à la feuille de nulle
+// (_nodes=1, _iterations=1) : le terme d'exploration UCT (voir
+// pick_random_child, terme d'exploration sur _iterations) se comporte alors
+// comme pour les feuilles terminales/nulles existantes.
 void init_tt_leaf_child(Node* child, Board* board, Evaluator* eval, Network* network, int white_relative_value) {
 	child->_board = board;
+
+	// Fin de partie : Board::evaluate ne la calcule pas (cf. ci-dessus), on
+	// reproduit la séquence de init_node avant d'évaluer.
+	board->get_moves();
+	board->is_game_over();
+
 	child->evaluate_position(eval, false, network, true);
 
-	if (!child->_is_terminal) {
+	if (board->_game_over_value != unterminated) {
+		// Réellement terminale : éval exacte (mat/nulle) déjà posée par
+		// Board::evaluate, supérieure au scalaire TT — on ne l'écrase pas.
+		child->_is_terminal = true;
+	}
+	else {
 		child->_deep_evaluation = child->_static_evaluation;
 		child->_deep_evaluation._value = white_relative_value;
 		child->_deep_evaluation._evaluated = true;
