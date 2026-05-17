@@ -81,6 +81,38 @@ void record_position_in_history(PositionHistory& path_history, Board& board) {
 	path_history[board._zobrist_key]++;
 }
 
+// #7 / Plan B-1 — annule un record_position_in_history (pop). Symétrique exact :
+// décrémente le compteur, efface l'entrée à 0 pour borner la taille de la map.
+void unrecord_position_in_history(PositionHistory& path_history, Board& board) {
+	board.get_zobrist_key();
+	auto it = path_history.find(board._zobrist_key);
+	if (it == path_history.end()) {
+		return;
+	}
+	if (it->second <= 1) {
+		path_history.erase(it);
+	}
+	else {
+		path_history[board._zobrist_key]--;
+	}
+}
+
+// RAII : push (record) la position du board dans l'historique à la construction,
+// pop (unrecord) à la destruction. Garantit l'équilibrage sur TOUT chemin de
+// sortie (returns anticipés inclus) — voir « Balance invariant » du plan.
+struct PathScope {
+	PositionHistory& _history;
+	Board& _board;
+	PathScope(PositionHistory& history, Board& board) : _history(history), _board(board) {
+		record_position_in_history(_history, _board);
+	}
+	~PathScope() {
+		unrecord_position_in_history(_history, _board);
+	}
+	PathScope(const PathScope&) = delete;
+	PathScope& operator=(const PathScope&) = delete;
+};
+
 bool position_is_draw_by_repetition(const PositionHistory& path_history, Board& board, uint8_t repetition_limit = search_repetition_limit) {
 	return position_history_count(path_history, board) + 1 >= repetition_limit;
 }
