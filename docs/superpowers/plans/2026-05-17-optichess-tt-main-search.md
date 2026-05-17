@@ -237,7 +237,40 @@ void init_tt_leaf_child(Node* child, Board* board, Evaluator* eval, Network* net
 	child->_is_stand_pat_eval = false;
 	child->_fully_explored = true;
 	child->_can_explore = false;
+	// Gel durable : sans _initialized=true, grogros_zero relancerait
+	// quiescence (écrasant la valeur TT) si la feuille est revisitée comme
+	// best_move. Couplé au retour anticipé !_can_explore de grogros_zero
+	// (Step 1b) la feuille reste réellement gelée.
+	child->_initialized = true;
 }
+```
+
+- [ ] **Step 1b: Retour anticipé feuille gelée dans `grogros_zero`**
+
+Pour que la feuille TT (non terminale) ne soit jamais ré-évaluée/étendue quand
+`pick_random_child` la renvoie comme `best_move` de fallback. Trouver le bloc
+de retour terminal EXACT dans `grogros_zero` :
+```cpp
+	// Si la partie est finie, on ne fait rien
+	if (_is_terminal) {
+		_iterations++;
+		_time_spent += clock() - begin_monte_time;
+
+		return;
+	}
+```
+Insérer juste APRÈS ce bloc :
+```cpp
+
+	// #11 Plan A — feuille TT gelée : jamais ré-évaluée ni étendue.
+	// OFF-safe : tout _can_explore=false existant est aussi _is_terminal
+	// (déjà capté ci-dessus) ; ne se déclenche que pour la feuille TT (ON).
+	if (!_can_explore) {
+		_iterations++;
+		_time_spent += clock() - begin_monte_time;
+
+		return;
+	}
 ```
 
 - [ ] **Step 2: Build**
