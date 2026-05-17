@@ -858,7 +858,7 @@ int Node::get_ips() const {
 }
 
 // Quiescence search intégré à l'exploration
-int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network, bool evaluate_threats, int beta_margin, const PositionHistory *path_history) {
+int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network, bool evaluate_threats, int beta_margin, PositionHistory *path_history) {
 	// TODO: comment gérer la profondeur? faire en fonction de l'importance de la branche?
 	// mettre aucune profondeur limite?
 	// pourquoi en endgame ça va si loin? il fait full échecs...
@@ -1099,9 +1099,10 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 			move_index++;
 			
-			// Historique indépendant des coups pour les répétitions.
-			// Comme en recherche principale, il doit rester local à la branche.
-			PositionHistory child_path_history = make_child_path_history(path_history, *_board, move);
+			// #7 / B-1 — historique unique threadé (plus de copie par coup).
+			// La répétition reste correcte (clés Zobrist uniques par époque
+			// réversible) ; push/pop équilibré via PathScope plus bas.
+			PositionHistory& branch_history = *path_history;
 
 			// Test du delta pruning
 			if (!move.is_checkmate()) {
@@ -1142,7 +1143,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			// Si on a déjà exploré ce coup, mais pas complètement
 			if (already_explored) {
 				child = child_link->_node;
-				record_position_in_history(child_path_history, *child->_board);
+				// (record différé : PathScope autour de l'appel récursif, Step 3)
 			}
 
 			// On crée un nouveau noeud pour ce coup
@@ -1162,7 +1163,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 				// Si la position est déjà présente dans l'historique, on considère que c'est une nulle.
 				// Ici encore, l'information appartient au chemin courant et pas au noeud parent.
-				if (position_is_draw_by_repetition(child_path_history, *new_board)) {
+				if (position_is_draw_by_repetition(branch_history, *new_board)) {
 					// Création du noeud fils
 					child = monte_node_buffer.get_first_free_node();
 
@@ -1176,7 +1177,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				}
 
 				else {
-					record_position_in_history(child_path_history, *new_board);
+					// (record différé : PathScope autour de l'appel récursif, Step 3)
 					new_board->get_zobrist_key();
 
 					// Pas de partage via TT (même raison que explore_new_move)
@@ -1195,8 +1196,13 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				child_link = &_children[move];
 			}
 
-			// Appel récursif sur le fils
-			int score = - child->quiescence(board_buffer, eval, new_depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, beta_margin, &child_path_history);
+			// Appel récursif sur le fils — #7/B-1 : push la position du fils
+			// pour la durée de la récursion, pop garanti à la sortie de scope.
+			int score;
+			{
+				PathScope _ps(branch_history, *child->_board);
+				score = - child->quiescence(board_buffer, eval, new_depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, beta_margin, &branch_history);
+			}
 			const int previous_child_nodes = child_link != nullptr ? child_link->_propagated_nodes : 0;
 			_nodes += child->_nodes - previous_child_nodes;
 			if (child_link != nullptr) {
