@@ -38,7 +38,7 @@ constexpr int MIN_REUSE_LOG2 = 4;
 
 // log2 entier de (nodes+1), borné. Pas de float (hot-path-friendly, MSVC).
 inline int tt_writeback_depth(int nodes) {
-	int v = nodes + 1;
+	int v = (nodes > 0 ? nodes : 0) + 1; // nodes négatifs = bug amont : on dégrade proprement (depth = QDEPTH_BAND)
 	int log2v = 0;
 	while (v > 1) { v >>= 1; ++log2v; }
 	return QDEPTH_BAND + log2v;
@@ -49,7 +49,8 @@ inline int tt_writeback_depth(int nodes) {
 // _value est supposé déjà posé (white-relative). On force _uncertainty=0 (une
 // valeur TT fiable ne doit pas être filtrée par l'incertitude statique), on
 // remet _winnable_* par signe si mat (évite le scaling sur un score de mat
-// géant), puis on redérive _wdl / _avg_score depuis _value.
+// géant ; hors mat _winnable_* sont conservés, propriété de position), puis
+// on redérive _wdl / _avg_score depuis _value.
 inline void tt_fixup_derived(Evaluation& e) {
 	e._uncertainty = 0.0f;
 	if (10 * abs(e._value) > mate_value) {
