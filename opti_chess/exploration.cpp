@@ -492,7 +492,9 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		// éval évaluée. Profondeur-proxy au-dessus de la bande quiescence.
 		if (g_tt_main_search && !_is_terminal && !_is_stand_pat_eval && _deep_evaluation._evaluated) {
 			transposition_table.store(_board->_zobrist_key,
-				tt_normalize_mate(_deep_evaluation._value, _board->_moves_count), // #3
+				// side-to-move comme les stores quiescence (stand_pat = _value*color,
+				// exploration.cpp:902/912) : sinon signe inverse pour les Noirs.
+				tt_normalize_mate(_deep_evaluation._value * _board->get_color(), _board->_moves_count), // #3
 				tt_writeback_depth(_nodes), TT_EXACT);
 		}
 	}
@@ -530,7 +532,9 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	// Mêmes gardes que dans explore_new_move.
 	if (g_tt_main_search && !_is_terminal && !_is_stand_pat_eval && _deep_evaluation._evaluated) {
 		transposition_table.store(_board->_zobrist_key,
-			tt_normalize_mate(_deep_evaluation._value, _board->_moves_count), // #3
+			// side-to-move comme les stores quiescence (stand_pat = _value*color,
+			// exploration.cpp:902/912) : sinon signe inverse pour les Noirs.
+			tt_normalize_mate(_deep_evaluation._value * _board->get_color(), _board->_moves_count), // #3
 			tt_writeback_depth(_nodes), TT_EXACT);
 	}
 
