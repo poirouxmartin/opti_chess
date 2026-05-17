@@ -106,6 +106,7 @@ public:
 	//int _max_depth = 10; // Seulement pour les standpat en échecs et prises restantes
 
 	bool _explore_checks = true; // FIXME? faut-il vraiment explorer les échecs?
+	bool _tt_main_search = false; // #11 Plan A — TT dans la recherche principale (A/B runtime, defaut OFF)
 
 	// Est-ce que les noms des joueurs ont été ajoutés au PGN
 	bool _named_pgn = false;

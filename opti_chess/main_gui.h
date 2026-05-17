@@ -304,6 +304,12 @@ inline int main_ui() {
 			main_GUI.switch_orientation();
 		}
 
+		// I - #11 Plan A : bascule TT dans la recherche principale (A/B runtime)
+		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_I)) {
+			main_GUI._tt_main_search = !main_GUI._tt_main_search;
+			cout << "TT main search : " << (main_GUI._tt_main_search ? "true" : "false") << endl;
+		}
+
 		// LCTRL-N - Recommencer une partie
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_N)) {
 			main_GUI.reset_game();
