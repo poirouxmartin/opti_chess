@@ -6,6 +6,25 @@ namespace {
 
 constexpr uint8_t search_repetition_limit = 2;
 
+// #3 : un score de mat encode sa distance via _moves_count (board.cpp:1569),
+// or _moves_count est ABSENT de la clé Zobrist. Sans normalisation, une même
+// position atteinte par un chemin de longueur différente relit depuis la TT
+// une distance de mat fausse ("fantômes"). On canonise au store (retrait de
+// l'ancrage _moves_count -> ne dépend plus que de D = distance à mat, qui est
+// une propriété de la position) ; au probe on reconstruit avec le _moves_count
+// du nœud courant. Seuil mat = idiome is_eval_mate / #1 (10*|e| > mate_value),
+// robuste : |stored| ~ mate_value(1e8) - D·mate_ply + mc·mate_ply, mc/D petits.
+inline int tt_normalize_mate(int eval, int moves_count) {
+	if (10 * abs(eval) > mate_value)
+		return eval + (eval > 0 ? 1 : -1) * moves_count * mate_ply;
+	return eval;
+}
+inline int tt_denormalize_mate(int eval, int moves_count) {
+	if (10 * abs(eval) > mate_value)
+		return eval - (eval > 0 ? 1 : -1) * moves_count * mate_ply;
+	return eval;
+}
+
 uint8_t position_history_count(const PositionHistory& path_history, Board& board) {
 	board.get_zobrist_key();
 	const auto it = path_history.find(board._zobrist_key);
@@ -762,7 +781,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	// TT Probe
 	const ZobristEntry* tt_entry = transposition_table.probe(_board->_zobrist_key);
 	if (tt_entry != nullptr && tt_entry->_depth >= depth) {
-		const int tt_eval = tt_entry->_eval;
+		const int tt_eval = tt_denormalize_mate(tt_entry->_eval, _board->_moves_count); // #3 : dé-canonise la distance de mat au _moves_count du nœud courant
 		bool tt_cutoff = false;
 
 		if (tt_entry->_flag == TT_EXACT) {
@@ -822,7 +841,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 	// Emergency cutoff: depth - 4
 	if (depth <= -4) {
-		transposition_table.store(_board->_zobrist_key, stand_pat, depth, TT_STANDPAT); // éval statique = borne inférieure, jamais exacte (BUGFIXES #4)
+		transposition_table.store(_board->_zobrist_key, tt_normalize_mate(stand_pat, _board->_moves_count), depth, TT_STANDPAT); // #4 borne inf statique ; #3 mat canonisé
 		_time_spent += clock() - begin_monte_time;
 		cout << "emergency cutoff: " << _board->to_fen() << ", in_check: " << in_check << endl;
 		return stand_pat;
@@ -830,7 +849,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 	// Profondeur nulle, on renvoie le standpat
 	if (depth <= 0 && !in_check) {
-		transposition_table.store(_board->_zobrist_key, stand_pat, depth, TT_STANDPAT); // éval statique = borne inférieure, jamais exacte (BUGFIXES #4)
+		transposition_table.store(_board->_zobrist_key, tt_normalize_mate(stand_pat, _board->_moves_count), depth, TT_STANDPAT); // #4 borne inf statique ; #3 mat canonisé
 		_time_spent += clock() - begin_monte_time;
 		return stand_pat;
 	}
@@ -853,7 +872,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	// FIXME *** normal qu'on envoie la beta margin sur toute la profondeur?
 
 	if (stand_pat >= total_beta) {
-		transposition_table.store(_board->_zobrist_key, beta, depth, TT_BETA);
+		transposition_table.store(_board->_zobrist_key, tt_normalize_mate(beta, _board->_moves_count), depth, TT_BETA); // #3 mat canonisé
 		_time_spent += clock() - begin_monte_time;
 		//cout << "beta cutoff1: " << stand_pat << " >= " << beta << " + " << beta_margin << endl;
 		return beta;
@@ -1031,7 +1050,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 			// Beta cut-off
 			if (score >= beta) {
-				transposition_table.store(_board->_zobrist_key, beta, depth, TT_BETA);
+				transposition_table.store(_board->_zobrist_key, tt_normalize_mate(beta, _board->_moves_count), depth, TT_BETA); // #3 mat canonisé
 				_time_spent += clock() - begin_monte_time;
 				return beta;
 			}
@@ -1057,7 +1076,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 		tt_flag = TT_STANDPAT;
 	else
 		tt_flag = TT_EXACT;
-	transposition_table.store(_board->_zobrist_key, alpha, depth, tt_flag);
+	transposition_table.store(_board->_zobrist_key, tt_normalize_mate(alpha, _board->_moves_count), depth, tt_flag); // #3 mat canonisé
 
 	// Temps de calcul
 	_time_spent += clock() - begin_monte_time;
