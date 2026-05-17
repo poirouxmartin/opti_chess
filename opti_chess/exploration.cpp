@@ -152,6 +152,11 @@ void init_tt_leaf_child(Node* child, Board* board, Evaluator* eval, Network* net
 	child->_is_stand_pat_eval = false;
 	child->_fully_explored = true;
 	child->_can_explore = false;
+	// Gel durable : sans _initialized=true, grogros_zero relancerait
+	// quiescence (écrasant la valeur TT) si la feuille est revisitée comme
+	// best_move. Couplé au retour anticipé !_can_explore de grogros_zero
+	// la feuille reste réellement gelée.
+	child->_initialized = true;
 }
 
 // Constructeur par défaut
@@ -269,6 +274,16 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 
 	// Si la partie est finie, on ne fait rien
 	if (_is_terminal) {
+		_iterations++;
+		_time_spent += clock() - begin_monte_time;
+
+		return;
+	}
+
+	// #11 Plan A — feuille TT gelée : jamais ré-évaluée ni étendue.
+	// OFF-safe : tout _can_explore=false existant est aussi _is_terminal
+	// (déjà capté ci-dessus) ; ne se déclenche que pour la feuille TT (ON).
+	if (!_can_explore) {
 		_iterations++;
 		_time_spent += clock() - begin_monte_time;
 
