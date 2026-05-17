@@ -1099,6 +1099,14 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 			move_index++;
 			
+			// #7 / B-1 — restaure la sémantique null-safe de l'ancien
+			// make_child_path_history(nullptr) : un path_history nul == historique vide
+			// (appel manuel quiescence via main_gui.h). Idiome identique à grogros_zero.
+			PositionHistory local_path_history;
+			if (path_history == nullptr) {
+				path_history = &local_path_history;
+			}
+
 			// #7 / B-1 — historique unique threadé (plus de copie par coup).
 			// La répétition reste correcte (clés Zobrist uniques par époque
 			// réversible) ; push/pop équilibré via PathScope plus bas.
@@ -1143,7 +1151,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			// Si on a déjà exploré ce coup, mais pas complètement
 			if (already_explored) {
 				child = child_link->_node;
-				// (record différé : PathScope autour de l'appel récursif, Step 3)
+				// position poussée pour la durée de la récursion par le PathScope ci-dessous
 			}
 
 			// On crée un nouveau noeud pour ce coup
@@ -1177,7 +1185,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				}
 
 				else {
-					// (record différé : PathScope autour de l'appel récursif, Step 3)
+					// position poussée pour la durée de la récursion par le PathScope ci-dessous
 					new_board->get_zobrist_key();
 
 					// Pas de partage via TT (même raison que explore_new_move)
