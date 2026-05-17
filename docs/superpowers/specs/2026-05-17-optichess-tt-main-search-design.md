@@ -79,13 +79,16 @@ d'éval / génération de coups. Même binaire pour A/B ; kill-switch immédiat.
 
 ### 2. Probe (dans `explore_new_move`, branche nouveau nœud)
 
-Après `new_board->get_zobrist_key()` (`exploration.cpp:298`) et la création du
-`child`, **avant** le bloc `child->quiescence(...)` (`:316-331`) :
+Après `get_zobrist_key()` sur le board du fils et la création du `child`,
+**avant** le bloc `child->quiescence(...)`. NB : `new_board` est déclaré dans
+la branche `else` et hors portée au point d'insertion ; on lit `child->_board`
+(égal au `new_board` fraîchement créé car `created_new_node` garantit la
+branche non-nulle) :
 
-- `transposition_table.probe(new_board->_zobrist_key)` ;
+- `transposition_table.probe(child->_board->_zobrist_key)` ;
 - correction de la distance de mat :
-  `tt_denormalize_mate(entry->_eval, new_board->_moves_count)` (identique au
-  probe quiescence `:784`, satisfait #3) ;
+  `tt_denormalize_mate(entry->_eval, child->_board->_moves_count)` (identique
+  au probe quiescence, satisfait #3) ;
 - **porte de réutilisation** :
   `entry->_flag == TT_EXACT && entry->_depth >= QDEPTH_BAND + MIN_REUSE_LOG2`.
   Les bornes (`TT_STANDPAT` / `TT_BETA` / `TT_ALPHA`) ne sont **jamais**
