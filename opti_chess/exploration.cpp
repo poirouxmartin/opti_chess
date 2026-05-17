@@ -332,6 +332,10 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 	// Noeud fils
 	Node *child = nullptr;
 
+	// #11 Plan A — vrai pour le seul cas « nouveau noeud, non nulle » :
+	// seul cas où la feuille TT peut court-circuiter la quiescence.
+	bool created_new_node = false;
+
 	// Si on a déjà exploré ce coup, mais pas complètement
 	bool already_explored = _children.contains(move);
 	ChildLink* child_link = already_explored ? &_children[move] : nullptr;
@@ -387,6 +391,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 				return;
 
 			child->_board = new_board;
+			created_new_node = true;
 		}
 	}
 
@@ -394,6 +399,25 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
         cout << "null child and shouldn't be (explore_new_move)" << endl;
         return;
     }
+
+	// #11 Plan A — Probe TT (toggle OFF par défaut). Seulement sur un noeud
+	// fraîchement créé non-nulle : les nulles par répétition sont path-dependent
+	// (déjà court-circuitées plus haut) et ne doivent jamais être lues comme une
+	// valeur de position. Bornes (STANDPAT/BETA/ALPHA) jamais réutilisées comme
+	// valeur de noeud (sémantique de borne sans fenêtre en MCTS). On exige
+	// _depth dans la bande write-back : un vrai sous-arbre raffiné, pas une
+	// feuille de quiescence. NB : on lit child->_board (et non new_board, hors
+	// portée ici car déclaré dans la branche else) ; created_new_node garantit
+	// child->_board == le new_board fraîchement créé, zobrist déjà calculée.
+	if (g_tt_main_search && created_new_node) {
+		const ZobristEntry* tt_entry = transposition_table.probe(child->_board->_zobrist_key);
+		if (tt_entry != nullptr
+			&& tt_entry->_flag == TT_EXACT
+			&& tt_entry->_depth >= QDEPTH_BAND + MIN_REUSE_LOG2) {
+			const int tt_eval = tt_denormalize_mate(tt_entry->_eval, child->_board->_moves_count); // #3
+			init_tt_leaf_child(child, child->_board, eval, network, tt_eval * child->_board->get_color());
+		}
+	}
 
 	if (!child->_fully_explored) {
 
