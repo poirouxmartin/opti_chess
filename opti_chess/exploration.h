@@ -146,7 +146,7 @@ public:
 	string get_exploration_variants(const double alpha, const double beta, bool main = true, bool quiescence = false, int max_depth = 500);
 
 	// Fonction qui renvoie la profondeur de la variante principale
-	int get_main_depth(const double alpha, const double beta, int max_depth = 500);
+	int get_main_depth(const double alpha, const double beta, int max_depth = 500, PositionHistory* chain = nullptr);
 
 	// Fonction qui renvoie le fils le plus explor�
 	Node* get_most_explored_child();
