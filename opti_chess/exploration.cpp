@@ -295,8 +295,10 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	// Temps de calcul
 	const clock_t begin_monte_time = clock();
 
-	// Base path for this call. Each outer iteration clones it so branches never leak
-	// repetition state into one another.
+	// #7 / B-1 — un seul historique possédé à la racine, threadé par pointeur.
+	// Plus de clone par itération : l'isolement inter-itérations est garanti
+	// par le push/pop équilibré (PathScope) dans explore_new_move /
+	// explore_random_child — chaque itération restitue l'historique à cet état.
 	PositionHistory local_path_history;
 	PositionHistory* base_path_history = path_history != nullptr ? path_history : &local_path_history;
 	ensure_position_in_history(*base_path_history, *_board);
@@ -334,19 +336,18 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 
 	// Exploration
 	while (iterations > 0) {
-		PositionHistory iteration_path_history = *base_path_history;
 
 		// Si les buffers sont pleins, on n'étend plus : on raffine l'arbre existant.
 		const bool can_expand = !monte_board_buffer.is_full() && !monte_node_buffer.is_full();
 
 		// EXPLORATION D'UN NOUVEAU COUP
 		if (can_expand && get_fully_explored_children_count() < _board->_got_moves) {
-			explore_new_move(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, &iteration_path_history);
+			explore_new_move(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history);
 		}
 
 		// EXPLORATION D'UN COUP DÉJÀ EXPLORÉ (raffinage)
 		else if (children_count() > 0) {
-			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, &iteration_path_history);
+			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history);
 		}
 
 		// Buffers pleins ET rien à raffiner ici : arrêt propre + log unique
