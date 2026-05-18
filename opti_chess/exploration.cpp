@@ -163,17 +163,6 @@ static Evaluation dag_draw_eval() {
 	return e;
 }
 
-// #11 Plan B — Bug "nulle DAG" (option D, selection path-aware). Pointeur vers
-// l'Evaluation de nulle canonique, calculee UNE fois (moteur mono-thread).
-// Passe en custom_eval a get_node_score pour scorer un fils comme nulle SUR
-// CETTE traversee quand y descendre serait une repetition path-locale, sans
-// rien muter de partage (transitoire). get_node_score prend Evaluation* non
-// const ; il ne le modifie pas.
-static Evaluation* dag_draw_eval_ptr() {
-	static Evaluation e = dag_draw_eval();
-	return &e;
-}
-
 // #11 Plan A — feuille gelée portant une valeur fiable issue de la TT.
 // Structurellement calquée sur init_terminal_draw_child. Détection terminale
 // d'abord : Board::evaluate(check_game_over=true) ne CALCULE pas la fin de
@@ -343,27 +332,6 @@ constexpr int DAG_DBG_MAX = 40;
 // Bug 1 opt 1). Les compteurs g_dag_* restent (1 inc, negligeable, jamais
 // imprimes quand off).
 constexpr bool dag_debug = false;
-
-// Diagnostic CIBLE et SEPARE (independant de dag_debug, pas le flot lourd) :
-// pourquoi get_main_depth renvoie 0 sur un noeud qui a des enfants ? Borne a
-// 30 lignes au total (evenement rare : seulement aux points de coupe). TEMP :
-// repasser a false une fois la cause #1 identifiee.
-constexpr bool dag_depth_debug = false;
-static int g_dmd_emitted = 0;
-static void dmd_log0(const char* why, const Node* self, const Node* mc) {
-	if constexpr (!dag_depth_debug) return;
-	if (g_dmd_emitted >= 30) return;
-	g_dmd_emitted++;
-	cout << "[DMD] get_main_depth=0 (" << why << ") children=" << self->children_count()
-	     << " pc=" << self->_parent_count
-	     << " self_eval=" << self->_deep_evaluation._value;
-	if (mc != nullptr) {
-		cout << " | child children=" << mc->children_count()
-		     << " child_nodes=" << mc->_nodes
-		     << " child_pc=" << mc->_parent_count;
-	}
-	cout << "\n      @ " << self->_board->to_fen() << endl;
-}
 
 static bool dag_dbg_take() {
 	if constexpr (!dag_debug) return false;
@@ -758,11 +726,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, DagExcl* dag_excl, Evaluation* path_local_eval) {
 
 	// Prend un fils aléatoire
-	// Bug "nulle DAG" option D — passe le chemin courant : pick_random_child
-	// scorera comme NULLE tout fils dont la descente serait une repetition
-	// path-locale -> le moteur ne prefere plus la ligne cyclique (plus de
-	// faux gain en tournant en rond). path_history non-null ici (grogros_zero).
-	const Move move = pick_random_child(alpha, beta, gamma, dag_excl, path_history);
+	const Move move = pick_random_child(alpha, beta, gamma, dag_excl);
 
 	// Bug 1 opt 3 — toutes les aretes explorables ont ete §3-exclues sur ce
 	// chemin : plus rien de non-cyclique a raffiner ici cette iteration. On
@@ -841,7 +805,7 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	}
 
 	// Met à jour l'évaluation du plateau avec le meilleur coup
-	const Move _bm = get_best_score_move(alpha, beta, false, -100, path_history);
+	const Move _bm = get_best_score_move(alpha, beta);
 	if (g_tt_node_dag && dag_excl != nullptr && dag_excl->contains(_bm)) {
 		// Bug 1 opt 1 / spec §3 — le meilleur coup est une arete coupee comme
 		// nulle path-locale sur CE chemin (DagExcl rempli par les coupes §3 de
@@ -1154,14 +1118,12 @@ int Node::get_main_depth(const double alpha, const double beta, int max_depth, P
 		Move main_move = get_best_score_move(alpha, beta, true);
 
 		if (main_move.is_null_move()) {
-			dmd_log0("NULLMOVE (stand-pat juge meilleur que tous les coups)", this, nullptr);
 			return 0;
 		}
 
 		Node* main_child = _children[main_move]._node;
 
 		if (main_child == nullptr) {
-			dmd_log0("NULLCHILD", this, nullptr);
 			return 0;
 		}
 
@@ -1183,7 +1145,6 @@ int Node::get_main_depth(const double alpha, const double beta, int max_depth, P
 		const int _mc_seen = _mc_it != c->end() ? static_cast<int>(_mc_it->second) : 0;
 		const uint8_t _md_limit = g_tt_node_dag ? display_repetition_limit : search_repetition_limit;
 		if (_mc_seen + 1 >= _md_limit) {
-			dmd_log0("CHAINCUT (transposition vers noeud deja vu)", this, main_child);
 			return 0; // la PV atteint la nulle par repetition -> fin de variante
 		}
 
@@ -1680,7 +1641,7 @@ void Node::evaluate_position(Evaluator* evaluator, bool display, Network * netwo
 }
 
 // Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
-Move Node::pick_random_child(const double alpha, const double beta, const double gamma, const DagExcl* dag_excl, const PositionHistory* path) {
+Move Node::pick_random_child(const double alpha, const double beta, const double gamma, const DagExcl* dag_excl) {
 	// TESTS
 	// 8/8/8/1r5p/2p4k/2Kb4/8/8 b - - 1 69 : tout égal quand tout gagne...
 	// r2qr1k1/3bbp1p/p2pn1p1/3QP3/3P4/3B1N2/1P1B1PPP/R3R1K1 w - - 1 24 : pareil
@@ -1714,7 +1675,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		}
 	}
 
-	robin_map<Move, double> move_scores = get_move_scores(alpha, beta, false, -100, path);
+	robin_map<Move, double> move_scores = get_move_scores(alpha, beta);
 
 	struct ScoredMove {
 		Move move;
@@ -1866,7 +1827,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 }
 
 // Fonction qui renvoie le score des coup
-robin_map<Move, double> Node::get_move_scores(const double alpha, const double beta, const bool consider_standpat, const int qdepth, const PositionHistory* path) const {
+robin_map<Move, double> Node::get_move_scores(const double alpha, const double beta, const bool consider_standpat, const int qdepth) const {
 
 	// Pour le standpat, on l'associe au null move
 
@@ -1916,18 +1877,7 @@ robin_map<Move, double> Node::get_move_scores(const double alpha, const double b
 		if (qdepth != -100 && child->_quiescence_depth != qdepth) {
 			continue;
 		}
-		// Bug "nulle DAG" option D — selection path-aware : si descendre vers
-		// ce fils serait une nulle par repetition SUR CE CHEMIN, on le score
-		// comme une NULLE (custom_eval), peu importe son _deep_evaluation
-		// partage (calcule via un autre chemin, possiblement "gagnant"). Sans
-		// ca, en finale KP vs K tres partagee, le moteur prefere la ligne
-		// cyclique et "gagne" en tournant en rond. Transitoire, zero mutation
-		// partagee. OFF / pas de path -> custom_eval nul -> score inchange.
-		Evaluation* _ce = nullptr;
-		if (g_tt_node_dag && path != nullptr && position_is_draw_by_repetition(*path, *child->_board)) {
-			_ce = dag_draw_eval_ptr();
-		}
-		move_scores.emplace(move, child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player, _ce));
+		move_scores.emplace(move, child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player));
 	}
 
 	return move_scores;
@@ -1986,7 +1936,7 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 }
 
 // Fonction qui renvoie le coup avec le meilleur score
-Move Node::get_best_score_move(const double alpha, const double beta, const bool consider_standpat, const int qdepth, const PositionHistory* path) {
+Move Node::get_best_score_move(const double alpha, const double beta, const bool consider_standpat, const int qdepth) {
 
 	int color = _board->get_color();
 
@@ -2033,15 +1983,7 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 		if (qdepth != -100 && child->_quiescence_depth != qdepth) {
 			continue;
 		}
-		// Bug "nulle DAG" option D — meme logique path-aware que get_move_scores :
-		// un fils dont la descente serait une nulle par repetition sur CE chemin
-		// est range comme une NULLE pour le backup de cette traversee (pas son
-		// _deep_evaluation partage). OFF / pas de path -> inchange.
-		Evaluation* _ce = nullptr;
-		if (g_tt_node_dag && path != nullptr && position_is_draw_by_repetition(*path, *child->_board)) {
-			_ce = dag_draw_eval_ptr();
-		}
-		double score = child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player, _ce);
+		double score = child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player);
 		//cout << "move: " << _board->move_label(move) << " | score: " << score << endl;
 		if (score > best_score || (best_move.is_null_move() && score == best_score)) {
 			best_score = score;
