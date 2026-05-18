@@ -613,19 +613,22 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	// Nombre de noeuds du fils
 	const int initial_child_nodes = child_link._propagated_nodes;
 
-	// #11 Plan B — soundness du DAG. Le sous-arbre du fils peut etre PARTAGE :
-	// cree via un chemin A, descendu ici via un chemin B. Le statut de nulle
-	// par repetition est PATH-LOCAL (il n'est pas dans le Node). On le
-	// re-derive contre l'historique du chemin COURANT avant de descendre.
-	// Si nulle sur ce chemin : on NE descend PAS dans le sous-arbre partage
-	// et on NE le mute PAS ; l'arete contribue une valeur de nulle au backup
-	// du parent (meme valeur que la branche nulle de explore_new_move). OFF :
-	// saute (comportement arbre actuel — explore_random_child ne re-testait
-	// jamais la repetition sur un fils existant).
+	// #11 Plan B §3 — soundness du DAG. Le sous-arbre du fils peut etre PARTAGE
+	// (cree via un chemin A, descendu ici via un chemin B). Le statut de nulle
+	// par repetition est PATH-LOCAL : il n'est ni dans le Node ni dans l'arete,
+	// tous deux PARTAGES. On le re-derive contre l'historique du chemin COURANT.
+	// Si nulle sur ce chemin : on coupe le cycle en NE descendant PAS dans le
+	// sous-arbre partage. On ne mute RIEN de partage (ni child->_deep_evaluation,
+	// ni this->_deep_evaluation, ni child_link, ni node_map) : ecrire une nulle
+	// path-locale sur une structure partagee corromprait l'autre chemin (c'etait
+	// le bug d'oscillation). Conservatif : l'iteration est comptee, la branche
+	// cyclique simplement non approfondie ; le backup normal du parent (plus
+	// bas, via ses autres fils) reste l'autorite. La remontee complete de la
+	// valeur de nulle path-locale (spec §3) est un raffinement suivant, a
+	// decider sur mesure si la profondeur mesuree le justifie. OFF : saute
+	// (comportement arbre actuel — explore_random_child ne re-testait jamais
+	// la repetition sur un fils existant).
 	if (g_tt_node_dag && position_is_draw_by_repetition(branch_history, *child->_board)) {
-		_deep_evaluation.reset();
-		_deep_evaluation._value = 0.0;
-		_deep_evaluation._evaluated = true;
 		_iterations++;
 		return;
 	}
