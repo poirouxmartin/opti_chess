@@ -310,6 +310,12 @@ inline int main_ui() {
 			cout << "TT main search : " << (main_GUI._tt_main_search ? "true" : "false") << endl;
 		}
 
+		// O - #11 Plan B : bascule le DAG de transpositions (A/B runtime)
+		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_O)) {
+			main_GUI._tt_node_dag = !main_GUI._tt_node_dag;
+			cout << "TT node DAG : " << (main_GUI._tt_node_dag ? "true" : "false") << endl;
+		}
+
 		// LCTRL-N - Recommencer une partie
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_N)) {
 			main_GUI.reset_game();

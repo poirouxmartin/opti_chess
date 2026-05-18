@@ -264,6 +264,15 @@ extern bool g_buffers_full_logged;
 // Défaut OFF : comportement actuel au byte près, A/B même binaire.
 extern bool g_tt_main_search;
 
+// #11 Plan B — DAG de transpositions (partage de noeuds). A/B runtime, defaut
+// OFF : OFF = arbre actuel au byte pres. Pas cense etre ON avec g_tt_main_search.
+extern bool g_tt_node_dag;
+
+// #11 Plan B — cle Zobrist -> Node* VIVANT. Distinct de transposition_table
+// (TT d'evaluation). Consulte/peuple uniquement si g_tt_node_dag. Meme style
+// de map que Node::_children (robin_map, exploration.h:43).
+extern robin_map<uint64_t, Node*> node_map;
+
 // Recyclage free-list O(1) d'un noeud DETACHE (plus aucun parent) et de son
 // plateau. Point de passage unique (spec §5). A n'appeler QUE sur un noeud
 // definitivement detache, JAMAIS sur un noeud reset puis reutilise en place
