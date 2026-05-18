@@ -10187,6 +10187,7 @@ void Board::switch_colors() {
 
 	// Reset la réflexion
 	transposition_table.clear();
+	node_map.clear(); // #11 Plan B — purge le DAG en meme temps que la TT (pas de pointeur pendant inter-recherches)
 	main_GUI._root_exploration_node->reset();
 }
 

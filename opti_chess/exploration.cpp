@@ -426,8 +426,10 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		else {
 			new_board->get_zobrist_key();
 
-			// Création du noeud fils (pas de partage via TT — un noeud partagé entre
-			// plusieurs parents casse _nodes, backpropagation et crée des cycles)
+			// Création du noeud fils. #11 Plan B — quand g_tt_node_dag, on
+			// l'enregistre dans node_map pour que les chemins transposés futurs
+			// puissent le partager (link-on-create, Task 3). OFF : node_map
+			// jamais touché → arbre au byte près.
 			child = monte_node_buffer.get_first_free_node();
 
 			if (child == nullptr)
@@ -435,6 +437,10 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 
 			child->_board = new_board;
 			created_new_node = true;
+
+			if (g_tt_node_dag) {
+				node_map[new_board->_zobrist_key] = child;
+			}
 		}
 	}
 
@@ -625,6 +631,16 @@ Move Node::get_most_explored_child_move() {
 void recycle_detached_node(Node* node) {
 	if (node == nullptr)
 		return;
+
+	// #11 Plan B — un noeud detache et recycle ne doit plus etre joignable via
+	// node_map (sinon pointeur pendant / resurrection). On efface l'entree
+	// seulement si elle pointe bien vers CE noeud (un miss a pu la reecrire).
+	if (g_tt_node_dag && node->_board != nullptr) {
+		const auto it = node_map.find(node->_board->_zobrist_key);
+		if (it != node_map.end() && it->second == node) {
+			node_map.erase(it);
+		}
+	}
 
 	Board* board = node->_board;
 	if (board != nullptr && board->_buffer_index >= 0 && !monte_board_buffer._bulk_resetting)
