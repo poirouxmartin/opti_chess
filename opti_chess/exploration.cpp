@@ -378,7 +378,8 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 
 	// On prend le premier coup non exploré
 	const Move move = get_first_unexplored_move(true);
-	PositionHistory child_path_history = make_child_path_history(path_history, *_board, move);
+	// #7 / B-1 — historique unique threadé (plus de copie par coup).
+	PositionHistory& branch_history = *path_history;
 
 	// Noeud fils
 	Node *child = nullptr;
@@ -393,7 +394,6 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 
 	if (already_explored) {
 		child = child_link->_node;
-		record_position_in_history(child_path_history, *child->_board);
 
 		if (_nodes <= child_link->_propagated_nodes) {
 			cout << "child nodes >= nodes???" << endl;
@@ -414,7 +414,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 
 		// Si la position est déjà présente dans l'historique du chemin, on considère que c'est une nulle.
 		// Cette information est propre au chemin courant; elle ne doit pas vivre dans les noeuds parents.
-		if (position_is_draw_by_repetition(child_path_history, *new_board)) {
+		if (position_is_draw_by_repetition(branch_history, *new_board)) {
 			// 3Q2k1/5p1p/2p1p3/2p1P1pq/5P2/4K3/6PP/2r5 b - - 1 4 : position test
 			// 6kr/4K2p/7B/3bN3/8/8/8/8 b - - 19 10 : bugs dans position test
 
@@ -431,7 +431,6 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 
 		// Sinon, on crée un nouveau noeud normalement
 		else {
-			record_position_in_history(child_path_history, *new_board);
 			new_board->get_zobrist_key();
 
 			// Création du noeud fils (pas de partage via TT — un noeud partagé entre
@@ -474,14 +473,16 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 
 		bool test = false;
 
+		PathScope _ps(branch_history, *child->_board); // push child position (popped on scope exit, all paths)
+
 		if (test) {
-			child->quiescence(board_buffer, eval, 2, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, &child_path_history); // TODO *** faire un cutoff plus facile, si l'éval de base est déjà mauvaise? par rapport à l'évaluation statique
+			child->quiescence(board_buffer, eval, 2, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, &branch_history); // TODO *** faire un cutoff plus facile, si l'éval de base est déjà mauvaise? par rapport à l'évaluation statique
 		}
 
 		// Si l'évaluation est meilleure que celle de base, on regarde la quiescence
 		else if (!test || child->_static_evaluation._value * _board->get_color() > _static_evaluation._value * _board->get_color()) {
 
-			child->quiescence(board_buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, &child_path_history);
+			child->quiescence(board_buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, &branch_history);
 		}
 
 		child->_fully_explored = true;
