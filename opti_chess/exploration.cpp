@@ -388,8 +388,8 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 	if (already_explored) {
 		child = child_link->_node;
 
-		if (_nodes <= child_link->_propagated_nodes) {
-			cout << "child nodes >= nodes???" << endl;
+		if (!g_tt_node_dag && _nodes <= child_link->_propagated_nodes) {
+			cout << "child nodes >= nodes???" << endl; // tree-only : faux sous DAG (sous-arbre partage multi-parent)
 		}
 
 		_nodes -= child_link->_propagated_nodes;
@@ -588,8 +588,8 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	// la durée de la récursion uniquement, pop garanti à la sortie de scope.
 	PositionHistory& branch_history = *path_history;
 
-	if (child_link._propagated_nodes >= _nodes) {
-		cout << "child nodes >= nodes in random exploration??? main position: " << _board->to_fen() << ", child position: " << child->_board->to_fen() << endl;
+	if (!g_tt_node_dag && child_link._propagated_nodes >= _nodes) {
+		cout << "child nodes >= nodes in random exploration??? main position: " << _board->to_fen() << ", child position: " << child->_board->to_fen() << endl; // tree-only : faux sous DAG
 	}
 
 	// Nombre de noeuds du fils
