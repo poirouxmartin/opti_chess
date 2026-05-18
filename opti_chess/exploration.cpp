@@ -15,16 +15,6 @@ constexpr uint8_t search_repetition_limit = 2;
 // avant le cap max_depth=500. Applique seulement sous DAG (cf. usage).
 constexpr uint8_t display_repetition_limit = 3;
 
-// #11 Plan B — seuil de NULLE pour la VALEUR/selection sous DAG (option D +
-// recheck §3). search_repetition_limit=2 (double) est un elagage de recherche
-// trop agressif pour DECIDER qu'une ligne est une nulle forcee : un plan
-// gagnant repasse legitimement une position 2x (triangulation de roi /
-// coups d'attente pour le zugzwang) -> ce n'est PAS une nulle. Seul le
-// TRIPLE (regle FIDE) est une vraie nulle par repetition. Sans ca, une
-// position gagnante a pions bloques "flippe" en nulle fantome. Tree/OFF
-// garde le double historique inchange (byte-identique).
-constexpr uint8_t dag_draw_repetition_limit = 3;
-
 // #3 : un score de mat encode sa distance via _moves_count (board.cpp:1569),
 // or _moves_count est ABSENT de la clé Zobrist. Sans normalisation, une même
 // position atteinte par un chemin de longueur différente relit depuis la TT
@@ -811,7 +801,7 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	// decider sur mesure si la profondeur mesuree le justifie. OFF : saute
 	// (comportement arbre actuel — explore_random_child ne re-testait jamais
 	// la repetition sur un fils existant).
-	if (g_tt_node_dag && position_is_draw_by_repetition(branch_history, *child->_board, dag_draw_repetition_limit)) {
+	if (g_tt_node_dag && position_is_draw_by_repetition(branch_history, *child->_board)) {
 		g_dag_recheck_hits++;
 		// Detail borne — LA frontiere cle des "incoherences d'eval". On coupe le
 		// cycle (return) AVANT le backup parent (:686) : cette iteration ne
@@ -1934,7 +1924,7 @@ robin_map<Move, double> Node::get_move_scores(const double alpha, const double b
 		// cyclique et "gagne" en tournant en rond. Transitoire, zero mutation
 		// partagee. OFF / pas de path -> custom_eval nul -> score inchange.
 		Evaluation* _ce = nullptr;
-		if (g_tt_node_dag && path != nullptr && position_is_draw_by_repetition(*path, *child->_board, dag_draw_repetition_limit)) {
+		if (g_tt_node_dag && path != nullptr && position_is_draw_by_repetition(*path, *child->_board)) {
 			_ce = dag_draw_eval_ptr();
 		}
 		move_scores.emplace(move, child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player, _ce));
@@ -2048,7 +2038,7 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 		// est range comme une NULLE pour le backup de cette traversee (pas son
 		// _deep_evaluation partage). OFF / pas de path -> inchange.
 		Evaluation* _ce = nullptr;
-		if (g_tt_node_dag && path != nullptr && position_is_draw_by_repetition(*path, *child->_board, dag_draw_repetition_limit)) {
+		if (g_tt_node_dag && path != nullptr && position_is_draw_by_repetition(*path, *child->_board)) {
 			_ce = dag_draw_eval_ptr();
 		}
 		double score = child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player, _ce);
