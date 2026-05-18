@@ -17,6 +17,25 @@ struct ChildLink {
 	int _propagated_nodes = 0;
 };
 
+// #11 Plan B — Bug 1 option 3 : exclusion per-traversal (anti-spin §3).
+// Liste path-locale vivant UNIQUEMENT sur la pile du frame grogros_zero
+// courant — jamais stockee sur un Node/ChildLink (tous deux PARTAGES sous
+// DAG, cf. invariant 772183a). Taille fixe : zero allocation sur le chemin
+// le plus chaud (perf #1). En cas de debordement on retombe sur l'ancien
+// comportement (coupe conservatrice) — sain, juste sous-optimal.
+struct DagExcl {
+	static constexpr int CAP = 24;
+	Move moves[CAP];
+	int count = 0;
+	bool contains(const Move& m) const {
+		for (int i = 0; i < count; ++i) if (moves[i] == m) return true;
+		return false;
+	}
+	void add(const Move& m) {
+		if (count < CAP && !contains(m)) moves[count++] = m;
+	}
+};
+
 // TODO:
 // Au lieu d'avoir un plateau, stocker seulement l'indice du plateau dans le buffer?
 
@@ -134,7 +153,7 @@ public:
 	void explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr);
 
 	// Fonction qui explore dans un plateau fils pseudo-al�atoire
-	void explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr);
+	void explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, DagExcl* dag_excl = nullptr);
 
 	// Fonction qui renvoie le fils le plus explor�
 	Move get_most_explored_child_move();
@@ -143,7 +162,7 @@ public:
 	void reset(bool recursive = true);
 
 	// Fonction qui renvoie les variantes d'exploration
-	string get_exploration_variants(const double alpha, const double beta, bool main = true, bool quiescence = false, int max_depth = 500);
+	string get_exploration_variants(const double alpha, const double beta, bool main = true, bool quiescence = false, int max_depth = 500, PositionHistory* chain = nullptr);
 
 	// Fonction qui renvoie la profondeur de la variante principale
 	int get_main_depth(const double alpha, const double beta, int max_depth = 500, PositionHistory* chain = nullptr);
@@ -174,7 +193,7 @@ public:
 	void evaluate_position(Evaluator* evaluator, bool display = false, Network* network = nullptr, bool game_over_check = true, bool static_only = false);
 
 	// Fonction qui renvoie un noeud fils pseudo-al�atoire (en fonction des �valuations et du nombre de noeuds)
-	Move pick_random_child(const double alpha, const double beta, const double gamma);
+	Move pick_random_child(const double alpha, const double beta, const double gamma, const DagExcl* dag_excl = nullptr);
 
 	// Fonction qui renvoie le score d'un coup. Alpha augmente l'importance de l'�valuation, et beta augmente l'importance du winrate
 	robin_map<Move, double> get_move_scores(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100) const;
@@ -272,6 +291,10 @@ extern bool g_tt_node_dag;
 // (TT d'evaluation). Consulte/peuple uniquement si g_tt_node_dag. Meme style
 // de map que Node::_children (robin_map, exploration.h:43).
 extern robin_map<uint64_t, Node*> node_map;
+
+// #11 Plan B — rapport de diagnostic (une ligne, toggle-gated). Appele apres
+// chaque batch grogros_zero depuis la GUI quand g_tt_node_dag.
+void dag_debug_report();
 
 // Recyclage free-list O(1) d'un noeud DETACHE (plus aucun parent) et de son
 // plateau. Point de passage unique (spec §5). A n'appeler QUE sur un noeud
