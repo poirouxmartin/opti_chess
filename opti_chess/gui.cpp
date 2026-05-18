@@ -1056,6 +1056,10 @@ void GUI::grogros_analysis(int iterations) {
 	g_tt_main_search = _tt_main_search; // #11 Plan A — propage le toggle au global lu dans exploration.cpp
 	g_tt_node_dag = _tt_node_dag; // #11 Plan B — propage le toggle au global lu dans exploration.cpp
 	_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations == -1 ? iterations_to_explore : iterations, _quiescence_depth); // TODO: nombre de noeuds à paramétrer
+
+	if (g_tt_node_dag) {
+		dag_debug_report(); // #11 Plan B — diagnostic une ligne par batch (cumulatif)
+	}
 	_update_variants = true;
 }
 

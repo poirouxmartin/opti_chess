@@ -6,6 +6,15 @@ namespace {
 
 constexpr uint8_t search_repetition_limit = 2;
 
+// #11 Plan B — seuil de coupe AFFICHAGE (get_exploration_variants /
+// get_main_depth) decouple de l'elagage de recherche. search_repetition_limit
+// (double, agressif) tronquerait la PV des la 2e occurrence -> en finale les
+// manoeuvres de roi rebouclent en ~2-3 coups et la variante principale est
+// coupee tres tot meme si la vraie ligne est longue. On affiche jusqu'a la
+// VRAIE nulle (triple = regle FIDE) ; borne toujours les vrais cycles bien
+// avant le cap max_depth=500. Applique seulement sous DAG (cf. usage).
+constexpr uint8_t display_repetition_limit = 3;
+
 // #3 : un score de mat encode sa distance via _moves_count (board.cpp:1569),
 // or _moves_count est ABSENT de la clé Zobrist. Sans normalisation, une même
 // position atteinte par un chemin de longueur différente relit depuis la TT
@@ -216,7 +225,12 @@ void Node::add_child(Node* child, Move move) {
 	child->_parent_count++;
 	ChildLink link;
 	link._node = child;
-	link._propagated_nodes = child->_nodes;
+	// Bug 2 model A (litteral, par-arete decouple) : sous DAG le compteur
+	// d'arete ne derive JAMAIS du child->_nodes partage (qui s'auto-inflate
+	// en cascade sur un noeud multi-parent -> overflow int -> N negatif/
+	// milliards/aleatoire). Il part de 0 et comptera les iterations routees
+	// par CETTE arete. OFF : arbre inchange (= child->_nodes) -> byte-identique.
+	link._propagated_nodes = g_tt_node_dag ? 0 : child->_nodes;
 	_children[move] = link;
 	//_nodes += child->_nodes;
 }
@@ -276,6 +290,50 @@ void Node::init_node() {
 static int g_dag_recursion_depth = 0;
 constexpr int DAG_MAX_RECURSION_DEPTH = 1024;
 
+// #11 Plan B — compteurs de diagnostic (toggle-gated, cumulatifs depuis le
+// dernier reset GUI). Servent a voir CE QUI SE PASSE (spin ? partage ?
+// recursion profonde ?) sans deviner. Lus par dag_debug_report.
+static long long g_dag_recheck_hits = 0;  // §3 : repetitions path-locales coupees
+static long long g_dag_link_hits = 0;     // link-on-create : noeud partage reutilise
+static long long g_dag_link_misses = 0;   // link-on-create : nouveau noeud cree
+static long long g_dag_variant_cuts = 0;  // get_exploration_variants : lignes coupees sur cycle
+static int g_dag_max_recursion_seen = 0;  // pic de profondeur de recursion grogros_zero
+
+// Detail borne PAR BATCH (remis a zero par dag_debug_report). On veut VOIR
+// les premiers evenements (quel coup partage, quel cycle, quelle eval) sans
+// inonder la console ni payer to_fen() des millions de fois sur le chemin le
+// plus chaud (perf #1). dag_dbg_take() renvoie true au plus DAG_DBG_MAX fois
+// par batch ; appele uniquement derriere une garde g_tt_node_dag deja vraie.
+static int g_dag_dbg_emitted = 0;
+constexpr int DAG_DBG_MAX = 40;
+
+// Interrupteur COMPILE-TIME du diagnostic. false -> dag_dbg_take() renvoie
+// false a la compilation, donc tous les blocs `if (dag_dbg_take()) cout...`
+// (et leurs to_fen()) ET dag_debug_report() sont du code mort elimine : zero
+// surcout sur la recherche. Repasser a true pour re-instrumenter (ex: travail
+// Bug 1 opt 1). Les compteurs g_dag_* restent (1 inc, negligeable, jamais
+// imprimes quand off).
+constexpr bool dag_debug = false;
+
+static bool dag_dbg_take() {
+	if constexpr (!dag_debug) return false;
+	if (g_dag_dbg_emitted >= DAG_DBG_MAX) return false;
+	g_dag_dbg_emitted++;
+	return true;
+}
+
+void dag_debug_report() {
+	if constexpr (!dag_debug) return; // zero surcout quand le diagnostic est off
+	cout << "[DAG] node_map=" << node_map.size()
+	     << " link_hit=" << g_dag_link_hits
+	     << " link_miss=" << g_dag_link_misses
+	     << " recheck=" << g_dag_recheck_hits
+	     << " variant_cut=" << g_dag_variant_cuts
+	     << " max_rec=" << g_dag_max_recursion_seen
+	     << " (detail=" << g_dag_dbg_emitted << "/" << DAG_DBG_MAX << ")" << endl;
+	g_dag_dbg_emitted = 0; // fenetre de detail fraiche au prochain batch
+}
+
 // Nouveau GrogrosZero
 void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, PositionHistory *path_history) {
 	// TODO:
@@ -298,6 +356,9 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		return;
 	}
 	g_dag_recursion_depth += g_tt_node_dag ? 1 : 0;
+	if (g_tt_node_dag && g_dag_recursion_depth > g_dag_max_recursion_seen) {
+		g_dag_max_recursion_seen = g_dag_recursion_depth;
+	}
 	struct DagRecGuard {
 		~DagRecGuard() { g_dag_recursion_depth -= g_tt_node_dag ? 1 : 0; }
 	} _dag_rec_guard;
@@ -344,6 +405,12 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		return;
 	}
 
+	// #11 Plan B — Bug 1 opt 3 : exclusion per-traversal partagee par TOUTES
+	// les iterations de CET appel grogros_zero (vit sur la pile de ce frame
+	// uniquement, jamais sur un noeud/arete partages). OFF : passee nullptr,
+	// jamais consultee -> comportement byte-identique a l'arbre.
+	DagExcl dag_excl;
+
 	// Exploration
 	while (iterations > 0) {
 
@@ -357,7 +424,7 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 
 		// EXPLORATION D'UN COUP DÉJÀ EXPLORÉ (raffinage)
 		else if (children_count() > 0) {
-			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history);
+			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr);
 		}
 
 		// Buffers pleins ET rien à raffiner ici : arrêt propre + log unique
@@ -373,8 +440,9 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		iterations--;
 	}
 	
-	// FIXME *** cela ne devrait pas arriver
-	if (_nodes <= 0) {
+	// FIXME *** cela ne devrait pas arriver. Sous DAG, _nodes est une borne
+	// proxy par-arete (Bug 2 model A, clamp >=0) : garde arbre silencee (Task 4).
+	if (!g_tt_node_dag && _nodes <= 0) {
 		cout << "negative nodes in grogros zero???" << endl;
 	}
 
@@ -410,7 +478,11 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 			cout << "child nodes >= nodes???" << endl; // tree-only : faux sous DAG (sous-arbre partage multi-parent)
 		}
 
-		_nodes -= child_link->_propagated_nodes;
+		// Bug 2 model A : sous DAG on ne pre-soustrait pas (le delta clamp >=0
+		// en fin de fonction nette correctement, sans underflow).
+		if (!g_tt_node_dag) {
+			_nodes -= child_link->_propagated_nodes;
+		}
 	}
 	else {
 		// Prend une place dans le buffer
@@ -465,6 +537,15 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 					monte_board_buffer.free_index(new_board->_buffer_index);
 				}
 				child = shared;
+				g_dag_link_hits++;
+				// Detail borne : QUELLE position est reutilisee, par combien de
+				// parents (avant l'incrément add_child). Confirme le partage reel.
+				if (dag_dbg_take()) {
+					cout << "[DAG] link-hit key=" << std::hex << shared->_board->_zobrist_key
+					     << std::dec << " pc=" << shared->_parent_count
+					     << " nodes=" << shared->_nodes
+					     << " @ " << shared->_board->to_fen() << endl;
+				}
 			}
 			else {
 				// Miss : création normale + enregistrement dans node_map.
@@ -478,6 +559,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 
 				if (g_tt_node_dag) {
 					node_map[new_board->_zobrist_key] = child;
+					g_dag_link_misses++;
 				}
 			}
 		}
@@ -529,14 +611,20 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 	// rnb1kbnr/ppp1pppp/2q5/1B6/8/2N5/PPPP1PPP/R1BQK1NR b KQkq - 3 4
 	// rnb1kbnr/ppp1pppp/2q5/8/8/2N5/PPPP1PPP/R1BQKBNR w KQkq - 2 4 : ici Fb5 -> +114 au lieu de +895
 
-	// Augmente le nombre de noeuds
-	_nodes += child->_nodes;
+	// Augmente le nombre de noeuds. Bug 2 model A : sous DAG on n'absorbe PAS
+	// child->_nodes (qui peut etre un sous-arbre PARTAGE cree par un autre
+	// parent -> desync puis underflow negatif). L'accumulation par-arete
+	// clamp >=0 est faite plus bas (reseed propagated). OFF : ligne arbre
+	// inchangee -> byte-identique.
+	if (!g_tt_node_dag) {
+		_nodes += child->_nodes;
+	}
 
-	if (_nodes <= 0) {
+	if (!g_tt_node_dag && _nodes <= 0) {
 		cout << "negative nodes in explore_new_move???" << endl;
 	}
 
-	if (child->_nodes <= 0) {
+	if (!g_tt_node_dag && child->_nodes <= 0) {
 		cout << "negative nodes in explore_new_move child???" << endl;
 	}
 
@@ -554,7 +642,23 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		child_link->_chosen_iterations = 1;
 	}
 
-	child_link->_propagated_nodes = child->_nodes;
+	// Bug 2 model A — comptabilite _nodes par-arete sous DAG : delta clamp >=0,
+	// jamais negatif, jamais reinitialise depuis un child->_nodes partage
+	// (baseline = _propagated_nodes precedent ; arete neuve link-on-create :
+	// add_child a pose baseline=child->_nodes -> delta 0, on n'absorbe pas le
+	// sous-arbre etranger). OFF : reseed arbre inchange -> byte-identique.
+	if (g_tt_node_dag) {
+		// model A litteral : +1 unite de travail routee par cette arete.
+		// Borne par le budget d'iterations -> jamais d'overflow ; totalement
+		// decouple du child->_nodes partage auto-inflant -> plus de cascade.
+		// _nodes devient un proxy "visites" borne (spec §6 ; non lu par la
+		// selection ni le budget).
+		_nodes += 1;
+		child_link->_propagated_nodes += 1;
+	}
+	else {
+		child_link->_propagated_nodes = child->_nodes;
+	}
 	_iterations += child->_iterations;
 
 	// Tous les coups ont-ils déjà été explorés?
@@ -596,10 +700,20 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 }
 
 // Fonction qui explore dans un plateau fils pseudo-aléatoire
-void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history) {
+void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, DagExcl* dag_excl) {
 
 	// Prend un fils aléatoire
-	const Move move = pick_random_child(alpha, beta, gamma);
+	const Move move = pick_random_child(alpha, beta, gamma, dag_excl);
+
+	// Bug 1 opt 3 — toutes les aretes explorables ont ete §3-exclues sur ce
+	// chemin : plus rien de non-cyclique a raffiner ici cette iteration. On
+	// compte l'iteration (comme la coupe §3) et on sort, sans spin ni acces
+	// _children[null]. OFF : pick ne renvoie jamais null par cette voie.
+	if (g_tt_node_dag && move.is_null_move()) {
+		_iterations++;
+		return;
+	}
+
 	ChildLink& child_link = _children[move];
 	Node *child = child_link._node;
 	// #7 / B-1 — historique unique threadé ; push de la position du fils pour
@@ -629,6 +743,27 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	// (comportement arbre actuel — explore_random_child ne re-testait jamais
 	// la repetition sur un fils existant).
 	if (g_tt_node_dag && position_is_draw_by_repetition(branch_history, *child->_board)) {
+		g_dag_recheck_hits++;
+		// Detail borne — LA frontiere cle des "incoherences d'eval". On coupe le
+		// cycle (return) AVANT le backup parent (:686) : cette iteration ne
+		// rafraichit pas this->_deep_evaluation et l'arete cyclique n'est PAS
+		// devaluee (spec §3 §"valeur de nulle path-locale" non implementee). Si
+		// la meme arete revient en boucle ici => spin + eval parent figee/
+		// incoherente selon le chemin. C'est l'evidence a confirmer.
+		if (dag_dbg_take()) {
+			cout << "[DAG] §3-cut child_key=" << std::hex << child->_board->_zobrist_key
+			     << std::dec << " child_pc=" << child->_parent_count
+			     << " parent_eval=" << _deep_evaluation._value
+			     << " (fige, edge non devaluee)\n"
+			     << "      parent=" << _board->to_fen() << "\n"
+			     << "      child =" << child->_board->to_fen() << endl;
+		}
+		// Bug 1 opt 3 — anti-spin : memorise l'arete cyclique pour qu'elle ne
+		// soit PAS re-selectionnee par les iterations restantes de cet appel
+		// grogros_zero (liste sur la pile, jamais sur structure partagee :
+		// invariant 772183a respecte ; ne mute toujours RIEN de partage).
+		// Sans liste (OFF / debordement) : coupe conservatrice inchangee.
+		if (dag_excl != nullptr) dag_excl->add(move);
 		_iterations++;
 		return;
 	}
@@ -652,15 +787,26 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 			tt_writeback_depth(_nodes), TT_EXACT);
 	}
 
-	// Augmente le nombre de noeuds
-	_nodes += child->_nodes - initial_child_nodes;
-	child_link._propagated_nodes = child->_nodes;
+	// Augmente le nombre de noeuds. Bug 2 model A : sous DAG, delta par-arete
+	// clamp >=0 (initial_child_nodes du chemin arbre ignore ; un fils PARTAGE
+	// peut retrecir via un autre chemin/reset -> le delta arbre underflow
+	// negatif). OFF : delta arbre inchange -> byte-identique.
+	if (g_tt_node_dag) {
+		// model A litteral : +1 (idem explore_new_move). Borne, decouple du
+		// child->_nodes partage -> plus de cascade/overflow, N stable.
+		_nodes += 1;
+		child_link._propagated_nodes += 1;
+	}
+	else {
+		_nodes += child->_nodes - initial_child_nodes;
+		child_link._propagated_nodes = child->_nodes;
+	}
 
-	if (_nodes <= 0) {
+	if (!g_tt_node_dag && _nodes <= 0) {
 		cout << "negative nodes in explore_random_child???" << endl;
 	}
 
-	if (child->_nodes <= 0) {
+	if (!g_tt_node_dag && child->_nodes <= 0) {
 		cout << "negative nodes in explore_random_child child???" << endl;
 	}
 
@@ -752,7 +898,7 @@ void Node::reset(bool recursive) {
 }
 
 // Fonction qui renvoie les variantes d'exploration
-string Node::get_exploration_variants(const double alpha, const double beta, bool main, bool quiescence, int max_depth) {
+string Node::get_exploration_variants(const double alpha, const double beta, bool main, bool quiescence, int max_depth, PositionHistory* chain) {
 
 	// Protection contre les cycles de transposition
 	if (max_depth <= 0) {
@@ -763,6 +909,38 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 	if (_board->_game_over_value) {
 		return "";
 	}
+
+	// #11 Plan B — stoppe la ligne affichee sur une transposition/repetition.
+	// Sous DAG _children est un graphe et peut reboucler : sans ceci la variante
+	// se deroule jusqu'au cap max_depth (500) -> variantes geantes + GUI tres
+	// lente (rafraichissement toutes les ~3-4 s). Idiome identique a
+	// get_main_depth ; une chaine PAR ligne (copie par fils au noeud principal,
+	// threadee le long d'une ligne unique). Sans DAG aucune cle ne se repete
+	// -> affichage strictement inchange.
+	PositionHistory local_chain;
+	PositionHistory* c = chain != nullptr ? chain : &local_chain;
+	_board->get_zobrist_key();
+	// Coupe a la nulle reelle : triple (FIDE) sous DAG ; double = seuil arbre
+	// historique quand OFF -> strictement byte-identique (count+1>=limite,
+	// meme forme que position_is_draw_by_repetition).
+	const auto _ch_it = c->find(_board->_zobrist_key);
+	const int _ch_seen = _ch_it != c->end() ? static_cast<int>(_ch_it->second) : 0;
+	const uint8_t _disp_limit = g_tt_node_dag ? display_repetition_limit : search_repetition_limit;
+	if (_ch_seen + 1 >= _disp_limit) {
+		// Detail borne : OU la ligne affichee reboucle (profondeur atteinte
+		// avant le cycle). Quantifie le "variations quasi infinies" cote
+		// affichage. g_tt_node_dag-gardé : OFF -> seuil arbre inchange.
+		if (g_tt_node_dag) {
+			g_dag_variant_cuts++;
+			if (dag_dbg_take()) {
+				cout << "[DAG] variant-cut depth_left=" << max_depth
+				     << " key=" << std::hex << _board->_zobrist_key << std::dec
+				     << " @ " << _board->to_fen() << endl;
+			}
+		}
+		return "...";
+	}
+	(*c)[_board->_zobrist_key]++;
 
 	string variants;
 
@@ -804,7 +982,8 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 				child_variants += _board->_player ? ". " : "... ";
 				child_variants += _board->move_label(move, true);
 				child_variants += child->children_count() > 0 ? " " : "";
-				child_variants += child->get_exploration_variants(alpha, beta, false, new_quiescence || quiescence, max_depth - 1);
+				PositionHistory child_chain = *c; // ligne independante : prefixe copie, pas de pollution entre fils
+				child_variants += child->get_exploration_variants(alpha, beta, false, new_quiescence || quiescence, max_depth - 1, &child_chain);
 
 				if (new_quiescence)
 					child_variants += ')';
@@ -865,7 +1044,7 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 			else {
 				Node* best_child = _children[best_move]._node;
 				const bool new_quiescence = !quiescence && best_child->_iterations == 0;
-				variants += (new_quiescence ? "(" : "") + (_board->_player ? to_string(_board->_moves_count) + ". " : "") + _board->move_label(best_move, true) + (best_child->children_count() > 0 ? " " : "") + best_child->get_exploration_variants(alpha, beta, false, new_quiescence || quiescence, max_depth - 1) + (new_quiescence ? ")" : "");
+				variants += (new_quiescence ? "(" : "") + (_board->_player ? to_string(_board->_moves_count) + ". " : "") + _board->move_label(best_move, true) + (best_child->children_count() > 0 ? " " : "") + best_child->get_exploration_variants(alpha, beta, false, new_quiescence || quiescence, max_depth - 1, c) + (new_quiescence ? ")" : "");
 			}
 		}
 	}
@@ -910,8 +1089,14 @@ int Node::get_main_depth(const double alpha, const double beta, int max_depth, P
 		_board->get_zobrist_key();
 		(*c)[_board->_zobrist_key]++;
 		main_child->_board->get_zobrist_key();
-		if (c->find(main_child->_board->_zobrist_key) != c->end()) {
-			return 0; // la PV reboucle -> fin de variante (repetition)
+		// Meme seuil que get_exploration_variants : triple (FIDE) sous DAG,
+		// double quand OFF -> profondeur affichee coherente avec le texte de
+		// la variante et byte-identique a l'arbre quand OFF.
+		const auto _mc_it = c->find(main_child->_board->_zobrist_key);
+		const int _mc_seen = _mc_it != c->end() ? static_cast<int>(_mc_it->second) : 0;
+		const uint8_t _md_limit = g_tt_node_dag ? display_repetition_limit : search_repetition_limit;
+		if (_mc_seen + 1 >= _md_limit) {
+			return 0; // la PV atteint la nulle par repetition -> fin de variante
 		}
 
 		return main_child->get_main_depth(alpha, beta, max_depth - 1, c) + 1;
@@ -1407,7 +1592,7 @@ void Node::evaluate_position(Evaluator* evaluator, bool display, Network * netwo
 }
 
 // Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
-Move Node::pick_random_child(const double alpha, const double beta, const double gamma) {
+Move Node::pick_random_child(const double alpha, const double beta, const double gamma, const DagExcl* dag_excl) {
 	// TESTS
 	// 8/8/8/1r5p/2p4k/2Kb4/8/8 b - - 1 69 : tout égal quand tout gagne...
 	// r2qr1k1/3bbp1p/p2pn1p1/3QP3/3P4/3B1N2/1P1B1PPP/R3R1K1 w - - 1 24 : pareil
@@ -1487,8 +1672,13 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 
 	// Regarde chaque coup
 	for (auto const& [move, child_link] : _children) {
+		// Bug 1 opt 3 — arete §3-exclue sur ce chemin : ecartee de best_move
+		// ET move_to_play, donc les iterations restantes de cet appel
+		// grogros_zero ne spinnent plus dessus. OFF : dag_excl == nullptr
+		// -> aucun effet -> byte-identique a l'arbre.
+		if (dag_excl != nullptr && dag_excl->contains(move)) continue;
 		Node* child = child_link._node;
-		
+
 		// Score du coup
 		double move_score = move_scores[move];
 
@@ -1567,7 +1757,13 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 
 	//cout << "best move: " << _board->move_label(best_move) << " | best score: " << best_score << endl << endl;
 
+	// Bug 1 opt 3 — toutes les aretes explorables §3-exclues sur ce chemin :
+	// aucun candidat. On signale "rien" (coup nul) ; explore_random_child
+	// compte l'iteration et sort sans spin ni _children[null]. OFF : dag_excl
+	// == nullptr -> ce cas ne se produit jamais, chemin arbre (cout + .at)
+	// strictement inchange.
 	if (best_move.is_null_move()) {
+		if (dag_excl != nullptr) return Move();
 		cout << "null move considered to be the best??" << endl;
 	}
 
