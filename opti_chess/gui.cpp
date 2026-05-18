@@ -909,6 +909,14 @@ bool GUI::play_move_keep(Move move)
 	// y'a t-il eu des coups calculés? -> oui/non
 	// si oui, le coup joué en fait-il partie? -> oui/non
 
+	// #11 Plan B — instrumentation CIBLEE re-root x DAG (move-play rare, hors
+	// hot path). Mesure le straddle de noeuds partages entre next_root garde
+	// et freres detruits. TEMP : repasser dag_reroot_debug a false apres.
+	constexpr bool dag_reroot_debug = false;
+	int rr_sib = 0, rr_shared = 0, rr_rec = 0;
+	Node* rr_next = nullptr;
+	bool rr_calc = false;
+
 	if (_root_exploration_node->children_count() == 0) {
 		// On joue simplement le coup
 		_board->make_move(move, false, true);
@@ -921,6 +929,8 @@ bool GUI::play_move_keep(Move move)
 	else {
 		if (_root_exploration_node->_children.contains(move)) {
 			Node* next_root = _root_exploration_node->_children[move]._node;
+			rr_calc = true;
+			rr_next = next_root;
 
 			// Ancien root : detache plus bas (remplace par next_root), pas
 			// reutilise en place -> a recycler explicitement (Approche B).
@@ -929,11 +939,14 @@ bool GUI::play_move_keep(Move move)
 			for (auto const& [m, child_link] : _root_exploration_node->_children) {
 				if (m != move) {
 					Node* child = child_link._node;
+					rr_sib++;
+					if (child->_parent_count > 1) rr_shared++; // partage : straddle possible avec next_root
 					child->_parent_count--;
 					if (child->_parent_count <= 0) {
 						child->reset(true);
 						// Enfant non choisi definitivement detache -> recyclage.
 						recycle_detached_node(child);
+						rr_rec++;
 					}
 				}
 			}
@@ -983,6 +996,35 @@ bool GUI::play_move_keep(Move move)
 	node_map.clear(); // #11 Plan B — purge le DAG en meme temps que la TT (pas de pointeur pendant inter-recherches)
 
 	_board->get_moves();
+
+	// #11 Plan B — probe re-root x DAG. KEPT-*-FREED=1 = preuve du
+	// use-after-recycle (slot du nouveau root libere pendant la destruction
+	// des freres) ; got_moves<=0 -> "no moves" (B) ; shared>0 -> straddle ;
+	// *_buf qui ne baisse pas -> fuite buffer (A).
+	if constexpr (dag_reroot_debug) {
+		if (rr_calc && rr_next != nullptr) {
+			auto in_free = [](const std::vector<int>& fl, int idx) {
+				if (idx < 0) return false;
+				for (int f : fl) if (f == idx) return true;
+				return false;
+			};
+			const int nidx = rr_next->_buffer_index;
+			const int bidx = rr_next->_board != nullptr ? rr_next->_board->_buffer_index : -1;
+			const bool n_freed = in_free(monte_node_buffer._free_indices, nidx);
+			const bool b_freed = in_free(monte_board_buffer._free_indices, bidx);
+			const int nb_used = monte_node_buffer._length - static_cast<int>(monte_node_buffer._free_indices.size());
+			const int bb_used = monte_board_buffer._length - static_cast<int>(monte_board_buffer._free_indices.size());
+			cout << "[REROOT] siblings=" << rr_sib << " shared(pc>1)=" << rr_shared
+			     << " recycled=" << rr_rec
+			     << " | newroot pc=" << rr_next->_parent_count
+			     << " kids=" << rr_next->children_count()
+			     << " got_moves=" << static_cast<int>(_board != nullptr ? _board->_got_moves : -1)
+			     << " | KEPT-NODE-FREED=" << (n_freed ? 1 : 0)
+			     << " KEPT-BOARD-FREED=" << (b_freed ? 1 : 0)
+			     << " | node_buf=" << nb_used << "/" << monte_node_buffer._length
+			     << " board_buf=" << bb_used << "/" << monte_board_buffer._length << endl;
+		}
+	}
 
 	//cout << "same board: " << (_root_exploration_node->_board == &_board) << endl;
 	//cout << "same board2: " << (*_root_exploration_node->_board == _board) << endl;
