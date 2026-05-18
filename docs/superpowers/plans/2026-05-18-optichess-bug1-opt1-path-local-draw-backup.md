@@ -41,13 +41,13 @@ No new files. Follows the existing toggle-gated, French-comment, single-owned-`P
 
 This change is on the single hottest path of a performance-critical engine and interacts with mate scores, alpha/beta windows, stand-pat, and (optionally) quiescence. The engine designer must confirm the propagation semantics before code is written. This is a real gate, not a placeholder.
 
-- [ ] **Step 1: Confirm the draw Evaluation to inject.** Decide whether to reuse the exact `Evaluation` from `init_terminal_draw_child` (preferred — identical to a real repetition leaf) or a hand-built `{_value=0, _evaluated=true, _wdl=draw, _avg_score=0.5}`. Record the decision inline in this task.
+- [x] **Step 1: DECIDED (2026-05-18).** Reuse the exact `Evaluation` produced by `init_terminal_draw_child` (`mark_position_as_draw(*board)` then `evaluate_position(...)`) — byte-identical to a real repetition leaf, no derived-field divergence. Do NOT hand-build the draw struct.
 
-- [ ] **Step 2: Confirm scope.** Decide whether option 1 also threads into `quiescence` (`:1098`) or stays in GrogrosZero only. Evidence to date shows the spin/incohérence in GrogrosZero; quiescence has no node sharing (`exploration.cpp:1323` comment "Pas de partage via TT"). Default decision: **GrogrosZero only**; quiescence unchanged. Record final decision.
+- [x] **Step 2: DECIDED (2026-05-18).** **GrogrosZero only** (`grogros_zero` / `explore_new_move` / `explore_random_child`); `quiescence` left unchanged (no node sharing — `exploration.cpp:1323` "Pas de partage via TT"; no evidence of quiescence repetition mishandling). FUTURE IMPROVEMENT (noted, not now): consider extending the path-local draw threading into `quiescence` if a quiescence-side repetition issue is ever observed.
 
-- [ ] **Step 3: Confirm interaction with mate normalization (#3).** A draw (0) competing against mate-scored siblings must compare correctly in `get_best_score_move`. Confirm 0.0 white-relative is the right value pre-`tt_normalize_mate` (it is — draw is depth-independent). Record confirmation.
+- [x] **Step 3: CONFIRMED (2026-05-18).** A draw is depth-independent → `0.0` white-relative pre-`tt_normalize_mate` is correct; compares correctly in `get_best_score_move` against mate-scored siblings.
 
-- [ ] **Step 4: No commit (design only).**
+- [x] **Step 4: No commit (design only).**
 
 ---
 
