@@ -145,6 +145,24 @@ void init_terminal_draw_child(Node* child, Board* board, Evaluator* eval, Networ
 	child->_is_terminal = true;
 }
 
+// #11 Plan B — Bug 1 opt 1. Evaluation de nulle CANONIQUE, strictement
+// identique a ce que Board::evaluate pose pour une position marquee draw
+// (board.cpp:1551-1564) -> donc identique a ce que porte une vraie feuille
+// de repetition via init_terminal_draw_child. POSITION-INDEPENDANTE : que
+// des constantes + WDL/score derives des champs winnable a zero ; aucun
+// Board requis, AUCUNE mutation d'etat partage (spec §3, invariant 772183a).
+static Evaluation dag_draw_eval() {
+	Evaluation e;
+	e._value = 0;
+	e._evaluated = true;
+	e._uncertainty = 0;
+	e._winnable_black = 0;
+	e._winnable_white = 0;
+	e.get_WDL();
+	e.get_average_score();
+	return e;
+}
+
 // #11 Plan A — feuille gelée portant une valeur fiable issue de la TT.
 // Structurellement calquée sur init_terminal_draw_child. Détection terminale
 // d'abord : Board::evaluate(check_game_over=true) ne CALCULE pas la fin de
@@ -764,6 +782,13 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		// invariant 772183a respecte ; ne mute toujours RIEN de partage).
 		// Sans liste (OFF / debordement) : coupe conservatrice inchangee.
 		if (dag_excl != nullptr) dag_excl->add(move);
+		// Bug 1 opt 1 — spec §3 : remonte la valeur de nulle path-locale par
+		// VALEUR DE RETOUR (out-param), sans muter le Node/arete partages
+		// (invariant 772183a). Le parent substituera cette nulle a
+		// child->_deep_evaluation pour CETTE traversee (cf. backup).
+		if (path_local_eval != nullptr) {
+			*path_local_eval = dag_draw_eval();
+		}
 		_iterations++;
 		return;
 	}
