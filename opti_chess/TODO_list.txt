@@ -822,6 +822,7 @@ FIX:
 BUG:
 -> 2Q5/4b1pk/7p/7P/3B4/p1p3P1/5P1K/1q6 b - - 0 16 : bugs de transposition parfois -> ça met temporairement des -M4 sur un coup qui ne va pas du tout en mat en 4
 -> r1b3k1/p4ppp/5n2/1Rp4q/4B3/2P5/P1PQ2PP/4R1K1 b - - 3 21 : pareil, Fa6 met -M4, et quand on le joue, l'éval est : +M4, confidence = 87%... score = 0.934.
+-> r3r1k1/pp3pbp/1qp3p1/2B5/2BP2b1/Q1n2N2/P4PPP/3R1K1R b - - 0 1 : bug dans les variantes de Fe6, incohérences sur les évaluations.
 
 En cours / ---
 
