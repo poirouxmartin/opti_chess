@@ -980,6 +980,7 @@ bool GUI::play_move_keep(Move move)
 
 	_root_exploration_node->_board = _board;
 	transposition_table.clear();
+	node_map.clear(); // #11 Plan B — purge le DAG en meme temps que la TT (pas de pointeur pendant inter-recherches)
 
 	_board->get_moves();
 
@@ -1941,5 +1942,6 @@ void GUI::init_buffers() const {
 // Le balayage O(capacité) était purement redondant.
 void GUI::reset_buffers() const {
 	transposition_table.clear();
+	node_map.clear(); // #11 Plan B — purge le DAG en meme temps que la TT (pas de pointeur pendant inter-recherches)
 }
 

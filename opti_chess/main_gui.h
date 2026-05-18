@@ -424,6 +424,7 @@ inline int main_ui() {
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_DELETE)) {
 			//main_GUI._board->reset_all(true, true);
 			transposition_table.clear();
+			node_map.clear(); // #11 Plan B — purge le DAG en meme temps que la TT (pas de pointeur pendant inter-recherches)
 			main_GUI._root_exploration_node->reset(); // FIXME... ça fait rien??
 			main_GUI._root_exploration_node->_is_active = true;
 			main_GUI._root_exploration_node->_board->_is_active = true;
