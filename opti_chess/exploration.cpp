@@ -929,6 +929,16 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	init_node();
 	_board->get_zobrist_key();
 
+	// #7 / B-1 — null-safe path history (appel manuel quiescence via main_gui.h) :
+	// historique local possédé pour TOUTE la durée de l'appel. Doit être déclaré
+	// au scope fonction (jamais par coup, sinon path_history pend sur le local
+	// détruit de l'itération précédente). Idiome identique à grogros_zero.
+	// Chemin recherche : path_history toujours non nul → no-op.
+	PositionHistory local_path_history;
+	if (path_history == nullptr) {
+		path_history = &local_path_history;
+	}
+
 	// Couleur du joueur
 	int color = _board->get_color();
 
@@ -1097,14 +1107,6 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 			move_index++;
 			
-			// #7 / B-1 — restaure la sémantique null-safe de l'ancien
-			// make_child_path_history(nullptr) : un path_history nul == historique vide
-			// (appel manuel quiescence via main_gui.h). Idiome identique à grogros_zero.
-			PositionHistory local_path_history;
-			if (path_history == nullptr) {
-				path_history = &local_path_history;
-			}
-
 			// #7 / B-1 — historique unique threadé (plus de copie par coup).
 			// La répétition reste correcte (clés Zobrist uniques par époque
 			// réversible) ; push/pop équilibré via PathScope plus bas.
