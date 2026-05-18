@@ -564,8 +564,9 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	const Move move = pick_random_child(alpha, beta, gamma);
 	ChildLink& child_link = _children[move];
 	Node *child = child_link._node;
-	PositionHistory child_path_history = make_child_path_history(path_history, *_board, move);
-	record_position_in_history(child_path_history, *child->_board);
+	// #7 / B-1 — historique unique threadé ; push de la position du fils pour
+	// la durée de la récursion uniquement, pop garanti à la sortie de scope.
+	PositionHistory& branch_history = *path_history;
 
 	if (child_link._propagated_nodes >= _nodes) {
 		cout << "child nodes >= nodes in random exploration??? main position: " << _board->to_fen() << ", child position: " << child->_board->to_fen() << endl;
@@ -575,7 +576,10 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	const int initial_child_nodes = child_link._propagated_nodes;
 
 	// Explore le fils
-	child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &child_path_history); // L'évaluation du fils est mise à jour ici
+	{
+		PathScope _ps(branch_history, *child->_board);
+		child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &branch_history); // L'évaluation du fils est mise à jour ici
+	}
 
 	// Met à jour l'évaluation du plateau avec le meilleur coup
 	_deep_evaluation = _children[get_best_score_move(alpha, beta)]._node->_deep_evaluation;
