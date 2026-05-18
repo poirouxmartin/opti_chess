@@ -878,7 +878,7 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 }
 
 // Fonction qui renvoie la profondeur de la variante principale
-int Node::get_main_depth(const double alpha, const double beta, int max_depth) {
+int Node::get_main_depth(const double alpha, const double beta, int max_depth, PositionHistory* chain) {
 	if (max_depth <= 0) {
 		return 0;
 	}
@@ -892,7 +892,26 @@ int Node::get_main_depth(const double alpha, const double beta, int max_depth) {
 
 		Node* main_child = _children[main_move]._node;
 
-		return main_child->get_main_depth(alpha, beta, max_depth - 1) + 1;
+		if (main_child == nullptr) {
+			return 0;
+		}
+
+		// #11 Plan B — stoppe la PV sur une transposition/repetition. Sous DAG,
+		// la chaine du meilleur coup peut reboucler (graphe) : sans ceci
+		// get_main_depth recurse jusqu'au cap max_depth=500 (oscillation
+		// 500/peu profond observee). Idiome null-safe identique a grogros_zero :
+		// le 1er appel possede l'historique de chaine. Sans DAG aucune cle ne
+		// se repete -> meme resultat qu'avant (arbre au byte pres).
+		PositionHistory local_chain;
+		PositionHistory* c = chain != nullptr ? chain : &local_chain;
+		_board->get_zobrist_key();
+		(*c)[_board->_zobrist_key]++;
+		main_child->_board->get_zobrist_key();
+		if (c->find(main_child->_board->_zobrist_key) != c->end()) {
+			return 0; // la PV reboucle -> fin de variante (repetition)
+		}
+
+		return main_child->get_main_depth(alpha, beta, max_depth - 1, c) + 1;
 	}
 
 	return 0;
