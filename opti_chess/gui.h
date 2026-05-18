@@ -107,6 +107,7 @@ public:
 
 	bool _explore_checks = true; // FIXME? faut-il vraiment explorer les échecs?
 	bool _tt_main_search = false; // #11 Plan A — TT dans la recherche principale (A/B runtime, defaut OFF)
+	bool _tt_node_dag = false; // #11 Plan B — DAG de transpositions (A/B runtime, defaut OFF)
 
 	// Est-ce que les noms des joueurs ont été ajoutés au PGN
 	bool _named_pgn = false;

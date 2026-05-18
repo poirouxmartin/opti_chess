@@ -1859,3 +1859,5 @@ NodeBuffer monte_node_buffer;
 // remis à false dès qu'un reset/remove libère de la place.
 bool g_buffers_full_logged = false;
 bool g_tt_main_search = false;
+bool g_tt_node_dag = false; // #11 Plan B — voir exploration.h
+robin_map<uint64_t, Node*> node_map; // #11 Plan B — voir exploration.h
