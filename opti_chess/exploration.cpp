@@ -121,14 +121,6 @@ bool position_is_draw_by_repetition(const PositionHistory& path_history, Board& 
 	return position_history_count(path_history, board) + 1 >= repetition_limit;
 }
 
-PositionHistory make_child_path_history(const PositionHistory* path_history, const Board& parent_board, const Move& move) {
-	if (path_history == nullptr || parent_board.is_irreversible_move(move)) {
-		return PositionHistory();
-	}
-
-	return *path_history;
-}
-
 void mark_position_as_draw(Board& board) {
 	board._game_over_value = draw;
 	board._game_over_checked = true;
