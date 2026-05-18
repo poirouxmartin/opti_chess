@@ -269,6 +269,13 @@ void Node::init_node() {
 	_board->sort_moves();
 }
 
+// #11 Plan B §7 — garde-fou anti-runaway. Constante haute (> toute profondeur
+// reelle plausible) : ne se declenche QUE sur une recursion pathologique
+// non-repetition (la repetition est deja coupee par le recheck Task 3).
+// File-local (moteur mono-thread) ; defini avant grogros_zero (usage recursif).
+static int g_dag_recursion_depth = 0;
+constexpr int DAG_MAX_RECURSION_DEPTH = 1024;
+
 // Nouveau GrogrosZero
 void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, PositionHistory *path_history) {
 	// TODO:
@@ -283,6 +290,17 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		cout << "iterations <= 0 in grogros_zero" << endl;
 		return;
 	}
+
+	// #11 Plan B §7 — borne de securite sur la profondeur de recursion DAG.
+	// OFF : jamais arme (ni compteur ni test). ON : la repetition (Task 3)
+	// coupe deja tout cycle ; ceci n'attrape qu'une recursion pathologique.
+	if (g_tt_node_dag && g_dag_recursion_depth >= DAG_MAX_RECURSION_DEPTH) {
+		return;
+	}
+	g_dag_recursion_depth += g_tt_node_dag ? 1 : 0;
+	struct DagRecGuard {
+		~DagRecGuard() { g_dag_recursion_depth -= g_tt_node_dag ? 1 : 0; }
+	} _dag_rec_guard;
 
 	// Temps de calcul
 	const clock_t begin_monte_time = clock();
