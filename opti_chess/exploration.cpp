@@ -429,6 +429,11 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	// jamais consultee -> comportement byte-identique a l'arbre.
 	DagExcl dag_excl;
 
+	// #11 Plan B — Bug 1 opt 1 : scratch pour la valeur de nulle path-locale
+	// remontee par explore_random_child (out-param). Pile uniquement ; OFF :
+	// nullptr passe -> jamais ecrit -> byte-identique.
+	Evaluation dag_child_eval;
+
 	// Exploration
 	while (iterations > 0) {
 
@@ -442,7 +447,7 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 
 		// EXPLORATION D'UN COUP DÉJÀ EXPLORÉ (raffinage)
 		else if (children_count() > 0) {
-			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr);
+			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr, g_tt_node_dag ? &dag_child_eval : nullptr);
 		}
 
 		// Buffers pleins ET rien à raffiner ici : arrêt propre + log unique
@@ -800,7 +805,26 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	}
 
 	// Met à jour l'évaluation du plateau avec le meilleur coup
-	_deep_evaluation = _children[get_best_score_move(alpha, beta)]._node->_deep_evaluation;
+	const Move _bm = get_best_score_move(alpha, beta);
+	if (g_tt_node_dag && dag_excl != nullptr && dag_excl->contains(_bm)) {
+		// Bug 1 opt 1 / spec §3 — le meilleur coup est une arete coupee comme
+		// nulle path-locale sur CE chemin (DagExcl rempli par les coupes §3 de
+		// ce frame). Sa vraie valeur ici est une NULLE, pas son
+		// _deep_evaluation partage (calcule via un autre chemin). On remonte
+		// la nulle par l'out-param. Persistance sur this->_deep_evaluation
+		// SEULEMENT si this n'est pas partage sur cette traversee
+		// (_parent_count<=1) : ecrire une nulle path-locale sur un noeud
+		// partage corromprait les autres chemins (invariant 772183a). Le
+		// backup normal (else) reste STRICTEMENT inchange (pas de regression
+		// du backup MCTS des noeuds partages).
+		const Evaluation _draw = dag_draw_eval();
+		if (path_local_eval != nullptr) *path_local_eval = _draw;
+		if (_parent_count <= 1) _deep_evaluation = _draw;
+	}
+	else {
+		_deep_evaluation = _children[_bm]._node->_deep_evaluation;
+		if (g_tt_node_dag && path_local_eval != nullptr) *path_local_eval = _deep_evaluation;
+	}
 
 	// #11 Plan A — write-back de la valeur raffinée (le levier réel).
 	// Mêmes gardes que dans explore_new_move.
