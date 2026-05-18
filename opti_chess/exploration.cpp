@@ -426,20 +426,41 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		else {
 			new_board->get_zobrist_key();
 
-			// Création du noeud fils. #11 Plan B — quand g_tt_node_dag, on
-			// l'enregistre dans node_map pour que les chemins transposés futurs
-			// puissent le partager (link-on-create, Task 3). OFF : node_map
-			// jamais touché → arbre au byte près.
-			child = monte_node_buffer.get_first_free_node();
-
-			if (child == nullptr)
-				return;
-
-			child->_board = new_board;
-			created_new_node = true;
-
+			// #11 Plan B — link-on-create. Si une position de meme cle Zobrist
+			// est deja un Node VIVANT, on lie l'arete a ce Node partage au lieu
+			// de recreer un sous-arbre. La branche nulle (au-dessus) fabrique
+			// toujours une feuille distincte — jamais partagee. OFF : saute tout.
+			Node* shared = nullptr;
 			if (g_tt_node_dag) {
-				node_map[new_board->_zobrist_key] = child;
+				const auto it = node_map.find(new_board->_zobrist_key);
+				if (it != node_map.end()) {
+					shared = it->second;
+				}
+			}
+
+			if (shared != nullptr) {
+				// Hit : pas d'allocation. On rend le board pris au buffer et on
+				// pointe vers le Node existant ; add_child (plus bas) lie
+				// l'arete et incremente shared->_parent_count. created_new_node
+				// reste false → pas de probe TT Plan A sur un noeud partage.
+				if (new_board->_buffer_index >= 0 && !monte_board_buffer._bulk_resetting) {
+					monte_board_buffer.free_index(new_board->_buffer_index);
+				}
+				child = shared;
+			}
+			else {
+				// Miss : création normale + enregistrement dans node_map.
+				child = monte_node_buffer.get_first_free_node();
+
+				if (child == nullptr)
+					return;
+
+				child->_board = new_board;
+				created_new_node = true;
+
+				if (g_tt_node_dag) {
+					node_map[new_board->_zobrist_key] = child;
+				}
 			}
 		}
 	}
@@ -573,6 +594,23 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 
 	// Nombre de noeuds du fils
 	const int initial_child_nodes = child_link._propagated_nodes;
+
+	// #11 Plan B — soundness du DAG. Le sous-arbre du fils peut etre PARTAGE :
+	// cree via un chemin A, descendu ici via un chemin B. Le statut de nulle
+	// par repetition est PATH-LOCAL (il n'est pas dans le Node). On le
+	// re-derive contre l'historique du chemin COURANT avant de descendre.
+	// Si nulle sur ce chemin : on NE descend PAS dans le sous-arbre partage
+	// et on NE le mute PAS ; l'arete contribue une valeur de nulle au backup
+	// du parent (meme valeur que la branche nulle de explore_new_move). OFF :
+	// saute (comportement arbre actuel — explore_random_child ne re-testait
+	// jamais la repetition sur un fils existant).
+	if (g_tt_node_dag && position_is_draw_by_repetition(branch_history, *child->_board)) {
+		_deep_evaluation.reset();
+		_deep_evaluation._value = 0.0;
+		_deep_evaluation._evaluated = true;
+		_iterations++;
+		return;
+	}
 
 	// Explore le fils
 	{
