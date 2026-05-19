@@ -467,7 +467,11 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	// #11 Plan B — verdict de nulle forcée path-locale (design 2026-05-19).
 	// Calculé UNE fois en fin d'appel à partir du DagExcl du frame (= arêtes
 	// PROUVÉES nulle forcée sur ce chemin : coupes §3 directes + fils
-	// descendus dont la récursion a renvoyé une nulle forcée). Si le meilleur
+	// descendus dont la récursion a renvoyé une nulle forcée). DagExcl est
+	// reconstruit à chaque appel grogros_zero (pile uniquement, non
+	// persistant) : le verdict est donc CONSERVATEUR — aucun faux positif,
+	// mais une nulle forcée peut nécessiter plusieurs visites MCTS pour être
+	// re-confirmée et remonter (résidu assumé, cf. design). Si le meilleur
 	// coup path-aware de CE noeud est une telle arête, ce noeud est une nulle
 	// forcée sur ce chemin : on remonte le verdict au parent par l'out-param.
 	// Jamais sur une structure partagée (invariant 772183a) ; le parent ne
