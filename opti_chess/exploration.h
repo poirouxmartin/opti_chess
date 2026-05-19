@@ -202,7 +202,7 @@ public:
 	double get_node_score(const double alpha, const double beta, const int max_eval, const double max_avg_score, const bool player, Evaluation *custom_eval = nullptr) const;
 
 	// Fonction qui renvoie le coup avec le meilleur score
-	Move get_best_score_move(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100);
+	Move get_best_score_move(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100, const DagExcl* dag_excl = nullptr);
 
 	// Fonction qui renvoie une valeur pr�visionnelle du score du noeud, lorsqu'on ne connait pas les �valuations max (pour la quiecence)
 	int get_previsonal_node_score(const double alpha, const double beta, const bool player) const;

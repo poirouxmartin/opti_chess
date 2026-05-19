@@ -1921,9 +1921,17 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 }
 
 // Fonction qui renvoie le coup avec le meilleur score
-Move Node::get_best_score_move(const double alpha, const double beta, const bool consider_standpat, const int qdepth) {
+Move Node::get_best_score_move(const double alpha, const double beta, const bool consider_standpat, const int qdepth, const DagExcl* dag_excl) {
 
 	int color = _board->get_color();
+
+	// #11 Plan B — classement path-aware (backup uniquement). Une arete de
+	// DagExcl est une nulle forcee PROUVEE sur ce chemin : on la note comme
+	// une nulle (dag_draw_eval) au lieu de son _deep_evaluation partage. Sans
+	// muter quoi que ce soit de partage. dag_excl == nullptr (selection /
+	// affichage / OFF) -> strictement le comportement actuel.
+	Evaluation _dag_draw;
+	if (dag_excl != nullptr) _dag_draw = dag_draw_eval();
 
 	// Meilleure valeur d'évaluation
 	int max_eval = -INT_MAX;
@@ -1932,14 +1940,15 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 	double max_avg_score = 0.0;
 
 	// Cherche la meilleure eval et le meilleure score parmi tous les coups possibles
-	for (auto const& [_, child_link] : _children) {
+	for (auto const& [move, child_link] : _children) {
 		Node* child = child_link._node;
-		if (child->_deep_evaluation._value * color > max_eval) {
-			max_eval = child->_deep_evaluation._value * color;
+		const Evaluation& ev = (dag_excl != nullptr && dag_excl->contains(move)) ? _dag_draw : child->_deep_evaluation;
+		if (ev._value * color > max_eval) {
+			max_eval = ev._value * color;
 		}
 
-		if (_board->_player ? child->_deep_evaluation._avg_score > max_avg_score : 1 - child->_deep_evaluation._avg_score > max_avg_score) {
-			max_avg_score = _board->_player ? child->_deep_evaluation._avg_score : 1 - child->_deep_evaluation._avg_score;
+		if (_board->_player ? ev._avg_score > max_avg_score : 1 - ev._avg_score > max_avg_score) {
+			max_avg_score = _board->_player ? ev._avg_score : 1 - ev._avg_score;
 		}
 	}
 
@@ -1968,7 +1977,8 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 		if (qdepth != -100 && child->_quiescence_depth != qdepth) {
 			continue;
 		}
-		double score = child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player);
+		Evaluation* _ce = (dag_excl != nullptr && dag_excl->contains(move)) ? &_dag_draw : nullptr;
+		double score = child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player, _ce);
 		//cout << "move: " << _board->move_label(move) << " | score: " << score << endl;
 		if (score > best_score || (best_move.is_null_move() && score == best_score)) {
 			best_score = score;
