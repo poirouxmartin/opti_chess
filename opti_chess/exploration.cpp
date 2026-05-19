@@ -464,6 +464,20 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		cout << "negative nodes in grogros zero???" << endl;
 	}
 
+	// #11 Plan B — verdict de nulle forcée path-locale (design 2026-05-19).
+	// Calculé UNE fois en fin d'appel à partir du DagExcl du frame (= arêtes
+	// PROUVÉES nulle forcée sur ce chemin : coupes §3 directes + fils
+	// descendus dont la récursion a renvoyé une nulle forcée). Si le meilleur
+	// coup path-aware de CE noeud est une telle arête, ce noeud est une nulle
+	// forcée sur ce chemin : on remonte le verdict au parent par l'out-param.
+	// Jamais sur une structure partagée (invariant 772183a) ; le parent ne
+	// persiste la nulle qu'à un noeud non partagé (_parent_count<=1), ce qui
+	// inclut la racine. OFF : path_forced_draw == nullptr -> rien.
+	if (g_tt_node_dag && path_forced_draw != nullptr) {
+		const Move _bm_fd = get_best_score_move(alpha, beta, false, -100, &dag_excl);
+		*path_forced_draw = !_bm_fd.is_null_move() && dag_excl.contains(_bm_fd);
+	}
+
 	// Temps de calcul
 	_time_spent += clock() - begin_monte_time;
 
@@ -790,14 +804,27 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		return;
 	}
 
-	// Explore le fils
+	// Explore le fils. #11 Plan B — on capture le verdict de nulle forcée
+	// path-locale du fils (récursion, design 2026-05-19). Si le fils est une
+	// nulle forcée sur CE chemin, son arête devient une arête PROUVÉE nulle
+	// forcée pour le frame courant (même statut qu'une coupe §3 directe) ->
+	// ajoutée à DagExcl. OFF / hors DAG : path_forced_draw côté fils == nullptr
+	// et dag_excl == nullptr -> aucun effet.
+	bool child_forced_draw = false;
 	{
 		PathScope _ps(branch_history, *child->_board);
-		child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &branch_history); // L'évaluation du fils est mise à jour ici
+		child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &branch_history, g_tt_node_dag ? &child_forced_draw : nullptr); // L'évaluation du fils est mise à jour ici
+	}
+	if (g_tt_node_dag && child_forced_draw && dag_excl != nullptr) {
+		dag_excl->add(move);
 	}
 
-	// Met à jour l'évaluation du plateau avec le meilleur coup
-	const Move _bm = get_best_score_move(alpha, beta);
+	// Met à jour l'évaluation du plateau avec le meilleur coup. Sous DAG le
+	// classement est path-aware sur DagExcl : une arête prouvée nulle forcée
+	// est notée comme nulle, donc elle ne peut ni surclasser une vraie ligne
+	// gagnante (anti phantom-draw) ni être ignorée quand tout est nul (anti
+	// false-win). OFF : dag_excl == nullptr -> get_best_score_move inchangé.
+	const Move _bm = get_best_score_move(alpha, beta, false, -100, g_tt_node_dag ? dag_excl : nullptr);
 	if (g_tt_node_dag && dag_excl != nullptr && dag_excl->contains(_bm)) {
 		// #11 Plan B — le meilleur coup est une arete prouvee nulle forcee
 		// sur CE chemin (DagExcl). On persiste la nulle dans _deep_evaluation
