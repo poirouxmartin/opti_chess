@@ -353,7 +353,7 @@ void dag_debug_report() {
 }
 
 // Nouveau GrogrosZero
-void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, PositionHistory *path_history, Evaluation* path_local_eval) {
+void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, PositionHistory *path_history, bool* path_forced_draw) {
 	// TODO:
 	// On peut rajouter la profondeur
 	// Garder le temps de calcul
@@ -429,11 +429,6 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	// jamais consultee -> comportement byte-identique a l'arbre.
 	DagExcl dag_excl;
 
-	// #11 Plan B — Bug 1 opt 1 : scratch pour la valeur de nulle path-locale
-	// remontee par explore_random_child (out-param). Pile uniquement ; OFF :
-	// nullptr passe -> jamais ecrit -> byte-identique.
-	Evaluation dag_child_eval;
-
 	// Exploration
 	while (iterations > 0) {
 
@@ -447,7 +442,7 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 
 		// EXPLORATION D'UN COUP DÉJÀ EXPLORÉ (raffinage)
 		else if (children_count() > 0) {
-			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr, g_tt_node_dag ? &dag_child_eval : nullptr);
+			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr);
 		}
 
 		// Buffers pleins ET rien à raffiner ici : arrêt propre + log unique
@@ -476,7 +471,7 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 }
 
 // Fonction qui explore un nouveau coup
-void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, Evaluation* path_local_eval) {
+void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history) {
 
 	// On prend le premier coup non exploré
 	const Move move = get_first_unexplored_move(true);
@@ -723,7 +718,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 }
 
 // Fonction qui explore dans un plateau fils pseudo-aléatoire
-void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, DagExcl* dag_excl, Evaluation* path_local_eval) {
+void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, DagExcl* dag_excl) {
 
 	// Prend un fils aléatoire
 	const Move move = pick_random_child(alpha, beta, gamma, dag_excl);
@@ -787,13 +782,10 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		// invariant 772183a respecte ; ne mute toujours RIEN de partage).
 		// Sans liste (OFF / debordement) : coupe conservatrice inchangee.
 		if (dag_excl != nullptr) dag_excl->add(move);
-		// Bug 1 opt 1 — spec §3 : remonte la valeur de nulle path-locale par
-		// VALEUR DE RETOUR (out-param), sans muter le Node/arete partages
-		// (invariant 772183a). Le parent substituera cette nulle a
-		// child->_deep_evaluation pour CETTE traversee (cf. backup).
-		if (path_local_eval != nullptr) {
-			*path_local_eval = dag_draw_eval();
-		}
+		// #11 Plan B — coupe structurelle §3 inchangee. L'arete est
+		// enregistree dans DagExcl (= aretes PROUVEES nulle forcee ce
+		// frame) ; le verdict path-local du noeud est calcule une fois en
+		// fin de grogros_zero a partir de DagExcl (cf. design 2026-05-19).
 		_iterations++;
 		return;
 	}
@@ -807,23 +799,16 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	// Met à jour l'évaluation du plateau avec le meilleur coup
 	const Move _bm = get_best_score_move(alpha, beta);
 	if (g_tt_node_dag && dag_excl != nullptr && dag_excl->contains(_bm)) {
-		// Bug 1 opt 1 / spec §3 — le meilleur coup est une arete coupee comme
-		// nulle path-locale sur CE chemin (DagExcl rempli par les coupes §3 de
-		// ce frame). Sa vraie valeur ici est une NULLE, pas son
-		// _deep_evaluation partage (calcule via un autre chemin). On remonte
-		// la nulle par l'out-param. Persistance sur this->_deep_evaluation
-		// SEULEMENT si this n'est pas partage sur cette traversee
+		// #11 Plan B — le meilleur coup est une arete prouvee nulle forcee
+		// sur CE chemin (DagExcl). On persiste la nulle dans _deep_evaluation
+		// UNIQUEMENT si ce noeud n'est pas partage sur cette traversee
 		// (_parent_count<=1) : ecrire une nulle path-locale sur un noeud
 		// partage corromprait les autres chemins (invariant 772183a). Le
-		// backup normal (else) reste STRICTEMENT inchange (pas de regression
-		// du backup MCTS des noeuds partages).
-		const Evaluation _draw = dag_draw_eval();
-		if (path_local_eval != nullptr) *path_local_eval = _draw;
-		if (_parent_count <= 1) _deep_evaluation = _draw;
+		// verdict remonte au parent via grogros_zero (post-loop, Task 4).
+		if (_parent_count <= 1) _deep_evaluation = dag_draw_eval();
 	}
 	else {
 		_deep_evaluation = _children[_bm]._node->_deep_evaluation;
-		if (g_tt_node_dag && path_local_eval != nullptr) *path_local_eval = _deep_evaluation;
 	}
 
 	// #11 Plan A — write-back de la valeur raffinée (le levier réel).
