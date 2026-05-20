@@ -498,6 +498,14 @@ struct Evaluation {
 		return *this;
 	}
 
+	// #11 attempt-7 — égalité de détection-changement (cf. design 2026-05-21).
+	// Compare uniquement les champs pertinents pour décider d'une réécriture
+	// de _deep_evaluation : _value et _avg_score. Ce n'est PAS une égalité
+	// structurelle complète.
+	inline bool operator==(const Evaluation& other) const {
+		return _value == other._value && _avg_score == other._avg_score;
+	}
+
 	// Comparateur
 	bool operator>(Evaluation& other) {
 		if (!other._evaluated)

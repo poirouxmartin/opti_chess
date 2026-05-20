@@ -2245,4 +2245,5 @@ NodeBuffer monte_node_buffer;
 bool g_buffers_full_logged = false;
 bool g_tt_main_search = false;
 bool g_tt_node_dag = false; // #11 Plan B — voir exploration.h
+uint32_t g_dag_batch_seq = 1; // #11 attempt-7 — voir exploration.h §3.2
 robin_map<uint64_t, Node*> node_map; // #11 Plan B — voir exploration.h

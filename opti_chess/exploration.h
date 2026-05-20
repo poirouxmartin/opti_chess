@@ -15,6 +15,13 @@ struct ChildLink {
 	Node* _node = nullptr;
 	int _chosen_iterations = 0;
 	int _propagated_nodes = 0;
+
+	// #11 attempt-7 (cf. design 2026-05-21). Marqueur "cette arête a été
+	// §3-cut pendant le batch courant". Comparé à g_dag_batch_seq pour
+	// reset paresseux (pas d'itération sur toutes les ChildLink à chaque
+	// batch). Set par le §3 cut dans Node::explore_random_child ; lu par
+	// le verdict all-cycle en fin de Node::grogros_zero.
+	uint32_t _cycled_batch_seq = 0;
 };
 
 // #11 Plan B — Bug 1 option 3 : exclusion per-traversal (anti-spin §3).
@@ -286,6 +293,13 @@ extern bool g_tt_main_search;
 // #11 Plan B — DAG de transpositions (partage de noeuds). A/B runtime, defaut
 // OFF : OFF = arbre actuel au byte pres. Pas cense etre ON avec g_tt_main_search.
 extern bool g_tt_node_dag;
+
+// #11 attempt-7 (cf. design 2026-05-21 §3.2). Séquence numérique globale
+// incrémentée à chaque batch grogros_zero racine (par GUI::grogros_analysis
+// et par GUI::run_dag_repro). Sert de marqueur de fraîcheur pour
+// ChildLink::_cycled_batch_seq (reset paresseux par génération). Initialisée
+// à 1 pour que les ChildLink fraîches (_cycled_batch_seq = 0) soient stales.
+extern uint32_t g_dag_batch_seq;
 
 // #11 Plan B — cle Zobrist -> Node* VIVANT. Distinct de transposition_table
 // (TT d'evaluation). Consulte/peuple uniquement si g_tt_node_dag. Meme style
