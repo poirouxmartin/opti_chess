@@ -10,3 +10,6 @@ opti_chess.vcxproj.*
 .github/
 CLAUDE.md
 **/CLAUDE.md
+
+# #11 DAG metrics runtime log artifact (cf. docs/.../2026-05-20-...-logging-design.md)
+opti_chess/dag_metrics.log

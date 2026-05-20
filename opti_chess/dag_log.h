@@ -1,0 +1,54 @@
+#pragma once
+
+// #11 DAG metrics logging (cf. design 2026-05-20).
+// Persistent file-based structured event log for runtime evidence of DAG
+// search behavior on the two reference repros. Compile-time gated for zero
+// runtime cost when disabled. File output is JSON-lines, one event per line,
+// at opti_chess/dag_metrics.log (gitignored).
+
+class Move;       // fwd: opti_chess/board.h
+class Node;       // fwd: opti_chess/exploration.h
+
+namespace dag_log {
+
+	// Compile-time toggle. When false, every function below short-circuits
+	// to a no-op at entry; call sites also wrap in if constexpr to elide
+	// argument evaluation in release builds.
+	constexpr bool enabled = true;
+
+	// Cap on per-event detail events emitted per batch. Beyond this cap,
+	// counter increments still run but detail events are dropped (counted
+	// in `events_dropped`).
+	constexpr int max_events_per_batch = 200;
+
+	enum class Counter {
+		pred_total,
+		pred_count_2,
+		pred_count_3plus,
+		dag_excl_adds,
+		dag_excl_skips,
+		nodes_terminal,
+		nodes_via_explore_new,
+		nodes_via_explore_random,
+		counter_count
+	};
+
+	void session_start(const char* fen, bool dag_on, bool plan_a_on,
+		int iter_budget, const char* repro_name);
+	void session_end(int batches, int final_root_eval, int final_root_pc);
+
+	void batch_start(int seq, int root_pc, int got_moves, int iter_budget);
+	void batch_end(int seq, int iters_done, int root_eval, float root_avg_score);
+
+	// Detail event. Capped at max_events_per_batch per batch.
+	// count_at_fire = current count(child key) + 1 (the would-be count after
+	// a hypothetical push at the §3 cut site).
+	// path_size = path_history.size() at moment of fire.
+	void pred_fire(int depth, int count_at_fire, int path_size,
+		const Node* parent, const Node* child, const Move& m);
+
+	void dag_excl_skip(int depth, const Node* node, const Move& m);
+
+	void bump(Counter c);
+
+} // namespace dag_log
