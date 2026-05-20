@@ -3,6 +3,7 @@
 #include "useful_functions.h"
 #include "zobrist.h"
 #include "windows_tests.h"
+#include "dag_log.h"
 #include <wchar.h>
 #include <sstream>
 #include <stdlib.h>
@@ -1055,12 +1056,113 @@ void GUI::grogros_analysis(int iterations) {
 
 	g_tt_main_search = _tt_main_search; // #11 Plan A — propage le toggle au global lu dans exploration.cpp
 	g_tt_node_dag = _tt_node_dag; // #11 Plan B — propage le toggle au global lu dans exploration.cpp
-	_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations == -1 ? iterations_to_explore : iterations, _quiescence_depth); // TODO: nombre de noeuds à paramétrer
+
+	const int eff_iterations = iterations == -1 ? iterations_to_explore : iterations;
+
+	// #11 DAG metrics logging — wrap the root grogros_zero call with session /
+	// batch lifecycle hooks. OFF byte-identique : if constexpr (!enabled)
+	// élimine tout à la compilation.
+	if constexpr (dag_log::enabled) {
+		static string s_last_fen;
+		static int s_batch_seq = 0;
+		const string cur_fen = _board->to_fen();
+		if (cur_fen != s_last_fen) {
+			dag_log::session_start(cur_fen.c_str(), g_tt_node_dag, g_tt_main_search,
+				eff_iterations, nullptr);
+			s_last_fen = cur_fen;
+			s_batch_seq = 0;
+		}
+		dag_log::batch_start(s_batch_seq,
+			_root_exploration_node ? _root_exploration_node->_parent_count : 0,
+			_board->_got_moves, eff_iterations);
+	}
+
+	_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, eff_iterations, _quiescence_depth); // TODO: nombre de noeuds à paramétrer
+
+	if constexpr (dag_log::enabled) {
+		static int s_batch_seq_after = 0;
+		dag_log::batch_end(s_batch_seq_after,
+			eff_iterations,
+			_root_exploration_node ? _root_exploration_node->_deep_evaluation._value : 0,
+			_root_exploration_node ? _root_exploration_node->_deep_evaluation._avg_score : 0.0f);
+		s_batch_seq_after++;
+	}
 
 	if (g_tt_node_dag) {
 		dag_debug_report(); // #11 Plan B — diagnostic une ligne par batch (cumulatif)
 	}
 	_update_variants = true;
+}
+
+// #11 DAG metrics — exécute un scénario de reproduction connu (cf. dag_log.h).
+// Sauvegarde/restaure les toggles, charge la FEN, force DAG ON / Plan A OFF,
+// puis tourne n_batches × iters_per_batch itérations de grogros_zero. Les
+// événements et compteurs sont écrits dans opti_chess/dag_metrics.log.
+void GUI::run_dag_repro(const char* repro_name, const string& fen,
+	int n_batches, int iters_per_batch) {
+
+	const bool saved_dag = _tt_node_dag;
+	const bool saved_pa = _tt_main_search;
+	_tt_node_dag = true;
+	_tt_main_search = false;
+
+	// Charge la position et reconstruit l'arbre d'exploration via la GUI.
+	load_FEN(fen, false);
+
+	// Propage les toggles aux globaux lus par exploration.cpp (mirror de
+	// grogros_analysis ci-dessus).
+	g_tt_main_search = _tt_main_search;
+	g_tt_node_dag = _tt_node_dag;
+
+	dag_log::session_start(fen.c_str(), g_tt_node_dag, g_tt_main_search,
+		iters_per_batch, repro_name);
+
+	int final_eval = 0;
+	int final_pc = 0;
+
+	for (int b = 0; b < n_batches; ++b) {
+		dag_log::batch_start(b,
+			_root_exploration_node ? _root_exploration_node->_parent_count : 0,
+			_board->_got_moves, iters_per_batch);
+
+		_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval,
+			_alpha, _beta, _gamma, iters_per_batch, _quiescence_depth);
+
+		final_eval = _root_exploration_node ? _root_exploration_node->_deep_evaluation._value : 0;
+		final_pc = _root_exploration_node ? _root_exploration_node->_parent_count : 0;
+
+		dag_log::batch_end(b, iters_per_batch,
+			_root_exploration_node ? _root_exploration_node->_deep_evaluation._value : 0,
+			_root_exploration_node ? _root_exploration_node->_deep_evaluation._avg_score : 0.0f);
+	}
+
+	dag_log::session_end(n_batches, final_eval, final_pc);
+
+	cout << "[REPRO] " << repro_name << " — final_root_eval=" << final_eval
+		<< " final_root_pc=" << final_pc
+		<< " (log: opti_chess/dag_metrics.log)" << endl;
+
+	// Restaure les toggles utilisateur.
+	_tt_node_dag = saved_dag;
+	_tt_main_search = saved_pa;
+	g_tt_node_dag = _tt_node_dag;
+	g_tt_main_search = _tt_main_search;
+}
+
+void GUI::run_dag_repro_1() {
+	// Position 1 — théoriquement nulle (K+pion h vs K). Moteur false-wins
+	// actuellement sous DAG ON. Cible après fix : nulle quasi-instantanée.
+	run_dag_repro("repro1_kp_h_draw",
+		"6k1/8/7P/7K/8/8/8/8 w - - 3 72",
+		5, 1000);
+}
+
+void GUI::run_dag_repro_2() {
+	// Position 2 — gain blanc (Ke3 ou Ke2). Anchor de NON-RÉGRESSION.
+	// DAG ON trouve le gain en ~2s actuellement (vs ~1min sans DAG).
+	run_dag_repro("repro2_pawn_endgame_win",
+		"8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7",
+		5, 1000);
 }
 
 // Fonction qui dessine la GUI

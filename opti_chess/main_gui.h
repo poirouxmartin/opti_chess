@@ -316,6 +316,16 @@ inline int main_ui() {
 			cout << "TT node DAG : " << (main_GUI._tt_node_dag ? "true" : "false") << endl;
 		}
 
+		// 1 - #11 DAG metrics : lance la reproduction Position 1 (KP(h)-vs-K nulle théorique)
+		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_ONE)) {
+			main_GUI.run_dag_repro_1();
+		}
+
+		// 2 - #11 DAG metrics : lance la reproduction Position 2 (gain blanc, anchor non-régression)
+		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_TWO)) {
+			main_GUI.run_dag_repro_2();
+		}
+
 		// LCTRL-N - Recommencer une partie
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_N)) {
 			main_GUI.reset_game();
