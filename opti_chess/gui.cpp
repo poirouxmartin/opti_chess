@@ -1152,17 +1152,22 @@ void GUI::run_dag_repro(const char* repro_name, const string& fen,
 void GUI::run_dag_repro_1() {
 	// Position 1 — théoriquement nulle (K+pion h vs K). Moteur false-wins
 	// actuellement sous DAG ON. Cible après fix : nulle quasi-instantanée.
+	// 10 × 2000 iters ≈ assez pour caractériser la dérive d'évaluation et la
+	// distribution des cycles sur cette position simple.
 	run_dag_repro("repro1_kp_h_draw",
 		"6k1/8/7P/7K/8/8/8/8 w - - 3 72",
-		5, 1000);
+		10, 2000);
 }
 
 void GUI::run_dag_repro_2() {
 	// Position 2 — gain blanc (Ke3 ou Ke2). Anchor de NON-RÉGRESSION.
-	// DAG ON trouve le gain en ~2s actuellement (vs ~1min sans DAG).
+	// DAG ON trouve le gain en ~2s en marche manuelle (vs ~1min sans DAG) ;
+	// l'éval N'EST PAS statique — il faut laisser la recherche descendre.
+	// 20 × 3000 iters ≈ 60k itérations pour donner le temps de stabiliser le
+	// gain (le pic-batch précédent à 1000 iters/batch restait à eval static).
 	run_dag_repro("repro2_pawn_endgame_win",
 		"8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7",
-		5, 1000);
+		20, 3000);
 }
 
 // Fonction qui dessine la GUI

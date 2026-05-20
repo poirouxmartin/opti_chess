@@ -18,8 +18,10 @@ namespace dag_log {
 
 	// Cap on per-event detail events emitted per batch. Beyond this cap,
 	// counter increments still run but detail events are dropped (counted
-	// in `events_dropped`).
-	constexpr int max_events_per_batch = 200;
+	// in `events_dropped`). Raised from 200 → 2000 after first-run analysis :
+	// Repro 1 produced 326-599 pred_fires per batch, dropping 126-399 ; 2000
+	// covers all observed volumes with margin.
+	constexpr int max_events_per_batch = 2000;
 
 	enum class Counter {
 		pred_total,
