@@ -794,7 +794,7 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 
 	// Explore le fils. #11 GHI — caller-init pour le canal path-local
 	// (design 2026-05-20 §4.3). Fallback safe = _deep_evaluation partagé,
-	// flag d’émission initialisé false. Si la rêcursion du fils satisfait la
+	// flag d'émission initialisé false. Si la récursion du fils satisfait la
 	// porte d’énumération stricte (compute_path_local_eval, §4.4), elle
 	// écrasera child_local et marquera child_local_emitted = true ; sinon
 	// les deux out-params restent au fallback. OFF / hors DAG : pointeurs
@@ -807,7 +807,7 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	}
 
 	// Met à jour l'évaluation du plateau avec le meilleur coup. Backup MCTS
-	// normal — partagé, indépendant du chemin. SéMANTIQUEMENT INCHANGé par
+	// normal — partagé, indépendant du chemin. SÉMANTIQUEMENT INCHANGÉ par
 	// rapport au baseline (sélection et écriture identiques).
 	const Move _bm = get_best_score_move(alpha, beta);
 	_deep_evaluation = _children[_bm]._node->_deep_evaluation;
@@ -817,11 +817,11 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	// valeur path-locale de CE nœud via compute_path_local_eval, avec
 	// substitution de la valeur émise par le fils tout juste descendu
 	// (essentiel pour bubbler à travers des nœuds intérieurs partagés). La
-	// porte d’énumération stricte (children_count() >= _got_moves) bloque
-	// les faux positifs de partial-expansion. L’émission via out-param
+	// porte d'énumération stricte (children_count() >= _got_moves) bloque
+	// les faux positifs de partial-expansion. L'émission via out-param
 	// bubble TOUJOURS (jamais de mutation partagée). Persistance dans
 	// _deep_evaluation UNIQUEMENT si _parent_count <= 1 (invariant 772183a).
-	// OFF / hors DAG : la garde court-circuite à la première conjoncture.
+	// OFF / hors DAG : la garde court-circuite à la première conjonction.
 	if (g_tt_node_dag && path_local_eval != nullptr && path_history != nullptr) {
 		Evaluation node_local;
 		const Move& sub_move = child_local_emitted ? move : Move();
