@@ -240,6 +240,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="buffer.cpp" />
+    <ClCompile Include="dag_log.cpp" />
     <ClCompile Include="evaluation.cpp" />
     <ClCompile Include="exploration.cpp" />
     <ClCompile Include="game_tree.cpp" />
@@ -261,6 +262,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="buffer.h" />
+    <ClInclude Include="dag_log.h" />
     <ClInclude Include="evaluation.h" />
     <ClInclude Include="exploration.h" />
     <ClInclude Include="game_tree.h" />
