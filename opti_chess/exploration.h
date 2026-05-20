@@ -147,13 +147,13 @@ public:
 	void init_node();
 
 	// Nouveau GrogrosZero
-	void grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int nodes, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, Evaluation* path_local_eval = nullptr);
+	void grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int nodes, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, Evaluation* path_local_eval = nullptr, bool* path_local_emitted = nullptr);
 
 	// Fonction qui explore un nouveau coup
 	void explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, Evaluation* path_local_eval = nullptr);
 
 	// Fonction qui explore dans un plateau fils pseudo-al�atoire
-	void explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, DagExcl* dag_excl = nullptr, Evaluation* path_local_eval = nullptr);
+	void explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, DagExcl* dag_excl = nullptr, Evaluation* path_local_eval = nullptr, bool* path_local_emitted = nullptr);
 
 	// Fonction qui renvoie le fils le plus explor�
 	Move get_most_explored_child_move();
@@ -203,6 +203,25 @@ public:
 
 	// Fonction qui renvoie le coup avec le meilleur score
 	Move get_best_score_move(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100);
+
+	// #11 GHI path-local revaluation (cf. design 2026-05-20 §3, §4.4).
+	// Calcule la valeur path-locale de ce nœud sur la traversée courante :
+	// minimax sur les fils NON cycle-touch (= dont _deep_evaluation est de
+	// confiance sur ce chemin) plus dag_draw_eval() comme candidat virtuel
+	// représentant l'option du trait de jouer une nulle volontaire. Renvoie
+	// true et écrit *out si la porte d'énumération stricte est satisfaite
+	// (children_count() >= _got_moves) ; sinon false (l'appelant garde son
+	// fallback). Substitution d'UN fils (substitution_move != null Move) :
+	// utiliser substitution_value pour ce fils au lieu de son
+	// _deep_evaluation partagé — essentiel pour faire bubbler une valeur
+	// raffinée profonde à travers des nœuds intérieurs partagés
+	// (_parent_count > 1) dont _deep_evaluation ne peut être persisté.
+	// L'appelant garantit g_tt_node_dag == true.
+	bool compute_path_local_eval(
+		const PositionHistory& path_history,
+		const Move& substitution_move,
+		const Evaluation& substitution_value,
+		Evaluation* out) const;
 
 	// Fonction qui renvoie une valeur pr�visionnelle du score du noeud, lorsqu'on ne connait pas les �valuations max (pour la quiecence)
 	int get_previsonal_node_score(const double alpha, const double beta, const bool player) const;
