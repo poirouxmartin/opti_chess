@@ -21,7 +21,10 @@ int g_counters[(int)Counter::counter_count] = {};
 
 void open_lazy() {
 	if (g_log_open) return;
-	g_log.open("opti_chess/dag_metrics.log", std::ios::app);
+	// Chemin RELATIF au cwd. Visual Studio lance l'exe depuis opti_chess/opti_chess/
+	// donc le log atterrit là ; un lancement depuis la racine workspace le ferait
+	// atterrir à la racine. Le .gitignore couvre les deux via glob (**/dag_metrics.log).
+	g_log.open("dag_metrics.log", std::ios::app);
 	g_log_open = g_log.is_open();
 	if (g_log_open && g_batch_buffer.capacity() < 64 * 1024) {
 		g_batch_buffer.reserve(64 * 1024);

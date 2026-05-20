@@ -12,4 +12,6 @@ CLAUDE.md
 **/CLAUDE.md
 
 # #11 DAG metrics runtime log artifact (cf. docs/.../2026-05-20-...-logging-design.md)
-opti_chess/dag_metrics.log
+# Glob: l'exe peut être lancé depuis la racine workspace (log à la racine) ou
+# depuis opti_chess/opti_chess/ via VS (log dans ce dossier) ; on couvre les deux.
+**/dag_metrics.log
