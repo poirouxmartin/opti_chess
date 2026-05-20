@@ -4,9 +4,9 @@
 
 **Goal:** Add persistent file-based JSON-lines metrics logging to characterize DAG search behavior on issue #11 reference positions, so the next design attempt is grounded in measured runtime evidence rather than speculation. Observability-only — no search-logic changes.
 
-**Architecture:** New self-contained TU pair `opti_chess/dag_log.{h,cpp}` exposes a small API (session/batch lifecycle + per-event detail + counter increments). All API calls are short-circuited to no-ops by a `constexpr bool dag_log::enabled` gate so OFF builds are byte-identical to baseline. Instrumentation calls are placed at 5 sites in `exploration.cpp`, the root `grogros_zero` call in `gui.cpp`, and a new repro entry point in `tests.cpp`. A `PositionHistory::_game_history_size` field (informational only — no logic reads it) lets the §3 cut decompose predicate fires into game-history vs search-traversal matches — the **single decomposition all six prior #11 design attempts lacked direct visibility into**.
+**Architecture:** New self-contained TU pair `opti_chess/dag_log.{h,cpp}` exposes a small API (session/batch lifecycle + per-event detail + counter increments). All API calls are short-circuited to no-ops by a `constexpr bool dag_log::enabled` gate so OFF builds are byte-identical to baseline. Instrumentation calls are placed at 5 sites in `exploration.cpp`, the root `grogros_zero` call in `gui.cpp`, and a new repro entry point in `tests.cpp`. **Codebase reality verified Task 1**: `PositionHistory` is `tsl::robin_map<uint64_t, uint8_t>` (a count map) and the search's `path_history` carries only search-traversal positions (not game-history). Per-event detail reports `count_at_fire` (would-be count after a hypothetical push) and `path_size` (current depth), computed via the existing `position_history_count` helper. No structural changes to `PositionHistory`.
 
-**Tech Stack:** C++17, MSVC (`opti_chess.sln`), single-threaded engine. No automated test framework — "test" per task = clean MSBuild + a written OFF-byte-identical argument + a couple of runtime structural checks (e.g., grep that the log file is created with valid JSON-lines after a smoke run). Final acceptance is **USER-run** (assistant cannot run the raylib GUI): the user invokes the two repro entry points and shares the resulting log file.
+**Tech Stack:** C++17, MSVC (`opti_chess.sln`), single-threaded engine. No automated test framework — "test" per task = clean MSBuild + a written OFF-byte-identical argument. Final acceptance is **USER-run** (assistant cannot run the raylib GUI): the user invokes the two repro entry points via keys `1`/`2` and shares the resulting log file.
 
 Design spec: `docs/superpowers/specs/2026-05-20-optichess-dag-metrics-logging-design.md`.
 
@@ -20,70 +20,58 @@ Variant B (Insiders Debug x64), confirmed on this machine in the prior #11 sessi
 & 'C:\Program Files\Microsoft Visual Studio\18\Insiders\MSBuild\Current\Bin\MSBuild.exe' opti_chess.sln /t:Build /p:Configuration=Debug /p:Platform=x64 /m /nologo /clp:ErrorsOnly /v:m; "EXITCODE=$LASTEXITCODE"
 ```
 
-Success = `EXITCODE=0` and no `error` lines. **Do NOT modify any `.vcxproj`/`.sln`/project file.** When a new `.cpp` is created, the VS project auto-discovers it on next IDE open, but command-line MSBuild needs it in the project file. If MSBuild fails to include `dag_log.cpp` automatically, the implementer must NOT edit the `.vcxproj` — instead, ask the user to add the new files to the VS project via the IDE, then resume.
+Success = `EXITCODE=0` and no `error` lines. **Do NOT modify any `.vcxproj`/`.sln`/project file.** When a new `.cpp` is created, command-line MSBuild may not auto-discover it. If MSBuild fails to find `dag_log.cpp`, the implementer must NOT edit the `.vcxproj` — instead, report BLOCKED and ask the user to add the new files via Solution Explorer → opti_chess → Add → Existing Item, then resume.
 
-Commits: English, ASCII, conventional commit, `(#11)` ref, **no AI attribution**. French comments use real Unicode (é, è, à, ç, ê, î, ô, û, ù, œ). Do not commit `opti_chess/TODO_list.txt`, `opti_chess/Tests.txt`, `opti_chess/Tests.txt+tmp`, or `opti_chess/dag_metrics.log` (the latter will be added to `.gitignore` in Task 2). Do not commit any prior plan file (e.g., `docs/superpowers/plans/2026-05-19-optichess-dag-forced-draw-bubble.md` left untracked from earlier).
+Commits: English, ASCII, conventional commit, `(#11)` ref, **no AI attribution**. French comments use real Unicode (é, è, à, ç, ê, î, ô, û, ù, œ). Do not commit `opti_chess/TODO_list.txt`, `opti_chess/Tests.txt`, `opti_chess/Tests.txt+tmp`, or `opti_chess/dag_metrics.log` (the latter is added to `.gitignore` in Task 2).
 
-Baseline: tip `48ee48a` (spec update committed; functional state `a8b4004` = `6e8c030` content).
+Baseline: tip `5fe8584` (plan committed). Functional state `a8b4004` = `6e8c030` content.
 
 ---
 
 ## File structure
 
-All changes touch six files; two are new:
+All changes touch five files; two are new:
 
 - **Create**: `opti_chess/dag_log.h` — API + constexpr toggle + Counter enum + forward decls.
 - **Create**: `opti_chess/dag_log.cpp` — file handle, lazy-open, JSON formatting via `snprintf`, per-batch counter state, flush at batch boundaries.
-- **Modify**: `opti_chess/exploration.h` — add `_game_history_size` field to `PositionHistory` (and an accessor `game_history_size()`); declarations only.
-- **Modify**: `opti_chess/exploration.cpp` — set `_game_history_size` in the FEN-loading code path; add 5 instrumentation call sites (§3 cut, `pick_random_child` DagExcl skip, `explore_new_move` entry, `explore_random_child` entry, `grogros_zero` terminal returns).
-- **Modify**: `opti_chess/gui.cpp` — wrap the root `grogros_zero` call with `session_start` / `batch_start` / `batch_end`; add two key bindings ('1' and '2') invoking `run_dag_repro_1()` / `run_dag_repro_2()`.
-- **Modify**: `opti_chess/tests.cpp` — add `run_dag_repro(name, fen, n_batches, iters_per_batch)` plus `run_dag_repro_1()` and `run_dag_repro_2()` wrappers.
+- **Modify**: `opti_chess/exploration.cpp` — add 5 instrumentation call sites (§3 cut, `pick_random_child` DagExcl skip, `explore_new_move` entry, `explore_random_child` entry, `grogros_zero` terminal returns). No header changes.
+- **Modify**: `opti_chess/gui.cpp` — wrap the root `grogros_zero` call with `session_start`/`batch_start`/`batch_end`; add two key bindings (`1` and `2`) invoking `run_dag_repro_1()`/`run_dag_repro_2()`.
+- **Modify**: `opti_chess/tests.cpp` — add `run_dag_repro(name, fen, n_batches, iters_per_batch)` plus `run_dag_repro_1()`/`run_dag_repro_2()` wrappers. Possibly `opti_chess/tests.h` if forward decls are needed for gui.cpp.
 - **Modify**: `.gitignore` (workspace root) — add `opti_chess/dag_metrics.log`.
 
-`PositionHistory` is currently declared in `opti_chess/exploration.h` (per memory and recent #11 session knowledge). If Task 1 finds it lives elsewhere, the implementer adjusts paths.
-
-Task order: design gate (no code) → new TU `dag_log` (inert) → `PositionHistory` field (inert) → exploration.cpp instrumentation → gui.cpp + tests.cpp invocation + key bindings → final build + push.
+Task order: spec already validated against codebase (L-Task 1 completed inline; findings folded into spec). Tasks 2-5 = code; Task 5 = build + push.
 
 ---
 
-## Task 1: Design-validation gate (no code)
+## Verified facts from L-Task 1 (already completed inline)
 
-**Files:** none (this plan, annotated).
-
-Six prior #11 attempts each tripped on an unverified assumption. Confirm the structural facts before any code edit.
-
-- [ ] **Step 1: Confirm the build invocation.** Variant B path exists. Note any deviation if MSBuild reports a project-file issue when a new `.cpp` is added (Task 2 may need the user to add files via VS IDE).
-
-- [ ] **Step 2: Locate `PositionHistory`.** Grep `class PositionHistory\|struct PositionHistory` across `opti_chess/`. Confirm the file. Read its declaration to identify:
-  - Storage of zobrist keys (likely a `std::vector<uint64_t>` or a fixed array)
-  - Existing accessors (`size()`, `push()`, `pop()`, key iteration)
-  - Where it's instantiated and how it's initialized when the GUI loads a FEN
-  Record the exact field names and the file paths so Tasks 3 and 4 use the verified API.
-
-- [ ] **Step 3: Locate root `grogros_zero` call in `gui.cpp`.** Grep `_root_exploration_node->grogros_zero\|->grogros_zero(` in `gui.cpp`. There may be one or two call sites (per-batch invocation, possibly a one-shot variant). Record the line numbers + full argument list. Task 5's gui.cpp instrumentation wraps these exact calls.
-
-- [ ] **Step 4: Locate FEN-loading code.** Grep `from_fen\|load_fen\|set_position` in `opti_chess/`. Find where the GUI loads a position string and where `PositionHistory` is (re-)initialized with game-history. Record the exact site so Task 3 sets `_game_history_size` correctly.
-
-- [ ] **Step 5: Confirm `Board::to_fen()` and `Board::move_label(Move)` (or equivalents).** Grep `to_fen\|move_label\|to_string.*move\|move_to_string` in `opti_chess/board.{h,cpp}`. Record the actual signatures. If `to_fen` returns `std::string`, fine; if it requires a buffer, adapt accordingly. Task 2 + Task 4 use these in `pred_fire`/`dag_excl_skip` event payloads.
-
-- [ ] **Step 6: Locate key-binding handling in `gui.cpp`.** Grep `IsKeyPressed\|KEY_O\|KEY_I\b` in `gui.cpp` to find the existing key dispatch block (where `O` toggles DAG and `I` toggles Plan A). Confirm '1' (`KEY_ONE`) and '2' (`KEY_TWO`) are not yet bound. If they are, pick the next free pair and document in this step. Task 5 adds the new bindings there.
-
-- [ ] **Step 7: Confirm `tests.cpp` is in the build.** Grep `void.*test_\|void.*Test\|run_tests` in `opti_chess/tests.cpp` to confirm it compiles as part of the project. Record one existing entry-point signature so the new `run_dag_repro` follows the same pattern.
-
-- [ ] **Step 8: Confirm Position 1 and Position 2 FENs parse.** Spot-check that `6k1/8/7P/7K/8/8/8/8 w - - 3 72` (Position 1) and `8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7` (Position 2) are syntactically valid (no obvious typo). Recommended: by inspection only; no runtime test required.
-
-- [ ] **Step 9: No commit (design only).**
+- Build: Variant B (`C:\Program Files\Microsoft Visual Studio\18\Insiders\MSBuild\Current\Bin\MSBuild.exe`) confirmed.
+- `PositionHistory = tsl::robin_map<uint64_t, uint8_t>` aliased from `RepetitionHistory` (defined `board.h:16`, aliased `exploration.h:10`). No ordered list — pure count map.
+- Predicate: `position_is_draw_by_repetition(history, board)` = `position_history_count(history, board) + 1 >= search_repetition_limit` (`exploration.cpp:129`). `position_history_count(...)` returns `path_history.find(key)->second` or 0 (`exploration.cpp:73`).
+- Root `grogros_zero` call: `gui.cpp:1058` — `_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations == -1 ? iterations_to_explore : iterations, _quiescence_depth);` — note no `path_history` argument; `grogros_zero` creates `local_path_history` (`exploration.cpp:391-393`).
+- §3 cut location: inside `Node::explore_random_child` (~`exploration.cpp:790`).
+- `position_history_count` is declared `static` (anonymous namespace at `exploration.cpp:73`). Logging-from-anywhere requires either (a) re-doing the lookup inline at the §3 cut site, or (b) lifting the helper out of the anonymous namespace. The plan uses (a): one-line inline lookup via `path_history.find()->second` at the §3 cut site, avoiding any header change.
+- `Board::to_fen()`: TO BE VERIFIED at Task 2 Step 0 below (the implementer must grep). The plan's `dag_log.cpp` code assumes a `std::string Board::to_fen() const` returning the FEN; if the actual API differs (e.g., takes a buffer), adapt the four call sites in `dag_log.cpp`.
+- `Board::move_label(Move)`: TO BE VERIFIED at Task 2 Step 0 (grep). Adapt similarly.
 
 ---
 
 ## Task 2: New TU `dag_log.{h,cpp}` + `.gitignore` (fully inert)
 
-Create the logging API + file-output implementation. No caller exists yet → fully byte-identical to baseline both at `dag_log::enabled = true` and `dag_log::enabled = false`.
+Create the logging API + file-output implementation. No caller exists yet → fully byte-identical to baseline.
 
 **Files:**
 - Create: `opti_chess/dag_log.h`
 - Create: `opti_chess/dag_log.cpp`
 - Modify: `.gitignore` (workspace root)
+
+- [ ] **Step 0: Verify `Board::to_fen()` and `Board::move_label(Move)` signatures.** Grep:
+
+```
+grep -n "to_fen\|move_label" opti_chess/board.h
+```
+
+Record the exact signatures. If `to_fen()` returns `std::string`, no change needed below. If it requires a buffer or has a different name, adapt the four call sites in Step 2 (the `to_fen()`/`move_label(m)` calls inside `pred_fire` and `dag_excl_skip`).
 
 - [ ] **Step 1: Create `opti_chess/dag_log.h`.** Write exactly:
 
@@ -102,7 +90,7 @@ class Node;       // fwd: opti_chess/exploration.h
 namespace dag_log {
 
 	// Compile-time toggle. When false, every function below short-circuits
-	// to a no-op at the entry; call sites also wrap in if constexpr to elide
+	// to a no-op at entry; call sites also wrap in if constexpr to elide
 	// argument evaluation in release builds.
 	constexpr bool enabled = true;
 
@@ -113,8 +101,8 @@ namespace dag_log {
 
 	enum class Counter {
 		pred_total,
-		pred_search_traversal,
-		pred_game_history,
+		pred_count_2,
+		pred_count_3plus,
 		dag_excl_adds,
 		dag_excl_skips,
 		nodes_terminal,
@@ -130,8 +118,11 @@ namespace dag_log {
 	void batch_start(int seq, int root_pc, int got_moves, int iter_budget);
 	void batch_end(int seq, int iters_done, int root_eval, float root_avg_score);
 
-	void pred_fire(bool is_game_history, int depth, int hist_idx,
-		int hist_size, int game_hist_size,
+	// Detail event. Capped at max_events_per_batch per batch.
+	// count_at_fire = current count(child key) + 1 (the would-be count after
+	// a hypothetical push at the §3 cut site).
+	// path_size = path_history.size() at moment of fire.
+	void pred_fire(int depth, int count_at_fire, int path_size,
 		const Node* parent, const Node* child, const Move& m);
 
 	void dag_excl_skip(int depth, const Node* node, const Move& m);
@@ -141,12 +132,12 @@ namespace dag_log {
 } // namespace dag_log
 ```
 
-- [ ] **Step 2: Create `opti_chess/dag_log.cpp`.** Write exactly (uses `snprintf` into stack buffers + a single reusable batch buffer to avoid per-event heap allocations):
+- [ ] **Step 2: Create `opti_chess/dag_log.cpp`.** Write exactly:
 
 ```cpp
 #include "dag_log.h"
 #include "exploration.h"   // Node, _board, _parent_count, _deep_evaluation
-#include "board.h"         // Board, Move, to_fen, move_label (verified Task 1)
+#include "board.h"         // Board, Move, to_fen, move_label
 
 #include <cstdio>
 #include <cstring>
@@ -192,8 +183,8 @@ void iso_time_now(char* buf, size_t bufsize) {
 	std::strftime(buf, bufsize, "%Y-%m-%dT%H:%M:%SZ", &tm_buf);
 }
 
-// Copy a string into out_buf with size limit, ensuring NUL-termination and
-// escaping just `"` and `\` (FENs / SAN are ASCII-safe otherwise).
+// Copy a string into out_buf with size limit + JSON-escape `"` and `\`.
+// FENs and SAN are otherwise ASCII-safe.
 void copy_json_safe(char* out_buf, size_t out_size, const char* in) {
 	size_t j = 0;
 	for (size_t i = 0; in && in[i] != 0 && j + 2 < out_size; ++i) {
@@ -276,14 +267,14 @@ void batch_end(int seq, int iters_done, int root_eval, float root_avg_score) {
 	char line[1024];
 	std::snprintf(line, sizeof(line),
 		"{\"t\":\"batch_end\",\"seq\":%d,\"iters_done\":%d,\"root_eval\":%d,\"root_eval_avg_score\":%.4f,"
-		"\"counters\":{\"pred_total\":%d,\"pred_search_traversal\":%d,\"pred_game_history\":%d,"
+		"\"counters\":{\"pred_total\":%d,\"pred_count_2\":%d,\"pred_count_3plus\":%d,"
 		"\"dag_excl_adds\":%d,\"dag_excl_skips\":%d,"
 		"\"nodes_terminal\":%d,\"nodes_via_explore_new\":%d,\"nodes_via_explore_random\":%d,"
 		"\"events_dropped\":%d}}\n",
 		seq, iters_done, root_eval, (double)root_avg_score,
 		g_counters[(int)Counter::pred_total],
-		g_counters[(int)Counter::pred_search_traversal],
-		g_counters[(int)Counter::pred_game_history],
+		g_counters[(int)Counter::pred_count_2],
+		g_counters[(int)Counter::pred_count_3plus],
 		g_counters[(int)Counter::dag_excl_adds],
 		g_counters[(int)Counter::dag_excl_skips],
 		g_counters[(int)Counter::nodes_terminal],
@@ -294,8 +285,7 @@ void batch_end(int seq, int iters_done, int root_eval, float root_avg_score) {
 	flush_batch_buffer();
 }
 
-void pred_fire(bool is_game_history, int depth, int hist_idx,
-	int hist_size, int game_hist_size,
+void pred_fire(int depth, int count_at_fire, int path_size,
 	const Node* parent, const Node* child, const Move& m) {
 	if constexpr (!enabled) return;
 	if (!g_log_open) return;
@@ -305,12 +295,12 @@ void pred_fire(bool is_game_history, int depth, int hist_idx,
 	}
 	g_events_this_batch++;
 
-	// FEN + move-label extraction. APIs verified in Task 1; if Board::to_fen
-	// requires a buffer rather than returning std::string, adapt these calls.
 	char node_fen[128] = "";
 	char child_fen[128] = "";
 	char move_str[16] = "";
 
+	// If Board::to_fen() / move_label have different signatures (verified
+	// Task 2 Step 0), adapt the four lines below.
 	if (parent && parent->_board) {
 		std::string s = parent->_board->to_fen();
 		copy_json_safe(node_fen, sizeof(node_fen), s.c_str());
@@ -332,11 +322,10 @@ void pred_fire(bool is_game_history, int depth, int hist_idx,
 
 	char line[1024];
 	std::snprintf(line, sizeof(line),
-		"{\"t\":\"pred_fire\",\"kind\":\"%s\",\"depth\":%d,\"hist_idx\":%d,\"hist_size\":%d,\"game_hist_size\":%d,"
+		"{\"t\":\"pred_fire\",\"depth\":%d,\"count_at_fire\":%d,\"path_size\":%d,"
 		"\"child_pc\":%d,\"child_eval\":%d,\"child_avg\":%.4f,"
 		"\"node_fen\":\"%s\",\"child_fen\":\"%s\",\"child_move\":\"%s\"}\n",
-		is_game_history ? "game_history" : "search_traversal",
-		depth, hist_idx, hist_size, game_hist_size,
+		depth, count_at_fire, path_size,
 		child_pc, child_eval, (double)child_avg,
 		node_fen, child_fen, move_str);
 	g_batch_buffer += line;
@@ -373,8 +362,6 @@ void bump(Counter c) {
 } // namespace dag_log
 ```
 
-(If Task 1 found that `Board::to_fen` or `Board::move_label` have different names/signatures, adapt the four lines that call them. The remainder is signature-independent.)
-
 - [ ] **Step 3: Add `.gitignore` entry.** Append to the workspace-root `.gitignore`:
 
 ```
@@ -382,11 +369,11 @@ void bump(Counter c) {
 opti_chess/dag_metrics.log
 ```
 
-If `.gitignore` does not yet exist at workspace root, create it with the two lines above. If it exists, append (don't overwrite).
+If `.gitignore` does not yet exist, create it with the two lines above. If it exists, append (don't overwrite).
 
 - [ ] **Step 4: Build.** Run the build command. Expected `EXITCODE=0`, no `error` lines.
 
-  **Sub-step on linker complaint about `dag_log.cpp` not being in the project**: MSBuild may not auto-discover the new `.cpp`. If it reports `dag_log.cpp` is unbuilt, do NOT edit `opti_chess.vcxproj`. Pause, report `BLOCKED` with the message: *"User: please add `opti_chess/dag_log.cpp` and `opti_chess/dag_log.h` to the Visual Studio project (Solution Explorer → opti_chess → Add → Existing Item) and rebuild."* Once user confirms, resume from Step 4.
+  Sub-step on MSBuild not finding `dag_log.cpp`: report BLOCKED with message *"User: please add `opti_chess/dag_log.cpp` and `opti_chess/dag_log.h` to the Visual Studio project (Solution Explorer → opti_chess → Add → Existing Item) and rebuild."* Wait for user confirmation, then resume from Step 4.
 
 - [ ] **Step 5: Commit.**
 
@@ -395,62 +382,13 @@ git add opti_chess/dag_log.h opti_chess/dag_log.cpp .gitignore
 git commit -m "feat(log): add dag_log TU + gitignore for #11 metrics logging (#11, inert)"
 ```
 
-OFF-byte-identical argument: nothing in `dag_log.{h,cpp}` is called from any other TU yet (Tasks 4-5 wire the callers). Even with `enabled = true`, no symbol is invoked → no side effect. With `enabled = false`, every API entry returns immediately. Build adds two compilation units + one binary symbol per public function — all dead code.
+OFF-byte-identical argument: nothing in `dag_log.{h,cpp}` is called from any other TU yet. Even with `enabled = true`, no symbol is invoked → no side effect. With `enabled = false`, every API entry returns immediately. Build adds two compilation units + binary symbols — all dead code.
 
 ---
 
-## Task 3: `PositionHistory::_game_history_size` field (fully inert)
+## Task 3: Instrumentation in `exploration.cpp`
 
-Add the informational field + accessor + initialization in the FEN loader. No production code reads it (only Task 4's logging-gated reads will). OFF byte-identical.
-
-**Files:**
-- Modify: `opti_chess/exploration.h` (or wherever `PositionHistory` lives — verified Task 1 Step 2)
-- Modify: `opti_chess/exploration.cpp` (or the FEN loader file — verified Task 1 Step 4)
-
-- [ ] **Step 1: Add the field + accessor.** In the `PositionHistory` declaration (location confirmed Task 1 Step 2), add:
-
-```cpp
-	// #11 GHI metrics — informational. Split between game-history-prefix
-	// (entries from the played game, loaded with the FEN) and search-
-	// traversal entries (pushed by PathScope during descent). Set when
-	// PositionHistory is (re-)initialized from a FEN ; never modified by
-	// PathScope push/pop. Aucun chemin de production ne lit ce champ ;
-	// uniquement le logging gate (dag_log::enabled) le consulte.
-	size_t _game_history_size = 0;
-
-	size_t game_history_size() const { return _game_history_size; }
-```
-
-Place the field next to existing storage members (per the existing convention in the struct/class).
-
-- [ ] **Step 2: Set the field in the FEN loader.** At the site identified in Task 1 Step 4 — where `PositionHistory` is (re-)initialized for a freshly loaded position — set `_game_history_size = <current_size_after_history_load>`. Concrete example shape (adjust to the actual code):
-
-```cpp
-// existing FEN-load code that builds the history from played-game moves:
-hist.push_or_init_from_played_moves(...);
-hist._game_history_size = hist.size();   // mark end of game-history prefix
-```
-
-If the FEN loader is in a different TU, modify there. If the existing loader doesn't explicitly populate history (e.g., starts from `position startpos`), `_game_history_size` stays at 0 — that's correct (no game-history → every pred fire is a search-traversal match).
-
-- [ ] **Step 3: Build.** Expected `EXITCODE=0`, no `error` lines.
-
-- [ ] **Step 4: Commit.**
-
-```bash
-git add opti_chess/exploration.h opti_chess/exploration.cpp
-git commit -m "feat(history): add PositionHistory::_game_history_size informational field (#11, inert)"
-```
-
-(If the FEN loader is in a different file than `exploration.cpp`, include that file in the `git add` instead/also.)
-
-OFF-byte-identical argument: the field is initialized to 0 (so existing behavior with no game-history is preserved); only Task 4's logging code reads it; logging code is gated `dag_log::enabled`. With `enabled = false`, the field is allocated but never read → no observable effect.
-
----
-
-## Task 4: Instrumentation in `exploration.cpp`
-
-Add the five instrumentation call sites + counter bumps. Each new call is gated implicitly by the `if constexpr (dag_log::enabled)` inside the `dag_log::*` functions; for clarity and to ensure full elision under `enabled = false`, wrap the call site itself in `if constexpr (dag_log::enabled)` too where multiple lines are involved.
+Add the five instrumentation call sites + counter bumps. Each new code block is wrapped in `if constexpr (dag_log::enabled)` so it's elided entirely under the OFF toggle.
 
 **Files:**
 - Modify: `opti_chess/exploration.cpp`
@@ -461,20 +399,26 @@ Add the five instrumentation call sites + counter bumps. Each new call is gated 
 #include "dag_log.h"
 ```
 
-- [ ] **Step 2: §3 cut block — emit `pred_fire` + counters.** Locate (Grep `position_is_draw_by_repetition` inside `Node::explore_random_child`). The current block is:
+- [ ] **Step 2: §3 cut block — emit `pred_fire` + counters.** Locate (Grep `position_is_draw_by_repetition` inside `Node::explore_random_child`). The current block reads (around line 790 baseline):
 
 ```cpp
 		if (g_tt_node_dag && position_is_draw_by_repetition(*branch_history, *child->_board)) {
 			if (dag_excl != nullptr) dag_excl->add(move);
-			// existing comment block...
+			// Bug 1 opt 1 — spec §3 : remonte la valeur de nulle path-locale par
+			// VALEUR DE RETOUR (out-param), sans muter le Node/arete partages
+			// (invariant 772183a). Le parent substituera cette nulle a
+			// child->_deep_evaluation pour CETTE traversee (cf. backup).
+			if (path_local_eval != nullptr) {
+				*path_local_eval = dag_draw_eval();
+			}
 			_iterations++;
 			return;
 		}
 ```
 
-(The exact branch_history parameter type — `*branch_history` vs `branch_history` — depends on whether it's a pointer or reference at this call site. Verify and match.)
+(The branch_history parameter type — `*branch_history` vs `branch_history` — must match the existing call site. Verify by reading the surrounding context.)
 
-Replace with (keep the structural cut, add logging hooks; if logging disabled, the `if constexpr` block is dead code):
+Replace with:
 
 ```cpp
 		if (g_tt_node_dag && position_is_draw_by_repetition(*branch_history, *child->_board)) {
@@ -484,30 +428,29 @@ Replace with (keep the structural cut, add logging hooks; if logging disabled, t
 					dag_log::bump(dag_log::Counter::dag_excl_adds);
 				}
 			}
+			// Bug 1 opt 1 — spec §3 : remonte la valeur de nulle path-locale par
+			// VALEUR DE RETOUR (out-param), sans muter le Node/arete partages
+			// (invariant 772183a). Le parent substituera cette nulle a
+			// child->_deep_evaluation pour CETTE traversee (cf. backup).
+			if (path_local_eval != nullptr) {
+				*path_local_eval = dag_draw_eval();
+			}
 
 			if constexpr (dag_log::enabled) {
-				// Re-walk branch_history to find matching index. Only runs when
-				// logging is enabled; cost amortized over the rarity of §3 fires.
-				const uint64_t target_key = child->_board->_zobrist_key;
-				const int hist_size = (int)branch_history->size();
-				const int game_hist_size = (int)branch_history->game_history_size();
-				int hist_idx = -1;
-				for (int i = 0; i < hist_size; ++i) {
-					if (branch_history->key_at(i) == target_key) {
-						hist_idx = i;
-						break;
-					}
+				// One inline lookup ; same key the predicate just checked.
+				child->_board->get_zobrist_key();
+				const auto it = branch_history->find(child->_board->_zobrist_key);
+				const int current_count = (it == branch_history->end()) ? 0 : (int)it->second;
+				const int count_at_fire = current_count + 1;
+				const int path_size = (int)branch_history->size();
+				dag_log::bump(dag_log::Counter::pred_total);
+				if (count_at_fire == 2) {
+					dag_log::bump(dag_log::Counter::pred_count_2);
+				} else {
+					dag_log::bump(dag_log::Counter::pred_count_3plus);
 				}
-				if (hist_idx >= 0) {
-					const bool is_game_history = (hist_idx < game_hist_size);
-					dag_log::bump(is_game_history
-						? dag_log::Counter::pred_game_history
-						: dag_log::Counter::pred_search_traversal);
-					dag_log::bump(dag_log::Counter::pred_total);
-					const int depth = hist_size - game_hist_size;
-					dag_log::pred_fire(is_game_history, depth, hist_idx,
-						hist_size, game_hist_size, this, child, move);
-				}
+				dag_log::pred_fire(path_size, count_at_fire, path_size,
+					this, child, move);
 			}
 
 			_iterations++;
@@ -515,37 +458,27 @@ Replace with (keep the structural cut, add logging hooks; if logging disabled, t
 		}
 ```
 
-Note: the exact `PositionHistory` API for `size()` and key-by-index access depends on Task 1 Step 2 findings. If the actual API is `entry_at(i).key` or `[](size_t)`, substitute accordingly. The `key_at(i)` form is a placeholder for "whatever the verified API is".
+(The opt-1 `*path_local_eval = dag_draw_eval()` write is preserved verbatim — it is part of the baseline functional state at `6e8c030`/`a8b4004` and this plan changes no search semantics. Touching it would be out-of-scope.)
 
-If `PositionHistory` does NOT currently expose by-index key access, add it as part of THIS task (additive: `uint64_t key_at(size_t i) const { return _keys[i]; }` or equivalent). No logic change.
+Note: `depth` parameter to `pred_fire` is set to `path_size` here as a proxy (since the search has no separate depth counter; `path_history.size()` IS the depth from root). Using the same value for both `depth` and `path_size` is intentional and documented in the spec.
 
-- [ ] **Step 3: `pick_random_child` DagExcl skip — emit `dag_excl_skip` + counter.** Locate (Grep `dag_excl->contains\|dag_excl.contains` inside `Node::pick_random_child`). The current site looks like:
-
-```cpp
-			if (dag_excl != nullptr && dag_excl->contains(move)) {
-				continue; // opt-3 anti-spin
-			}
-```
-
-(The exact form may differ — Task 1 Step 2 confirmed the file; verify by reading the area.)
-
-Add logging:
+- [ ] **Step 3: `pick_random_child` DagExcl skip — emit `dag_excl_skip` + counter.** Locate (Grep `dag_excl->contains\|dag_excl.contains` inside `Node::pick_random_child`). The current site filters out moves in DagExcl with a `continue`. Wrap that branch:
 
 ```cpp
 			if (dag_excl != nullptr && dag_excl->contains(move)) {
 				if constexpr (dag_log::enabled) {
 					dag_log::bump(dag_log::Counter::dag_excl_skips);
-					// `branch_history` may not be in scope inside pick_random_child;
-					// depth=0 sentinel is acceptable (event still useful via node FEN).
+					// depth=0 sentinel — pick_random_child doesn't have branch_history in
+					// scope ; event still useful via the node's _board FEN if needed later.
 					dag_log::dag_excl_skip(0, this, move);
 				}
-				continue; // opt-3 anti-spin
+				continue; // opt-3 anti-spin (existing baseline)
 			}
 ```
 
-If `branch_history` IS in scope at this site (verify), pass `(int)branch_history->size() - (int)branch_history->game_history_size()` instead of 0 for `depth`.
+(If the current code uses a slightly different filter form, adapt — but the `if`/`continue` shape is the goal.)
 
-- [ ] **Step 4: `explore_new_move` entry — bump `nodes_via_explore_new`.** Locate `void Node::explore_new_move(` (around exploration.cpp:479 baseline). Add at the very start of the function body, after any early-return guards but before the main work:
+- [ ] **Step 4: `explore_new_move` entry — bump `nodes_via_explore_new`.** Locate `void Node::explore_new_move(` (around exploration.cpp:479 baseline). Add at the very start of the function body (before any early-return guards is fine — the counter just tracks invocations):
 
 ```cpp
 	if constexpr (dag_log::enabled) {
@@ -553,7 +486,7 @@ If `branch_history` IS in scope at this site (verify), pass `(int)branch_history
 	}
 ```
 
-- [ ] **Step 5: `explore_random_child` entry (post §3 cut) — bump `nodes_via_explore_random`.** Locate the same function (around exploration.cpp:726 baseline). After the §3 cut block (the one modified in Step 2) — i.e., after the `}` closing the `if (g_tt_node_dag && position_is_draw_by_repetition(...))` block — add:
+- [ ] **Step 5: `explore_random_child` entry (post §3 cut) — bump `nodes_via_explore_random`.** Locate the same function. After the `}` closing the §3 cut block (modified in Step 2) — i.e., when we DIDN'T cut — add:
 
 ```cpp
 	if constexpr (dag_log::enabled) {
@@ -561,102 +494,124 @@ If `branch_history` IS in scope at this site (verify), pass `(int)branch_history
 	}
 ```
 
-- [ ] **Step 6: `grogros_zero` terminal early-returns — bump `nodes_terminal`.** Locate `void Node::grogros_zero(` (around exploration.cpp:356 baseline) and find its early-return paths (`_is_terminal`, `_got_moves <= 0`, possibly `!_can_explore`). At each early-return site, just before the `return;`, add:
+- [ ] **Step 6: `grogros_zero` terminal early-returns — bump `nodes_terminal`.** Locate `void Node::grogros_zero(` (around exploration.cpp:356 baseline). Find these specific early-return paths and add the bump just before each `return;`:
+
+- The `if (_is_terminal)` block (~line 403)
+- The `if (_board->_got_moves <= 0)` block (~line 421)
+
+For each:
 
 ```cpp
 		if constexpr (dag_log::enabled) {
 			dag_log::bump(dag_log::Counter::nodes_terminal);
 		}
+		return;
 ```
 
-Specifically the `_is_terminal` and `_got_moves <= 0` returns. The recursion guard and `iterations <= 0` returns are NOT terminal in the chess sense — leave them unmodified.
+Do NOT add to the `iterations <= 0` (line 365) or `recursion depth guard` (line 373) returns — those are not chess-terminal.
 
 - [ ] **Step 7: Build.** Expected `EXITCODE=0`, no `error` lines.
 
 - [ ] **Step 8: Commit.**
 
 ```bash
-git add opti_chess/exploration.cpp opti_chess/exploration.h
+git add opti_chess/exploration.cpp
 git commit -m "feat(log): instrument exploration.cpp with DAG metrics events + counters (#11, inert)"
 ```
 
-(Include `exploration.h` if Step 2 added `key_at` accessor to `PositionHistory`.)
-
-OFF-byte-identical argument: every new call is wrapped in `if constexpr (dag_log::enabled)` which elides at compile time when toggle is false. The new `key_at` accessor (if added) is unused except by the logging block. With `enabled = true`, the new code runs only on the §3 cut path (rare) and on each entry/exit of explore_new/explore_random/grogros_zero (very cheap counter bump, single integer increment).
+OFF-byte-identical argument: every new call is wrapped in `if constexpr (dag_log::enabled)` which elides at compile time when toggle is false. With `enabled = true`, the new code runs only on the §3 cut path (rare; one extra `find()` + a snprintf-into-string append) and adds a single integer increment at each `explore_new_move`/`explore_random_child`/`grogros_zero` terminal-return entry — comparable cost to existing `_iterations++` increments. No allocation per event (the per-batch string buffer is pre-reserved).
 
 ---
 
-## Task 5: `gui.cpp` hooks + `tests.cpp` repros + key bindings
+## Task 4: `gui.cpp` hooks + `tests.cpp` repros + key bindings
 
-Wire the root grogros_zero call to `session_start`/`batch_start`/`batch_end`; add `run_dag_repro_*` entry points in `tests.cpp`; bind keys '1' and '2' in `gui.cpp` for one-key repro invocation.
+Wire the root grogros_zero call to `session_start`/`batch_start`/`batch_end`; add `run_dag_repro_*` entry points in `tests.cpp`; bind keys `1` and `2` in `gui.cpp` for one-key repro invocation.
 
 **Files:**
 - Modify: `opti_chess/gui.cpp`
 - Modify: `opti_chess/tests.cpp`
 - Modify: `opti_chess/tests.h` (if needed to expose `run_dag_repro_*` to `gui.cpp`)
 
-- [ ] **Step 1: Add `#include "dag_log.h"` and `#include "tests.h"` at the top of `gui.cpp`** (if not already present).
+- [ ] **Step 1: Verify gui.cpp key dispatch + existing test entry pattern.** Grep:
 
-- [ ] **Step 2: Wrap the root `grogros_zero` call with session/batch hooks.** Using the call-site location verified in Task 1 Step 3, modify the per-batch invocation. Pattern (adapt to actual variable names — `_alpha`, `_beta`, `_iterations_per_batch`, `_root_exploration_node`, etc.):
+```
+grep -n "IsKeyPressed" opti_chess/gui.cpp | head -20
+grep -n "KEY_ONE\|KEY_TWO\|KEY_O\b\|KEY_I\b" opti_chess/gui.cpp
+grep -n "^void\|^bool" opti_chess/tests.cpp | head -20
+```
+
+Record:
+- The block where `IsKeyPressed(KEY_O)` or similar is dispatched (this is where the new key bindings go).
+- Confirm `KEY_ONE` (the raylib `1`) and `KEY_TWO` (the raylib `2`) are not bound. If they are, pick the next free pair (e.g., `KEY_F1`/`KEY_F2`) and use those.
+- Note one existing entry-point in `tests.cpp` to mirror the include/setup pattern of `run_dag_repro`.
+
+- [ ] **Step 2: Add `#include "dag_log.h"` to `gui.cpp`.** Near the existing includes.
+
+- [ ] **Step 3: Wrap the root `grogros_zero` call (gui.cpp:1058) with session/batch hooks.** Locate the call at line 1058 (verified L-Task 1):
 
 ```cpp
-	// existing per-batch code, e.g.:
-	// _root_exploration_node->grogros_zero(... _iterations_per_batch ...);
+	_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations == -1 ? iterations_to_explore : iterations, _quiescence_depth); // TODO: nombre de noeuds à paramétrer
 ```
 
 Replace with:
 
 ```cpp
-	// #11 DAG metrics logging hooks (cf. dag_log.h). Wrapping the root call
-	// only ; OFF byte-identique car if constexpr (dag_log::enabled==false)
-	// élimine tout à la compilation.
+	// #11 DAG metrics logging hooks (cf. dag_log.h). Wrapping the root call.
+	// OFF byte-identique car if constexpr (dag_log::enabled==false) élimine
+	// tout à la compilation.
+	const int eff_iterations = iterations == -1 ? iterations_to_explore : iterations;
+
 	if constexpr (dag_log::enabled) {
 		static std::string s_last_fen;
-		std::string cur_fen = _board->to_fen();   // adjust to actual GUI member
+		static int s_batch_seq = 0;
+		std::string cur_fen = _board->to_fen();   // adapt if to_fen has different signature
 		if (cur_fen != s_last_fen) {
+			extern bool g_tt_node_dag;
+			extern bool g_tt_main_search;
 			dag_log::session_start(cur_fen.c_str(), g_tt_node_dag, g_tt_main_search,
-				_iterations_per_batch, nullptr);
+				eff_iterations, nullptr);
 			s_last_fen = cur_fen;
 			s_batch_seq = 0;
 		}
 		dag_log::batch_start(s_batch_seq,
 			_root_exploration_node ? _root_exploration_node->_parent_count : 0,
-			_board->_got_moves, _iterations_per_batch);
+			_board->_got_moves, eff_iterations);
 	}
 
-	_root_exploration_node->grogros_zero(/* existing args */);
+	_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, eff_iterations, _quiescence_depth); // TODO: nombre de noeuds à paramétrer
 
 	if constexpr (dag_log::enabled) {
-		dag_log::batch_end(s_batch_seq,
-			_iterations_per_batch,
+		static int s_batch_seq_after = 0;  // separate counter for post-call increment
+		dag_log::batch_end(s_batch_seq_after,
+			eff_iterations,
 			_root_exploration_node ? _root_exploration_node->_deep_evaluation._value : 0,
 			_root_exploration_node ? _root_exploration_node->_deep_evaluation._avg_score : 0.0f);
-		s_batch_seq++;
+		s_batch_seq_after++;
 	}
 ```
 
-`s_batch_seq` is a static int local to the enclosing function (or a file-scope static if the call sits in a free function). If multiple call sites exist, repeat the pattern, but use ONE shared `s_batch_seq` so the sequence numbers are coherent across call types.
+(If `_board->to_fen()` doesn't compile because the actual API differs, adapt to the verified signature. If `_board` is a different member name in this enclosing function, use the actual GUI member.)
 
-If the GUI surfaces a "position changed" event (e.g., on FEN paste or move-played), prefer hooking `session_start` there rather than via FEN comparison every batch — Task 1 Step 4 should have surfaced this; if not, the FEN-comparison fallback above is fine.
+Note on the two `s_batch_seq` statics: they're separately scoped to keep the pre-call and post-call sequence numbers independent and monotonic. If the enclosing function is called from multiple sites, both statics advance together — acceptable for our use case (we just need monotonic-ish sequence labels in the log).
 
-- [ ] **Step 3: Add `run_dag_repro` + wrappers in `tests.cpp`.** Append to `opti_chess/tests.cpp`:
+- [ ] **Step 4: Add `#include "dag_log.h"` and `#include "exploration.h"` to `tests.cpp`.** Near existing includes.
+
+- [ ] **Step 5: Add `run_dag_repro` + wrappers in `tests.cpp`.** Append to `opti_chess/tests.cpp`:
 
 ```cpp
+// #11 DAG metrics — manual repro entry points (cf. design 2026-05-20 §9 ;
+// dag_log.h). Loads a known FEN, sets DAG ON (Plan A OFF), runs N batches of
+// K iterations of grogros_zero, emits structured metrics to
+// opti_chess/dag_metrics.log. Self-contained ; called from GUI key bindings.
+
 #include "dag_log.h"
 #include "exploration.h"
 #include "buffer.h"
-#include "evaluation.h"
-// (any other includes the existing tests use to set up grogros_zero — match
-// the pattern of an existing test entry-point per Task 1 Step 7.)
+#include "evaluator.h"
 
-// External engine state toggles (declared in exploration.cpp).
 extern bool g_tt_node_dag;
 extern bool g_tt_main_search;
 
-// #11 DAG metrics repro entry — runs `n_batches` batches of `iters_per_batch`
-// grogros_zero iterations on the given FEN with DAG ON, emitting structured
-// metrics to opti_chess/dag_metrics.log. Self-contained ; called from GUI key
-// bindings (cf. gui.cpp KEY_ONE / KEY_TWO).
 void run_dag_repro(const char* repro_name, const char* fen,
 	int n_batches, int iters_per_batch) {
 
@@ -665,8 +620,9 @@ void run_dag_repro(const char* repro_name, const char* fen,
 	g_tt_node_dag = true;
 	g_tt_main_search = false;
 
-	// Setup: match the pattern of an existing test entry-point. Concretely
-	// (adapt to actual API verified in Task 1 Step 7):
+	// Setup. Match the pattern of an existing test function in tests.cpp
+	// (verified Task 4 Step 1). The skeleton below is illustrative ; the
+	// implementer adapts to actual BoardBuffer/NodeBuffer/Evaluator APIs.
 	BoardBuffer board_buf;
 	NodeBuffer  node_buf;
 	Evaluator   evaluator;
@@ -678,10 +634,6 @@ void run_dag_repro(const char* repro_name, const char* fen,
 	root->_board = root_board;
 	root->_parent_count = 1;
 
-	PositionHistory hist;
-	hist.init_from_board(*root_board);            // adjust to actual init API
-	hist._game_history_size = hist.size();        // mark game-history prefix
-
 	dag_log::session_start(fen, g_tt_node_dag, g_tt_main_search,
 		iters_per_batch, repro_name);
 
@@ -692,13 +644,13 @@ void run_dag_repro(const char* repro_name, const char* fen,
 		dag_log::batch_start(b, root->_parent_count,
 			root_board->_got_moves, iters_per_batch);
 
-		// Call grogros_zero with the project's standard arg conventions ;
-		// verify exact arg order in Task 1 Step 3. Trailing path_history is
-		// passed as &hist so the logging sees a populated game-history prefix.
+		// grogros_zero with the project's standard arg conventions. Trailing
+		// path_history = nullptr matches the GUI call site (gui.cpp:1058) —
+		// grogros_zero creates its own local_path_history (exploration.cpp:391).
 		root->grogros_zero(&board_buf, &evaluator,
 			/* alpha */ 1.0, /* beta */ 1.0, /* gamma */ 1.0,
 			iters_per_batch, /* quiescence_depth */ 0,
-			/* network */ nullptr, /* path_history */ &hist);
+			/* network */ nullptr);
 
 		final_eval = root->_deep_evaluation._value;
 		final_pc = root->_parent_count;
@@ -710,7 +662,7 @@ void run_dag_repro(const char* repro_name, const char* fen,
 
 	dag_log::session_end(n_batches, final_eval, final_pc);
 
-	// Cleanup: reset/return buffers per existing convention.
+	// Cleanup. Match the project's reset/free conventions.
 	root->reset(true);
 	g_tt_node_dag = saved_dag;
 	g_tt_main_search = saved_pa;
@@ -733,9 +685,11 @@ void run_dag_repro_2() {
 }
 ```
 
-The exact arg list of `grogros_zero` and the buffer-allocation pattern depend on the project's existing conventions (Task 1 Steps 3 and 7). The block above is the structural skeleton; the implementer reads an existing test and uses its setup pattern verbatim.
+If `tests.cpp` has actual existing test infrastructure with a different setup pattern (e.g., uses helper functions to alloc Board+Node), use those helpers instead. The block above is the structural target; the implementer adapts.
 
-- [ ] **Step 4: Declare the entry points in `tests.h`** (if other TUs need to see them; if `gui.cpp` includes `tests.h` and the rest of the project does too, add forward decls):
+If `BoardBuffer`/`NodeBuffer`/`Evaluator` APIs don't expose `alloc()` (they likely use indexed access or `_heap_boards[i]` per memory), match the existing project pattern.
+
+- [ ] **Step 6: Declare the entry points in `tests.h`** so `gui.cpp` can call them. Append:
 
 ```cpp
 // #11 DAG metrics logging — manual repro entry points (cf. tests.cpp).
@@ -743,9 +697,14 @@ void run_dag_repro_1();
 void run_dag_repro_2();
 ```
 
-If `tests.h` doesn't exist or isn't used, declare them locally in `gui.cpp` (e.g., `extern "C"` not needed since same TU language; `extern void run_dag_repro_1(); extern void run_dag_repro_2();` near the includes).
+If `tests.h` doesn't exist, declare them at the top of `gui.cpp` as `extern` instead:
 
-- [ ] **Step 5: Bind keys '1' and '2' in the GUI dispatch.** Using the location verified in Task 1 Step 6, add to the key-handling block:
+```cpp
+extern void run_dag_repro_1();
+extern void run_dag_repro_2();
+```
+
+- [ ] **Step 7: Bind keys `1` and `2` in `gui.cpp`.** At the location confirmed Step 1, in the key-handling block:
 
 ```cpp
 	if (IsKeyPressed(KEY_ONE)) {
@@ -756,32 +715,32 @@ If `tests.h` doesn't exist or isn't used, declare them locally in `gui.cpp` (e.g
 	}
 ```
 
-(If '1' and '2' are already bound to something else per Task 1 Step 6, use the next-free pair documented there and adjust this snippet's key names accordingly.)
+(Use the keys confirmed free in Step 1; if `KEY_ONE`/`KEY_TWO` are taken, swap to the free pair noted there.)
 
-- [ ] **Step 6: Build.** Expected `EXITCODE=0`, no `error` lines.
+- [ ] **Step 8: Build.** Expected `EXITCODE=0`, no `error` lines.
 
-  Sub-step on linker complaint: if MSBuild reports the new `tests.cpp` functions as unresolved (because the project file doesn't auto-discover added functions in an existing TU — unlikely but possible), the implementer reports `BLOCKED` and asks user to refresh the VS project.
+  If the build fails because `run_dag_repro` uses APIs that don't exist (e.g., wrong constructor for `BoardBuffer`), adapt to the actual project pattern by reading an existing `tests.cpp` entry-point. If the build fails because `tests.cpp` isn't auto-discovered by MSBuild after adding new functions to it, report BLOCKED.
 
-- [ ] **Step 7: Commit.**
+- [ ] **Step 9: Commit.**
 
 ```bash
 git add opti_chess/gui.cpp opti_chess/tests.cpp opti_chess/tests.h
-git commit -m "feat(log): gui+tests instrumentation - session/batch hooks + repro entry points + keys 1/2 (#11)"
+git commit -m "feat(log): gui+tests hooks - session/batch around root grogros_zero + repro keys 1/2 (#11)"
 ```
 
-(Omit `tests.h` from the git add if Step 4 didn't modify it.)
+(Omit `tests.h` from `git add` if Step 6 didn't create/modify it.)
 
-OFF-byte-identical argument: all new gui.cpp code is wrapped in `if constexpr (dag_log::enabled)`. With `enabled = false`, the wrapper compiles to nothing → root grogros_zero call is invoked identically to baseline. The key bindings are new behavior but only fire on user input; they don't run automatically. When `run_dag_repro_*` runs, it temporarily flips `g_tt_node_dag` to true and restores it — but ONLY when the user presses the key.
+OFF-byte-identical argument: all new gui.cpp code is wrapped in `if constexpr (dag_log::enabled)`. With `enabled = false`, the wrappers compile to nothing → root grogros_zero call is invoked identically to baseline (with `eff_iterations` substituted but value identical to the previous inline ternary). Key bindings are new but only fire on user input. `run_dag_repro_*` only runs when the user presses the key; it temporarily flips `g_tt_node_dag` and restores it.
 
 ---
 
-## Task 6: Final build verification + push
+## Task 5: Final build verification + push
 
-Verify the cumulative change builds clean, push the branch.
+Verify the cumulative change builds clean on both toggle states, push the branch.
 
 - [ ] **Step 1: Build with `dag_log::enabled = true`.** Run the build command. Expected `EXITCODE=0`, no `error` lines.
 
-- [ ] **Step 2: Temporary toggle off check.** Edit `opti_chess/dag_log.h`, change `constexpr bool enabled = true;` to `constexpr bool enabled = false;`. Run the build command. Expected `EXITCODE=0`, no `error` lines. (This verifies the OFF-path also compiles cleanly — all the `if constexpr` wrappers must be syntactically valid in both states.) Revert the toggle to `true`. Do NOT commit the off-toggle change.
+- [ ] **Step 2: Temporary toggle off check.** Edit `opti_chess/dag_log.h`, change `constexpr bool enabled = true;` to `constexpr bool enabled = false;`. Run the build command. Expected `EXITCODE=0`, no `error` lines. (Verifies the OFF-path compiles cleanly — all the `if constexpr` wrappers must be syntactically valid in both states.) Revert the toggle to `true`. Do NOT commit the off-toggle change.
 
 - [ ] **Step 3: Verify the toggle is back to `true`.**
 
@@ -789,7 +748,7 @@ Verify the cumulative change builds clean, push the branch.
 grep -n "constexpr bool enabled" opti_chess/dag_log.h
 ```
 
-Expected output: `constexpr bool enabled = true;` (the default we ship with).
+Expected output: `constexpr bool enabled = true;`.
 
 - [ ] **Step 4: Push the branch.**
 
@@ -797,14 +756,11 @@ Expected output: `constexpr bool enabled = true;` (the default we ship with).
 git push origin feature/tt-main-search
 ```
 
-(If push is configured for a different remote/branch, adjust. The user has been working on `feature/tt-main-search` throughout the #11 chain.)
+- [ ] **Step 5: Final summary message to user.** Report:
 
-- [ ] **Step 5: Final summary message to user.**
-
-Report:
 - Total commits added this session for the logging plan.
 - Branch tip SHA.
-- Instructions for user: "open Position 1 or Position 2 in the GUI (or just launch the engine and press '1' for Repro 1 / '2' for Repro 2). The log will accumulate at `opti_chess/dag_metrics.log`. Once you have a few hundred lines of data on each repro, either commit it with `git add -f opti_chess/dag_metrics.log && git commit && git push`, or paste a representative slice into a new chat session — and I'll do the analysis."
+- Instructions for user: *"In the GUI, press `1` to run Repro 1 (KP(h)-vs-K theoretical draw) for 5 batches × 1000 iters with DAG ON, or `2` to run Repro 2 (winning pawn endgame, non-regression anchor). The log accumulates at `opti_chess/dag_metrics.log` (gitignored). Once you have data from each repro, either `git add -f opti_chess/dag_metrics.log && git commit && git push`, or paste a representative slice into a new chat — I'll do the analysis."*
 
 No further code commits in this plan. The implementation is COMPLETE at this point.
 
@@ -812,9 +768,10 @@ No further code commits in this plan. The implementation is COMPLETE at this poi
 
 ## Out of scope (handled in a separate future plan)
 
-- Reading the log file and doing the analysis. This happens AFTER the user runs the repros and shares the log.
-- Designing the actual #11 fix. The fix design is a separate brainstorm informed by the analysis. The terminal state of THIS plan is "logging shipped and pushed".
-- Removing the temporary `dag_log::enabled = true` default after analysis is done. Leaving it `true` is fine while the bug is open; can be set to `false` for perf-measurement runs by editing one line.
+- Reading the log file and doing the analysis. Happens AFTER user runs the repros.
+- Designing the actual #11 fix. The fix design is a separate brainstorm informed by the analysis.
+- Removing the `dag_log::enabled = true` default after analysis is done. Leaving it `true` is fine while the bug is open.
+- Loading `Board::_positions_history` into the search's `path_history`. This is a real semantic gap noted in the spec §2, but fixing it is a search-logic change — out of scope for observability.
 
 ---
 
@@ -822,26 +779,24 @@ No further code commits in this plan. The implementation is COMPLETE at this poi
 
 **Spec coverage** (`docs/superpowers/specs/2026-05-20-optichess-dag-metrics-logging-design.md`):
 
-- §2 scope (new TU pair, instrumentation, .gitignore, repro entry) → Tasks 2, 3, 4, 5. ✓
-- §3 compile-time toggle → Task 2 Step 1 defines `constexpr bool enabled`; every API entry checks it; Task 4/5 wrap call sites in `if constexpr`. ✓
+- §2 scope (new TU pair, instrumentation, .gitignore, repro entry) → Tasks 2, 3, 4. ✓
+- §3 compile-time toggle → Task 2 Step 1 defines `constexpr bool enabled`; every API entry checks it; Task 3/4 wrap call sites in `if constexpr`. ✓
 - §4 file output (JSON-lines, append, gitignored, lazy open) → Task 2 Step 2 + Step 3. ✓
-- §5 event schema (session/batch/pred_fire/dag_excl_skip + counters) → Task 2 Step 2 emits matching JSON; Task 4 calls match the signatures. ✓
+- §5 event schema (session/batch/pred_fire/dag_excl_skip + counters) → Task 2 Step 2 emits matching JSON; Task 3 calls match the signatures. ✓
 - §6 API → Task 2 Step 1. ✓
-- §7 instrumentation points (5 in exploration.cpp + 1 in gui.cpp) → Task 4 (5 sites) + Task 5 (1 site, hooks around root call). ✓
-- §8 game_history_size split → Task 3 (field + accessor + FEN-load init) + Task 4 Step 2 (uses the accessor at §3 cut to label `kind`). ✓
-- §9 repro convenience entry point → Task 5 Step 3 (`run_dag_repro` + `_1` + `_2`). ✓
-- §10 OFF byte-identicality → per-task OFF arguments + Task 6 Step 2 explicit OFF-toggle build check. ✓
+- §7 instrumentation points (5 in exploration.cpp + 1 in gui.cpp) → Task 3 (5 sites) + Task 4 Step 3 (1 site, hooks around root call). ✓
+- §8 `count_at_fire`/`path_size` computation → Task 3 Step 2 (inline `find()` lookup at §3 cut site). ✓
+- §9 repro convenience entry point → Task 4 Steps 5-7 (`run_dag_repro` + `_1` + `_2` + key bindings). ✓
+- §10 OFF byte-identicality → per-task OFF arguments + Task 5 Step 2 explicit OFF-toggle build check. ✓
 - §11 performance (zero alloc per event via `snprintf`, file I/O only at batch boundaries, capped detail events) → Task 2 Step 2 implementation matches. ✓
-- §12 edge cases (multi-session, crash mid-batch, very long batches, DAG OFF runs, empty game-history) → handled by the implementation in Task 2 Step 2. ✓
-- §14 acceptance criteria (build both toggles, session_start/batch/session_end present in log, valid JSON-lines) → Task 6 Steps 1-3 cover the build half; the runtime half is the USER step. ✓
-- §15 task breakdown → matches this plan. ✓
+- §14 acceptance criteria (build both toggles, expected log shape) → Task 5 covers build half; runtime half is USER step. ✓
 
-No spec requirement is left without a task.
+No spec requirement is left without a task. The `_game_history_size` task originally numbered Task 3 in the plan has been dropped in coordination with the spec update.
 
-**Placeholder scan:** No `TBD`/`TODO`/`fill in later` markers in any task step. Each instrumentation site has its exact code shown. The `<actual PositionHistory by-index API>` is acknowledged as Task-1-verified and tasks adapt accordingly; that's not a placeholder, it's a verification gate.
+**Placeholder scan:** No `TBD`/`TODO`/`fill in later`. The `Board::to_fen()` / `Board::move_label(Move)` signature verification is an explicit pre-step (Task 2 Step 0) with a documented adaptation path if they differ. The `tests.cpp` setup pattern adaptation is documented (Task 4 Step 5) as "match an existing entry-point" — this is a real verification gate, not a placeholder.
 
-**Type consistency:** `dag_log::Counter` enum values (`pred_total`, `pred_search_traversal`, `pred_game_history`, `dag_excl_adds`, `dag_excl_skips`, `nodes_terminal`, `nodes_via_explore_new`, `nodes_via_explore_random`) match between Task 2 Step 1 (decl) and Task 2 Step 2 (counter array indexing in `batch_end`) and Task 4 Steps 2-6 (call sites). `dag_log::pred_fire` signature `(bool is_game_history, int depth, int hist_idx, int hist_size, int game_hist_size, const Node*, const Node*, const Move&)` matches between Task 2 Step 1 and Task 2 Step 2 (def) and Task 4 Step 2 (call). `dag_log::dag_excl_skip(int depth, const Node*, const Move&)` matches the same way. `PositionHistory::game_history_size()` accessor matches between Task 3 Step 1 (decl) and Task 4 Step 2 (read).
+**Type consistency:** `dag_log::Counter` enum values (`pred_total`, `pred_count_2`, `pred_count_3plus`, `dag_excl_adds`, `dag_excl_skips`, `nodes_terminal`, `nodes_via_explore_new`, `nodes_via_explore_random`) match between Task 2 Step 1 (decl), Task 2 Step 2 (counter array indexing in `batch_end`), and Task 3 Steps 2-6 (call sites). `dag_log::pred_fire(int depth, int count_at_fire, int path_size, const Node*, const Node*, const Move&)` matches between Task 2 Step 1 (decl), Task 2 Step 2 (def), and Task 3 Step 2 (call). `dag_log::dag_excl_skip(int, const Node*, const Move&)` matches the same way. `dag_log::session_start` / `session_end` / `batch_start` / `batch_end` signatures consistent across def + caller in Task 4 Step 3. `run_dag_repro_1()` / `run_dag_repro_2()` signature `void()` consistent across decl, def, and caller.
 
 ---
 
-**Execution note:** No automated test runner; per task the "test" is the clean MSBuild + the written OFF-byte-identical argument. The single end-to-end runtime validation is the **USER** step after Task 6 (`run_dag_repro_1()` + `run_dag_repro_2()` invocation via keys '1'/'2' in the GUI). The assistant cannot run the raylib GUI. Once the user shares the resulting `opti_chess/dag_metrics.log`, the analysis phase begins in a separate session.
+**Execution note:** No automated test runner; per task the "test" is the clean MSBuild + the written OFF-byte-identical argument. Final runtime validation is the **USER** step after Task 5 (`run_dag_repro_1()` + `run_dag_repro_2()` via keys `1`/`2` in the GUI). The assistant cannot run the raylib GUI. Once the user shares the resulting `opti_chess/dag_metrics.log`, the analysis phase begins in a separate brainstorm.
