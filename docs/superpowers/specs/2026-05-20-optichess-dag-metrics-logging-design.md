@@ -5,6 +5,11 @@
 **Baseline:** `a8b4004` (post-revert of Approach A; functional state of `6e8c030`)
 **Issue:** #11 — DAG GHI soundness (preliminary instrumentation step before the 7th design attempt)
 
+**Reference positions:**
+
+- **Position 1 (fix target)**: `6k1/8/7P/7K/8/8/8/8 w - - 3 72` — K+h-pawn vs K, theoretically drawn (defender corners at h8, attacker cannot promote without stalemate). Engine currently *false-wins* under DAG ON. Target after eventual fix: instant draw.
+- **Position 2 (non-regression target)**: `8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7` — pawn endgame, white wins by Ke3 or Ke2. Currently *works* under DAG ON: winning plan found in ~2 seconds (vs ~1 minute without DAG — the transposition speedup is the entire point of the DAG). Target after eventual fix: **still wins, still in ~2 seconds**. Any fix that slows Position 2 by more than a small factor or flips its verdict is a regression.
+
 ---
 
 ## 1. Goal
@@ -221,12 +226,12 @@ void run_dag_repro_1() {
                   5, 1000);
 }
 
-void run_dag_repro_2_placeholder() {
-    // Awaiting confirmed FEN for the won-blocked-pawns position
-    // (lost from TODO_list.txt 2026-05-20). User will provide.
-    // Once known, replace the FEN literal below.
-    run_dag_repro("repro2_won_blocked_pawns",
-                  "<FEN_TBD>",
+void run_dag_repro_2() {
+    // Pawn endgame, white wins (Ke3 or Ke2 is the key move). Used as a
+    // NON-REGRESSION anchor — DAG ON currently finds the win in ~2s
+    // (vs ~1min without DAG). Any future fix MUST preserve this.
+    run_dag_repro("repro2_pawn_endgame_win",
+                  "8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7",
                   5, 1000);
 }
 ```
@@ -282,7 +287,7 @@ When `enabled == false`: zero of any of this exists at runtime.
 
 1. Build succeeds (`EXITCODE=0`, no `error` lines) on both `dag_log::enabled = true` and `dag_log::enabled = false`.
 2. OFF behavior (toggle false) byte-identical to baseline `a8b4004` on PERFT 1/2 + EVALUATION (the established #11 acceptance pattern).
-3. ON behavior (toggle true): running `run_dag_repro_1()` for 5 batches produces a `opti_chess/dag_metrics.log` file containing:
+3. ON behavior (toggle true): running `run_dag_repro_1()` AND `run_dag_repro_2()` for 5 batches each produces a `opti_chess/dag_metrics.log` file containing, for each run:
    - 1 `session_start` line
    - 5 `batch_start` + 5 `batch_end` lines
    - At least some `pred_fire` events with both `"kind":"search_traversal"` and `"kind":"game_history"` populated (or all of one kind, if the position genuinely has only one)
@@ -299,14 +304,14 @@ Once this spec is approved, the implementation plan will be written to `docs/sup
 - Task 2: Add `PositionHistory::_game_history_size` field + accessor + initialization in FEN loader (additive, defaulted 0).
 - Task 3: New TU `dag_log.{h,cpp}` — API + file output + counters + JSON serialization.
 - Task 4: Instrumentation points in `exploration.cpp` + `gui.cpp`.
-- Task 5: `run_dag_repro(...)` entry point in `tests.cpp` + `repro1` wrapper.
+- Task 5: `run_dag_repro(...)` entry point in `tests.cpp` + `repro1` and `repro2` wrappers.
 - Task 6: `.gitignore` entry.
 - Task 7: Build + smoke test (run `run_dag_repro_1()` if user can; otherwise build-only).
 - Task 8: Commit and push.
 
 ## 16. Self-review
 
-- **Placeholders**: `<FEN_TBD>` in §9 for Repro 2 — explicit and intentional. The repro_1 entry point is fully populated.
+- **Placeholders**: none. Both repro FENs are populated in §9.
 - **Internal consistency**: §3 toggle, §5 schema, §6 API, §7 instrumentation, §10 OFF-byte-identicality all reference the same `dag_log::enabled` gate consistently.
 - **Scope**: bounded to observability. No search-logic edits. `PositionHistory` field is informational; no logic depends on it.
 - **Ambiguity**: `kind` decomposition rule (§5.3) is precise. `events_dropped` semantics (§5.2) is precise. Implementation choice between `ostringstream` and `snprintf` is explicit in §11.1 with a recommendation.
