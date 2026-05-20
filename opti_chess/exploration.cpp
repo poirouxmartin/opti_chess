@@ -1,4 +1,5 @@
 ﻿#include "exploration.h"
+#include "dag_log.h"
 #include "useful_functions.h"
 #include "zobrist.h"
 
@@ -404,6 +405,9 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		_iterations++;
 		_time_spent += clock() - begin_monte_time;
 
+		if constexpr (dag_log::enabled) {
+			dag_log::bump(dag_log::Counter::nodes_terminal);
+		}
 		return;
 	}
 
@@ -420,6 +424,9 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	// FIXME *** cela ne devrait pas arriver
 	if (_board->_got_moves <= 0) {
 		cout << "no moves in grogros_zero" << endl;
+		if constexpr (dag_log::enabled) {
+			dag_log::bump(dag_log::Counter::nodes_terminal);
+		}
 		return;
 	}
 
@@ -477,6 +484,10 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 
 // Fonction qui explore un nouveau coup
 void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, Evaluation* path_local_eval) {
+
+	if constexpr (dag_log::enabled) {
+		dag_log::bump(dag_log::Counter::nodes_via_explore_new);
+	}
 
 	// On prend le premier coup non exploré
 	const Move move = get_first_unexplored_move(true);
@@ -786,7 +797,12 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		// grogros_zero (liste sur la pile, jamais sur structure partagee :
 		// invariant 772183a respecte ; ne mute toujours RIEN de partage).
 		// Sans liste (OFF / debordement) : coupe conservatrice inchangee.
-		if (dag_excl != nullptr) dag_excl->add(move);
+		if (dag_excl != nullptr) {
+			dag_excl->add(move);
+			if constexpr (dag_log::enabled) {
+				dag_log::bump(dag_log::Counter::dag_excl_adds);
+			}
+		}
 		// Bug 1 opt 1 — spec §3 : remonte la valeur de nulle path-locale par
 		// VALEUR DE RETOUR (out-param), sans muter le Node/arete partages
 		// (invariant 772183a). Le parent substituera cette nulle a
@@ -794,8 +810,30 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		if (path_local_eval != nullptr) {
 			*path_local_eval = dag_draw_eval();
 		}
+
+		if constexpr (dag_log::enabled) {
+			// One inline lookup ; same key the predicate just checked.
+			child->_board->get_zobrist_key();
+			const auto it = branch_history.find(child->_board->_zobrist_key);
+			const int current_count = (it == branch_history.end()) ? 0 : (int)it->second;
+			const int count_at_fire = current_count + 1;
+			const int path_size = (int)branch_history.size();
+			dag_log::bump(dag_log::Counter::pred_total);
+			if (count_at_fire == 2) {
+				dag_log::bump(dag_log::Counter::pred_count_2);
+			} else {
+				dag_log::bump(dag_log::Counter::pred_count_3plus);
+			}
+			dag_log::pred_fire(path_size, count_at_fire, path_size,
+				this, child, move);
+		}
+
 		_iterations++;
 		return;
+	}
+
+	if constexpr (dag_log::enabled) {
+		dag_log::bump(dag_log::Counter::nodes_via_explore_random);
 	}
 
 	// Explore le fils
@@ -1725,7 +1763,15 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		// ET move_to_play, donc les iterations restantes de cet appel
 		// grogros_zero ne spinnent plus dessus. OFF : dag_excl == nullptr
 		// -> aucun effet -> byte-identique a l'arbre.
-		if (dag_excl != nullptr && dag_excl->contains(move)) continue;
+		if (dag_excl != nullptr && dag_excl->contains(move)) {
+			if constexpr (dag_log::enabled) {
+				dag_log::bump(dag_log::Counter::dag_excl_skips);
+				// depth=0 sentinel — pick_random_child doesn't have branch_history in
+				// scope ; event still useful via the node's _board FEN if needed later.
+				dag_log::dag_excl_skip(0, this, move);
+			}
+			continue; // opt-3 anti-spin (existing baseline)
+		}
 		Node* child = child_link._node;
 
 		// Score du coup
