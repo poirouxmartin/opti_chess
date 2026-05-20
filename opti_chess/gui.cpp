@@ -1099,11 +1099,11 @@ void GUI::grogros_analysis(int iterations) {
 // puis tourne n_batches × iters_per_batch itérations de grogros_zero. Les
 // événements et compteurs sont écrits dans opti_chess/dag_metrics.log.
 void GUI::run_dag_repro(const char* repro_name, const string& fen,
-	int n_batches, int iters_per_batch) {
+	int n_batches, int iters_per_batch, bool dag_on) {
 
 	const bool saved_dag = _tt_node_dag;
 	const bool saved_pa = _tt_main_search;
-	_tt_node_dag = true;
+	_tt_node_dag = dag_on;
 	_tt_main_search = false;
 
 	// Charge la position et reconstruit l'arbre d'exploration via la GUI.
@@ -1152,22 +1152,31 @@ void GUI::run_dag_repro(const char* repro_name, const string& fen,
 void GUI::run_dag_repro_1() {
 	// Position 1 — théoriquement nulle (K+pion h vs K). Moteur false-wins
 	// actuellement sous DAG ON. Cible après fix : nulle quasi-instantanée.
-	// 10 × 2000 iters ≈ assez pour caractériser la dérive d'évaluation et la
-	// distribution des cycles sur cette position simple.
-	run_dag_repro("repro1_kp_h_draw",
+	// ON + OFF en séquence pour comparaison directe ; le tree mode (OFF)
+	// converge correctement vers nulle (~7 batches dans les données 2026-05-20),
+	// donc 10 batches suffisent largement pour les deux variantes.
+	run_dag_repro("repro1_kp_h_draw_DAG_ON",
 		"6k1/8/7P/7K/8/8/8/8 w - - 3 72",
-		10, 2000);
+		10, 2000, true);
+	run_dag_repro("repro1_kp_h_draw_DAG_OFF",
+		"6k1/8/7P/7K/8/8/8/8 w - - 3 72",
+		10, 2000, false);
 }
 
 void GUI::run_dag_repro_2() {
 	// Position 2 — gain blanc (Ke3 ou Ke2). Anchor de NON-RÉGRESSION.
-	// DAG ON trouve le gain en ~2s en marche manuelle (vs ~1min sans DAG) ;
-	// l'éval N'EST PAS statique — il faut laisser la recherche descendre.
-	// 20 × 3000 iters ≈ 60k itérations pour donner le temps de stabiliser le
-	// gain (le pic-batch précédent à 1000 iters/batch restait à eval static).
-	run_dag_repro("repro2_pawn_endgame_win",
+	// DAG ON trouve le gain en ~0.9s (eval 102 → 298 / avg_score 0.93 vers
+	// batch 19 — validé 2026-05-20). DAG OFF prend ~1min sur cette position
+	// donc même budget ne montrera probablement pas la convergence complète,
+	// mais la trajectoire d'évaluation (croissance lente) est l'indicateur
+	// diagnostique : on cherche à confirmer que DAG ON > DAG OFF en vitesse
+	// de découverte du gain (objectif de non-régression).
+	run_dag_repro("repro2_pawn_endgame_win_DAG_ON",
 		"8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7",
-		20, 3000);
+		20, 3000, true);
+	run_dag_repro("repro2_pawn_endgame_win_DAG_OFF",
+		"8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7",
+		20, 3000, false);
 }
 
 // Fonction qui dessine la GUI

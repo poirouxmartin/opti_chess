@@ -553,11 +553,13 @@ public:
 	void grogros_analysis(int nodes = -1);
 
 	// #11 DAG metrics — entrées de reproduction manuelles (cf. dag_log.h).
-	// Charge une FEN connue, force DAG ON / Plan A OFF, lance n_batches × iters
-	// itérations de grogros_zero, émet les métriques structurées dans
-	// opti_chess/dag_metrics.log. Restaure l'état des toggles en sortie.
+	// Charge une FEN connue, force le toggle DAG (paramètre dag_on) / Plan A OFF,
+	// lance n_batches × iters itérations de grogros_zero, émet les métriques
+	// structurées dans dag_metrics.log. Restaure l'état des toggles en sortie.
+	// Les wrappers _1 / _2 lancent ON puis OFF en séquence pour produire le
+	// jeu de données comparatif complet en une seule touche.
 	void run_dag_repro(const char* repro_name, const string& fen,
-		int n_batches, int iters_per_batch);
+		int n_batches, int iters_per_batch, bool dag_on);
 	void run_dag_repro_1();
 	void run_dag_repro_2();
 
