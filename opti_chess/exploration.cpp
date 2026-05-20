@@ -353,7 +353,7 @@ void dag_debug_report() {
 }
 
 // Nouveau GrogrosZero
-void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, PositionHistory *path_history, Evaluation* path_local_eval, bool* path_local_emitted) {
+void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, PositionHistory *path_history, Evaluation* path_local_eval) {
 	// TODO:
 	// On peut rajouter la profondeur
 	// Garder le temps de calcul
@@ -429,6 +429,11 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	// jamais consultee -> comportement byte-identique a l'arbre.
 	DagExcl dag_excl;
 
+	// #11 Plan B — Bug 1 opt 1 : scratch pour la valeur de nulle path-locale
+	// remontee par explore_random_child (out-param). Pile uniquement ; OFF :
+	// nullptr passe -> jamais ecrit -> byte-identique.
+	Evaluation dag_child_eval;
+
 	// Exploration
 	while (iterations > 0) {
 
@@ -442,7 +447,7 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 
 		// EXPLORATION D'UN COUP DÉJÀ EXPLORÉ (raffinage)
 		else if (children_count() > 0) {
-			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr, g_tt_node_dag ? path_local_eval : nullptr, g_tt_node_dag ? path_local_emitted : nullptr);
+			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr, g_tt_node_dag ? &dag_child_eval : nullptr);
 		}
 
 		// Buffers pleins ET rien à raffiner ici : arrêt propre + log unique
@@ -718,7 +723,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 }
 
 // Fonction qui explore dans un plateau fils pseudo-aléatoire
-void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, DagExcl* dag_excl, Evaluation* path_local_eval, bool* path_local_emitted) {
+void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, DagExcl* dag_excl, Evaluation* path_local_eval) {
 
 	// Prend un fils aléatoire
 	const Move move = pick_random_child(alpha, beta, gamma, dag_excl);
@@ -782,71 +787,48 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		// invariant 772183a respecte ; ne mute toujours RIEN de partage).
 		// Sans liste (OFF / debordement) : coupe conservatrice inchangee.
 		if (dag_excl != nullptr) dag_excl->add(move);
-		// #11 GHI — coupe structurelle §3 inchangée. L’arête est
-		// enregistrée dans DagExcl pour l’anti-spin opt-3 (pick_random_child
-		// la sautera dans la suite du frame). La valeur path-locale du nœud
-		// n’est PAS écrite ici : le canal path_local_eval est servi
-		// EXCLUSIVEMENT par compute_path_local_eval (§4.4), avec la porte
-		// d’énumération stricte qui bloque les faux positifs.
+		// Bug 1 opt 1 — spec §3 : remonte la valeur de nulle path-locale par
+		// VALEUR DE RETOUR (out-param), sans muter le Node/arete partages
+		// (invariant 772183a). Le parent substituera cette nulle a
+		// child->_deep_evaluation pour CETTE traversee (cf. backup).
+		if (path_local_eval != nullptr) {
+			*path_local_eval = dag_draw_eval();
+		}
 		_iterations++;
 		return;
 	}
 
-	// Explore le fils. #11 GHI — caller-init pour le canal path-local
-	// (design 2026-05-20 §4.3). Fallback safe = _deep_evaluation partagé,
-	// flag d'émission initialisé false. Si la récursion du fils satisfait la
-	// porte d’énumération stricte (compute_path_local_eval, §4.4), elle
-	// écrasera child_local et marquera child_local_emitted = true ; sinon
-	// les deux out-params restent au fallback. OFF / hors DAG : pointeurs
-	// nullptr -> aucun effet.
-	Evaluation child_local = child->_deep_evaluation;
-	bool child_local_emitted = false;
+	// Explore le fils
 	{
 		PathScope _ps(branch_history, *child->_board);
-		child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &branch_history, g_tt_node_dag ? &child_local : nullptr, g_tt_node_dag ? &child_local_emitted : nullptr); // L'évaluation du fils est mise à jour ici
+		child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &branch_history); // L'évaluation du fils est mise à jour ici
 	}
 
-	// Met à jour l'évaluation du plateau avec le meilleur coup. Backup MCTS
-	// normal — partagé, indépendant du chemin. SÉMANTIQUEMENT INCHANGÉ par
-	// rapport au baseline (sélection et écriture identiques).
+	// Met à jour l'évaluation du plateau avec le meilleur coup
 	const Move _bm = get_best_score_move(alpha, beta);
-	_deep_evaluation = _children[_bm]._node->_deep_evaluation;
-	bool path_local_persisted_this_iter = false;
-
-	// #11 GHI path-local revaluation (design 2026-05-20 §4.4). Calcule la
-	// valeur path-locale de CE nœud via compute_path_local_eval, avec
-	// substitution de la valeur émise par le fils tout juste descendu
-	// (essentiel pour bubbler à travers des nœuds intérieurs partagés). La
-	// porte d'énumération stricte (children_count() >= _got_moves) bloque
-	// les faux positifs de partial-expansion. L'émission via out-param
-	// bubble TOUJOURS (jamais de mutation partagée). Persistance dans
-	// _deep_evaluation UNIQUEMENT si _parent_count <= 1 (invariant 772183a).
-	// OFF / hors DAG : la garde court-circuite à la première conjonction.
-	if (g_tt_node_dag && path_local_eval != nullptr && path_history != nullptr) {
-		Evaluation node_local;
-		const Move& sub_move = child_local_emitted ? move : Move();
-		if (compute_path_local_eval(*path_history, sub_move, child_local, &node_local)) {
-			*path_local_eval = node_local;
-			if (path_local_emitted != nullptr) *path_local_emitted = true;
-			if (_parent_count <= 1 && !(node_local == _deep_evaluation)) {
-				_deep_evaluation = node_local;
-				path_local_persisted_this_iter = true;
-			}
-		}
+	if (g_tt_node_dag && dag_excl != nullptr && dag_excl->contains(_bm)) {
+		// Bug 1 opt 1 / spec §3 — le meilleur coup est une arete coupee comme
+		// nulle path-locale sur CE chemin (DagExcl rempli par les coupes §3 de
+		// ce frame). Sa vraie valeur ici est une NULLE, pas son
+		// _deep_evaluation partage (calcule via un autre chemin). On remonte
+		// la nulle par l'out-param. Persistance sur this->_deep_evaluation
+		// SEULEMENT si this n'est pas partage sur cette traversee
+		// (_parent_count<=1) : ecrire une nulle path-locale sur un noeud
+		// partage corromprait les autres chemins (invariant 772183a). Le
+		// backup normal (else) reste STRICTEMENT inchange (pas de regression
+		// du backup MCTS des noeuds partages).
+		const Evaluation _draw = dag_draw_eval();
+		if (path_local_eval != nullptr) *path_local_eval = _draw;
+		if (_parent_count <= 1) _deep_evaluation = _draw;
+	}
+	else {
+		_deep_evaluation = _children[_bm]._node->_deep_evaluation;
+		if (g_tt_node_dag && path_local_eval != nullptr) *path_local_eval = _deep_evaluation;
 	}
 
 	// #11 Plan A — write-back de la valeur raffinée (le levier réel).
 	// Mêmes gardes que dans explore_new_move.
-	if (g_tt_main_search && !_is_terminal && !_is_stand_pat_eval
-		&& _deep_evaluation._evaluated
-		&& !(g_tt_node_dag && path_local_persisted_this_iter)) {
-		// #11 GHI — sous DAG, si on vient de persister une valeur path-locale
-		// dans _deep_evaluation (uniquement quand _parent_count <= 1, §4.4),
-		// NE PAS écrire cette valeur dans la TT plate. La TT est
-		// path-indépendante ; un leak path-local serait lu depuis d’autres
-		// chemins. OFF (g_tt_node_dag==false) ou pas de persistance ce tour
-		// (path_local_persisted_this_iter==false) -> garde inerte, writeback
-		// identique au baseline.
+	if (g_tt_main_search && !_is_terminal && !_is_stand_pat_eval && _deep_evaluation._evaluated) {
 		transposition_table.store(_board->_zobrist_key,
 			// side-to-move comme les stores quiescence (stand_pat = _value*color,
 			// exploration.cpp:902/912) : sinon signe inverse pour les Noirs.
@@ -2012,72 +1994,6 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 	//cout << "best move: " << _board->move_label(best_move) << " | best score: " << best_score << endl;
 
 	return best_move;
-}
-
-// #11 GHI path-local revaluation helper (cf. design 2026-05-20 §3.2, §4.4).
-// Voir la déclaration dans exploration.h pour le contrat détaillé.
-bool Node::compute_path_local_eval(
-	const PositionHistory& path_history,
-	const Move& substitution_move,
-	const Evaluation& substitution_value,
-	Evaluation* out) const {
-
-	// Défensive : pas d'enfants -> pas d'override.
-	if (_children.empty()) {
-		return false;
-	}
-
-	// Porte d'énumération stricte (§3.2 étape 1). Tant que tous les coups
-	// légaux ne sont pas représentés dans _children, on ne peut PAS prouver
-	// "tous les coups mènent à une répétition" (le coup gagnant peut être
-	// celui pas encore expansé). Aucun override.
-	if (children_count() < static_cast<size_t>(_board->_got_moves)) {
-		return false;
-	}
-
-	const int color = _board->get_color();
-
-	// Minimax sur S_nc (fils NON cycle-touch) plus dag_draw_eval() comme
-	// candidat virtuel (§3.2 étape 3). dag_draw_eval()._value == 0 ; le
-	// candidat virtuel est admis UNE SEULE fois, pas par fils cycle-touch
-	// (différence critique avec le Plan B réverté 0608af5).
-	Evaluation best;
-	bool best_seen = false;
-
-	for (auto const& [move, child_link] : _children) {
-		const Node* child = child_link._node;
-
-		// Cycle-touch ? -> skip de S_nc (NE PAS scorer dag_draw_eval ici).
-		if (position_is_draw_by_repetition(path_history, *child->_board)) {
-			continue;
-		}
-
-		// Substitution pour le fils tout juste descendu (§3.2 étape 3,
-		// règle de contribution par-enfant). Essentielle pour bubbler une
-		// valeur raffinée à travers des nœuds intérieurs partagés.
-		const Evaluation& contrib =
-			(!substitution_move.is_null_move() && move == substitution_move)
-				? substitution_value
-				: child->_deep_evaluation;
-
-		if (!best_seen || contrib._value * color > best._value * color) {
-			best = contrib;
-			best_seen = true;
-		}
-	}
-
-	// Candidat virtuel « nulle volontaire » — une seule fois. Garantit aussi
-	// le cas S_nc == ∅ (tous fils cycle-touch) : émet dag_draw_eval().
-	const Evaluation draw = dag_draw_eval();
-	if (!best_seen || draw._value * color > best._value * color) {
-		best = draw;
-		best_seen = true;
-	}
-
-	// best_seen == true ici par construction (le candidat virtuel garantit
-	// au moins un candidat).
-	*out = best;
-	return true;
 }
 
 // Fonction qui renvoie une valeur prévisionnelle du score du noeud, lorsqu'on ne connait pas les évaluations max (pour la quiecence)
