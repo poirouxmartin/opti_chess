@@ -429,11 +429,6 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	// jamais consultee -> comportement byte-identique a l'arbre.
 	DagExcl dag_excl;
 
-	// #11 Plan B — Bug 1 opt 1 : scratch pour la valeur de nulle path-locale
-	// remontee par explore_random_child (out-param). Pile uniquement ; OFF :
-	// nullptr passe -> jamais ecrit -> byte-identique.
-	Evaluation dag_child_eval;
-
 	// Exploration
 	while (iterations > 0) {
 
@@ -447,7 +442,7 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 
 		// EXPLORATION D'UN COUP DÉJÀ EXPLORÉ (raffinage)
 		else if (children_count() > 0) {
-			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr, g_tt_node_dag ? &dag_child_eval : nullptr);
+			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr, g_tt_node_dag ? path_local_eval : nullptr, g_tt_node_dag ? path_local_emitted : nullptr);
 		}
 
 		// Buffers pleins ET rien à raffiner ici : arrêt propre + log unique
@@ -787,48 +782,71 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		// invariant 772183a respecte ; ne mute toujours RIEN de partage).
 		// Sans liste (OFF / debordement) : coupe conservatrice inchangee.
 		if (dag_excl != nullptr) dag_excl->add(move);
-		// Bug 1 opt 1 — spec §3 : remonte la valeur de nulle path-locale par
-		// VALEUR DE RETOUR (out-param), sans muter le Node/arete partages
-		// (invariant 772183a). Le parent substituera cette nulle a
-		// child->_deep_evaluation pour CETTE traversee (cf. backup).
-		if (path_local_eval != nullptr) {
-			*path_local_eval = dag_draw_eval();
-		}
+		// #11 GHI — coupe structurelle §3 inchangée. L’arête est
+		// enregistrée dans DagExcl pour l’anti-spin opt-3 (pick_random_child
+		// la sautera dans la suite du frame). La valeur path-locale du nœud
+		// n’est PAS écrite ici : le canal path_local_eval est servi
+		// EXCLUSIVEMENT par compute_path_local_eval (§4.4), avec la porte
+		// d’énumération stricte qui bloque les faux positifs.
 		_iterations++;
 		return;
 	}
 
-	// Explore le fils
+	// Explore le fils. #11 GHI — caller-init pour le canal path-local
+	// (design 2026-05-20 §4.3). Fallback safe = _deep_evaluation partagé,
+	// flag d’émission initialisé false. Si la rêcursion du fils satisfait la
+	// porte d’énumération stricte (compute_path_local_eval, §4.4), elle
+	// écrasera child_local et marquera child_local_emitted = true ; sinon
+	// les deux out-params restent au fallback. OFF / hors DAG : pointeurs
+	// nullptr -> aucun effet.
+	Evaluation child_local = child->_deep_evaluation;
+	bool child_local_emitted = false;
 	{
 		PathScope _ps(branch_history, *child->_board);
-		child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &branch_history); // L'évaluation du fils est mise à jour ici
+		child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &branch_history, g_tt_node_dag ? &child_local : nullptr, g_tt_node_dag ? &child_local_emitted : nullptr); // L'évaluation du fils est mise à jour ici
 	}
 
-	// Met à jour l'évaluation du plateau avec le meilleur coup
+	// Met à jour l'évaluation du plateau avec le meilleur coup. Backup MCTS
+	// normal — partagé, indépendant du chemin. SéMANTIQUEMENT INCHANGé par
+	// rapport au baseline (sélection et écriture identiques).
 	const Move _bm = get_best_score_move(alpha, beta);
-	if (g_tt_node_dag && dag_excl != nullptr && dag_excl->contains(_bm)) {
-		// Bug 1 opt 1 / spec §3 — le meilleur coup est une arete coupee comme
-		// nulle path-locale sur CE chemin (DagExcl rempli par les coupes §3 de
-		// ce frame). Sa vraie valeur ici est une NULLE, pas son
-		// _deep_evaluation partage (calcule via un autre chemin). On remonte
-		// la nulle par l'out-param. Persistance sur this->_deep_evaluation
-		// SEULEMENT si this n'est pas partage sur cette traversee
-		// (_parent_count<=1) : ecrire une nulle path-locale sur un noeud
-		// partage corromprait les autres chemins (invariant 772183a). Le
-		// backup normal (else) reste STRICTEMENT inchange (pas de regression
-		// du backup MCTS des noeuds partages).
-		const Evaluation _draw = dag_draw_eval();
-		if (path_local_eval != nullptr) *path_local_eval = _draw;
-		if (_parent_count <= 1) _deep_evaluation = _draw;
-	}
-	else {
-		_deep_evaluation = _children[_bm]._node->_deep_evaluation;
-		if (g_tt_node_dag && path_local_eval != nullptr) *path_local_eval = _deep_evaluation;
+	_deep_evaluation = _children[_bm]._node->_deep_evaluation;
+	bool path_local_persisted_this_iter = false;
+
+	// #11 GHI path-local revaluation (design 2026-05-20 §4.4). Calcule la
+	// valeur path-locale de CE nœud via compute_path_local_eval, avec
+	// substitution de la valeur émise par le fils tout juste descendu
+	// (essentiel pour bubbler à travers des nœuds intérieurs partagés). La
+	// porte d’énumération stricte (children_count() >= _got_moves) bloque
+	// les faux positifs de partial-expansion. L’émission via out-param
+	// bubble TOUJOURS (jamais de mutation partagée). Persistance dans
+	// _deep_evaluation UNIQUEMENT si _parent_count <= 1 (invariant 772183a).
+	// OFF / hors DAG : la garde court-circuite à la première conjoncture.
+	if (g_tt_node_dag && path_local_eval != nullptr && path_history != nullptr) {
+		Evaluation node_local;
+		const Move& sub_move = child_local_emitted ? move : Move();
+		if (compute_path_local_eval(*path_history, sub_move, child_local, &node_local)) {
+			*path_local_eval = node_local;
+			if (path_local_emitted != nullptr) *path_local_emitted = true;
+			if (_parent_count <= 1 && !(node_local == _deep_evaluation)) {
+				_deep_evaluation = node_local;
+				path_local_persisted_this_iter = true;
+			}
+		}
 	}
 
 	// #11 Plan A — write-back de la valeur raffinée (le levier réel).
 	// Mêmes gardes que dans explore_new_move.
-	if (g_tt_main_search && !_is_terminal && !_is_stand_pat_eval && _deep_evaluation._evaluated) {
+	if (g_tt_main_search && !_is_terminal && !_is_stand_pat_eval
+		&& _deep_evaluation._evaluated
+		&& !(g_tt_node_dag && path_local_persisted_this_iter)) {
+		// #11 GHI — sous DAG, si on vient de persister une valeur path-locale
+		// dans _deep_evaluation (uniquement quand _parent_count <= 1, §4.4),
+		// NE PAS écrire cette valeur dans la TT plate. La TT est
+		// path-indépendante ; un leak path-local serait lu depuis d’autres
+		// chemins. OFF (g_tt_node_dag==false) ou pas de persistance ce tour
+		// (path_local_persisted_this_iter==false) -> garde inerte, writeback
+		// identique au baseline.
 		transposition_table.store(_board->_zobrist_key,
 			// side-to-move comme les stores quiescence (stand_pat = _value*color,
 			// exploration.cpp:902/912) : sinon signe inverse pour les Noirs.
