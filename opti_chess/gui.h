@@ -552,6 +552,15 @@ public:
 	// Fonction qui lance une analyse de GrogrosZero
 	void grogros_analysis(int nodes = -1);
 
+	// #11 DAG metrics — entrées de reproduction manuelles (cf. dag_log.h).
+	// Charge une FEN connue, force DAG ON / Plan A OFF, lance n_batches × iters
+	// itérations de grogros_zero, émet les métriques structurées dans
+	// opti_chess/dag_metrics.log. Restaure l'état des toggles en sortie.
+	void run_dag_repro(const char* repro_name, const string& fen,
+		int n_batches, int iters_per_batch);
+	void run_dag_repro_1();
+	void run_dag_repro_2();
+
 	// Fonction qui charge une position à partir d'une FEN
 	void load_FEN(const string fen, bool display = true);
 
