@@ -353,7 +353,7 @@ void dag_debug_report() {
 }
 
 // Nouveau GrogrosZero
-void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, PositionHistory *path_history, Evaluation* path_local_eval) {
+void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, PositionHistory *path_history, Evaluation* path_local_eval, bool* path_local_emitted) {
 	// TODO:
 	// On peut rajouter la profondeur
 	// Garder le temps de calcul
@@ -723,7 +723,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 }
 
 // Fonction qui explore dans un plateau fils pseudo-aléatoire
-void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, DagExcl* dag_excl, Evaluation* path_local_eval) {
+void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, DagExcl* dag_excl, Evaluation* path_local_eval, bool* path_local_emitted) {
 
 	// Prend un fils aléatoire
 	const Move move = pick_random_child(alpha, beta, gamma, dag_excl);
