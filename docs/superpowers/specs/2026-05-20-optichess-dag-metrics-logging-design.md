@@ -18,24 +18,27 @@ Add **persistent runtime logging** to characterize the DAG search behavior on is
 
 Specific runtime questions the logs must answer:
 
-1. **Predicate-fire decomposition.** When `position_is_draw_by_repetition(branch_history, child)` returns true, what fraction of fires are caused by (a) a match against a *game-history* entry (a position pre-loaded from the played game) vs (b) a *search-traversal* entry (a position pushed by `PathScope` during descent on the current path)?
-2. **Cycle structure per repro.** For each reference repro, how does the predicate-fire frequency, distribution by depth, and game-history-vs-search-traversal split look over multiple batches?
+1. **Predicate-fire characteristics.** When `position_is_draw_by_repetition(branch_history, child)` returns true, what is (a) the count of the child's key already present in `path_history` (would-be count after push), (b) the depth from root at the moment of fire, and (c) the DAG sharing status of the child (`_parent_count`)?
+2. **Cycle structure per repro.** For each reference repro, how does the predicate-fire frequency, distribution by depth, distribution by would-be-count, and shared-vs-unique-child split look over multiple batches?
 3. **DagExcl saturation.** How often does `pick_random_child` skip a move due to DagExcl membership? At what depths?
 4. **Per-batch convergence.** How does root `_deep_evaluation` evolve across batches, especially in the two reference repros?
+
+**Important codebase observation (verified Task 1 of the impl plan)**: `PositionHistory` is `tsl::robin_map<uint64_t, uint8_t>` — a Zobrist-key→count map, not an ordered list. At the root call from the GUI (gui.cpp:1058), `grogros_zero` receives `path_history == nullptr` and creates a fresh `local_path_history` containing only the root's key. Game-played positions tracked separately on `Board::_positions_history` are NOT threaded into the search. Therefore every §3 predicate fire during search is a **search-traversal cycle** (the same key was pushed earlier on this descent via `PathScope`). The originally-proposed "game-history vs search-traversal split" does not apply to this codebase and has been replaced by the `count_at_fire` / `path_size` decomposition below.
 
 Performance remains project priority #1: the logging is compile-time gated so OFF builds are byte-identical to baseline, and ON builds do file I/O only at batch boundaries (never inside the hot loop).
 
 ## 2. Scope
 
 - **New TU pair**: `opti_chess/dag_log.h` + `opti_chess/dag_log.cpp`. Self-contained, single responsibility (file-buffered structured logging of DAG-relevant events).
-- **Instrumentation calls** at 5-7 sites in `opti_chess/exploration.cpp` and 1 in `opti_chess/gui.cpp`.
+- **Instrumentation calls** at 5 sites in `opti_chess/exploration.cpp` and around the root grogros_zero call in `opti_chess/gui.cpp`.
 - **`.gitignore` entry** for the log artifact file.
-- **Convenience repro entry point** in `opti_chess/tests.cpp` so the user can invoke a known FEN + batch budget from a single function call.
-- **No changes to search algorithm logic.** This commit chain is observability-only.
+- **Convenience repro entry point** in `opti_chess/tests.cpp` + key bindings (`1`/`2`) in `gui.cpp` so the user invokes a known FEN + batch budget with one keystroke.
+- **No changes to search algorithm logic.** This commit chain is observability-only. No changes to `PositionHistory`, `position_is_draw_by_repetition`, or any data-structure-defining file.
 
 Out of scope (deferred to a future design attempt):
 
 - Any modification of `position_is_draw_by_repetition`, `compute_path_local_eval`, or any other search predicate.
+- Loading `Board::_positions_history` (game-played positions) into the search's `path_history`. This is a real semantic gap (the engine ignores game-history during search) but fixing it is a search-logic change, out of scope for observability.
 - Programmatic regression-gate / CI integration. Repros are user-run; the assistant reads the resulting log files.
 - Log rotation / compression. Single file, user-truncated when needed.
 
@@ -75,7 +78,7 @@ This is parallel to the existing `dag_debug` constexpr at `opti_chess/exploratio
 
 ```json
 {"t":"batch_start","seq":0,"root_pc":1,"got_moves":5,"iter_budget":1000}
-{"t":"batch_end","seq":0,"iters_done":1000,"root_eval":850,"root_eval_avg_score":0.62,"counters":{"pred_total":47,"pred_search_traversal":31,"pred_game_history":16,"dag_excl_adds":31,"dag_excl_skips":89,"nodes_terminal":12,"nodes_via_explore_new":214,"nodes_via_explore_random":786,"events_dropped":0}}
+{"t":"batch_end","seq":0,"iters_done":1000,"root_eval":850,"root_eval_avg_score":0.62,"counters":{"pred_total":47,"pred_count_2":42,"pred_count_3plus":5,"dag_excl_adds":47,"dag_excl_skips":89,"nodes_terminal":12,"nodes_via_explore_new":214,"nodes_via_explore_random":786,"events_dropped":0}}
 ```
 
 `events_dropped` counts how many detail events were suppressed by the per-batch cap (§5.3). Non-zero means we lost detail — important for honest analysis.
@@ -83,19 +86,20 @@ This is parallel to the existing `dag_debug` constexpr at `opti_chess/exploratio
 ### 5.3 Per-event detail (capped at `max_events_per_batch`)
 
 ```json
-{"t":"pred_fire","kind":"search_traversal","depth":3,"hist_idx":11,"hist_size":15,"game_hist_size":3,"child_pc":2,"child_eval":120,"child_avg":0.55,"node_fen":"<fen>","child_fen":"<fen>","child_move":"Kb7"}
-{"t":"pred_fire","kind":"game_history","depth":7,"hist_idx":2,"hist_size":15,"game_hist_size":3,"child_pc":1,"child_eval":850,"child_avg":0.71,"node_fen":"<fen>","child_fen":"<fen>","child_move":"Kg6"}
+{"t":"pred_fire","depth":3,"count_at_fire":2,"path_size":15,"child_pc":2,"child_eval":120,"child_avg":0.55,"node_fen":"<fen>","child_fen":"<fen>","child_move":"Kb7"}
+{"t":"pred_fire","depth":7,"count_at_fire":3,"path_size":15,"child_pc":1,"child_eval":850,"child_avg":0.71,"node_fen":"<fen>","child_fen":"<fen>","child_move":"Kg6"}
 {"t":"dag_excl_skip","depth":4,"node_pc":3,"move":"Kc6","reason":"in_excl"}
 ```
 
 After `max_events_per_batch` events emitted in a batch, further events bump `events_dropped` only. This prevents log explosion (one prior repro produced ~8852 predicate fires per batch per memory).
 
-`kind` is computed at the §3 cut site by comparing `hist_idx` to `game_hist_size`:
+**`count_at_fire`** = `position_history_count(path_history, child) + 1` — the count the child's key WOULD reach if pushed. With `search_repetition_limit == 2`, the predicate fires when `count_at_fire >= 2`. A value of 2 means "this is the first cycle on this path"; a value of 3+ means "this position has been revisited multiple times in one descent" (deeper cycle).
 
-- `hist_idx < game_hist_size` → `"game_history"`
-- `hist_idx >= game_hist_size` → `"search_traversal"`
+**`path_size`** = `path_history.size()` at moment of fire. With root-only init, this is also the search depth.
 
-This is the **critical decomposition** that all six prior design attempts lacked direct visibility into.
+**`child_pc`** = `child->_parent_count` — DAG sharing status of the cycle target. `child_pc > 1` means the cycle is via a shared DAG node (transposition-driven).
+
+The combination of `count_at_fire`, `path_size`, and `child_pc` is the **critical decomposition** that all six prior design attempts lacked direct visibility into.
 
 ### 5.4 Counter set
 
@@ -104,8 +108,8 @@ Maintained as a per-batch struct, reset at `batch_start`, emitted in `batch_end`
 ```cpp
 struct BatchCounters {
     int pred_total = 0;
-    int pred_search_traversal = 0;
-    int pred_game_history = 0;
+    int pred_count_2 = 0;         // fires with count_at_fire == 2 (first cycle)
+    int pred_count_3plus = 0;     // fires with count_at_fire >= 3 (deep cycle)
     int dag_excl_adds = 0;
     int dag_excl_skips = 0;
     int nodes_terminal = 0;
@@ -133,14 +137,13 @@ void batch_start(int seq, int root_pc, int got_moves, int iter_budget);
 void batch_end(int seq, int iters_done, int root_eval, float root_avg_score);
 
 // Detail events (no-op past max_events_per_batch).
-void pred_fire(bool is_game_history, int depth, int hist_idx, int hist_size,
-               int game_hist_size, const Node* parent, const Node* child,
-               const Move& m);
+void pred_fire(int depth, int count_at_fire, int path_size,
+               const Node* parent, const Node* child, const Move& m);
 void dag_excl_skip(int depth, const Node* node, const Move& m);
 
 // Counter-only increments (always run when enabled, no event cap).
 enum class Counter {
-    pred_total, pred_search_traversal, pred_game_history,
+    pred_total, pred_count_2, pred_count_3plus,
     dag_excl_adds, dag_excl_skips,
     nodes_terminal, nodes_via_explore_new, nodes_via_explore_random
 };
@@ -156,9 +159,9 @@ Each function body in `dag_log.cpp` begins with `if constexpr (!enabled) return;
 In `opti_chess/exploration.cpp`:
 
 1. **§3 cut block** (inside `Node::explore_random_child`, the `if (g_tt_node_dag && position_is_draw_by_repetition(branch_history, *child->_board))` block, ~line 785):
-   - Determine `hist_idx` of the matching entry by re-walking `branch_history` (cheap; only when logging enabled).
-   - Determine `kind` via `hist_idx < game_hist_size`.
-   - Call `dag_log::pred_fire(...)` and `dag_log::bump(Counter::pred_total)` + `bump(Counter::pred_search_traversal | pred_game_history)`.
+   - Call `position_history_count(*branch_history, *child->_board)` to read the current count of the child's key (cheap; the predicate already did this lookup, this is just a re-read).
+   - `count_at_fire = current_count + 1` (the would-be count after a hypothetical push).
+   - Call `dag_log::pred_fire(depth, count_at_fire, path_size, this, child, move)` and `dag_log::bump(Counter::pred_total)` + `bump(Counter::pred_count_2)` if `count_at_fire == 2` else `bump(Counter::pred_count_3plus)`.
 
 2. **`pick_random_child` DagExcl skip** (inside the loop that filters by DagExcl membership, ~line 1746 area):
    - Call `dag_log::dag_excl_skip(...)` and `dag_log::bump(Counter::dag_excl_skips)`.
@@ -189,18 +192,21 @@ In `opti_chess/tests.cpp` (new):
 
 9. **Repro convenience entry point** (§9 below).
 
-## 8. Determining the `game_history_size` split
+## 8. Determining `count_at_fire` and `path_size`
 
-The `PositionHistory` structure threads through search; current implementation does NOT expose the split between game-history-prefix and search-traversal-appended entries.
+`PositionHistory` is `tsl::robin_map<uint64_t, uint8_t>` — a key→count map. The existing helper `position_history_count(const PositionHistory&, Board&)` (`exploration.cpp:73`) returns the current count for a given board's Zobrist key, or 0 if absent.
 
-**Resolution**: add a `size_t _game_history_size` field to `PositionHistory`. Set when the history is initialized from a FEN (in the FEN loader / GUI position setter), never changed by `PathScope` push/pop. Exposed via `size_t game_history_size() const`.
+At the §3 cut site (where the predicate just returned true), the implementation re-reads the count:
 
-This is the only **non-instrumentation** modification in this design — but it's still observability-only because:
-- The field is *informational*. No search logic reads it.
-- It defaults to zero (treat all entries as search-traversal if uninitialized). Backward compatible.
-- The §3 cut reads it only when `dag_log::enabled == true` to label the event `kind`.
+```cpp
+const int current_count = (int)position_history_count(*branch_history, *child->_board);
+const int count_at_fire = current_count + 1;          // would-be count after push
+const int path_size = (int)branch_history->size();
+```
 
-OFF byte-identicality preserved because the field is never read on the OFF path.
+Both lookups are cheap (one robin_map find each) and only run when `dag_log::enabled == true`. No structural changes to `PositionHistory` are required.
+
+**No modification of `PositionHistory` or `position_is_draw_by_repetition`**. The originally-proposed `_game_history_size` field is dropped (the game-history vs search-traversal split is not meaningful in this codebase since game-history is on `Board::_positions_history`, not threaded into the search). Decomposing pred fires by `count_at_fire` and `path_size` provides better analysis material with zero data-structure cost.
 
 ## 9. Repro convenience entry point
 
@@ -242,7 +248,7 @@ The user invokes `run_dag_repro_1()` (or `_2`) from VS — either by adding a me
 
 - `if constexpr (dag_log::enabled == false)` elides every call to `dag_log::*` at compile time.
 - New TU `dag_log.cpp` adds symbols, but none are referenced from the OFF code path.
-- `PositionHistory::_game_history_size` is initialized to 0 and unused on the OFF path; the field's presence has zero observable runtime effect.
+- No structural change to `PositionHistory` — `count_at_fire`/`path_size` are read via the existing `position_history_count` helper, only inside the logging gate.
 - `.gitignore` entry adds no runtime effect.
 
 Conclusion: identical to baseline `a8b4004` when `dag_log::enabled == false`.
@@ -300,14 +306,13 @@ When `enabled == false`: zero of any of this exists at runtime.
 
 Once this spec is approved, the implementation plan will be written to `docs/superpowers/plans/2026-05-20-optichess-dag-metrics-logging.md` via the `writing-plans` skill and executed via `subagent-driven-development`. Approximate task breakdown:
 
-- Task 1: Design-validation gate (no code). Confirm `PositionHistory`'s current structure and the §3 cut location post-revert.
-- Task 2: Add `PositionHistory::_game_history_size` field + accessor + initialization in FEN loader (additive, defaulted 0).
-- Task 3: New TU `dag_log.{h,cpp}` — API + file output + counters + JSON serialization.
-- Task 4: Instrumentation points in `exploration.cpp` + `gui.cpp`.
-- Task 5: `run_dag_repro(...)` entry point in `tests.cpp` + `repro1` and `repro2` wrappers.
-- Task 6: `.gitignore` entry.
-- Task 7: Build + smoke test (run `run_dag_repro_1()` if user can; otherwise build-only).
-- Task 8: Commit and push.
+- Task 1: Design-validation gate (no code). Verify `PositionHistory` structure and the §3 cut location post-revert. **STATUS 2026-05-20: completed inline; the spec has been updated with the verified codebase structure.**
+- Task 2: New TU `dag_log.{h,cpp}` — API + file output + counters + JSON serialization. `.gitignore` entry.
+- Task 3: Instrumentation points in `exploration.cpp` (5 sites: §3 cut, pick_random_child DagExcl skip, explore_new_move entry, explore_random_child entry, grogros_zero terminal returns).
+- Task 4: `gui.cpp` hooks around root grogros_zero + `run_dag_repro(...)` in `tests.cpp` + `repro_1`/`repro_2` wrappers + key bindings 1/2.
+- Task 5: Build verification with both `enabled=true` and `enabled=false` + push.
+
+(The originally-listed `PositionHistory::_game_history_size` task is dropped — the codebase observation made it unnecessary. Final task count: 5, not 8.)
 
 ## 16. Self-review
 
