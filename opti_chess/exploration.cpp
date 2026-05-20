@@ -1996,6 +1996,72 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 	return best_move;
 }
 
+// #11 GHI path-local revaluation helper (cf. design 2026-05-20 §3.2, §4.4).
+// Voir la déclaration dans exploration.h pour le contrat détaillé.
+bool Node::compute_path_local_eval(
+	const PositionHistory& path_history,
+	const Move& substitution_move,
+	const Evaluation& substitution_value,
+	Evaluation* out) const {
+
+	// Défensive : pas d'enfants -> pas d'override.
+	if (_children.empty()) {
+		return false;
+	}
+
+	// Porte d'énumération stricte (§3.2 étape 1). Tant que tous les coups
+	// légaux ne sont pas représentés dans _children, on ne peut PAS prouver
+	// "tous les coups mènent à une répétition" (le coup gagnant peut être
+	// celui pas encore expansé). Aucun override.
+	if (children_count() < static_cast<size_t>(_board->_got_moves)) {
+		return false;
+	}
+
+	const int color = _board->get_color();
+
+	// Minimax sur S_nc (fils NON cycle-touch) plus dag_draw_eval() comme
+	// candidat virtuel (§3.2 étape 3). dag_draw_eval()._value == 0 ; le
+	// candidat virtuel est admis UNE SEULE fois, pas par fils cycle-touch
+	// (différence critique avec le Plan B réverté 0608af5).
+	Evaluation best;
+	bool best_seen = false;
+
+	for (auto const& [move, child_link] : _children) {
+		const Node* child = child_link._node;
+
+		// Cycle-touch ? -> skip de S_nc (NE PAS scorer dag_draw_eval ici).
+		if (position_is_draw_by_repetition(path_history, *child->_board)) {
+			continue;
+		}
+
+		// Substitution pour le fils tout juste descendu (§3.2 étape 3,
+		// règle de contribution par-enfant). Essentielle pour bubbler une
+		// valeur raffinée à travers des nœuds intérieurs partagés.
+		const Evaluation& contrib =
+			(!substitution_move.is_null_move() && move == substitution_move)
+				? substitution_value
+				: child->_deep_evaluation;
+
+		if (!best_seen || contrib._value * color > best._value * color) {
+			best = contrib;
+			best_seen = true;
+		}
+	}
+
+	// Candidat virtuel « nulle volontaire » — une seule fois. Garantit aussi
+	// le cas S_nc == ∅ (tous fils cycle-touch) : émet dag_draw_eval().
+	const Evaluation draw = dag_draw_eval();
+	if (!best_seen || draw._value * color > best._value * color) {
+		best = draw;
+		best_seen = true;
+	}
+
+	// best_seen == true ici par construction (le candidat virtuel garantit
+	// au moins un candidat).
+	*out = best;
+	return true;
+}
+
 // Fonction qui renvoie une valeur prévisionnelle du score du noeud, lorsqu'on ne connait pas les évaluations max (pour la quiecence)
 int Node::get_previsonal_node_score(const double alpha, const double beta, const bool player) const {
 	return 1E6 * get_node_score(alpha, beta, _deep_evaluation._value, _deep_evaluation._avg_score, player);
