@@ -6,7 +6,7 @@
 // runtime cost when disabled. File output is JSON-lines, one event per line,
 // at opti_chess/dag_metrics.log (gitignored).
 
-class Move;       // fwd: opti_chess/board.h
+struct Move;      // fwd: opti_chess/board.h (struct, not class — name-mangling must match)
 class Node;       // fwd: opti_chess/exploration.h
 
 namespace dag_log {
