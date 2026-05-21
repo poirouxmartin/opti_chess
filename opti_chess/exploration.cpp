@@ -498,8 +498,19 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 				if (path_local_eval != nullptr) {
 					*path_local_eval = draw;
 				}
+				// #11 attempt-7b — persiste la nulle même sur un nœud PARTAGÉ
+				// (_parent_count > 1). N'enfreint PAS l'invariant 772183a : ce
+				// dernier visait la coupe §3 mono-arête (nulle PATH-LOCALE qui
+				// corrompait les autres chemins). Le verdict all-cycle est
+				// PATH-INDÉPENDANT : si tous les coups d'un nœud mènent à une
+				// position déjà sur le chemin, le nœud n'a AUCUN coup de progrès
+				// vers une nouvelle position -> nulle forcée game-théorique,
+				// vraie sur TOUS les chemins. Une position gagnante a toujours
+				// un coup de progrès (capture/promotion/avance) atteignant une
+				// nouvelle position -> jamais all-cycle (cf. Repro 2 :
+				// all_cycle_verdicts_emitted == 0). Donc persister ici est sain.
 				bool persisted = false;
-				if (_parent_count <= 1 && !(draw == _deep_evaluation)) {
+				if (!(draw == _deep_evaluation)) {
 					_deep_evaluation = draw;
 					persisted = true;
 				}
