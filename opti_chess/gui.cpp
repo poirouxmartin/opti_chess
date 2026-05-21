@@ -1059,6 +1059,10 @@ void GUI::grogros_analysis(int iterations) {
 
 	const int eff_iterations = iterations == -1 ? iterations_to_explore : iterations;
 
+	// #11 attempt-7 — nouvelle génération de batch pour le reset paresseux des
+	// marqueurs ChildLink::_cycled_batch_seq (design 2026-05-21 §3.2).
+	++g_dag_batch_seq;
+
 	// #11 DAG metrics logging — wrap the root grogros_zero call with session /
 	// batch lifecycle hooks. OFF byte-identique : if constexpr (!enabled)
 	// élimine tout à la compilation.
@@ -1121,6 +1125,10 @@ void GUI::run_dag_repro(const char* repro_name, const string& fen,
 	int final_pc = 0;
 
 	for (int b = 0; b < n_batches; ++b) {
+		// #11 attempt-7 — nouvelle génération de batch (reset paresseux des
+		// marqueurs ChildLink::_cycled_batch_seq, design 2026-05-21 §3.2).
+		++g_dag_batch_seq;
+
 		dag_log::batch_start(b,
 			_root_exploration_node ? _root_exploration_node->_parent_count : 0,
 			_board->_got_moves, iters_per_batch);
