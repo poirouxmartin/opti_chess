@@ -484,46 +484,53 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	// Émission via path_local_eval (out-param) si non-null ; persistance
 	// dans _deep_evaluation UNIQUEMENT si _parent_count <= 1 (invariant
 	// 772183a). OFF / hors DAG : tout est élidé par la garde extérieure.
-	if (g_tt_node_dag) {
-		if (children_count() >= static_cast<size_t>(_board->_got_moves)) {
-			bool all_cycle = true;
-			for (auto const& [m, link] : _children) {
-				if (link._cycled_batch_seq != g_dag_batch_seq) {
-					all_cycle = false;
-					break;
-				}
-			}
-			if (all_cycle) {
-				const Evaluation draw = dag_draw_eval();
-				if (path_local_eval != nullptr) {
-					*path_local_eval = draw;
-				}
-				// #11 attempt-7b — persiste la nulle même sur un nœud PARTAGÉ
-				// (_parent_count > 1). N'enfreint PAS l'invariant 772183a : ce
-				// dernier visait la coupe §3 mono-arête (nulle PATH-LOCALE qui
-				// corrompait les autres chemins). Le verdict all-cycle est
-				// PATH-INDÉPENDANT : si tous les coups d'un nœud mènent à une
-				// position déjà sur le chemin, le nœud n'a AUCUN coup de progrès
-				// vers une nouvelle position -> nulle forcée game-théorique,
-				// vraie sur TOUS les chemins. Une position gagnante a toujours
-				// un coup de progrès (capture/promotion/avance) atteignant une
-				// nouvelle position -> jamais all-cycle (cf. Repro 2 :
-				// all_cycle_verdicts_emitted == 0). Donc persister ici est sain.
-				bool persisted = false;
-				if (!(draw == _deep_evaluation)) {
-					_deep_evaluation = draw;
-					persisted = true;
-				}
-				if constexpr (dag_log::enabled) {
-					dag_log::bump(dag_log::Counter::all_cycle_verdicts_emitted);
-					if (persisted) {
-						dag_log::bump(dag_log::Counter::all_cycle_persisted);
-					}
-				}
+	// #11 attempt-7c (cf. design 2026-05-21, raffinement 1-itération).
+	// ÉMISSION relâchée + PERSISTANCE stricte :
+	//  - all_explored_cycle = TOUS les fils DÉJÀ dans _children ont leur arête
+	//    §3-cut ce batch (les marques ChildLink::_cycled_batch_seq s'accumulent
+	//    sur tout le batch, pas par appel). Pas de porte d'énumération ici :
+	//    permet au verdict de remonter en cascade même sur des nœuds profonds
+	//    sous-visités (sinon la porte stricte bloquait, all_cycle_persisted=0).
+	//  - Émission via path_local_eval : propage le verdict au parent (cascade).
+	//  - PERSISTANCE dans _deep_evaluation (écriture partagée, risque 772183a) :
+	//    UNIQUEMENT si pleinement énuméré (children_count() >= _got_moves). À la
+	//    racine (peu de coups, beaucoup d'itérations) c'est satisfait -> nulle
+	//    persistée. SÛRETÉ Repro 2 : un coup gagnant fait un PROGRÈS (nouvelle
+	//    position, jamais dans l'historique) -> jamais §3-cut -> son arête
+	//    jamais marquée -> un nœud avec coup gagnant exploré n'est jamais
+	//    all_explored_cycle -> cascade stoppée, pas de fausse nulle.
+	if (g_tt_node_dag && !_children.empty()) {
+		bool all_explored_cycle = true;
+		for (auto const& [m, link] : _children) {
+			if (link._cycled_batch_seq != g_dag_batch_seq) {
+				all_explored_cycle = false;
+				break;
 			}
 		}
-		else if constexpr (dag_log::enabled) {
-			dag_log::bump(dag_log::Counter::enum_gate_blocks);
+		if (all_explored_cycle) {
+			const Evaluation draw = dag_draw_eval();
+			// Émission (relâchée) — propage au parent pour la cascade.
+			if (path_local_eval != nullptr) {
+				*path_local_eval = draw;
+			}
+			// Persistance (stricte) — écriture partagée seulement si énumération
+			// complète (path-indépendante : tous les coups légaux sont nulle).
+			const bool fully_enumerated =
+				children_count() >= static_cast<size_t>(_board->_got_moves);
+			bool persisted = false;
+			if (fully_enumerated && !(draw == _deep_evaluation)) {
+				_deep_evaluation = draw;
+				persisted = true;
+			}
+			if constexpr (dag_log::enabled) {
+				dag_log::bump(dag_log::Counter::all_cycle_verdicts_emitted);
+				if (persisted) {
+					dag_log::bump(dag_log::Counter::all_cycle_persisted);
+				}
+				if (!fully_enumerated) {
+					dag_log::bump(dag_log::Counter::enum_gate_blocks);
+				}
+			}
 		}
 	}
 
