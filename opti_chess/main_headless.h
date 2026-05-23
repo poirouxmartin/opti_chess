@@ -11,6 +11,7 @@
 #include "evaluation.h"
 #include "buffer.h"
 #include "zobrist.h"
+#include "gui.h" // main_GUI / GameTree : from_fen() déréférence main_GUI._game_tree
 #include <cmath>
 #include <cstdio>
 #include <string>
@@ -59,7 +60,7 @@ inline int run_repro(Node* root, Board* board, Evaluator* eval,
     const int eval_value = root->_deep_evaluation._value;
     std::printf("[DAG-TEST] %-26s dag=%d  eval=%6d  avg=%.3f\n",
                 name, dag_on ? 1 : 0, eval_value,
-                root->_deep_evaluation._avg_score);
+                (double)root->_deep_evaluation._avg_score);
     return eval_value;
 }
 
