@@ -136,8 +136,6 @@ void batch_end(int seq, int iters_done, int root_eval, float root_avg_score) {
 		"\"counters\":{\"pred_total\":%d,\"pred_count_2\":%d,\"pred_count_3plus\":%d,"
 		"\"dag_excl_adds\":%d,\"dag_excl_skips\":%d,"
 		"\"nodes_terminal\":%d,\"nodes_via_explore_new\":%d,\"nodes_via_explore_random\":%d,"
-		"\"all_cycle_verdicts_emitted\":%d,\"all_cycle_persisted\":%d,"
-		"\"enum_gate_blocks\":%d,"
 		"\"events_dropped\":%d}}\n",
 		seq, iters_done, root_eval, (double)root_avg_score,
 		g_counters[(int)Counter::pred_total],
@@ -148,9 +146,6 @@ void batch_end(int seq, int iters_done, int root_eval, float root_avg_score) {
 		g_counters[(int)Counter::nodes_terminal],
 		g_counters[(int)Counter::nodes_via_explore_new],
 		g_counters[(int)Counter::nodes_via_explore_random],
-		g_counters[(int)Counter::all_cycle_verdicts_emitted],
-		g_counters[(int)Counter::all_cycle_persisted],
-		g_counters[(int)Counter::enum_gate_blocks],
 		g_events_dropped);
 	g_batch_buffer += line;
 	flush_batch_buffer();

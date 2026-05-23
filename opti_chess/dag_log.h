@@ -32,10 +32,6 @@ namespace dag_log {
 		nodes_terminal,
 		nodes_via_explore_new,
 		nodes_via_explore_random,
-		// #11 attempt-7 (cf. design 2026-05-21 §4) — métriques du verdict all-cycle.
-		all_cycle_verdicts_emitted, // nœud all-cycle en fin de grogros_zero
-		all_cycle_persisted,        // verdict écrit dans _deep_evaluation (non partagé)
-		enum_gate_blocks,           // verdict supprimé : children_count() < _got_moves
 		counter_count
 	};
 

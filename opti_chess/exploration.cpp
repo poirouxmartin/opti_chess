@@ -476,64 +476,6 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		cout << "negative nodes in grogros zero???" << endl;
 	}
 
-	// #11 attempt-7 — verdict all-cycle (cf. design 2026-05-21 §3.4, §7
-	// case 10). Si CE nœud a tous ses coups légaux dans _children
-	// (porte d'énumération stricte) ET chaque ChildLink._cycled_batch_seq
-	// == g_dag_batch_seq (chaque arête a été §3-cut au moins une fois sur
-	// CE batch), alors ce nœud est forced-draw sur les chemins du batch.
-	// Émission via path_local_eval (out-param) si non-null ; persistance
-	// dans _deep_evaluation UNIQUEMENT si _parent_count <= 1 (invariant
-	// 772183a). OFF / hors DAG : tout est élidé par la garde extérieure.
-	// #11 attempt-7c (cf. design 2026-05-21, raffinement 1-itération).
-	// ÉMISSION relâchée + PERSISTANCE stricte :
-	//  - all_explored_cycle = TOUS les fils DÉJÀ dans _children ont leur arête
-	//    §3-cut ce batch (les marques ChildLink::_cycled_batch_seq s'accumulent
-	//    sur tout le batch, pas par appel). Pas de porte d'énumération ici :
-	//    permet au verdict de remonter en cascade même sur des nœuds profonds
-	//    sous-visités (sinon la porte stricte bloquait, all_cycle_persisted=0).
-	//  - Émission via path_local_eval : propage le verdict au parent (cascade).
-	//  - PERSISTANCE dans _deep_evaluation (écriture partagée, risque 772183a) :
-	//    UNIQUEMENT si pleinement énuméré (children_count() >= _got_moves). À la
-	//    racine (peu de coups, beaucoup d'itérations) c'est satisfait -> nulle
-	//    persistée. SÛRETÉ Repro 2 : un coup gagnant fait un PROGRÈS (nouvelle
-	//    position, jamais dans l'historique) -> jamais §3-cut -> son arête
-	//    jamais marquée -> un nœud avec coup gagnant exploré n'est jamais
-	//    all_explored_cycle -> cascade stoppée, pas de fausse nulle.
-	if (g_tt_node_dag && !_children.empty()) {
-		bool all_explored_cycle = true;
-		for (auto const& [m, link] : _children) {
-			if (link._cycled_batch_seq != g_dag_batch_seq) {
-				all_explored_cycle = false;
-				break;
-			}
-		}
-		if (all_explored_cycle) {
-			const Evaluation draw = dag_draw_eval();
-			// Émission (relâchée) — propage au parent pour la cascade.
-			if (path_local_eval != nullptr) {
-				*path_local_eval = draw;
-			}
-			// Persistance (stricte) — écriture partagée seulement si énumération
-			// complète (path-indépendante : tous les coups légaux sont nulle).
-			const bool fully_enumerated =
-				children_count() >= static_cast<size_t>(_board->_got_moves);
-			bool persisted = false;
-			if (fully_enumerated && !(draw == _deep_evaluation)) {
-				_deep_evaluation = draw;
-				persisted = true;
-			}
-			if constexpr (dag_log::enabled) {
-				dag_log::bump(dag_log::Counter::all_cycle_verdicts_emitted);
-				if (persisted) {
-					dag_log::bump(dag_log::Counter::all_cycle_persisted);
-				}
-				if (!fully_enumerated) {
-					dag_log::bump(dag_log::Counter::enum_gate_blocks);
-				}
-			}
-		}
-	}
-
 	// Temps de calcul
 	_time_spent += clock() - begin_monte_time;
 
@@ -880,13 +822,6 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 			*path_local_eval = dag_draw_eval();
 		}
 
-		// #11 attempt-7 (cf. design 2026-05-21 §3.3) — marque l'arête comme
-		// cycle-touch sur CE batch. Le verdict all-cycle est calculé en fin
-		// de Node::grogros_zero (§3.4). `this` est le parent, `move` est
-		// l'arête vers child. Aucune mutation partagée : ChildLink est dans
-		// _children du parent, propre à ce parent (invariant 772183a).
-		this->_children[move]._cycled_batch_seq = g_dag_batch_seq;
-
 		if constexpr (dag_log::enabled) {
 			// One inline lookup ; same key the predicate just checked.
 			child->_board->get_zobrist_key();
@@ -912,21 +847,9 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		dag_log::bump(dag_log::Counter::nodes_via_explore_random);
 	}
 
-	// Explore le fils. #11 attempt-7 (cf. design 2026-05-21 §3.4) — on capture
-	// le verdict all-cycle du fils via un scratch path-local. Si le fils est
-	// forced-draw (tous SES coups légaux cyclent), sa fin de grogros_zero écrit
-	// dag_draw_eval dans child_verdict ; on marque alors NOTRE arête vers ce
-	// fils comme cycle-touch pour CE batch, permettant au verdict de remonter
-	// en cascade jusqu'à un nœud non partagé (la racine). OFF / hors DAG :
-	// nullptr passé -> child_verdict reste non évalué -> aucun effet.
-	Evaluation child_verdict;
-	child_verdict._evaluated = false;
 	{
 		PathScope _ps(branch_history, *child->_board);
-		child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &branch_history, g_tt_node_dag ? &child_verdict : nullptr); // L'évaluation du fils est mise à jour ici
-	}
-	if (g_tt_node_dag && child_verdict._evaluated) {
-		this->_children[move]._cycled_batch_seq = g_dag_batch_seq;
+		child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &branch_history); // L'évaluation du fils est mise à jour ici
 	}
 
 	// Met à jour l'évaluation du plateau avec le meilleur coup
@@ -2332,5 +2255,4 @@ NodeBuffer monte_node_buffer;
 bool g_buffers_full_logged = false;
 bool g_tt_main_search = false;
 bool g_tt_node_dag = false; // #11 Plan B — voir exploration.h
-uint32_t g_dag_batch_seq = 1; // #11 attempt-7 — voir exploration.h §3.2
 robin_map<uint64_t, Node*> node_map; // #11 Plan B — voir exploration.h
