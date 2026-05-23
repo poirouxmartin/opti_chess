@@ -14,6 +14,7 @@
 #include "gui.h" // main_GUI / GameTree : from_fen() déréférence main_GUI._game_tree
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 
 namespace dag_headless {
@@ -52,22 +53,37 @@ inline int run_repro(Node* root, Board* board, Evaluator* eval,
     g_tt_node_dag = dag_on;
     g_tt_main_search = false;
 
+    // Trajectoire par batch : on imprime au plus ~20 points + le premier et le
+    // dernier, pour VOIR une dérive (ex. un gain qui s'érode vers la nulle au fil
+    // des itérations) plutôt qu'un seul chiffre final. `_nodes` = proxy d'effort.
+    const int print_stride = (n_batches <= 25) ? 1 : (n_batches / 20);
+    int eval_value = 0;
     for (int b = 0; b < n_batches; ++b) {
         root->grogros_zero(&monte_board_buffer, eval, ALPHA, BETA, GAMMA,
                            iters_per_batch, QDEPTH);
+        eval_value = root->_deep_evaluation._value;
+        if (b == 0 || b == n_batches - 1 || (b % print_stride) == 0) {
+            std::printf("[DAG-TEST]   %-22s dag=%d  batch=%3d  eval=%6d  avg=%.3f  nodes=%d\n",
+                        name, dag_on ? 1 : 0, b, eval_value,
+                        (double)root->_deep_evaluation._avg_score, root->_nodes);
+        }
     }
-
-    const int eval_value = root->_deep_evaluation._value;
-    std::printf("[DAG-TEST] %-26s dag=%d  eval=%6d  avg=%.3f\n",
+    std::printf("[DAG-TEST] %-26s dag=%d  FINAL eval=%6d  avg=%.3f  nodes=%d\n",
                 name, dag_on ? 1 : 0, eval_value,
-                (double)root->_deep_evaluation._avg_score);
+                (double)root->_deep_evaluation._avg_score, root->_nodes);
     return eval_value;
 }
 
 } // namespace dag_headless
 
-inline int main_headless() {
+inline int main_headless(int argc, char** argv) {
     using namespace dag_headless;
+
+    // Override optionnel des budgets pour itérer sans recompiler :
+    // `--dag-test [n_batches] [iters_per_batch]` (appliqué aux DEUX repros).
+    // Sans argument : budgets par défaut (miroir de GUI::run_dag_repro_1/2).
+    const int ov_batches = (argc > 2) ? std::atoi(argv[2]) : 0;
+    const int ov_iters   = (argc > 3) ? std::atoi(argv[3]) : 0;
 
     // Init des pools globaux : miroir de GUI::init_buffers (gui.cpp:2051).
     const PoolSizing ps = compute_pool_sizing();
@@ -90,10 +106,14 @@ inline int main_headless() {
     const std::string fen2 = "8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7";
 
     // Mêmes budgets que GUI::run_dag_repro_1/2 (gui.cpp:1166-1187).
-    const int r1_off = run_repro(root, board, &eval, "repro1_kp_h_draw", fen1, 10, 2000, false);
-    const int r1_on  = run_repro(root, board, &eval, "repro1_kp_h_draw", fen1, 10, 2000, true);
-    const int r2_off = run_repro(root, board, &eval, "repro2_pawn_win",  fen2, 20, 3000, false);
-    const int r2_on  = run_repro(root, board, &eval, "repro2_pawn_win",  fen2, 20, 3000, true);
+    const int b1 = ov_batches ? ov_batches : 10;
+    const int i1 = ov_iters   ? ov_iters   : 2000;
+    const int b2 = ov_batches ? ov_batches : 20;
+    const int i2 = ov_iters   ? ov_iters   : 3000;
+    const int r1_off = run_repro(root, board, &eval, "repro1_kp_h_draw", fen1, b1, i1, false);
+    const int r1_on  = run_repro(root, board, &eval, "repro1_kp_h_draw", fen1, b1, i1, true);
+    const int r2_off = run_repro(root, board, &eval, "repro2_pawn_win",  fen2, b2, i2, false);
+    const int r2_on  = run_repro(root, board, &eval, "repro2_pawn_win",  fen2, b2, i2, true);
 
     int fails = 0;
     auto check = [&](bool ok, const char* desc) {
