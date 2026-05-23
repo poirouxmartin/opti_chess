@@ -608,12 +608,22 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		else {
 			new_board->get_zobrist_key();
 
+			// #11 attempt-8 (design 2026-05-22 §3) — une finale de pions est
+			// DÉ-PARTAGÉE sous DAG : chaque chemin reçoit son propre sous-arbre,
+			// donc les feuilles §3 de répétition remontent la nulle par minimax
+			// ordinaire (comportement mode-arbre, déjà correct). is_pawn_endgame()
+			// = rois + pions seuls ; couvre les deux repros et c'est la porte SÛRE
+			// la plus étroite. OFF : jamais consultée. Coût : un scan 8x8 borné, à
+			// la création de nœud uniquement (jamais dans la boucle sélection/éval).
+			const bool dag_shareable = g_tt_node_dag && !new_board->is_pawn_endgame();
+
 			// #11 Plan B — link-on-create. Si une position de meme cle Zobrist
 			// est deja un Node VIVANT, on lie l'arete a ce Node partage au lieu
 			// de recreer un sous-arbre. La branche nulle (au-dessus) fabrique
-			// toujours une feuille distincte — jamais partagee. OFF : saute tout.
+			// toujours une feuille distincte — jamais partagee. OFF / finale de
+			// pions : saute tout (jamais cherchée -> jamais trouvée -> jamais partagée).
 			Node* shared = nullptr;
-			if (g_tt_node_dag) {
+			if (dag_shareable) {
 				const auto it = node_map.find(new_board->_zobrist_key);
 				if (it != node_map.end()) {
 					shared = it->second;
@@ -640,7 +650,8 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 				}
 			}
 			else {
-				// Miss : création normale + enregistrement dans node_map.
+				// Miss : création normale + enregistrement dans node_map
+				// (sauf finale de pions, dé-partagée : jamais enregistrée).
 				child = monte_node_buffer.get_first_free_node();
 
 				if (child == nullptr)
@@ -649,7 +660,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 				child->_board = new_board;
 				created_new_node = true;
 
-				if (g_tt_node_dag) {
+				if (dag_shareable) {
 					node_map[new_board->_zobrist_key] = child;
 					g_dag_link_misses++;
 				}
