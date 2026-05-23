@@ -6,6 +6,8 @@
 **Issue:** #11 — DAG GHI soundness on the two reference repros
 **Toggle:** `g_tt_node_dag` (existing, default OFF)
 
+**Status (2026-05-23):** IMPLEMENTED on `feature/tt-main-search` (plan `docs/superpowers/plans/2026-05-23-optichess-dag-endgame-desharing.md`). Headless harness (`opti_chess --dag-test`) PASSES: Repro 1 ON 476→0 (draw recovered), Repro 2 ON 103 (still winning), OFF sanity both. attempt-7 verdict machinery removed. The GUI OFF byte-identicality + real-play gate (§9.3) remains a USER gate.
+
 ---
 
 ## 1. Goal
