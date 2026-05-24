@@ -166,6 +166,16 @@ bool position_is_draw_by_repetition(const PositionHistory& path_history, Board& 
 	return position_history_count(path_history, board) + 1 >= repetition_limit;
 }
 
+// #11 perf (#1 priority) — variante hot-path de la substitution path-aware en
+// SÉLECTION : la clé Zobrist du fils est déjà calculée (boards d'arbre immuables
+// et keyés à la création, cf. node_map.find(child->_board->_zobrist_key)), donc
+// on évite le recompute O(64) de get_zobrist_key() appelé ~5x/fils/itération.
+// Toujours sous DAG (seul appelant) -> seuil triple FIDE.
+static inline bool dag_child_on_path_draw(const PositionHistory& path_history, uint64_t zkey) {
+	const auto it = path_history.find(zkey);
+	return (uint32_t)((it == path_history.end()) ? 0 : it->second.count) + 1 >= search_repetition_limit_dag;
+}
+
 void mark_position_as_draw(Board& board) {
 	board._game_over_value = draw;
 	board._game_over_checked = true;
@@ -1723,7 +1733,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		Node* child = child_link._node;
 		// #11 GHI — fils sur le chemin = dag_draw_eval() (cf. get_move_scores).
 		const Evaluation& ceval =
-			(path != nullptr && g_tt_node_dag && position_is_draw_by_repetition(*path, *child->_board))
+			(path != nullptr && g_tt_node_dag && dag_child_on_path_draw(*path, child->_board->_zobrist_key))
 				? dag_draw_eval_ref()
 				: child->_deep_evaluation;
 		if (ceval._value * color > max_eval) {
@@ -1904,7 +1914,7 @@ robin_map<Move, double> Node::get_move_scores(const double alpha, const double b
 	for (auto const& [_, child_link] : _children) {
 		Node* child = child_link._node;
 		const Evaluation& ceval =
-			(path != nullptr && g_tt_node_dag && position_is_draw_by_repetition(*path, *child->_board))
+			(path != nullptr && g_tt_node_dag && dag_child_on_path_draw(*path, child->_board->_zobrist_key))
 				? dag_draw_eval_ref()
 				: child->_deep_evaluation;
 		if (ceval._value * color > max_eval) {
@@ -1941,7 +1951,7 @@ robin_map<Move, double> Node::get_move_scores(const double alpha, const double b
 			continue;
 		}
 		const Evaluation& ceval =
-			(path != nullptr && g_tt_node_dag && position_is_draw_by_repetition(*path, *child->_board))
+			(path != nullptr && g_tt_node_dag && dag_child_on_path_draw(*path, child->_board->_zobrist_key))
 				? dag_draw_eval_ref()
 				: child->_deep_evaluation;
 		move_scores.emplace(move, child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player, const_cast<Evaluation*>(&ceval)));
@@ -2019,7 +2029,7 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 	for (auto const& [_, child_link] : _children) {
 		Node* child = child_link._node;
 		const Evaluation& ceval =
-			(path != nullptr && g_tt_node_dag && position_is_draw_by_repetition(*path, *child->_board))
+			(path != nullptr && g_tt_node_dag && dag_child_on_path_draw(*path, child->_board->_zobrist_key))
 				? dag_draw_eval_ref()
 				: child->_deep_evaluation;
 		if (ceval._value * color > max_eval) {
@@ -2057,7 +2067,7 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 			continue;
 		}
 		const Evaluation& ceval =
-			(path != nullptr && g_tt_node_dag && position_is_draw_by_repetition(*path, *child->_board))
+			(path != nullptr && g_tt_node_dag && dag_child_on_path_draw(*path, child->_board->_zobrist_key))
 				? dag_draw_eval_ref()
 				: child->_deep_evaluation;
 		double score = child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player, const_cast<Evaluation*>(&ceval));
