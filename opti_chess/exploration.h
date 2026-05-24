@@ -7,7 +7,16 @@
 #include <vector>
 
 using namespace tsl;
-using PositionHistory = RepetitionHistory;
+
+// #11 — historique de chemin de RECHERCHE (distinct du RepetitionHistory de
+// partie, board.h:16). Porte le compte de visites ET le premier ply où la
+// position est apparue sur le chemin courant (first_ply), nécessaire au gardien
+// de cache GHI (intrinsèque ssi first_ply >= ply du noeud).
+struct PathEntry {
+	uint16_t count = 0;
+	uint16_t first_ply = 0;
+};
+using PositionHistory = tsl::robin_map<uint64_t, PathEntry>;
 
 class Node;
 
@@ -147,13 +156,13 @@ public:
 	void init_node();
 
 	// Nouveau GrogrosZero
-	void grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int nodes, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, Evaluation* path_local_eval = nullptr);
+	void grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int nodes, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, Evaluation* path_local_eval = nullptr, int ply = 0);
 
 	// Fonction qui explore un nouveau coup
-	void explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, Evaluation* path_local_eval = nullptr);
+	void explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, Evaluation* path_local_eval = nullptr, int ply = 0);
 
 	// Fonction qui explore dans un plateau fils pseudo-al�atoire
-	void explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, DagExcl* dag_excl = nullptr, Evaluation* path_local_eval = nullptr);
+	void explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, DagExcl* dag_excl = nullptr, Evaluation* path_local_eval = nullptr, int ply = 0);
 
 	// Fonction qui renvoie le fils le plus explor�
 	Move get_most_explored_child_move();
