@@ -37,7 +37,8 @@
 | `Evaluation` | `{_value, _avg_score, _wdl, _uncertainty, _winnable_*, _evaluated}` | `board.h:461` |
 | `BoardBuffer` / `NodeBuffer` | Pools mémoire (zéro allocation en recherche) | `buffer.h` |
 | `TranspositionTable` | `robin_map<uint64, ZobristEntry>` | `zobrist.h` |
-| `PositionHistory` = `RepetitionHistory` | `robin_map<uint64, uint8>` path-local | `exploration.h:9` |
+| `PositionHistory` | `robin_map<uint64, PathEntry{count,first_ply}>` path-local (#11, dé-aliasé du `RepetitionHistory` de partie) | `exploration.h` |
+| `node_map` (DAG, `g_tt_node_dag`) | `zobrist → Node*` partage par transposition (#11) | `exploration.cpp` |
 
 ---
 
@@ -131,7 +132,7 @@ Donc deux chemins de recherche atteignant la même position physique avec des `_
 
 ### 4.2 `ChildLink` (`exploration.h:13`)
 
-Les stats par-arête vivent ici, pas sur le `Node` enfant, parce qu'un même Node pourrait théoriquement être partagé entre plusieurs parents (à terme, via la TT). Aujourd'hui le partage n'est **pas** activé (cf. section 7).
+Les stats par-arête (`_chosen_iterations`, `_propagated_nodes`) vivent ici, pas sur le `Node` enfant, parce qu'un même Node **est** partagé entre plusieurs parents sous le DAG (#11, toggle `g_tt_node_dag`, cf. §7.5.f). En OFF le partage est inactif (chemin arbre).
 
 ```cpp
 struct ChildLink {
@@ -288,39 +289,42 @@ Emergency cutoff et stand-pat return stockés en `TT_EXACT` alors que ce ne sont
 #### e) Persistance entre recherches
 La TT n'est pas systématiquement clearée entre recherches. Les entrées d'une session précédente polluent. Combiné avec (b), donne des bugs "fantômes".
 
-#### f) Pas de partage de Node via la TT
-Le code commente explicitement (`exploration.cpp:272-273`) qu'on ne partage **pas** les `Node` via la TT : ça casserait `_nodes`, la backpropagation et créerait des cycles. La TT ne stocke que des évals scalaires.
+#### f) Partage de Node — le DAG (`g_tt_node_dag`, #11)
+Historiquement les `Node` n'étaient **pas** partagés (ça casse `_nodes` tree-local, la backprop, et crée des cycles). Depuis #11 (Plan B), un toggle `g_tt_node_dag` (défaut OFF) active le **partage par transposition** : `node_map: zobrist → Node*`, lookup/register au site unique `explore_new_move` (link-on-create), `add_child` incrémente `_parent_count` (partagé ⇔ `≥2`), recyclage seulement à `_parent_count ≤ 0`. Comptage `_nodes` sous DAG = **modèle A** (`+1`/itération, proxy de visites borné — pas la taille d'arbre, d'où la « profondeur » plate en stat). La nulle par répétition path-dépendante sur ces nœuds partagés (GHI) est gérée par le mécanisme §8.5 (substitution au consommateur + gardien de cache `min_earlier_ply >= ply`). OFF : tout est `g_tt_node_dag`-gardé → comportement arbre inchangé. La TT scalaire (`g_tt_main_search`) reste un mécanisme distinct (évals de feuille seulement).
 
 ---
 
-## 8. Répétitions — path-local history
+## 8. Répétitions & transpositions (DAG) — #11
 
-Fichier : `exploration.cpp:5-39`
+Fichier : `exploration.cpp` (helpers en tête + `explore_*`/`grogros_zero`).
 
 ### 8.1 Principe
-L'historique des positions est **propre à la branche d'exploration courante**, pas attaché au `Node` (parce que la même position via deux chemins différents a deux historiques différents).
+L'historique des positions est **propre au chemin d'exploration courant**, pas attaché au `Node` : la même position atteinte par deux chemins a deux statuts de répétition différents (Graph History Interaction, GHI). Sous le DAG (§7.5.f) un `Node` est **partagé** entre parents, donc son `_deep_evaluation` unique ne peut pas porter une nulle path-dépendante — d'où le mécanisme ci-dessous.
 
-### 8.2 Type
+### 8.2 Type (dé-aliasé du `RepetitionHistory` de partie)
 ```cpp
-using PositionHistory = RepetitionHistory;  // robin_map<uint64, uint8>
+struct PathEntry { uint16_t count; uint16_t first_ply; };
+using PositionHistory = robin_map<uint64_t, PathEntry>;  // exploration.h
 ```
-Clé : Zobrist. Valeur : compte de visites sur ce chemin.
+Clé : Zobrist (inclut le trait, cf. board.cpp). `count` = visites sur le chemin courant ; `first_ply` = ply de la 1ʳᵉ occurrence (posé à l'insertion, conservé). Le `RepetitionHistory` de partie (`Board::_positions_history`, `<uint64,uint8>`) reste distinct.
 
-### 8.3 Construction du child path history
-`make_child_path_history(parent_path, parent_board, move)` :
-- Si coup irréversible (capture / poussée de pion / roque) → retourne historique vide (rien ne peut se répéter au-delà d'un coup irréversible).
-- Sinon → clone de l'historique parent.
+### 8.3 Push/pop & threading du ply
+Plus de clone par coup/itération (supprimé en #7). Un seul historique possédé à la racine, threadé par pointeur. `PathScope` (RAII) pousse la position du fils à la construction, dépile au dtor (équilibré sur tout chemin de sortie). Un `int ply` est threadé (racine 0, +1 par descente) via `grogros_zero`/`explore_new_move`/`explore_random_child`. `position_history_first_ply(path, board)` lit le `first_ply`.
 
 ### 8.4 Détection
 ```cpp
-position_is_draw_by_repetition(path, board) {
-    return path_count(board) + 1 >= search_repetition_limit;  // = 2 actuellement
+position_is_draw_by_repetition(path, board, limit = 0) {
+    if (limit == 0) limit = g_tt_node_dag ? search_repetition_limit_dag : search_repetition_limit;
+    return path_count(board) + 1 >= limit;  // 3-fold (FIDE) sous DAG, 2-fold en arbre OFF
 }
 ```
-**Note** : la limite est 2 visites (en réalité on traite la 2e occurrence comme nulle, donc effectivement 2-fold, pas 3-fold strict).
+**OFF (arbre)** : 2-fold agressif (historique). **DAG** : vrai 3-fold FIDE — sous partage la recherche descend assez profond pour que les manœuvres de roi rebouclent ; le 2-fold y couperait de vraies lignes gagnantes (cf. BUGFIXES #9/#11 attempt-9). Hot path : `dag_child_on_path_draw(path, child->_board->_zobrist_key)` réutilise la clé déjà calculée (pas de recompute O(64) par fils).
 
-### 8.5 Clonage par itération
-`grogros_zero` clone `base_path` à chaque outer iteration (`exploration.cpp:185`), pour que des branches sœurs ne se polluent pas.
+### 8.5 Mécanisme GHI (DAG, `g_tt_node_dag`)
+Une répétition est une **feuille de valeur nulle qui concourt en minimax**, évaluée par chemin **au consommateur** :
+- **Substitution** : un fils déjà sur le chemin contribue `dag_draw_eval()` (0), appliqué identiquement en **sélection** (`get_move_scores`/`get_best_score_move`/`pick_random_child`) ET dans les deux **backups** (`explore_random_child`/`explore_new_move`). Sélection et backup cohérents ⇒ une ligne gagnante non-cyclique prime toujours un frère cyclique nulifié ; si toute ligne ≤ nulle, la nulle l'emporte.
+- **Ne-pas-descendre** : si le fils SÉLECTIONNÉ est une répétition, on ne descend pas (sinon boucle) ; sa valeur path-locale = nulle, on note `first_ply`.
+- **Gardien de cache** : le nœud `N` (ply `p`) suit `min_earlier_ply` = plus petit `first_ply` des répétitions utilisées. On persiste dans `N->_deep_evaluation` (partagé) **seulement si `min_earlier_ply >= p`** (toutes intra-sous-arbre = intrinsèque = path-indépendant). Sinon (extrinsèque) on ne touche pas le cache ; la valeur path-locale remonte au parent par le canal `BackupResult* out` (et `min_earlier_ply` se propage). OFF / `out == nullptr` : chemin arbre inchangé.
 
 ---
 
@@ -415,6 +419,6 @@ Au début de chaque nouvelle recherche depuis une racine différente (sauf si on
 | Score formula | `exploration.cpp:1278` | `Node::get_node_score` |
 | TT probe/store | `exploration.cpp:739, 770-996` | `transposition_table.{probe,store}` |
 | TT structure | `zobrist.h:30-67` | `ZobristEntry`, `TranspositionTable` |
-| Repetitions | `exploration.cpp:5-39` | `PositionHistory`, `make_child_path_history` |
+| Répétitions & DAG (#11) | `exploration.cpp` (helpers + `explore_*`) | `PositionHistory`/`PathEntry`, `PathScope`, `position_is_draw_by_repetition`, `node_map`, `BackupResult` |
 | Evaluation struct | `board.h:461-561` | `Evaluation`, ops `>` / `<` |
 | Eval flow | `exploration.cpp:1037` | `Node::evaluate_position` |
