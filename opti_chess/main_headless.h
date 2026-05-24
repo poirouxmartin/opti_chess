@@ -110,10 +110,24 @@ inline int main_headless(int argc, char** argv) {
     const int i1 = ov_iters   ? ov_iters   : 2000;
     const int b2 = ov_batches ? ov_batches : 20;
     const int i2 = ov_iters   ? ov_iters   : 3000;
+    // Repetition draws hors finale-de-pions (cas general GHI : noeuds PARTAGES sous DAG).
+    // Verifies OFF=0 ON=0 (calibration 2026-05-24, Tests.txt:62 et :1423).
+    // fen3 = "tour folle" : nulle par perpetuelle alors que les Noirs ont une dame de plus
+    //        -> la nulle par repetition doit primer un enorme desavantage materiel.
+    const std::string fen3 = "8/8/8/7k/8/qp6/p7/K5R1 w - - 0 1";
+    // fen4 = perpetuelle plateau plein (tours doublees en 7e) -> riche en transpositions.
+    const std::string fen4 = "rn2k1r1/pppRpRpp/bb6/q7/6n1/8/PPPPPPPP/1NB1KBN1 w q - 0 1";
+
     const int r1_off = run_repro(root, board, &eval, "repro1_kp_h_draw", fen1, b1, i1, false);
     const int r1_on  = run_repro(root, board, &eval, "repro1_kp_h_draw", fen1, b1, i1, true);
     const int r2_off = run_repro(root, board, &eval, "repro2_pawn_win",  fen2, b2, i2, false);
     const int r2_on  = run_repro(root, board, &eval, "repro2_pawn_win",  fen2, b2, i2, true);
+    // node_map size right after the ON pawn-endgame run = sharing-active proxy.
+    const size_t r2_on_nodemap = node_map.size();
+    const int r3_off = run_repro(root, board, &eval, "repro3_perpetual", fen3, b2, i2, false);
+    const int r3_on  = run_repro(root, board, &eval, "repro3_perpetual", fen3, b2, i2, true);
+    const int r4_off = run_repro(root, board, &eval, "repro4_perpetual", fen4, b2, i2, false);
+    const int r4_on  = run_repro(root, board, &eval, "repro4_perpetual", fen4, b2, i2, true);
 
     int fails = 0;
     auto check = [&](bool ok, const char* desc) {
@@ -125,6 +139,12 @@ inline int main_headless(int argc, char** argv) {
     check(std::abs(r1_on)  <= EPS_DRAW,                              "Repro1 ON  ~ draw (THE FIX)");
     check(r2_off >= WIN_THRESH,                                      "Repro2 OFF winning (sanity)");
     check(r2_on  >= WIN_THRESH && std::abs(r2_on) > EPS_DRAW,        "Repro2 ON  winning (no phantom draw)");
+    check(std::abs(r3_off) <= EPS_DRAW,                              "Repro3 OFF perpetual ~ draw (sanity)");
+    check(std::abs(r3_on) <= EPS_DRAW,                               "Repro3 ON  perpetual ~ draw");
+    check(std::abs(r4_off) <= EPS_DRAW,                              "Repro4 OFF perpetual ~ draw (sanity)");
+    check(std::abs(r4_on) <= EPS_DRAW,                               "Repro4 ON  perpetual ~ draw");
+    std::printf("[DAG-TEST] sharing-active: node_map=%zu after repro2 ON\n", r2_on_nodemap);
+    check(r2_on_nodemap > 100,                                       "Sharing active under DAG (depth not dead)");
 
     std::printf("[DAG-TEST] %d failure(s)\n", fails);
     return fails == 0 ? 0 : 1;
