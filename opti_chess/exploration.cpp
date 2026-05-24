@@ -74,21 +74,34 @@ inline void tt_fixup_derived(Evaluation& e) {
 uint8_t position_history_count(const PositionHistory& path_history, Board& board) {
 	board.get_zobrist_key();
 	const auto it = path_history.find(board._zobrist_key);
-	return it == path_history.end() ? 0 : it->second;
+	return it == path_history.end() ? 0 : (uint8_t)it->second.count;
+}
+
+// #11 GHI — ply de la PREMIÈRE occurrence de la position sur le chemin courant
+// (UINT16_MAX si absente). Sert à classer une répétition en intrinsèque
+// (first_ply >= ply du noeud) vs extrinsèque (first_ply < ply).
+uint16_t position_history_first_ply(const PositionHistory& path_history, Board& board) {
+	board.get_zobrist_key();
+	const auto it = path_history.find(board._zobrist_key);
+	return it == path_history.end() ? UINT16_MAX : it->second.first_ply;
 }
 
 } // namespace
 
 // The repetition state is path-local: it depends on the exact move sequence that led to
 // the current node, so it must stay outside Node/Board state if we want transpositions later.
-void ensure_position_in_history(PositionHistory& path_history, Board& board) {
+void ensure_position_in_history(PositionHistory& path_history, Board& board, uint16_t ply) {
 	board.get_zobrist_key();
-	path_history.try_emplace(board._zobrist_key, 1);
+	path_history.try_emplace(board._zobrist_key, PathEntry{1, ply});
 }
 
-void record_position_in_history(PositionHistory& path_history, Board& board) {
+void record_position_in_history(PositionHistory& path_history, Board& board, uint16_t ply) {
 	board.get_zobrist_key();
-	path_history[board._zobrist_key]++;
+	auto it = path_history.find(board._zobrist_key);
+	if (it == path_history.end())
+		path_history.emplace(board._zobrist_key, PathEntry{1, ply});
+	else
+		it.value().count++;
 }
 
 // #7 / Plan B-1 — annule un push (record) du path history (pop). Clé passée
@@ -99,11 +112,11 @@ void unrecord_position_in_history(PositionHistory& path_history, uint64_t key) {
 	if (it == path_history.end()) {
 		return; // appel non équilibré : ne devrait jamais arriver
 	}
-	if (it->second <= 1) {
+	if (it->second.count <= 1) {
 		path_history.erase(it);
 	}
 	else {
-		it.value()--;
+		it.value().count--;
 	}
 }
 
@@ -112,13 +125,21 @@ void unrecord_position_in_history(PositionHistory& path_history, uint64_t key) {
 // n'est pas idempotent : recalcul O(64)) — le dtor ne retouche pas le Board,
 // l'appariement push/pop est structurel. Équilibrage garanti sur TOUT chemin
 // de sortie (returns anticipés inclus) — voir « Balance invariant » du plan.
+// #11 — first_ply n'est posé qu'à la PREMIÈRE insertion (ordre de poussée du
+// chemin = ply croissant => first-insert == ply le plus précoce). Sur ré-poussée
+// (count++), first_ply est CONSERVÉ : une ré-poussée par la quiescence (ply par
+// défaut 0) ne corrompt donc pas le first_ply d'un ancêtre du chemin principal.
 struct PathScope {
 	PositionHistory& _history;
 	uint64_t _key;
-	PathScope(PositionHistory& history, Board& board) : _history(history) {
+	PathScope(PositionHistory& history, Board& board, uint16_t ply = 0) : _history(history) {
 		board.get_zobrist_key();
 		_key = board._zobrist_key;
-		_history[_key]++;
+		auto it = _history.find(_key);
+		if (it == _history.end())
+			_history.emplace(_key, PathEntry{1, ply});
+		else
+			it.value().count++;
 	}
 	~PathScope() {
 		unrecord_position_in_history(_history, _key);
@@ -354,7 +375,7 @@ void dag_debug_report() {
 }
 
 // Nouveau GrogrosZero
-void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, PositionHistory *path_history, Evaluation* path_local_eval) {
+void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, PositionHistory *path_history, Evaluation* path_local_eval, int ply) {
 	// TODO:
 	// On peut rajouter la profondeur
 	// Garder le temps de calcul
@@ -391,7 +412,7 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	// explore_random_child — chaque itération restitue l'historique à cet état.
 	PositionHistory local_path_history;
 	PositionHistory* base_path_history = path_history != nullptr ? path_history : &local_path_history;
-	ensure_position_in_history(*base_path_history, *_board);
+	ensure_position_in_history(*base_path_history, *_board, (uint16_t)ply);
 	_board->get_zobrist_key();
 
 	// INITIALISATION
@@ -449,12 +470,12 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 
 		// EXPLORATION D'UN NOUVEAU COUP
 		if (can_expand && get_fully_explored_children_count() < _board->_got_moves) {
-			explore_new_move(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history);
+			explore_new_move(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, nullptr, ply);
 		}
 
 		// EXPLORATION D'UN COUP DÉJÀ EXPLORÉ (raffinage)
 		else if (children_count() > 0) {
-			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr, g_tt_node_dag ? &dag_child_eval : nullptr);
+			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr, g_tt_node_dag ? &dag_child_eval : nullptr, ply);
 		}
 
 		// Buffers pleins ET rien à raffiner ici : arrêt propre + log unique
@@ -483,7 +504,7 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 }
 
 // Fonction qui explore un nouveau coup
-void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, Evaluation* path_local_eval) {
+void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, Evaluation* path_local_eval, int ply) {
 
 	if constexpr (dag_log::enabled) {
 		dag_log::bump(dag_log::Counter::nodes_via_explore_new);
@@ -638,7 +659,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 
 		bool test = false;
 
-		PathScope _ps(branch_history, *child->_board); // push child position (popped on scope exit, all paths)
+		PathScope _ps(branch_history, *child->_board, (uint16_t)(ply + 1)); // push child position (popped on scope exit, all paths)
 
 		if (test) {
 			child->quiescence(board_buffer, eval, 2, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, &branch_history); // TODO *** faire un cutoff plus facile, si l'éval de base est déjà mauvaise? par rapport à l'évaluation statique
@@ -745,7 +766,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 }
 
 // Fonction qui explore dans un plateau fils pseudo-aléatoire
-void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, DagExcl* dag_excl, Evaluation* path_local_eval) {
+void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, DagExcl* dag_excl, Evaluation* path_local_eval, int ply) {
 
 	// Prend un fils aléatoire
 	const Move move = pick_random_child(alpha, beta, gamma, dag_excl);
@@ -826,7 +847,7 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 			// One inline lookup ; same key the predicate just checked.
 			child->_board->get_zobrist_key();
 			const auto it = branch_history.find(child->_board->_zobrist_key);
-			const int current_count = (it == branch_history.end()) ? 0 : (int)it->second;
+			const int current_count = (it == branch_history.end()) ? 0 : (int)it->second.count;
 			const int count_at_fire = current_count + 1;
 			const int path_size = (int)branch_history.size();
 			dag_log::bump(dag_log::Counter::pred_total);
@@ -848,8 +869,8 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	}
 
 	{
-		PathScope _ps(branch_history, *child->_board);
-		child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &branch_history); // L'évaluation du fils est mise à jour ici
+		PathScope _ps(branch_history, *child->_board, (uint16_t)(ply + 1));
+		child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &branch_history, nullptr, ply + 1); // L'évaluation du fils est mise à jour ici
 	}
 
 	// Met à jour l'évaluation du plateau avec le meilleur coup
@@ -1021,7 +1042,7 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 	// historique quand OFF -> strictement byte-identique (count+1>=limite,
 	// meme forme que position_is_draw_by_repetition).
 	const auto _ch_it = c->find(_board->_zobrist_key);
-	const int _ch_seen = _ch_it != c->end() ? static_cast<int>(_ch_it->second) : 0;
+	const int _ch_seen = _ch_it != c->end() ? static_cast<int>(_ch_it->second.count) : 0;
 	const uint8_t _disp_limit = g_tt_node_dag ? display_repetition_limit : search_repetition_limit;
 	if (_ch_seen + 1 >= _disp_limit) {
 		// Detail borne : OU la ligne affichee reboucle (profondeur atteinte
@@ -1037,7 +1058,7 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 		}
 		return "...";
 	}
-	(*c)[_board->_zobrist_key]++;
+	(*c)[_board->_zobrist_key].count++;
 
 	string variants;
 
@@ -1184,13 +1205,13 @@ int Node::get_main_depth(const double alpha, const double beta, int max_depth, P
 		PositionHistory local_chain;
 		PositionHistory* c = chain != nullptr ? chain : &local_chain;
 		_board->get_zobrist_key();
-		(*c)[_board->_zobrist_key]++;
+		(*c)[_board->_zobrist_key].count++;
 		main_child->_board->get_zobrist_key();
 		// Meme seuil que get_exploration_variants : triple (FIDE) sous DAG,
 		// double quand OFF -> profondeur affichee coherente avec le texte de
 		// la variante et byte-identique a l'arbre quand OFF.
 		const auto _mc_it = c->find(main_child->_board->_zobrist_key);
-		const int _mc_seen = _mc_it != c->end() ? static_cast<int>(_mc_it->second) : 0;
+		const int _mc_seen = _mc_it != c->end() ? static_cast<int>(_mc_it->second.count) : 0;
 		const uint8_t _md_limit = g_tt_node_dag ? display_repetition_limit : search_repetition_limit;
 		if (_mc_seen + 1 >= _md_limit) {
 			return 0; // la PV atteint la nulle par repetition -> fin de variante
