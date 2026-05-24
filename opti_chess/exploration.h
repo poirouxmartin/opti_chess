@@ -26,23 +26,15 @@ struct ChildLink {
 	int _propagated_nodes = 0;
 };
 
-// #11 Plan B — Bug 1 option 3 : exclusion per-traversal (anti-spin §3).
-// Liste path-locale vivant UNIQUEMENT sur la pile du frame grogros_zero
-// courant — jamais stockee sur un Node/ChildLink (tous deux PARTAGES sous
-// DAG, cf. invariant 772183a). Taille fixe : zero allocation sur le chemin
-// le plus chaud (perf #1). En cas de debordement on retombe sur l'ancien
-// comportement (coupe conservatrice) — sain, juste sous-optimal.
-struct DagExcl {
-	static constexpr int CAP = 24;
-	Move moves[CAP];
-	int count = 0;
-	bool contains(const Move& m) const {
-		for (int i = 0; i < count; ++i) if (moves[i] == m) return true;
-		return false;
-	}
-	void add(const Move& m) {
-		if (count < CAP && !contains(m)) moves[count++] = m;
-	}
+// #11 GHI — valeur remontée d'un appel grogros_zero/explore_random_child à son
+// parent : la valeur PATH-LOCALE de ce sous-arbre sur la traversée courante, et
+// min_earlier_ply = le plus petit ply de première-occurrence d'une répétition
+// utilisée dans la valeur remontée (INT32_MAX si aucune). Le parent persiste sa
+// valeur dans _deep_evaluation seulement si min_earlier_ply >= son propre ply
+// (répétitions toutes intra-sous-arbre => intrinsèque => path-indépendant).
+struct BackupResult {
+	Evaluation value;
+	int min_earlier_ply = INT32_MAX;
 };
 
 // TODO:
@@ -156,13 +148,13 @@ public:
 	void init_node();
 
 	// Nouveau GrogrosZero
-	void grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int nodes, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, Evaluation* path_local_eval = nullptr, int ply = 0);
+	void grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int nodes, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, BackupResult* out = nullptr, int ply = 0);
 
 	// Fonction qui explore un nouveau coup
-	void explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, Evaluation* path_local_eval = nullptr, int ply = 0);
+	void explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, int ply = 0, BackupResult* out = nullptr);
 
 	// Fonction qui explore dans un plateau fils pseudo-al�atoire
-	void explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, DagExcl* dag_excl = nullptr, Evaluation* path_local_eval = nullptr, int ply = 0);
+	void explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, int ply = 0, BackupResult* out = nullptr);
 
 	// Fonction qui renvoie le fils le plus explor�
 	Move get_most_explored_child_move();
@@ -202,16 +194,16 @@ public:
 	void evaluate_position(Evaluator* evaluator, bool display = false, Network* network = nullptr, bool game_over_check = true, bool static_only = false);
 
 	// Fonction qui renvoie un noeud fils pseudo-al�atoire (en fonction des �valuations et du nombre de noeuds)
-	Move pick_random_child(const double alpha, const double beta, const double gamma, const DagExcl* dag_excl = nullptr);
+	Move pick_random_child(const double alpha, const double beta, const double gamma, const PositionHistory* path = nullptr, int ply = 0);
 
 	// Fonction qui renvoie le score d'un coup. Alpha augmente l'importance de l'�valuation, et beta augmente l'importance du winrate
-	robin_map<Move, double> get_move_scores(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100) const;
+	robin_map<Move, double> get_move_scores(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100, const PositionHistory* path = nullptr, int ply = 0) const;
 
 	// Fonction qui renvoie la valeur du noeud
 	double get_node_score(const double alpha, const double beta, const int max_eval, const double max_avg_score, const bool player, Evaluation *custom_eval = nullptr) const;
 
 	// Fonction qui renvoie le coup avec le meilleur score
-	Move get_best_score_move(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100);
+	Move get_best_score_move(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100, const PositionHistory* path = nullptr, int ply = 0);
 
 	// Fonction qui renvoie une valeur pr�visionnelle du score du noeud, lorsqu'on ne connait pas les �valuations max (pour la quiecence)
 	int get_previsonal_node_score(const double alpha, const double beta, const bool player) const;

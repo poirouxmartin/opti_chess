@@ -7,6 +7,16 @@ namespace {
 
 constexpr uint8_t search_repetition_limit = 2;
 
+// #11 GHI — seuil d'élagage de recherche SOUS DAG. L'arbre OFF garde le 2-fold
+// historique (agressif, byte-identique). Sous DAG la recherche descend profond
+// (sous-arbres partagés) et les manoeuvres de roi rebouclent en ~2-3 coups : un
+// seuil 2-fold coupe les VRAIES lignes gagnantes (la PV gagnante repasse une fois
+// par une position avant de progresser) -> le gain s'érode en nulle. On applique
+// donc le vrai seuil FIDE (triple) sous DAG, exactement la raison déjà invoquée
+// pour display_repetition_limit. Un gain réel n'a jamais besoin de répéter 3x
+// (le camp fort peut toujours dévier), donc le triple ne fausse aucune nulle.
+constexpr uint8_t search_repetition_limit_dag = 3;
+
 // #11 Plan B — seuil de coupe AFFICHAGE (get_exploration_variants /
 // get_main_depth) decouple de l'elagage de recherche. search_repetition_limit
 // (double, agressif) tronquerait la PV des la 2e occurrence -> en finale les
@@ -148,7 +158,11 @@ struct PathScope {
 	PathScope& operator=(const PathScope&) = delete;
 };
 
-bool position_is_draw_by_repetition(const PositionHistory& path_history, Board& board, uint8_t repetition_limit = search_repetition_limit) {
+// repetition_limit == 0 -> seuil selon le mode : triple (FIDE) sous DAG,
+// double (historique) en arbre OFF. Un appelant peut forcer un seuil explicite.
+bool position_is_draw_by_repetition(const PositionHistory& path_history, Board& board, uint8_t repetition_limit = 0) {
+	if (repetition_limit == 0)
+		repetition_limit = g_tt_node_dag ? search_repetition_limit_dag : search_repetition_limit;
 	return position_history_count(path_history, board) + 1 >= repetition_limit;
 }
 
@@ -183,6 +197,13 @@ static Evaluation dag_draw_eval() {
 	e.get_WDL();
 	e.get_average_score();
 	return e;
+}
+
+// #11 GHI — pointeur stable vers une Evaluation de nulle canonique (réutilisée
+// comme custom_eval dans le scoring path-aware). Position-indépendante.
+static const Evaluation& dag_draw_eval_ref() {
+	static const Evaluation s_draw = dag_draw_eval();
+	return s_draw;
 }
 
 // #11 Plan A — feuille gelée portant une valeur fiable issue de la TT.
@@ -375,7 +396,7 @@ void dag_debug_report() {
 }
 
 // Nouveau GrogrosZero
-void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, PositionHistory *path_history, Evaluation* path_local_eval, int ply) {
+void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, PositionHistory *path_history, BackupResult* out, int ply) {
 	// TODO:
 	// On peut rajouter la profondeur
 	// Garder le temps de calcul
@@ -421,6 +442,16 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		_iterations++;
 	}
 
+	// #11 GHI — graine du canal de remontée : valeur intrinsèque par défaut.
+	// Les early-return (terminal / feuille TT / no-moves) la conservent ; les
+	// consommateurs (explore_new_move / explore_random_child) l'écrasent par la
+	// valeur path-locale exacte. Garantit qu'aucun BackupResult non initialisé ne
+	// remonte (Evaluation::_value n'a pas d'init par défaut). OFF : out == nullptr.
+	if (out != nullptr) {
+		out->value = _deep_evaluation;
+		out->min_earlier_ply = INT32_MAX;
+	}
+
 	// Si la partie est finie, on ne fait rien
 	if (_is_terminal) {
 		_iterations++;
@@ -451,17 +482,6 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		return;
 	}
 
-	// #11 Plan B — Bug 1 opt 3 : exclusion per-traversal partagee par TOUTES
-	// les iterations de CET appel grogros_zero (vit sur la pile de ce frame
-	// uniquement, jamais sur un noeud/arete partages). OFF : passee nullptr,
-	// jamais consultee -> comportement byte-identique a l'arbre.
-	DagExcl dag_excl;
-
-	// #11 Plan B — Bug 1 opt 1 : scratch pour la valeur de nulle path-locale
-	// remontee par explore_random_child (out-param). Pile uniquement ; OFF :
-	// nullptr passe -> jamais ecrit -> byte-identique.
-	Evaluation dag_child_eval;
-
 	// Exploration
 	while (iterations > 0) {
 
@@ -470,12 +490,12 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 
 		// EXPLORATION D'UN NOUVEAU COUP
 		if (can_expand && get_fully_explored_children_count() < _board->_got_moves) {
-			explore_new_move(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, nullptr, ply);
+			explore_new_move(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, ply, out);
 		}
 
 		// EXPLORATION D'UN COUP DÉJÀ EXPLORÉ (raffinage)
 		else if (children_count() > 0) {
-			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr, g_tt_node_dag ? &dag_child_eval : nullptr, ply);
+			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, ply, out);
 		}
 
 		// Buffers pleins ET rien à raffiner ici : arrêt propre + log unique
@@ -504,7 +524,7 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 }
 
 // Fonction qui explore un nouveau coup
-void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, Evaluation* path_local_eval, int ply) {
+void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, int ply, BackupResult* out) {
 
 	if constexpr (dag_log::enabled) {
 		dag_log::bump(dag_log::Counter::nodes_via_explore_new);
@@ -571,22 +591,15 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		else {
 			new_board->get_zobrist_key();
 
-			// #11 attempt-8 (design 2026-05-22 §3) — une finale de pions est
-			// DÉ-PARTAGÉE sous DAG : chaque chemin reçoit son propre sous-arbre,
-			// donc les feuilles §3 de répétition remontent la nulle par minimax
-			// ordinaire (comportement mode-arbre, déjà correct). is_pawn_endgame()
-			// = rois + pions seuls ; couvre les deux repros et c'est la porte SÛRE
-			// la plus étroite. OFF : jamais consultée. Coût : un scan 8x8 borné, à
-			// la création de nœud uniquement (jamais dans la boucle sélection/éval).
-			const bool dag_shareable = g_tt_node_dag && !new_board->is_pawn_endgame();
-
-			// #11 Plan B — link-on-create. Si une position de meme cle Zobrist
-			// est deja un Node VIVANT, on lie l'arete a ce Node partage au lieu
-			// de recreer un sous-arbre. La branche nulle (au-dessus) fabrique
-			// toujours une feuille distincte — jamais partagee. OFF / finale de
-			// pions : saute tout (jamais cherchée -> jamais trouvée -> jamais partagée).
+			// #11 GHI — link-on-create, partage PLEIN sous DAG (la porte attempt-8
+			// is_pawn_endgame() est SUPPRIMÉE : la répétition est désormais gérée
+			// correctement au consommateur, donc plus besoin de dé-partager les
+			// finales de pions -> profondeur restaurée). Si une position de même clé
+			// Zobrist est déjà un Node VIVANT, on lie l'arête à ce Node partagé au
+			// lieu de recréer un sous-arbre. La branche nulle (au-dessus) fabrique
+			// toujours une feuille distincte — jamais partagée. OFF : jamais cherché.
 			Node* shared = nullptr;
-			if (dag_shareable) {
+			if (g_tt_node_dag) {
 				const auto it = node_map.find(new_board->_zobrist_key);
 				if (it != node_map.end()) {
 					shared = it->second;
@@ -623,7 +636,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 				child->_board = new_board;
 				created_new_node = true;
 
-				if (dag_shareable) {
+				if (g_tt_node_dag) {
 					node_map[new_board->_zobrist_key] = child;
 					g_dag_link_misses++;
 				}
@@ -735,25 +748,48 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 
 	// TESTS: Q7/4p2p/3k4/5p2/4q3/6P1/P2PPK2/8 w - - 2 39
 
-	// Tous les coups ont été explorés, donc on met à jour l'évaluation du plateau avec le meilleur coup
-	Move best_move = get_best_score_move(alpha, beta, !all_moves_explored);
+	// Backup path-aware (cohérent avec explore_random_child) : un fils déjà sur le
+	// chemin contribue dag_draw_eval(), sinon son _deep_evaluation. Sélection et
+	// backup partagent la substitution -> gain jamais érodé, vraie nulle reconnue.
+	Move best_move = get_best_score_move(alpha, beta, !all_moves_explored, -100, g_tt_node_dag ? &branch_history : nullptr, ply);
 
 	// Standpat = le meilleur
 	if (best_move.is_null_move()) {
 		_is_stand_pat_eval = true;
+		if (out != nullptr) { out->value = _deep_evaluation; out->min_earlier_ply = INT32_MAX; }
 	}
 	else {
 		_is_stand_pat_eval = false;
-		_deep_evaluation = _children[best_move]._node->_deep_evaluation;
 
-		// #11 Plan A — write-back de la valeur raffinée (le levier réel).
-		// Garde : toggle ON, pas terminal (exclut les nulles path-dependent),
-		// pas stand-pat (borne inf déjà gérée en TT_STANDPAT par la quiescence),
-		// éval évaluée. Profondeur-proxy au-dessus de la bande quiescence.
-		if (g_tt_main_search && !_is_terminal && !_is_stand_pat_eval && _deep_evaluation._evaluated) {
+		int this_min_earlier_ply = INT32_MAX;
+		Evaluation this_value;
+		if (g_tt_node_dag && position_is_draw_by_repetition(branch_history, *_children[best_move]._node->_board)) {
+			// meilleur coup = répétition sur ce chemin (p.ex. feuille §3) -> nulle.
+			this_value = dag_draw_eval();
+			this_min_earlier_ply = (int)position_history_first_ply(branch_history, *_children[best_move]._node->_board);
+		}
+		else {
+			this_value = _children[best_move]._node->_deep_evaluation;
+		}
+
+		// #11 GHI — même gardien de cache que explore_random_child (spec §3.3).
+		if (!g_tt_node_dag) {
+			_deep_evaluation = _children[best_move]._node->_deep_evaluation;
+		}
+		else if (this_min_earlier_ply >= ply) {
+			_deep_evaluation = this_value;
+		}
+		// sinon extrinsèque -> _deep_evaluation conservé ; valeur path-locale via out.
+
+		if (out != nullptr) { out->value = this_value; out->min_earlier_ply = this_min_earlier_ply; }
+
+		// #11 Plan A — write-back TT main-search préservé, gardé sur l'intrinsèque
+		// sous DAG (jamais une nulle path-locale dans une TT indexée par position).
+		// OFF (g_tt_node_dag faux) : condition réduite à l'originale -> byte-identique.
+		if (g_tt_main_search && !_is_terminal && !_is_stand_pat_eval && _deep_evaluation._evaluated
+			&& (!g_tt_node_dag || this_min_earlier_ply >= ply)) {
 			transposition_table.store(_board->_zobrist_key,
-				// side-to-move comme les stores quiescence (stand_pat = _value*color,
-				// exploration.cpp:902/912) : sinon signe inverse pour les Noirs.
+				// side-to-move comme les stores quiescence : sinon signe inverse pour les Noirs.
 				tt_normalize_mate(_deep_evaluation._value * _board->get_color(), _board->_moves_count), // #3
 				tt_writeback_depth(_nodes), TT_EXACT);
 		}
@@ -766,143 +802,93 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 }
 
 // Fonction qui explore dans un plateau fils pseudo-aléatoire
-void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, DagExcl* dag_excl, Evaluation* path_local_eval, int ply) {
+void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, int ply, BackupResult* out) {
 
-	// Prend un fils aléatoire
-	const Move move = pick_random_child(alpha, beta, gamma, dag_excl);
+	// #7 / B-1 — historique unique threadé ; push/pop du fils par PathScope.
+	PositionHistory& branch_history = *path_history;
 
-	// Bug 1 opt 3 — toutes les aretes explorables ont ete §3-exclues sur ce
-	// chemin : plus rien de non-cyclique a raffiner ici cette iteration. On
-	// compte l'iteration (comme la coupe §3) et on sort, sans spin ni acces
-	// _children[null]. OFF : pick ne renvoie jamais null par cette voie.
-	if (g_tt_node_dag && move.is_null_move()) {
+	// Sélection path-aware : un fils déjà sur le chemin est scoré comme nulle,
+	// donc rarement choisi sauf si toutes les lignes valent <= nulle.
+	const Move move = pick_random_child(alpha, beta, gamma, g_tt_node_dag ? &branch_history : nullptr, ply);
+	if (move.is_null_move()) {
 		_iterations++;
 		return;
 	}
 
 	ChildLink& child_link = _children[move];
-	Node *child = child_link._node;
-	// #7 / B-1 — historique unique threadé ; push de la position du fils pour
-	// la durée de la récursion uniquement, pop garanti à la sortie de scope.
-	PositionHistory& branch_history = *path_history;
-
-	if (!g_tt_node_dag && child_link._propagated_nodes >= _nodes) {
-		cout << "child nodes >= nodes in random exploration??? main position: " << _board->to_fen() << ", child position: " << child->_board->to_fen() << endl; // tree-only : faux sous DAG
-	}
-
-	// Nombre de noeuds du fils
+	Node* child = child_link._node;
 	const int initial_child_nodes = child_link._propagated_nodes;
 
-	// #11 Plan B §3 — soundness du DAG. Le sous-arbre du fils peut etre PARTAGE
-	// (cree via un chemin A, descendu ici via un chemin B). Le statut de nulle
-	// par repetition est PATH-LOCAL : il n'est ni dans le Node ni dans l'arete,
-	// tous deux PARTAGES. On le re-derive contre l'historique du chemin COURANT.
-	// Si nulle sur ce chemin : on coupe le cycle en NE descendant PAS dans le
-	// sous-arbre partage. On ne mute RIEN de partage (ni child->_deep_evaluation,
-	// ni this->_deep_evaluation, ni child_link, ni node_map) : ecrire une nulle
-	// path-locale sur une structure partagee corromprait l'autre chemin (c'etait
-	// le bug d'oscillation). Conservatif : l'iteration est comptee, la branche
-	// cyclique simplement non approfondie ; le backup normal du parent (plus
-	// bas, via ses autres fils) reste l'autorite. La remontee complete de la
-	// valeur de nulle path-locale (spec §3) est un raffinement suivant, a
-	// decider sur mesure si la profondeur mesuree le justifie. OFF : saute
-	// (comportement arbre actuel — explore_random_child ne re-testait jamais
-	// la repetition sur un fils existant).
+	// #11 GHI — si le fils CHOISI est une répétition sur CE chemin, on ne descend
+	// PAS (sinon boucle infinie). Sa valeur path-locale pour cette traversée est
+	// une nulle ; on note le ply de sa première occurrence pour le gardien de cache.
+	BackupResult child_res;
+	bool descended = false;
 	if (g_tt_node_dag && position_is_draw_by_repetition(branch_history, *child->_board)) {
+		child_res.value = dag_draw_eval();
+		child_res.min_earlier_ply = (int)position_history_first_ply(branch_history, *child->_board);
 		g_dag_recheck_hits++;
-		// Detail borne — LA frontiere cle des "incoherences d'eval". On coupe le
-		// cycle (return) AVANT le backup parent (:686) : cette iteration ne
-		// rafraichit pas this->_deep_evaluation et l'arete cyclique n'est PAS
-		// devaluee (spec §3 §"valeur de nulle path-locale" non implementee). Si
-		// la meme arete revient en boucle ici => spin + eval parent figee/
-		// incoherente selon le chemin. C'est l'evidence a confirmer.
-		if (dag_dbg_take()) {
-			cout << "[DAG] §3-cut child_key=" << std::hex << child->_board->_zobrist_key
-			     << std::dec << " child_pc=" << child->_parent_count
-			     << " parent_eval=" << _deep_evaluation._value
-			     << " (fige, edge non devaluee)\n"
-			     << "      parent=" << _board->to_fen() << "\n"
-			     << "      child =" << child->_board->to_fen() << endl;
-		}
-		// Bug 1 opt 3 — anti-spin : memorise l'arete cyclique pour qu'elle ne
-		// soit PAS re-selectionnee par les iterations restantes de cet appel
-		// grogros_zero (liste sur la pile, jamais sur structure partagee :
-		// invariant 772183a respecte ; ne mute toujours RIEN de partage).
-		// Sans liste (OFF / debordement) : coupe conservatrice inchangee.
-		if (dag_excl != nullptr) {
-			dag_excl->add(move);
-			if constexpr (dag_log::enabled) {
-				dag_log::bump(dag_log::Counter::dag_excl_adds);
-			}
-		}
-		// Bug 1 opt 1 — spec §3 : remonte la valeur de nulle path-locale par
-		// VALEUR DE RETOUR (out-param), sans muter le Node/arete partages
-		// (invariant 772183a). Le parent substituera cette nulle a
-		// child->_deep_evaluation pour CETTE traversee (cf. backup).
-		if (path_local_eval != nullptr) {
-			*path_local_eval = dag_draw_eval();
-		}
-
-		if constexpr (dag_log::enabled) {
-			// One inline lookup ; same key the predicate just checked.
-			child->_board->get_zobrist_key();
-			const auto it = branch_history.find(child->_board->_zobrist_key);
-			const int current_count = (it == branch_history.end()) ? 0 : (int)it->second.count;
-			const int count_at_fire = current_count + 1;
-			const int path_size = (int)branch_history.size();
-			dag_log::bump(dag_log::Counter::pred_total);
-			if (count_at_fire == 2) {
-				dag_log::bump(dag_log::Counter::pred_count_2);
-			} else {
-				dag_log::bump(dag_log::Counter::pred_count_3plus);
-			}
-			dag_log::pred_fire(path_size, count_at_fire, path_size,
-				this, child, move);
-		}
-
-		_iterations++;
-		return;
-	}
-
-	if constexpr (dag_log::enabled) {
-		dag_log::bump(dag_log::Counter::nodes_via_explore_random);
-	}
-
-	{
-		PathScope _ps(branch_history, *child->_board, (uint16_t)(ply + 1));
-		child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &branch_history, nullptr, ply + 1); // L'évaluation du fils est mise à jour ici
-	}
-
-	// Met à jour l'évaluation du plateau avec le meilleur coup
-	const Move _bm = get_best_score_move(alpha, beta);
-	if (g_tt_node_dag && dag_excl != nullptr && dag_excl->contains(_bm)) {
-		// Bug 1 opt 1 / spec §3 — le meilleur coup est une arete coupee comme
-		// nulle path-locale sur CE chemin (DagExcl rempli par les coupes §3 de
-		// ce frame). Sa vraie valeur ici est une NULLE, pas son
-		// _deep_evaluation partage (calcule via un autre chemin). On remonte
-		// la nulle par l'out-param. Persistance sur this->_deep_evaluation
-		// SEULEMENT si this n'est pas partage sur cette traversee
-		// (_parent_count<=1) : ecrire une nulle path-locale sur un noeud
-		// partage corromprait les autres chemins (invariant 772183a). Le
-		// backup normal (else) reste STRICTEMENT inchange (pas de regression
-		// du backup MCTS des noeuds partages).
-		const Evaluation _draw = dag_draw_eval();
-		if (path_local_eval != nullptr) *path_local_eval = _draw;
-		if (_parent_count <= 1) _deep_evaluation = _draw;
 	}
 	else {
-		_deep_evaluation = _children[_bm]._node->_deep_evaluation;
-		if (g_tt_node_dag && path_local_eval != nullptr) *path_local_eval = _deep_evaluation;
+		PathScope _ps(branch_history, *child->_board, (uint16_t)(ply + 1));
+		child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &branch_history, g_tt_node_dag ? &child_res : nullptr, ply + 1); // l'éval du fils + sa valeur path-locale (out) sont mises à jour ici
+		descended = true;
+		if (!g_tt_node_dag) child_res.value = child->_deep_evaluation; // chemin arbre : valeur normale
 	}
 
-	// #11 Plan A — write-back de la valeur raffinée (le levier réel).
-	// Mêmes gardes que dans explore_new_move.
-	if (g_tt_main_search && !_is_terminal && !_is_stand_pat_eval && _deep_evaluation._evaluated) {
+	// Backup path-aware : minimax sur les fils, fils-sur-chemin comptés nulle
+	// (même substitution qu'en sélection -> gain jamais érodé, vraie nulle reconnue).
+	const Move _bm = get_best_score_move(alpha, beta, false, -100, g_tt_node_dag ? &branch_history : nullptr, ply);
+
+	int this_min_earlier_ply = INT32_MAX;
+	Evaluation this_value;
+	if (g_tt_node_dag && _bm.is_null_move()) {
+		// aucun fils rankable (tous nuls/standpat) : conserver l'éval courante.
+		this_value = _deep_evaluation;
+	}
+	else if (g_tt_node_dag && position_is_draw_by_repetition(branch_history, *_children[_bm]._node->_board)) {
+		// le meilleur coup est une répétition sur ce chemin -> contribution = nulle.
+		this_value = dag_draw_eval();
+		this_min_earlier_ply = (int)position_history_first_ply(branch_history, *_children[_bm]._node->_board);
+	}
+	else if (g_tt_node_dag && _bm == move && descended) {
+		// le meilleur coup est le fils qu'on vient de descendre : valeur path-locale.
+		this_value = child_res.value;
+		this_min_earlier_ply = child_res.min_earlier_ply;
+	}
+	else {
+		// fils non-descendu ou mode arbre : sa valeur cachée.
+		this_value = _children[_bm]._node->_deep_evaluation;
+	}
+
+	// #11 GHI — gardien de cache (spec §3.3). ON : persiste seulement si toutes
+	// les répétitions utilisées sont intra-sous-arbre (min_earlier_ply >= ply) ;
+	// sinon extrinsèque -> valeur path-locale pour CETTE traversée uniquement, on
+	// ne corrompt pas le noeud partagé. OFF : comportement arbre inchangé.
+	if (!g_tt_node_dag) {
+		_deep_evaluation = _children[_bm]._node->_deep_evaluation;
+	}
+	else if (this_min_earlier_ply >= ply) {
+		_deep_evaluation = this_value;
+	}
+	// sinon : extrinsèque -> on NE touche PAS _deep_evaluation (cache intrinsèque conservé).
+
+	// #11 Plan A — write-back TT main-search PRÉSERVÉ. Sous DAG : ne persiste que
+	// l'intrinsèque (même garde que _deep_evaluation), jamais une nulle path-locale
+	// dans une TT indexée par position. OFF (g_tt_node_dag faux) : condition réduite
+	// à l'originale -> byte-identique.
+	if (g_tt_main_search && !_is_terminal && !_is_stand_pat_eval && _deep_evaluation._evaluated
+		&& (!g_tt_node_dag || this_min_earlier_ply >= ply)) {
 		transposition_table.store(_board->_zobrist_key,
-			// side-to-move comme les stores quiescence (stand_pat = _value*color,
-			// exploration.cpp:902/912) : sinon signe inverse pour les Noirs.
+			// side-to-move comme les stores quiescence : sinon signe inverse pour les Noirs.
 			tt_normalize_mate(_deep_evaluation._value * _board->get_color(), _board->_moves_count), // #3
 			tt_writeback_depth(_nodes), TT_EXACT);
+	}
+
+	// #11 GHI — remonte la valeur path-locale + min_earlier_ply au parent.
+	if (out != nullptr) {
+		out->value = this_value;
+		out->min_earlier_ply = this_min_earlier_ply;
 	}
 
 	// Augmente le nombre de noeuds. Bug 2 model A : sous DAG, delta par-arete
@@ -1710,7 +1696,7 @@ void Node::evaluate_position(Evaluator* evaluator, bool display, Network * netwo
 }
 
 // Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
-Move Node::pick_random_child(const double alpha, const double beta, const double gamma, const DagExcl* dag_excl) {
+Move Node::pick_random_child(const double alpha, const double beta, const double gamma, const PositionHistory* path, int ply) {
 	// TESTS
 	// 8/8/8/1r5p/2p4k/2Kb4/8/8 b - - 1 69 : tout égal quand tout gagne...
 	// r2qr1k1/3bbp1p/p2pn1p1/3QP3/3P4/3B1N2/1P1B1PPP/R3R1K1 w - - 1 24 : pareil
@@ -1735,16 +1721,21 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 
 	for (auto const& [_, child_link] : _children) {
 		Node* child = child_link._node;
-		if (child->_deep_evaluation._value * color > max_eval) {
-			max_eval = child->_deep_evaluation._value * color;
+		// #11 GHI — fils sur le chemin = dag_draw_eval() (cf. get_move_scores).
+		const Evaluation& ceval =
+			(path != nullptr && g_tt_node_dag && position_is_draw_by_repetition(*path, *child->_board))
+				? dag_draw_eval_ref()
+				: child->_deep_evaluation;
+		if (ceval._value * color > max_eval) {
+			max_eval = ceval._value * color;
 		}
 
-		if (_board->_player ? child->_deep_evaluation._avg_score > max_avg_score : 1 - child->_deep_evaluation._avg_score > max_avg_score) {
-			max_avg_score = _board->_player ? child->_deep_evaluation._avg_score : 1 - child->_deep_evaluation._avg_score;
+		if (_board->_player ? ceval._avg_score > max_avg_score : 1 - ceval._avg_score > max_avg_score) {
+			max_avg_score = _board->_player ? ceval._avg_score : 1 - ceval._avg_score;
 		}
 	}
 
-	robin_map<Move, double> move_scores = get_move_scores(alpha, beta);
+	robin_map<Move, double> move_scores = get_move_scores(alpha, beta, false, -100, path, ply);
 
 	struct ScoredMove {
 		Move move;
@@ -1790,19 +1781,6 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 
 	// Regarde chaque coup
 	for (auto const& [move, child_link] : _children) {
-		// Bug 1 opt 3 — arete §3-exclue sur ce chemin : ecartee de best_move
-		// ET move_to_play, donc les iterations restantes de cet appel
-		// grogros_zero ne spinnent plus dessus. OFF : dag_excl == nullptr
-		// -> aucun effet -> byte-identique a l'arbre.
-		if (dag_excl != nullptr && dag_excl->contains(move)) {
-			if constexpr (dag_log::enabled) {
-				dag_log::bump(dag_log::Counter::dag_excl_skips);
-				// depth=0 sentinel — pick_random_child doesn't have branch_history in
-				// scope ; event still useful via the node's _board FEN if needed later.
-				dag_log::dag_excl_skip(0, this, move);
-			}
-			continue; // opt-3 anti-spin (existing baseline)
-		}
 		Node* child = child_link._node;
 
 		// Score du coup
@@ -1883,13 +1861,12 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 
 	//cout << "best move: " << _board->move_label(best_move) << " | best score: " << best_score << endl << endl;
 
-	// Bug 1 opt 3 — toutes les aretes explorables §3-exclues sur ce chemin :
-	// aucun candidat. On signale "rien" (coup nul) ; explore_random_child
-	// compte l'iteration et sort sans spin ni _children[null]. OFF : dag_excl
-	// == nullptr -> ce cas ne se produit jamais, chemin arbre (cout + .at)
-	// strictement inchange.
+	// #11 GHI — aucun candidat explorable (rare : tout le sous-arbre est nulle/
+	// standpat sur ce chemin). On signale "rien" (coup nul) sous DAG ;
+	// explore_random_child compte l'iteration et sort sans spin ni _children[null].
+	// OFF : g_tt_node_dag faux -> ce cas ne se produit pas, chemin arbre inchange.
 	if (best_move.is_null_move()) {
-		if (dag_excl != nullptr) return Move();
+		if (g_tt_node_dag) return Move();
 		cout << "null move considered to be the best??" << endl;
 	}
 
@@ -1904,7 +1881,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 }
 
 // Fonction qui renvoie le score des coup
-robin_map<Move, double> Node::get_move_scores(const double alpha, const double beta, const bool consider_standpat, const int qdepth) const {
+robin_map<Move, double> Node::get_move_scores(const double alpha, const double beta, const bool consider_standpat, const int qdepth, const PositionHistory* path, int ply) const {
 
 	// Pour le standpat, on l'associe au null move
 
@@ -1918,15 +1895,24 @@ robin_map<Move, double> Node::get_move_scores(const double alpha, const double b
 	// Meilleure chance de gagner
 	double max_avg_score = 0.0;
 
+	// #11 GHI — un fils déjà sur le chemin courant contribue dag_draw_eval() (0),
+	// EXACTEMENT comme en backup : sélection et backup partagent la substitution
+	// -> une ligne gagnante non-cyclique prime toujours un frère cyclique nulifié.
+	// ON-only (path != nullptr && g_tt_node_dag) ; OFF : lecture brute inchangée.
+
 	// Cherche la meilleure eval et le meilleure score parmi tous les coups possibles
 	for (auto const& [_, child_link] : _children) {
 		Node* child = child_link._node;
-		if (child->_deep_evaluation._value * color > max_eval) {
-			max_eval = child->_deep_evaluation._value * color;
+		const Evaluation& ceval =
+			(path != nullptr && g_tt_node_dag && position_is_draw_by_repetition(*path, *child->_board))
+				? dag_draw_eval_ref()
+				: child->_deep_evaluation;
+		if (ceval._value * color > max_eval) {
+			max_eval = ceval._value * color;
 		}
 
-		if (_board->_player ? child->_deep_evaluation._avg_score > max_avg_score : 1 - child->_deep_evaluation._avg_score > max_avg_score) {
-			max_avg_score = _board->_player ? child->_deep_evaluation._avg_score : 1 - child->_deep_evaluation._avg_score;
+		if (_board->_player ? ceval._avg_score > max_avg_score : 1 - ceval._avg_score > max_avg_score) {
+			max_avg_score = _board->_player ? ceval._avg_score : 1 - ceval._avg_score;
 		}
 	}
 
@@ -1954,7 +1940,11 @@ robin_map<Move, double> Node::get_move_scores(const double alpha, const double b
 		if (qdepth != -100 && child->_quiescence_depth != qdepth) {
 			continue;
 		}
-		move_scores.emplace(move, child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player));
+		const Evaluation& ceval =
+			(path != nullptr && g_tt_node_dag && position_is_draw_by_repetition(*path, *child->_board))
+				? dag_draw_eval_ref()
+				: child->_deep_evaluation;
+		move_scores.emplace(move, child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player, const_cast<Evaluation*>(&ceval)));
 	}
 
 	return move_scores;
@@ -2013,7 +2003,7 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 }
 
 // Fonction qui renvoie le coup avec le meilleur score
-Move Node::get_best_score_move(const double alpha, const double beta, const bool consider_standpat, const int qdepth) {
+Move Node::get_best_score_move(const double alpha, const double beta, const bool consider_standpat, const int qdepth, const PositionHistory* path, int ply) {
 
 	int color = _board->get_color();
 
@@ -2023,15 +2013,21 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 	// Meilleure chance de gagner
 	double max_avg_score = 0.0;
 
+	// #11 GHI — fils sur le chemin = dag_draw_eval() (cf. get_move_scores) ;
+	// même substitution qu'en sélection -> backup cohérent.
 	// Cherche la meilleure eval et le meilleure score parmi tous les coups possibles
 	for (auto const& [_, child_link] : _children) {
 		Node* child = child_link._node;
-		if (child->_deep_evaluation._value * color > max_eval) {
-			max_eval = child->_deep_evaluation._value * color;
+		const Evaluation& ceval =
+			(path != nullptr && g_tt_node_dag && position_is_draw_by_repetition(*path, *child->_board))
+				? dag_draw_eval_ref()
+				: child->_deep_evaluation;
+		if (ceval._value * color > max_eval) {
+			max_eval = ceval._value * color;
 		}
 
-		if (_board->_player ? child->_deep_evaluation._avg_score > max_avg_score : 1 - child->_deep_evaluation._avg_score > max_avg_score) {
-			max_avg_score = _board->_player ? child->_deep_evaluation._avg_score : 1 - child->_deep_evaluation._avg_score;
+		if (_board->_player ? ceval._avg_score > max_avg_score : 1 - ceval._avg_score > max_avg_score) {
+			max_avg_score = _board->_player ? ceval._avg_score : 1 - ceval._avg_score;
 		}
 	}
 
@@ -2060,7 +2056,11 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 		if (qdepth != -100 && child->_quiescence_depth != qdepth) {
 			continue;
 		}
-		double score = child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player);
+		const Evaluation& ceval =
+			(path != nullptr && g_tt_node_dag && position_is_draw_by_repetition(*path, *child->_board))
+				? dag_draw_eval_ref()
+				: child->_deep_evaluation;
+		double score = child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player, const_cast<Evaluation*>(&ceval));
 		//cout << "move: " << _board->move_label(move) << " | score: " << score << endl;
 		if (score > best_score || (best_move.is_null_move() && score == best_score)) {
 			best_score = score;
