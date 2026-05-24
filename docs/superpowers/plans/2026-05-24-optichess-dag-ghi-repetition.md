@@ -32,7 +32,9 @@
 | File | Responsibility | Change |
 |------|----------------|--------|
 | `opti_chess/exploration.h` | `PathEntry` + de-aliased `PositionHistory`; remove `DagExcl`; new signatures (`ply`, `BackupResult`, path-aware selectors) | Modify |
-| `opti_chess/exploration.cpp` | path helpers (`ply`/`first_ply`), the consumer substitution, the backup + cache guard, removals, threading | Modify (primary) |
+| `opti_chess/exploration.cpp` | path helpers (`ply`/`first_ply`), the consumer substitution, the backup + cache guard (in BOTH `explore_random_child` AND `explore_new_move`), `out`-channel seed/forward, removals, threading | Modify (primary) |
+
+> **Line-ref convention:** header signatures live at `exploration.h:150` (`grogros_zero`), `:153` (`explore_new_move`), `:156` (`explore_random_child`), `:196` (`pick_random_child`), `:199` (`get_move_scores`), `:205` (`get_best_score_move`); `DagExcl` is `:20-37`. Treat all line numbers as anchors that may have drifted — match on the quoted code, not the number.
 | `opti_chess/main_headless.h` | harness: new test positions, sharing-active metric, thresholds | Modify |
 | `opti_chess/BUGFIXES.md`, `opti_chess/ALGORITHMS.md` | doc refresh | Modify |
 
@@ -231,10 +233,10 @@ In the `if constexpr (dag_log::enabled)` block inside `explore_random_child`, th
 
 - [ ] **Step 5: Thread `int ply` through the recursion (exploration.cpp / .h)**
 
-- `grogros_zero`: add trailing param `int ply = 0` (exploration.h:157 + exploration.cpp:357). At the root-history insert (exploration.cpp:394) pass `ply`: `ensure_position_in_history(*base_path_history, *_board, (uint16_t)ply);`.
-- `explore_new_move` (exploration.h:160, exploration.cpp:543/544) and `explore_random_child` (exploration.h:163, exploration.cpp:748): add `int ply` param. In `grogros_zero` pass `ply` to both calls (exploration.cpp:452, 457).
+- `grogros_zero`: add trailing param `int ply = 0` (exploration.h:150 + exploration.cpp:357). At the root-history insert (exploration.cpp:394) pass `ply`: `ensure_position_in_history(*base_path_history, *_board, (uint16_t)ply);`.
+- `explore_new_move` (exploration.h:153, exploration.cpp:486) and `explore_random_child` (exploration.h:156, exploration.cpp:748): add `int ply` param. In `grogros_zero` pass `ply` to both calls (exploration.cpp:452, 457).
 - In `explore_random_child`, the descent `PathScope _ps(branch_history, *child->_board)` (exploration.cpp:851) becomes `PathScope _ps(branch_history, *child->_board, (uint16_t)(ply + 1))`, and the recursive `child->grogros_zero(...)` gains a trailing `ply + 1`.
-- In `explore_new_move`, the new-move draw-leaf path and any descent likewise pass the right ply; the §3 draw leaf (`init_terminal_draw_child`) needs no ply.
+- In `explore_new_move`, the `PathScope _ps(branch_history, *child->_board)` (exploration.cpp:641) becomes `PathScope _ps(branch_history, *child->_board, (uint16_t)(ply + 1))`; the §3 draw leaf (`init_terminal_draw_child`) needs no ply.
 
 - [ ] **Step 6: Build**
 
@@ -260,7 +262,7 @@ This is one atomic change (the mechanism only works whole). The edits below do n
 
 - [ ] **Step 1: Add `BackupResult` and a cached draw eval; remove `DagExcl` (exploration.h)**
 
-Delete the `DagExcl` struct (exploration.h:20-43, the comment block + struct). Add, after the `ChildLink` struct:
+Delete the `DagExcl` struct (exploration.h:20-37, the comment block + struct). Add, after the `ChildLink` struct:
 
 ```cpp
 // #11 GHI — valeur remontée d'un appel grogros_zero/explore_random_child à son
@@ -299,17 +301,19 @@ const Evaluation& ceval =
 		: child->_deep_evaluation;
 ```
 
-and use `ceval._value` / `ceval._avg_score` in the max computation, and pass `const_cast<Evaluation*>(&ceval)` as the `custom_eval` argument to `child->get_node_score(...)`. (`get_node_score` already supports `custom_eval`.) Inside `pick_random_child`, also delete the `dag_excl`-skip logic (the block that skips `dag_excl->contains(...)` moves) — on-path children are now naturally down-ranked as draws. `pick_random_child` calls `get_move_scores(alpha, beta)` at line 1726 → change to `get_move_scores(alpha, beta, false, -100, path, ply)` (match the real default params; verify the exact arg list).
+and use `ceval._value` / `ceval._avg_score` in the max computation, and pass `const_cast<Evaluation*>(&ceval)` as the `custom_eval` argument to `child->get_node_score(...)` — `get_node_score` (cpp:1943) only *reads* `*custom_eval` (cpp:1955), so the `const_cast` is read-only and safe. (`get_node_score` already supports `custom_eval`.) Inside `pick_random_child`, also delete the `dag_excl`-skip logic (the block that skips `dag_excl->contains(...)` moves) — on-path children are now naturally down-ranked as draws. `pick_random_child` calls `get_move_scores(alpha, beta)` at line 1726 → change to `get_move_scores(alpha, beta, false, -100, path, ply)` (defaults confirmed `consider_standpat=false, qdepth=-100` at exploration.h:199).
 
-- [ ] **Step 4: Rewrite `explore_random_child` — don't-descend / descent / backup / cache guard / channel (exploration.cpp:748-978)**
+**Also make `explore_new_move`'s own backup path-aware:** its `get_best_score_move` call at exploration.cpp:718 must pass `path`/`ply` too (handled in full by Step 4b below). Selection (here) and BOTH backups (`explore_random_child` Step 4, `explore_new_move` Step 4b) must use the SAME substitution, or a repeating sibling is draw-scored in selection but raw-scored in the expand backup → win erodes (the exact failure mode of prior attempts).
 
-Change the signature (exploration.cpp:748 + exploration.h:163): drop `DagExcl* dag_excl` and `Evaluation* path_local_eval`, add `int ply` and `BackupResult* out`:
+- [ ] **Step 4: Rewrite `explore_random_child` — don't-descend / descent / backup / cache guard / channel (exploration.cpp:748-912)**
+
+Change the signature (exploration.cpp:748 + exploration.h:156): drop `DagExcl* dag_excl` and `Evaluation* path_local_eval`, add `int ply` and `BackupResult* out`:
 
 ```cpp
 void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, int ply, BackupResult* out) {
 ```
 
-Replace the body from the pick through the end of the backup (current lines ~750-978, i.e. everything that today is: pick_random_child + null-move handling + the §3-cut block 790-844 + the descent 850-853 + the opt-1/DagExcl backup 855-941 + the model-A accounting 953-977) with:
+Replace the body from the pick through the end of the function (current cpp:749-911), i.e. everything that today is: `pick_random_child` (751) + null-move handling (757-760) + the §3-cut block (790-844) + the descent (850-853) + the opt-1/DagExcl backup (856-875) + the model-A accounting (887-911). **Note:** that span includes the `g_tt_main_search` TT write-back at cpp:877-885 — the replacement below **re-includes it** (do NOT drop it; it is the headline feature of this branch and is independent of `g_tt_node_dag`). Replace with:
 
 ```cpp
 	PositionHistory& branch_history = *path_history;
@@ -379,6 +383,18 @@ Replace the body from the pick through the end of the backup (current lines ~750
 	}
 	// sinon : extrinsèque -> on NE touche PAS _deep_evaluation (cache intrinsèque conservé).
 
+	// #11 Plan A — write-back TT main-search PRÉSERVÉ (était exploration.cpp:877-885,
+	// supprimé par erreur dans la 1re rédaction de ce plan). Sous DAG : ne persiste que
+	// l'intrinsèque (même garde que _deep_evaluation), jamais une nulle path-locale dans
+	// une TT indexée par position. OFF (g_tt_node_dag faux) : condition réduite à
+	// l'originale -> byte-identique.
+	if (g_tt_main_search && !_is_terminal && !_is_stand_pat_eval && _deep_evaluation._evaluated
+		&& (!g_tt_node_dag || this_min_earlier_ply >= ply)) {
+		transposition_table.store(_board->_zobrist_key,
+			tt_normalize_mate(_deep_evaluation._value * _board->get_color(), _board->_moves_count), // #3
+			tt_writeback_depth(_nodes), TT_EXACT);
+	}
+
 	if (out != nullptr) {
 		out->value = this_value;
 		out->min_earlier_ply = this_min_earlier_ply;
@@ -405,26 +421,104 @@ Replace the body from the pick through the end of the backup (current lines ~750
 }
 ```
 
-Notes for the implementer: keep any `dag_log` `pred_fire`/counter calls you want for diagnostics, adapted to the new flow (optional). The `_bm == move` comparison uses `Move::operator==` (board.h:139). Confirm `get_best_score_move`'s real default params to pass `consider_standpat=false, qdepth=-100` positionally before `path, ply`.
+Notes for the implementer: keep any `dag_log` `pred_fire`/counter calls you want for diagnostics, adapted to the new flow (optional). The `_bm == move` comparison uses `Move::operator==` (board.h:139). `get_best_score_move`'s defaults are `consider_standpat=false, qdepth=-100` (exploration.h:205) — pass them positionally before `path, ply`. The `_bm == move && descended` case relies on `child_res` being reliably filled by the descent; that is guaranteed by the `out`-channel seed in `grogros_zero` (Step 5) — without it, an expand-path descent leaves `child_res.value` uninitialized (`Evaluation::_value` has no default, board.h:466).
 
-- [ ] **Step 5: Update `grogros_zero` — channel + ply + remove dead scratch (exploration.cpp:357-468)**
+- [ ] **Step 4b: Make `explore_new_move` path-aware + cache-guarded + fill the channel (exploration.cpp:486)**
 
-- Signature already gained `int ply = 0` (Task 2) and the last param: change the trailing `Evaluation* path_local_eval` to `BackupResult* out` (exploration.h:157 + cpp:357). 
-- Delete `DagExcl dag_excl;` (exploration.cpp:437) and `Evaluation dag_child_eval;` (442) and their comments.
+The expand path must mirror `explore_random_child`'s backup, or (a) the `out` channel is never filled when `grogros_zero` descends through expansion (the common case for young nodes → garbage `BackupResult`), and (b) a repeating sibling is draw-scored in selection but raw-scored here (win erodes). Its current `Evaluation* path_local_eval` param is dead (never written) — repurpose it as the channel.
+
+Change the signature (exploration.cpp:486 + exploration.h:153): replace trailing `Evaluation* path_local_eval` with `int ply, BackupResult* out` (order `(path_history, ply, out)` to match `explore_random_child`):
+
+```cpp
+void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, int ply, BackupResult* out) {
+```
+
+The `PathScope` at cpp:641 already carries `ply + 1` (Task 2). Replace the backup block (cpp:718-739, from `Move best_move = get_best_score_move(...)` through the closing `}` of the `else` that holds the Plan A store) with:
+
+```cpp
+	bool all_moves_explored = (get_fully_explored_children_count()) == _board->_got_moves;
+
+	// Backup path-aware (cohérent avec explore_random_child) : un fils sur le
+	// chemin contribue dag_draw_eval(), sinon son _deep_evaluation.
+	Move best_move = get_best_score_move(alpha, beta, !all_moves_explored, -100, g_tt_node_dag ? path_history : nullptr, ply);
+
+	if (best_move.is_null_move()) {
+		_is_stand_pat_eval = true;
+		if (out != nullptr) { out->value = _deep_evaluation; out->min_earlier_ply = INT32_MAX; }
+	}
+	else {
+		_is_stand_pat_eval = false;
+
+		int this_min_earlier_ply = INT32_MAX;
+		Evaluation this_value;
+		if (g_tt_node_dag && position_is_draw_by_repetition(*path_history, *_children[best_move]._node->_board)) {
+			// le meilleur coup est une répétition sur ce chemin (p.ex. feuille §3
+			// init_terminal_draw_child) -> contribution = nulle ; note son first_ply.
+			this_value = dag_draw_eval();
+			this_min_earlier_ply = (int)position_history_first_ply(*path_history, *_children[best_move]._node->_board);
+		}
+		else {
+			this_value = _children[best_move]._node->_deep_evaluation;
+		}
+
+		// #11 GHI — même gardien de cache que explore_random_child (spec §3.3).
+		if (!g_tt_node_dag) {
+			_deep_evaluation = _children[best_move]._node->_deep_evaluation;
+		}
+		else if (this_min_earlier_ply >= ply) {
+			_deep_evaluation = this_value;
+		}
+		// sinon extrinsèque -> _deep_evaluation conservé ; valeur path-locale via out.
+
+		if (out != nullptr) { out->value = this_value; out->min_earlier_ply = this_min_earlier_ply; }
+
+		// #11 Plan A — write-back TT main-search préservé, gardé sur l'intrinsèque.
+		if (g_tt_main_search && !_is_terminal && !_is_stand_pat_eval && _deep_evaluation._evaluated
+			&& (!g_tt_node_dag || this_min_earlier_ply >= ply)) {
+			transposition_table.store(_board->_zobrist_key,
+				tt_normalize_mate(_deep_evaluation._value * _board->get_color(), _board->_moves_count), // #3
+				tt_writeback_depth(_nodes), TT_EXACT);
+		}
+	}
+```
+
+(The `all_moves_explored` computation already exists at cpp:710 — fold it in or keep the existing line; just ensure `get_best_score_move` here receives `path`/`ply`.)
+
+- [ ] **Step 5: Update `grogros_zero` — channel + ply + seed/forward + remove dead scratch (exploration.cpp:357-468)**
+
+- Signature: change the trailing `Evaluation* path_local_eval` to `BackupResult* out`, then add `int ply = 0` after it (order `(path_history, out, ply)`, matching the descent call below) — exploration.h:150 + cpp:357.
+- Delete `DagExcl dag_excl;` (exploration.cpp:433-437, comment + decl) and `Evaluation dag_child_eval;` (439-442, comment + decl).
+- **Seed the channel** (THE fix for the expand-path gap). Immediately after the `if (!_initialized) { quiescence(...); _iterations++; }` block (after cpp:401), insert:
+  ```cpp
+  // #11 GHI — graine du canal de remontée : valeur intrinsèque par défaut.
+  // Les early-return (terminal / feuille TT / no-moves) la conservent ; les
+  // consommateurs (explore_new_move / explore_random_child) l'écrasent par la
+  // valeur path-locale exacte. Garantit qu'aucun BackupResult non initialisé
+  // ne remonte (Evaluation::_value n'a pas d'init par défaut, board.h:466).
+  // OFF : out == nullptr -> no-op.
+  if (out != nullptr) {
+  	out->value = _deep_evaluation;
+  	out->min_earlier_ply = INT32_MAX;
+  }
+  ```
+  Placing it here (after init, before the `_is_terminal` / `!_can_explore` / `_got_moves <= 0` early returns at cpp:404-431) means those returns inherit the intrinsic fallback automatically — no per-return edits needed.
+- The `explore_new_move` call (452) becomes:
+  ```cpp
+  explore_new_move(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, ply, out);
+  ```
 - The `explore_random_child` call (457) becomes:
   ```cpp
   explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, ply, out);
   ```
-  (Pass `out` straight through: a node's grogros_zero delegates its single-iteration backup result to the caller via explore_random_child. For multi-iteration root calls `out` is typically `nullptr`.)
-- The `explore_new_move` call (452) gains the trailing `ply` (it already has it from Task 2 Step 5).
+  Both consumers fill `out` on their normal exit and inherit the seed if they early-return. For multi-iteration root calls `out` is `nullptr` (no-op). The seed runs once; the loop's last iteration's consumer overwrites it.
 
 - [ ] **Step 6: Remove the attempt-8 share gate — full sharing (exploration.cpp explore_new_move)**
 
-In `explore_new_move`, delete the `const bool dag_shareable = g_tt_node_dag && !new_board->is_pawn_endgame();` line and revert both gated checks back to `if (g_tt_node_dag)` (the lookup at ~617 and the register at ~653). This re-enables sharing for every node (depth restored). Keep the §3 draw-leaf branch (`init_terminal_draw_child`) and thread its `ply` (already from Task 2).
+In `explore_new_move`, delete the `const bool dag_shareable = g_tt_node_dag && !new_board->is_pawn_endgame();` line (cpp:560) and revert both gated checks `if (dag_shareable)` back to `if (g_tt_node_dag)` (the lookup at cpp:568 and the register at cpp:605). This re-enables sharing for every node (depth restored). Keep the §3 draw-leaf branch (`init_terminal_draw_child`, cpp:534-547) and its `ply`-threaded `PathScope` (already from Task 2 / Step 4b).
 
 - [ ] **Step 7: Build**
 
-Run the build command. Resolve compile errors (signature mismatches at call sites are expected — fix each: any other caller of `explore_random_child`/`get_best_score_move`/`get_move_scores`/`pick_random_child` must pass the new params; grep them). Expected: clean once all call sites updated.
+Run the build command. Resolve compile errors (signature mismatches at call sites are expected — fix each: any other caller of `explore_random_child`/`explore_new_move`/`grogros_zero`/`get_best_score_move`/`get_move_scores`/`pick_random_child` must pass the new params; grep them). Note `explore_new_move` lost its dead `path_local_eval` and gained `int ply, BackupResult* out` — grep `explore_new_move(` and `path_local_eval` to catch any stragglers. Expected: clean once all call sites updated.
 
 - [ ] **Step 8: Run harness — expect ALL GREEN**
 
@@ -497,6 +591,8 @@ The assistant-runnable gate (`--dag-test`, exit 0, sharing-active) is satisfied 
 
 ## Self-Review
 
-- **Spec coverage:** §3.1 path state → Task 2. §3.2 consumer rule → Task 3 Steps 3-4. §3.3 cache guard → Task 3 Step 4 (`min_earlier_ply >= ply`). §3.4 don't-descend → Task 3 Step 4. §5 removals (DagExcl/opt-1/§3-cut/attempt-8 gate/dead scratch) → Task 3 Steps 1,4,5,6. §6 tests (new positions, sharing metric, low+high iters, OFF identical) → Task 1 + Task 3 Step 8. §7 perf → Task 4. §8 docs → Task 5. De-alias safety grep → Task 2 Steps 3-4. No gap.
+- **Spec coverage:** §3.1 path state → Task 2. §3.2 consumer rule → Task 3 Steps 3, 4, **4b** (the substitution is applied in selection AND in BOTH backups — `explore_random_child` and `explore_new_move`). §3.3 cache guard → Task 3 Steps 4 + 4b (`min_earlier_ply >= ply`). §3.4 don't-descend → Task 3 Step 4. §5 removals (DagExcl/opt-1/§3-cut/attempt-8 gate/dead scratch) → Task 3 Steps 1,4,5,6. §6 tests (new positions, sharing metric, low+high iters, OFF identical) → Task 1 + Task 3 Step 8. §7 perf → Task 4. §8 docs → Task 5. De-alias safety grep → Task 2 Steps 3-4. No gap.
+- **Channel completeness (root of the expand-path bug):** the `BackupResult* out` channel is filled on EVERY `grogros_zero` exit — seeded from `_deep_evaluation` after init (Step 5, covers terminal/leaf early-returns and buffers-full break) and overwritten by whichever consumer runs (`explore_new_move` Step 4b / `explore_random_child` Step 4). No path leaves `out` with an uninitialized `Evaluation`.
+- **TT write-back preserved:** the `g_tt_main_search` store survives in BOTH `explore_random_child` (Step 4) and `explore_new_move` (Step 4b), gated to persist only the intrinsic value under DAG and identical to baseline when `g_tt_node_dag` is OFF — so the branch's headline feature is not regressed and OFF stays byte-identical.
 - **Placeholder scan:** test FENs for Repro3/4 are concrete starting values with a Task 1 Step 4 verification/replacement procedure (the established #11 pinning pattern), not a vague TODO. All code steps show complete code or exact edit targets with current line refs.
-- **Type/name consistency:** `PathEntry{count, first_ply}`, `PositionHistory`, `BackupResult{value, min_earlier_ply}`, `position_history_first_ply`, `dag_draw_eval_ref`, the `(path, ply)` selector params, and the `explore_random_child(... int ply, BackupResult* out)` / `grogros_zero(... int ply, BackupResult* out)` signatures are used consistently across Tasks 2-3. `ply+1` on descent and `min_earlier_ply >= ply` guard match the spec.
+- **Type/name consistency:** `PathEntry{count, first_ply}`, `PositionHistory`, `BackupResult{value, min_earlier_ply}`, `position_history_first_ply`, `dag_draw_eval_ref`, the `(path, ply)` selector params. Signature orders (intentionally differ): `grogros_zero(... PositionHistory* path_history, BackupResult* out, int ply)`; `explore_random_child(... PositionHistory* path_history, int ply, BackupResult* out)`; `explore_new_move(... PositionHistory* path_history, int ply, BackupResult* out)` — every call site in Steps 4/4b/5 matches these. `ply+1` on descent and `min_earlier_ply >= ply` guard match the spec.
