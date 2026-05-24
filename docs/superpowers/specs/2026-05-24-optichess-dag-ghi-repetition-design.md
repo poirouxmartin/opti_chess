@@ -1,5 +1,8 @@
 # #11 — DAG GHI-correct repetition: one mechanism — Design Spec
 
+> **STATUS 2026-05-24 — IMPLEMENTED; assistant harness GREEN; USER GUI gate pending.**
+> Commits on `feature/tt-main-search`: `bb51063` (harness) · `a76547c` (path state, inert) · `e49814d` (mechanism) · `e996c39` (perf). `--dag-test` exit 0 at 20×3000 AND 120×4000: repro1 draw, repro2 win (101), two perpetual draws, sharing-active (node_map 3885/11787 — depth restored), OFF byte-identical. **Key addition beyond this spec (found via systematic debugging):** under deep DAG search the aggressive 2-fold `search_repetition_limit` cut the won line (king-shuffle loop) — fixed with FIDE 3-fold under DAG only (`search_repetition_limit_dag`), OFF keeps 2-fold. See BUGFIXES.md #11 attempt-9 / #9.
+
 **Date:** 2026-05-24
 **Branch:** `feature/tt-main-search`
 **Issue:** #11 — node-sharing (DAG) gives depth but breaks repetition (Graph History Interaction)
