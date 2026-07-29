@@ -2,8 +2,35 @@
   "version": 4,
   "configurePresets": [
     {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release (Ninja)",
+      "description": "Optimized build for any platform.",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "Debug (Ninja)",
+      "description": "Debug-friendly build for any platform.",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
       "name": "windows-release",
-      "displayName": "Windows x64 — Release",
+      "displayName": "Windows x64 — Release (MSVC)",
       "description": "Optimized Windows build for trying OptiChess.",
       "generator": "Visual Studio 17 2022",
       "architecture": {
@@ -17,7 +44,7 @@
     },
     {
       "name": "windows-debug",
-      "displayName": "Windows x64 — Debug",
+      "displayName": "Windows x64 — Debug (MSVC)",
       "description": "Debug-friendly Windows build for development.",
       "inherits": "windows-release",
       "binaryDir": "${sourceDir}/build/windows-debug",
@@ -27,6 +54,16 @@
     }
   ],
   "buildPresets": [
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "configuration": "Release"
+    },
+    {
+      "name": "debug",
+      "configurePreset": "debug",
+      "configuration": "Debug"
+    },
     {
       "name": "windows-release",
       "configurePreset": "windows-release",
