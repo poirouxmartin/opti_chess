@@ -5,6 +5,8 @@
 [![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgray)](opti_chess/CMakeLists.txt)
 [![Build system](https://img.shields.io/badge/build-CMake-064F8C)](opti_chess/CMakeLists.txt)
 
+![OptiChess analysis board](opti_chess/resources/readme/project_highlight.png)
+
 **OptiChess** is a research-oriented chess engine written in modern C++20. It features a novel hybrid search algorithm called **GrogrosZero**, combining Monte Carlo tree search principles with classical alpha-beta minimax, integrated quiescence search, and WDL (Win/Draw/Loss) statistical evaluation.
 
 > **Note:** OptiChess is an experimental project focused on algorithmic research and performance optimization. It is not intended for production use or competitive play.
@@ -155,6 +157,20 @@ Performance profiling is recommended before and after any change to `exploration
 | `opti_chess/docs/DEVELOPMENT.md` | Developer setup guide |
 | `opti_chess/BUGFIXES.md` | Bug fix history and analysis |
 | `opti_chess/CONTRIBUTING.md` | Contribution guidelines |
+
+---
+
+## Screenshots
+
+![OptiChess GUI](opti_chess/resources/screenshots/1694083255.png)
+
+The engine runs with a raylib-based graphical interface showing move analysis, evaluation graphs, and the full game tree. Below are additional captures from various gameplay sessions:
+
+| Analysis Board | Evaluation Graph | Game Tree View |
+|---|---|---|
+| ![Analysis](opti_chess/resources/screenshots/1694083220.png) | ![Graph](opti_chess/resources/screenshots/1695476699.png) | ![Tree](opti_chess/resources/screenshots/1694083104.png) |
+
+> **Note:** Screenshots are from development versions of OptiChess. The GUI may look slightly different in the latest release.
 
 ---
 
