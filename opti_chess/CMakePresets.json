@@ -1,0 +1,41 @@
+{
+  "version": 4,
+  "configurePresets": [
+    {
+      "name": "windows-release",
+      "displayName": "Windows x64 — Release",
+      "description": "Optimized Windows build for trying OptiChess.",
+      "generator": "Visual Studio 17 2022",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "binaryDir": "${sourceDir}/build/windows-release",
+      "cacheVariables": {
+        "CMAKE_CONFIGURATION_TYPES": "Release"
+      }
+    },
+    {
+      "name": "windows-debug",
+      "displayName": "Windows x64 — Debug",
+      "description": "Debug-friendly Windows build for development.",
+      "inherits": "windows-release",
+      "binaryDir": "${sourceDir}/build/windows-debug",
+      "cacheVariables": {
+        "CMAKE_CONFIGURATION_TYPES": "Debug"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-release",
+      "configurePreset": "windows-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-debug",
+      "configurePreset": "windows-debug",
+      "configuration": "Debug"
+    }
+  ]
+}
