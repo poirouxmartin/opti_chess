@@ -1,0 +1,17 @@
+# CMake and IDE output
+/build/
+/.vs/
+/x64/
+/opti_chess/
+
+# Local logs and generated captures
+*.log
+/resources/screenshots/screenshot_*.png
+
+# Editor and OS metadata
+.vscode/
+.idea/
+*.user
+*.suo
+Thumbs.db
+.DS_Store
