@@ -853,14 +853,20 @@ Réseaux de neurones
 
 Intelligences artificielles / Améliorations
 
--> Fix le bug de l'UI qui fait que tout passe à 12 FPS et ne répond plus
+-> Fix le bug de l'UI qui fait que tout passe à 12 FPS et ne répond plus (-> workaround: mettre en veille l'ordi et rallumer)
 -> Unit tests pour les fonctions, et vérifier que tout fonctionne bien
--> Tests de fonctionnement "micro" de l'algorithme pour être sûre qu'il est efficient à temps de réflexion minimal
+-> Tests de fonctionnement "micro" de l'algorithme pour être sûr qu'il est efficient à temps de réflexion minimal
 -> Documentation complète du code, refactorisation, et re organisation dans plus de fichiers
 -> Affichage de l'UI sur un thread à part
 -> Possibilité de parallélisation de manière propre
 
--> 8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7 : test transpositions
+-> 8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7 : test transpositions (0.7s après DAG)
+
+-> Position BUG transpositions : croit que c'est une win alors que c'est nulle + bug quand on clique sur les coups, ça nous renvoie sur une position corrompue
+6k1/8/7P/7K/8/8/8/8 w - - 3 72
+TODO : reprendre où on en était dans l'implémentation.
+RELIRE docs/superpowers/plans/2026-05-24-optichess-dag-ghi-repetition.md
+voir branche feature tt + git stash pour les tests de transpositions
 
 
 	- Colonnes fermées -> tour mauvaises. Si beaucoup de colonnes ouvertes, bonus pour les tours. Pareil pour les diagonales et les fous
