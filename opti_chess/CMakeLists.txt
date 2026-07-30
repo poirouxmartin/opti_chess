@@ -31,8 +31,12 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(raylib robin_map)
 
-# Option to build tests
-option(BUILD_TESTS "Build unit tests" ON)
+# Option to build the GoogleTest target.
+# OFF by default: the target below is scaffolding, not a working suite. It
+# compiles tests.cpp, which is the interactive suite (it needs the GUI and
+# raylib) rather than a set of TEST() cases, so it does not link. Turning this
+# ON breaks the build until that target is rewritten as real unit tests.
+option(BUILD_TESTS "Build the (unfinished) GoogleTest target" OFF)
 
 add_executable(opti_chess
     main.cpp
