@@ -11,7 +11,7 @@ No package manager is required. CMake fetches pinned copies of raylib and robin-
 
 ## Fast path
 
-From the repository root:
+From the `opti_chess/` directory, which is where `CMakeLists.txt` and `CMakePresets.json` live:
 
 ```powershell
 cmake --preset windows-release
@@ -35,7 +35,7 @@ Use a generator appropriate for the installed Visual Studio version if needed. T
 
 ## Visual Studio workflow
 
-1. Open the repository folder, not the legacy `.vcxproj` file.
+1. Open the `opti_chess/` folder, not the legacy `.vcxproj` file.
 2. Allow Visual Studio to configure CMake.
 3. Select the `windows-debug` or `windows-release` preset.
 4. Select `opti_chess.exe` as the startup target, then build and run.
@@ -46,7 +46,7 @@ The legacy Visual Studio project references paths on the original author's machi
 
 At startup, OptiChess opens the analysis board and calculates an adaptive memory budget for the search pools from available system memory. The first seconds of startup may therefore be more noticeable on lower-memory machines. The process is designed to cap its search-pool budget, but 8 GB or more system RAM is recommended.
 
-The most useful controls are documented in the [README](../README.md#what-to-explore). `H` also toggles an in-app controls panel.
+The most useful controls are documented in the [README](../../README.md#controls). `H` also toggles arrow drawing and the on-screen controls panel.
 
 ## Validation
 
