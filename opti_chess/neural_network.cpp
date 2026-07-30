@@ -3,15 +3,15 @@
 #include <cmath>
 #include <iostream>
 
-// Constructeur par défaut
+// Default constructor
 Network::Network() {
-	// Génération des layers
+	// Generation of the layers
 	_layers.resize(_layers_dimensions.size());
 
 	for (int i = 0; i < _layers.size(); i++)
-		_layers[i].resize(_layers_dimensions[i], 0.0f); // Met toutes les valeurs à 0
+		_layers[i].resize(_layers_dimensions[i], 0.0f); // Sets every value to 0
 
-	// Génération des poids
+	// Generation of the weights
 	_weights_dimensions.resize(_layers_dimensions.size() - 1);
 
 	for (int i = 0; i < _weights_dimensions.size(); i++)
@@ -20,51 +20,51 @@ Network::Network() {
 	_weights.resize(_weights_dimensions.size());
 
 	for (int i = 0; i < _weights.size(); i++)
-		_weights[i].resize(_weights_dimensions[i], 1.0f); // Initialise tous les poids à 1
+		_weights[i].resize(_weights_dimensions[i], 1.0f); // Initializes every weight to 1
 }
 
-// Constructeur par copie
+// Copy constructor
 Network::Network(Network& n) {
-	// Copie les poids
+	// Copies the weights
 }
 
-// Fonction qui calcule l'output (mettre tout le réseau à 0 au départ)
+// Computes the output (the whole network must be zeroed first)
 void Network::calculate_output() {
-	// Remet toutes les valeurs à 0 dans les layers cachées et d'output
+	// Resets every value of the hidden and output layers to 0
 	reset_values();
 
-	// Calcul des noeuds
+	// Node computation
 
-	// Pour chaque couche
+	// For every layer
 	for (int layer = 0; layer < _layers.size() - 1; layer++) {
 
-		// On calcule les valeurs des noeuds de la couche suivante
+		// Compute the node values of the next layer
 		for (int k = 0; k < _layers[layer + 1].size(); k++) {
 
-			// On calcule la somme pondérée des noeuds de la couche précédente
+			// Compute the weighted sum of the nodes of the previous layer
 			for (int i = 0; i < _layers[layer].size(); i++) {
 				_layers[layer + 1][k] += _layers[layer][i] * _weights[layer][k * _layers[layer].size() + i];
 			}
 
-			// On applique la fonction d'activation
+			// Apply the activation function
 			//_layers[layer + 1][k] = _activation_function(_layers[layer + 1][k], 0, 1);
 			//_layers[layer + 1][k] = linear_activation(_layers[layer + 1][k], 0.0f, 1.0f);
 			_layers[layer + 1][k] = sigmoid_activation(_layers[layer + 1][k], 0.0f, 1.0f);
 		}
 	}
 
-	// On met l'output à la valeur du seul noeud de la dernière couche
+	// Set the output to the value of the single node of the last layer
 	_output = _layers[_layers.size() - 1][0];
 }
 
-// Fonction qui remplit l'input à l'aide d'une position d'échec sous forme FEN
+// Fills the input from a chess position in FEN form
 void Network::input_from_fen(const string& fen) {
 	// rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 
-	// Itérateur dans la couche d'input du réseau de neurones
+	// Iterator over the input layer of the neural network
 	int k = 0;
 
-	// Remise à zéro des valeurs
+	// Reset the values
 	reset_values();
 
 	for (const char c : fen) {
@@ -98,7 +98,7 @@ void Network::input_from_fen(const string& fen) {
 	return;
 }
 
-// Fonction qui génère des poids aléatoires dans le réseau de neurones
+// Generates random weights in the neural network
 //void Network::generate_random_weights(const int min, const int max) {
 //	for (int i = 0; i < _weights.size(); i++) {
 //		for (int j = 0; j < _weights[i].size(); j++) {
@@ -107,7 +107,7 @@ void Network::input_from_fen(const string& fen) {
 //	}
 //}
 
-// Fonction qui génère des poids aléatoires dans le réseau de neurones
+// Generates random weights in the neural network
 void Network::generate_random_weights(const float min, const float max) {
 	for (int i = 0; i < _weights.size(); i++) {
 		for (int j = 0; j < _weights[i].size(); j++) {
@@ -116,14 +116,14 @@ void Network::generate_random_weights(const float min, const float max) {
 	}
 }
 
-// Fonction qui renvoie la distance entre deux évaluations
+// Returns the distance between two evaluations
 //unsigned int evaluation_distance(const int a, const int b) {
 //	return abs(a - b);
 //}
 
-// Fonction qui renvoie une norme d'un vecteur d'entiers positifs
+// Returns a norm of a vector of positive integers
 //unsigned int vector_norm(const vector<int>& v) {
-//	// On pourra choisir une autre manière de la calculer selon les besoins
+//	// Another way of computing it can be chosen depending on the needs
 //	unsigned int sum = 0;
 //	const int length = v.size();
 //
@@ -133,7 +133,7 @@ void Network::generate_random_weights(const float min, const float max) {
 //	return (pow(sum, 1.0f / static_cast<float>(length)));
 //}
 
-// Fonction qui prend un vecteur de positions et le vecteur des évaluations associées, et renvoie la distance globale des évaluations des positions selon le réseau de neurones, comparées aux évaluations en argument
+// Takes a vector of positions and the vector of their evaluations, and returns the global distance between the network's evaluations of those positions and the evaluations given as arguments
 //int Network::global_distance(const vector<string>& positions_vector, const vector<int>& evaluations_vector) {
 //	const int length = positions_vector.size();
 //	vector<int> distances(length, 0);
@@ -147,14 +147,14 @@ void Network::generate_random_weights(const float min, const float max) {
 //	return vector_norm(distances);
 //}
 
-// Fonction qui remet à zéro toutes les valeurs du réseau
+// Resets every value of the network to zero
 void Network::reset_values() {
 	for (int i = 1; i < _layers.size(); i++)
 		for (int j = 0; j < _layers[i].size(); j++)
 			_layers[i][j] = 0.0f;
 }
 
-// Fonction qui affiche les poids du réseau
+// Displays the weights of the network
 void Network::display_weights() {
 	for (int i = 0; i < _weights.size(); i++) {
 		for (int j = 0; j < _weights[i].size(); j++) {
@@ -164,7 +164,7 @@ void Network::display_weights() {
 	}
 }
 
-// Fonction qui affiche les valeurs du réseau
+// Displays the values of the network
 void Network::display_values() {
 	for (int i = 0; i < _layers.size(); i++) {
 		for (int j = 0; j < _layers[i].size(); j++) {
@@ -174,25 +174,25 @@ void Network::display_values() {
 	}
 }
 
-// Fonctions d'activation pour les calculs du réseau de neurones
+// Activation functions for the neural network computations
 
-// Fonction d'activation linéaire
+// Linear activation function
 //int linear_activation(const int k, const float alpha, const float beta) {
 //	return alpha + k * beta;
 //}
 
-// Fonction d'activation sigmoïde
+// Sigmoid activation function
 float sigmoid_activation(const float sum, const float alpha, const float beta) {
 	//cout << "sum: " << sum << ", result: " << alpha + beta * (1.0f / (1.0f + exp(-sum))) << endl;
 	return alpha + beta * (1.0f / (1.0f + exp(-sum)));
 }
 
-// Fonction qui renvoie une évaluation en fonction de l'output (qui représente à peu près les chances de gain entre 0 et 1)
+// Returns an evaluation from the output (which roughly represents the winning chances, between 0 and 1)
 int Network::output_eval(int mate_value, float half_win_proba, int half_win_eval) {
 	// 0 -> -mate_value
 	// 1 -> mate_value
 	// 0.5 -> 0
-	// 0.667? -> +100 paramètre à définir
+	// 0.667? -> +100, parameter to be defined
 
 	float a = std::atanh(half_win_proba * 2 - 1); // Shift to use custom_prob as midpoint
 	float b = std::atanh(_output * 2 - 1); // Shift input to the same range
