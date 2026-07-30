@@ -3,96 +3,96 @@
 #include <vector>
 
 
-// Noeud de l'arbre de jeu
+// Node of the game tree
 class GameTreeNode {
 	public:
 
-	// Dernier coup joué
+	// Last move played
 	Move _move;
 
-	// Label du coup
+	// Label of the move
 	string _move_label;
 
-	// Plateau
+	// Board
 	Board _board;
 
-	// Fils
+	// Children
 	vector<GameTreeNode> _children;
 
 	// Parent
 	GameTreeNode* _parent;
 
-	// Temps restant pour le joueur n'ayant pas le trait
+	// Time left for the player who is not to move
 	clock_t _time; // TODO
 
-	// TODO: (pour rajouter sur le PGN)
-	// Nombre de noeuds, évaluation, notation spéciale du coup...
+	// TODO: (to add to the PGN)
+	// Node count, evaluation, special move notation...
 
-	// Constructeur par défaut
+	// Default constructor
 	GameTreeNode();
 
-	// Constructeur à partir d'un plateau et d'un coup
+	// Constructor from a board and a move
 	GameTreeNode(Board, Move, string, const GameTreeNode&);
 
-	// Méthodes
+	// Methods
 
-	// Ajout d'un fils
+	// Adds a child
 	void add_child(GameTreeNode);
 
-	// Affichage de l'arbre
+	// Displays the tree
 	string tree_display(GameTreeNode *current_node);
 
-	// Reset (ne pas oublier de vider la mémoire)
+	// Reset (do not forget to free the memory)
 	void reset();
 };
 
 
-// Arbre de jeu (pour stocker les variations principales dans la GUI)
+// Game tree (stores the main variations for the GUI)
 class GameTree {
 	public:
 
-	// Racine
+	// Root
 	GameTreeNode* _root;
 
-	// Noeud actuel
+	// Current node
 	GameTreeNode* _current_node;
 
 
-	// Constructeur par défaut
+	// Default constructor
 	GameTree();
 
-	// Constructeur à partir d'un plateau
+	// Constructor from a board
 	GameTree(Board);
 
-	// Méthodes
+	// Methods
 
-	// Sélection du noeud suivant
+	// Selects the next node
 	bool select_next_node(Move move);
 
-	// Sélection du premier noeud suivant
+	// Selects the first following node
 	bool select_first_next_node();
 
-	// Sélection du noeud précédent
+	// Selects the previous node
 	bool select_previous_node();
 
-	// Ajout d'un fils
+	// Adds a child
 	void add_child(GameTreeNode);
 
-	// Ajout d'un fils à partir d'un plateau et d'un coup
+	// Adds a child from a board and a move
 	void add_child(Board, Move, string);
 
-	// Ajout d'un fils à partir d'un coup
+	// Adds a child from a move
 	void add_child(Move move, string additionnal_label);
 
-	// Affichage de l'arbre
+	// Displays the tree
 	string tree_display();
 
 	// Reset
 	void reset();
 
-	// Nouvel arbre à partir d'un plateau
+	// New tree from a board
 	void new_tree(Board&);
 
-	// Promeut la variante actuelle en tant que variante principale
+	// Promotes the current variation to the main variation
 	bool promote_current_variation();
 };

@@ -6,39 +6,39 @@
 
 using namespace std;
 
-// Fonction qui g�n�re les cl�s de Zobrist
+// Generates the Zobrist keys
 void Zobrist::generate_zobrist_keys() {
 
-	// Si les cl�s ont d�j� �t� g�n�r�es, on ne fait rien
+	// If the keys have already been generated, do nothing
 	if (_keys_generated)
 		return;
 	
-	// Initialisation du g�n�rateur al�atoire
+	// Initialization of the random generator
 	random_device rd;
 	mt19937_64 gen(rd());
 	uniform_int_distribution<uint_fast64_t> dis(0, UINT_FAST64_MAX);
 
-	// G�n�ration des cl�s
+	// Key generation
 
-	// Valeur initiale de la cl�
+	// Initial value of the key
 	_initial_key = dis(gen);
 	
-	// Cl�s des pi�ces
+	// Piece keys
 	for (int i = 0; i < 64; i++) {
 		for (int j = 0; j < 12; j++) {
 			_board_keys[i][j] = dis(gen);
 		}
 	}
 
-	// Cl� du trait
+	// Side-to-move key
 	_player_key = dis(gen);
 
-	// Cl�s des roques
+	// Castling keys
 	for (int i = 0; i < 16; i++) {
 		_castling_keys[i] = dis(gen);
 	}
 
-	// Cl�s du en-passant
+	// En passant keys
 	for (int i = 0; i < 8; i++) {
 		_en_passant_keys[i] = dis(gen);
 	}
@@ -47,16 +47,16 @@ void Zobrist::generate_zobrist_keys() {
 
 }
 
-// Constructeur par d�faut de Zobrist
+// Default constructor of Zobrist
 Zobrist::Zobrist() {
 }
 
-// Constructeur par défaut de la table de transposition
+// Default constructor of the transposition table
 TranspositionTable::TranspositionTable()
 {
 }
 
-// Fonction qui initialise la table de transposition � une taille donn�e
+// Initializes the transposition table to a given size
 void TranspositionTable::init(const int length, const Zobrist* zobrist, bool display)
 {
 	if (_init) {
@@ -68,17 +68,17 @@ void TranspositionTable::init(const int length, const Zobrist* zobrist, bool dis
 	if (display)
 		cout << "initializing transposition table..." << endl;
 
-	// Initialisation de la table de transposition
+	// Initialization of the transposition table
 	_hash_table.reserve(length);
 	_length = length;
 
-	// Initialisation du Zobrist (s'il n'est pas donn�)
+	// Initialization of the Zobrist keys (if none is given)
 	if (zobrist != nullptr)
 		_zobrist = *zobrist;
 	else
 		_zobrist = Zobrist();
 
-	// G�n�ration des cl�s de Zobrist
+	// Generation of the Zobrist keys
 	_zobrist.generate_zobrist_keys();
 
 	_init = true;
@@ -90,7 +90,7 @@ void TranspositionTable::init(const int length, const Zobrist* zobrist, bool dis
 		
 }
 
-// Instance de la table de transposition
+// Instance of the transposition table
 TranspositionTable transposition_table;
 
 bool TranspositionTable::contains(uint64_t key) const {
@@ -109,7 +109,7 @@ const ZobristEntry* TranspositionTable::probe(uint64_t key) {
 void TranspositionTable::store(uint64_t key, int eval, int depth, TTFlag flag) {
 	const auto it = _hash_table.find(key);
 	if (it != _hash_table.end()) {
-		// Remplacement : on garde l'entrée la plus profonde
+		// Replacement policy: keep the deepest entry
 		if (it->second._depth > depth)
 			return;
 		_stats._overwrites++;
@@ -125,7 +125,7 @@ void TranspositionTable::clear() {
 
 string TranspositionTable::stats_string() const {
 	ostringstream ss;
-	ss << "TT: " << long_int_to_round_string(_hash_table.size()) << " entrées"
+	ss << "TT: " << long_int_to_round_string(_hash_table.size()) << " entries"
 	   << "\nProbes: " << long_int_to_round_string(_stats._lookups)
 	   << " | Hits: " << long_int_to_round_string(_stats._hits) << " (" << (int)_stats.hit_rate() << "%)"
 	   << "\nCutoffs: " << long_int_to_round_string(_stats._cutoffs) << " (" << (int)_stats.cutoff_rate() << "%)"

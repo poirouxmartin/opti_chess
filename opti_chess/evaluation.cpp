@@ -1,12 +1,12 @@
 #include "evaluation.h"
 
-// Constructeur par défaut
+// Default constructor
 Evaluator::Evaluator() {
 }
 
-// Constructeur par copie
+// Copy constructor
 Evaluator::Evaluator(const Evaluator& other) {
-	// Recopie les paramètres d'évaluation
+	// Copies the evaluation parameters
 	_piece_value = other._piece_value;
 	_piece_mobility = other._piece_mobility;
 	_piece_positioning = other._piece_positioning;
@@ -39,9 +39,9 @@ Evaluator::Evaluator(const Evaluator& other) {
 	_queen_safety = other._queen_safety;
 }
 
-// Constructeur avec paramètres
+// Constructor taking parameters
 Evaluator::Evaluator(const float piece_value, const float piece_mobility, const float piece_positioning, const float bishop_pair, const float doubled_pieces, const float castling_rights, const float player_trait, const float king_safety, const float pawn_structure, const float attacks, const float defenses, const float kings_opposition, const float push, const float rook_open, const float square_controls, const float space_advantage, const float alignments, const float piece_activity, const float fianchetto, const float pawn_push_threats, const float king_proximity, const float rook_activity, const float bishop_pawns, const float weak_squares, const float bishop_activity, const float trapped_pieces, const float knight_activity, const float king_centralization, const float short_term_piece_mobility, const float long_term_piece_mobility, const float queen_safety) {
-	// Initialise les paramètres d'évaluation
+	// Initializes the evaluation parameters
 	_piece_value = piece_value;
 	_piece_mobility = piece_mobility;
 	_piece_positioning = piece_positioning;
@@ -74,9 +74,9 @@ Evaluator::Evaluator(const float piece_value, const float piece_mobility, const 
 	_queen_safety = queen_safety;
 }
 
-// Opérateur de copie
+// Copy assignment operator
 Evaluator& Evaluator::operator=(const Evaluator& other) {
-	// Recopie les paramètres d'évaluation
+	// Copies the evaluation parameters
 	_piece_value = other._piece_value;
 	_piece_mobility = other._piece_mobility;
 	_piece_positioning = other._piece_positioning;
@@ -111,7 +111,7 @@ Evaluator& Evaluator::operator=(const Evaluator& other) {
 	return *this;
 }
 
-// Evaluation de la position
+// Evaluation of the position
 // TODO !!!
 //float Evaluator::evaluate(const Board& board)
 //{

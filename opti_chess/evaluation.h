@@ -1,19 +1,19 @@
 #pragma once
 //#include "board.h"
 
-// Evaluateur de position (heuristiques)
+// Position evaluator (heuristics)
 class Evaluator {
 public:
 
-	// Paramètres d'évaluation
+	// Evaluation parameters
 
-	// Coefficients des heuristiques
+	// Heuristic coefficients
 	float _piece_value = 1.0f;
-	float _piece_mobility = 0.0f; // Redondant
+	float _piece_mobility = 0.0f; // Redundant
 	float _piece_positioning = 0.05f;
 	float _bishop_pair = 35.0f;
 	float _doubled_pieces = 1.0f;
-	float _castling_rights = 0.0f; // Redondant
+	float _castling_rights = 0.0f; // Redundant
 	float _player_trait = 37.0f;
 	float _king_safety = 1.0f;
 	float _pawn_structure = 0.2f;
@@ -39,24 +39,24 @@ public:
 	float _long_term_piece_mobility = 0.20f;
 	float _queen_safety = 0.7f;
 
-	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi), en position ouverte
+	// Piece values in the opening (pawn, knight, bishop, rook, queen, king), in an open position
 	int _pieces_value_begin_open[6] = { 100, 415, 430, 610, 1185, 0 };
 
-	// Valeurs des pièces en début de partie (pion, cavalier, fou, tour, dame, roi), en position fermée
+	// Piece values in the opening (pawn, knight, bishop, rook, queen, king), in a closed position
 	int _pieces_value_begin_closed[6] = { 100, 430, 410, 550, 1050, 0 };
 
-	// Valeurs en fin de partie, en position ouverte
+	// Values in the endgame, in an open position
 	int _pieces_value_end_open[6] = { 105, 425, 440, 760, 1390, 0 };
 
-	// Valeurs des pièces en fin de partie, en position fermée
+	// Piece values in the endgame, in a closed position
 	int _pieces_value_end_closed[6] = { 105, 430, 410, 660, 1280, 0 };
 
-	// Malus pour le double d'une même pièce
+	// Penalty for doubling the same piece
 	int _doubled_piece_penalty[6] = { 0, 10, 0, 25, 50, 0 };
 
-	// Positionnement des pièces
+	// Piece positioning
 
-	// En début de partie
+	// In the opening
 	//int _pieces_pos_begin[6][8][8]{
 	//	// pion
 	//	{
@@ -125,7 +125,7 @@ public:
 	//							{  37,   60,   40,  -120, -100,  -30,   60,   48}   }
 	//};
 
-	// En fin de partie
+	// In the endgame
 	//int _pieces_pos_end[6][8][8]{
 	//	// pion
 	//	{
@@ -344,22 +344,22 @@ public:
 
 
 
-	// Constructeur par défaut
+	// Default constructor
 	Evaluator();
 
-	// Constructeur par copie
+	// Copy constructor
 	Evaluator(const Evaluator &evaluator);
 
-	// Constructeur avec paramètres
+	// Constructor taking parameters
 	Evaluator(const float piece_value, const float piece_mobility = 0.0f, const float piece_positioning = 0.0f, const float bishop_pair = 0.0f, const float doubled_pieces = 0.0f, const float castling_rights = 0.0f, const float player_trait = 0.0f, const float king_safety = 0.0f, const float pawn_structure = 0.0f, const float attacks = 0.0f, const float defenses = 0.0f, const float kings_opposition = 0.0f, const float push = 0.0f, const float rook_open = 0.0f, const float square_controls = 0.0f, const float space_advantage = 0.0f, const float alignments = 0.0f, const float piece_activity = 0.0f, const float fianchetto = 0.0f, const float pawn_push_threats = 0.0f, const float king_proximity = 0.0f, const float rook_activity = 0.0f, const float bishop_pawns = 0.0f, const float weak_squares = 0.0f, const float bishop_activity = 0.0f, const float trapped_pieces = 0.0f, const float knight_activity = 0.0f, const float king_centralization = 0.0f, const float short_term_piece_mobility = 0.0f, const float long_term_piece_mobility = 0.0f, const float queen_safety = 0.0f);
 
-	// Opérateur de copie
+	// Copy assignment operator
 	Evaluator& operator=(const Evaluator &evaluator);
 
 
-	// Méthodes
+	// Methods
 
-	// Evaluation de la position
+	// Evaluation of the position
 	// TODO !!
 	//float evaluate(const Board& board);
 };

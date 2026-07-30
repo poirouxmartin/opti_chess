@@ -17,12 +17,12 @@ struct ChildLink {
 	int _propagated_nodes = 0;
 };
 
-// #11 Plan B — Bug 1 option 3 : exclusion per-traversal (anti-spin §3).
-// Liste path-locale vivant UNIQUEMENT sur la pile du frame grogros_zero
-// courant — jamais stockee sur un Node/ChildLink (tous deux PARTAGES sous
-// DAG, cf. invariant 772183a). Taille fixe : zero allocation sur le chemin
-// le plus chaud (perf #1). En cas de debordement on retombe sur l'ancien
-// comportement (coupe conservatrice) — sain, juste sous-optimal.
+// #11 Plan B - Bug 1 option 3: per-traversal exclusion (anti-spin, section 3).
+// A path-local list living ONLY on the stack of the current grogros_zero
+// frame - never stored on a Node/ChildLink (both are SHARED under the DAG,
+// cf. invariant 772183a). Fixed size: zero allocation on the hottest path
+// (perf #1). On overflow we fall back to the former behaviour (a conservative
+// cut) - sound, merely sub-optimal.
 struct DagExcl {
 	static constexpr int CAP = 24;
 	Move moves[CAP];
@@ -37,188 +37,188 @@ struct DagExcl {
 };
 
 // TODO:
-// Au lieu d'avoir un plateau, stocker seulement l'indice du plateau dans le buffer?
+// Instead of holding a board, store only the index of the board in the buffer?
 
-// Noeud de l'arbre d'exploration.
+// Node of the exploration tree.
 //
-// Important pour les repetitions et les futures transpositions:
-// - le noeud stocke l'etat "positionnel" de l'exploration (evaluations, enfants, compteurs),
-// - l'historique des positions repetees reste volontairement hors du noeud et est passe
-//   par la pile d'appels, car il depend du chemin courant et non de la position seule.
+// Important for repetitions and future transpositions:
+// - the node stores the "positional" state of the exploration (evaluations, children, counters),
+// - the history of repeated positions deliberately stays outside the node and is passed
+//   through the call stack, because it depends on the current path and not on the position alone.
 class Node {
 public:
 
 	// Variables
 
-	// Plateau : FIXME -> indice du plateau dans le buffer?
+	// Board: FIXME -> index of the board in the buffer?
 	Board* _board = nullptr;
 
-	// Coup jou� pour arriver � ce plateau (FIXME: est-ce d�j� stock� dans le plateau?)
+	// Move played to reach this board (FIXME: is it already stored in the board?)
 	//Move _move;
 
-	// Fils avec leur coup associe.
-	// Les stats de selection et les compteurs de noeuds propages vivent sur l'arete pour
-	// rester corrects quand plusieurs parents partagent un meme noeud.
+	// Children with their associated move.
+	// Selection statistics and propagated node counters live on the edge, so they stay
+	// correct when several parents share the same node.
 	robin_map<Move, ChildLink> _children;
 
-	// Fils
+	// Children
 	//vector<Node*> _children;
 
-	// Pour acc�l�rer la recherche du premier coup non explor�
+	// To speed up the search for the first unexplored move
 	int _latest_first_move_explored = -1;
 
-	// Nombre de noeuds dans le sous-arbre courant.
-	// Ce compteur est tree-local : il n'est correct que tant qu'un noeud n'est pas partage
-	// entre plusieurs parents.
+	// Number of nodes in the current subtree.
+	// This counter is tree-local: it is only correct as long as a node is not shared
+	// between several parents.
 	int _nodes = 0;
 	//int _nodes = count_children_nodes() + 1;
 
-	// Nombre d'explorations par l'algorithme de GrogrosZero
+	// Number of explorations by the GrogrosZero algorithm
 	int _iterations = 0;
 
-	// Nombre de parents qui referencent ce noeud.
+	// Number of parents referencing this node.
 	int _parent_count = 0;
 
-	// TODO: il faut plusieurs types de noeuds: noeuds quiet (ceux recherch�s par GrogrosZero), noeuds de quiescence, noeuds de transposition...
-	// On utilisera les research_nodes pour le temps de calcul de Grogros, l'affichage des fl�ches etc...
+	// TODO: several node types are needed: quiet nodes (the ones searched by GrogrosZero), quiescence nodes, transposition nodes...
+	// The research_nodes will be used for Grogros's thinking time, arrow drawing and so on...
 
-	// Temps de calcul
+	// Computation time
 	clock_t _time_spent = 0;
 
-	// Profondeur de la quiescence search
+	// Depth of the quiescence search
 	int _quiescence_depth = 0;
 
-	// Est-ce que ce noeud a �t� explor� de fa�on compl�te?
+	// Has this node been explored completely?
 	bool _fully_explored = false;
 
-	// Reste t-il encore quelque chose � explorer?
+	// Is there anything left to explore?
 	bool _can_explore = true;
 
-	// Evaluation statique de la position
+	// Static evaluation of the position
 	Evaluation _static_evaluation;
 
-	// Evaluation de la position apr�s r�flexion
+	// Evaluation of the position after search
 	Evaluation _deep_evaluation;
 
-	// Est-ce un noeud final?
+	// Is this a terminal node?
 	bool _is_terminal = false;
 
-	// Noeud initialis�?
+	// Node initialized?
 	bool _initialized = false;
 
-	// La valeur d'�valuation est le standpat
+	// The evaluation value is the stand pat
 	bool _is_stand_pat_eval = true;
 
-	// Pour savoir si il est actif dans le buffer
+	// Whether it is active in the buffer
 	bool _is_active = false;
 
-	// Index dans monte_node_buffer (-1 = objet hors buffer : ne pas recycler)
+	// Index in monte_node_buffer (-1 = object outside the buffer: do not recycle)
 	int _buffer_index = -1;
 
-	// A rajouter : �valuation?, nombre de noeuds?...
+	// To add: evaluation?, node count?...
 
-	// Constructeurs
+	// Constructors
 
-	// Constructeur
+	// Constructor
 	Node();
 
-	// Constructeur avec un plateau
+	// Constructor taking a board
 	Node(Board* board);
 
 
-	// Fonctions
+	// Functions
 
-	// Fonction qui ajoute un fils
+	// Adds a child
 	void add_child(Node* child, Move move);
 
-	// Fonction qui renvoie le nombre de fils
+	// Returns the number of children
 	size_t children_count() const;
 
-	// Fonction qui renvoie l'indice du fils associ� au coup s'il existe, -1 sinon (dans le vecteur _children)
+	// Returns the index of the child associated with the move if it exists, -1 otherwise (in the _children vector)
 	//int get_child_index(Move move) const;
 
-	// Fonction qui renvoie l'indice du premier coup qui n'a pas encore �t� ajout�, -1 sinon
+	// Returns the index of the first move that has not been added yet, -1 otherwise
 	//int get_first_unexplored_move_index(bool fully_explored = false);
 
-	// Fonction qui renvoie le premier coup qui n'a pas encore �t� ajout�
+	// Returns the first move that has not been added yet
 	Move get_first_unexplored_move(bool fully_explored = false);
 
-	// Initie le noeud en fonction de son plateau
+	// Initializes the node from its board
 	void init_node();
 
-	// Nouveau GrogrosZero
+	// New GrogrosZero
 	void grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int nodes, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr);
 
-	// Fonction qui explore un nouveau coup
+	// Explores a new move
 	void explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr);
 
-	// Fonction qui explore dans un plateau fils pseudo-al�atoire
+	// Explores a pseudo-random child board
 	void explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, DagExcl* dag_excl = nullptr);
 
-	// Fonction qui renvoie le fils le plus explor�
+	// Returns the most explored child move
 	Move get_most_explored_child_move();
 
-	// Reset le noeud et ses enfants, et les supprime tous
+	// Resets the node and its children, and deletes them all
 	void reset(bool recursive = true);
 
-	// Fonction qui renvoie les variantes d'exploration
+	// Returns the exploration variations
 	string get_exploration_variants(const double alpha, const double beta, bool main = true, bool quiescence = false, int max_depth = 500, PositionHistory* chain = nullptr);
 
-	// Fonction qui renvoie la profondeur de la variante principale
+	// Returns the depth of the principal variation
 	int get_main_depth(const double alpha, const double beta, int max_depth = 500, PositionHistory* chain = nullptr);
 
-	// Fonction qui renvoie le fils le plus explor�
+	// Returns the most explored child
 	Node* get_most_explored_child();
 
-	// Fonction qui renvoie la vitesse de calcul moyenne en noeuds par seconde
+	// Returns the average search speed in nodes per second
 	int get_avg_nps() const;
 
-	// Fonction qui renvoie le nombre d'it�rations par seconde
+	// Returns the number of iterations per second
 	int get_ips() const;
 
-	// Quiescence search int�gr� � l'exploration
+	// Quiescence search integrated into the exploration
 	int quiescence(BoardBuffer* board_buffer, Evaluator* evaluator, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr, bool evaluate_threats = true, int beta_margin = 0, PositionHistory *path_history = nullptr);
 	//void grogros_quiescence(Buffer* buffer, Evaluator* eval, int depth);
 
-	// Fonction qui renvoie le nombre de noeuds fils compl�tement explor�s
+	// Returns the number of fully explored child nodes
 	int get_fully_explored_children_count() const;
 
-	// Fonction qui renvoie la somme des noeuds des fils
+	// Returns the sum of the children's node counts
 	int count_children_nodes() const;
 
-	// Fonction qui renvoie le nombre de noeuds total
+	// Returns the total node count
 	int get_total_nodes() const;
 
-	// Fonction qui �value la position
+	// Evaluates the position
 	void evaluate_position(Evaluator* evaluator, bool display = false, Network* network = nullptr, bool game_over_check = true, bool static_only = false);
 
-	// Fonction qui renvoie un noeud fils pseudo-al�atoire (en fonction des �valuations et du nombre de noeuds)
+	// Returns a pseudo-random child node (depending on the evaluations and the node count)
 	Move pick_random_child(const double alpha, const double beta, const double gamma, const DagExcl* dag_excl = nullptr);
 
-	// Fonction qui renvoie le score d'un coup. Alpha augmente l'importance de l'�valuation, et beta augmente l'importance du winrate
+	// Returns the score of a move. Alpha raises the weight of the evaluation, beta raises the weight of the win rate
 	robin_map<Move, double> get_move_scores(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100) const;
 
-	// Fonction qui renvoie la valeur du noeud
+	// Returns the value of the node
 	double get_node_score(const double alpha, const double beta, const int max_eval, const double max_avg_score, const bool player, Evaluation *custom_eval = nullptr) const;
 
-	// Fonction qui renvoie le coup avec le meilleur score
+	// Returns the move with the best score
 	Move get_best_score_move(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100);
 
-	// Fonction qui renvoie une valeur pr�visionnelle du score du noeud, lorsqu'on ne connait pas les �valuations max (pour la quiecence)
+	// Returns a forecast value of the node score, when the maximum evaluations are unknown (for the quiescence)
 	int get_previsonal_node_score(const double alpha, const double beta, const bool player) const;
 
-	// Fonction qui �value la menace en utilisant une quiesence sur le tour de l'adversaire
+	// Evaluates the threat using a quiescence search on the opponent's turn
 	int evaluate_quiescence_threat(Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr) const;
 
-	// Quiescence minimale (sans stockage des noeuds)
+	// Minimal quiescence (without storing the nodes)
 	int minimal_quiescence(Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr);
 
-	// Fonctions � rajouter: destruction des fils et de soi...
+	// Functions to add: destruction of the children and of itself...
 
-	// Destructeur : TODO (supprimer tous les tableaux dynamiques...)
-	// Il faudra free tous les plateaux du buffer
+	// Destructor: TODO (delete every dynamic array...)
+	// Every board of the buffer will have to be freed
 
-	// Destructeur
+	// Destructor
 	~Node();
 };
 
@@ -226,78 +226,78 @@ public:
 class NodeBuffer {
 public:
 
-	// Le buffer est-il initialis� ?
+	// Has the buffer been initialized?
 	bool _init = false;
 
-	// Longueur du buffer
+	// Length of the buffer
 	int _length = 0;
 
-	// Tableau de plateaux
+	// Array of nodes
 	Node* _nodes;
 
-	// It�rateur pour rechercher moins longtemps un index de plateau libre
+	// Iterator, to shorten the search for a free node index
 	int _iterator = -1;
 
-	// Free-list : pile d'indices de noeuds libres (allocation/libération O(1))
+	// Free list: stack of free node indices (O(1) allocation and release)
 	std::vector<int> _free_indices;
 
-	// Vrai pendant reset()/remove() : les hooks de libération ne repoussent pas
+	// True during reset()/remove(): the release hooks must not push back
 	bool _bulk_resetting = false;
 
-	// Le buffer est-il plein ? (O(1))
+	// Is the buffer full? (O(1))
 	bool is_full() const { return _free_indices.empty(); }
 
-	// Repousse un index libéré (appelé depuis les hooks de recyclage)
+	// Pushes a released index back (called from the recycling hooks)
 	void free_index(int index) { _free_indices.push_back(index); }
 
-	// Constructeur par d�faut
+	// Default constructor
 	NodeBuffer();
 
-	// Constructeur utilisant la taille (en octets) du buffer
+	// Constructor taking the size of the buffer (in bytes)
 	explicit NodeBuffer(size_t);
 
-	// Initialize l'allocation de n plateaux
+	// Allocates n nodes
 	void init(int length = 10000000, bool display = true);
 
-	// Fonction qui donne l'index du premier plateau de libre dans le buffer
+	// Returns the index of the first free node in the buffer
 	int get_first_free_index();
 
-	// Fonction qui d�salloue toute la m�moire
+	// Frees all the memory
 	void remove();
 
-	// Fonction qui reset le buffer
+	// Resets the buffer
 	bool reset();
 
-	// Fonction qui renvoie le premier noeud disponible dans le buffer
+	// Returns the first node available in the buffer
 	Node* get_first_free_node();
 
-	// DEBUG *** fonction qui affiche l'�tat du buffer (combien de noeuds sont utilis�s)
+	// DEBUG *** displays the state of the buffer (how many nodes are in use)
 	void display_buffer_state() const;
 };
 
 extern NodeBuffer monte_node_buffer;
 
-// Log « buffer plein » une seule fois par session de saturation
+// Logs "buffer full" once per saturation session
 extern bool g_buffers_full_logged;
-// #11 Plan A — active probe + write-back TT dans la recherche principale.
-// Défaut OFF : comportement actuel au byte près, A/B même binaire.
+// #11 Plan A - active probe + TT write-back in the main search.
+// Default OFF: current behaviour byte for byte, A/B on the same binary.
 extern bool g_tt_main_search;
 
-// #11 Plan B — DAG de transpositions (partage de noeuds). A/B runtime, defaut
-// OFF : OFF = arbre actuel au byte pres. Pas cense etre ON avec g_tt_main_search.
+// #11 Plan B - transposition DAG (node sharing). Runtime A/B, default OFF:
+// OFF = the current tree byte for byte. Not meant to be ON with g_tt_main_search.
 extern bool g_tt_node_dag;
 
-// #11 Plan B — cle Zobrist -> Node* VIVANT. Distinct de transposition_table
-// (TT d'evaluation). Consulte/peuple uniquement si g_tt_node_dag. Meme style
-// de map que Node::_children (robin_map, exploration.h:43).
+// #11 Plan B - Zobrist key -> LIVE Node*. Distinct from transposition_table
+// (the evaluation TT). Read and populated only when g_tt_node_dag is set. Same
+// kind of map as Node::_children (robin_map, exploration.h:43).
 extern robin_map<uint64_t, Node*> node_map;
 
-// #11 Plan B — rapport de diagnostic (une ligne, toggle-gated). Appele apres
-// chaque batch grogros_zero depuis la GUI quand g_tt_node_dag.
+// #11 Plan B - diagnostic report (one line, toggle-gated). Called after every
+// grogros_zero batch from the GUI when g_tt_node_dag is set.
 void dag_debug_report();
 
-// Recyclage free-list O(1) d'un noeud DETACHE (plus aucun parent) et de son
-// plateau. Point de passage unique (spec §5). A n'appeler QUE sur un noeud
-// definitivement detache, JAMAIS sur un noeud reset puis reutilise en place
-// (root de load_FEN / branche "else" de play-move) -> double-free sinon.
+// O(1) free-list recycling of a DETACHED node (no parent left) and of its
+// board. The single point of passage (spec section 5). To be called ONLY on a
+// node that is detached for good, NEVER on a node that is reset and then reused
+// in place (the load_FEN root / the "else" branch of play-move) -> double free otherwise.
 void recycle_detached_node(Node* node);

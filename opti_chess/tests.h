@@ -2,53 +2,53 @@
 #include "board.h"
 #include "gui.h"
 
-// Framework de tests
+// Test framework
 
-// Choses à tester:
+// Things to test:
 
-// Perft test, sur différentes positions (avec affichage de la vitesse de génération de coups)
-// Tests d'évaluations sur différentes positions: score basé sur la proximité avec l'évaluation réelle, et la fréquence de la position *** TODO (affichage de la vitesse d'évaluation)
-// Problèmes (tests avec 1 minutes, 3 minutes et 10 minutes): lesquels sont bons (ordre croissant des problèmes)
-// - Problèmes tactique
-// - Coups d'ouvertures
-// - Problèmes de finales
-// - Coups stratégiques forts
-// - Coups de défense
-// Vitesse de jeu?
-// Evaluation des chances de gain, et prises de risques sur les positions incertaines
-// Tests de recherche de mat (avec affichage de la vitesse de recherche)
-// Symétrie de l'évaluation
-// Coups ratés
-// Coups d'instinct
-// Vitesse de jeu
-// Tests de quiescence
-// Vitesse d'évaluation
+// Perft test, on various positions (displaying the move generation speed)
+// Evaluation tests on various positions: a score based on how close the evaluation is to the real one, and on the frequency of the position *** TODO (displaying the evaluation speed)
+// Problems (tests with 1 minute, 3 minutes and 10 minutes): which ones are right (problems in increasing order)
+// - Tactical problems
+// - Opening moves
+// - Endgame problems
+// - Strong strategic moves
+// - Defensive moves
+// Playing speed?
+// Evaluation of the winning chances, and risk taking in unclear positions
+// Mate search tests (displaying the search speed)
+// Symmetry of the evaluation
+// Missed moves
+// Instinctive moves
+// Playing speed
+// Quiescence tests
+// Evaluation speed
 
 
 // TODO ***
-// Faire des fonctions pour chaque type de test: run_all_problems, etc...
-// Faire des exercices par THEME, pour voir sur quel thème il pêche (problème stratégique à théme, évaluation d'un paramètre spécifique, etc...)
-// Vérifier sur des échanges de pièces, si elles sont toutes évaluées correctement selon les positions
+// Write one function per test type: run_all_problems, etc...
+// Write exercises by THEME, to see which theme it struggles with (themed strategic problem, evaluation of one specific parameter, etc...)
+// Check on piece exchanges whether they are all evaluated correctly depending on the position
 
-// Implémentation d'un score par critère
-// Score global représentant la puissance de la configuration (génération de coups, évaluation, algorithme, paramètres de recherche...)
+// Implementation of a score per criterion
+// A global score representing the strength of the configuration (move generation, evaluation, algorithm, search parameters...)
 
 class Tests {
 public:
 
-	// Attributs
+	// Attributes
 
-	// Plateau
+	// Board
 	//Board *_board;
 
 	// Evaluation
 	//Evaluator *_eval;
 
-	// Algorithme
+	// Algorithm
 
-	// Paramètres de recherche
+	// Search parameters
 
-	// GUI? (pour importer tous les paramètres et tester direct)
+	// GUI? (to import every parameter and test straight away)
 	GUI *_gui;
 
 	// Imported tests control
@@ -68,27 +68,27 @@ public:
 	// Returns number of tests added.
 	int add_generated_evaluation_tests(const string& tests_path = "Tests.txt");
 
-	// Constructeur
+	// Constructor
 	//Tests(Evaluator* eval);
 
 	Tests(GUI *gui);
 
 
-	// Fonctions
+	// Functions
 
 	// Perft test
 	bool perft_test(string fen, int depth, vector<long long int> expected_nodes);
 
-	// Renvoie une valeur entre 0 et 1, 1 étant la position évaluée correctement
+	// Returns a value between 0 and 1, 1 meaning the position is evaluated correctly
 	double evaluation_test(string fen, int expected_evaluation, pair<int, int> evaluation_range, double expected_score, pair<double, double> score_range);
 
-	// Renvoie une valeur entre 0 et 1 (1 = problème résolu) (faut-il prendre en compte si le coup joué est quand-même bon?)
+	// Returns a value between 0 and 1 (1 = problem solved) (should it account for the played move still being good?)
 	double problem_test(string fen, robin_map<Move, double> moves, double time);
 
-	// Mise à jour de la GUI
+	// Updates the GUI
 	void update_GUI();
 
 
-	// Fonction qui fait tous les tests
+	// Runs every test
 	void run_all_tests();
 };

@@ -4,20 +4,20 @@
 
 using namespace std;
 
-// Fonctions d'activation pour les weights? (pour les mettre entre 0 et 1??) -> exponentielles entre 0 et 1
-// L'output entre 0 et 1 représenterait la probabilité de gain (pour les blancs?)
-// Passage en flottants à la place?
+// Activation functions for the weights? (to keep them between 0 and 1??) -> exponentials between 0 and 1
+// An output between 0 and 1 would represent the winning probability (for White?)
+// Switch to floats instead?
 
 // Documentation
 // https://www.v7labs.com/blog/neural-networks-activation-functions
 // https://en.wikipedia.org/wiki/Activation_function
 
-// TODO: prendre en compte d'autres paramètres que simplement les pièces? (genre le trait, nombre de coups...)
+// TODO: take parameters other than just the pieces into account? (side to move, move count...)
 
 class Network {
 public:
 
-	// Attributs
+	// Attributes
 
 	// Layers
 	vector<int> _layers_dimensions = { 768, 64, 1 };
@@ -27,63 +27,63 @@ public:
 	vector<int> _weights_dimensions;
 	vector<vector<float>> _weights;
 
-	// Output (si y'a une seule valeur) -> pour simplifier
+	// Output (when there is a single value) -> to keep things simple
 	float _output = 0;
 
-	// Fonction d'activation
+	// Activation function
 	//int (*_activation_function)(int, float, float) = linear_activation;
 
-	// Constructeurs
+	// Constructors
 
-	// Constructeur par défaut
+	// Default constructor
 	Network();
 
-	// Constructeur par copie
+	// Copy constructor
 	Network(Network&);
 
-	// Fonctions
+	// Functions
 
-	// Fonction qui calcule l'output (mettre tout le réseau à 0 au départ)
+	// Computes the output (the whole network must be zeroed first)
 	void calculate_output();
 
-	// Fonction qui remplit l'input à l'aide d'une position d'échec sous forme FEN
+	// Fills the input from a chess position in FEN form
 	void input_from_fen(const string&);
 
-	// Fonction qui remplit l'input à l'aide d'un plateau
+	// Fills the input from a board
 	// TODO
 
-	// Fonction qui génère des poids aléatoires dans le réseau de neurones
+	// Generates random weights in the neural network
 	//void generate_random_weights(int min = -100, int max = 100);
 
-	// Fonction qui génère des poids aléatoires dans le réseau de neurones
+	// Generates random weights in the neural network
 	void generate_random_weights(float min = -1.0f, float max = 1.0f);
 
-	// Fonction qui prend un vecteur de positions et le vecteur des évaluations associées, et renvoie la distance globale des évaluations des positions selon le réseau de neurones, comparées aux évaluations en argument
+	// Takes a vector of positions and the vector of their evaluations, and returns the global distance between the network's evaluations of those positions and the evaluations given as arguments
 	//int global_distance(const vector<string>&, const vector<int>&);
 
-	// Fonction qui remet à zéro toutes les valeurs du réseau
+	// Resets every value of the network to zero
 	void reset_values();
 
-	// Fonction qui affiche les poids du réseau
+	// Displays the weights of the network
 	void display_weights();
 
-	// Fonction qui affiche les valeurs du réseau
+	// Displays the values of the network
 	void display_values();
 
-	// Fonction qui renvoie une évaluation en fonction de l'output (qui représente à peu près les chances de gain entre 0 et 1)
+	// Returns an evaluation from the output (which roughly represents the winning chances, between 0 and 1)
 	int output_eval(int mate_value, float half_win_proba = 0.667f, int half_win_eval = 100);
 };
 
-// Fonction qui renvoie la distance entre deux évaluations
+// Returns the distance between two evaluations
 //unsigned int evaluation_distance(int, int);
 
-// Fonction qui renvoie une norme d'un vecteur d'entiers
+// Returns a norm of a vector of integers
 //unsigned int vector_norm(const vector<int>&);
 
-// Fonctions d'activation pour les calculs du réseau de neurones
+// Activation functions for the neural network computations
 
-// Fonction d'activation linéaire
+// Linear activation function
 //int linear_activation(int, float alpha = 0.0f, float beta = 1.0f);
 
-// Fonction d'activation sigmoïde
+// Sigmoid activation function
 float sigmoid_activation(float sum, float alpha = 0.0f, float beta = 1.0f);
