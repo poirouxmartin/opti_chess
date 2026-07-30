@@ -54,59 +54,59 @@ static string trim_copy(string s) {
     return s.substr(start, end - start + 1);
 }
 
-// Constructeur
+// Constructor
 Tests::Tests(GUI *gui) {
     _gui = gui;
 }
 
 // Perft test
 bool Tests::perft_test(string fen, int depth, vector<long long int> expected_nodes) {
-    // TODO: lier ça à la GUI directement, pour qu'on voit la position et les tests qui avancent
+    // TODO: wire this straight to the GUI, so the position and the running tests are visible
     _gui->load_FEN(fen, false);
     update_GUI();
 
-    // Teste le nombre de noeuds générés
+    // Test the number of generated nodes
     return _gui->_board->validate_nodes_count_at_depth(fen, depth, expected_nodes, true);
 }
 
-// Renvoie une valeur entre 0 et 1, 1 étant la position évaluée correctement
+// Returns a value between 0 and 1, 1 meaning the position is evaluated correctly
 double Tests::evaluation_test(string fen, int expected_evaluation, pair<int, int> evaluation_range, double expected_score, pair<double, double> score_range) {
-    // Met la position
+    // Set up the position
     _gui->load_FEN(fen, false);
     update_GUI();
 
-    // Lance le chrono
+    // Start the clock
     clock_t begin = clock();
 
-    // Evalue la position
+    // Evaluate the position
     _gui->evaluate_position(false);
     int evaluation = _gui->_root_exploration_node->_static_evaluation._value;
 
-    // Evalue le win rate
+    // Evaluate the win rate
     double score = _gui->_root_exploration_node->_static_evaluation._avg_score;
 
-    // Arrête le chrono
+    // Stop the clock
     clock_t end = clock();
 
     constexpr double range_factor = 2.0;
 
-    // L'évaluation est-elle dans la plage attendue?
+    // Is the evaluation inside the expected range?
     bool correct_evaluation = evaluation >= evaluation_range.first && evaluation <= evaluation_range.second;
 
-    // Si elle est dans la plage attendue, calcule sa proximité avec la valeur attendue
+    // If it is inside the expected range, compute how close it is to the expected value
     double acceptable_eval_range = evaluation > expected_evaluation ? evaluation_range.second - expected_evaluation : expected_evaluation - evaluation_range.first;
     double eval_diff = abs(evaluation - expected_evaluation);
     double evaluation_proximity = max(0.0, 1.0 - pow(eval_diff / (acceptable_eval_range + 1e-9), 2.0) / range_factor);
 
-    // Le score est-il dans la plage attendue?
+    // Is the score inside the expected range?
     bool correct_score = score >= score_range.first && score <= score_range.second;
 
-    // Si il est dans la plage attendue, calcule sa proximité avec la valeur attendue
+    // If it is inside the expected range, compute how close it is to the expected value
     double acceptable_score_range = score > expected_score ? score_range.second - expected_score : expected_score - score_range.first;
     double score_diff = abs(score - expected_score);
     double score_proximity = max(0.0, 1.0 - pow(score_diff / (acceptable_score_range + 1e-9), 2.0) / range_factor);
 
-    // Score final
+    // Final score
     double score_final = (evaluation_proximity + score_proximity) / 2.0;
 
     // Nicely formatted multi-line output to avoid long single lines and duplicates
@@ -118,16 +118,16 @@ double Tests::evaluation_test(string fen, int expected_evaluation, pair<int, int
     return score_final;
 }
 
-// Renvoie une valeur entre 0 et 1 (1 = problème résolu)
+// Returns a value between 0 and 1 (1 = problem solved)
 double Tests::problem_test(string fen, robin_map<Move, double> moves, double time) {
-    // Met la position
+    // Set up the position
     _gui->load_FEN(fen, false);
     update_GUI();
 
-    // Lance le chrono
+    // Start the clock
     clock_t begin = clock();
 
-    // Lance GrogrosZero
+    // Run GrogrosZero
     while ((double)(clock() - begin) / CLOCKS_PER_SEC < time) {
         _gui->grogros_analysis();
         update_GUI();
@@ -139,13 +139,13 @@ double Tests::problem_test(string fen, robin_map<Move, double> moves, double tim
         }
     }
 
-    // Arrête le chrono
+    // Stop the clock
     clock_t end = clock();
 
-    // Récupère le meilleur coup
+    // Get the best move
     Move chosen_move = _gui->_root_exploration_node->get_most_explored_child_move();
 
-    // Récupère le score de ce coup (s'il y en a un)
+    // Get the score of that move (if there is one)
     double move_score = moves.find(chosen_move) != moves.end() ? moves[chosen_move] : 0.0;
 
     cout << "PUZZLE: " << fixed << setprecision(3) << move_score << "/1" << endl;
@@ -155,12 +155,12 @@ double Tests::problem_test(string fen, robin_map<Move, double> moves, double tim
     return move_score;
 }
 
-// Fonction qui fait tous les tests
+// Runs every test
 void Tests::run_all_tests() {
     // Ensure console outputs use UTF-8/locale so french characters print correctly
     ensure_utf8_output();
 
-    // TODO: faire en sorte que la GUI reste à jour au fur et a mesure des tests
+    // TODO: keep the GUI up to date as the tests go
 
     int total_tests = 0;
     double total_score = 0.0;
@@ -188,65 +188,65 @@ void Tests::run_all_tests() {
     int evaluation_tests = 0;
     double evaluation_tests_score = 0.0;
 
-    // 2.a *** Positions usuelles ***
+    // 2.a *** Usual positions ***
     cout << endl << "Usual positions evaluation tests" << endl;
 
     int usual_positions = 0;
     double usual_positions_score = 0.0;
 
-    usual_positions++, usual_positions_score += evaluation_test("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 40, { 0, 70 }, 0.55, { 0.5, 0.6 }); // Position initiale
+    usual_positions++, usual_positions_score += evaluation_test("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 40, { 0, 70 }, 0.55, { 0.5, 0.6 }); // Initial position
 
     cout << "Usual positions evaluation results: " << usual_positions_score << "/" << usual_positions << endl;
 
     evaluation_tests += usual_positions;
     evaluation_tests_score += usual_positions_score;
 
-    // 2.b *** Pièces enfermées (ou non) ***
+    // 2.b *** Trapped (or not) pieces ***
     cout << endl << "Trapped pieces evaluation tests" << endl;
 
     int trapped_pieces = 0;
     double trapped_pieces_score = 0.0;
 
-    trapped_pieces++, trapped_pieces_score += evaluation_test("5rk1/r3npbp/2p2np1/2N1p3/2B1P1P1/1P2BP2/b1P4P/2KR2NR b - - 2 19", 400, { 300, 600 }, 0.9, { 0.85, 0.95 }); // Fou enfermé en a2
+    trapped_pieces++, trapped_pieces_score += evaluation_test("5rk1/r3npbp/2p2np1/2N1p3/2B1P1P1/1P2BP2/b1P4P/2KR2NR b - - 2 19", 400, { 300, 600 }, 0.9, { 0.85, 0.95 }); // Bishop trapped on a2
 
     cout << "Trapped pieces evaluation results: " << trapped_pieces_score << "/" << trapped_pieces << endl;
 
     evaluation_tests += trapped_pieces;
     evaluation_tests_score += trapped_pieces_score;
 
-    // 2.c *** Sécurité du roi ***
+    // 2.c *** King safety ***
     cout << endl << "King safety evaluation tests" << endl;
 
     int king_safety = 0;
     double king_safety_score = 0.0;
 
-    king_safety++, king_safety_score += evaluation_test("8/pppbn2r/3p4/4k1p1/1P2P3/P1P1RP2/6P1/3R2K1 b - - 1 27", -250, { -400, -150 }, 0.1, { 0.05, 0.2 }); // Le roi noir est en fait safe
+    king_safety++, king_safety_score += evaluation_test("8/pppbn2r/3p4/4k1p1/1P2P3/P1P1RP2/6P1/3R2K1 b - - 1 27", -250, { -400, -150 }, 0.1, { 0.05, 0.2 }); // The black king is in fact safe
 
     cout << "King safety evaluation results: " << king_safety_score << "/" << king_safety << endl;
 
     evaluation_tests += king_safety;
     evaluation_tests_score += king_safety_score;
 
-    // 2.d *** Cases faibles ***
+    // 2.d *** Weak squares ***
     cout << endl << "Weak squares evaluation tests" << endl;
 
     int weak_squares = 0;
     double weak_squares_score = 0.0;
 
-    weak_squares++, weak_squares_score += evaluation_test("r1bqkb1r/1p3pp1/p1np3p/3Np3/4P3/N7/PPP2PPP/R2QKB1R w KQkq - 2 11", 120, { 90, 150 }, 0.7, { 0.65, 0.75 }); // Gros trou en d5
+    weak_squares++, weak_squares_score += evaluation_test("r1bqkb1r/1p3pp1/p1np3p/3Np3/4P3/N7/PPP2PPP/R2QKB1R w KQkq - 2 11", 120, { 90, 150 }, 0.7, { 0.65, 0.75 }); // Big hole on d5
 
     cout << "Weak squares evaluation results: " << weak_squares_score << "/" << weak_squares << endl;
 
     evaluation_tests += weak_squares;
     evaluation_tests_score += weak_squares_score;
 
-    // 2.z *** Autres ***
+    // 2.z *** Others ***
     cout << endl << "Other evaluation tests" << endl;
 
     int others = 0;
     double others_score = 0.0;
 
-    others++, others_score += evaluation_test("r2qrbk1/5ppp/pn3n2/4N3/1ppP1P2/4PQ2/PB2N1PP/2R2RK1 b - - 1 20", -350, { -500, -200 }, 0.08, { 0.03, 0.15 }); // Complètement gagnant pour les noirs
+    others++, others_score += evaluation_test("r2qrbk1/5ppp/pn3n2/4N3/1ppP1P2/4PQ2/PB2N1PP/2R2RK1 b - - 1 20", -350, { -500, -200 }, 0.08, { 0.03, 0.15 }); // Completely winning for Black
 
     cout << "Other evaluation results: " << others_score << "/" << others << endl;
 
@@ -260,7 +260,7 @@ void Tests::run_all_tests() {
     int problem_tests = 0;
     double problem_tests_score = 0.0;
 
-    // 3.a *** Tactiques classiques ***
+    // 3.a *** Classic tactics ***
     cout << endl << "Tactical problems tests" << endl;
 
     int tactical_problems = 0;
@@ -274,7 +274,7 @@ void Tests::run_all_tests() {
     problem_tests += tactical_problems;
     problem_tests_score += tactical_problems_score;
 
-    // 3.b *** Coups stratégiques forts ***
+    // 3.b *** Strong strategic moves ***
     cout << endl << "Strong strategic moves tests" << endl;
 
     int strong_strategic_moves = 0;
@@ -319,7 +319,7 @@ void Tests::run_all_tests() {
     cout << "Generated evaluation tests added: " << added << endl;
 }
 
-// Mise à jour de la GUI
+// Updates the GUI
 void Tests::update_GUI() {
     BeginDrawing();
     _gui->draw();

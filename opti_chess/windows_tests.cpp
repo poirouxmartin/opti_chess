@@ -7,48 +7,48 @@
 using namespace std;
 
 
-// Couleurs
+// Colours
 
-// Cases lichess :
-// blanches : 240, 217, 181
-// noires : 181, 136, 99
+// Lichess squares:
+// light: 240, 217, 181
+// dark: 181, 136, 99
 
 
-// Constructeur de couleur
+// Colour constructor
 SimpleColor::SimpleColor() = default;
 
-// Constructeur de couleur
+// Colour constructor
 SimpleColor::SimpleColor(const int r, const int g, const int b) {
 	_r = r;
 	_g = g;
 	_b = b;
 }
 
-// Fonction qui affiche les composantes de la couleur
+// Displays the components of the colour
 void SimpleColor::print() const
 {
 	cout << "(" << _r << ", " << _g << ", " << _b << ")" << endl;
 }
 
-// Fonction qui renvoie si deux couleurs sont des composantes égales
+// Returns whether two colours have equal components
 bool SimpleColor::equals(const SimpleColor c) const
 {
 	return _r == c._r && _g == c._g && _b == c._b;
 }
 
-// Fonction qui renvoie si deux couleurs sont assez proches
+// Returns whether two colours are close enough
 bool SimpleColor::equals(const SimpleColor c, const float alike) const
 {
 	return color_distance(c) <= 1 - alike;
 }
 
-// Fonction qui renvoie à quel point deux couleurs sont proches
+// Returns how close two colours are
 float SimpleColor::color_distance(const SimpleColor c) const
 {
 	return (abs(_r - c._r) + abs(_g - c._g) + abs(_b - c._b)) / 255.0f / 3.0f;
 }
 
-// Fonction qui simule un clic de souris à une position donnée
+// Simulates a mouse click at a given position
 void simulate_mouse_click(const int x, const int y)
 {
 	SetCursorPos(x, y);
@@ -59,7 +59,7 @@ void simulate_mouse_click(const int x, const int y)
 	return;
 }
 
-// Fonction qui relâche le clic de la souris
+// Releases the mouse click
 void simulate_mouse_release()
 {
 	INPUT input = { 0 };
@@ -69,14 +69,14 @@ void simulate_mouse_release()
 	return;
 }
 
-// Fonction qui palce la souris à une position donnée
+// Places the mouse at a given position
 void set_mouse_pos(const int x, const int y) {
 	SetCursorPos(x, y);
 	return;
 }
 
-// Fonction qui renvoie la mémoire disponible dans l'ordinateur
-// FIXME : ça renvoie pas le bon truc
+// Returns the memory available on the computer
+// FIXME: this does not return the right thing
 unsigned long long get_total_system_memory()
 {
 	MEMORYSTATUSEX status;
@@ -85,7 +85,7 @@ unsigned long long get_total_system_memory()
 	return status.ullTotalPhys;
 }
 
-// Mémoire physique disponible (libre) à l'instant de l'appel.
+// Physical memory available (free) at the time of the call.
 unsigned long long get_available_physical_memory()
 {
 	MEMORYSTATUSEX status;
@@ -111,7 +111,7 @@ static HBITMAP get_screen_bmp(const HDC hdc, const int x1, const int y1, const i
 	return h_bitmap;
 }
 
-// Fonction qui affiche la couleur de chacune des cases de l'échiquier sur l'écran, en donnant ses coordonnées (top-left, bottom-right)
+// Displays the colour of every square of the chessboard on screen, given its coordinates (top-left, bottom-right)
 uint8_t* get_board_move(const int x1, const int y1, const int x2, const int y2, ChessSite website, const bool orientation, const bool display) {
 
 	int x_begin = -1;
@@ -119,10 +119,10 @@ uint8_t* get_board_move(const int x1, const int y1, const int x2, const int y2, 
 	int x_end = -1;
 	int y_end = -1;
 
-	// Taille d'une case
+	// Size of a square
 	const float tile_size = (x2 - x1) / 8.0f;
 
-	// Fait un screenshot en bmp
+	// Take a screenshot as a bmp
 	const HDC hdc = GetDC(nullptr);
 	const HBITMAP h_bitmap = get_screen_bmp(hdc, x1, y1, x2, y2);
 	BITMAPINFO my_bm_info = { 0 };
@@ -140,10 +140,10 @@ uint8_t* get_board_move(const int x1, const int y1, const int x2, const int y2, 
 	bool found_start_square = false;
 	bool found_end_square = false;
 
-	// Regarde chaque case de l'échiquier
+	// Look at every square of the chessboard
 	for (int i = 0; i < 8; i++) {
 		for (int j = 0; j < 8; j++) {
-			// Couleur de la case
+			// Colour of the square
 			int x = (i + website._tile_location_on_tile.first) * tile_size;
 			int y = (j + website._tile_location_on_tile.second) * tile_size;
 			int pixel_offset = x * my_bm_info.bmiHeader.biWidth + y;
@@ -155,13 +155,13 @@ uint8_t* get_board_move(const int x1, const int y1, const int x2, const int y2, 
 				color.print();
 			}
 
-			// Si la couleur correspond à une couleur de case jouée
+			// If the colour matches the colour of a played square
 			if (color.equals(website._white_tile_played_color, 1.0f - website._tile_color_tolerance) || color.equals(website._black_tile_played_color, 1.0f - website._tile_color_tolerance)) {
 				if (display) {
 					cout << "moved tile : ";
 				}
 
-				// Regarde s'il y'a rien sur la case
+				// Check whether there is nothing on the square
 				x = (i + 0.3f) * tile_size;
 				y = (j + 0.5f) * tile_size;
 				pixel_offset = x * my_bm_info.bmiHeader.biWidth + y;
@@ -172,7 +172,7 @@ uint8_t* get_board_move(const int x1, const int y1, const int x2, const int y2, 
 					color.print();
 				}
 
-				// Si c'est le cas, alors c'est la case de départ
+				// If so, this is the departure square
 				if (!found_start_square && (color.equals(website._white_tile_played_color, 1.0f - website._tile_color_tolerance) || color.equals(website._black_tile_played_color, 1.0f - website._tile_color_tolerance))) {
 					y_begin = orientation ? i : 7 - i;
 					x_begin = orientation ? j : 7 - j;
@@ -185,7 +185,7 @@ uint8_t* get_board_move(const int x1, const int y1, const int x2, const int y2, 
 					found_start_square = true;
 				}
 
-				// Sinon, c'est la case de fin
+				// Otherwise, this is the arrival square
 				else {
 					y_end = orientation ? i : 7 - i;
 					x_end = orientation ? j : 7 - j;
@@ -203,17 +203,17 @@ uint8_t* get_board_move(const int x1, const int y1, const int x2, const int y2, 
 
 	found:
 
-	// Release le screen
+	// Release the screen
 	DeleteObject(h_bitmap);
 	ReleaseDC(nullptr, hdc);
 	delete[] lp_pixels;
 
 	if (y_begin == -1 || x_begin == -1 || y_end == -1 || x_end == -1) {
 		//cout << "No move found on the board" << endl;
-		return nullptr; // Pas de coup trouvé
+		return nullptr; // No move found
 	}
 
-	// Coordonnées du coup joué
+	// Coordinates of the move played
 	const auto coord = new uint8_t[4];
 	coord[0] = y_begin;
 	coord[1] = x_begin;
@@ -223,10 +223,10 @@ uint8_t* get_board_move(const int x1, const int y1, const int x2, const int y2, 
 	return coord;
 }
 
-// Fonction qui clique un coup en fonction de l'orientation du plateau
+// Clicks a move according to the orientation of the board
 void click_move(const int j1, const int i1, const int j2, const int i2, const int x1, const int y1, const int x2, int y2, const bool orientation, const bool is_promotion) {
 	const float tile_size = static_cast<float>((x2 - x1)) / 8.0f;
-	constexpr float tile_click = 0.5f; // Pour que ça clique au milieu de la case
+	constexpr float tile_click = 0.5f; // So that the click lands in the middle of the square
 
 	const int cx1 = x1 + (tile_click + (orientation ? i1 : 7 - i1)) * tile_size;
 	const int cy1 = y1 + (tile_click + (orientation ? 7 - j1 : j1)) * tile_size;
@@ -236,24 +236,24 @@ void click_move(const int j1, const int i1, const int j2, const int i2, const in
 	simulate_mouse_click(cx1, cy1);
 	simulate_mouse_click(cx2, cy2);
 
-	// Promomtion, il faut peut-être cliquer une seconde fois
+	// Promotion: a second click may be needed
 	if (is_promotion)
 		simulate_mouse_click(cx2, cy2);
 
 	return;
 }
 
-// Fonction qui récupère l'orientation du plateau. Renvoie 1 si les blancs sont en bas, 0 si c'est les noirs, -1 sinon
+// Retrieves the orientation of the board. Returns 1 if White is at the bottom, 0 if Black is, -1 otherwise
 int bind_board_orientation(const int x1, const int y1, const int x2, const int y2, ChessSite website) {
 
 	cout << "looking for " << website._name << " board orientation..." << endl;
 
-	// Taille d'une case
+	// Size of a square
 	const float tile_size = static_cast<float>((x2 - x1)) / 8.0f;
 
-	// Couleur de la case
+	// Colour of the square
 
-	// Fait un screenshot en bmp
+	// Take a screenshot as a bmp
 	const HDC hdc = GetDC(nullptr);
 	const HBITMAP h_bitmap = get_screen_bmp(hdc, x1, y1, x2, y2);
 	BITMAPINFO my_bm_info = { 0 };
@@ -268,7 +268,7 @@ int bind_board_orientation(const int x1, const int y1, const int x2, const int y
 	if (0 == GetDIBits(hdc, h_bitmap, 0, my_bm_info.bmiHeader.biHeight, (LPVOID)lp_pixels, &my_bm_info, DIB_RGB_COLORS))
 		cout << "error2" << endl;
 
-	// Position où regarder la couleur de la case
+	// Where to look for the colour of the square
 	const int x = static_cast<int>(website._piece_location_on_tile.first * tile_size);
 	const int y = static_cast<int>(website._piece_location_on_tile.second * tile_size);
 
@@ -285,16 +285,16 @@ int bind_board_orientation(const int x1, const int y1, const int x2, const int y
 	return orientation;
 }
 
-// Fonction qui cherche la position du plateau de chess.com sur l'écran
+// Looks for the position of the chess.com board on screen
 bool locate_chessboard(int& top_left_x, int& top_left_y, int& bottom_right_x, int& bottom_right_y, ChessSite website) {
 
-	// Cherche le plateau sur le site
+	// Look for the board on the website
 	cout << "looking for " << website._name << " chessboard..." << endl;
 
 	const int screen_width = GetSystemMetrics(SM_CXSCREEN);
 	const int screen_height = GetSystemMetrics(SM_CYSCREEN);
 
-	// Fait un screenshot en bmp
+	// Take a screenshot as a bmp
 	const HDC hdc = GetDC(nullptr);
 	const HBITMAP h_bitmap = get_screen_bmp(hdc, 0, 0, screen_width, screen_height);
 	BITMAPINFO my_bm_info = { 0 };
@@ -311,14 +311,14 @@ bool locate_chessboard(int& top_left_x, int& top_left_y, int& bottom_right_x, in
 
 	BYTE* pixel_address;
 
-	// Distance au bas
+	// Distance to the bottom
 	int y;
 	int pixel_offset;
 	SimpleColor color;
 
-	// Cherche au milieu de l'écran, mais on peut faire un cadrillage si besoin...
+	// Look at the middle of the screen, but a grid scan could be done if needed...
 
-	// Cherche la gauche du plateau
+	// Look for the left edge of the board
 	bool found_left = false;
 	int x = screen_height / 2;
 	for (y = 0; y < screen_width; y++) {
@@ -337,7 +337,7 @@ bool locate_chessboard(int& top_left_x, int& top_left_y, int& bottom_right_x, in
 		}
 	}
 
-	// Cherche le bas du plateau
+	// Look for the bottom edge of the board
 	bool found_bottom = false;
 	y = top_left_x + 10;
 	for (x = 0; x < screen_height; x++) {
@@ -356,7 +356,7 @@ bool locate_chessboard(int& top_left_x, int& top_left_y, int& bottom_right_x, in
 		}
 	}
 
-	// Cherche le haut du plateau
+	// Look for the top edge of the board
 	bool found_top = false;
 	y = top_left_x + 10;
 	for (x = screen_height; x > 0; x--) {
@@ -375,7 +375,7 @@ bool locate_chessboard(int& top_left_x, int& top_left_y, int& bottom_right_x, in
 		}
 	}
 
-	// Droite du plateau (normalement il est carré)
+	// Right edge of the board (it is normally square)
 	bottom_right_x = top_left_x + bottom_right_y - top_left_y;
 
 	bool located = found_left && found_bottom && found_top;
@@ -395,13 +395,13 @@ bool locate_chessboard(int& top_left_x, int& top_left_y, int& bottom_right_x, in
 	return located;
 }
 
-// Constructeur par défaut
+// Default constructor
 ChessSite::ChessSite() = default;
 
-// TODO : clean
-// -> Clean les fonctions
-// -> Pouvoir changer les couleurs du plateau
-// -> Optimiser encore les fonctions pour get les pixels
-// -> Promotions à gérer (pour vs les bots, car c'est pas automatique)
-// -> Gérer le temps de Grogros (récupérer celui de chess.com?)
-// -> Faire une fonction qui récupère le plateau automatiquement? (la position)
+// TODO: clean
+// -> Clean up the functions
+// -> Be able to change the board colours
+// -> Optimize the pixel-getting functions further
+// -> Handle promotions (against bots, since it is not automatic there)
+// -> Handle Grogros's clock (read the one from chess.com?)
+// -> Write a function that locates the board automatically? (the position)
