@@ -81,7 +81,7 @@ cmake --build --preset windows-debug
 .\build\windows-debug\Debug\opti_chess.exe
 ```
 
-The first build compiles raylib from source and takes several minutes. CMake copies `resources/` next to the executable after each build, so the binary runs directly from its output directory.
+The first build fetches and compiles raylib from source; from a clean clone, configure and build together take about a minute on a recent desktop. CMake copies `resources/` next to the executable after each build, so the binary runs directly from its output directory.
 
 There is no command-line interface: the executable opens the analysis GUI.
 
@@ -194,13 +194,27 @@ Everything above is in English, as are the comments in every source file.
 
 ## Screenshots
 
-![OptiChess GUI](opti_chess/resources/screenshots/1694083255.png)
+There is one analysis screen. The board carries the search's candidate moves as arrows scored by win rate; the right column holds the evaluation breakdown, the search and transposition-table statistics, and the ranked variations; the PGN of the game tree sits at the bottom. The three captures below are that same screen on three positions taken from the test suite (`tests.cpp`).
 
-| Analysis board | Evaluation graph | Game tree view |
-|---|---|---|
-| ![Analysis](opti_chess/resources/screenshots/1694083220.png) | ![Graph](opti_chess/resources/screenshots/1695476699.png) | ![Tree](opti_chess/resources/screenshots/1694083104.png) |
+**A tactical position — the search finds `1.Qxa7`, the move the suite expects here**
 
-> Screenshots come from development builds; the interface changes between commits.
+![GrogrosZero finding a queen sacrifice](opti_chess/resources/readme/search_tactical_sacrifice.png)
+
+Evaluation `+311` at 96% confidence, WDL `834/153/12`, depth 14, 460k nodes at 27.1 kN/s. The transposition-table panel reports 387k entries and a 20% hit rate over 490k probes, against 71.2k overwrites.
+
+**A middlegame position the engine judges lost for the side to move**
+
+![GrogrosZero on a losing position](opti_chess/resources/readme/search_worse_position.png)
+
+White to move at WDL `29/148/822` — 2.9% winning chances against 82.2% losing. The search still ranks the exchange sacrifice `21.Rxf6` first, ahead of the quiet alternatives: the ranking is driven by win rate, not by material.
+
+**A trapped-piece reference position, seen from Black's side**
+
+![Evaluation of the trapped-bishop position](opti_chess/resources/readme/evaluation_trapped_bishop.png)
+
+The bishop on a2 is trapped in White's camp. The evaluator returns `+506` with WDL `887/101/10`, inside the `[300, 600]` band and the `[0.85, 0.95]` win-rate band that the evaluation test asserts for this position.
+
+> Captured from the current build with the in-app screenshot key (`TAB`).
 
 ---
 
