@@ -1,6 +1,6 @@
 #pragma once
 
-// Liste de n agents
-// - agents random
-// - meilleurs agents de la génération précédente
-// - agents clonés et mutés
+// List of n agents
+// - random agents
+// - best agents of the previous generation
+// - cloned and mutated agents

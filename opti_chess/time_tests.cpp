@@ -1,11 +1,11 @@
 #include "time_tests.h"
 
 
-// Fonction qui teste le temps d'exécution d'une fonction
+// Times the execution of a function
 void test_function(void (*f)(), const double test_time, const std::string& func) {
 	cout << "Testing the function '" << func << "'" << endl;
 
-	// Temps au début
+	// Start time
 	const clock_t begin = clock();
 
 	int i = 0;

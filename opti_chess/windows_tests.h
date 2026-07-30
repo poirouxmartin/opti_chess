@@ -28,78 +28,78 @@ typedef struct SimpleRectangle {
 	int y2;
 };
 
-// Site de jeux d'échecs
+// Chess website
 class ChessSite {
 public:
 
-	// Nom du site
+	// Name of the website
 	string _name;
 
-	// Couleur des cases blanches
+	// Colour of the light squares
 	SimpleColor _white_tile_color;
 
-	// Couleur des cases noires
+	// Colour of the dark squares
 	SimpleColor _black_tile_color;
 
-	// Couleur des pièces blanches
+	// Colour of the white pieces
 	SimpleColor _white_piece_color;
 
-	// Couleur des pièces noires
+	// Colour of the black pieces
 	SimpleColor _black_piece_color;
 
-	// Couleur d'une case blanche jouée
+	// Colour of a light square that was just played
 	SimpleColor _white_tile_played_color;
 
-	// Couleur d'une case noire jouée
+	// Colour of a dark square that was just played
 	SimpleColor _black_tile_played_color;
 
-	// A quel endroit regarder sur la case pour être sûr de trouver la couleur de la pièce (en % de la taille de la case, et en partant du coin bas-gauche)
+	// Where to look inside the square to be sure to find the colour of the piece (in % of the square size, starting from the bottom-left corner)
 	pair<float, float> _piece_location_on_tile;
 
-	// A quel endroit regarder sur la case pour être sûr de trouver la couleur de la case (en % de la taille de la case, et en partant du coin bas-gauche)
+	// Where to look inside the square to be sure to find the colour of the square (in % of the square size, starting from the bottom-left corner)
 	pair<float, float> _tile_location_on_tile;
 
-	// Temps perdu par coup
+	// Time lost per move
 	int _time_lost_per_move;
 
-	// Tolérance de couleur pour les cases
+	// Colour tolerance for the squares
 	float _tile_color_tolerance;
 
-	// Tolérance de couleur pour les pièces
+	// Colour tolerance for the pieces
 	float _piece_color_tolerance;
 
 
-	// Constructeur
+	// Constructor
 
-	// Constructeur par défaut
+	// Default constructor
 	ChessSite();
 };
 
 
-// Fonction qui simule un clic de souris à une position donnée
+// Simulates a mouse click at a given position
 void simulate_mouse_click(int x, int y);
 
-// Fonction qui relâche le clic de la souris
+// Releases the mouse click
 void simulate_mouse_release();
 
-// Fonction qui palce la souris à une position donnée
+// Places the mouse at a given position
 void set_mouse_pos(int x, int y);
 
-// Fonction qui renvoie la mémoire totale physique de l'ordinateur
+// Returns the total physical memory of the computer
 unsigned long long  get_total_system_memory();
 
-// Fonction qui renvoie la mémoire physique DISPONIBLE (libre) — base du
-// dimensionnement adaptatif des pools (évite de saturer la RAM => #13).
+// Returns the AVAILABLE (free) physical memory - the basis of the adaptive
+// pool sizing (avoids saturating the RAM => #13).
 unsigned long long  get_available_physical_memory();
 
-// Fonction qui affiche la couleur de chacune des cases de l'échiquier sur l'écran, en donnant ses coordonnées (top-left, bottom-right)
+// Displays the colour of every square of the chessboard on screen, given its coordinates (top-left, bottom-right)
 uint8_t* get_board_move(int x1, int y1, int x2, int y2, ChessSite website, bool orientation = false, bool display = false);
 
-// Fonction qui clique un coup en fonction de l'orientation du plateau
+// Clicks a move according to the orientation of the board
 void click_move(int j1, int i1, int j2, int i2, int x1, int y1, int x2, int y2, bool orientation = false, const bool is_promotion = false);
 
-// Fonction qui récupère l'orientation du plateau. Renvoie 1 si les blancs sont en bas, 0 si c'est les noirs, -1 sinon
+// Retrieves the orientation of the board. Returns 1 if White is at the bottom, 0 if Black is, -1 otherwise
 int bind_board_orientation(int x1, int y1, int x2, int y2, ChessSite website);
 
-// Fonction qui cherche la position du plateau de chess.com sur l'écran
+// Looks for the position of the chess.com board on screen
 bool locate_chessboard(int&, int&, int&, int&, ChessSite website);
