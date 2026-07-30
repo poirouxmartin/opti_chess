@@ -1663,7 +1663,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	double best_score = -DBL_MAX;
 	Move best_move;
 
-	// Meilleur coup
+	// Best move
 	for (auto const& [move, score] : move_scores) {
 		if (score > best_score) {
 			best_score = score;

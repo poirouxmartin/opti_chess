@@ -741,7 +741,7 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	// propagating the path-local draw value (spec section 3) is a later
 	// refinement, to be decided on measurement. OFF: skipped (current tree
 	// behaviour - explore_random_child never re-tested repetition on an
-	// la repetition sur un fils existant).
+	// existing child).
 	if (g_tt_node_dag && position_is_draw_by_repetition(branch_history, *child->_board)) {
 		g_dag_recheck_hits++;
 		// Bounded detail - THE key boundary for "eval inconsistencies". The cycle
@@ -1691,7 +1691,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		// Exploration score
 		double exploration_score = child_iterations == 0 ? _iterations * 2 : pow((double)_iterations / (double)child_iterations, new_gamma);
 
-		// Score final
+		// Final score
 		double score = move_score * exploration_score;
 
 		// rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2: Qh4 should stay at 99% chosen while the others are still examined normally

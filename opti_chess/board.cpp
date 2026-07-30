@@ -26,7 +26,7 @@ Board::Board() {
 	_positions_history.reserve(16);
 }
 
-// Constructeur de copie
+// Copy constructor
 Board::Board(const Board& b, bool full, bool copy_history) {
 	copy_data(b, full, copy_history);
 }
@@ -136,13 +136,13 @@ inline bool Board::add_king_moves(const bool player, const Pos king_pos, const u
 
 	// Roques
 
-	// Petit roque
+	// Kingside castling
 	if (kingside_castle_check) {
 		if ((!is_controlled_around_king(controls_around_king, 0, 0) && !is_controlled_around_king(controls_around_king, 0, 1) && !is_controlled_around_king(controls_around_king, 0, 2)) && _array[row][col + 1] == none && _array[row][col + 2] == none)
 			add_move(Move(row, col, row, col + 2), iterator, piece);
 	}
 
-	// Grand roque
+	// Queenside castling
 	if (queenside_castle_check) {
 		if ((!is_controlled_around_king(controls_around_king, 0, 0) && !is_controlled_around_king(controls_around_king, 0, -1) && !is_controlled_around_king(controls_around_king, 0, -2)) && _array[row][col - 1] == none && _array[row][col - 2] == none && _array[row][col - 3] == none)
 			add_move(Move(row, col, row, col - 2), iterator, piece);
@@ -490,7 +490,7 @@ bool Board::get_moves() noexcept {
 	// - Magic bitboards
 
 	// MICRO-OPTIMIZATIONS:
-	// - Const -> plus lent?
+	// - Const -> slower?
 	// - most predictable branches first
 	// - minimise the cycle count
 	// - separate white/black functions
@@ -1594,7 +1594,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 		// The evaluation has been performed
 		eval->_evaluated = true;
 
-		// Partie non finie
+		// Game not over
 		return;
 	}
 
@@ -2038,7 +2038,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 	//transposition_table._hash_table[_zobrist_key] = &node;
 
 
-	// Partie non finie
+	// Game not over
 	return;
 }
 
@@ -2444,7 +2444,7 @@ void Board::play_move_sound(Move move) {
 	const uint8_t p2 = _array[k][l];
 
 
-	// Sons de fin de partie
+	// End-of-game sounds
 
 	// Mat
 	if (move.is_checkmate())
@@ -4429,7 +4429,7 @@ void Board::reset_timers() {
 	main_GUI._time_black = main_GUI._initial_time_black;
 }
 
-// Fonction qui remet le plateau dans sa position initiale
+// Resets the board to its initial position
 void Board::restart() {
 	// Plenty of room to optimise this
 	from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
@@ -4726,7 +4726,7 @@ bool Board::click_m_move(const Move m, const bool orientation) const
 
 // Updates a text box
 void update_text_box(TextBox& text_box) {
-	// Si on clique
+	// If a click happens
 	if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
 		const Vector2 mouse_pos = GetMousePosition();
 		const Rectangle rect = { text_box.x, text_box.y, text_box.width, text_box.height };
@@ -4941,7 +4941,7 @@ int Board::get_alignments() const
 			const bool pinning_piece_color = pinning_piece < b_pawn;
 			const int pinning_int_color = pinning_piece_color ? 1 : -1;
 
-			// Valeur de pression du cloueur
+			// Pressure value of the pinning piece
 			const int pinning_pressure_value = pressuring_values[(pinning_piece - 1) % 6];
 
 			// For each direction
@@ -4984,7 +4984,7 @@ int Board::get_alignments() const
 						pieces[i] = piece2;
 
 						// Pressure value on the pin: the value of the cheapest piece pressuring this one
-						// Pour le moment, on teste seulement avec les pions
+						// For now, only the pawns are tested
 						//cout << (int)current_row << ", " << (int)current_col << ": " << square_name(current_row, current_col) << ", pawns for " << (pinning_piece_color ? "white?" : "black?") << endl;
 						if ((current_col > 0 && _array[current_row - pinning_int_color][current_col - 1] == (pinning_piece_color ? w_pawn : b_pawn)) || (current_col < 7 && _array[current_row - pinning_int_color][current_col + 1] == (pinning_piece_color ? w_pawn : b_pawn))) {
 							pressures[i] = pressuring_values[0];
@@ -5318,12 +5318,12 @@ bool Board::add_piece_controls(SquareMap* map, int row, int col, int piece) cons
 int Board::get_king_virtual_mobility(bool color) {
 	// FIXME: base this on the pawns only?
 
-	// On remplace le roi par une dame, et on regarde le nombre de coups possibles
+	// The king is replaced by a queen, and the number of possible moves is counted
 	update_kings_pos();
 	const int i = color ? _white_king_pos.row : _black_king_pos.row;
 	const int j = color ? _white_king_pos.col : _black_king_pos.col;
 	
-	// On compte le nombre de coups possibles pour la nouvelle dame
+	// Count the number of possible moves for the new queen
 	int mobility = 0;
 
 	for (uint8_t k = 0; k < 8; k++) {
@@ -5365,18 +5365,18 @@ int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls
 	int safe_checks_value = 0;
 	int unsafe_checks_value = 0;
 
-	// Position du roi adverse
+	// Position of the opposing king
 	update_kings_pos();
 	const Pos king_pos = color ? _black_king_pos : _white_king_pos;
 
-	// On regarde tous les coups possibles pour le joueur
+	// Look at every possible move for the player
 	Board b(*this);
 	b._player = !color;
 	if (b.in_check()) // FIXME?
 		return 0;
 
 
-	// FIXME *** pourquoi on utilise un autre plateau ici?
+	// FIXME *** why is another board used here?
 	// plus: use the move flags to tell whether it gives check
 	b._player = color;
 	b.get_moves();
@@ -5438,10 +5438,10 @@ int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls
 					}
 				}
 
-				// Valeur de la division
+				// Value of the division
 				float division = inital_division + king_escapes * king_escape_division_add + piece_blocks * piece_block_division_add;
 
-				// Valeur de la multiplication
+				// Value of the multiplication
 				float multiplier = (king_escapes == 0 && piece_blocks == 0) ? no_escape_multiplier : 1.0f;
 
 				//cout << "is safe check: " << is_safe_check;
@@ -5537,7 +5537,7 @@ int Board::get_fianchetto_value() const
 
 			bool piece_color = piece < 7;
 
-			// On retire la valeur de base du fianchetto
+			// Remove the base value of the fianchetto
 			piece_color ? fianchetti -= base_fianchetto_squares : fianchetti += base_fianchetto_squares;
 
 			// Count the squares along the diagonal, stopping at the first pawn
@@ -6027,7 +6027,7 @@ int Board::get_rook_activity() const
 	constexpr int vertical_mobility_bonus = 50;
 	constexpr int horizontal_mobility_bonus = 35;
 
-	// Bonus si elle attaque le camp adverse
+	// Bonus when it attacks the opposing camp
 	constexpr float row_bonus[8] = { 1.0f, 1.0f, 1.2f, 1.5f, 1.75f, 2.0f, 3.5f, 2.5f };
 
 	// Penalty for lack of mobility
@@ -6220,7 +6220,7 @@ int Board::get_bishop_pawns() const {
 
 	// 3rr3/1kpn1p1p/p1p1qbb1/2Pp2p1/QP1Pp3/P1N1P1NP/3B1PP1/1R2R1K1 b - - 0 24: evaluation is not symmetric
 
-	// Ajouter un bonus/malus en fonction de la couleur des pions adverses aussi?
+	// Add a bonus/penalty depending on the colour of the opposing pawns too?
 	float ally_bishop_pawn_malus = 1.0f;
 	float enemy_bishop_pawn_bonus = 1.0f * (1.0f - _adv); // En fin de partie, on veut pouvoir attaquer les pions adverses
 	// r1b1k2r/1p1n1p2/p1pBp1pp/2Pp1q1n/PP1P4/4P3/3N1PPP/R2Q1RK1 w kq - 0 5
@@ -6286,17 +6286,17 @@ int Board::get_bishop_pawns() const {
 
 			// White bishop
 			if (p == w_bishop) {
-				if ((row + col) % 2) // Case blanche
+				if ((row + col) % 2) // Light square
 					bishop_pawns_value -= (white_pawns_w - white_pawns_b) * (2 + white_central_pawns_blocked) * ally_bishop_pawn_malus + (black_pawns_w - black_pawns_b) * enemy_bishop_pawn_bonus;
-				else // Case noire
+				else // Dark square
 					bishop_pawns_value -= (white_pawns_b - white_pawns_w) * (2 + white_central_pawns_blocked) * ally_bishop_pawn_malus + (black_pawns_b - black_pawns_w) * enemy_bishop_pawn_bonus;
 			}
 
 			// Black bishop
 			else if (p == b_bishop) {
-				if ((row + col) % 2) // Case blanche
+				if ((row + col) % 2) // Light square
 					bishop_pawns_value += (black_pawns_w - black_pawns_b) * (2 + black_central_pawns_blocked) * ally_bishop_pawn_malus + (white_pawns_w - white_pawns_b) * enemy_bishop_pawn_bonus;
-				else // Case noire
+				else // Dark square
 					bishop_pawns_value += (black_pawns_b - black_pawns_w) * (2 + black_central_pawns_blocked) * ally_bishop_pawn_malus + (white_pawns_b - white_pawns_w) * enemy_bishop_pawn_bonus;
 			}
 		}
@@ -6316,7 +6316,7 @@ int Board::get_pawn_shield() {
 	// - pawns in front of the king: done
 	// - TODO: semi-open files in front of the king
 	// - TODO: penalties for doubled or isolated pawns in front of the king
-	// - colonnes/diagonales ouvertes: TODO
+	// - open files/diagonals: TODO
 
 	// castled (can no longer castle): look at the 3 pawns in front of it
 	// can castle on one side only: look at pawns f, g, h or b, c, d depending on the side
@@ -6385,7 +6385,7 @@ int Board::get_pawn_shield() {
 int Board::get_weak_squares(bool color, bool around_king) {
 	// Weak square: one no pawn can protect any more (no pawns on a lower rank of the adjacent files), when no pawn stands on it
 	// Bonus for enemy pawn control over the weak square
-	// Bonus pour l'outpost d'un cavalier, d'un fou, ou d'une tour
+	// Bonus for the outpost of a knight, a bishop or a rook
 
 	// TODO: scale this by the pieces able to occupy it
 	// Try a bonus based on a piece's distance to the square?
@@ -6441,7 +6441,7 @@ int Board::get_weak_squares(bool color, bool around_king) {
 	// When the square is merely "safe" rather than weak as such
 	constexpr static float safe_square_bonus = 0.3f;
 
-	// Bonus s'il y a un pion adverse juste devant
+	// Bonus when there is an enemy pawn right in front
 	constexpr static float blocked_pawn_bonus = 1.55f;
 
 
@@ -6480,7 +6480,7 @@ int Board::get_weak_squares(bool color, bool around_king) {
 				// Unless this is the left edge
 				if (col > 0) {
 
-					// On regarde la ligne du pion blanc le plus proche pouvant controller la case
+					// Look at the rank of the nearest white pawn able to control the square
 					int can_control = -1;
 					bool blocking_pawn = false;
 
@@ -6908,7 +6908,7 @@ int Board::get_castling_distance() const {
 
 	// White
 
-	// Petit roque
+	// Kingside castling
 	uint8_t w_kingside_castle_distance = 0;
 
 	// If kingside castling is still available
@@ -6925,7 +6925,7 @@ int Board::get_castling_distance() const {
 		w_kingside_castle_distance = 2;
 	}
 
-	// Grand roque
+	// Queenside castling
 	uint8_t w_queenside_castle_distance = 0;
 
 	// If queenside castling is still available
@@ -6947,7 +6947,7 @@ int Board::get_castling_distance() const {
 
 	// Black
 
-	// Petit roque
+	// Kingside castling
 	uint8_t b_kingside_castle_distance = 0;
 
 	// If kingside castling is still available
@@ -6963,7 +6963,7 @@ int Board::get_castling_distance() const {
 		b_kingside_castle_distance = 2;
 	}
 
-	// Grand roque
+	// Queenside castling
 	uint8_t b_queenside_castle_distance = 0;
 
 	// If queenside castling is still available
@@ -7131,12 +7131,12 @@ float Board::get_winnable(Evaluation* eval, bool color, float position_nature) c
 		cout << "- can mate: " << (can_mate ? "yes" : "no") << endl;
 	}
 
-	// Si on peut pas mater, on ne peut pas gagner.. logique
+	// If we cannot mate, we cannot win.. makes sense
 	if (!can_mate) {
 		return 0.0f;
 	}
 
-	// Ici on peut mater -> finales complexes ou milieu de jeu
+	// Here we can mate -> complex endgames or middlegame
 
 	// 8/5ppk/3R3p/8/8/1r5P/6PK/8 w - - 0 32: theoretical draw, rook v rook with pawns 3v2
 	// 2r5/2kb3K/8/8/8/1Q6/8/8 w - - 0 92: theoretical draw as well
@@ -7150,7 +7150,7 @@ float Board::get_winnable(Evaluation* eval, bool color, float position_nature) c
 	constexpr float n_pawns_winnable[11] = { 0.0f, 0.20f, 0.37f, 0.53f, 0.67f, 0.79f, 0.85f, 0.90f, 0.94f, 0.98f, 1.0f };
 	const float pawns_factor = n_pawns_winnable[pawns_count];
 
-	// Valeur winnable de base
+	// Base winnable value
 	float winnable_value = (1 - no_pawns_winnable) * pawns_factor + no_pawns_winnable;
 
 	if (display) {
@@ -7272,7 +7272,7 @@ float Board::get_winnable(Evaluation* eval, bool color, float position_nature) c
 		}
 	}
 
-	// r6r/1p1k3p/p2p1npb/4p3/4P3/4NP2/PPP1K1PP/R1B4R w - - 2 17 : plus y'a de pions, plus on a de chances de gagner
+	// r6r/1p1k3p/p2p1npb/4p3/4P3/4NP2/PPP1K1PP/R1B4R w - - 2 17: the more pawns there are, the better the winning chances
 	
 	// TODO: implement drawing chances for unbalanced material ratios in the endgame
 	// TODO: bishop against knight
@@ -7286,7 +7286,7 @@ float Board::get_winnable(Evaluation* eval, bool color, float position_nature) c
 
 	// rnbqkb1r/4n3/p3p1p1/Pp1pPpPp/1PpP1P1P/2P5/8/RNBQKBNR b KQkq - 0 11: closed position
 
-	// En fonction de la nature de la position
+	// Depending on the nature of the position
 	constexpr float closed_position_draw_factor = 1.0f;
 	winnable_value *= 1.0f - pow(position_nature, 1.0) * closed_position_draw_factor;
 	// FIXME: weight this even more, since it rarely reaches 0% or 100%?
@@ -7339,10 +7339,10 @@ int Board::get_bishop_activity() const {
 	// Baseline bishop activity
 	constexpr int normal_bishop_activity = 3;
 
-	// Bonus pour le fou blanc
+	// Bonus for the white bishop
 	int w_bishop_activity = 0;
 
-	// Bonus pour le fou noir
+	// Bonus for the black bishop
 	int b_bishop_activity = 0;
 
 	for (int row = 0; row < 8; row++) {
@@ -7568,7 +7568,7 @@ int Board::get_trapped_pieces() const {
 		}
 	}
 
-	// Calcul du centre de masse
+	// Computation of the centre of mass
 	w_center_of_mass_i /= w_total_weight;
 	w_center_of_mass_j /= w_total_weight;
 
@@ -7872,7 +7872,7 @@ int Board::get_trapped_pieces() const {
 int Board::get_updated_piece_values() const {
 	// Rook penalty based on the number of non-open files
 	// Penalty for bishops in a closed position, with the diagonals shut
-	// Pareil pour la dame. Bonus dans les cas contraires
+	// Same for the queen. Bonus in the opposite cases
 
 	// *** TODO ***
 	return 0;
@@ -7893,7 +7893,7 @@ float Board::get_position_nature() const {
 	// - number of blocked pawns
 
 	// Facteurs rendant la position plus ouverte
-	// - Nombre de colonnes ouvertes
+	// - Number of open files
 	// - Nombre de diagonales ouvertes
 
 	// Impact on the other evaluation terms:
@@ -7961,7 +7961,7 @@ int Board::get_open_files_on_opponent_king(bool player) {
 	int kingside_file_weakness = can_kingside_castle ? get_open_files_on_opponent_king_at_column(player, 6) : 0;
 	int queenside_file_weakness = can_kingside_castle ? get_open_files_on_opponent_king_at_column(player, 2) : 0;
 
-	// !player car les bonus de l'un sont les faiblesses de l'autre
+	// !player, because one side's bonuses are the other side's weaknesses
 	int total_weakness = get_long_term_king_weakness(!player, current_file_weakness, kingside_file_weakness, queenside_file_weakness);
 
 	return total_weakness;
@@ -7971,12 +7971,12 @@ int Board::get_open_files_on_opponent_king(bool player) {
 int Board::get_open_diagonals_on_opponent_king(bool color) {
 	// *** TODO: fix this?
 
-	// Bonus pour les diagonales ouvertes et semi-ouvertes
+	// Bonus for the open and semi-open diagonals
 	constexpr int open_diagonal_bonus = 60;
 	constexpr int semi_open_diagonal_bonus = 25;
 
 	// Factor based on proximity to the enemy king's diagonal
-	// Si le roi est sur la diagonale, le bonus est maximal
+	// If the king is on the diagonal, the bonus is maximal
 	constexpr float king_diagonal_bonus = 1.0f;
 
 	// On an adjacent diagonal, the bonus is reduced
@@ -8082,7 +8082,7 @@ int Board::get_king_escape_squares(bool color) {
 
 	Pos king_pos = color ? _white_king_pos : _black_king_pos;
 
-	// Nombre de cases de retrait
+	// Number of retreat squares
 	int escape_squares = 0;
 
 	// For each square around the king
@@ -8126,7 +8126,7 @@ int Board::get_king_attackers(bool color) {
 
 	//8/8/8/2r2pp1/1k5p/2b4P/4K3/1Q6 b - - 81 133
 	//rnbr3k/ppp1qppB/4p2p/1P2P3/2Pn4/P4N2/2Q2PPP/RN2K2R w KQ - 3 15
-	//6rk/1p3p1p/2nN1q2/2Q2p2/3p4/PP5P/5PP1/2R3K1 b - - 1 28 : la dame attaque quand on la met en e6??
+	//6rk/1p3p1p/2nN1q2/2Q2p2/3p4/PP5P/5PP1/2R3K1 b - - 1 28: the queen attacks when it is placed on e6??
 	//6rk/1p3p1p/2nNq3/2Q2p2/3p4/PP5P/5PP1/2R3K1 w - - 2 29 : bug?
 	//r1bqk2r/pppp1ppp/2n5/2b1p3/2BPP1n1/5N2/PPP2P1P/RNBQ1RK1 b kq - 0 6 ??
 	//r1br2k1/pp2Rp2/6nB/7Q/3p4/8/5PP1/6K1 b - - 0 5: 300 here?
@@ -8619,10 +8619,10 @@ int Board::get_pawn_storm_at_col(bool color, uint8_t king_row, uint8_t king_col)
 
 	// 2k1rb1r/p1ppqppp/bnp5/4P3/2P5/1P6/PQ2BPPP/RNB1K2R w KQ - 5 12: there is a storm, but c5 has no point of contact
 
-	// Bonus en fonction de la distance verticale entre les pions et le roi
+	// Bonus depending on the vertical distance between the pawns and the king
 	int bonus[7] = { 85, 75, 55, 38, 21, 0, 0};
 
-	// Bonus des pions sur une colonne quasi adjacente
+	// Bonus for the pawns on a nearly adjacent file
 	float semi_adjacent_bonus = 0.25f;
 
 	int total_bonus = 0;
@@ -8935,7 +8935,7 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 
 	// r3r3/P2k2pp/1Bb5/6N1/3P4/3n4/PP3PPP/1KR5 w - - 0 28
 
-	// Bonus de protection selon la colonne
+	// Protection bonus depending on the file
 	constexpr int column_protection_bonus[8] = { 50, 50, 25, 0, 0, 25, 50, 50 };
 
 	if (add_column_bonus)
@@ -8971,13 +8971,13 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 
 	// r1b1qk1r/ppppb1pp/5n2/n3NQ2/3PP3/2P5/P4PPP/RNB1K2R w KQ - 5 11
 
-	// Bonus pour la connexion des pions entre eux
+	// Bonus for the connection between the pawns
 	constexpr int connected_pawns_bonus = 75;
 
 	// Penalty for an open file
 	constexpr int open_file_malus = 50;
 
-	// Bonus pour chaque pion proche du roi
+	// Bonus for every pawn close to the king
 	constexpr int pawn_bonus = 75;
 
 	// Multiplier based on the vertical distance
@@ -9005,7 +9005,7 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 	//r1bqr1k1/ppp1bppp/2np1n2/4p3/2B1P1P1/3P1P1P/PPP5/RNBQNRK1 b - - 1 10
 	//rnbq1b1r/ppp2kpp/3p1n2/8/4P3/2N5/PPPP1PPP/R1BQKB1R b KQ - 1 5: g7 still shields
 
-	//r2qr1k1/pp1n1pp1/2pbbp1p/3p4/3P4/P1NBPN1P/1PPQ1PP1/R4RK1 w - - 2 12 : changement quand on joue h4
+	//r2qr1k1/pp1n1pp1/2pbbp1p/3p4/3P4/P1NBPN1P/1PPQ1PP1/R4RK1 w - - 2 12: it changes when h4 is played
 	// r2qr1k1/pp1n1pp1/2pbbp1p/3p4/3P3P/P1NBPNP1/1PPQ1PK1/R4R2 b - - 2 14
 
 	// r1bq1rk1/ppp2ppp/2n2n2/3p4/1bPP4/1PN3P1/P3NPBP/R1BQ1RK1 b - - 2 10 : ??
@@ -9275,7 +9275,7 @@ int Board::get_piece_mobility(bool display) const {
 	//3k4/1pp5/p1n2p2/2P1p2p/P3p1pP/1P2P1B1/1KP2PP1/8 w - - 0 30: bishop on g3 trapped for good
 	//r1bq1knr/pp1p1pp1/1bnP3p/1p2P3/8/P1N2N2/1P3PPP/R1BQ1RK1 b - - 2 12: nearly winning for White
 	//rn3rk1/1b1p1ppp/p1pP4/1pP5/P7/8/3B1PPP/1R1K1B1R w - - 0 18: a5 simply wins strategically, the three black queenside pieces are stuck for good
-	//r2qk2r/1bp1ppnp/p5p1/3pP3/6P1/2N2P2/PPPB3P/R2Q1RK1 w kq - 1 14 : noirs mieux...
+	//r2qk2r/1bp1ppnp/p5p1/3pP3/6P1/2N2P2/PPPB3P/R2Q1RK1 w kq - 1 14: Black is better...
 
 	//display = true;
 
@@ -9845,7 +9845,7 @@ bool Board::pawn_can_move(uint8_t row, uint8_t col, bool color) const {
 	return false;
 }
 
-// Fonction qui renvoie l'incertiude de la position
+// Returns the uncertainty of the position
 void Board::get_uncertainty(Evaluation* eval, int material_eval, int winning_eval) const {
 
 	// TODO ***
@@ -9891,7 +9891,7 @@ void Board::get_uncertainty(Evaluation* eval, int material_eval, int winning_eva
 		int max_eval = max(abs(material_eval), abs_non_material_eval);
 		float colinear_evals = static_cast<float>(material_eval) * non_material_eval / (max_eval * max_eval);
 
-		// Valeur d'opposite material factor (0 = pas du tout, 1 = totalement)
+		// Value of the opposite material factor (0 = not at all, 1 = completely)
 		float opposite_material_factor = 0.5f - colinear_evals / 2.0f;
 
 		//// Value of the opposite material factor when the material evaluation is zero
@@ -10001,7 +10001,7 @@ void Board::get_uncertainty(Evaluation* eval, int material_eval, int winning_eva
 	eval->_uncertainty = value;
 }
 
-// Fonction qui stocke le WDL de la position (pour les blancs)
+// Stores the WDL of the position (for White)
 void Evaluation::get_WDL(int winning_eval, float beta) {
 	
 	// r2r4/8/1p1q2P1/2b5/3k1pP1/pP2pP2/2Q4P/1K6 w - - 9 11: down the drawing lines this should read 0, 1000, 0, not 333, 333, 333
@@ -10144,7 +10144,7 @@ void Board::switch_colors() {
 	// Inversion du trait
 	_player = !_player;
 
-	// Inversion du roque
+	// Inversion of the castling rights
 	bool b_king_castling = _castling_rights.k_b;
 	bool b_queen_castling = _castling_rights.q_b;
 	bool w_king_castling = _castling_rights.k_w;
@@ -10365,7 +10365,7 @@ bool Board::in_king_square(Pos pos, bool king_color) {
 
 	//cout << "distance: " << distance << endl;
 
-	// Case de promotion
+	// Promotion square
 	Pos promotion_pos = Pos(pawn_color ? 7 : 0, pos.col);
 
 	//cout << "king pos: " << king_pos.row << " " << king_pos.col << endl;
@@ -10381,7 +10381,7 @@ bool Board::in_king_square(Pos pos, bool king_color) {
 	return row_distance <= distance && col_distance <= distance;
 }
 
-// Fonction qui renvoie si on est en finale de pions
+// Returns whether this is a pawn endgame
 bool Board::is_pawn_endgame() const {
 	for (uint8_t row = 0; row < 8; row++) {
 		for (uint8_t col = 0; col < 8; col++) {
@@ -10428,7 +10428,7 @@ int Board::get_long_term_king_weakness(bool player, int current_weakness, int ki
 
 	// TODO: dedicated functions for the distances to castling
 
-	// Ajout de distance en cas de controle de l'adversaire
+	// Distance added when the opponent controls the square
 	constexpr int control_distance_add = 3;
 
 	// Distance to kingside castling
@@ -10491,12 +10491,12 @@ int Board::get_long_term_king_weakness(bool player, int current_weakness, int ki
 // Returns the bonus value for open and semi-open files bearing on the enemy king, were it on a given file
 int Board::get_open_files_on_opponent_king_at_column(bool player, int king_col) const {
 
-	// Bonus pour les colonnes ouvertes et semi-ouvertes
+	// Bonus for the open and semi-open files
 	constexpr int open_file_bonus = 25;
 	constexpr int semi_open_file_bonus = 15;
 
 	// Factor based on proximity to the enemy king's file
-	// Si le roi est sur la colonne, le bonus est maximal
+	// If the king is on the file, the bonus is maximal
 	constexpr float king_file_bonus = 1.0f;
 
 	// On an adjacent file, the bonus is reduced
@@ -10617,7 +10617,7 @@ int Board::get_king_placement_weakness(bool player) {
 	update_kings_pos();
 	Pos king_pos = player ? _white_king_pos : _black_king_pos;
 
-	// Droits de roque
+	// Castling rights
 	bool can_kingside_castle = player ? _castling_rights.k_w : _castling_rights.k_b;
 	bool can_queenside_castle = player ? _castling_rights.q_w : _castling_rights.q_b;
 	
@@ -10820,7 +10820,7 @@ SquareMap Board::get_all_blocked_pieces(bool color, SquareMap opponent_controls)
 	////cout << "initial " << (color ? "white" : "black") << " blocked pawns:" << endl;
 	////blocked_pieces.print();
 
-	//// TODO *** a reflechir: pourquoi on commencerait par les pions ?
+	//// TODO *** to think about: why would we start with the pawns?
 	//// Why start from the kings in the update? Because depending on the controlled squares, the king may no longer be able to move
 
 	//// While new blocked pieces keep turning up
@@ -11582,7 +11582,7 @@ int Board::get_queen_safety(bool color) const {
 		}
 	}
 
-	// On regarde tous les coups de l'adversaire
+	// Look at every opponent move
 	Board b(*this);
 	b._player = !color;
 	b.get_moves();
@@ -11601,7 +11601,7 @@ int Board::get_queen_safety(bool color) const {
 
 	SquareMap opponent_controls = color ? get_white_controls_map() : get_black_controls_map();
 
-	// On regarde le nombre de coups qui attaquent la dame
+	// Count the number of moves attacking the queen
 	for (uint8_t m = 0; m < b._got_moves; m++) {
 		Move& move = b._moves[m];
 
@@ -11660,7 +11660,7 @@ int Board::get_quietness() {
 	int checks = 0;
 	int promotions = 0;
 
-	// On regarde chaque coup
+	// Look at every move
 	for (uint8_t m = 0; m < _got_moves; m++) {
 
 		Move& move = _moves[m];
@@ -11743,7 +11743,7 @@ void Board::assign_move_flags(Move* move) const {
 	b.make_move(*move);
 
 	// TODO: optimise this
-	// TODO *** voir si on peut rapidement detecter un pat
+	// TODO *** see whether a stalemate can be detected quickly
 
 	// Check
 	if (b.in_check()) {
