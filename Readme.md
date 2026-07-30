@@ -1,162 +1,192 @@
 # OptiChess
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](opti_chess/LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue)](https://en.cppreference.com/w/cpp/20)
-[![Platform](https://img.shields.io/badge/platform-Windows%20|%20Linux%20|%20macOS-lightgray)](opti_chess/CMakeLists.txt)
+[![Platform](https://img.shields.io/badge/platform-Windows%20x64-lightgray)](opti_chess/CMakeLists.txt)
 [![Build system](https://img.shields.io/badge/build-CMake-064F8C)](opti_chess/CMakeLists.txt)
 
 ![OptiChess analysis board](opti_chess/resources/readme/project_highlight.png)
 
-**OptiChess** is a research-oriented chess engine written in modern C++20. It features a novel hybrid search algorithm called **GrogrosZero**, combining Monte Carlo tree search principles with classical alpha-beta minimax, integrated quiescence search, and WDL (Win/Draw/Loss) statistical evaluation.
+**OptiChess** is a research-oriented chess engine and analysis GUI written in modern C++20, built solo over several years (~23,000 lines). It is centred on **GrogrosZero**, a hybrid search that mixes UCT-style node selection with alpha-beta pruning, an integrated quiescence search, and WDL (win/draw/loss) statistical evaluation.
 
-> **Note:** OptiChess is an experimental project focused on algorithmic research and performance optimization. It is not intended for production use or competitive play.
+> **Note:** OptiChess is an experimental project focused on algorithmic research and performance work. It is not a UCI engine, and it is not intended for competitive play. See [Project status](#project-status) for the honest limits.
 
 ---
 
-## Engine Architecture
+## What is actually interesting here
 
-OptiChess uses a hybrid search approach that diverges from traditional chess engines:
+If you only read one section, read this one — these are the problems the project spends its time on:
+
+- **Two score conventions, one codebase.** Public `Evaluation` values are *white-positive*; negamax, quiescence and the transposition table are *side-to-move*. Every boundary between the two is a conversion, and every missed conversion is a silent evaluation bug. The convention map is documented in [`ALGORITHMS.md`](opti_chess/ALGORITHMS.md).
+- **Mate scores must be normalised by ply inside the TT.** A mate-in-N stored at one depth and read at another is wrong unless it is re-based on retrieval. This was a real bug, tracked and fixed — see [`BUGFIXES.md`](opti_chess/BUGFIXES.md).
+- **Repetition state is path-local.** The same position reached by two different move orders does not share draw state during exploration, otherwise transpositions corrupt each other's threefold detection.
+- **A bounded, zero-allocation search.** `Node` and `Board` objects are drawn from pools sized at startup from available physical memory. When a pool fills, the engine *refines* the existing tree instead of allocating — the process has a memory ceiling by construction.
+- **A/B toggles at runtime.** Two experimental search paths (TT in the main search, and a transposition **DAG** instead of a tree) can be switched on and off live with `I` and `O` while the engine runs, so both branches are compared on the same position without a rebuild.
+
+---
+
+## Engine architecture
 
 | Component | Description |
 |-----------|-------------|
-| **GrogrosZero** | Hybrid search: UCT-style node selection + alpha-beta pruning + quiescence |
-| **Evaluation** | ~40 heuristics (material, mobility, king safety, piece-square tables) |
-| **Transposition Table** | Zobrist-hashed position cache (`robin_map`) |
-| **Move Generation** | Array-based generation with bitboard-style optimizations |
-| **Memory Management** | Custom memory pools (`NodeBuffer`, `BoardBuffer`) — zero heap allocation during search |
-| **Neural Network** | Optional NN evaluation integration (experimental) |
+| **GrogrosZero** | Hybrid search: UCT-style node selection + alpha-beta pruning + quiescence (`exploration.cpp`) |
+| **Evaluation** | 31 weighted terms — material, mobility, king safety, weak squares, trapped pieces, pawn structure… (`Evaluator`, `evaluation.h`) |
+| **Transposition table** | Zobrist-keyed, depth-aware, side-to-move scores (`zobrist.cpp`) |
+| **Move generation** | Array-based board with bitboard-assisted attack detection (`board.cpp`, `generation.cpp`) |
+| **Memory management** | Preallocated pools (`NodeBuffer`, `BoardBuffer`) — no heap allocation in the search hot path (`buffer.cpp`) |
+| **GUI** | raylib analysis board: variations, evaluation graph, game tree (`gui.cpp`) |
+| **Neural network** | Optional NN evaluation, experimental (`neural_network.cpp`) |
 
-### Key Design Decisions
-
-- **Zero-allocation search**: All nodes and boards are allocated from pre-allocated pools, eliminating heap fragmentation and GC pauses during the hot path.
-- **Hybrid exploration**: Combines the exploration/exploitation balance of UCT with the pruning efficiency of alpha-beta.
-- **Cross-platform**: Builds on Windows (MSVC), Linux (GCC/Clang), and macOS.
+A deeper, implementation-level account lives in [`docs/ARCHITECTURE.md`](opti_chess/docs/ARCHITECTURE.md).
 
 ---
 
-## Tech Stack
+## Tech stack
 
 | Technology | Purpose |
 |------------|---------|
-| **C++20** | Language standard (CMake `cxx_std_20`) |
-| **CMake 3.24+** | Build system with presets for Debug/Release |
-| **raylib 5.5** | Cross-platform GUI (board rendering, move input) |
-| **tsl::robin_map 1.3** | High-performance hash maps for TT and node children |
-| **GoogleTest 1.14** | Unit testing framework |
+| **C++20** | Language standard (`cxx_std_20`) |
+| **CMake 3.24+** | Build system, with presets for Debug/Release |
+| **raylib 5.5** | GUI: board rendering, input, fonts, shaders, sound |
+| **tsl::robin_map 1.3** | Hash maps for the transposition table and node children |
+
+Dependencies are fetched and pinned by CMake `FetchContent` — nothing to install by hand, and no third-party source in the repository.
 
 ---
 
-## Building & Running
+## Building and running
 
 ### Prerequisites
 
-- CMake 3.24 or later
-- A C++20-capable compiler (MSVC, GCC 11+, Clang 14+)
-- Internet connection (CMake FetchContent downloads dependencies automatically)
+- Windows 10/11 x64
+- Visual Studio 2022 with the **Desktop development with C++** workload
+- CMake 3.24 or later, and Git (CMake uses it to fetch dependencies on the first configure)
+- Network access on the first configure only
 
-### Quick Build (Windows — Recommended)
+### Build
 
-```bash
-# Configure and build Release
+All build commands run from the `opti_chess/` subdirectory, which is where `CMakeLists.txt` and `CMakePresets.json` live:
+
+```powershell
+cd opti_chess
+
+# Release
 cmake --preset windows-release
 cmake --build --preset windows-release
+.\build\windows-release\Release\opti_chess.exe
 
-# Run the engine CLI
-.\opti_chess\build\windows-release\opti_chess.exe
-
-# Or launch the raylib GUI (requires a display)
-.\opti_chess\build\windows-release\opti_chess.exe --gui
-```
-
-### Debug Build
-
-```bash
+# Debug
 cmake --preset windows-debug
 cmake --build --preset windows-debug
+.\build\windows-debug\Debug\opti_chess.exe
 ```
 
-### Linux / macOS
+The first build compiles raylib from source and takes several minutes. CMake copies `resources/` next to the executable after each build, so the binary runs directly from its output directory.
 
-```bash
-# Generate build files
-cmake -B build -DCMAKE_BUILD_TYPE=Release
+There is no command-line interface: the executable opens the analysis GUI.
 
-# Build
-cmake --build build -j$(nproc)
+---
 
-# Run
-./build/opti_chess
-```
+## Controls
 
-> **Dependencies are fetched automatically** via CMake FetchContent (raylib 5.5, robin-map 1.3.0). The first build may take several minutes to compile raylib from source.
+OptiChess is driven from the keyboard once the board is open. The most useful bindings:
+
+| Key | Action |
+|-----|--------|
+| `G` | Start / stop GrogrosZero analysis on the current position |
+| `P` | Play the move GrogrosZero recommends |
+| `←` / `→` | Step backward / forward through the game tree |
+| `F` | Flip the board |
+| `V` | Load a FEN from the clipboard |
+| `X` / `C` | Copy the current FEN / PGN to the clipboard |
+| `E` | Print the full evaluation breakdown to the console |
+| `Space` | Start / stop the clock |
+| `Ctrl` + `↑` / `↓` | Toggle GrogrosZero as the white / black player |
+| `Del` | Clear the transposition table and the DAG |
+| `I` / `O` | A/B toggle: TT in the main search / transposition DAG |
+| `H` | Toggle arrow drawing and the on-screen controls panel |
+| `T` | Run the built-in test suite (see below) |
+| `Z` | Print the Zobrist key of the current position |
 
 ---
 
 ## Testing
 
-```bash
-# Build with tests enabled (default)
-cmake --preset windows-debug -DBUILD_TESTS=ON
+The test suite is **interactive**: build the Debug preset, launch the application, and press `T`. Results are printed to the console. Automated CTest coverage is a known gap, not a feature — see [Project status](#project-status).
 
-# Run unit tests
-ctest --preset windows-debug --output-on-failure
+The suite has three parts (`tests.cpp`):
 
-# Or run the test binary directly
-.\opti_chess\build\windows-debug\opti_chess_tests.exe
-```
+**1. Perft** — move generation is validated against reference node counts:
 
-The test suite covers:
-- Board state manipulation (move legality, FEN parsing, castling, en passant)
-- Move generation correctness
-- Evaluation symmetry and consistency
-- Zobrist hashing uniqueness
+| Position | Depth | Reference counts |
+|----------|-------|------------------|
+| Start position | 5 | 20 / 400 / 8,902 / 197,281 / 4,865,609 |
+| Kiwipete (`r3k2r/p1ppqpb1/…`) | 5 | 48 / 2,039 / 97,862 / 4,085,603 |
 
----
+**2. Evaluation** — five reference positions scored in `[0, 1]` against an expected evaluation *and* an expected win rate, each with a tolerance band rather than an exact match: initial position, a trapped bishop on a2, a king that only *looks* unsafe, a hole on d5, and a strategically lost position.
 
-## Project Structure
+**3. Problems** — tactical and positional puzzles solved under a 3-second budget, scored on whether the engine finds the intended move.
 
-```
-opti_chess/
-├── board.cpp/h            # Core board state, move generation, FEN, Zobrist hashing
-├── exploration.cpp/h      # GrogrosZero search, quiescence, node tree
-├── evaluation.cpp/h       # ~40 evaluation heuristics
-├── zobrist.cpp/h          # Zobrist hashing (position keys, TT hashes)
-├── buffer.cpp/h           # Memory pools (NodeBuffer, BoardBuffer)
-├── gui.cpp/h              # raylib-based graphical interface
-├── neural_network.cpp/h   # Optional NN evaluation (experimental)
-├── game_tree.cpp/h        # Game tree / variation tracking
-├── tests.cpp/h            # Unit tests
-├── main_gui.h             # GUI entry point
-├── CMakeLists.txt         # Build configuration
-├── CMakePresets.json      # Presets for Windows Debug/Release
-└── resources/             # Assets (images, opening book)
-```
+Additional puzzles can be appended to `Tests.txt`, which the suite imports at runtime.
 
 ---
 
-## Performance
+## Project structure
 
-OptiChess prioritizes search speed above all else:
+```
+.
+├── README.md
+├── LICENSE
+├── CONTRIBUTING.md
+└── opti_chess/
+    ├── CMakeLists.txt       # Build configuration (raylib, robin-map, resources)
+    ├── CMakePresets.json    # Windows Debug/Release presets
+    ├── main.cpp             # Entry point
+    ├── main_gui.h           # Application loop, input handling, engine actions
+    ├── board.cpp/h          # Board state, FEN, legality, bitboards
+    ├── generation.cpp/h     # Move generation
+    ├── exploration.cpp/h    # GrogrosZero search, quiescence, node tree/DAG
+    ├── evaluation.cpp/h     # Evaluator and its 31 weighted terms
+    ├── zobrist.cpp/h        # Zobrist keys and transposition table
+    ├── buffer.cpp/h         # Node and Board memory pools
+    ├── game_tree.cpp/h      # Played variations, independent of the search tree
+    ├── gui.cpp/h            # raylib interface
+    ├── neural_network.cpp/h # Optional NN evaluation (experimental)
+    ├── match.cpp/h          # Engine-vs-engine match scaffolding
+    ├── player.cpp/h         # Player configuration (algorithm, evaluator, rating)
+    ├── tests.cpp/h          # Perft, evaluation and problem suites
+    ├── windows_tests.cpp/h  # Win32 layer: physical memory probe, screen binding
+    ├── ALGORITHMS.md        # Algorithm reference (FR)
+    ├── BUGFIXES.md          # Bug ledger (FR)
+    ├── docs/                # Architecture and development guides (EN)
+    └── resources/           # Images, fonts, sounds, shaders, opening book
+```
 
-- **No heap allocations** in the search hot path (memory pools)
-- **No virtual calls** in evaluation or search
-- **Cache-friendly** data layout for frequently accessed structures
-- **Branch prediction hints** on hot conditional paths
-- **constexpr** compile-time computed values where possible
+---
 
-Performance profiling is recommended before and after any change to `exploration.cpp`, `evaluation.cpp`, or `board.cpp`.
+## Performance and memory model
+
+Search speed is the main design constraint, and it drives most of the structural choices:
+
+- **No heap allocation in the search hot path** — nodes and boards come from pools allocated once at startup.
+- **No virtual dispatch** anywhere in search or evaluation (zero `virtual` in the codebase).
+- **Compile-time constants** wherever the value allows it (~280 `constexpr` uses).
+- **A memory ceiling by construction** — pool capacity is derived from available physical memory and capped; a full pool deepens the existing tree instead of growing.
+- **Cache-conscious layout** for the structures touched on every node.
+
+Published benchmark figures (NPS, depth-to-time) are a known gap: the current numbers are collected ad hoc during development and are not reproducible from the repository yet. Profiling before and after any change to `exploration.cpp`, `evaluation.cpp` or `board.cpp` is the working rule.
 
 ---
 
 ## Documentation
 
-| File | Purpose |
-|------|---------|
-| `opti_chess/ALGORITHMS.md` | Detailed algorithm reference (search, eval, TT, repetitions) |
-| `opti_chess/docs/ARCHITECTURE.md` | High-level architecture overview |
-| `opti_chess/docs/DEVELOPMENT.md` | Developer setup guide |
-| `opti_chess/BUGFIXES.md` | Bug fix history and analysis |
-| `opti_chess/CONTRIBUTING.md` | Contribution guidelines |
+| File | Contents | Language |
+|------|----------|----------|
+| [`opti_chess/docs/ARCHITECTURE.md`](opti_chess/docs/ARCHITECTURE.md) | Components, data flow, invariants to preserve when changing the engine | EN |
+| [`opti_chess/docs/DEVELOPMENT.md`](opti_chess/docs/DEVELOPMENT.md) | Build, run, validate, troubleshoot | EN |
+| [`opti_chess/ALGORITHMS.md`](opti_chess/ALGORITHMS.md) | Implementation-level reference: sign conventions, mate encoding, `Node` invariants, GrogrosZero loop, quiescence, TT semantics | FR |
+| [`opti_chess/BUGFIXES.md`](opti_chess/BUGFIXES.md) | Ledger of algorithmic bugs — symptom, root cause, fix — including the ones still open, ranked by severity | FR |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Conventions and expectations for changes | EN |
 
 ---
 
@@ -164,20 +194,27 @@ Performance profiling is recommended before and after any change to `exploration
 
 ![OptiChess GUI](opti_chess/resources/screenshots/1694083255.png)
 
-The engine runs with a raylib-based graphical interface showing move analysis, evaluation graphs, and the full game tree. Below are additional captures from various gameplay sessions:
-
-| Analysis Board | Evaluation Graph | Game Tree View |
+| Analysis board | Evaluation graph | Game tree view |
 |---|---|---|
 | ![Analysis](opti_chess/resources/screenshots/1694083220.png) | ![Graph](opti_chess/resources/screenshots/1695476699.png) | ![Tree](opti_chess/resources/screenshots/1694083104.png) |
 
-> **Note:** Screenshots are from development versions of OptiChess. The GUI may look slightly different in the latest release.
+> Screenshots come from development builds; the interface changes between commits.
+
+---
+
+## Project status
+
+Stated plainly, so nothing here is a surprise:
+
+- **Windows only.** The CMake file carries Linux and macOS branches, but the Win32 integration layer (`windows_tests.*`, and console setup in `main_gui.h`) is not yet abstracted, so those targets do not compile today.
+- **No UCI protocol**, therefore no rating on a public list and no play against other engines. The engine-vs-engine `Match`/`Player` layer is scaffolding, not a finished feature.
+- **No CI and no CTest.** Validation is the interactive `T` suite plus manual GUI checks.
+- **`board.cpp` is oversized** (~12,000 lines) and is the main structural debt; splitting it along the move-generation / state / evaluation-support seams is the next refactor.
+- **Comments are mixed French and English** — a legacy of the project's history, currently being migrated to English starting with `exploration.cpp` and `board.cpp`.
+- **Known open engine bugs are tracked publicly** in [`BUGFIXES.md`](opti_chess/BUGFIXES.md) rather than left implicit.
 
 ---
 
 ## License
 
-OptiChess is released under the [MIT License](opti_chess/LICENSE).
-
----
-
-*This project is a work in progress. Contributions, feedback, and issues are welcome.*
+Released under the [MIT License](LICENSE).
