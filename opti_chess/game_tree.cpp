@@ -3,11 +3,11 @@
 #include "gui.h"
 #include "zobrist.h"
 
-// Constructeur par d�faut
+// Default constructor
 GameTreeNode::GameTreeNode() {
 }
 
-// Constructeur � partir d'un plateau et d'un coup
+// Constructor from a board and a move
 GameTreeNode::GameTreeNode(Board board, Move move, string move_label, const GameTreeNode& parent) {
 	_move = move;
 	_move_label = move_label;
@@ -15,35 +15,35 @@ GameTreeNode::GameTreeNode(Board board, Move move, string move_label, const Game
 	_parent = (GameTreeNode*)&parent;
 }
 
-// Ajout d'un fils
+// Adds a child
 void GameTreeNode::add_child(GameTreeNode child) {
 	_children.push_back(child);
 }
 
-// Affichage de l'arbre
+// Displays the tree
 string GameTreeNode::tree_display(GameTreeNode *current_node) {
 	bool is_current_node = this == current_node;
 	
-	string display = is_current_node ? "()" : ""; // FIXME: � am�liorer
+	string display = is_current_node ? "()" : ""; // FIXME: to be improved
 
-	// Affichage des fils
+	// Display of the children
 
-	// Variation principale
+	// Principal variation
 	if (_children.size() > 0)
 		display += + " " + (_board._player ? to_string(_board._moves_count) + ". " : "") + _children[0]._move_label;
 
-	// Autres variations
+	// Other variations
 	for (int i = 1; i < _children.size(); i++)
 		display += " (" + to_string(_board._moves_count) + (_board._player ?  + ". " : "... ") + _children[i]._move_label + _children[i].tree_display(current_node) + ")";
 
-	// Variation principale
+	// Principal variation
 	if (_children.size() > 0)
 		display += _children[0].tree_display(current_node);
 
 	return display;
 }
 
-// Reset (ne pas oublier de vider la m�moire)
+// Reset (do not forget to free the memory)
 void GameTreeNode::reset() {
 	_move = Move();
 	_move_label = "";
@@ -52,17 +52,17 @@ void GameTreeNode::reset() {
 }
 
 
-// Constructeur par d�faut
+// Default constructor
 GameTree::GameTree() {
 }
 
-// Constructeur � partir d'un plateau
+// Constructor from a board
 GameTree::GameTree(Board board) {
 	_root = new GameTreeNode(board, Move(), "", GameTreeNode());
 	_current_node = _root;
 }
 
-// S�lection du noeud suivant
+// Selects the next node
 bool GameTree::select_next_node(Move move) {
 	for (int i = 0; i < _current_node->_children.size(); i++)
 		if (_current_node->_children[i]._move == move) {
@@ -73,7 +73,7 @@ bool GameTree::select_next_node(Move move) {
 	return false;
 }
 
-// S�lection du premier noeud suivant
+// Selects the first following node
 bool GameTree::select_first_next_node() {
 	bool can_go_forward = _current_node->_children.size() > 0;
 
@@ -84,16 +84,16 @@ bool GameTree::select_first_next_node() {
 	return can_go_forward;
 }
 
-// S�lection du noeud pr�c�dent
+// Selects the previous node
 bool GameTree::select_previous_node() {
 	bool can_go_back = _current_node != _root;
 
 	if (can_go_back) {
 		_current_node = _current_node->_parent;
 
-		// Il faut aussi remonter le plateau pour l'exploration
+		// The board must be moved back up for the exploration too
 		transposition_table.clear();
-		node_map.clear(); // #11 Plan B — purge le DAG en meme temps que la TT (pas de pointeur pendant inter-recherches)
+		node_map.clear(); // #11 Plan B - purge the DAG along with the TT (no dangling pointer between searches)
 		main_GUI._root_exploration_node->reset();
 		main_GUI._root_exploration_node->_board = &_current_node->_board;
 		main_GUI._root_exploration_node->_is_active = true;
@@ -101,28 +101,28 @@ bool GameTree::select_previous_node() {
 		main_GUI._board->reset_eval();
 		main_GUI._board->update_bitboards();
 
-		// Actualisation de l'affichage
+		// Refresh the display
 		main_GUI._pgn = tree_display();
 	}
 
 	return can_go_back;
 }
 
-// Ajout d'un fils
+// Adds a child
 void GameTree::add_child(GameTreeNode child) {
 	_current_node->add_child(child);
 }
 
-// Ajout d'un fils � partir d'un plateau et d'un coup
+// Adds a child from a board and a move
 void GameTree::add_child(Board board, Move move, string move_label) {
 
-	// V�rifie que ce n'est pas un coup nul
+	// Check that this is not a null move
 	if (move.is_null_move()) {
 		cout << "null move added, in position " << _current_node->_board.to_fen() << endl;
 		return;
 	}
 
-	// V�rifie que le coup n'existe pas d�j�
+	// Check that the move does not already exist
 	for (int i = 0; i < _current_node->_children.size(); i++)
 		if (_current_node->_children[i]._move == move)
 			return;
@@ -132,16 +132,16 @@ void GameTree::add_child(Board board, Move move, string move_label) {
 	_current_node->add_child(GameTreeNode(board, move, move_label, *_current_node));
 }
 
-// Ajout d'un fils � partir d'un coup
+// Adds a child from a move
 void GameTree::add_child(Move move, string additional_label) {
 
-	// V�rifie que ce n'est pas un coup nul
+	// Check that this is not a null move
 	if (move.is_null_move()) {
 		cout << "null move added, in position " << _current_node->_board.to_fen() << endl;
 		return;
 	}
 
-	// V�rifie que le coup n'existe pas d�j�
+	// Check that the move does not already exist
 	for (int i = 0; i < _current_node->_children.size(); i++)
 		if (_current_node->_children[i]._move == move)
 			return;
@@ -153,7 +153,7 @@ void GameTree::add_child(Move move, string additional_label) {
 	_current_node->add_child(GameTreeNode(board, move, move_label, *_current_node));
 }
 
-// Affichage de l'arbre
+// Displays the tree
 string GameTree::tree_display() {
 	return _root->tree_display(_current_node);
 }
@@ -164,40 +164,40 @@ void GameTree::reset() {
 	_current_node = _root;
 }
 
-// Nouvel arbre � partir d'un plateau
+// New tree from a board
 void GameTree::new_tree(Board& board) {
 	_root->reset();
 	_root = new GameTreeNode(board, Move(), "", GameTreeNode());
 	_current_node = _root;
 }
 
-// Promeut la variante actuelle en tant que variante principale
+// Promotes the current variation to the main variation
 bool GameTree::promote_current_variation() {
 
-	// FIXME : y'a encore des bugs........
+	// FIXME: there are still bugs here........
 
-	// Si on est � la racine, on ne peut pas promouvoir
+	// At the root there is nothing to promote
 	if (_current_node == _root)
 		return false;
 
-	// On regarde d'abord si le coup actuel est le principal de la variante
+	// First check whether the current move is the main one of the variation
 
-	// Si oui, on regarde le parent
+	// If it is, look at the parent
 	if (_current_node->_parent->_children[0]._move == _current_node->_move) {
 		_current_node = _current_node->_parent;
 
-		// On promeut le parent
+		// Promote the parent
 		return promote_current_variation();
 	}
 
-	// Si non, on promeut la variante en tant que variante principale
+	// Otherwise, promote the variation to the main variation
 
-	// On stocke d'abord la variante actuelle
+	// First store the current variation
 	GameTreeNode temp = *_current_node;
 
-	// On d�cale les autres variantes jusqu'� la variante actuelle
+	// Shift the other variations up to the current one
 	
-	// On cherche la variante actuelle
+	// Look for the current variation
 	int variant_position = 0;
 	for (int i = 1; i < _current_node->_parent->_children.size(); i++) {
 		if (_current_node->_parent->_children[i]._move == _current_node->_move) {
@@ -206,15 +206,15 @@ bool GameTree::promote_current_variation() {
 		}
 	}
 		
-	// On d�cale les variantes
+	// Shift the variations
 	for (int j = variant_position; j > 0; j--)
 		_current_node->_parent->_children[j] = _current_node->_parent->_children[j - 1];
 
-	// On place la variante actuelle en premi�re position
+	// Put the current variation in first position
 	_current_node->_parent->_children[0] = temp;
 
 	//*_current_node = _current_node->_parent->_children[0];
-	// FIXME: �a marche pas, on est pas sur le bon noeud
+	// FIXME: this does not work, we are not on the right node
 
 	return true;
 }
