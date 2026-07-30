@@ -38,7 +38,7 @@ These are the rules a change must not silently break:
 ## Code style
 
 - Follow the conventions of the file you are editing.
-- **New comments are written in English.** The codebase is mid-migration from French; translating the comments in a function you are already touching is welcome, as a separate commit.
+- **Comments are written in English.** The migration from French is complete for every source file; please do not reintroduce French comments.
 - Comment the *why*, the constraints and the trade-offs. Do not comment what the code already says.
 - Remove outdated comments and commented-out code rather than leaving them in place.
 - Keep runtime assets under `resources/` so CMake packages them with the executable.
