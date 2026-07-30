@@ -156,9 +156,9 @@ Additional puzzles can be appended to `Tests.txt`, which the suite imports at ru
     ├── player.cpp/h         # Player configuration (algorithm, evaluator, rating)
     ├── tests.cpp/h          # Perft, evaluation and problem suites
     ├── windows_tests.cpp/h  # Win32 layer: physical memory probe, screen binding
-    ├── ALGORITHMS.md        # Algorithm reference (FR)
-    ├── BUGFIXES.md          # Bug ledger (FR)
-    ├── docs/                # Architecture and development guides (EN)
+    ├── ALGORITHMS.md        # Algorithm reference
+    ├── BUGFIXES.md          # Bug ledger
+    ├── docs/                # Architecture and development guides
     └── resources/           # Images, fonts, sounds, shaders, opening book
 ```
 
@@ -180,13 +180,15 @@ Published benchmark figures (NPS, depth-to-time) are a known gap: the current nu
 
 ## Documentation
 
-| File | Contents | Language |
-|------|----------|----------|
-| [`opti_chess/docs/ARCHITECTURE.md`](opti_chess/docs/ARCHITECTURE.md) | Components, data flow, invariants to preserve when changing the engine | EN |
-| [`opti_chess/docs/DEVELOPMENT.md`](opti_chess/docs/DEVELOPMENT.md) | Build, run, validate, troubleshoot | EN |
-| [`opti_chess/ALGORITHMS.md`](opti_chess/ALGORITHMS.md) | Implementation-level reference: sign conventions, mate encoding, `Node` invariants, GrogrosZero loop, quiescence, TT semantics | FR |
-| [`opti_chess/BUGFIXES.md`](opti_chess/BUGFIXES.md) | Ledger of algorithmic bugs — symptom, root cause, fix — including the ones still open, ranked by severity | FR |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Conventions and expectations for changes | EN |
+| File | Contents |
+|------|----------|
+| [`opti_chess/docs/ARCHITECTURE.md`](opti_chess/docs/ARCHITECTURE.md) | Components, data flow, invariants to preserve when changing the engine |
+| [`opti_chess/docs/DEVELOPMENT.md`](opti_chess/docs/DEVELOPMENT.md) | Build, run, validate, troubleshoot |
+| [`opti_chess/ALGORITHMS.md`](opti_chess/ALGORITHMS.md) | Implementation-level reference: sign conventions, mate encoding, `Node` invariants, GrogrosZero loop, quiescence, TT semantics |
+| [`opti_chess/BUGFIXES.md`](opti_chess/BUGFIXES.md) | Ledger of algorithmic bugs — symptom, root cause, fix — including the ones still open, ranked by severity |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Conventions and expectations for changes |
+
+Everything above is in English, as are the comments in every source file.
 
 ---
 
@@ -210,7 +212,7 @@ Stated plainly, so nothing here is a surprise:
 - **No UCI protocol**, therefore no rating on a public list and no play against other engines. The engine-vs-engine `Match`/`Player` layer is scaffolding, not a finished feature.
 - **No CI and no CTest.** Validation is the interactive `T` suite plus manual GUI checks.
 - **`board.cpp` is oversized** (~12,000 lines) and is the main structural debt; splitting it along the move-generation / state / evaluation-support seams is the next refactor.
-- **Comments are being migrated from French to English.** The two files a reader will open first, `exploration.cpp` and `board.cpp`, are fully translated; the GUI and header files still carry French comments.
+- **Two working files are still in French**: `TODO_list.txt`, the development backlog, and the annotations in `Tests.txt`. They are personal working notes rather than documentation. Everything else — every source comment and every document listed above — is in English.
 - **Known open engine bugs are tracked publicly** in [`BUGFIXES.md`](opti_chess/BUGFIXES.md) rather than left implicit.
 
 ---
