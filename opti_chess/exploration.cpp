@@ -6,22 +6,22 @@ namespace {
 
 constexpr uint8_t search_repetition_limit = 2;
 
-// #11 Plan B — seuil de coupe AFFICHAGE (get_exploration_variants /
-// get_main_depth) decouple de l'elagage de recherche. search_repetition_limit
-// (double, agressif) tronquerait la PV des la 2e occurrence -> en finale les
-// manoeuvres de roi rebouclent en ~2-3 coups et la variante principale est
-// coupee tres tot meme si la vraie ligne est longue. On affiche jusqu'a la
-// VRAIE nulle (triple = regle FIDE) ; borne toujours les vrais cycles bien
-// avant le cap max_depth=500. Applique seulement sous DAG (cf. usage).
+// #11 Plan B - DISPLAY cutoff threshold (get_exploration_variants /
+// get_main_depth), decoupled from search pruning. search_repetition_limit
+// (twofold, aggressive) would truncate the PV at the 2nd occurrence -> in
+// endgames king manoeuvres loop back within ~2-3 moves and the main line is
+// cut very early even when the real line is long. Display runs up to the
+// REAL draw (threefold = FIDE rule); still bounds genuine cycles well
+// before the max_depth=500 cap. Applied under DAG only (see usage).
 constexpr uint8_t display_repetition_limit = 3;
 
-// #3 : un score de mat encode sa distance via _moves_count (board.cpp:1569),
-// or _moves_count est ABSENT de la clé Zobrist. Sans normalisation, une même
-// position atteinte par un chemin de longueur différente relit depuis la TT
-// une distance de mat fausse ("fantômes"). On canonise au store (retrait de
-// l'ancrage _moves_count -> ne dépend plus que de D = distance à mat, qui est
-// une propriété de la position) ; au probe on reconstruit avec le _moves_count
-// du nœud courant. Seuil mat = idiome is_eval_mate / #1 (10*|e| > mate_value),
+// #3: a mate score encodes its distance via _moves_count (board.cpp:1569),
+// but _moves_count is ABSENT from the Zobrist key. Without normalisation, the
+// same position reached by a path of different length reads back a wrong mate
+// distance from the TT ("ghosts"). Canonise on store (drop the _moves_count
+// anchor -> depends only on D = distance to mate, which is a property of the
+// position); on probe, rebuild it using the _moves_count of the current node.
+// Mate threshold = the is_eval_mate / #1 idiom (10*|e| > mate_value), robust:
 // robuste : |stored| ~ mate_value(1e8) - D·mate_ply + mc·mate_ply, mc/D petits.
 inline int tt_normalize_mate(int eval, int moves_count) {
 	if (10 * abs(eval) > mate_value)
@@ -34,32 +34,32 @@ inline int tt_denormalize_mate(int eval, int moves_count) {
 	return eval;
 }
 
-// #11 Plan A — TT scalaire dans la recherche principale.
-// QDEPTH_BAND : décale toute profondeur de write-back MCTS au-dessus de la
-// bande de quiescence (depth quiescence <= _quiescence_depth, ~10). Le
-// remplacement depth-preferred (zobrist.cpp:113) garde ainsi toujours une
-// entrée raffinée plutôt qu'une feuille de quiescence, et la porte de
-// réutilisation peut exiger un vrai sous-arbre raffiné.
+// #11 Plan A - scalar TT in the main search.
+// QDEPTH_BAND: shifts every MCTS write-back depth above the quiescence band
+// (quiescence depth <= _quiescence_depth, ~10). Depth-preferred replacement
+// (zobrist.cpp:113) therefore always keeps a refined entry rather than a
+// quiescence leaf, and the reuse gate can require a genuine refined subtree.
+//
 constexpr int QDEPTH_BAND = 256;
-// MIN_REUSE_LOG2 : on ne réutilise que les entrées représentant >= 2^N noeuds
-// raffinés (jamais une simple feuille de quiescence). Ajustable au gate.
+// MIN_REUSE_LOG2: only reuse entries representing >= 2^N refined nodes (never
+// a bare quiescence leaf). Tunable at the gate.
 constexpr int MIN_REUSE_LOG2 = 4;
 
-// log2 entier de (nodes+1), borné. Pas de float (hot-path-friendly, MSVC).
+// Integer log2 of (nodes+1), bounded. No float (hot-path friendly, MSVC).
 inline int tt_writeback_depth(int nodes) {
-	int v = (nodes > 0 ? nodes : 0) + 1; // nodes négatifs = bug amont : on dégrade proprement (depth = QDEPTH_BAND)
+	int v = (nodes > 0 ? nodes : 0) + 1; // Negative nodes = upstream bug: degrade cleanly (depth = QDEPTH_BAND)
 	int log2v = 0;
 	while (v > 1) { v >>= 1; ++log2v; }
 	return QDEPTH_BAND + log2v;
 }
 
-// Cohérence des champs dérivés d'une Evaluation dont _value vient de la TT.
-// Factorisation EXACTE du bloc de synthèse du cutoff quiescence (#1 v2 / #14) :
-// _value est supposé déjà posé (white-relative). On force _uncertainty=0 (une
-// valeur TT fiable ne doit pas être filtrée par l'incertitude statique), on
-// remet _winnable_* par signe si mat (évite le scaling sur un score de mat
-// géant ; hors mat _winnable_* sont conservés, propriété de position), puis
-// on redérive _wdl / _avg_score depuis _value.
+// Keeps the derived fields of an Evaluation consistent when _value comes from
+// the TT. EXACT factorisation of the quiescence cutoff block (#1 v2 / #14):
+// _value is assumed already set (white-relative). Force _uncertainty=0 (a
+// trustworthy TT value must not be filtered by static uncertainty), reset
+// _winnable_* by sign on mate (avoids scaling a huge mate score; outside mate
+// _winnable_* are kept, being a property of the position), then re-derive
+// _wdl / _avg_score from _value.
 inline void tt_fixup_derived(Evaluation& e) {
 	e._uncertainty = 0.0f;
 	if (10 * abs(e._value) > mate_value) {
@@ -90,13 +90,13 @@ void record_position_in_history(PositionHistory& path_history, Board& board) {
 	path_history[board._zobrist_key]++;
 }
 
-// #7 / Plan B-1 — annule un push (record) du path history (pop). Clé passée
-// directement (pas de Board) : symétrique exact de record, simple lookup,
-// efface l'entrée à 0 pour borner la taille de la map.
+// #7 / Plan B-1 - undoes a path-history push (record). The key is passed
+// directly (no Board): exact mirror of record, a plain lookup, and the entry
+// is erased at 0 to bound the map size.
 void unrecord_position_in_history(PositionHistory& path_history, uint64_t key) {
 	const auto it = path_history.find(key);
 	if (it == path_history.end()) {
-		return; // appel non équilibré : ne devrait jamais arriver
+		return; // unbalanced call: should never happen
 	}
 	if (it->second <= 1) {
 		path_history.erase(it);
@@ -106,11 +106,11 @@ void unrecord_position_in_history(PositionHistory& path_history, uint64_t key) {
 	}
 }
 
-// RAII : push (record) la position du board à la construction, pop à la
-// destruction. La clé Zobrist est capturée À LA CONSTRUCTION (get_zobrist_key
-// n'est pas idempotent : recalcul O(64)) — le dtor ne retouche pas le Board,
-// l'appariement push/pop est structurel. Équilibrage garanti sur TOUT chemin
-// de sortie (returns anticipés inclus) — voir « Balance invariant » du plan.
+// RAII: records the board position on construction, pops it on destruction.
+// The Zobrist key is captured AT CONSTRUCTION (get_zobrist_key is not
+// idempotent: it recomputes in O(64)) - the dtor never touches the Board, so
+// push/pop pairing is structural. Balance guaranteed on EVERY exit path
+// (early returns included) - see the plan's "Balance invariant".
 struct PathScope {
 	PositionHistory& _history;
 	uint64_t _key;
@@ -145,39 +145,39 @@ void init_terminal_draw_child(Node* child, Board* board, Evaluator* eval, Networ
 	child->_is_terminal = true;
 }
 
-// #11 Plan A — feuille gelée portant une valeur fiable issue de la TT.
-// Structurellement calquée sur init_terminal_draw_child. Détection terminale
-// d'abord : Board::evaluate(check_game_over=true) ne CALCULE pas la fin de
-// partie (is_game_over() y est commenté, board.cpp:1548) ; il ne fait que LIRE
-// _game_over_value. On le calcule donc explicitement comme init_node
-// (get_moves puis is_game_over) avant d'évaluer. Si la position est réellement
-// terminale, Board::evaluate a déjà posé l'éval exacte (mat/nulle), meilleure
-// que le scalaire TT : on la garde et on pose _is_terminal=true. Sinon on
-// remplace _deep_evaluation par la valeur TT (white-relative) avec les champs
-// dérivés cohérents (#1/#14). Compteurs identiques à la feuille de nulle
-// (_nodes=1, _iterations=1) : le terme d'exploration UCT (voir
-// pick_random_child, terme d'exploration sur _iterations) se comporte alors
-// comme pour les feuilles terminales/nulles existantes.
+// #11 Plan A - frozen leaf carrying a trustworthy value taken from the TT.
+// Structurally modelled on init_terminal_draw_child. Terminal detection comes
+// first: Board::evaluate(check_game_over=true) does not COMPUTE game over
+// (is_game_over() is commented out there, board.cpp:1548); it only READS
+// _game_over_value. So compute it explicitly the way init_node does
+// (get_moves then is_game_over) before evaluating. If the position really is
+// terminal, Board::evaluate has already set the exact evaluation (mate/draw),
+// than the TT scalar: keep it and set _is_terminal=true. Otherwise replace
+// _deep_evaluation with the TT value (white-relative) and consistent derived
+// fields (#1/#14). Counters identical to the draw leaf (_nodes=1,
+// _iterations=1): the UCT exploration term (see pick_random_child, the
+// exploration term over _iterations) then behaves exactly as it does for
+// existing terminal/draw leaves.
 void init_tt_leaf_child(Node* child, Board* board, Evaluator* eval, Network* network, int white_relative_value) {
 	child->_board = board;
 
-	// Fin de partie : Board::evaluate ne la calcule pas (cf. ci-dessus), on
-	// reproduit la séquence de init_node avant d'évaluer.
+	// Game over: Board::evaluate does not compute it (see above), so reproduce
+	// the init_node sequence before evaluating.
 	board->get_moves();
 	board->is_game_over();
 
 	child->evaluate_position(eval, false, network, true);
 
 	if (board->_game_over_value != unterminated) {
-		// Réellement terminale : éval exacte (mat/nulle) déjà posée par
-		// Board::evaluate, supérieure au scalaire TT — on ne l'écrase pas.
+		// Genuinely terminal: the exact evaluation (mate/draw) was already set by
+		// Board::evaluate and beats the TT scalar - do not overwrite it.
 		child->_is_terminal = true;
 	}
 	else {
-		// _deep_evaluation == _static_evaluation ici (evaluate_position le copie
-		// quand static_only=false) ; copie explicite conservée à dessein : si
-		// ce défaut changeait, c'est elle qui garantit une base cohérente avant
-		// de substituer la valeur TT et d'appliquer tt_fixup_derived (#1/#14).
+		// _deep_evaluation == _static_evaluation here (evaluate_position copies it
+		// when static_only=false); the explicit copy is kept on purpose: should that
+		// default ever change, it is what guarantees a consistent base before
+		// substituting the TT value and applying tt_fixup_derived (#1/#14).
 		child->_deep_evaluation = child->_static_evaluation;
 		child->_deep_evaluation._value = white_relative_value;
 		child->_deep_evaluation._evaluated = true;
@@ -189,25 +189,25 @@ void init_tt_leaf_child(Node* child, Board* board, Evaluator* eval, Network* net
 	child->_is_stand_pat_eval = false;
 	child->_fully_explored = true;
 	child->_can_explore = false;
-	// Gel durable : sans _initialized=true, grogros_zero relancerait
-	// quiescence (écrasant la valeur TT) si la feuille est revisitée comme
-	// best_move. Couplé au retour anticipé !_can_explore de grogros_zero
-	// la feuille reste réellement gelée.
+	// Durable freeze: without _initialized=true, grogros_zero would rerun
+	// quiescence (overwriting the TT value) if the leaf is revisited as
+	// best_move. Combined with grogros_zero's early !_can_explore return,
+	// the leaf stays genuinely frozen.
 	child->_initialized = true;
 }
 
-// Constructeur par défaut
+// Default constructor
 Node::Node() {
 }
 
-// Constructeur avec un plateau
+// Constructor taking a board
 Node::Node(Board *board) {
 	_board = board;
 }
 
-// Fonction qui ajoute un fils
+// Adds a child
 void Node::add_child(Node* child, Move move) {
-	// FIXME: vérifier si le coup n'est pas déjà dans les enfants?
+	// FIXME: check whether the move is already among the children?
 	if (_children.contains(move)) {
 		cout << "move already in children" << endl;
         return;
@@ -225,22 +225,22 @@ void Node::add_child(Node* child, Move move) {
 	child->_parent_count++;
 	ChildLink link;
 	link._node = child;
-	// Bug 2 model A (litteral, par-arete decouple) : sous DAG le compteur
-	// d'arete ne derive JAMAIS du child->_nodes partage (qui s'auto-inflate
-	// en cascade sur un noeud multi-parent -> overflow int -> N negatif/
-	// milliards/aleatoire). Il part de 0 et comptera les iterations routees
-	// par CETTE arete. OFF : arbre inchange (= child->_nodes) -> byte-identique.
+	// Bug 2 model A (literal, decoupled per-edge): under DAG the edge counter
+	// NEVER derives from the shared child->_nodes (which self-inflates in
+	// cascade on a multi-parent node -> int overflow -> negative/billions/
+	// random N). It starts at 0 and counts the iterations routed through
+	// THIS edge. OFF: tree unchanged (= child->_nodes) -> byte-identical.
 	link._propagated_nodes = g_tt_node_dag ? 0 : child->_nodes;
 	_children[move] = link;
 	//_nodes += child->_nodes;
 }
 
-// Fonction qui renvoie le nombre de fils
+// Returns the number of children
 size_t Node::children_count() const {
 	return _children.size();
 }
 
-// Fonction qui renvoie le premier coup qui n'a pas encore été ajouté
+// Returns the first move that has not been added yet
 Move Node::get_first_unexplored_move(bool fully_explored) {
 	for (int i = 0; i < _board->_got_moves; i++) {
 		Move move = _board->_moves[i];
@@ -252,7 +252,7 @@ Move Node::get_first_unexplored_move(bool fully_explored) {
 	return Move();
 }
 
-// Initie le noeud en fonction de son plateau
+// Initialises the node from its board
 void Node::init_node() {
 
 	if (_initialized) {
@@ -269,7 +269,7 @@ void Node::init_node() {
 	_board->get_moves();
 	_board->is_game_over();
 
-	// Si la partie est finie
+	// If the game is over
 	if (_board->_game_over_value != unterminated) {
 		_fully_explored = true;
 		_can_explore = false;
@@ -278,40 +278,40 @@ void Node::init_node() {
 		return;
 	}
 
-	// Génère et trie les coups
+	// Generates and sorts the moves
 	_board->assign_all_move_flags();
 	_board->sort_moves();
 }
 
-// #11 Plan B §7 — garde-fou anti-runaway. Constante haute (> toute profondeur
-// reelle plausible) : ne se declenche QUE sur une recursion pathologique
-// non-repetition (la repetition est deja coupee par le recheck Task 3).
+// #11 Plan B section 7 - anti-runaway guard. High constant (> any plausible
+// real depth): fires ONLY on pathological non-repetition recursion
+// (repetition is already cut by the Task 3 recheck).
 // File-local (moteur mono-thread) ; defini avant grogros_zero (usage recursif).
 static int g_dag_recursion_depth = 0;
 constexpr int DAG_MAX_RECURSION_DEPTH = 1024;
 
-// #11 Plan B — compteurs de diagnostic (toggle-gated, cumulatifs depuis le
-// dernier reset GUI). Servent a voir CE QUI SE PASSE (spin ? partage ?
-// recursion profonde ?) sans deviner. Lus par dag_debug_report.
-static long long g_dag_recheck_hits = 0;  // §3 : repetitions path-locales coupees
-static long long g_dag_link_hits = 0;     // link-on-create : noeud partage reutilise
-static long long g_dag_link_misses = 0;   // link-on-create : nouveau noeud cree
-static long long g_dag_variant_cuts = 0;  // get_exploration_variants : lignes coupees sur cycle
-static int g_dag_max_recursion_seen = 0;  // pic de profondeur de recursion grogros_zero
+// #11 Plan B - diagnostic counters (toggle-gated, cumulative since the last
+// GUI reset). They exist to SHOW WHAT HAPPENS (spin? sharing? deep
+// recursion?) instead of guessing. Read by dag_debug_report.
+static long long g_dag_recheck_hits = 0;  // section 3: path-local repetitions cut
+static long long g_dag_link_hits = 0;     // link-on-create: shared node reused
+static long long g_dag_link_misses = 0;   // link-on-create: new node created
+static long long g_dag_variant_cuts = 0;  // get_exploration_variants: lines cut on a cycle
+static int g_dag_max_recursion_seen = 0;  // peak grogros_zero recursion depth
 
-// Detail borne PAR BATCH (remis a zero par dag_debug_report). On veut VOIR
-// les premiers evenements (quel coup partage, quel cycle, quelle eval) sans
-// inonder la console ni payer to_fen() des millions de fois sur le chemin le
-// plus chaud (perf #1). dag_dbg_take() renvoie true au plus DAG_DBG_MAX fois
-// par batch ; appele uniquement derriere une garde g_tt_node_dag deja vraie.
+// Per-batch bounded detail (reset by dag_debug_report). The point is to SEE
+// the first events (which move is shared, which cycle, which eval) without
+// flooding the console or paying for to_fen() millions of times on the
+// hottest path (perf #1). dag_dbg_take() returns true at most DAG_DBG_MAX
+// times per batch; called only behind an already-true g_tt_node_dag guard.
 static int g_dag_dbg_emitted = 0;
 constexpr int DAG_DBG_MAX = 40;
 
-// Interrupteur COMPILE-TIME du diagnostic. false -> dag_dbg_take() renvoie
-// false a la compilation, donc tous les blocs `if (dag_dbg_take()) cout...`
-// (et leurs to_fen()) ET dag_debug_report() sont du code mort elimine : zero
-// surcout sur la recherche. Repasser a true pour re-instrumenter (ex: travail
-// Bug 1 opt 1). Les compteurs g_dag_* restent (1 inc, negligeable, jamais
+// COMPILE-TIME diagnostic switch. false -> dag_dbg_take() returns false at
+// compile time, so every `if (dag_dbg_take()) cout...` block (and their
+// to_fen() calls) AND dag_debug_report() become eliminated dead code: zero
+// search overhead. Switch back to true to re-instrument (e.g. Bug 1 opt 1
+// work). The g_dag_* counters stay (1 increment, negligible, never printed
 // imprimes quand off).
 constexpr bool dag_debug = false;
 
@@ -323,7 +323,7 @@ static bool dag_dbg_take() {
 }
 
 void dag_debug_report() {
-	if constexpr (!dag_debug) return; // zero surcout quand le diagnostic est off
+	if constexpr (!dag_debug) return; // zero overhead when diagnostics are off
 	cout << "[DAG] node_map=" << node_map.size()
 	     << " link_hit=" << g_dag_link_hits
 	     << " link_miss=" << g_dag_link_misses
@@ -331,27 +331,27 @@ void dag_debug_report() {
 	     << " variant_cut=" << g_dag_variant_cuts
 	     << " max_rec=" << g_dag_max_recursion_seen
 	     << " (detail=" << g_dag_dbg_emitted << "/" << DAG_DBG_MAX << ")" << endl;
-	g_dag_dbg_emitted = 0; // fenetre de detail fraiche au prochain batch
+	g_dag_dbg_emitted = 0; // fresh detail window on the next batch
 }
 
 // Nouveau GrogrosZero
 void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, PositionHistory *path_history) {
 	// TODO:
-	// On peut rajouter la profondeur
-	// Garder le temps de calcul
+	// Depth could be added
+	// Keep the computation time
 
 	// BUG: rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 0 1
-	// quiescence là dessus, après il regarde à donf Tb1 après Dxh7... ??
+	// quiescence on it, then it hammers Rb1 after Qxh7... ??
 
-	// FIXME *** cela ne devrait pas arriver
+	// FIXME: this should not happen
 	if (iterations <= 0) {
 		cout << "iterations <= 0 in grogros_zero" << endl;
 		return;
 	}
 
-	// #11 Plan B §7 — borne de securite sur la profondeur de recursion DAG.
-	// OFF : jamais arme (ni compteur ni test). ON : la repetition (Task 3)
-	// coupe deja tout cycle ; ceci n'attrape qu'une recursion pathologique.
+	// #11 Plan B section 7 - safety bound on DAG recursion depth.
+	// OFF: never armed (no counter, no test). ON: repetition (Task 3) already
+	// cuts every cycle; this only catches pathological recursion.
 	if (g_tt_node_dag && g_dag_recursion_depth >= DAG_MAX_RECURSION_DEPTH) {
 		return;
 	}
@@ -363,13 +363,13 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		~DagRecGuard() { g_dag_recursion_depth -= g_tt_node_dag ? 1 : 0; }
 	} _dag_rec_guard;
 
-	// Temps de calcul
+	// Computation time
 	const clock_t begin_monte_time = clock();
 
-	// #7 / B-1 — un seul historique possédé à la racine, threadé par pointeur.
-	// Plus de clone par itération : l'isolement inter-itérations est garanti
-	// par le push/pop équilibré (PathScope) dans explore_new_move /
-	// explore_random_child — chaque itération restitue l'historique à cet état.
+	// #7 / B-1 - a single history owned at the root, threaded by pointer.
+	// No more per-iteration clone: isolation between iterations is guaranteed
+	// by the balanced push/pop (PathScope) in explore_new_move /
+	// explore_random_child - every iteration restores the history to this state.
 	PositionHistory local_path_history;
 	PositionHistory* base_path_history = path_history != nullptr ? path_history : &local_path_history;
 	ensure_position_in_history(*base_path_history, *_board);
@@ -381,7 +381,7 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		_iterations++;
 	}
 
-	// Si la partie est finie, on ne fait rien
+	// Nothing to do if the game is over
 	if (_is_terminal) {
 		_iterations++;
 		_time_spent += clock() - begin_monte_time;
@@ -389,9 +389,9 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		return;
 	}
 
-	// #11 Plan A — feuille TT gelée : jamais ré-évaluée ni étendue.
-	// OFF-safe : tout _can_explore=false existant est aussi _is_terminal
-	// (déjà capté ci-dessus) ; ne se déclenche que pour la feuille TT (ON).
+	// #11 Plan A - frozen TT leaf: never re-evaluated, never expanded.
+	// OFF-safe: every pre-existing _can_explore=false is also _is_terminal
+	// (already caught above); only fires for the TT leaf (ON).
 	if (!_can_explore) {
 		_iterations++;
 		_time_spent += clock() - begin_monte_time;
@@ -399,39 +399,39 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		return;
 	}
 
-	// FIXME *** cela ne devrait pas arriver
+	// FIXME: this should not happen
 	if (_board->_got_moves <= 0) {
 		cout << "no moves in grogros_zero" << endl;
 		return;
 	}
 
-	// #11 Plan B — Bug 1 opt 3 : exclusion per-traversal partagee par TOUTES
-	// les iterations de CET appel grogros_zero (vit sur la pile de ce frame
-	// uniquement, jamais sur un noeud/arete partages). OFF : passee nullptr,
-	// jamais consultee -> comportement byte-identique a l'arbre.
+	// #11 Plan B - Bug 1 opt 3: per-traversal exclusion shared by ALL iterations
+	// of THIS grogros_zero call (lives on this frame's stack only, never on a
+	// shared node/edge). OFF: passed as nullptr, never consulted -> behaviour
+	// byte-identical to the tree.
 	DagExcl dag_excl;
 
 	// Exploration
 	while (iterations > 0) {
 
-		// Si les buffers sont pleins, on n'étend plus : on raffine l'arbre existant.
+		// When the buffers are full we stop expanding and refine the existing tree.
 		const bool can_expand = !monte_board_buffer.is_full() && !monte_node_buffer.is_full();
 
-		// EXPLORATION D'UN NOUVEAU COUP
+		// EXPLORING A NEW MOVE
 		if (can_expand && get_fully_explored_children_count() < _board->_got_moves) {
 			explore_new_move(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history);
 		}
 
-		// EXPLORATION D'UN COUP DÉJÀ EXPLORÉ (raffinage)
+		// EXPLORING AN ALREADY-EXPLORED MOVE (refinement)
 		else if (children_count() > 0) {
 			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr);
 		}
 
-		// Buffers pleins ET rien à raffiner ici : arrêt propre + log unique
+		// Buffers full AND nothing to refine here: clean stop + single log line
 		else {
 			if (!g_buffers_full_logged) {
-				cout << "buffer plein - arbre plafonne a " << _nodes
-				     << " noeuds, on continue a raffiner l'existant" << endl;
+				cout << "buffer full - tree capped at " << _nodes
+				     << " nodes, refining the existing one" << endl;
 				g_buffers_full_logged = true;
 			}
 			break;
@@ -440,34 +440,34 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		iterations--;
 	}
 	
-	// FIXME *** cela ne devrait pas arriver. Sous DAG, _nodes est une borne
-	// proxy par-arete (Bug 2 model A, clamp >=0) : garde arbre silencee (Task 4).
+	// FIXME: this should not happen. Under DAG, _nodes is a per-edge proxy
+	// bound (Bug 2 model A, clamped >=0): tree guard silenced (Task 4).
 	if (!g_tt_node_dag && _nodes <= 0) {
 		cout << "negative nodes in grogros zero???" << endl;
 	}
 
-	// Temps de calcul
+	// Computation time
 	_time_spent += clock() - begin_monte_time;
 
 	return;
 }
 
-// Fonction qui explore un nouveau coup
+// Explores a new move
 void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history) {
 
-	// On prend le premier coup non exploré
+	// Take the first unexplored move
 	const Move move = get_first_unexplored_move(true);
-	// #7 / B-1 — historique unique threadé (plus de copie par coup).
+	// #7 / B-1 - single threaded history (no more per-move copy).
 	PositionHistory& branch_history = *path_history;
 
-	// Noeud fils
+	// Child node
 	Node *child = nullptr;
 
-	// #11 Plan A — vrai pour le seul cas « nouveau noeud, non nulle » :
-	// seul cas où la feuille TT peut court-circuiter la quiescence.
+	// #11 Plan A - true only in the "new node, not a draw" case: the only
+	// case where the TT leaf may short-circuit quiescence.
 	bool created_new_node = false;
 
-	// Si on a déjà exploré ce coup, mais pas complètement
+	// If this move was already explored, but not completely
 	bool already_explored = _children.contains(move);
 	ChildLink* child_link = already_explored ? &_children[move] : nullptr;
 
@@ -475,17 +475,17 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		child = child_link->_node;
 
 		if (!g_tt_node_dag && _nodes <= child_link->_propagated_nodes) {
-			cout << "child nodes >= nodes???" << endl; // tree-only : faux sous DAG (sous-arbre partage multi-parent)
+			cout << "child nodes >= nodes???" << endl; // tree-only: false under DAG (multi-parent shared subtree)
 		}
 
-		// Bug 2 model A : sous DAG on ne pre-soustrait pas (le delta clamp >=0
-		// en fin de fonction nette correctement, sans underflow).
+		// Bug 2 model A: under DAG do not pre-subtract (the delta clamped >=0 nets
+		// out correctly at the end of the function, without underflow).
 		if (!g_tt_node_dag) {
 			_nodes -= child_link->_propagated_nodes;
 		}
 	}
 	else {
-		// Prend une place dans le buffer
+		// Take a slot in the buffer
 		Board* new_board = board_buffer->get_first_free_board();
 
 		if (new_board == nullptr)
@@ -495,13 +495,13 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		new_board->_is_active = true;
 		new_board->make_move(move, false, true);
 
-		// Si la position est déjà présente dans l'historique du chemin, on considère que c'est une nulle.
-		// Cette information est propre au chemin courant; elle ne doit pas vivre dans les noeuds parents.
+		// If the position already appears in the path history, treat it as a draw.
+		// This is specific to the current path; it must not live in the parent nodes.
 		if (position_is_draw_by_repetition(branch_history, *new_board)) {
-			// 3Q2k1/5p1p/2p1p3/2p1P1pq/5P2/4K3/6PP/2r5 b - - 1 4 : position test
-			// 6kr/4K2p/7B/3bN3/8/8/8/8 b - - 19 10 : bugs dans position test
+			// Test position: 3Q2k1/5p1p/2p1p3/2p1P1pq/5P2/4K3/6PP/2r5 b - - 1 4
+			// Test position with known bugs: 6kr/4K2p/7B/3bN3/8/8/8/8 b - - 19 10
 
-			// Création du noeud fils
+			// Create the child node
 			child = monte_node_buffer.get_first_free_node();
 
 			if (child == nullptr)
@@ -512,14 +512,14 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 			child->_iterations = 1;
 		}
 
-		// Sinon, on crée un nouveau noeud normalement
+		// Otherwise create a new node normally
 		else {
 			new_board->get_zobrist_key();
 
-			// #11 Plan B — link-on-create. Si une position de meme cle Zobrist
-			// est deja un Node VIVANT, on lie l'arete a ce Node partage au lieu
-			// de recreer un sous-arbre. La branche nulle (au-dessus) fabrique
-			// toujours une feuille distincte — jamais partagee. OFF : saute tout.
+			// #11 Plan B - link-on-create. If a position with the same Zobrist key is
+			// already a LIVE Node, link the edge to that shared Node instead of
+			// rebuilding a subtree. The draw branch (above) always produces a distinct
+			// leaf - never shared. OFF: skips everything.
 			Node* shared = nullptr;
 			if (g_tt_node_dag) {
 				const auto it = node_map.find(new_board->_zobrist_key);
@@ -529,17 +529,17 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 			}
 
 			if (shared != nullptr) {
-				// Hit : pas d'allocation. On rend le board pris au buffer et on
-				// pointe vers le Node existant ; add_child (plus bas) lie
-				// l'arete et incremente shared->_parent_count. created_new_node
-				// reste false → pas de probe TT Plan A sur un noeud partage.
+				// Hit: no allocation. Give the buffer board back and point at the
+				// existing Node; add_child (below) links the edge and increments
+				// shared->_parent_count. created_new_node stays false -> no Plan A
+				// TT probe on a shared node.
 				if (new_board->_buffer_index >= 0 && !monte_board_buffer._bulk_resetting) {
 					monte_board_buffer.free_index(new_board->_buffer_index);
 				}
 				child = shared;
 				g_dag_link_hits++;
-				// Detail borne : QUELLE position est reutilisee, par combien de
-				// parents (avant l'incrément add_child). Confirme le partage reel.
+				// Bounded detail: WHICH position is reused, by how many parents
+				// (before the add_child increment). Confirms sharing actually happens.
 				if (dag_dbg_take()) {
 					cout << "[DAG] link-hit key=" << std::hex << shared->_board->_zobrist_key
 					     << std::dec << " pc=" << shared->_parent_count
@@ -548,7 +548,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 				}
 			}
 			else {
-				// Miss : création normale + enregistrement dans node_map.
+				// Miss: normal creation + registration in node_map.
 				child = monte_node_buffer.get_first_free_node();
 
 				if (child == nullptr)
@@ -570,15 +570,15 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
         return;
     }
 
-	// #11 Plan A — Probe TT (toggle OFF par défaut). Seulement sur un noeud
-	// fraîchement créé non-nulle : les nulles par répétition sont path-dependent
-	// (déjà court-circuitées plus haut) et ne doivent jamais être lues comme une
-	// valeur de position. Bornes (STANDPAT/BETA/ALPHA) jamais réutilisées comme
-	// valeur de noeud (sémantique de borne sans fenêtre en MCTS). On exige
-	// _depth dans la bande write-back : un vrai sous-arbre raffiné, pas une
-	// feuille de quiescence. NB : on lit child->_board (et non new_board, hors
-	// portée ici car déclaré dans la branche else) ; created_new_node garantit
-	// child->_board == le new_board fraîchement créé, zobrist déjà calculée.
+	// #11 Plan A - TT probe (toggle OFF by default). Only on a freshly created
+	// non-draw node: repetition draws are path-dependent (already short-
+	// circuited above) and must never be read as a position value. Bounds
+	// (STANDPAT/BETA/ALPHA) are never reused as a node value (bound semantics
+	// without a window make no sense in MCTS). _depth is required to be in the
+	// write-back band: a genuine refined subtree, not a quiescence leaf. Note:
+	// child->_board is read (not new_board, out of scope here since it is
+	// declared in the else branch); created_new_node guarantees child->_board
+	// == the freshly created new_board, with its Zobrist key already computed.
 	if (g_tt_main_search && created_new_node) {
 		const ZobristEntry* tt_entry = transposition_table.probe(child->_board->_zobrist_key);
 		if (tt_entry != nullptr
@@ -596,10 +596,10 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		PathScope _ps(branch_history, *child->_board); // push child position (popped on scope exit, all paths)
 
 		if (test) {
-			child->quiescence(board_buffer, eval, 2, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, &branch_history); // TODO *** faire un cutoff plus facile, si l'éval de base est déjà mauvaise? par rapport à l'évaluation statique
+			child->quiescence(board_buffer, eval, 2, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, &branch_history); // TODO: cut off more eagerly when the base evaluation is already bad, relative to the static evaluation?
 		}
 
-		// Si l'évaluation est meilleure que celle de base, on regarde la quiescence
+		// If the evaluation beats the base one, run quiescence
 		else if (!test || child->_static_evaluation._value * _board->get_color() > _static_evaluation._value * _board->get_color()) {
 
 			child->quiescence(board_buffer, eval, quiescence_depth, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, &branch_history);
@@ -609,12 +609,12 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 	}
 
 	// rnb1kbnr/ppp1pppp/2q5/1B6/8/2N5/PPPP1PPP/R1BQK1NR b KQkq - 3 4
-	// rnb1kbnr/ppp1pppp/2q5/8/8/2N5/PPPP1PPP/R1BQKBNR w KQkq - 2 4 : ici Fb5 -> +114 au lieu de +895
+	// rnb1kbnr/ppp1pppp/2q5/8/8/2N5/PPPP1PPP/R1BQKBNR w KQkq - 2 4: here Bb5 -> +114 instead of +895
 
-	// Augmente le nombre de noeuds. Bug 2 model A : sous DAG on n'absorbe PAS
-	// child->_nodes (qui peut etre un sous-arbre PARTAGE cree par un autre
-	// parent -> desync puis underflow negatif). L'accumulation par-arete
-	// clamp >=0 est faite plus bas (reseed propagated). OFF : ligne arbre
+	// Increase the node count. Bug 2 model A: under DAG do NOT absorb
+	// child->_nodes (which may be a SHARED subtree created by another parent
+	// -> desync then negative underflow). The per-edge accumulation clamped
+	// >=0 is done below (reseed propagated). OFF: tree line unchanged ->
 	// inchangee -> byte-identique.
 	if (!g_tt_node_dag) {
 		_nodes += child->_nodes;
@@ -632,7 +632,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		child->_iterations = 1;
 	}
 
-	// Ajoute le fils
+	// Add the child
 	if (!already_explored) {
 		add_child(child, move);
 		child_link = &_children.at(move);
@@ -642,17 +642,17 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		child_link->_chosen_iterations = 1;
 	}
 
-	// Bug 2 model A — comptabilite _nodes par-arete sous DAG : delta clamp >=0,
-	// jamais negatif, jamais reinitialise depuis un child->_nodes partage
-	// (baseline = _propagated_nodes precedent ; arete neuve link-on-create :
-	// add_child a pose baseline=child->_nodes -> delta 0, on n'absorbe pas le
-	// sous-arbre etranger). OFF : reseed arbre inchange -> byte-identique.
+	// Bug 2 model A - per-edge _nodes accounting under DAG: delta clamped >=0,
+	// never negative, never reseeded from a shared child->_nodes (baseline =
+	// the previous _propagated_nodes; on a fresh link-on-create edge add_child
+	// set baseline=child->_nodes -> delta 0, so the foreign subtree is not
+	// absorbed). OFF: tree reseed unchanged -> byte-identical.
 	if (g_tt_node_dag) {
-		// model A litteral : +1 unite de travail routee par cette arete.
-		// Borne par le budget d'iterations -> jamais d'overflow ; totalement
-		// decouple du child->_nodes partage auto-inflant -> plus de cascade.
-		// _nodes devient un proxy "visites" borne (spec §6 ; non lu par la
-		// selection ni le budget).
+		// model A, literally: +1 unit of work routed through this edge.
+		// Bounded by the iteration budget -> never overflows; fully decoupled
+		// from the self-inflating shared child->_nodes -> no more cascade.
+		// _nodes becomes a bounded "visits" proxy (spec section 6; read neither
+		// by selection nor by the budget).
 		_nodes += 1;
 		child_link->_propagated_nodes += 1;
 	}
@@ -661,7 +661,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 	}
 	_iterations += child->_iterations;
 
-	// Tous les coups ont-ils déjà été explorés?
+	// Have all moves already been explored?
 	bool all_moves_explored = (get_fully_explored_children_count()) == _board->_got_moves;
 
 	// TEST: R3r1k1/1P3p2/3p2p1/5n2/4rb2/2P1p2P/4N3/2BK4 b - - 1 35
@@ -669,10 +669,10 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 
 	// TESTS: Q7/4p2p/3k4/5p2/4q3/6P1/P2PPK2/8 w - - 2 39
 
-	// Tous les coups ont été explorés, donc on met à jour l'évaluation du plateau avec le meilleur coup
+	// All moves explored, so update the board evaluation with the best move
 	Move best_move = get_best_score_move(alpha, beta, !all_moves_explored);
 
-	// Standpat = le meilleur
+	// Stand pat is the best
 	if (best_move.is_null_move()) {
 		_is_stand_pat_eval = true;
 	}
@@ -680,35 +680,35 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		_is_stand_pat_eval = false;
 		_deep_evaluation = _children[best_move]._node->_deep_evaluation;
 
-		// #11 Plan A — write-back de la valeur raffinée (le levier réel).
-		// Garde : toggle ON, pas terminal (exclut les nulles path-dependent),
-		// pas stand-pat (borne inf déjà gérée en TT_STANDPAT par la quiescence),
-		// éval évaluée. Profondeur-proxy au-dessus de la bande quiescence.
+		// #11 Plan A - write-back of the refined value (the actual lever).
+		// Guard: toggle ON, not terminal (excludes path-dependent draws), not
+		// stand-pat (the lower bound is already stored as TT_STANDPAT by
+		// quiescence), evaluation present. Proxy depth above the quiescence band.
 		if (g_tt_main_search && !_is_terminal && !_is_stand_pat_eval && _deep_evaluation._evaluated) {
 			transposition_table.store(_board->_zobrist_key,
-				// side-to-move comme les stores quiescence (stand_pat = _value*color,
-				// exploration.cpp:902/912) : sinon signe inverse pour les Noirs.
+				// side-to-move like the quiescence stores (stand_pat = _value*color,
+				// exploration.cpp:902/912): otherwise the sign is flipped for Black.
 				tt_normalize_mate(_deep_evaluation._value * _board->get_color(), _board->_moves_count), // #3
 				tt_writeback_depth(_nodes), TT_EXACT);
 		}
 	}
 
-	// FIXME: si on a regardé tous les fils, et qu'aucun des coups n'améliore l'évaluation, on fait quoi?
-	// - Option 1: on garde l'évaluation sans aucun coup
-	// - Option 2: on garde l'évaluation du meilleur coup
-	// Est-ce vraiment grave? peut-être pas car si on continue une profondeur plus loin, explore_random_child() va prendre le meilleur coup
+	// FIXME: what to do when every child has been examined and no move improves the evaluation?
+	// - Option 1: keep the evaluation with no move attached
+	// - Option 2: keep the evaluation of the best move
+	// Probably harmless: one ply deeper, explore_random_child() picks the best move anyway
 }
 
-// Fonction qui explore dans un plateau fils pseudo-aléatoire
+// Explores a pseudo-random child board
 void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, DagExcl* dag_excl) {
 
-	// Prend un fils aléatoire
+	// Pick a random child
 	const Move move = pick_random_child(alpha, beta, gamma, dag_excl);
 
-	// Bug 1 opt 3 — toutes les aretes explorables ont ete §3-exclues sur ce
-	// chemin : plus rien de non-cyclique a raffiner ici cette iteration. On
-	// compte l'iteration (comme la coupe §3) et on sort, sans spin ni acces
-	// _children[null]. OFF : pick ne renvoie jamais null par cette voie.
+	// Bug 1 opt 3 - every explorable edge was section-3 excluded on this path:
+	// nothing acyclic left to refine here this iteration. Count the iteration
+	// (like the section-3 cut) and return, without spinning or touching
+	// _children[null]. OFF: pick never returns null through this path.
 	if (g_tt_node_dag && move.is_null_move()) {
 		_iterations++;
 		return;
@@ -716,40 +716,40 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 
 	ChildLink& child_link = _children[move];
 	Node *child = child_link._node;
-	// #7 / B-1 — historique unique threadé ; push de la position du fils pour
-	// la durée de la récursion uniquement, pop garanti à la sortie de scope.
+	// #7 / B-1 - single threaded history; push the child position for the
+	// duration of the recursion only, pop guaranteed on scope exit.
 	PositionHistory& branch_history = *path_history;
 
 	if (!g_tt_node_dag && child_link._propagated_nodes >= _nodes) {
 		cout << "child nodes >= nodes in random exploration??? main position: " << _board->to_fen() << ", child position: " << child->_board->to_fen() << endl; // tree-only : faux sous DAG
 	}
 
-	// Nombre de noeuds du fils
+	// Child node count
 	const int initial_child_nodes = child_link._propagated_nodes;
 
-	// #11 Plan B §3 — soundness du DAG. Le sous-arbre du fils peut etre PARTAGE
-	// (cree via un chemin A, descendu ici via un chemin B). Le statut de nulle
-	// par repetition est PATH-LOCAL : il n'est ni dans le Node ni dans l'arete,
-	// tous deux PARTAGES. On le re-derive contre l'historique du chemin COURANT.
-	// Si nulle sur ce chemin : on coupe le cycle en NE descendant PAS dans le
-	// sous-arbre partage. On ne mute RIEN de partage (ni child->_deep_evaluation,
-	// ni this->_deep_evaluation, ni child_link, ni node_map) : ecrire une nulle
-	// path-locale sur une structure partagee corromprait l'autre chemin (c'etait
-	// le bug d'oscillation). Conservatif : l'iteration est comptee, la branche
-	// cyclique simplement non approfondie ; le backup normal du parent (plus
-	// bas, via ses autres fils) reste l'autorite. La remontee complete de la
-	// valeur de nulle path-locale (spec §3) est un raffinement suivant, a
-	// decider sur mesure si la profondeur mesuree le justifie. OFF : saute
-	// (comportement arbre actuel — explore_random_child ne re-testait jamais
+	// #11 Plan B section 3 - DAG soundness. The child subtree may be SHARED
+	// (created through path A, descended here through path B). Repetition draw
+	// status is PATH-LOCAL: it lives neither in the Node nor in the edge, both
+	// of which are SHARED. Re-derive it against the CURRENT path history.
+	// Draw on this path: cut the cycle by NOT descending into the shared
+	// subtree. Mutate NOTHING shared (not child->_deep_evaluation, not
+	// this->_deep_evaluation, not child_link, not node_map): writing a
+	// path-local draw onto a shared structure would corrupt the other path
+	// (that was the oscillation bug). Conservative: the iteration is counted,
+	// the cyclic branch simply not deepened; the parent's normal backup
+	// (below, through its other children) remains authoritative. Fully
+	// propagating the path-local draw value (spec section 3) is a later
+	// refinement, to be decided on measurement. OFF: skipped (current tree
+	// behaviour - explore_random_child never re-tested repetition on an
 	// la repetition sur un fils existant).
 	if (g_tt_node_dag && position_is_draw_by_repetition(branch_history, *child->_board)) {
 		g_dag_recheck_hits++;
-		// Detail borne — LA frontiere cle des "incoherences d'eval". On coupe le
-		// cycle (return) AVANT le backup parent (:686) : cette iteration ne
-		// rafraichit pas this->_deep_evaluation et l'arete cyclique n'est PAS
-		// devaluee (spec §3 §"valeur de nulle path-locale" non implementee). Si
-		// la meme arete revient en boucle ici => spin + eval parent figee/
-		// incoherente selon le chemin. C'est l'evidence a confirmer.
+		// Bounded detail - THE key boundary for "eval inconsistencies". The cycle
+		// is cut (return) BEFORE the parent backup (:686): this iteration does not
+		// refresh this->_deep_evaluation and the cyclic edge is NOT devalued
+		// (spec section 3, "path-local draw value", not implemented). If the same
+		// edge loops back here => spin + parent eval frozen/inconsistent depending
+		// on the path. That is the evidence to confirm.
 		if (dag_dbg_take()) {
 			cout << "[DAG] §3-cut child_key=" << std::hex << child->_board->_zobrist_key
 			     << std::dec << " child_pc=" << child->_parent_count
@@ -758,42 +758,42 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 			     << "      parent=" << _board->to_fen() << "\n"
 			     << "      child =" << child->_board->to_fen() << endl;
 		}
-		// Bug 1 opt 3 — anti-spin : memorise l'arete cyclique pour qu'elle ne
-		// soit PAS re-selectionnee par les iterations restantes de cet appel
-		// grogros_zero (liste sur la pile, jamais sur structure partagee :
-		// invariant 772183a respecte ; ne mute toujours RIEN de partage).
-		// Sans liste (OFF / debordement) : coupe conservatrice inchangee.
+		// Bug 1 opt 3 - anti-spin: remember the cyclic edge so the remaining
+		// iterations of this grogros_zero call do NOT re-select it (list on the
+		// stack, never on a shared structure: invariant 772183a respected; still
+		// mutates NOTHING shared).
+		// Without the list (OFF / overflow): conservative cut, unchanged.
 		if (dag_excl != nullptr) dag_excl->add(move);
 		_iterations++;
 		return;
 	}
 
-	// Explore le fils
+	// Explore the child
 	{
 		PathScope _ps(branch_history, *child->_board);
-		child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &branch_history); // L'évaluation du fils est mise à jour ici
+		child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &branch_history); // The child evaluation is updated here
 	}
 
-	// Met à jour l'évaluation du plateau avec le meilleur coup
+	// Update the board evaluation with the best move
 	_deep_evaluation = _children[get_best_score_move(alpha, beta)]._node->_deep_evaluation;
 
-	// #11 Plan A — write-back de la valeur raffinée (le levier réel).
-	// Mêmes gardes que dans explore_new_move.
+	// #11 Plan A - write-back of the refined value (the actual lever).
+	// Same guards as in explore_new_move.
 	if (g_tt_main_search && !_is_terminal && !_is_stand_pat_eval && _deep_evaluation._evaluated) {
 		transposition_table.store(_board->_zobrist_key,
-			// side-to-move comme les stores quiescence (stand_pat = _value*color,
-			// exploration.cpp:902/912) : sinon signe inverse pour les Noirs.
+			// side-to-move like the quiescence stores (stand_pat = _value*color,
+			// exploration.cpp:902/912): otherwise the sign is flipped for Black.
 			tt_normalize_mate(_deep_evaluation._value * _board->get_color(), _board->_moves_count), // #3
 			tt_writeback_depth(_nodes), TT_EXACT);
 	}
 
-	// Augmente le nombre de noeuds. Bug 2 model A : sous DAG, delta par-arete
-	// clamp >=0 (initial_child_nodes du chemin arbre ignore ; un fils PARTAGE
-	// peut retrecir via un autre chemin/reset -> le delta arbre underflow
-	// negatif). OFF : delta arbre inchange -> byte-identique.
+	// Increase the node count. Bug 2 model A: under DAG, per-edge delta
+	// clamped >=0 (the tree path's initial_child_nodes is ignored; a SHARED
+	// child can shrink through another path/reset -> the tree delta underflows
+	// negative). OFF: tree delta unchanged -> byte-identical.
 	if (g_tt_node_dag) {
-		// model A litteral : +1 (idem explore_new_move). Borne, decouple du
-		// child->_nodes partage -> plus de cascade/overflow, N stable.
+		// model A, literally: +1 (same as explore_new_move). Bounded, decoupled
+		// from the shared child->_nodes -> no cascade/overflow, N stays stable.
 		_nodes += 1;
 		child_link._propagated_nodes += 1;
 	}
@@ -810,15 +810,15 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		cout << "negative nodes in explore_random_child child???" << endl;
 	}
 
-	// Augmente le nombre d'itérations
+	// Increase the iteration count
 	_iterations++;
 }
 
-// Fonction qui renvoie le fils le plus exploré
+// Returns the most explored child
 Move Node::get_most_explored_child_move() {
 	int max = -1;
 
-	// Tri simple, on ne départage pas les égalités
+	// Simple sort, ties are not broken
 	Move best_move = Move();
 
 	for (auto const& [move, child_link] : _children) {
@@ -831,15 +831,15 @@ Move Node::get_most_explored_child_move() {
 	return best_move;
 }
 
-// Recyclage free-list d'un noeud detache + son plateau (spec §5).
-// Garde : index dans le buffer (>=0) et pas pendant un reset global.
+// Free-list recycling of a detached node and its board (spec section 5).
+// Guard: buffer index (>=0) and not during a global reset.
 void recycle_detached_node(Node* node) {
 	if (node == nullptr)
 		return;
 
-	// #11 Plan B — un noeud detache et recycle ne doit plus etre joignable via
-	// node_map (sinon pointeur pendant / resurrection). On efface l'entree
-	// seulement si elle pointe bien vers CE noeud (un miss a pu la reecrire).
+	// #11 Plan B - a detached, recycled node must no longer be reachable
+	// through node_map (dangling pointer / resurrection). Erase the entry only
+	// if it really points at THIS node (a miss may have rewritten it).
 	if (g_tt_node_dag && node->_board != nullptr) {
 		const auto it = node_map.find(node->_board->_zobrist_key);
 		if (it != node_map.end() && it->second == node) {
@@ -855,7 +855,7 @@ void recycle_detached_node(Node* node) {
 		monte_node_buffer.free_index(node->_buffer_index);
 }
 
-// Reset le noeud et ses enfants, et les supprime tous
+// Resets the node and its children, and deletes them all
 void Node::reset(bool recursive) {
 	_latest_first_move_explored = -1;
 	_nodes = 0;
@@ -887,8 +887,8 @@ void Node::reset(bool recursive) {
 
 			if (child_link._node->_parent_count <= 0) {
 				child_link._node->reset(true);
-				// Approche B : l'enfant est definitivement detache -> on le
-				// recycle (lui + son plateau). JAMAIS `this` (reuse en place).
+				// Approach B: the child is permanently detached -> recycle it (and its
+				// board). NEVER `this` (reused in place).
 				recycle_detached_node(child_link._node);
 			}
 		}
@@ -897,39 +897,39 @@ void Node::reset(bool recursive) {
 	_children.clear();
 }
 
-// Fonction qui renvoie les variantes d'exploration
+// Returns the exploration variations
 string Node::get_exploration_variants(const double alpha, const double beta, bool main, bool quiescence, int max_depth, PositionHistory* chain) {
 
-	// Protection contre les cycles de transposition
+	// Guard against transposition cycles
 	if (max_depth <= 0) {
 		return "...";
 	}
 
-	// Si on est en fin de variante
+	// End of the variation
 	if (_board->_game_over_value) {
 		return "";
 	}
 
-	// #11 Plan B — stoppe la ligne affichee sur une transposition/repetition.
-	// Sous DAG _children est un graphe et peut reboucler : sans ceci la variante
-	// se deroule jusqu'au cap max_depth (500) -> variantes geantes + GUI tres
-	// lente (rafraichissement toutes les ~3-4 s). Idiome identique a
-	// get_main_depth ; une chaine PAR ligne (copie par fils au noeud principal,
-	// threadee le long d'une ligne unique). Sans DAG aucune cle ne se repete
+	// #11 Plan B - stops the displayed line on a transposition/repetition.
+	// Under DAG _children is a graph and can loop back: without this the
+	// variation unrolls to the max_depth cap (500) -> giant variations and a
+	// very slow GUI (refreshing every ~3-4 s). Same idiom as get_main_depth;
+	// one chain PER line (copied per child at the main node, threaded along a
+	// single line). Without DAG no key ever repeats -> display strictly
 	// -> affichage strictement inchange.
 	PositionHistory local_chain;
 	PositionHistory* c = chain != nullptr ? chain : &local_chain;
 	_board->get_zobrist_key();
-	// Coupe a la nulle reelle : triple (FIDE) sous DAG ; double = seuil arbre
+	// Cut at the real draw: threefold (FIDE) under DAG; twofold = historical
 	// historique quand OFF -> strictement byte-identique (count+1>=limite,
-	// meme forme que position_is_draw_by_repetition).
+	// same shape as position_is_draw_by_repetition).
 	const auto _ch_it = c->find(_board->_zobrist_key);
 	const int _ch_seen = _ch_it != c->end() ? static_cast<int>(_ch_it->second) : 0;
 	const uint8_t _disp_limit = g_tt_node_dag ? display_repetition_limit : search_repetition_limit;
 	if (_ch_seen + 1 >= _disp_limit) {
-		// Detail borne : OU la ligne affichee reboucle (profondeur atteinte
-		// avant le cycle). Quantifie le "variations quasi infinies" cote
-		// affichage. g_tt_node_dag-gardé : OFF -> seuil arbre inchange.
+		// Bounded detail: WHERE the displayed line loops back (depth reached
+		// before the cycle). Quantifies the "near-infinite variations" on the
+		// display side. Guarded by g_tt_node_dag: OFF -> tree threshold unchanged.
 		if (g_tt_node_dag) {
 			g_dag_variant_cuts++;
 			if (dag_dbg_take()) {
@@ -944,24 +944,24 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 
 	string variants;
 
-	// S'il y a des coups explorés
+	// If there are explored moves
 	if (children_count() > 0) {
 
-		// Si on est dans le noeud principal, on affiche toutes les variantes
+		// At the main node, display every variation
 		if (main) {
-			// TODO *** améliorer ce tri...
+			// TODO: improve this sort
 
-			// Trie les enfants par nombre d'itérations par l'algo de GrogrosZero
-			// REVIEW *** voir si le vecteur est trop lent
+			// Sort the children by GrogrosZero iteration count
+			// REVIEW: check whether the vector is too slow
 			vector<pair<int, Move>> children_iterations;
 
 			for (auto const& [move, child_link] : _children) {
-				children_iterations.emplace_back(-child_link._chosen_iterations, move); // On met un moins pour trier dans l'ordre décroissant
+				children_iterations.emplace_back(-child_link._chosen_iterations, move); // Negated to sort in descending order
 			}
 
 			std::ranges::sort(children_iterations.begin(), children_iterations.end());
 
-			// TODO *** trier secondairement par score de coup
+			// TODO: use the move score as a secondary sort key
 
 			for (auto const& [neg_child_iterations, move] : children_iterations) {
 				Node* child = _children[move]._node;
@@ -982,7 +982,7 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 				child_variants += _board->_player ? ". " : "... ";
 				child_variants += _board->move_label(move, true);
 				child_variants += child->children_count() > 0 ? " " : "";
-				PositionHistory child_chain = *c; // ligne independante : prefixe copie, pas de pollution entre fils
+				PositionHistory child_chain = *c; // independent line: prefix copied, no cross-contamination between children
 				child_variants += child->get_exploration_variants(alpha, beta, false, new_quiescence || quiescence, max_depth - 1, &child_chain);
 
 				if (new_quiescence)
@@ -1000,7 +1000,7 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 				);
 				child_variants += buf;
 
-				// Calculs de ratios
+				// Ratio computations
 				const int nodes = _nodes;
 				const int child_nodes = child->_nodes;
 				const int nodes_ratio = nodes == 0 ? 0 : child_nodes * 100 / nodes;
@@ -1010,7 +1010,7 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 				const int chosen_iterations_ratio = iterations == 0 ? 0 : child_chosen_iterations * 100 / iterations;
 
 				if (nodes == 0) {
-					cout << "nodes == 0?? le bug est peut-être ici..." << std::endl;
+					cout << "nodes == 0?? the bug is probably here..." << std::endl;
 				}
 
 				// Ligne 3 : stats
@@ -1032,9 +1032,9 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 
 		}
 
-		// Sinon, on affiche seulement le coup le plus exploré
+		// Otherwise display only the most explored move
 		else {
-			// Affiche seulement le premier coup (le plus exploré, et en cas d'égalité, celui avec la meilleure évaluation)
+			// Display only the first move (most explored, ties broken by best evaluation)
 			const Move best_move = get_best_score_move(alpha, beta, true);
 
 			// Standpat
@@ -1049,17 +1049,17 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 		}
 	}
 
-	// S'il n'y a pas de coups explorés
+	// If no move has been explored
 	else {
 
-		// On affiche l'évaluation du plateau en fin de variante
+		// Display the board evaluation at the end of the variation
 		variants = "";
 	}
 	
 	return variants;
 }
 
-// Fonction qui renvoie la profondeur de la variante principale
+// Returns the depth of the main variation
 int Node::get_main_depth(const double alpha, const double beta, int max_depth, PositionHistory* chain) {
 	if (max_depth <= 0) {
 		return 0;
@@ -1078,25 +1078,25 @@ int Node::get_main_depth(const double alpha, const double beta, int max_depth, P
 			return 0;
 		}
 
-		// #11 Plan B — stoppe la PV sur une transposition/repetition. Sous DAG,
-		// la chaine du meilleur coup peut reboucler (graphe) : sans ceci
-		// get_main_depth recurse jusqu'au cap max_depth=500 (oscillation
+		// #11 Plan B - stops the PV on a transposition/repetition. Under DAG the
+		// best-move chain can loop back (it is a graph): without this
+		// get_main_depth recurses to the max_depth=500 cap (observed 500/shallow
 		// 500/peu profond observee). Idiome null-safe identique a grogros_zero :
-		// le 1er appel possede l'historique de chaine. Sans DAG aucune cle ne
-		// se repete -> meme resultat qu'avant (arbre au byte pres).
+		// call owns the chain history. Without DAG no key ever repeats -> same
+		// result as before (byte-identical to the tree).
 		PositionHistory local_chain;
 		PositionHistory* c = chain != nullptr ? chain : &local_chain;
 		_board->get_zobrist_key();
 		(*c)[_board->_zobrist_key]++;
 		main_child->_board->get_zobrist_key();
-		// Meme seuil que get_exploration_variants : triple (FIDE) sous DAG,
-		// double quand OFF -> profondeur affichee coherente avec le texte de
-		// la variante et byte-identique a l'arbre quand OFF.
+		// Same threshold as get_exploration_variants: threefold (FIDE) under DAG,
+		// twofold when OFF -> displayed depth consistent with the variation text
+		// and byte-identical to the tree when OFF.
 		const auto _mc_it = c->find(main_child->_board->_zobrist_key);
 		const int _mc_seen = _mc_it != c->end() ? static_cast<int>(_mc_it->second) : 0;
 		const uint8_t _md_limit = g_tt_node_dag ? display_repetition_limit : search_repetition_limit;
 		if (_mc_seen + 1 >= _md_limit) {
-			return 0; // la PV atteint la nulle par repetition -> fin de variante
+			return 0; // the PV reaches a repetition draw -> end of the variation
 		}
 
 		return main_child->get_main_depth(alpha, beta, max_depth - 1, c) + 1;
@@ -1105,7 +1105,7 @@ int Node::get_main_depth(const double alpha, const double beta, int max_depth, P
 	return 0;
 }
 
-// Destructeur
+// Destructor
 Node::~Node() {
 	//cout << "destructor not implemented" << endl;
 	//for (int i = 0; i < children_count(); i++) {
@@ -1113,7 +1113,7 @@ Node::~Node() {
 	//}
 }
 
-// Fonction qui renvoie le fils le plus exploré
+// Returns the most explored child
 Node* Node::get_most_explored_child() {
 	Move most_explored_move = get_most_explored_child_move();
 
@@ -1124,104 +1124,104 @@ Node* Node::get_most_explored_child() {
 	return _children[most_explored_move]._node;
 }
 
-// Fonction qui renvoie la vitesse de calcul moyenne en noeuds par seconde
+// Returns the average computation speed in nodes per second
 int Node::get_avg_nps() const {
 	return _time_spent == 0 ? 0 : ((double)_nodes / (double)_time_spent * CLOCKS_PER_SEC);
 }
 
-// Fonction qui renvoie le nombre d'itérations par seconde
+// Returns the number of iterations per second
 int Node::get_ips() const {
 	return _time_spent == 0 ? 0 : ((double)_iterations / (double)_time_spent * CLOCKS_PER_SEC);
 }
 
-// Quiescence search intégré à l'exploration
+// Quiescence search, integrated into the exploration
 int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network, bool evaluate_threats, int beta_margin, PositionHistory *path_history) {
-	// TODO: comment gérer la profondeur? faire en fonction de l'importance de la branche?
-	// mettre aucune profondeur limite?
-	// pourquoi en endgame ça va si loin? il fait full échecs...
+	// Backlog. Already implemented: no cutoff while in check, beta-cutoff margin,
+	// delta pruning, emergency cutoff, threat-aware stand pat, late move reduction,
+	// capture ordering (Board::sort_moves) and transposition reuse.
 
-	// Améliorations:
-	// - Aucun cutoff quand on est en échec (DONE?)
-	// - Marge pour les beta cutoffs (DONE?)
-	// - SEE filtering -> profondeur réduite pour les mauvaises captures
-	// - Delta pruning (DONE?)
-	// - Futility pruning
-	// - Traitement différent des échecs
-	// - Standpat différent s'il y'a beaucoup de menaces adverses (voir test standpat = quiecsence adverse) (DONE?)
-	// - Emergency cutoff (si on est vraiment trop profond...) (DONE?)
-	// - Tri des captures: on regarde en priorité celles qui valent le plus le coup? (DONE?)
-	// - Ne pas regarder les mauvaises captures? à voir si ça casse pas tout...
-	// - Late move reduction (on réduit la profondeur pour les coups les moins prometteurs) (DONE?)
-	// https://medwinpublishers.com/OAJDA/an-optimization-method-for-quiescence-in-chess-playing-automata.pdf : essayer de placer le meilleur coup calme en premier dans la liste des coups à explorer?
-	// - Couper une variante si elle est beaucoup trop en dessous... (delta pruning?)
-	// - Transpositions (beaucoup de positions sont déjà évaluées, on peut les réutiliser)
-	// - Implémenter un générateur de coups spécifique pour la quiescence (seulement les prises par exemple, pour aller plus vite)
-	// - Réduire la profondeur de la quiescence?
-	// - Pruner plus agressivement si on est à faible profondeur restante?
-	// - On peut paramétrer plus ou moins agressivement les facteurs de pruning (delta plus fort par exemple)
-	// - Standpat pruning (voir dans la partie du l'alpha cut au niveau du standpat)
-	// - Optimiser aussi la minimal_quiescence?
-	// - Profondeur générale plus faible, et rendre plus profond quelques coups prometteurs?
-	// - Remettre les échecs?
-	// - History pruning
-	// - Check extensions
-	// - Trier les coups pour parer les échecs avec le meilleur en premier
-	// - A la place des captures, mettre tous les coups qui augmentent l'éval d'un certain facteur? (et faire le tri par évaluation)?
+	// Pruning, still open:
+	// - SEE filtering: reduce depth on bad captures, or skip them outright
+	// - futility pruning
+	// - history pruning
+	// - stand-pat pruning, next to the alpha cut on the stand pat
+	// - prune harder at low remaining depth (the delta factor is tunable)
+	//
+	// Move selection, still open:
+	// - dedicated quiescence move generator (captures only) to go faster
+	// - order check evasions best-first
+	// - try the best quiet move first:
+	//   https://medwinpublishers.com/OAJDA/an-optimization-method-for-quiescence-in-chess-playing-automata.pdf
+	// - instead of captures only, take every move raising the eval by some factor,
+	//   ordered by evaluation
+	//
+	// Depth, still open:
+	// - check extensions are wired but disabled (check_extension is 0)
+	// - should depth track branch importance rather than a fixed cap?
+	// - lower base depth, extended only on the promising moves
+	// - why does quiescence run so deep in endgames? it chains checks all the way
+	// - apply the same work to minimal_quiescence
 
-	//1nb2rk1/r4ppp/p4q2/2p2N2/8/2bB1Q2/PPP2PPP/3RK2R w K - 0 18 : quiescence pourrie ici
-	//r1b2rk1/1p1p2pp/p3p3/2P1p3/nR1K1P2/6B1/P5PP/5B1R w - - 0 3 : ici aussi
-	// 2bk1r2/4b1Qp/8/1P6/3P4/1qp5/4NPPP/R1K2B1R b - - 0 25 : il voit pas le mat en 2?? Db2+ Rd1 Dd2#
-	// 2brr2k/1ppqbppB/p6p/2PP4/1n6/4B2P/3N1PP1/RQ2R1K1 w - - 1 27 : pour mieux comprendre ce genre de positions, rajouter les hanging pieces?
+	// Problem positions under investigation, all reproduced from the GUI.
+	//
+	// Poor quiescence:
+	//   1nb2rk1/r4ppp/p4q2/2p2N2/8/2bB1Q2/PPP2PPP/3RK2R w K - 0 18
+	//   r1b2rk1/1p1p2pp/p3p3/2P1p3/nR1K1P2/6B1/P5PP/5B1R w - - 0 3
+	//   4r3/4b1p1/p2B2k1/7p/1p4p1/1P6/P1P1RPP1/5K2 b - - 3 40 (no quiescence at all)
+	//   3k4/3p1p2/5P2/8/3qP2P/8/PrPQ4/R4K2 b - - 0 33 (no quiescence at all)
+	//   1r1q1r1k/2n4p/p2p1p1Q/2ppR3/7N/8/1PP1N1PP/5R1K b - - 0 24
 
-	// YA DES BUGS DE PRUNING...
-	//r1bqr2k/1pp2p1B/p3p2Q/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 3 26
-	//r1bqr1k1/1pp2p2/p3p1BQ/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 5 27 : #2......
-	//r1bqr1k1/1pp2p1Q/p3p1B1/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 b - - 6 27 ... ? il regarde pas plus loin?? il affiche pas #1 comme éval...
+	// Search stops before the end of the line:
+	//   r3r3/P2k2pp/1Bb5/6N1/3P1n2/1Q1q4/PP3PPP/1KR5 w - - 3 27 (worse than stand pat?)
+	//   1nb2rk1/r4ppp/p4q2/1Bp1bN2/8/2N2Q2/PPP2PPP/3RK2R w K - 1 17 (after Bxc3)
+	//   1r1q1r1k/2n4p/p2p1p1Q/2ppn3/7N/4R3/1PP1N1PP/5R1K w - - 1 24 (after Rxe5)
+	//   3k4/3p1p2/5P2/8/3qP2P/8/PrPQ1R2/R3K1r1 w Q - 4 32
+	//
+	// Mate not seen:
+	//   2bk1r2/4b1Qp/8/1P6/3P4/1qp5/4NPPP/R1K2B1R b - - 0 25 (misses #2: Qb2+ Kd1 Qd2#)
+	//   r1bqr1k1/1pp2p2/p3p1BQ/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 5 27 (misses #2)
+	//   r1bqr1k1/1pp2p1Q/p3p1B1/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 b - - 6 27 (does not show #1)
+	//   1knr4/8/Qp3R1p/1N1r4/1P4p1/5P2/6PP/R6K b - - 0 36 (does not consider Rd1+)
+	//   r1bqr2k/1pp2p1B/p3p2Q/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 3 26 (pruning suspected)
+	//
+	// Evaluation questioned, cause not yet isolated:
+	//   2brr2k/1ppqbppB/p6p/2PP4/1n6/4B2P/3N1PP1/RQ2R1K1 w - - 1 27 (add hanging pieces?)
+	//   2rqr1k1/pNbnnpp1/2p1p1p1/P2pP3/Q2P4/B1P4P/4BPP1/RR4K1 b - - 6 22 (queen threatened on d8)
+	//   r4rk1/ppp2ppp/2nq1b2/2n5/2Pp4/2NBQ2P/PP1B1PP1/R3R1K1 w - - 0 16
+	//   rnbqkbnr/pp2pppp/2p5/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3
+	//   r1bqk2r/ppp2ppp/1b6/1P1nP3/2B5/5P2/P5PP/RNBQK1NR b KQkq - 0 10
+	//   rnb2bnr/ppp1pppp/2k1q3/8/8/3B4/PPPP1PPP/RNB1K1NR w KQ - 0 4
+	//
+	// Perpetual-check and draw test positions:
+	//   3Q4/5pkp/2p1p3/2p1P1pq/5P2/4K3/6PP/2r5 w - - 2 5
+	//   3k4/3p4/8/8/3q4/8/3Q1R2/4K1r1 w - - 4 32
 
-	// r4rk1/ppp2ppp/2nq1b2/2n5/2Pp4/2NBQ2P/PP1B1PP1/R3R1K1 w - - 0 16 : ??????????????
-	//rnbqkbnr/pp2pppp/2p5/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3 : ????
-	// 4r3/4b1p1/p2B2k1/7p/1p4p1/1P6/P1P1RPP1/5K2 b - - 3 40 : pas de quiescence???
-	// r1bqk2r/ppp2ppp/1b6/1P1nP3/2B5/5P2/P5PP/RNBQK1NR b KQkq - 0 10
-	// FIX!! r3r3/P2k2pp/1Bb5/6N1/3P1n2/1Q1q4/PP3PPP/1KR5 w - - 3 27 : quiescence qui ne va pas jusqu'au bout? (peut-être car c'est moins bon que le standpat?)
-	// 3k4/3p1p2/5P2/8/3qP2P/8/PrPQ1R2/R3K1r1 w Q - 4 32 : pareil, la quiescence?
-	// 3k4/3p4/8/8/3q4/8/3Q1R2/4K1r1 w - - 4 32 : test
-	// 3k4/3p1p2/5P2/8/3qP2P/8/PrPQ4/R4K2 b - - 0 33 : 0 quiescence ici?
-	// 1r1q1r1k/2n4p/p2p1p1Q/2ppn3/7N/4R3/1PP1N1PP/5R1K w - - 1 24 : quiescence buggée après Txe5??????????
-	// 1nb2rk1/r4ppp/p4q2/1Bp1bN2/8/2N2Q2/PPP2PPP/3RK2R w K - 1 17 : après Fxc3, ça va pas au bout des variantes...
-	// 2rqr1k1/pNbnnpp1/2p1p1p1/P2pP3/Q2P4/B1P4P/4BPP1/RR4K1 b - - 6 22 : menace la dame en d8
-	//rnb2bnr/ppp1pppp/2k1q3/8/8/3B4/PPPP1PPP/RNB1K1NR w KQ - 0 4
-	// 1knr4/8/Qp3R1p/1N1r4/1P4p1/5P2/6PP/R6K b - - 0 36 : il regarde pas Td1+?
-	// 3Q4/5pkp/2p1p3/2p1P1pq/5P2/4K3/6PP/2r5 w - - 2 5 : perpet TEST
-	//r1bqr1k1/1pp2p2/p3p1BQ/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 5 27 : le check extension fonctionne pas?
-	// 3Q2k1/5p1p/2p1p3/2p1P1pq/5P2/4K3/6PP/2r5 b - - 1 4 : position test nulle
-	// 1r1q1r1k/2n4p/p2p1p1Q/2ppR3/7N/8/1PP1N1PP/5R1K b - - 0 24 : quiescence ici
-
-	// On a au moins évalué le plateau du noeud
+	// The node board has been evaluated at least once
 	if (_nodes <= 0) {
 		_nodes = 1;
 	}
 
-	// Temps de calcul
+	// Computation time
 	const clock_t begin_monte_time = clock();
 
-	// Initialisation du noeud
+	// Node initialisation
 	init_node();
 	_board->get_zobrist_key();
 
 	// #7 / B-1 — null-safe path history (appel manuel quiescence via main_gui.h) :
-	// historique local possédé pour TOUTE la durée de l'appel. Doit être déclaré
-	// au scope fonction (jamais par coup, sinon path_history pend sur le local
-	// détruit de l'itération précédente). Idiome identique à grogros_zero.
-	// Chemin recherche : path_history toujours non nul → no-op.
+	// a local history owned for the WHOLE duration of the call. It must be declared
+	// at function scope (never per move, otherwise path_history dangles on the
+	// destroyed local of the previous iteration). Same idiom as grogros_zero.
+	// Search path: path_history is always non-null -> no-op.
 	PositionHistory local_path_history;
 	if (path_history == nullptr) {
 		path_history = &local_path_history;
 	}
 
-	// Couleur du joueur
+	// Side to move
 	int color = _board->get_color();
 
-	// Evalue la position
+	// Evaluate the position
 	if (!_static_evaluation._evaluated) {
 		evaluate_position(eval, false, network, true);
 	}
@@ -1231,7 +1231,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 	_quiescence_depth = depth;
 
-	// Si la partie est finie
+	// If the game is over
 	if (_is_terminal) {
 		_nodes = 1;
 		_iterations = 1;
@@ -1247,7 +1247,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	// TT Probe
 	const ZobristEntry* tt_entry = transposition_table.probe(_board->_zobrist_key);
 	if (tt_entry != nullptr && tt_entry->_depth >= depth) {
-		const int tt_eval = tt_denormalize_mate(tt_entry->_eval, _board->_moves_count); // #3 : dé-canonise la distance de mat au _moves_count du nœud courant
+		const int tt_eval = tt_denormalize_mate(tt_entry->_eval, _board->_moves_count); // #3: de-canonise the mate distance against the current node's _moves_count
 		bool tt_cutoff = false;
 
 		if (tt_entry->_flag == TT_EXACT) {
@@ -1255,9 +1255,9 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			tt_cutoff = true;
 		}
 		else if ((tt_entry->_flag == TT_BETA || tt_entry->_flag == TT_STANDPAT) && tt_eval >= beta) {
-			// TT_STANDPAT = borne inférieure statique : même consommation que TT_BETA
-			// (cutoff seulement si tt_eval >= beta -> fail-high sain). Jamais de cutoff
-			// "exact" fenêtre-indépendante sur une éval statique (BUGFIXES #4).
+			// TT_STANDPAT = static lower bound: consumed exactly like TT_BETA (cutoff
+			// only when tt_eval >= beta -> a sound fail-high). Never a window-independent
+			// "exact" cutoff on a static evaluation (BUGFIXES #4).
 			_deep_evaluation._value = beta * color;
 			tt_cutoff = true;
 		}
@@ -1267,178 +1267,178 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 		}
 
 		if (tt_cutoff) {
-			// Le cutoff n'a fixé que _value. Les champs dérivés (_wdl, _avg_score)
-			// venaient encore de l'éval statique : un parent héritant de cette
-			// _deep_evaluation voyait une éval incohérente (ex: _value = mat mais
-			// _avg_score d'une position normale), ce qui faussait get_node_score.
-			// On les recalcule à partir du _value de la TT.
-			// Si _value est un score de mat, get_WDL le remixe avec _uncertainty et
-			// _winnable_* restés statiques (board.cpp:10061-10070) -> le score ne
-			// converge pas vers 0/1 (ex: M4 affiché mais score 0.934, conf 87%).
-			// On remet ces champs cohérents comme le chemin terminal (board.cpp:1575-1577).
-			// #14 : une valeur issue d'un cutoff TT est une valeur *recherchée*
-			// jugée fiable au point d'arrêter la recherche. Son score affiché
-			// (_avg_score via get_WDL) doit dériver du _value de la TT, pas de
-			// l'_uncertainty de l'éval *statique* restée en place (sinon value et
-			// score divergent jusqu'à ré-exploration). On force _uncertainty=0
-			// pour TOUT cutoff — généralisation du fix #1 v2 au cas non-mat,
-			// cohérent avec les chemins terminal/mat/NN (board.cpp:1558/1575/1592).
-			// #1 v2 / #14 : champs dérivés cohérents depuis le _value de la TT.
-			// Logique factorisée dans tt_fixup_derived (réutilisée par la
-			// feuille TT de la recherche principale, #11 Plan A).
+			// The cutoff only set _value. The derived fields (_wdl, _avg_score) still
+			// came from the static evaluation: a parent inheriting this _deep_evaluation
+			// saw an inconsistent evaluation (e.g. _value = mate but _avg_score from a
+			// normal position), which skewed get_node_score. Recompute them from the
+			// TT _value.
+			// If _value is a mate score, get_WDL remixes it with _uncertainty and the
+			// still-static _winnable_* (board.cpp:10061-10070) -> the score does not
+			// converge to 0/1 (e.g. M4 displayed but score 0.934, confidence 87%).
+			// Reset those fields the way the terminal path does (board.cpp:1575-1577).
+			// #14: a value coming from a TT cutoff is a *searched* value, trusted enough
+			// to stop the search. Its displayed score (_avg_score via get_WDL) must
+			// derive from the TT _value, not from the *static* evaluation's _uncertainty
+			// left in place (otherwise value and score diverge until re-exploration).
+			// _uncertainty is forced to 0 for EVERY cutoff - the #1 v2 fix generalised
+			// to the non-mate case, consistent with the terminal/mate/NN paths
+			// (board.cpp:1558/1575/1592).
+			// #1 v2 / #14: derived fields made consistent from the TT _value. The logic
+			// is factored into tt_fixup_derived (reused by the main search's TT leaf,
+			// #11 Plan A).
 			tt_fixup_derived(_deep_evaluation);
 
 			transposition_table._stats._cutoffs++;
 			_time_spent += clock() - begin_monte_time;
 			if (tt_entry->_flag == TT_EXACT) return tt_eval;
 			if (tt_entry->_flag == TT_ALPHA) return alpha;
-			return beta; // TT_BETA / TT_STANDPAT : borne inférieure (fail-high) -> beta
+			return beta; // TT_BETA / TT_STANDPAT: lower bound (fail-high) -> beta
 		}
 	}
 
-	// Si on est en échec (pour ne pas terminer les variantes sur un échec)
+	// In check, so that variations do not end on a check
 	const bool in_check = _board->in_check();
 
 	// Emergency cutoff: depth - 4
 	if (depth <= -4) {
-		transposition_table.store(_board->_zobrist_key, tt_normalize_mate(stand_pat, _board->_moves_count), depth, TT_STANDPAT); // #4 borne inf statique ; #3 mat canonisé
+		transposition_table.store(_board->_zobrist_key, tt_normalize_mate(stand_pat, _board->_moves_count), depth, TT_STANDPAT); // #4 static lower bound; #3 canonised mate
 		_time_spent += clock() - begin_monte_time;
 		cout << "emergency cutoff: " << _board->to_fen() << ", in_check: " << in_check << endl;
 		return stand_pat;
 	}
 
-	// Profondeur nulle, on renvoie le standpat
+	// Depth exhausted, return the stand pat
 	if (depth <= 0 && !in_check) {
-		transposition_table.store(_board->_zobrist_key, tt_normalize_mate(stand_pat, _board->_moves_count), depth, TT_STANDPAT); // #4 borne inf statique ; #3 mat canonisé
+		transposition_table.store(_board->_zobrist_key, tt_normalize_mate(stand_pat, _board->_moves_count), depth, TT_STANDPAT); // #4 static lower bound; #3 canonised mate
 		_time_spent += clock() - begin_monte_time;
 		return stand_pat;
 	}
 
-	// Marge, qui dépend de la menace adverse (jugée grâce à la valeur de la quiescence sur le tour de l'adversaire)
+	// Margin depending on the opponent threat, judged from the quiescence value on the opponent's turn
 	if (evaluate_threats && !in_check) {
-		// Fait une courte quiescence pour évaluer la menace
-		int new_stand_pat = -evaluate_quiescence_threat(eval, 2, search_alpha, search_beta, -INT32_MAX, INT32_MAX, network); // REVIEW *** faut-il faire une recherche plus profonde ?
+		// Run a short quiescence to evaluate the threat
+		int new_stand_pat = -evaluate_quiescence_threat(eval, 2, search_alpha, search_beta, -INT32_MAX, INT32_MAX, network); // REVIEW: should this search deeper?
 
-		// Il faut aussi prendre en compte que le trait ayant changé de camp, il y a une petite variation d'évaluation due à cela...
-		// Marge de 100 en moins
+		// The side to move has flipped, which itself shifts the evaluation slightly
+		// 100 less margin
 		new_stand_pat += 100;
 
 		beta_margin = max(0, stand_pat - new_stand_pat);
 	}
 
-	// Si la branche est vraiment trop pourrie, on peut peut-être quand-même accepter un standpat
+	// If the branch is truly hopeless, a stand pat may still be acceptable
 	double total_beta = in_check ? (double)beta + 500 : (double)beta + beta_margin;
 
-	// FIXME *** normal qu'on envoie la beta margin sur toute la profondeur?
+	// FIXME: is it right to carry the beta margin down the whole depth?
 
 	if (stand_pat >= total_beta) {
-		transposition_table.store(_board->_zobrist_key, tt_normalize_mate(beta, _board->_moves_count), depth, TT_BETA); // #3 mat canonisé
+		transposition_table.store(_board->_zobrist_key, tt_normalize_mate(beta, _board->_moves_count), depth, TT_BETA); // #3 canonised mate
 		_time_spent += clock() - begin_monte_time;
 		//cout << "beta cutoff1: " << stand_pat << " >= " << beta << " + " << beta_margin << endl;
 		return beta;
 	}
 
-	// TODO *** Test du standpat pruning (futility pruning)
+	// TODO: try stand-pat pruning (futility pruning)
 	//constexpr int standpat_pruning_threshold = 1000;
 
 	//if (stand_pat + standpat_pruning_threshold <= alpha)
 	//	_time_spent += clock() - begin_monte_time;
 	//	return stand_pat;
 
-	// Mise à jour de alpha si l'éval statique est plus grande
+	// Raise alpha if the static evaluation is higher
 	if (stand_pat > alpha && !in_check) {
 		alpha = stand_pat;
 	}
 
 	int move_index = 0;
 
-	// Regarde toutes les captures
+	// Look at every capture
 	for (int i = 0; i < _board->_got_moves; i++) {
 
-		// Coup
+		// Move
 		const Move move = _board->_moves[i];
 		
-		// Déjà exploré ?
+		// Already explored?
 		bool already_explored = _children.contains(move);
 
-		// *** FAUT-IL EXPLORER CE COUP? ***
+		// *** SHOULD THIS MOVE BE EXPLORED? ***
 
-		// Si on est en échec, on explore tous les coups
+		// While in check, every move is explored
 		const bool should_explore = in_check || move.is_capture() || move.is_promotion() || move.is_checkmate() || move.is_check();
 
 		// *** EXPLORATION ***
-		// Si c'est une capture/échec/promotion, on explore
+		// Captures, checks and promotions are explored
 		if (should_explore) {
 
-			// Profondeur ajustée
+			// Adjusted depth
 			int new_depth = depth;
 
-			// Prolongement de la profondeur en cas d'échec
+			// Depth extension on a check (currently disabled: the constant is 0)
 			constexpr int check_extension = 0;
 			new_depth += move.is_check() ? check_extension : 0;
 
-			// Réduction de la profondeur pour les coups moins prometteurs
+			// Depth reduction for the less promising moves
 			new_depth -= in_check ? 0 : move_index * 2;
 
 			if (new_depth <= 0 && !in_check) {
-				continue; // On ne regarde plus les coups si on est trop profond
+				continue; // Stop looking at moves once we are too deep
 			}
 
 			move_index++;
 			
-			// #7 / B-1 — historique unique threadé (plus de copie par coup).
-			// La répétition reste correcte (clés Zobrist uniques par époque
-			// réversible) ; push/pop équilibré via PathScope plus bas.
+			// #7 / B-1 - single threaded history (no more per-move copy).
+			// Repetition stays correct (Zobrist keys unique per reversible epoch);
+			// balanced push/pop through PathScope below.
 			PositionHistory& branch_history = *path_history;
 
-			// Test du delta pruning
+			// Delta pruning
 			if (!move.is_checkmate()) {
 
 				constexpr int delta = 500;
 
 				constexpr int piece_values[6] = { 100, 300, 300, 500, 900, 10000 }; // P, N, B, R, Q, K
 				constexpr int promotion_value = 1000;
-				constexpr int check_value = 500; // Valeur d'un échec
+				constexpr int check_value = 500; // Value of a check
 
-				// Estimation rapide de ce que le coup peut apporter
+				// Quick estimate of what the move can bring
 				int best_estimation = 0;
 
-				// Si c'est une promotion, on ajoute la valeur de la promotion
+				// Promotion: add the promotion value
 				if (move.is_promotion()) {
 					best_estimation += promotion_value;
 				}
 
-				// Si c'est une capture, on ajoute la valeur de la pièce capturée
+				// Capture: add the value of the captured piece
 				else if (move.is_capture()) {
 					best_estimation += piece_values[(_board->_array[move.end_row][move.end_col] - 1) % 6];
 				}
 
-				// Si c'est un échec, on ajoute la valeur de l'échec
+				// Check: add the check value
 				else if (move.is_check()) {
 					best_estimation += check_value;
 				}
 
 				if (stand_pat + best_estimation + delta < alpha) {
-					continue; // On ne regarde pas ce coup
+					continue; // Skip this move
 				}
 			}
 
-			// Création du noeud fils
+			// Create the child node
 			Node *child = nullptr;
 			ChildLink* child_link = already_explored ? &_children[move] : nullptr;
 
-			// Si on a déjà exploré ce coup, mais pas complètement
+			// If this move was already explored, but not completely
 			if (already_explored) {
 				child = child_link->_node;
-				// position poussée pour la durée de la récursion par le PathScope ci-dessous
+				// position pushed for the duration of the recursion by the PathScope below
 			}
 
-			// On crée un nouveau noeud pour ce coup
+			// Create a new node for this move
 			else {
-				// Prend une place dans le buffer
+				// Take a slot in the buffer
 				Board* new_board = board_buffer->get_first_free_board();
 
-				// Buffer plein
+				// Buffer full
 				if (new_board == nullptr) {
 					_time_spent += clock() - begin_monte_time;
 					return alpha;
@@ -1448,13 +1448,13 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				new_board->_is_active = true;
 				new_board->make_move(move, false, true);
 
-				// Si la position est déjà présente dans l'historique, on considère que c'est une nulle.
-				// Ici encore, l'information appartient au chemin courant et pas au noeud parent.
+				// If the position already appears in the history, treat it as a draw.
+				// Again, this belongs to the current path, not to the parent node.
 				if (position_is_draw_by_repetition(branch_history, *new_board)) {
-					// Création du noeud fils
+					// Create the child node
 					child = monte_node_buffer.get_first_free_node();
 
-					// Buffer plein
+					// Buffer full
 					if (child == nullptr) {
 						_time_spent += clock() - begin_monte_time;
 						return alpha;
@@ -1464,13 +1464,13 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				}
 
 				else {
-					// position poussée pour la durée de la récursion par le PathScope ci-dessous
+					// position pushed for the duration of the recursion by the PathScope below
 					new_board->get_zobrist_key();
 
-					// Pas de partage via TT (même raison que explore_new_move)
+					// No TT sharing (same reason as in explore_new_move)
 					child = monte_node_buffer.get_first_free_node();
 
-					// Buffer plein
+					// Buffer full
 					if (child == nullptr) {
 						_time_spent += clock() - begin_monte_time;
 						return alpha;
@@ -1483,8 +1483,8 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				child_link = &_children[move];
 			}
 
-			// Appel récursif sur le fils — #7/B-1 : push la position du fils
-			// pour la durée de la récursion, pop garanti à la sortie de scope.
+			// Recursive call on the child - #7/B-1: pushes the child position for
+			// the duration of the recursion, pop guaranteed on scope exit.
 			int score;
 			{
 				PathScope _ps(branch_history, *child->_board);
@@ -1496,13 +1496,13 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				child_link->_propagated_nodes = child->_nodes;
 			}
 
-			// Mise à jour de l'évaluation du plateau
+			// Update the board evaluation
 			bool all_moves_explored = children_count() == _board->_got_moves;
 
-			// Tous les coups ont été explorés, donc on met à jour l'évaluation du plateau avec le meilleur coup
+			// All moves explored, so update the board evaluation with the best move
 			Move best_move = get_best_score_move(search_alpha, search_beta, !all_moves_explored, new_depth - 1);
 
-			// Standpat = le meilleur
+			// Stand pat is the best
 			if (best_move.is_null_move()) {
 				//_is_stand_pat_eval = true;
 			}
@@ -1516,12 +1516,12 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 			// Beta cut-off
 			if (score >= beta) {
-				transposition_table.store(_board->_zobrist_key, tt_normalize_mate(beta, _board->_moves_count), depth, TT_BETA); // #3 mat canonisé
+				transposition_table.store(_board->_zobrist_key, tt_normalize_mate(beta, _board->_moves_count), depth, TT_BETA); // #3 canonised mate
 				_time_spent += clock() - begin_monte_time;
 				return beta;
 			}
 
-			// Mise à jour de alpha si l'éval statique est plus grande
+			// Raise alpha if the static evaluation is higher
 			if (score > alpha) {
 				alpha = score;
 			}
@@ -1529,12 +1529,12 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	}
 
 	// TT Store
-	// BUGFIXES #4 : si la valeur finale est le plancher stand-pat (aucun fils ne l'a
-	// dépassée -> alpha == stand_pat alors que alpha > original_alpha), ce n'est PAS
-	// une valeur exacte recherchée mais une borne inférieure statique. La marquer
-	// TT_STANDPAT (consommée comme TT_BETA) au lieu de TT_EXACT évite les faux cutoffs
-	// fenêtre-indépendants (déblocage #11 plan A). En cas d'égalité exacte rare
-	// fils==stand_pat, on dégrade TT_EXACT->TT_STANDPAT : conservatif donc toujours sain.
+	// BUGFIXES #4: if the final value is the stand-pat floor (no child beat it, so
+	// alpha == stand_pat while alpha > original_alpha), it is NOT an exact searched
+	// value but a static lower bound. Marking it TT_STANDPAT (consumed like
+	// TT_BETA) instead of TT_EXACT avoids window-independent false cutoffs
+	// (this unblocked #11 plan A). On the rare exact tie
+	// child==stand_pat, TT_EXACT degrades to TT_STANDPAT: conservative, so sound.
 	TTFlag tt_flag;
 	if (alpha <= original_alpha)
 		tt_flag = TT_ALPHA;
@@ -1542,15 +1542,15 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 		tt_flag = TT_STANDPAT;
 	else
 		tt_flag = TT_EXACT;
-	transposition_table.store(_board->_zobrist_key, tt_normalize_mate(alpha, _board->_moves_count), depth, tt_flag); // #3 mat canonisé
+	transposition_table.store(_board->_zobrist_key, tt_normalize_mate(alpha, _board->_moves_count), depth, tt_flag); // #3 canonised mate
 
-	// Temps de calcul
+	// Computation time
 	_time_spent += clock() - begin_monte_time;
 
 	return alpha;
 }
 
-// Fonction qui renvoie le nombre de noeuds fils complètement explorés
+// Returns the number of fully explored child nodes
 int Node::get_fully_explored_children_count() const {
 	int count = 0;
 
@@ -1563,7 +1563,7 @@ int Node::get_fully_explored_children_count() const {
 	return count;
 }
 
-// Fonction qui renvoie la somme des noeuds des fils
+// Returns the sum of the children node counts
 int Node::count_children_nodes() const {
 	int sum = 0;
 
@@ -1576,13 +1576,13 @@ int Node::count_children_nodes() const {
 	return sum;
 }
 
-// Fonction qui renvoie le nombre de noeuds total
-// TODO: à utiliser seulement pour savoir si le buffer est plein
+// Returns the total node count
+// TODO: should only be used to tell whether the buffer is full
 int Node::get_total_nodes() const {
 	return count_children_nodes() + 1;
 }
 
-// Fonction qui évalue la position
+// Evaluates the position
 void Node::evaluate_position(Evaluator* evaluator, bool display, Network * network, bool game_over_check, bool static_only) {
 	_board->evaluate(&_static_evaluation, evaluator, display, network, game_over_check);
 
@@ -1591,28 +1591,28 @@ void Node::evaluate_position(Evaluator* evaluator, bool display, Network * netwo
 	}
 }
 
-// Fonction qui renvoie un noeud fils pseudo-aléatoire (en fonction des évaluations et du nombre de noeuds)
+// Returns a pseudo-random child node, weighted by evaluations and node counts
 Move Node::pick_random_child(const double alpha, const double beta, const double gamma, const DagExcl* dag_excl) {
-	// TESTS
-	// 8/8/8/1r5p/2p4k/2Kb4/8/8 b - - 1 69 : tout égal quand tout gagne...
+	// Positions where every move wins and the search wastes time separating them:
+	//   8/8/8/1r5p/2p4k/2Kb4/8/8 b - - 1 69
 	// r2qr1k1/3bbp1p/p2pn1p1/3QP3/3P4/3B1N2/1P1B1PPP/R3R1K1 w - - 1 24 : pareil
-	// 3b2rk/3P2pp/8/p7/8/2Q1p3/PP1p1pPP/3RqR1K b - - 1 36 : il faut pas 100% de reflexion sur un coup, quand tous les coups gagnent
+	//   3b2rk/3P2pp/8/p7/8/2Q1p3/PP1p1pPP/3RqR1K b - - 1 36 (should not spend 100% on one move)
 	// 8/8/8/1r5p/2p2k2/2Kb4/8/8 b - - 5 71 : pareil...
-	// R3r1k1/1P3p2/3p2p1/5nb1/4r3/2P1p2P/4N3/2BK4 w - - 2 36 : il faut regarder Tc8 si toutes les réponses adverses sont pourries
+	//   R3r1k1/1P3p2/3p2p1/5nb1/4r3/2P1p2P/4N3/2BK4 w - - 2 36 (Rc8 deserves a look)
 	// r1r3k1/pp2bppp/3q4/3Pnp2/4nB2/2NB4/PP3PPP/R2QR1K1 w - - 5 16 : ???
 
-	// Meilleur coup explorable
+	// Best explorable move
 	Move move_to_play = Move();
 	double explorable_best_score = -DBL_MAX;
 
-	// Scores des coups
+	// Move scores
 
 	int color = _board->get_color();
 
-	// Meilleure valeur d'évaluation
+	// Best evaluation value
 	int max_eval = -INT_MAX;
 
-	// Meilleure chance de gagner
+	// Best winning chance
 	double max_avg_score = 0.0;
 
 	for (auto const& [_, child_link] : _children) {
@@ -1633,13 +1633,13 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		double score;
 	};
 
-	// Boost les valeurs de chaque coup en fonction de leur position
+	// Boost each move value according to its rank
 	static constexpr double boost_table[5] = { 25.0, 8.0, 4.0, 3.0,	2.0 };
 
 	ScoredMove top[5];
 	int top_count = 0;
 
-	// Tri par insertion (fonction à implémenter)
+	// Insertion sort (helper still to be extracted)
 	for (auto const& [move, score] : move_scores) {
 
 		int j = top_count;
@@ -1661,7 +1661,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 			top[j] = { move, score };
 	}
 
-	// Application du bonus
+	// Apply the bonus
 	for (int i = 0; i < top_count; ++i) {
 		Move m = top[i].move;
 		move_scores[m] = top[i].score * boost_table[i];
@@ -1670,16 +1670,16 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	Move best_move;
 	double best_score = 0.0;
 
-	// Regarde chaque coup
+	// Look at every move
 	for (auto const& [move, child_link] : _children) {
-		// Bug 1 opt 3 — arete §3-exclue sur ce chemin : ecartee de best_move
-		// ET move_to_play, donc les iterations restantes de cet appel
-		// grogros_zero ne spinnent plus dessus. OFF : dag_excl == nullptr
-		// -> aucun effet -> byte-identique a l'arbre.
+		// Bug 1 opt 3 - edge section-3 excluded on this path: kept out of best_move
+		// AND move_to_play, so the remaining iterations of this grogros_zero call
+		// no longer spin on it. OFF: dag_excl == nullptr -> no effect ->
+		// byte-identical to the tree.
 		if (dag_excl != nullptr && dag_excl->contains(move)) continue;
 		Node* child = child_link._node;
 
-		// Score du coup
+		// Move score
 		double move_score = move_scores[move];
 
 		// Facteur d'exploration
@@ -1694,17 +1694,17 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		// Score final
 		double score = move_score * exploration_score;
 
-		// rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2 : il doit garder Dh4 comme 99% de chosen, mais regarder les autres normalement...
+		// rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2: Qh4 should stay at 99% chosen while the others are still examined normally
 
-		// Si tous les coups n'ont pas été regardés: augmente beaucoup le score
+		// If not every move has been examined, raise the score sharply
 		//if (child->get_fully_explored_children_count() < child->_board->_got_moves) {
 		//	score *= 10.0;
 		//}
 
-		// r2qk2r/1pp1b3/p3p3/n2P1bp1/4N2p/P3QP1B/1P6/2KR3R w kq - 1 21 : il faut régler ça...
+		// r2qk2r/1pp1b3/p3p3/n2P1bp1/4N2p/P3QP1B/1P6/2KR3R w kq - 1 21: needs fixing
 		// R3r1k1/1P3p2/3p2p1/5nb1/4r3/2P1p2P/4N3/2BK4 w - - 2 36 : Tc8...
 
-		// Tant qu'on a pas regardé tous les coups, on met un bonus
+		// Apply a bonus while some moves are still unexamined
 		if (child->_is_stand_pat_eval) {
 			Evaluation best_eval = Evaluation();
 			//Evaluation best_eval = child->_deep_evaluation;
@@ -1738,17 +1738,17 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 				//cout << "new score: " << score << endl;
 			}
 		}
-		// Utiliser la différence d'évaluation entre les coups et le stand pat?
+		// Use the evaluation gap between the moves and the stand pat?
 
 		//cout << "move: " << _board->move_label(move) << " | move_score: " << move_score << " | exploration_score : " << exploration_score << " | fully_explored : " << child->get_fully_explored_children_count() << " / " << child->children_count() << " = score : " << score << endl;
 
-		// Si le score est meilleur
+		// If the score is better
 		if (score > best_score) {
 			best_score = score;
 			best_move = move;
 		}
 
-		// Si le coup est explorable
+		// If the move is explorable
 		if (child->_can_explore && score > explorable_best_score) {
 			explorable_best_score = score;
 			move_to_play = move;
@@ -1757,17 +1757,17 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 
 	//cout << "best move: " << _board->move_label(best_move) << " | best score: " << best_score << endl << endl;
 
-	// Bug 1 opt 3 — toutes les aretes explorables §3-exclues sur ce chemin :
-	// aucun candidat. On signale "rien" (coup nul) ; explore_random_child
-	// compte l'iteration et sort sans spin ni _children[null]. OFF : dag_excl
-	// == nullptr -> ce cas ne se produit jamais, chemin arbre (cout + .at)
+	// Bug 1 opt 3 - every explorable edge section-3 excluded on this path: no
+	// candidate. Report "nothing" (null move); explore_random_child counts the
+	// iteration and returns without spinning or touching _children[null].
+	// OFF: dag_excl == nullptr -> this case never occurs, the tree path
 	// strictement inchange.
 	if (best_move.is_null_move()) {
 		if (dag_excl != nullptr) return Move();
 		cout << "null move considered to be the best??" << endl;
 	}
 
-	// Meilleur coup global
+	// Overall best move
 	_children.at(best_move)._chosen_iterations++;
 
 	if (move_to_play.is_null_move()) {
@@ -1777,22 +1777,22 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	return move_to_play;
 }
 
-// Fonction qui renvoie le score des coup
+// Returns the move scores
 robin_map<Move, double> Node::get_move_scores(const double alpha, const double beta, const bool consider_standpat, const int qdepth) const {
 
-	// Pour le standpat, on l'associe au null move
+	// The stand pat is associated with the null move
 
 	// TEST: 8/8/8/1r5p/2p2k2/2Kb4/8/8 b - - 5 71
 
 	int color = _board->get_color();
 
-	// Meilleure valeur d'évaluation
+	// Best evaluation value
 	int max_eval = -INT_MAX;
 
-	// Meilleure chance de gagner
+	// Best winning chance
 	double max_avg_score = 0.0;
 
-	// Cherche la meilleure eval et le meilleure score parmi tous les coups possibles
+	// Find the best evaluation and the best score among all possible moves
 	for (auto const& [_, child_link] : _children) {
 		Node* child = child_link._node;
 		if (child->_deep_evaluation._value * color > max_eval) {
@@ -1805,7 +1805,7 @@ robin_map<Move, double> Node::get_move_scores(const double alpha, const double b
 	}
 
 	if (consider_standpat) {
-		// Si le stand pat est meilleur que le meilleur coup
+		// If the stand pat beats the best move
 		if (_deep_evaluation._value * color > max_eval) {
 			max_eval = _deep_evaluation._value * color;
 		}
@@ -1817,12 +1817,12 @@ robin_map<Move, double> Node::get_move_scores(const double alpha, const double b
 	robin_map<Move, double> move_scores;
 	move_scores.reserve(children_count() + consider_standpat);
 
-	// Valeur du stand pat
+	// Stand pat value
 	if (consider_standpat) {
 		move_scores.emplace(Move(), get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player));
 	}
 
-	// Regarde chaque coup
+	// Look at every move
 	for (auto const& [move, child_link] : _children) {
 		Node* child = child_link._node;
 		if (qdepth != -100 && child->_quiescence_depth != qdepth) {
@@ -1834,35 +1834,35 @@ robin_map<Move, double> Node::get_move_scores(const double alpha, const double b
 	return move_scores;
 }
 
-// Fonction qui renvoie la valeur du noeud
+// Returns the node value
 double Node::get_node_score(const double alpha, const double beta, const int max_eval, const double max_avg_score, const bool player, Evaluation *custom_eval) const {
 
 	const double min_constant = 1E-100;
 	//const double add_constant = 0.05f;
 	//const double add_constant = 5.0E-5;
 	const double add_constant = 0.000f;
-	//const double pure_win_chance_adding = 0.001f; // Bonus si on a des chances de gagner pures
-	const double pure_win_chance_adding = 0.00025f; // Bonus si on a des chances de gagner pures
+	//const double pure_win_chance_adding = 0.001f; // Bonus for pure winning chances
+	const double pure_win_chance_adding = 0.00025f; // Bonus for pure winning chances
 
 	int color = player ? 1 : -1;
 
-	// Evaluation à utiliser
+	// Evaluation to use
 	Evaluation eval = custom_eval != nullptr ? *custom_eval : _deep_evaluation;
 
-	// Facteur 1: évaluation
+	// Factor 1: evaluation
 	double eval_score = eval._value * color;
 	//int is_eval_mate = _board->is_eval_mate(_deep_evaluation._value) * color;
 	
 	//eval_score = (is_eval_mate == 0 ? exp(alpha * (eval_score - max_eval)) : 1.0f / (float)is_eval_mate) + min_constant;
 	eval_score = exp(alpha * (eval_score - max_eval)) + min_constant;
 
-	// Facteur 2: score moyen
+	// Factor 2: average score
 	const double avg_score = player ? eval._avg_score : 1 - eval._avg_score;
 	const double score_score = exp(-beta * (1 - avg_score) / (1 - max_avg_score + min_constant) * max_avg_score / (avg_score + min_constant)) + min_constant;
 
-	// Bonus si t'as des chances pures de gain?
-	// R4Q2/6pk/1q6/8/3P4/2N3r1/1K6/8 w - - 5 49 : ici pour trouver Ra2?
-	// 8/6pk/7p/8/4p2P/1R1r2P1/5PK1/8 w - - 5 33 : Txd3?? ça gagne!
+	// Bonus for pure winning chances? Positions to check:
+	//   R4Q2/6pk/1q6/8/3P4/2N3r1/1K6/8 w - - 5 49 (should find Ra2)
+	//   8/6pk/7p/8/4p2P/1R1r2P1/5PK1/8 w - - 5 33 (Rxd3 wins)
 	//const float k_avg_score = 0.25f;
 	const float k_avg_score = 0.25f;
 
@@ -1872,10 +1872,10 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 
 	//cout << "eval: " << eval_score << ", score: " << score_score << endl;
 
-	// Facteur 3: rajout quasi constant? à tester...
+	// Factor 3: near-constant addend? to be tested
 	const double adding = (avg_score == 0.0f) ? 0.0f : avg_score / max_avg_score * add_constant;
 
-	// Score final
+	// Final score
 	const double score = eval_score * score_score + adding + win_adding;
 	//double score = eval_score * score_score + adding;
 
@@ -1886,18 +1886,18 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 	return score;
 }
 
-// Fonction qui renvoie le coup avec le meilleur score
+// Returns the move with the best score
 Move Node::get_best_score_move(const double alpha, const double beta, const bool consider_standpat, const int qdepth) {
 
 	int color = _board->get_color();
 
-	// Meilleure valeur d'évaluation
+	// Best evaluation value
 	int max_eval = -INT_MAX;
 
-	// Meilleure chance de gagner
+	// Best winning chance
 	double max_avg_score = 0.0;
 
-	// Cherche la meilleure eval et le meilleure score parmi tous les coups possibles
+	// Find the best evaluation and the best score among all possible moves
 	for (auto const& [_, child_link] : _children) {
 		Node* child = child_link._node;
 		if (child->_deep_evaluation._value * color > max_eval) {
@@ -1910,7 +1910,7 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 	}
 
 	if (consider_standpat) {
-		// Si le stand pat est meilleur que le meilleur coup
+		// If the stand pat beats the best move
 		if (_deep_evaluation._value * color > max_eval) {
 			max_eval = _deep_evaluation._value * color;
 		}
@@ -1920,7 +1920,7 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 	}
 
 
-	// Meilleur coup
+	// Best move
 	Move best_move = Move();
 	double best_score = -DBL_MAX;
 
@@ -1947,12 +1947,12 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 	return best_move;
 }
 
-// Fonction qui renvoie une valeur prévisionnelle du score du noeud, lorsqu'on ne connait pas les évaluations max (pour la quiecence)
+// Returns a forecast node score, used by quiescence when the maximum evaluations are unknown
 int Node::get_previsonal_node_score(const double alpha, const double beta, const bool player) const {
 	return 1E6 * get_node_score(alpha, beta, _deep_evaluation._value, _deep_evaluation._avg_score, player);
 }
 
-// Fonction qui évalue la menace en utilisant une quiesence sur le tour de l'adversaire
+// Evaluates the threat by running a quiescence on the opponent's turn
 int Node::evaluate_quiescence_threat(Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network) const {
 
 	Board b(*_board);
@@ -1965,24 +1965,24 @@ int Node::evaluate_quiescence_threat(Evaluator* eval, int depth, double search_a
 	return stand_pat_value;
 }
 
-// Quiescence minimale (sans stockage des noeuds)
+// Minimal quiescence (does not store nodes)
 int Node::minimal_quiescence(Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network) {
-	// REVIEW *** ça reste quand-même très basique (simplement l'évaluation est jugée)
+	// REVIEW: still very basic, it only judges the evaluation
 
-	// Initialisation du noeud
+	// Node initialisation
 	init_node();
 
-	// Couleur du joueur
+	// Side to move
 	int color = _board->get_color();
 
-	// Evalue la position
+	// Evaluate the position
 	evaluate_position(eval, false, network, true);
 
 	// Stand pat
 	int stand_pat = _deep_evaluation._value * color;
 
-	// Si on est en échec (pour ne pas terminer les variantes sur un échec)
-	// REVIEW *** est-ce que c'est de trop, si on veut simplement regarder rapidement?
+	// In check, so that variations do not end on a check
+	// REVIEW: is this too much for a deliberately quick look?
 	bool in_check = _board->in_check();
 
 	if (depth <= 0 && !in_check) {
@@ -1999,35 +1999,35 @@ int Node::minimal_quiescence(Evaluator* eval, int depth, double search_alpha, do
 		alpha = stand_pat;
 	}
 
-	// Regarde toutes les captures
+	// Look at every capture
 	for (int i = 0; i < _board->_got_moves; i++) {
 
-		// Coup
+		// Move
 		const Move move = _board->_moves[i];
 
-		// Si c'est une capture/échec/promotion, on explore
+		// Captures, checks and promotions are explored
 		if (move.is_capture() || move.is_promotion() || move.is_checkmate()) {
 
-			// Test du delta pruning
+			// Delta pruning, disabled here
 			//constexpr int delta = 250;
 
 			//constexpr int piece_values[6] = { 100, 300, 300, 500, 900, 10000 }; // P, N, B, R, Q, K
 			//constexpr int promotion_value = 1000;
 
-			//// Estimation rapide de ce que le coup peut apporter
+			//// Quick estimate of what the move can bring
 			//const int best_estimation = move.is_promotion() ? promotion_value : move.is_capture() ? piece_values[(_board->_array[move.end_col][move.end_col] - 1) % 6] : 0;
 
 			//if (!move.is_checkmate() && !in_check && stand_pat + best_estimation + delta < alpha) {
-			//	// On ne regarde pas ce coup
+			//	// Skip this move
 			//	continue;
 			//}
 
-			// Prend une place dans le buffer
+			// Take a slot in the buffer
 			Board new_board(*_board);
 			new_board.make_move(move, false, true);
 			Node child(&new_board);
 
-			// Appel récursif sur le fils
+			// Recursive call on the child
 			int score = -child.minimal_quiescence(eval, depth - 1, search_alpha, search_beta, -beta, -alpha, network);
 
 			// Beta cut-off
@@ -2035,7 +2035,7 @@ int Node::minimal_quiescence(Evaluator* eval, int depth, double search_alpha, do
 				return beta;
 			}
 
-			// Mise à jour de alpha si l'éval statique est plus grande
+			// Raise alpha if the static evaluation is higher
 			if (score > alpha) {
 				alpha = score;
 			}
@@ -2045,18 +2045,18 @@ int Node::minimal_quiescence(Evaluator* eval, int depth, double search_alpha, do
 	return alpha;
 }
 
-// Constructeur par défaut : n'alloue rien, init() est obligatoire
+// Default constructor: allocates nothing, init() is mandatory
 NodeBuffer::NodeBuffer() {
 	_nodes = nullptr;
 	_length = 0;
 }
 
-// Constructeur taille (octets) : alloue immédiatement
+// Size constructor (bytes): allocates immediately
 NodeBuffer::NodeBuffer(const size_t size_bytes) {
 	init(static_cast<int>(size_bytes / sizeof(Node)), false);
 }
 
-// Initialize l'allocation de n plateaux
+// Initialises the allocation of n boards
 void NodeBuffer::init(const int length, bool display) {
 	if (_init) {
 		if (display)
@@ -2070,7 +2070,7 @@ void NodeBuffer::init(const int length, bool display) {
 	_length = length;
 	_nodes = new Node[_length];
 
-	// Chaque noeud connaît son index ; free-list = tous les indices libres
+	// Every node knows its index; the free list holds all free indices
 	_free_indices.clear();
 	_free_indices.reserve(_length);
 	for (int i = _length - 1; i >= 0; i--) {
@@ -2088,7 +2088,7 @@ void NodeBuffer::init(const int length, bool display) {
 	}
 }
 
-// Dépile un index libre — O(1). Pile vide => -1 (buffer plein)
+// Pops a free index - O(1). Empty stack => -1 (buffer full)
 int NodeBuffer::get_first_free_index() {
 	if (_free_indices.empty())
 		return -1;
@@ -2097,7 +2097,7 @@ int NodeBuffer::get_first_free_index() {
 	return index;
 }
 
-// Fonction qui désalloue toute la mémoire
+// Frees all the memory
 void NodeBuffer::remove() {
 	g_buffers_full_logged = false;
 	delete[] _nodes;
@@ -2108,9 +2108,9 @@ void NodeBuffer::remove() {
 	_free_indices.clear();
 }
 
-// Reset global du buffer : reconstruit uniquement la pile d'indices libres.
-// #12: NE PAS rebalayer _length avec reset(false) (chaque appel clearait un
-// robin_map => coût O(capacité)). Sans appelant depuis le fix #12.
+// Global buffer reset: rebuilds only the free-index stack.
+// #12: do NOT re-sweep _length with reset(false) (each call cleared a
+// robin_map => O(capacity) cost). No caller since the #12 fix.
 bool NodeBuffer::reset() {
 	g_buffers_full_logged = false;
 	_free_indices.clear();
@@ -2121,7 +2121,7 @@ bool NodeBuffer::reset() {
 	return true;
 }
 
-// Fonction qui renvoie le premier noeud disponible dans le buffer
+// Returns the first available node in the buffer
 Node* NodeBuffer::get_first_free_node() {
 	const int index = get_first_free_index();
 	if (index == -1)
@@ -2132,7 +2132,7 @@ Node* NodeBuffer::get_first_free_node() {
 	return node;
 }
 
-// DEBUG *** fonction qui affiche l'état du buffer (combien de plateaux sont utilisés)
+// DEBUG: prints the buffer state (how many boards are in use)
 void NodeBuffer::display_buffer_state() const {
 	int used_boards = 0;
 	for (int i = 0; i < _length; i++) {
@@ -2142,11 +2142,11 @@ void NodeBuffer::display_buffer_state() const {
 	cout << "Node buffer state: " << used_boards << " / " << _length << " boards used (" << (used_boards * 100.0 / _length) << "%)" << endl;
 }
 
-// Buffer pour l'algo de Monte-Carlo
+// Buffer for the Monte-Carlo algorithm
 NodeBuffer monte_node_buffer;
 
-// Log « buffer plein » une seule fois par session de saturation ;
-// remis à false dès qu'un reset/remove libère de la place.
+// Logs "buffer full" once per saturation session; reset to false as soon
+// as a reset/remove frees space.
 bool g_buffers_full_logged = false;
 bool g_tt_main_search = false;
 bool g_tt_node_dag = false; // #11 Plan B — voir exploration.h
