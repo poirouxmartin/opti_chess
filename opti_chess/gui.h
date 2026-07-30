@@ -12,276 +12,276 @@
 
 using namespace std;
 
-// TODO: rajouter des const un peu partout
+// TODO: add const in a lot more places
 
 // GUI
 class GUI {
 public:
 	// Variables
 
-	// Dimensions de la fenêtre
+	// Dimensions of the window
 	int _screen_width = 1920;
 	int _screen_height = 1080;
 
-	// Plateau affiché
+	// Displayed board
 	Board *_board;
 
-	// Faut-il faire l'affichage?
+	// Should the display be drawn?
 	bool _draw = true;
 
-	// Faut-il que les coups soient cliqués en binding chess.com?
+	// Should the moves be clicked through the chess.com binding?
 	bool _click_bind = false;
 
-	// Mode de jeu automatique en binding avec chess.com
-	bool _binding_full = false; // Pour récupérer tous les coups de la partie
-	bool _binding_solo = false; // Pour récupérer seulement les coups de la couleur du joueur du bas
+	// Automatic play mode bound to chess.com
+	bool _binding_full = false; // To read every move of the game
+	bool _binding_solo = false; // To read only the moves of the player at the bottom
 
-	// Intervalle de temps pour check chess.com
+	// Time interval between two chess.com checks
 	int _binding_interval_check = 100;
 
-	// Moment du dernier check
+	// Time of the last check
 	clock_t _last_binding_check = clock();
 
-	// Coup récupéré par le binding
+	// Move read by the binding
 	Move _binding_move;
 
-	// Coordonnées du plateau sur chess.com
-	int _binding_left = 108; // (+10 si barre d'éval)
+	// Coordinates of the board on chess.com
+	int _binding_left = 108; // (+10 with an evaluation bar)
 	int _binding_top = 219;
 	int _binding_right = 851;
 	int _binding_bottom = 962;
 
-	// Coordonées du plateau pour le binding
+	// Coordinates of the board for the binding
 	//SimpleRectangle _binding_coord;
 
-	// Temps initial des joueurs
+	// Initial time of the players
 	//clock_t _initial_time_white = 180000;
 	//clock_t _initial_time_black = 180000;
 	clock_t _initial_time_white = 60000;
 	clock_t _initial_time_black = 60000;
 
-	// Temps des joueurs
+	// Time of the players
 	clock_t _time_white;
 	clock_t _time_black;
 
-	// Incrément
+	// Increment
 	clock_t _time_increment_white = 0;
 	clock_t _time_increment_black = 0;
 
 	//clock_t _time_increment_white = 15000;
 	//clock_t _time_increment_black = 15000;
 
-	// Mode analyse de Grogros
+	// Grogros analysis mode
 	bool _grogros_analysis = false;
 
-	// Le temps est-il activé?
+	// Is the clock enabled?
 	bool _time = false;
 
-	// Pour la gestion du temps
+	// For time management
 	clock_t _last_move_clock;
 
-	// Joueur au trait lors du dernier check (pour les temps)
+	// Player to move at the last check (for the clocks)
 	bool _last_player = true;
 
-	// Affichage des flèches : affiche les chances de gain (true), l'évaluation (false)
+	// Arrow display: shows the winning chances (true) or the evaluation (false)
 	bool _display_win_chances = true;
 
-	// Texte pour les timers
+	// Text for the timers
 	TextBox _white_time_text_box;
 	TextBox _black_time_text_box;
 
-	// Paramètres pour la recherche de Monte-Carlo
+	// Parameters of the Monte Carlo search
 	//double _alpha = 0.0075;
 	//double _beta = 2.5;
 	//double _gamma = 0.65;
-	//double _alpha = 0.005; // Augmente l'impact de l'évaluation
-	double _alpha = 0.00001; // Augmente l'impact de l'évaluation
-	double _beta = 5.0; // Augmente l'impact du winrate
-	double _gamma = 1.10; // Augmente la diversité des coups explorés
+	//double _alpha = 0.005; // Raises the weight of the evaluation
+	double _alpha = 0.00001; // Raises the weight of the evaluation
+	double _beta = 5.0; // Raises the weight of the win rate
+	double _gamma = 1.10; // Raises the diversity of the explored moves
 
-	// Profondeur de la recherche
-	//int _quiescence_depth = 4; // Regarde tous les échecs et prises
+	// Depth of the search
+	//int _quiescence_depth = 4; // Looks at every check and capture
 	//int _quiescence_depth = 6;
 	int _quiescence_depth = 10;
-	//int _max_depth = 10; // Seulement pour les standpat en échecs et prises restantes
+	//int _max_depth = 10; // Only for the stand pats on the remaining checks and captures
 
-	bool _explore_checks = true; // FIXME? faut-il vraiment explorer les échecs?
-	bool _tt_main_search = false; // #11 Plan A — TT dans la recherche principale (A/B runtime, defaut OFF)
-	bool _tt_node_dag = false; // #11 Plan B — DAG de transpositions (A/B runtime, defaut OFF)
+	bool _explore_checks = true; // FIXME? do the checks really have to be explored?
+	bool _tt_main_search = false; // #11 Plan A - TT in the main search (runtime A/B, default OFF)
+	bool _tt_node_dag = false; // #11 Plan B - transposition DAG (runtime A/B, default OFF)
 
-	// Est-ce que les noms des joueurs ont été ajoutés au PGN
+	// Have the player names been added to the PGN?
 	bool _named_pgn = false;
 	bool _timed_pgn = false;
 
-	// Affichage du PGN
+	// PGN display
 
-	// TODO: classe player avec nom, elo, pays, url, titre...
-	// Joueurs
+	// TODO: a player class with name, elo, country, url, title...
+	// Players
 	string _white_player = "White";
 	string _black_player = "Black";
 
-	// FEN de la position initiale
+	// FEN of the initial position
 	string _initial_fen;
 
-	// FEN de la position actuelle
+	// FEN of the current position
 	string _current_fen;
 
-	// PGN de la partie
+	// PGN of the game
 	string _pgn;
 
-	// Cadence
+	// Time control
 	string _time_control;
 
-	// PGN global
+	// Global PGN
 	string _global_pgn;
 
-	// Titres des joueurs
+	// Titles of the players
 	string _white_title;
 	string _black_title;
 
-	// Elo des joueurs
+	// Elo of the players
 	string _white_elo;
 	string _black_elo;
 
-	// URL des joueurs (pour les images)
+	// URL of the players (for the images)
 	string _white_url;
 	string _black_url;
 
-	// Pays des joueurs
+	// Country of the players
 	string _white_country;
 	string _black_country;
 
-	// Date de la partie
+	// Date of the game
 	string _date;
 
-	// Elo de GrogrosZero
+	// Elo of GrogrosZero
 	string _grogros_zero_elo = "2300";
 
-	// Nom de bot de GrogrosZero
+	// Bot name of GrogrosZero
 	string _grogros_zero_name = "GrogrosZero";
 
-	// Version de GrogrosZero
+	// Version of GrogrosZero
 	string _grogros_zero_version = "1.0";
 
-	// Evaluateur pour l'affichage de l'évaluation
+	// Evaluator used to display the evaluation
 	Evaluator* _grogros_eval = new Evaluator();
 	//Evaluator* _grogros_eval = new Evaluator(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 
-	// Faut-il actualiser la GUI au niveau des variantes?
+	// Do the variations need to be refreshed in the GUI?
 	bool _update_variants = false;
 
-	// Position sélectionnée sur la GUI
+	// Position selected in the GUI
 	Pos _selected_pos = Pos(-1, -1);
 
-	// Position cliquée sur la GUI
+	// Position clicked in the GUI
 	Pos _clicked_pos = Pos(-1, -1);
 
-	// Position de la souris
+	// Position of the mouse
 	Vector2 _mouse_pos;
 
-	// Position de la case cliquée (droit)
+	// Position of the right-clicked square
 	Pos _right_clicked_pos = { -1, -1 };
 
-	// La souris est-elle cliquée
+	// Is the mouse clicked?
 	bool _clicked = false;
 
-	// Vecteur des flèches de GrogrosZero : vecteur de coups
+	// Vector of the GrogrosZero arrows: a vector of moves
 	vector<Move> _grogros_arrows;
 
-	// TODO : Threads (pour la parallélisation)
-	// Thread de GUI
+	// TODO: threads (for the parallelization)
+	// GUI thread
 
-	// Thread de GrogrosZero
+	// GrogrosZero thread
 	thread _thread_grogros_zero;
 
-	// Threads pour les plateaux fils de GrogrosZero
+	// Threads for the child boards of GrogrosZero
 	vector<thread> _threads_grogros_zero;
 
-	// Arbre de recherche, variantes jouées dans le PGN
+	// Search tree, variations played in the PGN
 	GameTree _game_tree;
 
-	// Nombre de FPS
+	// Number of FPS
 	int _max_fps = 180;
 	int _target_fps = 60;
 	clock_t _last_drawing_time = 0;
 
-	// Couleur de fond
+	// Background colour
 	Color _background_color = { 25, 25, 25, 255 };
 
-	// Couleur du rectangle de texte
+	// Colour of the text rectangle
 	Color _background_text_color = { 0, 0, 0, 255 };
 
-	// Couleurs du texte
+	// Colours of the text
 	Color _text_color = { 255, 75, 75, 255 };
 	Color _text_color_dark = { 200, 50, 50, 255 };
 	Color _text_color_light = { 200, 200, 200, 255 };
 	Color _text_color_blue = { 150, 150, 200, 255 };
 	Color _text_color_info = { 140, 140, 140, 255 };
 
-	// Couleurs du plateau
+	// Colours of the board
 	Color _board_color_light = { 180, 150, 115, 255 };
 	Color _board_color_dark = { 109, 75, 54, 255 };
 
-	// Couleur de surlignage de cases
+	// Highlight colour of the squares
 	Color _highlight_color = { 255, 255, 100, 150 };
 
-	// Couleur de selection de cases
+	// Selection colour of the squares
 	Color _select_color = { 50, 225, 50, 100 };
 
-	// Couleur des cases du dernier coup joué
+	// Colour of the squares of the last played move
 	Color _last_move_color = { 220, 150, 50, 125 };
 
-	// Couleur de la case de pre-move
+	// Colour of the pre-move square
 	Color _pre_move_color = { 220, 30, 30, 125 };
 
-	// Couleur des flèches
+	// Colour of the arrows
 	Color _arrow_color = { 255, 225, 0, 150 };
 
-	// Couleur des sliders
+	// Colour of the sliders
 	Color _slider_color = { 200, 200, 200, 100 };
 	Color _slider_background_color = { 100, 100, 100, 75 };
 
-	// Couleurs de la barre d'évaluation
+	// Colours of the evaluation bar
 	Color _eval_bar_color_light = { 224, 206, 186, 255 };
 	Color _eval_bar_color_gray = { 141, 128, 117, 255 };
 	Color _eval_bar_color_dark = { 57, 50, 47, 255 };
 
-	// Epaisseur des flèches (par rapport à la taille d'une case)
+	// Thickness of the arrows (relative to the size of a square)
 	float _arrow_scale = 0.125f;
 	float _arrow_thickness = 50.0f;
 
-	// Est-ce qu'on affiche les flèches (non par exemple si l'utilisateur veut jouer contre l'IA)
+	// Are the arrows displayed? (not when the user wants to play against the AI, for instance)
 	bool _drawing_arrows = true;
 
-	// Pourcentage de noeuds à partir duquel on montre le coup
+	// Node percentage above which a move is shown
 	float _arrow_rate = 0.03f;
 
-	// Variable qui indique si l'initialisation a été faite
+	// Whether the initialization has been done
 	bool _loaded_resources = false;
 
-	// Textures et images
+	// Textures and images
 	Image _piece_images[12];
 	Texture2D _piece_textures[12];
 
-	// Icône
+	// Icon
 	Image _icon;
 
-	// Tête de Grogros
+	// Grogros's head
 	Image _grogros_image;
 	Texture2D _grogros_texture;
 	float _grogros_size;
 
-	// Curseur
+	// Cursor
 	Image _cursor_image;
 	Texture2D _cursor_texture;
 	float _cursor_size = 64.0f;
 
-	// Mini-pièces
+	// Mini pieces
 	Image _mini_piece_images[12];
 	Texture2D _mini_piece_textures[12];
 	int _mini_piece_size;
 
-	// Sons
+	// Sounds
 	Sound _move_sound;
 	Sound _castle_sound;
 	Sound _check_sound;
@@ -292,39 +292,39 @@ public:
 	Sound _game_end_sound;
 	Sound _promotion_sound;
 
-	// Taille du plateau par rapport à la fenêtre
+	// Size of the board relative to the window
 	float _board_scale = 0.7f;
 	float _board_size;
 	float _board_padding_x;
 	float _board_padding_y;
 
-	// Taille des pièces
+	// Size of the pieces
 	float _tile_size;
 	float _piece_size;
 	float _piece_scale = 0.8f;
 
-	// Shader pour la pièce sélectionnée
+	// Shader for the selected piece
 	Shader _selected_shader;
 
-	// Taille standard du texte
+	// Standard text size
 	float _text_size;
 
-	// Police du texte
+	// Text font
 	Font _text_font;
 
-	// Shader pour le texte
+	// Shader for the text
 	Shader _text_shader;
 
-	// Police pour les symboles d'échecs
+	// Font for the chess symbols
 	Font _chess_font;
 
-	// Espacement entre les caractères
+	// Spacing between the characters
 	float _font_spacing = 0.03f;
 
-	// Orientation du plateau
+	// Orientation of the board
 	bool _board_orientation = true;
 
-	// Cases surlignées
+	// Highlighted squares
 	int _highlighted_array[8][8]
 	{
 		{0, 0, 0, 0, 0, 0, 0, 0},
@@ -337,13 +337,13 @@ public:
 		{0, 0, 0, 0, 0, 0, 0, 0} 
 	};
 
-	// Calcul du nombre de noeuds visités
+	// Computation of the number of visited nodes
 	int _visited_nodes;
 
-	// Calcul de temps
+	// Time computation
 	clock_t _begin_time;
 
-	// Valeurs des sliders
+	// Values of the sliders
 	float _pgn_slider = 0.0f;
 	float _monte_carlo_slider = 0.0f;
 	float _variants_slider = 0.0f;
@@ -351,46 +351,46 @@ public:
 	// Pre-move
 	//int pre_move[4] = { -1, -1, -1, -1 };
 
-	// Eval à montrer pour la barre d'éval
+	// Evaluation to show on the evaluation bar
 	float _global_eval = 0.0f;
 	string _global_eval_text = "+0.0";
 
 	// WDL
 	WDL _wdl;
 
-	// Valeur des pièces pour l'affichage sur la GUI (rien/roi, pion, cavalier, fou, tour, dame)
+	// Piece values for the GUI display (nothing/king, pawn, knight, bishop, rook, queen)
 	const int _piece_GUI_values[6] = { 0, 1, 3, 3, 5, 9 };
 
-	// Matériel manquant
+	// Missing material
 	const int _base_material[6] = { 0, 8, 2, 2, 2, 1 };
 	int _missing_w_material[6] = { 0, 0, 0, 0, 0, 0 };
 	int _missing_b_material[6] = { 0, 0, 0, 0, 0, 0 };
 
-	// Alphabet de taille 8
+	// Alphabet of size 8
 	const string _abc8 = "abcdefgh";
 
-	// Flèches sur l'échiquier
+	// Arrows on the chessboard
 	vector<vector<int>> _arrows_array;
 
-	// Composantes de l'évaluation à afficher sur la GUI
+	// Evaluation components to display in the GUI
 	string _eval_components;
 
-	// Gris
+	// Grey
 	const Color _gray = { 100, 100, 100, 255 };
 
-	// Gris foncé
+	// Dark grey
 	const Color _dark_gray = { 50, 50, 50, 255 };
 
-	// Noeud de l'arbre d'exploration
+	// Node of the exploration tree
 	Node *_root_exploration_node;
 
-	// Affichage des variantes
+	// Display of the variations
 	string _exploration_variants = "";
 
-	// Nombre de noeuds par frame pour l'exploration
+	// Number of nodes per frame for the exploration
 	const int _nodes_per_frame = 1000;
 
-	// Symboles des pièces
+	// Symbols of the pieces
 	const string P_symbol = "\xC4\x80";
 	const string N_symbol = "\xC4\x81";
 	const string B_symbol = "\xC4\x82";
@@ -404,190 +404,190 @@ public:
 	const string q_symbol = "\xC4\x8A";
 	const string k_symbol = "\xC4\x8B";
 
-	// Sites de jeux d'échecs
+	// Chess websites
 	vector<ChessSite> _chess_sites;
 
-	// Site de jeu d'échecs actuel
+	// Current chess website
 	ChessSite _current_site;
 
-	// Sons à utiliser
+	// Sounds to use
 	string _sounds_path = "resources/sounds/lisp/";
 
-	// Taille des buffers : dimensionnement adaptatif au démarrage
-	// (compute_pool_sizing depuis la RAM physique dispo — cf. buffer.h)
+	// Size of the buffers: adaptive sizing at startup
+	// (compute_pool_sizing from the available physical RAM - cf. buffer.h)
 
-	// Constructeurs
+	// Constructors
 
-	// Par défaut
+	// Default
 	GUI();
 
-	// Fonctions
+	// Functions
 
-	// Fonction qui met en place le binding avec chess.com pour une nouvelle partie (et se prépare à jouer avec GrogrosZero)
+	// Sets up the chess.com binding for a new game (and gets ready to play with GrogrosZero)
 	bool new_bind_game();
 
-	// Fonction qui met en place le binding avec chess.com pour une nouvelle analyse de partie
+	// Sets up the chess.com binding to analyse a new game
 	bool new_bind_analysis();
 
-	// Fonction qui construit le PGN global
+	// Builds the global PGN
 	bool update_global_pgn();
 
-	// Fonction qui met à jour la cadence du PGN
+	// Updates the time control of the PGN
 	bool update_time_control();
 
-	// Fonction qui lance le temps
+	// Starts the clock
 	void start_time();
 
-	// Fonction qui stoppe le temps
+	// Stops the clock
 	void stop_time();
 
-	// Fonction qui met à jour le temps des joueurs
+	// Updates the clocks of the players
 	void update_time();
 
-	// Fonction qui réinitialise le PGN
+	// Resets the PGN
 	bool reset_pgn();
 
-	// Fonction qui met à jour la date du PGN
+	// Updates the date of the PGN
 	bool update_date();
 
-	// Fonction qui lance les threads de GrogrosZero
+	// Starts the GrogrosZero threads
 	//bool thread_grogros_zero(Evaluator* eval, int nodes);
 
-	// Fonction qui lance grogros sur un thread
+	// Runs Grogros on a thread
 	//bool grogros_zero_threaded(Evaluator* eval, int nodes);
 
-	// Fonction qui retire le dernier coup du PGN
+	// Removes the last move from the PGN
 	bool remove_last_move_PGN();
 
-	// Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo
+	// Draws the arrows from the values of the Monte Carlo algorithm
 	//void draw_monte_carlo_arrows();
 
-	// Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo
+	// Draws the arrows from the values of the Monte Carlo algorithm
 	void draw_exploration_arrows();
 
-	// Fonction qui dessine la flèche d'un coup
+	// Draws the arrow of a move
 	void draw_arrow(const Move move, const bool player, Color c, float thickness = -1.0f, const bool use_value = false, const float avg_score = 0.0f, const int mate = 0, const bool is_most_explored = false, const bool is_best_eval = false);
 
-	// Couleur de la flèche en fonction du coup (de son nombre de noeuds)
+	// Colour of the arrow depending on the move (on its node count)
 	Color move_color(int, int, bool is_quiescence) const;
 
-	// Fonction qui charge les textures
+	// Loads the textures
 	void load_resources();
 
-	// Fonction qui met à la bonne taille les images
+	// Scales the images to the right size
 	void resize_GUI();
 
-	// Fonction qui actualise les nouvelles dimensions de la fenêtre
+	// Applies the new dimensions of the window
 	void get_window_size();
 
-	// Fonction qui renvoie si le joueur est en train de jouer (pour que l'IA arrête de réflechir à ce moment sinon ça lagge)
+	// Returns whether the player is currently moving (so the AI stops thinking then, otherwise it lags)
 	bool is_playing() const;
 
-	// Fonction qui change le mode d'affichage des flèches (oui/non)
+	// Changes the arrow display mode (yes/no)
 	void switch_arrow_drawing();
 
-	// Fonction qui affiche un texte dans une zone donnée avec un slider
+	// Displays a text inside a given area, with a slider
 	void slider_text(const string&, float, float, float, float, float size, float* slider_value, Color t_color, float slider_width = -1.0f, float slider_height = -1.0f);
 
-	// Fonction pour obtenir l'orientation du plateau
+	// Returns the orientation of the board
 	bool get_board_orientation() const;
 
-	// Fonction qui renvoie si le curseur de la souris se trouve dans le rectangle
+	// Returns whether the mouse cursor is inside the rectangle
 	bool is_cursor_in_rect(Rectangle);
 
-	// Fonction qui dessine un rectangle à partir de coordonnées flottantes
+	// Draws a rectangle from floating-point coordinates
 	bool draw_rectangle(float, float, float, float, Color);
 
-	// Fonction qui dessine un rectangle à partir de coordonnées flottantes, en fonction des coordonnées de début et de fin
+	// Draws a rectangle from floating-point coordinates, using the start and end coordinates
 	bool draw_rectangle_from_pos(float, float, float, float, Color);
 
-	// Fonction qui dessine un cercle à partir de coordonnées flottantes
+	// Draws a circle from floating-point coordinates
 	void draw_circle(float, float, float, Color);
 
-	// Fonction qui dessine une ligne à partir de coordonnées flottantes
+	// Draws a line from floating-point coordinates
 	void draw_line_ex(float, float, float, float, float, Color);
 
-	// Fonction qui dessine une ligne de Bézier à partir de coordonnées flottantes
+	// Draws a Bezier curve from floating-point coordinates
 	void draw_line_bezier(float, float, float, float, float, Color);
 
-	// Fonction qui dessine une texture à partir de coordonnées flottantes
+	// Draws a texture from floating-point coordinates
 	void draw_texture(const Texture&, float, float, Color);
 
-	// Fonction qui affiche la barre d'evaluation
+	// Displays the evaluation bar
 	void draw_eval_bar(float eval, WDL wdl, float avg_score, const string&, float, float, float, float, float max_eval, Color white, Color gray, Color black, float max_height = -1.0f);
 
-	// Fonction qui retire les surlignages de toutes les cases
+	// Removes the highlight from every square
 	void remove_highlighted_tiles();
 
-	// Fonction qui selectionne une case
+	// Selects a square
 	void select_tile(int, int);
 
-	// Fonction qui surligne une case (ou la de-surligne)
+	// Highlights a square (or un-highlights it)
 	void highlight_tile(int, int);
 
-	// Fonction qui déselectionne
+	// Deselects
 	void unselect();
 
-	// A partir de coordonnées sur le plateau
+	// From coordinates on the board
 	void draw_simple_arrow_from_coord(int, int, int, int, float, Color);
 
-	// Fonction qui obtient la case correspondante à la position sur la GUI
+	// Returns the square matching a position in the GUI
 	Pos get_pos_from_GUI(float, float);
 
-	// Fonction qui permet de changer l'orientation du plateau
+	// Changes the orientation of the board
 	void switch_orientation();
 
-	// Fonction aidant à l'affichage du plateau (renvoie i si board_orientation, et 7 - i sinon)
+	// Helper for the board display (returns i if board_orientation is set, 7 - i otherwise)
 	int orientation_index(int) const;
 
-	// Joue un coup en gardant la réflexion de GrogrosZero
+	// Plays a move, keeping the GrogrosZero search
 	bool play_move_keep(Move move);
 
-	// Fonction qui renvoie le type de pièce sélectionnée
+	// Returns the type of the selected piece
 	uint8_t selected_piece() const;
 
-	// Fonction qui renvoie le type de pièce où la souris vient de cliquer
+	// Returns the type of the piece the mouse has just clicked on
 	uint8_t clicked_piece() const;
 
-	// Fonction qui lance une analyse de GrogrosZero
+	// Starts a GrogrosZero analysis
 	void grogros_analysis(int nodes = -1);
 
-	// Fonction qui charge une position à partir d'une FEN
+	// Loads a position from a FEN
 	void load_FEN(const string fen, bool display = true);
 
-	// Fonction qui reset la partie
+	// Resets the game
 	void reset_game();
 
-	// Fonction qui compare deux flèches d'analyse de Grogros
+	// Compares two Grogros analysis arrows
 	bool compare_arrows(const Move m1, const Move m2) const;
 
-	// Fonction qui renvoie la date sous le format 'yyyymmdd'
+	// Returns the date in the 'yyyymmdd' format
 	string get_date();
 
-	// Fonction qui met à jour le nom de bot de GrogrosZero
+	// Updates the bot name of GrogrosZero
 	void update_grogros_zero_name();
 
-	// Fonction qui fait jouer le coup de GrogrosZero ou non en fonction du temps restant
+	// Plays the GrogrosZero move or not, depending on the time left
 	void play_grogros_zero_move(float time_proportion_per_move = 0.02f);
 
-	// Fonction qui initialise les couleurs des sites de jeux d'échecs
+	// Initializes the colours of the chess websites
 	void init_chess_sites();
 
-	// Fonction qui update le binding move à partir du plateau en ligne
+	// Updates the binding move from the online board
 	bool update_binding_move();
 
-	// Fonction qui évalue (et affiche les composantes)
+	// Evaluates (and displays the components)
 	void evaluate_position(bool display = true, bool static_only = false);
 
-	// Fonction qui initialise les buffers
+	// Initializes the buffers
 	void init_buffers() const;
 
-	// Fonction qui reset les buffers
+	// Resets the buffers
 	void reset_buffers() const;
 
-	// Fonction qui dessine la GUI
+	// Draws the GUI
 	void draw();
 };
 
-// Instantiation de la GUI globale
+// Instantiation of the global GUI
 extern GUI main_GUI;
