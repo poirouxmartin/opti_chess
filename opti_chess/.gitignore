@@ -6,6 +6,9 @@
 
 # Local logs and generated captures
 *.log
+log.txt
+*+tmp
+/screenshot_*.png
 /resources/screenshots/screenshot_*.png
 
 # Editor and OS metadata
