@@ -210,7 +210,7 @@ Stated plainly, so nothing here is a surprise:
 - **No UCI protocol**, therefore no rating on a public list and no play against other engines. The engine-vs-engine `Match`/`Player` layer is scaffolding, not a finished feature.
 - **No CI and no CTest.** Validation is the interactive `T` suite plus manual GUI checks.
 - **`board.cpp` is oversized** (~12,000 lines) and is the main structural debt; splitting it along the move-generation / state / evaluation-support seams is the next refactor.
-- **Comments are mixed French and English** — a legacy of the project's history, currently being migrated to English starting with `exploration.cpp` and `board.cpp`.
+- **Comments are being migrated from French to English.** The two files a reader will open first, `exploration.cpp` and `board.cpp`, are fully translated; the GUI and header files still carry French comments.
 - **Known open engine bugs are tracked publicly** in [`BUGFIXES.md`](opti_chess/BUGFIXES.md) rather than left implicit.
 
 ---
