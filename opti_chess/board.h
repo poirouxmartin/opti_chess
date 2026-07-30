@@ -16,36 +16,36 @@ using namespace std;
 using RepetitionHistory = tsl::robin_map<uint64_t, uint8_t>;
 
 
-// TODO: les utiliser
-// Enumération des pièces
+// TODO: use them
+// Enumeration of the pieces
 constexpr enum piece_type { none = 0, w_pawn = 1, w_knight = 2, w_bishop = 3, w_rook = 4, w_queen = 5, w_king = 6, b_pawn = 7, b_knight = 8, b_bishop = 9, b_rook = 10, b_queen = 11, b_king = 12 };
 
-// Nombre de demi-coups avant de déclarer la partie nulle
+// Number of half-moves before the game is declared drawn
 constexpr uint8_t max_half_moves = 100;
 
-// Nombre maximum de coups légaux par position estimé
+// Estimated maximum number of legal moves per position
 // const int max_moves = 218;
-constexpr uint8_t max_moves = 100; // ça n'arrivera quasi jamais que ça dépasse ce nombre
+constexpr uint8_t max_moves = 100; // it will almost never go above that number
 
-// Valeur d'un échec et mat
+// Value of a checkmate
 constexpr int mate_value = 1e8;
 
-// Valeur d'un ply (double) dans la recherche de mat
+// Value of a ply (doubled) in the mate search
 constexpr int mate_ply = 1e5;
 
-// Coups possibles pour un cavalier
+// Possible moves for a knight
 constexpr int_fast8_t knight_directions[8][2] = { {1, 2}, {1, -2}, {-1, 2}, {-1, -2}, {2, 1}, {2, -1}, {-2, 1}, {-2, -1} };
 
-// Coups rectilignes
+// Straight-line moves
 constexpr int_fast8_t rect_directions[4][2] = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
 
-// Coups diagonaux
+// Diagonal moves
 constexpr int_fast8_t diag_directions[4][2] = { {1, 1}, {1, -1}, {-1, 1}, {-1, -1} };
 
-// Coups dans toutes les directions
+// Moves in every direction
 constexpr int_fast8_t all_directions[8][2] = { {-1, -1}, {-1, 1}, {1, -1}, {1, 1}, {-1, 0}, {0, -1}, {0, 1}, {1, 0} };
 
-// ------------------- Couleur -------------------
+// ------------------- Colour -------------------
 constexpr bool is_white(uint8_t piece) noexcept {
 	return piece && piece <= w_king;
 }
@@ -54,7 +54,7 @@ constexpr bool is_black(uint8_t piece) noexcept {
 	return piece >= b_pawn;
 }
 
-// Fonction qui renvoie le type de la pièce (none -> none, w_pawn -> pawn, b_pawn -> pawn, etc...)
+// Returns the type of the piece (none -> none, w_pawn -> pawn, b_pawn -> pawn, etc...)
 constexpr inline uint8_t piece_type(uint8_t piece) noexcept {
 	return piece ? ((piece - 1) % 6 + 1) : 0;
 }
@@ -67,7 +67,7 @@ constexpr inline bool is_rook(uint8_t piece) noexcept { return piece == w_rook |
 constexpr inline bool is_queen(uint8_t piece) noexcept { return piece == w_queen || piece == b_queen; }
 constexpr inline bool is_king(uint8_t piece) noexcept { return piece == w_king || piece == b_king; }
 
-// ------------------- Mouvement -------------------
+// ------------------- Movement -------------------
 constexpr bool is_rectilinear(uint8_t piece) noexcept {
 	return piece == w_rook || piece == b_rook || piece == w_queen || piece == b_queen;
 }
@@ -80,7 +80,7 @@ constexpr bool is_sliding(uint8_t piece) noexcept {
 	return (piece >= w_bishop && piece <= w_queen) || (piece >= b_bishop && piece <= b_queen);
 }
 
-// ------------------- Alliés -------------------
+// ------------------- Allies -------------------
 constexpr bool is_ally(uint8_t piece, bool player_white) noexcept {
 	return piece && ((piece <= w_king) == player_white);
 }
@@ -89,7 +89,7 @@ constexpr bool is_enemy(uint8_t piece, bool player_white) noexcept {
 	return piece && ((piece <= w_king) != player_white);
 }
 
-// TODO *** il reste 1 bit de libre, à utiliser pour un flag supplémentaire si besoin
+// TODO *** one free bit is left, to be used for an extra flag if needed
 // Stalemate?
 enum MoveFlags : uint8_t {
 	IS_NULL = 1 << 0,
@@ -150,7 +150,7 @@ struct Move {
 		return end_col < other.end_col;
 	}
 
-	// Renvoie si c'est un coup nul
+	// Returns whether this is a null move
 	bool is_null_move() const {
 		return (is_null() || (start_row == 0 && start_col == 0 && end_row == 0 && end_col == 0));
 	}
@@ -176,7 +176,7 @@ namespace std {
 	};
 }
 
-// Droits de roque (pour optimiser la place mémoire)
+// Castling rights (to save memory)
 // 1 byte
 struct CastlingRights {
 	bool k_w : 1; // Kingside - White
@@ -196,56 +196,56 @@ struct CastlingRights {
 	}
 };
 
-// Tests pour une représentation plus compacte d'un plateau
-// TODO *** à utiliser
+// Experiments towards a more compact board representation
+// TODO *** to be used
 #pragma pack(push, 1)
 struct Piece
 {
 	int type : 3;
 	bool color : 1;
 
-	// Constructeurs
+	// Constructors
 	Piece() : type(0), color(0) {}
 	Piece(int type, bool color) : type(type), color(color) {}
 
-	// Opérateurs
+	// Operators
 
-	// Méthodes
+	// Methods
 };
 
-// TODO: utiliser!!
-// Ligne du plateau d'échec (horizontale)
-// 40 bytes (Minimum possible pour une représentation board-centric : 32 bytes)
+// TODO: use this!!
+// Rank of the chessboard (horizontal)
+// 40 bytes (the minimum possible for a board-centric representation is 32 bytes)
 struct Array
 {
 	Piece pieces[8][8];
 };
 #pragma pack(pop)
 
-// Position sur le plateau
+// Position on the board
 struct Pos
 {
-	int row : 4; // TODO: 3 suffit?
+	int row : 4; // TODO: would 3 be enough?
 	int col : 4;
 
-	// Opérateur d'égalité
+	// Equality operator
 	bool operator== (const Pos& other) const {
 		return (row == other.row) && (col == other.col);
 	}
 
-	// Renvoie la notation de la case
-	// TODO *** mettre des constantes statiques pour que ça soit précalculé
+	// Returns the notation of the square
+	// TODO *** use static constants so that this is precomputed
 	string square() const {
 		return string(1, 'a' + col) + string(1, '1' + row);
 	}
 };
 
-// Map d'un plateau (pour stocker les cases controllées, etc...)
+// Map of a board (to store the controlled squares, etc...)
 struct SquareMap
 {
 	int _array[8][8];
 
-	// Constructeurs
+	// Constructors
 	SquareMap() {
 		for (uint8_t row = 0; row < 8; row++) {
 			for (uint8_t col = 0; col < 8; col++) {
@@ -254,9 +254,9 @@ struct SquareMap
 		}
 	}
 
-	// Opérateurs
+	// Operators
 
-	// Soustraction
+	// Subtraction
 	SquareMap operator- (const SquareMap& other) const {
 		SquareMap result;
 		for (int row = 0; row < 8; row++) {
@@ -268,9 +268,9 @@ struct SquareMap
 	}
 
 
-	// Méthodes
+	// Methods
 
-	// Affichage de façon alignée
+	// Aligned display
 	void print() const {
 		cout << "Map : " << endl;
 		for (int row = 7; row >= 0; row--) {
@@ -287,7 +287,7 @@ struct BoolMap
 {
 	bool _array[8][8];
 
-	// Constructeurs
+	// Constructors
 	BoolMap() {
 		for (uint8_t row = 0; row < 8; row++) {
 			for (uint8_t col = 0; col < 8; col++) {
@@ -296,9 +296,9 @@ struct BoolMap
 		}
 	}
 
-	// Opérateurs
+	// Operators
 	// 
-	// Soustraction
+	// Subtraction
 	BoolMap operator- (const BoolMap& other) const {
 		BoolMap result;
 		for (int row = 0; row < 8; row++) {
@@ -317,11 +317,11 @@ struct PieceSquare {
 	
 // WDL chance
 struct WDL {
-	float win_chance; // Entre 0.0f et 1.0f
-	float draw_chance; // Entre 0.0f et 1.0f
-	float lose_chance; // Entre 0.0f et 1.0f
+	float win_chance; // Between 0.0f and 1.0f
+	float draw_chance; // Between 0.0f and 1.0f
+	float lose_chance; // Between 0.0f and 1.0f
 
-	// Affichage
+	// Display
 	string to_string() const {
 		return "WDL: " + int_to_round_string(1000 * win_chance) + "/" + int_to_round_string(1000 * draw_chance) + "/" + int_to_round_string(1000 * lose_chance);
 	}
@@ -331,7 +331,7 @@ struct WDL {
 	}
 };
 
-// Fins de partie
+// Game endings
 static constexpr enum game_termination { unterminated = 0, white_win = 1, draw = 2, black_win = 3 };
 
 // Directions
@@ -340,7 +340,7 @@ struct Direction {
 	int8_t d_col;
 };
 
-// Types de direction
+// Direction types
 inline bool is_vertical(Direction d) {
 	return (d.d_row != 0 && d.d_col == 0);
 }
@@ -357,17 +357,17 @@ inline bool is_straight(Direction d) {
 	return is_vertical(d) || is_horizontal(d);
 }
 
-// Case clouée ou non, et dans quelle direction?
+// Is the square pinned, and in which direction?
 struct PinnedSquare {
 	bool pinned = false;
 	Direction dir;
 };
 
-// Tableau des clouages de la position
+// Table of the pins of the position
 struct PinsMap {
 	PinnedSquare pins[8][8];
 
-	// Affichage de façon alignée
+	// Aligned display
 	void print() const {
 		cout << "Pins map : " << endl;
 		for (int row = 7; row >= 0; row--) {
@@ -380,29 +380,29 @@ struct PinsMap {
 	}
 };
 
-// Les directions sont-elles alignées
+// Are the directions aligned?
 inline bool is_aligned(int d_row, int d_col, Direction dir) {
 	return (d_row * dir.d_col == d_col * dir.d_row);
 }
 
 void print_controls(uint16_t controls);
 
-// Disposition de base des cases autour du roi
+// Base layout of the squares around the king
 // 0   1   2   3   4
 // 5   6   7   8   9
 // 10  11  12  13  14
 
-// On utilise un entier 16 bits pour stocker les contrôles autour du roi
+// A 16-bit integer stores the controls around the king
 inline uint16_t control_bit(int8_t rel_row, int8_t rel_col) {
 	return 1u << ((rel_row + 1) * 5 + (rel_col + 2));
 }
 
-// Renvoie si une case autour du roi est contrôlée
+// Returns whether a square around the king is controlled
 inline bool is_controlled_around_king(uint16_t controls, int8_t rel_row, int8_t rel_col) {
 	return (controls & control_bit(rel_row, rel_col)) != 0;
 }
 
-// row et col doivent être dans [0,7]
+// row and col must be in [0,7]
 inline bool is_in_interpose_mask(uint64_t interpose_mask, uint8_t row, uint8_t col) {
 	return (interpose_mask & (1ULL << (row * 8 + col))) != 0;
 }
@@ -453,7 +453,7 @@ inline constexpr void clear_bit(uint64_t& bb, const int square) noexcept {
 #include <immintrin.h>
 
 inline int pop_lsb(uint64_t& bb) noexcept {
-	int sq = _tzcnt_u64(bb);  // mappé sur TZCNT (AMD/Intel)
+	int sq = _tzcnt_u64(bb);  // maps to TZCNT (AMD/Intel)
 	bb &= bb - 1;
 	return sq;
 }
@@ -462,31 +462,31 @@ struct Evaluation {
 
 	// Variables
 
-	// Valeur de l'évaluation
+	// Value of the evaluation
 	int _value;
 
-	// Incertitude de l'évaluation
+	// Uncertainty of the evaluation
 	float _uncertainty;
 
-	// Valeur winnable
+	// Winnable value
 	float _winnable_white;
 	float _winnable_black;
 
 	// WDL
 	WDL _wdl;
 
-	// Score moyen
+	// Average score
 	float _avg_score;
 
 	// TODO *** add total value (-> move score?)
 
-	// Evalué?
+	// Evaluated?
 	bool _evaluated = false;
 
 
-	// Copie de l'évaluation
+	// Copy of the evaluation
 	Evaluation& operator=(const Evaluation& other) {
-		// Recopie les paramètres d'évaluation
+		// Copies the evaluation parameters
 		_value = other._value;
 		_uncertainty = other._uncertainty;
 		_winnable_white = other._winnable_white;
@@ -498,7 +498,7 @@ struct Evaluation {
 		return *this;
 	}
 
-	// Comparateur
+	// Comparator
 	bool operator>(Evaluation& other) {
 		if (!other._evaluated)
 			return true;
@@ -530,21 +530,21 @@ struct Evaluation {
 		_evaluated = false;
 	}
 
-	// Fonction qui renvoie le WDL de la position
+	// Returns the WDL of the position
 	void get_WDL(int winning_eval = 110, float beta = 0.75f);
 
-	// Fonction qui renvoie l'espérance de gain (en points) de la position (fondé sur les probas de WDL) pour les blancs
+	// Returns the expected gain (in points) of the position for White (based on the WDL probabilities)
 	void get_average_score(float draw_score = 0.5f);
 };
 
 
-// Plateau
+// Board
 class Board {
 public:
 
-	// Attributs
+	// Attributes
 
-	// Plateau
+	// Board
 	// 64 bytes
 	uint8_t _array[8][8]{	{	w_rook,		w_knight,	w_bishop,   w_queen,    w_king,		w_bishop,   w_knight,   w_rook	},
 							{   w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn,		w_pawn	},
@@ -555,532 +555,532 @@ public:
 							{   b_pawn,		b_pawn,		b_pawn,		b_pawn,		b_pawn,		b_pawn,		b_pawn,		b_pawn	},
 							{   b_rook,		b_knight,   b_bishop,   b_queen,    b_king,		b_bishop,   b_knight,   b_rook	} };
 
-	//Array _array; // TODO utiliser
+	//Array _array; // TODO use this
 
 	// Bitboard!! (TODO)
 	// none -> w_pawn -> b_king
 	uint64_t _bitboards[13];
 
-	// Pièces blanches, noires, et toutes
+	// White pieces, black pieces, and all of them
 	uint64_t _occupancies[3];
 
-	// TODO *** rajouter des masks pour les contrôles
-	// TODO *** magic bitboards à utiliser
+	// TODO *** add masks for the controls
+	// TODO *** magic bitboards to be used
 
-	// TODO *** Optionnel : roi en cache (remplacera les _white_king_pos ?)
+	// TODO *** optional: cached king (will it replace the _white_king_pos?)
 	//int _square_king[2];
 
-	// Coups possibles
-	// Nombre max de coups légaux dans une position : 218
+	// Possible moves
+	// Maximum number of legal moves in a position: 218
 
-	// TODO: réduire le nombre de bytes utilisés
+	// TODO: reduce the number of bytes used
 	// 200 bytes
 	Move _moves[max_moves];
 
-	// Les coups sont-ils actualisés? Si non : -1, sinon, _got_moves représente le nombre de coups jouables
-	// En supposant que le nombre de coups n'excède pas 127
+	// Are the moves up to date? If not: -1, otherwise _got_moves holds the number of playable moves
+	// Assuming the number of moves does not exceed 127
 	// 1 byte
 	int_fast8_t _got_moves = -1;
 
-	// Les flags des coups ont-ils été assignés?
+	// Have the move flags been assigned?
 	//bool _moves_flags_assigned = false;
 
-	// Les coups sont-ils triés?
+	// Are the moves sorted?
 	bool _sorted_moves = false;
 
-	// Tour du joueur (true pour les blancs, false pour les noirs)
+	// Side to move (true for White, false for Black)
 	bool _player = true;
 
-	// Droits de roque
+	// Castling rights
 	CastlingRights _castling_rights;
 
-	// Colonne d'en passant
+	// En passant file
 	int_fast8_t _en_passant_col = -1;
 
-	// Nombre de demi-coups (depuis le dernier déplacement de pion, ou la dernière capture, et reste nul à chacun de ces coups)
+	// Number of half-moves (since the last pawn move or capture, and reset to zero on each of those)
 	uint8_t _half_moves_count = 0;
 
-	// Nombre de coups de la partie
+	// Number of moves of the game
 	uint_fast16_t _moves_count = 1;
 
-	// Plateau libre ou actif? (pour le buffer)
+	// Board free or active? (for the buffer)
 	bool _is_active = false;
 
-	// Index dans monte_board_buffer (-1 = objet hors buffer : ne pas recycler)
+	// Index in monte_board_buffer (-1 = object outside the buffer: do not recycle)
 	int _buffer_index = -1;
 
-	// Avancement de la partie
-	// TODO *** à mettre dans les noeuds plutôt que plateaux?
+	// Advancement of the game
+	// TODO *** put this in the nodes rather than in the boards?
 	float _adv = 0.0f;
 	bool _advancement = false;
 
-	// Est-ce que le calcul de game over a déjà été fait?
+	// Has the game-over computation already been done?
 	bool _game_over_checked = false;
 	int_fast8_t _game_over_value = unterminated;
 
-	// On stocke les positions des rois
+	// The positions of the kings are stored
 	Pos _white_king_pos = { 0, 4 };
 	Pos _black_king_pos = { 7, 4 };
 
-	// Est-ce qu'on a affiché les composantes du plateau?
+	// Have the components of the board been displayed?
 	bool _displayed_components = false;
 
-	// Clé de Zobrist de la position
+	// Zobrist key of the position
 	uint64_t _zobrist_key = 0;
 
-	// Historique des positions depuis le dernier coup irréversible
+	// History of the positions since the last irreversible move
 	RepetitionHistory _positions_history = {};
 
-	// FIXME *** des variables dummy pour l'alignement mémoire, sinon il fait des new vector hyper lents à chaque création de plateau
+	// FIXME *** dummy variables for memory alignment, otherwise it creates very slow new vectors on every board creation
 	float _dummy1 = 1.0f;
 	float _dummy2 = 1.0f;
 
 
 
-	// Constructeur par défaut
+	// Default constructor
 	Board();
 
-	// Constructeur de copie
+	// Copy constructor
 	Board(const Board&, bool full = false, bool copy_history = false);
 
-	// Opérateur d'égalité (compare seulement le placement des pièces, droits de roques, et nombre de coups)
+	// Equality operator (compares only the piece placement, the castling rights and the move count)
 	bool operator== (const Board&) const;
 
-	// Fonction qui copie le strict minimum de la position
+	// Copies the strict minimum of the position
 	void minimal_copy_data(const Board& b);
 
-	// Fonction qui copie les attributs d'un plateau (full copy: on copie tout)
+	// Copies the attributes of a board (full copy: everything is copied)
 	void copy_data(const Board&, bool full = false, bool copy_history = false);
 
-	// Fonction qui ajoute un coup dans la liste de coups
+	// Adds a move to the move list
 	bool add_move(const Move move, uint8_t& iterator, const uint8_t piece) noexcept;
 
-	// Fonction qui ajoute tous les coups de roi, en tenant compte des contrôles et des roques
+	// Adds every king move, accounting for the controls and the castling rights
 	bool add_king_moves(const bool player, const Pos king_pos, const uint16_t controls_around_king, uint8_t &iterator, const bool kingside_castle_check, const bool queenside_castle_check) noexcept;
 
-	// Fonction qui ajoute les coups d'un pion, en tenant compte des clouages, et des échecs
+	// Adds the moves of a pawn, accounting for the pins and the checks
 	bool add_pawn_moves(const bool player, const uint8_t row, const uint8_t col, uint8_t &iterator, const PinnedSquare &pin, const bool in_check, const uint64_t &interposition_mask) noexcept;
 
-	// Fonction qui ajoute les coups d'un cavalier, en tenant compte des clouages, et des échecs
+	// Adds the moves of a knight, accounting for the pins and the checks
 	bool add_knight_moves(const bool player, const uint8_t row, const uint8_t col, uint8_t &iterator, const PinnedSquare &pin, const bool in_check, const uint64_t& interposition_mask) noexcept;
 
-	// Fonction qui ajoute les coups d'une pièce rectiligne, en tenant compte des clouages, et des échecs
+	// Adds the moves of a straight-line piece, accounting for the pins and the checks
 	bool add_rect_moves(const bool player, const uint8_t row, const uint8_t col, uint8_t &iterator, const PinnedSquare &pin, const bool in_check, const uint64_t& interposition_mask) noexcept;
 
-	// Fonction qui ajoute les coups d'une pièce diagonale, en tenant compte des clouages, et des échecs
+	// Adds the moves of a diagonal piece, accounting for the pins and the checks
 	bool add_diag_moves(const bool player, const uint8_t row, const uint8_t col, uint8_t &iterator, const PinnedSquare &pin, const bool in_check, const uint64_t& interposition_mask) noexcept;
 
-	// Fonction qui renvoie la liste des coups légaux
+	// Returns the list of legal moves
 	bool get_moves() noexcept;
 
-	// Fonction qui renvoie la map des contrôles autour du roi du joueur donné (et les cases pour le roque, si besoin)
+	// Returns the map of the controls around the king of the given player (and the castling squares, if needed)
 	uint16_t get_controls_around_king(Pos king_pos, bool player, bool kingside_castle_check, bool queenside_castle_check) const noexcept;
 
-	// Fonction qui renvoie une des pièces qui la case (si plus d'une)
+	// Returns one of the pieces controlling the square (if there is more than one)
 	PieceSquare get_square_attacker(Pos square, int* n_attackers) const noexcept;
 
-	// Retourne un bitboard des cases d'interposition entre le roi et l'attaquant (incluant l'attaquant)
+	// Returns a bitboard of the interposition squares between the king and the attacker (including the attacker)
 	uint64_t get_interpose_mask(Pos king_pos, const PieceSquare& attacker) const noexcept;
 
-	// Fonction qui renvoie la liste des clouages pour le joueur donné
+	// Returns the list of pins for the given player
 	PinsMap get_pins(bool player) const noexcept;
 
-	// Fonction qui dit s'il y'a échec
+	// Returns whether there is a check
 	bool in_check(bool update_king_pos = true) noexcept;
 
-	// Fonction qui affiche la liste des coups
+	// Displays the list of moves
 	void display_moves();
 
-	// Fonction qui affiche le plateau
+	// Displays the board
 	void display() const;
 
-	// Fonction qui joue un coup
+	// Plays a move
 	void make_move(const Move& move, const bool pgn = false, const bool add_to_history = false) noexcept;
 
-	// Fonction qui annule un coup
+	// Undoes a move
 	void unmake_move(Move move, uint8_t p1, uint8_t p2, int en_passant_col, int prev_half_count, bool k_castle, bool q_castle, bool is_castle, bool is_promotion, bool is_en_passant);
 
-	// Fonction qui renvoie l'avancement de la partie (0 = début de partie, 1 = fin de partie)
+	// Returns the advancement of the game (0 = opening, 1 = endgame)
 	void game_advancement();
 
-	// Fonction qui compte le matériel sur l'échiquier et renvoie sa valeur
+	// Counts the material on the board and returns its value
 	int count_material(const Evaluator* e = nullptr, float closed_factor = 0.0f) const;
 
-	// Fonction qui compte les paires de fous et renvoie la valeur
+	// Counts the bishop pairs and returns the value
 	int count_bishop_pairs() const;
 
-	// Fonction qui compte et renvoie la valeur des malus liés aux pièces doublons
+	// Counts and returns the value of the penalties tied to doubled pieces
 	int count_doubled_pieces(const Evaluator* eval) const;
 
-	// Fonction qui calcule et renvoie la valeur de positionnement des pièces sur l'échiquier
+	// Computes and returns the positioning value of the pieces on the board
 	int pieces_positioning(const Evaluator* eval = nullptr) const;
 
-	// Fonction qui évalue la position à l'aide d'heuristiques
+	// Evaluates the position with heuristics
 	void evaluate(Evaluation* eval, Evaluator* evaluator = nullptr, bool display = false, Network* n = nullptr, bool check_game_over = false);
 
-	// Fonction qui récupère le plateau d'un FEN
+	// Loads the board from a FEN
 	void from_fen(string);
 
-	// Fonction qui renvoie le FEN du tableau
+	// Returns the FEN of the board
 	string to_fen() const;
 
-	// Fonction qui renvoie le gagnant si la partie est finie (-1/1, et 2 pour nulle), et 0 sinon
+	// Returns the winner if the game is over (-1/1, and 2 for a draw), 0 otherwise
 	int game_over(int max_repetitions);
 
-	// Fonction qui renvoie le gagnant si la partie est finie (-1/1, et 2 pour nulle), et 0 sinon -> et stocke la valeur dans _game_over_value
+	// Returns the winner if the game is over (-1/1, and 2 for a draw), 0 otherwise -> and stores the value in _game_over_value
 	int is_game_over(int max_repetitions = 2);
 	//int is_game_over(int max_repetitions = 3);
 
-	// Fonction qui renvoie le label d'un coup
+	// Returns the label of a move
 	string move_label(Move move, bool use_uft8 = false);
 
-	// Fonction qui affiche un texte dans une zone donnée
+	// Displays a text inside a given area
 	static void draw_text_rect(const string&, float, float, float, float, float);
 
-	// Fonction qui joue le son d'un coup
+	// Plays the sound of a move
 	void play_move_sound(Move);
 
-	// Fonction qui réinitialise le plateau dans son état de base (pour le buffer)
+	// Resets the board to its base state (for the buffer)
 	void reset_board(bool display = false);
 
-	// Fonction qui calcule et renvoie la valeur correspondante à la sécurité des rois
+	// Computes and returns the value matching the safety of the kings
 	int get_king_safety(int activity_diff, float display_factor = 0.0f);
 
-	// Fonction qui dit si une pièce est capturable par l'ennemi (pour les affichages GUI)
+	// Returns whether a piece can be captured by the enemy (for the GUI display)
 	bool is_capturable(int, int);
 
-	// Fonction qui affiche le PGN
+	// Displays the PGN
 	void display_pgn() const;
 
-	// Fonction qui renvoie selon l'évaluation si c'est un mat ou non
+	// Returns, from the evaluation, whether this is a mate or not
 	int is_eval_mate(int) const;
 
-	// Fonction qui génère le livre d'ouvertures
+	// Generates the opening book
 	void generate_opening_book(int nodes = 100000);
 
-	// Fonction qui renvoie une représentation simple et rapide de la position
+	// Returns a simple and fast representation of the position
 	string simple_position() const;
 
-	// Fonction qui calcule la structure de pions et renvoie sa valeur
+	// Computes the pawn structure and returns its value
 	int get_pawn_structure(float display_factor = 0.0f);
 
-	// Fonction qui calcule la résultante des attaques et des défenses et la renvoie
+	// Computes the resultant of the attacks and defences and returns it
 	float get_attacks_and_defenses() const;
 
-	// Fonction qui calcule et renvoie l'opposition des rois (en finales de pions)
+	// Computes and returns the opposition of the kings (in pawn endgames)
 	int get_kings_opposition();
 
-	// Fonction qui renvoie le type de pièce sélectionnée
+	// Returns the type of the selected piece
 	uint8_t selected_piece() const;
 
-	// Fonction qui renvoie le type de pièce où la souris vient de cliquer
+	// Returns the type of the piece the mouse has just clicked on
 	uint8_t clicked_piece() const;
 
-	// Fonction qui renvoie si la pièce sélectionnée est au joueur ayant trait ou non
+	// Returns whether the selected piece belongs to the side to move
 	bool selected_piece_has_trait() const;
 
-	// Fonction qui renvoie si la pièce cliquée est au joueur ayant trait ou non
+	// Returns whether the clicked piece belongs to the side to move
 	bool clicked_piece_has_trait() const;
 
-	// Fonction qui remet les compteurs de temps "à zéro" (temps de base)
+	// Resets the clocks "to zero" (to the base time)
 	static void reset_timers();
 
-	// Fonction qui remet le plateau dans sa position initiale
+	// Resets the board to its initial position
 	void restart();
 
-	// Fonction qui renvoie la différence matérielle entre les deux camps
+	// Returns the material difference between the two sides
 	int material_difference() const;
 
-	// Fonction qui réinitialise les composantes de l'évaluation
+	// Resets the components of the evaluation
 	void reset_eval();
 
-	// Fonction qui compte les tours sur les colonnes ouvertes et semi-ouvertes et renvoie la valeur
+	// Counts the rooks on open and semi-open files and returns the value
 	int get_sliders_on_open_file() const;
 
-	// Fonction qui calcule la valeur des cases controllées sur l'échiquier
+	// Computes the value of the controlled squares on the board
 	int get_square_controls() const;
 
-	// Fonction qui fait un tri rapide des coups (en plaçant les captures en premier)
+	// Sorts the moves quickly (putting the captures first)
 	bool sort_moves();
 
-	// Fonction qui fait cliquer le coup m
+	// Clicks the move m
 	bool click_m_move(Move i, bool orientation) const;
 
-	// Fonction qui récupère et renvoie la couleur du joueur au trait (1 pour les blancs, -1 pour les noirs)
+	// Returns the colour of the side to move (1 for White, -1 for Black)
 	int get_color() const;
 
-	// Fonction qui calcule et renvoie l'avantage d'espace
+	// Computes and returns the space advantage
 	int get_space() const;
 
-	// Fonction qui calcule et renvoie une évaluation des vis-à-vis
+	// Computes and returns an evaluation of the alignments
 	int get_alignments() const;
 
-	// Fonction qui met à jour la position des rois
+	// Updates the position of the kings
 	bool update_kings_pos();
 
-	// Fonction qui renvoie l'activité des pièces
+	// Returns the activity of the pieces
 	int get_piece_activity() const;
 
-	// Fonction qui renvoie la map correspondante au nombre de contrôles pour chaque case de l'échiquier pour le joueur blanc
+	// Returns the map of the number of controls on each square of the board for White
 	SquareMap get_white_controls_map() const;
 
-	// Fonction qui renvoie la map correspondante au nombre de contrôles pour chaque case de l'échiquier pour le joueur noir
+	// Returns the map of the number of controls on each square of the board for Black
 	SquareMap get_black_controls_map() const;
 
-	// Fonction qui ajoute à une map les contrôles d'une pièce
+	// Adds the controls of a piece to a map
 	bool add_piece_controls(SquareMap* map, int i, int j, int piece) const;
 
-	// Fonction qui renvoie la mobilité virtuelle d'un roi
+	// Returns the virtual mobility of a king
 	int get_king_virtual_mobility(bool color);
 
-	// Fonction qui renvoie le nombre d'échecs 'safe' dans la position pour les deux joueurs
+	// Returns the number of 'safe' checks in the position for both players
 	int get_checks_value(SquareMap* white_controls, SquareMap* black_controls, bool color);
 
-	// Fonction qui renvoie la vitesse de génération des coups
+	// Returns the move generation speed
 	int moves_generation_benchmark(uint8_t depth, bool main_call = true);
 
-	// Fonction qui renvoie la valeur des fous en fianchetto
+	// Returns the value of the fianchettoed bishops
 	int get_fianchetto_value() const;
 
-	// Fonction qui renvoie si la case est controlée par un joueur
+	// Returns whether the square is controlled by a player
 	bool is_controlled(int square_i, int square_j, bool player) const;
 
-	// Fonction qui calcule et renvoie la valeur des menaces d'avance de pion
+	// Computes and returns the value of the pawn push threats
 	int get_pawn_push_threats() const;
 
-	// Fonction qui calcule et renvoie la proximité du roi avec les pions
+	// Computes and returns the proximity of the king to the pawns
 	int get_king_proximity();
 
-	// Fonction qui calcule et renvoie l'activité/mobilité des tours
+	// Computes and returns the activity/mobility of the rooks
 	int get_rook_activity() const;
 
-	// Fonction qui calcule et renvoie la valeur des pions qui bloquent les fous
+	// Computes and returns the value of the pawns blocking the bishops
 	int get_bishop_pawns() const;
 
-	// Fonction qui renvoie la valeur des faiblesses long terme du bouclier de pions
+	// Returns the value of the long-term weaknesses of the pawn shield
 	int get_pawn_shield();
 
-	// Fonction qui renvoie la caleur des cases faibles
+	// Returns the value of the weak squares
 	int get_weak_squares(bool color, bool around_king = false);
 
-	// Fonction qui convertit un coup en sa notation algébrique
+	// Converts a move into its algebraic notation
 	string algebric_notation(Move move) const;
 
-	// Fonction qui convertit une notation algébrique en un coup
+	// Converts an algebraic notation into a move
 	Move move_from_algebric_notation(string notation);
 
-	// Fonction qui renvoie la valeur de la distance à la possibilité de roque
+	// Returns the value of the distance to a possible castle
 	int get_castling_distance() const;
 
-	// Fonction qui génère la clé de Zobrist du plateau
+	// Generates the Zobrist key of the board
 	void get_zobrist_key();
 
-	// Fonction qui renvoie à quel point la partie est gagnable (de 0 à 1), pour une couleur donnée
+	// Returns how winnable the game is (from 0 to 1), for a given colour
 	float get_winnable(Evaluation* eval, bool color, float position_nature) const;
 
-	// Fonction qui calcule les valeurs de possibilités de gain pour chaque côté
+	// Computes the winning-chance values for each side
 	void get_winnable_values(Evaluation* eval, float position_nature = 0.0f) const;
 
-	// Fonction qui renvoie l'activité des fous sur les diagonales
+	// Returns the activity of the bishops on the diagonals
 	int get_bishop_activity() const;
 
-	// Fonction qui renvoie si un coup est légal ou non
+	// Returns whether a move is legal or not
 	bool is_legal(Move move);
 
-	// Fonction qui reset l'historique des positions
+	// Resets the position history
 	void reset_positions_history();
 
-	// Fonction qui renvoie combien de fois la position actuelle a été répétée
+	// Returns how many times the current position has been repeated
 	int repetition_count();
 
-	// Affiche l'histoirque des positions (les clés de Zobrist)
+	// Displays the position history (the Zobrist keys)
 	//void display_positions_history() const;
 
-	// Quiescence search pour l'algo de GrogrosZero
+	// Quiescence search for the GrogrosZero algorithm
 	//int grogros_quiescence(Evaluator* eval, int alpha = -2147483647, int beta = 2147483647, int depth = 4, bool explore_checks = true, bool main_player = true);
 
-	// Fonction qui renvoie l'affichage de l'évaluation
+	// Returns the display of the evaluation
 	string evaluation_to_string(int eval) const;
 
-	// Fonction qui renvoie l'évaluation des pièces enfermées
+	// Returns the evaluation of the trapped pieces
 	int get_trapped_pieces() const;
 
-	// Fonction qui ajuste les valeurs des pièces (malus/bonus), en fonction du type de position
+	// Adjusts the piece values (penalty/bonus), depending on the type of position
 	int get_updated_piece_values() const;
 
-	// Fonction qui renvoie la nature de la position de manière chiffrée: 0 = ouverte, 1 = fermée
+	// Returns the nature of the position as a number: 0 = open, 1 = closed
 	float get_position_nature() const;
 
-	// Fonction qui renvoie la valeur des bonus liés aux colonnes ouvertes et semi-ouvertes sur le roi adverse
+	// Returns the value of the bonuses tied to the open and semi-open files on the opposing king
 	int get_open_files_on_opponent_king(bool color);
 
-	// Fonction qui renvoie la valeur des bonus liés aux diagonales ouvertes et semi-ouvertes sur le roi adverse
+	// Returns the value of the bonuses tied to the open and semi-open diagonals on the opposing king
 	int get_open_diagonals_on_opponent_king(bool color);
 
-	// Fonction qui renvoie le nombre de cases de retrait pour le roi
+	// Returns the number of retreat squares for the king
 	int get_king_escape_squares(bool color);
 
-	// Fonction qui renvoie une valeur correspondante aux pièces attaquant le roi adverse
+	// Returns a value matching the pieces attacking the opposing king
 	int get_king_attackers(bool color);
 
-	// Fonction qui renvoie une valeur correspondante aux pièces défendant le roi
+	// Returns a value matching the pieces defending the king
 	int get_king_defenders(bool color);
 
-	// Fonction qui renvoie un bonus correspondant au pawn storm sur le roi adverse à une colonne donnée
+	// Returns a bonus matching the pawn storm on the opposing king on a given file
 	int get_pawn_storm_at_col(bool color, uint8_t king_row, uint8_t king_col) const;
 
-	// Fonction qui renvoie la puissance de protection de la structure de pions du roi
+	// Returns the protective strength of the pawn structure of the king
 	int get_pawn_storm(bool color);
 
-	// Fonction qui renvoie un bonus d'activité pour les cavaliers
+	// Returns an activity bonus for the knights
 	int get_knight_activity() const;
 
-	// Fonction qui renvoie la puissance de protection de la structure de pions du roi
+	// Returns the protective strength of the pawn structure of the king
 	int get_pawn_shield_protection(bool color, float opponent_attacking_potential, int space);
 
-	// Fonction qui renvoie la puissance de protection de la structure de pions du roi, s'il est sur la colonne donnée
+	// Returns the protective strength of the pawn structure of the king, were it on the given file
 	int get_pawn_shield_protection_at_column(bool color, int column, float opponent_attacking_potential, bool add_column_bonus = false, int space = 0);
 
-	// Fonction qui calcule tous les coups à une certaine profondeur, et renvoie le nombre de noeuds total
+	// Computes every move up to a certain depth, and returns the total node count
 	long long int count_nodes_at_depth(int depth, bool display = true, bool main = false);
 
-	// Version parallelisée
+	// Parallelized version
 	long long int count_nodes_at_depth_parallelized(int depth, bool display, bool main = false);
 
-	// Fonction qui renvoie si le nombre de noeuds calculés pour une position à une certaine profondeur correspond au nombre attendu
+	// Returns whether the node count computed for a position at a certain depth matches the expected one
 	bool validate_nodes_count_at_depth(string fen, int depth, vector<long long int> expected_nodes, bool display = false, bool display_full = false, bool parallel = false);
 
-	// Fonction qui execute une même validation plusieurs fois, et affiche le temps moyen, min, max, écart-type...
+	// Runs the same validation several times, and displays the average, minimum and maximum time, the standard deviation...
 	void benchmark_nodes_count_at_depth(string fen, int depth, vector<long long int> expected_nodes, int iterations = 10, bool display = false, bool parallel = false);
 
-	// Fonction test: nouvelle mobilité des pièces
+	// Test function: new piece mobility
 	int get_piece_mobility(bool display = false) const;
 
-	// Fonction qui renvoie si le pion peut bouger
+	// Returns whether the pawn can move
 	bool pawn_can_move(uint8_t row, uint8_t col, bool color) const;
 
-	// Fonction qui renvoie l'incertiude de la position
+	// Returns the uncertainty of the position
 	void get_uncertainty(Evaluation *eval, int material_eval, int winning_eval = 110) const;
 
-	// Fonction qui inverse les couleurs des joueurs (y compris le trait)
+	// Swaps the colours of the players (including the side to move)
 	void switch_colors();
 
-	// Fonction qui itère sur la map des distances à partir d'une position donnée, et renvoie les nouvelles cases contrôlées
+	// Iterates over the distance map from a given position, and returns the newly controlled squares
 	vector<Pos> get_next_king_squares(SquareMap& map, Pos start_pos, int distance, bool color) const;
 
-	// Fonction qui renvoie une map des distances entre le roi et chaque point de l'échiquier (nombre de coups pour y arriver, en fonction des contrôles actuels du plateau)
+	// Returns a map of the distances between the king and every point of the board (the number of moves needed to get there, given the current controls of the board)
 	SquareMap get_king_squares_distance(bool color);
 
-	// Fonction qui renvoie la faiblesse sur les rangées du roi
+	// Returns the weakness on the ranks of the king
 	int get_king_row_weakness(bool color);
 
-	// Fonction qui renvoie la valeur de centralisation du roi en fin de partie
+	// Returns the centralization value of the king in the endgame
 	int get_king_centralization(bool color);
 
-	// Fonction qui renvoie la valeur des pièces non défendues
+	// Returns the value of the undefended pieces
 	int get_unprotected_pieces(bool color) const;
 
-	// Fonction qui renvoie si le roi est dans le carré du pion
+	// Returns whether the king is inside the square of the pawn
 	bool in_king_square(Pos pos, bool color);
 
-	// Fonction qui renvoie si on est en finale de pions
+	// Returns whether this is a pawn endgame
 	bool is_pawn_endgame() const;
 
-	// Fonction qui renvoie si le joueur a encore des pièces (autres que roi et pions)
+	// Returns whether the player still has pieces (other than the king and the pawns)
 	bool has_pieces(bool color) const;
 
-	// Fonction qui renvoie la réelle valeur d'un paramètre de faiblesse long terme du roi, en fonction des possibilités et proximités des roques
+	// Returns the real value of a long-term king weakness parameter, depending on the castling options and how close they are
 	int get_long_term_king_weakness(bool player, int current_weakness, int kingside_weakness, int queenside_weakness);
 
-	// Fonction qui renvoie la valeur des bonus liés aux colonnes ouvertes et semi-ouvertes sur le roi adverse, s'il était sur une certaine colonne
+	// Returns the value of the bonuses tied to the open and semi-open files on the opposing king, were it on a certain file
 	int get_open_files_on_opponent_king_at_column(bool player, int king_col) const;
 
-	// Fonction qui renvoie la valeur des bonus liés au placement du roi, s'il était sur une certaine colonne
+	// Returns the value of the bonuses tied to the placement of the king, were it on a certain file
 	int get_king_placement_weakness_at_column(bool player, Pos king_pos) const;
 
-	// Fonction qui renvoie la valeur des bonus liés au placement du roi
+	// Returns the value of the bonuses tied to the placement of the king
 	int get_king_placement_weakness(bool player);
 
-	// Fonction qui renvoie une map de tous les pions bloqués
+	// Returns a map of every blocked pawn
 	SquareMap get_blocked_pawns(bool color) const;
 
-	// Fonction qui prend une map de pions/pièces bloquées, la met à jour en fonction des nouvelles pièces bloquées, et renvoie si une ou plusieurs pièces y ont été ajoutées
+	// Takes a map of blocked pawns/pieces, updates it with the newly blocked pieces, and returns whether one or more pieces were added to it
 	bool update_blocked_pieces(SquareMap& blocked_pieces, bool color, SquareMap opponent_controls) const;
 
-	// Fonction qui renvoie toutes la map de toutes les pièces bloquées
+	// Returns the map of every blocked piece
 	SquareMap get_all_blocked_pieces(bool color, SquareMap opponent_controls) const;
 
-	// Fonction qui update la map de toutes les pièces actuellement bloquées (1), nouvellement débloquées (-1), et renvoie si une ou plusieurs pièces ont été ajoutées ou retirées de la map
+	// Updates the map of every currently blocked piece (1) and newly unblocked piece (-1), and returns whether one or more pieces were added to or removed from the map
 	bool get_blocked_and_unblocked_pieces(SquareMap &pieces_states, bool color, SquareMap opponent_controls) const;
 
-	// Fonction qui renvoie la map des cases controlées par les pions
+	// Returns the map of the squares controlled by the pawns
 	SquareMap get_pawns_controls(bool color) const;
 
-	// Fonction qui renvoie la mobilité réelle des pièces (court terme)
+	// Returns the real mobility of the pieces (short term)
 	int get_short_term_piece_mobility(bool display = false) const;
 
-	// Fonction qui renvoie la mobilité virtuelle des pièces (long terme)
+	// Returns the virtual mobility of the pieces (long term)
 	int get_long_term_piece_mobility(bool display = false) const;
 
-	// Fonction qui renvoie la valeur correspondante à la sécurité des dames du joueur donné
+	// Returns the value matching the safety of the queens of the given player
 	int get_queen_safety(bool color) const;
 
-	// Fonction qui renvoie à quel point une position est quiet ou non: renvoie le nombre de captures disponibles, d'échecs disponibles et de promotions disponibles
+	// Returns how quiet a position is: the number of available captures, of available checks and of available promotions
 	int get_quietness();
 
-	// Fonction qui assigne les flags aux coups possibles
+	// Assigns the flags to the possible moves
 	void assign_all_move_flags();
 
-	// Fonction qui change le trait du joueur
+	// Switches the side to move
 	void switch_trait();
 
-	// Fonction qui assigne les flags à un coup donné
+	// Assigns the flags to a given move
 	void assign_move_flags(Move *move) const;
 
-	// Fonction qui remet à 0 les bitboards
+	// Resets the bitboards to 0
 	void reset_bitboards();
 
-	// Fonction qui met à jour les bitboards
+	// Updates the bitboards
 	void update_bitboards();
 
-	// Fonction qui affiche tous les bitboards
+	// Displays every bitboard
 	void print_all_bitboards() const;
 
-	// Fonction qui met à jour les bitboards en fonction d'un coup joué pour les blancs
+	// Updates the bitboards after a move played by White
 	void update_bitboards_white(int row1, int col1, int row2, int col2, int p, int p_last) noexcept;
 
-	// Fonction qui met à jour les bitboards en fonction d'un coup joué pour les noirs
+	// Updates the bitboards after a move played by Black
 	void update_bitboards_black(int row1, int col1, int row2, int col2, int p, int p_last) noexcept;
 
-	// Fonction qui renvoie le nombre de pions passés pour une couleur donnée
+	// Returns the number of passed pawns for a given colour
 	int get_passed_pawns_count(bool color) const;
 
-	// Fonction qui renvoie la valeur de l'évaluation liée aux pions passés
+	// Returns the evaluation value tied to the passed pawns
 	// TODO
 	int get_passed_pawns_value(bool color) const;
 
-	// Fonction qui renvoie si un coup est irréversible (pour la détection rapide de répétitions)
-	// Irreversible = pawn move, capture (y compris en-passant), promotion, ou coup faisant perdre les droits de roque
+	// Returns whether a move is irreversible (for the fast repetition detection)
+	// Irreversible = pawn move, capture (including en passant), promotion, or a move losing the castling rights
 	bool is_irreversible_move(const Move& move) const noexcept;
 
-	// Fonction qui renvoie si un coup modifie (fait perdre) les droits de roque
+	// Returns whether a move changes (loses) the castling rights
 	bool does_move_change_castling_rights(const Move& move) const noexcept;
 
-	// TODO *** faire un piece_safety plus générique?
+	// TODO *** write a more generic piece_safety?
 
-	// TODO *** génération plus rapide des coups
+	// TODO *** faster move generation
 };
 
-// Fonction qui renvoie si deux positions (en format FEN) sont les mêmes
+// Returns whether two positions (in FEN form) are the same
 bool equal_fen(const string&, const string&);
 
-// Fonction qui renvoie si deux positions (en format FEN) sont les mêmes (pour les répétitions)
+// Returns whether two positions (in FEN form) are the same (for the repetitions)
 bool equal_positions(const Board&, const Board&);
 
-// Fonction qui renvoie le temps que l'IA doit passer sur le prochain coup (en ms), en fonction d'un facteur k, et des temps restant
+// Returns the time the AI should spend on the next move (in ms), given a factor k and the times left
 int time_to_play_move(int t1, int t2, float k = 0.05f);
 
-// Fonction qui affiche toutes les valeurs d'un bitboard
+// Displays every value of a bitboard
 void print_bitboard(uint64_t bitboard);
 
 // std::map<string, int> _positions_history = {
@@ -1089,7 +1089,7 @@ void print_bitboard(uint64_t bitboard);
 //     { "C", 2 }
 // };
 
-// Fonction qui renvoie la valeur UCT
+// Returns the UCT value
 float uct(float, float, int, int);
 
 // Text box
@@ -1106,7 +1106,7 @@ struct TextBox {
 	Color text_color;
 	Font text_font;
 
-	// Constructeur par défaut
+	// Default constructor
 	TextBox() {}
 
 	TextBox(const float pos_x, const float pos_y, const float box_width, const float box_height, string initial_text, const int initial_value) :
@@ -1126,26 +1126,26 @@ struct TextBox {
 	}
 };
 
-// Fonction qui met à jour une text box
+// Updates a text box
 void update_text_box(TextBox& text_box);
 
-// Fonction qui dessine une text box
+// Draws a text box
 void draw_text_box(const TextBox& text_box);
 
-// Fonction qui compare deux coups pour savoir lequel afficher en premier
+// Compares two moves to know which one to display first
 //bool compare_move_arrows(int m1, int m2);
 // 
-// Fonction qui renvoie le nom de la case
+// Returns the name of the square
 string square_name(uint8_t i, uint8_t j);
 
-// Fonction qui renvoie le nom d'une pièce
+// Returns the name of a piece
 string piece_name(uint8_t piece);
 
-// Fonction qui renvoie le nom d'une pièce
+// Returns the name of a piece
 string short_piece_name(uint8_t piece);
 
-// Fonction qui renvoie l'évaluation re-normalisée en fonction du score moyen
+// Returns the evaluation renormalized by the average score
 string get_renormalized_evaluation(float avg_score, float winning_eval = 1, float winning_score = 0.70f);
 
-// Fonction qui renvoie le score d'un WDL avec une précision de 0.01
+// Returns the score of a WDL with a precision of 0.01
 string score_string(float avg_score);

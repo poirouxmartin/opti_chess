@@ -9,9 +9,9 @@
 #include <string.h>
 #include "ranges"
 
-// Fonction qui met à jour le temps des joueurs
+// Updates the clocks of the players
 void GUI::update_time() {
-	// Faut-il quand même mettre à jour le temps quand il est désactivé?
+	// Should the clock still be updated when it is disabled?
 	if (!_time)
 		return;
 
@@ -22,7 +22,7 @@ void GUI::update_time() {
 
 	_last_move_clock = clock();
 
-	// Gestion du temps
+	// Time management
 	if (_board->_player != _last_player) {
 		if (_board->_player) {
 			_time_black -= clock() - _last_move_clock - _time_increment_black;
@@ -39,28 +39,28 @@ void GUI::update_time() {
 	_last_player = _board->_player;
 }
 
-// Fonction qui lance le temps
+// Starts the clock
 void GUI::start_time() {
 	update_time_control();
 	_time = true;
 	_last_move_clock = clock();
 }
 
-// Fonction qui stoppe le temps
+// Stops the clock
 void GUI::stop_time() {
 	update_time_control();
 	update_time();
 	_time = false;
 }
 
-// Constructeur GUI
+// GUI constructor
 GUI::GUI() {
 }
 
 // GUI
 GUI main_GUI;
 
-// Fonction qui met en place le binding avec le site d'échecs pour une nouvelle partie
+// Sets up the binding with the chess website for a new game
 bool GUI::new_bind_game() {
 	const int orientation = bind_board_orientation(_binding_left, _binding_top, _binding_right, _binding_bottom, _current_site);
 
@@ -73,14 +73,14 @@ bool GUI::new_bind_game() {
 		switch_orientation();
 
 	if (orientation) {
-		// Joueur blanc
+		// White player
 		_white_player = _grogros_zero_name;
 		_white_title = "BOT";
 		_white_elo = _grogros_zero_elo;
 		_white_url = "https://images.chesscomfiles.com/uploads/v1/user/284728633.4af59e2f.50x50o.0c8cdf830b69.png";
 		_white_country = "57";
 
-		// Joueur noir
+		// Black player
 		_black_player = _current_site._name + " player";
 		_black_title = "";
 		_black_elo = "";
@@ -88,14 +88,14 @@ bool GUI::new_bind_game() {
 		_black_country = "";
 	}
 	else {
-		// Joueur blanc
+		// White player
 		_white_player = _current_site._name + " player";
 		_white_title = "";
 		_white_elo = "";
 		_white_url = "";
 		_white_country = "";
 
-		// Joueur noir
+		// Black player
 		_black_player = _grogros_zero_name;
 		_black_title = "BOT";
 		_black_elo = _grogros_zero_elo;
@@ -119,7 +119,7 @@ bool GUI::new_bind_game() {
 	return true;
 }
 
-// Fonction qui met en place le binding avec chess.com pour une nouvelle analyse de partie
+// Sets up the chess.com binding to analyse a new game
 bool GUI::new_bind_analysis() {
 	const int orientation = bind_board_orientation(_binding_left, _binding_top, _binding_right, _binding_bottom, _current_site);
 
@@ -155,7 +155,7 @@ bool GUI::new_bind_analysis() {
 	return true;
 }
 
-// Fonction qui construit le PGN global
+// Builds the global PGN
 bool GUI::update_global_pgn()
 {
 	_global_pgn = "";
@@ -168,25 +168,25 @@ bool GUI::update_global_pgn()
 	if (!_black_player.empty())
 		_global_pgn += "[Black \"" + _black_player + "\"]\n";
 
-	// Titres des joueurs
+	// Titles of the players
 	if (!_white_title.empty())
 		_global_pgn += "[WhiteTitle \"" + _white_title + "\"]\n";
 	if (!_black_title.empty())
 		_global_pgn += "[BlackTitle \"" + _black_title + "\"]\n";
 
-	// Elo des joueurs
+	// Elo of the players
 	if (!_white_elo.empty())
 		_global_pgn += "[WhiteElo \"" + _white_elo + "\"]\n";
 	if (!_black_elo.empty())
 		_global_pgn += "[BlackElo \"" + _black_elo + "\"]\n";
 
-	// URL des joueurs
+	// URL of the players
 	if (!_white_url.empty())
 		_global_pgn += "[WhiteUrl \"" + _white_url + "\"]\n";
 	if (!_black_url.empty())
 		_global_pgn += "[BlackUrl \"" + _black_url + "\"]\n";
 
-	// Pays des joueurs
+	// Country of the players
 	if (!_white_country.empty())
 		_global_pgn += "[WhiteCountry \"" + _white_country + "\"]\n";
 	if (!_black_country.empty())
@@ -196,7 +196,7 @@ bool GUI::update_global_pgn()
 	if (!_time_control.empty())
 		_global_pgn += "[TimeControl \"" + _time_control + "\"]\n";
 
-	// FEN importé
+	// Imported FEN
 	if (!_initial_fen.empty())
 		_global_pgn += "[FEN \"" + _initial_fen + "\"]\n";
 
@@ -204,20 +204,20 @@ bool GUI::update_global_pgn()
 	if (!_date.empty())
 		_global_pgn += "[Date \"" + _date + "\"]\n";
 
-	// Ajout du PGN de la partie
+	// Addition of the PGN of the game
 	_global_pgn += _pgn;
 
 	return true;
 }
 
-// Fonction qui met à jour la cadence du PGN
+// Updates the time control of the PGN
 bool GUI::update_time_control()
 {
 	_time_control = to_string(static_cast<int>(max(_time_white, _time_black) / 1000)) + " + " + to_string(static_cast<int>(max(_time_increment_white, _time_increment_black) / 1000));
 	return true;
 }
 
-// Fonction qui réinitialise le PGN
+// Resets the PGN
 bool GUI::reset_pgn()
 {
 	update_date();
@@ -228,7 +228,7 @@ bool GUI::reset_pgn()
 	return  true;
 }
 
-// Fonction qui met à jour la date du PGN
+// Updates the date of the PGN
 bool GUI::update_date() {
 	const time_t current_time = time(nullptr);
 	tm local_time;
@@ -243,15 +243,15 @@ bool GUI::update_date() {
 	return true;
 }
 
-// Fonction qui lance les threads de GrogrosZero
+// Starts the GrogrosZero threads
 //bool GUI::thread_grogros_zero(Evaluator* eval, int nodes)
 //{
-//	// Initialisation du buffer pour GrogrosZero, si besoin
+//	// Initialization of the buffer for GrogrosZero, if needed
 //	if (!monte_buffer._init)
 //		monte_buffer.init();
 //
 //
-//	// Lance grogros sur chaque noeud fils pour l'initialisation
+//	// Run grogros on every child node for the initialization
 //	//_board->grogros_zero(eval, _board->_got_moves, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
 //
 //	_threads_grogros_zero.clear();
@@ -271,22 +271,22 @@ bool GUI::update_date() {
 //	}
 //
 //	// TODO:
-//	// Faut re-additionner les temps de monte carlo de chaque fils (pareil pour les quiescence nodes)
-//	// Il faut aussi update toutes les variantes
+//	// The Monte Carlo times of every child have to be summed again (same for the quiescence nodes)
+//	// Every variation has to be updated too
 //
-//	// Relance grogros sur 1 noeud (pour actualiser les valeurs)
+//	// Run grogros again on 1 node (to refresh the values)
 //	//_board->grogros_zero(eval, 100, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
 //
 //	return true;
 //}
 
-// Fonction qui lance grogros sur un thread
+// Runs grogros on a thread
 //bool GUI::grogros_zero_threaded(Evaluator* eval, int nodes) {
-//	// Initialisation du buffer pour GrogrosZero, si besoin
+//	// Initialization of the buffer for GrogrosZero, if needed
 //	if (!monte_buffer._init)
 //		monte_buffer.init();
 //
-//	// Lance grogros sur un thread
+//	// Run grogros on a thread
 //	_thread_grogros_zero = thread(&Board::grogros_zero, &_board, eval, nodes, _beta, _k_add, _quiescence_depth, true, false, 0, nullptr, 0);
 //
 //	_thread_grogros_zero.detach();
@@ -294,7 +294,7 @@ bool GUI::update_date() {
 //	return true;
 //}
 
-// Fonction qui retire le dernier coup du PGN
+// Removes the last move from the PGN
 bool GUI::remove_last_move_PGN()
 {
 	// TODO	
@@ -302,46 +302,46 @@ bool GUI::remove_last_move_PGN()
 	return false;
 }
 
-// Fonction qui dessine les flèches en fonction des valeurs dans l'algo de Monte-Carlo
+// Draws the arrows from the values of the Monte Carlo algorithm
 void GUI::draw_exploration_arrows()
 {
-	// Vecteur de flèches à afficher
+	// Vector of arrows to display
 	_grogros_arrows.clear();
 
 	if (_root_exploration_node->_nodes <= 1 || _root_exploration_node->_is_terminal)
 		return;
 
-	// Coup à surligner
+	// Move to highlight
 	const Move best_move = _root_exploration_node->get_most_explored_child_move();
 
-	// Coup avec la meilleure évaluation
+	// Move with the best evaluation
 	const Move best_eval_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
 
 	if (best_eval_move.is_null_move()) {
 		cout << "null best eval move" << endl;
 	}
 
-	// Une pièce est-elle sélectionnée?
+	// Is a piece selected?
 	const bool is_selected = _selected_pos.row != -1 && _selected_pos.col != -1;
 
-	// Crée un vecteur avec les coups explorés par GrogrosZero
+	// Build a vector with the moves explored by GrogrosZero
 	vector<Move> iterated_moves_vector;
 
 	for (auto const& [move, child_link] : _root_exploration_node->_children) {
 		Node const* child = child_link._node;
-		// Si une pièce est sélectionnée, dessine toutes les flèches pour cette pièce
+		// If a piece is selected, draw every arrow for that piece
 		if (is_selected) {
 			if (_selected_pos.row == move.start_row && _selected_pos.col == move.start_col)
 				iterated_moves_vector.push_back(move);
 		}
 
-		// Sinon, dessine les flèches pour les coups les plus explorés
+		// Otherwise, draw the arrows of the most explored moves
 		else {
-			// On ne rajoute pas pour le moment les coups en surbrillance
+			// The highlighted moves are not added for now
 			if (move == best_move || move == best_eval_move)
 				continue;
 
-			// Le coup a-t-il été exploré par GrogrosZero, ou seulement la quiescence?
+			// Has the move been explored by GrogrosZero, or only by the quiescence?
 			if (_root_exploration_node->_iterations > 0) {
 				if (static_cast<float>(child_link._chosen_iterations) / static_cast<float>(_root_exploration_node->_iterations) > _arrow_rate) {
 					iterated_moves_vector.push_back(move);
@@ -349,7 +349,7 @@ void GUI::draw_exploration_arrows()
 			}
 			else {
 				// TODO: quiescence arrows
-				// en rouge? blanc? avec un "?" au bout?
+				// in red? in white? with a "?" at the end?
 				if (_root_exploration_node->_nodes > 0) {
 					iterated_moves_vector.push_back(move);
 				}
@@ -357,13 +357,13 @@ void GUI::draw_exploration_arrows()
 		}
 	}
 
-	// Trie les coups en fonction du nombre de noeuds et d'un affichage plus lisible
+	// Sort the moves by node count, and for a more readable display
 	std::ranges::sort(iterated_moves_vector.begin(), iterated_moves_vector.end(), [this](const Move m1, const Move m2) {
 		return this->compare_arrows(m1, m2); }
 	);
 
 	if (!is_selected) {
-		// Ajoute les coups à afficher dans tous les cas
+		// Add the moves to display in every case
 		iterated_moves_vector.push_back(best_eval_move);
 
 		if (best_eval_move != best_move) {
@@ -371,7 +371,7 @@ void GUI::draw_exploration_arrows()
 		}
 	}
 
-	// Dessine les flèches
+	// Draw the arrows
 	for (const Move move : iterated_moves_vector) {
 		const ChildLink& child_link = _root_exploration_node->_children[move];
 		Node const *child = child_link._node;
@@ -380,7 +380,7 @@ void GUI::draw_exploration_arrows()
 	}
 }
 
-// Fonction qui obtient la case correspondante à la position sur la GUI
+// Returns the square matching a position in the GUI
 Pos GUI::get_pos_from_GUI(const float x, const float y) {
 	if (!is_in(x, _board_padding_x, _board_padding_x + _board_size) || !is_in(y, _board_padding_y, _board_padding_y + _board_size))
 		return Pos(-1, -1);
@@ -388,19 +388,19 @@ Pos GUI::get_pos_from_GUI(const float x, const float y) {
 		return Pos(orientation_index(8 - (y - _board_padding_y) / _tile_size), orientation_index((x - _board_padding_x) / _tile_size));
 }
 
-// Fonction qui permet de changer l'orientation du plateau
+// Changes the orientation of the board
 void GUI::switch_orientation() {
 	_board_orientation = !_board_orientation;
 }
 
-// Fonction aidant à l'affichage du plateau (renvoie i si board_orientation, et 7 - i sinon)
+// Helper for the board display (returns i if board_orientation is set, 7 - i otherwise)
 int GUI::orientation_index(const int i) const {
 	if (_board_orientation)
 		return i;
 	return 7 - i;
 }
 
-// Fonction qui dessine la flèche d'un coup
+// Draws the arrow of a move
 void GUI::draw_arrow(const Move move, const bool player, Color c, float thickness, const bool use_value, const float avg_score, const int mate, const bool is_most_explored, const bool is_best_eval)
 {
 	const uint8_t start_row = move.start_row;
@@ -424,7 +424,7 @@ void GUI::draw_arrow(const Move move, const bool player, Color c, float thicknes
 
 	bool is_knight_move = (abs(d_row) == 2 && abs(d_col) == 1) || (abs(d_row) == 1 && abs(d_col) == 2);
 
-	// Outline pour le coup le plus exploré
+	// Outline for the most explored move
 	if (is_most_explored) {
 		if (is_knight_move)
 			draw_line_bezier(x1, y1, x2, y2, thickness * 1.4f, BLACK);
@@ -434,7 +434,7 @@ void GUI::draw_arrow(const Move move, const bool player, Color c, float thicknes
 		draw_circle(x2, y2, thickness * 2.0f * 1.1f, BLACK);
 	}
 	
-	// Outline pour le coup avec la meilleure évaluation
+	// Outline for the move with the best evaluation
 	if (is_best_eval) {
 		if (is_knight_move)
 			draw_line_bezier(x1, y1, x2, y2, thickness * 1.4f, WHITE);
@@ -444,7 +444,7 @@ void GUI::draw_arrow(const Move move, const bool player, Color c, float thicknes
 		draw_circle(x2, y2, thickness * 2.0f * 1.1f, WHITE);
 	}
 
-	// "Flèche"
+	// "Arrow"
 	if (is_knight_move)
 		draw_line_bezier(x1, y1, x2, y2, thickness, c);
 	else
@@ -452,10 +452,10 @@ void GUI::draw_arrow(const Move move, const bool player, Color c, float thicknes
 	draw_circle(x1, y1, thickness, c);
 	draw_circle(x2, y2, thickness * 2.0f, c);
 
-	// Rajoute une valeur à la flèche
+	// Add a value to the arrow
 	if (use_value) {
 
-		// Valeur à afficher
+		// Value to display
 		char v[5];
 		string eval;
 
@@ -487,21 +487,21 @@ void GUI::draw_arrow(const Move move, const bool player, Color c, float thicknes
 		DrawTextEx(_text_font, v, { x2 - width / 2.0f, y2 - height / 2.0f }, size, _font_spacing * size, BLACK);
 	}
 
-	// Ajoute la flèche au vecteur
+	// Add the arrow to the vector
 	_grogros_arrows.push_back(move);
 
 	return;
 }
 
-// Couleur de la flèche en fonction du coup (de son nombre de noeuds)
+// Colour of the arrow depending on the move (on its node count)
 Color GUI::move_color(const int explorations, const int total_explorations, bool is_quiescence) const {
-	// S'il n'y a pas d'exploration, on affiche en blanc
+	// When there is no exploration, display in white
 	if (is_quiescence)
 		return GRAY;
 
 	const float x = static_cast<float>(explorations) / static_cast<float>(total_explorations);
 
-	// Facteur d'atténuation par le blanc
+	// Attenuation factor towards white
 	const float white_attenuation = 0.3f;
 
 	const auto red = static_cast<unsigned char>(255.0f * ((1 - white_attenuation) * ((x <= 0.2f) + (x > 0.2f && x < 0.4f) * (0.4f - x) / 0.2f + (x > 0.8f) * (x - 0.8f) / 0.2f) + white_attenuation));
@@ -514,11 +514,11 @@ Color GUI::move_color(const int explorations, const int total_explorations, bool
 	return { red, green, blue, alpha };
 }
 
-// Fonction qui charge les textures
+// Loads the textures
 void GUI::load_resources() {
 	cout << GetWorkingDirectory() << endl;
 
-	// Pièces
+	// Pieces
 	_piece_images[0] = LoadImage("resources/images/w_pawn.png");
 	_piece_images[1] = LoadImage("resources/images/w_knight.png");
 	_piece_images[2] = LoadImage("resources/images/w_bishop.png");
@@ -532,7 +532,7 @@ void GUI::load_resources() {
 	_piece_images[10] = LoadImage("resources/images/b_queen.png");
 	_piece_images[11] = LoadImage("resources/images/b_king.png");
 
-	// Mini-Pièces
+	// Mini pieces
 	_mini_piece_images[0] = LoadImage("resources/images/mini_pieces/w_pawn.png");
 	_mini_piece_images[1] = LoadImage("resources/images/mini_pieces/w_knight.png");
 	_mini_piece_images[2] = LoadImage("resources/images/mini_pieces/w_bishop.png");
@@ -546,7 +546,7 @@ void GUI::load_resources() {
 	_mini_piece_images[10] = LoadImage("resources/images/mini_pieces/b_queen.png");
 	_mini_piece_images[11] = LoadImage("resources/images/mini_pieces/b_king.png");
 
-	// Chargement du son
+	// Loading of the sound
 	_move_sound = LoadSound((_sounds_path + "move.mp3").c_str());
 	_castle_sound = LoadSound((_sounds_path + "castle.mp3").c_str());
 	_check_sound = LoadSound((_sounds_path + "check.mp3").c_str());
@@ -556,7 +556,7 @@ void GUI::load_resources() {
 	_game_begin_sound = LoadSound((_sounds_path + "game_begin.mp3").c_str());
 	_promotion_sound = LoadSound((_sounds_path + "promotion.mp3").c_str());
 
-	// Police de l'écriture
+	// Text font
 	//_text_font = LoadFontEx("resources/fonts/SFTransRobotics.otf", 128, nullptr, 1000);
 	_text_font = LoadFontEx("resources/fonts/Montserrat-Bold.otf", 128, nullptr, 256);
 	//_text_font = LoadFontEx("resources/fonts/Montserrat-Medium.ttf", 128, nullptr, 0);
@@ -564,12 +564,12 @@ void GUI::load_resources() {
 	SetTextureFilter(_text_font.texture, TEXTURE_FILTER_TRILINEAR);
 	//SetTextureFilter(_text_font.texture, TEXTURE_FILTER_ANISOTROPIC_4X);
 
-	// Shader pour le texte
+	// Shader for the text
 	//_text_shader = LoadShader(nullptr, "resources/shaders/font_sdf.fs");
 	//_text_shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(_text_shader, "view");
 	//_text_font.texture.sg
 
-	// Icône
+	// Icon
 	_icon = LoadImage("resources/images/grogros_zero.png"); // TODO essayer de charger le .ico, pour que l'icone s'affiche tout le temps (pas seulement lors du build)
 	SetWindowIcon(_icon);
 	UnloadImage(_icon);
@@ -583,7 +583,7 @@ void GUI::load_resources() {
 	_loaded_resources = true;
 }
 
-// Fonction qui met à la bonne taille les images et les textes de la GUI
+// Scales the images and the texts of the GUI to the right size
 void GUI::resize_GUI() {
 	const int min_screen = min(_screen_height, _screen_width);
 	_board_size = _board_scale * min_screen;
@@ -594,9 +594,9 @@ void GUI::resize_GUI() {
 	_piece_size = _tile_size * _piece_scale;
 	_arrow_thickness = _tile_size * _arrow_scale;
 
-	// Génération des textures
+	// Generation of the textures
 
-	// Pièces
+	// Pieces
 	for (int i = 0; i < 12; i++) {
 		Image piece_image = ImageCopy(_piece_images[i]);
 		ImageResize(&piece_image, _piece_size, _piece_size);
@@ -607,7 +607,7 @@ void GUI::resize_GUI() {
 		_piece_textures[i] = texture;
 	}
 
-	// Taille du texte
+	// Size of the text
 	_text_size = _board_size / 16.0f;
 
 	// Grogros
@@ -621,7 +621,7 @@ void GUI::resize_GUI() {
 	ImageResize(&cursor_copy, _cursor_size, _cursor_size);
 	_cursor_texture = LoadTextureFromImage(cursor_copy);
 
-	// Mini-pièces (pour le compte des pièces prises durant la partie)
+	// Mini pieces (for the count of the pieces captured during the game)
 	_mini_piece_size = _text_size / 3;
 	for (int i = 0; i < 12; i++) {
 		Image mini_piece_image = ImageCopy(_mini_piece_images[i]);
@@ -630,41 +630,41 @@ void GUI::resize_GUI() {
 	}
 }
 
-// Fonction qui actualise les nouvelles dimensions de la fenêtre
+// Applies the new dimensions of the window
 void GUI::get_window_size() {
 	_screen_width = GetScreenWidth();
 	_screen_height = GetScreenHeight();
 }
 
-// Fonction qui renvoie si le joueur est en train de jouer (pour que l'IA arrête de réflechir à ce moment sinon ça lagge)
+// Returns whether the player is currently moving (so the AI stops thinking then, otherwise it lags)
 bool GUI::is_playing() const {
 	const auto [x, y] = GetMousePosition();
 	return (_selected_pos.row != -1 || x != _mouse_pos.x || y != _mouse_pos.y);
 }
 
-// Fonction qui change le mode d'affichage des flèches (oui/non)
+// Changes the arrow display mode (yes/no)
 void GUI::switch_arrow_drawing() {
 	_drawing_arrows = !_drawing_arrows;
 }
 
-// Fonction qui affiche un texte dans une zone donnée avec un slider
+// Displays a text inside a given area, with a slider
 void GUI::slider_text(const string& s, float pos_x, float pos_y, float width, float height, float size, float* slider_value, Color t_color, float slider_width, float slider_height) {
 
-	// FIXME *** test: si rien a changé dans le texte et les dimensions, on pourrait stocker ce texte, non?
+	// FIXME *** test: if nothing changed in the text or the dimensions, this text could be cached, no?
 
-	// Dessine le canvas, rectangle
+	// Draw the canvas, a rectangle
 	DrawRectangleRec({ pos_x, pos_y, width, height }, _background_text_color);
 
-	// Taille des sliders
+	// Size of the sliders
 	if (slider_width == -1.0f)
 		slider_width = _screen_width / 100.0f;
 
 	if (slider_height == -1.0f)
 		slider_height = height;
 
-	// Split le texte en parties égales
+	// Split the text into equal parts
 
-	// Estimation du nombre de caractères par ligne
+	// Estimate of the number of characters per line
 	const Vector2 estimated_size = MeasureTextEx(_text_font, "A", size, _font_spacing * size);
 
 	int split_length = static_cast<int>(width / estimated_size.x);
@@ -684,20 +684,20 @@ void GUI::slider_text(const string& s, float pos_x, float pos_y, float width, fl
 		k++;
 	}
 
-	// Taille verticale totale du texte
+	// Total vertical size of the text
 
-	// Estimation de la taille verticale d'une ligne
+	// Estimate of the vertical size of one line
 	const float space_size = MeasureTextEx(_text_font, "\n", size, _font_spacing * size).y - estimated_size.y;
 
 	float text_height = estimated_size.y + space_size * rows;
 
-	// Si le texte prend plus de place verticalement que l'espace alloué
+	// If the text takes more vertical room than the space allocated
 	if (text_height > height) {
 
-		// Nombre de lignes à afficher
+		// Number of lines to display
 		int n_lines = 1 + (height - estimated_size.y) / space_size;
 
-		// Numéro de ligne à laquelle commencer
+		// Number of the line to start from
 		int starting_line = (rows + 1 - n_lines) * *slider_value;
 
 		string final_text;
@@ -728,7 +728,7 @@ void GUI::slider_text(const string& s, float pos_x, float pos_y, float width, fl
 
 		// Slide
 
-		// Avec la molette
+		// With the mouse wheel
 		if (is_cursor_in_rect({ pos_x, pos_y, width, height })) {
 			*slider_value -= GetMouseWheelMove() * 3.0 / (rows - n_lines + 1);
 			if (*slider_value < 0.0f)
@@ -744,59 +744,59 @@ void GUI::slider_text(const string& s, float pos_x, float pos_y, float width, fl
 	DrawTextEx(_text_font, c, { pos_x, pos_y }, size, _font_spacing * size, t_color);
 }
 
-// Fonction pour obtenir l'orientation du plateau
+// Returns the orientation of the board
 bool GUI::get_board_orientation() const {
 	return _board_orientation;
 }
 
-// Fonction qui renvoie si le curseur de la souris se trouve dans le rectangle
+// Returns whether the mouse cursor is inside the rectangle
 bool GUI::is_cursor_in_rect(const Rectangle rec) {
 	_mouse_pos = GetMousePosition();
 	return (is_in(_mouse_pos.x, rec.x, rec.x + rec.width) && is_in(_mouse_pos.y, rec.y, rec.y + rec.height));
 }
 
-// Fonction qui dessine un rectangle à partir de coordonnées flottantes
+// Draws a rectangle from floating-point coordinates
 bool GUI::draw_rectangle(const float pos_x, const float pos_y, const float width, const float height, const Color color) {
 	DrawRectangle(float_to_int(pos_x), float_to_int(pos_y), float_to_int(width + pos_x) - float_to_int(pos_x), float_to_int(height + pos_y) - float_to_int(pos_y), color);
 	return true;
 }
 
-// Fonction qui dessine un rectangle à partir de coordonnées flottantes, en fonction des coordonnées de début et de fin
+// Draws a rectangle from floating-point coordinates, using the start and end coordinates
 bool GUI::draw_rectangle_from_pos(const float pos_x1, const float pos_y1, const float pos_x2, const float pos_y2, const Color color) {
 	DrawRectangle(float_to_int(pos_x1), float_to_int(pos_y1), float_to_int(pos_x2) - float_to_int(pos_x1), float_to_int(pos_y2) - float_to_int(pos_y1), color);
 	return true;
 }
 
-// Fonction qui dessine un cercle à partir de coordonnées flottantes
+// Draws a circle from floating-point coordinates
 void GUI::draw_circle(const float pos_x, const float pos_y, const float radius, const Color color) {
 	DrawCircle(float_to_int(pos_x), float_to_int(pos_y), radius, color);
 }
 
-// Fonction qui dessine une ligne à partir de coordonnées flottantes
+// Draws a line from floating-point coordinates
 void GUI::draw_line_ex(const float x1, const float y1, const float x2, const float y2, const float thick, const Color color) {
 	DrawLineEx({ static_cast<float>(float_to_int(x1)), static_cast<float>(float_to_int(y1)) }, { static_cast<float>(float_to_int(x2)), static_cast<float>(float_to_int(y2)) }, thick, color);
 }
 
-// Fonction qui dessine une ligne de Bézier à partir de coordonnées flottantes
+// Draws a Bezier curve from floating-point coordinates
 void GUI::draw_line_bezier(const float x1, const float y1, const float x2, const float y2, const float thick, const Color color) {
 	DrawLineBezier({ static_cast<float>(float_to_int(x1)), static_cast<float>(float_to_int(y1)) }, { static_cast<float>(float_to_int(x2)), static_cast<float>(float_to_int(y2)) }, thick, color);
 }
 
-// Fonction qui dessine une texture à partir de coordonnées flottantes
+// Draws a texture from floating-point coordinates
 void GUI::draw_texture(const Texture& texture, const float pos_x, const float pos_y, const Color color) {
 	DrawTexture(texture, float_to_int(pos_x), float_to_int(pos_y), color);
 }
 
-// Fonction qui affiche la barre d'evaluation
+// Displays the evaluation bar
 void GUI::draw_eval_bar(const float eval, WDL wdl, float avg_score, const string& text_eval, const float x, const float y, const float width, const float height, const float max_eval, const Color white, const Color gray, Color black, float max_height) {
 	const bool is_mate = text_eval.find('M') != -1;
 
-	// Taille max de la barre
+	// Maximum size of the bar
 	if (max_height == -1.0f)
 		max_height = 0.95f;
 
-	// Coupe l'évaluation à 2 chiffres max
-	// FIXME: ça suppose que l'eval dépasse pas +100 (ou +10000 dans l'équivalent de Grogros)
+	// Truncate the evaluation to 2 digits at most
+	// FIXME: this assumes the evaluation never goes above +100 (or +10000 in Grogros's equivalent)
 	string eval_text = is_mate ? text_eval : text_eval.substr(0, min(4, static_cast<int>(text_eval.size())));
 	if (eval_text[eval_text.size() - 1] == '.')
 		eval_text = eval_text.substr(0, eval_text.size() - 1);
@@ -818,7 +818,7 @@ void GUI::draw_eval_bar(const float eval, WDL wdl, float avg_score, const string
 	float t_size = width / 2;
 	Vector2 text_dimensions = MeasureTextEx(_text_font, eval_text.c_str(), t_size, _font_spacing);
 
-	// Largeur que le texte doit occuper
+	// Width the text has to take up
 	float max_text_width = width * 0.9f;
 	if (text_dimensions.x > max_text_width)
 		t_size = t_size * max_text_width / text_dimensions.x;
@@ -829,36 +829,36 @@ void GUI::draw_eval_bar(const float eval, WDL wdl, float avg_score, const string
 
 	DrawTextEx(_text_font, eval_text.c_str(), { text_pos_x, text_pos_y }, t_size, _font_spacing, (eval < 0) ? white : black);
 
-	// Score moyen
+	// Average score
 	DrawTextEx(_text_font, score_string(avg_score).c_str(), { text_pos_x, text_pos_y + t_size }, t_size * 0.75f, _font_spacing, (eval < 0) ? white : black);
 
-	// Evaluation re-normalisée
+	// Renormalized evaluation
 	DrawTextEx(_text_font, get_renormalized_evaluation(avg_score).c_str(), { text_pos_x, text_pos_y + 1.75f * t_size }, t_size * 0.75f, _font_spacing, (eval < 0) ? white : black);
 }
 
-// Fonction qui retire les surlignages de toutes les cases
+// Removes the highlight from every square
 void GUI::remove_highlighted_tiles() {
 	for (int i = 0; i < 8; i++)
 		for (int j = 0; j < 8; j++)
 			_highlighted_array[i][j] = 0;
 }
 
-// Fonction qui selectionne une case
+// Selects a square
 void GUI::select_tile(int a, int b) {
 	_selected_pos = Pos(a, b);
 }
 
-// Fonction qui surligne une case (ou la de-surligne)
+// Highlights a square (or un-highlights it)
 void GUI::highlight_tile(const int a, const int b) {
 	_highlighted_array[a][b] = 1 - _highlighted_array[a][b];
 }
 
-// Fonction qui déselectionne
+// Deselects
 void GUI::unselect() {
 	_selected_pos = Pos(-1, -1);
 }
 
-// A partir de coordonnées sur le plateau
+// From coordinates on the board
 void GUI::draw_simple_arrow_from_coord(const int i1, const int j1, const int i2, const int j2, float thickness, Color c) {
 	// cout << thickness << endl;
 	if (thickness == -1.0f)
@@ -870,7 +870,7 @@ void GUI::draw_simple_arrow_from_coord(const int i1, const int j1, const int i2,
 
 	c.a = 255;
 
-	// "Flèche"
+	// "Arrow"
 	if (abs(j2 - j1) != abs(i2 - i1) && abs(j2 - j1) + abs(i2 - i1) == 3)
 		draw_line_bezier(x1, y1, x2, y2, thickness, c);
 	else
@@ -882,48 +882,48 @@ void GUI::draw_simple_arrow_from_coord(const int i1, const int j1, const int i2,
 	draw_circle(x2, y2, thickness * 2.0f, c);
 }
 
-// Joue un coup en gardant la réflexion de GrogrosZero
+// Plays a move, keeping the GrogrosZero search
 bool GUI::play_move_keep(Move move)
 {
 	_board->assign_move_flags(&move);
 
-	// S'assure que le coup est légal
+	// Make sure the move is legal
 	if (!_board->is_legal(move))
 		return false;
 
-	// Joue le son du coup
+	// Play the sound of the move
 	_board->play_move_sound(move);
 
-	// On update les variantes
+	// Update the variations
 	_update_variants = true;
 
-	// Timestamp du coup
+	// Timestamp of the move
 	clock_t move_timestamp = _board->_player ? _time_white : _time_black;
 	string additional_time_str = _time ? clock_to_timestamp(move_timestamp, true) : "";
 
-	// Arbre de la partie
+	// Tree of the game
 	_game_tree._current_node->_board = *_board;
 	_game_tree.add_child(move, additional_time_str);
 
-	// FIXME: les vraies distinctions de cas à faire: 
-	// y'a t-il eu des coups calculés? -> oui/non
-	// si oui, le coup joué en fait-il partie? -> oui/non
+	// FIXME: the real cases to distinguish:
+	// have any moves been computed? -> yes/no
+	// if so, is the played move one of them? -> yes/no
 
 	if (_root_exploration_node->children_count() == 0) {
-		// On joue simplement le coup
+		// Simply play the move
 		_board->make_move(move, false, true);
 
-		// On met à jour le plateau de recherche
+		// Update the search board
 		//_root_exploration_node->_board = &_board;
 	}
 
-	// Si le coup a effectivement été calculé
+	// If the move was actually computed
 	else {
 		if (_root_exploration_node->_children.contains(move)) {
 			Node* next_root = _root_exploration_node->_children[move]._node;
 
-			// Ancien root : detache plus bas (remplace par next_root), pas
-			// reutilise en place -> a recycler explicitement (Approche B).
+			// Former root: detached further down (replaced by next_root), not reused
+			// in place -> to be recycled explicitly (approach B).
 			Node* const old_root = _root_exploration_node;
 
 			for (auto const& [m, child_link] : _root_exploration_node->_children) {
@@ -940,7 +940,7 @@ bool GUI::play_move_keep(Move move)
 
 			//cout << "toto" << endl;
 
-			// Fait un reset du plateau
+			// Reset the board
 			_root_exploration_node->_board->reset_board();
 			_root_exploration_node->reset(false);
 
@@ -948,32 +948,32 @@ bool GUI::play_move_keep(Move move)
 
 			//cout << "tata" << endl;
 
-			// Il faudra supprimer le parent et tous les fils (TODO)
+			// The parent and all the children will have to be deleted (TODO)
 
-			// On met à jour le noeud de recherche
+			// Update the search node
 			next_root->_parent_count--;
 			_root_exploration_node = next_root;
 
-			// Ancien root devenu orphelin (next_root est le nouveau root) :
-			// recyclage de son noeud + plateau (B_R), distincts de next_root.
+			// Former root, now orphaned (next_root is the new root):
+			// recycling of its node + board (B_R), distinct from next_root.
 			recycle_detached_node(old_root);
 
-			// On met à jour le plateau
+			// Update the board
 			_board = _root_exploration_node->_board;
 			//_root_exploration_node->_board = &_board;
 		}
 
-		// Sinon, on joue simplement le coup
+		// Otherwise, simply play the move
 		else {
-			// On supprime toutes les recherces
+			// Delete every search
 			_root_exploration_node->reset();
 			_root_exploration_node->_is_active = true;
 
-			// On joue simplement le coup
+			// Simply play the move
 			_board->make_move(move, false, true);
 			_board->_is_active = true;
 
-			// On met à jour le plateau de recherche
+			// Update the search board
 			//_root_exploration_node->_board = &_board;
 		}
 	}
@@ -988,7 +988,7 @@ bool GUI::play_move_keep(Move move)
 	//cout << "same board2: " << (*_root_exploration_node->_board == _board) << endl;
 
 
-	// Update le PGN
+	// Update the PGN
 	_game_tree.select_next_node(move);
 	_pgn = _game_tree.tree_display();
 
@@ -998,17 +998,17 @@ bool GUI::play_move_keep(Move move)
 	return true;
 }
 
-// Fonction qui renvoie le type de pièce sélectionnée
+// Returns the type of the selected piece
 uint8_t GUI::selected_piece() const
 {
-	// Faut-il stocker cela pour éviter de le re-calculer?
+	// Should this be cached to avoid recomputing it?
 	if (_selected_pos.row == -1 || _selected_pos.col == -1)
 		return 0;
 
 	return _board->_array[_selected_pos.row][_selected_pos.col];
 }
 
-// Fonction qui renvoie le type de pièce où la souris vient de cliquer
+// Returns the type of the piece the mouse has just clicked on
 uint8_t GUI::clicked_piece() const
 {
 	if (_clicked_pos.row == -1 || _clicked_pos.col == -1)
@@ -1017,14 +1017,14 @@ uint8_t GUI::clicked_piece() const
 	return _board->_array[_clicked_pos.row][_clicked_pos.col];
 }
 
-// Fonction qui lance une analyse de GrogrosZero
+// Starts a GrogrosZero analysis
 void GUI::grogros_analysis(int iterations) {
-	// Noeuds à explorer par frame, en visant _target_fps FPS
+	// Nodes to explore per frame, aiming at _target_fps FPS
 
-	// Iterations par seconde
+	// Iterations per second
 	int iterations_per_second = _root_exploration_node->get_ips();
 
-	// Iterations max par seconde
+	// Maximum iterations per second
 	//constexpr int max_iterations_per_second = 100000;
 
 	//if (iterations_per_second > max_iterations_per_second) {
@@ -1040,9 +1040,9 @@ void GUI::grogros_analysis(int iterations) {
 	//if (iterations_to_explore == 0)
 	//	iterations_to_explore = _nodes_per_frame;
 
-	// Avec les transpositions, _nodes représente le volume de recherche propagé,
-	// pas nécessairement le nombre de plateaux uniques encore actifs dans le buffer.
-	// On s'arrête seulement si le buffer est réellement plein.
+	// With the transpositions, _nodes represents the propagated search volume,
+	// not necessarily the number of unique boards still active in the buffer.
+	// We only stop when the buffer really is full.
 	if (monte_board_buffer.get_first_free_index() == -1) {
 		iterations_to_explore = 0;
 	}
@@ -1055,7 +1055,7 @@ void GUI::grogros_analysis(int iterations) {
 
 	g_tt_main_search = _tt_main_search; // #11 Plan A — propage le toggle au global lu dans exploration.cpp
 	g_tt_node_dag = _tt_node_dag; // #11 Plan B — propage le toggle au global lu dans exploration.cpp
-	_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations == -1 ? iterations_to_explore : iterations, _quiescence_depth); // TODO: nombre de noeuds à paramétrer
+	_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations == -1 ? iterations_to_explore : iterations, _quiescence_depth); // TODO: make the node count configurable
 
 	if (g_tt_node_dag) {
 		dag_debug_report(); // #11 Plan B — diagnostic une ligne par batch (cumulatif)
@@ -1063,10 +1063,10 @@ void GUI::grogros_analysis(int iterations) {
 	_update_variants = true;
 }
 
-// Fonction qui dessine la GUI
+// Draws the GUI
 void GUI::draw()
 {
-	// Chargement des textures, si pas déjà fait
+	// Loading of the textures, if not already done
 	if (!_loaded_resources) {
 		load_resources();
 		resize_GUI();
@@ -1076,27 +1076,27 @@ void GUI::draw()
 
 	// *** CLICS SOURIS ***
 
-	// Position de la souris
+	// Position of the mouse
 	_mouse_pos = GetMousePosition();
 
-	// Si on clique avec la souris
+	// If the mouse is clicked
 	if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
 
-		// Retire toute les cases surlignées
+		// Remove the highlight from every square
 		remove_highlighted_tiles();
 
-		// Retire toutes les flèches
+		// Remove every arrow
 		_arrows_array = {};
 
-		// Stocke la case cliquée sur le plateau
+		// Store the square clicked on the board
 		_clicked_pos = get_pos_from_GUI(_mouse_pos.x, _mouse_pos.y);
 		_clicked = true;
 		bool has_played = false;
 
-		// S'il y'a les flèches de réflexion de GrogrosZero, et qu'aucune pièce n'est sélectionnée
+		// If the GrogrosZero search arrows are there, and no piece is selected
 		if (_drawing_arrows && !selected_piece()) {
 
-			// On regarde dans le sens inverse pour jouer la flèche la plus récente (donc celle visible en cas de superposition)
+			// Iterate backwards to play the most recent arrow (the visible one when they overlap)
 			for (Move move : ranges::reverse_view(_grogros_arrows))
 			{
 				if (move.end_row == _clicked_pos.row && move.end_col == _clicked_pos.col) {
@@ -1109,7 +1109,7 @@ void GUI::draw()
 			}
 		}
 
-		// Si aucune pièce n'est sélectionnée et que l'on clique sur une pièce, la sélectionne
+		// If no piece is selected and a piece is clicked, select it
 		if (!selected_piece() && clicked_piece()) {
 			if (!has_played || _board->clicked_piece_has_trait()) {
 				_selected_pos = _clicked_pos;
@@ -1118,17 +1118,17 @@ void GUI::draw()
 			}
 		}
 
-		// Si une pièce est déjà sélectionnée
+		// If a piece is already selected
 		else if (selected_piece()) {
 
-			// Si on clique sur la même case que celle sélectionnée, la déselectionne
+			// If the click lands on the selected square, deselect it
 			if (_selected_pos == _clicked_pos) {
 				//unselect();
 			}
 
 			else {
 				
-				// Si le coup est légal, le joue
+				// If the move is legal, play it
 				Move move = Move(_selected_pos.row, _selected_pos.col, _clicked_pos.row, _clicked_pos.col);
 
 				if (_board->is_legal(move)) {
@@ -1136,16 +1136,16 @@ void GUI::draw()
 						_board->click_m_move(move, get_board_orientation());
 					play_move_keep(move);
 
-					// Déselectionne la pièce
+					// Deselect the piece
 					unselect();
 				}
 
 				else {
-					// Si on clique sur une autre pièce, la sélectionne
+					// If another piece is clicked, select it
 					if (clicked_piece() && _board->clicked_piece_has_trait())
 						_selected_pos = _clicked_pos;
 					
-					// Sinon, déselectionne la pièce
+					// Otherwise, deselect the piece
 					else
 						unselect();
 				}
@@ -1153,19 +1153,19 @@ void GUI::draw()
 		}
 	}	
 
-	// Si on relâche la souris
+	// If the mouse is released
 	if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
 
-		// Position de la case où l'on a relâché la souris
+		// Position of the square where the mouse was released
 		Pos drop_pos = get_pos_from_GUI(_mouse_pos.x, _mouse_pos.y);
 
-		// Si la case est bien sur le plateau
+		// If the square really is on the board
 		if (is_in_fast(drop_pos.row, 0, 7) && is_in_fast(drop_pos.col, 0, 7) && is_in_fast(_selected_pos.row, 0, 7) && is_in_fast(_selected_pos.col, 0, 7)) {
 
-			// Si on relâche la souris sur une autre case que celle où l'on a cliqué
+			// If the mouse is released on a square other than the clicked one
 			if (drop_pos != _selected_pos) {
 
-				// Si le coup est légal, le joue
+				// If the move is legal, play it
 				Move move = Move(_selected_pos.row, _selected_pos.col, drop_pos.row, drop_pos.col);
 
 				if (_board->is_legal(move)) {
@@ -1173,7 +1173,7 @@ void GUI::draw()
 						_board->click_m_move(move, get_board_orientation());
 					play_move_keep(move);
 
-					// Déselectionne la pièce
+					// Deselect the piece
 					unselect();
 				}
 			}
@@ -1182,37 +1182,37 @@ void GUI::draw()
 		_clicked = false;
 	}
 
-	// Si on fait un clic droit
+	// If a right click happens
 	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
 
-		// Stocke la case cliquée sur le plateau
+		// Store the square clicked on the board
 		_right_clicked_pos = get_pos_from_GUI(_mouse_pos.x, _mouse_pos.y);
 	}
 
-	// Si on fait relâche le clic droit
+	// If the right click is released
 	if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
 		Pos drop_pos = get_pos_from_GUI(_mouse_pos.x, _mouse_pos.y);
 
-		// Si on relâche la souris sur le plateau
+		// If the mouse is released on the board
 		if (is_in_fast(drop_pos.row, 0, 7) && is_in_fast(drop_pos.col, 0, 7)) {
 
-			// Si on relâche la souris sur une autre case que celle où l'on a cliqué
+			// If the mouse is released on a square other than the clicked one
 			if (drop_pos == _right_clicked_pos) {
 
-				// Sélectionne/déselectionne la case
+				// Select/deselect the square
 				_highlighted_array[drop_pos.row][drop_pos.col] = 1 - _highlighted_array[drop_pos.row][drop_pos.col];
 			}
 				
-			// Sinon, fait une flèche
+			// Otherwise, draw an arrow
 			else {
 				if (_right_clicked_pos.row != -1 && _right_clicked_pos.col != -1) {
 					vector<int> arrow = { _right_clicked_pos.row, _right_clicked_pos.col, drop_pos.row, drop_pos.col };
 
-					// Si la flèche existe, la supprime
+					// If the arrow exists, delete it
 					if (auto found_arrow = find(_arrows_array.begin(), _arrows_array.end(), arrow); found_arrow != _arrows_array.end())
 						_arrows_array.erase(found_arrow);
 
-					// Sinon, la rajoute
+					// Otherwise, add it
 					else
 						_arrows_array.push_back(arrow);
 				}
@@ -1224,20 +1224,20 @@ void GUI::draw()
 
 	// *** AFFICHAGE ***
 
-	// Couleur de fond
+	// Background colour
 	ClearBackground(_background_color);
 
-	// Nombre de FPS
+	// Number of FPS
 	DrawTextEx(_text_font, ("FPS : " + to_string(GetFPS())).c_str(), { _screen_width - 2 * _text_size, _text_size / 3 }, _text_size / 3, _font_spacing, _text_color);
 
-	// Plateau
+	// Board
 	draw_rectangle(_board_padding_x, _board_padding_y, _tile_size * 8, _tile_size * 8, _board_color_light);
 
 	for (int i = 0; i < 8; i++)
 		for (int j = 0; j < 8; j++)
 			((i + j) % 2 == 1) && draw_rectangle(_board_padding_x + _tile_size * j, _board_padding_y + _tile_size * i, _tile_size, _tile_size, _board_color_dark);
 
-	// Coordonnées sur le plateau
+	// Coordinates on the board
 	for (int i = 0; i < 8; i++)
 		for (int j = 0; j < 8; j++) {
 			if (j == 0 + 7 * _board_orientation) // Chiffres
@@ -1246,25 +1246,25 @@ void GUI::draw()
 				DrawTextEx(_text_font, _abc8.substr(j, 1).c_str(), { _board_padding_x + _tile_size * (orientation_index(j) + 1) - _text_size / 2, _board_padding_y + _tile_size * 8 - _text_size / 2 }, _text_size / 2, _font_spacing, ((i + j) % 2 == 1) ? _board_color_light : _board_color_dark);
 		}
 
-	// Surligne du dernier coup joué
+	// Highlight of the last played move
 	if (!_game_tree._current_node->_move.is_null_move()) {
 		draw_rectangle(_board_padding_x + orientation_index(_game_tree._current_node->_move.start_col) * _tile_size, _board_padding_y + orientation_index(7 - _game_tree._current_node->_move.start_row) * _tile_size, _tile_size, _tile_size, _last_move_color);
 		draw_rectangle(_board_padding_x + orientation_index(_game_tree._current_node->_move.end_col) * _tile_size, _board_padding_y + orientation_index(7 - _game_tree._current_node->_move.end_row) * _tile_size, _tile_size, _tile_size, _last_move_color);
 	}
 
-	// Cases surglignées
+	// Highlighted squares
 	for (int i = 0; i < 8; i++)
 		for (int j = 0; j < 8; j++)
 			if (_highlighted_array[i][j])
 				draw_rectangle(_board_padding_x + _tile_size * orientation_index(j), _board_padding_y + _tile_size * orientation_index(7 - i), _tile_size, _tile_size, _highlight_color);
 
-	// Sélection de cases et de pièces
+	// Selection of squares and pieces
 	if (_selected_pos.row != -1 && _selected_pos.col != -1) {
 
-		// Affiche la case séléctionnée
+		// Display the selected square
 		draw_rectangle(_board_padding_x + orientation_index(_selected_pos.col) * _tile_size, _board_padding_y + orientation_index(7 - _selected_pos.row) * _tile_size, _tile_size, _tile_size, _select_color);
 		
-		// Affiche les coups possibles pour la pièce séléctionnée
+		// Display the possible moves of the selected piece
 		for (int i = 0; i < _board->_got_moves; i++) {
 			if (_board->_moves[i].start_row == _selected_pos.row && _board->_moves[i].start_col == _selected_pos.col) {
 				draw_rectangle(_board_padding_x + orientation_index(_board->_moves[i].end_col) * _tile_size, _board_padding_y + orientation_index(7 - _board->_moves[i].end_row) * _tile_size, _tile_size, _tile_size, _select_color);
@@ -1272,7 +1272,7 @@ void GUI::draw()
 		}
 	}
 
-	// Dessine les pièces adverses
+	// Draw the opposing pieces
 	for (int row = 0; row < 8; row++) {
 		for (int col = 0; col < 8; col++) {
 			uint8_t piece = _board->_array[row][col];
@@ -1283,12 +1283,12 @@ void GUI::draw()
 		}
 	}
 
-	// Coups auquel l'IA réflechit...
+	// Moves the AI is thinking about...
 	if (_drawing_arrows) {
 		draw_exploration_arrows();
 	}
 
-	// Dessine les pièces alliées
+	// Draw the friendly pieces
 	for (int row = 0; row < 8; row++) {
 		for (int col = 0; col < 8; col++) {
 			uint8_t piece = _board->_array[row][col];
@@ -1299,7 +1299,7 @@ void GUI::draw()
 		}
 	}
 
-	// Dessine la pièce cliquée (si on clique sur une pièce)
+	// Draw the clicked piece (when a piece is being clicked)
 	for (int row = 0; row < 8; row++) {
 		for (int col = 0; col < 8; col++) {
 			uint8_t piece = _board->_array[row][col];
@@ -1311,7 +1311,7 @@ void GUI::draw()
 		}
 	}
 
-	// Flèches déssinées
+	// Arrows drawn
 	for (vector<int> arrow : _arrows_array)
 		draw_simple_arrow_from_coord(arrow[0], arrow[1], arrow[2], arrow[3], -1, _arrow_color);
 
@@ -1321,7 +1321,7 @@ void GUI::draw()
 	// Grogros
 	draw_texture(_grogros_texture, _board_padding_x, _text_size / 4.0f - _text_size / 5.6f, WHITE);
 
-	// Joueurs de la partie
+	// Players of the game
 	int material = _board->material_difference();
 	string black_material = (material < 0) ? ("+" + to_string(-material)) : "";
 	string white_material = (material > 0) ? ("+" + to_string(material)) : "";
@@ -1367,13 +1367,13 @@ void GUI::draw()
 		next = false;
 	}
 
-	// Temps des joueurs
-	// Update du temps
+	// Clocks of the players
+	// Update of the clock
 	update_time();
 	float x_pad = _board_padding_x + _board_size - _text_size * 2;
 	Color time_colors[4] = { (_time && !_board->_player) ? BLACK : _dark_gray, (_time && !_board->_player) ? WHITE : LIGHTGRAY, (_time && _board->_player) ? WHITE : LIGHTGRAY, (_time && _board->_player) ? BLACK : _dark_gray };
 
-	// Temps des blancs
+	// White's clock
 	if (!_white_time_text_box.active) {
 		_white_time_text_box.value = _time_white;
 		_white_time_text_box.text = clock_to_string(_white_time_text_box.value);
@@ -1384,7 +1384,7 @@ void GUI::draw()
 		_white_time_text_box.text = clock_to_string(_white_time_text_box.value);
 	}
 
-	// Position du texte
+	// Position of the text
 	_white_time_text_box.set_rect(x_pad, _board_padding_y - _text_size / 2 * !_board_orientation + _board_size * _board_orientation, _board_padding_x + _board_size - x_pad, _text_size / 2);
 	_white_time_text_box.text_size = _text_size / 3;
 	_white_time_text_box.text_color = time_colors[3];
@@ -1392,7 +1392,7 @@ void GUI::draw()
 	_white_time_text_box.main_color = time_colors[2];
 	draw_text_box(_white_time_text_box);
 
-	// Temps des noirs
+	// Black's clock
 	if (!_black_time_text_box.active) {
 		_black_time_text_box.value = _time_black;
 		_black_time_text_box.text = clock_to_string(_black_time_text_box.value);
@@ -1403,7 +1403,7 @@ void GUI::draw()
 		_black_time_text_box.text = clock_to_string(_black_time_text_box.value);
 	}
 
-	// Position du texte
+	// Position of the text
 	_black_time_text_box.set_rect(x_pad, _board_padding_y - _text_size / 2 * _board_orientation + _board_size * !_board_orientation, _board_padding_x + _board_size - x_pad, _text_size / 2);
 	_black_time_text_box.text_size = _text_size / 3;
 	_black_time_text_box.text_color = time_colors[1];
@@ -1420,13 +1420,13 @@ void GUI::draw()
 	update_global_pgn();
 	slider_text(_global_pgn, _text_size / 2, _board_padding_y + _board_size + _text_size * 2, _screen_width - _text_size, _screen_height - (_board_padding_y + _board_size + _text_size * 2) - _text_size / 3, _text_size / 3, &_pgn_slider, _text_color);
 
-	// Analyse de Grogros
+	// Grogros analysis
 	string monte_carlo_text = static_cast<string>(_grogros_analysis ? "STOP GrogrosZero-Auto (CTRL-H)" : "RUN GrogrosZero-Auto (CTRL-G)") + "\nCONTROLS (H)" + "\n\nSEARCH PARAMETERS\nalpha: " + to_string(_alpha) + "\nbeta: " + to_string(_beta) + "\ngamma : " + to_string(_gamma) + "\nq_depth : " + to_string(_quiescence_depth) + "\nexplore checks : " + (_explore_checks ? "true" : "false") + "\nTT main search : " + (_tt_main_search ? "true" : "false") + " (I)" + "\nTT node DAG : " + (_tt_node_dag ? "true" : "false") + " (O)";
 	
-	// S'il y a eu une recherche
+	// If a search has happened
 	if (_root_exploration_node->children_count() != 0 && _drawing_arrows) {
 
-		// Meilleure évaluation
+		// Best evaluation
 		//int best_eval = _root_exploration_node->_deep_evaluation._value;
 		Move best_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
 		Evaluation best_evaluation = _root_exploration_node->_children[best_move]._node->_deep_evaluation;
@@ -1466,7 +1466,7 @@ void GUI::draw()
 
 		_wdl = best_evaluation._wdl;
 
-		// Pour l'évaluation statique
+		// For the static evaluation
 		if (!_board->_displayed_components) {
 			evaluate_position(true, true);
 		}
@@ -1484,24 +1484,24 @@ void GUI::draw()
 			"\nIterations: " + int_to_round_string(_root_exploration_node->_iterations) + " (" + int_to_round_string(_root_exploration_node->_iterations / (static_cast<float>(_root_exploration_node->_time_spent + 1) / CLOCKS_PER_SEC)) + "I/s)" +
 				"\n\n" + transposition_table.stats_string();
 		
-		// Affichage des paramètres d'analyse de GrogrosZero
+		// Display of the GrogrosZero analysis parameters
 		slider_text(monte_carlo_text, _board_padding_x + _board_size + _text_size / 2, _text_size, _screen_width - _text_size - _board_padding_x - _board_size, _board_size * 9 / 16, _text_size / 4, &_monte_carlo_slider, _text_color);
 
-		// Lignes d'analyse de GrogrosZero
-		// TODO: on devrait utiliser ça aussi pour éviter de recalculer les autres paramètres
+		// GrogrosZero analysis lines
+		// TODO: this should be used too, to avoid recomputing the other parameters
 		if (_update_variants) {
 			_exploration_variants = _root_exploration_node->get_exploration_variants(_alpha, _beta);
 			_update_variants = false;
 		}
 
-		// Affichage des variantes
+		// Display of the variations
 		slider_text(_exploration_variants, _board_padding_x + _board_size + _text_size / 2, _board_padding_y + _board_size * 9 / 16, _screen_width - _text_size - _board_padding_x - _board_size, _board_size / 2, _text_size / 3, &_variants_slider, _text_color);
 
-		// Affichage de la barre d'évaluation
+		// Display of the evaluation bar
 		draw_eval_bar(_global_eval, _wdl, _root_exploration_node->_deep_evaluation._avg_score, _global_eval_text, _board_padding_x / 6, _board_padding_y, 2 * _board_padding_x / 3, _board_size, 800, _eval_bar_color_light, _eval_bar_color_gray, _eval_bar_color_dark);
 	}
 
-	// Affichage des contrôles et autres informations
+	// Display of the controls and other information
 	else {
 		// Touches
 		static string keys_information = "CTRL-G: Start GrogrosZero analysis\nCTRL-H: Stop GrogrosZero analysis\n\n";
@@ -1510,21 +1510,21 @@ void GUI::draw()
 		static string binding_information;
 		binding_information = "Binding chess.com:\n- Auto-click: " + (_click_bind ? static_cast<string>("enabled") : static_cast<string>("disabled")) + "\n- Binding mode: " + (_binding_full ? static_cast<string>("analysis") : _binding_solo ? static_cast<string>("play") : "none");
 
-		// Texte total
+		// Whole text
 		static string controls_information;
 		controls_information = "Controls:\n\n" + keys_information + binding_information;
 
-		// TODO : ajout d'une valeur de slider
+		// TODO: add a slider value
 		slider_text(controls_information, _board_padding_x + _board_size + _text_size / 2, _board_padding_y, _screen_width - _text_size - _board_padding_x - _board_size, _board_size, _text_size / 3, &_variants_slider, _text_color_info);
 	}
 
-	// Affichage du curseur
+	// Display of the cursor
 	draw_texture(_cursor_texture, _mouse_pos.x - _cursor_size / 2, _mouse_pos.y - _cursor_size / 2, WHITE);
 }
 
-// Fonction qui charge une position à partir d'une FEN
+// Loads a position from a FEN
 void GUI::load_FEN(const string fen, bool display) {
-	// TODO: il faut vériifer que la FEN est valide
+	// TODO: the FEN has to be validated
 	//_board->from_fen(fen);
 	//update_global_pgn();
 	reset_buffers();
@@ -1540,7 +1540,7 @@ void GUI::load_FEN(const string fen, bool display) {
 		cout << "loaded FEN : " << fen << endl;
 }
 
-// Fonction qui reset la partie
+// Resets the game
 void GUI::reset_game() {
 	cout << "*** RESETING GAME ***\n" << endl;
 
@@ -1554,9 +1554,9 @@ void GUI::reset_game() {
 	_board->_is_active = true;
 	_game_tree.reset();
 	reset_pgn();
-	// Ancien root : reset recursif (recycle ses sous-arbres via Approche B),
-	// puis remplace par un nouveau noeud -> recyclage explicite de l'ancien
-	// (noeud + plateau), sinon fuite d'1 noeud + 1 plateau a chaque reset.
+	// Former root: recursive reset (recycles its subtrees through approach B),
+	// then replaced by a new node -> explicit recycling of the old one
+	// (node + board), otherwise 1 node + 1 board leak on every reset.
 	Node* const old_root = _root_exploration_node;
 	_root_exploration_node->reset();
 	recycle_detached_node(old_root);
@@ -1570,14 +1570,14 @@ void GUI::reset_game() {
 	cout << "\n*** GAME RESET DONE ***" << endl;
 }
 
-// Fonction qui compare deux flèches d'analyse de Grogros
+// Compares two Grogros analysis arrows
 bool GUI::compare_arrows(const Move m1, const Move m2) const {
 
-	// Si deux flèches finissent en un même point, affiche en dernier (au dessus), le "meilleur" coup
+	// If two arrows end on the same point, display the "better" move last (on top)
 	if (m1.end_row == m2.end_row && m1.end_col == m2.end_col)
 		return _root_exploration_node->_children[m1]._node->_nodes < _root_exploration_node->_children[m2]._node->_nodes;
 
-	// Si les deux flèches partent d'un même point, alors affiche par dessus la flèche la plus courte
+	// If the two arrows start from the same point, display the shorter one on top
 	if (m1.start_row == m2.start_row && m1.start_col == m2.start_col) {
 		const int d1 = (m1.start_row - m1.end_row) * (m1.start_row - m1.end_row) + (m1.start_col - m1.end_col) * (m1.start_col - m1.end_col);
 		const int d2 = (m2.start_row - m2.end_row) * (m2.start_row - m2.end_row) + (m2.start_col - m2.end_col) * (m2.start_col - m2.end_col);
@@ -1588,7 +1588,7 @@ bool GUI::compare_arrows(const Move m1, const Move m2) const {
 	return true;
 }
 
-// Fonction qui renvoie la date sous le format 'yyyymmdd'
+// Returns the date in the 'yyyymmdd' format
 string GUI::get_date() {
 	const time_t current_time = time(nullptr);
 	tm local_time;
@@ -1601,40 +1601,40 @@ string GUI::get_date() {
 	return to_string(year) + (month < 10 ? "0" : "") + to_string(month) + (day < 10 ? "0" : "") + to_string(day);
 }
 
-// Fonction qui met à jour le nom de bot de GrogrosZero
+// Updates the bot name of GrogrosZero
 void GUI::update_grogros_zero_name() {
 	//_grogros_zero_name = "Gr0_" + get_date();
 	_grogros_zero_name = "Gr0-" + _grogros_zero_version;
 }
 
-// Fonction qui fait jouer le coup de GrogrosZero ou non en fonction du temps restant
+// Plays the GrogrosZero move or not, depending on the time left
 void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 	// Positions bug:
-	// rnbq1rk1/pp1p1ppp/7n/2p1P3/3p4/3B1N1P/PPPN1PP1/R2Q1RK1 w - - 0 10 : il joue pas Ce4
+	// rnbq1rk1/pp1p1ppp/7n/2p1P3/3p4/3B1N1P/PPPN1PP1/R2Q1RK1 w - - 0 10: it does not play Ne4
 
-	// TOOD: faire en fonction du nombre de noeuds de RECHERCHE, pour prendre plus de temps dans les positions complexes
+	// TODO: base this on the number of SEARCH nodes, to spend more time in complex positions
 
-	// Si le buffer est complet, joue le coup de GrogrosZero
+	// If the buffer is full, play the GrogrosZero move
 	// TODO
 
-	// Si le temps n'est pas compté
+	// If the clock is not running
 	if (!_time) {
 		return;
 	}
 
-	// S'il n'y a pas encore eu d'exploration
+	// If no exploration has happened yet
 	if (_root_exploration_node->_iterations <= 1) {
 		return;
 	}
 
-	// Pour les calculs d'évaluation
+	// For the evaluation computations
 	int color = _board->get_color();
 
-	// Noeud le plus exploré
+	// Most explored node
 	//Node const *most_explored_child = _root_exploration_node->get_most_explored_child();
 
-	// Noeud avec la meilleure évaluation
+	// Node with the best evaluation
 	//Node const* best_eval_node;
 	//int best_eval_colored = -INT_MAX;
 	//Move best_move;
@@ -1676,53 +1676,53 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 	bool most_explored_move_is_best = best_score == most_explored_score;
 
-	// FIXME *** revoir la notion de best move ici
+	// FIXME *** the notion of best move needs revisiting here
 
 	//cout << "best eval : " << best_eval_colored << ", color : " << color << ", best move : " << _board->move_label(best_move) << endl;
 
-	// Pourcentage de réflexion sur le meilleur coup
+	// Share of the thinking time spent on the best move
 	float best_move_percentage = static_cast<float>(most_explored_link._chosen_iterations) / static_cast<float>(_root_exploration_node->_iterations);
 
-	// Temps idéal qu'il faut prendre sur ce coup
+	// Ideal time to spend on this move
 	//int max_move_time = _board->_player ? time_to_play_move(_time_white, _time_black, time_proportion_per_move * (1.0f - best_move_percentage)) : time_to_play_move(_time_black, _time_white, time_proportion_per_move * (1.0f - best_move_percentage));
 	double max_move_time = _board->_player ? time_to_play_move(_time_white, _time_black, time_proportion_per_move) : time_to_play_move(_time_black, _time_white, time_proportion_per_move);
 
 	//cout << "best move percentage : " << best_move_percentage << " | max move time : " << max_move_time << " | supposed speed : " << grogros_nps << " | nodes : " << _root_exploration_node->_nodes << " | time spent : " << _root_exploration_node->_time_spent << endl;	
 
-	// Si il nous reste beaucoup de temps en fin de partie, on peut réfléchir plus longtemps
-	// FIXME: Regarder si ça marche bien (TODO)
+	// If there is a lot of time left in the endgame, we can think longer
+	// FIXME: check whether this works well (TODO)
 	max_move_time *= 1.0f + _board->_adv;
 
 	//cout << "max move time : " << max_move_time << endl;
 
 	//int most_explored_child_eval = most_explored_child->_deep_evaluation._value * color;
 
-	// On veut être sûr de jouer le meilleur coup de Grogros: s'il y a un meilleur coup que celui avec le plus de noeuds, attendre...
+	// We want to be sure to play Grogros's best move: if there is a better move than the one with the most nodes, wait...
 	bool wait_for_best_move = !most_explored_move_is_best;
 
-	// FIXME: des choses à améliorer ici!
-	// A quel point faut-il attendre pour être sûr de jouer le meilleur coup?
+	// FIXME: things to improve here!
+	// How long should we wait to be sure to play the best move?
 	//float eval_diff;
 	//float move_wait_factor;
 
-	//// Si on attend pour le meilleur coup, attend plus longtemps si la différence d'évaluation est grande entre le meilleur coup et le coup actuel
+	//// When waiting for the best move, wait longer when the evaluation gap between the best move and the current one is large
 	//if (wait_for_best_move) {
 	//	eval_diff = abs(most_explored_child->_deep_evaluation._value - _board->_evaluation) / 100.0f;
 	//	move_wait_factor = 2 + eval_diff;
 	//	//cout << "eval diff : " << eval_diff << " | move wait factor : " << move_wait_factor << endl;
 	//}
 
-	//// Sinon, joue plus vite si la différence d'évaluation est grande entre le meilleur coup et le second meilleur coup??
+	//// Otherwise, play faster when the evaluation gap between the best move and the second best is large??
 	//else {
 	//	//move_wait_factor = 1 / (1 + eval_diff);
 	//	move_wait_factor = 1;
 	//}
 
-	// Combien de temps devrait-on attendre?
-	// On met une valeur max pour éviter les overflow
-	// FIXME: la différence d'éval devrait être relative?
+	// How long should we wait?
+	// A maximum value is used to avoid overflows
+	// FIXME: should the evaluation gap be relative?
 
-	// Peut-on se permettre d'attendre? Dépend du temps restant (1 minute = limite...)
+	// Can we afford to wait? It depends on the time left (1 minute = the limit...)
 	//int time_left = _board->_player ? _time_white : _time_black;
 
 	//float move_wait_factor = min(100.0f, 1.0f + abs(most_explored_child_eval - best_eval_colored) / 50.0f * time_left / 60000.0f);
@@ -1733,7 +1733,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	// 4r1k1/2Q2ppp/3p4/2p5/2B1P3/2P1q2P/PPP3P1/1K4R1 w - - 1 25
 
 
-	//float move_wait_factor = wait_for_best_move ? wait_factor : 1.0f; // C'est beaucoup mais bon, il faut trouver un truc pour améliorer ça
+	//float move_wait_factor = wait_for_best_move ? wait_factor : 1.0f; // That is a lot, but something better has to be found here
 
 	//cout << "base time : " << max_move_time << " | wait for best move : " << wait_for_best_move << " | eval diff : " << eval_diff << " | move wait factor : " << move_wait_factor << " | final time : " << max_move_time * move_wait_factor << endl;
 	
@@ -1743,26 +1743,26 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 	//cout << "new max move time : " << max_move_time << endl;
 
-	// Réduit le temps passé sur le coup si on est sûr que c'est le bon coup
+	// Reduce the time spent on the move when we are sure it is the right one
 	if (most_explored_move_is_best) {
 		max_move_time *= 1.0f - best_move_percentage;
 
 		//cout << "is best move, new max move time : " << max_move_time << endl;
 	}
 
-	// Parfois on a un overflow
+	// Sometimes an overflow happens
 	if (max_move_time < 0) {
 		cout << "overflow in max move time" << endl;
 		cout << "max move time : " << max_move_time << endl;
 		max_move_time = DBL_MAX;
 	}
 
-	// Nombre d'itérations supposées par seconde
+	// Assumed number of iterations per second
 	//constexpr int supposed_ips = 1000;
 	//const int supposed_ips = max(750, _root_exploration_node->get_ips());
 
 	constexpr int average_nps = 5000; // Pour une position semi-complexe
-	constexpr float consistent_factor = 0.35f; // Plus ce facteur est grand, plus le temps utilisé sera constant, quelle que soit la complexité de la position
+	constexpr float consistent_factor = 0.35f; // The larger this factor, the more constant the time used, whatever the complexity of the position
 
 	const int actual_ips = _root_exploration_node->get_ips();
 
@@ -1770,15 +1770,15 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 
 
-	// Nombre de noeuds que Grogros doit calculer (en fonction des contraintes de temps)
+	// Number of nodes Grogros has to compute (given the time constraints)
 	//int grogros_nps = _root_exploration_node->get_avg_nps();
 
-	// Equivalent en nombre de noeuds
+	// Equivalent in number of nodes
 	double seconds_to_play = max_move_time / 1000.0;
 	//int nodes_to_play = grogros_nps * seconds_to_play;
 	double iterations_to_play = supposed_ips * seconds_to_play;
 
-	// Overflow (FIXME: faut mieux gérer ça...)
+	// Overflow (FIXME: this needs better handling...)
 	//if (nodes_to_play < 0) {
 	//	cout << "RE: overflow in max move time (nodes to play)" << endl;
 	//	nodes_to_play = 0;
@@ -1806,10 +1806,10 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	return;
 }
 
-// Fonction qui initialise les couleurs des sites de jeux d'échecs
+// Initializes the colours of the chess websites
 void GUI::init_chess_sites() {
 
-	// Chess.com (setup avec cases vertes et pièces de base)
+	// Chess.com (setup with green squares and the default pieces)
 	ChessSite chess_com;
 	chess_com._name = "chess.com";
 	chess_com._white_tile_color = SimpleColor(235, 236, 208);
@@ -1826,7 +1826,7 @@ void GUI::init_chess_sites() {
 
 	_chess_sites.push_back(chess_com);
 
-	// Lichess.org (plateau vert et blanc, avec brightness réduite)
+	// Lichess.org (green and white board, with reduced brightness)
 	// Piece set "alpha"
 	ChessSite lichess_org;
 	lichess_org._name = "lichess.org";
@@ -1844,7 +1844,7 @@ void GUI::init_chess_sites() {
 
 	_chess_sites.push_back(lichess_org);
 
-	// Internet Chess Club (setup avec cases marrons et pièces 'Default')
+	// Internet Chess Club (setup with brown squares and the 'Default' pieces)
 	ChessSite internet_chess_club;
 	internet_chess_club._name = "ICC";
 	internet_chess_club._white_tile_color = SimpleColor(255, 219, 163);
@@ -1864,12 +1864,12 @@ void GUI::init_chess_sites() {
 }
 
 
-// Fonction qui update le binding move à partir du plateau en ligne. Renvoie vrai si le coup a été modifié et s'il est valide
+// Updates the binding move from the online board. Returns true if the move was modified and is valid
 bool GUI::update_binding_move() {
 
 	//cout << "updating binding move" << endl;
 
-	// Récupération des coordonnées du coup
+	// Read the coordinates of the move
 	uint8_t *move_coords = get_board_move(_binding_left, _binding_top, _binding_right, _binding_bottom, _current_site, get_board_orientation());
 
 	if (move_coords == nullptr) {
@@ -1879,14 +1879,14 @@ bool GUI::update_binding_move() {
 
 	//cout << "binding move: " << (int)move_coords[0] << ", " << (int)move_coords[1] << ", " << (int)move_coords[2] << ", " << (int)move_coords[3] << endl;
 
-	// Adaptation du coup selon les sites:
-	// Sur lichess, pour roquer, les cases surlignées sont le roi et la tour (et non la case de destination du roi)
+	// Adaptation of the move depending on the website:
+	// On lichess, when castling, the highlighted squares are the king and the rook (not the destination square of the king)
 	uint8_t start_row = move_coords[0];
 	uint8_t start_col = move_coords[1];
 	uint8_t end_row = move_coords[2];
 	uint8_t end_col = move_coords[3];
 
-	// Pour les roques sur certains sites, on ne peut pas determiner la case de départ et d'arrivée, ça peut donc être inversé
+	// For castling on some websites the departure and arrival squares cannot be told apart, so they may be swapped
 	if (is_king(_root_exploration_node->_board->_array[end_row][end_col]) && abs(start_col - end_col) > 2) {
 		//cout << "king move inverted" << endl;
 		start_row = end_row;
@@ -1907,7 +1907,7 @@ bool GUI::update_binding_move() {
 		return false;
 	}
 
-	// Si le coup est existant
+	// If the move exists
 	for (int i = 0; i < _root_exploration_node->_board->_got_moves; i++) {
 		if (_root_exploration_node->_board->_moves[i] == move) {
 			_binding_move = move;
@@ -1918,15 +1918,15 @@ bool GUI::update_binding_move() {
 	return false;
 }
 
-// Fonction qui évalue (et affiche les composantes)
+// Evaluates (and displays the components)
 void GUI::evaluate_position(bool display, bool static_only) {
 	_root_exploration_node->evaluate_position(_grogros_eval, display, nullptr, true, static_only);
 }
 
-// Fonction qui initialise les buffers
+// Initializes the buffers
 void GUI::init_buffers() const {
 
-	// Dimensionnement adaptatif depuis la RAM physique dispo (#13)
+	// Adaptive sizing from the available physical RAM (#13)
 	if (!monte_board_buffer._init || !monte_node_buffer._init) {
 		const PoolSizing ps = compute_pool_sizing();
 		if (!monte_board_buffer._init)
@@ -1936,14 +1936,14 @@ void GUI::init_buffers() const {
 	}
 }
 
-// Fonction qui reset les buffers
-// #12: NE PAS balayer toute la capacité. monte_*_buffer.reset() bouclait sur
-// 5 M Board::reset_board() + 10 M Node::reset(false) — chacun clearant un
+// Resets the buffers
+// #12: do NOT sweep the whole capacity. monte_*_buffer.reset() looped over
+// 5M Board::reset_board() + 10M Node::reset(false) - each clearing a
 // robin_map depuis a258fb5 (_positions_history / _children) → chargement FEN
-// lent / "ne termine jamais". La réclamation réelle de l'arbre *utilisé* est
-// faite en O(utilisé) par le _root_exploration_node->reset() récursif déjà
-// appelé juste après par load_FEN (gui.cpp:1504) et reset_game (gui.cpp:1530).
-// Le balayage O(capacité) était purement redondant.
+// slow / "never finishes". The real reclamation of the *used* tree is done
+// in O(used) by the recursive _root_exploration_node->reset() already called
+// just after by load_FEN (gui.cpp:1504) and reset_game (gui.cpp:1530).
+// The O(capacity) sweep was purely redundant.
 void GUI::reset_buffers() const {
 	transposition_table.clear();
 	node_map.clear(); // #11 Plan B — purge le DAG en meme temps que la TT (pas de pointeur pendant inter-recherches)
