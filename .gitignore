@@ -10,3 +10,7 @@ opti_chess.vcxproj.*
 .github/
 CLAUDE.md
 **/CLAUDE.md
+
+# Internal planning notes, kept locally only.
+# Anchored to the root so opti_chess/docs/ stays tracked.
+/docs/
