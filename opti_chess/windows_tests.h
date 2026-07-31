@@ -76,6 +76,30 @@ public:
 };
 
 
+// ---------------------------------------------------------------------------
+// Screen binding
+//
+// The functions below let the engine find a chessboard rendered on screen and
+// read the position from it, from the rendered image alone: one pixel sample
+// per square, matched against the colour profile of a known ChessSite. There
+// is no browser extension, no network interception and no reading of another
+// process's memory.
+//
+// It exists so that a game being played in a browser can be followed live by
+// the engine: its evaluation and its candidate moves can then be compared,
+// move by move, with what the players do and with what other engines say. Any
+// game on screen becomes a live test position for the evaluator.
+//
+// The mouse functions (simulate_mouse_click / _release, click_move) make the
+// engine play its own move, which is the only way to play the bots hosted on
+// Chess.com: the site has no bot API and issues no bot accounts. Scope, by
+// construction: engine games against other engines only. It is not used in
+// games against human opponents -- that is what fair-play policies are about,
+// and the sanctioned channel for automated play exists elsewhere (Lichess
+// issues bot accounts and exposes an API; this engine plays there as
+// Grogros_Zero).
+// ---------------------------------------------------------------------------
+
 // Simulates a mouse click at a given position
 void simulate_mouse_click(int x, int y);
 
