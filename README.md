@@ -107,6 +107,35 @@ OptiChess is driven from the keyboard once the board is open. The most useful bi
 | `H` | Toggle arrow drawing and the on-screen controls panel |
 | `T` | Run the built-in test suite (see below) |
 | `Z` | Print the Zobrist key of the current position |
+| `Ctrl` + `T` | Locate a chessboard on screen and bind to it (see below) |
+| `Ctrl` + `Q` | Toggle full binding on the board found on screen |
+
+---
+
+## Screen binding (Windows)
+
+The engine can locate a chessboard rendered on screen and read the position from it, so a
+game being played in a browser can be followed live without any integration with the site.
+
+**How it works.** `locate_chessboard()` scans the screen for a board matching a known
+`ChessSite` colour profile — light and dark square colours, piece colours, and the highlight
+colour of the square just played. `bind_board_orientation()` then decides which side is at
+the bottom, and `get_board_move()` samples one pixel per square to rebuild the position and
+detect the move that was played. All of it works on the rendered image: no browser
+extension, no network interception, no reading of another process's memory.
+
+**What it is for.** The engine analyses the position as the game is played, so its evaluation
+and its candidate moves can be compared, move by move, with what the players do and with what
+other engines say. It turns any game on screen into a live test position for the evaluator,
+which is considerably more interesting than a static FEN.
+
+**Playing.** `click_move()` plays the engine's move with the mouse. This exists for one case:
+engine-vs-engine games against the bots hosted on Chess.com, which has no bot API and issues
+no bot accounts — I asked. The scope is bot-vs-bot by construction; it is not used in games
+against human opponents, which is what fair-play policies are about. Where sanctioned
+automated play is available, that is the channel used instead: Lichess issues bot accounts
+and exposes an API, and this engine plays there as
+[Grogros_Zero](https://lichess.org/@/Grogros_Zero).
 
 ---
 
@@ -155,7 +184,7 @@ Additional puzzles can be appended to `Tests.txt`, which the suite imports at ru
     ├── match.cpp/h          # Engine-vs-engine match scaffolding
     ├── player.cpp/h         # Player configuration (algorithm, evaluator, rating)
     ├── tests.cpp/h          # Perft, evaluation and problem suites
-    ├── windows_tests.cpp/h  # Win32 layer: physical memory probe, screen binding
+    ├── windows_tests.cpp/h  # Win32 layer: physical memory probe, screen binding (see above)
     ├── ALGORITHMS.md        # Algorithm reference
     ├── BUGFIXES.md          # Bug ledger
     ├── docs/                # Architecture and development guides
