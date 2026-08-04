@@ -1,5 +1,6 @@
 # OptiChess
 
+[![build](https://github.com/poirouxmartin/opti_chess/actions/workflows/build.yml/badge.svg)](https://github.com/poirouxmartin/opti_chess/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue)](https://en.cppreference.com/w/cpp/20)
 [![Platform](https://img.shields.io/badge/platform-Windows%20x64-lightgray)](opti_chess/CMakeLists.txt)
@@ -259,7 +260,7 @@ Stated plainly, so nothing here is a surprise:
 
 - **Windows only.** The CMake file carries Linux and macOS branches, but the Win32 integration layer (`windows_tests.*`, and console setup in `main_gui.h`) is not yet abstracted, so those targets do not compile today.
 - **No UCI protocol**, therefore no rating on a public list and no play against other engines. The engine-vs-engine `Match`/`Player` layer is scaffolding, not a finished feature.
-- **No automated test suite.** Validation is the interactive `T` suite plus manual GUI checks. `CMakeLists.txt` used to carry a GoogleTest target with no test case behind it; it has been removed rather than left standing as decoration.
+- **No automated test suite.** Validation is the interactive `T` suite plus manual GUI checks. CI builds the project on every push to `main`, but it runs no tests — there is nothing that runs headlessly. `CMakeLists.txt` used to carry a GoogleTest target with no test case behind it; it has been removed rather than left standing as decoration.
 - **`board.cpp` is oversized** (~12,000 lines) and is the main structural debt; splitting it along the move-generation / state / evaluation-support seams is the next refactor.
 - **Two working files are still in French**: `TODO_list.txt`, the development backlog, and the annotations in `Tests.txt`. They are personal working notes rather than documentation. Everything else — every source comment and every document listed above — is in English.
 - **Known open engine bugs are tracked publicly** in [`BUGFIXES.md`](opti_chess/BUGFIXES.md) rather than left implicit.

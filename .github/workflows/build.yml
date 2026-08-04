@@ -1,0 +1,22 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: opti_chess
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake --preset windows-release
+      - run: cmake --build --preset windows-release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opti_chess-windows-x64
+          path: opti_chess/build/windows-release/Release/
