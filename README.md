@@ -130,13 +130,18 @@ and its candidate moves can be compared, move by move, with what the players do 
 other engines say. It turns any game on screen into a live test position for the evaluator,
 which is considerably more interesting than a static FEN.
 
-**Playing.** `click_move()` plays the engine's move with the mouse. This exists for one case:
-engine-vs-engine games against the bots hosted on Chess.com, which has no bot API and issues
-no bot accounts — I asked. The scope is bot-vs-bot by construction; it is not used in games
-against human opponents, which is what fair-play policies are about. Where sanctioned
-automated play is available, that is the channel used instead: Lichess issues bot accounts
-and exposes an API, and this engine plays there as
-[Grogros_Zero](https://lichess.org/@/Grogros_Zero).
+**Playing.** `click_move()` plays the engine's move with the mouse. It exists for one case:
+engine-versus-engine games against the bots hosted on Chess.com, which issues no bot accounts
+and exposes no bot API — I asked. Chess.com's Fair Play Policy covers this case explicitly: it
+"does not apply to games that are not against other users, such as in the game mode versus
+Chess.com computer (i.e. non-human, virtual) 'bots'", and lists games against the computer
+personalities among its exceptions, where you are "free to experiment with whatever tools and
+learn however you choose" ([Fair Play Policy](https://www.chess.com/legal/fair-play)). It is
+never used in games against human opponents, rated or not. Where sanctioned automated play
+against humans is available, that is the channel used instead: Lichess issues bot accounts and
+exposes an API, and this engine has played there as
+[Grogros_Zero](https://lichess.org/@/Grogros_Zero), though the bot is not run continuously. The
+input path is off by default and has to be enabled explicitly at runtime.
 
 ---
 
