@@ -93,12 +93,21 @@ public:
 // The mouse functions (simulate_mouse_click / _release, click_move) make the
 // engine play its own move, which is the only way to play the bots hosted on
 // Chess.com: the site has no bot API and issues no bot accounts. Scope, by
-// construction: engine games against other engines only. It is not used in
-// games against human opponents -- that is what fair-play policies are about,
-// and the sanctioned channel for automated play exists elsewhere (Lichess
-// issues bot accounts and exposes an API; this engine plays there as
-// Grogros_Zero).
+// construction: engine games against other engines only. Chess.com's Fair Play
+// Policy states that it does not apply to games that are not against other
+// users, and lists games against the computer personalities among its
+// exceptions. It is never used against human opponents, and the sanctioned
+// channel for automated play against humans exists elsewhere (Lichess issues
+// bot accounts and exposes an API; this engine has played there as
+// Grogros_Zero, though the bot is not run continuously).
 // ---------------------------------------------------------------------------
+
+// Master switch for input injection. False at startup: binding to a board on
+// screen reads it, but never drives the mouse until this is turned on
+// explicitly at runtime (Ctrl+A). click_move() returns immediately while it is
+// down, so "off by default" is a property of the program rather than a claim
+// about how it is used.
+extern bool input_injection_enabled;
 
 // Simulates a mouse click at a given position
 void simulate_mouse_click(int x, int y);

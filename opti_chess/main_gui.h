@@ -262,7 +262,7 @@ inline int main_ui() {
 			}
 		}
 
-		// LCTRL-A - Full binding
+		// LCTRL-Q - Full binding
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_Q)) {
 			for (auto& site : main_GUI._chess_sites) {
 				bool located_board = locate_chessboard(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom, site);
@@ -274,10 +274,15 @@ inline int main_ui() {
 			}
 		}
 
-		// LCTRL-Q - Automatic play mode (chess.com binding) -> checks the binding only on the opponent's moves
+		// LCTRL-A - Automatic play mode (chess.com binding) -> checks the binding only on the opponent's moves
+		// This is the only place input injection is turned on: binding alone reads the board, it never clicks.
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_A)) {
 			main_GUI._binding_solo = !main_GUI._binding_solo;
 			main_GUI._click_bind = !main_GUI._click_bind;
+			input_injection_enabled = main_GUI._click_bind;
+			std::cout << (input_injection_enabled
+				? "input injection ON - Play-Computer mode only"
+				: "input injection OFF") << std::endl;
 		}
 
 		// Changes to the size of the window
