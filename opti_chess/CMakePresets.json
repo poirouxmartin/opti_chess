@@ -31,8 +31,7 @@
     {
       "name": "windows-release",
       "displayName": "Windows x64 — Release (MSVC)",
-      "description": "Optimized Windows build for trying OptiChess.",
-      "generator": "Visual Studio 17 2022",
+      "description": "Optimized Windows build for trying OptiChess. Uses whichever Visual Studio generator CMake finds, so it does not break when the installed version changes.",
       "architecture": {
         "value": "x64",
         "strategy": "external"
