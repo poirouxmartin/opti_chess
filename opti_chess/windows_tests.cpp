@@ -224,7 +224,13 @@ uint8_t* get_board_move(const int x1, const int y1, const int x2, const int y2, 
 }
 
 // Clicks a move according to the orientation of the board
+bool input_injection_enabled = false;
+
 void click_move(const int j1, const int i1, const int j2, const int i2, const int x1, const int y1, const int x2, int y2, const bool orientation, const bool is_promotion) {
+	// Off by default: nothing reaches the mouse until it is enabled at runtime.
+	if (!input_injection_enabled)
+		return;
+
 	const float tile_size = static_cast<float>((x2 - x1)) / 8.0f;
 	constexpr float tile_click = 0.5f; // So that the click lands in the middle of the square
 
