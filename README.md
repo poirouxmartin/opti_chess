@@ -107,8 +107,9 @@ OptiChess is driven from the keyboard once the board is open. The most useful bi
 | `H` | Toggle arrow drawing and the on-screen controls panel |
 | `T` | Run the built-in test suite (see below) |
 | `Z` | Print the Zobrist key of the current position |
-| `Ctrl` + `T` | Locate a chessboard on screen and bind to it (see below) |
-| `Ctrl` + `Q` | Toggle full binding on the board found on screen |
+| `Ctrl` + `T` | Locate a chessboard on screen and bind to it, reading it live (see below) |
+| `Ctrl` + `Q` | Toggle full binding: read every move of the game, not just the opponent's |
+| `Ctrl` + `A` | Enable input injection: auto-play the engine's move on the bound board (Play-Computer games only, off by default) |
 
 ---
 
