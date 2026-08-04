@@ -31,13 +31,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(raylib robin_map)
 
-# Option to build the GoogleTest target.
-# OFF by default: the target below is scaffolding, not a working suite. It
-# compiles tests.cpp, which is the interactive suite (it needs the GUI and
-# raylib) rather than a set of TEST() cases, so it does not link. Turning this
-# ON breaks the build until that target is rewritten as real unit tests.
-option(BUILD_TESTS "Build the (unfinished) GoogleTest target" OFF)
-
 add_executable(opti_chess
     main.cpp
     board.cpp
@@ -111,44 +104,6 @@ add_custom_command(TARGET opti_chess POST_BUILD
             "$<TARGET_FILE_DIR:opti_chess>/resources"
     COMMENT "Copying OptiChess resources"
 )
-
-# Enable testing if requested
-if(BUILD_TESTS)
-    enable_testing()
-    # Add test executable (GoogleTest will be fetched)
-    include(FetchContent)
-    FetchContent_Declare(
-        googletest
-        GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG v1.14.0
-        GIT_SHALLOW TRUE
-    )
-    FetchContent_MakeAvailable(googletest)
-    
-    add_executable(opti_chess_tests
-        tests.cpp
-        board.cpp
-        buffer.cpp
-        evaluation.cpp
-        exploration.cpp
-        game_tree.cpp
-        generation.cpp
-        zobrist.cpp
-        useful_functions.cpp
-    )
-    target_compile_features(opti_chess_tests PRIVATE cxx_std_20)
-    target_link_libraries(opti_chess_tests PRIVATE gtest_main gtest)
-    target_include_directories(opti_chess_tests PRIVATE "${robin_map_SOURCE_DIR}/include/tsl")
-    
-    if(MSVC)
-        target_compile_options(opti_chess_tests PRIVATE /W4 /permissive- /utf-8)
-        target_compile_definitions(opti_chess_tests PRIVATE _CRT_SECURE_NO_WARNINGS)
-    else()
-        target_compile_options(opti_chess_tests PRIVATE -Wall -Wextra -Wpedantic -Wno-unused-parameter)
-    endif()
-    
-    add_test(NAME opti_chess_unit_tests COMMAND opti_chess_tests)
-endif()
 
 # Install target (optional)
 install(TARGETS opti_chess
