@@ -1,10 +1,8 @@
 ﻿#include "board.h"
-#include "time_tests.h"
 #include "useful_functions.h"
 #include "gui.h"
 #include "windows_tests.h"
 #include "buffer.h"
-#include "match.h"
 #include "zobrist.h"
 #include <io.h>
 #include <fcntl.h>
