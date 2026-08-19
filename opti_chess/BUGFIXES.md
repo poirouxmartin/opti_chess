@@ -130,10 +130,6 @@
 ---
 
 ## Recommended order of work
-> #2, #12 and #13 are fixed and runtime-validated (see the ✅ Fixed section). Next:
-1. ~~**#4** (stand-pat ≠ EXACT)~~ ✅ runtime-validated (`783135d`) · ~~**#14** (value↔score coherence, non-mate case)~~ ✅ runtime-validated (`1e56a68`) · ~~**#3** (ply-relative mate scores)~~ ✅ runtime-validated — the TT correctness pass is complete; **#11** remains.
-2. **#11 plan A** (scalar TT in the main search) — **the objective**: a depth gain. Measure afterwards.
-3. **#6** then **#5** (TT hygiene).
-4. **#7** (path-local performance + map leak — re-test #13), then **#8** (`operator<`, quick, latent).
-5. **#11 plan B** (DAG) — only if A is insufficient for the intended gain.
-6. **#9** — a design decision to confirm with the user.
+> #2, #3, #4, #5, #6, #7, #8, #12, #13, #14 are fixed (see the ✅ Fixed section). Remaining:
+1. **#9** — 2-fold vs 3-fold repetition: confirmed intentional by user (search optimization).
+2. **#11 plan B** (DAG / node sharing) — the only remaining item; requires a large refactor.
