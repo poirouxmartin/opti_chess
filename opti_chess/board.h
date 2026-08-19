@@ -1065,10 +1065,10 @@ public:
 	void print_all_bitboards() const;
 
 	// Updates the bitboards after a move played by White
-	void update_bitboards_white(int row1, int col1, int row2, int col2, int p, int p_last) noexcept;
+	void update_bitboards_white(int row1, int col1, int row2, int col2, int p, int p_last, uint8_t promo_piece = 0) noexcept;
 
 	// Updates the bitboards after a move played by Black
-	void update_bitboards_black(int row1, int col1, int row2, int col2, int p, int p_last) noexcept;
+	void update_bitboards_black(int row1, int col1, int row2, int col2, int p, int p_last, uint8_t promo_piece = 0) noexcept;
 
 	// Returns the number of passed pawns for a given colour
 	int get_passed_pawns_count(bool color) const;
