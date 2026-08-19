@@ -1332,7 +1332,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	// FIXME: is it right to carry the beta margin down the whole depth?
 
 	if (stand_pat >= total_beta) {
-		transposition_table.store(_board->_zobrist_key, tt_normalize_mate(beta, _board->_moves_count), depth, TT_BETA); // #3 canonised mate
+		transposition_table.store(_board->_zobrist_key, tt_normalize_mate(stand_pat, _board->_moves_count), depth, TT_BETA); // #5: store actual score, not beta
 		_time_spent += clock() - begin_monte_time;
 		//cout << "beta cutoff1: " << stand_pat << " >= " << beta << " + " << beta_margin << endl;
 		return beta;
@@ -1516,7 +1516,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 			// Beta cut-off
 			if (score >= beta) {
-				transposition_table.store(_board->_zobrist_key, tt_normalize_mate(beta, _board->_moves_count), depth, TT_BETA); // #3 canonised mate
+				transposition_table.store(_board->_zobrist_key, tt_normalize_mate(score, _board->_moves_count), depth, TT_BETA); // #5: store actual score, not beta
 				_time_spent += clock() - begin_monte_time;
 				return beta;
 			}

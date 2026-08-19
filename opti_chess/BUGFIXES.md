@@ -57,10 +57,11 @@
 - **Rejected alternative**: "flag it `TT_ALPHA`" (the initial proposal) is **incorrect** — `TT_ALPHA` is an *upper* bound (`zobrist.h:26`) whereas `stand_pat` is a *lower* one; it would have introduced false fail-low cutoffs (hiding tactics in the opposite direction). `TT_STANDPAT`/`TT_BETA` is the correct semantics.
 
 ### 🟠 #5 — `TT_BETA` stores `beta` instead of `score`
-- **Files**: `exploration.cpp:801`, `:982`
+- **Status**: ✅ fixed
+- **Files**: `exploration.cpp:1335,1519`
 - **Severity**: MEDIUM (loss of precision, loss of mate information)
 - **Detail**: on a beta cutoff we store `beta`; a mate `score` (≫ beta) is overwritten, leaving a lower bound that is too loose, so later probes miss the mate.
-- **Proposed fix**: store `score` (the true value, ≥ beta) rather than `beta`.
+- **Fix**: store `score` (the true value, ≥ beta) rather than `beta`.
 
 ### 🟠 #6 — TT not cleared between distinct root searches
 - **Files**: scattered clears (`gui.cpp:962,1910`, `game_tree.cpp:95`, `main_gui.h:414`, `board.cpp:10184`), none systematic
@@ -74,17 +75,11 @@
 - **Proposed fix**: push/pop on a stack with undo (on entering and leaving the recursion) instead of copies; or a lighter structure (a vector of keys plus the last irreversible ply).
 
 ### 🟡 #8 — `Evaluation::operator<` has its branches inverted
-- **File**: `board.h:512-520`
+- **Status**: ✅ fixed
+- **File**: `board.h:530-538`
 - **Severity**: LOW (latent — the `pick_random_child:1158` usage neutralises it)
-- **Detail**: the `!_evaluated` branches are identical to those of `operator>` instead of being inverted.
-- **Proposed fix**:
-  ```cpp
-  bool operator<(Evaluation& other) {
-      if (!other._evaluated) return false;
-      if (!_evaluated) return true;
-      return _value < other._value;
-  }
-  ```
+- **Detail**: the `!_evaluated` branches were identical to those of `operator>` instead of being inverted.
+- **Fix**: swapped the branches so that an unevaluated `this` is considered less than any evaluated peer.
 
 ### 🔴 #11 — Architectural limitation: the TT yields no depth gain
 - **Files**: `exploration.cpp:739` (the only probe, inside `quiescence`), `:770,778,801,982,996` (the only stores); `:272-273` (node sharing explicitly removed)
