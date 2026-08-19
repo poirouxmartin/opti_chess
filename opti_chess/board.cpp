@@ -1280,7 +1280,8 @@ inline void Board::make_move(const Move& move, const bool pgn, const bool add_to
 	_array[row1][col1] = none;
 
 	// Update the bitboards
-	_player ? update_bitboards_white(row1, col1, row2, col2, p, p_last) : update_bitboards_black(row1, col1, row2, col2, p, p_last);
+	const uint8_t promo = move.is_promotion() ? move.get_promo_piece() : 0;
+	_player ? update_bitboards_white(row1, col1, row2, col2, p, p_last, promo) : update_bitboards_black(row1, col1, row2, col2, p, p_last, promo);
 
 	// Flip the side to move
 	_player = !_player;
@@ -11287,7 +11288,7 @@ static constexpr uint64_t b_kcastle_mask = SQUARE_MASKS[63] ^ SQUARE_MASKS[61];
 static constexpr uint64_t b_qcastle_mask = SQUARE_MASKS[56] ^ SQUARE_MASKS[59];
 
 // Updates the bitboards for a move
-inline void Board::update_bitboards_white(int row1, int col1, int row2, int col2, int p, int p_last) noexcept {
+inline void Board::update_bitboards_white(int row1, int col1, int row2, int col2, int p, int p_last, uint8_t promo_piece) noexcept {
 
 	// 0-63 coordinates
 	const int from = row1 * 8 + col1;
@@ -11313,8 +11314,11 @@ inline void Board::update_bitboards_white(int row1, int col1, int row2, int col2
 		_occupancies[2] &= ~captured_square_mask;
 	}
 
-	// Promotion (peu probable)
-	_bitboards[p + (p == w_pawn) * (row2 == 7) * 4] |= to_mask;
+	// Promotion (uses the correct piece from the move)
+	if (p == w_pawn && row2 == 7)
+		_bitboards[w_queen - promo_piece] |= to_mask;
+	else
+		_bitboards[p] |= to_mask;
 
 	// Roques (assez peu probables)
 
@@ -11340,7 +11344,7 @@ inline void Board::update_bitboards_white(int row1, int col1, int row2, int col2
 }
 
 // Updates the bitboards for a move
-inline void Board::update_bitboards_black(int row1, int col1, int row2, int col2, int p, int p_last) noexcept {
+inline void Board::update_bitboards_black(int row1, int col1, int row2, int col2, int p, int p_last, uint8_t promo_piece) noexcept {
 
 	// 0-63 coordinates
 	const int from = row1 * 8 + col1;
@@ -11366,8 +11370,11 @@ inline void Board::update_bitboards_black(int row1, int col1, int row2, int col2
 		_occupancies[2] &= ~captured_square_mask;
 	}
 
-	// Promotion (peu probable)
-	_bitboards[p + (p == b_pawn) * (row2 == 0) * 4] |= to_mask;
+	// Promotion (uses the correct piece from the move)
+	if (p == b_pawn && row2 == 0)
+		_bitboards[b_queen - promo_piece] |= to_mask;
+	else
+		_bitboards[p] |= to_mask;
 
 	// Roques (assez peu probables)
 
