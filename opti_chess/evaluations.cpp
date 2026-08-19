@@ -1769,7 +1769,7 @@ int Board::get_pawn_structure(float display_factor)
 						_array[row][col] = w_pawn;
 
 
-						int passed_value = passed_pawns[row] * (!has_black_pieces ? 1.0f : 1.0f);
+						int passed_value = passed_pawns[row] * (!has_black_pieces ? 1.5f : 1.0f);
 
 						// Is it connected to another pawn?
 						if ((col > 0 && (pawns_white[row][col - 1] || pawns_white[row - 1][col - 1])) || (col < 7 && (pawns_white[row][col + 1] || pawns_white[row - 1][col + 1]))) {
@@ -1843,7 +1843,7 @@ int Board::get_pawn_structure(float display_factor)
 						// Put the pawn back
 						_array[row][col] = b_pawn;
 
-						int passed_value = passed_pawns[7 - row] * (!has_white_pieces ? 1.0f : 1.0f);
+						int passed_value = passed_pawns[7 - row] * (!has_white_pieces ? 1.5f : 1.0f);
 
 						// Is it connected to another pawn?
 						if ((col > 0 && (pawns_black[row][col - 1] || pawns_black[row + 1][col - 1])) || (col < 7 && (pawns_black[row][col + 1] || pawns_black[row + 1][col + 1]))) {

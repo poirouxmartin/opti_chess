@@ -22,6 +22,10 @@ void Board::from_fen(string fen)
 
 	// Piece placement
 	while (row >= 0) {
+		if (iterator >= static_cast<int>(fen.size())) {
+			cout << "invalid FEN: truncated" << endl;
+			return;
+		}
 		c = fen[iterator];
 		switch (c) {
 		case '/': case ' ': row -= 1; col = 0; break;
@@ -40,6 +44,10 @@ void Board::from_fen(string fen)
 		default:
 			if (isdigit(c)) {
 				const int digit = (static_cast<int>(c)) - (static_cast<int>('0'));
+				if (col + digit > 8) {
+					cout << "invalid FEN: row overflow" << endl;
+					return;
+				}
 				for (int k = col; k < col + digit; k++) {
 					_array[row][k] = 0;
 				}
@@ -48,7 +56,7 @@ void Board::from_fen(string fen)
 			}
 
 			else {
-				cout << "invalid FEN" << endl;
+				cout << "invalid FEN: bad character" << endl;
 				return;
 			}
 		}
@@ -56,7 +64,24 @@ void Board::from_fen(string fen)
 		iterator++;
 	}
 
+	// Validate exactly one king per side
+	int w_kings = 0, b_kings = 0;
+	for (int r = 0; r < 8; r++) {
+		for (int c2 = 0; c2 < 8; c2++) {
+			if (_array[r][c2] == w_king) w_kings++;
+			if (_array[r][c2] == b_king) b_kings++;
+		}
+	}
+	if (w_kings != 1 || b_kings != 1) {
+		cout << "invalid FEN: must have exactly one king per side" << endl;
+		return;
+	}
+
 	// Side to move
+	if (iterator >= static_cast<int>(fen.size())) {
+		cout << "invalid FEN: missing side to move" << endl;
+		return;
+	}
 	c = fen[iterator];
 
 	_player = c == 'w';
@@ -69,6 +94,10 @@ void Board::from_fen(string fen)
 	_castling_rights.k_w = false; _castling_rights.q_w = false; _castling_rights.k_b = false; _castling_rights.q_b = false;
 
 	while (next) {
+		if (iterator >= static_cast<int>(fen.size())) {
+			cout << "invalid FEN: truncated castling" << endl;
+			return;
+		}
 		c = fen[iterator];
 
 		switch (c) {
@@ -83,6 +112,10 @@ void Board::from_fen(string fen)
 		iterator++;
 	}
 
+	if (iterator >= static_cast<int>(fen.size())) {
+		cout << "invalid FEN: missing en passant" << endl;
+		return;
+	}
 	c = fen[iterator];
 
 	// En passant
@@ -95,20 +128,20 @@ void Board::from_fen(string fen)
 
 	iterator += 2;
 	string s;
-	while (fen[iterator] != ' ') {
+	while (iterator < static_cast<int>(fen.size()) && fen[iterator] != ' ') {
 		s += fen[iterator];
 		iterator++;
 	}
-	_half_moves_count = stoi(s);
+	if (!s.empty()) _half_moves_count = stoi(s);
 
 	iterator++;
 	fen += ' ';
 	s = "";
-	while (fen[iterator] != ' ') {
+	while (iterator < static_cast<int>(fen.size()) && fen[iterator] != ' ') {
 		s += fen[iterator];
 		iterator++;
 	}
-	_moves_count = stoi(s);
+	if (!s.empty()) _moves_count = stoi(s);
 
 	_got_moves = -1;
 
