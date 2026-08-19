@@ -10,6 +10,7 @@ set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "Minimum policy version for th
 # GUI uses raylib which is cross-platform. Platform-specific libraries handled below.
 
 include(FetchContent)
+include(CTest)
 
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(BUILD_GAMES OFF CACHE BOOL "" FORCE)
@@ -29,7 +30,17 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 
-FetchContent_MakeAvailable(raylib robin_map)
+FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG v1.14.0
+    GIT_SHALLOW TRUE
+)
+
+# Prevent GoogleTest from overriding our compiler/linker settings on Windows
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(raylib robin_map googletest)
 
 add_executable(opti_chess
     main.cpp
@@ -111,3 +122,57 @@ install(TARGETS opti_chess
     BUNDLE DESTINATION .
 )
 install(DIRECTORY resources/ DESTINATION share/opti_chess/resources)
+
+# ---------------------------------------------------------------------------
+# Unit tests (GoogleTest + CTest)
+# ---------------------------------------------------------------------------
+# Shared library: engine sources without main.cpp, gui.cpp, main_gui.h,
+# main_lichess.h, windows_tests.cpp, tests.cpp (GUI-dependent).
+# raylib is linked so that board.h compiles, but tests never open a window.
+set(ENGINE_SOURCES
+    board.cpp
+    buffer.cpp
+    evaluation.cpp
+    exploration.cpp
+    game_tree.cpp
+    generation.cpp
+    gui.cpp
+    league.cpp
+    match.cpp
+    neural_network.cpp
+    player.cpp
+    time_tests.cpp
+    useful_functions.cpp
+    windows_tests.cpp
+    zobrist.cpp
+)
+
+add_library(engine_lib STATIC ${ENGINE_SOURCES})
+target_compile_features(engine_lib PUBLIC cxx_std_20)
+target_include_directories(engine_lib PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${robin_map_SOURCE_DIR}/include/tsl"
+)
+target_link_libraries(engine_lib PUBLIC raylib tsl::robin_map)
+if(WIN32)
+    target_compile_options(engine_lib PRIVATE /W4 /permissive- /utf-8)
+    target_compile_definitions(engine_lib PRIVATE _CRT_SECURE_NO_WARNINGS)
+    target_link_libraries(engine_lib PUBLIC gdi32 user32 winmm shell32 ole32)
+elseif(APPLE)
+    target_link_libraries(engine_lib PUBLIC "-framework Cocoa" "-framework IOKit" "-framework CoreVideo" "-framework OpenGL")
+else()
+    target_link_libraries(engine_lib PUBLIC m pthread dl rt X11)
+endif()
+
+# Link raylib examples/games off for test build too
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(BUILD_GAMES OFF CACHE BOOL "" FORCE)
+
+add_executable(opti_chess_tests
+    tests/unit_test.cpp
+)
+target_link_libraries(opti_chess_tests PRIVATE engine_lib GTest::gtest_main)
+target_compile_features(opti_chess_tests PRIVATE cxx_std_20)
+
+include(GoogleTest)
+gtest_discover_tests(opti_chess_tests)

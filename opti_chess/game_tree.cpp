@@ -53,7 +53,7 @@ void GameTreeNode::reset() {
 
 
 // Default constructor
-GameTree::GameTree() {
+GameTree::GameTree() : _root(nullptr), _current_node(nullptr) {
 }
 
 // Constructor from a board
@@ -160,13 +160,16 @@ string GameTree::tree_display() {
 
 // Reset
 void GameTree::reset() {
-	_root->reset();
-	_current_node = _root;
+	if (_root) {
+		_root->reset();
+		_current_node = _root;
+	}
 }
 
 // New tree from a board
 void GameTree::new_tree(Board& board) {
-	_root->reset();
+	if (_root)
+		_root->reset();
 	_root = new GameTreeNode(board, Move(), "", GameTreeNode());
 	_current_node = _root;
 }
