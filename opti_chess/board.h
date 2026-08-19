@@ -89,7 +89,20 @@ constexpr bool is_enemy(uint8_t piece, bool player_white) noexcept {
 	return piece && ((piece <= w_king) != player_white);
 }
 
-// TODO *** one free bit is left, to be used for an extra flag if needed
+// Promotion piece encoding (2 bits, used when IS_PROMOTION is set)
+enum PromoPiece : uint8_t {
+	PROMO_QUEEN = 0,
+	PROMO_ROOK = 1,
+	PROMO_BISHOP = 2,
+	PROMO_KNIGHT = 3
+};
+
+// Returns the actual piece value for a promotion given the color
+constexpr uint8_t promo_to_piece(uint8_t promo, bool player_white) noexcept {
+	// Queen=5, Rook=4, Bishop=3, Knight=2 (white); +6 for black
+	return (5 - promo) + (player_white ? 0 : 6);
+}
+
 // Stalemate?
 enum MoveFlags : uint8_t {
 	IS_NULL = 1 << 0,
@@ -106,7 +119,8 @@ struct Move {
 	uint8_t start_col : 3;
 	uint8_t end_row : 3;
 	uint8_t end_col : 3;
-	uint8_t flags;
+	uint8_t promo_piece : 2 = PROMO_QUEEN;
+	uint8_t flags = 0;
 
 	// --- Flag Accessors ---
 	inline bool is_null() const { return flags & IS_NULL; }
@@ -115,6 +129,8 @@ struct Move {
 	inline bool is_check() const { return flags & IS_CHECK; }
 	inline bool is_checkmate() const { return flags & IS_MATE; }
 	inline bool has_flags() const { return flags & FLAGS_EVALUATED; }
+	inline uint8_t get_promo_piece() const { return promo_piece; }
+	inline void set_promo_piece(uint8_t p) { promo_piece = p; }
 
 	//inline uint8_t game_result() const { return (flags & RESULT_MASK) >> 5; }
 
@@ -140,14 +156,16 @@ struct Move {
 		return start_row == other.start_row &&
 			start_col == other.start_col &&
 			end_row == other.end_row &&
-			end_col == other.end_col;
+			end_col == other.end_col &&
+			promo_piece == other.promo_piece;
 	}
 
 	inline bool operator<(const Move& other) const {
 		if (start_row != other.start_row) return start_row < other.start_row;
 		if (start_col != other.start_col) return start_col < other.start_col;
 		if (end_row != other.end_row)   return end_row < other.end_row;
-		return end_col < other.end_col;
+		if (end_col != other.end_col) return end_col < other.end_col;
+		return promo_piece < other.promo_piece;
 	}
 
 	// Returns whether this is a null move
@@ -170,7 +188,7 @@ namespace std {
 	template <>
 	struct hash<Move> {
 		size_t operator()(const Move& m) const noexcept {
-			uint16_t key = (m.start_row << 0) | (m.start_col << 3) | (m.end_row << 6) | (m.end_col << 9);
+			uint16_t key = (m.start_row << 0) | (m.start_col << 3) | (m.end_row << 6) | (m.end_col << 9) | (m.promo_piece << 12);
 			return hash<uint16_t>()(key);
 		}
 	};

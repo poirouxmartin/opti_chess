@@ -108,10 +108,12 @@ string Board::move_label(Move move, bool use_uft8)
 		s += static_cast<char>(end_row + 1 + 48);
 	}
 
-	// Promotion (queen only for now)
-	if ((p1 == w_pawn && end_row == 7) || (p1 == b_pawn && end_row == 0)) {
+	// Promotion
+	if (move.is_promotion()) {
 		s += "=";
-		s += use_uft8 ? (_player ? main_GUI.Q_symbol : main_GUI.q_symbol) : "Q";
+		const char promo_chars[] = "QRBN";
+		char pc = promo_chars[move.get_promo_piece()];
+		s += use_uft8 ? string(1, pc) : string(1, pc);
 	}
 
 	if (move.is_checkmate())
@@ -331,10 +333,10 @@ string Board::algebric_notation(Move move) const {
 	string move_notation = main_GUI._abc8[move.start_col] + to_string(move.start_row + 1) + main_GUI._abc8[move.end_col] + to_string(move.end_row + 1);
 
 	// Promotion
-	if (move.end_row == 7 && _array[move.start_row][move.start_col] == 1)
-		move_notation += "q";
-	else if (move.end_row == 0 && _array[move.start_row][move.start_col] == 7)
-		move_notation += "q";
+	if (move.is_promotion()) {
+		const char promo_chars[] = "qrbn";
+		move_notation += promo_chars[move.get_promo_piece()];
+	}
 
 	return move_notation;
 }
