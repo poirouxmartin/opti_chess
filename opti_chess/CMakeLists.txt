@@ -45,6 +45,8 @@ FetchContent_MakeAvailable(raylib robin_map googletest)
 add_executable(opti_chess
     main.cpp
     board.cpp
+    board_display.cpp
+    board_fen.cpp
     buffer.cpp
     evaluation.cpp
     exploration.cpp
@@ -126,6 +128,8 @@ install(DIRECTORY resources/ DESTINATION share/opti_chess/resources)
 # raylib is linked so that board.h compiles, but tests never open a window.
 set(ENGINE_SOURCES
     board.cpp
+    board_display.cpp
+    board_fen.cpp
     buffer.cpp
     evaluation.cpp
     exploration.cpp
