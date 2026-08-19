@@ -49,14 +49,9 @@ add_executable(opti_chess
     evaluation.cpp
     exploration.cpp
     game_tree.cpp
-    generation.cpp
     gui.cpp
-    league.cpp
-    match.cpp
     neural_network.cpp
-    player.cpp
     tests.cpp
-    time_tests.cpp
     useful_functions.cpp
     windows_tests.cpp
     zobrist.cpp
@@ -135,13 +130,8 @@ set(ENGINE_SOURCES
     evaluation.cpp
     exploration.cpp
     game_tree.cpp
-    generation.cpp
     gui.cpp
-    league.cpp
-    match.cpp
     neural_network.cpp
-    player.cpp
-    time_tests.cpp
     useful_functions.cpp
     windows_tests.cpp
     zobrist.cpp

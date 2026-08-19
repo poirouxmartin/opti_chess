@@ -1,934 +1,264 @@
------ TODO list reorganisee -----
+----- TODO list (nettoyee) -----
+Derniere mise a jour: 2026-08-19
 
-Toutes les lignes avec des positions/FEN ont ete deplacees dans Tests.txt.
-Aucune ligne de travail n'a ete volontairement supprimee ; les positions ont ete regroupees ailleurs.
+=== JEU ===
+  -> Promotions de tous types (pas seulement dame)
+  -> Tests de validité de FEN + rendre from_fen plus tolérant
+  -> Naviguer dans l'historique des coups
+  -> Générer un arbre d'ouvertures
+  -> Livre d'ouvertures (format arbre, charger/rechercher)
+  -> Règles de nulles/mat en dehors de l'évaluation
+  -> Découper draw en sous-fonctions
+  -> Buffer de coups plein -> gérer proprement
 
------ Documentation pour la suite -----
+=== EVALUATION ===
+  -> Finales spéciales: roi+pion, mat fou+cavalier, fous couleurs opposées, tours, pions
+  -> Winnable: asymétriques (fou vs cavalier, pièce mineure+pion vs tour)
+  -> Carré du pion en finales
+  -> Pions passés: contrôles alliés, candidats, valeurs (bloqueur, contrôle, aides)
+  -> Pions arriérés
+  -> Structure de pions: îlots, chaînes, "A" vs "V", jouer côté où structure pointe
+  -> Favoriser cavaliers en positions fermées, fous diagonales ouvertes, tours colonnes ouvertes
+  -> Faiblesses sur une couleur
+  -> Cases noires/blanches -> faiblesse
+  -> Cases faibles proches du roi = plus graves (grouper par roque)
+  -> Clouages: pression + bonus si pièce clouée non défendue
+  -> Trapped pieces: pas considerer si échange possible pièce équivalente
+  -> Pièces enfermées / bloquées / isolées
+  -> Pièces défendues / non protégées (solidité)
+  -> Unprotected pieces
+  -> King safety: regrouper par roque (pawn storm, weak squares, diags, exposure)
+  -> King safety long terme: distances au roque pour tous les facteurs
+  -> King proximity: virer vecteurs (trop lent), carrés des pions passés adverses
+  -> King safety: quand roi safe, ok affaiblir le sien pour mater l'autre
+  -> Activité des pièces: différencier court/long terme, pièces bloquées par pions adverses
+  -> Refaire toute l'activité des pièces (le facteur le plus important)
+  -> Mobility: map des pièces bloquées, itération, court/long terme
+  -> Coordination des pièces (qui se défendent entre elles)
+  -> Pièces harmonieuses
+  -> Pression: attaques additionnelles en rayon X, doubler tours
+  -> Initiative / positions d'attaque
+  -> Bishop pawns: bonus si devant structure, malus si derrière
+  -> Mauvais fou = pion de moins (moins pire si actif)
+  -> Fous de fianchetto: faiblesse plus grave si pas contrôlé par fou
+  -> Tour derrière pion passé
+  -> Tours liées
+  -> Garder les tours pour faire nulle
+  -> Activité de la dame (milieux/fins de partie)
+  -> Queen safety: pièces de valeur inférieure seulement
+  -> Exposed queen pour éviter scandi
+  -> Développer cavaliers avant fous
+  -> Ouvrir position si avantage de développement
+  -> Analyser les bons/mauvais fous
+  -> Mating nets (même sans échec menacé)
+  -> Backrank
+  -> Overextended space: points d'entrée adverses
+  -> Potentiel défensif (plus gros pièces mineures)
+  -> Potentiel offensif lourds >> défensif lourds
+  -> Finales de pièces lourdes: avantage roi le moins faible
+  -> Pawn race: compter coups avant promotion
+  -> Pas de pawn_push_threat si en_passant possible
+  -> Incremental evaluation
+  -> Générer coups ordonnés (captures en premier)
+  -> Augmenter poussées pions en finale (move sort / policy)
+  -> Policy pour les coups (préférences de réflexion)
+  -> Règle des 2 faiblesses
+  -> Anaconda: contrôle cases, aucun mouvement adversaire
+  -> Themes positionnels actifs/passifs (court/long terme)
+  -> Lignes/colonnes ouvertes sur le roi: grave seulement si pièce lourde peut y aller
+  -> Catégorie "Développement" séparée de King safety
+  -> Revoir pièce par pièce la valeur globale
+  -> Retirer pawn_shield/pawn_storm des éval (déjà dans king_safety)
+  -> Texel tuner pour rectifier l'évaluation
+  -> Utiliser map de contrôles dans l'évaluation
+  -> Gestion des draws: incertitude max, winning eval, beta down
+  -> Calculer l'avancement au fur et à mesure
+  -> Règle des 50 coups: variable globale
+  -> Séparer éval court terme / long terme
+  -> Confiance: 100% si plus de pièces?
+  -> Incertitude: grand roque rend positions plus incertaines
+  -> Nombre d'îlots de pions dans structure
+  -> WR ne doit diminuer quand activité augmente pour éval donnée
+  -> En finale, pions passés ou non, faut les pousser
+  -> Refaire evaluate threat plus puissant
+  -> Augmenter vitesse d'évaluation
 
+=== ALGORITHME ===
+  -> Algo Negamax: undo moves plutôt que copies de tableaux
+  -> MTD(f) <-> alphabeta with memory
+  -> Parallélisation (GPU?, std::for_each policy parallel, threads)
+  -> Paralléliser les perft tests
+  -> SIMD code
+  -> Buffer de coups pour éviter stockage dans plateaux
+  -> Stocker indice plateau dans buffer plutôt que pointeur
+  -> Negamax: utiliser plateaux du buffer
+  -> Précalculer (matrices distance bords, constantes, tables d'attaque)
+  -> Utiliser librairie boost
+  -> Utiliser std::sort pour trier les coups
+  -> Transpositions: reset table après chaque coup
+  -> Mini clé Zobrist 16 bits pour répétitions
+  -> Delta pruning (quiescence search)
+  -> Revoir k_add
+  -> Quiescence: shallow d'abord, profonde si intéressant
+  -> Quiescence: couper positions complètement foutues
+  -> Quiescence: réutiliser réflexion pour recherche normale
+  -> Quiescence: profondeur modulée par importance de la branche
+  -> Quiescence: autorisations standpat à revoir
+  -> Quiescence: depth < 0 à investiguer
+  -> Quiescence: tri coups (meilleures captures d'abord)
+  -> Ne plus regarder branches finies de GrogrosZero
+  -> Rechercher large au début, puis serré après
+  -> Retirer coups pourris pour augmenter capacité stockage
+  -> Prioriser coups non fully explorés
+  -> Transpositions: gérer overflows
+  -> Beta cut-off si en échec?
+  -> q_depth plus petit avec extensions
+  -> positions_history dans exploration plutôt que board
+  -> Pick_random_child en fonction de l'évaluation relative
+  -> Quand meilleur coup complètement exploré, refaire sans lui?
+  -> Utiliser améliorations/optimisations VisualStudio
+  -> GrogrosZero ralentit variantes longues -> optimiser
+  -> Recherche spécialement de mat
+  -> Raylib pour random (vérifier vitesse)
+  -> Initialiser plateau plutôt que from_fen
+  -> Undo gardent calculs GrogrosZero
+  -> Refaire get_moves (controlled squares) + perft test
+  -> Cleaning: flags coups, methods utiles, static constexpr
+  -> Refaire get_best_move pour correspondre aux vraies valeurs (WDL)
+  -> Réduire quiescence depth pour coups pourris
+  -> Gérer promotions de variantes (toute la branche + sélection bon noeud)
+  -> Implantation nouveaux passes de quiescence
 
-https://cs229.stanford.edu/proj2012/DeSa-ClassifyingChessPositions.pdf
-https://www.wikiwand.com/en/Negamax
-https://thesai.org/Downloads/Volume5No5/Paper_10-A_Comparative_Study_of_Game_Tree_Searching_Methods.pdf
-https://www.chessprogramming.org/Evaluation_of_Pieces
-https://www.chessprogramming.org/Evaluation
-https://www.cs.cornell.edu/boom/2004sp/ProjectArch/Chess/algorithms.html#board
-https://www.chessprogramming.org/Main_Page
-https://towardsdatascience.com/building-a-chess-ai-that-learns-from-experience-5cff953b6784
-https://arxiv.org/pdf/1711.08337.pdf
-https://stackoverflow.com/questions/40137240/training-of-chess-evaluation-function
-https://arxiv.org/pdf/2007.02130.pdf
-https://www.chessprogramming.org/Move_Generation
-https://www.chessprogramming.org/Checkmate
-https://www.chessprogramming.org/Bishop_versus_Knight#WinningPercantages
-https://www.chessprogramming.org/Sensor_Chess#MoveGeneration
-https://hxim.github.io/Stockfish-Evaluation-Guide/
-https://www.chessprogramming.org/Repetitions
-https://en.wikipedia.org/wiki/Threefold_repetition
-https://www.chessprogramming.org/Opening_Book
-https://www.chessprogramming.org/Pawn_Structure
-https://www.chessprogramming.org/Time_Management
-https://www.chessprogramming.org/Encoding_Moves#MoveIndex
-https://lichess.org/page/accuracy
-http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
-https://www.chessprogramming.org/UCT
-https://www.codeproject.com/Articles/5313417/Worlds-Fastest-Bitboard-Chess-Movegenerator
+=== INTERFACE ===
+  -> Readme pour les contrôles
+  -> Sons: amélioration, maison, temps, ambiance, "soft"
+  -> Images/nouvelles textures
+  -> Options: désactivation son, menus, paramètres recherche IA
+  -> Éditeur de positions (ajouter/supprimer pièces)
+  -> Thread dédié pour l'affichage (PARALLÉLISER, lag énorme)
+  -> Undo retire coup du PGN
+  -> Textes couleurs différentes, plus de contraste
+  -> Défiler variante au survol souris
+  -> Montrer mate/pate sur échiquier
+  -> Unload images/textures pour vider RAM
+  -> Changer paramètres IA dans UI
+  -> Sauvegarder parties entières dans fichier
+  -> Analyses MC: montrer chemin meilleure éval et chemin joué
+  -> Grab slider / cliquer pour changer place
+  -> Batailles entre paramètres d'évaluation
+  -> Import/export PGN
+  -> Afficher réflexion Grogros sur PGN
+  -> Changer nombre de noeuds / profondeur dans GUI
+  -> Smooth barre d'évaluation
+  -> Graphe d'éval en fin de partie
+  -> Échelle logarithmique barre d'éval
+  -> Fixer gestion du temps (affiché != vrai)
+  -> Clean implémentation GUI
+  -> Pre-moves depuis zéro (+ multiples)
+  -> Flèches: variante calculée, coups principaux
+  -> Montrer la menace (changer le trait)
+  -> Animations Grogros qui bouge les pièces
+  -> Désélectionner pièce après coup joué
+  -> Int overflow dans softmax
+  -> Affichage en fonction de l'arbre de jeu
+  -> Time management en fonction différence meilleur/autres coups
+  -> Naviguer dans variante: cliquer, changer, dé-surligner
+  -> From_fen -> reset l'arbre
+  -> Garder réflexions GrogrosZero en navigation
+  -> Passer variante en principale
+  -> Montrer ligne montante/descendante
+  -> Sons quand on navigue
+  -> Afficher forces/faiblesses (vert/orange/rouge)
+  -> Afficher coup courant dans variante
+  -> Variante avec détails (profondeur)
+  -> Temps + noeuds + éval dans PGN
+  -> Pièces UTF-8 visuel amélioré
+  -> Colorer cases selon bonus pièces
+  -> FEN auto-complétion si incorrect
+  -> Afficher info emergency cutoff
+  -> Mode analyse POV noirs (bug)
+  -> Afficher site de binding
+  -> Annuler bindings (CTRL+Y)
+  -> Numéro de version dans UI
+  -> Défiler variante avec flèche maintenue
+  -> Textures GPU + shaders (outline, texte non flou)
+  -> Bug UI 12 FPS -> fix
+  -> Lignes bézier/cercles non beaux -> améliorer
 
------ TODOs -----
+=== INFRASTRUCTURE ===
+  -> Séparer board.cpp en fichiers dédiés (GUI, IA, evaluation)
+  -> Faire une classe pour les IA
+  -> Quel compilateur le plus rapide/opti
+  -> Passer commentaires en anglais + clean code
+  -> Noms de version sur Grogros
+  -> Unit tests pour les fonctions
+  -> Tests micro de l'algorithme (efficience à temps minimal)
+  -> Documentation complète + refactorisation
+  -> Parallélisation propre
+  -> Profiler pour fonctions lentes
+  -> Nettoyer code exploration
+  -> Clean global (commentaires inutiles, factoriser, opti micro)
+  -> Optimiser évaluation
+  -> Framework de test
+  -> Test vitesse évaluation
+  -> Fonction test: comparer évals Grogros vs Leela
+  -> Download positions pour tests
+  -> Tracker fuites mémoire
+  -> robin_maps au lieu de maps
+  -> Screenshots dans mauvais dossier -> fix
+  -> Crash quand on ferme la fenêtre
 
-Jeu
+=== RESEAUX NEURONES ===
+  -> Matches avec 0 réflexion, seulement le réseau
+  -> Symétrie dans le réseau?
+  -> Apprentissage: comment le faire?
+  -> Parties contre lui-même
+  -> Algorithme génétique (détruire faibles, mutations forts)
+  -> Bonus/malus quand il a mal évalué
+  -> Apprentissage fin de partie puis remonter
+  -> Reinforcement learning
+  -> Paramètres au-delà des pièces (trait, roques)
+  -> Peu de valeurs négatives dans les évals: normal?
 
--> Promotions (de tous types plutôt que seulement dame)
--> Rajouter des tests de validité de FEN
--> Pouvoir naviguer dans l'historique des coups
-
-Structure globale du projet
-
--> Séparer les fonctions du fichier board dans d'autres fichiers (GUI, IA...)
--> Faire du ménage dans les fonctions
--> Faire une classe pour les IA?
-
-Optimisations à implémenter
-
--> Regarder quel compilateur est le plus rapide/opti
--> Algo Negamax -> copies des tableaux -> undo moves? ---> finalement plus lent?
--> Transposition tables
--> Algorithme MTD(f) <-> alphabeta with memory algorithm
--> stoi et to_string très lents?
--> Ajout de variables globales plutôt que les re définir lors des appels de fonction (valeur des pièces, positionnement...)
--> Parallélisation -> std::for_each avec policy parallel?
--> Au lieu de calculer l'évaluation à chaque coup, l'imcrémenter en fonction du coup
--> Dans le negamax, si y'a un mat, ne plus regarder les autres coups?
--> Optimiser le sort moves - l'améliorer (et l'évaluation?)
--> Remplacer des if par des &&
--> Vérifier que toutes les fonctions sont optimisées
--> Faire le triage des coups grâce aux itérations précédentes?
--> Fonction pour stocker facilement un noeud, ou savoir s'il est similaire à un autre? -> transposition tables
--> Incrémenter le game_over à chaque coup joué plutôt que de le regarder à chaque fois
--> Regarder si l'implémentation des échecs rend les calculs plus rapides
--> Ne plus jouer les échecs?
--> Copie des plateaux : tout copier? ou seulement quelques informations importantes?
--> Liste des coups légaux, et une autre liste pour les coups pseudo-légaux... pour éviter de les recalculer à chaque fois...
--> Utiliser les threads.. voir cours ProgrammationConcurrente
--> Checker SIMD code (pour optimiser)
--> Calcul de distance à un bord : simplement faire une matrice globale des distance pour chaque case, et regarder dedans -> https://www.chessprogramming.org/Center_Manhattan-Distance
--> Faut-il stocker les positions de certaines pièces (les rois par exemple), pour accélérer certains calculs?
--> Regarder dans les copies de tableau si on peut ne pas copier des choses, ou en copier plus...
--> Précalculer pas mal de choses si possible
--> Incrémentation de l'évaluation
-
-Intelligences artificielles / Nouveaux algorithmes
-
--> Grogrofish_iterative_depth -
--> Changer Grogrosfish : depth -> temps (--> moteur d'analyse)
--> Faire une profodeur -> trier les coups du meilleur au pire, puis continuer la recherche plus loin
--> Agent_new = Agent_old++ -
--> Faire un agent qui gagne toujours contre un autre : regarde tous les coups, et joue pour chacun la partie jusqu'au bout en utilisant agent_old -> puis joue les coups qui gagnent
--> RE : multi_agents
-
-Intelligences artificielles / Améliorations
-
-- EVALUATION -
--> A ajouter :
-	- Evaluation spéciale pour les finales :
-		- Finales roi pion
-		- Mat fou cavalier
-		- ...
-	- Cases noires/blanches -> faiblesse sur une couleur
-	- Initiative -> A améliorer : fort dans les positions d'attaque?
-	- Harmonie des pièces (qui se défendent entre elles)
-	- Pièces enfermées
-	- Pions bloqués / Développement de pièces impossible
-	- Pièces défendues
-	- Faiblesse sur une couleur
-	- Focales
-	- Cavaliers bloqueurs
-	- Garder les tours pour faire nulle
-	- Clouage infini
-	- Pression sur les cases et points faibles
-	- Colonnes occupées par une dame
-	- Coordination des pièces
-	- King proximity : proximité du roi avec les pions passés (pour les aider à avancer) (prendre en compte aussi le roi adverse)
-	- Pièces non protégées
-	- "anaconda" : pièces bloquées à vie + avantage d'espace etc.. plans long termes
-	- Concepts de pression: attaques additionelles en rayon X à prendre en compte. Doubler les tours sur une colonne, etc...
-	- Plans?
-	- Pions passés: prendre en compte les contrôles des alliés pour pousser les pions
-	- Règle des 2 faiblesses : si y'a 2 faiblesses attaquables, ça donne un avantage
-	- Winnable? en endgame par exemple si on a qu'un fou on peut pas gagner
-	- Proximité du roi avec les pions passés
-	- Trapped pieces (https://www.chessprogramming.org/Trapped_Pieces)
-	- Connectivity (https://www.chessprogramming.org/Connectivity)
-	- Alignements
-	- Piece coordination
-	- Incremental evaluation (pour que ça aille plus vite)
-	- Tour derrrière un pion passé
-	- Ouvrir la position si on a un avantage de développement (roi adverse pas roqué, pièces pas développées)
-	- Développer les cavaliers avant les fous
-	- Favoriser les chevaux dans les positions fermées. Fous quand les diagonales sont ouvertes, tours quand les colonnes sont ouvertes (implémenter un bonus pour chaque?)
-	- Attaquer la chaîne de pions
-	- Moins de pions = moins de chances de gagner en finale
-	- Tours liées, important
-	- Colonne ouverte/semi-ouverte contre le roi adverse combiné avec diagonale ouverte = grand avantage (+2?)
-	- Jouer du côté où la chaîne de pions pointe
-	- Evaluation globale des faiblesses de la position
--> Faire une policy pour les coups (ou des préférences de réflexion)
--> Livres d'ouvertures, tables d'engame?
--> Tables de hachages, et apprentissage de l'IA? -> voir tp_jeux (UE IA/IRP)
--> Iterative deepening pour grogrosfish
--> Améliorations pour trouver les mats les plus rapides... 
--> Ne plus regarder les branches finies de GrogrosZero?
--> Utiliser raylib pour le random? check la vitesse
--> Création d'une base de données contenant des positions et des évaluations? (qui se remplit au cours des parties...)
--> Allocations mémoires utilisant raylib?
--> Implémentation de bitboards
--> Changer la structure de données des boards pour réduire leur taille
--> Incrémentation de l'évaluation quand on joue les coups (make_move(keep))
--> Utiliser la librairie boost
--> Faire une liste séparée pour les legal et les pseudo-legal moves
--> Génération des coups de façon ordonnée? (captures en premier?)
--> Finir les undo
--> Mettre des options pour certaines fonctions pour ne pas faire les étapes inutiles (_last_move dans make_move??)
--> Faire une fonction pour initialiser un plateau (plutôt que le from_fen)
--> Faire que les undo gardent les calculs de GrogrosZero sur la position
--> Augmenter les poussées de pions en finale (les regarder en premier -> policy / move sort)
--> Faire une IA qui apprend tout seul? : update l'évaluation d'une position en fonction de la refléxion sur cette même position
--> Générer un arbre d'ouvertures !! :DDDD
--> Evaluation des pièces : prendre en compte les pièces protégées / attaquées? Pièces prenables?
--> Format du livre d'ouvertures : {(e4, fen, static_eval, dynamic_eval, nodes, {(e5, ...), (...), ...}), (d4, ...), ...}. où e4 = 1, 4, 3, 4
--> Pour l'utilisation du livre, re fabriquer un arbre?
--> Faire une table de hachage pour simplifier (et accélérer) la recherche des positions répétées
--> Pour l'historique des positions, on peut le reset à chaque coup de pion ou capture
--> Pour les transpositions, on peut peut-être renvoyer au même indice de plateau fils...?
--> Pour chaque plateau, générer et stocker la representation simpliste du plateau? Pour ensuite pouvoir aider les fils à comparer?
--> ATTENTION aux conversions int et float dans les calculs d'évaluations...
--> Mettre les règles de parties nulles et mat en dehors de l'évaluation?
--> Ajouter les pièces protégées/attaquées lors de l'évaluation pour simplifier les calculs de l'IA
--> Carré du pion en finales
--> Ne comprend pas les finales de bases (du au fait qu'il répète les coups?)
--> Regarder dag chess?
--> Faire une map des cases attaquées (ça peut rendre plus rapide les tests d'échecs)
--> OpenAI propose un diviser pour reigner pour paralléliser GrogrosZero
--> Est-ce plus rapide de mettre des boucles simples plutôt que double? while plutôt que for?
--> Endgame : la force des pièces dépend du potentiel des pions (pièces seules = bof)
--> Faire des tables d'attaque (par exemple entre roi et dame, cavalier...)
--> Refaire toute l'architecture avec les get_moves(), pour que ça prenne tout en compte (sans le faire dans l'évaluation)
--> Calculer l'avancement de la partie au fur et à mesure de la partie (au lieu de le faire à chaque fois)
--> GrogrosZero ralentit beaucoup quand les variantes deviennent longues
--> ----> Faire une recherche spécialement de mat, où on prend plus en compte le matériel??
--> Au fil de la réflexion, retirer les coups pourris?? pour augmenter la capacité de stockage...
--> Mettre une variable globale pour la règle des 50 coups (pour la passer à moins, si besoin)
--> Rechercher large au début, puis serré après??
--> Changer un peu l'algo, pour que ça ne joue pas forcément le coup auquel il a le plus réflechi, mais un autre si il semble être meilleur (quand c'est mat, facile, mais sinon, comment savoir?)
--> Attaquer les faiblesses
--> Quand Grogros joue un coup auquel il n'avait pas pensé.. les évaluations déscendent pour les coups, 1 par 1... comment faire pour que tout descende en même temps?
--> L'éval statique en position symétrique sera toujours nulle ?? (modulo le trait du joueur)
--> Puissance de la paire de fou qui dépend du moment de la partie? Qui dépend si y'a encore les dames pour compenser?
--> Découper la foncion draw en plein de sous-fonctions?
--> Chercher ce qui prend le plus de temps dans la GUI
--> Recherche de Grogros : utiliser UCT
--> Tester Grogros sur les leçons stratégiques de chess.com
--> Mettre des static const un peu partout pour éviter les re définitions inutiles
--> Faut-il prendre en compte le nombre de noeuds dans un fils pour déterminer s'il faut regarder dedans?
--> Ordonnencement des coups : checks/captures/attacks
--> Dans les positions ou des pièces peuvent être capturées, Grogros évalue très mal (quiescence depth trop faible)
--> Retirer les espace dans les parsing de FEN (ou autres caractères non désirés)
--> Passer tous les commentaires en anglais et clean le code?
--> Evaluations en finales : un cavalier seul sans pions ni rien = nul
--> Mettre les noms de version sur le nom de Grogros
--> Utiliser toutes les améliorations/optimisations possibles sur VisualStudio
--> Mettre des uint8_t partout
--> Negamax : utiliser les plateaux tout faits du buffer?
--> Mettre des variables globales partout !
--> Virer les attributs inutiles des plateaux
--> Faire une fonction qui regarde si un coup est légal
--> Regarder et virer toutes les conversions de int à float, et opérations entre int et floats
--> Position à tester : GrogrosZero vs Grogrosfish : 
--> Faire des pre-calculs dans des constantes (genre des divisions), pour éviter de les faire à chaque fois
--> Mettre des flags pour les coups (capture, check, promotion -> caval possible??)
--> Quels paramètres sont meilleurs pour GrogrosZero? k_add? beta? quiescence_depth?
--> Utiliser std:sort pour trier les coups plus rapidement?
--> Taper les faiblesses (notions de pression)
--> Utiliser la map de contrôles pour les fonctions dans l'évaluation
--> Quand l'arbre est trop plein : élaguer les branches pourries, pour se concentrer sur les plus prometteuses
--> Faut-il vraiment regarder tous les coups d'une position avant de chercher plus loin??
--> Evaluer les finales différemment : faires des fonctions exprès pour (carré du pion, mat fou cavalier : il faut aller dans le bon coin)
--> Optimiser la mémoire de Grogros
--> Améliorer l'implémentation de l'activité des pièces : peuvent pas vraiment se déplacer sur des cases pourries...
--> Utiliser des static constexpr pour éviter des calculs redondants dans certaines fonctions
--> Re utiliser la réflexion de la quiescence search pour la recherche normale
--> Comme pour le roi, garder en mémoire l'emplacement des pièces (utiliserait 256 bytes)
--> Afficher seulement les paramètres d'évaluation qui font sens? (par exemple king opposition seulement lorsque c'est une finale de pions)
--> Faire des méthodes utiles pour les coups
--> Flags pour les coups
--> Rendre from_fen plus tolérant
--> Améliorer l'évaluation en faisant jouer contre Leela, et regarder ce que Grogros évalue mal
--> Faire le threading !
--> Implementer les policy pour les coups (pour regarder des coups plus que d'autres)
--> Revoir les undo, et les faire rapides pour les utiliser au lieu de copier les plateaux
--> Faire des tests de vitesse pour l'évaluation
--> Quand une position est surestimée, Grogros va jouer des coups pour retarder l'échéance, mais qui peuvent pourrir la position encore plus
--> Quand une position est sous-estimée, Grogros va jouer un coup qui parait bien et réfléchir beaucoup dessus, même si d'autres variations peuvent être meilleures
--> Utiliser sort c++ pour trier les coups
--> Regarder où on fait des accès mémoire fréquent et faire des copies locales pour aller plus vite?
--> Constructeur de coups à partir d'un string
--> Passer les fonctions d'évaluation dans evaluation.cpp
--> Il faut vider l'historique des variantes quand on change de position... faire une méthode pour reset?
--> Refaire toutes la fonction de dessin de la GUI (notamment pour clarifier les sélections.. puis faire les pre-moves..., draw arrow...)
--> Rajouter des comtempt: valeur qui dépend de l'adversaire, et qui définit à quel point tu acceptes les nulles (et tente des pièges?)
--> Faire une structure pour la recherche de MonteCarlo (arbre avec noeuds)
--> Bishop pawns: retirer une part de la pénalité quand le fou est devant et protégé par un de ses pions?
--> Souvent, Grogros dépasse le centre pour rien, et ça crée des faiblesses et ne sert à rien (il faudrait mieux se développer à la place...). Contre les double fianchetto, ce genre d'erreur est fatal
--> Faire un truc sur la mobilité totale des pièces? qui ressemble à un logarithme? -> t'as pas de coups -> eval: -inf, t'as k coups -> eval: 0, et ça augmente en log
--> Utiliser Texel tuner pour rectifier l'évaluation?
--> En finale contre fou, mettre les pions sur la couleur opposée au fou
--> Beaucoup de choses peuvent être factorisées dans le main_gui (get_orientation() par exemple)
--> Il faut des classes pour l'évaluation (mettre toutes les fonctions dedans), pour l'algo de GrogrosZero (dont un arbre de recherche...)
--> get_safe_checks() -> prend 90% du temps de l'évaluation...
--> Pour tester les versions de grogros, faudrait que je fasse une fonction qui le confronte à un certain nombre de puzzles/evaluations et voir combien il en réussi pour lui donner un score. (utiliser ça aussi pour entraîner les réseaux de neurones?)
--> Pour get_zobrist _key, regarder si on ne le fait pas trop souvent
--> Dans les finales, il faut évaluer comment on peut avancer ou non... sinon il voit pas quand y'a des égalités...
--> Définir des concepts positionnels actifs et passifs (court terme et long terme), puis leur donner une valeur en fonction de la nature de la position (position ouvrte -> actif, fermée -> passif)
--> Les pions faibles le sont encore plus lorsqu'ils sont bloqués par des pions adverses
-
-Interface utilisateur
-
--> Faire un readme pour les contrôles
--> Amélioration des sons (en faire des maison?)
--> Nouveau sons/images
--> Options : désactivation son, ...
--> Modification de l'incrément dans la GUI
--> Sons pour le temps
--> Premettre de modifier les paramètres de recherche de l'IA : beta, k_add... (d'une meilleure manière)
--> Musique de fond? (désactivable)
--> Ajouter un éditeur de positions (ajouter/supprimer les pièces)
--> Utiliser 1 thread pour gérer l'affichage tout seul
--> Undo doit retirer le coup du PGN aussi
--> Afficher les textes avec des différentes couleurs pour que ça soit plus facile à lire
--> Défiler la variante quand on met la souris dessus
--> Montrer sur l'échiquier quand la position est mate (ou pate, ou autre condition de fin de partie)
--> Faire un reconnaisseur de position automatique
--> Unload les images, textures etc... pour vider la RAM?
--> Pouvoir changer les paramètres de l'IA dans l'UI
--> Ajouter des options/menus
--> Pouvoir sauvegarder les parties entières dans un fichier (qui s'incrémente), pour garder une trace de toutes les parties jouées
--> Analyses de MC : montrer le chemin qui mène à la meilleure éval, puis celle qui mène au jeu qui va être joué
--> Pouvoir grab le slider, ou cliquer pour changer sa place
--> Faire des batailles entre différents paramètres d'évaluation pour voir la meilleure config -> Retour des batailles de NN?
--> Importation depuis un PGN
--> Afficher sur le PGN la reflexion de GrogrosZero
--> Pouvoir changer le nombre de noeuds de l'IA dans la GUI... ou la profondeur de Grogrosfish
--> Nd2f3 -> Ndf3? pas facile à faire
--> Faire du smooth sur la barre d'évaluation
--> Faire un graphe d'éval en fin de partie?
--> Certains calculs sont peut-être en double dans l'affichage
--> Echelle logarithmique pour la barre d'éval?
--> Gestion du temps bizarre? Car le temps affiché par GrogrosZero n'est pas vraiment le vrai (ni sa vitesse)
--> Clean l'implémentation de la GUI -> Faire des nouvelles fonctions pour tout simplifier
--> Faire un vecteur pour les pre moves et les flèches
--> Dans une position que GrogrosZero sous-évalue, jouer le coup auquel il a le plus réflechi. dans le cas contraire, jouer le coup avec la meilleure éval
--> Mettre le screenshot dans le presse-papier?
--> Faire un truc pour montrer la menace (changer le trait du joueur)
--> PARALLELISER L'AFFICHAGE !! ça lag beaucoup trop !!!
--> Refaire les pre-moves depuis zéro (et ajouter la possibilité d'en faire plusieurs)
--> Lignes de bézier et cercles pas très beaux
--> Nouveaux bruits de pièces plus "soft" + bruit d'ambiance?
--> Montrer toute la variante calculée avec des flèches (d'une couleur spéciale)
--> Dans les .h, remettre les noms des arguments?
--> Rajouter des pre-moves pour Grogros si c'est un coup forcé en face
--> Pourquoi c'est lent de changer la taille de la GUI?
--> Faire des maps pour afficher les paramètres d'évaluation (genre afficher les cases controllées, avec une couleur plus ou moins prononcée...)
--> Pouvoir facilement changer les paramètres de Grogros (quiescence depth, beta, k_add, paramètres d'évaluation...)
--> Pouvoir changer l'affichage de la GUI (winrate/eval)
--> Faire des menus
--> Désélectionner les pièces lors d'un chargement de position
--> Utiliser des checkCollision de raylib pour la GUI
--> Afficher l'incrément de temps sur la GUI, et pouvoir le modifier
--> O-O+ dans les move label à prendre en compte (DONE)
--> Revoir les update du temps quand on le change pendant que ça joue
--> Afficher des traits autour du plateau chess.com?
--> Affichage de la réflexion de Grogros sur le PGN : {N: 10.29% of 544}
--> Revoir le compare moves (sinon ça affiche pas toujours le meilleur coup au dessus)
--> Montrer l'incrément sur la GUI
--> Afficher le titre et l'elo des joueurs sur la GUI
--> Revoir le tri des coups pour les flèches de GrogrosZero, car parfois ça ne se trie pas bien
--> Afficher différement la pièce sélectionnée (et au dessus des autres pièces)
--> Faire des animations de Grogros qui bouge les pièces
--> Quand on joue un coup (en appuyant sur p ou autre), il faut désélectionner la pièce
--> Refaire la réflexion de GrogrosZero: quand il y a beaucoup d'incertitude dans l'éval, regarder large. Sinon, regarder profond
--> Vérifier qu'il n'y a pas d'int overflow dans la sélection des coups (softmax...)
--> Changer l'affichage du plateau en fonction de l'arbre de jeu, et le fils principal (surligner le coup)
--> Barre d'éval : afficher l'éval du coup le plus recherché par l'IA? ou éval du "meilleur coup"?
--> Time management: faire en fonction de la différence entre le meilleur coup et les autres pour jouer plus vite? Debug pour voir si tout fonctionne bien
--> Afficher l'endroit où on en est dans la variante, pouvoir cliquer dessus, changer les variantes
--> Dé-surligner le coup quand on navigue dans les coups
--> From_fen -> reset l'arbre
--> Surligner le coup principal de la variante
--> Parfois des positions buggent quand on navigue.. ça affiche des pièces en énorme (à cause de la réflexion de Grogros qui a supprimé le coup?)
--> Remettre les chronos dans le PGN généré par l'arbre (et les noeuds, et d'autres notations?)
--> Garder les réflexions de GrogrosZero quand on navigue dans les coups
--> Passer une variante en principale
--> Montrer quand une ligne d'analyse est montante ou descendante
--> Parallélisation: faut que les quiescence nodes augmentent aussi
--> Quand on navigue dans la partie, jouer les son
--> Afficher en vert, orange ou rouge les forces et faiblesses de la positions?
--> Afficher à quel coup de la variante on est
--> Ré-afficher un peu mieux les variantes et avec plus de détails (profondeur...)
--> Affichage du temps dans le PGN
--> Mettre des flèches pour indiquer les coups de la variante principale?
--> Inclure la proba de nulle dans la barre d'éval
--> Au chrono, il met 1min60 au lieu de 2min
--> Améliorer le PGN (temps, noeuds, éval...)
--> Améliorer le visuel des pièces uft8
--> Colorer les cases en fonction des bonus de chaque pièce?
-
-Grosses implémentations à faire
-
--> Table de transposition
--> Bitboards
--> Réseaux de neurones: tester des matches avec 0 réflexion, seulement le coup proposé par le réseau?
--> Parallélisation (possible sur le GPU?)
--> Policy pour les coups
--> "Killer moves", ou gestion des menaces
--> Arbres de variations / Chargement de PGN
--> Livre d'ouvertures
--> Beaucoup de vérifs à faire dans les fonctions principales (make_move, grogros_zero, get_moves...)
--> Buffer de coups pour éviter de les stocker dans les plateaux
-
-En cours
-
--> Essayer de laisser Grogros trouver des plans? pour structurer le jeu et donner les idées / coups forts. Le faire jouer plusieurs coups à la suite pour qu'il trouve le plan?
--> Implémenter les killer moves? quand un coup est fort à une certaine profondeur, le favoriser dans les autres branches?
--> Implémenter le concept de faiblesses
--> BUGS:
-Y'a des gros soucis avec le temps.. parfois il s'écoule quasi plus.......... (quand on lance GrogrosZero par itérations p.s. plutôt que par noeuds p.s. ...)
-Vérifier la profondeur des variantes. Est-elle bonne?
-Après une répétition, Grogros ne joue plus
-Revoir les promotions de variantes etc...
-Parfois quand on joue 2 fois un même coup dans des variantes différentes, ils ont le même parent... du coup quand on revient en arrière, ça va au mauvais endroit
-Quand y'a plusieurs eval de mats, il joue lentement, car les evals sont relativement proches?
-Auparavant, il prenait plus de temps pour réflechir quand les positions étaient complexes (car il jouait en fonction du nombre de noeuds "quiet")
-Parfois y'a des game reset...
-c3 : faut prendre h8!!
-Parfois on a des eval qui sont égales à +/-INT_MAX, et ça ne devrait pas être le cas...
-Tout refaire la quiescence en mode debug pour clarifier...
-NEXT:
--> Transpositions
--> Taper les faiblesses!!
--> REFAIRE KING PROXIMITY
--> Winnable endgames
--> Refaire l'algorithme pour qu'il évalue seulement les positions complètement planes (pour éviter les grossières erreurs d'évaluation) -> quiescence: évaluer tant qu'il y a des grosses variations d'éval?
--> Faire en sorte que l'algo recherche comme un humain...
--> Finaliser bloquages de pions passés (dame qui bloque est pour le moment pire qu'un contrôle qcq...)
--> Activité de la dame (pour les milieurs/fins de partie?)
--> Trop de choses à modifier pour trapped pieces (les attaques ne sont pas toujours des menaces...)
--> Pour la win_chance, faire en fonction du déséquilibre de la position: même si on a plus beaucoup de pièce, si on menace des mats, on a une bonne chance de gagner (y'a beaucoup d'inceritude dans l'éval)
--> Rajouter l'incertitude dans l'éval? -> exploration différente pour les positions incertaines
--> Augmenter vitesse d'évaluation
--> Refaire l'activité des pièces!!
--> Bonus pour les killer moves
--> Plus la position est ouverte, plus la position du roi est problématique?
--> Pour le bonus d'attaque, il faut savoir s'il est possible de mater avec ce rapport matériel...
--> Queen activity (pour mileur/fin de partie... en prenant en compte si elle est attaquable?), king activity (pour les finales), blocked central pawn (pour éviter de foutre des pièces devant?)
--> Refaire le get_moves (et ne plus tester avec les échecs, faire avec des controlled squares...), puis une fonction perft test...
--> Implémenter le framework de test
--> Plans de jeux!!
--> Tours liées, dame développée
--> Queen safety / activity
--> Bias move? Dans une position donnée, si pour le coup principal, l'adversaire a un coup très fort, alors on donne un biais au coup de l'adversaire pour le regarder en priorité sur les autres variantes... Est-ce que les transpositions se chargeraient déjà de ça?
--> Nouvelle quiescence
--> Toujours évaluer l'endgame pour savoir si on est bien et s'il faut échanger les pièces?
-URGENT:
-Update les variantes en fonction du WDL
-Mettre toutes les fonctions d'évaluation dans "evaluation.h", puis clean board.h. pareil, évaluer dans l'exploration, pas dans le plateau...
-ATTENTION: pour l'affichage, mélange entre best eval, et l'éval du coup principal... (pareil avec les win_chance...)
-Ajout de la confiance dans l'affichage de la deep evaluation
-RE: fonction pour l'avg score du WDL au lieu de le recalculer à chaque fois...
-!!! Comment on choisit la meilleure évaluation dans l'algorithme (quand on fait les min/max) ??? faut prendre la vraie éval, ou l'avg score??
-Parfois il regarde de manière trop diffuse les coups. parfois il en regarde qu'un seul...
-Pour chaque coup joué, faut-il que tous les sous coups soient regardés au moins une fois? sinon ça reste sur le stand pat et ça évalue très mal la position
-Revoir la quiescence après d2... passer le stand pat au quiescence avec le trait à l'autre joueur?
-Parce que ça augmente l'incertitude au point de penser que c'est quasi 50/50........??
-Il faut régler le problème de savoir dans le "min-max", quoi considérer: eval ou WR? (ou les 2?)
-Faut-il faire une fonction globale qui évalue une position (eval + WR), qui s'utilise autant dans le softmax que dans le min-max? pour garder une cohérence...
-Il faut donc revoir ce qu'on met comme "meilleur coup" dans l'arbre de recherche... meilleure eval ou meilleur WR?
-Il faut implémenter la "valeur d'un coup" -> à utiliser aux deux endroits pour être cohérent
-Changer l'incertitude pour prendre en compte l'activité / king safety etc.. des deux camps? si les deux rois sont faibles, ça tend vers 50/50?
-Quand le meilleur coup est déjà complètement exploré, faut-il refaire une exploration sans prendre en compte de coup? sinon tous les autres coups sont regardés de la même manière car tous pourris comparé au meilleur
-********************************************************************************
-TODO *** utilisation de la valeur réelle des coups plutôt que leur évaluation
-à l'inverse de la proximité, il faut les carrés des pions passés adverses pour donner des gros malus quand le roi en est loin!
-Y'a des memory leak... ça vient des maps?? à vérifier
-Pour les chemins, doit-on vraiment interdire les cases controllées comme inatteignables? un rapprochement peut quand même aider... sinon il met des 0 partout.. comment adapter l'algo?
-********************************************************************************
-VERIFIER LA SYMETRIE DE L'EVALUATION!! -> Faire un framework de test (ça parait ok en général...)
-Agrandir le buffer? Le réinitialiser régulièrement? Ne pas l'utiliser pour la quiescence 'threat'? Afficher à quel point le buffer est rempli?
-Slider PGN buggé?
-Optimiser la quiescence
-La quiescence 'threat' remplit tout le buffer de manière cachée (FIXED)
-Buffer qui est parfois full quand-même...
-Tracker les fuites mémoire. Il faut potentiellement supprimer un certain nombre d'objets initialisés...
-Pour les sliders, vérifier leurs taille, car le texte dépasse en hauteur, mais prend pas toute la largeur (dépasse parfois)
-Ne plus utiliser des maps, mais des robin_maps pour aller plus vite?
-Virer certaines propriétés de board? Faire un buffer de noeuds? car il prennent un peu de place aussi...
-Fait des Ce5 (ou Ce4) trop tôt dans la partie, avant même d'avoir développé ses autres pièces
-Faut qu'il arrête les Cc6 dans les positions à d4... ça bloque le pion c
-rajouter un vrai undefended piece? pour le val-che en c6 là...
-Grogros crash souvent quand on ferme la fenêtre...
-Devéloppement de la dame à rajouter... (et garder les dames augmente en général les chances de gain...)
-Il est pourri, c'est chiant.. faut vraiment mettre des tests pour le rendre rigoureusement meilleur...
-Unprotected pieces!!
-Backrank!!
-Attacking power!!
-Montrer la confiance de la deep evaluation...
-Revoir un peu les bonus d'activité en début de partie... différence entre activité court terme et long terme... parfois y'a des gros bonus alors que 2 coups plus tard y'a plus rien...
-Faire en sorte que ça préfère e5 ou c5 plutôt que d5...
-Il faut que les positions symétriques soient considérées comme moins incertaines... e4/e5, y'a pas beaucoup de diff -> incertitude basse...
-Pour résoudre le souci des Cc3 dans les ouvertures à d4: fous -> bonus si ... , cavaliers -> bonus pour les cases tapées faibles, ou non controllées au centre? à revoir les bonus...
-Candidats pions passés à rajouter pour donner les plans d'attaque de majorité
-Revoir l'activité... même si y'a pas beaucoup de coups possibles, une pièce peut être forte si elle tape sur une faiblesse...
-Réduire la valeur des weak squares si la case est beaucoup controllée?
-Confiance -> 100% si plus de pièces??
-Ajouter dans l'endgame: fous de couleurs opposées, finales de tours.. de pions...
-Il doit arrêter de faire d4 (Cf6) et e4! ça donne un pion!...
-Candidats pions passés x carré du pion
-En finales de pions, faudrait regarder plus large?
-Mating nets!! (même si aucun échec est menacé)
-Cases faibles proches du roi -> rajoute à la faiblesse long terme (encore plus si pas controllées par le fou du fianchetto...)
-Case faible notamment plus faible si juste devant le pion adverse. Moins faible si derrière la structure adverse
-Re-buff les bonus qui rapprochent du roque?
-Faut qu-il arrête de faire les De2/De7 dans les ouvrtures (à cause des open lines??). Ca bloque le développement des pièces... (qui doit être revalorisé)
-Déselectionner une pièce quand on reclique dessus?
-Rajouter les autres facteurs de faiblesses long terme (weak_squares, pawn_storm) dans la prise en compte des roques...
-Revoir pièce par pièce leur valeur globale (pour qu'avec tous les bonus, ça soit pas délirant...)
-Remettre dans la compensation long terme court terme des faiblesses du roi, le potentiel d'attaque à prendre en compte
-Réseaux de neurones combinés à l'évaluation??
-Activité de la dame!!
-Bishop pawns: beaucoup plus graves si le fou est resté derrière la structure
-Le but, ça reste quand-même de rentrer dans le campt adverse... donc l'espace, c'est bien, mais seulement si ça ne créé pas de faiblesses et qu'il n'y a pas de point d'entrée pour l'adversaire
-Voir avec le mode debug toutes les optimisations qui peuvent être faites
-!!!
-Pour la puissance d'attaque, il faut voir les combinaisons de pièces qui peuvent mater:
-Dame + n'importe quelle pièce (y compris roi ou pion).
-Dame + cavalier +++
-Dame + tour ++
-Dame + fou +
-Tour + roi / ...
-A définir, et ça fait des bonus...
-!!!
-King safety long terme: ajouter la prise en compte des distances au roque pour:
-- pawn storm
-- weak squares
-- (diags)
-- (exposure)
-- autres
-Et tout rassembler pour faire une valeur globale par roque
-Prendre le score des coups plutôt que l'évaluation les 'best_moves'
-Trapped pieces: ne pas considérer les pièces qui peuvent s'échanger contre une pièce au moins équivalente comme trapped
-Overextended space -> si ça crée des points d'entrée pour l'adversaire, c'est pas bon
-King proximity: virer les vecteurs! trop lent
-DONE *** Mobilité des pièces: différencier pourquoi la pièce ne peut pas bouger: est-ce bloqué par une pièce ou un pion qui ne peut pas bouger non plus? Long terme vs court terme
-DONE *** Idée: faire une map avec les vraies mobilités de toutes les pièces. Commencer par considérer touts les pièces qui ne peuvent pas bouger, et les considérer comme "bloquantes".
-DONE *** Les pièces peuvent en bloquer d'autres autant que des pion
-King safety *** mettre tout ensemble pour les faiblesses long-terme des roques
-NEW PIECE MOBILITY:
-Décomposition short term / long term
-SHORT TERM:
-Facile à faire, on le fait déjà: on regarde les cases où la pièce peut aller (moins les cases controlées par des pions adverses)
-LONG TERM:
-1. Map des pions bloqués (pas de captures possibles, et pas de poussée possible). A définir: bloqués par pions adverses, ou aussi par pièces adverses? ou par pièces alliées? (sûrement n'importe quelle pièce pour simplifier)
-2. Map des pièces bloquées par des pions bloqués
-3. Itération: si y'a des pièces bloquées, on les rajoute à la map des pions bloqués. Si y'a des pièces ajoutées, on réitère...
-4. On a toutes les pièces et pions complètement bloqués, on regarde ainsi où peuvent aller les pièces, en fonction de ça (moins les cases controlées par des pions adverses)
-AFFICHER LES POSITIONS DE FIN DE VARIANTES POUR CHAQUE COUP POUR VOIR LESQUELLES SONT EVALUÉES
-Rajouter des facteurs pour le calcul d'incertitude? grand roque par exmeple rend les positions plus incertaines?
-Refaire le get_best_move au passage pour correspondre aux vraies valeurs utilisées pour l'exploration de Grogros (qui prenne en compte le WDL)
-Sinon, il va jouer trop vite des coups suboptimaux...
-Prise en compte du numéro de coup dans l'évaluation? Si 2 positions mènent à une évaluation gagnante, autant aller sur celle qui mène à la victoire plus rapidement...
-Comment intégrer la profondeur pour mieux comparer les coups?
-Revoir de manière générale l'activité des pièces... ça reste le facteur le plus important pour l'éval...
-Faire un éditeur de position
-Refaire un peu tout le code proprement
-Optimiser les fonctions (notamment l'évaluation)
-King safety: quand un roi est safe, c'est ok d'affaiblir un peu le sien pour essayer de mater l'autre...
-S'insipirer de Lc0: anaconda... on laisse aucun mouvement possible à l'adversaire. tout dans le contrôle des cases...
-!!!!!!!!!!!!
-REGLER ALGO:
-TESTER: forcer une profondeur 2 min pour tous les coups?
-!!!!!!!!!!!!
-TESTCASE PTN DE BUGGEEEE SUR LA QUIESCENCE APRES REFLEXION!!!! (FIXED?)
-le deuxième passage de la quiescence dessus pose problème
-Même chose pour les trapped pieces que pour queen safety: on regarde pas les cases controllées en général, mais seulement les cases controllées par des pièces de valeur inférieure?
-Problème de quiescence!! ici Dxc4 est moins bon que le standpat, alors il va lui donner la valeur moins bonne du standpat après Dxc4, alors que c'est un coup pourri...
-- Quiescence
-- Lenteur de l'éval et de l'UI
-- Tests à rajouter
-- Transpositions
-- Réglages algo
-- Idéalement, on veut une majorité de la reflexion sur 1 seul coup pour la profondeur. Mais pour les autres coups, on répartit assez large...
-- Utilisation des vraies valeurs des coups au lieu de l'éval pour la quiescence
-- Amélioration de la comparaison d'évaluations, pour ne pas suelement prendre en compte la valeur numérique de base
-- Très lent après queen safety... en plus dans la GUI, le calcul de la valeur des coups est faite en permanance...
-Gros ajouts:
-- Potentiel défensif pour king safety (finales de pièces lourdes -> king safety compte beaucoup plus)
-- Tours liées?
-- Roi en face du pion adverse en finale -> draw
-- Finir la quiescence avec d'autres optimisations, et vérfier que les positions de fin sont toujours quiet. et ne regarder que les prises vraiment intéressantes?
-- Quand on est en réflexion sur un coup un peu pourri, peut-être diminuer la quiescence depth, car ça prend beaucoup de temps pour pas grand chose...
-- Winnable pour les finales asymétriques (fou contre cavalier, ou pièce mineure et pion vs tour...)
-- Si y'a pas de plan -> plutôt draw? ou au moins winnable--?
-- S'assurer que la réflexion d'un point de vue micro est parfaite. Ensuite on optimisera le macro (augmentation des ressources -> vitesse de génération des coups, etc.)
-Quiescence:
-TEST: mettre la beta margin seulement s'il y a une grosse menace détectée? -> et grandir le margin en fonction de la taille de la menace? DONE
-TEST: quiescence moins profonde pour les coups pourris: DONE
-Vérifier que les move sounds fonctionnent
-Faire du cleaning grâce à l'implémentation des flags pour les coups
-Cleaning global rapide en utilisant toutes les nouvelles implémentations
-Optimisation du quiescence
-********
-En plus ça prend des places dans le buffer... MAUVAIS!!!! FIIIIIXX
-FIXXX
-- Revoir structure moves
-- Virer toutes les maps -> robin_map à la place
-********
-Notation des coups:
-Cb8d2 -> Cbd2 DONE
-Roque + échec: O-O+ DONE
-Opti la quiescence!!
-Bizarre que le buffer se remplisse (normalement on devrait le vider en même temps qu'on l'utilise...) (FIXED?)
-Afficher plus d'infos pour les emergency cutoff... car 14 en profondeur, c'est déjà beaucoup! Parfois une même position est évaluée plusieurs fois
-Regarder les depth < 0 dans la quiescence pour comprendre ce qui se passe vraiment...
-le winnable doit-il influencer l'évaluation en elle-même? 
-Pour le choix des coups -> bonus pour le score global + bonus pour les chances réelles de gagner? (pour éviter qu'il regarde à fond les positions nulles)
-QUIESCENCE: tenter une shallow quiescence pour la première exploration, puis en faire une plus profonde si la position est intéressante
-couper tous les coups qui sont complètement foutus de manière générale
-Mode analyse ne fonctionne pas sur la POV des noirs? (seulement parfois?)
-Quand on load une position, il faut qu'elle soit déjà mise dans l'historique des positions (déjà fait?)
-Le temps s'arrête parfois après une repet, mais pas tout le temps...
-Crash parfois?
-***
-Régler les problèmes d'exploration de variantes dans l'UI quand on fait LCTRL-L
-Placement de la dame: bien en c2, d2 et e2 en début de partie
-CLEANING:
-- Passer en mode debug, faire du nettoyage sur toutes les fonctions
-- Utiliser le profiler pour accélerer les fonctions lentes
-FIXMMMEEEEE
-En fin de partie, quand y'a roi et tour, la quiescence regarde les echecs plein de fois, et c'est hyper lent!
-Différencier quiescence pieces et échecs??
-Retirer les échecs de la quiescence??
-Refaire une quiescence custom genre Grogros?
-Vérifier: les noeuds précalculés par la quiescence sont-ils pris en compte dans l'exploration?
-Pour la quiescence: faire un bon tri de coup (meilleures captures d'abord, et meilleurs échecs? safe, et pas bloquable?)
-Bishop pawns: plus gros malus pour les pions centraux? et moins gros si le fou est devant la structure?
-Rajouter la pression sur les clouages (car souvent ça gagne juste directement)
-EXPLORATION:
-Leela semble faire: recharche main: un peu sur tous les coups (même 4/5 noeuds sur les pires), mais regarde aussi profond que le nombre de noeuds (1 noeud = 1 coup...)
-Revoir la reflexion de Grogros pour qu'il ne regarde pas tous les coups, et regarde seulement certains coups en fonction d'une policy?
-Regarder si on peut mettre 0 reflexion dans certains coups pour économiser du temps de recherche
-FIXED *** Petit problème de GUI, quand grogros n'est pas actif et qu'on séléctionne des pièces, parfois les coups légaux ne s'affichent pas
-UI:
-Quand on reste appuyé sur une flèche, faire défiler la variante à vitesse constante
-Bindings: afficher sur quel site il pense avoir bindé
-Pouvoir annuler les click/binding (CTRL+Y?)
-Afficher le numéro de version dans l'UI
-ENDGAME EVALUTION:
-Les coups d'attente sont hyper importants en finale roi+pion vs roi+pion. cela permet de créer des zugzwangs
-Dans la position ci-dessus, il faut en garder autant que possible -> seuls Rh5 ou Rh6 gagnent (Rh5 est l'idée gagnante)
-Chances de gain dans une position -> dépend souvent des pions passés
-KING SAFETY:
-Activité -> king safety++ (mais proportionnel à quoi? l'exposition du roi adverse? rien? long terme/copurt terme?)
-TODO !!! quand on navigue dans les variantes, faut absolument remettre à jour les bitboards (et l'éval) (DONE)
-Evaluation endgame: avoir une évaluation roi v roi, et faire en sorte qu'elle soit degressive en fonction du nombre de pièces restantes? ex: E = Ep + Er / (n_pièces)
-Nettoyage du code
-memory leak
-operateur new: 15-20% du temps de la reflexion...
-Quand le buffer est plein, jouer le coup
-king safety quand l'activité est si haute... à voir...
-Améliorer les winnable avec des win conditions (en gros pions passés...) sinon il se retrouve dans des finales sans pions et ne trouve jamais de plan de gain
-Passed pawns
-Ne plus stocker l'historique des positions -> into transpositions
-Opti eval
-Opti les alignements (lent)
-Ouvrir la position quand on a une avance de développement, ou un roi plus safe
-Revoir le evaluate threat pour qu'il soit plus puissant?
-Nettoyer tout le code dans l'exploration
-Quand on met à jour une position, faut mettre à jour tous ses parents...
-Clean global du code: 
-- Virer les commentaires inutiles
-- Tout factoriser
-- Faire les tests (-> demander IA)
-- Opti micro
-Comment intégrer la répétition de coups dans la quiescence? Puisque c'est une recherche en profondeur, la modification de l'historique risque de tout casser...
-Par ailleurs, il faudrait peut-être ne pas cut quand on est proche d'une perpet possible, pour la détecter plus rapidement
-
-Faire par IA:
-- Tests (à partir d'un fichier de positions avec les évaluations) (ou de Tests.txt + TODO list)
-- Fine-tuner l'évaluation et les paramètres en fonction des tests
-- Re-organiser la TODO list
-- Faire le readme.md
-- Deplacer les fonctions d'évaluation dans evaluation.cpp
-- Cleaning du code et des algos
-- Mettre toutes les fonctions d'évaluation dans evaluation.cpp
-- Mieux séparer tout le code contenu dans Board.cpp
-- Eviter de calculer plein de fois la zobrist key (faire un cout pour voir quand elle est re-calculée dans changement)
-- Amélioration de l'UI
-- Traduction en anglais
-- Download des positions pour les tests... car le parsing semble tout pourri
-
-Screenshot qui ne va pas dans les ressources
-Buffer:
-Pour les noeuds, stocker l'indice du plateau dans le buffer plutôt que le pointeur vers le plateau
-Recherche Lc0:
-FIXED
-URGENT:
-FIXED: pourquoi on a perdu beaucoup de perf en perfttest?? -> new vector quand la mémoire des plateaux n'est pas bien alignée...
-FIXED: et pourquoi il faut beaucoup plus de noeuds pour faire la même chose qu'avant??
-Mettre l'historique des coups (pour détection de répétitions) dans les noeuds plutôt que plateaux?
-Utiliser *parent pour détecter ça plutôt que de tout stocker?
-TEST PERFORMANCE
-TEST MICRO REFLEXION:
-TODO *** En augmentant pure_win_chance_adding de *10, ça semble bien accélérer les détections de gains... mais pourquoi depuis l'update c'est plus lent si on garde ce paramètre constant?
-TODO *** D'ailleurs pourquoi après jouer les coups sur le plateau et lancer la réflexion depuis un autre point, le résultat n'est plus le même? vérifier comment sont faites les repets, il faut tout clarifier...
-TODO *** Vérifier que quand on arrive sur une repet, il considère bien le _can_explore comme false (pareil pour les mats ou branches pleines, par récursion)
-TODO
-Implémenter les nouveaux pions passés (fonction dédiée pour ça) + ajouter candidats pions passés -> evaluation de la structure globale de pions pour pré-évaluer facilement les chances de gains dans un futur endgame
-TEST ENDGAME:
-Position du roi
-Conclusion: Roi à partir de d7/e8 -> draw, sinon perd (trait du joueur change la donne de 1 coup)
-Position du cheval
-Conclusion pas trop d'importance, peut-être une différence de 1/2 tempo qu'il peut perdre sur les pions
-Structures de pions:
-Favoriser les structures en "A" plutôt qu'en "V" -> jouer du côté où la structure pointe
-Pawn race: compter le nombre de coups avant de pouvoir promouvoir pour évaluer qui est mieux
-Pas de pawn_push_threat si en_passant possible (pareil pour les menaces d'échecs)
-Pièce seule/isolée = malus (encore pire si mal protégée)
-!!!
-UI: regarder pour les textures pour que ça s'affiche sur le GPU et que ça soit beau
-On peut aussi utiliser des shaders pour les outline de coups, ou pièces sélectionnées
-Utiliser les shaders pour que l'affichage du texte soit moins flou
-FIXED *** Parfois, problème d'affichage pour les variantes (ça n'affiche pas les bons coups), notamment quand on fait la quiescence après une reflexion normale (ou inversement)
-Plus de couleurs/contrastes dans l'affichage du texte
-!!!
-- Bitboards
-- UNDO plus rapide que copy? -> en fait non... le minimal copy est déjà plutôt rapide (à voir si on peut accélerer le memcpy juste pour les pièces qui ont bougées, mais ça n'est pas le point le plus bloquant pour les performances)
-- Transposition simple (stockage de l'éval)
-- Recherche opti comme Lc0 -> évaluation très rapide et simple pour les coups les plus pourris. Garder de base le standpat de l'évaluation principale pour les autres coups?
-- Très lent: regarder quelle pièces est située sur une case, tout le temps... -> Faire des maps d'occupancies?
-- Les cout rendent le code lent??
-prendre en compte l'activité des pièces dans la sécurité du roi (surtout s'il est au centre?)
-Activité des pièces, bien différencier si la pièce tape dans des pions ou cases controllées, ou sur des pièces ou cases fortes
-Pousser sur l'aile = affaiblir les pions du centre
-Bien placer ses pièces là où le jeu se passe
-Mauvais fou vaut quasi pion de moins (moins pire si actif ou si y'a de l'espace)
-Activité des pièces importante pour la sécurité des rois
-Important: comment faire comprendre à Grogros qu'il faut jouer du côté où la structure pointe? de quelle heuristique découle ce principe?
-Avoir une vraie évaluation de la structure de pions, car ça reste l'essence même du jeu, et ça donne le ton pour tous les plans de jeu...
-Séparer l'évaluation globale en:
-- long terme
-- court terme
-?
-Refaire les valeurs des pions passés:
-- Si bloqueur (sur la colonne du pion et devant), valeur plus faible
-- Si contrôle: valeur majorée par celle de la pièce qui contrôle (à voir comment on fait si y'a plusieurs pièces qui contrôlent)
-- Si aucun contrôle, valeur totale (grande)
-- Pour les aides au contrôle: considérer les protections de cases par rayon X
-Pour king safety, regrouper par roque les évaluations pour éviter l'addition maladroite d'évaluations partielles...
-Utiliser boost !!
-Pressured pins! -> à compléter avec autres pressions que celles des pions + rajouter les bonus si la pièce clouée n'est pas défendue
-Tester de paralléliser les perft tests pour voir à quel point la parallélisation accélère la génération de coups?
-Mettre en inline les fonctions simples
-Mettre tous les paramètres d'évaluation dans les noeuds au lieu des boards. C'est utilisé sur les boards d'ailleurs?
-Utiliser plein de constantes statiques plutôt que des fonctions pour accélérer les calculs
-Remettre les premoves?
-Finales de dames: pions passés et sécurité du roi ++
-Finales: le pion passé le plus proche de dame donne un gros avantage
-Remettre game_over(3) de base? c'est juste 2 sinon.. grosse différence?
-Gestion des draws:
-- Incertitude max = WDL 50/50 ou 33/33/33?
-- Passer la winning eval à +100 au lieu de +125?
-- Beta down -> 1.0 au lieu de 1.5?
-REGLAGE ALGO: l'implémenter aussi pour la quiescence! (il reste les cutoffs à gérer)
-TESTS POUR REGLAGE DE L'ALGO (eval vs score)
-TODO *** Cases faibles proches du roi:
-TODO !!  pour les faiblesses long-terme du roi, il faut grouper les paramètres par roque... sinon il prend le meilleur de chaque roque et pense être bien...
-Nombre d'ilôts de pions à prendre en compte dans l'évaluation de la structure de pions
-Il faut s'assurer que pour une évaluation donnée (disons +100 matériel, +100 activité), que le gain d'activité n'augmente JAMAIS l'incertitude au point de réduire le WR...
-WR (100, 100) < WR (100, k) pour tout k > 100 /!\
-En fait, c'est parce que le fait de mettre la tour en e2 créé un chemin virtuel pour le roi blanc, PAR e2... pareil pour Td7...
-Il veut beaucoup trop faire de f3...
-Et 1000+ en attaque?? y'a au max 2 pièces!! ...
-En finale, que les pions soient passés ou non, faut les pousser!
-Finales de pièces lourdes: gros avantage pour celui avec le roi le moins faible
-Potentiel offensif des pièces lourdes >> potentiel défensif...
-Implémenter un potentiel défensif (plus gros pour les pièces mineures...)
-Retirer toutes les méthodes inutiles
-v2 : le roi noir ne sue pas du tout
-Comparaison de positions quasi symétriques:
-revoir la valeur d'une attaque de pion sur pièce? sinon en fin de chaque variante il en a peur, et joue pleutre
-Un centre fort est un centre qui ne peut pas être contesté! Les ruptures adverses sont fortes si elles sont possibles...
-Nulle, c'est nulle... si on a possibilité de faire une nulle, faut-il instaurer le "nul en x coups", comme pour les mats?
-Avoir des dynamiques dans les coups à évaluer? -> les coups qui descendent en éval: on les explore moins, et ceux qui montent en éval: on les explore plus?
-TODO now:
-Bitboards
-Tests -> reprendre toutes les évaluations que j'ai rajoutées
-Tout re-organiser les TODO
-Regarder avec le debugger pour voir ce qui peut être amélioré
-Regarder avec le profiler pour optimiser
-Transpositions
-BEAUCOUP DE TEMPS EST PASSE SUR LA GUI!
-LENT SUR GUI:
-SLIDER TEXT (MEASURETEXT TRES LENT)
-MONTRER LE RATIO DE TEMPS PRIS PAR L'UI!!
-GET ALIGNMENTS EST LE PLUS LENT (à cause des push back et les vecteurs.......)
-VIRER TOUS LES VECTEURS... c'est beaucoup trop lent...
-Toutes les opérations de texte sont hyper lentes! notamment dans score_string, et tous les to_string qui utilisent du sstream
-Quasi tout repose sur le fait de pouvoir entrer ou non dans la position adverse... Il faut implémenter un truc genre 'point d'entrée'?
-TODO *** bonus pour les pions qu'on peut pousser (cases d'avancées protégées)
-Complexité de la position qui devrait augmenter l'incertitude (en fonction du nombre d'échecs/captures etc...)
--> Iterations <= 0 dans GrogrosZero /!\
--> Quand y'a plein d'options équivalentes, pas besoin de passer trop de temps pour décider laquelle choisir... Réfléchir un max sur les positions critiques (quand y'a des prises, poussées de pions, échecs...)
--> Implémenter les plans (on regarde des coups à la suite, sans que l'autre joueur ne joue)
--> Rajouter les lignes horizontales ouvertes (faiblesse première rangée, ça arrive souvent)
--> Gérer quand le buffer est plein
--> Pour les overload, on a retiré les rayons X à travers les pions. faut-il les garder dans le cas où le pion attaque directement une pièce sur la diagonale?
--> Refaire toute l'activité des pièces? en fonction des pions plutôt, et pénaliser les pièces qui sont bloquées par les pions adverses? -> vrai trapped pieces...
--> Prioriser les coups qui n'ont pas regardé toutes les réponses de l'adversaire en entier??
--> Position ouverte/fermée = nombre de pions bloqués? (avec plus de valeurs pour les pions centraux)
--> Quand un coup n'est pas fully explored, il faut absolument le choisir..
--> Remettre virtual mobility pour l'évaluation de la sécurité du roi?
--> King safety est tellement proeminent qu'il y a beaucoup de coups qu'il ne regarde même pas, car il voit une menace en 1 au coup d'après (qu'il peut parer...)
--> En position perdante, il va chercher les draw (même si c'est pas déjà 3 répèt.. du coup il joue le coup qui répète, même si c'est pas le meilleur coup)
--> Trop de quiescence, pas assez de killer moves? il regarde que les captures...
--> Pour le pick_random_child: faire en fonction de l'évaluation relative!! (cela peut changer beaucoup de choses...)
--> GUI: toujours montrer le "meilleur" coup, même s'il dépasse pas l'arrow rate
--> GUI: afficher le coup avec la meilleure éval différement sur les flèches
--> En fait les autres coups qui ne font pas mat ne sont pas fully explored, d'où le souci...
--> Faire du debug, code clean et optimisations
--> Debugger la quiescence
--> get_safe_check_value() : hypeeeer lent!!!
--> Vérifier l'algo... à chaque fois y'a des coups qu'il regarde pas, sauf quand on clique dessus, il voit que c'est le meilleur coup...
--> Elargir la zone d'attaque défense du roi? pion en e5 participe à l'attaque.. le fou c1 aussi...
--> Dans quiescence à depth 0, il est pas censé passer plusieurs fois dedans pour un même noeud.. si?
--> En fait si, mais on peut avoir des quiescence à depth -1... ça pose problème?
--> Il donne des pions beaucoup trop facilement...
--> Refaire un nouveau pick random move plus simple?
--> parfois ça re-explore un coup non fully explored avant de regarder les non-explorés...
--> Transpositions!! on a des overflows etc.. des trucs louches se produisent
--> Faut-il garder le beta cut-off si on est en échec??? alpha aussi??
--> Voir s'il faut moduler la profondeur de la quiescence en fonction de l'importance de la branche
--> q_depth plus petit avec des cas d'extensions?
--> revoir les autorisations de standpat?
--> positions_history à mettre dans exploration plutôt que board
--> Faut-il qu'il joue les "seuls coups" plus rapidement, ou c'est déjà le rôle du pseudo-random explorer?
--> Re élargir l'exploration des coups?
-EVAL: 
--> Améliorer les pièces d'attaque et de défense... plus gros bonus quand une pièce attaque un endroit non (ou peu) défendu. plus gros bonus quand on défend une case attaquée
--> Il donne vraiment trop souvent des pions dans l'ouverture
--> Pour évaluer les finales etc.., il faut un winnable white, et un winnable black... Tour Cavalier vs Tour = nulle
--> Pions arriérés
--> Re-évaluer les pièces en fonction du type de position (colonnes / diagonales ouvertes / fermées, pions passés...)
--> Implémenter les faiblesses de la position? pour taper dessus, et éviter de s'en créer?
--> Lignes et colonnes ouvertes sur le roi, c'est grave seulement si des tours/fous/dames peuvent aller dessus
--> Potentiel d'attaque global qui modifie moins la king safety? même avec 2 pièces, ça peut mater contre beaucoup
--> Trop de bonus cumulés pour les fous: fianchetto, piece mobility, piece activity, bishop activity, bishop pair...
--> Pour king safety, quand ça dépasse pas 0, rien ne change.. alors il n'y a jamais de plan d'attaque...
--> Catégorie: Développement (~= distance au roque?), plutôt que de compter ça dans King
--> Pour les clouages, rajouter des bonus quand on les appuie avec d'autres attaques
--> Refaire l'activité des pièces
--> Etudier les bons fous et les mauvais fous
--> Rajouter les faiblesses sur une couleur
--> Faut-il garder le safe_squares = 1 pour les pions dans trapped_pieces?
--> Puissance des pions passés: dépend des pièces restantes. Une pièce mineure se sacrifie plus facilement dessus qu'une dame
--> Pawn protection pour quand le roi n'est pas roqué (en prenant en compte les poussées de pions f, g et h par exemple)
--> Ajouter un 'exposed queen' pour éviter les scandi?
--> Les cases faibles proches du roi sont plus graves
--> Théorème des fous de Kev: un fou qui protège le roi et attaque le roi adverse est plus fort qu'une tour
--> Remettre de la solidité: pénaliser les pièces non-protégées
--> Tests: vérifier que l'évaluation est équilibrée (noir/blanc) si on retourne une position
--> FAUT METTRE DES POINTEURS PARTOUT AU LIEU DE COPIER LES OBJETTTTTTSSS !! (exploration.h, gui?)
--> Retirer pawn_shield/pawn_storm des éval (déjà fait dans king_safety)
--> Regarder les fins de variantes pour voir si ça fonctionne
--> TESTING: Faire une fonction pour tester les IAs: problèmes tactiques, stratégiques, finales, ouvertures... avec différents temps de réflexion (1s, 3s, 10s par exemple)
--> Fonction de test d'évaluation: comparer les évals de Grogros avec celles de Leela par exemple puis fine-tuner. Résultat final: correlation entre les évals de Grogros et les évals de Leela
--> Utiliser ça pour entraîner les réseaux de neurones (au lieu de jouer contre d'autres réseaux? combiner les deux?)
--> Simplifier le softmax: delta entre le meilleur coup et l'actuel, et voir en fonction du pourcentage de réflexion déjà fait
-
-FIX: 
--> 8/6pk/7p/8/1bQB3P/p1p3P1/5P1K/1q6 w - - 0 14 : il croit que Df7 gagne par moments
--> Gros bug quand on revient en arrière ça crash
--> Bugs quand la transpo est pleine ? y a des positions où ça fait des trucs bizarres -> 8/2Q3pk/7p/8/1b1B3P/p1p3P1/5P1K/1q6 b - - 1 14 : ici Ff8 passe à "0%" au bout d'un moment à cause du bug
--> Pourquoi la transpo n'augmente pas beaucoup la profondeur en endgame?
--> r3k1nr/ppp2ppp/1b1p1q2/n3p3/1PB1P1b1/2P2N2/3P1PPP/RNBQ1RK1 w kq - 0 9 : bxa5 pas regardé quasi... quiescence ?
-
-BUG:
--> 2Q5/4b1pk/7p/7P/3B4/p1p3P1/5P1K/1q6 b - - 0 16 : bugs de transposition parfois -> ça met temporairement des -M4 sur un coup qui ne va pas du tout en mat en 4
--> r1b3k1/p4ppp/5n2/1Rp4q/4B3/2P5/P1PQ2PP/4R1K1 b - - 3 21 : pareil, Fa6 met -M4, et quand on le joue, l'éval est : +M4, confidence = 87%... score = 0.934.
-
-En cours / ---
-
--> Pour le softmax, faut-il un gradient absolu ou relatif? pour le moment il y a la même différence entre -100 et +100 qu'entre +1800 et +2000? pas optimal...
--> Peut-on fusionner _tested_moves et _current_moves?
--> Il faut reset la table de transposition après chaque coup? sinon y'aura des positions obselettes (et potentiellement avec des indices buffer faux)
--> Réduire le temps de l'évaluation de Grogros (voir king_safety, et implémenter l'évaluation incrémentale)
--> Utiliser une mini clé de Zobrist pour les répétitions (car il y a peu de chances de collisions?) -> clé de 16 bits?
--> Table de transposition
--> Promotion de variantes: il faut repasser sur la variante principale au moment de la promotion
--> Quiescence nodes qui augmente aussi avec les threads
--> Temps affiché = vrai temps
--> Delta pruning (quiessence search)
--> Revoir le k_add, on dirait que ça fait pas grand chose
-
-Réseaux de neurones
-
--> Faut t-il de la symétrie dans le réseau de neurone? (car sinon il évalue pas de la même manière les blancs et les noirs)
--> Comment le faire apprendre?
--> Parties contre lui-même
--> Algorithme génétique: on détruit les plus faibles, et on fait des mutations sur les plus forts
--> Bonus et malus pendant les parties, lorsqu'il a mal évalué une position
--> Apprentissage à partir des fins de partie, puis on remonte
--> Reinforcement learning
--> Prendre en compte d'autres paramètres que les pièces (trait, roques...)
--> Y'a peu de valeurs négatives dans les évals, est-ce normal?
-
------ FIXES -----
-
-Intelligences artificielles / Améliorations
-
--> Fix le bug de l'UI qui fait que tout passe à 12 FPS et ne répond plus (-> workaround: mettre en veille l'ordi et rallumer)
--> Unit tests pour les fonctions, et vérifier que tout fonctionne bien
--> Tests de fonctionnement "micro" de l'algorithme pour être sûr qu'il est efficient à temps de réflexion minimal
--> Documentation complète du code, refactorisation, et re organisation dans plus de fichiers
--> Affichage de l'UI sur un thread à part
--> Possibilité de parallélisation de manière propre
-
--> 8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7 : test transpositions (0.7s après DAG)
-
--> Position BUG transpositions : croit que c'est une win alors que c'est nulle + bug quand on clique sur les coups, ça nous renvoie sur une position corrompue
-6k1/8/7P/7K/8/8/8/8 w - - 3 72
-TODO : reprendre où on en était dans l'implémentation.
-RELIRE docs/superpowers/plans/2026-05-24-optichess-dag-ghi-repetition.md
-voir branche feature tt + git stash pour les tests de transpositions
-
-
-	- Colonnes fermées -> tour mauvaises. Si beaucoup de colonnes ouvertes, bonus pour les tours. Pareil pour les diagonales et les fous
--> Evaluation endgame très mauvaise
--> BUG: parfois après une repetition 1 fois, Grogros choisit un coup complètement pourri et en est sûr (perdant) : ça arrive encore?
-
-Interface utilisateur
-
--> Chargement FEN -> "auto-complétion" si le FEN est incorrect
--> Parfois l'utilisation des réseaux de neurones bug
-
-En cours
-
-Parfois la couleur bug, ça oscille entre bleu et magenta sur une repet
-NEW BUG:
-FIX: pour chaque nouveau coup, faire un quiescence pour le joueur adverse pour voir la menace pour savoir s'il faut regarder tous les coups pour la parer?
-BUG QUIESCENCE
-Re-faut-il du k_add? FIXME *** est-ce que c'est mieux avec?
-FIX!!
-FIX cette quiescence une bonne fois pour toutes... (DONE? mais lent!)
-ALGORITHME A FIX:
-EVALUATIONS A FIX:
-Endgame de roi: pion > dame à fix
-FIXME *** le roi devrait toujours être bloquant, ou faut-il prendre en compte s'il peut bouger ou non?
-FIX: le temps vraiment utilisé pour la réflexion n'est pas toujours le bon
-FIX *** pièce sans mouvement -> beaucoup plus grave si c'est pour toujours (pièce morte). Mais dans l'ouverture c'est pas toujours si grave...
-FIXME *** parfois ça crash encore??
-FIXME *** 
-Gros fix:
-FIX: certaines positions sont évaluées plusieurs fois?...
-Parfois, une pièce qui bloque la colonne (genre un cavalier protégé), ça peut rendre pour l'adversaire la colonne quasi mauvaise
-FIX: remettre échecs et profondeur-- pour la quiescence?
-FIX: re-explorer un peu tous les coups? il en rate beaucoup...
-FIXME ***
-FIX!!!
-Quiescence OK, mais si Fd3 puis 1 noeud sur Fxc3 -> mauvaise quiescence
-Problème du fix: parfois on est en profondeur 1 de partout...
-Vérifer les promotions de variantes qui bug
-FIX
-FIX:
-Bug sur certains from_fen après réflexion
-Re-augmenter le winnable en début de partie. Le fix de manière générale
-FIX: Bug qui fait parfois planter l'UI
-FIX: is_stand_pat_eval commenté dans la quiescence...
-FIX TRANSPOSITIONS:
-- Traiter tous les TODO, REVIEW, FIXME en plein  milieu du code
-FIXME *** l'ordi qui plante parfois quand on est sur grogros et qu'on passe sur une autre fenêtre... et faut redémarrer l'ordi ensuite
-FIX HISTORIQUE:
-FIXME: bon il est encore tout cassé et tout pourri... merde
-FIX
-REGLER LE TEMPS DE REFLEXION QUI EST INCORRECT
-FIX
--> A REGLER: *** Si y'a un problème de nombre de noeuds, c'est que lorsqu'on calcule dans une variante transposée, un seul des parents est mis à jour ***
--> Regarder les TODO/FIXME dans exploration.cpp
--> Alpha-beta pruning pour la quiescence search à fix...
-
-En cours / ---
-
--> Promotions de variantes -> il faut promouvoir toute la branche depuis le début, pas juste le dernier coup (+ le FIXME -> il faut sélectionner le bon noeud après la promotion)
--> Pawn storm / Pawn shield (rajout des colonnes/diagonales ouvertes etc...) / Pions arriérés / Fix king safety / Pieces alignement (à finir)
-
------ Reference positions -----
-
-Voir Tests.txt pour toutes les positions/FEN extraites.
-
+=== BUGS ===
+  -> #1 Temps: parfois s'écoule quasi plus (itérations p.s. vs noeuds p.s.)
+  -> #2 Profondeur des variantes à vérifier
+  -> #3 Après répétition, Grogros ne joue plus
+  -> #4 Promotions de variantes à revoir
+  -> #5 Même coup 2× variantes différentes = même parent → retour arrière mauvais endroit
+  -> #6 Plusieurs eval mats → joue lentement (evals proches)
+  -> #7 Parfois game reset
+  -> #8 c3: faut prendre h8
+  -> #9 Eval = ±INT_MAX alors que pas normal
+  -> #10 Slider PGN buggé
+  -> #11 Buffer parfois full quand même
+  -> #12 Transpositions: croit win alors que nulle + clic renvoie position corrompue (6k1/8/7P/7K/8/8/8/8 w - - 3 72)
+  -> #13 Transpo n'augmente pas profondeur en endgame
+  -> #14 8/6pk/7p/8/1bQB3P/p1p3P1/5P1K/1q6 w - -: croit Df7 gagne
+  -> #15 Retour arrière crash
+  -> #16 Transpo pleine → comportement bizarre (8/2Q3pk/7p/8/1b1B3P/p1p3P1/5P1K/1q6 b - -: Ff8→0%)
+  -> #17 bxa5 pas regardé (r3k1nr/ppp2ppp/1b1p1q2/n3p3/1PB1P1b1/2P2N2/3P1PPP/RNBQ1RK1 w kq - 0 9)
+  -> #18 Transposition met -M4 temporairement sur coup sans mat (2Q5/4b1pk/7p/7P/3B4/p1p3P1/5P1K/1q6 b - -)
+  -> #19 Fa6 -M4 puis +M4 confidence 87% (r1b3k1/p4ppp/5n2/1Rp4q/4B3/2P5/P1PQ2PP/4R1K1 b - - 3 21)
+  -> #20 Transpositions: test (8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7)
+  -> #21 Couleur oscille bleu/magenta sur répétition
+  -> #22 Parfois crash
+  -> #23 Temps s'arrête après répétition (pas toujours)
+  -> #24 Pièce sans mouvement: grave si pour toujours
+  -> #25 Crash encore
+  -> #26 Positions évaluées plusieurs fois
+  -> #30 Quiescence: Fd3 puis Fxc3 = mauvaise quiescence
+  -> #31 Profondeur 1 partout parfois
+  -> #32 Bug from_fen après réflexion
+  -> #33 Bug planter UI
+  -> #34 is_stand_pat_eval commenté dans quiescence
+  -> #35 TODO/REVIEW/FIXME en plein milieu du code
+  -> #36 L'ordi plante quand on passe sur autre fenêtre
+  -> #37 Historique encore tout cassé
+  -> #38 Temps de réflexion incorrect
+  -> #39 Variante transposée: un seul parent mis à jour
+  -> #40 Alpha-beta pruning quiescence search à fix
+  -> #41 Quiescence regarde échecs plein de fois en fin roi+tour (hyper lent)
+  -> #42 Après jouer coups + réflexion depuis autre point ≠ résultat
+  -> #43 Repet: _can_explore false pas vérifié (pareil mats/branches pleines)
+  -> #44 12 FPS UI quand grogros inactif + sélection pièces: légaux pas affichés
