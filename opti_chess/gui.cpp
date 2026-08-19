@@ -979,8 +979,7 @@ bool GUI::play_move_keep(Move move)
 	}
 
 	_root_exploration_node->_board = _board;
-	transposition_table.clear();
-	node_map.clear(); // #11 Plan B — purge le DAG en meme temps que la TT (pas de pointeur pendant inter-recherches)
+	reset_buffers(); // #6: systematic TT/node_map clear on position change
 
 	_board->get_moves();
 

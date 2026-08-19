@@ -92,8 +92,7 @@ bool GameTree::select_previous_node() {
 		_current_node = _current_node->_parent;
 
 		// The board must be moved back up for the exploration too
-		transposition_table.clear();
-		node_map.clear(); // #11 Plan B - purge the DAG along with the TT (no dangling pointer between searches)
+		main_GUI.reset_buffers(); // #6: systematic TT/node_map clear
 		main_GUI._root_exploration_node->reset();
 		main_GUI._root_exploration_node->_board = &_current_node->_board;
 		main_GUI._root_exploration_node->_is_active = true;

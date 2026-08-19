@@ -9600,8 +9600,7 @@ void Board::switch_colors() {
 
 
 	// Reset the search
-	transposition_table.clear();
-	node_map.clear(); // #11 Plan B - purge the DAG along with the TT (no dangling pointer between searches)
+	main_GUI.reset_buffers(); // #6: systematic TT/node_map clear
 	main_GUI._root_exploration_node->reset();
 }
 
