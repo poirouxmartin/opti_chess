@@ -71,10 +71,10 @@
 - **Fix**: replaced inline clears with `main_GUI.reset_buffers()` at all position-change sites.
 
 ### 🟠 #7 — `make_child_path_history` copies the whole map per child
-- **File**: `exploration.cpp:33-38`
+- **Status**: ✅ fixed (PathScope RAII)
+- **File**: `exploration.cpp:114-127`
 - **Severity**: MEDIUM (hot-path performance)
-- **Detail**: the repetition `robin_map` is copied at every reversible node.
-- **Proposed fix**: push/pop on a stack with undo (on entering and leaving the recursion) instead of copies; or a lighter structure (a vector of keys plus the last irreversible ply).
+- **Detail**: the old `make_child_path_history` was replaced by a `PathScope` RAII struct that pushes on construction and pops on destruction, avoiding map copies on the hot search path. The one remaining copy (`get_exploration_variants:985`) is in the display function, not the search, and is acceptable.
 
 ### 🟡 #8 — `Evaluation::operator<` has its branches inverted
 - **Status**: ✅ fixed
