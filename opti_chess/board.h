@@ -529,10 +529,10 @@ struct Evaluation {
 
 	bool operator<(Evaluation& other) {
 		if (!other._evaluated)
-			return true;
+			return false;
 
 		if (!_evaluated)
-			return false;
+			return true;
 
 		return _value < other._value;
 	}
