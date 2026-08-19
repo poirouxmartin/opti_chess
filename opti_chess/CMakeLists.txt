@@ -49,6 +49,7 @@ add_executable(opti_chess
     board_fen.cpp
     buffer.cpp
     evaluation.cpp
+    evaluations.cpp
     exploration.cpp
     game_tree.cpp
     gui.cpp
@@ -132,6 +133,7 @@ set(ENGINE_SOURCES
     board_fen.cpp
     buffer.cpp
     evaluation.cpp
+    evaluations.cpp
     exploration.cpp
     game_tree.cpp
     gui.cpp
