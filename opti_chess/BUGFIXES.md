@@ -64,9 +64,11 @@
 - **Fix**: store `score` (the true value, ≥ beta) rather than `beta`.
 
 ### 🟠 #6 — TT not cleared between distinct root searches
-- **Files**: scattered clears (`gui.cpp:962,1910`, `game_tree.cpp:95`, `main_gui.h:414`, `board.cpp:10184`), none systematic
+- **Status**: ✅ fixed
+- **Files**: `gui.cpp:982`, `game_tree.cpp:95`, `main_gui.h:429`, `board.cpp:9603`
 - **Severity**: MEDIUM (contributes to the "ghost" bugs)
-- **Proposed fix**: clear (or age / use generations) at the start of every search from a new root, unless incremental reuse is deliberate.
+- **Detail**: scattered `transposition_table.clear(); node_map.clear();` duplicated at 4 sites. Consolidated all to use `main_GUI.reset_buffers()`, the canonical centralized helper.
+- **Fix**: replaced inline clears with `main_GUI.reset_buffers()` at all position-change sites.
 
 ### 🟠 #7 — `make_child_path_history` copies the whole map per child
 - **File**: `exploration.cpp:33-38`
