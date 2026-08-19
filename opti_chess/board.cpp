@@ -171,15 +171,25 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 		// If there is no piece ahead
 		if (_array[new_row][col] == none) {
 
-			// While in check, the move must interpose
-			(!in_check || is_in_interpose_mask(interposition_mask, new_row, col)) && add_move(Move(row, col, new_row, col), iterator, piece);
+			// Promotion: generate all 4 under/over promotions
+			if (new_row == (player ? 7 : 0)) {
+				for (uint8_t pp = PROMO_QUEEN; pp <= PROMO_KNIGHT; pp++) {
+					Move m(row, col, new_row, col);
+					m.set_promo_piece(pp);
+					(!in_check || is_in_interpose_mask(interposition_mask, new_row, col)) && add_move(m, iterator, piece);
+				}
+			}
+			else {
+				// While in check, the move must interpose
+				(!in_check || is_in_interpose_mask(interposition_mask, new_row, col)) && add_move(Move(row, col, new_row, col), iterator, piece);
 
-			// Push by 2
-			if (row == 1 + 5 * !player) {
-				new_row += direction;
+				// Push by 2
+				if (row == 1 + 5 * !player) {
+					new_row += direction;
 
-				if (_array[new_row][col] == none) {
-					(!in_check || is_in_interpose_mask(interposition_mask, new_row, col)) && add_move(Move(row, col, new_row, col), iterator, piece);
+					if (_array[new_row][col] == none) {
+						(!in_check || is_in_interpose_mask(interposition_mask, new_row, col)) && add_move(Move(row, col, new_row, col), iterator, piece);
+					}
 				}
 			}
 		}
@@ -199,8 +209,18 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 
 		// If this is a normal capture
 		if (take) {
-			// While in check, the move must interpose
-			(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(Move(row, col, new_row, new_col), iterator, piece);
+			// Promotion on capture
+			if (new_row == (player ? 7 : 0)) {
+				for (uint8_t pp = PROMO_QUEEN; pp <= PROMO_KNIGHT; pp++) {
+					Move m(row, col, new_row, new_col);
+					m.set_promo_piece(pp);
+					(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(m, iterator, piece);
+				}
+			}
+			else {
+				// While in check, the move must interpose
+				(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(Move(row, col, new_row, new_col), iterator, piece);
+			}
 		}
 
 		// En passant availability
@@ -260,8 +280,18 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 
 		// If this is a normal capture
 		if (take) {
-			// While in check, the move must interpose
-			(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(Move(row, col, new_row, new_col), iterator, piece);
+			// Promotion on capture
+			if (new_row == (player ? 7 : 0)) {
+				for (uint8_t pp = PROMO_QUEEN; pp <= PROMO_KNIGHT; pp++) {
+					Move m(row, col, new_row, new_col);
+					m.set_promo_piece(pp);
+					(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(m, iterator, piece);
+				}
+			}
+			else {
+				// While in check, the move must interpose
+				(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(Move(row, col, new_row, new_col), iterator, piece);
+			}
 		}
 		// En passant availability
 		else {
@@ -1242,9 +1272,9 @@ inline void Board::make_move(const Move& move, const bool pgn, const bool add_to
 	// Update the destination square
 	_array[row2][col2] = p;
 
-	// Promotion (queen only for now)
-	(p == w_pawn && row2 == 7) && (_array[row2][col2] = w_queen);
-	(p == b_pawn && row2 == 0) && (_array[row2][col2] = b_queen);
+	// Promotion (uses the promotion piece from the move)
+	if (move.is_promotion())
+		_array[row2][col2] = promo_to_piece(move.get_promo_piece(), _player);
 
 	// Clear the origin square
 	_array[row1][col1] = none;
@@ -11118,6 +11148,7 @@ void Board::assign_move_flags(Move* move) const {
 	if ((piece == w_pawn && move->end_row == 7) ||
 		(piece == b_pawn && move->end_row == 0)) {
 		move->set_flag(IS_PROMOTION);
+		move->set_promo_piece(PROMO_QUEEN);
 	}
 
 	// Capture normale ou en passant
