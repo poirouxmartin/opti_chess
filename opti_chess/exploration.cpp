@@ -720,7 +720,8 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	PositionHistory& branch_history = *path_history;
 
 	if (!g_tt_node_dag && child_link._propagated_nodes >= _nodes) {
-		cout << "child nodes >= nodes in random exploration??? main position: " << _board->to_fen() << ", child position: " << child->_board->to_fen() << endl; // tree-only : faux sous DAG
+		if constexpr (dag_debug)
+			cout << "child nodes >= nodes in random exploration??? main position: " << _board->to_fen() << ", child position: " << child->_board->to_fen() << endl; // tree-only : faux sous DAG
 	}
 
 	// Child node count
@@ -1509,9 +1510,10 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			else {
 				//_is_stand_pat_eval = false;
 				_deep_evaluation = _children[best_move]._node->_deep_evaluation;
-				if (_children[best_move]._node->_quiescence_depth != new_depth - 1) {
+			if (_children[best_move]._node->_quiescence_depth != new_depth - 1) {
+				if constexpr (dag_debug)
 					cout << "expected depth: " << new_depth - 1 << ", actual depth: " << _children[best_move]._node->_quiescence_depth << endl;
-				}
+			}
 			}
 
 			// Beta cut-off
@@ -1624,7 +1626,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		}
 	}
 
-	robin_map<Move, double> move_scores = get_move_scores(alpha, beta);
+	MoveScoreList move_scores = get_move_scores(alpha, beta);
 
 	struct ScoredMove {
 		Move move;
@@ -1668,6 +1670,9 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	Move best_move;
 	double best_score = 0.0;
 
+	// Gamma (hoisted out of loop — depends only on parent state)
+	const double new_gamma = gamma / (1.0 - _static_evaluation._uncertainty / 2.0) / (1.0 - _board->_adv / 2.0);
+
 	// Look at every move
 	for (auto const& [move, child_link] : _children) {
 		// Bug 1 opt 3 - edge section-3 excluded on this path: kept out of best_move
@@ -1683,11 +1688,8 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		// Facteur d'exploration
 		int child_iterations = max(child_link._chosen_iterations, child->_iterations);
 
-		// Gamma
-		const double new_gamma = gamma / (1.00f - _static_evaluation._uncertainty / 2.0f) / (1.00f - _board->_adv / 2.0f);
-
 		// Exploration score
-		double exploration_score = child_iterations == 0 ? _iterations * 2 : pow((double)_iterations / (double)child_iterations, new_gamma);
+		double exploration_score = child_iterations == 0 ? _iterations * 2 : exp(new_gamma * log((double)_iterations / (double)child_iterations));
 
 		// Final score
 		double score = move_score * exploration_score;
@@ -1762,7 +1764,8 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	// strictement inchange.
 	if (best_move.is_null_move()) {
 		if (dag_excl != nullptr) return Move();
-		cout << "null move considered to be the best??" << endl;
+		if constexpr (dag_debug)
+			cout << "null move considered to be the best??" << endl;
 	}
 
 	// Overall best move
@@ -1776,7 +1779,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 }
 
 // Returns the move scores
-robin_map<Move, double> Node::get_move_scores(const double alpha, const double beta, const bool consider_standpat, const int qdepth) const {
+MoveScoreList Node::get_move_scores(const double alpha, const double beta, const bool consider_standpat, const int qdepth) const {
 
 	// The stand pat is associated with the null move
 
@@ -1812,8 +1815,7 @@ robin_map<Move, double> Node::get_move_scores(const double alpha, const double b
 		}
 	}
 
-	robin_map<Move, double> move_scores;
-	move_scores.reserve(children_count() + consider_standpat);
+	MoveScoreList move_scores;
 
 	// Stand pat value
 	if (consider_standpat) {

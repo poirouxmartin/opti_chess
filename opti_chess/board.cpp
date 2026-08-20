@@ -1322,7 +1322,8 @@ inline void Board::make_move(const Move& move, const bool pgn, const bool add_to
 		// XOR out moved piece from start, XOR in at end (or promoted piece)
 		const int start_sq = row1 * 8 + col1;
 		const int end_sq = row2 * 8 + col2;
-		const int promo = move.is_promotion() ? promo_to_piece(move.get_promo_piece(), _player) : p;
+		const bool piece_color = !_player; // _player was already flipped; use original side
+		const int promo = move.is_promotion() ? promo_to_piece(move.get_promo_piece(), piece_color) : p;
 
 		_zobrist_key ^= zobrist._board_keys[start_sq][p - 1];
 		_zobrist_key ^= zobrist._board_keys[end_sq][promo - 1];
@@ -2843,22 +2844,31 @@ void Board::assign_move_flags(Move* move) {
 	memcpy(saved_bitboards, _bitboards, sizeof(saved_bitboards));
 	uint64_t saved_occupancies[sizeof(_occupancies) / sizeof(uint64_t)];
 	memcpy(saved_occupancies, _occupancies, sizeof(saved_occupancies));
+	Move saved_moves[max_moves];
+	memcpy(saved_moves, _moves, sizeof(saved_moves));
+	const bool saved_sorted_moves = _sorted_moves;
+	const uint64_t saved_zobrist_key = _zobrist_key;
 
 	make_move(*move);
 
 	// TODO: optimise this
 	// TODO *** see whether a stalemate can be detected quickly
 
-	// Check
+	// Check and mate detection — save results, apply AFTER restore
+	// because get_moves() regenerates _moves[], corrupting the entry
+	// that `move` points to.
+	bool detected_check = false;
+	bool detected_mate = false;
 	if (in_check()) {
-		move->set_flag(IS_CHECK);
+		detected_check = true;
 
-		// Mat
-		is_game_over();
-		const int game_result = _game_over_value;
-		if ((game_result == white_win && saved_player) ||
-			(game_result == black_win && !saved_player)) {
-			move->set_flag(IS_MATE);
+		// Mat: if opponent has no legal moves after we give check, it's mate.
+		// Use get_moves() directly instead of is_game_over() which also scans
+		// for repetition, 50-move rule, and insufficient material — all irrelevant
+		// for mate detection.
+		get_moves();
+		if (_got_moves == 0) {
+			detected_mate = true;
 		}
 	}
 
@@ -2876,7 +2886,17 @@ void Board::assign_move_flags(Move* move) {
 	_game_over_value = saved_game_over_value;
 	memcpy(_bitboards, saved_bitboards, sizeof(saved_bitboards));
 	memcpy(_occupancies, saved_occupancies, sizeof(saved_occupancies));
-	_zobrist_key = _zobrist_key; // zobrist key will be recomputed by the caller if needed
+	memcpy(_moves, saved_moves, sizeof(saved_moves));
+	_sorted_moves = saved_sorted_moves;
+	_zobrist_key = saved_zobrist_key;
+
+	// Apply flags AFTER restore so they go onto the correct move
+	if (detected_check) {
+		move->set_flag(IS_CHECK);
+	}
+	if (detected_mate) {
+		move->set_flag(IS_MATE);
+	}
 
 
 

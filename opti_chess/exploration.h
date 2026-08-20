@@ -36,6 +36,34 @@ struct DagExcl {
 	}
 };
 
+// Stack-allocated move score list replacing robin_map<Move, double>.
+// Zero heap allocation; O(n) lookup is fine for ~30 children.
+struct MoveScoreList {
+	struct Entry {
+		Move move;
+		double score;
+	};
+	static constexpr int CAP = max_moves;
+	Entry entries[CAP];
+	int count = 0;
+
+	void emplace(const Move& m, double s) {
+		if (count < CAP) entries[count++] = { m, s };
+	}
+
+	double& operator[](const Move& m) {
+		for (int i = 0; i < count; ++i)
+			if (entries[i].move == m) return entries[i].score;
+		static double fallback = 0.0;
+		return fallback;
+	}
+
+	const Entry* begin() const { return entries; }
+	const Entry* end() const { return entries + count; }
+	Entry* begin() { return entries; }
+	Entry* end() { return entries + count; }
+};
+
 // TODO:
 // Instead of holding a board, store only the index of the board in the buffer?
 
@@ -196,7 +224,7 @@ public:
 	Move pick_random_child(const double alpha, const double beta, const double gamma, const DagExcl* dag_excl = nullptr);
 
 	// Returns the score of a move. Alpha raises the weight of the evaluation, beta raises the weight of the win rate
-	robin_map<Move, double> get_move_scores(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100) const;
+	MoveScoreList get_move_scores(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100) const;
 
 	// Returns the value of the node
 	double get_node_score(const double alpha, const double beta, const int max_eval, const double max_avg_score, const bool player, Evaluation *custom_eval = nullptr) const;
