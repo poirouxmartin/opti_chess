@@ -402,6 +402,40 @@ TEST(Board, IsGameOver) {
     EXPECT_NE(result, unterminated);
 }
 
+TEST(Board, InsufficientMaterial) {
+    Board b;
+
+    // K vs K: draw
+    b.from_fen("8/8/4k3/8/8/4K3/8/8 w - - 0 1");
+    b._game_over_checked = false;
+    EXPECT_EQ(b.game_over(2), draw);
+
+    // K+B vs K: draw
+    b.from_fen("8/8/4k3/8/8/2B1K3/8/8 w - - 0 1");
+    b._game_over_checked = false;
+    EXPECT_EQ(b.game_over(2), draw);
+
+    // K+N vs K: draw
+    b.from_fen("8/8/4k3/8/8/2N1K3/8/8 w - - 0 1");
+    b._game_over_checked = false;
+    EXPECT_EQ(b.game_over(2), draw);
+
+    // K+B vs K+N: NOT a draw (both sides have a minor piece)
+    b.from_fen("8/8/4k3/8/4n3/2B1K3/8/8 w - - 0 1");
+    b._game_over_checked = false;
+    EXPECT_EQ(b.game_over(2), unterminated);
+
+    // K+N vs K+B: NOT a draw
+    b.from_fen("8/8/4k3/8/4b3/2N1K3/8/8 w - - 0 1");
+    b._game_over_checked = false;
+    EXPECT_EQ(b.game_over(2), unterminated);
+
+    // K+B vs K+B: NOT a draw (different-color bishops possible)
+    b.from_fen("8/8/4k3/8/4b3/2B1K3/8/8 w - - 0 1");
+    b._game_over_checked = false;
+    EXPECT_EQ(b.game_over(2), unterminated);
+}
+
 TEST(Board, MaterialDifference) {
     Board b;
     b.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
