@@ -1571,8 +1571,6 @@ int Node::count_children_nodes() const {
 		sum += child_link._node->get_total_nodes();
 	}
 
-	cout << "SUM: " << sum << endl;
-
 	return sum;
 }
 
