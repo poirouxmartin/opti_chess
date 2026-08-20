@@ -1889,9 +1889,10 @@ void Evaluation::get_WDL(int winning_eval, float beta) {
 	const float white_lose_chance = (is_eval_positive ? 0.0f : certain_win_chance);
 
 	// Non-linear function of the uncertainty
-	//float alpha = 1 + eval / winning_eval / 25.0f;
+	//constexpr float alpha = 1 + eval / winning_eval / 25.0f;
+	// constexpr alpha=1.0 -> pow(x,1) == x, skip the pow() call entirely
 	constexpr float alpha = 1.0f;
-	const float relative_uncertainty = pow(_uncertainty, alpha);
+	const float relative_uncertainty = _uncertainty; // pow(_uncertainty, alpha) when alpha==1
 
 	//cout << "relative uncertainty: " << relative_uncertainty << endl;
 

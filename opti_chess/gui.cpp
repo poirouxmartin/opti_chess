@@ -1656,7 +1656,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	const ChildLink& most_explored_link = _root_exploration_node->_children[most_explored_move];
 	Node const* most_explored_child = most_explored_link._node;
 
-	robin_map<Move, double> move_scores = _root_exploration_node->get_move_scores(_alpha, _beta);
+	MoveScoreList move_scores = _root_exploration_node->get_move_scores(_alpha, _beta);
 
 	double most_explored_score = -DBL_MAX;
 	double best_score = -DBL_MAX;

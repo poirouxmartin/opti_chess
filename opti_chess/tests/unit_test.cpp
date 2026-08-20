@@ -229,6 +229,79 @@ TEST(Zobrist, SideToMoveChangesKey) {
     EXPECT_NE(b1._zobrist_key, b2._zobrist_key);
 }
 
+TEST(Zobrist, IncrementalMatchesFullAfterMove) {
+    Board b;
+    b.from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
+    b.get_moves();
+
+    for (int i = 0; i < b._got_moves; i++) {
+        Board copy(b);
+        Board full(b);
+
+        // Incremental path: make_move updates Zobrist incrementally
+        copy.make_move(b._moves[i], false, true);
+        uint64_t incremental_key = copy._zobrist_key;
+
+        // Full recompute path
+        full.make_move(b._moves[i], false, false);
+        full.get_zobrist_key();
+        uint64_t full_key = full._zobrist_key;
+
+        EXPECT_EQ(incremental_key, full_key)
+            << "Incremental Zobrist mismatch after move " << i
+            << " (" << b._moves[i].start_row << b._moves[i].start_col
+            << "->" << b._moves[i].end_row << b._moves[i].end_col << ")";
+    }
+}
+
+TEST(Zobrist, IncrementalMatchesFullAfterCapture) {
+    Board b;
+    b.from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
+    b.get_moves();
+
+    for (int i = 0; i < b._got_moves; i++) {
+        if (!(b._moves[i].flags & IS_CAPTURE))
+            continue;
+
+        Board copy(b);
+        Board full(b);
+
+        copy.make_move(b._moves[i], false, true);
+        uint64_t incremental_key = copy._zobrist_key;
+
+        full.make_move(b._moves[i], false, false);
+        full.get_zobrist_key();
+        uint64_t full_key = full._zobrist_key;
+
+        EXPECT_EQ(incremental_key, full_key)
+            << "Incremental Zobrist mismatch on capture " << i;
+    }
+}
+
+TEST(Zobrist, IncrementalMatchesFullAfterPromotion) {
+    Board b;
+    b.from_fen("8/P7/8/8/8/8/8/4K2k w - - 0 1");
+    b.get_moves();
+
+    for (int i = 0; i < b._got_moves; i++) {
+        if (!(b._moves[i].flags & IS_PROMOTION))
+            continue;
+
+        Board copy(b);
+        Board full(b);
+
+        copy.make_move(b._moves[i], false, true);
+        uint64_t incremental_key = copy._zobrist_key;
+
+        full.make_move(b._moves[i], false, false);
+        full.get_zobrist_key();
+        uint64_t full_key = full._zobrist_key;
+
+        EXPECT_EQ(incremental_key, full_key)
+            << "Incremental Zobrist mismatch on promotion " << i;
+    }
+}
+
 // ============================================================================
 // Transposition Table
 // ============================================================================
