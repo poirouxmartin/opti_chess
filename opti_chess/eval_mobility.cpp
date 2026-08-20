@@ -35,15 +35,29 @@ int Board::get_square_controls() const
 	bool white_controls[8][8] = { {false} };
 	bool black_controls[8][8] = { {false} };
 
-	// Add the pawn control over the squares
-	for (uint8_t i = 0; i < 8; i++) {
-		for (uint8_t j = 0; j < 8; j++) {
-			const int p = _array[i][j];
-			(j - 1 >= 0 && 7 - i - 1 >= 0) && (white_controls[7 - i - 1][j - 1] |= (p == 1));
-			(j + 1 < 8 && 7 - i - 1 >= 0) && (white_controls[7 - i - 1][j + 1] |= (p == 1));
-			(j - 1 >= 0 && i - 1 >= 0) && (black_controls[i - 1][j - 1] |= (p == 7));
-			(j + 1 < 8 && i - 1 >= 0) && (black_controls[i - 1][j + 1] |= (p == 7));
-		}
+	// Add the pawn control over the squares using pawn bitboards
+	uint64_t wp = _bitboards[w_pawn];
+	while (wp) {
+		const int sq = pop_lsb(wp);
+		const uint8_t i = sq >> 3;
+		const uint8_t j = sq & 7;
+		// White pawn at (i,j) controls (7-i-1, j-1) and (7-i-1, j+1) in the square_controls table
+		const uint8_t di = 7 - i - 1;
+		if (j - 1 >= 0 && di >= 0)
+			white_controls[di][j - 1] = true;
+		if (j + 1 < 8 && di >= 0)
+			white_controls[di][j + 1] = true;
+	}
+	uint64_t bp = _bitboards[b_pawn];
+	while (bp) {
+		const int sq = pop_lsb(bp);
+		const uint8_t i = sq >> 3;
+		const uint8_t j = sq & 7;
+		// Black pawn at (i,j) controls (i-1, j-1) and (i-1, j+1)
+		if (j - 1 >= 0 && i - 1 >= 0)
+			black_controls[i - 1][j - 1] = true;
+		if (j + 1 < 8 && i - 1 >= 0)
+			black_controls[i - 1][j + 1] = true;
 	}
 
 	// Sum the pawn control over the squares
@@ -70,14 +84,8 @@ int Board::get_space() const
 
 	int w_pieces = 0; int b_pieces = 0;
 
-	for (uint8_t i = 0; i < 8; i++) {
-		for (uint8_t j = 0; j < 8; j++) {
-			if (is_in(_array[i][j], 2, 6))
-				w_pieces++;
-			else if (is_in(_array[i][j], 8, 12))
-				b_pieces++;
-		}
-	}
+	w_pieces = __popcnt64(_occupancies[0] & ~_bitboards[w_pawn]);
+	b_pieces = __popcnt64(_occupancies[1] & ~_bitboards[b_pawn]);
 		
 
 	// Open file count
@@ -199,15 +207,18 @@ int Board::get_alignments() const
 	int b_pins = 0;
 
 	// Walk the board
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
+	uint64_t all_sliders = _bitboards[w_bishop] | _bitboards[b_bishop] | _bitboards[w_rook] | _bitboards[b_rook] | _bitboards[w_queen] | _bitboards[b_queen];
+	while (all_sliders) {
+		const int sq = pop_lsb(all_sliders);
+		const uint8_t row = sq >> 3;
+		const uint8_t col = sq & 7;
 
-			// If the square holds a piece
-			const uint8_t pinning_piece = _array[row][col];
+		// If the square holds a piece
+		const uint8_t pinning_piece = _array[row][col];
 
-			// Skip anything that is not a sliding piece
-			if (!is_sliding(pinning_piece))
-				continue;
+		// Skip anything that is not a sliding piece
+		if (!is_sliding(pinning_piece))
+			continue;
 
 			// Piece colour
 			const bool pinning_piece_color = pinning_piece < b_pawn;
@@ -358,7 +369,6 @@ int Board::get_alignments() const
 				else {
 					b_pins += total_value;
 				}
-			}
 		}
 	}
 
@@ -418,16 +428,19 @@ SquareMap Board::get_white_controls_map() const
 	_cached_white_controls = SquareMap();
 	_cached_black_controls = SquareMap();
 
-	for (uint8_t row = 0; row < 8; row++)
-		for (uint8_t col = 0; col < 8; col++) {
-			const uint8_t piece = _array[row][col];
-			if (is_white(piece)) {
-				add_piece_controls(&_cached_white_controls, row, col, piece);
-			}
-			else if (is_black(piece)) {
-				add_piece_controls(&_cached_black_controls, row, col, piece);
-			}
+	uint64_t occ = _occupancies[2];
+	while (occ) {
+		const int sq = pop_lsb(occ);
+		const uint8_t row = sq >> 3;
+		const uint8_t col = sq & 7;
+		const uint8_t piece = _array[row][col];
+		if (is_white(piece)) {
+			add_piece_controls(&_cached_white_controls, row, col, piece);
 		}
+		else if (is_black(piece)) {
+			add_piece_controls(&_cached_black_controls, row, col, piece);
+		}
+	}
 
 	_controls_map_valid = true;
 	return _cached_white_controls;
@@ -585,145 +598,151 @@ int Board::get_rook_activity() const
 
 	float activity = 0.0f;
 
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			const uint8_t p = _array[row][col];
+	// White rooks
+	{
+		uint64_t bb = _bitboards[w_rook];
+		while (bb) {
+			const int sq = pop_lsb(bb);
+			const uint8_t row = sq >> 3;
+			const uint8_t col = sq & 7;
 
-			// White rook
-			if (p == w_rook) {
-
-				int rook_activity = -normal_activity;
-				
-				// Horizontal mobility
-				float h_mobility = 0.0f;
-
-				// To the right
-				for (uint8_t k = col + 1; k < 8; k++) {
-					const uint8_t p2 = _array[row][k];
-					if (p2 != w_pawn && p2 != b_pawn && p2 != w_king)
-						h_mobility += row_bonus[row];
-					else
-						break;
-				}
-
-				// To the left
-				for (int_fast8_t k = col - 1; k >= 0; k--) {
-					const uint8_t p2 = _array[row][k];
-					if (p2 != w_pawn && p2 != b_pawn && p2 != w_king)
-						h_mobility += row_bonus[row];
-					else
-						break;
-				}
-
-				// Vertical mobility
-				float v_mobility = 0.0f;
-
-				// Upwards
-				for (uint8_t k = row + 1; k < 8; k++) {
-					const uint8_t p2 = _array[k][col];
-					if (p2 != w_pawn && p2 != b_pawn && p2 != w_king)
-						v_mobility += row_bonus[k];
-					else
-						break;
-				}
-
-				// Downwards
-				for (int_fast8_t k = row - 1; k >= 0; k--) {
-					const uint8_t p2 = _array[k][col];
-					if (p2 != w_pawn && p2 != b_pawn && p2 != w_king)
-						v_mobility += row_bonus[k];
-					else
-						break;
-				}
-
-				// Bonus for vertical mobility
-				rook_activity += vertical_mobility_bonus * v_mobility;
-
-				// Bonus for horizontal mobility
-				rook_activity += horizontal_mobility_bonus * h_mobility;
-
-				// Penalty for lack of mobility
-				const int total_mobility = h_mobility + v_mobility;
-
-				// FIXME: make this a more linear function?
-				if (total_mobility < bad_mobility_min) {
-					//rook_activity -= bad_mobility_malus;
-					rook_activity -= bad_mobility_malus * (bad_mobility_min - total_mobility);
-				}
-
-				//cout << "White rook (" << square_name(row, col) << "): h_mobility = " << h_mobility << ", v_mobility = " << v_mobility << ", total_mobility = " << total_mobility << "/" << bad_mobility_min << " (-" << to_string((total_mobility < bad_mobility_min) ? bad_mobility_malus : 0) << "), activity = " << rook_activity << endl;
+			int rook_activity = -normal_activity;
 			
-				activity += rook_activity;
+			// Horizontal mobility
+			float h_mobility = 0.0f;
+
+			// To the right
+			for (uint8_t k = col + 1; k < 8; k++) {
+				const uint8_t p2 = _array[row][k];
+				if (p2 != w_pawn && p2 != b_pawn && p2 != w_king)
+					h_mobility += row_bonus[row];
+				else
+					break;
 			}
 
-			//1r2q2k/4p1b1/p1n1Q1p1/1pp2p1p/3p4/3P1N1P/PPP1RPP1/4R1K1 b - - 3 26
-
-			// Black rook
-			else if (p == b_rook) {
-
-				int rook_activity = -normal_activity;
-
-				// Horizontal mobility
-				float h_mobility = 0.0f;
-
-				// To the right
-				for (uint8_t k = col + 1; k < 8; k++) {
-					const uint8_t p2 = _array[row][k];
-					if (p2 != w_pawn && p2 != b_pawn && p2 != b_king)
-						h_mobility += row_bonus[7 - row];
-					else
-						break;
-				}
-
-				// To the left
-				for (int_fast8_t k = col - 1; k >= 0; k--) {
-					const uint8_t p2 = _array[row][k];
-					if (p2 != w_pawn && p2 != b_pawn && p2 != b_king)
-						h_mobility += row_bonus[7 - row];
-					else
-						break;
-				}
-
-				// Vertical mobility
-				float v_mobility = 0.0f;
-
-				// Upwards
-				for (uint8_t k = row + 1; k < 8; k++) {
-					const uint8_t p2 = _array[k][col];
-					if (p2 != w_pawn && p2 != b_pawn && p2 != b_king)
-						v_mobility += row_bonus[7 - k];
-					else
-						break;
-				}
-
-				// Downwards
-				for (int_fast8_t k = row - 1; k >= 0; k--) {
-					const uint8_t p2 = _array[k][col];
-					if (p2 != w_pawn && p2 != b_pawn && p2 != b_king)
-						v_mobility += row_bonus[7 - k];
-					else
-						break;
-				}
-
-				// Bonus for vertical mobility
-				rook_activity += vertical_mobility_bonus * v_mobility;
-
-				// Bonus for horizontal mobility
-				rook_activity += horizontal_mobility_bonus * h_mobility;
-
-				// Penalty for lack of mobility
-				const int total_mobility = h_mobility + v_mobility;
-
-				// FIXME: make this a more linear function?
-				if (total_mobility < bad_mobility_min) {
-					//rook_activity -= bad_mobility_malus;
-					rook_activity -= bad_mobility_malus * (bad_mobility_min - total_mobility);
-				}
-
-				//cout << "Black rook (" << square_name(row, col) << "): h_mobility = " << h_mobility << ", v_mobility = " << v_mobility << ", total_mobility = " << total_mobility << "/" << bad_mobility_min << " (-" << to_string((total_mobility < bad_mobility_min) ? bad_mobility_malus : 0) << "), activity = " << rook_activity << endl;
-
-				activity -= rook_activity;
+			// To the left
+			for (int_fast8_t k = col - 1; k >= 0; k--) {
+				const uint8_t p2 = _array[row][k];
+				if (p2 != w_pawn && p2 != b_pawn && p2 != w_king)
+					h_mobility += row_bonus[row];
+				else
+					break;
 			}
+
+			// Vertical mobility
+			float v_mobility = 0.0f;
+
+			// Upwards
+			for (uint8_t k = row + 1; k < 8; k++) {
+				const uint8_t p2 = _array[k][col];
+				if (p2 != w_pawn && p2 != b_pawn && p2 != w_king)
+					v_mobility += row_bonus[k];
+				else
+					break;
+			}
+
+			// Downwards
+			for (int_fast8_t k = row - 1; k >= 0; k--) {
+				const uint8_t p2 = _array[k][col];
+				if (p2 != w_pawn && p2 != b_pawn && p2 != w_king)
+					v_mobility += row_bonus[k];
+				else
+					break;
+			}
+
+			// Bonus for vertical mobility
+			rook_activity += vertical_mobility_bonus * v_mobility;
+
+			// Bonus for horizontal mobility
+			rook_activity += horizontal_mobility_bonus * h_mobility;
+
+			// Penalty for lack of mobility
+			const int total_mobility = h_mobility + v_mobility;
+
+			// FIXME: make this a more linear function?
+			if (total_mobility < bad_mobility_min) {
+				//rook_activity -= bad_mobility_malus;
+				rook_activity -= bad_mobility_malus * (bad_mobility_min - total_mobility);
+			}
+
+			//cout << "White rook (" << square_name(row, col) << "): h_mobility = " << h_mobility << ", v_mobility = " << v_mobility << ", total_mobility = " << total_mobility << "/" << bad_mobility_min << " (-" << to_string((total_mobility < bad_mobility_min) ? bad_mobility_malus : 0) << "), activity = " << rook_activity << endl;
+		
+			activity += rook_activity;
+		}
+	}
+
+	//1r2q2k/4p1b1/p1n1Q1p1/1pp2p1p/3p4/3P1N1P/PPP1RPP1/4R1K1 b - - 3 26
+
+	// Black rooks
+	{
+		uint64_t bb = _bitboards[b_rook];
+		while (bb) {
+			const int sq = pop_lsb(bb);
+			const uint8_t row = sq >> 3;
+			const uint8_t col = sq & 7;
+
+			int rook_activity = -normal_activity;
+
+			// Horizontal mobility
+			float h_mobility = 0.0f;
+
+			// To the right
+			for (uint8_t k = col + 1; k < 8; k++) {
+				const uint8_t p2 = _array[row][k];
+				if (p2 != w_pawn && p2 != b_pawn && p2 != b_king)
+					h_mobility += row_bonus[7 - row];
+				else
+					break;
+			}
+
+			// To the left
+			for (int_fast8_t k = col - 1; k >= 0; k--) {
+				const uint8_t p2 = _array[row][k];
+				if (p2 != w_pawn && p2 != b_pawn && p2 != b_king)
+					h_mobility += row_bonus[7 - row];
+				else
+					break;
+			}
+
+			// Vertical mobility
+			float v_mobility = 0.0f;
+
+			// Upwards
+			for (uint8_t k = row + 1; k < 8; k++) {
+				const uint8_t p2 = _array[k][col];
+				if (p2 != w_pawn && p2 != b_pawn && p2 != b_king)
+					v_mobility += row_bonus[7 - k];
+				else
+					break;
+			}
+
+			// Downwards
+			for (int_fast8_t k = row - 1; k >= 0; k--) {
+				const uint8_t p2 = _array[k][col];
+				if (p2 != w_pawn && p2 != b_pawn && p2 != b_king)
+					v_mobility += row_bonus[7 - k];
+				else
+					break;
+			}
+
+			// Bonus for vertical mobility
+			rook_activity += vertical_mobility_bonus * v_mobility;
+
+			// Bonus for horizontal mobility
+			rook_activity += horizontal_mobility_bonus * h_mobility;
+
+			// Penalty for lack of mobility
+			const int total_mobility = h_mobility + v_mobility;
+
+			// FIXME: make this a more linear function?
+			if (total_mobility < bad_mobility_min) {
+				//rook_activity -= bad_mobility_malus;
+				rook_activity -= bad_mobility_malus * (bad_mobility_min - total_mobility);
+			}
+
+			//cout << "Black rook (" << square_name(row, col) << "): h_mobility = " << h_mobility << ", v_mobility = " << v_mobility << ", total_mobility = " << total_mobility << "/" << bad_mobility_min << " (-" << to_string((total_mobility < bad_mobility_min) ? bad_mobility_malus : 0) << "), activity = " << rook_activity << endl;
+
+			activity -= rook_activity;
 		}
 	}
 
@@ -749,84 +768,90 @@ int Board::get_bishop_activity() const {
 	// Bonus for the black bishop
 	int b_bishop_activity = 0;
 
-	for (int row = 0; row < 8; row++) {
-		for (int col = 0; col < 8; col++) {
-			uint8_t p = _array[row][col];
+	// White bishops
+	{
+		uint64_t bb = _bitboards[w_bishop];
+		while (bb) {
+			const int sq = pop_lsb(bb);
+			const int row = sq >> 3;
+			const int col = sq & 7;
 
-			// White bishop
-			if (p == w_bishop) {
+			w_bishop_activity -= normal_bishop_activity;
 
-				w_bishop_activity -= normal_bishop_activity;
-
-				// Diagonale haut-gauche
-				for (uint8_t k = 1; k < min(row, col) + 1; k++) {
-					if (!is_pawn(_array[row - k][col - k]))
-						w_bishop_activity++;
-					else
-						break;
-				}
-
-				// Diagonale haut-droite
-				for (uint8_t k = 1; k < min(row, 7 - col) + 1; k++) {
-					if (!is_pawn(_array[row - k][col + k]))
-						w_bishop_activity++;
-					else
-						break;
-				}
-
-				// Diagonale bas-gauche
-				for (uint8_t k = 1; k < min(7 - row, col) + 1; k++) {
-					if (!is_pawn(_array[row + k][col - k]))
-						w_bishop_activity++;
-					else
-						break;
-				}
-
-				// Diagonale bas-droite
-				for (uint8_t k = 1; k < min(7 - row, 7 - col) + 1; k++) {
-					if (!is_pawn(_array[row + k][col + k]))
-						w_bishop_activity++;
-					else
-						break;
-				}
+			// Diagonale haut-gauche
+			for (uint8_t k = 1; k < min(row, col) + 1; k++) {
+				if (!is_pawn(_array[row - k][col - k]))
+					w_bishop_activity++;
+				else
+					break;
 			}
 
-			// Black bishop
-			else if (p == b_bishop) {
+			// Diagonale haut-droite
+			for (uint8_t k = 1; k < min(row, 7 - col) + 1; k++) {
+				if (!is_pawn(_array[row - k][col + k]))
+					w_bishop_activity++;
+				else
+					break;
+			}
 
-				b_bishop_activity -= normal_bishop_activity;
+			// Diagonale bas-gauche
+			for (uint8_t k = 1; k < min(7 - row, col) + 1; k++) {
+				if (!is_pawn(_array[row + k][col - k]))
+					w_bishop_activity++;
+				else
+					break;
+			}
 
-				// Diagonale haut-gauche
-				for (uint8_t k = 1; k < min(row, col) + 1; k++) {
-					if (!is_pawn(_array[row - k][col - k]))
-						b_bishop_activity++;
-					else
-						break;
-				}
+			// Diagonale bas-droite
+			for (uint8_t k = 1; k < min(7 - row, 7 - col) + 1; k++) {
+				if (!is_pawn(_array[row + k][col + k]))
+					w_bishop_activity++;
+				else
+					break;
+			}
+		}
+	}
 
-				// Diagonale haut-droite
-				for (uint8_t k = 1; k < min(row, 7 - col) + 1; k++) {
-					if (!is_pawn(_array[row - k][col + k]))
-						b_bishop_activity++;
-					else
-						break;
-				}
+	// Black bishops
+	{
+		uint64_t bb = _bitboards[b_bishop];
+		while (bb) {
+			const int sq = pop_lsb(bb);
+			const int row = sq >> 3;
+			const int col = sq & 7;
 
-				// Diagonale bas-gauche
-				for (uint8_t k = 1; k < min(7 - row, col) + 1; k++) {
-					if (!is_pawn(_array[row + k][col - k]))
-						b_bishop_activity++;
-					else
-						break;
-				}
+			b_bishop_activity -= normal_bishop_activity;
 
-				// Diagonale bas-droite
-				for (uint8_t k = 1; k < min(7 - row, 7 - col) + 1; k++) {
-					if (!is_pawn(_array[row + k][col + k]))
-						b_bishop_activity++;
-					else
-						break;
-				}
+			// Diagonale haut-gauche
+			for (uint8_t k = 1; k < min(row, col) + 1; k++) {
+				if (!is_pawn(_array[row - k][col - k]))
+					b_bishop_activity++;
+				else
+					break;
+			}
+
+			// Diagonale haut-droite
+			for (uint8_t k = 1; k < min(row, 7 - col) + 1; k++) {
+				if (!is_pawn(_array[row - k][col + k]))
+					b_bishop_activity++;
+				else
+					break;
+			}
+
+			// Diagonale bas-gauche
+			for (uint8_t k = 1; k < min(7 - row, col) + 1; k++) {
+				if (!is_pawn(_array[row + k][col - k]))
+					b_bishop_activity++;
+				else
+					break;
+			}
+
+			// Diagonale bas-droite
+			for (uint8_t k = 1; k < min(7 - row, 7 - col) + 1; k++) {
+				if (!is_pawn(_array[row + k][col + k]))
+					b_bishop_activity++;
+				else
+					break;
 			}
 		}
 	}
@@ -888,16 +913,24 @@ int Board::get_piece_mobility(bool display) const {
 	bool b_pawn_controls[8][8] = { false };
 	bool w_pawn_controls[8][8] = { false };
 
-	for (uint8_t row = 1; row < 7; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			if (_array[row][col] == w_pawn) {
-				(col > 0) && (w_pawn_controls[row + 1][col - 1] = true);
-				(col < 7) && (w_pawn_controls[row + 1][col + 1] = true);
-			}
-			else if (_array[row][col] == b_pawn) {
-				(col > 0) && (b_pawn_controls[row - 1][col - 1] = true);
-				(col < 7) && (b_pawn_controls[row - 1][col + 1] = true);
-			}
+	{
+		uint64_t bb = _bitboards[w_pawn];
+		while (bb) {
+			const int sq = pop_lsb(bb);
+			const uint8_t row = sq >> 3;
+			const uint8_t col = sq & 7;
+			(col > 0) && (w_pawn_controls[row + 1][col - 1] = true);
+			(col < 7) && (w_pawn_controls[row + 1][col + 1] = true);
+		}
+	}
+	{
+		uint64_t bb = _bitboards[b_pawn];
+		while (bb) {
+			const int sq = pop_lsb(bb);
+			const uint8_t row = sq >> 3;
+			const uint8_t col = sq & 7;
+			(col > 0) && (b_pawn_controls[row - 1][col - 1] = true);
+			(col < 7) && (b_pawn_controls[row - 1][col + 1] = true);
 		}
 	}
 
@@ -909,13 +942,12 @@ int Board::get_piece_mobility(bool display) const {
 	int black_mobility = 0;
 
 	// Piece mobility
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			uint8_t piece = _array[row][col];
-
-			if (piece == none) {
-				continue;
-			}
+	uint64_t occ = _occupancies[2];
+	while (occ) {
+		const int sq = pop_lsb(occ);
+		const uint8_t row = sq >> 3;
+		const uint8_t col = sq & 7;
+		uint8_t piece = _array[row][col];
 
 			int virtual_mobility = 0;
 			int real_mobility = 0;
@@ -1371,7 +1403,6 @@ int Board::get_piece_mobility(bool display) const {
 
 				black_mobility += piece_mobility;
 			}
-		}
 	}
 
 	if (display) {
@@ -1408,23 +1439,22 @@ int Board::get_short_term_piece_mobility(bool display) const {
 	int black_mobility = 0;
 
 	// For each piece
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			uint8_t piece = _array[row][col];
+	uint64_t occ = _occupancies[2];
+	while (occ) {
+		const int sq = pop_lsb(occ);
+		const uint8_t row = sq >> 3;
+		const uint8_t col = sq & 7;
+		uint8_t piece = _array[row][col];
 
-			if (piece == none) {
-				continue;
-			}
+		int piece_mobility = 0;
 
-			int piece_mobility = 0;
-
-			// White pawn
-			if (piece == w_pawn) {
-				piece_mobility = _array[row + 1][col] == none; // Single push
-				piece_mobility += col > 0 && is_black(_array[row + 1][col - 1]); // Capture to the left
-				piece_mobility += col < 7 && is_black(_array[row + 1][col + 1]); // Capture to the right
-				piece_mobility += row == 1 && _array[row + 1][col] == none && _array[row + 2][col] == none; // Double push
-			}
+		// White pawn
+		if (piece == w_pawn) {
+			piece_mobility = _array[row + 1][col] == none; // Single push
+			piece_mobility += col > 0 && is_black(_array[row + 1][col - 1]); // Capture to the left
+			piece_mobility += col < 7 && is_black(_array[row + 1][col + 1]); // Capture to the right
+			piece_mobility += row == 1 && _array[row + 1][col] == none && _array[row + 2][col] == none; // Double push
+		}
 
 			// White knight
 			if (piece == w_knight) {
@@ -1597,7 +1627,6 @@ int Board::get_short_term_piece_mobility(bool display) const {
 			else if (is_black(piece)) {
 				black_mobility += real_mobilities[piece - 7][piece_mobility];
 			}
-		}
 	}
 
 	if (display) {
@@ -1647,22 +1676,21 @@ int Board::get_long_term_piece_mobility(bool display) const {
 	int black_mobility = 0;
 
 	// For each piece
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			uint8_t piece = _array[row][col];
+	uint64_t occ = _occupancies[2];
+	while (occ) {
+		const int sq = pop_lsb(occ);
+		const uint8_t row = sq >> 3;
+		const uint8_t col = sq & 7;
+		uint8_t piece = _array[row][col];
 
-			if (piece == none) {
-				continue;
-			}
+		float piece_mobility = 0.0f;
 
-			float piece_mobility = 0.0f;
-
-			// White pawn
-			if (piece == w_pawn) {
-				piece_mobility = white_blocked_pieces._array[row + 1][col] == 0; // Single push
-				piece_mobility += col > 0 && is_black(_array[row + 1][col - 1]); // Capture to the left
-				piece_mobility += col < 7 && is_black(_array[row + 1][col + 1]); // Capture to the right
-				piece_mobility += row == 1 && white_blocked_pieces._array[row + 1][col] == 0 && white_blocked_pieces._array[row + 2][col] == 0; // Double push
+		// White pawn
+		if (piece == w_pawn) {
+			piece_mobility = white_blocked_pieces._array[row + 1][col] == 0; // Single push
+			piece_mobility += col > 0 && is_black(_array[row + 1][col - 1]); // Capture to the left
+			piece_mobility += col < 7 && is_black(_array[row + 1][col + 1]); // Capture to the right
+			piece_mobility += row == 1 && white_blocked_pieces._array[row + 1][col] == 0 && white_blocked_pieces._array[row + 2][col] == 0; // Double push
 			}
 
 			// White knight
@@ -1889,7 +1917,6 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					cout << "BLACK: " << piece_name(piece) << " on " << square_name(row, col) << ", mobility: " << piece_mobility << ", bounds: [" << lower_bound_value << ", " << upper_bound_value << "], value: " << interpolated_value << endl;
 				}
 			}
-		}
 	}
 
 	if (display) {

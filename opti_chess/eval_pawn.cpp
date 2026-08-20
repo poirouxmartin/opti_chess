@@ -30,13 +30,22 @@ int Board::get_pawn_structure(float display_factor)
 	bool pawns_white[8][8] = { { 0 } };
 	bool pawns_black[8][8] = { { 0 } };
 
-	for (uint8_t i = 0; i < 8; i++) {
-		for (uint8_t j = 0; j < 8; j++) {
-			s_white[j] += (_array[i][j] == w_pawn);
-			s_black[j] += (_array[i][j] == b_pawn);
-			pawns_white[i][j] = (_array[i][j] == w_pawn);
-			pawns_black[i][j] = (_array[i][j] == b_pawn);
-		}
+	// Iterate only pawns using bitboards
+	uint64_t wp = _bitboards[w_pawn];
+	while (wp) {
+		const int sq = pop_lsb(wp);
+		const uint8_t i = sq >> 3;
+		const uint8_t j = sq & 7;
+		s_white[j]++;
+		pawns_white[i][j] = true;
+	}
+	uint64_t bp = _bitboards[b_pawn];
+	while (bp) {
+		const int sq = pop_lsb(bp);
+		const uint8_t i = sq >> 3;
+		const uint8_t j = sq & 7;
+		s_black[j]++;
+		pawns_black[i][j] = true;
 	}
 
 	// TEST: r4rk1/pp2qppp/3b1n2/8/P2pP3/3B1P2/P2B2PP/2RQ1RK1 b - - 0 17 : pourquoi isolated positif?
