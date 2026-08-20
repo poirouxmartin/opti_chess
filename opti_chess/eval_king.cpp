@@ -108,31 +108,33 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	bool b_bishop_w = false;
 	bool b_bishop_b = false;
 
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			if (const uint8_t p = _array[row][col]; p > 0) {
-				if (is_white(p)) {
-					w_total_attack_potential += attack_potentials[p - 1];
-					w_total_defense_potential += defense_potentials[p - 1];
-				}
-				else {
-					b_total_attack_potential += attack_potentials[(p - 1) % 6];
-					b_total_defense_potential += defense_potentials[(p - 1) % 6];
-				}
+	uint64_t occ = _occupancies[2];
+	while (occ) {
+		const int sq = pop_lsb(occ);
+		const uint8_t row = sq >> 3;
+		const uint8_t col = sq & 7;
+		const uint8_t p = _array[row][col];
 
-				if (p == w_bishop) {
-					if ((row + col) % 2 == 0)
-						w_bishop_w = true;
-					else
-						w_bishop_b = true;
-				}
-				else if (p == b_bishop) {
-					if ((row + col) % 2 == 0)
-						b_bishop_w = true;
-					else
-						b_bishop_b = true;
-				}
-			}
+		if (is_white(p)) {
+			w_total_attack_potential += attack_potentials[p - 1];
+			w_total_defense_potential += defense_potentials[p - 1];
+		}
+		else {
+			b_total_attack_potential += attack_potentials[(p - 1) % 6];
+			b_total_defense_potential += defense_potentials[(p - 1) % 6];
+		}
+
+		if (p == w_bishop) {
+			if ((row + col) % 2 == 0)
+				w_bishop_w = true;
+			else
+				w_bishop_b = true;
+		}
+		else if (p == b_bishop) {
+			if ((row + col) % 2 == 0)
+				b_bishop_w = true;
+			else
+				b_bishop_b = true;
 		}
 	}
 
@@ -1236,9 +1238,12 @@ int Board::get_king_attackers(bool color) {
 	//1k1rr3/1pp1q3/pnn1b3/4p3/3pP1p1/PP1P3p/1BPNN2K/R3QR1B b - - 1 46
 
 	// Look at every friendly piece on the board
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			uint8_t p = _array[row][col];
+	uint64_t occ = _occupancies[color ? 0 : 1];
+	while (occ) {
+		const int sq = pop_lsb(occ);
+		const uint8_t row = sq >> 3;
+		const uint8_t col = sq & 7;
+		const uint8_t p = _array[row][col];
 
 			uint8_t attacks = 0;
 			uint8_t semi_attacks = 0;
@@ -1450,7 +1455,6 @@ int Board::get_king_attackers(bool color) {
 					//cout << "color: " << color << ", piece: " << piece_name(p) << "(" << square_name(row, col) << "), semi-attacks : " << (int)semi_attacks << ", value : " << semi_attack_value * piece_semi_attack_factor[(p - 1) % 6] * pow(semi_attacks, 0.3) << endl;
 				}
 			}
-		}
 	}
 
 	//cout << "king_attackers: " << king_attackers << endl;
@@ -1488,9 +1492,12 @@ int Board::get_king_defenders(bool color) {
 	int king_defenders = 0;
 
 	// Look at every friendly piece on the board
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			uint8_t p = _array[row][col];
+	uint64_t occ = _occupancies[color ? 0 : 1];
+	while (occ) {
+		const int sq = pop_lsb(occ);
+		const uint8_t row = sq >> 3;
+		const uint8_t col = sq & 7;
+		const uint8_t p = _array[row][col];
 
 			uint8_t defenses = 0;
 			uint8_t semi_defenses = 0;
@@ -1669,7 +1676,6 @@ int Board::get_king_defenders(bool color) {
 					//cout << "color: " << color << ", piece: " << piece_name(p) << "(" << square_name(row, col) << "), semi-defenses : " << (int)semi_defenses << ", value : " << semi_defense_value * piece_defense_factor[(p - 1) % 6] << endl;
 				}
 			}
-		}
 	}
 
 	//cout << "total defenders: " << king_defenders << endl;
@@ -2432,25 +2438,32 @@ int Board::get_queen_safety(bool color) const {
 	SquareMap opponent_controls = color ? get_white_controls_map() : get_black_controls_map();
 
 	// Count the number of moves attacking the queen
+	// Instead of copying the full Board per move, patch _array in place
 	for (uint8_t m = 0; m < b._got_moves; m++) {
 		Move& move = b._moves[m];
 
-		// Play the move
-		Board b2(b);
-		b2.make_move(move);
+		// Determine the piece (with possible promotion)
+		const uint8_t saved_start = b._array[move.start_row][move.start_col];
+		uint8_t piece = saved_start;
+		if (move.is_promotion()) {
+			piece = promo_to_piece(move.get_promo_piece(), !color);
+		}
 
-		// Piece played
-		uint8_t piece = b2._array[move.end_row][move.end_col];
+		// Minimal _array patch for slider blocking
+		const uint8_t saved_end = b._array[move.end_row][move.end_col];
+		b._array[move.start_row][move.start_col] = none;
+		b._array[move.end_row][move.end_col] = piece;
 
 		// Look at the side's controls after the move
 		SquareMap controls;
 		add_piece_controls(&controls, move.end_row, move.end_col, piece);
 
-		//Map controls = color ? b2.get_black_controls_map() : b2.get_white_controls_map();
+		// Restore _array
+		b._array[move.start_row][move.start_col] = saved_start;
+		b._array[move.end_row][move.end_col] = saved_end;
 
 		// Check whether any queen is attacked
 		for (uint8_t q = 0; q < queens_count; q++) {
-			//if (controls._array[queens_pos[q].row][queens_pos[q].col] > (color == _player ? base_controls._array[queens_pos[q].row][queens_pos[q].col] : 0)) {
 			if (controls._array[queens_pos[q].row][queens_pos[q].col]) {
 				queens_attacks_value[q] += opponent_controls._array[move.end_row][move.end_col] ? unsafe_attack_values[(piece - 1) % 6] : tempo_values[(piece - 1) % 6];
 			}

@@ -34,11 +34,11 @@ void Board::game_advancement() {
 	static constexpr int values[6] = { 0, adv_pawn, adv_knight, adv_bishop, adv_rook, adv_queen };
 
 	// Pieces
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			const uint8_t piece = _array[row][col];
-			piece && (p += values[piece % 6]);
-		}
+	uint64_t occ = _occupancies[2];
+	while (occ) {
+		const int sq = pop_lsb(occ);
+		const uint8_t piece = _array[sq >> 3][sq & 7];
+		piece && (p += values[piece % 6]);
 	}
 
 	// Roques
@@ -54,18 +54,17 @@ int Board::count_material(const Evaluator* eval, float closed_factor) const
 {
 	int material_count = 0;
 
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			if (const uint8_t piece = _array[row][col]) {
-				const int piece_number = (piece - 1) % 6;
-				const int piece_begin_value = (1.0f - closed_factor) * eval->_pieces_value_begin_open[piece_number] + closed_factor * eval->_pieces_value_begin_closed[piece_number];
-				const int piece_end_value = (1.0f - closed_factor) * eval->_pieces_value_end_open[piece_number] + closed_factor * eval->_pieces_value_end_closed[piece_number];
+	uint64_t occ = _occupancies[2];
+	while (occ) {
+		const int sq = pop_lsb(occ);
+		const uint8_t piece = _array[sq >> 3][sq & 7];
+		const int piece_number = (piece - 1) % 6;
+		const int piece_begin_value = (1.0f - closed_factor) * eval->_pieces_value_begin_open[piece_number] + closed_factor * eval->_pieces_value_begin_closed[piece_number];
+		const int piece_end_value = (1.0f - closed_factor) * eval->_pieces_value_end_open[piece_number] + closed_factor * eval->_pieces_value_end_closed[piece_number];
 
-				const int value = static_cast<int>(static_cast<float>(piece_begin_value) * (1.0f - _adv) + static_cast<float>(piece_end_value) * _adv);
+		const int value = static_cast<int>(static_cast<float>(piece_begin_value) * (1.0f - _adv) + static_cast<float>(piece_end_value) * _adv);
 
-				material_count += (piece < 7) ? value : -value;
-			}
-		}
+		material_count += (piece < 7) ? value : -value;
 	}
 
 	return material_count;
@@ -79,23 +78,22 @@ int Board::count_bishop_pairs() const
 	uint8_t w_bishop_light = 0; uint8_t w_bishop_dark = 0;
 	uint8_t b_bishop_light = 0; uint8_t b_bishop_dark = 0;
 
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			const uint8_t p = _array[row][col];
-			const bool is_light = (row + col) % 2 == 0;
-			if (p == w_bishop) {
-				if (is_light)
-					w_bishop_light++;
-				else
-					w_bishop_dark++;
-			}
-			else if (p == b_bishop) {
-				if (is_light)
-					b_bishop_light++;
-				else
-					b_bishop_dark++;
-			}
-		}
+	// Iterate only bishops using bitboards
+	uint64_t wb = _bitboards[w_bishop];
+	while (wb) {
+		const int sq = pop_lsb(wb);
+		if ((sq >> 3) + (sq & 7) & 1)
+			w_bishop_dark++;
+		else
+			w_bishop_light++;
+	}
+	uint64_t bb = _bitboards[b_bishop];
+	while (bb) {
+		const int sq = pop_lsb(bb);
+		if ((sq >> 3) + (sq & 7) & 1)
+			b_bishop_dark++;
+		else
+			b_bishop_light++;
 	}
 
 	//cout << "w_bishop_light: " << (int)w_bishop_light << " w_bishop_dark: " << (int)w_bishop_dark << endl;
@@ -112,12 +110,11 @@ int Board::count_doubled_pieces(const Evaluator* eval) const
 	// Piece counters by type
 	uint8_t piece_counts[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-	for (uint8_t col = 0; col < 8; col++) {
-		for (uint8_t row = 0; row < 8; row++) {
-			if (const uint8_t piece = _array[row][col]) {
-				piece_counts[piece - 1]++;
-			}
-		}
+	uint64_t occ = _occupancies[2];
+	while (occ) {
+		const int sq = pop_lsb(occ);
+		const uint8_t piece = _array[sq >> 3][sq & 7];
+		piece_counts[piece - 1]++;
 	}
 
 	for (uint8_t i = 0; i < 12; i++) {
@@ -136,12 +133,14 @@ int Board::pieces_positioning(const Evaluator* eval) const
 {
 	int pos = 0;
 
-	for (uint8_t i = 0; i < 8; i++) {
-		for (uint8_t j = 0; j < 8; j++) {
-			if (const uint8_t piece = _array[i][j]) {
-				const int value = static_cast<int>(static_cast<float>(eval->_pieces_pos_begin[(piece - 1) % 6][(piece < 7) ? 7 - i : i][j]) * (1.0f - _adv) + static_cast<float>(eval->_pieces_pos_end[(piece - 1) % 6][(piece < 7) ? 7 - i : i][j]) * _adv);
-				pos += (piece < 7) ? value : -value;
-			}
+	uint64_t occ = _occupancies[2];
+	while (occ) {
+		const int sq = pop_lsb(occ);
+		const uint8_t i = sq >> 3;
+		const uint8_t j = sq & 7;
+		if (const uint8_t piece = _array[i][j]) {
+			const int value = static_cast<int>(static_cast<float>(eval->_pieces_pos_begin[(piece - 1) % 6][(piece < 7) ? 7 - i : i][j]) * (1.0f - _adv) + static_cast<float>(eval->_pieces_pos_end[(piece - 1) % 6][(piece < 7) ? 7 - i : i][j]) * _adv);
+			pos += (piece < 7) ? value : -value;
 		}
 	}
 
@@ -687,18 +686,19 @@ int Board::material_difference() const
 	int w_material[6] = { 0, 0, 0, 0, 0, 0 };
 	int b_material[6] = { 0, 0, 0, 0, 0, 0 };
 
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			const uint8_t p = _array[row][col];
-			if (p > 0) {
-				if (p < 6)
-					w_material[p]++;
-				else
-					b_material[p % 6]++;
-			}
+	// Initialize mat for empty squares
+	mat += main_GUI._piece_GUI_values[0] * 64;
 
-			mat += main_GUI._piece_GUI_values[p % 6] * (1 - (p / 6) * 2);
-		}
+	uint64_t occ = _occupancies[2];
+	while (occ) {
+		const int sq = pop_lsb(occ);
+		const uint8_t p = _array[sq >> 3][sq & 7];
+		if (p < 6)
+			w_material[p]++;
+		else
+			b_material[p % 6]++;
+
+		mat += main_GUI._piece_GUI_values[p % 6] * (1 - (p / 6) * 2) - main_GUI._piece_GUI_values[0];
 	}
 
 	for (uint8_t i = 0; i < 6; i++) {

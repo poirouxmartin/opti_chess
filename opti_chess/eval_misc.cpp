@@ -73,20 +73,18 @@ float Board::get_attacks_and_defenses() const
 
 	// TODO: replace the ifs with &&
 
-	for (int row = 0; row < 8; row++) {
-		for (int col = 0; col < 8; col++) {
+	uint64_t occ = _occupancies[2];
+	while (occ) {
+		const int sq = pop_lsb(occ);
+		const int row = sq >> 3;
+		const int col = sq & 7;
 
-			// Piece on the square
-			uint8_t p = _array[row][col];
+		// Piece on the square
+		const uint8_t p = _array[row][col];
 
-			// Skip an empty square
-			if (p == none)
-				continue;
-
-			switch (p) {
-
-				// White pawn
-				case w_pawn:
+		switch (p) {
+			// White pawn
+			case w_pawn:
 					if (col > 0) {
 						// Up-left square of the white pawn
 						uint8_t new_row = row + 1;
@@ -371,7 +369,6 @@ float Board::get_attacks_and_defenses() const
 					}
 
 					break;
-			}
 		}
 	}
 
@@ -391,39 +388,32 @@ float Board::get_attacks_and_defenses() const
 	//rnbqkbnr/ppp2ppp/4p3/3p4/3P4/2N5/PPP1PPPP/R1BQKBNR w KQkq - 0 3
 	//4r2k/2q3bp/R4pp1/1R3p2/3P4/1PP2N1n/1P1Q1P1P/7K w - - 1 30
 
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			uint8_t p = _array[row][col];
+	uint64_t occ2 = _occupancies[2];
+	while (occ2) {
+		const int sq = pop_lsb(occ2);
+		const uint8_t row = sq >> 3;
+		const uint8_t col = sq & 7;
+		const uint8_t p = _array[row][col];
 
-			if (p == none) {
-				continue;
+		if (is_white(p)) {
+			int black_attack = attacks_black[row][col] - defenses_white[row][col] + (defenses_white[row][col] == 0 ? undefended_malus[p - 1] : 0);
+
+			if (black_attack < 0) {
+				float division_factor = 1.0f - static_cast<float>(black_attack) / max_defense;
+				black_attack = static_cast<int>(black_attack / division_factor);
 			}
 
+			black_attacks_eval += black_attack;
+		}
+		else {
+			int white_attack = attacks_white[row][col] - defenses_black[row][col] + (defenses_black[row][col] == 0 ? undefended_malus[p - 7] : 0);
 
-			if (is_white(p)) {
-				int black_attack = attacks_black[row][col] - defenses_white[row][col] + (defenses_white[row][col] == 0 ? undefended_malus[p - 1] : 0);
-
-				if (black_attack < 0) {
-					float division_factor = 1.0f - static_cast<float>(black_attack) / max_defense;
-					black_attack = static_cast<int>(black_attack / division_factor);
-				}
-
-				black_attacks_eval += black_attack;
-
-				//cout << "W: " << square_name(row, col) << " (" << piece_name(p) << ") : " << attacks_black[row][col] << "/" << defenses_white[row][col] << " - undefended: " << (defenses_white[row][col] == 0 ? undefended_malus[p - 1] : 0) << " - Value: " << black_attack << " | B TOTAL: " << black_attacks_eval << endl;
+			if (white_attack < 0) {
+				float division_factor = 1.0f - static_cast<float>(white_attack) / max_defense;
+				white_attack = static_cast<int>(white_attack / division_factor);
 			}
-			else {
-				int white_attack = attacks_white[row][col] - defenses_black[row][col] + (defenses_black[row][col] == 0 ? undefended_malus[p - 7] : 0);
 
-				if (white_attack < 0) {
-					float division_factor = 1.0f - static_cast<float>(white_attack) / max_defense;
-					white_attack = static_cast<int>(white_attack / division_factor);
-				}
-
-				white_attacks_eval += white_attack;
-
-				//cout << "B: " << square_name(row, col) << " (" << piece_name(p) << ") : " << attacks_white[row][col] << "/" << defenses_black[row][col] << " - undefended: " << (defenses_black[row][col] == 0 ? undefended_malus[p - 7] : 0) << " - Value: " << white_attack << " | W TOTAL: " << white_attacks_eval << endl;
-			}
+			white_attacks_eval += white_attack;
 		}
 	}
 
@@ -1552,15 +1542,15 @@ int Board::get_trapped_pieces() const {
 	float b_total_weight = 0.0f;
 
 	// For each piece
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			uint8_t p = _array[row][col];
+	uint64_t occ = _occupancies[2];
+	while (occ) {
+		const int sq = pop_lsb(occ);
+		const uint8_t row = sq >> 3;
+		const uint8_t col = sq & 7;
+		const uint8_t p = _array[row][col];
 
-			if (p == none)
-				continue;
-
-			// If this is a white piece
-			if (p <= w_king) {
+		// If this is a white piece
+		if (p <= w_king) {
 				// Piece weight
 				float weight = p == w_pawn ? pawn_weight : (p == w_knight ? knight_weight : (p == w_bishop ? bishop_weight : (p == w_rook ? rook_weight : (p == w_queen ? queen_weight : king_weight))));
 
@@ -1584,7 +1574,6 @@ int Board::get_trapped_pieces() const {
 				b_center_of_mass_j += col * weight;
 				b_total_weight += weight;
 			}
-		}
 	}
 
 	// Computation of the centre of mass
@@ -1637,15 +1626,15 @@ int Board::get_trapped_pieces() const {
 	//rn2kbnr/pp3ppp/4p3/2ppP3/2PP4/1Q2BN2/P3BPPP/qR4K1 b kq - 0 10
 
 	// For each piece
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			uint8_t p = _array[row][col];
+	uint64_t occ2 = _occupancies[2];
+	while (occ2) {
+		const int sq = pop_lsb(occ2);
+		const uint8_t row = sq >> 3;
+		const uint8_t col = sq & 7;
+		const uint8_t p = _array[row][col];
 
-			if (p == none)
-				continue;
-
-			// If this is a white piece
-			if (is_white(p)) {
+		// If this is a white piece
+		if (is_white(p)) {
 
 				// Distance to the centre of mass
 				const float di = row - w_center_of_mass_i;
@@ -1882,7 +1871,6 @@ int Board::get_trapped_pieces() const {
 
 				//2kr1b2/pp2pp2/8/8/3p4/3P2B1/PPP1KPr1/R6R b - - 1 21
 			}
-		}
 	}
 
 	//cout << "w_trapped_pieces: " << w_trapped_pieces << endl;
@@ -1938,20 +1926,26 @@ float Board::get_position_nature() const {
 	// Number of blocked pawns
 	int blocked_pawns = 0;
 
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			uint8_t p = _array[row][col];
-
-			if (p == w_pawn || p == b_pawn) {
-				pawns++;
-
-				// If the pawn is blocked by another pawn
-				if (p == w_pawn && (_array[row + 1][col] == w_pawn || _array[row + 1][col] == b_pawn))
-					blocked_pawns++;
-				else if (p == b_pawn && (_array[row - 1][col] == w_pawn || _array[row - 1][col] == b_pawn))
-					blocked_pawns++;
-			}
-		}
+	// Iterate only pawns using bitboards
+	uint64_t wp = _bitboards[w_pawn];
+	while (wp) {
+		const int sq = pop_lsb(wp);
+		const uint8_t row = sq >> 3;
+		const uint8_t col = sq & 7;
+		pawns++;
+		// If the pawn is blocked by another pawn
+		if (row < 7 && (_array[row + 1][col] == w_pawn || _array[row + 1][col] == b_pawn))
+			blocked_pawns++;
+	}
+	uint64_t bp = _bitboards[b_pawn];
+	while (bp) {
+		const int sq = pop_lsb(bp);
+		const uint8_t row = sq >> 3;
+		const uint8_t col = sq & 7;
+		pawns++;
+		// If the pawn is blocked by another pawn
+		if (row > 0 && (_array[row - 1][col] == w_pawn || _array[row - 1][col] == b_pawn))
+			blocked_pawns++;
 	}
 
 	int range = (completely_closed - completely_open);

@@ -5,6 +5,8 @@
 #include "buffer.h"
 #include "zobrist.h"
 #include "useful_functions.h"
+#include <chrono>
+#include <cmath>
 
 // ============================================================================
 // Board: default construction
@@ -1120,4 +1122,402 @@ TEST(EvalSign, EqualEndgameRookVsRook) {
     int v = eval_position("4k3/8/8/8/8/8/4R3/4K3 w - - 0 1");
     EXPECT_GT(v, 200) << "KR vs K should be winning for white";
     EXPECT_LT(v, 1500) << "KR vs K should not be assessed as forced mate";
+}
+
+// ============================================================================
+// Performance: detailed breakdown of search components
+// ============================================================================
+
+TEST(Perf, SearchBreakdown) {
+    using namespace std::chrono;
+    Evaluator evaluator;
+    Board b;
+    // Kiwipete: complex middlegame with ~40 moves
+    b.from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
+    Board original(b);
+
+    Evaluation eval;
+    SquareMap wm, bm;
+
+    // Lambda to time a loop with auto-scaling iteration count
+    auto bench = [&](const char* label, auto fn, int base_N) -> void {
+        // Warmup
+        for (int i = 0; i < 100; i++) fn();
+        // Scale up for fast operations so they take at least 100ms
+        int N = base_N;
+        auto t0 = high_resolution_clock::now();
+        fn(); // measure one to estimate
+        auto t1 = high_resolution_clock::now();
+        double one_us = duration_cast<microseconds>(t1 - t0).count();
+        if (one_us < 1.0) N = 500000;
+        else if (one_us < 10.0) N = 100000;
+        else if (one_us < 100.0) N = 50000;
+        t0 = high_resolution_clock::now();
+        for (int i = 0; i < N; i++) fn();
+        t1 = high_resolution_clock::now();
+        double elapsed_us = duration_cast<microseconds>(t1 - t0).count();
+        double ops_sec = N / (elapsed_us / 1e6);
+        cout << "  " << label;
+        // Right-align the number
+        int digits = (int)log10(ops_sec) + 1;
+        for (int d = digits; d < 10; d++) cout << " ";
+        cout << (int)ops_sec << " NPS  (" << (elapsed_us / 1000.0) << " ms, " << N << " iters)" << endl;
+    };
+
+    Board target;
+
+    bench("get_moves()", [&]() {
+        b = original;
+        b.get_moves();
+    }, 5000);
+
+    bench("evaluate()", [&]() {
+        b = original;
+        b._controls_map_valid = false;
+        b._advancement = false;
+        b.evaluate(&eval, &evaluator, false, nullptr, false);
+    }, 5000);
+
+    bench("assign_all_flags()", [&]() {
+        b = original;
+        b.get_moves();
+        b.assign_all_move_flags();
+    }, 5000);
+
+    bench("assign+sort()", [&]() {
+        b = original;
+        b.get_moves();
+        b.assign_all_move_flags();
+        b.sort_moves();
+    }, 5000);
+
+    bench("get_checks_value()", [&]() {
+        b = original;
+        b._controls_map_valid = false;
+        b._advancement = false;
+        b.get_checks_value(&wm, &bm, true);
+    }, 5000);
+
+    bench("get_king_safety()", [&]() {
+        b = original;
+        b._controls_map_valid = false;
+        b._advancement = false;
+        b.get_king_safety(0);
+    }, 5000);
+
+    bench("Board copy ctor", [&]() {
+        Board copy(original);
+    }, 5000);
+
+    bench("copy_data(false)", [&]() {
+        target.copy_data(original, false, false);
+    }, 5000);
+
+    bench("get_zobrist_key()", [&]() {
+        b = original;
+        b.get_zobrist_key();
+    }, 5000);
+
+    bench("in_check()", [&]() {
+        b.in_check();
+    }, 5000);
+
+    bench("controls_map()", [&]() {
+        b._controls_map_valid = false;
+        b.get_white_controls_map();
+    }, 5000);
+
+    bench("init_node()", [&]() {
+        b = original;
+        b._got_moves = -1;
+        b._game_over_checked = false;
+        b.get_moves();
+        b.is_game_over();
+        b.assign_all_move_flags();
+        b.sort_moves();
+    }, 5000);
+
+    bench("game_advancement()", [&]() {
+        b._advancement = false;
+        b.game_advancement();
+    }, 5000);
+
+    bench("get_pawn_structure()", [&]() {
+        b._advancement = false;
+        b._controls_map_valid = false;
+        b.get_pawn_structure();
+    }, 5000);
+
+    bench("count_material()", [&]() {
+        b.count_material(&evaluator);
+    }, 5000);
+
+    bench("pieces_positioning()", [&]() {
+        b.pieces_positioning(&evaluator);
+    }, 5000);
+
+    bench("get_position_nature()", [&]() {
+        b.get_position_nature();
+    }, 5000);
+
+    bench("make_move(add_hist)", [&]() {
+        b = original;
+        b.get_moves();
+        if (b._got_moves > 0)
+            b.make_move(b._moves[0], false, true);
+    }, 5000);
+
+    bench("get_WDL()", [&]() {
+        Evaluation e;
+        e._value = 100;
+        e._uncertainty = 0.5f;
+        e._winnable_white = 1.0f;
+        e._winnable_black = 1.0f;
+        e.get_WDL();
+    }, 5000);
+
+    cout << endl;
+    SUCCEED();
+}
+
+TEST(Perf, EvalProfile) {
+    using namespace std::chrono;
+    Board b;
+    b.from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
+    Board original(b);
+    Evaluator evaluator;
+    constexpr int N = 5000;
+
+    auto bench = [&](const char* label, auto fn) -> void {
+        for (int i = 0; i < 100; i++) fn();
+        auto t0 = high_resolution_clock::now();
+        for (int i = 0; i < N; i++) fn();
+        auto t1 = high_resolution_clock::now();
+        double us = duration_cast<microseconds>(t1 - t0).count();
+        double per_call = us / N;
+        cout << "  " << label;
+        int digits = (int)log10(per_call) + 1;
+        for (int d = digits; d < 8; d++) cout << " ";
+        cout << per_call << " us/call" << endl;
+    };
+
+    Evaluation eval;
+    SquareMap wm, bm;
+
+    bench("game_advancement", [&]() {
+        b = original;
+        b._advancement = false;
+        b.game_advancement();
+    });
+
+    bench("get_position_nature", [&]() {
+        b = original;
+        b._advancement = false;
+        b._controls_map_valid = false;
+        b.get_position_nature();
+    });
+
+    bench("count_material", [&]() {
+        b = original;
+        b._advancement = false;
+        b.count_material(&evaluator);
+    });
+
+    bench("count_bishop_pairs", [&]() {
+        b = original;
+        b.count_bishop_pairs();
+    });
+
+    bench("count_doubled_pieces", [&]() {
+        b = original;
+        b.count_doubled_pieces(&evaluator);
+    });
+
+    bench("pieces_positioning", [&]() {
+        b = original;
+        b._advancement = false;
+        b.pieces_positioning(&evaluator);
+    });
+
+    bench("get_sliders_on_open_file", [&]() {
+        b = original;
+        b.get_sliders_on_open_file();
+    });
+
+    bench("get_fianchetto_value", [&]() {
+        b = original;
+        b.get_fianchetto_value();
+    });
+
+    bench("get_alignments", [&]() {
+        b = original;
+        b.get_alignments();
+    });
+
+    bench("get_trapped_pieces", [&]() {
+        b = original;
+        b._controls_map_valid = false;
+        b._advancement = false;
+        b.get_trapped_pieces();
+    });
+
+    bench("get_pawn_push_threats", [&]() {
+        b = original;
+        b._controls_map_valid = false;
+        b._advancement = false;
+        b.get_pawn_push_threats();
+    });
+
+    bench("get_queen_safety(x2)", [&]() {
+        b = original;
+        b._controls_map_valid = false;
+        b._advancement = false;
+        b.get_queen_safety(true);
+        b.get_queen_safety(false);
+    });
+
+    bench("get_long_term_piece_mobility", [&]() {
+        b = original;
+        b._advancement = false;
+        b._controls_map_valid = false;
+        b.get_long_term_piece_mobility();
+    });
+
+    bench("get_short_term_piece_mobility", [&]() {
+        b = original;
+        b._advancement = false;
+        b._controls_map_valid = false;
+        b.get_short_term_piece_mobility();
+    });
+
+    bench("get_piece_activity", [&]() {
+        b = original;
+        b._advancement = false;
+        b._controls_map_valid = false;
+        b.get_piece_activity();
+    });
+
+    bench("get_knight_activity", [&]() {
+        b = original;
+        b._controls_map_valid = false;
+        b._advancement = false;
+        b.get_knight_activity();
+    });
+
+    bench("get_bishop_activity", [&]() {
+        b = original;
+        b._controls_map_valid = false;
+        b._advancement = false;
+        b.get_bishop_activity();
+    });
+
+    bench("get_rook_activity", [&]() {
+        b = original;
+        b._controls_map_valid = false;
+        b._advancement = false;
+        b.get_rook_activity();
+    });
+
+    bench("get_attacks_and_defenses", [&]() {
+        b = original;
+        b._controls_map_valid = false;
+        b._advancement = false;
+        b.get_attacks_and_defenses();
+    });
+
+    bench("get_square_controls", [&]() {
+        b = original;
+        b.get_square_controls();
+    });
+
+    bench("get_space", [&]() {
+        b = original;
+        b._advancement = false;
+        b.get_space();
+    });
+
+    bench("get_pawn_structure", [&]() {
+        b = original;
+        b._advancement = false;
+        b._controls_map_valid = false;
+        b.get_pawn_structure();
+    });
+
+    bench("get_bishop_pawns", [&]() {
+        b = original;
+        b._advancement = false;
+        b._controls_map_valid = false;
+        b.get_bishop_pawns();
+    });
+
+    bench("get_weak_squares(x2)", [&]() {
+        b = original;
+        b._controls_map_valid = false;
+        b._advancement = false;
+        b.get_weak_squares(true);
+        b.get_weak_squares(false);
+    });
+
+    bench("get_king_safety", [&]() {
+        b = original;
+        b._controls_map_valid = false;
+        b._advancement = false;
+        b.get_king_safety(0);
+    });
+
+    bench("get_kings_opposition", [&]() {
+        b = original;
+        b._advancement = false;
+        b.get_kings_opposition();
+    });
+
+    bench("get_king_proximity", [&]() {
+        b = original;
+        b._advancement = false;
+        b.get_king_proximity();
+    });
+
+    bench("get_king_centralization(x2)", [&]() {
+        b = original;
+        b._advancement = false;
+        b.get_king_centralization(true);
+        b.get_king_centralization(false);
+    });
+
+    bench("get_uncertainty", [&]() {
+        Evaluation e;
+        e._value = 100;
+        e._uncertainty = 0.5f;
+        e._winnable_white = 1.0f;
+        e._winnable_black = 1.0f;
+        b.get_uncertainty(&e, 100);
+    });
+
+    bench("get_winnable_values", [&]() {
+        Evaluation e;
+        e._value = 100;
+        e._uncertainty = 0.5f;
+        e._winnable_white = 1.0f;
+        e._winnable_black = 1.0f;
+        b._advancement = false;
+        b.get_winnable_values(&e, 0.5f);
+    });
+
+    bench("get_controls_map (cached)", [&]() {
+        b = original;
+        b._controls_map_valid = false;
+        b._advancement = false;
+        b.get_white_controls_map();
+    });
+
+    bench("FULL evaluate()", [&]() {
+        b = original;
+        b._controls_map_valid = false;
+        b._advancement = false;
+        b.reset_eval();
+        b.evaluate(&eval, &evaluator, false, nullptr, false);
+    });
+
+    cout << endl;
+    SUCCEED();
 }
