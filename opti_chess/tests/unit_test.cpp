@@ -698,3 +698,353 @@ TEST(Board, CountMaterialStartingPosition) {
     // Starting position should have symmetric material (material difference = 0)
     EXPECT_EQ(material, 0);
 }
+
+// ============================================================================
+// Board: sizeof diagnostics
+// ============================================================================
+
+TEST(Board, SizeOf) {
+    cout << "sizeof(Board) = " << sizeof(Board) << endl;
+    cout << "sizeof(Move) = " << sizeof(Move) << endl;
+    cout << "sizeof(SquareMap) = " << sizeof(SquareMap) << endl;
+}
+
+// ============================================================================
+// Performance: evaluate() NPS on multiple positions
+// ============================================================================
+
+// Positions covering opening, middlegame, endgame, and complex tactical
+static const char* perf_positions[] = {
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",       // Starting position
+    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", // Kiwipete
+    "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",                        // Endgame
+    "rnbq1knr/pppp1ppp/8/4p3/1b2P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3", // Scandy
+    "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", // Complex
+    "2r3k1/1q2bp1p/p2p1n2/r1p1N3/4P1b1/1NP4P/1PP2QP1/3R2K1 w - - 0 24", // Tactical middlegame
+    "4k3/8/8/8/8/8/4R3/4K3 w - - 0 1",                                   // Simple endgame KR vs K
+    "r1bqkb1r/pppppppp/2n2n2/8/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 2 3",   // King's pawn
+};
+
+TEST(Perf, EvalNPS) {
+    Evaluator evaluator;
+    Board b;
+    Evaluation eval;
+
+    // Warmup
+    for (const char* fen : perf_positions) {
+        b.from_fen(fen);
+        b.evaluate(&eval, &evaluator, false, nullptr, true);
+    }
+
+    constexpr int evals_per_position = 10000;
+    int total_evals = 0;
+
+    for (const char* fen : perf_positions) {
+        b.from_fen(fen);
+        eval._evaluated = false;
+
+        clock_t start = clock();
+        for (int i = 0; i < evals_per_position; i++) {
+            b._controls_map_valid = false;
+            b._advancement = false;
+            b.evaluate(&eval, &evaluator, false, nullptr, true);
+        }
+        clock_t end = clock();
+        double elapsed_sec = (double)(end - start) / CLOCKS_PER_SEC;
+        int nps = (int)(evals_per_position / elapsed_sec);
+
+        cout << "  Eval NPS [" << fen << "]: " << nps << endl;
+        total_evals += evals_per_position;
+    }
+
+    // This test does not assert a specific NPS, it only measures.
+    // The value should be checked manually and added as a regression baseline.
+    cout << "  Total evals: " << total_evals << endl;
+    SUCCEED();
+}
+
+// ============================================================================
+// Performance: eval sub-component NPS
+// ============================================================================
+
+TEST(Perf, KingSafetyNPS) {
+    Evaluator evaluator;
+    Board b;
+
+    // Use a position with active king safety
+    b.from_fen("r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4");
+    b._controls_map_valid = false;
+    b._advancement = false;
+    int ks = b.get_king_safety(0);
+    // Use a middlegame position where king safety is nonzero; skip if zero
+    if (ks == 0) {
+        // Kiwipete: more active position
+        b.from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
+    }
+
+    constexpr int iterations = 10000;
+
+    clock_t start = clock();
+    int result = 0;
+    for (int i = 0; i < iterations; i++) {
+        b._controls_map_valid = false;
+        b._advancement = false;
+        result += b.get_king_safety(0);
+    }
+    clock_t end = clock();
+    double elapsed_sec = (double)(end - start) / CLOCKS_PER_SEC;
+
+    cout << "  King safety NPS: " << (int)(iterations / elapsed_sec) << " (result=" << result << ")" << endl;
+    SUCCEED();
+}
+
+TEST(Perf, PawnStructureNPS) {
+    Board b;
+    // Use a position with pawn structure
+    b.from_fen("r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4");
+
+    constexpr int iterations = 10000;
+
+    clock_t start = clock();
+    int result = 0;
+    for (int i = 0; i < iterations; i++) {
+        b._controls_map_valid = false;
+        b._advancement = false;
+        result += b.get_pawn_structure();
+    }
+    clock_t end = clock();
+    double elapsed_sec = (double)(end - start) / CLOCKS_PER_SEC;
+
+    cout << "  Pawn structure NPS: " << (int)(iterations / elapsed_sec) << " (result=" << result << ")" << endl;
+    SUCCEED();
+}
+
+TEST(Perf, PieceActivityNPS) {
+    Board b;
+    b.from_fen("r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4");
+
+    constexpr int iterations = 10000;
+
+    clock_t start = clock();
+    int result = 0;
+    for (int i = 0; i < iterations; i++) {
+        b._controls_map_valid = false;
+        b._advancement = false;
+        result += b.get_piece_activity();
+    }
+    clock_t end = clock();
+    double elapsed_sec = (double)(end - start) / CLOCKS_PER_SEC;
+
+    cout << "  Piece activity NPS: " << (int)(iterations / elapsed_sec) << endl;
+    EXPECT_NE(result, 0);
+}
+
+// ============================================================================
+// Performance: get_checks_value NPS
+// ============================================================================
+
+TEST(Perf, ChecksValueNPS) {
+    Board b;
+    b.from_fen("r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4");
+
+    constexpr int iterations = 1000;
+    SquareMap wm, bm;
+
+    clock_t start = clock();
+    int result = 0;
+    for (int i = 0; i < iterations; i++) {
+        b._controls_map_valid = false;
+        b._advancement = false;
+        result += b.get_checks_value(&wm, &bm, true);
+        b._controls_map_valid = false;
+        result += b.get_checks_value(&wm, &bm, false);
+    }
+    clock_t end = clock();
+    double elapsed_sec = (double)(end - start) / CLOCKS_PER_SEC;
+
+    cout << "  Checks value NPS: " << (int)(iterations / elapsed_sec) << endl;
+    EXPECT_NE(result, 0);
+}
+
+// ============================================================================
+// Performance: search NPS (grogros_zero)
+// ============================================================================
+
+TEST(Perf, SearchNPS) {
+    Evaluator evaluator;
+    Board b;
+    b.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+
+    // Init the global buffers (normally done by the GUI at startup)
+    BoardBuffer board_buf(500 * 1024 * 1024); // 500MB
+    board_buf.init(500000, false);
+    monte_node_buffer.init(500000, false);
+
+    // grogros_zero checks the global monte_board_buffer.is_full() for the expand/refine decision.
+    // We cannot easily replace that global, so set it up with a pointer alias trick: the
+    // global `monte_board_buffer` was default-constructed (init=false, _length=0) and is_full()
+    // returns true (_free_indices.empty()). We need it initialized.
+    monte_board_buffer.init(500000, false);
+
+    constexpr int search_nodes = 5000;
+    Node root(&b);
+    root.grogros_zero(&board_buf, &evaluator, 128, 0, 0, search_nodes, 2);
+
+    double elapsed_sec = (double)root._time_spent / CLOCKS_PER_SEC;
+    int nps = elapsed_sec > 0 ? (int)(root._nodes / elapsed_sec) : 0;
+
+    cout << "  Search NPS: " << nps << " (" << root._nodes << " nodes in " << elapsed_sec << "s)" << endl;
+    cout << "  Iterations: " << root._iterations << endl;
+
+    EXPECT_GT(root._nodes, 0);
+    EXPECT_GT(root._iterations, 0);
+    board_buf.remove();
+    monte_node_buffer.remove();
+    monte_board_buffer.remove();
+}
+
+// ============================================================================
+// Puzzle helper: runs grogros_zero headlessly and checks the best move
+// ============================================================================
+
+static void run_puzzle(const char* fen, const Move& expected_move, int iterations, const char* label) {
+    Evaluator evaluator;
+    Board b;
+    b.from_fen(fen);
+
+    BoardBuffer board_buf(500 * 1024 * 1024);
+    board_buf.init(500000, false);
+    monte_node_buffer.init(500000, false);
+    monte_board_buffer.init(500000, false);
+
+    Node root(&b);
+
+    // Use GUI-default search parameters (alpha, beta, gamma, quiescence_depth)
+    root.grogros_zero(&board_buf, &evaluator, 0.00001, 5.0, 1.10, iterations, 10);
+
+    Move best = root.get_most_explored_child_move();
+    double elapsed = (double)root._time_spent / CLOCKS_PER_SEC;
+
+    // Use a fresh board for labeling (grogros_zero corrupts the searched board)
+    Board label_b;
+    label_b.from_fen(fen);
+    string best_label = label_b.move_label(best);
+    Board label_b2;
+    label_b2.from_fen(fen);
+    string expected_label = label_b2.move_label(expected_move);
+
+    cout << "  Puzzle: " << label << endl;
+    cout << "    FEN: " << fen << endl;
+    cout << "    Best: " << best_label << "  Expected: " << expected_label << endl;
+    cout << "    Iterations: " << root._iterations << "  Nodes: " << root._nodes << "  Time: " << fixed << setprecision(2) << elapsed << "s" << endl;
+
+    EXPECT_EQ(best, expected_move) << "Puzzle failed: " << label << " (got " << best_label << ", expected " << expected_label << ")";
+
+    board_buf.remove();
+    monte_node_buffer.remove();
+    monte_board_buffer.remove();
+}
+
+// ============================================================================
+// Puzzle: Bg6+ starts a mating attack (mate in 3)
+// FEN: r1bqr2k/1pp2p1B/p3p2Q/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 3 26
+// Commentary: "Fg6+ #3"
+// ============================================================================
+
+TEST(Puzzle, BishopCheckMateIn3) {
+    run_puzzle("r1bqr2k/1pp2p1B/p3p2Q/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 3 26",
+               Move(6, 7, 5, 6), 20000,
+               "Bg6+ mate in 3");
+}
+
+// ============================================================================
+// Puzzle: Nf5xg7+ forks king and rook (mate in 3)
+// FEN: 3rk2r/2p2pp1/2P5/pp2bN1p/4B3/B4PP1/P6P/4RK2 w k - 0 22
+// Commentary: "Cxg7+ #3"
+// ============================================================================
+
+TEST(Puzzle, KnightForkMateIn3) {
+    run_puzzle("3rk2r/2p2pp1/2P5/pp2bN1p/4B3/B4PP1/P6P/4RK2 w k - 0 22",
+               Move(4, 5, 6, 6), 20000,
+               "Nxg7+ mate/fork in 3");
+}
+
+// ============================================================================
+// Puzzle: f5-f6! starts forced mate in 6
+// FEN: r4rk1/p1p1bp2/3p2pR/5PP1/5p2/P4P2/1PP3P1/2KR4 w - - 0 23
+// Commentary: "f6! #6"
+// ============================================================================
+
+TEST(Puzzle, PawnF6MateIn6) {
+    run_puzzle("r4rk1/p1p1bp2/3p2pR/5PP1/5p2/P4P2/1PP3P1/2KR4 w - - 0 23",
+               Move(4, 5, 5, 5), 30000,
+               "f6! mate in 6");
+}
+
+// ============================================================================
+// Eval sign tests: verify the engine gives the correct eval direction.
+// These are fast, reliable regression tests that catch eval regressions.
+// ============================================================================
+
+static int eval_position(const char* fen) {
+    Board b;
+    b.from_fen(fen);
+    Evaluator evaluator;
+    Evaluation evaluation;
+    b.evaluate(&evaluation, &evaluator, false, nullptr, true);
+    return evaluation._value;
+}
+
+TEST(EvalSign, WhiteClearlyWinning) {
+    int v = eval_position("r1b1kb1r/pppppppp/2n2n2/8/3Q4/8/PPPPPPPP/RNB1KBNR w KQkq - 0 1");
+    EXPECT_GT(v, 300) << "White should be clearly winning (extra queen)";
+}
+
+TEST(EvalSign, BlackClearlyWinning) {
+    int v = eval_position("rnb1kbnr/pppppppp/8/8/3q4/2N5/PPPPPPPP/R1B1KBNR w KQkq - 0 1");
+    EXPECT_LT(v, -300) << "Black should be clearly winning (extra queen)";
+}
+
+TEST(EvalSign, StartingPositionBalanced) {
+    int v = eval_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    EXPECT_GT(v, -50) << "Starting position should not be clearly losing for white";
+    EXPECT_LT(v, 100) << "Starting position should not be clearly winning for white";
+}
+
+TEST(EvalSign, WhiteExtraRook) {
+    int v = eval_position("rnbqkbnr/pppppppp/8/8/4R3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1");
+    EXPECT_GT(v, 300) << "White should be winning (up a rook)";
+}
+
+TEST(EvalSign, BlackExtraRook) {
+    int v = eval_position("rnbqkbnr/pppppppp/8/4r3/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    EXPECT_LT(v, -300) << "Black should be winning (extra rook)";
+}
+
+TEST(EvalSign, WhitePassedPawnOn7th) {
+    int v = eval_position("8/4P1k1/8/8/8/8/5K2/8 w - - 0 1");
+    EXPECT_GT(v, 100) << "White should be winning (pawn on 7th with king support)";
+}
+
+TEST(EvalSign, BlackCheckmate) {
+    Board b;
+    b.from_fen("r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1KBNR b KQkq - 0 4");
+    EXPECT_EQ(b.game_over(2), white_win) << "Black is checkmated (scholar's mate)";
+}
+
+TEST(EvalSign, ComplexMiddleGameBalanced) {
+    int v = eval_position("r2qrbk1/5ppp/pn3n2/4N3/1ppP1P2/4PQ2/PB2N1PP/2R2RK1 b - - 1 20");
+    EXPECT_GT(v, -300) << "Complex middlegame should not be clearly winning for black";
+    EXPECT_LT(v, 300) << "Complex middlegame should not be clearly winning for white";
+}
+
+TEST(EvalSign, TrappedBishopWhiteWinning) {
+    int v = eval_position("5rk1/r3npbp/2p2np1/2N1p3/2B1P1P1/1P2BP2/b1P4P/2KR2NR b - - 2 19");
+    EXPECT_GT(v, 200) << "White should be clearly winning (bishop trapped on a2)";
+}
+
+TEST(EvalSign, EqualEndgameRookVsRook) {
+    int v = eval_position("4k3/8/8/8/8/8/4R3/4K3 w - - 0 1");
+    EXPECT_GT(v, 200) << "KR vs K should be winning for white";
+    EXPECT_LT(v, 1500) << "KR vs K should not be assessed as forced mate";
+}
