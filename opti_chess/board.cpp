@@ -1435,13 +1435,7 @@ int Board::game_over(int max_repetitions) {
 	}
 
 	// Draw possibilities through insufficient material
-	// K vs K, K+B vs K, K+N vs K (and mirrored): the weaker side has
-	// no minor piece and the stronger side has at most one. Positions
-	// where both sides hold a minor piece (K+B vs K+N, K+B vs K+B, …)
-	// are NOT insufficient material — mate can be possible.
-	const int white_minor = count_w_knight + count_w_bishop;
-	const int black_minor = count_b_knight + count_b_bishop;
-	if ((white_minor == 0 && black_minor <= 1) || (black_minor == 0 && white_minor <= 1))
+	if (count_w_knight + count_w_bishop < 2 && count_b_knight + count_b_bishop < 2)
 		return draw;
 
 	// Two knights alone cannot force mate

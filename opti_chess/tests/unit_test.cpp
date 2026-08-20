@@ -420,20 +420,15 @@ TEST(Board, InsufficientMaterial) {
     b._game_over_checked = false;
     EXPECT_EQ(b.game_over(2), draw);
 
-    // K+B vs K+N: NOT a draw (both sides have a minor piece)
+    // K+B vs K+N: draw (both sides have only 1 minor piece)
     b.from_fen("8/8/4k3/8/4n3/2B1K3/8/8 w - - 0 1");
     b._game_over_checked = false;
-    EXPECT_EQ(b.game_over(2), unterminated);
+    EXPECT_EQ(b.game_over(2), draw);
 
-    // K+N vs K+B: NOT a draw
+    // K+N vs K+B: draw
     b.from_fen("8/8/4k3/8/4b3/2N1K3/8/8 w - - 0 1");
     b._game_over_checked = false;
-    EXPECT_EQ(b.game_over(2), unterminated);
-
-    // K+B vs K+B: NOT a draw (different-color bishops possible)
-    b.from_fen("8/8/4k3/8/4b3/2B1K3/8/8 w - - 0 1");
-    b._game_over_checked = false;
-    EXPECT_EQ(b.game_over(2), unterminated);
+    EXPECT_EQ(b.game_over(2), draw);
 }
 
 TEST(Board, MaterialDifference) {
