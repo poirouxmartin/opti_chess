@@ -49,7 +49,11 @@ add_executable(opti_chess
     board_fen.cpp
     buffer.cpp
     evaluation.cpp
-    evaluations.cpp
+    eval_core.cpp
+    eval_king.cpp
+    eval_pawn.cpp
+    eval_mobility.cpp
+    eval_misc.cpp
     exploration.cpp
     game_tree.cpp
     gui.cpp
@@ -133,7 +137,11 @@ set(ENGINE_SOURCES
     board_fen.cpp
     buffer.cpp
     evaluation.cpp
-    evaluations.cpp
+    eval_core.cpp
+    eval_king.cpp
+    eval_pawn.cpp
+    eval_mobility.cpp
+    eval_misc.cpp
     exploration.cpp
     game_tree.cpp
     gui.cpp

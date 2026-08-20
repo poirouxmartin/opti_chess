@@ -3061,3 +3061,28 @@ bool Board::is_irreversible_move(const Move& move) const noexcept {
 
 	return false;
 }
+
+bool Board::is_legal(Move move) {
+
+	// Fetch the moves when needed
+	if (_got_moves == -1)
+		get_moves();
+
+	// Find the index of the move
+	for (int i = 0; i < _got_moves; i++)
+		if (move == _moves[i])
+			return true;
+
+	return false;
+}
+
+void Board::reset_positions_history() {
+	_positions_history.clear();
+}
+
+int Board::repetition_count() {
+	get_zobrist_key();
+
+	const auto it = _positions_history.find(_zobrist_key);
+	return it == _positions_history.end() ? 1 : it->second;
+}
