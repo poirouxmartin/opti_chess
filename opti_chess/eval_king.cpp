@@ -204,8 +204,8 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 
 	// Non-linear function
 	constexpr double alpha = 2.0;
-	w_attacking_potential = pow(w_attacking_potential, alpha);
-	b_attacking_potential = pow(b_attacking_potential, alpha);
+	w_attacking_potential *= w_attacking_potential;
+	b_attacking_potential *= b_attacking_potential;
 
 	//cout << "w_attacking_potential: " << w_attacking_potential << endl;
 	//cout << "b_attacking_potential: " << b_attacking_potential << endl;
@@ -215,9 +215,9 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 
 	// 2k5/ppp3Bp/2p4r/8/b3Pp2/3B1Pn1/PP3KP1/RQ6 b - - 0 1
 
-	// Always add a minimum potential, so any weakening is accounted for
-	w_attacking_potential = max(w_attacking_potential, min_potential * pow((float)w_total_attack_potential / reference_attack_potential, 0.35f));
-	b_attacking_potential = max(b_attacking_potential, min_potential * pow((float)b_total_attack_potential / reference_attack_potential, 0.35f));
+	// Always add a minimum potential, so any weakening is accounted for (currently min_potential=0, so this is a no-op)
+	//w_attacking_potential = max(w_attacking_potential, min_potential * pow((float)w_total_attack_potential / reference_attack_potential, 0.35f));
+	//b_attacking_potential = max(b_attacking_potential, min_potential * pow((float)b_total_attack_potential / reference_attack_potential, 0.35f));
 
 
 	// Potentiel d'attaque
@@ -258,7 +258,7 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	constexpr float activity_attacking_factor = 1.0f;
 	constexpr float activity_protection_factor = 0.5f;
 
-	const int activity = activity_diff > 0 ? pow(activity_diff / 100.0, 0.5) * 100 : -pow(-activity_diff / 100.0, 0.5) * 100;
+	const int activity = activity_diff > 0 ? sqrt(activity_diff / 100.0) * 100 : -sqrt(-activity_diff / 100.0) * 100;
 
 	const int w_activity = activity > 0 ? activity * activity_protection_factor : activity * activity_attacking_factor;
 	const int b_activity = activity < 0 ? -activity * activity_protection_factor : -activity * activity_attacking_factor;
@@ -847,7 +847,10 @@ int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls
 	b._player = color;
 	b.get_moves();
 
-	for (uint8_t i = 0; i < b._got_moves; i++) {
+	// Save the move count before the loop (make_move sets _got_moves = -1)
+	const uint8_t num_moves = b._got_moves;
+
+	for (uint8_t i = 0; i < num_moves; i++) {
 		
 		// Move
 		const Move& move = b._moves[i];
@@ -864,15 +867,42 @@ int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls
 		// FIXME: pas ouf
 		//if (controls_enemy == 0 || (controls_enemy == 1 && controls_ally > 1 && abs(king_pos.i - i2) <= 1 && abs(king_pos.j - j2) <= 1)) {
 		if (true) {
-			// Play the move and see whether it gives check
-			Board b_check(b);
-			//cout << "color: " << color << ", move: " << b_check.move_label(move) << endl;
-			b_check.make_move(move);
+			// Save minimal state needed for in_check() test and loop continuation
+			uint8_t saved_array[8][8];
+			memcpy(saved_array, b._array, sizeof(saved_array));
+			const bool saved_player = b._player;
+			const Pos saved_wk = b._white_king_pos;
+			const Pos saved_bk = b._black_king_pos;
+			const CastlingRights saved_castling = b._castling_rights;
+			const int saved_ep = b._en_passant_col;
+			const int saved_half = b._half_moves_count;
+			const int saved_moves_count = b._moves_count;
+			uint64_t saved_bitboards[sizeof(b._bitboards) / sizeof(uint64_t)];
+			memcpy(saved_bitboards, b._bitboards, sizeof(saved_bitboards));
+			uint64_t saved_occupancies[sizeof(b._occupancies) / sizeof(uint64_t)];
+			memcpy(saved_occupancies, b._occupancies, sizeof(saved_occupancies));
 
+			// Play the move and see whether it gives check
+			b.make_move(move);
 
 			// TODO: replace with "does the move attack the king"?
-			if (b_check.in_check()) {
-				b_check.get_moves(); // FIMXE: BOF
+			if (b.in_check()) {
+				// Check path (rare): restore state, then use full copy for get_moves
+				memcpy(b._array, saved_array, sizeof(saved_array));
+				b._player = saved_player;
+				b._white_king_pos = saved_wk;
+				b._black_king_pos = saved_bk;
+				b._castling_rights = saved_castling;
+				b._en_passant_col = saved_ep;
+				b._half_moves_count = saved_half;
+				b._moves_count = saved_moves_count;
+				memcpy(b._bitboards, saved_bitboards, sizeof(saved_bitboards));
+				memcpy(b._occupancies, saved_occupancies, sizeof(saved_occupancies));
+				b._got_moves = num_moves;
+
+				Board b_check(b);
+				b_check.make_move(move);
+				b_check.get_moves();
 
 				// Number of escape squares for the king
 				int king_escapes = 0;
@@ -924,6 +954,19 @@ int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls
 				}
 
 			}
+
+			// Restore b for the next iteration
+			memcpy(b._array, saved_array, sizeof(saved_array));
+			b._player = saved_player;
+			b._white_king_pos = saved_wk;
+			b._black_king_pos = saved_bk;
+			b._castling_rights = saved_castling;
+			b._en_passant_col = saved_ep;
+			b._half_moves_count = saved_half;
+			b._moves_count = saved_moves_count;
+			memcpy(b._bitboards, saved_bitboards, sizeof(saved_bitboards));
+			memcpy(b._occupancies, saved_occupancies, sizeof(saved_occupancies));
+			b._got_moves = num_moves;
 		}
 	}
 
@@ -1004,7 +1047,9 @@ int Board::get_king_proximity()
 				}
 
 				// Pawn value (rises with advancement, when unprotected, and when passed)
-				float w_pawn_value = pow(row, 1.1) * self_pawn_multiplier;
+				// Precomputed: pow(i, 1.1) for i in [0..7]
+				static constexpr float row_pow_1_1[8] = { 0.0f, 1.0f, 2.14f, 3.35f, 4.59f, 5.87f, 7.17f, 8.48f };
+				float w_pawn_value = row_pow_1_1[row] * self_pawn_multiplier;
 				float b_pawn_value = 1;
 				//float b_pawn_value = sqrt(row);
 
@@ -1056,7 +1101,8 @@ int Board::get_king_proximity()
 
 				// Pawn value (rises with advancement, when unprotected, and when passed)
 				//float w_pawn_value = sqrt(7 - row);
-				float b_pawn_value = pow(7 - row, 1.1) * self_pawn_multiplier;
+				static constexpr float row_pow_1_1_r[8] = { 8.48f, 7.17f, 5.87f, 4.59f, 3.35f, 2.14f, 1.0f, 0.0f };
+				float b_pawn_value = row_pow_1_1_r[row] * self_pawn_multiplier;
 				float w_pawn_value = 1;
 
 				// Is the pawn unprotected by another pawn?
@@ -1087,7 +1133,7 @@ int Board::get_king_proximity()
 	black_king_distances.~SquareMap();
 
 	const int multiplier = 300;
-	const double average_proximity = n_pawns == 0 ? 0.0f : proximity / pow(n_pawns / 2.0, 0.75f);
+	const double average_proximity = n_pawns == 0 ? 0.0f : proximity / sqrt((n_pawns / 2.0) * sqrt(n_pawns / 2.0));
 	
 	return multiplier * average_proximity * (_adv - min_advancement) / (1.0f - min_advancement);
 }
@@ -1398,7 +1444,9 @@ int Board::get_king_attackers(bool color) {
 					//cout << "color: " << color << ", piece: " << piece_name(p) << "(" << square_name(row, col) << "), attacks : " << (int)attacks << ", value : " << attacking_value[attacks] << ", piece factor : " << piece_attack_factor[(p - 1) % 6] << ", total : " << attacking_value[attacks] * piece_attack_factor[(p - 1) % 6] << endl;
 				}
 				else if (semi_attacks > 0) {
-					king_attackers += semi_attack_value * piece_semi_attack_factor[(p - 1) % 6] * pow(semi_attacks, 0.3);
+					// Precomputed: pow(i, 0.3) for i in [0..8]
+					static constexpr float semi_pow_0_3[9] = { 0.0f, 1.0f, 1.23f, 1.39f, 1.52f, 1.62f, 1.71f, 1.79f, 1.87f };
+					king_attackers += semi_attack_value * piece_semi_attack_factor[(p - 1) % 6] * semi_pow_0_3[semi_attacks];
 					//cout << "color: " << color << ", piece: " << piece_name(p) << "(" << square_name(row, col) << "), semi-attacks : " << (int)semi_attacks << ", value : " << semi_attack_value * piece_semi_attack_factor[(p - 1) % 6] * pow(semi_attacks, 0.3) << endl;
 				}
 			}
@@ -1820,7 +1868,7 @@ void Evaluation::get_WDL(int winning_eval, float beta) {
 
 	const float base_win_chance_factor = is_eval_positive ? eval / white_winning_eval : eval / black_winning_eval;
 	//const float base_win_chance_factor = eval / winning_eval;
-	const float win_chance_factor = base_win_chance_factor > 1.0f ? pow(base_win_chance_factor, beta_up) : pow(base_win_chance_factor, beta_down);
+	const float win_chance_factor = base_win_chance_factor > 1.0f ? base_win_chance_factor * base_win_chance_factor * sqrt(base_win_chance_factor) : base_win_chance_factor * sqrt(base_win_chance_factor);
 	const float base_win_chance = 1.0f - 1.0f / (1.0f + win_chance_factor);
 
 	//const float base_win_chance = (eval / (eval + winning_eval));

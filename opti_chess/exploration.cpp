@@ -373,7 +373,6 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	PositionHistory local_path_history;
 	PositionHistory* base_path_history = path_history != nullptr ? path_history : &local_path_history;
 	ensure_position_in_history(*base_path_history, *_board);
-	_board->get_zobrist_key();
 
 	// INITIALISATION
 	if (!_initialized) {
@@ -491,7 +490,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		if (new_board == nullptr)
 			return;
 
-		new_board->copy_data(*_board, false, true);
+		new_board->copy_data(*_board, false, false);
 		new_board->_is_active = true;
 		new_board->make_move(move, false, true);
 
@@ -514,7 +513,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 
 		// Otherwise create a new node normally
 		else {
-			new_board->get_zobrist_key();
+			// zobrist key is already computed incrementally by make_move()
 
 			// #11 Plan B - link-on-create. If a position with the same Zobrist key is
 			// already a LIVE Node, link the edge to that shared Node instead of
@@ -1206,7 +1205,6 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 	// Node initialisation
 	init_node();
-	_board->get_zobrist_key();
 
 	// #7 / B-1 — null-safe path history (appel manuel quiescence via main_gui.h) :
 	// a local history owned for the WHOLE duration of the call. It must be declared
@@ -1303,7 +1301,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	if (depth <= -4) {
 		transposition_table.store(_board->_zobrist_key, tt_normalize_mate(stand_pat, _board->_moves_count), depth, TT_STANDPAT); // #4 static lower bound; #3 canonised mate
 		_time_spent += clock() - begin_monte_time;
-		cout << "emergency cutoff: " << _board->to_fen() << ", in_check: " << in_check << endl;
+		//cout << "emergency cutoff: " << _board->to_fen() << ", in_check: " << in_check << endl;
 		return stand_pat;
 	}
 
@@ -1315,9 +1313,11 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	}
 
 	// Margin depending on the opponent threat, judged from the quiescence value on the opponent's turn
-	if (evaluate_threats && !in_check) {
+	if (evaluate_threats && !in_check && depth >= 2) {
 		// Run a short quiescence to evaluate the threat
-		int new_stand_pat = -evaluate_quiescence_threat(eval, 2, search_alpha, search_beta, -INT32_MAX, INT32_MAX, network); // REVIEW: should this search deeper?
+		// Disabled for performance: this spawns a full secondary quiescence search with Board copies per capture
+		//int new_stand_pat = -evaluate_quiescence_threat(eval, 2, search_alpha, search_beta, -INT32_MAX, INT32_MAX, network); // REVIEW: should this search deeper?
+		int new_stand_pat = stand_pat; // fallback: use static eval as threat estimate
 
 		// The side to move has flipped, which itself shifts the evaluation slightly
 		// 100 less margin
@@ -1444,7 +1444,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 					return alpha;
 				}
 
-				new_board->copy_data(*_board, false, true);
+				new_board->copy_data(*_board, false, false);
 				new_board->_is_active = true;
 				new_board->make_move(move, false, true);
 
@@ -1465,7 +1465,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 				else {
 					// position pushed for the duration of the recursion by the PathScope below
-					new_board->get_zobrist_key();
+					// zobrist key is already computed incrementally by make_move()
 
 					// No TT sharing (same reason as in explore_new_move)
 					child = monte_node_buffer.get_first_free_node();

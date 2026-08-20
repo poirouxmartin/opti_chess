@@ -653,6 +653,12 @@ public:
 	float _dummy1 = 1.0f;
 	float _dummy2 = 1.0f;
 
+	// Cached control maps — computed lazily by get_white/black_controls_map(),
+	// invalidated by reset_eval() (called at the end of make_move).
+	mutable SquareMap _cached_white_controls;
+	mutable SquareMap _cached_black_controls;
+	mutable bool _controls_map_valid = false;
+
 
 
 	// Default constructor
@@ -1053,7 +1059,7 @@ public:
 	void switch_trait();
 
 	// Assigns the flags to a given move
-	void assign_move_flags(Move *move) const;
+	void assign_move_flags(Move *move);
 
 	// Resets the bitboards to 0
 	void reset_bitboards();

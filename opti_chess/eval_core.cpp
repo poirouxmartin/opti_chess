@@ -713,6 +713,7 @@ int Board::material_difference() const
 void Board::reset_eval() {
 	_displayed_components = false;
 	_advancement = false; _adv = 0;
+	_controls_map_valid = false;
 }
 int Board::get_updated_piece_values() const {
 	// Rook penalty based on the number of non-open files

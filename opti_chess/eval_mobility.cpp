@@ -306,7 +306,8 @@ int Board::get_alignments() const
 						break;
 					}
 
-					const float division_factor = pow(distance, 4);
+					const float d2 = distance * distance;
+					const float division_factor = d2 * d2;
 					const int pinned_piece_value = ally_piece ? ((pinned_piece - 1) % 6 == 0 ? ally_pawn_value : ally_piece_value) : pieces_values[(pinned_piece - 1) % 6];
 					ally_blocking_factor *= ally_piece ? (1 - ally_block_values[(pinned_piece - 1) % 6]) : 1.0f;
 
@@ -348,7 +349,7 @@ int Board::get_alignments() const
 
 				// DEBUG:
 				if (total_value < 0) {
-					cout << "negative value (overflow) in piece alignments" << endl;
+					//cout << "negative value (overflow) in piece alignments" << endl;
 				}
 
 				if (pinning_piece_color) {
@@ -410,39 +411,37 @@ int Board::get_piece_activity() const
 // Returns the map of control counts for each square, for White
 SquareMap Board::get_white_controls_map() const
 {
-	// Control map
-	SquareMap controls_map;
+	if (_controls_map_valid)
+		return _cached_white_controls;
 
-	// Iterate over every piece and add its control to each square
+	// Compute both maps together (always called as a pair)
+	_cached_white_controls = SquareMap();
+	_cached_black_controls = SquareMap();
+
 	for (uint8_t row = 0; row < 8; row++)
 		for (uint8_t col = 0; col < 8; col++) {
 			const uint8_t piece = _array[row][col];
 			if (is_white(piece)) {
-				add_piece_controls(&controls_map, row, col, piece);
+				add_piece_controls(&_cached_white_controls, row, col, piece);
+			}
+			else if (is_black(piece)) {
+				add_piece_controls(&_cached_black_controls, row, col, piece);
 			}
 		}
 
-	return controls_map;
+	_controls_map_valid = true;
+	return _cached_white_controls;
 }
 
 // Returns the map of control counts for each square, for Black
 SquareMap Board::get_black_controls_map() const
 {
-	// FIXME: with a rook behind another, the squares should count twice, and they do not
+	if (_controls_map_valid)
+		return _cached_black_controls;
 
-	// Control map
-	SquareMap controls_map;
-
-	// Iterate over every piece and add its control to each square
-	for (uint8_t row = 0; row < 8; row++)
-		for (uint8_t col = 0; col < 8; col++) {
-			const uint8_t piece = _array[row][col];
-			if (is_black(piece)) {
-				add_piece_controls(&controls_map, row, col, piece);
-			}
-		}
-
-	return controls_map;
+	// Trigger computation (always computed together with white map)
+	get_white_controls_map();
+	return _cached_black_controls;
 }
 
 // Adds the control of one piece to a map
