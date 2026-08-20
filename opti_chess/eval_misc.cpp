@@ -764,20 +764,20 @@ int Board::get_weak_squares(bool color, bool around_king) {
 						}
 					}
 
-					// A white pawn can control the weak square and no black pawn can attack it, so it is not a weak square
-					if (can_control != -1 && !no_control) {
-						if (weak)
-							cout << "shouldn't be weak here.. ?" << endl;
-						weak = false;
-						safe = false;
-					}
+				// A white pawn can control the weak square and no black pawn can attack it, so it is not a weak square
+				if (can_control != -1 && !no_control) {
+					//if (weak)
+					//	cout << "shouldn't be weak here.. ?" << endl;
+					weak = false;
+					safe = false;
 				}
+			}
 
-				if (!weak && !safe)
-					continue;
+			if (!weak && !safe)
+				continue;
 
-				// Unless this is the left edge
-				if (col < 7) {
+			// Unless this is the left edge
+			if (col < 7) {
 
 					// Look at the rank of the nearest white pawn able to control the square
 					int can_control = -1;
@@ -810,17 +810,17 @@ int Board::get_weak_squares(bool color, bool around_king) {
 						}
 					}
 
-					// A white pawn can control the weak square and no black pawn can attack it, so it is not a weak square
-					if (can_control != -1 && !no_control) {
-						if (weak)
-							cout << "shouldn't be weak here.. ?" << endl;
-						weak = false;
-						safe = false;
-					}
+				// A white pawn can control the weak square and no black pawn can attack it, so it is not a weak square
+				if (can_control != -1 && !no_control) {
+					//if (weak)
+					//	cout << "shouldn't be weak here.. ?" << endl;
+					weak = false;
+					safe = false;
 				}
+			}
 
-				if (!weak && !safe)
-					continue;
+			if (!weak && !safe)
+				continue;
 
 				if (display)
 					cout << "W weak square: " << Pos(row, col).square() << ": " << (weak ? "weak " : "safe");
@@ -959,8 +959,8 @@ int Board::get_weak_squares(bool color, bool around_king) {
 
 					// A black pawn can control the weak square and no white pawn can attack it, so it is not a weak square
 					if (can_control != -1 && !no_control) {
-						if (weak)
-							cout << "shouldn't be weak here.. ?" << endl;
+						//if (weak)
+						//	cout << "shouldn't be weak here.. ?" << endl;
 						weak = false;
 						safe = false;
 					}
@@ -1005,8 +1005,8 @@ int Board::get_weak_squares(bool color, bool around_king) {
 
 					// A black pawn can control the weak square and no white pawn can attack it, so it is not a weak square
 					if (can_control != -1 && !no_control) {
-						if (weak)
-							cout << "shouldn't be weak here.. ?" << endl;
+						//if (weak)
+						//	cout << "shouldn't be weak here.. ?" << endl;
 						weak = false;
 						safe = false;
 					}
@@ -1469,7 +1469,7 @@ float Board::get_winnable(Evaluation* eval, bool color, float position_nature) c
 
 	// Depending on the nature of the position
 	constexpr float closed_position_draw_factor = 1.0f;
-	winnable_value *= 1.0f - pow(position_nature, 1.0) * closed_position_draw_factor;
+	winnable_value *= 1.0f - position_nature;
 	// FIXME: weight this even more, since it rarely reaches 0% or 100%?
 
 	if (display) {
@@ -1493,7 +1493,7 @@ float Board::get_winnable(Evaluation* eval, bool color, float position_nature) c
 	const int passed_pawns_count = get_passed_pawns_count(color);
 	//cout << "passed pawns count: " << passed_pawns_count << endl;
 	if (passed_pawns_count > 8) {
-		cout << "too many passed pawns" << endl;
+		//cout << "too many passed pawns" << endl;
 	}
 
 	winnable_value = 1.0f - (1.0f - winnable_value) * (1.0f - passed_pawn_winnable_bonuses[passed_pawns_count]);
@@ -1648,7 +1648,9 @@ int Board::get_trapped_pieces() const {
 			if (is_white(p)) {
 
 				// Distance to the centre of mass
-				float base_distance = sqrt(pow(row - w_center_of_mass_i, 2) + pow(col - w_center_of_mass_j, 2));
+				const float di = row - w_center_of_mass_i;
+				const float dj = col - w_center_of_mass_j;
+				float base_distance = sqrt(di * di + dj * dj);
 
 				float distance = max(0.0f, base_distance - min_distance);
 
@@ -1769,7 +1771,9 @@ int Board::get_trapped_pieces() const {
 			else {
 
 				// Distance to the centre of mass
-				float base_distance = sqrt(pow(row - b_center_of_mass_i, 2) + pow(col - b_center_of_mass_j, 2));
+				const float di = row - b_center_of_mass_i;
+				const float dj = col - b_center_of_mass_j;
+				float base_distance = sqrt(di * di + dj * dj);
 
 				float distance = max(0.0f, base_distance - min_distance);
 

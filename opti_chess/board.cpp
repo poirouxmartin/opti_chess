@@ -56,9 +56,11 @@ void Board::copy_data(const Board& b, bool full, bool copy_history) {
 	memcpy(_array, b._array, sizeof(_array));
 	_got_moves = b._got_moves;
 	_player = b._player;
-	memcpy(_moves, b._moves, sizeof(_moves));
+	if (full) {
+		memcpy(_moves, b._moves, sizeof(_moves));
+		_sorted_moves = b._sorted_moves;
+	}
 	//_moves_flags_assigned = b._moves_flags_assigned;
-	_sorted_moves = b._sorted_moves;
 	_castling_rights = b._castling_rights;
 	_half_moves_count = b._half_moves_count;
 	_moves_count = b._moves_count;
@@ -1199,6 +1201,10 @@ inline void Board::make_move(const Move& move, const bool pgn, const bool add_to
 	const int p_last = _array[row2][col2];
 	const bool irreversible_move = add_to_history && is_irreversible_move(move);
 
+	// Save old state for incremental Zobrist update
+	const uint8_t old_castling = _castling_rights.k_w + _castling_rights.q_w * 2 + _castling_rights.k_b * 4 + _castling_rights.q_b * 8;
+	const int old_en_passant = _en_passant_col;
+
 	// TODO *** rendre plus efficace
 	if (pgn) {
 		if (_moves_count != 0 || _half_moves_count != 0)
@@ -1308,7 +1314,66 @@ inline void Board::make_move(const Move& move, const bool pgn, const bool add_to
 			reset_positions_history();
 		}
 
-		get_zobrist_key();
+		// Incremental Zobrist update (O(1) instead of O(64) full recompute)
+		if (!transposition_table._zobrist._keys_generated)
+			transposition_table._zobrist.generate_zobrist_keys();
+		const Zobrist& zobrist = transposition_table._zobrist;
+
+		// XOR out moved piece from start, XOR in at end (or promoted piece)
+		const int start_sq = row1 * 8 + col1;
+		const int end_sq = row2 * 8 + col2;
+		const int promo = move.is_promotion() ? promo_to_piece(move.get_promo_piece(), _player) : p;
+
+		_zobrist_key ^= zobrist._board_keys[start_sq][p - 1];
+		_zobrist_key ^= zobrist._board_keys[end_sq][promo - 1];
+
+		// XOR out captured piece (if any)
+		if (p_last != none)
+			_zobrist_key ^= zobrist._board_keys[end_sq][p_last - 1];
+
+		// Castling: move the rook in Zobrist too
+		if (p == w_king && col2 == col1 + 2) {
+			_zobrist_key ^= zobrist._board_keys[0 * 8 + 7][w_rook - 1];
+			_zobrist_key ^= zobrist._board_keys[0 * 8 + 5][w_rook - 1];
+		}
+		else if (p == w_king && col2 == col1 - 2) {
+			_zobrist_key ^= zobrist._board_keys[0 * 8 + 0][w_rook - 1];
+			_zobrist_key ^= zobrist._board_keys[0 * 8 + 3][w_rook - 1];
+		}
+		else if (p == b_king && col2 == col1 + 2) {
+			_zobrist_key ^= zobrist._board_keys[7 * 8 + 7][b_rook - 1];
+			_zobrist_key ^= zobrist._board_keys[7 * 8 + 5][b_rook - 1];
+		}
+		else if (p == b_king && col2 == col1 - 2) {
+			_zobrist_key ^= zobrist._board_keys[7 * 8 + 0][b_rook - 1];
+			_zobrist_key ^= zobrist._board_keys[7 * 8 + 3][b_rook - 1];
+		}
+
+		// En passant capture: XOR out the captured pawn
+		if (is_pawn(p) && col1 != col2 && p_last == none) {
+			int ep_pawn_row = (p == w_pawn) ? row2 - 1 : row2 + 1;
+			int ep_pawn = (p == w_pawn) ? b_pawn : w_pawn;
+			_zobrist_key ^= zobrist._board_keys[ep_pawn_row * 8 + col2][ep_pawn - 1];
+		}
+
+		// Castling rights
+		uint8_t new_castling = _castling_rights.k_w + _castling_rights.q_w * 2 + _castling_rights.k_b * 4 + _castling_rights.q_b * 8;
+		if (old_castling != new_castling) {
+			_zobrist_key ^= zobrist._castling_keys[old_castling];
+			_zobrist_key ^= zobrist._castling_keys[new_castling];
+		}
+
+		// En passant
+		if (old_en_passant != _en_passant_col) {
+			if (old_en_passant != -1)
+				_zobrist_key ^= zobrist._en_passant_keys[old_en_passant];
+			if (_en_passant_col != -1)
+				_zobrist_key ^= zobrist._en_passant_keys[_en_passant_col];
+		}
+
+		// Side to move
+		_zobrist_key ^= zobrist._player_key;
+
 		_positions_history[_zobrist_key]++;
 	}
 
@@ -2735,7 +2800,7 @@ void Board::switch_trait() {
 }
 
 // Assigns the flags of a given move
-void Board::assign_move_flags(Move* move) const {
+void Board::assign_move_flags(Move* move) {
 
 	// r3k3/p1p2pp1/2p5/1p2P3/1qPK4/7r/PP1PR3/R1BQ4 b q - 0 22 : Dxc4# ?
 
@@ -2761,25 +2826,57 @@ void Board::assign_move_flags(Move* move) const {
 		move->set_flag(IS_CAPTURE);
 	}
 
-	// Evaluate on a copy
-	Board b;
-	b.copy_data(*this);
-	b.make_move(*move);
+	// Evaluate on a copy using save/restore (cheaper than Board copy)
+	uint8_t saved_array[8][8];
+	memcpy(saved_array, _array, sizeof(saved_array));
+	const bool saved_player = _player;
+	const Pos saved_wk = _white_king_pos;
+	const Pos saved_bk = _black_king_pos;
+	const CastlingRights saved_castling = _castling_rights;
+	const int saved_ep = _en_passant_col;
+	const int saved_half = _half_moves_count;
+	const int saved_moves_count = _moves_count;
+	const int8_t saved_got_moves = _got_moves;
+	const bool saved_game_over_checked = _game_over_checked;
+	const int saved_game_over_value = _game_over_value;
+	uint64_t saved_bitboards[sizeof(_bitboards) / sizeof(uint64_t)];
+	memcpy(saved_bitboards, _bitboards, sizeof(saved_bitboards));
+	uint64_t saved_occupancies[sizeof(_occupancies) / sizeof(uint64_t)];
+	memcpy(saved_occupancies, _occupancies, sizeof(saved_occupancies));
+
+	make_move(*move);
 
 	// TODO: optimise this
 	// TODO *** see whether a stalemate can be detected quickly
 
 	// Check
-	if (b.in_check()) {
+	if (in_check()) {
 		move->set_flag(IS_CHECK);
 
 		// Mat
-		b.is_game_over();
-		if ((b._game_over_value == white_win && _player) ||
-			(b._game_over_value == black_win && !_player)) {
+		is_game_over();
+		const int game_result = _game_over_value;
+		if ((game_result == white_win && saved_player) ||
+			(game_result == black_win && !saved_player)) {
 			move->set_flag(IS_MATE);
 		}
 	}
+
+	// Restore state
+	memcpy(_array, saved_array, sizeof(saved_array));
+	_player = saved_player;
+	_white_king_pos = saved_wk;
+	_black_king_pos = saved_bk;
+	_castling_rights = saved_castling;
+	_en_passant_col = saved_ep;
+	_half_moves_count = saved_half;
+	_moves_count = saved_moves_count;
+	_got_moves = saved_got_moves;
+	_game_over_checked = saved_game_over_checked;
+	_game_over_value = saved_game_over_value;
+	memcpy(_bitboards, saved_bitboards, sizeof(saved_bitboards));
+	memcpy(_occupancies, saved_occupancies, sizeof(saved_occupancies));
+	_zobrist_key = _zobrist_key; // zobrist key will be recomputed by the caller if needed
 
 
 
