@@ -224,7 +224,7 @@ public:
 	Move pick_random_child(const double alpha, const double beta, const double gamma, const DagExcl* dag_excl = nullptr);
 
 	// Returns the score of a move. Alpha raises the weight of the evaluation, beta raises the weight of the win rate
-	MoveScoreList get_move_scores(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100) const;
+	MoveScoreList get_move_scores(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100, int precomputed_max_eval = INT_MIN, double precomputed_max_avg_score = 0.0) const;
 
 	// Returns the value of the node
 	double get_node_score(const double alpha, const double beta, const int max_eval, const double max_avg_score, const bool player, Evaluation *custom_eval = nullptr) const;
