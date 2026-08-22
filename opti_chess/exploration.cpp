@@ -71,7 +71,7 @@ inline void tt_fixup_derived(Evaluation& e) {
 }
 
 uint8_t position_history_count(const PositionHistory& path_history, Board& board) {
-	board.get_zobrist_key();
+	// _zobrist_key is already maintained incrementally by make_move()
 	const auto it = path_history.find(board._zobrist_key);
 	return it == path_history.end() ? 0 : it->second;
 }
@@ -81,12 +81,12 @@ uint8_t position_history_count(const PositionHistory& path_history, Board& board
 // The repetition state is path-local: it depends on the exact move sequence that led to
 // the current node, so it must stay outside Node/Board state if we want transpositions later.
 void ensure_position_in_history(PositionHistory& path_history, Board& board) {
-	board.get_zobrist_key();
+	// _zobrist_key is already maintained incrementally by make_move()
 	path_history.try_emplace(board._zobrist_key, 1);
 }
 
 void record_position_in_history(PositionHistory& path_history, Board& board) {
-	board.get_zobrist_key();
+	// _zobrist_key is already maintained incrementally by make_move()
 	path_history[board._zobrist_key]++;
 }
 
@@ -115,7 +115,7 @@ struct PathScope {
 	PositionHistory& _history;
 	uint64_t _key;
 	PathScope(PositionHistory& history, Board& board) : _history(history) {
-		board.get_zobrist_key();
+		// _zobrist_key is already maintained incrementally by make_move()
 		_key = board._zobrist_key;
 		_history[_key]++;
 	}
@@ -1296,7 +1296,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	}
 
 	// In check, so that variations do not end on a check
-	const bool in_check = _board->in_check();
+	const bool in_check = _board->_player_in_check;
 
 	// Emergency cutoff: depth - 4
 	if (depth <= -4) {
@@ -1497,25 +1497,6 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				child_link->_propagated_nodes = child->_nodes;
 			}
 
-			// Update the board evaluation
-			bool all_moves_explored = children_count() == _board->_got_moves;
-
-			// All moves explored, so update the board evaluation with the best move
-			Move best_move = get_best_score_move(search_alpha, search_beta, !all_moves_explored, new_depth - 1);
-
-			// Stand pat is the best
-			if (best_move.is_null_move()) {
-				//_is_stand_pat_eval = true;
-			}
-			else {
-				//_is_stand_pat_eval = false;
-				_deep_evaluation = _children[best_move]._node->_deep_evaluation;
-			if (_children[best_move]._node->_quiescence_depth != new_depth - 1) {
-				if constexpr (dag_debug)
-					cout << "expected depth: " << new_depth - 1 << ", actual depth: " << _children[best_move]._node->_quiescence_depth << endl;
-			}
-			}
-
 			// Beta cut-off
 			if (score >= beta) {
 				transposition_table.store(_board->_zobrist_key, tt_normalize_mate(score, _board->_moves_count), depth, TT_BETA); // #5: store actual score, not beta
@@ -1527,6 +1508,16 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			if (score > alpha) {
 				alpha = score;
 			}
+		}
+	}
+
+	// Update the board evaluation with the best move (once, after all explored moves)
+	{
+		bool all_moves_explored = children_count() == _board->_got_moves;
+		Move best_move = get_best_score_move(search_alpha, search_beta, !all_moves_explored, -100);
+
+		if (!best_move.is_null_move()) {
+			_deep_evaluation = _children[best_move]._node->_deep_evaluation;
 		}
 	}
 
@@ -1983,7 +1974,7 @@ int Node::minimal_quiescence(Evaluator* eval, int depth, double search_alpha, do
 
 	// In check, so that variations do not end on a check
 	// REVIEW: is this too much for a deliberately quick look?
-	bool in_check = _board->in_check();
+	bool in_check = _board->_player_in_check;
 
 	if (depth <= 0 && !in_check) {
 		return stand_pat;

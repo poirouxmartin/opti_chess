@@ -55,6 +55,7 @@ void Board::copy_data(const Board& b, bool full, bool copy_history) {
 	// Copy the board
 	memcpy(_array, b._array, sizeof(_array));
 	_got_moves = b._got_moves;
+	_player_in_check = b._player_in_check;
 	_player = b._player;
 	if (full) {
 		memcpy(_moves, b._moves, sizeof(_moves));
@@ -615,6 +616,7 @@ bool Board::get_moves() noexcept {
 	}
 
 	_got_moves = iterator;
+	_player_in_check = in_check;
 
 	return true;
 }
@@ -1297,6 +1299,7 @@ inline void Board::make_move(const Move& move, const bool pgn, const bool add_to
 
 	// Reset the possible move count
 	_got_moves = -1;
+	_player_in_check = false;
 
 	// The move flags are reset
 	//_moves_flags_assigned = false;
@@ -1528,6 +1531,7 @@ int Board::is_game_over(int max_repetitions) {
 // FIXME: would allocating a fresh board be faster, and safer memory-wise?
 void Board::reset_board(const bool display) {
 	_got_moves = -1;
+	_player_in_check = false;
 	_is_active = false;
 	_game_over_checked = false;
 	_game_over_value = unterminated;
@@ -1991,10 +1995,6 @@ bool Board::operator== (const Board& b) const
 // Computes and returns the value of the pawns blocking the bishops
 void Board::get_zobrist_key()
 {
-	// We assume the key is never 0
-	/*if (_zobrist_key != 0)
-		return;*/
-
 	// FIXME: is it computed several times?
 
 	// #2: no copy of the Zobrist struct (~6 KB) per call - take a reference.
@@ -2274,6 +2274,7 @@ void Board::switch_colors() {
 	_castling_rights.q_w = b_queen_castling;
 
 	_got_moves = -1;
+	_player_in_check = false;
 	//_moves_flags_assigned = false;
 	_sorted_moves = false;
 
@@ -2795,6 +2796,7 @@ void Board::assign_all_move_flags() {
 void Board::switch_trait() {
 	_player = !_player;
 	_got_moves = -1;
+	_player_in_check = false;
 	//_moves_flags_assigned = false;
 	_sorted_moves = false;
 	_game_over_checked = false;
@@ -2838,38 +2840,35 @@ void Board::assign_move_flags(Move* move) {
 	const int saved_half = _half_moves_count;
 	const int saved_moves_count = _moves_count;
 	const int8_t saved_got_moves = _got_moves;
+	const bool saved_player_in_check = _player_in_check;
 	const bool saved_game_over_checked = _game_over_checked;
 	const int saved_game_over_value = _game_over_value;
 	uint64_t saved_bitboards[sizeof(_bitboards) / sizeof(uint64_t)];
 	memcpy(saved_bitboards, _bitboards, sizeof(saved_bitboards));
 	uint64_t saved_occupancies[sizeof(_occupancies) / sizeof(uint64_t)];
 	memcpy(saved_occupancies, _occupancies, sizeof(saved_occupancies));
-	Move saved_moves[max_moves];
-	memcpy(saved_moves, _moves, sizeof(saved_moves));
 	const bool saved_sorted_moves = _sorted_moves;
 	const uint64_t saved_zobrist_key = _zobrist_key;
 
 	make_move(*move);
 
-	// TODO: optimise this
-	// TODO *** see whether a stalemate can be detected quickly
-
-	// Check and mate detection — save results, apply AFTER restore
-	// because get_moves() regenerates _moves[], corrupting the entry
-	// that `move` points to.
+	// Check and mate detection — save results, apply AFTER restore.
 	bool detected_check = false;
 	bool detected_mate = false;
 	if (in_check()) {
 		detected_check = true;
 
-		// Mat: if opponent has no legal moves after we give check, it's mate.
-		// Use get_moves() directly instead of is_game_over() which also scans
-		// for repetition, 50-move rule, and insufficient material — all irrelevant
-		// for mate detection.
+		// Save _moves[] before get_moves() overwrites it (only needed here)
+		Move saved_moves[max_moves];
+		memcpy(saved_moves, _moves, sizeof(saved_moves));
+
 		get_moves();
 		if (_got_moves == 0) {
 			detected_mate = true;
 		}
+
+		// Restore _moves[] after get_moves() corrupted it
+		memcpy(_moves, saved_moves, sizeof(saved_moves));
 	}
 
 	// Restore state
@@ -2882,11 +2881,11 @@ void Board::assign_move_flags(Move* move) {
 	_half_moves_count = saved_half;
 	_moves_count = saved_moves_count;
 	_got_moves = saved_got_moves;
+	_player_in_check = saved_player_in_check;
 	_game_over_checked = saved_game_over_checked;
 	_game_over_value = saved_game_over_value;
 	memcpy(_bitboards, saved_bitboards, sizeof(saved_bitboards));
 	memcpy(_occupancies, saved_occupancies, sizeof(saved_occupancies));
-	memcpy(_moves, saved_moves, sizeof(saved_moves));
 	_sorted_moves = saved_sorted_moves;
 	_zobrist_key = saved_zobrist_key;
 
