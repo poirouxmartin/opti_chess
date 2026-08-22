@@ -662,6 +662,12 @@ public:
 	mutable SquareMap _cached_black_controls;
 	mutable bool _controls_map_valid = false;
 
+	// Cached pawn control maps — computed lazily by get_pawns_controls(),
+	// invalidated by reset_eval().
+	mutable SquareMap _cached_white_pawns_controls;
+	mutable SquareMap _cached_black_pawns_controls;
+	mutable bool _pawns_controls_valid = false;
+
 
 
 	// Default constructor
