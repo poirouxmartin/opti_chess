@@ -1617,7 +1617,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		}
 	}
 
-	MoveScoreList move_scores = get_move_scores(alpha, beta);
+	MoveScoreList move_scores = get_move_scores(alpha, beta, false, -100, max_eval, max_avg_score);
 
 	struct ScoredMove {
 		Move move;
@@ -1770,7 +1770,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 }
 
 // Returns the move scores
-MoveScoreList Node::get_move_scores(const double alpha, const double beta, const bool consider_standpat, const int qdepth) const {
+MoveScoreList Node::get_move_scores(const double alpha, const double beta, const bool consider_standpat, const int qdepth, int precomputed_max_eval, double precomputed_max_avg_score) const {
 
 	// The stand pat is associated with the null move
 
@@ -1779,20 +1779,22 @@ MoveScoreList Node::get_move_scores(const double alpha, const double beta, const
 	int color = _board->get_color();
 
 	// Best evaluation value
-	int max_eval = -INT_MAX;
+	int max_eval = precomputed_max_eval != INT_MIN ? precomputed_max_eval : -INT_MAX;
 
 	// Best winning chance
-	double max_avg_score = 0.0;
+	double max_avg_score = precomputed_max_eval != INT_MIN ? precomputed_max_avg_score : 0.0;
 
 	// Find the best evaluation and the best score among all possible moves
-	for (auto const& [_, child_link] : _children) {
-		Node* child = child_link._node;
-		if (child->_deep_evaluation._value * color > max_eval) {
-			max_eval = child->_deep_evaluation._value * color;
-		}
+	if (precomputed_max_eval == INT_MIN) {
+		for (auto const& [_, child_link] : _children) {
+			Node* child = child_link._node;
+			if (child->_deep_evaluation._value * color > max_eval) {
+				max_eval = child->_deep_evaluation._value * color;
+			}
 
-		if (_board->_player ? child->_deep_evaluation._avg_score > max_avg_score : 1 - child->_deep_evaluation._avg_score > max_avg_score) {
-			max_avg_score = _board->_player ? child->_deep_evaluation._avg_score : 1 - child->_deep_evaluation._avg_score;
+			if (_board->_player ? child->_deep_evaluation._avg_score > max_avg_score : 1 - child->_deep_evaluation._avg_score > max_avg_score) {
+				max_avg_score = _board->_player ? child->_deep_evaluation._avg_score : 1 - child->_deep_evaluation._avg_score;
+			}
 		}
 	}
 
