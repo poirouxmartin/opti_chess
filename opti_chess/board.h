@@ -600,6 +600,9 @@ public:
 	// 1 byte
 	int_fast8_t _got_moves = -1;
 
+	// Whether the side to move is in check (valid whenever _got_moves >= 0)
+	bool _player_in_check = false;
+
 	// Have the move flags been assigned?
 	//bool _moves_flags_assigned = false;
 
