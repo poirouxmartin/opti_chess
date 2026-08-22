@@ -1050,10 +1050,32 @@ TEST(Puzzle, KnightForkMateIn3) {
 // Commentary: "f6! #6"
 // ============================================================================
 
+// ============================================================================
+// Puzzle: f5-f6! starts forced mate in 6
+// FEN: r4rk1/p1p1bp2/3p2pR/5PP1/5P2/P4P2/1PP3P1/2KR4 w - - 0 23
+// Commentary: "f6! #6"
+// NOTE: the FEN used to contain "5f2" ('f' is not a FEN piece letter):
+// from_fen() aborted with "invalid FEN: bad character" and the test ran on a
+// half-parsed board (no white king, stale rows 1-4), making it flaky.
+// ============================================================================
+
 TEST(Puzzle, PawnF6MateIn6) {
-    run_puzzle("r4rk1/p1p1bp2/3p2pR/5PP1/5p2/P4P2/1PP3P1/2KR4 w - - 0 23",
+    run_puzzle("r4rk1/p1p1bp2/3p2pR/5PP1/5P2/P4P2/1PP3P1/2KR4 w - - 0 23",
                Move(4, 5, 5, 5), 30000,
                "f6! mate in 6");
+}
+
+// ============================================================================
+// Puzzle: Qb2+! starts forced mate in 2 (Qb2+ Kd1 Qd2#)
+// FEN: 2bk1r2/4b1Qp/8/1P6/3P4/1qp5/4NPPP/R1K2B1R b - - 0 25
+// Commentary: listed in exploration.cpp as "Mate not seen" — quiescence
+// regression guard for the fail-high _deep_evaluation propagation fix.
+// ============================================================================
+
+TEST(Puzzle, QueenB2MateIn2) {
+    run_puzzle("2bk1r2/4b1Qp/8/1P6/3P4/1qp5/4NPPP/R1K2B1R b - - 0 25",
+               Move(2, 1, 1, 1), 20000,
+               "Qb2+ mate in 2");
 }
 
 // ============================================================================

@@ -102,11 +102,21 @@ endif()
 # Preserve that established include style without requiring a source-wide rewrite.
 target_include_directories(opti_chess PRIVATE "${robin_map_SOURCE_DIR}/include/tsl")
 
+# ---------------------------------------------------------------------------
+# Aggressive compiler optimizations for Release builds
+# ---------------------------------------------------------------------------
 if(MSVC)
-    target_compile_options(opti_chess PRIVATE /W4 /permissive- /utf-8)
-    target_compile_definitions(opti_chess PRIVATE _CRT_SECURE_NO_WARNINGS)
+    # MSVC: /Ox full optimization, /fp:fast fast floats, /GL whole-program,
+    # /Oi intrinsics, /Ot favor fast code, /Ob3 aggressive inlining,
+    # /GS- no buffer security checks, /bigobj for large TUs
+    set(MSVC_OPT_FLAGS /Ox /fp:fast /GL /Oi /Ot /Ob3 /GS- /bigobj)
+    target_compile_options(opti_chess PRIVATE ${MSVC_OPT_FLAGS})
+    target_link_options(opti_chess PRIVATE /LTCG)
 else()
-    target_compile_options(opti_chess PRIVATE -Wall -Wextra -Wpedantic -Wno-unused-parameter)
+    # GCC/Clang: -O3, -ffast-math, native arch, LTO
+    set(GCC_OPT_FLAGS -O3 -ffast-math -march=native -flto)
+    target_compile_options(opti_chess PRIVATE ${GCC_OPT_FLAGS})
+    target_link_options(opti_chess PRIVATE -flto)
 endif()
 
 # The application expects assets next to its working directory. Copy them so the
@@ -158,13 +168,15 @@ target_include_directories(engine_lib PUBLIC
     "${robin_map_SOURCE_DIR}/include/tsl"
 )
 target_link_libraries(engine_lib PUBLIC raylib tsl::robin_map)
-if(WIN32)
-    target_compile_options(engine_lib PRIVATE /W4 /permissive- /utf-8)
+if(MSVC)
+    target_compile_options(engine_lib PRIVATE /W4 /permissive- /utf-8 ${MSVC_OPT_FLAGS})
     target_compile_definitions(engine_lib PRIVATE _CRT_SECURE_NO_WARNINGS)
     target_link_libraries(engine_lib PUBLIC gdi32 user32 winmm shell32 ole32)
 elseif(APPLE)
+    target_compile_options(engine_lib PRIVATE ${GCC_OPT_FLAGS})
     target_link_libraries(engine_lib PUBLIC "-framework Cocoa" "-framework IOKit" "-framework CoreVideo" "-framework OpenGL")
 else()
+    target_compile_options(engine_lib PRIVATE ${GCC_OPT_FLAGS})
     target_link_libraries(engine_lib PUBLIC m pthread dl rt X11)
 endif()
 
@@ -177,6 +189,13 @@ add_executable(opti_chess_tests
 )
 target_link_libraries(opti_chess_tests PRIVATE engine_lib GTest::gtest_main)
 target_compile_features(opti_chess_tests PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(opti_chess_tests PRIVATE ${MSVC_OPT_FLAGS})
+    target_link_options(opti_chess_tests PRIVATE /LTCG)
+elseif(NOT WIN32)
+    target_compile_options(opti_chess_tests PRIVATE ${GCC_OPT_FLAGS})
+    target_link_options(opti_chess_tests PRIVATE -flto)
+endif()
 
 include(GoogleTest)
 gtest_discover_tests(opti_chess_tests)

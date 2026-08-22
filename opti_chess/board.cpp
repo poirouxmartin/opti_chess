@@ -2713,6 +2713,10 @@ bool Board::get_blocked_and_unblocked_pieces(SquareMap& pieces_states, bool colo
 // Returns the map of the squares controlled by the pawns
 SquareMap Board::get_pawns_controls(bool color) const {
 
+	if (_pawns_controls_valid) {
+		return color ? _cached_white_pawns_controls : _cached_black_pawns_controls;
+	}
+
 	// Control map
 	SquareMap controls;
 
@@ -2733,6 +2737,14 @@ SquareMap Board::get_pawns_controls(bool color) const {
 			}
 		}
 	}
+
+	if (color) {
+		_cached_white_pawns_controls = controls;
+	} else {
+		_cached_black_pawns_controls = controls;
+	}
+	_pawns_controls_valid = true;
+
 	return controls;
 }
 

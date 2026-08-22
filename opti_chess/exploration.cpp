@@ -1353,6 +1353,12 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 	int move_index = 0;
 
+	// Quiescence depth of the last child actually explored this call (-100 = none).
+	// Restores the pre-Opt#16 get_best_score_move depth filter: children left over
+	// from previous visits at other depths must not compete with freshly searched
+	// ones when selecting the move whose evaluation is propagated.
+	int last_explored_qdepth = -100;
+
 	// Look at every capture
 	for (int i = 0; i < _board->_got_moves; i++) {
 
@@ -1487,6 +1493,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			// Recursive call on the child - #7/B-1: pushes the child position for
 			// the duration of the recursion, pop guaranteed on scope exit.
 			int score;
+			last_explored_qdepth = new_depth - 1;
 			{
 				PathScope _ps(branch_history, *child->_board);
 				score = - child->quiescence(board_buffer, eval, new_depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, beta_margin, &branch_history);
@@ -1499,6 +1506,12 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 			// Beta cut-off
 			if (score >= beta) {
+				// Fail-high: propagate the cutting child's searched evaluation BEFORE
+				// returning, so the parent never reads a stale static value here.
+				// Regression fix: moving the _deep_evaluation update out of the loop
+				// (NPS Opt #16) skipped it on this early-exit path, while the TT-probe
+				// cutoff path (above) still updates it -> inconsistent fail-high states.
+				_deep_evaluation = child->_deep_evaluation;
 				transposition_table.store(_board->_zobrist_key, tt_normalize_mate(score, _board->_moves_count), depth, TT_BETA); // #5: store actual score, not beta
 				_time_spent += clock() - begin_monte_time;
 				return beta;
@@ -1512,9 +1525,13 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	}
 
 	// Update the board evaluation with the best move (once, after all explored moves)
-	{
+	// Guard: only if at least one move was explored THIS call. On a repeat visit
+	// where every move got pruned (delta/depth), _children may still hold stale
+	// entries from a previous visit of this pooled node; propagating them would
+	// overwrite the fresh stand-pat evaluation (regression from NPS Opt #16).
+	if (move_index > 0) {
 		bool all_moves_explored = children_count() == _board->_got_moves;
-		Move best_move = get_best_score_move(search_alpha, search_beta, !all_moves_explored, -100);
+		Move best_move = get_best_score_move(search_alpha, search_beta, !all_moves_explored, last_explored_qdepth);
 
 		if (!best_move.is_null_move()) {
 			_deep_evaluation = _children[best_move]._node->_deep_evaluation;
