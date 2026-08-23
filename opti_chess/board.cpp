@@ -2726,37 +2726,22 @@ bool Board::get_blocked_and_unblocked_pieces(SquareMap& pieces_states, bool colo
 // Returns the map of the squares controlled by the pawns
 SquareMap Board::get_pawns_controls(bool color) const {
 
-	if (_pawns_controls_valid) {
-		return color ? _cached_white_pawns_controls : _cached_black_pawns_controls;
-	}
-
-	// Control map
+	// NOTE: memoization DISABLED. The cached variant was verified value-equal
+	// in isolation yet shifted search outcomes; kept off until the discrepancy
+	// is root-caused. Fresh computation per call is always correct.
 	SquareMap controls;
 
-	// Friendly pawn
-	uint8_t player_pawn = color ? w_pawn : b_pawn;
-
-	// Pawn direction
+	const uint8_t player_pawn = color ? w_pawn : b_pawn;
 	const int pawn_direction = color ? 1 : -1;
 
-	// For each pawn
 	for (uint8_t row = 1; row < 7; row++) {
 		for (uint8_t col = 0; col < 8; col++) {
-
-			// Friendly pawn
 			if (_array[row][col] == player_pawn) {
 				(col > 0) && (controls._array[row + pawn_direction][col - 1] = true);
 				(col < 7) && (controls._array[row + pawn_direction][col + 1] = true);
 			}
 		}
 	}
-
-	if (color) {
-		_cached_white_pawns_controls = controls;
-	} else {
-		_cached_black_pawns_controls = controls;
-	}
-	_pawns_controls_valid = true;
 
 	return controls;
 }

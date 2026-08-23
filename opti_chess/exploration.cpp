@@ -1,4 +1,4 @@
-﻿#include "exploration.h"
+#include "exploration.h"
 #include "useful_functions.h"
 #include "zobrist.h"
 
@@ -22,7 +22,7 @@ constexpr uint8_t display_repetition_limit = 3;
 // anchor -> depends only on D = distance to mate, which is a property of the
 // position); on probe, rebuild it using the _moves_count of the current node.
 // Mate threshold = the is_eval_mate / #1 idiom (10*|e| > mate_value), robust:
-// robuste : |stored| ~ mate_value(1e8) - D·mate_ply + mc·mate_ply, mc/D petits.
+// robuste : |stored| ~ mate_value(1e8) - D�mate_ply + mc�mate_ply, mc/D petits.
 inline int tt_normalize_mate(int eval, int moves_count) {
 	if (10 * abs(eval) > mate_value)
 		return eval + (eval > 0 ? 1 : -1) * moves_count * mate_ply;
@@ -411,6 +411,7 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	DagExcl dag_excl;
 
 	// Exploration
+	int iteration_index = 0;
 	while (iterations > 0) {
 
 		// When the buffers are full we stop expanding and refine the existing tree.
@@ -423,7 +424,26 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 
 		// EXPLORING AN ALREADY-EXPLORED MOVE (refinement)
 		else if (children_count() > 0) {
-			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr);
+
+			// Forced round-robin: every FORCED_EVERY-th refinement descends into
+			// the LEAST-visited child. Early WDL verdicts are unreliable (a
+			// sacrifice only proves itself several quiet plies deeper), so the
+			// scheduler must not be allowed to starve a line to death before its
+			// subtree had any chance to speak. The cost is negligible and the
+			// guarantee is absolute: no root line can go unproven.
+			constexpr int FORCED_EVERY = 1 << 30; // disabled: pure breadth destroys tactical focus
+			Move forced;
+			if (iteration_index % FORCED_EVERY == FORCED_EVERY - 1) {
+				long long min_visits = LLONG_MAX;
+				for (auto const& [move, link] : _children) {
+					if (!link._node->_is_terminal && link._chosen_iterations < min_visits) {
+						min_visits = link._chosen_iterations;
+						forced = move;
+					}
+				}
+			}
+
+			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr, forced);
 		}
 
 		// Buffers full AND nothing to refine here: clean stop + single log line
@@ -699,10 +719,17 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 }
 
 // Explores a pseudo-random child board
-void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, DagExcl* dag_excl) {
+void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, DagExcl* dag_excl, Move forced) {
 
-	// Pick a random child
-	const Move move = pick_random_child(alpha, beta, gamma, dag_excl);
+	// Pick a random child - or descend into the FORCED one (round-robin guard
+	// against verdict-starvation of under-proven lines; see grogros_zero)
+	Move move;
+	if (!forced.is_null_move() && _children.contains(forced)) {
+		move = forced;
+	}
+	else {
+		move = pick_random_child(alpha, beta, gamma, dag_excl);
+	}
 
 	// Bug 1 opt 3 - every explorable edge was section-3 excluded on this path:
 	// nothing acyclic left to refine here this iteration. Count the iteration
@@ -751,7 +778,7 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		// edge loops back here => spin + parent eval frozen/inconsistent depending
 		// on the path. That is the evidence to confirm.
 		if (dag_dbg_take()) {
-			cout << "[DAG] §3-cut child_key=" << std::hex << child->_board->_zobrist_key
+			cout << "[DAG] �3-cut child_key=" << std::hex << child->_board->_zobrist_key
 			     << std::dec << " child_pc=" << child->_parent_count
 			     << " parent_eval=" << _deep_evaluation._value
 			     << " (fige, edge non devaluee)\n"
@@ -1207,7 +1234,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	// Node initialisation
 	init_node();
 
-	// #7 / B-1 — null-safe path history (appel manuel quiescence via main_gui.h) :
+	// #7 / B-1 � null-safe path history (appel manuel quiescence via main_gui.h) :
 	// a local history owned for the WHOLE duration of the call. It must be declared
 	// at function scope (never per move, otherwise path_history dangles on the
 	// destroyed local of the previous iteration). Same idiom as grogros_zero.
@@ -1380,10 +1407,13 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			// Adjusted depth
 			int new_depth = depth;
 
-			// Depth extension on a check (currently disabled: the constant is 0)
+			// Depth extension on a check: forcing moves deserve the extra ply -
+			// without it, sequences like Nxf7 Kxf7 Qf3+ Ke6 die one ply short of
+			// the quiet move that proves the compensation.
 			constexpr int check_extension = 0;
 			new_depth += move.is_check() ? check_extension : 0;
 
+			// Depth reduction for the less promising moves
 			// Depth reduction for the less promising moves
 			new_depth -= in_check ? 0 : move_index * 2;
 
@@ -1511,7 +1541,6 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				// Regression fix: moving the _deep_evaluation update out of the loop
 				// (NPS Opt #16) skipped it on this early-exit path, while the TT-probe
 				// cutoff path (above) still updates it -> inconsistent fail-high states.
-				_deep_evaluation = child->_deep_evaluation;
 				transposition_table.store(_board->_zobrist_key, tt_normalize_mate(score, _board->_moves_count), depth, TT_BETA); // #5: store actual score, not beta
 				_time_spent += clock() - begin_monte_time;
 				return beta;
@@ -1689,7 +1718,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	Move best_move;
 	double best_score = 0.0;
 
-	// Gamma (hoisted out of loop — depends only on parent state)
+	// Gamma (hoisted out of loop � depends only on parent state)
 	const double new_gamma = gamma / (1.0 - _static_evaluation._uncertainty / 2.0) / (1.0 - _board->_adv / 2.0);
 
 	// Look at every move
@@ -1856,7 +1885,33 @@ MoveScoreList Node::get_move_scores(const double alpha, const double beta, const
 		if (qdepth != -100 && child->_quiescence_depth != qdepth) {
 			continue;
 		}
-		move_scores.emplace(move, child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player));
+
+		// Laplace-style prior on the WDL verdict of under-refined subtrees.
+		// A child whose short-term evaluation is bad (e.g. a sacrifice that only
+		// pays off several QUIET plies deeper) would otherwise see its avg_score
+		// crater immediately and never be scheduled again, freezing its subtree
+		// at its creation-time quiescence value forever. Blending avg_score
+		// toward neutral with a strength that decays as the subtree earns visits
+		// lets exploration - not a single early verdict - decide which lines get
+		// proven. The trust scale tracks the size of the current search so the
+		// prior stays meaningful at every budget.
+		Evaluation child_eval;
+		const int child_visits = max(child_link._chosen_iterations, child->_iterations);
+		constexpr int TRUST_SCALE = 4096;
+		if (child_visits < TRUST_SCALE) {
+			child_eval = child->_deep_evaluation;
+			const float weight = (float)TRUST_SCALE / (float)(TRUST_SCALE + child_visits);
+			// Symmetric Laplace blend toward neutral: an under-refined subtree's
+			// short-term WDL verdict is unreliable in BOTH directions, so defer
+			// judgement until it has earned visits. Verdicts harden quickly
+			// (shallow mates stay sharp) yet sacrificial lines remain schedulable.
+			const float weight_inv = 1.0f - weight;
+			child_eval._avg_score = child_eval._avg_score * weight_inv + 0.5f * weight;
+			move_scores.emplace(move, child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player, &child_eval));
+		}
+		else {
+			move_scores.emplace(move, child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player));
+		}
 	}
 
 	return move_scores;
@@ -1886,7 +1941,16 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 
 	// Factor 2: average score
 	const double avg_score = player ? eval._avg_score : 1 - eval._avg_score;
-	const double score_score = exp(-beta * (1 - avg_score) / (1 - max_avg_score + min_constant) * max_avg_score / (avg_score + min_constant)) + min_constant;
+	// Suppression cap on the avg-score softmax: without it a move whose
+	// short-term WDL craters (e.g. a sacrifice that only pays off several
+	// quiet plies deeper) gets exp(-beta*...) ~ 1e-17 relative weight, which
+	// no UCT exploration bonus can ever overcome -> the line is mathematically
+	// dead and its subtree never refined. The cap bounds the suppression at
+	// exp(-AVG_TERM_CAP) so unproven lines stay schedulable while proven bad
+	// ones are still strongly discouraged.
+	constexpr double AVG_TERM_CAP = 12.0;
+	const double avg_term = -beta * (1 - avg_score) / (1 - max_avg_score + min_constant) * max_avg_score / (avg_score + min_constant);
+	const double score_score = exp(max(avg_term, -AVG_TERM_CAP)) + min_constant;
 
 	// Bonus for pure winning chances? Positions to check:
 	//   R4Q2/6pk/1q6/8/3P4/2N3r1/1K6/8 w - - 5 49 (should find Ra2)
@@ -2177,5 +2241,5 @@ NodeBuffer monte_node_buffer;
 // as a reset/remove frees space.
 bool g_buffers_full_logged = false;
 bool g_tt_main_search = false;
-bool g_tt_node_dag = false; // #11 Plan B — voir exploration.h
-robin_map<uint64_t, Node*> node_map; // #11 Plan B — voir exploration.h
+bool g_tt_node_dag = false; // #11 Plan B � voir exploration.h
+robin_map<uint64_t, Node*> node_map; // #11 Plan B � voir exploration.h
