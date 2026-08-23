@@ -66,6 +66,12 @@ add_executable(opti_chess
 
 target_compile_features(opti_chess PRIVATE cxx_std_20)
 
+# Deep search recursion (grogros_zero <-> explore_random_child descent down a
+# deep narrow tree) needs more than the 1 MB default main-thread stack.
+if(MSVC)
+    target_link_options(opti_chess PRIVATE /STACK:16777216)
+endif()
+
 # Platform-specific libraries
 if(WIN32)
     target_link_libraries(opti_chess PRIVATE
@@ -191,7 +197,7 @@ target_link_libraries(opti_chess_tests PRIVATE engine_lib GTest::gtest_main)
 target_compile_features(opti_chess_tests PRIVATE cxx_std_20)
 if(MSVC)
     target_compile_options(opti_chess_tests PRIVATE ${MSVC_OPT_FLAGS})
-    target_link_options(opti_chess_tests PRIVATE /LTCG)
+    target_link_options(opti_chess_tests PRIVATE /LTCG /STACK:16777216)
 elseif(NOT WIN32)
     target_compile_options(opti_chess_tests PRIVATE ${GCC_OPT_FLAGS})
     target_link_options(opti_chess_tests PRIVATE -flto)

@@ -1037,8 +1037,46 @@ static void run_move_table(const char* fen, int iterations) {
     monte_board_buffer.remove();
 }
 
-TEST(Debug, FegatelloMoveTable) {
-    // Regression guard: Nxf7 (Fegatello) must dominate the root visit share.
+// GUI-crash repro: long uninterrupted analysis on the f6 position
+TEST(Debug, F6LongRun) {
+    Evaluator evaluator;
+    Board b;
+    b.from_fen("r4rk1/p1p1bp2/3p2pR/5PP1/5P2/P4P2/1PP3P1/2KR4 w - - 0 23");
+
+    BoardBuffer board_buf(500 * 1024 * 1024);
+    board_buf.init(500000, false);
+    monte_node_buffer.init(500000, false);
+    monte_board_buffer.init(500000, false);
+
+    Node root(&b);
+
+    // Mimics the GUI loop: search batches interleaved with display extraction
+    for (int batch = 0; batch < 12; batch++) {
+        root.grogros_zero(&board_buf, &evaluator, 0.00001, 5.0, 1.10, 250000, 10);
+
+        // Exactly what gui.cpp does every refresh
+        const Move best_move = root.get_best_score_move(0.00001, 5.0);
+        cout << "  batch " << batch << ": iters=" << root._iterations
+             << " best_score_move_null=" << best_move.is_null_move();
+
+        if (!best_move.is_null_move()) {
+            const Evaluation& be = root._children[best_move]._node->_deep_evaluation;
+            cout << " eval=" << be._value;
+        }
+
+        const int depth = root.get_main_depth(0.00001, 5.0);
+        cout << " main_depth=" << depth;
+
+        const string variants = root.get_exploration_variants(0.00001, 5.0);
+        cout << " variants_bytes=" << variants.size() << endl;
+    }
+
+    board_buf.remove();
+    monte_node_buffer.remove();
+    monte_board_buffer.remove();
+}
+
+TEST(Debug, FegatelloMoveTable) {    // Regression guard: Nxf7 (Fegatello) must dominate the root visit share.
     // 4 plies of quiet-line compensation - only reachable since quiescence LMR
     // stopped reducing checking moves. Keep the budget modest for CI.
     Evaluator evaluator;

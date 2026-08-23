@@ -349,18 +349,21 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		return;
 	}
 
-	// #11 Plan B section 7 - safety bound on DAG recursion depth.
-	// OFF: never armed (no counter, no test). ON: repetition (Task 3) already
-	// cuts every cycle; this only catches pathological recursion.
-	if (g_tt_node_dag && g_dag_recursion_depth >= DAG_MAX_RECURSION_DEPTH) {
+	// Recursion safety bound - ALWAYS ON (was DAG-only): refinement descents
+	// recurse down existing tree edges, and a deep narrow line can exhaust the
+	// main-thread stack (GUI crash: silent window death on the f6 analysis).
+	// Repetition cuts normally fire long before this; the cap only catches
+	// pathological non-repeating depth.
+	constexpr int GROGROS_MAX_RECURSION_DEPTH = 96;
+	if (g_dag_recursion_depth >= GROGROS_MAX_RECURSION_DEPTH) {
 		return;
 	}
-	g_dag_recursion_depth += g_tt_node_dag ? 1 : 0;
-	if (g_tt_node_dag && g_dag_recursion_depth > g_dag_max_recursion_seen) {
+	g_dag_recursion_depth += 1;
+	if (g_dag_recursion_depth > g_dag_max_recursion_seen) {
 		g_dag_max_recursion_seen = g_dag_recursion_depth;
 	}
 	struct DagRecGuard {
-		~DagRecGuard() { g_dag_recursion_depth -= g_tt_node_dag ? 1 : 0; }
+		~DagRecGuard() { g_dag_recursion_depth -= 1; }
 	} _dag_rec_guard;
 
 	// Computation time
@@ -1093,8 +1096,19 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 
 		// Otherwise display only the most explored move
 		else {
-			// Display only the first move (most explored, ties broken by best evaluation)
-			const Move best_move = get_best_score_move(alpha, beta, true);
+			// Single-line continuation: follow the VALUE-argmax child (same truth
+			// the propagation uses); the score-based pick truncated lines on
+			// stand-pat-ranked nodes.
+			int color = _board->get_color();
+			long long best_value = LLONG_MIN;
+			Move best_move;
+			for (auto const& [move, link] : _children) {
+				const long long v = link._node->_deep_evaluation._value * color;
+				if (v > best_value) {
+					best_value = v;
+					best_move = move;
+				}
+			}
 
 			// Standpat
 			if (best_move.is_null_move()) {
@@ -1125,7 +1139,19 @@ int Node::get_main_depth(const double alpha, const double beta, int max_depth, P
 	}
 
 	if (children_count() > 0) {
-		Move main_move = get_best_score_move(alpha, beta, true);
+		// Walk the PV by SEARCHED VALUE (consistent with the propagation truth):
+		// the score-based walk died on stand-pat-ranked nodes, displaying a
+		// stuck "Depth: 2" no matter how deep the search actually went.
+		int color = _board->get_color();
+		long long best_value = LLONG_MIN;
+		Move main_move;
+		for (auto const& [move, link] : _children) {
+			const long long v = link._node->_deep_evaluation._value * color;
+			if (v > best_value) {
+				best_value = v;
+				main_move = move;
+			}
+		}
 
 		if (main_move.is_null_move()) {
 			return 0;
