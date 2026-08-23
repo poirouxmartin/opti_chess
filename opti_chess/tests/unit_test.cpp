@@ -263,8 +263,15 @@ TEST(Debug, UserPromotionCrash) {
     Board b;
     b.from_fen("r2qkbnr/pPn1pppp/8/5b2/8/8/PPPP1PPP/RNBQKBNR w KQkq - 1 5");
 
-    monte_board_buffer.init(60000, false);
-    monte_node_buffer.init(120000, false);
+    cout << "  sizeof(Board)=" << sizeof(Board) << " sizeof(Node)=" << sizeof(Node) << endl;
+    monte_board_buffer.init(200000, false);
+    monte_node_buffer.init(400000, false);
+    cout << "  boards_init=" << monte_board_buffer._init
+         << " len=" << monte_board_buffer._length
+         << " free=" << monte_board_buffer._free_indices.size()
+         << " | nodes_init=" << monte_node_buffer._init
+         << " len=" << monte_node_buffer._length
+         << " free=" << monte_node_buffer._free_indices.size() << endl;
 
     Node root(&b);
     try {
