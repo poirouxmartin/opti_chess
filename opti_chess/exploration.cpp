@@ -485,6 +485,25 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 
 	// Take the first unexplored move
 	const Move move = get_first_unexplored_move(true);
+
+	// GUARD: a null return means the expansion bookkeeping disagreed with the
+	// unexplored-move scan. Without this, the null move used to be "played"
+	// (a self-capture on a1) and added as a phantom child whose garbage
+	// evaluation NaN-poisoned every subsequent score.
+	if (move.is_null_move()) {
+		if (getenv("ENM_DEBUG") != nullptr) {
+			std::cerr << "[ENM-null] children=" << children_count() << " got_moves=" << (int)_board->_got_moves << std::endl;
+			for (int i = 25; i < (int)_board->_got_moves && i < max_moves; i++) {
+				const Move& mv = _board->_moves[i];
+				std::cerr << "   [" << i << "] (" << (int)mv.start_row << "," << (int)mv.start_col
+					<< ")->(" << (int)mv.end_row << "," << (int)mv.end_col
+					<< ") promo=" << (int)mv.get_promo_piece()
+					<< " contained=" << (_children.contains(mv) ? 1 : 0) << std::endl;
+			}
+		}
+		return;
+	}
+
 	// #7 / B-1 - single threaded history (no more per-move copy).
 	PositionHistory& branch_history = *path_history;
 
