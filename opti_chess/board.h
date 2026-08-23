@@ -24,10 +24,12 @@ constexpr enum piece_type { none = 0, w_pawn = 1, w_knight = 2, w_bishop = 3, w_
 constexpr uint8_t max_half_moves = 100;
 
 // Maximum number of legal moves per position.
-// 100 is a deliberate memory optimization: real positions almost never exceed
-// it (the all-time record is 218). add_move() guards the bound and silently
-// drops the excess instead of overflowing _moves[] into adjacent members.
-constexpr uint8_t max_moves = 100;
+// The all-time record is 218; promotion storms generate 4 moves per pushing/
+// capturing pawn, which regularly pushes sharp positions past 100 - silently
+// truncating perft counts when the cap binds. 224 keeps a margin over the
+// record while staying within uint8_t. Pool sizing adapts to the larger
+// stride (see compute_pool_sizing).
+constexpr uint8_t max_moves = 224;
 
 // Value of a checkmate
 constexpr int mate_value = 1e8;
