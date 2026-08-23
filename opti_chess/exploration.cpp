@@ -1787,13 +1787,20 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 			cout << "null move considered to be the best??" << endl;
 	}
 
-	// Overall best move
-	_children.at(best_move)._chosen_iterations++;
-
+	// Credit the branch that will actually be refined (true UCT visit counting).
+	// The former version credited best_move even when the descent went to
+	// move_to_play: whenever a non-explorable child (terminal/draw leaf) topped
+	// the ranking, it absorbed every visit while OTHER branches were being
+	// refined, so get_most_explored_child_move() - which selects the played
+	// move - locked onto it regardless of what the search actually learned.
 	if (move_to_play.is_null_move()) {
+		if (!best_move.is_null_move()) {
+			_children.at(best_move)._chosen_iterations++;
+		}
 		return best_move;
 	}
 
+	_children.at(move_to_play)._chosen_iterations++;
 	return move_to_play;
 }
 
