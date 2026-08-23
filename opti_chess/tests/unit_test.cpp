@@ -495,15 +495,32 @@ TEST(Board, InsufficientMaterial) {
     b._game_over_checked = false;
     EXPECT_EQ(b.game_over(2), draw);
 
-    // K+B vs K+N: draw (both sides have only 1 minor piece)
+    // K+B vs K+N: NOT a dead position (helpmates exist, FIDE 5.2.2) -> keep playing
     b.from_fen("8/8/4k3/8/4n3/2B1K3/8/8 w - - 0 1");
+    b._game_over_checked = false;
+    EXPECT_EQ(b.game_over(2), unterminated);
+
+    // K+N vs K+B: same, mirrored
+    b.from_fen("8/8/4k3/8/4b3/2N1K3/8/8 w - - 0 1");
+    b._game_over_checked = false;
+    EXPECT_EQ(b.game_over(2), unterminated);
+
+    // K+N vs K+N: helpmates exist -> not dead
+    b.from_fen("8/8/4k3/8/4n3/2N1K3/8/8 w - - 0 1");
+    b._game_over_checked = false;
+    EXPECT_EQ(b.game_over(2), unterminated);
+
+    // K+B vs K+B, bishops on the SAME colour complex: dead position -> draw.
+    // Bc1 = (0,2) even; Bh8 = (7,7) even.
+    b.from_fen("7b/8/4k3/8/8/2B1K3/8/8 w - - 0 1");
     b._game_over_checked = false;
     EXPECT_EQ(b.game_over(2), draw);
 
-    // K+N vs K+B: draw
-    b.from_fen("8/8/4k3/8/4b3/2N1K3/8/8 w - - 0 1");
+    // K+B vs K+B, opposite-coloured bishops: corner mates exist -> keep playing.
+    // Bc1 = (0,2) even; Bc8 = (7,2) odd.
+    b.from_fen("2b5/8/4k3/8/8/2B1K3/8/8 w - - 0 1");
     b._game_over_checked = false;
-    EXPECT_EQ(b.game_over(2), draw);
+    EXPECT_EQ(b.game_over(2), unterminated);
 }
 
 TEST(Board, MaterialDifference) {

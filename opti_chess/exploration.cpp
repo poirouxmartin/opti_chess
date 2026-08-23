@@ -1647,26 +1647,37 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	ScoredMove top[5];
 	int top_count = 0;
 
-	// Insertion sort (helper still to be extracted)
+	// Insertion into a bounded top-5, descending by score.
+	// The former decrement-without-shift version corrupted the ranking whenever
+	// an incoming score had to travel more than one slot once the list was full
+	// (elements were overwritten instead of shifted down).
 	for (auto const& [move, score] : move_scores) {
 
-		int j = top_count;
-		if (j < 5) {
-			top[j] = { move, score };
-			++top_count;
-		}
-		else if (score <= top[j - 1].score) {
+		// Worse than (or equal to) the current 5th, list already full: reject
+		if (top_count == 5 && score <= top[4].score) {
 			continue;
 		}
 
-		while (j > 0 && top[j - 1].score < score) {
-			if (j < 5)
-				top[j] = top[j - 1];
-			--j;
+		// Insertion rank among the current entries
+		int pos = 0;
+		while (pos < top_count && top[pos].score >= score) {
+			pos++;
 		}
 
-		if (j < 5)
-			top[j] = { move, score };
+		if (pos >= 5) {
+			continue;
+		}
+
+		// Shift the tail down, dropping the old 5th when the list is full
+		const int last = min(top_count, 4);
+		for (int k = last; k > pos; --k) {
+			top[k] = top[k - 1];
+		}
+		top[pos] = { move, score };
+
+		if (top_count < 5) {
+			top_count++;
+		}
 	}
 
 	// Apply the bonus

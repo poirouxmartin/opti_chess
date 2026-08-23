@@ -1482,17 +1482,25 @@ int Board::game_over(int max_repetitions) {
 	uint8_t count_b_knight = 0;
 	uint8_t count_b_bishop = 0;
 
+	// Square colour complex of each side's single bishop (-1 when none/multiple)
+	int w_bishop_color = -1;
+	int b_bishop_color = -1;
+
 	for (uint8_t i = 0; i < 8; i++) {
 		for (uint8_t j = 0; j < 8; j++) {
 			const uint8_t p = _array[i][j];
 			if (p == w_knight)
 				count_w_knight++;
-			else if (p == w_bishop)
+			else if (p == w_bishop) {
 				count_w_bishop++;
+				w_bishop_color = (i + j) & 1;
+			}
 			else if (p == b_knight)
 				count_b_knight++;
-			else if (p == b_bishop)
+			else if (p == b_bishop) {
 				count_b_bishop++;
+				b_bishop_color = (i + j) & 1;
+			}
 			// Major pieces or a pawn -> mate is possible
 			else if (p != w_king && p != b_king && p != none)
 				return unterminated;
@@ -1503,16 +1511,21 @@ int Board::game_over(int max_repetitions) {
 		}
 	}
 
-	// Draw possibilities through insufficient material
-	if (count_w_knight + count_w_bishop < 2 && count_b_knight + count_b_bishop < 2)
+	// Dead positions (FIDE 5.2.2): NO sequence of legal moves can ever produce
+	// a mate, so the game is immediately drawn.
+	//   K vs K, K+minor vs K, and K+B vs K+B with both bishops on the same
+	//   colour complex.
+	// Everything else with minor pieces only keeps helpmate possibilities and
+	// must keep being played: K+B vs K+N, K+N vs K+N, opposite-coloured
+	// K+B vs K+B, K+2N vs K (unforcable yet not dead).
+	const int minors_total = count_w_knight + count_w_bishop + count_b_knight + count_b_bishop;
+	if (minors_total <= 1)
 		return draw;
 
-	// Two knights alone cannot force mate
-	// TODO: is the game actually declared drawn?
-	/*if (count_w_knight == 2 || count_b_knight == 2) {
-		_game_over_value = 2;
-		return 2;
-	}*/
+	if (count_w_knight == 0 && count_b_knight == 0 &&
+		count_w_bishop == 1 && count_b_bishop == 1 &&
+		w_bishop_color == b_bishop_color)
+		return draw;
 
 	return unterminated;
 }

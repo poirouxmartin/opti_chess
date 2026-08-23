@@ -323,19 +323,40 @@ int Board::get_pawn_structure(float display_factor)
 							}
 						}
 
-						// Remove the pawn to test x-ray control over the square
-						_array[row][col] = none;
+					// Remove the pawn to test x-ray control over the square
+					_array[row][col] = none;
 
-						SquareMap white_controls_map = get_white_controls_map();
-						SquareMap black_controls_map = get_black_controls_map();
-
-						for (uint8_t k = row + 1; k <= 7; k++) {
-							int controls_diff = max(0, black_controls_map._array[k][col] - white_controls_map._array[k][col]);
-							division_factor += (control_division - 1.0f) * controls_diff;
+					// The cached control maps still see the removed pawn. A stale map
+					// only matters when a rook/queen sits BELOW the pawn with a clear
+					// file (the diff loop reads squares above it on the same file):
+					// recompute honestly only in that case.
+					bool vertical_xray = false;
+					for (int j = row - 1; j >= 0; --j) {
+						const uint8_t pj = _array[j][col];
+						if (pj != none) {
+							vertical_xray = (pj == w_rook || pj == w_queen || pj == b_rook || pj == b_queen);
+							break;
 						}
+					}
 
-						// Put the pawn back
-						_array[row][col] = w_pawn;
+					if (vertical_xray)
+						_controls_map_valid = false;
+
+					SquareMap white_controls_map = get_white_controls_map();
+					SquareMap black_controls_map = get_black_controls_map();
+
+					for (uint8_t k = row + 1; k <= 7; k++) {
+						int controls_diff = max(0, black_controls_map._array[k][col] - white_controls_map._array[k][col]);
+						division_factor += (control_division - 1.0f) * controls_diff;
+					}
+
+					// Put the pawn back
+					_array[row][col] = w_pawn;
+
+					// Only invalidate when the maps were rebuilt WITHOUT the pawn;
+					// otherwise the cache still describes the restored position
+					if (vertical_xray)
+						_controls_map_valid = false;
 
 
 						int passed_value = passed_pawns[row] * (!has_black_pieces ? 1.5f : 1.0f);
@@ -345,8 +366,6 @@ int Board::get_pawn_structure(float display_factor)
 							passed_value *= connected_passed_pawn_bonus;
 						}
 
-						//cout << "Passed pawn: " << square_name(row, col) << " (" << passed_value << " ) | " << division_factor << ": " << passed_value / division_factor * passed_adv << endl;
-
 						// Pawn endgame -> is the king inside the square of the passed pawn?
 						bool out_of_square = !has_black_pieces && !in_king_square(Pos(row, col), false);
 
@@ -354,8 +373,10 @@ int Board::get_pawn_structure(float display_factor)
 
 						// Add the passed pawn value
 						passed_pawns_value += (passed_value / division_factor + out_of_square * out_of_square_bonus[row]) * passed_adv;
-
 						//cout << "Passed pawn: " << square_name(row, col) << ", Value: " << (passed_value / division_factor + out_of_square * out_of_square_bonus[row]) * passed_adv << " (passed_value: " << passed_value << ", division_factor: " << division_factor << ", out_of_square bonus: " << out_of_square * out_of_square_bonus[row] << ") * passed_adv: " << passed_adv << endl;
+
+						// Only the most advanced pawn on the file counts: the ones behind it are stuck
+						break;
 					}
 
 				}
@@ -398,19 +419,38 @@ int Board::get_pawn_structure(float display_factor)
 							}
 						}
 
-						// Remove the pawn to test x-ray control over the square
-						_array[row][col] = none;
+					// Remove the pawn to test x-ray control over the square
+					_array[row][col] = none;
 
-						SquareMap white_controls_map = get_white_controls_map();
-						SquareMap black_controls_map = get_black_controls_map();
-
-						for (int_fast8_t k = row - 1; k >= 0; k--) {
-							int controls_diff = max(0, white_controls_map._array[k][col] - black_controls_map._array[k][col]);
-							division_factor += (control_division - 1.0f) * controls_diff;
+					// Mirror of the white side: only a rook/queen ABOVE with a clear
+					// file can x-ray the squares read below
+					bool vertical_xray = false;
+					for (int j = row + 1; j < 8; ++j) {
+						const uint8_t pj = _array[j][col];
+						if (pj != none) {
+							vertical_xray = (pj == w_rook || pj == w_queen || pj == b_rook || pj == b_queen);
+							break;
 						}
+					}
 
-						// Put the pawn back
-						_array[row][col] = b_pawn;
+					if (vertical_xray)
+						_controls_map_valid = false;
+
+					SquareMap white_controls_map = get_white_controls_map();
+					SquareMap black_controls_map = get_black_controls_map();
+
+					for (int_fast8_t k = row - 1; k >= 0; k--) {
+						int controls_diff = max(0, white_controls_map._array[k][col] - black_controls_map._array[k][col]);
+						division_factor += (control_division - 1.0f) * controls_diff;
+					}
+
+					// Put the pawn back
+					_array[row][col] = b_pawn;
+
+					// Only invalidate when the maps were rebuilt WITHOUT the pawn;
+					// otherwise the cache still describes the restored position
+					if (vertical_xray)
+						_controls_map_valid = false;
 
 						int passed_value = passed_pawns[7 - row] * (!has_white_pieces ? 1.5f : 1.0f);
 
@@ -433,8 +473,10 @@ int Board::get_pawn_structure(float display_factor)
 
 						// Add the passed pawn value
 						passed_pawns_value -= (passed_value / division_factor + out_of_square * out_of_square_bonus[7 - row]) * passed_adv;
-
 						//cout << "Passed pawn: " << square_name(row, col) << ", Value: " << -(passed_value / division_factor + out_of_square * out_of_square_bonus[7 - row]) * passed_adv << " (passed_value: " << passed_value << ", division_factor: " << division_factor << ", out_of_square bonus: " << out_of_square * out_of_square_bonus[7 - row] << ") * passed_adv: " << passed_adv << endl;
+
+						// Only the most advanced pawn on the file counts: the ones behind it are stuck
+						break;
 					}
 
 				}
@@ -479,19 +521,20 @@ int Board::get_pawn_structure(float display_factor)
 				// Pawn connected behind
 				bool is_left_connected_behind = (col > 0 && pawns_white[row - 1][col - 1]);
 
-				// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
-				//rnbqkbnr/pp3ppp/4p3/2ppP3/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 0 4: c3 is the move, to indirectly reconnect e5
-				if (is_left_connected_behind && (col > 1 && pawns_black[row][col - 2]) && !pawns_white[row - 2][col - 2] && !pawns_white[row - 2][col]) {
-					is_left_connected_behind = false;
-				}
+			// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
+			//rnbqkbnr/pp3ppp/4p3/2ppP3/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 0 4: c3 is the move, to indirectly reconnect e5
+			// (row < 2 guards: no backing pawn can exist off-board -> treat as unbacked)
+			if (is_left_connected_behind && (col > 1 && pawns_black[row][col - 2]) && (row < 2 || !pawns_white[row - 2][col - 2]) && (row < 2 || !pawns_white[row - 2][col])) {
+				is_left_connected_behind = false;
+			}
 
 				// Pawn connected on the same rank
 				bool is_left_connected_side = (col > 0 && pawns_white[row][col - 1]);
 
-				// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
-				if (is_left_connected_side && (col > 1 && pawns_black[row + 1][col - 2] || pawns_black[row + 1][col]) && !pawns_white[row - 2][col - 2] && !pawns_white[row - 2][col]) {
-					is_left_connected_side = false;
-				}
+			// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
+			if (is_left_connected_side && (col > 1 && pawns_black[row + 1][col - 2] || pawns_black[row + 1][col]) && (row < 2 || !pawns_white[row - 2][col - 2]) && (row < 2 || !pawns_white[row - 2][col])) {
+				is_left_connected_side = false;
+			}
 
 
 				// Connection through the right file
@@ -499,18 +542,18 @@ int Board::get_pawn_structure(float display_factor)
 				// Pawn connected behind
 				bool is_right_connected_behind = (col < 7 && pawns_white[row - 1][col + 1]);
 
-				// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
-				if (is_right_connected_behind && (col < 6 && pawns_black[row][col + 2]) && !pawns_white[row - 2][col + 2] && !pawns_white[row - 2][col]) {
-					is_right_connected_behind = false;
-				}
+			// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
+			if (is_right_connected_behind && (col < 6 && pawns_black[row][col + 2]) && (row < 2 || !pawns_white[row - 2][col + 2]) && (row < 2 || !pawns_white[row - 2][col])) {
+				is_right_connected_behind = false;
+			}
 
 				// Pawn connected on the same rank
 				bool is_right_connected_side = (col < 7 && pawns_white[row][col + 1]);
 
-				// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
-				if (is_right_connected_side && (col < 6 && pawns_black[row + 1][col + 2] || pawns_black[row + 1][col]) && !pawns_white[row - 2][col + 2] && !pawns_white[row - 2][col]) {
-					is_right_connected_side = false;
-				}
+			// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
+			if (is_right_connected_side && (col < 6 && pawns_black[row + 1][col + 2] || pawns_black[row + 1][col]) && (row < 2 || !pawns_white[row - 2][col + 2]) && (row < 2 || !pawns_white[row - 2][col])) {
+				is_right_connected_side = false;
+			}
 
 				int behind_connections = is_left_connected_behind + is_right_connected_behind;
 				int side_connections = is_left_connected_side + is_right_connected_side;
@@ -534,37 +577,38 @@ int Board::get_pawn_structure(float display_factor)
 				// Pawn connected behind
 				bool is_left_connected_behind = (col > 0 && pawns_black[row + 1][col - 1]);
 
-				// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
-				//rnbqkb1r/ppp2ppp/5n2/3p4/2PPp3/4P3/PP3PPP/RNBQKBNR b KQkq - 0 5: c6 is the move
-				if (is_left_connected_behind && (col > 1 && pawns_white[row][col - 2] && !pawns_black[row + 2][col - 2] && !pawns_black[row + 2][col])) {
-					is_left_connected_behind = false;
-				}
+			// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
+			//rnbqkb1r/ppp2ppp/5n2/3p4/2PPp3/4P3/PP3PPP/RNBQKBNR b KQkq - 0 5: c6 is the move
+			// (row > 5 guards: no backing pawn can exist off-board -> treat as unbacked)
+			if (is_left_connected_behind && (col > 1 && pawns_white[row][col - 2] && (row > 5 || !pawns_black[row + 2][col - 2]) && (row > 5 || !pawns_black[row + 2][col]))) {
+				is_left_connected_behind = false;
+			}
 
 				// Pawn connected on the same rank
 				bool is_left_connected_side = (col > 0 && pawns_black[row][col - 1]);
 
-				// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
-				if (is_left_connected_side && (col > 1 && pawns_white[row - 1][col - 2] || pawns_white[row - 1][col]) && !pawns_black[row + 2][col - 2] && !pawns_black[row + 2][col]) {
-					is_left_connected_side = false;
-				}
+			// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
+			if (is_left_connected_side && (col > 1 && pawns_white[row - 1][col - 2] || pawns_white[row - 1][col]) && (row > 5 || !pawns_black[row + 2][col - 2]) && (row > 5 || !pawns_black[row + 2][col])) {
+				is_left_connected_side = false;
+			}
 
 				// Connection through the right file
 				
 				// Pawn connected behind
 				bool is_right_connected_behind = (col < 7 && pawns_black[row + 1][col + 1]);
 
-				// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
-				if (is_right_connected_behind && (col < 6 && pawns_white[row][col + 2]) && !pawns_black[row + 2][col + 2] && !pawns_black[row + 2][col]) {
-					is_right_connected_behind = false;
-				}
+			// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
+			if (is_right_connected_behind && (col < 6 && pawns_white[row][col + 2] && (row > 5 || !pawns_black[row + 2][col + 2]) && (row > 5 || !pawns_black[row + 2][col]))) {
+				is_right_connected_behind = false;
+			}
 
 				// Pawn connected on the same rank
 				bool is_right_connected_side = (col < 7 && pawns_black[row][col + 1]);
 
-				// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
-				if (is_right_connected_side && (col < 6 && pawns_white[row - 1][col + 2] || pawns_white[row - 1][col]) && !pawns_black[row + 2][col + 2] && !pawns_black[row + 2][col]) {
-					is_right_connected_side = false;
-				}
+			// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
+			if (is_right_connected_side && (col < 6 && pawns_white[row - 1][col + 2] || pawns_white[row - 1][col]) && (row > 5 || !pawns_black[row + 2][col + 2]) && (row > 5 || !pawns_black[row + 2][col])) {
+				is_right_connected_side = false;
+			}
 
 				int behind_connections = is_left_connected_behind + is_right_connected_behind;
 				int side_connections = is_left_connected_side + is_right_connected_side;

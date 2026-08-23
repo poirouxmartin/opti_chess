@@ -7,6 +7,16 @@ void Board::from_fen(string fen)
 	//reset_all();
 	reset_board();
 
+	// Deterministic failure state: on any parse error leave an EMPTY board
+	// instead of a half-parsed position mixing stale constructor content with
+	// partial FEN data (a half-parsed board once made a puzzle test flaky).
+	auto fen_fail = [this](const char* msg) {
+		cout << "invalid FEN: " << msg << endl;
+		for (int r = 0; r < 8; r++)
+			for (int c = 0; c < 8; c++)
+				_array[r][c] = none;
+	};
+
 	// PGN
 	main_GUI._initial_fen = fen;
 	main_GUI._pgn = "";
@@ -23,7 +33,7 @@ void Board::from_fen(string fen)
 	// Piece placement
 	while (row >= 0) {
 		if (iterator >= static_cast<int>(fen.size())) {
-			cout << "invalid FEN: truncated" << endl;
+			fen_fail("truncated");
 			return;
 		}
 		c = fen[iterator];
@@ -45,7 +55,7 @@ void Board::from_fen(string fen)
 			if (isdigit(c)) {
 				const int digit = (static_cast<int>(c)) - (static_cast<int>('0'));
 				if (col + digit > 8) {
-					cout << "invalid FEN: row overflow" << endl;
+					fen_fail("row overflow");
 					return;
 				}
 				for (int k = col; k < col + digit; k++) {
@@ -56,7 +66,7 @@ void Board::from_fen(string fen)
 			}
 
 			else {
-				cout << "invalid FEN: bad character" << endl;
+				fen_fail("bad character");
 				return;
 			}
 		}
@@ -73,13 +83,13 @@ void Board::from_fen(string fen)
 		}
 	}
 	if (w_kings != 1 || b_kings != 1) {
-		cout << "invalid FEN: must have exactly one king per side" << endl;
+		fen_fail("must have exactly one king per side");
 		return;
 	}
 
 	// Side to move
 	if (iterator >= static_cast<int>(fen.size())) {
-		cout << "invalid FEN: missing side to move" << endl;
+		fen_fail("missing side to move");
 		return;
 	}
 	c = fen[iterator];
@@ -95,7 +105,7 @@ void Board::from_fen(string fen)
 
 	while (next) {
 		if (iterator >= static_cast<int>(fen.size())) {
-			cout << "invalid FEN: truncated castling" << endl;
+			fen_fail("truncated castling");
 			return;
 		}
 		c = fen[iterator];
@@ -113,7 +123,7 @@ void Board::from_fen(string fen)
 	}
 
 	if (iterator >= static_cast<int>(fen.size())) {
-		cout << "invalid FEN: missing en passant" << endl;
+		fen_fail("missing en passant");
 		return;
 	}
 	c = fen[iterator];
