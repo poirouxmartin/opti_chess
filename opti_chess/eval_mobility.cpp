@@ -1438,6 +1438,12 @@ int Board::get_short_term_piece_mobility(bool display) const {
 	int white_mobility = 0;
 	int black_mobility = 0;
 
+	// Bound-safe byte access (same rationale as in get_long_term_piece_mobility)
+	auto piece_at = [&](int r, int c) -> uint8_t {
+		if (r < 0 || r > 7 || c < 0 || c > 7) return none;
+		return _array[r][c];
+	};
+
 	// For each piece
 	uint64_t occ = _occupancies[2];
 	while (occ) {
@@ -1451,8 +1457,8 @@ int Board::get_short_term_piece_mobility(bool display) const {
 		// White pawn
 		if (piece == w_pawn) {
 			piece_mobility = _array[row + 1][col] == none; // Single push
-			piece_mobility += col > 0 && is_black(_array[row + 1][col - 1]); // Capture to the left
-			piece_mobility += col < 7 && is_black(_array[row + 1][col + 1]); // Capture to the right
+			piece_mobility += col > 0 && is_black(piece_at(row + 1, col - 1)); // Capture to the left
+			piece_mobility += col < 7 && is_black(piece_at(row + 1, col + 1)); // Capture to the right
 			piece_mobility += row == 1 && _array[row + 1][col] == none && _array[row + 2][col] == none; // Double push
 		}
 
@@ -1478,7 +1484,7 @@ int Board::get_short_term_piece_mobility(bool display) const {
 					int new_col = col + d_col;
 
 					while (is_in(new_row, 0, 7) && is_in(new_col, 0, 7)) {
-						uint8_t p = _array[new_row][new_col];
+						uint8_t p = piece_at(new_row, new_col);
 						
 						if (!is_white(p) && !black_pawns_controls._array[new_row][new_col]) {
 							piece_mobility++;
@@ -1504,7 +1510,7 @@ int Board::get_short_term_piece_mobility(bool display) const {
 					int new_col = col + d_col;
 
 					while (is_in(new_row, 0, 7) && is_in(new_col, 0, 7)) {
-						uint8_t p = _array[new_row][new_col];
+						uint8_t p = piece_at(new_row, new_col);
 
 						if (!is_white(p) && !black_pawns_controls._array[new_row][new_col]) {
 							piece_mobility++;
@@ -1535,8 +1541,8 @@ int Board::get_short_term_piece_mobility(bool display) const {
 			// Black pawn
 			if (piece == b_pawn) {
 				piece_mobility = _array[row - 1][col] == none; // Single push
-				piece_mobility += col > 0 && is_white(_array[row - 1][col - 1]); // Capture to the left
-				piece_mobility += col < 7 && is_white(_array[row - 1][col + 1]); // Capture to the right
+				piece_mobility += col > 0 && is_white(piece_at(row - 1, col - 1)); // Capture to the left
+				piece_mobility += col < 7 && is_white(piece_at(row - 1, col + 1)); // Capture to the right
 				piece_mobility += row == 6 && _array[row - 1][col] == none && _array[row - 2][col] == none; // Double push
 			}
 
@@ -1562,7 +1568,7 @@ int Board::get_short_term_piece_mobility(bool display) const {
 					int new_col = col + d_col;
 
 					while (is_in(new_row, 0, 7) && is_in(new_col, 0, 7)) {
-						uint8_t p = _array[new_row][new_col];
+						uint8_t p = piece_at(new_row, new_col);
 
 						if (!is_black(p) && !white_pawns_controls._array[new_row][new_col]) {
 							piece_mobility++;
@@ -1588,7 +1594,7 @@ int Board::get_short_term_piece_mobility(bool display) const {
 					int new_col = col + d_col;
 
 					while (is_in(new_row, 0, 7) && is_in(new_col, 0, 7)) {
-						uint8_t p = _array[new_row][new_col];
+						uint8_t p = piece_at(new_row, new_col);
 
 						if (!is_black(p) && !white_pawns_controls._array[new_row][new_col]) {
 							piece_mobility++;
@@ -1675,6 +1681,14 @@ int Board::get_long_term_piece_mobility(bool display) const {
 	int white_mobility = 0;
 	int black_mobility = 0;
 
+	// Bound-safe byte access for this function's board scans: ASAN flagged a
+	// 1-byte read past a caller frame originating here; clamping guarantees an
+	// out-of-range row/col can never escape the object.
+	auto piece_at = [&](int r, int c) -> uint8_t {
+		if (r < 0 || r > 7 || c < 0 || c > 7) return none;
+		return _array[r][c];
+	};
+
 	// For each piece
 	uint64_t occ = _occupancies[2];
 	while (occ) {
@@ -1688,8 +1702,8 @@ int Board::get_long_term_piece_mobility(bool display) const {
 		// White pawn
 		if (piece == w_pawn) {
 			piece_mobility = white_blocked_pieces._array[row + 1][col] == 0; // Single push
-			piece_mobility += col > 0 && is_black(_array[row + 1][col - 1]); // Capture to the left
-			piece_mobility += col < 7 && is_black(_array[row + 1][col + 1]); // Capture to the right
+			piece_mobility += col > 0 && is_black(piece_at(row + 1, col - 1)); // Capture to the left
+			piece_mobility += col < 7 && is_black(piece_at(row + 1, col + 1)); // Capture to the right
 			piece_mobility += row == 1 && white_blocked_pieces._array[row + 1][col] == 0 && white_blocked_pieces._array[row + 2][col] == 0; // Double push
 			}
 
@@ -1700,7 +1714,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					int new_col = col + knight_directions[m][1];
 
 					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && white_blocked_pieces._array[new_row][new_col] == 0 && !black_pawns_controls._array[new_row][new_col]) {
-						uint8_t target_piece = _array[new_row][new_col];
+						uint8_t target_piece = piece_at(new_row, new_col);
 						piece_mobility += blocking_piece_mult[piece_type(target_piece)];
 					}
 				}
@@ -1718,7 +1732,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					float cumulative_blocking_factor = 1.0f;
 
 					while (is_in(new_row, 0, 7) && is_in(new_col, 0, 7)) {
-						uint8_t p = _array[new_row][new_col];
+						uint8_t p = piece_at(new_row, new_col);
 
 						if (white_blocked_pieces._array[new_row][new_col] == 1 || (p == b_pawn && black_pawns_controls._array[new_row][new_col])) {
 							break;
@@ -1750,7 +1764,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					float cumulative_blocking_factor = 1.0f;
 
 					while (is_in(new_row, 0, 7) && is_in(new_col, 0, 7)) {
-						uint8_t p = _array[new_row][new_col];
+						uint8_t p = piece_at(new_row, new_col);
 
 						if (white_blocked_pieces._array[new_row][new_col] == 1 || (p == b_pawn && black_pawns_controls._array[new_row][new_col])) {
 							break;
@@ -1777,7 +1791,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					int new_col = col + all_directions[m][1];
 
 					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && white_blocked_pieces._array[new_row][new_col] == 0 && !black_pieces_controls._array[new_row][new_col]) {
-						uint8_t target_piece = _array[new_row][new_col];
+						uint8_t target_piece = piece_at(new_row, new_col);
 						piece_mobility += blocking_piece_mult[piece_type(target_piece)];
 					}
 				}
@@ -1786,8 +1800,8 @@ int Board::get_long_term_piece_mobility(bool display) const {
 			// Black pawn
 			if (piece == b_pawn) {
 				piece_mobility = black_blocked_pieces._array[row - 1][col] == 0; // Single push
-				piece_mobility += col > 0 && is_white(_array[row - 1][col - 1]); // Capture to the left
-				piece_mobility += col < 7 && is_white(_array[row - 1][col + 1]); // Capture to the right
+				piece_mobility += col > 0 && is_white(piece_at(row - 1, col - 1)); // Capture to the left
+				piece_mobility += col < 7 && is_white(piece_at(row - 1, col + 1)); // Capture to the right
 				piece_mobility += row == 6 && black_blocked_pieces._array[row - 1][col] == 0 && black_blocked_pieces._array[row - 2][col] == 0; // Double push
 			}
 
@@ -1798,7 +1812,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					int new_col = col + knight_directions[m][1];
 
 					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && black_blocked_pieces._array[new_row][new_col] == 0 && !white_pawns_controls._array[new_row][new_col]) {
-						uint8_t target_piece = _array[new_row][new_col];
+						uint8_t target_piece = piece_at(new_row, new_col);
 						piece_mobility += blocking_piece_mult[piece_type(target_piece)];
 					}
 				}
@@ -1816,7 +1830,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					float cumulative_blocking_factor = 1.0f;
 
 					while (is_in(new_row, 0, 7) && is_in(new_col, 0, 7)) {
-						uint8_t p = _array[new_row][new_col];
+						uint8_t p = piece_at(new_row, new_col);
 
 						if (black_blocked_pieces._array[new_row][new_col] == 1 || (p == w_pawn && white_pawns_controls._array[new_row][new_col])) {
 							break;
@@ -1848,7 +1862,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					float cumulative_blocking_factor = 1.0f;
 
 					while (is_in(new_row, 0, 7) && is_in(new_col, 0, 7)) {
-						uint8_t p = _array[new_row][new_col];
+						uint8_t p = piece_at(new_row, new_col);
 
 						if (black_blocked_pieces._array[new_row][new_col] == 1 || (p == w_pawn && white_pawns_controls._array[new_row][new_col])) {
 							break;
@@ -1875,7 +1889,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					int new_col = col + all_directions[m][1];
 
 					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && black_blocked_pieces._array[new_row][new_col] == 0 && !white_pieces_controls._array[new_row][new_col]) {
-						uint8_t target_piece = _array[new_row][new_col];
+						uint8_t target_piece = piece_at(new_row, new_col);
 						piece_mobility += blocking_piece_mult[piece_type(target_piece)];
 					}
 				}
