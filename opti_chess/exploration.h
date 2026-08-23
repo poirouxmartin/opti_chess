@@ -9,6 +9,18 @@
 using namespace tsl;
 using PositionHistory = RepetitionHistory;
 
+// ---------------------------------------------------------------------------
+// Search feature toggles - self-play A/B testing (defaults = current best).
+// Flip per game from the self-play runner to measure non-regression:
+//   g_search_value_propagation: value-argmax backup (false = legacy
+//     get_best_score_move ranking, pre-audit behaviour)
+//   g_search_trust_prior: Laplace blend of under-refined subtrees' WDL
+//   g_search_avg_cap: cap the avg-score softmax suppression (AVG_TERM_CAP)
+// ---------------------------------------------------------------------------
+extern bool g_search_value_propagation;
+extern bool g_search_trust_prior;
+extern bool g_search_avg_cap;
+
 class Node;
 
 struct ChildLink {

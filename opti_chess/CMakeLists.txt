@@ -110,14 +110,26 @@ target_include_directories(opti_chess PRIVATE "${robin_map_SOURCE_DIR}/include/t
 
 # ---------------------------------------------------------------------------
 # Aggressive compiler optimizations for Release builds
+# ASAN_BUILD=ON switches to sanitizer-friendly flags (no /GL //LTCG, /GS on)
 # ---------------------------------------------------------------------------
-if(MSVC)
+option(ASAN_BUILD "Build with AddressSanitizer (MSVC)" OFF)
+if(ASAN_BUILD AND MSVC)
+    set(MSVC_OPT_FLAGS /O2 /Ob2 /fp:precise /bigobj /fsanitize=address)
+    # Prebuilt googletest is not annotated: match it or the linker refuses.
+    add_compile_definitions(_DISABLE_STRING_ANNOTATION _DISABLE_VECTOR_ANNOTATION _DISABLE_OPTIONAL_ANNOTATION)
+    add_link_options(/fsanitize=address)
+elseif(MSVC)
     # MSVC: /Ox full optimization, /fp:fast fast floats, /GL whole-program,
     # /Oi intrinsics, /Ot favor fast code, /Ob3 aggressive inlining,
     # /GS- no buffer security checks, /bigobj for large TUs
     set(MSVC_OPT_FLAGS /Ox /fp:fast /GL /Oi /Ot /Ob3 /GS- /bigobj)
+endif()
+
+if(MSVC)
     target_compile_options(opti_chess PRIVATE ${MSVC_OPT_FLAGS})
-    target_link_options(opti_chess PRIVATE /LTCG)
+    if(NOT ASAN_BUILD)
+        target_link_options(opti_chess PRIVATE /LTCG)
+    endif()
 else()
     # GCC/Clang: -O3, -ffast-math, native arch, LTO
     set(GCC_OPT_FLAGS -O3 -ffast-math -march=native -flto)
@@ -197,10 +209,30 @@ target_link_libraries(opti_chess_tests PRIVATE engine_lib GTest::gtest_main)
 target_compile_features(opti_chess_tests PRIVATE cxx_std_20)
 if(MSVC)
     target_compile_options(opti_chess_tests PRIVATE ${MSVC_OPT_FLAGS})
-    target_link_options(opti_chess_tests PRIVATE /LTCG /STACK:16777216)
+    if(NOT ASAN_BUILD)
+        target_link_options(opti_chess_tests PRIVATE /LTCG)
+    endif()
+    target_link_options(opti_chess_tests PRIVATE /STACK:16777216)
 elseif(NOT WIN32)
     target_compile_options(opti_chess_tests PRIVATE ${GCC_OPT_FLAGS})
     target_link_options(opti_chess_tests PRIVATE -flto)
+endif()
+
+# Headless self-play match runner (NEW vs OLD search configurations)
+add_executable(opti_chess_selfplay
+    selfplay.cpp
+)
+target_link_libraries(opti_chess_selfplay PRIVATE engine_lib)
+target_compile_features(opti_chess_selfplay PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(opti_chess_selfplay PRIVATE ${MSVC_OPT_FLAGS})
+    if(NOT ASAN_BUILD)
+        target_link_options(opti_chess_selfplay PRIVATE /LTCG)
+    endif()
+    target_link_options(opti_chess_selfplay PRIVATE /STACK:16777216)
+elseif(NOT WIN32)
+    target_compile_options(opti_chess_selfplay PRIVATE ${GCC_OPT_FLAGS})
+    target_link_options(opti_chess_selfplay PRIVATE -flto)
 endif()
 
 include(GoogleTest)

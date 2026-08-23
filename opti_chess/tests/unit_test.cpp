@@ -1076,6 +1076,87 @@ TEST(Debug, F6LongRun) {
     monte_board_buffer.remove();
 }
 
+// Minimal crash repro from self-play harness (legacy config, 6000 iters)
+TEST(Debug, CrashRepro) {
+    Evaluator evaluator;
+
+    monte_board_buffer.init(60000, false);
+    monte_node_buffer.init(120000, false);
+
+    g_search_value_propagation = true;
+    g_search_trust_prior = false;
+    g_search_avg_cap = false;
+
+    // Mirror the self-play game move by move (shared TT across moves)
+    const char* start_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    Board game_board;
+    game_board.from_fen(start_fen);
+
+    for (int ply = 0; ply < 10; ply++) {
+        game_board.get_moves();
+        if (game_board.is_game_over(3) != unterminated) break;
+
+        Board analysis_board;
+        analysis_board.from_fen(game_board.to_fen());
+        analysis_board.get_moves();
+        cout << "  pre-search: got_moves=" << analysis_board._got_moves
+             << " first=" << (analysis_board._got_moves > 0 ? game_board.move_label(analysis_board._moves[0]) : "N/A") << endl;
+
+        Node root(&analysis_board);
+        try {
+            root.grogros_zero(&monte_board_buffer, &evaluator, 0.00001, 5.0, 1.10, 6000, 8);
+        }
+        catch (const std::exception& e) {
+            cout << "  EXCEPTION in grogros_zero at ply " << ply << ": " << e.what()
+                 << " | fen=" << game_board.to_fen()
+                 << " | root_children=" << root.children_count() << endl;
+            for (auto const& [m, link] : root._children) {
+                cout << "    child (" << (int)m.start_row << "," << (int)m.start_col
+                     << ")->(" << (int)m.end_row << "," << (int)m.end_col << ")"
+                     << " chosen=" << link._chosen_iterations
+                     << " node=" << (void*)link._node
+                     << " lbl=" << game_board.move_label(m) << endl;
+            }
+            throw;
+        }
+
+        const Move best = root.get_most_explored_child_move();
+        cout << "  ply " << ply << ": " << game_board.move_label(best)
+             << " | eval=" << root._deep_evaluation._value
+             << " | best=(" << (int)best.start_row << "," << (int)best.start_col
+             << ")->(" << (int)best.end_row << "," << (int)best.end_col << ")"
+             << " flags=" << (int)best.flags
+             << " children=" << root.children_count() << endl;
+
+        // First 10 children with full detail
+        int dumped = 0;
+        for (auto const& [m, link] : root._children) {
+            if (dumped++ >= 10) break;
+            cout << "    child (" << (int)m.start_row << "," << (int)m.start_col
+                 << ")->(" << (int)m.end_row << "," << (int)m.end_col << ")"
+                 << " promo=" << (int)m.get_promo_piece()
+                 << " flags=" << (int)m.flags
+                 << " chosen=" << link._chosen_iterations
+                 << " node=" << (void*)link._node
+                 << " lbl=" << game_board.move_label(m) << endl;
+        }
+
+        root.reset();
+
+        if (best.is_null_move()) break;
+        game_board.make_move(best, false, true);
+    }
+
+    g_search_value_propagation = true;
+    g_search_trust_prior = true;
+    g_search_avg_cap = true;
+
+    EXPECT_TRUE(true);
+
+    monte_node_buffer.remove();
+    monte_board_buffer.remove();
+}
+
 TEST(Debug, FegatelloMoveTable) {    // Regression guard: Nxf7 (Fegatello) must dominate the root visit share.
     // 4 plies of quiet-line compensation - only reachable since quiescence LMR
     // stopped reducing checking moves. Keep the budget modest for CI.

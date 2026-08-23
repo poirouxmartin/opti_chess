@@ -1,6 +1,12 @@
 #include "exploration.h"
 #include "useful_functions.h"
 #include "zobrist.h"
+#include <cmath>
+
+// Search feature toggles (see exploration.h) - self-play A/B testing
+bool g_search_value_propagation = true;
+bool g_search_trust_prior = true;
+bool g_search_avg_cap = true;
 
 namespace {
 
@@ -657,7 +663,9 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 	// Add the child
 	if (!already_explored) {
 		add_child(child, move);
-		child_link = &_children.at(move);
+		// Defensive: at() here once threw "Couldn't find key." deep into long
+		// games (heap-state dependent). A missing link degrades gracefully.
+		child_link = _children.contains(move) ? &_children[move] : nullptr;
 	}
 
 	if (child_link->_chosen_iterations == 0) {
@@ -696,19 +704,25 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 	// explore_random_child): get_node_score ranking decoupled from value exactly
 	// in tactical positions, propagating sibling evaluations over the best line.
 	int color = _board->get_color();
-	long long best_value = LLONG_MIN;
 	Move best_move;
-	for (auto const& [move, link] : _children) {
-		const long long v = link._node->_deep_evaluation._value * color;
-		if (v > best_value) {
-			best_value = v;
-			best_move = move;
+
+	if (g_search_value_propagation) {
+		long long best_value = LLONG_MIN;
+		for (auto const& [move, link] : _children) {
+			const long long v = link._node->_deep_evaluation._value * color;
+			if (v > best_value) {
+				best_value = v;
+				best_move = move;
+			}
+		}
+
+		// Stand pat is the best
+		if (!all_moves_explored && _deep_evaluation._value * color >= best_value) {
+			best_move = Move();
 		}
 	}
-
-	// Stand pat is the best
-	if (!all_moves_explored && _deep_evaluation._value * color >= best_value) {
-		best_move = Move();
+	else {
+		best_move = get_best_score_move(alpha, beta, !all_moves_explored);
 	}
 
 	if (best_move.is_null_move()) {
@@ -825,18 +839,29 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	// copied evaluations of children whose softmax rank disagreed with their
 	// value, freezing tactical verdicts at stale levels.
 	// Backup is UNCONDITIONAL: the parent's value IS its best child's value.
-	int color = _board->get_color();
-	long long best_value = LLONG_MIN;
-	Move best_value_move;
-	for (auto const& [move, link] : _children) {
-		const long long v = link._node->_deep_evaluation._value * color;
-		if (v > best_value) {
-			best_value = v;
-			best_value_move = move;
+	if (g_search_value_propagation) {
+		int color = _board->get_color();
+		long long best_value = LLONG_MIN;
+		Move best_value_move;
+		for (auto const& [move, link] : _children) {
+			const long long v = link._node->_deep_evaluation._value * color;
+			if (v > best_value) {
+				best_value = v;
+				best_value_move = move;
+			}
+		}
+		if (!best_value_move.is_null_move()) {
+			_deep_evaluation = _children[best_value_move]._node->_deep_evaluation;
 		}
 	}
-	if (!best_value_move.is_null_move()) {
-		_deep_evaluation = _children[best_value_move]._node->_deep_evaluation;
+	else {
+		// Legacy ranking. GUARD: on NaN scores every comparison fails and
+		// get_best_score_move returns the null move - operator[] would then
+		// INSERT a phantom child keyed by Move() whose _node is nullptr.
+		const Move legacy_best = get_best_score_move(alpha, beta);
+		if (!legacy_best.is_null_move()) {
+			_deep_evaluation = _children[legacy_best]._node->_deep_evaluation;
+		}
 	}
 
 	// #11 Plan A - write-back of the refined value (the actual lever).
@@ -1608,27 +1633,34 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	// entries from a previous visit of this pooled node; propagating them would
 	// overwrite the fresh stand-pat evaluation (regression from NPS Opt #16).
 	if (move_index > 0) {
-		// Negamax hygiene: the propagated evaluation must come from the child
-		// with the best SEARCHED VALUE - that is what defines alpha. Ranking
-		// candidates by get_node_score (WDL/softmax-flavoured, used for move
-		// choice) instead copied whatever child happened to rank first there,
-		// which decouples from value exactly in tactical positions: quiescence
-		// returned +151 here while storing the -395 of a differently-ranked
-		// sibling, freezing verdicts at garbage.
-		int color = _board->get_color();
-		long long best_value = LLONG_MIN;
 		Move best_move;
-		for (auto const& [move, child_link] : _children) {
-			const long long v = child_link._node->_deep_evaluation._value * color;
-			if (v > best_value) {
-				best_value = v;
-				best_move = move;
+
+		if (g_search_value_propagation) {
+			// Negamax hygiene: the propagated evaluation must come from the child
+			// with the best SEARCHED VALUE - that is what defines alpha. Ranking
+			// candidates by get_node_score (WDL/softmax-flavoured, used for move
+			// choice) instead copied whatever child happened to rank first there,
+			// which decouples from value exactly in tactical positions: quiescence
+			// returned +151 here while storing the -395 of a differently-ranked
+			// sibling, freezing verdicts at garbage.
+			int color = _board->get_color();
+			long long best_value = LLONG_MIN;
+			for (auto const& [move, child_link] : _children) {
+				const long long v = child_link._node->_deep_evaluation._value * color;
+				if (v > best_value) {
+					best_value = v;
+					best_move = move;
+				}
+			}
+
+			bool all_moves_explored = children_count() == _board->_got_moves;
+			if (!all_moves_explored && _deep_evaluation._value * color >= best_value) {
+				best_move = Move(); // stand pat wins on value
 			}
 		}
-
-		bool all_moves_explored = children_count() == _board->_got_moves;
-		if (!all_moves_explored && _deep_evaluation._value * color >= best_value) {
-			best_move = Move(); // stand pat wins on value
+		else {
+			bool all_moves_explored = children_count() == _board->_got_moves;
+			best_move = get_best_score_move(search_alpha, search_beta, !all_moves_explored);
 		}
 
 		if (!best_move.is_null_move()) {
@@ -1893,13 +1925,28 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	// move - locked onto it regardless of what the search actually learned.
 	if (move_to_play.is_null_move()) {
 		if (!best_move.is_null_move()) {
-			_children.at(best_move)._chosen_iterations++;
+			if (_children.contains(best_move)) _children[best_move]._chosen_iterations++;
 		}
 		return best_move;
 	}
 
-	_children.at(move_to_play)._chosen_iterations++;
-	return move_to_play;
+	if (move_to_play.is_null_move()) {
+		if (!best_move.is_null_move()) {
+			if (_children.contains(best_move)) _children[best_move]._chosen_iterations++;
+		}
+		return best_move;
+	}
+
+	// The key always exists here (move_to_play came from iterating _children);
+	// avoid at()'s throw and any iterator const-quirks entirely.
+	if (_children.contains(move_to_play)) {
+		_children[move_to_play]._chosen_iterations++;
+		return move_to_play;
+	}
+	if (!best_move.is_null_move()) {
+		if (_children.contains(best_move)) _children[best_move]._chosen_iterations++;
+	}
+	return best_move;
 }
 
 // Returns the move scores
@@ -1967,7 +2014,7 @@ MoveScoreList Node::get_move_scores(const double alpha, const double beta, const
 		Evaluation child_eval;
 		const int child_visits = max(child_link._chosen_iterations, child->_iterations);
 		constexpr int TRUST_SCALE = 4096;
-		if (child_visits < TRUST_SCALE) {
+		if (g_search_trust_prior && child_visits < TRUST_SCALE) {
 			child_eval = child->_deep_evaluation;
 			const float weight = (float)TRUST_SCALE / (float)(TRUST_SCALE + child_visits);
 			// Symmetric Laplace blend toward neutral: an under-refined subtree's
@@ -2019,7 +2066,8 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 	// ones are still strongly discouraged.
 	constexpr double AVG_TERM_CAP = 12.0;
 	const double avg_term = -beta * (1 - avg_score) / (1 - max_avg_score + min_constant) * max_avg_score / (avg_score + min_constant);
-	const double score_score = exp(max(avg_term, -AVG_TERM_CAP)) + min_constant;
+	const double capped = g_search_avg_cap ? max(avg_term, -AVG_TERM_CAP) : avg_term;
+	const double score_score = exp(capped) + min_constant;
 
 	// Bonus for pure winning chances? Positions to check:
 	//   R4Q2/6pk/1q6/8/3P4/2N3r1/1K6/8 w - - 5 49 (should find Ra2)
@@ -2086,8 +2134,11 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 	double best_score = -DBL_MAX;
 
 	if (consider_standpat) {
-		best_score = get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player);
-		best_move = Move();
+		const double standpat_score = get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player);
+		if (std::isfinite(standpat_score)) {
+			best_score = standpat_score;
+			best_move = Move();
+		}
 	}
 
 	for (auto const& [move, child_link] : _children) {
@@ -2097,7 +2148,10 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 		}
 		double score = child->get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player);
 		//cout << "move: " << _board->move_label(move) << " | score: " << score << endl;
-		if (score > best_score || (best_move.is_null_move() && score == best_score)) {
+		// NaN scores (overflowed softmax terms) must never win: every comparison
+		// against NaN is false, which would leave best_move as the null stand-pat
+		// key and poison every caller that indexes _children with it.
+		if (std::isfinite(score) && (score > best_score || (best_move.is_null_move() && score == best_score))) {
 			best_score = score;
 			best_move = move;
 		}
