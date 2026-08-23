@@ -821,6 +821,7 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	// (negamax hygiene, see quiescence post-loop): ranking by get_node_score
 	// copied evaluations of children whose softmax rank disagreed with their
 	// value, freezing tactical verdicts at stale levels.
+	// Backup is UNCONDITIONAL: the parent's value IS its best child's value.
 	int color = _board->get_color();
 	long long best_value = LLONG_MIN;
 	Move best_value_move;
@@ -831,7 +832,7 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 			best_value_move = move;
 		}
 	}
-	if (!best_value_move.is_null_move() && _deep_evaluation._value * color < best_value) {
+	if (!best_value_move.is_null_move()) {
 		_deep_evaluation = _children[best_value_move]._node->_deep_evaluation;
 	}
 

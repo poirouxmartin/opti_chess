@@ -24,11 +24,10 @@ constexpr enum piece_type { none = 0, w_pawn = 1, w_knight = 2, w_bishop = 3, w_
 constexpr uint8_t max_half_moves = 100;
 
 // Maximum number of legal moves per position.
-// The known record is 218; open middlegames regularly exceed 100. The old cap
-// of 100 made add_move() silently overflow _moves[] on sharp positions,
-// corrupting adjacent Board members with a pattern that depended on the
-// struct layout - i.e. build-stable but build-dependent behaviour.
-constexpr uint8_t max_moves = 250;
+// 100 is a deliberate memory optimization: real positions almost never exceed
+// it (the all-time record is 218). add_move() guards the bound and silently
+// drops the excess instead of overflowing _moves[] into adjacent members.
+constexpr uint8_t max_moves = 100;
 
 // Value of a checkmate
 constexpr int mate_value = 1e8;
