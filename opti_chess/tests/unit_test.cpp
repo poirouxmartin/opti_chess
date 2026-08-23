@@ -6,7 +6,7 @@
 #include "zobrist.h"
 #include "useful_functions.h"
 #include <chrono>
-#include <cmath>
+
 
 // ============================================================================
 // Board: default construction
@@ -256,7 +256,81 @@ static int naive_legal_count(Board& board) {
     return count;
 }
 
-// A/B: post-promotion position via make_move vs direct FEN must be identical
+// User-reported GUI crash: after 1...Nd7 in this b7-promotion position,
+// analysis crashes and evals go haywire.
+TEST(Debug, UserPromotionCrash) {
+    Evaluator evaluator;
+    Board b;
+    b.from_fen("r2qkbnr/pPn1pppp/8/5b2/8/8/PPPP1PPP/RNBQKBNR w KQkq - 1 5");
+
+    monte_board_buffer.init(60000, false);
+    monte_node_buffer.init(120000, false);
+
+    Node root(&b);
+    try {
+        // Mimic long GUI analysis: repeated batches on the same root
+        for (int batch = 0; batch < 6; batch++) {
+            root.grogros_zero(&monte_board_buffer, &evaluator, 0.00001, 5.0, 1.10, 100000, 10);
+            cout << "  batch " << batch << ": iterations=" << root._iterations
+                 << " nodes=" << root._nodes << endl;
+        }
+        const Move best = root.get_most_explored_child_move();
+        cout << "  best=(" << (int)best.start_row << "," << (int)best.start_col
+             << ")->(" << (int)best.end_row << "," << (int)best.end_col
+             << ") eval=" << root._deep_evaluation._value << endl;
+
+        // Top-10 by visits with evals - are promotions being scored sanely?
+        vector<tuple<long long, string, int>> rows;
+        for (auto const& [mv, link] : root._children) {
+            string lbl = b.move_label(mv);
+            rows.push_back({ link._chosen_iterations, lbl, link._node->_deep_evaluation._value });
+
+            const Evaluation& de = link._node->_deep_evaluation;
+            const bool bad = !std::isfinite((float)de._value) || !std::isfinite(de._avg_score)
+                || !std::isfinite(de._uncertainty) || !std::isfinite(de._winnable_white)
+                || !std::isfinite(de._winnable_black);
+            if (bad)
+                cout << "    [NONFINITE] lbl=" << lbl << " key=("
+                     << (int)mv.start_row << "," << (int)mv.start_col << ")->("
+                     << (int)mv.end_row << "," << (int)mv.end_col << ") promo="
+                     << (int)mv.get_promo_piece() << " flags=" << (int)mv.flags
+                     << " node=" << (void*)link._node
+                     << " val=" << de._value << endl;
+        }
+
+        // Raw generator output for comparison
+        {
+            Board raw;
+            raw.from_fen("r2qkbnr/pPn1pppp/8/5b2/8/8/PPPP1PPP/RNBQKBNR w KQkq - 1 5");
+            raw.get_moves();
+            cout << "  raw got_moves=" << (int)raw._got_moves << endl;
+            map<string, int> seen;
+            for (int i = 0; i < (int)raw._got_moves; i++) {
+                const Move& mv = raw._moves[i];
+                string key = std::to_string((int)mv.start_row) + std::to_string((int)mv.start_col)
+                    + ">" + std::to_string((int)mv.end_row) + std::to_string((int)mv.end_col)
+                    + "=" + std::to_string((int)mv.get_promo_piece());
+                seen[key]++;
+                if (seen[key] > 1) cout << "    DUPLICATE gen[" << i << "] key=" << key << endl;
+            }
+        }
+        sort(rows.begin(), rows.end(), [](auto& A, auto& B) { return get<0>(A) > get<0>(B); });
+        for (int i = 0; i < min(10, (int)rows.size()); i++)
+            cout << "    " << get<1>(rows[i]) << " visits=" << get<0>(rows[i])
+                 << " eval=" << get<2>(rows[i]) << endl;
+        EXPECT_GT(root._iterations, 100000);
+    }
+    catch (const std::exception& e) {
+        FAIL() << "exception: " << e.what();
+    }
+
+    root.reset();
+    monte_node_buffer.remove();
+    monte_board_buffer.remove();
+}
+
+// User-reported GUI crash: after 1...Nd7 in this b7-promotion position,
+// analysis crashes and evals go haywire.
 TEST(Perft, PromoMakeMoveAB) {
     const string post_fen = "n7/3k4/8/8/8/8/4K3/6q1 b - - 0 1";
 

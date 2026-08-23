@@ -1701,9 +1701,12 @@ bool Board::sort_moves() {
 	// Enemy controls
 	const SquareMap& opponent_controls = _player ? get_black_controls_map() : get_white_controls_map();
 
-	// Static stack-local scratch array for the indices and scores
+	// Static stack-local scratch array for the indices and scores.
+	// Sized to max_moves: with promotion storms a node can legally hold far
+	// more than 128 moves, and this overflow was THE source of stack
+	// corruption behind crashes and layout-dependent search behaviour.
 	struct MoveScore { int index; int score; };
-	MoveScore scored_moves[128]; // 128 is far more than a chess position needs
+	MoveScore scored_moves[max_moves];
 	int move_count = 0;
 
 	for (int i = 0; i < _got_moves; ++i) {
