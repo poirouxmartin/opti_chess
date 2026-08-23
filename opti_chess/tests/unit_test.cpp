@@ -136,6 +136,65 @@ TEST(Perft, Position6) {
     EXPECT_EQ(b.count_nodes_at_depth(3), 89890);
 }
 
+// Promotion storm: both sides one step from promoting, underpromotions
+// (N/B/R) are REQUIRED for these counts. This position also produces nodes
+// with more than 100 pseudo-legal moves, which the old max_moves=100 cap
+// silently truncated - the source of the failing perft runs.
+// Promotion storm: both sides one step from promoting, underpromotions
+// (N/B/R) are REQUIRED for these counts.
+//
+// KNOWN ISSUE: passes under the ASAN build (movegen is correct - all four
+// promotion pieces are generated, see add_pawn_moves), but OVERCOUNTS on the
+// optimized Release configuration (536/496 at depth 2). This matches the
+// ASAN-confirmed stack-buffer-overflow inside get_long_term_piece_mobility:
+// corrupted state leaks into _got_moves/_moves during deep recursion in an
+// optimization-dependent way. Do not "fix" movegen for this test - fix the
+// mobility OOB, then this test goes green in Release too.
+TEST(Perft, PromotionStorm) {
+    Board b;
+    b.from_fen("n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1");
+    EXPECT_EQ(b.count_nodes_at_depth(1), 24);
+    EXPECT_EQ(b.count_nodes_at_depth(2), 496);
+    EXPECT_EQ(b.count_nodes_at_depth(3), 9483);
+    EXPECT_EQ(b.count_nodes_at_depth(4), 182838);
+}
+
+// Divide diagnostic for PromotionStorm (per-move reply counts + legality probe)
+TEST(Perft, PromotionStormDivide) {
+    Board b;
+    b.from_fen("n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1");
+    b.get_moves();
+
+    int illegal_found = 0;
+    for (int m1 = 0; m1 < b._got_moves; m1++) {
+        Board c1;
+        c1.minimal_copy_data(b);
+        c1.make_move(b._moves[m1]);
+        c1.get_moves();
+        cout << "  " << b.move_label(b._moves[m1]) << " -> replies=" << c1._got_moves << endl;
+
+        for (int m2 = 0; m2 < c1._got_moves; m2++) {
+            Board c2;
+            c2.minimal_copy_data(c1);
+            c2.make_move(c1._moves[m2]);
+
+            // The side that just moved = opposite of c2's current player
+            const bool mover_white = !c2._player;
+            const Pos kp = mover_white ? c2._white_king_pos : c2._black_king_pos;
+            int attackers = 0;
+            c2.get_square_attacker(kp, &attackers);
+            if (attackers > 0) {
+                illegal_found++;
+                cout << "    ILLEGAL: " << c1.move_label(c1._moves[m2])
+                     << " (" << (int)c1._moves[m2].start_row << "," << (int)c1._moves[m2].start_col
+                     << ")->(" << (int)c1._moves[m2].end_row << "," << (int)c1._moves[m2].end_col
+                     << ") leaves own king attacked" << endl;
+            }
+        }
+    }
+    cout << "  illegal moves found: " << illegal_found << endl;
+}
+
 // ============================================================================
 // Board: make_move
 // ============================================================================
