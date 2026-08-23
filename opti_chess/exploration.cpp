@@ -688,10 +688,26 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 
 	// TESTS: Q7/4p2p/3k4/5p2/4q3/6P1/P2PPK2/8 w - - 2 39
 
-	// All moves explored, so update the board evaluation with the best move
-	Move best_move = get_best_score_move(alpha, beta, !all_moves_explored);
+	// All moves explored, so update the board evaluation with the best move -
+	// selected by SEARCHED VALUE (negamax hygiene; see quiescence post-loop and
+	// explore_random_child): get_node_score ranking decoupled from value exactly
+	// in tactical positions, propagating sibling evaluations over the best line.
+	int color = _board->get_color();
+	long long best_value = LLONG_MIN;
+	Move best_move;
+	for (auto const& [move, link] : _children) {
+		const long long v = link._node->_deep_evaluation._value * color;
+		if (v > best_value) {
+			best_value = v;
+			best_move = move;
+		}
+	}
 
 	// Stand pat is the best
+	if (!all_moves_explored && _deep_evaluation._value * color >= best_value) {
+		best_move = Move();
+	}
+
 	if (best_move.is_null_move()) {
 		_is_stand_pat_eval = true;
 	}
@@ -801,8 +817,23 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &branch_history); // The child evaluation is updated here
 	}
 
-	// Update the board evaluation with the best move
-	_deep_evaluation = _children[get_best_score_move(alpha, beta)]._node->_deep_evaluation;
+	// Update the board evaluation with the best move - by SEARCHED VALUE
+	// (negamax hygiene, see quiescence post-loop): ranking by get_node_score
+	// copied evaluations of children whose softmax rank disagreed with their
+	// value, freezing tactical verdicts at stale levels.
+	int color = _board->get_color();
+	long long best_value = LLONG_MIN;
+	Move best_value_move;
+	for (auto const& [move, link] : _children) {
+		const long long v = link._node->_deep_evaluation._value * color;
+		if (v > best_value) {
+			best_value = v;
+			best_value_move = move;
+		}
+	}
+	if (!best_value_move.is_null_move() && _deep_evaluation._value * color < best_value) {
+		_deep_evaluation = _children[best_value_move]._node->_deep_evaluation;
+	}
 
 	// #11 Plan A - write-back of the refined value (the actual lever).
 	// Same guards as in explore_new_move.
@@ -1380,12 +1411,6 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 	int move_index = 0;
 
-	// Quiescence depth of the last child actually explored this call (-100 = none).
-	// Restores the pre-Opt#16 get_best_score_move depth filter: children left over
-	// from previous visits at other depths must not compete with freshly searched
-	// ones when selecting the move whose evaluation is propagated.
-	int last_explored_qdepth = -100;
-
 	// Look at every capture
 	for (int i = 0; i < _board->_got_moves; i++) {
 
@@ -1523,7 +1548,6 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			// Recursive call on the child - #7/B-1: pushes the child position for
 			// the duration of the recursion, pop guaranteed on scope exit.
 			int score;
-			last_explored_qdepth = new_depth - 1;
 			{
 				PathScope _ps(branch_history, *child->_board);
 				score = - child->quiescence(board_buffer, eval, new_depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, beta_margin, &branch_history);
@@ -1538,9 +1562,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			if (score >= beta) {
 				// Fail-high: propagate the cutting child's searched evaluation BEFORE
 				// returning, so the parent never reads a stale static value here.
-				// Regression fix: moving the _deep_evaluation update out of the loop
-				// (NPS Opt #16) skipped it on this early-exit path, while the TT-probe
-				// cutoff path (above) still updates it -> inconsistent fail-high states.
+				_deep_evaluation = child->_deep_evaluation;
 				transposition_table.store(_board->_zobrist_key, tt_normalize_mate(score, _board->_moves_count), depth, TT_BETA); // #5: store actual score, not beta
 				_time_spent += clock() - begin_monte_time;
 				return beta;
@@ -1559,8 +1581,28 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	// entries from a previous visit of this pooled node; propagating them would
 	// overwrite the fresh stand-pat evaluation (regression from NPS Opt #16).
 	if (move_index > 0) {
+		// Negamax hygiene: the propagated evaluation must come from the child
+		// with the best SEARCHED VALUE - that is what defines alpha. Ranking
+		// candidates by get_node_score (WDL/softmax-flavoured, used for move
+		// choice) instead copied whatever child happened to rank first there,
+		// which decouples from value exactly in tactical positions: quiescence
+		// returned +151 here while storing the -395 of a differently-ranked
+		// sibling, freezing verdicts at garbage.
+		int color = _board->get_color();
+		long long best_value = LLONG_MIN;
+		Move best_move;
+		for (auto const& [move, child_link] : _children) {
+			const long long v = child_link._node->_deep_evaluation._value * color;
+			if (v > best_value) {
+				best_value = v;
+				best_move = move;
+			}
+		}
+
 		bool all_moves_explored = children_count() == _board->_got_moves;
-		Move best_move = get_best_score_move(search_alpha, search_beta, !all_moves_explored, last_explored_qdepth);
+		if (!all_moves_explored && _deep_evaluation._value * color >= best_value) {
+			best_move = Move(); // stand pat wins on value
+		}
 
 		if (!best_move.is_null_move()) {
 			_deep_evaluation = _children[best_move]._node->_deep_evaluation;

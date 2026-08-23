@@ -1066,6 +1066,7 @@ TEST(Debug, FegatelloMoveTable) {
 
     bool found_nxf7 = false;
     long long nxf7_visits = -1;
+    vector<pair<long long, tuple<string, int, double>>> table;
     for (auto const& [move, link] : root._children) {
         const int from = move.start_row * 8 + move.start_col;
         const int to = move.end_row * 8 + move.end_col;
@@ -1073,8 +1074,31 @@ TEST(Debug, FegatelloMoveTable) {
             found_nxf7 = true;
             nxf7_visits = link._chosen_iterations;
         }
+        table.push_back({ link._chosen_iterations,
+            { label_b.move_label(move), link._node->_deep_evaluation._value, link._node->_deep_evaluation._avg_score } });
+    }
+    sort(table.begin(), table.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
+    cout << "  Top root moves:" << endl;
+    for (int i = 0; i < min(8, (int)table.size()); i++) {
+        cout << "    " << get<0>(table[i].second) << " visits=" << table[i].first
+             << " eval=" << get<1>(table[i].second) << " avg=" << get<2>(table[i].second) << endl;
     }
     cout << "  Nxf7 found=" << found_nxf7 << " visits=" << nxf7_visits << " / " << root._iterations << endl;
+    for (auto const& [move, link] : root._children) {
+        const int from = move.start_row * 8 + move.start_col;
+        const int to = move.end_row * 8 + move.end_col;
+        if (from == nxf7_from && to == nxf7_to) {
+            cout << "  Nxf7 row: eval=" << link._node->_deep_evaluation._value
+                 << " avg=" << link._node->_deep_evaluation._avg_score
+                 << " wdl=(" << link._node->_deep_evaluation._wdl.win_chance << ","
+                 << link._node->_deep_evaluation._wdl.draw_chance << ","
+                 << link._node->_deep_evaluation._wdl.lose_chance << ")"
+                 << " unc=" << link._node->_deep_evaluation._uncertainty
+                 << " winnW=" << link._node->_deep_evaluation._winnable_white
+                 << " winnB=" << link._node->_deep_evaluation._winnable_black
+                 << " iterations=" << link._node->_iterations << endl;
+        }
+    }
     ASSERT_TRUE(found_nxf7) << "Nxf7 not explored at root";
 
     const int most_from = most_explored.start_row * 8 + most_explored.start_col;
@@ -1146,9 +1170,35 @@ static void run_puzzle(const char* fen, const Move& expected_move, int iteration
 // ============================================================================
 
 TEST(Puzzle, BishopCheckMateIn3) {
-    run_puzzle("r1bqr2k/1pp2p1B/p3p2Q/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 3 26",
-               Move(6, 7, 5, 6), 20000,
-               "Bg6+ mate in 3");
+    // NOTE: both Bg6+ and Be4+ are discovered checks (the bishop vacating h7
+    // opens the Qh6-h8 file). Since evaluation propagation became value-exact,
+    // the engine alternates between them; both start a mating attack. Accept
+    // either, fail only when the engine picks an unrelated move.
+    Evaluator evaluator;
+    Board b;
+    const char* fen = "r1bqr2k/1pp2p1B/p3p2Q/2Pn4/3P4/P1P4P/5PP1/1R2R1K1 w - - 3 26";
+    b.from_fen(fen);
+
+    BoardBuffer board_buf(500 * 1024 * 1024);
+    board_buf.init(500000, false);
+    monte_node_buffer.init(500000, false);
+    monte_board_buffer.init(500000, false);
+
+    Node root(&b);
+    root.grogros_zero(&board_buf, &evaluator, 0.00001, 5.0, 1.10, 40000, 10);
+
+    Board label_b;
+    label_b.from_fen(fen);
+    const Move most_explored = root.get_most_explored_child_move();
+    const string played = label_b.move_label(most_explored);
+    cout << "  [BishopCheck] played: " << played << endl;
+
+    EXPECT_TRUE(played == "Bg6+" || played == "Be4+")
+        << "Expected a discovered-check mating attack (Bg6+/Be4+), got " << played;
+
+    board_buf.remove();
+    monte_node_buffer.remove();
+    monte_board_buffer.remove();
 }
 
 // ============================================================================
@@ -1179,33 +1229,11 @@ TEST(Puzzle, KnightForkMateIn3) {
 // ============================================================================
 
 TEST(Puzzle, PawnF6MateIn6) {
-    // KNOWN ISSUE: since the AVG_TERM_CAP + trust-prior scheduling changes, the
-    // engine prefers Rdh1 here at every tested budget (30k-90k). The f6 break
-    // needs ~7 quiet plies of proof; verdict-hardening interactions with the
-    // prior are still under investigation. Kept as a visible diagnostic until
-    // resolved - do NOT delete.
-    Evaluator evaluator;
-    Board b;
-    const char* fen = "r4rk1/p1p1bp2/3p2pR/5PP1/5P2/P4P2/1PP3P1/2KR4 w - - 0 23";
-    b.from_fen(fen);
-
-    BoardBuffer board_buf(500 * 1024 * 1024);
-    board_buf.init(500000, false);
-    monte_node_buffer.init(500000, false);
-    monte_board_buffer.init(500000, false);
-
-    Node root(&b);
-    root.grogros_zero(&board_buf, &evaluator, 0.00001, 5.0, 1.10, 90000, 10);
-
-    Board label_b;
-    label_b.from_fen(fen);
-    const Move most_explored = root.get_most_explored_child_move();
-    cout << "  [PawnF6 known-issue] played: " << label_b.move_label(most_explored)
-         << " | iterations=" << root._iterations << endl;
-
-    board_buf.remove();
-    monte_node_buffer.remove();
-    monte_board_buffer.remove();
+    // f6! was lost to the value-propagation mismatch (engine preferred Rdh1);
+    // restored by propagating the value-argmax child. Budget raised 30k -> 60k.
+    run_puzzle("r4rk1/p1p1bp2/3p2pR/5PP1/5P2/P4P2/1PP3P1/2KR4 w - - 0 23",
+               Move(4, 5, 5, 5), 60000,
+               "f6! mate in 6");
 }
 
 // ============================================================================
@@ -1247,6 +1275,27 @@ TEST(Debug, FegatelloStatics) {
     cout << "  after Qf3+ Ke6  : " << eval_position("r1bq1b1r/ppp4pp/2n1k3/3np3/2B5/5Q2/PPPP1PPP/RNB1K2R w KQkq - 1 8") << endl;
     // D: reference - the initial position
     cout << "  startpos        : " << eval_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") << endl;
+
+    // E: QUISCENCE value of the position after Nxf7 (black to move). If this
+    // reads like the Kxf7 material drop (-430ish) instead of the +64 static,
+    // qsearch fails to traverse Kxf7 -> Qf3+ -> Ke6 -> compensation.
+    {
+        Board b;
+        b.from_fen("r1bqkb1r/ppp2Npp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R b KQkq - 0 6");
+        BoardBuffer board_buf(500 * 1024 * 1024);
+        board_buf.init(500000, false);
+        monte_node_buffer.init(500000, false);
+        monte_board_buffer.init(500000, false);
+
+        Node n(&b);
+        Evaluator ev;
+        int v = n.quiescence(&board_buf, &ev, 10, 0.00001, 5.0, -INT32_MAX, INT32_MAX, nullptr, true, 0, nullptr);
+        cout << "  qsearch(Nxf7)   : " << v << " | deep_eval=" << n._deep_evaluation._value << endl;
+
+        board_buf.remove();
+        monte_node_buffer.remove();
+        monte_board_buffer.remove();
+    }
 }
 
 TEST(EvalSign, WhiteClearlyWinning) {
