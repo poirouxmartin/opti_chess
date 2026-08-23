@@ -1278,15 +1278,20 @@ inline void Board::make_move(const Move& move, const bool pgn, const bool add_to
 	// Update the destination square
 	_array[row2][col2] = p;
 
-	// Promotion (uses the promotion piece from the move)
-	if (move.is_promotion())
+	// Promotion (uses the promotion piece from the move).
+	// Detected GEOMETRICALLY, not from move.is_promotion(): perft/recursion
+	// feeds raw get_moves() output whose flag bits are unassigned, and without
+	// this a promoting pawn landed on the last rank still AS A PAWN - an
+	// illegal position that poisoned every generated move afterwards.
+	const bool promotion_move = is_pawn(p) && row2 == (_player ? 7 : 0);
+	if (promotion_move)
 		_array[row2][col2] = promo_to_piece(move.get_promo_piece(), _player);
 
 	// Clear the origin square
 	_array[row1][col1] = none;
 
 	// Update the bitboards
-	const uint8_t promo = move.is_promotion() ? move.get_promo_piece() : 0;
+	const uint8_t promo = promotion_move ? move.get_promo_piece() : 0;
 	_player ? update_bitboards_white(row1, col1, row2, col2, p, p_last, promo) : update_bitboards_black(row1, col1, row2, col2, p, p_last, promo);
 
 	// Flip the side to move
@@ -1324,7 +1329,9 @@ inline void Board::make_move(const Move& move, const bool pgn, const bool add_to
 		const int start_sq = row1 * 8 + col1;
 		const int end_sq = row2 * 8 + col2;
 		const bool piece_color = !_player; // _player was already flipped; use original side
-		const int promo = move.is_promotion() ? promo_to_piece(move.get_promo_piece(), piece_color) : p;
+		// Same geometric promotion detection as the array update above: the
+		// flag bit is unassigned in raw perft/recursion move lists.
+		const int promo = promotion_move ? promo_to_piece(move.get_promo_piece(), piece_color) : p;
 
 		_zobrist_key ^= zobrist._board_keys[start_sq][p - 1];
 		_zobrist_key ^= zobrist._board_keys[end_sq][promo - 1];

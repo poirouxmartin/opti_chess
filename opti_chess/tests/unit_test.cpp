@@ -114,18 +114,23 @@ TEST(Perft, Position3) {
 TEST(Perft, Position4) {
     Board b;
     b.from_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
+    // Reference: chessprogramming.org/Perft_Results (the old 9479/430494 here
+    // were wrong transcriptions that a promotion bug in make_move happened to
+    // reproduce - promotions were applied as plain pawn pushes).
     EXPECT_EQ(b.count_nodes_at_depth(1), 6);
     EXPECT_EQ(b.count_nodes_at_depth(2), 264);
-    EXPECT_EQ(b.count_nodes_at_depth(3), 9479);
-    EXPECT_EQ(b.count_nodes_at_depth(4), 430494);
+    EXPECT_EQ(b.count_nodes_at_depth(3), 9467);
+    EXPECT_EQ(b.count_nodes_at_depth(4), 422333);
 }
 
 TEST(Perft, Position5) {
     Board b;
     b.from_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
+    // Reference: chessprogramming.org/Perft_Results (old constants 1506/63649
+    // were wrong; the promotion-as-pawn bug reproduced them exactly).
     EXPECT_EQ(b.count_nodes_at_depth(1), 44);
-    EXPECT_EQ(b.count_nodes_at_depth(2), 1506);
-    EXPECT_EQ(b.count_nodes_at_depth(3), 63649);
+    EXPECT_EQ(b.count_nodes_at_depth(2), 1486);
+    EXPECT_EQ(b.count_nodes_at_depth(3), 62379);
 }
 
 TEST(Perft, Position6) {
@@ -160,6 +165,263 @@ TEST(Perft, PromotionStorm) {
 }
 
 // Divide diagnostic for PromotionStorm (per-move reply counts + legality probe)
+// Independent naive legal-move enumerator for cross-checking get_moves().
+// Raw deltas -> apply -> keep iff mover's king is safe afterwards.
+// Promotions counted as QUEEN only (choice doesn't affect legality).
+// Castling omitted.
+static int naive_legal_count(Board& board) {
+    const bool white = board._player;
+    static const int kn[8][2] = { {1,2},{1,-2},{-1,2},{-1,-2},{2,1},{2,-1},{-2,1},{-2,-1} };
+    static const int dirs[8][2] = { {1,0},{-1,0},{0,1},{0,-1},{1,1},{1,-1},{-1,1},{-1,-1} };
+
+    auto mine = [&](uint8_t p) { return p != 0 && (white ? p <= 6 : p >= 7); };
+    auto ally = [&](uint8_t p) { return p != 0 && !mine(p) == false && (white ? p <= 6 : p >= 7); };
+    // simpler explicit lambdas below instead
+
+    int count = 0;
+
+    for (int r = 0; r < 8; r++) for (int c = 0; c < 8; c++) {
+        const uint8_t p = board._array[r][c];
+        const bool is_mine = p != 0 && (white ? (p >= 1 && p <= 6) : (p >= 7 && p <= 12));
+        if (!is_mine) continue;
+        const int type = (p - 1) % 6;
+
+        vector<pair<int,int>> targets;
+
+        if (type == 0) {
+            const int d = white ? 1 : -1;
+            const int start_rank = white ? 1 : 6;
+            const int last = white ? 7 : 0;
+            if (r + d >= 0 && r + d <= 7 && board._array[r + d][c] == 0) {
+                targets.push_back({ r + d, c });
+                if (r == start_rank && board._array[r + 2 * d][c] == 0)
+                    targets.push_back({ r + 2 * d, c });
+            }
+            for (int dc : { -1, 1 }) {
+                const int nc = c + dc;
+                if (nc < 0 || nc > 7 || r + d < 0 || r + d > 7) continue;
+                const uint8_t t = board._array[r + d][nc];
+                const bool enemy_t = t != 0 && (white ? (t >= 7 && t <= 12) : (t >= 1 && t <= 6));
+                const bool ep = (r == (white ? 4 : 3)) && nc == board._en_passant_col && t == 0;
+                if (enemy_t || ep)
+                    targets.push_back({ r + d, nc });
+            }
+        }
+        else if (type == 1) {
+            for (auto& k : kn) {
+                const int nr = r + k[0], nc = c + k[1];
+                if (nr < 0 || nr>7 || nc<0 || nc>7) continue;
+                const uint8_t t = board._array[nr][nc];
+                if (!(t != 0 && (white ? (t >= 1 && t <= 6) : (t >= 7 && t <= 12))))
+                    targets.push_back({ nr, nc });
+            }
+        }
+        else if (type == 5) {
+            for (auto& k : dirs) {
+                const int nr = r + k[0], nc = c + k[1];
+                if (nr < 0 || nr>7 || nc<0 || nc>7) continue;
+                const uint8_t t = board._array[nr][nc];
+                if (!(t != 0 && (white ? (t >= 1 && t <= 6) : (t >= 7 && t <= 12))))
+                    targets.push_back({ nr, nc });
+            }
+        }
+        else {
+            const int begin = type == 2 ? 4 : 0;
+            const int end = type == 3 ? 4 : 8;
+            for (int k = begin; k < end; k++) {
+                int nr = r + dirs[k][0], nc = c + dirs[k][1];
+                while (nr >= 0 && nr <= 7 && nc >= 0 && nc <= 7) {
+                    const uint8_t t = board._array[nr][nc];
+                    const bool own = t != 0 && (white ? (t >= 1 && t <= 6) : (t >= 7 && t <= 12));
+                    if (!own) targets.push_back({ nr, nc });
+                    if (t != 0) break;
+                    nr += dirs[k][0]; nc += dirs[k][1];
+                }
+            }
+        }
+
+        for (auto& t : targets) {
+            Board cp;
+            cp.minimal_copy_data(board);
+            Move mv(r, c, t.first, t.second);
+            if (type == 0 && t.first == (white ? 7 : 0)) mv.set_promo_piece(0);
+            cp.make_move(mv);
+            cp._player = white; // probe from mover's perspective
+            const Pos kp = white ? cp._white_king_pos : cp._black_king_pos;
+            int attackers = 0;
+            cp.get_square_attacker(kp, &attackers);
+            if (attackers == 0) count++;
+        }
+    }
+    return count;
+}
+
+// A/B: post-promotion position via make_move vs direct FEN must be identical
+TEST(Perft, PromoMakeMoveAB) {
+    const string post_fen = "n7/3k4/8/8/8/8/4K3/6q1 b - - 0 1";
+
+    // Route B: apply the promotion ourselves
+    Board pre;
+    pre.from_fen("n7/3k4/8/8/8/8/4K1p1/5N2 b - - 0 1");
+    pre.get_moves();
+    Move promo;
+    bool found = false;
+    for (int i = 0; i < pre._got_moves; i++) {
+        if (pre._moves[i].start_row == 1 && pre._moves[i].start_col == 6
+            && pre._moves[i].end_row == 0 && pre._moves[i].end_col == 6
+            && pre._moves[i].get_promo_piece() == PROMO_QUEEN) {
+            promo = pre._moves[i]; found = true;
+        }
+    }
+    ASSERT_TRUE(found) << "g2g1=Q not generated";
+
+    Board via_make;
+    via_make.minimal_copy_data(pre);
+    via_make.make_move(promo);
+
+    Board direct;
+    direct.from_fen(post_fen);
+
+    cout << "  route-A(direct) array/occ:" << endl;
+    for (int r = 0; r < 8; r++) for (int cc = 0; cc < 8; cc++)
+        if (direct._array[r][cc]) cout << "   (" << r << "," << cc << ")=" << (int)direct._array[r][cc] << endl;
+    cout << "  occA=" << direct._occupancies[0] << "/" << direct._occupancies[1] << "/" << direct._occupancies[2] << endl;
+
+    cout << "  route-B(make) array/occ:" << endl;
+    for (int r = 0; r < 8; r++) for (int cc = 0; cc < 8; cc++)
+        if (via_make._array[r][cc]) cout << "   (" << r << "," << cc << ")=" << (int)via_make._array[r][cc] << endl;
+    cout << "  occB=" << via_make._occupancies[0] << "/" << via_make._occupancies[1] << "/" << via_make._occupancies[2] << endl;
+
+    // Attacker probe from f2's perspective (is the queen seen from there?)
+    Board probe = via_make;
+    probe._player = true; // white perspective: enemies = black queen g1
+    int att = 0;
+    probe.get_square_attacker(Pos(1, 5), &att); // f2
+    cout << "  attackers_on_f2(routeB)=" << att << endl;
+    probe = direct; probe._player = true;
+    att = 0; probe.get_square_attacker(Pos(1, 5), &att);
+    cout << "  attackers_on_f2(routeA)=" << att << endl;
+
+    EXPECT_EQ(via_make._occupancies[1], direct._occupancies[1]);
+}
+
+// Promotion-delivered check must be seen by in_check/attackers
+TEST(Perft, PromoCheckDetection) {
+    // Black pawn promoted on f1 (gxf1=Q), checking the white king on e2.
+    Board c;
+    c.from_fen("n1n5/PPPk4/8/8/8/8/4K3/5q1N w - - 0 1");
+    const bool chk = c.in_check();
+    Pos kp = c._white_king_pos;
+    int attackers = 0;
+    c.get_square_attacker(kp, &attackers);
+    cout << "  in_check=" << chk << " attackers=" << attackers
+         << " wk=(" << (int)c._white_king_pos.row << "," << (int)c._white_king_pos.col << ")" << endl;
+
+    // Raw scan: where does the ARRAY say the kings/pieces are?
+    cout << "  raw array scan:" << endl;
+    for (int r = 0; r < 8; r++) for (int cc = 0; cc < 8; cc++) {
+        if (c._array[r][cc] != 0)
+            cout << "    (" << r << "," << cc << ") piece_code=" << (int)c._array[r][cc] << endl;
+    }
+
+    // Startpos reference: king must be (0,4)/(7,4)
+    Board sp;
+    sp.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    cout << "  startpos wk=(" << (int)sp._white_king_pos.row << "," << (int)sp._white_king_pos.col
+         << ") bk=(" << (int)sp._black_king_pos.row << "," << (int)sp._black_king_pos.col << ")" << endl;
+
+    EXPECT_TRUE(chk) << "Promotion check not detected!";
+}
+
+// Returns canonical coordinate strings of every legal move, promotions
+// expanded to all four pieces so sets match the engine 1:1.
+static vector<string> naive_legal_moves(Board& board) {
+    const bool white = board._player;
+    static const int kn[8][2] = { {1,2},{1,-2},{-1,2},{-1,-2},{2,1},{2,-1},{-2,1},{-2,-1} };
+    static const int dirs[8][2] = { {1,0},{-1,0},{0,1},{0,-1},{1,1},{1,-1},{-1,1},{-1,-1} };
+    static const char promo_ch[4] = { 'Q','R','B','N' };
+    vector<string> out;
+
+    auto try_move = [&](int r, int c, int tr, int tc, bool promo) {
+        for (int pp = 0; pp < (promo ? 4 : 1); pp++) {
+            Board cp;
+            cp.minimal_copy_data(board);
+            Move mv(r, c, tr, tc);
+            if (promo) mv.set_promo_piece(pp);
+            cp.make_move(mv);
+            cp._player = white;
+            const Pos kp = white ? cp._white_king_pos : cp._black_king_pos;
+            int attackers = 0;
+            cp.get_square_attacker(kp, &attackers);
+            if (attackers == 0)
+                out.push_back(std::to_string(r) + std::to_string(c) + ">" +
+                    std::to_string(tr) + std::to_string(tc) + (promo ? "=?" : ""));
+        }
+    };
+
+    for (int r = 0; r < 8; r++) for (int c = 0; c < 8; c++) {
+        const uint8_t p = board._array[r][c];
+        const bool is_mine = p != 0 && (white ? (p >= 1 && p <= 6) : (p >= 7 && p <= 12));
+        if (!is_mine) continue;
+        const int type = (p - 1) % 6;
+
+        vector<pair<int,int>> targets;
+        bool promo = false;
+
+        if (type == 0) {
+            const int d = white ? 1 : -1, sr = white ? 1 : 6, last = white ? 7 : 0;
+            if (board._array[r + d][c] == 0) {
+                promo = (r + d == last);
+                targets.push_back({ r + d, c });
+                if (!promo && r == sr && board._array[r + 2 * d][c] == 0)
+                    targets.push_back({ r + 2 * d, c });
+            }
+            for (int dc : {-1, 1}) {
+                const int nc = c + dc;
+                if (nc < 0 || nc > 7 || r + d < 0 || r + d > 7) continue;
+                const uint8_t t = board._array[r + d][nc];
+                const bool et = t != 0 && (white ? t >= 7 : t <= 6);
+                if (et) { promo = (r + d == last); targets.push_back({ r + d, nc }); }
+            }
+        } else if (type == 1) {
+            for (auto& k : kn) {
+                const int nr = r + k[0], nc = c + k[1];
+                if (nr < 0 || nr>7 || nc<0 || nc>7) continue;
+                const uint8_t t = board._array[nr][nc];
+                const bool own = t != 0 && (white ? t <= 6 : t >= 7);
+                if (!own) targets.push_back({ nr, nc });
+            }
+        } else if (type == 5) {
+            for (auto& k : dirs) {
+                const int nr = r + k[0], nc = c + k[1];
+                if (nr < 0 || nr>7 || nc<0 || nc>7) continue;
+                const uint8_t t = board._array[nr][nc];
+                const bool own = t != 0 && (white ? t <= 6 : t >= 7);
+                if (!own) targets.push_back({ nr, nc });
+            }
+        } else {
+            const int b0 = type == 2 ? 4 : 0, e0 = type == 3 ? 4 : 8;
+            for (int k = b0; k < e0; k++) {
+                int nr = r + dirs[k][0], nc = c + dirs[k][1];
+                while (nr >= 0 && nr <= 7 && nc >= 0 && nc <= 7) {
+                    const uint8_t t = board._array[nr][nc];
+                    const bool own = t != 0 && (white ? t <= 6 : t >= 7);
+                    if (!own) targets.push_back({ nr, nc });
+                    if (t != 0) break;
+                    nr += dirs[k][0]; nc += dirs[k][1];
+                }
+            }
+        }
+
+        // NOTE: promo flag applies per-target; recompute properly below
+        for (auto& t : targets) {
+            const bool is_promo = type == 0 && t.first == (white ? 7 : 0);
+            try_move(r, c, t.first, t.second, is_promo);
+        }
+    }
+    return out;
+}
+
 TEST(Perft, PromotionStormDivide) {
     Board b;
     b.from_fen("n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1");
@@ -171,15 +433,39 @@ TEST(Perft, PromotionStormDivide) {
         c1.minimal_copy_data(b);
         c1.make_move(b._moves[m1]);
         c1.get_moves();
-        cout << "  " << b.move_label(b._moves[m1]) << " -> replies=" << c1._got_moves << endl;
+        const auto naive_set = naive_legal_moves(c1);
+        cout << "  " << b.move_label(b._moves[m1]) << " -> engine=" << (int)c1._got_moves
+             << " naive=" << naive_set.size()
+             << (c1._got_moves != (int)naive_set.size() ? "   <<< MISMATCH" : "") << endl;
+
+        if (c1._got_moves != (int)naive_set.size()) {
+            set<string> eng, nv(naive_set.begin(), naive_set.end());
+            for (int m2 = 0; m2 < c1._got_moves; m2++) {
+                const Move& mv = c1._moves[m2];
+                string key = std::to_string((int)mv.start_row) + std::to_string((int)mv.start_col)
+                    + ">" + std::to_string((int)mv.end_row) + std::to_string((int)mv.end_col);
+                if (mv.is_promotion()) {
+                    static const char pc[4] = { 'Q','R','B','N' };
+                    key += "="; key += pc[mv.get_promo_piece()];
+                }
+                if (!nv.count(key))
+                    cout << "    ENGINE-ONLY: " << c1.move_label(mv) << " [" << key << "]" << endl;
+                eng.insert(key);
+            }
+            for (auto& k : nv)
+                if (!eng.count(k)) cout << "    NAIVE-ONLY: " << k << endl;
+        }
 
         for (int m2 = 0; m2 < c1._got_moves; m2++) {
             Board c2;
             c2.minimal_copy_data(c1);
             c2.make_move(c1._moves[m2]);
 
-            // The side that just moved = opposite of c2's current player
+            // The side that just moved = opposite of c2's current player.
+            // get_square_attacker scans for enemies of _player, so point
+            // _player at the MOVER while probing.
             const bool mover_white = !c2._player;
+            c2._player = mover_white;
             const Pos kp = mover_white ? c2._white_king_pos : c2._black_king_pos;
             int attackers = 0;
             c2.get_square_attacker(kp, &attackers);
