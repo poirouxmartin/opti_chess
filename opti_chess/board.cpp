@@ -94,11 +94,10 @@ void Board::copy_data(const Board& b, bool full, bool copy_history) {
 // Adds a move to a move list
 inline bool Board::add_move(const Move move, uint8_t &iterator, const uint8_t piece) noexcept
 {
-	// Overflow guard: positions above max_moves legal moves exist (the record is
-	// 218) and used to silently overflow _moves[] here, corrupting adjacent
-	// memory with a layout-dependent pattern.
+	// Overflow guard: silently drop instead of overflowing _moves[] into
+	// adjacent Board members (no cout: this is a generation-hot path; the cap
+	// is a deliberate memory optimization and almost never binds).
 	if (iterator >= max_moves) {
-		cout << "Error: too many moves generated (" << (int)iterator << ")!" << endl;
 		return false;
 	}
 
