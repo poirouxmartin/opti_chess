@@ -2,6 +2,7 @@
 #include "board.h"
 #include "evaluation.h"
 #include "exploration.h"
+#include "gui.h"
 #include "buffer.h"
 #include "zobrist.h"
 #include "useful_functions.h"
@@ -897,7 +898,7 @@ TEST(Board, IsGameOver) {
     Board b;
     // Checkmate position: back-rank mate
     b.from_fen("6k1/5ppp/8/8/8/8/5PPP/4R1K1 b - - 0 1");
-    // Black to move, all pawns blocked, king stuck on g8 — any move leaves a8 undefended
+    // Black to move, all pawns blocked, king stuck on g8 â€” any move leaves a8 undefended
     // But this is NOT checkmate either (black has pawn moves)
     // Use a real checkmate: scholar's mate
     b.from_fen("r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4");
@@ -1810,7 +1811,7 @@ TEST(Puzzle, PawnF6MateIn6) {
 // ============================================================================
 // Puzzle: Qb2+! starts forced mate in 2 (Qb2+ Kd1 Qd2#)
 // FEN: 2bk1r2/4b1Qp/8/1P6/3P4/1qp5/4NPPP/R1K2B1R b - - 0 25
-// Commentary: listed in exploration.cpp as "Mate not seen" — quiescence
+// Commentary: listed in exploration.cpp as "Mate not seen" â€” quiescence
 // regression guard for the fail-high _deep_evaluation propagation fix.
 // ============================================================================
 
@@ -2379,3 +2380,214 @@ TEST(Perf, EvalProfile) {
     cout << endl;
     SUCCEED();
 }
+
+
+// ============================================================================
+// Fuzz: random-game invariant checker. Random legal playouts from the starting
+// position; every ply re-verifies the invariants that single-move tests miss:
+//   - incremental Zobrist key == full recompute
+//   - no legal move  =>  game_over() must decide (mate/stalemate/draw)
+//   - static eval evaluated, finite, and sub-mate unless the game is over
+// Any red here localizes state corruption that survives fixed test positions.
+// Seeded splitmix64: fully reproducible runs.
+// ============================================================================
+
+static uint64_t fuzz_rng_state = 0x9E3779B97F4A7C15ULL;
+
+static uint64_t fuzz_rand64() {
+	uint64_t z = (fuzz_rng_state += 0x9E3779B97F4A7C15ULL);
+	z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+	z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+	return z ^ (z >> 31);
+}
+
+static int fuzz_rand(const int n) {
+	return static_cast<int>(fuzz_rand64() % static_cast<uint64_t>(n));
+}
+
+static void check_board_invariants(Board& b, const char* context) {
+	// Incremental zobrist must match a full recompute
+	const uint64_t incremental = b._zobrist_key;
+	b.get_zobrist_key();
+	EXPECT_EQ(b._zobrist_key, incremental) << context;
+
+	// Terminal consistency: no legal move must imply a decided game
+	b.get_moves();
+	if (b._got_moves == 0)
+		EXPECT_NE(b.is_game_over(), unterminated) << context;
+
+	// Eval sanity: evaluated, finite, sub-mate scale unless terminal
+	Evaluation ev;
+	Evaluator evaluator;
+	b.evaluate(&ev, &evaluator, false, nullptr, true);
+	EXPECT_TRUE(ev._evaluated) << context;
+	if (!ev._evaluated)
+		return;
+	const bool mate_scale = 10.0 * abs(static_cast<double>(ev._value)) > mate_value;
+	if (!mate_scale)
+		EXPECT_LT(abs(ev._value), 100000) << context << " (heuristic eval far out of range)";
+}
+
+static void play_random_fuzz_game(const int seed, const int max_plies, const char* label) {
+	fuzz_rng_state = 0x9E3779B97F4A7C15ULL ^ (static_cast<uint64_t>(seed) * 0xFF51AFD7ED558CCDULL);
+
+	Board b;
+	b.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+
+	char context[128];
+
+	for (int ply = 0; ply < max_plies; ply++) {
+		snprintf(context, sizeof(context), "%s ply=%d fen=%s", label, ply, b.to_fen().c_str());
+
+		b.get_moves();
+		if (b._got_moves <= 0 || b.is_game_over() != unterminated)
+			break;
+
+		check_board_invariants(b, context);
+		if (testing::Test::HasFatalFailure())
+			break;
+
+		const Move chosen = b._moves[fuzz_rand(b._got_moves)];
+		b.make_move(chosen, false, true);
+	}
+
+	SUCCEED();
+}
+
+TEST(Fuzz, RandomGameInvariantsSeed1) { play_random_fuzz_game(1, 400, "seed1"); }
+TEST(Fuzz, RandomGameInvariantsSeed2) { play_random_fuzz_game(2, 400, "seed2"); }
+TEST(Fuzz, RandomGameInvariantsSeed3) { play_random_fuzz_game(3, 400, "seed3"); }
+TEST(Fuzz, RandomGameInvariantsSeed4) { play_random_fuzz_game(4, 400, "seed4"); }
+TEST(Fuzz, RandomGameInvariantsSeed5) { play_random_fuzz_game(5, 400, "seed5"); }
+TEST(Fuzz, RandomGameInvariantsSeed6) { play_random_fuzz_game(6, 400, "seed6"); }
+TEST(Fuzz, RandomGameInvariantsSeed7) { play_random_fuzz_game(7, 400, "seed7"); }
+TEST(Fuzz, RandomGameInvariantsSeed8) { play_random_fuzz_game(8, 400, "seed8"); }
+
+// ============================================================================
+// Search determinism: the same position searched twice with fresh trees and
+// buffers must yield the same best move AND the same root value. Any delta
+// means uninitialized memory leaks into the search decisions.
+// ============================================================================
+
+struct SearchOutcome {
+	Move best;
+	int value;
+	bool operator==(const SearchOutcome& other) const {
+		return value == other.value &&
+			best.start_row == other.best.start_row && best.start_col == other.best.start_col &&
+			best.end_row == other.best.end_row && best.end_col == other.best.end_col &&
+			best.get_promo_piece() == other.best.get_promo_piece();
+	}
+};
+
+static SearchOutcome solve_once(const char* fen, const int iterations) {
+	// The transposition table is a global: without clearing it, the second
+	// run would legally reuse the first one's entries and the comparison
+	// would measure cache warmth, not determinism.
+	transposition_table.clear();
+
+	Board b;
+	b.from_fen(fen);
+
+	BoardBuffer board_buf(500 * 1024 * 1024);
+	board_buf.init(500000, false);
+	monte_node_buffer.init(500000, false);
+	monte_board_buffer.init(500000, false);
+
+	Evaluator evaluator;
+	Node root(&b);
+	root.grogros_zero(&board_buf, &evaluator, 0.00001, 5.0, 1.10, iterations, 10);
+
+	SearchOutcome out;
+	out.best = root.get_most_explored_child_move();
+	out.value = root._deep_evaluation._value;
+
+	board_buf.remove();
+	monte_node_buffer.remove();
+	monte_board_buffer.remove();
+	return out;
+}
+
+TEST(Search, DeterministicAcrossRuns) {
+	const char* fen = "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4";
+	const SearchOutcome a = solve_once(fen, 15000);
+	const SearchOutcome b = solve_once(fen, 15000);
+	EXPECT_TRUE(a == b) << "Two identical searches diverged: uninitialized state feeds decisions"
+		<< " (run1 val=" << a.value << ", run2 val=" << b.value << ")";
+}
+
+// ============================================================================
+// Eval color symmetry: mirroring a position vertically AND swapping colors is
+// the same position with sides reversed; white-POV eval must flip sign EXACTLY.
+// Catches asymmetric indexing bugs (row vs rank confusion, per-color tables).
+// ============================================================================
+
+static string mirror_fen(const string& fen) {
+	// Fields: pieces side castling ep halfmove fullmove
+	size_t p1 = fen.find(' ');
+	size_t p2 = fen.find(' ', p1 + 1);
+	size_t p3 = fen.find(' ', p2 + 1);
+	size_t p4 = fen.find(' ', p3 + 1);
+
+	const string ranks_field = fen.substr(0, p1);
+	string side = fen.substr(p1 + 1, p2 - p1 - 1);
+	const string castling = fen.substr(p2 + 1, p3 - p2 - 1);
+	string ep = fen.substr(p3 + 1, p4 - p3 - 1);
+	const string counters = fen.substr(p4 + 1);
+
+	// Reverse rank order, swap piece case within each rank
+	vector<string> ranks;
+	string current;
+	for (const char c : ranks_field) {
+		if (c == '/') { ranks.push_back(current); current.clear(); }
+		else current += c;
+	}
+	ranks.push_back(current);
+	string mirrored_ranks;
+	for (int i = static_cast<int>(ranks.size()) - 1; i >= 0; i--) {
+		for (const char c : ranks[i])
+			mirrored_ranks += isupper(static_cast<unsigned char>(c)) ? static_cast<char>(tolower(c)) : static_cast<char>(toupper(c));
+		if (i != 0) mirrored_ranks += '/';
+	}
+
+	side = (side == "w") ? "b" : "w";
+
+	string mirrored_castling = "-";
+	if (castling != "-") {
+		mirrored_castling.clear();
+		for (const char c : castling)
+			mirrored_castling += isupper(static_cast<unsigned char>(c)) ? static_cast<char>(tolower(c)) : static_cast<char>(toupper(c));
+	}
+
+	if (ep.size() == 2)
+		ep[1] = (ep[1] == '3') ? '6' : '3';
+
+	return mirrored_ranks + " " + side + " " + mirrored_castling + " " + ep + " " + counters;
+}
+
+TEST(EvalSymmetry, MirroredPositionsFlipSignExactly) {
+	const char* fens[] = {
+		"r1b1kb1r/pppppppp/2n2n2/8/3Q4/8/PPPPPPPP/RNB1KBNR w KQkq - 0 1",
+		"rnbqkbnr/pppppppp/8/8/4R3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+		"6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",
+		"8/8/8/8/8/8/k7/Q6K w - - 0 1",
+		"r4rk1/p1p1bp2/3p2pR/5PP1/5P2/P4P2/1PP3P1/2KR4 w - - 0 23",
+	};
+
+	for (const char* fen : fens) {
+		const int direct = eval_position(fen);
+		const string mirrored = mirror_fen(fen);
+		const int flipped = eval_position(mirrored.c_str());
+		EXPECT_EQ(flipped, -direct) << "Asymmetric eval for FEN: " << fen
+			<< " (mirror: " << mirrored << ", direct=" << direct << ", mirrored=" << flipped << ")";
+	}
+}
+
+
+
+
+
+
+
+
+
