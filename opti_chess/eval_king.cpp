@@ -2283,8 +2283,10 @@ int Board::get_open_files_on_opponent_king_at_column(bool player, int king_col) 
 
 	//r1r1b1k1/pp3p1p/1q2p1nQ/3pP1N1/3n2P1/2N5/PP2BPK1/1R5R w - - 2 24
 
-	// For each file adjacent to the black king
-	for (uint8_t col = king_col - 1; col < king_col + 2; col++) {
+	// int loop: the former uint8_t col underflowed at king_col=0 (col-1=255,
+	// "col < 0" is always false for unsigned) and the loop condition then
+	// rejected everything: a king on the a-file had NO open-file scan at all.
+	for (int col = king_col - 1; col <= king_col + 1; col++) {
 
 		// If the file is off the board
 		if (col < 0 || col > 7)
