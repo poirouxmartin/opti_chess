@@ -1319,7 +1319,8 @@ float Board::get_winnable(Evaluation* eval, bool color, float position_nature) c
 
 	// The more pawns there are, the more winnable it gets
 	constexpr float n_pawns_winnable[11] = { 0.0f, 0.20f, 0.37f, 0.53f, 0.67f, 0.79f, 0.85f, 0.90f, 0.94f, 0.98f, 1.0f };
-	const float pawns_factor = n_pawns_winnable[pawns_count];
+	// Queens count double: promotion storms push the count past the table - saturate.
+	const float pawns_factor = n_pawns_winnable[min<uint8_t>(pawns_count, 10)];
 
 	// Base winnable value
 	float winnable_value = (1 - no_pawns_winnable) * pawns_factor + no_pawns_winnable;

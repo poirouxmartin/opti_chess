@@ -1449,9 +1449,10 @@ int Board::get_king_attackers(bool color) {
 					//cout << "color: " << color << ", piece: " << piece_name(p) << "(" << square_name(row, col) << "), attacks : " << (int)attacks << ", value : " << attacking_value[attacks] << ", piece factor : " << piece_attack_factor[(p - 1) % 6] << ", total : " << attacking_value[attacks] * piece_attack_factor[(p - 1) % 6] << endl;
 				}
 				else if (semi_attacks > 0) {
-					// Precomputed: pow(i, 0.3) for i in [0..8]
+					// Precomputed: pow(i, 0.3) for i in [0..8]. A slider can cover
+					// up to 16 outer-ring squares -> saturate at the table end.
 					static constexpr float semi_pow_0_3[9] = { 0.0f, 1.0f, 1.23f, 1.39f, 1.52f, 1.62f, 1.71f, 1.79f, 1.87f };
-					king_attackers += semi_attack_value * piece_semi_attack_factor[(p - 1) % 6] * semi_pow_0_3[semi_attacks];
+					king_attackers += semi_attack_value * piece_semi_attack_factor[(p - 1) % 6] * semi_pow_0_3[min<uint8_t>(semi_attacks, 8)];
 					//cout << "color: " << color << ", piece: " << piece_name(p) << "(" << square_name(row, col) << "), semi-attacks : " << (int)semi_attacks << ", value : " << semi_attack_value * piece_semi_attack_factor[(p - 1) % 6] * pow(semi_attacks, 0.3) << endl;
 				}
 			}
@@ -2445,8 +2446,10 @@ int Board::get_queen_safety(bool color) const {
 		// Determine the piece (with possible promotion)
 		const uint8_t saved_start = b._array[move.start_row][move.start_col];
 		uint8_t piece = saved_start;
-		if (move.is_promotion()) {
-			piece = promo_to_piece(move.get_promo_piece(), !color);
+		// Raw get_moves() output carries unassigned flag bits: detect promotion
+		// GEOMETRICALLY (pawn reaching last rank) exactly like make_move does.
+		if (is_pawn(saved_start) && move.end_row == (saved_start == w_pawn ? 7 : 0)) {
+			piece = promo_to_piece(move.get_promo_piece(), saved_start == w_pawn);
 		}
 
 		// Minimal _array patch for slider blocking

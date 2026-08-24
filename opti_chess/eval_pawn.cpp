@@ -315,10 +315,18 @@ int Board::get_pawn_structure(float display_factor)
 
 						// Look for a blocker
 						for (uint8_t k = row + 1; k <= 7; k++) {
-							if (is_black(_array[k][col])) {
-								division_factor += block_division_per_piece[_array[k][col] - 8] - 1.0f;
+							const uint8_t blocker = _array[k][col];
+							if (blocker == b_pawn) {
+								// Enemy pawn: no table entry (knight..king only),
+								// and the most permanent blocker (pawns never move
+								// backward) -> strongest divisor. Indexing with
+								// b_pawn(7)-8 = -1 used to read out of bounds.
+								division_factor += block_division_per_piece[0] - 1.0f;
 							}
-							else if (is_white(_array[k][col])) {
+							else if (is_black(blocker)) {
+								division_factor += block_division_per_piece[blocker - 8] - 1.0f;
+							}
+							else if (is_white(blocker)) {
 								division_factor += self_block_division - 1.0f;
 							}
 						}
@@ -411,10 +419,17 @@ int Board::get_pawn_structure(float display_factor)
 
 						// Look for a blocker
 						for (int_fast8_t k = row - 1; k >= 0; k--) {
-							if (is_white(_array[k][col])) {
-								division_factor += block_division_per_piece[_array[k][col] - 2] - 1.0f;
+							const uint8_t blocker = _array[k][col];
+							if (blocker == w_pawn) {
+								// Mirror of the white side: enemy pawn has no
+								// table entry; w_pawn(1)-2 = -1 used to read
+								// out of bounds.
+								division_factor += block_division_per_piece[0] - 1.0f;
 							}
-							else if (is_black(_array[k][col])) {
+							else if (is_white(blocker)) {
+								division_factor += block_division_per_piece[blocker - 2] - 1.0f;
+							}
+							else if (is_black(blocker)) {
 								division_factor += self_block_division - 1.0f;
 							}
 						}
@@ -509,30 +524,44 @@ int Board::get_pawn_structure(float display_factor)
 	// Should connected pawns be stronger in the centre?
 	// Backward pawns, more heavily weighted
 
+	// Bounds-checked pawn-map accessors for the contested/connection probes
+	// below: several of them index col +/- 2 and row +/- 2 under guards that
+	// do not always cover BOTH indices (pawns_black[row + 2][col + 2] was
+	// reached with col=6 -> flat offset 64, one past the 64-byte array -
+	// ASAN stack-buffer-overflow in Puzzle.Wac001QueenG6). Off-board means
+	// "no pawn there", i.e. false, which is also the correct semantic for
+	// every caller (contest/backing checks treat it as absent).
+	auto pw = [&](int r, int c) -> bool {
+		return r >= 0 && r < 8 && c >= 0 && c < 8 && pawns_white[r][c];
+	};
+	auto pb = [&](int r, int c) -> bool {
+		return r >= 0 && r < 8 && c >= 0 && c < 8 && pawns_black[r][c];
+	};
+
 	// For each file
 	for (uint8_t col = 0; col < 8; col++) {
 		for (uint8_t row = 1; row < 7; row++) {
 
 			// White pawns
-			if (pawns_white[row][col]) {
+			if (pw(row, col)) {
 
 				// Connection through the left file
 
 				// Pawn connected behind
-				bool is_left_connected_behind = (col > 0 && pawns_white[row - 1][col - 1]);
+				bool is_left_connected_behind = (col > 0 && pw(row - 1, col - 1));
 
 			// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
 			//rnbqkbnr/pp3ppp/4p3/2ppP3/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 0 4: c3 is the move, to indirectly reconnect e5
 			// (row < 2 guards: no backing pawn can exist off-board -> treat as unbacked)
-			if (is_left_connected_behind && (col > 1 && pawns_black[row][col - 2]) && (row < 2 || !pawns_white[row - 2][col - 2]) && (row < 2 || !pawns_white[row - 2][col])) {
+			if (is_left_connected_behind && (col > 1 && pb(row, col - 2)) && (row < 2 || !pw(row - 2, col - 2)) && (row < 2 || !pw(row - 2, col))) {
 				is_left_connected_behind = false;
 			}
 
 				// Pawn connected on the same rank
-				bool is_left_connected_side = (col > 0 && pawns_white[row][col - 1]);
+				bool is_left_connected_side = (col > 0 && pw(row, col - 1));
 
 			// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
-			if (is_left_connected_side && (col > 1 && pawns_black[row + 1][col - 2] || pawns_black[row + 1][col]) && (row < 2 || !pawns_white[row - 2][col - 2]) && (row < 2 || !pawns_white[row - 2][col])) {
+			if (is_left_connected_side && (col > 1 && pb(row + 1, col - 2) || pb(row + 1, col)) && (row < 2 || !pw(row - 2, col - 2)) && (row < 2 || !pw(row - 2, col))) {
 				is_left_connected_side = false;
 			}
 
@@ -540,18 +569,18 @@ int Board::get_pawn_structure(float display_factor)
 				// Connection through the right file
 				
 				// Pawn connected behind
-				bool is_right_connected_behind = (col < 7 && pawns_white[row - 1][col + 1]);
+				bool is_right_connected_behind = (col < 7 && pw(row - 1, col + 1));
 
 			// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
-			if (is_right_connected_behind && (col < 6 && pawns_black[row][col + 2]) && (row < 2 || !pawns_white[row - 2][col + 2]) && (row < 2 || !pawns_white[row - 2][col])) {
+			if (is_right_connected_behind && (col < 6 && pb(row, col + 2)) && (row < 2 || !pw(row - 2, col + 2)) && (row < 2 || !pw(row - 2, col))) {
 				is_right_connected_behind = false;
 			}
 
 				// Pawn connected on the same rank
-				bool is_right_connected_side = (col < 7 && pawns_white[row][col + 1]);
+				bool is_right_connected_side = (col < 7 && pw(row, col + 1));
 
 			// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
-			if (is_right_connected_side && (col < 6 && pawns_black[row + 1][col + 2] || pawns_black[row + 1][col]) && (row < 2 || !pawns_white[row - 2][col + 2]) && (row < 2 || !pawns_white[row - 2][col])) {
+			if (is_right_connected_side && (col < 6 && pb(row + 1, col + 2) || pb(row + 1, col)) && (row < 2 || !pw(row - 2, col + 2)) && (row < 2 || !pw(row - 2, col))) {
 				is_right_connected_side = false;
 			}
 
@@ -561,7 +590,7 @@ int Board::get_pawn_structure(float display_factor)
 				// If connected on at least one side
 				if (behind_connections + side_connections > 0) {
 
-					bool is_contested = (col > 0 && pawns_black[row + 1][col - 1]) || (col < 7 && pawns_black[row + 1][col + 1]);
+					bool is_contested = (col > 0 && pb(row + 1, col - 1)) || (col < 7 && pb(row + 1, col + 1));
 					float value = connected_pawns[row] * connected_pawns_adv * column_connection_value[col] * multiple_connections[behind_connections + side_connections - is_contested];
 					connected_pawns_value += value;
 					//std::cout << square_name(row, col) << ", behind: " << behind_connections << ", side: " << side_connections << ", contests: " << is_contested << " = " << behind_connections + side_connections - is_contested << ": " << value << endl;
@@ -570,43 +599,43 @@ int Board::get_pawn_structure(float display_factor)
 			}
 
 			// Black pawns
-			else if (pawns_black[row][col]) {
+			else if (pb(row, col)) {
 
 				// Connection through the left file
 				
 				// Pawn connected behind
-				bool is_left_connected_behind = (col > 0 && pawns_black[row + 1][col - 1]);
+				bool is_left_connected_behind = (col > 0 && pb(row + 1, col - 1));
 
 			// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
 			//rnbqkb1r/ppp2ppp/5n2/3p4/2PPp3/4P3/PP3PPP/RNBQKBNR b KQkq - 0 5: c6 is the move
 			// (row > 5 guards: no backing pawn can exist off-board -> treat as unbacked)
-			if (is_left_connected_behind && (col > 1 && pawns_white[row][col - 2] && (row > 5 || !pawns_black[row + 2][col - 2]) && (row > 5 || !pawns_black[row + 2][col]))) {
+			if (is_left_connected_behind && (col > 1 && pw(row, col - 2) && (row > 5 || !pb(row + 2, col - 2)) && (row > 5 || !pb(row + 2, col)))) {
 				is_left_connected_behind = false;
 			}
 
 				// Pawn connected on the same rank
-				bool is_left_connected_side = (col > 0 && pawns_black[row][col - 1]);
+				bool is_left_connected_side = (col > 0 && pb(row, col - 1));
 
 			// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
-			if (is_left_connected_side && (col > 1 && pawns_white[row - 1][col - 2] || pawns_white[row - 1][col]) && (row > 5 || !pawns_black[row + 2][col - 2]) && (row > 5 || !pawns_black[row + 2][col])) {
+			if (is_left_connected_side && (col > 1 && pw(row - 1, col - 2) || pw(row - 1, col)) && (row > 5 || !pb(row + 2, col - 2)) && (row > 5 || !pb(row + 2, col))) {
 				is_left_connected_side = false;
 			}
 
 				// Connection through the right file
 				
 				// Pawn connected behind
-				bool is_right_connected_behind = (col < 7 && pawns_black[row + 1][col + 1]);
+				bool is_right_connected_behind = (col < 7 && pb(row + 1, col + 1));
 
 			// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
-			if (is_right_connected_behind && (col < 6 && pawns_white[row][col + 2] && (row > 5 || !pawns_black[row + 2][col + 2]) && (row > 5 || !pawns_black[row + 2][col]))) {
+			if (is_right_connected_behind && (col < 6 && pw(row, col + 2) && (row > 5 || !pb(row + 2, col + 2)) && (row > 5 || !pb(row + 2, col)))) {
 				is_right_connected_behind = false;
 			}
 
 				// Pawn connected on the same rank
-				bool is_right_connected_side = (col < 7 && pawns_black[row][col + 1]);
+				bool is_right_connected_side = (col < 7 && pb(row, col + 1));
 
 			// Contested by an enemy pawn and not backed by a friendly pawn: drop the bonus
-			if (is_right_connected_side && (col < 6 && pawns_white[row - 1][col + 2] || pawns_white[row - 1][col]) && (row > 5 || !pawns_black[row + 2][col + 2]) && (row > 5 || !pawns_black[row + 2][col])) {
+			if (is_right_connected_side && (col < 6 && pw(row - 1, col + 2) || pw(row - 1, col)) && (row > 5 || !pb(row + 2, col + 2)) && (row > 5 || !pb(row + 2, col))) {
 				is_right_connected_side = false;
 			}
 
@@ -616,7 +645,7 @@ int Board::get_pawn_structure(float display_factor)
 				// If connected on at least one side
 				if (behind_connections + side_connections > 0) {
 
-					bool is_contested = col > 0 && pawns_white[row - 1][col - 1] || col < 7 && pawns_white[row - 1][col + 1];
+					bool is_contested = col > 0 && pw(row - 1, col - 1) || col < 7 && pw(row - 1, col + 1);
 					float value = connected_pawns[7 - row] * connected_pawns_adv * column_connection_value[col] * multiple_connections[behind_connections + side_connections - is_contested];
 					connected_pawns_value -= value;
 					//std::cout << square_name(row, col) << ", behind: " << behind_connections << ", side: " << side_connections << ", contests: " << is_contested << " = " << behind_connections + side_connections - is_contested << ": " << value << endl;
@@ -1283,7 +1312,21 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 
 				// REVIEW: unsupported pawns attached to another are still counted as connected
 				// En fait non?
-				if ((col > 0 && (pawns[row][col - 1] || pawns[row - dir][col - 1] || pawns[row + dir][col - 1])) || (col < 4 && (pawns[row][col + 1] || pawns[row - dir][col + 1] || pawns[row + dir][col + 1]))) {
+				// row +/- dir can leave the board at ranks 0/7: bound-check every index.
+				const int row_behind = row - dir;
+				const int row_ahead = row + dir;
+				auto has_pawn_near = [&](int c) {
+					if (c < 0 || c > 4)
+						return false;
+					if (pawns[row][c])
+						return true;
+					if (row_behind >= 0 && row_behind <= 7 && pawns[row_behind][c])
+						return true;
+					if (row_ahead >= 0 && row_ahead <= 7 && pawns[row_ahead][c])
+						return true;
+					return false;
+				};
+				if (has_pawn_near(col - 1) || has_pawn_near(col + 1)) {
 				//if ((col > 0 && (pawns[row][col - 1] || pawns[row - dir][col - 1])) || (col < 2 && (pawns[row][col + 1] || pawns[row - dir][col + 1]))) {
 					const int connected_bonus = connected_pawns_bonus * distance_factor * adjacent_factor;
 
