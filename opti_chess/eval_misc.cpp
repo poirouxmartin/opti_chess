@@ -1967,7 +1967,8 @@ int Board::get_open_files_on_opponent_king(bool player) {
 
 	int current_file_weakness = get_open_files_on_opponent_king_at_column(player, player ? _black_king_pos.col : _white_king_pos.col);
 	int kingside_file_weakness = can_kingside_castle ? get_open_files_on_opponent_king_at_column(player, 6) : 0;
-	int queenside_file_weakness = can_kingside_castle ? get_open_files_on_opponent_king_at_column(player, 2) : 0;
+	// Queenside gated by QUEENSIDE rights (was a copy-paste of kingside)
+	int queenside_file_weakness = can_queenside_castle ? get_open_files_on_opponent_king_at_column(player, 2) : 0;
 
 	// !player, because one side's bonuses are the other side's weaknesses
 	int total_weakness = get_long_term_king_weakness(!player, current_file_weakness, kingside_file_weakness, queenside_file_weakness);
