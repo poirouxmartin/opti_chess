@@ -119,10 +119,13 @@ enum MoveFlags : uint8_t {
 };
 
 struct Move {
-	uint8_t start_row : 3;
-	uint8_t start_col : 3;
-	uint8_t end_row : 3;
-	uint8_t end_col : 3;
+	// Zero-initialized by default: `Move m;` MUST be a well-formed null move.
+	// Uninitialized bitfields used to hand back garbage keys that passed the
+	// is_null_move() checks and got inserted as phantom children (null _node).
+	uint8_t start_row : 3 = 0;
+	uint8_t start_col : 3 = 0;
+	uint8_t end_row : 3 = 0;
+	uint8_t end_col : 3 = 0;
 	uint8_t promo_piece : 2 = PROMO_QUEEN;
 	uint8_t flags = 0;
 
