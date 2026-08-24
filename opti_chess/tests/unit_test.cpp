@@ -6,6 +6,8 @@
 #include "zobrist.h"
 #include "useful_functions.h"
 #include <chrono>
+#include <algorithm>
+#include <vector>
 
 
 // ============================================================================
@@ -1699,7 +1701,31 @@ static void run_puzzle(const char* fen, const Move& expected_move, int iteration
     cout << "  Puzzle: " << label << endl;
     cout << "    FEN: " << fen << endl;
     cout << "    Best: " << best_label << "  Expected: " << expected_label << endl;
+    cout << "    Best coords: (" << (int)best.start_row << "," << (int)best.start_col << ")->("
+         << (int)best.end_row << "," << (int)best.end_col << ") promo=" << (int)best.get_promo_piece()
+         << "  |  Expected coords: (" << (int)expected_move.start_row << "," << (int)expected_move.start_col << ")->("
+         << (int)expected_move.end_row << "," << (int)expected_move.end_col << ") promo=" << (int)expected_move.get_promo_piece() << endl;
     cout << "    Iterations: " << root._iterations << "  Nodes: " << root._nodes << "  Time: " << fixed << setprecision(2) << elapsed << "s" << endl;
+
+    // Root children ranked by visits with their propagated value. Gated by
+    // PUZZLE_DEBUG=1: invaluable when a puzzle fails (shows whether the right
+    // move was found but never selected, or never even valued correctly).
+    if (getenv("PUZZLE_DEBUG") != nullptr) {
+        struct KidInfo { Move mv; int iters; int value; bool terminal; };
+        std::vector<KidInfo> kids;
+        for (auto const& [mv, cl] : root._children)
+            if (cl._node != nullptr)
+                kids.push_back({ mv, cl._chosen_iterations, cl._node->_deep_evaluation._value, cl._node->_is_terminal });
+        std::sort(kids.begin(), kids.end(), [](const KidInfo& a, const KidInfo& b) { return a.iters > b.iters; });
+        Board lbl; lbl.from_fen(fen);
+        int shown = 0;
+        for (const auto& k : kids) {
+            cout << "    kid " << lbl.move_label(k.mv)
+                 << " (" << (int)k.mv.start_row << "," << (int)k.mv.start_col << ")->(" << (int)k.mv.end_row << "," << (int)k.mv.end_col << ")"
+                 << " iters=" << k.iters << " val=" << k.value << (k.terminal ? " TERMINAL" : "") << endl;
+            if (++shown >= 6) break;
+        }
+    }
 
     EXPECT_EQ(best, expected_move) << "Puzzle failed: " << label << " (got " << best_label << ", expected " << expected_label << ")";
 
@@ -1793,6 +1819,65 @@ TEST(Puzzle, QueenB2MateIn2) {
     run_puzzle("2bk1r2/4b1Qp/8/1P6/3P4/1qp5/4NPPP/R1K2B1R b - - 0 25",
                Move(2, 1, 1, 1), 60000,
                "Qb2+ mate in 2");
+}
+
+// ============================================================================
+// Expanded puzzle suite: verified classics with a unique best move.
+// ============================================================================
+
+// Terminal detection on the Ra8# child position (no search): the move gives
+// checkmate, the board must report white_win and encode the mate value.
+TEST(Terminal, BackRankMateDetectedStatically) {
+    Board b;
+    b.from_fen("6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1");
+    const Move ra8(0, 0, 7, 0);
+    b.make_move(ra8, false, true);
+    b.get_moves();
+    EXPECT_EQ(b._got_moves, 0);
+    EXPECT_TRUE(b._player_in_check);
+    EXPECT_EQ(b.is_game_over(), white_win);
+
+    Evaluation ev;
+    Evaluator evaluator;
+    b.evaluate(&ev, &evaluator, false, nullptr, true);
+    EXPECT_TRUE(ev._evaluated);
+    // Mate encoding (-mate_value + moves_count * mate_ply): mate-scale positive
+    EXPECT_GT(ev._value, mate_value / 2);
+}
+
+// Back-rank mate in 1: Ra8# (f7/g7/h7 block every escape)
+TEST(Puzzle, BackRankMateIn1) {
+    run_puzzle("6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",
+               Move(0, 0, 7, 0), 20000,
+               "Ra8 back-rank mate in 1");
+}
+
+// Morphy's Opera Game finale: Qxb8+!! Nxb8 Rd8#
+TEST(Puzzle, OperaGameQxb8) {
+    run_puzzle("4kb1r/p2n1ppp/4q3/4p1B/4P3/1Q6/6PP/2KR4 w k - 0 1",
+               Move(2, 1, 7, 1), 40000,
+               "Qxb8+ queen sacrifice, mate in 2 (Morphy)");
+}
+
+// WAC.001: Qg6!! threatens mate; fxg6 Nxg6#, Rxg6/Rg8 Nxf7 ideas
+TEST(Puzzle, Wac001QueenG6) {
+    run_puzzle("2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1",
+               Move(2, 6, 5, 6), 40000,
+               "WAC.001 Qg6 mating attack");
+}
+
+// WAC.002: Rxb2! removes the defender of the promotion squares
+TEST(Puzzle, Wac002Rxb2) {
+    run_puzzle("8/7p/5k2/5p2/p1p2P2/Pr1pPK2/1P1R3P/8 b - - 0 1",
+               Move(2, 1, 6, 1), 30000,
+               "WAC.002 Rxb2");
+}
+
+// Constructed royal fork: Nec7+ forking Ke8 and Ra8, then Nxa8
+TEST(Puzzle, KnightForkC7) {
+    run_puzzle("r3k3/8/4N3/8/8/8/8/4K3 w - - 0 1",
+               Move(5, 4, 6, 2), 20000,
+               "Nc7+ royal fork");
 }
 
 // ============================================================================
