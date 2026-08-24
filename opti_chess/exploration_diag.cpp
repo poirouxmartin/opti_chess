@@ -983,12 +983,36 @@ Move Node::get_most_explored_child_move() {
 	// Simple sort, ties are not broken
 	Move best_move = Move();
 
+	// A proven win buried in a zero-visit terminal child must still be played:
+	// the UCT loop never credits _chosen_iterations to terminal children
+	// (_can_explore=false excludes them from move_to_play by design - there is
+	// nothing to refine behind a game-over position), so a mate-in-1 sits at 0
+	// visits while quiet branches rack up thousands (BackRankMateIn1: Ra8#
+	// val=+99900000 at 0 visits vs Ra7 at 2305). When a terminal child's value
+	// is mate-scale FOR US, play it now; the largest value encodes the
+	// shortest mate ((mate_value - D*mate_ply) encoding).
+	Move proven_win_move = Move();
+	int proven_win_value = 0;
+	const bool has_board = _board != nullptr;
+	const int node_color = has_board ? _board->get_color() : 1;
+
 	for (auto const& [move, child_link] : _children) {
 		if (child_link._chosen_iterations > max) {
 			max = child_link._chosen_iterations;
 			best_move = move;
 		}
+
+		if (has_board && child_link._node != nullptr && child_link._node->_is_terminal) {
+			const int child_value = child_link._node->_deep_evaluation._value * node_color;
+			if (child_value > proven_win_value && 2 * child_value > mate_value) {
+				proven_win_value = child_value;
+				proven_win_move = move;
+			}
+		}
 	}
+
+	if (!proven_win_move.is_null_move())
+		return proven_win_move;
 
 	return best_move;
 }
