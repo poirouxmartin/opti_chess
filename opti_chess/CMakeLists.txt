@@ -54,7 +54,7 @@ add_executable(opti_chess
     eval_pawn.cpp
     eval_mobility.cpp
     eval_misc.cpp
-    exploration.cpp
+    exploration_diag.cpp
     game_tree.cpp
     gui.cpp
     neural_network.cpp
@@ -114,15 +114,18 @@ target_include_directories(opti_chess PRIVATE "${robin_map_SOURCE_DIR}/include/t
 # ---------------------------------------------------------------------------
 option(ASAN_BUILD "Build with AddressSanitizer (MSVC)" OFF)
 if(ASAN_BUILD AND MSVC)
-    set(MSVC_OPT_FLAGS /O2 /Ob2 /fp:precise /bigobj /fsanitize=address)
+    # /Zi: PDB for symbolized ASAN reports; /FS: parallel cl.exe PDB access;
+    # /FI excpt.h: SEH probe macros in every TU (exploration.cpp diagnostics)
+    set(MSVC_OPT_FLAGS /O2 /Ob2 /fp:precise /bigobj /Zi /FS /FIexcpt.h /fsanitize=address)
     # Prebuilt googletest is not annotated: match it or the linker refuses.
     add_compile_definitions(_DISABLE_STRING_ANNOTATION _DISABLE_VECTOR_ANNOTATION _DISABLE_OPTIONAL_ANNOTATION)
-    add_link_options(/fsanitize=address)
+    add_link_options(/fsanitize=address /DEBUG)
 elseif(MSVC)
     # MSVC: /Ox full optimization, /fp:fast fast floats, /GL whole-program,
     # /Oi intrinsics, /Ot favor fast code, /Ob3 aggressive inlining,
     # /GS- no buffer security checks, /bigobj for large TUs
-    set(MSVC_OPT_FLAGS /Ox /fp:fast /GL /Oi /Ot /Ob3 /GS- /bigobj)
+    # /FI excpt.h: SEH probe macros for exploration's diagnostic walk
+    set(MSVC_OPT_FLAGS /Ox /fp:fast /GL /Oi /Ot /Ob3 /GS- /bigobj /FIexcpt.h)
 endif()
 
 if(MSVC)
@@ -170,7 +173,7 @@ set(ENGINE_SOURCES
     eval_pawn.cpp
     eval_mobility.cpp
     eval_misc.cpp
-    exploration.cpp
+    exploration_diag.cpp
     game_tree.cpp
     gui.cpp
     neural_network.cpp
