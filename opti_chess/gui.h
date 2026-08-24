@@ -182,6 +182,13 @@ public:
 	// Position of the right-clicked square
 	Pos _right_clicked_pos = { -1, -1 };
 
+	// Pending promotion: a pawn reached the last rank, waiting for the
+	// user to pick Q/R/B/N in the overlay picker
+	bool _promotion_pending = false;
+	Move _promotion_move;
+	uint8_t _promotion_choices[4] = { PROMO_QUEEN, PROMO_ROOK, PROMO_BISHOP, PROMO_KNIGHT };
+	int _promotion_choice_count = 0;
+
 	// Is the mouse clicked?
 	bool _clicked = false;
 
@@ -542,6 +549,23 @@ public:
 
 	// Plays a move, keeping the GrogrosZero search
 	bool play_move_keep(Move move);
+
+	// Intercepts a user move (click or drag): opens the promotion picker
+	// when the move is a pawn reaching the last rank, plays it otherwise.
+	// Returns false when the move is illegal.
+	bool play_user_move(int start_row, int start_col, int end_row, int end_col);
+
+	// Completes a pending promotion with the chosen piece (PROMO_*)
+	void complete_promotion(uint8_t promo_piece);
+
+	// Cancels a pending promotion
+	void cancel_promotion();
+
+	// Handles a click while the promotion picker is open (true: consumed)
+	bool handle_promotion_click();
+
+	// Draws the promotion picker overlay
+	void draw_promotion_picker();
 
 	// Returns the type of the selected piece
 	uint8_t selected_piece() const;

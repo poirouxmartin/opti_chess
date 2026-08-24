@@ -994,7 +994,98 @@ bool GUI::play_move_keep(Move move)
 	if (!_board->selected_piece_has_trait())
 		_selected_pos = Pos(-1, -1);
 
+	// Any played move invalidates a stale promotion picker
+	_promotion_pending = false;
+
 	return true;
+}
+
+// Intercepts a user move (click or drag): opens the promotion picker
+// when the move is a pawn reaching the last rank, plays it otherwise.
+bool GUI::play_user_move(const int start_row, const int start_col, const int end_row, const int end_col) {
+	if (_board->_got_moves == -1)
+		_board->get_moves();
+
+	// Legality by geometry (Move equality includes the promo piece, and a
+	// user-constructed move always carries PROMO_QUEEN)
+	Move move(start_row, start_col, end_row, end_col);
+	bool legal = false;
+	for (int i = 0; i < _board->_got_moves; i++) {
+		const Move& m = _board->_moves[i];
+		if (m.start_row == start_row && m.start_col == start_col && m.end_row == end_row && m.end_col == end_col) {
+			legal = true;
+			break;
+		}
+	}
+
+	if (!legal)
+		return false;
+
+	// Promotion? Detected GEOMETRICALLY (pawn reaching the last rank):
+	// raw generator output does not carry usable flag bits.
+	const uint8_t moved_piece = _board->_array[start_row][start_col];
+	if (is_pawn(moved_piece) && end_row == (_board->_player ? 7 : 0)) {
+		_promotion_pending = true;
+		_promotion_move = move;
+		_promotion_choice_count = 4;
+		return true;
+	}
+
+	if (_click_bind)
+		_board->click_m_move(move, get_board_orientation());
+	play_move_keep(move);
+	unselect();
+	return true;
+}
+
+// Completes a pending promotion with the chosen piece (PROMO_*)
+void GUI::complete_promotion(const uint8_t promo_piece) {
+	Move move = _promotion_move;
+	move.set_promo_piece(promo_piece);
+
+	if (_click_bind)
+		_board->click_m_move(move, get_board_orientation());
+	play_move_keep(move);
+
+	_promotion_pending = false;
+	unselect();
+}
+
+// Cancels a pending promotion
+void GUI::cancel_promotion() {
+	_promotion_pending = false;
+}
+
+// Handles a click while the promotion picker is open (true: consumed)
+bool GUI::handle_promotion_click() {
+	const float x = _board_padding_x + _tile_size * orientation_index(_promotion_move.end_col);
+	const int disp_row = orientation_index(7 - _promotion_move.end_row);
+	const int step = (disp_row <= 3) ? 1 : -1;
+
+	for (int i = 0; i < _promotion_choice_count; i++) {
+		const float y = _board_padding_y + _tile_size * (disp_row + i * step);
+		if (_mouse_pos.x >= x && _mouse_pos.x <= x + _tile_size && _mouse_pos.y >= y && _mouse_pos.y <= y + _tile_size) {
+			complete_promotion(_promotion_choices[i]);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+// Draws the promotion picker overlay: four tiles from the promotion square
+// toward the board interior (Queen first), like the chess websites do
+void GUI::draw_promotion_picker() {
+	const float x = _board_padding_x + _tile_size * orientation_index(_promotion_move.end_col);
+	const int disp_row = orientation_index(7 - _promotion_move.end_row);
+	const int step = (disp_row <= 3) ? 1 : -1;
+
+	for (int i = 0; i < _promotion_choice_count; i++) {
+		const float y = _board_padding_y + _tile_size * (disp_row + i * step);
+		draw_rectangle(x, y, _tile_size, _tile_size, ((disp_row + i * step) % 2 == 1) ? _board_color_dark : _board_color_light);
+		draw_texture(_piece_textures[promo_to_piece(_promotion_choices[i], _board->_player) - 1],
+			x + (_tile_size - _piece_size) / 2, y + (_tile_size - _piece_size) / 2, WHITE);
+	}
 }
 
 // Returns the type of the selected piece
@@ -1078,8 +1169,18 @@ void GUI::draw()
 	// Position of the mouse
 	_mouse_pos = GetMousePosition();
 
+	// Promotion picker open: this click either picks a piece or cancels
+	if (_promotion_pending && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+		remove_highlighted_tiles();
+		_arrows_array = {};
+		_clicked = false;
+		_clicked_pos = Pos(-1, -1);
+		if (!handle_promotion_click())
+			cancel_promotion();
+	}
+
 	// If the mouse is clicked
-	if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+	else if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
 
 		// Remove the highlight from every square
 		remove_highlighted_tiles();
@@ -1126,17 +1227,13 @@ void GUI::draw()
 			}
 
 			else {
-				
-				// If the move is legal, play it
-				Move move = Move(_selected_pos.row, _selected_pos.col, _clicked_pos.row, _clicked_pos.col);
 
-				if (_board->is_legal(move)) {
-					if (_click_bind)
-						_board->click_m_move(move, get_board_orientation());
-					play_move_keep(move);
-
-					// Deselect the piece
-					unselect();
+				// If the move is legal, play it (opens the promotion picker
+				// when the pawn reaches the last rank)
+				if (play_user_move(_selected_pos.row, _selected_pos.col, _clicked_pos.row, _clicked_pos.col)) {
+					// Deselect the piece (deferred when the picker is open)
+					if (!_promotion_pending)
+						unselect();
 				}
 
 				else {
@@ -1153,7 +1250,7 @@ void GUI::draw()
 	}	
 
 	// If the mouse is released
-	if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+	if (!_promotion_pending && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
 
 		// Position of the square where the mouse was released
 		Pos drop_pos = get_pos_from_GUI(_mouse_pos.x, _mouse_pos.y);
@@ -1164,16 +1261,12 @@ void GUI::draw()
 			// If the mouse is released on a square other than the clicked one
 			if (drop_pos != _selected_pos) {
 
-				// If the move is legal, play it
-				Move move = Move(_selected_pos.row, _selected_pos.col, drop_pos.row, drop_pos.col);
-
-				if (_board->is_legal(move)) {
-					if (_click_bind)
-						_board->click_m_move(move, get_board_orientation());
-					play_move_keep(move);
-
-					// Deselect the piece
-					unselect();
+				// If the move is legal, play it (opens the promotion picker
+				// when the pawn reaches the last rank)
+				if (play_user_move(_selected_pos.row, _selected_pos.col, drop_pos.row, drop_pos.col)) {
+					// Deselect the piece (deferred when the picker is open)
+					if (!_promotion_pending)
+						unselect();
 				}
 			}
 		}
@@ -1428,6 +1521,13 @@ void GUI::draw()
 		// Best evaluation
 		//int best_eval = _root_exploration_node->_deep_evaluation._value;
 		Move best_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
+
+		// A NaN-poisoned score ranking can return the null stand-pat key even
+		// when children exist; skip the eval panel for this refresh instead of
+		// inserting/dereferencing a phantom child.
+		if (best_move.is_null_move()) {
+			return;
+		}
 		Evaluation best_evaluation = _root_exploration_node->_children[best_move]._node->_deep_evaluation;
 
 		//bool all_moves_explored = _root_exploration_node->get_fully_explored_children_count() == _root_exploration_node->_board->_got_moves;
@@ -1516,6 +1616,10 @@ void GUI::draw()
 		// TODO: add a slider value
 		slider_text(controls_information, _board_padding_x + _board_size + _text_size / 2, _board_padding_y, _screen_width - _text_size - _board_padding_x - _board_size, _board_size, _text_size / 3, &_variants_slider, _text_color_info);
 	}
+
+	// Promotion picker overlay (above the pieces)
+	if (_promotion_pending)
+		draw_promotion_picker();
 
 	// Display of the cursor
 	draw_texture(_cursor_texture, _mouse_pos.x - _cursor_size / 2, _mouse_pos.y - _cursor_size / 2, WHITE);
