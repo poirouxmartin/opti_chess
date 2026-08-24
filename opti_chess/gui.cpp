@@ -1074,17 +1074,40 @@ bool GUI::handle_promotion_click() {
 }
 
 // Draws the promotion picker overlay: four tiles from the promotion square
-// toward the board interior (Queen first), like the chess websites do
+// toward the board interior (Queen first), like the chess websites do.
+// The rest of the board is dimmed so the choices read as a modal, not as
+// regular squares - same tile geometry as handle_promotion_click().
 void GUI::draw_promotion_picker() {
 	const float x = _board_padding_x + _tile_size * orientation_index(_promotion_move.end_col);
 	const int disp_row = orientation_index(7 - _promotion_move.end_row);
 	const int step = (disp_row <= 3) ? 1 : -1;
 
+	// Dim the whole board so only the picker stands out
+	draw_rectangle(_board_padding_x, _board_padding_y, _board_size, _board_size, { 0, 0, 0, 150 });
+
+	// Panel styling
+	const Color panel_color = { 38, 38, 44, 255 };
+	const Color border_color = { 215, 215, 220, 255 };
+	const Color hover_color = { 255, 200, 90, 255 };
+
+	// First/last tile positions, to frame the strip
+	const int last_offset = (_promotion_choice_count - 1) * step;
+	const float strip_top = _board_padding_y + _tile_size * min(disp_row, disp_row + last_offset);
+	const float strip_height = _tile_size * _promotion_choice_count;
+
+	// Frame around the strip
+	DrawRectangleLinesEx({ x - 2.0f, strip_top - 2.0f, _tile_size + 4.0f, strip_height + 4.0f }, 2, border_color);
+
 	for (int i = 0; i < _promotion_choice_count; i++) {
 		const float y = _board_padding_y + _tile_size * (disp_row + i * step);
-		draw_rectangle(x, y, _tile_size, _tile_size, ((disp_row + i * step) % 2 == 1) ? _board_color_dark : _board_color_light);
+		const bool hovered = is_cursor_in_rect({ x, y, _tile_size, _tile_size });
+
+		// Solid panel instead of board colors: unambiguous overlay
+		draw_rectangle(x, y, _tile_size, _tile_size, panel_color);
+		DrawRectangleLinesEx({ x, y, _tile_size, _tile_size }, 2, hovered ? hover_color : border_color);
 		draw_texture(_piece_textures[promo_to_piece(_promotion_choices[i], _board->_player) - 1],
-			x + (_tile_size - _piece_size) / 2, y + (_tile_size - _piece_size) / 2, WHITE);
+			x + (_tile_size - _piece_size) / 2, y + (_tile_size - _piece_size) / 2,
+			hovered ? Color{ 255, 230, 170, 255 } : WHITE);
 	}
 }
 
