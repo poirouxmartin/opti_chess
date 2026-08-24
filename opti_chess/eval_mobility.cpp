@@ -269,9 +269,15 @@ int Board::get_alignments() const
 						// Pressure value on the pin: the value of the cheapest piece pressuring this one
 						// For now, only the pawns are tested
 						//cout << (int)current_row << ", " << (int)current_col << ": " << square_name(current_row, current_col) << ", pawns for " << (pinning_piece_color ? "white?" : "black?") << endl;
-						if ((current_col > 0 && _array[current_row - pinning_int_color][current_col - 1] == (pinning_piece_color ? w_pawn : b_pawn)) || (current_col < 7 && _array[current_row - pinning_int_color][current_col + 1] == (pinning_piece_color ? w_pawn : b_pawn))) {
-							pressures[i] = pressuring_values[0];
-							//cout << "pawn !" << endl;
+						// Pawn probe sits one rank behind the scanned square: that rank can be
+						// off-board when the ray runs along row 0/7 -> bound-check BOTH indices.
+						const int pawn_rank = current_row - pinning_int_color;
+						if (pawn_rank >= 0 && pawn_rank <= 7) {
+							const uint8_t pressuring_pawn = pinning_piece_color ? w_pawn : b_pawn;
+							if ((current_col > 0 && _array[pawn_rank][current_col - 1] == pressuring_pawn) || (current_col < 7 && _array[pawn_rank][current_col + 1] == pressuring_pawn)) {
+								pressures[i] = pressuring_values[0];
+								//cout << "pawn !" << endl;
+							}
 						}
 
 						i++;
@@ -465,15 +471,17 @@ bool Board::add_piece_controls(SquareMap* map, int row, int col, int piece) cons
 
 	// White pawn
 	if (piece == w_pawn) {
-		col > 0 && (map->_array[row + 1][col - 1]++);
-		col < 7 && (map->_array[row + 1][col + 1]++);
+		// A promoting pawn can reach this function still flagged as a pawn
+		// (raw move lists carry unassigned flag bits): bound-check the rank.
+		col > 0 && row < 7 && (map->_array[row + 1][col - 1]++);
+		col < 7 && row < 7 && (map->_array[row + 1][col + 1]++);
 		return true;
 	}
 
 	// Black pawn
 	if (piece == b_pawn) {
-		col > 0 && (map->_array[row - 1][col - 1]++);
-		col < 7 && (map->_array[row - 1][col + 1]++);
+		col > 0 && row > 0 && (map->_array[row - 1][col - 1]++);
+		col < 7 && row > 0 && (map->_array[row - 1][col + 1]++);
 		return true;
 	}
 
@@ -1896,11 +1904,16 @@ int Board::get_long_term_piece_mobility(bool display) const {
 			}
 
 			//if (display) {
-			//	cout << piece_name(piece) << " on " << square_name(row, col) << ", mobility: " << piece_mobility << endl;
+			//	cout << piece_name(piece) << " on " << square_name(row, col), ", mobility: " << piece_mobility << endl;
 			//}
 
-			const int low_bound = static_cast<int>(piece_mobility);
-			const int high_bound = low_bound + 1;
+			// Interpolation bounds must respect EACH table's own size (pawn 5,
+			// knight/king 9, bishop/rook 15, queen 29): an unrestricted pawn
+			// reaches mobility 4 -> high_bound 5 reads past its table.
+			static constexpr int vm_table_size[6] = { 5, 9, 15, 15, 29, 9 };
+			const int vm_limit = vm_table_size[(piece - 1) % 6] - 1;
+			const int low_bound = min<int>(static_cast<int>(piece_mobility), vm_limit);
+			const int high_bound = min<int>(low_bound + 1, vm_limit);
 			const float fractional_part = piece_mobility - low_bound;
 
 
