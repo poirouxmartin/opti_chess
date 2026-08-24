@@ -98,27 +98,24 @@ void Board::from_fen(string fen)
 
 	iterator += 2;
 
-	bool next = true;
-
 	// Roques
 	_castling_rights.k_w = false; _castling_rights.q_w = false; _castling_rights.k_b = false; _castling_rights.q_b = false;
 
-	while (next) {
-		if (iterator >= static_cast<int>(fen.size())) {
-			fen_fail("truncated castling");
-			return;
-		}
-		c = fen[iterator];
-
-		switch (c) {
-		case '-': iterator += 1; next = false; break;
+	// Scan the whole castling field: rights may appear in ANY order ("kqKQ"
+	// is legal FEN). The old loop stopped at 'q' and skipped an extra
+	// character, silently dropping every right listed after it - which made
+	// mirrored positions evaluate asymmetrically (EvalSymmetry regression).
+	while (iterator < static_cast<int>(fen.size()) && fen[iterator] != ' ') {
+		switch (fen[iterator]) {
 		case 'K': _castling_rights.k_w = true; break;
 		case 'Q': _castling_rights.q_w = true; break;
 		case 'k': _castling_rights.k_b = true; break;
-		case 'q': _castling_rights.q_b = true; iterator += 1; next = false; break;
-		default: next = false; break;
+		case 'q': _castling_rights.q_b = true; break;
+		case '-': break;
+		default:
+			fen_fail("bad castling");
+			return;
 		}
-
 		iterator++;
 	}
 
@@ -126,6 +123,9 @@ void Board::from_fen(string fen)
 		fen_fail("missing en passant");
 		return;
 	}
+
+	// Skip the separating space; the en passant field starts here
+	iterator++;
 	c = fen[iterator];
 
 	// En passant
