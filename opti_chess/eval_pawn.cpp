@@ -703,11 +703,20 @@ int Board::get_pawn_push_threats() const {
 				if (can_push && !opponent_pawn_control && (!opponent_control || ally_pawn_control)) {
 					safe_push = 1;
 
-					// Double push
+					// Double push. The extra probes below are only meaningful
+					// when the double push exists: computed eagerly they used to
+					// index _array[row + 3] from any rank (up to [8], past the
+					// array for a white pawn on its 5th).
 					bool can_double_push = row == 1 && _array[row + 2][col] == none;
-					bool opponent_pawn_control_double = (col > 0 && _array[row + 3][col - 1] == b_pawn) || (col < 7 && _array[row + 3][col + 1] == b_pawn);
-					bool opponent_control_double = black_controls._array[row + 2][col] > 0;
-					bool ally_pawn_control_double = (col > 0 && _array[row + 1][col - 1] == w_pawn) || (col < 7 && _array[row + 1][col + 1] == w_pawn);
+					bool opponent_pawn_control_double = false;
+					bool opponent_control_double = false;
+					bool ally_pawn_control_double = false;
+
+					if (can_double_push) {
+						opponent_pawn_control_double = (col > 0 && _array[row + 3][col - 1] == b_pawn) || (col < 7 && _array[row + 3][col + 1] == b_pawn);
+						opponent_control_double = black_controls._array[row + 2][col] > 0;
+						ally_pawn_control_double = (col > 0 && _array[row + 1][col - 1] == w_pawn) || (col < 7 && _array[row + 1][col + 1] == w_pawn);
+					}
 
 					if (can_double_push && !opponent_pawn_control_double && (!opponent_control_double || ally_pawn_control_double)) {
 						safe_push = 2;
@@ -749,11 +758,20 @@ int Board::get_pawn_push_threats() const {
 				if (can_push && !opponent_pawn_control && (!opponent_control || ally_pawn_control)) {
 					safe_push = 1;
 
-					// Double push
+					// Double push. Mirror of the white side: the probes used to
+					// index _array[row - 3] from any rank (down to [-1] for a
+					// black pawn on its 5th) - ASAN stack-buffer-underflow in
+					// Fuzz.RandomGameInvariants.
 					bool can_double_push = row == 6 && _array[row - 2][col] == none;
-					bool opponent_pawn_control_double = (col > 0 && _array[row - 3][col - 1] == w_pawn) || (col < 7 && _array[row - 3][col + 1] == w_pawn);
-					bool opponent_control_double = white_controls._array[row - 2][col] > 0;
-					bool ally_pawn_control_double = (col > 0 && _array[row - 1][col - 1] == b_pawn) || (col < 7 && _array[row - 1][col + 1] == b_pawn);
+					bool opponent_pawn_control_double = false;
+					bool opponent_control_double = false;
+					bool ally_pawn_control_double = false;
+
+					if (can_double_push) {
+						opponent_pawn_control_double = (col > 0 && _array[row - 3][col - 1] == w_pawn) || (col < 7 && _array[row - 3][col + 1] == w_pawn);
+						opponent_control_double = white_controls._array[row - 2][col] > 0;
+						ally_pawn_control_double = (col > 0 && _array[row - 1][col - 1] == b_pawn) || (col < 7 && _array[row - 1][col + 1] == b_pawn);
+					}
 
 					if (can_double_push && !opponent_pawn_control_double && (!opponent_control_double || ally_pawn_control_double)) {
 						safe_push = 2;
