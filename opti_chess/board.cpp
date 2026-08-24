@@ -2839,7 +2839,9 @@ void Board::assign_move_flags(Move* move) {
 	if ((piece == w_pawn && move->end_row == 7) ||
 		(piece == b_pawn && move->end_row == 0)) {
 		move->set_flag(IS_PROMOTION);
-		move->set_promo_piece(PROMO_QUEEN);
+		// NOTE: do NOT touch promo_piece here. The generator already assigned
+		// Q/R/B/N per move; stamping QUEEN collapsed underpromotion variants
+		// into one identical key, deleting them from the children map.
 	}
 
 	// Capture normale ou en passant
