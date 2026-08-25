@@ -16,10 +16,22 @@
 // Usage: opti_chess_selfplay [games] [iterations_per_move]
 // ---------------------------------------------------------------------------
 
+// CLI A/B disables, re-applied after every set_config() call
+static bool cli_disable_value_propagation = false;
+static bool cli_disable_trust_prior = false;
+static bool cli_disable_avg_cap = false;
+
 static void set_config(bool new_engine) {
 	g_search_value_propagation = new_engine;
 	g_search_trust_prior = new_engine;
 	g_search_avg_cap = new_engine;
+
+	// Re-apply the CLI disables: set_config() runs EVERY PLY and would
+	// otherwise stomp them back to true, silently turning "-vp/-tp/-cap"
+	// into no-ops (the first bisection matches replayed the baseline).
+	if (cli_disable_value_propagation) g_search_value_propagation = false;
+	if (cli_disable_trust_prior) g_search_trust_prior = false;
+	if (cli_disable_avg_cap) g_search_avg_cap = false;
 }
 
 struct GameResult {
@@ -117,9 +129,9 @@ int main(int argc, char* argv[]) {
 	// Optional disables for A/B bisection: -vp -tp -cap
 	for (int i = 3; i < argc; i++) {
 		const string a = argv[i];
-		if (a == "-vp") g_search_value_propagation = false;
-		else if (a == "-tp") g_search_trust_prior = false;
-		else if (a == "-cap") g_search_avg_cap = false;
+		if (a == "-vp") { cli_disable_value_propagation = true; g_search_value_propagation = false; }
+		else if (a == "-tp") { cli_disable_trust_prior = true; g_search_trust_prior = false; }
+		else if (a == "-cap") { cli_disable_avg_cap = true; g_search_avg_cap = false; }
 	}
 
 	monte_board_buffer.init(60000, false);
