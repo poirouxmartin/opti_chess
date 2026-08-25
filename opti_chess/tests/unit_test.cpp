@@ -1670,7 +1670,7 @@ TEST(Debug, FegatelloMoveTable) {    // Regression guard: Nxf7 (Fegatello) must 
 // Puzzle helper: runs grogros_zero headlessly and checks the best move
 // ============================================================================
 
-static void run_puzzle(const char* fen, const Move& expected_move, int iterations, const char* label) {    Evaluator evaluator;
+static void run_puzzle(const char* fen, const Move& expected_move, int iterations, const char* label, double time_limit_s = 0) {    Evaluator evaluator;
     Board b;
     b.from_fen(fen);
 
@@ -1681,8 +1681,11 @@ static void run_puzzle(const char* fen, const Move& expected_move, int iteration
 
     Node root(&b);
 
-    // Use GUI-default search parameters (alpha, beta, gamma, quiescence_depth)
-    root.grogros_zero(&board_buf, &evaluator, 0.00001, 5.0, 1.10, iterations, 10);
+    // Use GUI-default search parameters (alpha, beta, gamma, quiescence_depth).
+    // time_limit_s > 0 caps the wall-clock budget (the iteration count then
+    // acts only as a safety ceiling): real playing-condition testing.
+    const clock_t max_time = time_limit_s > 0 ? static_cast<clock_t>(time_limit_s * CLOCKS_PER_SEC) : 0;
+    root.grogros_zero(&board_buf, &evaluator, 0.00001, 5.0, 1.10, iterations, 10, nullptr, nullptr, max_time);
 
     Move best = root.get_most_explored_child_move();
     double elapsed = (double)root._time_spent / CLOCKS_PER_SEC;
@@ -2776,3 +2779,67 @@ TEST(FEN, MinimalValidPositionLoads) {
 
 
 
+
+
+// ============================================================================
+// TIME-BUDGETED PUZZLE LADDER - playing-condition strength metric.
+//
+// Same verified classics as the regression tier, but each search is capped at
+// a WALL-CLOCK budget (3s) instead of a fixed iteration count: this measures
+// the engine the way it actually plays. Iteration budgets scale with machine
+// speed; seconds do not.
+//
+// Ratchet contract identical to WinningConversionsRatchet:
+//   solved < baseline => regression failure
+//   solved > baseline => bump kTimeLadderBaseline and commit (progress!)
+// ============================================================================
+
+// Bump ONLY when solved count exceeds this in a validated run.
+// 2026-08-25: 4/5 at 3s (Nc7+ fork open - solved at fixed budget, not yet at 3s)
+constexpr int kTimeLadderBaseline = 4;
+
+TEST(Progress, TimeBudgetLadder3s) {
+	struct LadderPuzzle { const char* fen; Move expected; const char* name; };
+	static const LadderPuzzle puzzles[] = {
+		{ "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",               Move(0, 0, 7, 0), "BackRank Ra8#" },
+		{ "4kb1r/p2n1ppp/4q3/4p1B/4P3/1Q6/6PP/2KR4 w k - 0 1",  Move(2, 1, 7, 1), "Opera Qxb8+" },
+		{ "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1", Move(2, 6, 5, 6), "WAC.001 Qg6" },
+		{ "8/7p/5k2/5p2/p1p2P2/Pr1pPK2/1P1R3P/8 b - - 0 1",     Move(2, 1, 6, 1), "WAC.002 Rxb2" },
+		{ "r3k3/8/4N3/8/8/8/8/4K3 b q - 0 1",                   Move(5, 4, 6, 2), "Nc7+ fork" },
+	};
+
+	int solved = 0;
+	string details;
+
+	cout << "=== TIME-BUDGET LADDER (3s/move) ===" << endl;
+
+	int ladder_solved = 0;
+	for (const LadderPuzzle& p : puzzles) {
+		// Inline minimal runner: solved = best move matches expectation
+		transposition_table.clear();
+		Board b;
+		b.from_fen(p.fen);
+		BoardBuffer board_buf(500 * 1024 * 1024);
+		board_buf.init(500000, false);
+		monte_node_buffer.init(500000, false);
+		monte_board_buffer.init(500000, false);
+		Evaluator evaluator;
+		Node root(&b);
+		root.grogros_zero(&board_buf, &evaluator, 0.00001, 5.0, 1.10, 1000000, 10, nullptr, nullptr, static_cast<clock_t>(3 * CLOCKS_PER_SEC));
+		const Move best = root.get_most_explored_child_move();
+		board_buf.remove();
+		monte_node_buffer.remove();
+		monte_board_buffer.remove();
+
+		const bool ok = best == p.expected;
+		if (ok) ladder_solved++;
+		details += string("  [") + (ok ? "SOLVED" : " open ") + "] " + p.name
+			+ " (iters=" + to_string(root._iterations) + ")\n";
+	}
+
+	cout << details << "=== LADDER: " << ladder_solved << "/" << (int)(sizeof(puzzles) / sizeof(puzzles[0]))
+		<< " at 3s (baseline: " << kTimeLadderBaseline << ") ===" << endl;
+
+	EXPECT_GE(ladder_solved, kTimeLadderBaseline)
+		<< "Fewer 3s puzzles solved than baseline: REGRESSION.";
+}
