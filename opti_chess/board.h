@@ -761,6 +761,19 @@ public:
 	// Loads the board from a FEN
 	void from_fen(string);
 
+	// Whether the current array is a playable position (exactly one king per
+	// side). from_fen() leaves an EMPTY array on parse failure, so this is the
+	// "did the import succeed" probe used before committing a GUI load.
+	bool fen_ok() const {
+		int w_kings = 0, b_kings = 0;
+		for (int r = 0; r < 8; r++)
+			for (int c = 0; c < 8; c++) {
+				w_kings += _array[r][c] == w_king;
+				b_kings += _array[r][c] == b_king;
+			}
+		return w_kings == 1 && b_kings == 1;
+	}
+
 	// Returns the FEN of the board
 	string to_fen() const;
 
