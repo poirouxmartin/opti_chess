@@ -360,7 +360,7 @@ void dag_debug_report() {
 }
 
 // Nouveau GrogrosZero
-void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, PositionHistory *path_history) {
+void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, PositionHistory *path_history, const clock_t max_time) {
 	// TODO:
 	// Depth could be added
 	// Keep the computation time
@@ -441,6 +441,11 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	// Exploration
 	int iteration_index = 0;
 	while (iterations > 0) {
+
+		// Wall-clock budget: stop cleanly when the deadline is reached
+		// (max_time == 0 keeps the pure iteration-count behaviour)
+		if (max_time != 0 && clock() - begin_monte_time >= max_time)
+			break;
 
 		// When the buffers are full we stop expanding and refine the existing tree.
 		const bool can_expand = !monte_board_buffer.is_full() && !monte_node_buffer.is_full();
