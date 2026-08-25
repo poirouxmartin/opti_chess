@@ -2591,3 +2591,101 @@ TEST(EvalSymmetry, MirroredPositionsFlipSignExactly) {
 
 
 
+
+
+// ============================================================================
+// PROGRESS TIER - deliberate headroom, NOT a regression gate.
+//
+// Positions where a forced win EXISTS beyond doubt (basic mates and tablebase
+// conversions). The engine must PROVE the win: its chosen moves are played
+// out against its own resistance until the game actually ends - no
+// hand-authored expected move, so nothing here depends on annotation memory.
+//
+// Ratchet contract:
+//   - solved >= kProgressBaseline  =>  pass (today's floor, catches regressions)
+//   - solved >  kProgressBaseline  =>  bump the constant and commit: that IS
+//     measurable progress. Items failing today are the roadmap.
+// ============================================================================
+
+static Move search_best_move_fresh(const char* fen, const int iterations) {
+	// Fresh tree, fresh buffers, cleared TT: an unbiased one-shot search
+	transposition_table.clear();
+
+	Board b;
+	b.from_fen(fen);
+
+	BoardBuffer board_buf(500 * 1024 * 1024);
+	board_buf.init(500000, false);
+	monte_node_buffer.init(500000, false);
+	monte_board_buffer.init(500000, false);
+
+	Evaluator evaluator;
+	Node root(&b);
+	root.grogros_zero(&board_buf, &evaluator, 0.00001, 5.0, 1.10, iterations, 8);
+
+	Move best = root.get_most_explored_child_move();
+
+	board_buf.remove();
+	monte_node_buffer.remove();
+	monte_board_buffer.remove();
+	return best;
+}
+
+// Plays the engine against itself from 'fen'; returns whether the STARTING
+// side delivers the win within max_plies
+static bool proves_win(const char* fen, const int search_iterations, const int max_plies) {
+	Board game;
+	game.from_fen(fen);
+	const bool starter_is_white = game.get_color() == 1;
+
+	for (int ply = 0; ply < max_plies; ply++) {
+		game.get_moves();
+		const int over = game.is_game_over(3);
+		if (over != unterminated)
+			return (over == white_win && starter_is_white) || (over == black_win && !starter_is_white);
+
+		const string current_fen = game.to_fen();
+		const Move best = search_best_move_fresh(current_fen.c_str(), search_iterations);
+		if (best.is_null_move())
+			return false;
+
+		game.make_move(best, false, true);
+	}
+	return false;
+}
+
+struct WinSpec {
+	const char* fen;
+	int iterations;
+	int max_plies;
+	const char* name;
+};
+
+// Bump ONLY when solved count exceeds this in a validated run.
+// 2026-08-25: 3/4 solved (KR vs K conversion still open)
+constexpr int kProgressBaseline = 3;
+
+TEST(Progress, WinningConversionsRatchet) {
+	static const WinSpec specs[] = {
+		{ "6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1", 400, 4,  "BackRank Rd8#" },
+		{ "7k/8/8/8/8/8/R7/KR6 w - - 0 1",         600, 14, "Ladder mate KRR vs K" },
+		{ "8/8/8/4k3/8/8/8/QK6 w - - 0 1",         800, 26, "KQ vs K conversion" },
+		{ "8/8/8/4k3/8/8/8/RK6 w - - 0 1",         800, 34, "KR vs K conversion" },
+	};
+
+	int solved = 0;
+	string details;
+
+	for (const WinSpec& spec : specs) {
+		const bool won = proves_win(spec.fen, spec.iterations, spec.max_plies);
+		details += string("  ") + (won ? "[SOLVED] " : "[ open ] ") + spec.name + "\n";
+		if (won)
+			solved++;
+	}
+
+	cout << "=== PROGRESS SCORECARD: " << solved << "/" << (int)(sizeof(specs) / sizeof(specs[0]))
+		<< " forced wins proven (baseline: " << kProgressBaseline << ") ===\n" << details;
+
+	EXPECT_GE(solved, kProgressBaseline)
+		<< "Fewer forced wins proven than the committed baseline: REGRESSION.";
+}
