@@ -19,9 +19,13 @@ static int probe_fully_explored_count(const Node* n) {
 #endif
 
 // Search feature toggles (see exploration.h) - self-play A/B testing
-bool g_search_value_propagation = true;
-bool g_search_trust_prior = true;
-bool g_search_avg_cap = true;
+// Search feature toggles. DEFAULTS = legacy behaviour: A/B selfplay matches
+// (fresh AND persistent trees, 8-12 games x 2000 iters) scored every
+// combination of these features BELOW legacy - best combo 37.5%, worst 0%
+// (b1b54ac data). Re-enable individually after a winning match only.
+bool g_search_value_propagation = false;
+bool g_search_trust_prior = false;
+bool g_search_avg_cap = false;
 
 namespace {
 
