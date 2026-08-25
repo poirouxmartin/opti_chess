@@ -10,6 +10,20 @@
 #include <algorithm>
 #include <vector>
 
+// ============================================================================
+// Test-scale knob: OPTI_TEST_SCALE=N divides every heavy SEARCH budget
+// (puzzles, prove-win ladder, determinism runs). Default 1 = full strength.
+// Fast smoke tier: OPTI_TEST_SCALE=8 with -Debug.*:-Perf.* excluded targets
+// a sub-2-minute whole-suite pass on Release.
+// ============================================================================
+static int test_scale() {
+	static const int s = [] {
+		const char* e = getenv("OPTI_TEST_SCALE");
+		return e ? max(1, atoi(e)) : 1;
+	}();
+	return s;
+}
+
 
 // ============================================================================
 // Board: default construction
@@ -898,7 +912,7 @@ TEST(Board, IsGameOver) {
     Board b;
     // Checkmate position: back-rank mate
     b.from_fen("6k1/5ppp/8/8/8/8/5PPP/4R1K1 b - - 0 1");
-    // Black to move, all pawns blocked, king stuck on g8 ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â any move leaves a8 undefended
+    // Black to move, all pawns blocked, king stuck on g8 ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â any move leaves a8 undefended
     // But this is NOT checkmate either (black has pawn moves)
     // Use a real checkmate: scholar's mate
     b.from_fen("r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4");
@@ -1670,7 +1684,9 @@ TEST(Debug, FegatelloMoveTable) {    // Regression guard: Nxf7 (Fegatello) must 
 // Puzzle helper: runs grogros_zero headlessly and checks the best move
 // ============================================================================
 
-static void run_puzzle(const char* fen, const Move& expected_move, int iterations, const char* label, double time_limit_s = 0) {    Evaluator evaluator;
+static void run_puzzle(const char* fen, const Move& expected_move, int iterations, const char* label, double time_limit_s = 0) {
+	iterations = max(1500, iterations / test_scale());
+	Evaluator evaluator;
     Board b;
     b.from_fen(fen);
 
@@ -1814,7 +1830,7 @@ TEST(Puzzle, PawnF6MateIn6) {
 // ============================================================================
 // Puzzle: Qb2+! starts forced mate in 2 (Qb2+ Kd1 Qd2#)
 // FEN: 2bk1r2/4b1Qp/8/1P6/3P4/1qp5/4NPPP/R1K2B1R b - - 0 25
-// Commentary: listed in exploration.cpp as "Mate not seen" ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â quiescence
+// Commentary: listed in exploration.cpp as "Mate not seen" ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â quiescence
 // regression guard for the fail-high _deep_evaluation propagation fix.
 // ============================================================================
 
@@ -2483,7 +2499,8 @@ struct SearchOutcome {
 	}
 };
 
-static SearchOutcome solve_once(const char* fen, const int iterations) {
+static SearchOutcome solve_once(const char* fen, const int iterations_in) {
+	const int iterations = max(1500, iterations_in / test_scale());
 	// The transposition table is a global: without clearing it, the second
 	// run would legally reuse the first one's entries and the comparison
 	// would measure cache warmth, not determinism.
@@ -2636,7 +2653,8 @@ static Move search_best_move_fresh(const char* fen, const int iterations) {
 
 // Plays the engine against itself from 'fen'; returns whether the STARTING
 // side delivers the win within max_plies
-static bool proves_win(const char* fen, const int search_iterations, const int max_plies) {
+static bool proves_win(const char* fen, const int search_iterations_in, const int max_plies) {
+	const int search_iterations = max(400, search_iterations_in / test_scale());
 	Board game;
 	game.from_fen(fen);
 	const bool starter_is_white = game.get_color() == 1;
@@ -2689,8 +2707,13 @@ TEST(Progress, WinningConversionsRatchet) {
 	cout << "=== PROGRESS SCORECARD: " << solved << "/" << (int)(sizeof(specs) / sizeof(specs[0]))
 		<< " forced wins proven (baseline: " << kProgressBaseline << ") ===\n" << details;
 
-	EXPECT_GE(solved, kProgressBaseline)
-		<< "Fewer forced wins proven than the committed baseline: REGRESSION.";
+	if (test_scale() == 1) {
+		EXPECT_GE(solved, kProgressBaseline)
+			<< "Fewer forced wins proven than the committed baseline: REGRESSION.";
+	}
+	else {
+		cout << "  [FAST MODE - scorecard only]" << endl;
+	}
 }
 
 
@@ -2825,7 +2848,7 @@ TEST(Progress, TimeBudgetLadder3s) {
 		monte_board_buffer.init(500000, false);
 		Evaluator evaluator;
 		Node root(&b);
-		root.grogros_zero(&board_buf, &evaluator, 0.00001, 5.0, 1.10, 1000000, 10, nullptr, nullptr, static_cast<clock_t>(3 * CLOCKS_PER_SEC));
+		root.grogros_zero(&board_buf, &evaluator, 0.00001, 5.0, 1.10, 1000000, 10, nullptr, nullptr, static_cast<clock_t>(max(0.5, 3.0 / test_scale()) * CLOCKS_PER_SEC));
 		const Move best = root.get_most_explored_child_move();
 		board_buf.remove();
 		monte_node_buffer.remove();
@@ -2840,6 +2863,85 @@ TEST(Progress, TimeBudgetLadder3s) {
 	cout << details << "=== LADDER: " << ladder_solved << "/" << (int)(sizeof(puzzles) / sizeof(puzzles[0]))
 		<< " at 3s (baseline: " << kTimeLadderBaseline << ") ===" << endl;
 
-	EXPECT_GE(ladder_solved, kTimeLadderBaseline)
-		<< "Fewer 3s puzzles solved than baseline: REGRESSION.";
+	if (test_scale() == 1) {
+		EXPECT_GE(ladder_solved, kTimeLadderBaseline)
+			<< "Fewer 3s puzzles solved than baseline: REGRESSION.";
+	}
+	else {
+		cout << "  [FAST MODE - scorecard only]" << endl;
+	}
+}
+
+
+// ============================================================================
+// NODE-EFFICIENCY LADDER - the "micro-optimization" metric.
+//
+// For each verified puzzle: the MINIMAL node budget that still yields the
+// correct move. Total across the suite = NAC (nodes-to-solve): the engine
+// must solve with AS FEW NODES as possible. Purely algorithmic lever -
+// move ordering, refinement scheduling, pruning... LOWER IS BETTER.
+//
+// Ratchet (inverted vs solved-count ratchets):
+//   total > baseline => regression failure
+//   total < baseline => lower kNodeEfficiencyBaseline and commit (progress!)
+// ============================================================================
+
+// 2026-08-25 first measurement: 129250 (Nc7+ fork unsolved at 64k = penalty;
+// everything else solved at 250-500 nodes - the fork IS the micro-opt target)
+constexpr long long kNodeEfficiencyBaseline = 130000LL;
+
+TEST(Progress, NodeEfficiencyLadder) {
+	struct LadderPuzzle { const char* fen; Move expected; const char* name; };
+	static const LadderPuzzle puzzles[] = {
+		{ "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",               Move(0, 0, 7, 0), "BackRank Ra8#" },
+		{ "4kb1r/p2n1ppp/4q3/4p1B/4P3/1Q6/6PP/2KR4 w k - 0 1",  Move(2, 1, 7, 1), "Opera Qxb8+" },
+		{ "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1", Move(2, 6, 5, 6), "WAC.001 Qg6" },
+		{ "8/7p/5k2/5p2/p1p2P2/Pr1pPK2/1P1R3P/8 b - - 0 1",     Move(2, 1, 6, 1), "WAC.002 Rxb2" },
+		{ "r3k3/8/4N3/8/8/8/8/4K3 b q - 0 1",                   Move(5, 4, 6, 2), "Nc7+ fork" },
+	};
+
+	static const int budgets[] = { 250, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000 };
+	constexpr int unsolved_penalty = 128000;
+
+	string details;
+	long long total = 0;
+
+	for (const LadderPuzzle& p : puzzles) {
+		int cost = unsolved_penalty;
+		for (const int budget : budgets) {
+			transposition_table.clear();
+			Board b;
+			b.from_fen(p.fen);
+			BoardBuffer board_buf(500 * 1024 * 1024);
+			board_buf.init(500000, false);
+			monte_node_buffer.init(500000, false);
+			monte_board_buffer.init(500000, false);
+			Evaluator evaluator;
+			Node root(&b);
+			root.grogros_zero(&board_buf, &evaluator, 0.00001, 5.0, 1.10, max(250, budget / test_scale()), 10);
+			const Move best = root.get_most_explored_child_move();
+			board_buf.remove();
+			monte_node_buffer.remove();
+			monte_board_buffer.remove();
+
+			if (best == p.expected) {
+				cost = budget;
+				break;
+			}
+		}
+
+		total += cost;
+		details += string("  ") + p.name + ": " + to_string(cost) + " nodes\n";
+	}
+
+	cout << "=== NODE-EFFICIENCY LADDER ===\n" << details
+		<< "=== TOTAL: " << total << " nodes (baseline: " << kNodeEfficiencyBaseline << ") ===" << endl;
+
+	if (test_scale() == 1) {
+		EXPECT_LE(total, kNodeEfficiencyBaseline)
+			<< "More nodes needed to solve the suite than baseline: EFFICIENCY REGRESSION.";
+	}
+	else {
+		cout << "  [FAST MODE - scorecard only]" << endl;
+	}
 }
