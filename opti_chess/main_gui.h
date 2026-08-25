@@ -1,4 +1,4 @@
-﻿#include "board.h"
+#include "board.h"
 #include "useful_functions.h"
 #include "gui.h"
 #include "windows_tests.h"
@@ -296,10 +296,24 @@ inline int main_ui() {
 			cout << "saved FEN : " << main_GUI._current_fen << endl;
 		}
 
-		// L - Loads the FEN from data/text.txt
+		// L - Loads the FEN from data/text.txt. LoadFileText returns NULL when
+		// the file is missing: constructing a std::string from that NULL used
+		// to crash outright.
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_L)) {
-			string fen = LoadFileText("data/test.txt");
-			main_GUI.load_FEN(fen);
+			char* file_fen = LoadFileText("data/text.txt");
+			if (file_fen == nullptr) {
+				cout << "load FEN: data/text.txt not found" << endl;
+			}
+			else {
+				const string fen(file_fen);
+				UnloadFileText(file_fen);
+				Board probe;
+				probe.from_fen(fen);
+				if (probe.fen_ok())
+					main_GUI.load_FEN(fen);
+				else
+					cout << "invalid FEN ignored: " << fen << endl;
+			}
 		}
 
 		// F - Flips the board
@@ -341,10 +355,17 @@ inline int main_ui() {
 			cout << "copied FEN : " << main_GUI._current_fen << endl;
 		}
 
-		// V - Pastes the FEN from the clipboard (and loads it)
+		// V - Pastes the FEN from the clipboard (and loads it). Validated first:
+		// an arbitrary clipboard payload used to reach the board unchecked and
+		// leave a kingless (or empty) position live in the GUI.
 		if (IsKeyPressed(KEY_V)) {
-			string fen = GetClipboardText();
-			main_GUI.load_FEN(fen);
+			const string fen = GetClipboardText();
+			Board probe;
+			probe.from_fen(fen);
+			if (probe.fen_ok())
+				main_GUI.load_FEN(fen);
+			else
+				cout << "invalid FEN ignored: " << fen << endl;
 		}
 
 		// // Pastes the PGN from the clipboard (and loads it)

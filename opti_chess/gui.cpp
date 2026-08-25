@@ -1547,8 +1547,14 @@ void GUI::draw()
 
 		// A NaN-poisoned score ranking can return the null stand-pat key even
 		// when children exist; skip the eval panel for this refresh instead of
-		// inserting/dereferencing a phantom child.
+		// inserting/dereferencing a phantom child. BUT the interaction overlays
+		// must still be drawn: the promotion picker INPUT stays active every
+		// frame, and skipping its DRAW left invisible clickable tiles - the
+		// next board click silently completed a "random" promotion.
 		if (best_move.is_null_move()) {
+			if (_promotion_pending)
+				draw_promotion_picker();
+			draw_texture(_cursor_texture, _mouse_pos.x - _cursor_size / 2, _mouse_pos.y - _cursor_size / 2, WHITE);
 			return;
 		}
 		Evaluation best_evaluation = _root_exploration_node->_children[best_move]._node->_deep_evaluation;

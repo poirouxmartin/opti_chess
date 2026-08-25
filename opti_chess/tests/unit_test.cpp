@@ -898,7 +898,7 @@ TEST(Board, IsGameOver) {
     Board b;
     // Checkmate position: back-rank mate
     b.from_fen("6k1/5ppp/8/8/8/8/5PPP/4R1K1 b - - 0 1");
-    // Black to move, all pawns blocked, king stuck on g8 â€” any move leaves a8 undefended
+    // Black to move, all pawns blocked, king stuck on g8 ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â any move leaves a8 undefended
     // But this is NOT checkmate either (black has pawn moves)
     // Use a real checkmate: scholar's mate
     b.from_fen("r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4");
@@ -1811,7 +1811,7 @@ TEST(Puzzle, PawnF6MateIn6) {
 // ============================================================================
 // Puzzle: Qb2+! starts forced mate in 2 (Qb2+ Kd1 Qd2#)
 // FEN: 2bk1r2/4b1Qp/8/1P6/3P4/1qp5/4NPPP/R1K2B1R b - - 0 25
-// Commentary: listed in exploration.cpp as "Mate not seen" â€” quiescence
+// Commentary: listed in exploration.cpp as "Mate not seen" ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â quiescence
 // regression guard for the fail-high _deep_evaluation propagation fix.
 // ============================================================================
 
@@ -2689,3 +2689,90 @@ TEST(Progress, WinningConversionsRatchet) {
 	EXPECT_GE(solved, kProgressBaseline)
 		<< "Fewer forced wins proven than the committed baseline: REGRESSION.";
 }
+
+
+
+
+// ============================================================================
+// FEN import/export hardening (user-reported GUI crashes)
+// ============================================================================
+
+// User-reported regression position: white queen already on a8, partial
+// castling field "KQk". Must import, export EXACTLY, generate moves and
+// evaluate without crashing.
+TEST(FEN, ImportExportQa8Regression) {
+	const char* fen = "Q2qkbnr/p2npppp/8/5b2/8/8/PPPP1PPP/RNBQKBNR b KQk - 0 5";
+	Board b;
+	b.from_fen(fen);
+	ASSERT_TRUE(b.fen_ok());
+
+	b.get_moves();
+	EXPECT_GT(b._got_moves, 0);
+
+	EXPECT_EQ(b.to_fen(), string(fen));
+
+	Evaluator evaluator;
+	Evaluation ev;
+	b.evaluate(&ev, &evaluator, false, nullptr, true);
+	EXPECT_TRUE(ev._evaluated);
+}
+
+// Castling rights may appear in ANY order in a FEN; the parsed rights must be
+// identical (the exporter always writes K, Q, k, q order)
+TEST(FEN, CastlingRightsAnyOrder) {
+	const char* placement_w = "r3k2r/8/8/8/8/8/8/R3K2R w";
+
+	struct Case { const char* castling; const char* expected_field; };
+	static const Case cases[] = {
+		{ "KQkq", "KQkq" },
+		{ "kqKQ", "KQkq" },
+		{ "qQkK", "KQkq" },
+		{ "KQk",   "KQk"  },
+		{ "kKQ",   "KQk"  },
+		{ "Kq",    "Kq"   },
+		{ "-",     "-"    },
+	};
+
+	for (const Case& c : cases) {
+		const string fen = string(placement_w) + " " + c.castling + " - 0 1";
+		Board b;
+		b.from_fen(fen);
+		EXPECT_TRUE(b.fen_ok()) << fen;
+
+		const string exported = b.to_fen();
+		EXPECT_EQ(exported.substr(exported.find(' ', exported.find(' ') + 1) + 1), string(c.expected_field) + " - 0 1") << fen << " -> " << exported;
+	}
+}
+
+// Malformed payloads fail safely into an EMPTY board (no crash, no half-load);
+// fen_ok() is the GUI-side gate that rejects them before commit
+TEST(FEN, InvalidFailsSafe) {
+	static const char* bad[] = {
+		"",
+		"hello world",
+		"8/8/8/8/8/8/8/8 w - - 0 1",                    // no kings at all
+		"Q2qkbnr/p2npppp/8/5b2/8/8/PPPP1PPP",           // truncated fields
+		"9w/8/8/8/8/8/8/4k3/4K3 w - - 0 1",             // bad rank digit / extra rank
+	};
+
+	for (const char* fen : bad) {
+		Board b;
+		b.from_fen(fen);
+		EXPECT_FALSE(b.fen_ok()) << "should have been rejected: " << fen;
+	}
+}
+
+// Minimal but legal position still loads (guard against over-eager rejection).
+// NOTE: kings e8/e5 with a white pawn on e7 would be STALEMATE for black -
+// deliberately placed the white king farther so black has legal moves.
+TEST(FEN, MinimalValidPositionLoads) {
+	const char* fen = "4k3/4P3/8/4K3/8/8/8/8 b - - 0 1";
+	Board b;
+	b.from_fen(fen);
+	EXPECT_TRUE(b.fen_ok());
+	b.get_moves();
+	EXPECT_GT(b._got_moves, 0);
+}
+
+
+
