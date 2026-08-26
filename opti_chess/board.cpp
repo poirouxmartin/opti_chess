@@ -2872,7 +2872,7 @@ void Board::assign_move_flags(Move* move) {
 
 	make_move(*move);
 
-	// Check and mate detection — save results, apply AFTER restore.
+	// Check and mate detection â€” save results, apply AFTER restore.
 	bool detected_check = false;
 	bool detected_mate = false;
 	if (in_check()) {
@@ -2927,7 +2927,10 @@ void Board::assign_move_flags(Move* move) {
 
 // Zeroes the bitboards
 void Board::reset_bitboards() {
-	for (int i = 0; i < 12; i++)
+	// ALL 13 boards including b_king(12): the old bound skipped it, letting
+	// stale/uninitialized bits survive every reset - they could then false-
+	// match in piece-identification scans (get_controls_around_king etc).
+	for (int i = 0; i < 13; i++)
 		_bitboards[i] = 0ULL;
 	for (int i = 0; i < 3; i++)
 		_occupancies[i] = 0ULL;

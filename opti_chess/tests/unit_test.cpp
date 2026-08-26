@@ -16,6 +16,8 @@
 // Fast smoke tier: OPTI_TEST_SCALE=8 with -Debug.*:-Perf.* excluded targets
 // a sub-2-minute whole-suite pass on Release.
 // ============================================================================
+void tt_set_probe_scale(int scale); // implemented in zobrist.cpp (audit A1)
+
 static int test_scale() {
 	static const int s = [] {
 		const char* e = getenv("OPTI_TEST_SCALE");
@@ -3104,3 +3106,87 @@ TEST(MoveLabel, Disambiguation) {
 
 
 // TEMP DIAG: per-node cost comparison
+
+
+// ============================================================================
+// Audit A1/A2 regression tests: depth-encoded scales + memory cap
+// ============================================================================
+
+// Scale isolation: MCTS entries (depth >= 256) are invisible to quiescence
+// probes and vice versa; a qsearch write never displaces a refined MCTS
+// verdict; same-scale replacement keeps the deepest.
+TEST(TranspositionTable, ScaleIsolation) {
+	TranspositionTable tt;
+	Zobrist zobrist;
+	zobrist.generate_zobrist_keys();
+	tt.init(1000, &zobrist, false);
+
+	const uint64_t key = 777ULL;
+
+	// MCTS-scale entry (depth >= 256)
+	tt.store(key, 100, 300, TT_EXACT);
+	tt_set_probe_scale(1);
+	ASSERT_NE(tt.probe(key), nullptr);
+	EXPECT_EQ(tt.probe(key)->_eval, 100);
+	EXPECT_EQ(tt.probe(key)->_depth, 300);
+	tt_set_probe_scale(0);
+
+	// Quiescence-scale probe must NOT see the MCTS entry...
+	tt.store(key, 55, 3, TT_BETA); // qsearch write: must NOT displace it either
+	EXPECT_EQ(tt.probe(key), nullptr);
+
+	// ...and a deeper same-scale write still replaces
+	tt.store(key, 200, 400, TT_EXACT);
+	tt_set_probe_scale(1);
+	EXPECT_EQ(tt.probe(key)->_eval, 200);
+	EXPECT_EQ(tt.probe(key)->_depth, 400);
+	tt_set_probe_scale(0);
+
+	// Pure qsearch key: invisible once an MCTS entry exists on ANOTHER key is
+	// irrelevant; here verify qsearch-only keys behave exactly as before
+	const uint64_t k2 = 778ULL;
+	tt.store(k2, 42, 2, TT_STANDPAT);
+	ASSERT_NE(tt.probe(k2), nullptr);
+	EXPECT_EQ(tt.probe(k2)->_eval, 42);
+}
+
+// The scale floor MUST stay coupled to QDEPTH_BAND (exploration_diag.cpp):
+// a depth of 255 is quiescence, 256+ is MCTS.
+TEST(TranspositionTable, ScaleFloorCoupling) {
+	TranspositionTable tt;
+	Zobrist zobrist;
+	zobrist.generate_zobrist_keys();
+	tt.init(1000, &zobrist, false);
+
+	const uint64_t key = 900ULL;
+	tt.store(key, 7, 255, TT_ALPHA);   // just below the floor -> quiescence scale
+	tt.store(key, 9, 256, TT_BETA);    // at/above the floor -> MCTS scale
+
+	// The MCTS write displaced the qsearch entry (allowed direction), and both
+	// are now one and the same MCTS-scaled record.
+	tt_set_probe_scale(1);
+	ASSERT_NE(tt.probe(key), nullptr);
+	EXPECT_EQ(tt.probe(key)->_eval, 9);
+	EXPECT_EQ(tt.probe(key)->_depth, 256);
+	tt_set_probe_scale(0);
+}
+
+// Memory cap: _length is now ENFORCED (audit A2). Stores beyond the cap
+// trigger an amortized eviction sweep; the table stays bounded and usable.
+TEST(TranspositionTable, MemoryCapEnforced) {
+	TranspositionTable tt;
+	Zobrist zobrist;
+	zobrist.generate_zobrist_keys();
+	tt.init(64, &zobrist, false);
+	tt.clear();
+
+	for (int i = 0; i < 1000; i++)
+		tt.store(500000 + static_cast<uint64_t>(i), i, 1 + (i % 10), TT_EXACT);
+
+	EXPECT_LE(static_cast<int>(tt._hash_table.size()), 80);
+
+	// Still functional after evictions
+	tt.store(999999ULL, 7, 3, TT_EXACT);
+	ASSERT_NE(tt.probe(999999ULL), nullptr);
+	EXPECT_EQ(tt.probe(999999ULL)->_eval, 7);
+}
