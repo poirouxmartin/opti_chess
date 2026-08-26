@@ -1612,7 +1612,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			bool is_winning_capture = false;
 			if (move.is_capture()) {
 				const uint8_t cap = _board->_array[move.end_row][move.end_col];
-				const uint8_t mover = _array[move.start_row][move.start_col];
+				const uint8_t mover = _board->_array[move.start_row][move.start_col];
 				if (cap != none && mover != none)
 					is_winning_capture = piece_vals_lmr[cap] > piece_vals_lmr[mover];
 			}
