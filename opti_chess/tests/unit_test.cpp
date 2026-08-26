@@ -2827,7 +2827,7 @@ TEST(Progress, TimeBudgetLadder3s) {
 		// NO mate-in-1s: the engine always plays a spotted M1, so they cannot
 		// discriminate. Real tactics + positional conversions, mostly from the
 		// author's own annotated Tests.txt positions.
-		{ "r5k1/1p3p1p/2p1r1pq/2Q5/N1P1Pn2/5P1P/PPBR4/5R1K b q - 0 1",          Move(5, 3, 2, 6), "Fxg3!! wins the queen" },
+		{ "Qnkr2r1/1p3p1p/3b4/3p4/3B4/2P3Pq/PP1N1P1P/4RRK1 b - - 0 19",          Move(5, 3, 2, 6), "Fxg3!! wins (Tests.txt L119)" },
 		{ "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1",        Move(2, 6, 5, 6), "WAC.001 Qg6" },
 		{ "8/7p/5k2/5p2/p1p2P2/Pr1pPK2/1P1R3P/8 b - - 0 1",                     Move(2, 1, 6, 1), "WAC.002 Rxb2" },
 		{ "4kb1r/p2n1ppp/4q3/4p1B/4P3/1Q6/6PP/2KR4 w k - 0 1",                  Move(2, 1, 7, 1), "Opera Qxb8+" },
@@ -2903,7 +2903,7 @@ TEST(Progress, NodeEfficiencyLadder) {
 	struct LadderPuzzle { const char* fen; Move expected; const char* name; };
 	static const LadderPuzzle puzzles[] = {
 		// Same set as the time ladder: NO mate-in-1s, author-annotated tactics
-		{ "r5k1/1p3p1p/2p1r1pq/2Q5/N1P1Pn2/5P1P/PPBR4/5R1K b q - 0 1",          Move(5, 3, 2, 6), "Fxg3!! wins the queen" },
+		{ "Qnkr2r1/1p3p1p/3b4/3p4/3B4/2P3Pq/PP1N1P1P/4RRK1 b - - 0 19",          Move(5, 3, 2, 6), "Fxg3!! wins (Tests.txt L119)" },
 		{ "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1",        Move(2, 6, 5, 6), "WAC.001 Qg6" },
 		{ "8/7p/5k2/5p2/p1p2P2/Pr1pPK2/1P1R3P/8 b - - 0 1",                     Move(2, 1, 6, 1), "WAC.002 Rxb2" },
 		{ "4kb1r/p2n1ppp/4q3/4p1B/4P3/1Q6/6PP/2KR4 w k - 0 1",                  Move(2, 1, 7, 1), "Opera Qxb8+" },
@@ -3101,3 +3101,6 @@ TEST(MoveLabel, Disambiguation) {
 
 	SUCCEED();
 }
+
+
+// TEMP DIAG: per-node cost comparison
