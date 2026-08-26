@@ -418,3 +418,65 @@ At the start of every new search from a different root, unless incremental reuse
 | Repetitions | `exploration.cpp:5-39` | `PositionHistory`, `make_child_path_history` |
 | Evaluation struct | `board.h:461-561` | `Evaluation`, `>` / `<` operators |
 | Evaluation flow | `exploration.cpp:1037` | `Node::evaluate_position` |
+
+
+---
+
+## AUDIT ALGORITHMIQUE — 2026-08-25 (post-défauts legacy)
+
+Périmètre : `exploration_diag.cpp` (version compilée), `zobrist.h/cpp`. État : toggles
+`g_search_*` = false (config legacy gagnante), `g_tt_main_search`/`g_tt_node_dag` = false.
+
+### Constats confirmés, par priorité
+
+**A1. TT — politique de remplacement multi-échelle incohérente** (`zobrist.cpp:store`)
+La règle « on garde la plus grande profondeur » compare deux échelles qui n'ont pas le
+même sens : la quiescence stocke des profondeurs de ply (-4..+10), la recherche principale
+(Plan A) stocke `QDEPTH_BAND(256)+log2(nœuds)`. Toute entrée main-search bloque donc à
+jamais les mises à jour quiescence d'une même position (256 > tout ply), et inversement
+une entrée profonde de quiescence gèle les réécritures. Bénin aujourd'hui (une seule
+échelle active), **bloquant dès l'activation du TT principal**. Pistes : champ
+`generation/scale` dans `ZobristEntry`, ou préférence profondeur + âge dans la même échelle.
+
+**A2. TT — aucun plafond mémoire effectif** (`TranspositionTable::init`)
+`_length` est stocké mais jamais appliqué : la robin_map croît sans borne pendant une
+recherche (des millions d'entrées possibles sur une partie longue → RAM + cache-misses).
+Prévoir un éviction when-full (batches aléatoires ou âge).
+
+**A3. Quiescence — LMR aveugle sur les captures** (`exploration_diag.cpp:1603`)
+`new_depth -= move_index * 2` s'applique aux captures sans notion de SEE/MVV-LVA :
+après ~5 coups explorés, les grosses captures tardives sortent en `new_depth <= 0`
+et sont purement sautées. Candidat : exempter les captures « gagnantes » (MVV-LVA > 0)
+ou réduire de 1 au lieu de 2. À valider par NAC + selfplay.
+
+**A4. Extension d'échec câblée mais désactivée** (`exploration_diag.cpp:1598`,
+`check_extension = 0`) : les cas « Search stops before the end of the line » documentés
+en tête de fonction pointent tous vers ça. A/B candidat naturel (1/2 de bonus).
+
+**A5. Asymétrie de backup stand-pat entre les deux chemins**
+`explore_new_move` (ligne 785) préserve le stand-pat tant que tous les coups ne sont pas
+explorés ; `explore_random_child` (ligne 926) écrase avec le max des enfants SANS cette
+garde côté value-propagation. Le chemin legacy passe par `get_best_score_move` dont
+`consider_standpat` est vrai par défaut. Incohérence de sémantique entre toggles —
+à unifier si value-propagation revient un jour.
+
+**A6. Divers mineurs**
+- `test=false` mort dans `explore_new_move` (687-699) : branche expérimentale morte.
+- Commentaire dupliqué 1601-1602 (cosmétique).
+- `get_node_score` : formule avg_term convolue mais bornée (ε) ; cap conditionnel
+  (`g_search_avg_cap`) — comportement documenté.
+- `probe()` retourne un pointeur dans la map : fragile si un store survient avant lecture
+  complète (usage actuel : copie immédiate ✓).
+- `tt_writeback_depth(_nodes)` : _nodes = taille de sous-arbre, pas une profondeur —
+  même famille que A1.
+
+### Points vérifiés SAINS
+Cycle de vie node_map/DAG (erase au recyclage, purges centralisées #6), gardes
+null-move/broken-edge/proven-win, comptabilité `_propagated_nodes` hors DAG,
+`PositionHistory` push/pop par PathScope, détection de répétition path-local sous DAG,
+`minimal_quiescence`, garde NaN de `get_best_score_move`.
+
+### Ordre d'attaque proposé
+1. A1+A2 ensemble (même fichier, tests TT dédiés : remplacement inter-échelles, plafond)
+2. A3/A4 en A/B mesurés (NAC + ladders + selfplay 8×2000)
+3. A5 seulement si value-propagation est réanimé
