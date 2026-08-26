@@ -991,7 +991,10 @@ int Board::get_king_proximity()
 	update_kings_pos();
 
 	// King proximity
-	float proximity = 0.0f;
+	// double, not float: the per-pawn contributions are summed in SQUARE
+	// order, which differs between mirrored boards; float rounding noise
+	// (1e-7) used to flip the final int truncation by +-1cp on one side.
+	double proximity = 0.0;
 
 	// Proximity bonus for enemy pawns unprotected by another pawn
 	// TODO

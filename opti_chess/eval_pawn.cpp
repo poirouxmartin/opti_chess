@@ -869,7 +869,7 @@ int Board::get_bishop_pawns() const {
 	//cout << "white_pawns_blocked: " << white_central_pawns_blocked << endl;
 	//cout << "black_pawns_blocked: " << black_central_pawns_blocked << endl;
 
-	float bishop_pawns_value = 0.0f;
+	double bishop_pawns_value = 0.0;
 
 	for (uint8_t row = 0; row < 8; row++) {
 		for (uint8_t col = 0; col < 8; col++) {
