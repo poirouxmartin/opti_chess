@@ -167,7 +167,9 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 	if (!pin.pinned || (pin.dir.d_row != 0 && pin.dir.d_col == 0)) {
 
 		// Push by 1
-		uint8_t new_row = row + direction;
+		int new_row = row + direction;
+		if (!is_in(new_row, 0, 7))
+			return true;
 
 		// If there is no piece ahead
 		if (_array[new_row][col] == none) {
