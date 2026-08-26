@@ -1705,7 +1705,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 		const uint8_t col = sq & 7;
 		uint8_t piece = _array[row][col];
 
-		float piece_mobility = 0.0f;
+		double piece_mobility = 0.0;
 
 		// White pawn
 		if (piece == w_pawn) {
@@ -1737,7 +1737,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					int new_row = row + d_row;
 					int new_col = col + d_col;
 
-					float cumulative_blocking_factor = 1.0f;
+					double cumulative_blocking_factor = 1.0;
 
 					while (is_in(new_row, 0, 7) && is_in(new_col, 0, 7)) {
 						uint8_t p = piece_at(new_row, new_col);
@@ -1769,7 +1769,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					int new_row = row + d_row;
 					int new_col = col + d_col;
 
-					float cumulative_blocking_factor = 1.0f;
+					double cumulative_blocking_factor = 1.0;
 
 					while (is_in(new_row, 0, 7) && is_in(new_col, 0, 7)) {
 						uint8_t p = piece_at(new_row, new_col);
@@ -1835,7 +1835,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					int new_row = row + d_row;
 					int new_col = col + d_col;
 
-					float cumulative_blocking_factor = 1.0f;
+					double cumulative_blocking_factor = 1.0;
 
 					while (is_in(new_row, 0, 7) && is_in(new_col, 0, 7)) {
 						uint8_t p = piece_at(new_row, new_col);
@@ -1867,7 +1867,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					int new_row = row + d_row;
 					int new_col = col + d_col;
 
-					float cumulative_blocking_factor = 1.0f;
+					double cumulative_blocking_factor = 1.0;
 
 					while (is_in(new_row, 0, 7) && is_in(new_col, 0, 7)) {
 						uint8_t p = piece_at(new_row, new_col);
