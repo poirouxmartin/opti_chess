@@ -3071,3 +3071,29 @@ TEST(FenCorpus, TestsTxtInvariants) {
 
 // TEMP DIAG: minor asymmetry component hunt
 
+
+
+// SAN disambiguation regression: two knights reaching e7 must give Nde7/Nge7;
+// same-file rooks must give R1a3/R5a3 (check suffix included when applicable)
+TEST(MoveLabel, Disambiguation) {
+	Board b;
+	b.from_fen("k7/8/6N1/3N4/8/8/8/K7 w - - 0 1");
+	b.get_moves();
+	EXPECT_EQ(b.move_label(Move(4, 3, 6, 4)), "Nde7");
+	EXPECT_EQ(b.move_label(Move(5, 6, 6, 4)), "Nge7");
+
+	Board r;
+	r.from_fen("k7/8/8/R7/8/8/8/R5K1 w - - 0 1");
+	r.get_moves();
+	EXPECT_EQ(r.move_label(Move(0, 0, 2, 0)), "R1a3+");
+	EXPECT_EQ(r.move_label(Move(4, 0, 2, 0)), "R5a3+");
+
+	// Unambiguous single knight: no disambiguation
+	// (pawn on the board so the draw-result suffix cannot kick in)
+	Board s;
+	s.from_fen("k7/8/8/8/8/8/1N6/KP6 w - - 0 1");
+	s.get_moves();
+	EXPECT_EQ(s.move_label(Move(1, 1, 3, 2)), "Nc4");
+
+	SUCCEED();
+}

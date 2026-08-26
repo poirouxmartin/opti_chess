@@ -55,6 +55,18 @@ string Board::move_label(Move move, bool use_uft8)
 		get_moves();
 	}
 
+	// Stale-movelist guard: if THIS move is absent from the cached list, the
+	// board moved on without regenerating (import/GUI edge flows). Scanning a
+	// wrong movelist silently drops disambiguation ("Ne7" instead of "Nce7").
+	bool move_in_list = false;
+	for (int m = 0; m < _got_moves && !move_in_list; m++) {
+		move_in_list = _moves[m].start_row == start_row && _moves[m].start_col == start_col
+			&& _moves[m].end_row == end_row && _moves[m].end_col == end_col;
+	}
+	if (!move_in_list) {
+		get_moves();
+	}
+
 	uint8_t new_start_row; uint8_t new_start_col; uint8_t new_end_row; uint8_t new_end_col; uint8_t new_p;
 	for (int m = 0; m < _got_moves; m++) {
 		new_start_row = _moves[m].start_row;
