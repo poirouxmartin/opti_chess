@@ -603,9 +603,8 @@ public:
 	Move _moves[max_moves];
 
 	// Are the moves up to date? If not: -1, otherwise _got_moves holds the number of playable moves
-	// Assuming the number of moves does not exceed 127
-	// 1 byte
-	int_fast8_t _got_moves = -1;
+	// 224 legal moves max (PromotionStorm) → int_fast8_t overflows, fixed to int
+	int _got_moves = -1;
 
 	// Whether the side to move is in check (valid whenever _got_moves >= 0)
 	bool _player_in_check = false;
