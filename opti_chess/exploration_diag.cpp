@@ -1601,12 +1601,22 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			// Depth extension on a check: forcing moves deserve the extra ply -
 			// without it, sequences like Nxf7 Kxf7 Qf3+ Ke6 die one ply short of
 			// the quiet move that proves the compensation.
-			constexpr int check_extension = 0;
+			constexpr int check_extension = 1;
 			new_depth += move.is_check() ? check_extension : 0;
 
-			// Depth reduction for the less promising moves
-			// Depth reduction for the less promising moves
-			new_depth -= in_check ? 0 : move_index * 2;
+			// Depth reduction for the less promising moves (audit A3): the old
+			// `move_index * 2` blindly skipped late big captures. Winning
+			// captures (MVV-LVA) keep half the penalty so tactical shots stay
+			// reachable even when ordered late.
+			static constexpr int piece_vals_lmr[13] = { 0, 100, 320, 330, 500, 900, 10000, 100, 320, 330, 500, 900, 10000 };
+			bool is_winning_capture = false;
+			if (move.is_capture()) {
+				const uint8_t cap = _board->_array[move.end_row][move.end_col];
+				const uint8_t mover = _array[move.start_row][move.start_col];
+				if (cap != none && mover != none)
+					is_winning_capture = piece_vals_lmr[cap] > piece_vals_lmr[mover];
+			}
+			new_depth -= in_check ? 0 : (is_winning_capture ? move_index : move_index * 2);
 
 			if (new_depth <= 0 && !in_check) {
 				continue; // Stop looking at moves once we are too deep
