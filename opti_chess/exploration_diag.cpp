@@ -47,7 +47,7 @@ constexpr uint8_t display_repetition_limit = 3;
 // anchor -> depends only on D = distance to mate, which is a property of the
 // position); on probe, rebuild it using the _moves_count of the current node.
 // Mate threshold = the is_eval_mate / #1 idiom (10*|e| > mate_value), robust:
-// robuste : |stored| ~ mate_value(1e8) - D�mate_ply + mc�mate_ply, mc/D petits.
+// robuste : |stored| ~ mate_value(1e8) - Dï¿½mate_ply + mcï¿½mate_ply, mc/D petits.
 inline int tt_normalize_mate(int eval, int moves_count) {
 	if (10 * abs(eval) > mate_value)
 		return eval + (eval > 0 ? 1 : -1) * moves_count * mate_ply;
@@ -331,6 +331,10 @@ static int g_dag_max_recursion_seen = 0;  // peak grogros_zero recursion depth
 // times per batch; called only behind an already-true g_tt_node_dag guard.
 static int g_dag_dbg_emitted = 0;
 constexpr int DAG_DBG_MAX = 40;
+
+// TT probe scale (audit A1): the MCTS Plan-A probe must only consume MCTS-scale
+// entries, never quiescence ply-depths. Implemented in zobrist.cpp.
+void tt_set_probe_scale(int scale);
 
 // COMPILE-TIME diagnostic switch. false -> dag_dbg_take() returns false at
 // compile time, so every `if (dag_dbg_take()) cout...` block (and their
@@ -673,7 +677,9 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 	// declared in the else branch); created_new_node guarantees child->_board
 	// == the freshly created new_board, with its Zobrist key already computed.
 	if (g_tt_main_search && created_new_node) {
+		tt_set_probe_scale(1); // audit A1: consume MCTS-scale entries only
 		const ZobristEntry* tt_entry = transposition_table.probe(child->_board->_zobrist_key);
+		tt_set_probe_scale(0);
 		if (tt_entry != nullptr
 			&& tt_entry->_flag == TT_EXACT
 			&& tt_entry->_depth >= QDEPTH_BAND + MIN_REUSE_LOG2) {
@@ -895,7 +901,7 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		// edge loops back here => spin + parent eval frozen/inconsistent depending
 		// on the path. That is the evidence to confirm.
 		if (dag_dbg_take()) {
-			cout << "[DAG] �3-cut child_key=" << std::hex << child->_board->_zobrist_key
+			cout << "[DAG] ï¿½3-cut child_key=" << std::hex << child->_board->_zobrist_key
 			     << std::dec << " child_pc=" << child->_parent_count
 			     << " parent_eval=" << _deep_evaluation._value
 			     << " (fige, edge non devaluee)\n"
@@ -1425,7 +1431,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	// Node initialisation
 	init_node();
 
-	// #7 / B-1 � null-safe path history (appel manuel quiescence via main_gui.h) :
+	// #7 / B-1 ï¿½ null-safe path history (appel manuel quiescence via main_gui.h) :
 	// a local history owned for the WHOLE duration of the call. It must be declared
 	// at function scope (never per move, otherwise path_history dangles on the
 	// destroyed local of the previous iteration). Same idiom as grogros_zero.
@@ -1930,7 +1936,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	Move best_move;
 	double best_score = 0.0;
 
-	// Gamma (hoisted out of loop � depends only on parent state)
+	// Gamma (hoisted out of loop ï¿½ depends only on parent state)
 	const double new_gamma = gamma / (1.0 - _static_evaluation._uncertainty / 2.0) / (1.0 - _board->_adv / 2.0);
 
 	// Look at every move
@@ -2475,5 +2481,5 @@ NodeBuffer monte_node_buffer;
 // as a reset/remove frees space.
 bool g_buffers_full_logged = false;
 bool g_tt_main_search = false;
-bool g_tt_node_dag = false; // #11 Plan B � voir exploration.h
-robin_map<uint64_t, Node*> node_map; // #11 Plan B � voir exploration.h
+bool g_tt_node_dag = false; // #11 Plan B ï¿½ voir exploration.h
+robin_map<uint64_t, Node*> node_map; // #11 Plan B ï¿½ voir exploration.h

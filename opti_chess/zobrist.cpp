@@ -97,22 +97,67 @@ bool TranspositionTable::contains(uint64_t key) const {
 	return _hash_table.find(key) != _hash_table.end();
 }
 
+// Audit A1/A2 fix. Depth encodes the SCALE: values >= TT_MCTS_DEPTH_FLOOR are
+// MCTS write-backs (QDEPTH_BAND+log2(nodes) from the main search), everything
+// below is a quiescence ply-depth. The two scales are NEVER compared nor cross-
+// consumed. TT_MSTS_DEPTH_FLOOR MUST stay equal to QDEPTH_BAND in
+// exploration_diag.cpp / exploration.cpp (guarded by TranspositionTable.ScaleFloorCoupling).
+
+inline constexpr int TT_MCTS_DEPTH_FLOOR = 256;
+
+static int g_tt_probe_scale = 0; // 0 = quiescence scale (default), 1 = MCTS scale; set via tt_set_probe_scale()
+void tt_set_probe_scale(int scale) { g_tt_probe_scale = scale; }
+
+inline uint8_t tt_scale_of(int depth) {
+	return depth >= TT_MCTS_DEPTH_FLOOR ? uint8_t(1) : uint8_t(0); // 1 = TT_SCALE_MCTS
+}
+
 const ZobristEntry* TranspositionTable::probe(uint64_t key) {
 	_stats._lookups++;
 	const auto it = _hash_table.find(key);
 	if (it == _hash_table.end())
 		return nullptr;
+	const int wanted = g_tt_probe_scale;
+	if (tt_scale_of(it->second._depth) != wanted) {
+		// Wrong-scale entry: invisible to this consumer (audit A1). Counted as
+		// a lookup miss so hit-rate stays meaningful per scale.
+		return nullptr;
+	}
 	_stats._hits++;
 	return &it->second;
 }
 
+
 void TranspositionTable::store(uint64_t key, int eval, int depth, TTFlag flag) {
+	// Audit A2: enforce the configured capacity (amortized eviction sweep,
+	// ~1/8 of the entries per trigger; deterministic stride).
+	if (_length > 0 && static_cast<int>(_hash_table.size()) >= _length) {
+		size_t target = _hash_table.size() / 8 + 1;
+		size_t idx = 0;
+		for (auto it = _hash_table.begin(); it != _hash_table.end() && target > 0;) {
+			if ((idx++ % 8) == 0) { it = _hash_table.erase(it); --target; }
+			else ++it;
+		}
+	}
+
 	const auto it = _hash_table.find(key);
 	if (it != _hash_table.end()) {
-		// Replacement policy: keep the deepest entry
-		if (it->second._depth > depth)
-			return;
-		_stats._overwrites++;
+		const uint8_t existing_scale = tt_scale_of(it->second._depth);
+		const uint8_t incoming_scale = tt_scale_of(depth);
+		if (existing_scale != incoming_scale) {
+			// A refined MCTS verdict is never displaced by a quiescence write.
+			// An MCTS write DOES displace a stale quiescence entry (fresher,
+			// deeper provenance).
+			if (existing_scale == 1)
+				return;
+			_stats._overwrites++;
+		}
+		else if (it->second._depth > depth) {
+			return; // same scale: keep the deepest (historical policy)
+		}
+		else {
+			_stats._overwrites++;
+		}
 	}
 	_stats._stores++;
 	_hash_table[key] = ZobristEntry(eval, depth, flag);
