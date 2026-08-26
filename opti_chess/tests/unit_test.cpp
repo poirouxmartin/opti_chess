@@ -2819,20 +2819,23 @@ TEST(FEN, MinimalValidPositionLoads) {
 
 // Bump ONLY when solved count exceeds this in a validated run.
 // 2026-08-25: 4/5 at 3s (Nc7+ fork open - solved at fixed budget, not yet at 3s)
-constexpr int kTimeLadderBaseline = 9;
+constexpr int kTimeLadderBaseline = 5;
 
 TEST(Progress, TimeBudgetLadder3s) {
 	struct LadderPuzzle { const char* fen; Move expected; const char* name; };
 	static const LadderPuzzle puzzles[] = {
-		{ "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",               Move(0, 0, 7, 0), "BackRank Ra8#" },
-		{ "4kb1r/p2n1ppp/4q3/4p1B/4P3/1Q6/6PP/2KR4 w k - 0 1",  Move(2, 1, 7, 1), "Opera Qxb8+" },
-		{ "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1", Move(2, 6, 5, 6), "WAC.001 Qg6" },
-		{ "8/7p/5k2/5p2/p1p2P2/Pr1pPK2/1P1R3P/8 b - - 0 1",     Move(2, 1, 6, 1), "WAC.002 Rxb2" },
-		{ "r3k3/8/4N3/8/8/8/8/4K3 w - - 0 1",                   Move(5, 4, 6, 2), "Nc7+ fork" },
-		{ "7k/8/6K1/8/8/8/1Q6/8 w - - 0 1",                    Move(1, 1, 6, 6), "Qg7# box mate" },
-		{ "7k/R7/8/8/8/8/8/1R5K w - - 0 1",                     Move(0, 1, 7, 1), "Rb8# ladder finish" },
-		{ "2r3k1/8/6N1/b7/8/8/8/6K1 w - - 0 1",                 Move(5, 6, 6, 4), "Ne7+ royal fork" },
-		{ "6rk/6pp/8/4N3/8/8/8/K7 w - - 0 1",                   Move(4, 4, 6, 5), "Nf7# smothered" },
+		// NO mate-in-1s: the engine always plays a spotted M1, so they cannot
+		// discriminate. Real tactics + positional conversions, mostly from the
+		// author's own annotated Tests.txt positions.
+		{ "r5k1/1p3p1p/2p1r1pq/2Q5/N1P1Pn2/5P1P/PPBR4/5R1K b q - 0 1",          Move(5, 3, 2, 6), "Fxg3!! wins the queen" },
+		{ "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1",        Move(2, 6, 5, 6), "WAC.001 Qg6" },
+		{ "8/7p/5k2/5p2/p1p2P2/Pr1pPK2/1P1R3P/8 b - - 0 1",                     Move(2, 1, 6, 1), "WAC.002 Rxb2" },
+		{ "4kb1r/p2n1ppp/4q3/4p1B/4P3/1Q6/6PP/2KR4 w k - 0 1",                  Move(2, 1, 7, 1), "Opera Qxb8+" },
+		{ "rnb2bnr/ppp1pppp/2k5/3q4/6Q1/3B4/PPPP1PPP/RNB1K1NR w KQ - 0 3",      Move(3, 6, 7, 2), "Dxc8! vs greedy grabs" },
+		{ "r2r2k1/1p3ppp/3p4/PB1P4/2P1p3/R2n4/1P3PPP/2R2K2 w - - 1 24",         Move(2, 0, 2, 3), "Txd3!! simplify" },
+		{ "b1N3kr/7p/6pB/4p3/8/8/PP3P1P/4K3 w - - 0 32",                        Move(7, 2, 5, 3), "Cd6!! freeze" },
+		{ "6k1/2R3pp/8/pp6/4r3/2P2K1P/6P1/8 b - - 1 33",                        Move(3, 4, 3, 2), "Tc4! conversion" },
+		{ "r3k3/8/4N3/8/8/8/8/4K3 w - - 0 1",                                   Move(5, 4, 6, 2), "Nc7+ royal fork" }
 	};
 
 	int solved = 0;
@@ -2894,20 +2897,21 @@ TEST(Progress, TimeBudgetLadder3s) {
 // (wrong side to move made it unsolvable): ALL five puzzles solve at the
 // ladder's floor - 250-500 nodes each, total 1500. The metric needs FINER
 // budgets (<=250) and HARDER puzzles to become discriminating.
-constexpr long long kNodeEfficiencyBaseline = 700LL;
+constexpr long long kNodeEfficiencyBaseline = 29000LL;
 
 TEST(Progress, NodeEfficiencyLadder) {
 	struct LadderPuzzle { const char* fen; Move expected; const char* name; };
 	static const LadderPuzzle puzzles[] = {
-		{ "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",               Move(0, 0, 7, 0), "BackRank Ra8#" },
-		{ "4kb1r/p2n1ppp/4q3/4p1B/4P3/1Q6/6PP/2KR4 w k - 0 1",  Move(2, 1, 7, 1), "Opera Qxb8+" },
-		{ "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1", Move(2, 6, 5, 6), "WAC.001 Qg6" },
-		{ "8/7p/5k2/5p2/p1p2P2/Pr1pPK2/1P1R3P/8 b - - 0 1",     Move(2, 1, 6, 1), "WAC.002 Rxb2" },
-		{ "r3k3/8/4N3/8/8/8/8/4K3 w - - 0 1",                   Move(5, 4, 6, 2), "Nc7+ fork" },
-		{ "7k/8/6K1/8/8/8/1Q6/8 w - - 0 1",                    Move(1, 1, 6, 6), "Qg7# box mate" },
-		{ "7k/R7/8/8/8/8/8/1R5K w - - 0 1",                     Move(0, 1, 7, 1), "Rb8# ladder finish" },
-		{ "2r3k1/8/6N1/b7/8/8/8/6K1 w - - 0 1",                 Move(5, 6, 6, 4), "Ne7+ royal fork" },
-		{ "6rk/6pp/8/4N3/8/8/8/K7 w - - 0 1",                   Move(4, 4, 6, 5), "Nf7# smothered" },
+		// Same set as the time ladder: NO mate-in-1s, author-annotated tactics
+		{ "r5k1/1p3p1p/2p1r1pq/2Q5/N1P1Pn2/5P1P/PPBR4/5R1K b q - 0 1",          Move(5, 3, 2, 6), "Fxg3!! wins the queen" },
+		{ "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1",        Move(2, 6, 5, 6), "WAC.001 Qg6" },
+		{ "8/7p/5k2/5p2/p1p2P2/Pr1pPK2/1P1R3P/8 b - - 0 1",                     Move(2, 1, 6, 1), "WAC.002 Rxb2" },
+		{ "4kb1r/p2n1ppp/4q3/4p1B/4P3/1Q6/6PP/2KR4 w k - 0 1",                  Move(2, 1, 7, 1), "Opera Qxb8+" },
+		{ "rnb2bnr/ppp1pppp/2k5/3q4/6Q1/3B4/PPPP1PPP/RNB1K1NR w KQ - 0 3",      Move(3, 6, 7, 2), "Dxc8! vs greedy grabs" },
+		{ "r2r2k1/1p3ppp/3p4/PB1P4/2P1p3/R2n4/1P3PPP/2R2K2 w - - 1 24",         Move(2, 0, 2, 3), "Txd3!! simplify" },
+		{ "b1N3kr/7p/6pB/4p3/8/8/PP3P1P/4K3 w - - 0 32",                        Move(7, 2, 5, 3), "Cd6!! freeze" },
+		{ "6k1/2R3pp/8/pp6/4r3/2P2K1P/6P1/8 b - - 1 33",                        Move(3, 4, 3, 2), "Tc4! conversion" },
+		{ "r3k3/8/4N3/8/8/8/8/4K3 w - - 0 1",                                   Move(5, 4, 6, 2), "Nc7+ royal fork" }
 	};
 
 	static const int budgets[] = { 25, 50, 100, 200, 400, 800, 1600, 3200, 6400 };
