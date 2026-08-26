@@ -1481,19 +1481,12 @@ float Board::get_winnable(Evaluation* eval, bool color, float position_nature) c
 	// - Mat
 	// - passed pawns
 	constexpr float passed_pawn_winnable_bonuses[8] = { 0.0f, 0.50f, 0.60f, 0.70f, 0.75f, 0.80f, 0.85f, 0.90f };
-	const int passed_pawns_count = get_passed_pawns_count(color);
-	//cout << "passed pawns count: " << passed_pawns_count << endl;
-	if (passed_pawns_count > 8) {
-		//cout << "too many passed pawns" << endl;
-	}
+	// Clamp: doubled passed pawns can push the count past the table (the old
+	// "if (> 8)" guard was an EMPTY stub and the unclamped count still indexed
+	// the array - ASAN stack-buffer-overflow on a corpus promotion position).
+	const int passed_pawns_count = min(7, get_passed_pawns_count(color));
 
 	winnable_value = 1.0f - (1.0f - winnable_value) * (1.0f - passed_pawn_winnable_bonuses[passed_pawns_count]);
-
-	if (display) {
-		cout << "- passed pawns count: " << (int)passed_pawns_count << endl;
-		cout << "- final winnable value after passed pawns: " << winnable_value << endl;
-	}
-
 
 	return winnable_value;
 }
