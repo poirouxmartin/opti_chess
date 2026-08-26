@@ -3006,6 +3006,7 @@ TEST(FenCorpus, TestsTxtInvariants) {
 
 	const int scale = max(1, test_scale());
 	int total = 0, imported = 0, skipped_scale = 0, minor_asymmetries = 0;
+	string minor_fens;
 	string failures;
 
 	for (auto it = sregex_iterator(content.begin(), content.end(), fen_re); it != sregex_iterator(); ++it) {
@@ -3048,8 +3049,11 @@ TEST(FenCorpus, TestsTxtInvariants) {
 					const int diff = abs(evm._value + ev._value);
 					if (diff > 2 && failures.size() < 4096)
 						failures += "ASYMMETRY (" + to_string(ev._value) + " vs " + to_string(-evm._value) + "): " + fen + "\n";
-					else if (diff > 0)
+					else if (diff > 0) {
 						minor_asymmetries++;
+						if (minor_fens.size() < 2048)
+							minor_fens += to_string(ev._value) + "/" + to_string(evm._value) + ": " + fen + "\n";
+					}
 				}
 			}
 	}
@@ -3058,8 +3062,12 @@ TEST(FenCorpus, TestsTxtInvariants) {
 	cout << "=== FEN CORPUS: " << total << " positions scanned"
 		<< (skipped_scale > 0 ? " (" + to_string(skipped_scale) + " skipped by scale)" : "")
 		<< ", " << imported << " imported, " << minor_asymmetries << " minor asymmetries ===" << endl;
-	cout << failures;
+	cout << failures << "--- MINOR ASYMMETRY POSITIONS ---" << endl << minor_fens;
 
 	EXPECT_GT(total, 1000) << "corpus parsing regressed?";
 	EXPECT_TRUE(failures.empty()) << failures.size() / 64 << "+ corpus issues (see log)";
 }
+
+
+// TEMP DIAG: minor asymmetry component hunt
+
