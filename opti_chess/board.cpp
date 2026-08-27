@@ -43,6 +43,12 @@ void Board::minimal_copy_data(const Board& b) {
 	_en_passant_col = b._en_passant_col;
 	_white_king_pos = b._white_king_pos;
 	_black_king_pos = b._black_king_pos;
+	_got_moves = b._got_moves;
+	_player_in_check = b._player_in_check;
+	_sorted_moves = b._sorted_moves;
+	_zobrist_key = b._zobrist_key;
+	_game_over_checked = b._game_over_checked;
+	_game_over_value = b._game_over_value;
 
 	// Copy the bitboards
 	memcpy(_bitboards, b._bitboards, sizeof(_bitboards));
@@ -88,6 +94,11 @@ void Board::copy_data(const Board& b, bool full, bool copy_history) {
 		_game_over_checked = b._game_over_checked;
 		_game_over_value = b._game_over_value;
 		_displayed_components = b._displayed_components;
+	}
+	else {
+		// Fresh position must recompute terminal status, not keep stale draw/mate from recycled buffer
+		_game_over_checked = false;
+		_game_over_value = unterminated;
 	}
 }
 
@@ -737,7 +748,7 @@ uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingsid
 				const uint8_t d_row = rect_directions[d][0];
 				const uint8_t d_col = rect_directions[d][1];
 
-				uint8_t current_row = row + d_row;
+			uint8_t current_row = row + d_row;
 				uint8_t current_col = col + d_col;
 
 				// Skip when the direction cannot control the zone
@@ -3191,11 +3202,11 @@ bool Board::does_move_change_castling_rights(const Move& move) const noexcept {
 bool Board::is_irreversible_move(const Move& move) const noexcept {
 	const uint8_t p = _array[move.start_row][move.start_col];
 
-	// Any pawn move
+	// Any pawn move (covers en passant where end square is empty)
 	if (is_pawn(p)) return true;
 
-	// Any capture
-	if (move.is_capture()) return true;
+	// Any capture - do not rely on move.is_capture() flag (may be unassigned in raw _moves[] from get_moves)
+	if (_array[move.end_row][move.end_col] != none) return true;
 
 	// Any move that changes castling rights
 	if (does_move_change_castling_rights(move)) return true;

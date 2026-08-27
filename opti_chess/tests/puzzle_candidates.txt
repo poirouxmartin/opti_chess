@@ -1,0 +1,125 @@
+#FEN|SAN|name
+r4rk1/ppq1bppp/5n2/3p4/8/3P4/PPP1QPPP/RNB1K2R w KQ - 3 12|O-O|roque ouverture
+r7/pbr2p1k/1p2pP1p/3q2pQ/PPNp4/3P4/2P2RPP/4R1K1 w - - 2 26|Re5|Te5 finish
+r5r1/2q2p1k/1pbb1n1p/2p1pPpP/PpPpP1P1/1P1P1B2/4N1N1/R2Q1RK1 b - - 2 25|a5|pion a5
+r1b3k1/ppp1qppp/2n5/8/8/P2QPNbP/1P2B1P1/RN3K1R b - - 4 14|Bf5|Ff5!!
+1r1k4/q2p1p2/3b1Pr1/8/4P2P/6P1/PPP1N3/R1Q1KR2 b Q - 0 27|Bxg3+|Fxg3+ gagne
+3k4/3p1p2/5P2/8/4P2P/4q3/PQP3r1/R2K1R2 b - - 2 32|Rd2#|mat en 1
+r1bq1rk1/pp2n1bp/4ppp1/4B3/2B1NP2/3P4/P1P3PP/1R1QR1K1 w - - 0 18|Ba1|Fou en a1
+2r1r1k1/6pp/5pN1/p2R4/3Q4/q4PP1/P2R3P/6K1 b - - 0 31|Qxf3|Dxf3!!
+r1b2rk1/3nppbp/p2p1np1/qppN4/2PPP3/4BP2/PP1QN1PP/1K1R1B1R b - - 1 1|Nxd5|Cxd5!!
+r1b2rk1/3nppbp/p2p2p1/Q1p5/2pPP3/5P2/PP2N1PP/1K3B1R w - - 0 2|Nf4|Cf4!
+1rb2rk1/4ppbp/pn1p2p1/8/2p1P3/5P2/PPBQN1PP/1K5R b - - 1 7|c3|c3!!
+r5k1/p3Qpp1/bp5p/8/4PP2/1N1r4/Pq3RPP/2R3K1 b - - 5 22|Qxc1|Dxc1!!
+r2qr1k1/1ppb1pbn/p2pn1p1/2P5/4P1P1/1PN1BP2/P2QN1B1/3RR1K1 b - - 0 5|dxc5|dxc5!!
+r1q2r1k/p3bpp1/1p2p3/2pbP1N1/1n2B1P1/4B3/1PP1QP1P/1K1R3R w - - 2 19|Rxd5|Txd5!!
+4rk2/4ppbQ/3pR1p1/5bN1/1pBq3P/1P2R1P1/r4P2/6K1 w - - 7 28|Rxg6|Txg6!!
+4rk2/4ppqQ/4R1p1/3p1bN1/1pB5/1P4P1/5P2/r3R1K1 w - - 0 30|Rxa1|Txa1!!
+r1bqkbnr/5ppp/p1np4/1p2p3/4P3/N1N5/PPP1BPPP/R1BQK2R b KQkq - 1 8|b4|b4 fourchette
+1r1k4/q2p1p2/5P2/8/4P2P/2P3r1/PP6/R1Q1KR2 b Q - 0 29|Rg2|Rg2 mat
+8/8/1p1Pk3/3b4/5Q2/5PPK/8/1q6 w - - 5 56|Qd7|Dd7
+r4rk1/pppq1ppp/2n1pn2/8/1bQPP3/2N2N2/PP3PPP/R1B2RK1 w - - 1 12|d5|d5!
+r1b2rk1/3nppbp/p2p2p1/Q1p5/2pPP3/5P2/PP2N1PP/1K3B1R w - - 0 2|Nf4|Cf4! seul coup
+r1bqk1nr/ppp1bppp/8/4p2Q/2B1P3/8/PPP2PPP/RNB1K2R b KQkq - 1 4|Nf6| Cf6
+r3r1k1/1ppn1ppp/p2p1q2/3P1b2/2P5/PP2BB1P/5PP1/2RQR1K1 w - - 1 21|c5|c5
+r1bq1rk1/5pb1/1p1p1np1/1N1Pp2p/1p2P2P/5P2/PP1QN1P1/1K1R1B1R b - - 1 15|Nxd5|Cxd5 seul coup
+3rr3/1kpn1p1p/p1p1qbb1/2Pp2p1/Q2Pp3/P1N1P1NP/1P1B1PP1/1R2R1K1 w - - 1 24|b4|b4
+rnb1kb1r/ppp2ppp/8/3q4/4n3/5N2/PPP1QPPP/RNB1KB1R w KQkq - 0 7|Qxe4|Dxe4
+r4rk1/ppp2ppp/2nq1b2/2np4/2P5/2NBQ2P/PP1B1PP1/R3R1K1 b - - 2 15|d4|d4 gagne
+2r3k1/6p1/8/5p1p/4nP2/R1BRP3/2P1K2P/1r6 b - - 3 39|Rh1|Th1
+2r3k1/pp1n3p/3P2pB/2pr1q2/P2nN3/1P4Q1/R1P2PPP/4R1K1 b - - 8 26|Ne2+|Ce2+
+r1bq1rk1/pp3p2/2nbpp2/1Bp4Q/5P2/8/PBPP2PP/R4RK1 w - - 2 14|Qg4+|Dg4+ mate
+5R2/k3P3/1pb5/2p5/p2p4/6K1/8/8 w - - 0 95|e8=Q|e8=D perd
+r1b1n2r/1p2q3/1Qp1npk1/4p1p1/P1B1P3/2P1BNP1/1P3PK1/R3R3 b - - 2 22|Nf4+|Cf4+
+r3n2r/1p2q3/1Qp2pk1/6p1/P1B1PB2/2P2NKb/1P3P2/R3R3 b - - 0 25|Qd7|Dd7!!
+r3n3/1p1q4/1Qp2pk1/8/P1B1P2r/2P1KN2/1P3Pb1/R3R3 b - - 4 29|Txe4|Txe4!!
+r7/1p3k2/1Qpn1p2/8/P3b3/KPP5/3q1P2/2R3R1 b - - 8 39|Nc4+|Cc4+!!
+r2q1rk1/1pp3pp/1bn1b3/3npp2/N7/P2P2P1/1P1NPPBP/1RBQ1RK1 b - - 0 14|Bxf2+|Fxf2+!!
+3r4/kpq3p1/p2b2Q1/2pn4/P2p4/1P4PP/2P1RP2/4R1K1 w - - 1 28|Re8|Te8
+r4rk1/P1q1bbpp/3p4/3np3/2N2p2/Q4P2/2P2BPP/R2R1BK1 b - - 5 33|Kf8|Rf8
+3r1rk1/pp2bpp1/2p1q3/4p1Bp/1P1nP1b1/P1NP2P1/3QPRBP/1R4K1 b - - 3 19|Nb3|Cb3!
+2r3k1/q1r2pb1/3pb1p1/1p2n1P1/1P2PP2/3Q1BK1/1B2N2R/7R b - - 3 37|Qf2|Df2!!
+3r2k1/5p1p/3P1b2/6p1/1BRp4/8/1P3PPP/6K1 b - - 0 31|d3|d3!
+r1bqk2r/4b1pp/P1n2n2/2p3B1/Q2p4/2N2N2/PP3PPP/R3KB1R b KQkq - 1 2|dxc3|dxc3!!
+2rqk2r/3p1pb1/p3p3/1p1P2Bn/2n2Q2/8/P1B2PPP/3RR1K1 w k - 3 21|dxe6|dxe6!!
+r1b1k2r/pp3pbp/1qnpp1p1/1B6/P1NpPP2/3P4/1PP3PP/R1BQ1RK1 b kq - 4 12|Qc5|Dc5
+r4r2/p4pbk/1p2pBp1/4P2p/P1qp4/7R/1PPQ2PP/5RK1 w - - 2 22|Bxh5+|Txh5+!!
+r4rk1/p1p1bp2/3p2pR/5PP1/5p2/P4P2/1PP3P1/2KR4 w - - 0 23|f6|f6!
+r4rk1/p1p1bpp1/3p4/4pPP1/2q5/P3QP2/1PP3P1/2KR3R w - - 0 20|Rh3|Th3
+r4rk1/5ppp/p7/1p6/3Rn1B1/8/PPP3PP/1K3R2 b - - 1 28|Nc5|Cc5
+8/4bp2/7k/6p1/4B2q/2PK3Q/7p/8 w - - 4 60|Qxh4+|Dxh4+ nulle
+8/8/8/2b5/8/4kp1p/7p/5K1B w - - 0 74|Bd4|Fd4
+8/2p2p1p/p1k1p1p1/P1P5/1Pr1P3/2P1R3/5P1P/5K2 b - - 2 2|b5|b5
+4r3/pp1b4/3n1k2/6rp/2pNPK2/1P6/P5P1/R2BR3 w - - 2 30|e5|e5!
+rn2kbnr/pp2pppp/2p5/3PN3/4b3/1P4P1/1P1PPP1P/RNB1KB1R w KQkq - 1 3|dxc6|dxc6!!
+r1bqkb1r/1pp1n1pp/p1p2p2/4p3/4P3/2NPBN2/PPP2PPP/R2QK2R b KQkq - 2 7|Kf7|Rf7
+4rrk1/pppb4/2nbp1q1/5pBp/1P1P2p1/2PN2P1/P2Q1PBP/R3R1K1 w - - 1 22|Re6|Te6
+rnb3r1/ppp2k1p/1b1p1N2/4P3/1P6/2P3P1/P3PP1P/RN1QK2R w KQ - 2 13|Qd4|Dd4
+2R5/5pk1/3bp3/8/P4p1p/q5rP/5R1K/5Q2 b - - 1 60|f3|f3!
+2R5/7k/8/7r/8/5K2/8/8 w - - 0 62|Kg3|Rg3
+6k1/2p5/N7/8/4K3/8/8/8 b - - 0 61|Kf7|Rf7
+1r3rk1/3nppbp/bq1p2p1/nNpP2B1/P3P3/1P1Q1NPP/5PB1/1R3RK1 w - - 1 8|b4|b4!
+rn1qkbnr/p4ppp/3pb3/1pp5/4P3/1B3N2/PPP2PPP/RNBQK2R b KQkq - 1 8|c4|c4
+r1bqk2r/ppp2ppp/2nbpn2/8/2pP4/5NP1/PP1NPPBP/R1BQ1RK1 b kq - 1 7|b5|b5
+r1bqkb1r/pp3ppp/2np1n2/1Bp1p3/4P3/2N2N2/PPPP1PPP/R1BQ1RK1 w kq e6 0 6|Bc4|Fc4
+r2qr1k1/pp3p1p/5Pp1/3b4/4pQ2/8/PP3PPP/2RR2K1 w - - 0 28|Rxd5|Txd5!
+r3rbk1/pp1b1p1p/2p1pBp1/2R5/3PP3/5Q2/qP2BPPP/3R2K1 w - - 0 23|Rh5|Th5!
+r3r1k1/1p3p1p/2p1bBpR/4P3/p3P3/3R4/5KPP/5B2 w - - 0 32|g4|g4!!
+r3qrk1/pbp1bpp1/1p2p2p/4P2Q/4N3/2PB4/PP3PPP/3R1RK1 w - - 0 1|Nf6|Cf6!! gagne
+2r2rk1/5p1p/6p1/q2pPP2/8/1Q2B3/2B3PP/5RK1 b - - 0 31|Qc3|Dc3!
+2r2r1k/4q2P/5R1Q/3p4/b2B4/2pB4/6PP/2q3K1 w - - 0 37|Qg6|Dg6
+r1b2rk1/bp3pp1/p1pp1q1p/P3p3/1P2Pn2/2NP1N1P/2PQBPP1/R4RK1 w - - 1 15|Bf1|Ff1
+6k1/2p4p/p5p1/1pqP4/4B2P/2b2QP1/P4P2/6K1 w - - 2 29|d6|d6!
+1n2k2r/2r1bppp/p2pb3/N3p3/P3P3/1pP1BP2/1P4PP/2KR1B1R w k - 1 16|Td5|Td5!!
+4r1k1/1p3pp1/p2b1q2/P1pP1b1p/2Q5/2N2N1P/1P3PP1/3R2K1 b - - 0 21|Bxh3|Fxh3!
+5rk1/ppb2rp1/2p4p/6q1/3QPNb1/P1N3P1/1PP4P/1R3R1K b - - 2 22|Bxf4|Fxf4!
+r3r1k1/ppp2ppp/2n5/3q4/3P2b1/P4N2/1P2BPPP/R2Q1RK1 b - - 4 15|Rxe2|Txe2!!
+2b1r3/p4kq1/4pnr1/3pR3/2pP2pR/2P1N1P1/Q4PB1/6K1 w - - 2 44|Nxd5|Cxd5!! gagne
+5r2/1R6/3P3p/P4p2/8/P2P1k1P/8/7K b - - 0 46|Rf6|Tf6!
+4rrk1/1p1b1p2/2np4/p1q1bPpQ/2PpP3/PP1P3P/5RB1/4BR1K w - - 0 30|f6|f6!
+r1b1k2r/ppp1qppp/3p1n2/4n3/2B5/B1Q2N2/P4PPP/R4RK1 w kq - 0 6|Nxe5|Cxe5
+2r5/pp3kpp/3p4/5P2/5Q2/8/P1p2P1P/6K1 w - - 0 29|Qe4|De4
+3r3r/pp1b2pp/3Q4/3B1k2/8/2p5/P4P1P/6K1 w - - 0 30|Bb3|Fb3
+2r2rk1/1p1b1pp1/p7/2qp2PN/4p2n/3B4/PPPQ3P/1K1R3R w - - 0 26|Nf6+|Cf6+!
+3r2k1/2p2pp1/p4F1p/q7/P3QPP1/1P1p3P/2P5/4R1K1 b - - 0 29|d2|d2
+8/5pk1/p3p1p1/Pp5p/1P1R3P/5bP1/7K/8 w - - 0 59|Rd6|Td6
+r2q1k1r/p1pp2bP/1pn1pn2/6B1/2PP3Q/3B4/PP2NP1P/RN2K2b w Q - 2 12|Nd2|Cd2!
+r4k1r/pbppq1bP/4pnB1/1P1n2BN/3P3Q/8/PP1N1P1P/R3K3 w Q - 7 17|Nxg7|Cxg7!
+r2q1k1r/p1pp2bP/1pn1pn2/6B1/2PP3Q/2NB4/PP2NP1P/R3K2b b Q - 3 12|e5|e5!
+r2q1k1r/p1pp2bP/1pn2n2/6B1/2P4Q/2pB4/PP2NP1P/2K4R w - - 0 15|Nf4|Cf4!
+r2q3r/p1pp1kbP/1p3n2/4n1B1/2P2N1Q/2p5/PPB2P1P/2K4R w - - 4 17|Nh5|Ch5!
+r4q1r/p1pp1kbP/1p3n2/6QN/2P5/2p5/PPB2P1P/2K4R w - - 1 20|Bg6|Fg6!
+k2r4/3r1pp1/1np3p1/p5P1/P3P2q/2NR4/1PQ5/1K1R4 w - - 0 33|Nb5|Cb5!! gagne
+r2qr1k1/pp3pp1/2nb1n1p/8/6bB/2N2N2/PPPQBPPP/2KR3R b - - 3 12|Bxf2|Fxf2+
+3r4/8/1b4PP/2k5/3p1N2/4rb2/1PPRp3/1K2R3 w - - 1 47|h7|h7 gagne
+r2qk2r/1pp1bp2/p1n1p3/5bp1/3PNN1p/P3QP1B/1P6/2KR3R w kq g6 0 19|Nxe6|Cxe6!
+8/8/2p2kp1/1p3p2/p5rP/2PKR1P1/P4P2/8 w - - 9 41|f4|f4!
+r3kb1r/pR2pppp/2pq1n2/1B6/3n2b1/2N2N2/P1PPQPPP/2B1K2R w Kkq - 0 12|Nxd4|Cxd4!!
+r1q1kb1r/p5pp/2p1pp2/3pBb1n/3P4/1QN1P3/PP3PPP/2R1KB1R w Kkq - 0 4|Nxf5|Cxf5!! gagne
+r1bq1rk1/pp1nppbp/6p1/3Q4/3P1B2/4PN2/PP3PPP/R3KB1R b KQ - 0 10|Nd5|Cd5
+r1bq1rk1/7p/p2b4/1ppP1ppQ/5p2/2N5/PPPB2PP/R3R1K1 w - c6 0 17|dxc6|dxc6
+2br4/1pkn2p1/p4p2/4rP1p/3Q2nP/1P3B2/2P5/1K1R4 b - - 1 32|Rg3|Tg3
+r1bqkb1r/5ppp/p1np4/3Np3/2N1n3/8/PP3PPP/R1BQKB1R w KQkq - 0 2|Be3|Fe3! gagne
+rn1q1rk1/pb3ppp/3bpn2/1p6/2pPN3/2P2N2/PPB2PPP/R1BQ1RK1 w - - 1 11|Nxf6+|Cxf6+ gagne
+2r2rk1/1p3ppp/p1b1pq2/4b3/2P2P2/1P6/PBP1Q1PP/3R1RK1 w - - 0 17|fxe5|fxe5!
+r1bq1rk1/pp1n1b1/3p4/3Pp3/PPP1Np2/R7/5P1P/2BQRBK1 b - - 0 17|f3|f3
+r2q1k2/ppp3b1/3pBr2/3Pp2Q/PPP1Np1n/8/5P1P/2B1R1K1 w - - 3 22|Rh1|Rf1
+r2q1k2/ppp3b1/3pB3/3Pp2Q/PPP1Np1n/8/5P1P/2B3K1 b - - 0 24|Qe8|De8!
+1q5k/2p3pp/6n1/2nPpQ2/5p2/7P/PP3PP1/R1B1R1K1 w - - 0 24|Bxf4|Fxf4!!
+3rr1k1/1ppq2pp/p7/P3pp2/1PPn4/3P2N1/1Q3PPP/3R1RK1 b - - 1 24|f4|f4
+rnbqkbnr/pp1p1ppp/2p1p3/8/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3|e5|e5
+rnbqkb1r/pp1pnppp/8/2pNP3/5B2/8/PPP2PPP/R2QKBNR w KQkq - 3 8|e6|e6!
+r1bqk1nr/pp2ppbp/2n3p1/4P3/3P4/5N2/PP4PP/RNBQKB1R b KQkq - 2 8|Nd4|Cd4
+3k3r/1p2pQ1p/pqr3pb/4P3/3P4/2N5/PP4PP/R4RK1 w - - 0 17|Nd5|Cd5!
+r1b1k2r/1p1nbppp/p2ppn2/q5B1/3NP2P/2N2Q2/PPP2PP1/2KR1B1R w kq - 1 10|g4|g4!
+3kr3/ppN2ppp/8/8/1P6/3q3P/PP1PBP1n/R1BQK3 b Q - 2 13|Qg6|Dg6!
+r2qr1k1/pbp2ppp/np1p4/6Q1/3N4/2PB4/PPP2PPP/R3R1K1 w - - 1 14|Rxe8|Txe8!
+r4q1k/pbp1Nppp/np1p4/6Q1/8/2PB4/PPP2PPP/R5K1 w - - 4 17|Bxh7|Fxh7!!
+r5k1/p2R2pp/1p2p3/8/8/1P5P/P3rPP1/5R1K w - - 0 27|Rc1|Tc1!
+r1b1kbnB/ppp5/2n2pp1/3p4/4p3/1P2P3/P1PP1PPP/RN2KB1R w KQq - 0 11|Nc3|Cc3
+r2qkb1r/3b1ppp/p1p2n2/3p2B1/Q7/2N3P1/PPP2P1P/2KR2NR w kq - 2 12|Nf3|Cf3! gagne
+r1bqk2r/p1p2pp1/3b1n2/1p2p3/3n4/1B1P3p/PPP2PP1/RNBQK2R b KQkq - 1 13|hxg2|hxg2!!
+r1b1kb1r/ppp1ppp1/7p/1NqnN3/8/1R6/P1PBBP1P/3QK3 w kq - 0 18|Be3|Fe3!
+1kn1Rb1r/3r2p1/Qpq2p1p/1N6/1P1B4/5P2/6PP/3R2K1 b - - 0 26|Ra8|Ta8
+1knr4/1q6/1p3R1p/1N1r4/QP4p1/5P2/6PP/R6K b - - 1 35|Qa6|Da6!! gagne
+2r2rk1/5ppp/4p3/q2PPb2/Ppp5/4BN2/1Q2BPPP/5RK1 b - - 1 23|a3|a3

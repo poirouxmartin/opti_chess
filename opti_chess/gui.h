@@ -94,8 +94,8 @@ public:
 	//double _alpha = 0.0075;
 	//double _beta = 2.5;
 	//double _gamma = 0.65;
-	//double _alpha = 0.005; // Raises the weight of the evaluation
-	double _alpha = 0.00001; // Raises the weight of the evaluation
+	double _alpha = 0.005; // Raises the weight of the evaluation (self-play tested: +126 Elo vs 0.00001)
+	//double _alpha = 0.00001; // Raises the weight of the evaluation
 	double _beta = 5.0; // Raises the weight of the win rate
 	double _gamma = 1.10; // Raises the diversity of the explored moves
 

@@ -2471,6 +2471,14 @@ Node* NodeBuffer::get_first_free_node() {
 
 	Node* node = &_nodes[index];
 	node->_is_active = true;
+	node->_initialized = false;
+	node->_fully_explored = false;
+	node->_can_explore = true;
+	node->_is_terminal = false;
+	node->_nodes = 0;
+	node->_iterations = 0;
+	node->_board = nullptr;
+	node->_children.clear();
 	return node;
 }
 
