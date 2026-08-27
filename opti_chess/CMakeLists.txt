@@ -180,6 +180,8 @@ set(ENGINE_SOURCES
     useful_functions.cpp
     windows_tests.cpp
     zobrist.cpp
+    stockfish_adapter.cpp
+    puzzle.cpp
 )
 
 add_library(engine_lib STATIC ${ENGINE_SOURCES})

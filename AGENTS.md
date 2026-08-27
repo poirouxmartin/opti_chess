@@ -1,0 +1,19 @@
+# AGENTS.md — opti_chess
+
+## Description
+
+Moteur d'échecs haute performance en Rust + IA par réseaux de neurones (NNUE supervisé et auto-play RL). Interface d'analyse GUI via raylib. Recherche hybride GrogrosZero (UCT + alpha-beta + quiescence), évaluation WDL, search borné zéro-allocation.
+
+## Stack
+
+- C++20
+- CMake
+- raylib (GUI d'analyse)
+- Visual Studio (sln)
+
+## Conventions
+
+- Build via CMake ou `opti_chess.sln`
+- Code research-oriented, pas un engine UCI
+- **After every code fix**: build + run `opti_chess_tests.exe --gtest_filter="-*Debug*:*Perf*"` to verify no regression. Only proceed to the next fix after tests pass.
+- **After validation**: commit with a concise message describing the fix, then push.

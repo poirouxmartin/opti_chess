@@ -21,6 +21,10 @@ static bool cli_disable_value_propagation = false;
 static bool cli_disable_trust_prior = false;
 static bool cli_disable_avg_cap = false;
 
+// Search parameters for NEW and OLD sides
+static double new_alpha = 0.00001, new_beta = 5.0, new_gamma = 1.10;
+static double old_alpha = 0.00001, old_beta = 5.0, old_gamma = 1.10;
+
 static void set_config(bool new_engine) {
 	g_search_value_propagation = new_engine;
 	g_search_trust_prior = new_engine;
@@ -78,7 +82,10 @@ static GameResult play_game(const int iterations_per_move, const bool new_is_whi
 			analysis_board.from_fen(game_board.to_fen());
 
 			Node root(&analysis_board);
-			root.grogros_zero(&monte_board_buffer, &evaluator, 0.00001, 5.0, 1.10, iterations_per_move, 8);
+			const double a = mover_is_new ? new_alpha : old_alpha;
+			const double b = mover_is_new ? new_beta : old_beta;
+			const double g = mover_is_new ? new_gamma : old_gamma;
+			root.grogros_zero(&monte_board_buffer, &evaluator, a, b, g, iterations_per_move, 8);
 
 			best = root.get_most_explored_child_move();
 			mover_eval = root._deep_evaluation._value * (mover_is_white ? 1 : -1);
@@ -213,7 +220,10 @@ static GameResult play_game_persistent(const int iterations_per_move, const bool
 		if (mover.root->_board->to_fen() != fen_now)
 			side_rebuild(mover, fen_now);
 
-		mover.root->grogros_zero(&monte_board_buffer, &evaluator, 0.00001, 5.0, 1.10, iterations_per_move, 8);
+			const double a = mover_is_new ? new_alpha : old_alpha;
+		const double b = mover_is_new ? new_beta : old_beta;
+		const double g = mover_is_new ? new_gamma : old_gamma;
+		mover.root->grogros_zero(&monte_board_buffer, &evaluator, a, b, g, iterations_per_move, 8);
 
 		Move best = mover.root->get_most_explored_child_move();
 		const int mover_eval = mover.root->_deep_evaluation._value * (mover_is_white ? 1 : -1);
@@ -261,13 +271,19 @@ int main(int argc, char* argv[]) {
 	if (argc > 2) iterations_per_move = std::max(200, atoi(argv[2]));
 
 	// Optional disables for A/B bisection: -vp -tp -cap, and --persist for
-	// GUI-like kept trees
+	// GUI-like kept trees. Search params: --new-alpha=X --old-beta=Y etc.
 	for (int i = 3; i < argc; i++) {
 		const string a = argv[i];
 		if (a == "-vp") { cli_disable_value_propagation = true; g_search_value_propagation = false; }
 		else if (a == "-tp") { cli_disable_trust_prior = true; g_search_trust_prior = false; }
 		else if (a == "-cap") { cli_disable_avg_cap = true; g_search_avg_cap = false; }
 		else if (a == "--persist") persist_trees = true;
+		else if (a.substr(0, 12) == "--new-alpha=") new_alpha = stod(a.substr(12));
+		else if (a.substr(0, 12) == "--new-beta=") new_beta = stod(a.substr(11));
+		else if (a.substr(0, 13) == "--new-gamma=") new_gamma = stod(a.substr(13));
+		else if (a.substr(0, 12) == "--old-alpha=") old_alpha = stod(a.substr(12));
+		else if (a.substr(0, 12) == "--old-beta=") old_beta = stod(a.substr(11));
+		else if (a.substr(0, 13) == "--old-gamma=") old_gamma = stod(a.substr(13));
 	}
 
 	if (persist_trees) {
@@ -283,6 +299,8 @@ int main(int argc, char* argv[]) {
 	cout << "Self-play: NEW vs OLD | " << games << " games | "
 		<< iterations_per_move << " iterations/move"
 		<< (persist_trees ? " | PERSISTENT TREES" : " | fresh trees") << endl;
+	cout << "  NEW: alpha=" << new_alpha << " beta=" << new_beta << " gamma=" << new_gamma << endl;
+	cout << "  OLD: alpha=" << old_alpha << " beta=" << old_beta << " gamma=" << old_gamma << endl;
 
 	int new_wins = 0, old_wins = 0, draws = 0;
 

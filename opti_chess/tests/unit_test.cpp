@@ -1,3 +1,9 @@
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <gtest/gtest.h>
 #include "board.h"
 #include "evaluation.h"
@@ -6,9 +12,12 @@
 #include "buffer.h"
 #include "zobrist.h"
 #include "useful_functions.h"
+#include "puzzle.h"
+#include "stockfish_adapter.h"
 #include <chrono>
 #include <algorithm>
 #include <vector>
+#include <cmath>
 
 // ============================================================================
 // Test-scale knob: OPTI_TEST_SCALE=N divides every heavy SEARCH budget
@@ -2820,8 +2829,8 @@ TEST(FEN, MinimalValidPositionLoads) {
 // ============================================================================
 
 // Bump ONLY when solved count exceeds this in a validated run.
-// 2026-08-25: 4/5 at 3s (Nc7+ fork open - solved at fixed budget, not yet at 3s)
-constexpr int kTimeLadderBaseline = 5;
+// 2026-08-27: expanded to 37 puzzles, baseline set provisionally at 20.
+constexpr int kTimeLadderBaseline = 20;
 
 TEST(Progress, TimeBudgetLadder3s) {
 	struct LadderPuzzle { const char* fen; Move expected; const char* name; };
@@ -2837,7 +2846,42 @@ TEST(Progress, TimeBudgetLadder3s) {
 		{ "r2r2k1/1p3ppp/3p4/PB1P4/2P1p3/R2n4/1P3PPP/2R2K2 w - - 1 24",         Move(2, 0, 2, 3), "Txd3!! simplify" },
 		{ "b1N3kr/7p/6pB/4p3/8/8/PP3P1P/4K3 w - - 0 32",                        Move(7, 2, 5, 3), "Cd6!! freeze" },
 		{ "6k1/2R3pp/8/pp6/4r3/2P2K1P/6P1/8 b - - 1 33",                        Move(3, 4, 3, 2), "Tc4! conversion" },
-		{ "r3k3/8/4N3/8/8/8/8/4K3 w - - 0 1",                                   Move(5, 4, 6, 2), "Nc7+ royal fork" }
+		{ "r3k3/8/4N3/8/8/8/8/4K3 w - - 0 1",                                   Move(5, 4, 6, 2), "Nc7+ royal fork" },
+		{ "r1bk3r/pp1nq2p/4p3/3pP2Q/3p4/1N1B4/P5PP/R4RK1 w - - 7 22",            Move(0, 5, 6, 5), "Tf7!!" },
+		{ "6rr/2k2p2/4p3/1p1RPp1P/pNn2P2/4q3/PPP3Q1/1K5R w - - 1 28",            Move(4, 3, 6, 3), "Td7!! #4" },
+		{ "r3r1k1/1pqb1pbp/4n1p1/p2Pp3/1Q6/B4NP1/P4PBP/R2R2K1 w - - 0 6",         Move(4, 3, 5, 4), "dxe6!!" },
+		{ "4r2k/1pRR3p/5bp1/4p3/1p6/q4NP1/P4PBP/6K1 w - - 2 12",                 Move(2, 5, 4, 6), "Cg5!!" },
+		{ "2r3k1/3q1pb1/1p1p2p1/1N1P1b1p/rpB1P2P/8/PP2Q1P1/K1NR3R b - - 0 21",    Move(3, 1, 2, 1), "b3!!!" },
+		{ "3r4/8/8/8/3P2k1/3K4/8/R7 w - - 0 1",                                Move(0, 0, 0, 5), "Tf1!" },
+		{ "8/r7/8/5R2/2q5/1p6/1P4k1/1K6 w - - 0 1",                             Move(4, 5, 1, 5), "Tf2! tour folle" },
+		{ "r7/pbr2p1k/1p2pP1p/3q2pQ/PPNp4/3P4/2P2RPP/4R1K1 w - - 2 26",          Move(0, 4, 4, 4), "Te5 finish" },
+		{ "r1b3k1/ppp1qppp/2n5/8/8/P2QPNbP/1P2B1P1/RN3K1R b - - 4 14",            Move(7, 2, 4, 5), "Ff5!!" },
+		{ "1r1k4/q2p1p2/3b1Pr1/8/4P2P/6P1/PPP1N3/R1Q1KR2 b Q - 0 27",            Move(5, 3, 2, 6), "Fxg3+ gagne" },
+		{ "r1bq1rk1/pp2n1bp/4ppp1/4B3/2B1NP2/3P4/P1P3PP/1R1QR1K1 w - - 0 18",    Move(4, 4, 0, 0), "Fou en a1" },
+		{ "2r1r1k1/6pp/5pN1/p2R4/3Q4/q4PP1/P2R3P/6K1 b - - 0 31",                Move(2, 0, 2, 5), "Dxf3!!" },
+		{ "r5k1/p3Qpp1/bp5p/8/4PP2/1N1r4/Pq3RPP/2R3K1 b - - 5 22",               Move(1, 1, 0, 2), "Dxc1!!" },
+		{ "r1bqkbnr/5ppp/p1np4/1p2p3/4P3/N1N5/PPP1BPPP/R1BQK2R b KQkq - 1 8",   Move(4, 1, 3, 1), "b4 fourchette" },
+		{ "r4rk1/ppp2ppp/2nq1b2/2np4/2P5/2NBQ2P/PP1B1PP1/R3R1K1 b - - 2 15",     Move(4, 3, 3, 3), "d4 gagne" },
+		{ "2r3k1/pp1n3p/3P2pB/2pr1q2/P2nN3/1P4Q1/R1P2PPP/4R1K1 b - - 8 26",      Move(3, 3, 1, 4), "Ce2+" },
+		{ "r1bq1rk1/pp3p2/2nbpp2/1Bp4Q/5P2/8/PBPP2PP/R4RK1 w - - 2 14",          Move(4, 7, 3, 6), "Dg4+ mate" },
+		{ "5R2/k3P3/1pb5/2p5/p2p4/6K1/8/8 w - - 0 95",                           Move(6, 4, 7, 4), "e8=D perd" },
+		{ "2r3k1/q1r2pb1/3pb1p1/1p2n1P1/1P2PP2/3Q1BK1/1B2N2R/7R b - - 3 37",     Move(6, 0, 1, 5), "Df2!!" },
+		{ "3r2k1/5p1p/3P1b2/6p1/1BRp4/8/1P3PPP/6K1 b - - 0 31",                  Move(3, 3, 2, 3), "d3!" },
+		{ "r1b1k2r/pp3pbp/1qnpp1p1/1B6/P1NpPP2/3P4/1PP3PP/R1BQ1RK1 b kq - 4 12", Move(5, 1, 4, 2), "Dc5" },
+		{ "r4rk1/p1p1bp2/3p2pR/5PP1/5p2/P4P2/1PP3P1/2KR4 w - - 0 23",            Move(4, 5, 5, 5), "f6!" },
+		{ "r1bqkb1r/1pp1n1pp/p1p2p2/4p3/4P3/2NPBN2/PPP2PPP/R2QK2R b KQkq - 2 7",Move(7, 4, 6, 5), "Rf7" },
+		{ "rn1qkbnr/p4ppp/3pb3/1pp5/4P3/1B3N2/PPP2PPP/RNBQK2R b KQkq - 1 8",     Move(4, 2, 3, 2), "c4" },
+		{ "r3qrk1/pbp1bpp1/1p2p2p/4P2Q/4N3/2PB4/PP3PPP/3R1RK1 w - - 0 1",        Move(3, 4, 5, 5), "Cf6!! gagne" },
+		{ "6k1/2p4p/p5p1/1pqP4/4B2P/2b2QP1/P4P2/6K1 w - - 2 29",                Move(4, 3, 5, 3), "d6!" },
+		{ "4r1k1/1p3pp1/p2b1q2/P1pP1b1p/2Q5/2N2N1P/1P3PP1/3R2K1 b - - 0 21",     Move(4, 5, 2, 7), "Fxh3!" },
+		{ "5rk1/ppb2rp1/2p4p/6q1/3QPNb1/P1N3P1/1PP4P/1R3R1K b - - 2 22",         Move(6, 2, 3, 5), "Fxf4!" },
+		{ "2b1r3/p4kq1/4pnr1/3pR3/2pP2pR/2P1N1P1/Q4PB1/6K1 w - - 2 44",          Move(2, 4, 4, 3), "Cxd5!! gagne" },
+		{ "8/5pk1/p3p1p1/Pp5p/1P1R3P/5bP1/7K/8 w - - 0 59",                      Move(3, 3, 5, 3), "Td6" },
+		{ "r2q1k1r/p1pp2bP/1pn1pn2/6B1/2PP3Q/3B4/PP2NP1P/RN2K2b w Q - 2 12",     Move(0, 1, 1, 3), "Cd2!" },
+		{ "r2qk2r/1pp1bp2/p1n1p3/5bp1/3PNN1p/P3QP1B/1P6/2KR3R w kq g6 0 19",     Move(3, 5, 5, 4), "Cxe6!" },
+		{ "8/8/2p2kp1/1p3p2/p5rP/2PKR1P1/P4P2/8 w - - 9 41",                      Move(1, 5, 3, 5), "f4!" },
+		{ "r1b1kbnB/ppp5/2n2pp1/3p4/4p3/1P2P3/P1PP1PPP/RN2KB1R w KQq - 0 11",    Move(0, 1, 2, 2), "Cc3" },
+		{ "r2qkb1r/3b1ppp/p1p2n2/3p2B1/Q7/2N3P1/PPP2P1P/2KR2NR w kq - 2 12",     Move(0, 6, 2, 5), "Cf3! gagne" }
 	};
 
 	int solved = 0;
@@ -2895,16 +2939,16 @@ TEST(Progress, TimeBudgetLadder3s) {
 //   total < baseline => lower kNodeEfficiencyBaseline and commit (progress!)
 // ============================================================================
 
-// 2026-08-25 first honest measurement after fixing the Nc7+ transcription
-// (wrong side to move made it unsolvable): ALL five puzzles solve at the
-// ladder's floor - 250-500 nodes each, total 1500. The metric needs FINER
-// budgets (<=250) and HARDER puzzles to become discriminating.
-constexpr long long kNodeEfficiencyBaseline = 29000LL;
+// 2026-08-27 expanded to 37 puzzles (9 original + 28 from Tests.txt).
+// Baseline will be lowered as puzzles are solved at lower budgets.
+constexpr long long kNodeEfficiencyBaseline = 200000LL;
 
 TEST(Progress, NodeEfficiencyLadder) {
 	struct LadderPuzzle { const char* fen; Move expected; const char* name; };
 	static const LadderPuzzle puzzles[] = {
-		// Same set as the time ladder: NO mate-in-1s, author-annotated tactics
+		// Same set as the original time ladder: NO mate-in-1s, author-annotated tactics.
+		// New harder puzzles (Tf7!!, dxe6!!, b3!!, Tf1!, Tf2!) are in the time ladder
+		// only — they genuinely need deeper search and cannot be solved cheaply.
 		{ "Qnkr2r1/1p3p1p/3b4/3p4/3B4/2P3Pq/PP1N1P1P/4RRK1 b - - 0 19",          Move(5, 3, 2, 6), "Fxg3!! wins (Tests.txt L119)" },
 		{ "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1",        Move(2, 6, 5, 6), "WAC.001 Qg6" },
 		{ "8/7p/5k2/5p2/p1p2P2/Pr1pPK2/1P1R3P/8 b - - 0 1",                     Move(2, 1, 6, 1), "WAC.002 Rxb2" },
@@ -2913,7 +2957,35 @@ TEST(Progress, NodeEfficiencyLadder) {
 		{ "r2r2k1/1p3ppp/3p4/PB1P4/2P1p3/R2n4/1P3PPP/2R2K2 w - - 1 24",         Move(2, 0, 2, 3), "Txd3!! simplify" },
 		{ "b1N3kr/7p/6pB/4p3/8/8/PP3P1P/4K3 w - - 0 32",                        Move(7, 2, 5, 3), "Cd6!! freeze" },
 		{ "6k1/2R3pp/8/pp6/4r3/2P2K1P/6P1/8 b - - 1 33",                        Move(3, 4, 3, 2), "Tc4! conversion" },
-		{ "r3k3/8/4N3/8/8/8/8/4K3 w - - 0 1",                                   Move(5, 4, 6, 2), "Nc7+ royal fork" }
+		{ "r3k3/8/4N3/8/8/8/8/4K3 w - - 0 1",                                   Move(5, 4, 6, 2), "Nc7+ royal fork" },
+		{ "r7/pbr2p1k/1p2pP1p/3q2pQ/PPNp4/3P4/2P2RPP/4R1K1 w - - 2 26",          Move(0, 4, 4, 4), "Te5 finish" },
+		{ "r1b3k1/ppp1qppp/2n5/8/8/P2QPNbP/1P2B1P1/RN3K1R b - - 4 14",            Move(7, 2, 4, 5), "Ff5!!" },
+		{ "1r1k4/q2p1p2/3b1Pr1/8/4P2P/6P1/PPP1N3/R1Q1KR2 b Q - 0 27",            Move(5, 3, 2, 6), "Fxg3+ gagne" },
+		{ "r1bq1rk1/pp2n1bp/4ppp1/4B3/2B1NP2/3P4/P1P3PP/1R1QR1K1 w - - 0 18",    Move(4, 4, 0, 0), "Fou en a1" },
+		{ "2r1r1k1/6pp/5pN1/p2R4/3Q4/q4PP1/P2R3P/6K1 b - - 0 31",                Move(2, 0, 2, 5), "Dxf3!!" },
+		{ "r5k1/p3Qpp1/bp5p/8/4PP2/1N1r4/Pq3RPP/2R3K1 b - - 5 22",               Move(1, 1, 0, 2), "Dxc1!!" },
+		{ "r1bqkbnr/5ppp/p1np4/1p2p3/4P3/N1N5/PPP1BPPP/R1BQK2R b KQkq - 1 8",   Move(4, 1, 3, 1), "b4 fourchette" },
+		{ "r4rk1/ppp2ppp/2nq1b2/2np4/2P5/2NBQ2P/PP1B1PP1/R3R1K1 b - - 2 15",     Move(4, 3, 3, 3), "d4 gagne" },
+		{ "2r3k1/pp1n3p/3P2pB/2pr1q2/P2nN3/1P4Q1/R1P2PPP/4R1K1 b - - 8 26",      Move(3, 3, 1, 4), "Ce2+" },
+		{ "r1bq1rk1/pp3p2/2nbpp2/1Bp4Q/5P2/8/PBPP2PP/R4RK1 w - - 2 14",          Move(4, 7, 3, 6), "Dg4+ mate" },
+		{ "5R2/k3P3/1pb5/2p5/p2p4/6K1/8/8 w - - 0 95",                           Move(6, 4, 7, 4), "e8=D perd" },
+		{ "2r3k1/q1r2pb1/3pb1p1/1p2n1P1/1P2PP2/3Q1BK1/1B2N2R/7R b - - 3 37",     Move(6, 0, 1, 5), "Df2!!" },
+		{ "3r2k1/5p1p/3P1b2/6p1/1BRp4/8/1P3PPP/6K1 b - - 0 31",                  Move(3, 3, 2, 3), "d3!" },
+		{ "r1b1k2r/pp3pbp/1qnpp1p1/1B6/P1NpPP2/3P4/1PP3PP/R1BQ1RK1 b kq - 4 12", Move(5, 1, 4, 2), "Dc5" },
+		{ "r4rk1/p1p1bp2/3p2pR/5PP1/5p2/P4P2/1PP3P1/2KR4 w - - 0 23",            Move(4, 5, 5, 5), "f6!" },
+		{ "r1bqkb1r/1pp1n1pp/p1p2p2/4p3/4P3/2NPBN2/PPP2PPP/R2QK2R b KQkq - 2 7",Move(7, 4, 6, 5), "Rf7" },
+		{ "rn1qkbnr/p4ppp/3pb3/1pp5/4P3/1B3N2/PPP2PPP/RNBQK2R b KQkq - 1 8",     Move(4, 2, 3, 2), "c4" },
+		{ "r3qrk1/pbp1bpp1/1p2p2p/4P2Q/4N3/2PB4/PP3PPP/3R1RK1 w - - 0 1",        Move(3, 4, 5, 5), "Cf6!! gagne" },
+		{ "6k1/2p4p/p5p1/1pqP4/4B2P/2b2QP1/P4P2/6K1 w - - 2 29",                Move(4, 3, 5, 3), "d6!" },
+		{ "4r1k1/1p3pp1/p2b1q2/P1pP1b1p/2Q5/2N2N1P/1P3PP1/3R2K1 b - - 0 21",     Move(4, 5, 2, 7), "Fxh3!" },
+		{ "5rk1/ppb2rp1/2p4p/6q1/3QPNb1/P1N3P1/1PP4P/1R3R1K b - - 2 22",         Move(6, 2, 3, 5), "Fxf4!" },
+		{ "2b1r3/p4kq1/4pnr1/3pR3/2pP2pR/2P1N1P1/Q4PB1/6K1 w - - 2 44",          Move(2, 4, 4, 3), "Cxd5!! gagne" },
+		{ "8/5pk1/p3p1p1/Pp5p/1P1R3P/5bP1/7K/8 w - - 0 59",                      Move(3, 3, 5, 3), "Td6" },
+		{ "r2q1k1r/p1pp2bP/1pn1pn2/6B1/2PP3Q/3B4/PP2NP1P/RN2K2b w Q - 2 12",     Move(0, 1, 1, 3), "Cd2!" },
+		{ "r2qk2r/1pp1bp2/p1n1p3/5bp1/3PNN1p/P3QP1B/1P6/2KR3R w kq g6 0 19",     Move(3, 5, 5, 4), "Cxe6!" },
+		{ "8/8/2p2kp1/1p3p2/p5rP/2PKR1P1/P4P2/8 w - - 9 41",                      Move(1, 5, 3, 5), "f4!" },
+		{ "r1b1kbnB/ppp5/2n2pp1/3p4/4p3/1P2P3/P1PP1PPP/RN2KB1R w KQq - 0 11",    Move(0, 1, 2, 2), "Cc3" },
+		{ "r2qkb1r/3b1ppp/p1p2n2/3p2B1/Q7/2N3P1/PPP2P1P/2KR2NR w kq - 2 12",     Move(0, 6, 2, 5), "Cf3! gagne" }
 	};
 
 	static const int budgets[] = { 25, 50, 100, 200, 400, 800, 1600, 3200, 6400 };
@@ -2989,7 +3061,9 @@ TEST(Progress, NodeEfficiencyLadder) {
 static bool find_corpus_file(string& out_path) {
 	static const char* candidates[] = {
 		"Tests.txt", "../Tests.txt", "../../Tests.txt",
-		"../../../Tests.txt", "../../../../Tests.txt"
+		"../../../Tests.txt", "../../../../Tests.txt",
+		"opti_chess/Tests.txt", "../opti_chess/Tests.txt",
+		"../../opti_chess/Tests.txt"
 	};
 	for (const char* c : candidates) {
 		ifstream f(c);
@@ -3109,6 +3183,108 @@ TEST(MoveLabel, Disambiguation) {
 
 
 // ============================================================================
+// SAN-TO-MOVE resolver: generates all legal moves for a position, labels each
+// via move_label(), and returns the Move whose label matches the given SAN.
+// Handles disambiguation (Nge7 vs Nde7), check/mate suffixes (+, #), and
+// promotion suffixes (=Q, etc).
+// ============================================================================
+
+static string strip_san_noise(const string& s) {
+	string r;
+	for (char c : s)
+		if (c != 'x' && c != '+' && c != '#' && c != '=')
+			r += c;
+	return r;
+}
+
+static Move resolve_san(Board& b, const char* san) {
+	b.get_moves();
+	string target = strip_san_noise(san);
+
+	for (int i = 0; i < b._got_moves; i++) {
+		Move m = b._moves[i];
+		string label = strip_san_noise(b.move_label(m));
+		if (label == target)
+			return m;
+	}
+
+	return Move(-1, -1, -1, -1);
+}
+
+// Batch puzzle validator: reads FEN|SAN|name from a text file, resolves each
+// SAN to a Move, runs the engine, and reports pass/fail for each.
+// Usage: set PUZZLE_BATCH_FILE=path/to/candidates.txt
+TEST(Puzzle, BatchValidate) {
+	const char* path = getenv("PUZZLE_BATCH_FILE");
+	if (!path) { cout << "  [SKIP] set PUZZLE_BATCH_FILE to enable" << endl; SUCCEED(); return; }
+
+	ifstream f(path);
+	ASSERT_TRUE(f.is_open()) << "Cannot open " << path;
+
+	string line;
+	int total = 0, passed = 0, unresolved = 0;
+	string failures;
+	string details;
+
+	while (getline(f, line)) {
+		if (line.empty() || line[0] == '#') continue;
+
+		// Parse FEN|SAN|name
+		size_t p1 = line.find('|');
+		size_t p2 = line.find('|', p1 + 1);
+		if (p1 == string::npos || p2 == string::npos) continue;
+
+		string fen = line.substr(0, p1);
+		string san = line.substr(p1 + 1, p2 - p1 - 1);
+		string name = line.substr(p2 + 1);
+		total++;
+
+		// Resolve SAN to Move
+		Board resolve_b;
+		resolve_b.from_fen(fen);
+		Move expected = resolve_san(resolve_b, san.c_str());
+		if (expected.start_row == -1) {
+			unresolved++;
+			details += "  [UNRESOLVED] " + name + " SAN=" + san + "\n";
+			continue;
+		}
+
+		// Run engine
+		transposition_table.clear();
+		Board b;
+		b.from_fen(fen);
+		BoardBuffer board_buf(500 * 1024 * 1024);
+		board_buf.init(500000, false);
+		monte_node_buffer.init(500000, false);
+		monte_board_buffer.init(500000, false);
+		Evaluator evaluator;
+		Node root(&b);
+		root.grogros_zero(&board_buf, &evaluator, 0.00001, 5.0, 1.10, 5000, 10);
+
+		Move best = root.get_most_explored_child_move();
+		board_buf.remove();
+		monte_node_buffer.remove();
+		monte_board_buffer.remove();
+
+		const bool ok = (best == expected);
+		if (ok) passed++;
+		else {
+			Board lbl_b; lbl_b.from_fen(fen);
+			failures += "  [FAIL] " + name + " (got " + lbl_b.move_label(best) + ", expected " + san + ")\n";
+		}
+		details += string("  [") + (ok ? "PASS" : "FAIL") + "] " + name + " (iters=" + to_string(root._iterations) + ")\n";
+		if (ok)
+			cout << "  LADDER_MOVE{ \"" << fen << "\", Move(" << (int)expected.start_row << ", " << (int)expected.start_col << ", " << (int)expected.end_row << ", " << (int)expected.end_col << "), \"" << name << "\" }," << endl;
+	}
+
+	cout << "=== BATCH VALIDATION: " << passed << "/" << total << " passed"
+		<< " (" << unresolved << " unresolved) ===\n" << details;
+	if (!failures.empty())
+		cout << "--- FAILURES ---\n" << failures;
+}
+
+
+// ============================================================================
 // Audit A1/A2 regression tests: depth-encoded scales + memory cap
 // ============================================================================
 
@@ -3189,4 +3365,984 @@ TEST(TranspositionTable, MemoryCapEnforced) {
 	tt.store(999999ULL, 7, 3, TT_EXACT);
 	ASSERT_NE(tt.probe(999999ULL), nullptr);
 	EXPECT_EQ(tt.probe(999999ULL)->_eval, 7);
+}
+
+
+// ============================================================================
+// PUZZLE FRAMEWORK TESTS
+//
+// Reward-based scoring (0-1), Stockfish-calibrated, categorized by theme.
+// Different budget modes: TIME, NODES, STATIC_EVAL, QUIESCENCE_ONLY.
+// ============================================================================
+
+static string find_stockfish() {
+	const char* paths[] = {
+		"stockfish.exe",
+		"../stockfish.exe",
+		"../../stockfish.exe",
+		"../../../stockfish.exe",
+		"opti_chess/stockfish.exe",
+		"../opti_chess/stockfish.exe",
+		"../../opti_chess/stockfish.exe",
+		"../../../opti_chess/stockfish.exe",
+	};
+	for (auto p : paths) {
+		ifstream f(p);
+		if (f.good()) return p;
+	}
+	return "";
+}
+
+TEST(Puzzle, StockfishAdapter) {
+	string sf_path = find_stockfish();
+	if (sf_path.empty()) {
+		cout << "  [SKIP] Stockfish not found" << endl;
+		return;
+	}
+
+	StockfishAdapter sf(sf_path);
+	ASSERT_TRUE(sf.is_available()) << "Failed to start Stockfish";
+
+	auto r = sf.analyze("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1", 15);
+	cout << "  Best move: " << r.best_move << " eval: " << r.eval_cp << " cp depth: " << r.depth << endl;
+	EXPECT_FALSE(r.best_move.empty());
+	EXPECT_NE(r.best_move, "");
+
+	auto r2 = sf.analyze("8/8/8/4k3/8/3K4/8/8 w - - 0 1", 15);
+	cout << "  King endgame: " << r2.best_move << " eval: " << r2.eval_cp << endl;
+	EXPECT_FALSE(r2.best_move.empty());
+}
+
+TEST(Puzzle, RewardCalibration) {
+	string sf_path = find_stockfish();
+	if (sf_path.empty()) {
+		cout << "  [SKIP] Stockfish not found" << endl;
+		return;
+	}
+
+	StockfishAdapter sf(sf_path);
+	ASSERT_TRUE(sf.is_available());
+
+	string fen = "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4";
+	auto best = sf.analyze(fen, 20);
+	cout << "  Best move: " << best.best_move << " eval: " << best.eval_cp << " cp" << endl;
+
+	vector<string> test_moves = { best.best_move, "d2d4", "b1c3", "h2h3" };
+	for (auto& mv : test_moves) {
+		auto r = sf.analyze_with_move(fen, mv, 15);
+		cout << "  Move " << mv << " eval: " << r.eval_cp << " cp" << endl;
+	}
+}
+
+static Move sf_uci_to_move(const string& uci) {
+	if (uci.size() < 4) return Move();
+	Move m;
+	m.start_col = uci[0] - 'a';
+	m.start_row = uci[1] - '1';
+	m.end_col = uci[2] - 'a';
+	m.end_row = uci[3] - '1';
+	return m;
+}
+
+static vector<RatedMove> sf_calibrate(StockfishAdapter& sf, const string& fen,
+	PuzzleCategory cat, int max_moves = 5) {
+	auto best = sf.analyze(fen, 20);
+	if (best.best_move.empty()) return {};
+
+	Move m_best = sf_uci_to_move(best.best_move);
+	vector<RatedMove> moves = { {m_best, 1.0} };
+
+	Board tb; tb.from_fen(fen);
+	tb.get_moves();
+	int n = tb._got_moves;
+	for (int i = 0; i < n && (int)moves.size() < max_moves; i++) {
+		Move alt = tb._moves[i];
+		if (alt == m_best) continue;
+		string alt_uci = string(1, (char)('a' + alt.start_col)) + to_string(alt.start_row + 1)
+			+ string(1, (char)('a' + alt.end_col)) + to_string(alt.end_row + 1);
+		auto r = sf.analyze_with_move(fen, alt_uci, 12);
+		double eval_loss = abs((double)best.eval_cp - r.eval_cp);
+		double reward = max(0.05, exp(-eval_loss / 150.0));
+		if (reward > 0.1)
+			moves.push_back({alt, reward});
+	}
+	return moves;
+}
+
+TEST(Puzzle, TacticalSuite) {
+	string sf_path = find_stockfish();
+	StockfishAdapter sf(sf_path);
+	bool has_sf = sf.is_available();
+	if (!has_sf) { cout << "  [SKIP] Stockfish not found" << endl; return; }
+	static Evaluator evaluator;
+
+	struct TC { string fen; PuzzleCategory cat; const char* theme; const char* name; };
+	vector<TC> tests = {
+		{ "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+			PuzzleCategory::TACTIC, "development", "Italian Opening" },
+		{ "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+			PuzzleCategory::TACTIC, "sacrifice", "Zagreb/Fpresso" },
+		{ "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+			PuzzleCategory::TACTIC, "pawn_push", "Rook endgame tactic" },
+		{ "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
+			PuzzleCategory::TACTIC, "sacrifice", "Fried liver" },
+		{ "r2q1rk1/ppp2ppp/2n1bn2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w - - 0 7",
+			PuzzleCategory::TACTIC, "development", "Two knights defense" },
+		{ "r1bqkb1r/ppppnp1p/2n3p1/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4",
+			PuzzleCategory::TACTIC, "sacrifice", "Greek gift" },
+		{ "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",
+			PuzzleCategory::TACTIC, "back_rank", "Back rank mate in 1" },
+		{ "4kb1r/p2n1ppp/4q3/4p1B/4P3/1Q6/6PP/2KR4 w k - 0 1",
+			PuzzleCategory::TACTIC, "sacrifice", "Morphy Opera" },
+		{ "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1",
+			PuzzleCategory::TACTIC, "mating_attack", "WAC.001 Qg6" },
+		{ "8/7p/5k2/5p2/p1p2P2/Pr1pPK2/1P1R3P/8 b - - 0 1",
+			PuzzleCategory::TACTIC, "endgame_tactic", "WAC.002 Rb7" },
+		{ "r3k3/8/4N3/8/8/8/8/4K3 w - - 0 1",
+			PuzzleCategory::TACTIC, "fork", "Royal fork Nc7+" },
+		{ "r1bq1rk1/ppp2ppp/2n2n2/3pp3/2PP4/2N1PN2/PP3PPP/R1BQKB1R w KQ - 0 5",
+			PuzzleCategory::TACTIC, "central_control", "Central break cxd5" },
+		{ "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2BPP3/5N2/PPP2PPP/RNBQK2R w KQkq - 0 4",
+			PuzzleCategory::TACTIC, "center", "Center advance d4" },
+		{ "r2q1rk1/pbpnnpp1/1p2p2p/3P4/2P1P3/2N1BN2/PP2BPPP/R2Q1RK1 w - - 0 10",
+			PuzzleCategory::TACTIC, "pawn_break", "Queenside expansion" },
+		{ "r1bqkb1r/pppppppp/2n2n2/8/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 1 3",
+			PuzzleCategory::TACTIC, "opening", "Scotch/Nimzowitsch" },
+	};
+
+	int solved = 0, total = 0;
+	for (auto& t : tests) {
+		auto moves = sf_calibrate(sf, t.fen, t.cat);
+		if (moves.empty()) { cout << "  [SKIP] " << t.name << endl; continue; }
+		Puzzle p(t.fen, t.cat, t.theme, t.name, moves);
+		total++;
+		auto r = PuzzleRunner::run(p, BudgetMode::NODES, 10000 * test_scale(), &evaluator);
+		cout << "  [" << (r.score >= 0.5 ? "PASS" : "FAIL") << "] " << t.name
+			<< " move=" << r.chosen_move_san << " score=" << fixed << setprecision(3) << r.score
+			<< " eval=" << r.actual_eval_cp << "cp" << endl;
+		if (r.score >= 0.5) solved++;
+	}
+	cout << "  TACTIC: " << solved << "/" << total << endl;
+	EXPECT_GE(solved, 1);
+}
+
+TEST(Puzzle, MateSuite) {
+	string sf_path = find_stockfish();
+	StockfishAdapter sf(sf_path);
+	bool has_sf = sf.is_available();
+	if (!has_sf) { cout << "  [SKIP] Stockfish not found" << endl; return; }
+	static Evaluator evaluator;
+
+	struct TC { string fen; PuzzleCategory cat; const char* theme; const char* name; };
+	vector<TC> tests = {
+		{ "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",
+			PuzzleCategory::TACTIC, "back_rank", "Back rank Ra8#" },
+		{ "r1b2rk1/2q2ppp/p2p4/1p2pP2/4P1Q1/1B6/PP4PP/2KR3R w - - 0 1",
+			PuzzleCategory::TACTIC, "mating_attack", "Qxg7+ mating net" },
+		{ "5r1k/4Q2p/6pB/8/8/8/5PPP/6K1 w - - 0 1",
+			PuzzleCategory::TACTIC, "mating_attack", "Qg7# Arabian" },
+		{ "r3k2r/ppp2ppp/2n5/3q4/3P4/2N5/PPP2PPP/R2QK2R w KQkq - 0 1",
+			PuzzleCategory::TACTIC, "mating_attack", "Bg5 pin/mate threat" },
+		{ "r1b1k2r/ppppqppp/2n2n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQK2R w KQkq - 0 5",
+			PuzzleCategory::TACTIC, "sacrifice", "Bxf7+ sacrifice" },
+		{ "r4rk1/ppp2ppp/2n5/3N4/8/8/PPP2PPP/R3R1K1 w - - 0 1",
+			PuzzleCategory::TACTIC, "fork", "Nf6+ double attack" },
+		{ "r1bq2k1/pppprppp/2n2n2/2b5/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQ - 0 5",
+			PuzzleCategory::TACTIC, "discovered", "Bxf7+ discovered" },
+		{ "r1bqkb1r/pppp1ppp/2n5/4p3/2B1n3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4",
+			PuzzleCategory::TACTIC, "fork", "Nxe5 fork" },
+	};
+
+	int solved = 0, total = 0;
+	for (auto& t : tests) {
+		auto moves = sf_calibrate(sf, t.fen, t.cat);
+		if (moves.empty()) { cout << "  [SKIP] " << t.name << endl; continue; }
+		Puzzle p(t.fen, t.cat, t.theme, t.name, moves);
+		total++;
+		auto r = PuzzleRunner::run(p, BudgetMode::NODES, 10000 * test_scale(), &evaluator);
+		cout << "  [" << (r.score >= 0.5 ? "PASS" : "FAIL") << "] " << t.name
+			<< " move=" << r.chosen_move_san << " score=" << fixed << setprecision(3) << r.score
+			<< " eval=" << r.actual_eval_cp << "cp" << endl;
+		if (r.score >= 0.5) solved++;
+	}
+	cout << "  MATE: " << solved << "/" << total << endl;
+	EXPECT_GE(solved, 1);
+}
+
+TEST(Puzzle, BudgetModes) {
+	static Evaluator evaluator;
+	string fen = "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4";
+
+	vector<Puzzle> puzzles;
+	puzzles.emplace_back(fen, PuzzleCategory::TACTIC, "opening", "Italian e4 or d4",
+		vector<RatedMove>{ {Move(6, 4, 4, 4), 1.0} });
+
+	struct TestCase { BudgetMode mode; double budget; const char* label; };
+	TestCase cases[] = {
+		{ BudgetMode::STATIC_EVAL, 0, "STATIC_EVAL" },
+		{ BudgetMode::NODES, 1000, "NODES 1000" },
+		{ BudgetMode::NODES, 5000, "NODES 5000" },
+		{ BudgetMode::QUIESCENCE_ONLY, 500, "QSEARCH 500" },
+	};
+
+	cout << endl;
+	for (auto& tc : cases) {
+		auto r = PuzzleRunner::run(puzzles[0], tc.mode, tc.budget, &evaluator);
+		cout << "  " << tc.label << ": score=" << fixed << setprecision(3) << r.score
+			<< " move=" << r.chosen_move_san << " eval=" << r.actual_eval_cp << "cp"
+			<< " iters=" << r.iterations << " time=" << fixed << setprecision(3) << r.time_s << "s" << endl;
+	}
+}
+
+TEST(Puzzle, StrategicSuite) {
+	string sf_path = find_stockfish();
+	StockfishAdapter sf(sf_path);
+	bool has_sf = sf.is_available();
+	if (!has_sf) { cout << "  [SKIP] Stockfish not found" << endl; return; }
+	static Evaluator evaluator;
+
+	struct TC { string fen; PuzzleCategory cat; const char* theme; const char* name; };
+	vector<TC> tests = {
+		{ "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+			PuzzleCategory::STRATEGIC, "piece_activity", "Bc4 active bishop" },
+		{ "r1bq1rk1/ppp2ppp/2n1bn2/3pp3/2PP4/2N1PN2/PP3PPP/R1BQKB1R w KQ - 0 5",
+			PuzzleCategory::STRATEGIC, "pawn_structure", "cxd5 pawn tension" },
+		{ "r2q1rk1/pbpnbppp/1p2p3/3P4/2P1P3/2N1BN2/PP2BPPP/R2Q1RK1 w - - 0 8",
+			PuzzleCategory::STRATEGIC, "space", "d5 space grab" },
+		{ "r1bqk2r/pp1pbppp/2n2n2/2p5/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5",
+			PuzzleCategory::STRATEGIC, "outpost", "Nd5 outpost" },
+		{ "r1bqkb1r/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 2 3",
+			PuzzleCategory::STRATEGIC, "development", "Nc3 natural development" },
+		{ "r2qk2r/pb1nbppp/1p2p3/2pp4/2P1P3/2NP1N2/PP2BPPP/R1BQK2R w KQkq - 0 7",
+			PuzzleCategory::STRATEGIC, "pawn_chain", "e4 break vs pawn chain" },
+		{ "r1b1k2r/ppppqppp/2n2n2/2b1p3/2BPP3/5N2/PPP2PPP/RNBQK2R w KQkq - 0 4",
+			PuzzleCategory::STRATEGIC, "centralization", "d4 central push" },
+		{ "r2qk2r/1pp1bppp/p1np1n2/2b1p3/2B1P3/2NP1N2/PPP1QPPP/R1B1K2R w KQkq - 0 6",
+			PuzzleCategory::STRATEGIC, "piece_coordination", "Bd3 improving bishop" },
+	};
+
+	int solved = 0, total = 0;
+	for (auto& t : tests) {
+		auto moves = sf_calibrate(sf, t.fen, t.cat);
+		if (moves.empty()) { cout << "  [SKIP] " << t.name << endl; continue; }
+		Puzzle p(t.fen, t.cat, t.theme, t.name, moves);
+		total++;
+		auto r = PuzzleRunner::run(p, BudgetMode::NODES, 10000 * test_scale(), &evaluator);
+		cout << "  [" << (r.score >= 0.5 ? "PASS" : "FAIL") << "] " << t.name
+			<< " move=" << r.chosen_move_san << " score=" << fixed << setprecision(3) << r.score
+			<< " eval=" << r.actual_eval_cp << "cp" << endl;
+		if (r.score >= 0.5) solved++;
+	}
+	cout << "  STRATEGIC: " << solved << "/" << total << endl;
+	EXPECT_GE(solved, 1);
+}
+
+TEST(Puzzle, DefensiveSuite) {
+	string sf_path = find_stockfish();
+	StockfishAdapter sf(sf_path);
+	bool has_sf = sf.is_available();
+	if (!has_sf) { cout << "  [SKIP] Stockfish not found" << endl; return; }
+	static Evaluator evaluator;
+
+	struct TC { string fen; PuzzleCategory cat; const char* theme; const char* name; };
+	vector<TC> tests = {
+		{ "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+			PuzzleCategory::DEFENSIVE, "solid_development", "Nf3 solid" },
+		{ "r2q1rk1/ppp2ppp/2n1bn2/3pp3/2PP4/2N1PN2/PP3PPP/R1BQKB1R w KQ - 0 5",
+			PuzzleCategory::DEFENSIVE, "structural", "cxd5 maintain structure" },
+		{ "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2BPP3/5N2/PPP2PPP/RNBQK2R w KQkq - 0 4",
+			PuzzleCategory::DEFENSIVE, "counter_play", "d4 counter in center" },
+		{ "r1bqkb1r/pppppppp/2n2n2/8/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 1 3",
+			PuzzleCategory::DEFENSIVE, "king_safety", "Nf3 developing safely" },
+		{ "r2qk2r/pb1n1ppp/1p2p3/2pp4/2P1P3/2NP1N2/PP2BPPP/R1BQK2R w KQkq - 0 7",
+			PuzzleCategory::DEFENSIVE, "positional", "Nf3 flexible" },
+		{ "r1bq1rk1/ppp2ppp/2n2n2/3pp3/2PP4/2N1PN2/PP3PPP/R1BQKB1R w KQ - 0 5",
+			PuzzleCategory::DEFENSIVE, "solid", "cxd5 exchange" },
+		{ "r1bqk2r/ppppnppp/2n5/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 4",
+			PuzzleCategory::DEFENSIVE, "restraint", "Nc3 restraining" },
+		{ "r1bqkb1r/pppp1ppp/2n2n2/4p3/2BPP3/5N2/PPP2PPP/RNBQK2R w KQkq - 0 4",
+			PuzzleCategory::DEFENSIVE, "central_control", "d4 challenging center" },
+	};
+
+	int solved = 0, total = 0;
+	for (auto& t : tests) {
+		auto moves = sf_calibrate(sf, t.fen, t.cat);
+		if (moves.empty()) { cout << "  [SKIP] " << t.name << endl; continue; }
+		Puzzle p(t.fen, t.cat, t.theme, t.name, moves);
+		total++;
+		auto r = PuzzleRunner::run(p, BudgetMode::NODES, 10000 * test_scale(), &evaluator);
+		cout << "  [" << (r.score >= 0.5 ? "PASS" : "FAIL") << "] " << t.name
+			<< " move=" << r.chosen_move_san << " score=" << fixed << setprecision(3) << r.score
+			<< " eval=" << r.actual_eval_cp << "cp" << endl;
+		if (r.score >= 0.5) solved++;
+	}
+	cout << "  DEFENSIVE: " << solved << "/" << total << endl;
+	EXPECT_GE(solved, 1);
+}
+
+TEST(Puzzle, EvaluationSuite) {
+	static Evaluator evaluator;
+
+	auto make_eval = [](const string& fen, const string& theme, const string& name,
+		int eval_cp, pair<int,int> er, double wdl_w, pair<double,double> wr) {
+		Puzzle p;
+		p.fen = fen; p.category = PuzzleCategory::EVALUATION; p.theme = theme; p.name = name;
+		p.is_eval_puzzle = true; p.expected_eval_cp = eval_cp;
+		p.eval_range = er; p.expected_wdl_w = wdl_w; p.wdl_range = wr;
+		return p;
+	};
+
+	vector<Puzzle> puzzles;
+	// Material imbalance: equal opening position
+	puzzles.push_back(make_eval(
+		"r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+		"material", "Equal material opening",
+		20, {-200, 250}, 0.52, {0.38, 0.65}));
+	// Trapped piece: bishop tension
+	puzzles.push_back(make_eval(
+		"r1bqk2r/pppp1ppp/2n2n2/2b1p3/1bB1P3/2NP1N2/PPP2PPP/R1BQK2R w KQkq - 0 5",
+		"trapped", "Trapped bishop tension",
+		-50, {-500, 200}, 0.45, {0.25, 0.65}));
+	// King safety: exposed after Nf7
+	puzzles.push_back(make_eval(
+		"r1bqk2r/pppp1Npp/2n2n2/2b1p3/2B1P3/8/PPPP1PPP/RNBQK2R w KQkq - 0 4",
+		"king_safety", "King exposed after Nf7",
+		100, {-100, 400}, 0.6, {0.42, 0.78}));
+	// Weak squares: pawn tension d4 vs e5
+	puzzles.push_back(make_eval(
+		"r1bq1rk1/ppp2ppp/2n2n2/3pp3/2PP4/2N1PN2/PP3PPP/R1BQKB1R w KQ - 0 5",
+		"weak_squares", "Pawn tension d4 vs e5",
+		10, {-200, 300}, 0.51, {0.35, 0.68}));
+	// Closed position
+	puzzles.push_back(make_eval(
+		"r1bq1rk1/ppp1bppp/2n2n2/3pp3/2PP4/2N1PN2/PP2BPPP/R1BQK2R w KQ - 0 5",
+		"closed", "Closed Sicilian structure",
+		-10, {-200, 200}, 0.49, {0.35, 0.65}));
+	// Winning endgame
+	puzzles.push_back(make_eval(
+		"8/3k4/8/8/4K3/8/8/4R3 w - - 0 1",
+		"winning", "Rook endgame advantage",
+		250, {-50, 600}, 0.8, {0.6, 0.95}));
+	// Drawish position
+	puzzles.push_back(make_eval(
+		"8/8/4k3/8/3K4/8/8/8 w - - 0 1",
+		"drawish", "King opposition draw",
+		0, {-50, 50}, 0.5, {0.38, 0.62}));
+	// Pawn storm
+	puzzles.push_back(make_eval(
+		"r1bq1rk1/pppnnppp/4p3/3pP3/3P4/5N2/PPP2PPP/R1BQKB1R w KQ - 0 6",
+		"pawn_storm", "Kingside pawn advance",
+		30, {-150, 350}, 0.53, {0.38, 0.7}));
+
+	int passed = 0;
+	for (auto& p : puzzles) {
+		auto r = PuzzleRunner::run(p, BudgetMode::STATIC_EVAL, 0, &evaluator);
+		cout << "  [" << (r.score >= 0.5 ? "PASS" : "FAIL") << "] " << p.name
+			<< " score=" << fixed << setprecision(3) << r.score
+			<< " eval=" << r.actual_eval_cp << "cp"
+			<< " wdl_w=" << fixed << setprecision(3) << r.actual_wdl_w << endl;
+		if (r.score >= 0.5) passed++;
+	}
+	cout << "  EVALUATION: " << passed << "/" << puzzles.size() << endl;
+	EXPECT_GE(passed, 4);
+}
+
+TEST(Puzzle, EndgameSuite) {
+	static Evaluator evaluator;
+
+	auto make_eval_puzzle = [](const string& fen, PuzzleCategory cat, const string& theme,
+		const string& name, int eval_cp, pair<int,int> eval_range,
+		double wdl_w, pair<double,double> wdl_range) {
+		Puzzle p;
+		p.fen = fen; p.category = cat; p.theme = theme; p.name = name;
+		p.is_eval_puzzle = true; p.expected_eval_cp = eval_cp;
+		p.eval_range = eval_range; p.expected_wdl_w = wdl_w; p.wdl_range = wdl_range;
+		return p;
+	};
+
+	vector<Puzzle> puzzles;
+	puzzles.push_back(make_eval_puzzle(
+		"8/8/8/4k3/8/3K4/8/8 w - - 0 1",
+		PuzzleCategory::ENDGAME, "king_only", "K vs K draw",
+		0, {-50, 50}, 0.5, {0.35, 0.65}));
+	puzzles.push_back(make_eval_puzzle(
+		"8/5k2/8/8/8/4K3/8/8 w - - 0 1",
+		PuzzleCategory::ENDGAME, "king_only", "K+K draw",
+		0, {-50, 50}, 0.5, {0.35, 0.65}));
+	puzzles.push_back(make_eval_puzzle(
+		"8/8/8/3k4/8/3K4/8/8 w - - 0 1",
+		PuzzleCategory::ENDGAME, "king_only", "Centralized kings",
+		0, {-80, 80}, 0.5, {0.35, 0.65}));
+
+	int passed = 0;
+	for (auto& p : puzzles) {
+		auto r = PuzzleRunner::run(p, BudgetMode::STATIC_EVAL, 0, &evaluator);
+		cout << "  [" << (r.score >= 0.5 ? "PASS" : "FAIL") << "] " << p.name
+			<< " score=" << fixed << setprecision(3) << r.score
+			<< " eval=" << r.actual_eval_cp << "cp"
+			<< " wdl_w=" << fixed << setprecision(3) << r.actual_wdl_w << endl;
+		if (r.score >= 0.5) passed++;
+	}
+	cout << "  ENDGAME: " << passed << "/" << puzzles.size() << endl;
+	EXPECT_GE(passed, 1);
+}
+
+TEST(Puzzle, EvalCategoryReport) {
+	static Evaluator evaluator;
+
+	struct TC { string fen; PuzzleCategory cat; const char* theme; const char* name; int eval_cp; pair<int,int> er; double wdl_w; pair<double,double> wr; };
+	vector<TC> tests = {
+		{ "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+			PuzzleCategory::EVALUATION, "material", "Balanced opening", 20, {-200, 250}, 0.52, {0.38, 0.65}},
+		{ "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",
+			PuzzleCategory::TACTIC, "back_rank", "Back rank mate", 0, {-100, 100}, 0.95, {0.85, 1.0}},
+		{ "8/3k4/8/8/4K3/8/8/4R3 w - - 0 1",
+			PuzzleCategory::ENDGAME, "rook_endgame", "Rook endgame win", 250, {-50, 600}, 0.8, {0.6, 0.95}},
+		{ "r1bq1rk1/ppp2ppp/2n2n2/3pp3/2PP4/2N1PN2/PP3PPP/R1BQKB1R w KQ - 0 5",
+			PuzzleCategory::STRATEGIC, "pawn_structure", "Pawn tension", 10, {-200, 300}, 0.51, {0.35, 0.68}},
+		{ "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+			PuzzleCategory::DEFENSIVE, "solid", "Solid Italian", 20, {-200, 250}, 0.52, {0.38, 0.65}},
+		{ "8/8/4k3/8/3K4/8/8/8 w - - 0 1",
+			PuzzleCategory::ENDGAME, "king_only", "King opposition draw", 0, {-50, 50}, 0.5, {0.38, 0.62}},
+		{ "r1bqk2r/pppp1Npp/2n2n2/2b1p3/2B1P3/8/PPPP1PPP/RNBQK2R w KQkq - 0 4",
+			PuzzleCategory::EVALUATION, "king_safety", "Exposed black king", 100, {-100, 400}, 0.6, {0.42, 0.78}},
+	};
+
+	vector<Puzzle> puzzles;
+	for (auto& t : tests) {
+		Puzzle p;
+		p.fen = t.fen; p.category = t.cat; p.theme = t.theme; p.name = t.name;
+		p.is_eval_puzzle = true; p.expected_eval_cp = t.eval_cp;
+		p.eval_range = t.er; p.expected_wdl_w = t.wdl_w; p.wdl_range = t.wr;
+		puzzles.push_back(p);
+	}
+
+	auto batch = PuzzleRunner::run_batch(puzzles, BudgetMode::STATIC_EVAL, 0, &evaluator);
+
+	cout << endl << "=== CATEGORY REPORT ===" << endl;
+	for (auto& [cat, data] : batch.by_category) {
+		double avg = data.second / data.first;
+		cout << "  " << cat << ": " << fixed << setprecision(3) << avg
+			<< "/1 (" << data.first << " puzzles)" << endl;
+	}
+	cout << "  TOTAL: " << fixed << setprecision(3) << batch.total_score / max(1, batch.total)
+		<< "/1 (" << batch.total << " puzzles)" << endl;
+
+	for (auto& [name, r] : batch.results) {
+		cout << "  " << name << ": score=" << fixed << setprecision(3) << r.score
+			<< " eval=" << r.actual_eval_cp << "cp" << endl;
+	}
+}
+
+static PuzzleCategory auto_categorize(const string& fen) {
+	int wp = 0, bp = 0, wn = 0, bn = 0, wb = 0, bb = 0, wr = 0, br = 0, wq = 0, bq = 0;
+	char side = 'w';
+	bool in_piece = true;
+	for (char c : fen) {
+		if (c == ' ') { in_piece = false; continue; }
+		if (!in_piece) { side = c; break; }
+		if (c == '/') continue;
+		if (c >= '1' && c <= '8') continue;
+		bool is_white = (c >= 'A' && c <= 'Z');
+		char lower = (char)tolower(c);
+		switch (lower) {
+		case 'p': if (is_white) wp++; else bp++; break;
+		case 'n': if (is_white) wn++; else bn++; break;
+		case 'b': if (is_white) wb++; else bb++; break;
+		case 'r': if (is_white) wr++; else br++; break;
+		case 'q': if (is_white) wq++; else bq++; break;
+		}
+	}
+	int total_pieces = wp + bp + wn + bn + wb + bb + wr + br + wq + bq;
+	int total_material = wp + bp + wn * 3 + bn * 3 + wb * 3 + bb * 3 + wr * 5 + br * 5 + wq * 9 + bq * 9;
+
+	if (total_pieces <= 10) return PuzzleCategory::ENDGAME;
+	if (total_material <= 20) return PuzzleCategory::ENDGAME;
+	if (abs(wp - bp) >= 3 || abs(wr - br) >= 2) return PuzzleCategory::TACTIC;
+	if (wn + wb + wr + wq > bn + bb + br + bq + 2) return PuzzleCategory::TACTIC;
+	if (wn + bn >= 4 || wb + bb >= 4) return PuzzleCategory::STRATEGIC;
+	if (wr + br >= 2 && wq + bq == 0) return PuzzleCategory::ENDGAME;
+	return PuzzleCategory::TACTIC;
+}
+
+struct CandidateEntry {
+	string fen;
+	string san;
+	string name;
+};
+
+static vector<CandidateEntry> parse_candidate_file(const string& path) {
+	vector<CandidateEntry> entries;
+	ifstream f(path);
+	if (!f.is_open()) return entries;
+	string line;
+	while (getline(f, line)) {
+		if (line.empty() || line[0] == '#') continue;
+		size_t p1 = line.find('|');
+		size_t p2 = line.find('|', p1 + 1);
+		if (p1 == string::npos || p2 == string::npos) continue;
+		CandidateEntry e;
+		e.fen = line.substr(0, p1);
+		e.san = line.substr(p1 + 1, p2 - p1 - 1);
+		e.name = line.substr(p2 + 1);
+		entries.push_back(e);
+	}
+	return entries;
+}
+
+static vector<string> extract_fens_from_file(const string& path) {
+	vector<string> fens;
+	ifstream f(path);
+	if (!f.is_open()) return fens;
+	string line;
+	while (getline(f, line)) {
+		// Look for FEN pattern: contains 7 slashes and a space followed by w or b
+		size_t pos = 0;
+		while (pos < line.size()) {
+			size_t slash1 = line.find('/', pos);
+			if (slash1 == string::npos) break;
+			// Count 7 slashes
+			size_t p = slash1;
+			int slashes = 1;
+			while (slashes < 7 && p + 1 < line.size()) {
+				p = line.find('/', p + 1);
+				if (p == string::npos) break;
+				slashes++;
+			}
+			if (slashes != 7) { pos = slash1 + 1; continue; }
+			// Find start: walk backwards to find first non-FEN char
+			size_t start = slash1;
+			while (start > 0 && line[start - 1] != ' ' && line[start - 1] != '\t'
+				&& line[start - 1] != '|' && line[start - 1] != '('
+				&& line[start - 1] != '\n' && line[start - 1] != '\r') {
+				start--;
+			}
+			// Find end: after the 7th slash, look for " w " or " b "
+			size_t after_last_slash = p + 1;
+			size_t space_after = line.find(' ', after_last_slash);
+			if (space_after == string::npos || space_after > after_last_slash + 20) {
+				pos = slash1 + 1; continue;
+			}
+			char side = line[space_after + 1];
+			if (side != 'w' && side != 'b') { pos = slash1 + 1; continue; }
+			// Find the rest of the FEN (castling, en passant, halfmove, fullmove)
+			size_t fen_end = space_after;
+			int spaces_after_side = 0;
+			while (fen_end < line.size() && spaces_after_side < 3) {
+				fen_end++;
+				if (fen_end < line.size() && line[fen_end] == ' ') spaces_after_side++;
+			}
+			string fen = line.substr(start, fen_end - start + 1);
+			// Validate: should have exactly 7 slashes
+			int sc = 0;
+			for (char c : fen) if (c == '/') sc++;
+			if (sc == 7) fens.push_back(fen);
+			pos = fen_end + 1;
+		}
+	}
+	return fens;
+}
+
+TEST(Puzzle, CalibratedBatch) {
+	string sf_path = find_stockfish();
+	StockfishAdapter sf(sf_path);
+	bool has_sf = sf.is_available();
+	if (!has_sf) { cout << "  [SKIP] Stockfish not found" << endl; return; }
+	static Evaluator evaluator;
+
+	string cand_path = "tests/puzzle_candidates.txt";
+	auto entries = parse_candidate_file(cand_path);
+	if (entries.empty()) {
+		cand_path = "../tests/puzzle_candidates.txt";
+		entries = parse_candidate_file(cand_path);
+	}
+	if (entries.empty()) {
+		cand_path = "opti_chess/tests/puzzle_candidates.txt";
+		entries = parse_candidate_file(cand_path);
+	}
+	if (entries.empty()) {
+		cand_path = "../opti_chess/tests/puzzle_candidates.txt";
+		entries = parse_candidate_file(cand_path);
+	}
+	if (entries.empty()) { cout << "  [SKIP] puzzle_candidates.txt not found" << endl; return; }
+
+	cout << "  Calibrating " << entries.size() << " positions with Stockfish (depth 12)..." << endl;
+
+	int solved = 0, total = 0, skipped = 0;
+	int by_cat[5] = {}, pass_by_cat[5] = {};
+	map<string, pair<int, double>> by_theme;
+
+	for (auto& e : entries) {
+		auto moves = sf_calibrate(sf, e.fen, PuzzleCategory::TACTIC, 4);
+		if (moves.empty()) { skipped++; continue; }
+
+		PuzzleCategory cat = auto_categorize(e.fen);
+		Puzzle p(e.fen, cat, e.name, e.name, moves);
+		total++;
+
+		auto r = PuzzleRunner::run(p, BudgetMode::NODES, 10000 * test_scale(), &evaluator);
+		bool pass = r.score >= 0.3;
+		if (pass) solved++;
+
+		int ci = (int)cat;
+		by_cat[ci]++;
+		if (pass) pass_by_cat[ci]++;
+
+		string cn = puzzle_category_name(cat);
+		auto& th = by_theme[cn];
+		th.first++;
+		th.second += r.score;
+
+		if (!pass) {
+			cout << "  [FAIL] " << e.name
+				<< " cat=" << cn
+				<< " move=" << r.chosen_move_san
+				<< " score=" << fixed << setprecision(3) << r.score
+				<< " eval=" << r.actual_eval_cp << "cp" << endl;
+		}
+	}
+
+	cout << endl << "=== CALIBRATED BATCH RESULTS ===" << endl;
+	const char* cat_names[] = { "TACTIC", "EVAL", "ENDGAME", "STRATEGIC", "DEFENSIVE" };
+	for (int i = 0; i < 5; i++) {
+		if (by_cat[i] > 0) {
+			cout << "  " << cat_names[i] << ": " << pass_by_cat[i] << "/" << by_cat[i]
+				<< " (avg=" << fixed << setprecision(3)
+				<< (by_theme[cat_names[i]].second / by_theme[cat_names[i]].first) << ")" << endl;
+		}
+	}
+	cout << "  TOTAL: " << solved << "/" << total << " (skipped " << skipped << ")" << endl;
+	EXPECT_GE(solved, total / 2);
+}
+
+TEST(Puzzle, TestsTxtBatch) {
+	string sf_path = find_stockfish();
+	StockfishAdapter sf(sf_path);
+	bool has_sf = sf.is_available();
+	if (!has_sf) { cout << "  [SKIP] Stockfish not found" << endl; return; }
+	static Evaluator evaluator;
+
+	string tests_path = "Tests.txt";
+	auto fens = extract_fens_from_file(tests_path);
+	if (fens.empty()) {
+		tests_path = "../Tests.txt";
+		fens = extract_fens_from_file(tests_path);
+	}
+	if (fens.empty()) {
+		tests_path = "opti_chess/Tests.txt";
+		fens = extract_fens_from_file(tests_path);
+	}
+	if (fens.empty()) {
+		tests_path = "../opti_chess/Tests.txt";
+		fens = extract_fens_from_file(tests_path);
+	}
+	if (fens.empty()) { cout << "  [SKIP] Tests.txt not found" << endl; return; }
+
+	// Deduplicate
+	sort(fens.begin(), fens.end());
+	fens.erase(unique(fens.begin(), fens.end()), fens.end());
+
+	// Sample up to 200 positions (take every Nth)
+	int step = max(1, (int)fens.size() / 200);
+	vector<string> sampled;
+	for (size_t i = 0; i < fens.size() && (int)sampled.size() < 200; i += step) {
+		sampled.push_back(fens[i]);
+	}
+
+	cout << "  Processing " << sampled.size() << " unique FENs from Tests.txt (depth 10)..." << endl;
+
+	int solved = 0, total = 0, skipped = 0;
+	int by_cat[5] = {}, pass_by_cat[5] = {};
+
+	for (auto& fen : sampled) {
+		auto moves = sf_calibrate(sf, fen, PuzzleCategory::TACTIC, 3);
+		if (moves.empty()) { skipped++; continue; }
+
+		PuzzleCategory cat = auto_categorize(fen);
+		string name = "TestsTxt_" + to_string(total);
+		Puzzle p(fen, cat, "tests_txt", name, moves);
+		total++;
+
+		auto r = PuzzleRunner::run(p, BudgetMode::NODES, 10000 * test_scale(), &evaluator);
+		bool pass = r.score >= 0.3;
+		if (pass) solved++;
+
+		int ci = (int)cat;
+		by_cat[ci]++;
+		if (pass) pass_by_cat[ci]++;
+
+		if (!pass && total <= 30) {
+			cout << "  [FAIL] #" << total
+				<< " cat=" << puzzle_category_name(cat)
+				<< " move=" << r.chosen_move_san
+				<< " score=" << fixed << setprecision(3) << r.score
+				<< " eval=" << r.actual_eval_cp << "cp" << endl;
+		}
+	}
+
+	cout << endl << "=== TESTSTXT BATCH RESULTS ===" << endl;
+	const char* cat_names[] = { "TACTIC", "EVAL", "ENDGAME", "STRATEGIC", "DEFENSIVE" };
+	for (int i = 0; i < 5; i++) {
+		if (by_cat[i] > 0) {
+			cout << "  " << cat_names[i] << ": " << pass_by_cat[i] << "/" << by_cat[i] << endl;
+		}
+	}
+	cout << "  TOTAL: " << solved << "/" << total << " (skipped " << skipped << ")" << endl;
+	EXPECT_GE(solved, total / 3);
+}
+
+// ============================================================================
+// Scaling benchmark: score at each budget level (1K, 2K, 5K, 10K)
+// Reports per-category and total. Pass threshold: at least one budget > 0%.
+// ============================================================================
+TEST(Puzzle, ScalingBenchmark) {
+	string sf_path = find_stockfish();
+	StockfishAdapter sf(sf_path);
+	bool has_sf = sf.is_available();
+	if (!has_sf) { cout << "  [SKIP] Stockfish not found" << endl; return; }
+	static Evaluator evaluator;
+
+	string cand_path = "tests/puzzle_candidates.txt";
+	auto entries = parse_candidate_file(cand_path);
+	if (entries.empty()) {
+		cand_path = "../tests/puzzle_candidates.txt";
+		entries = parse_candidate_file(cand_path);
+	}
+	if (entries.empty()) {
+		cand_path = "opti_chess/tests/puzzle_candidates.txt";
+		entries = parse_candidate_file(cand_path);
+	}
+	if (entries.empty()) {
+		cand_path = "../opti_chess/tests/puzzle_candidates.txt";
+		entries = parse_candidate_file(cand_path);
+	}
+	if (entries.empty()) { cout << "  [SKIP] puzzle_candidates.txt not found" << endl; return; }
+
+	const int budgets[] = { 1000, 2000, 5000, 10000 };
+	const int n_budgets = 4;
+
+	cout << "  Calibrating " << entries.size() << " positions with Stockfish (depth 12)..." << endl;
+
+	// Build puzzles
+	vector<Puzzle> puzzles;
+	for (auto& e : entries) {
+		auto moves = sf_calibrate(sf, e.fen, PuzzleCategory::TACTIC, 4);
+		if (moves.empty()) continue;
+		PuzzleCategory cat = auto_categorize(e.fen);
+		puzzles.push_back(Puzzle(e.fen, cat, e.name, e.name, moves));
+	}
+
+	cout << "  Running " << puzzles.size() << " puzzles at " << n_budgets << " budget levels..." << endl;
+
+	// Per-budget, per-category results: [budget_idx][cat] = {solved, total}
+	int cat_results[n_budgets][5][2] = {};
+
+	for (int bi = 0; bi < n_budgets; bi++) {
+		int budget = budgets[bi];
+		for (const auto& p : puzzles) {
+			auto r = PuzzleRunner::run(p, BudgetMode::NODES, budget, &evaluator, 10, 0.005);
+			bool pass = r.score >= 0.3;
+			int ci = (int)p.category;
+			cat_results[bi][ci][1]++;
+			if (pass) cat_results[bi][ci][0]++;
+		}
+	}
+
+	// Print report
+	const char* cat_names[] = { "TACTIC", "EVAL", "ENDGAME", "STRATEGIC", "DEFENSIVE" };
+	cout << endl << "=== NODE SCALING BENCHMARK ===" << endl;
+	cout << setw(8) << "Budget";
+	for (int c = 0; c < 5; c++) {
+		cout << setw(12) << cat_names[c];
+	}
+	cout << setw(10) << "TOTAL" << endl;
+
+	int max_total_solved = 0;
+	for (int bi = 0; bi < n_budgets; bi++) {
+		cout << setw(8) << budgets[bi];
+		int total_solved = 0, total_all = 0;
+		for (int c = 0; c < 5; c++) {
+			int s = cat_results[bi][c][0];
+			int t = cat_results[bi][c][1];
+			total_solved += s;
+			total_all += t;
+			if (t > 0)
+				cout << setw(6) << s << "/" << t;
+			else
+				cout << setw(12) << "-";
+		}
+		double pct = total_all > 0 ? 100.0 * total_solved / total_all : 0;
+		cout << setw(4) << total_solved << "/" << total_all
+			<< " (" << fixed << setprecision(1) << pct << "%)" << endl;
+		if (total_solved > max_total_solved) max_total_solved = total_solved;
+	}
+
+	EXPECT_GT(max_total_solved, 0);
+}
+
+// ============================================================================
+// Beta/Gamma sweep: test multiple parameter combos at fixed alpha=0.005
+// ============================================================================
+TEST(Puzzle, ParamSweep) {
+	string sf_path = find_stockfish();
+	StockfishAdapter sf(sf_path);
+	bool has_sf = sf.is_available();
+	if (!has_sf) { cout << "  [SKIP] Stockfish not found" << endl; return; }
+	static Evaluator evaluator;
+
+	string cand_path = "tests/puzzle_candidates.txt";
+	auto entries = parse_candidate_file(cand_path);
+	if (entries.empty()) {
+		cand_path = "../tests/puzzle_candidates.txt";
+		entries = parse_candidate_file(cand_path);
+	}
+	if (entries.empty()) {
+		cand_path = "opti_chess/tests/puzzle_candidates.txt";
+		entries = parse_candidate_file(cand_path);
+	}
+	if (entries.empty()) {
+		cand_path = "../opti_chess/tests/puzzle_candidates.txt";
+		entries = parse_candidate_file(cand_path);
+	}
+	if (entries.empty()) { cout << "  [SKIP] puzzle_candidates.txt not found" << endl; return; }
+
+	// Build puzzles (calibrate once)
+	cout << "  Calibrating " << entries.size() << " positions..." << endl;
+	vector<Puzzle> puzzles;
+	for (auto& e : entries) {
+		auto moves = sf_calibrate(sf, e.fen, PuzzleCategory::TACTIC, 4);
+		if (moves.empty()) continue;
+		PuzzleCategory cat = auto_categorize(e.fen);
+		puzzles.push_back(Puzzle(e.fen, cat, e.name, e.name, moves));
+	}
+	cout << "  Running " << puzzles.size() << " puzzles across parameter combos..." << endl;
+
+	// Parameter combos to test: {alpha, beta, gamma}
+	struct Params { double alpha; double beta; double gamma; const char* label; };
+	Params combos[] = {
+		{ 0.005, 5.0, 1.10, "a=5e-3 b=5.0 g=1.10 (baseline)" },
+		{ 0.005, 2.5, 1.10, "a=5e-3 b=2.5 g=1.10 (low beta)" },
+		{ 0.005, 3.5, 1.00, "a=5e-3 b=3.5 g=1.00 (mid)" },
+		{ 0.005, 5.0, 0.90, "a=5e-3 b=5.0 g=0.90 (exploit)" },
+		{ 0.005, 2.5, 0.90, "a=5e-3 b=2.5 g=0.90 (low b+exploit)" },
+		{ 0.00001, 5.0, 1.10, "a=1e-5 b=5.0 g=1.10 (GUI default)" },
+	};
+
+	const int budget = 5000;
+	cout << endl << "=== PARAMETER SWEEP (5K nodes) ===" << endl;
+	cout << setw(36) << "Parameters" << setw(8) << "TACTIC" << setw(8) << "ENDGAME" << setw(10) << "STRATEGIC" << setw(8) << "TOTAL" << endl;
+
+	for (auto& c : combos) {
+		int cat_results[5][2] = {};
+		for (const auto& p : puzzles) {
+			auto r = PuzzleRunner::run(p, BudgetMode::NODES, budget, &evaluator, 10, c.alpha, c.beta, c.gamma);
+			bool pass = r.score >= 0.3;
+			int ci = (int)p.category;
+			cat_results[ci][1]++;
+			if (pass) cat_results[ci][0]++;
+		}
+		int total_solved = 0, total_all = 0;
+		for (int ci = 0; ci < 5; ci++) { total_solved += cat_results[ci][0]; total_all += cat_results[ci][1]; }
+		cout << setw(36) << c.label
+			<< setw(4) << cat_results[0][0] << "/" << cat_results[0][1]
+			<< setw(4) << cat_results[2][0] << "/" << cat_results[2][1]
+			<< setw(5) << cat_results[3][0] << "/" << cat_results[3][1]
+			<< setw(4) << total_solved << "/" << total_all
+			<< " (" << fixed << setprecision(1) << (total_all > 0 ? 100.0 * total_solved / total_all : 0) << "%)" << endl;
+	}
+	EXPECT_GT(puzzles.size(), 0);
+}
+
+// ============================================================================
+// Time-based benchmark: 0.1s, 0.25s, 0.5s, 1s, 2s, 3s per puzzle
+// Reports per-category and total.
+// ============================================================================
+TEST(Puzzle, TimeBenchmark) {
+	string sf_path = find_stockfish();
+	StockfishAdapter sf(sf_path);
+	bool has_sf = sf.is_available();
+	if (!has_sf) { cout << "  [SKIP] Stockfish not found" << endl; return; }
+	static Evaluator evaluator;
+
+	string cand_path = "tests/puzzle_candidates.txt";
+	auto entries = parse_candidate_file(cand_path);
+	if (entries.empty()) {
+		cand_path = "../tests/puzzle_candidates.txt";
+		entries = parse_candidate_file(cand_path);
+	}
+	if (entries.empty()) {
+		cand_path = "opti_chess/tests/puzzle_candidates.txt";
+		entries = parse_candidate_file(cand_path);
+	}
+	if (entries.empty()) {
+		cand_path = "../opti_chess/tests/puzzle_candidates.txt";
+		entries = parse_candidate_file(cand_path);
+	}
+	if (entries.empty()) { cout << "  [SKIP] puzzle_candidates.txt not found" << endl; return; }
+
+	const double time_budgets[] = { 0.1, 0.25, 0.5, 1.0, 2.0, 3.0 };
+	const int n_budgets = 6;
+
+	cout << "  Calibrating " << entries.size() << " positions with Stockfish (depth 12)..." << endl;
+
+	// Build puzzles
+	vector<Puzzle> puzzles;
+	for (auto& e : entries) {
+		auto moves = sf_calibrate(sf, e.fen, PuzzleCategory::TACTIC, 4);
+		if (moves.empty()) continue;
+		PuzzleCategory cat = auto_categorize(e.fen);
+		puzzles.push_back(Puzzle(e.fen, cat, e.name, e.name, moves));
+	}
+
+	cout << "  Running " << puzzles.size() << " puzzles at " << n_budgets << " time budgets..." << endl;
+
+	// Per-budget, per-category results
+	int cat_results[n_budgets][5][2] = {};
+	double avg_time[n_budgets] = {};
+
+	for (int bi = 0; bi < n_budgets; bi++) {
+		double budget = time_budgets[bi];
+		double total_time = 0;
+		for (const auto& p : puzzles) {
+			auto r = PuzzleRunner::run(p, BudgetMode::TIME, budget, &evaluator, 10, 0.005);
+			bool pass = r.score >= 0.3;
+			int ci = (int)p.category;
+			cat_results[bi][ci][1]++;
+			if (pass) cat_results[bi][ci][0]++;
+			total_time += r.time_s;
+		}
+		avg_time[bi] = puzzles.size() > 0 ? total_time / puzzles.size() : 0;
+	}
+
+	// Print report
+	const char* cat_names[] = { "TACTIC", "EVAL", "ENDGAME", "STRATEGIC", "DEFENSIVE" };
+	cout << endl << "=== TIME BENCHMARK ===" << endl;
+	cout << setw(10) << "Budget";
+	for (int c = 0; c < 5; c++) {
+		cout << setw(12) << cat_names[c];
+	}
+	cout << setw(16) << "TOTAL" << setw(10) << "AvgTime" << endl;
+
+	int max_total_solved = 0;
+	for (int bi = 0; bi < n_budgets; bi++) {
+		cout << setw(8) << fixed << setprecision(2) << time_budgets[bi] << "s";
+		int total_solved = 0, total_all = 0;
+		for (int c = 0; c < 5; c++) {
+			int s = cat_results[bi][c][0];
+			int t = cat_results[bi][c][1];
+			total_solved += s;
+			total_all += t;
+			if (t > 0)
+				cout << setw(6) << s << "/" << t;
+			else
+				cout << setw(12) << "-";
+		}
+		double pct = total_all > 0 ? 100.0 * total_solved / total_all : 0;
+		cout << setw(4) << total_solved << "/" << total_all
+			<< " (" << fixed << setprecision(1) << pct << "%)"
+			<< setw(8) << fixed << setprecision(2) << avg_time[bi] << "s" << endl;
+		if (total_solved > max_total_solved) max_total_solved = total_solved;
+	}
+
+	EXPECT_GT(max_total_solved, 0);
 }
