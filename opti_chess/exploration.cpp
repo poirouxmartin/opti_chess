@@ -2297,8 +2297,8 @@ int Node::minimal_quiescence(Evaluator* eval, int depth, double search_alpha, do
 		// Move
 		const Move move = _board->_moves[i];
 
-		// Captures, checks and promotions are explored
-		if (move.is_capture() || move.is_promotion() || move.is_checkmate()) {
+		// Captures, checks, promotions, and quiet evasions when in check are explored
+		if (in_check || move.is_capture() || move.is_promotion() || move.is_checkmate()) {
 
 			// Delta pruning, disabled here
 			//constexpr int delta = 250;
