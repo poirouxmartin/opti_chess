@@ -21,6 +21,14 @@ extern bool g_search_value_propagation;
 extern bool g_search_trust_prior;
 extern bool g_search_avg_cap;
 
+// Adaptive quiescence depth: reduce depth for moves that look bad statically.
+// Runtime toggle via OPTI_ADAPTIVE env var (default: OFF for baseline comparison).
+extern bool g_adaptive_quiescence;
+
+// Selective deepening: reduce depth for later-discovered moves.
+// Runtime toggle via OPTI_SELECTIVE env var (default: OFF).
+extern bool g_selective_deepening;
+
 class Node;
 
 struct ChildLink {

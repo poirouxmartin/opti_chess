@@ -4210,6 +4210,7 @@ TEST(Puzzle, LichessBenchmark2000) {
 	string line;
 	int total = 0, solved = 0, unresolved = 0;
 	double total_score = 0.0;
+	long long total_nodes = 0;
 	map<string, pair<int, int>> by_theme; // theme -> {solved, total}
 
 	auto t_start = chrono::steady_clock::now();
@@ -4260,6 +4261,7 @@ TEST(Puzzle, LichessBenchmark2000) {
 		bool pass = r.score >= 0.5;
 		if (pass) solved++;
 		total_score += r.score;
+		total_nodes += r.total_nodes;
 
 		auto& th = by_theme[theme];
 		th.first++;
@@ -4278,6 +4280,7 @@ TEST(Puzzle, LichessBenchmark2000) {
 	cout << "  Total:     " << solved << "/" << total
 		<< " (" << fixed << setprecision(1) << (total > 0 ? 100.0 * solved / total : 0) << "%)" << endl;
 	cout << "  Avg score: " << fixed << setprecision(3) << (total > 0 ? total_score / total : 0) << endl;
+	cout << "  Avg nodes: " << fixed << setprecision(0) << (total > 0 ? (double)total_nodes / total : 0) << endl;
 	cout << "  Wall time: " << fixed << setprecision(1) << wall_time << "s"
 		<< " (" << fixed << setprecision(1) << (total > 0 ? wall_time / total * 1000 : 0) << " ms/puzzle)" << endl;
 	cout << "  Unresolved: " << unresolved << endl;
@@ -4293,6 +4296,188 @@ TEST(Puzzle, LichessBenchmark2000) {
 			<< setw(6) << right << counts.second << "/" << counts.first
 			<< " (" << fixed << setprecision(1) << pct << "%)" << endl;
 	}
+
+	EXPECT_GT(solved, 0);
+}
+
+// ============================================================================
+// PuzzleDiagnostic: run puzzles and dump per-move stats for baseline vs adaptive
+// comparison. Outputs structured logs showing node distribution, evaluations,
+// and which moves got explored how much.
+// Env vars: OPTI_PUZZLE_TIME (default 0.1s), OPTI_PUZZLE_MAX (default 50)
+// Output: structured per-puzzle logs to stdout
+// ============================================================================
+
+TEST(Puzzle, PuzzleDiagnostic) {
+	static Evaluator evaluator;
+
+	string path = "tests/lichess_2000.txt";
+	ifstream f(path);
+	if (!f.is_open()) { path = "../tests/lichess_2000.txt"; f.open(path); }
+	if (!f.is_open()) { path = "../../tests/lichess_2000.txt"; f.open(path); }
+	if (!f.is_open()) { path = "../../../tests/lichess_2000.txt"; f.open(path); }
+	if (!f.is_open()) { path = "opti_chess/tests/lichess_2000.txt"; f.open(path); }
+	if (!f.is_open()) { path = "../opti_chess/tests/lichess_2000.txt"; f.open(path); }
+	ASSERT_TRUE(f.is_open()) << "lichess_2000.txt not found";
+
+	const char* time_env = getenv("OPTI_PUZZLE_TIME");
+	double budget_s = time_env ? atof(time_env) : 0.1;
+
+	const char* max_env = getenv("OPTI_PUZZLE_MAX");
+	int max_puzzles = max_env ? atoi(max_env) : 50;
+
+	const char* mode_str = getenv("OPTI_ADAPTIVE") ? (getenv("OPTI_SELECTIVE") ? "HYBRID" : "ADAPTIVE") : getenv("OPTI_SELECTIVE") ? "SELECTIVE" : "BASELINE";
+	cout << "=== PUZZLE DIAGNOSTIC (" << mode_str << ", " << budget_s << "s/puzzle, max=" << max_puzzles << ") ===" << endl;
+
+	string line;
+	int total = 0, solved = 0, unresolved = 0;
+	long long total_nodes = 0;
+	int total_children = 0;
+	// Aggregate stats
+	long long nodes_on_best = 0, nodes_on_expected = 0, nodes_on_other = 0;
+	int count_best_is_expected = 0, count_best_is_not_expected = 0;
+
+	while (getline(f, line)) {
+		if (line.empty() || line[0] == '#') continue;
+		if (total >= max_puzzles) break;
+
+		size_t p1 = line.find('|');
+		size_t p2 = line.find('|', p1 + 1);
+		if (p1 == string::npos || p2 == string::npos) continue;
+
+		string fen = line.substr(0, p1);
+		string san = line.substr(p1 + 1, p2 - p1 - 1);
+		string rest = line.substr(p2 + 1);
+
+		string name, theme;
+		size_t p3 = rest.find('|');
+		if (p3 != string::npos) {
+			name = rest.substr(0, p3);
+			theme = rest.substr(p3 + 1);
+		} else {
+			name = rest;
+			theme = "unknown";
+		}
+
+		Board resolve_b;
+		resolve_b.from_fen(fen);
+		Move expected = resolve_san(resolve_b, san.c_str());
+		if (expected.start_row == -1) { unresolved++; continue; }
+		total++;
+
+		// Run engine (replicate PuzzleRunner logic)
+		monte_node_buffer.init(500000, false);
+		monte_board_buffer.init(500000, false);
+		monte_node_buffer.reset();
+		monte_board_buffer.reset();
+		node_map.clear();
+		transposition_table.clear();
+
+		Board b;
+		b.from_fen(fen);
+		Node root(&b);
+
+		clock_t begin = clock();
+		while ((double)(clock() - begin) / CLOCKS_PER_SEC < budget_s) {
+			root.grogros_zero(&monte_board_buffer, &evaluator, 0.00001, 5.0, 1.10, 1, 10, nullptr, nullptr, 0);
+		}
+
+		Move chosen = root.get_most_explored_child_move();
+		bool pass = (chosen == expected);
+		if (pass) solved++;
+		total_nodes += root.get_total_nodes();
+
+		Board label_b;
+		label_b.from_fen(fen);
+		string chosen_san = label_b.move_label(chosen);
+		string expected_san = label_b.move_label(expected);
+
+		// Collect per-child stats
+		struct ChildStats {
+			string san;
+			int chosen_iters;
+			int propagated_nodes;
+			int static_eval;
+			int deep_eval;
+			bool terminal;
+			bool is_expected;
+		};
+		vector<ChildStats> kids;
+		for (auto const& [mv, cl] : root._children) {
+			if (cl._node == nullptr) continue;
+			ChildStats cs;
+			cs.san = label_b.move_label(mv);
+			cs.chosen_iters = cl._chosen_iterations;
+			cs.propagated_nodes = cl._propagated_nodes;
+			cs.static_eval = cl._node->_static_evaluation._value;
+			cs.deep_eval = cl._node->_deep_evaluation._value;
+			cs.terminal = cl._node->_is_terminal;
+			cs.is_expected = (mv == expected);
+			kids.push_back(cs);
+		}
+		sort(kids.begin(), kids.end(), [](const ChildStats& a, const ChildStats& b) {
+			return a.chosen_iters > b.chosen_iters;
+		});
+
+		// Aggregate node distribution
+		for (auto& cs : kids) {
+			total_children++;
+			if (cs.is_expected) {
+				nodes_on_expected += cs.propagated_nodes;
+			} else {
+				nodes_on_other += cs.propagated_nodes;
+			}
+			if (cs.san == chosen_san && cs.is_expected) {
+				count_best_is_expected++;
+				nodes_on_best += cs.propagated_nodes;
+			} else if (cs.san == chosen_san) {
+				count_best_is_not_expected++;
+				nodes_on_best += cs.propagated_nodes;
+			}
+		}
+
+		// Log puzzle
+		cout << "PUZZLE " << name << " " << theme << endl;
+		cout << "  FEN=" << fen << endl;
+		cout << "  EXPECTED=" << expected_san << " CHOSEN=" << chosen_san
+			 << " PASS=" << (pass ? 1 : 0)
+			 << " NODES=" << root.get_total_nodes()
+			 << " ITERS=" << root._iterations
+			 << " STATIC=" << root._static_evaluation._value << endl;
+		cout << "  CHILDREN (" << kids.size() << "):" << endl;
+		for (size_t i = 0; i < kids.size(); ++i) {
+			auto& cs = kids[i];
+			cout << "    " << (i == 0 ? "*" : " ")
+				 << cs.san
+				 << " iters=" << cs.chosen_iters
+				 << " nodes=" << cs.propagated_nodes
+				 << " static=" << cs.static_eval
+				 << " deep=" << cs.deep_eval
+				 << (cs.terminal ? " TERM" : "")
+				 << (cs.is_expected ? " EXPECTED" : "")
+				 << (cs.san == chosen_san ? " CHOSEN" : "")
+				 << endl;
+		}
+		cout << "END" << endl << endl;
+
+		monte_node_buffer.remove();
+		monte_board_buffer.remove();
+	}
+
+	cout << endl << "=== SUMMARY (" << mode_str << ") ===" << endl;
+	cout << "  Solved: " << solved << "/" << total
+		 << " (" << fixed << setprecision(1) << (total > 0 ? 100.0 * solved / total : 0) << "%)" << endl;
+	cout << "  Avg nodes: " << (total > 0 ? total_nodes / total : 0) << endl;
+	cout << "  Avg children/puzzle: " << (total > 0 ? total_children / total : 0) << endl;
+	cout << "  Best move == expected: " << count_best_is_expected << " times" << endl;
+	cout << "  Best move != expected: " << count_best_is_not_expected << " times" << endl;
+	cout << "  Nodes on best move: " << nodes_on_best << " / " << total_nodes
+		 << " (" << fixed << setprecision(1) << (total_nodes > 0 ? 100.0 * nodes_on_best / total_nodes : 0) << "%)" << endl;
+	cout << "  Nodes on expected move: " << nodes_on_expected << " / " << total_nodes
+		 << " (" << fixed << setprecision(1) << (total_nodes > 0 ? 100.0 * nodes_on_expected / total_nodes : 0) << "%)" << endl;
+	cout << "  Nodes on other moves: " << nodes_on_other << " / " << total_nodes
+		 << " (" << fixed << setprecision(1) << (total_nodes > 0 ? 100.0 * nodes_on_other / total_nodes : 0) << "%)" << endl;
+	cout << "  Unresolved: " << unresolved << endl;
 
 	EXPECT_GT(solved, 0);
 }
