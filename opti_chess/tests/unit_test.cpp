@@ -4193,6 +4193,8 @@ TEST(Puzzle, LichessBenchmark2000) {
 	string path = "tests/lichess_2000.txt";
 	ifstream f(path);
 	if (!f.is_open()) { path = "../tests/lichess_2000.txt"; f.open(path); }
+	if (!f.is_open()) { path = "../../tests/lichess_2000.txt"; f.open(path); }
+	if (!f.is_open()) { path = "../../../tests/lichess_2000.txt"; f.open(path); }
 	if (!f.is_open()) { path = "opti_chess/tests/lichess_2000.txt"; f.open(path); }
 	if (!f.is_open()) { path = "../opti_chess/tests/lichess_2000.txt"; f.open(path); }
 	ASSERT_TRUE(f.is_open()) << "lichess_2000.txt not found";
@@ -4281,6 +4283,116 @@ TEST(Puzzle, LichessBenchmark2000) {
 	cout << "  Unresolved: " << unresolved << endl;
 
 	// Per-theme breakdown
+	cout << endl << "  Per-theme:" << endl;
+	vector<pair<string, pair<int, int>>> sorted_themes(by_theme.begin(), by_theme.end());
+	sort(sorted_themes.begin(), sorted_themes.end(),
+		[](const auto& a, const auto& b) { return a.second.first > b.second.first; });
+	for (const auto& [th, counts] : sorted_themes) {
+		double pct = counts.first > 0 ? 100.0 * counts.second / counts.first : 0;
+		cout << "    " << setw(20) << left << th
+			<< setw(6) << right << counts.second << "/" << counts.first
+			<< " (" << fixed << setprecision(1) << pct << "%)" << endl;
+	}
+
+	EXPECT_GT(solved, 0);
+}
+
+// ============================================================================
+// LichessBenchmark5000: run 5000 puzzles from Lichess DB at fixed time budget
+// Env vars: OPTI_PUZZLE_TIME (default 0.1s per puzzle), OPTI_PUZZLE_MAX (default 5000)
+// ============================================================================
+
+TEST(Puzzle, LichessBenchmark5000) {
+	static Evaluator evaluator;
+
+	// Try multiple paths
+	string path = "tests/lichess_5000.txt";
+	ifstream f(path);
+	if (!f.is_open()) { path = "../tests/lichess_5000.txt"; f.open(path); }
+	if (!f.is_open()) { path = "../../tests/lichess_5000.txt"; f.open(path); }
+	if (!f.is_open()) { path = "../../../tests/lichess_5000.txt"; f.open(path); }
+	if (!f.is_open()) { path = "opti_chess/tests/lichess_5000.txt"; f.open(path); }
+	if (!f.is_open()) { path = "../opti_chess/tests/lichess_5000.txt"; f.open(path); }
+	ASSERT_TRUE(f.is_open()) << "lichess_5000.txt not found";
+
+	// Budget: time per puzzle in seconds
+	const char* time_env = getenv("OPTI_PUZZLE_TIME");
+	double budget_s = time_env ? atof(time_env) : 0.1;
+
+	// Max puzzles
+	const char* max_env = getenv("OPTI_PUZZLE_MAX");
+	int max_puzzles = max_env ? atoi(max_env) : 5000;
+
+	string line;
+	int total = 0, solved = 0, unresolved = 0;
+	double total_score = 0.0;
+	map<string, pair<int, int>> by_theme;
+
+	auto t_start = chrono::steady_clock::now();
+
+	while (getline(f, line)) {
+		if (line.empty() || line[0] == '#') continue;
+		if (total >= max_puzzles) break;
+
+		size_t p1 = line.find('|');
+		size_t p2 = line.find('|', p1 + 1);
+		if (p1 == string::npos || p2 == string::npos) continue;
+
+		string fen = line.substr(0, p1);
+		string san = line.substr(p1 + 1, p2 - p1 - 1);
+		string rest = line.substr(p2 + 1);
+
+		string name, theme;
+		size_t p3 = rest.find('|');
+		if (p3 != string::npos) {
+			name = rest.substr(0, p3);
+			theme = rest.substr(p3 + 1);
+		} else {
+			name = rest;
+			theme = "unknown";
+		}
+
+		total++;
+
+		Board resolve_b;
+		resolve_b.from_fen(fen);
+		Move expected = resolve_san(resolve_b, san.c_str());
+		if (expected.start_row == -1) {
+			unresolved++;
+			continue;
+		}
+
+		vector<RatedMove> moves = { { expected, 1.0 } };
+		Puzzle p(fen, PuzzleCategory::TACTIC, name, name, moves);
+
+		transposition_table.clear();
+		auto r = PuzzleRunner::run(p, BudgetMode::TIME, budget_s, &evaluator);
+
+		bool pass = r.score >= 0.5;
+		if (pass) solved++;
+		total_score += r.score;
+
+		auto& th = by_theme[theme];
+		th.first++;
+		if (pass) th.second++;
+
+		if (total % 500 == 0) {
+			cout << "  [" << total << "/" << max_puzzles << "] solved=" << solved
+				<< " avg_score=" << fixed << setprecision(3) << (total_score / total) << endl;
+		}
+	}
+
+	auto t_end = chrono::steady_clock::now();
+	double wall_time = chrono::duration<double>(t_end - t_start).count();
+
+	cout << endl << "=== LICHESS BENCHMARK 5000 (" << budget_s << "s/puzzle) ===" << endl;
+	cout << "  Total:     " << solved << "/" << total
+		<< " (" << fixed << setprecision(1) << (total > 0 ? 100.0 * solved / total : 0) << "%)" << endl;
+	cout << "  Avg score: " << fixed << setprecision(3) << (total > 0 ? total_score / total : 0) << endl;
+	cout << "  Wall time: " << fixed << setprecision(1) << wall_time << "s"
+		<< " (" << fixed << setprecision(1) << (total > 0 ? wall_time / total * 1000 : 0) << " ms/puzzle)" << endl;
+	cout << "  Unresolved: " << unresolved << endl;
+
 	cout << endl << "  Per-theme:" << endl;
 	vector<pair<string, pair<int, int>>> sorted_themes(by_theme.begin(), by_theme.end());
 	sort(sorted_themes.begin(), sorted_themes.end(),
