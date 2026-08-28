@@ -129,6 +129,38 @@
 
 ---
 
+## Algorithm audit (2026-08-28)
+
+### H1 — LMR in quiescence captures (FIXED)
+- **File**: `exploration_diag.cpp:1619`, `exploration.cpp`
+- **Bug**: Captures in quiescence were reduced by `move_index*2`. Third capture skipped (depth=3 → new_depth=-1).
+- **Fix**: Removed LMR from quiescence. Only non-capture non-check moves get gentle reduction.
+
+### H2 — Evaluation::operator> strict weak ordering (FIXED)
+- **File**: `board.h:527-544`
+- **Bug**: `a > b` and `b > a` both returned `true` when either operand unevaluated. Undefined behavior in STL.
+- **Fix**: Both `>` and `<` return `false` when either operand is unevaluated. Call sites updated to check `_evaluated` explicitly.
+
+### H3 — minimal_quiescence misses quiet check evasions (FIXED)
+- **File**: `exploration_diag.cpp:2344`, `exploration.cpp`
+- **Bug**: When in check, only captures/promotions/checkmates were searched. Quiet evasions (king sidestep, blocking) missed.
+- **Fix**: Added `in_check ||` to the move filter condition.
+
+### M1 — stand-pat mid-loop maxima mutation (ACCEPTED)
+- **File**: `exploration_diag.cpp:1998-2010`
+- **Status**: Reverted after testing. Pre-computing maxima changed scores for ALL children, causing TacticalSuite regression. The incremental mutation is slightly inconsistent but harmless in practice.
+
+### M2 — switch_trait() in-check (NOT A BUG)
+- `_player_in_check = false` in `switch_trait()` is immediately overwritten by `get_moves()` in `init_node()`.
+
+### M3 — MoveScoreList::operator[] static fallback (NOT A BUG)
+- Shared static is safe in single-threaded search. Writes only go to moves already in the list.
+
+### H4 — best_score init to 0.0 (ACCEPTED)
+- **Status**: Reverted. 0.0 acts as a quality floor, preventing selection of clearly bad moves.
+
+---
+
 ## Recommended order of work
 > #2, #3, #4, #5, #6, #7, #8, #12, #13, #14 are fixed (see the ✅ Fixed section). Remaining:
 1. **#9** — 2-fold vs 3-fold repetition: confirmed intentional by user (search optimization).
