@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
-"""Download Lichess puzzle database, extract 2000 puzzles for opti_chess benchmark.
+"""Download Lichess puzzle database, extract puzzles for opti_chess benchmark.
 
-Output: tests/lichess_2000.txt in FEN|SAN|name format (one puzzle per line).
+Output: tests/lichess_5000.txt or tests/lichess_themed.txt in FEN|SAN|name|theme format.
 
 Usage:
-    python scripts/download_lichess_puzzles.py [--count N] [--min-rating R] [--max-rating R]
+    # Get 5000 puzzles with all major themes
+    python scripts/download_lichess_puzzles.py --count 5000
+
+    # Get 250 puzzles per specific theme
+    python scripts/download_lichess_puzzles.py --themes fork pin mate advantage --per-theme 250
+
+    # Get all available themes
+    python scripts/download_lichess_puzzles.py --list-themes
 """
 
 import argparse
@@ -20,6 +27,41 @@ import chess.pgn
 URL = "https://database.lichess.org/lichess_db_puzzle.csv.zst"
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "..", "tests", ".cache")
 CACHE_FILE = os.path.join(CACHE_DIR, "lichess_db_puzzle.csv")
+
+# All Lichess puzzle themes
+ALL_THEMES = [
+    # Mate themes
+    "mate", "mateIn1", "mateIn2", "mateIn3", "mateIn4", "mateIn5",
+    # Tactical themes
+    "fork", "pin", "skewer", "discoveredAttack", "deflection", "attraction",
+    "clearance", "interference", "hangingPiece", "trappedPiece", "undefendedPiece",
+    "backRankMate", "promotion", "enPassant", "castling",
+    # Game phase
+    "endgame", "middlegame", "opening",
+    # Quality
+    "advantage", "crushing", "defensiveMove", "sacrifice",
+    # Complexity
+    "short", "long", "veryLong",
+    # Special
+    "master", "kingsideAttack", "pawnEndgame", "pieceEndgame",
+    "rookEndgame", "queenEndgame", "bishopEndgame", "knightEndgame",
+    "bishopVsKnight", "doubleCheck", "quietMove",
+]
+
+# Themes grouped by category for easy selection
+THEME_GROUPS = {
+    "mate": ["mate", "mateIn1", "mateIn2", "mateIn3", "mateIn4", "mateIn5"],
+    "tactics": ["fork", "pin", "skewer", "discoveredAttack", "deflection",
+                "attraction", "clearance", "interference"],
+    "material": ["hangingPiece", "trappedPiece", "undefendedPiece", "sacrifice"],
+    "endgame": ["endgame", "pawnEndgame", "pieceEndgame", "rookEndgame",
+                "queenEndgame", "bishopEndgame", "knightEndgame", "bishopVsKnight"],
+    "opening": ["opening", "castling", "enPassant"],
+    "middlegame": ["middlegame", "kingsideAttack", "doubleCheck"],
+    "quality": ["advantage", "crushing", "defensiveMove", "backRankMate", "promotion"],
+    "length": ["short", "long", "veryLong"],
+    "master": ["master"],
+}
 
 
 def download_with_progress(url: str, dest: str) -> None:
@@ -71,8 +113,20 @@ def stream_decompress_rows(csv_path: str):
             yield row
 
 
+def expand_themes(themes: list) -> list:
+    """Expand theme groups to individual themes."""
+    expanded = []
+    for t in themes:
+        if t in THEME_GROUPS:
+            expanded.extend(THEME_GROUPS[t])
+        else:
+            expanded.append(t)
+    return list(set(expanded))
+
+
 def extract_puzzles(count: int, min_rating: int, max_rating: int,
-                    themes: list = None, per_theme: int = 0) -> list:
+                    themes: list = None, per_theme: int = 0,
+                    min_popularity: int = 0) -> list:
     """Extract puzzles from the Lichess CSV cache.
     
     If themes is provided, only keep puzzles matching one of the listed themes.
@@ -83,6 +137,11 @@ def extract_puzzles(count: int, min_rating: int, max_rating: int,
     total_read = 0
     total_skipped = 0
     target = per_theme * len(themes) if (themes and per_theme > 0) else count
+
+    # Expand theme groups
+    if themes:
+        themes = expand_themes(themes)
+        print(f"  expanded themes: {themes[:10]}{'...' if len(themes) > 10 else ''}")
 
     for row in stream_decompress_rows(CACHE_FILE):
         total_read += 1
@@ -106,6 +165,16 @@ def extract_puzzles(count: int, min_rating: int, max_rating: int,
         if rating < min_rating or rating > max_rating:
             total_skipped += 1
             continue
+
+        # Filter by popularity if specified
+        if min_popularity > 0:
+            try:
+                popularity = int(row[4]) if len(row) > 4 else 0
+                if popularity < min_popularity:
+                    total_skipped += 1
+                    continue
+            except ValueError:
+                pass
 
         # Filter by theme if specified
         if themes:
@@ -167,16 +236,32 @@ def extract_puzzles(count: int, min_rating: int, max_rating: int,
 
 def main():
     parser = argparse.ArgumentParser(description="Download Lichess puzzles for benchmark")
-    parser.add_argument("--count", type=int, default=2000, help="Number of puzzles to extract (default: 2000)")
+    parser.add_argument("--count", type=int, default=5000, help="Number of puzzles to extract (default: 5000)")
     parser.add_argument("--min-rating", type=int, default=1000, help="Min puzzle rating (default: 1000)")
     parser.add_argument("--max-rating", type=int, default=2500, help="Max puzzle rating (default: 2500)")
     parser.add_argument("--themes", nargs="*", default=None,
                         help="Filter by Lichess themes (e.g. fork pin mate advantage)")
+    parser.add_argument("--theme-group", nargs="*", default=None,
+                        help="Filter by theme group (e.g. mate tactics endgame)")
     parser.add_argument("--per-theme", type=int, default=250,
                         help="Puzzles per theme when --themes is set (default: 250)")
+    parser.add_argument("--min-popularity", type=int, default=0,
+                        help="Minimum popularity score (0-100, default: 0)")
+    parser.add_argument("--list-themes", action="store_true",
+                        help="List all available themes and exit")
     parser.add_argument("--out", default=None,
-                        help="Output file (default: tests/lichess_2000.txt or tests/lichess_themed.txt)")
+                        help="Output file (default: tests/lichess_5000.txt or tests/lichess_themed.txt)")
     args = parser.parse_args()
+
+    # List themes and exit
+    if args.list_themes:
+        print("Available themes:")
+        for theme in sorted(ALL_THEMES):
+            print(f"  {theme}")
+        print("\nTheme groups:")
+        for group, themes in THEME_GROUPS.items():
+            print(f"  {group}: {', '.join(themes)}")
+        sys.exit(0)
 
     os.makedirs(CACHE_DIR, exist_ok=True)
 
@@ -187,14 +272,21 @@ def main():
         size_mb = os.path.getsize(CACHE_FILE) / (1024 * 1024)
         print(f"Using cached {CACHE_FILE} ({size_mb:.1f} MB)")
 
+    # Merge --themes and --theme-group
+    themes = args.themes or []
+    if args.theme_group:
+        themes.extend(args.theme_group)
+
     # Extract puzzles
-    if args.themes:
-        print(f"Extracting {args.per_theme} puzzles per theme: {args.themes}...")
+    if themes:
+        print(f"Extracting {args.per_theme} puzzles per theme: {themes}...")
         puzzles = extract_puzzles(0, args.min_rating, args.max_rating,
-                                  themes=args.themes, per_theme=args.per_theme)
+                                  themes=themes, per_theme=args.per_theme,
+                                  min_popularity=args.min_popularity)
     else:
         print(f"Extracting {args.count} puzzles (rating {args.min_rating}-{args.max_rating})...")
-        puzzles = extract_puzzles(args.count, args.min_rating, args.max_rating)
+        puzzles = extract_puzzles(args.count, args.min_rating, args.max_rating,
+                                  min_popularity=args.min_popularity)
 
     if not puzzles:
         print("ERROR: No puzzles found!", file=sys.stderr)
@@ -203,10 +295,10 @@ def main():
     # Write output
     if args.out:
         out_path = args.out
-    elif args.themes:
+    elif themes:
         out_path = os.path.join(os.path.dirname(__file__), "..", "tests", "lichess_themed.txt")
     else:
-        out_path = os.path.join(os.path.dirname(__file__), "..", "tests", "lichess_2000.txt")
+        out_path = os.path.join(os.path.dirname(__file__), "..", "tests", "lichess_5000.txt")
     with open(out_path, "w") as f:
         f.write("# FEN|SAN|name|theme\n")
         for fen, san, name, theme in puzzles:
@@ -222,20 +314,6 @@ def main():
         print("  Themes:")
         for th, cnt in sorted(theme_counts.items(), key=lambda x: -x[1]):
             print(f"    {th}: {cnt}")
-
-    # Stats
-    ratings = []
-    for row in stream_decompress_rows(CACHE_FILE):
-        if len(row) >= 4:
-            try:
-                ratings.append(int(row[3]))
-            except ValueError:
-                pass
-        if len(ratings) >= 50000:
-            break
-    if ratings:
-        print(f"  Rating distribution of first 50k: min={min(ratings)}, max={max(ratings)}, "
-              f"median={sorted(ratings)[len(ratings)//2]}")
 
 
 if __name__ == "__main__":
