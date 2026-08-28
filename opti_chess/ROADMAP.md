@@ -8,141 +8,187 @@ Make opti_chess strong with **very few nodes**. Like Lc0 or a grandmaster: look 
 
 - **Search**: GrogrosZero (MCTS + alpha-beta + quiescence)
 - **Eval**: Hand-crafted evaluation (symmetric, 2170+ positions validated)
-- **Lichess benchmark (100ms/puzzle)**: 144/1250 (11.5%)
+- **Build**: C++20/MSVC/CMake/raylib GUI
+- **Lichess 2000 benchmark (100ms/puzzle)**: 181/2000 (9.1%) baseline
+- **With selective deepening**: 212/2000 (10.6%) = **+31 puzzles (+17%)**
+- **Node concentration**: 53% → 66% on best move with selective deepening
 - **Selfplay**: alpha=0.005 gives +126 Elo vs GUI default
 
-## Phase 1: Puzzle & Eval Infrastructure (Current)
+## Completed Work
 
-### Puzzle Suite (5000+ puzzles, all themes)
-- [ ] Download 5000+ puzzles from Lichess with full theme coverage
-- [ ] Themes: mate, mateIn1-5, fork, pin, skewer, discoveredAttack, deflection, attraction, clearance, interference, backRankMate, promotion, hangingPiece, trappedPiece, undefendedPiece, endgame, middlegame, opening, advantage, crushing, defensiveMove, sacrifice,promotion, castling, enPassant, master
-- [ ] Per-theme breakdown in benchmark
-- [ ] TIME mode (100ms/puzzle) as standard A/B metric
+### Infrastructure
+- Puzzle suite: 5000 Lichess puzzles with 41 themes (`tests/lichess_5000.txt`)
+- 2000-puzzle benchmark set (`tests/lichess_2000.txt`)
+- 50k eval positions (`tests/lichess_evals.txt`)
+- PuzzleDiagnostic test: per-move node distribution stats
+- Stockfish adapter (PIMPL, eval flipping)
+- `OPTI_TEST_SCALE`, `OPTI_ADAPTIVE`, `OPTI_SELECTIVE` env vars
 
-### Eval Test Suite (50k positions from Lichess)
-- [ ] Download 50,000 evaluated positions from Lichess eval database
-- [ ] Format: FEN + Stockfish evaluation (cp or mate)
-- [ ] Static eval test (fast, ~microseconds per position)
-- [ ] Themed breakdown (opening/middlegame/endgame)
-- [ ] Use for eval tuning and regression detection
+### Bug Fixes
+- 6 memory bugs (block_division OOB, pawns_black OOB, proven-win override, etc.)
+- Eval symmetry validated (2170 corpus)
+- FEN parser `case 'q'` truncation, castling order-independent
+- eval_delta formula inversion (critical: was giving opposite sign)
+- TT scale isolation, memory cap
+- `get_winnable` OOB, `reset_bitboard` bound, `get_pawn_push_threats` OOB
 
-## Phase 2: Micro-Performance — Fewer Nodes, Same Strength
+### Search Improvements
+- Quiescence check extension 0→1
+- Winning-capture LMR exemption
+- Move generation overflow fix, pawn push guard
+- Repetition detection fixes (minimal_copy_data, copy_data, is_irreversible_move)
+- MVV-LVA move ordering (Board::sort_moves)
 
-### Goal
-Solve the same puzzles with **fewer nodes**. A position that takes 10k nodes should take 2k.
+### Selective Deepening (current best)
+- Move 1: full depth, moves 2-5: depth 6, moves 6+: depth 3
+- Result: 212/2000 (+31 puzzles), 66% nodes on best move
+- **Root cause of 11 regressions**: robin_map iteration order is random, NOT quality-sorted. Moves explored last get depth 3 even if they're the best move.
 
-### 2.1 Quiescence Optimization (HUGE potential)
-**Problem**: Quiescence is super heavy. We check ALL moves at each depth with big quiescence, which is slow and wastes nodes on moves we know will be bad.
+## Phase 1: Eval-Ordered Children + Move Ordering (NEXT)
 
-**Ideas**:
-1. **Move ordering in quiescence**: Only search captures that could possibly improve the position (MVV-LVA threshold)
-2. **Shallow pre-screening**: Do a fast shallow quiescence for each move, discard most, then do deeper quiescence only on promising candidates
-3. **Late move reductions in quiescence**: Already have `move_index * 2` — tune this more aggressively
-4. **Capture SEE (Static Exchange Evaluation)**: Skip obviously losing captures early
-5. **Delta pruning**: If capture gain < alpha, skip
+### Problem
+Selective deepening works (212/2000) but has 11 regressions because it ranks children by **exploration order** (random robin_map iteration), not by **move quality**.
 
-### 2.2 Main Search — Skip Useless Branches
-**Problem**: We explore all moves roughly equally. An efficient engine prunes 90% of moves instantly.
+### 1.1 Eval-Ordered Children
+**Idea**: After all children are evaluated, sort them by static eval from the moving side's perspective. The top-N children get full depth.
 
-**Ideas**:
-1. **Null move pruning**: If doing nothing still beats alpha, skip this branch
-2. **Late move reductions (LMR)**: Reduce depth for moves that are unlikely to be good
-3. **Futility pruning**: If eval + margin < alpha, skip quiet moves
-4. **Razoring**: At low depths, if eval is way below alpha, go straight to quiescence
-5. **History heuristic**: Track which moves were good in similar positions, search them first
+**Implementation**:
+- In `explore_new_move`, after evaluating child static eval, insert into a sorted structure
+- When picking the next child to explore, prefer children with better eval
+- This makes selective deepening quality-aware instead of order-dependent
 
-### 2.3 Move Ordering — Search Best Moves First
-**Problem**: If we search the best move first, we get cutoffs early and save nodes.
+**Expected gain**: Recover the 11 regressions while keeping the +31 improvements.
 
-**Ideas**:
-1. **TT move**: If we have a transposition table hit, search that move first
-2. **Killer moves**: Track 2 quiet moves that caused cutoffs at this depth
-3. **History heuristic**: Track move quality across the game
-4. **MVV-LVA**: Most Valuable Victim - Least Valuable Attacker for captures
-5. **Countermove heuristic**: The move that refuted the previous move
+### 1.2 Dynamic Move Reordering
+**Idea**: Once all children have been explored once, reorder them by their current eval (deep or static). The engine should dynamically shift exploration to the best moves.
 
-### 2.4 Node Budget Management
-**Problem**: Currently we spend equal time on all positions. Should spend more on complex positions, less on simple ones.
+**Implementation**:
+- After all children are created, sort `_children` by eval
+- `pick_random_child` should prefer children with better eval
+- This is orthogonal to selective deepening and should stack
 
-**Ideas**:
-1. **Aspiration windows**: Start with narrow window, widen if needed
-2. **Iterative deepening**: Search depth 1, then 2, etc. — stop when time is up
-3. **Time management**: Spend more time on complex positions
-4. **Node limit per move**: If a move is clearly bad, don't spend many nodes on it
+### 1.3 Move Ordering Improvements
+- TT move first (if available)
+- MVV-LVA for captures (already in Board::sort_moves)
+- Killer moves / history heuristic
+- Countermove heuristic
 
-## Phase 3: Eval Improvements
-
-### Goal
-Better evaluation = fewer nodes needed (engine sees deeper with same node count).
-
-### 3.1 Eval Tuning
-- [ ] Use 50k Lichess positions to tune eval weights
-- [ ] Test against known eval sets (WAC, Positional Suites)
-- [ ] Ensure eval is monotonic (better position = higher eval)
-
-### 3.2 Eval Features to Add
-- [ ] King safety improvements (pawn storm, open files near king)
-- [ ] Passed pawn evaluation (connected, protected, unstoppable)
-- [ ] Bishop pair bonus
-- [ ] Rook on open/semi-open files
-- [ ] Outpost knights
-- [ ] Space advantage
-
-## Phase 4: Transpositions (DAG)
+## Phase 2: Node Efficiency — Waste < 1%
 
 ### Goal
-Reuse analysis across different move orders. Same position reached via different move sequences should share nodes.
+Currently ~44% of nodes go to "other" moves (not best, not expected). Want <1%.
+
+### 2.1 Selective Deepening Refinement
+- Tune tier thresholds (currently 1/5/3)
+- Consider tier 0: moves that look terrible get 0 quiescence (depth 0 only)
+- Per-theme analysis: which puzzle types benefit most
+
+### 2.2 Quiescence Optimization
+- Move ordering in quiescence (MVV-LVA threshold)
+- SEE (Static Exchange Evaluation) for captures
+- Delta pruning
+- Late move reductions in quiescence
+
+### 2.3 Main Search Pruning
+- Null move pruning
+- Late move reductions (LMR)
+- Futility pruning
+- Razoring
+
+## Phase 3: Transposition Table Investigation
 
 ### Status
-- DAG was attempted but needs investigation
-- If it works: huge win for openings and endgames
-- Can easily reduce node count by 2-5x in some positions
+- TT exists with `tt_main_search` and `tt_node_dag` flags (both OFF by default)
+- Need to investigate: does it work? Why is it disabled?
 
 ### TODO
-- [ ] Investigate current DAG implementation
-- [ ] Fix any issues
-- [ ] Benchmark impact on puzzles and selfplay
-- [ ] Consider Zobrist hashing improvements
+- [ ] Test with TT enabled (`_tt_main_search=true`)
+- [ ] Test with DAG enabled (`_tt_node_dag=true`)
+- [ ] Measure node savings
+- [ ] Identify bugs if any
+- [ ] If TT works: it should reduce nodes significantly in repetitive positions
 
-## Phase 5: Advanced Techniques
+### Key Questions
+- Is TT storing/looking up correctly?
+- Is Zobrist key collision an issue?
+- Does DAG actually share nodes between transpositions?
+- What's the overhead vs savings?
 
-### 5.1 Aspiration Windows
-- Start with narrow eval window
-- Widen if search fails high/low
-- Saves nodes when we have a good eval estimate
+## Phase 4: Neural Network Evaluation
 
-### 5.2 Singular Extensions
-- If one move is clearly best, extend its search
-- Helps find tactical shots in complex positions
+### Goal
+Replace hand-crafted eval with a neural network. Add a **policy value** for each move (probability it's the best move).
 
-### 5.3 Multi-Cut
-- If many moves beat beta, cut immediately
-- Saves time in clearly good positions
+### 4.1 Architecture
+- **Value head**: Evaluate position (win/draw/loss probability)
+- **Policy head**: For each legal move, probability it's the best move
+- Input: board representation (piece-square tables or 119-plane encoding)
+- Output: scalar value + policy vector
 
-### 5.4 Countermove Heuristic
-- Track what move refuted the previous move
-- Use it for move ordering
+### 4.2 Training Data
+- Use Stockfish to evaluate millions of positions
+- Extract policy from Stockfish's move ordering (or from search tree)
+- Self-play games for reinforcement learning
+
+### 4.3 Benefits
+- **Move ordering**: Policy gives instant ranking of all moves
+- **Evaluation accuracy**: NN eval should be much better than hand-crafted
+- **Node savings**: If policy is 90% accurate, we can skip 90% of moves immediately
+- **Like Lc0**: Lc0 uses policy + value from neural network
+
+### 4.4 Implementation Options
+1. **ONNX Runtime**: Load pre-trained model, run inference in C++
+2. **Custom inference**: Write NN inference in C++ (faster but more work)
+3. **Hybrid**: Use NN for eval, keep hand-crafted for move ordering
+
+### 4.5 Training Pipeline
+1. Generate positions with Stockfish evaluations
+2. Train value head (position evaluation)
+3. Train policy head (move quality)
+4. Export to ONNX
+5. Integrate into opti_chess
+6. Benchmark improvement
+
+## Phase 5: NPS Optimization
+
+### Goal
+Hot path optimization: make the core search loop as fast as possible.
+
+### 5.1 Hot Path Analysis
+- Profile `grogros_zero`, `explore_new_move`, `quiescence`
+- Identify cache misses, branch mispredictions
+- Optimize inner loops
+
+### 5.2 Memory Layout
+- Node struct alignment
+- Child map (robin_map) vs sorted array
+- Board representation efficiency
+
+### 5.3 SIMD / Parallel
+- Evaluate multiple positions simultaneously
+- Batch NN inference
+- Parallel tree search
 
 ## Measurement
 
 ### Primary Metric
-**Puzzles solved at 100ms/puzzle** on Lichess 5000+ set
+**Puzzles solved at 100ms/puzzle** on Lichess 2000 set
 - Higher is better
 - Per-theme breakdown
-- Must be reproducible
+- Node distribution (% on best move)
 
 ### Secondary Metrics
-- **Nodes per puzzle** (lower is better)
-- **Time per puzzle** (should be ~100ms)
-- **Depth reached** (deeper is better, but not at expense of accuracy)
-- **Selfplay strength** (Elo estimate)
+- **Node concentration**: % of nodes on the best move (target: >80%)
+- **Wasted nodes**: % on moves that aren't best or expected (target: <10%)
+- **NPS**: Nodes per second (higher is better)
+- **Selfplay strength**: Elo estimate
 
 ### A/B Testing Protocol
-1. Run baseline on Lichess benchmark (record solved count)
+1. Run baseline on Lichess benchmark (record solved count + node distribution)
 2. Make one change
 3. Re-run benchmark
 4. If solved count improves AND no regression on other tests: keep change
-5. If regression: revert
+5. If regression: analyze root cause, fix or revert
 
 ## Rules
 
@@ -151,22 +197,14 @@ Reuse analysis across different move orders. Same position reached via different
 3. **Always run tests** — `opti_chess_tests.exe --gtest_filter="-*Debug*:*Perf*"`
 4. **Benchmark before/after** — measure everything
 5. **Commit incremental progress** — small commits, clear messages
-
-## Timeline
-
-- **Week 1-2**: Puzzle + eval infrastructure (5000 puzzles, 50k evals)
-- **Week 3-4**: Quiescence optimization (biggest win potential)
-- **Week 5-6**: Main search pruning (null move, LMR, futility)
-- **Week 7-8**: Move ordering (TT, killers, history)
-- **Week 9-10**: Eval tuning with 50k positions
-- **Week 11-12**: Transposition table / DAG
-- **Week 13+**: Advanced techniques (aspiration, singular extensions)
+6. **Performance first** — reduce nodes, skip useless branches
 
 ## Success Criteria
 
-- [ ] 5000+ puzzle benchmark with all themes
-- [ ] 50k eval positions for testing
-- [ ] Solve 50%+ puzzles at 100ms (currently 11.5%)
-- [ ] Reduce nodes per puzzle by 50%+
-- [ ] No regression on existing tests
+- [ ] 2000+ puzzle benchmark: 250+/2000 (12.5%+) solved at 100ms
+- [ ] Node concentration: 80%+ on best move
+- [ ] Wasted nodes: <10%
+- [ ] TT working and providing measurable node savings
+- [ ] NN evaluation integrated and improving strength
+- [ ] NPS improved by 50%+
 - [ ] Selfplay strength improvement
