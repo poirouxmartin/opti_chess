@@ -75,6 +75,7 @@ struct PuzzleResult {
     int actual_eval_cp = 0;
     double actual_wdl_w = 0.5;
     int iterations = 0;
+    int total_nodes = 0;
     double time_s = 0.0;
     bool is_eval_puzzle = false;
     double eval_score = 0.0;
