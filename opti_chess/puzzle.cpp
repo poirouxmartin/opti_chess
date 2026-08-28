@@ -100,7 +100,30 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
 
         result.score = (result.eval_score + wdl_score) / 2.0;
     } else {
-        result.score = score_reward_for_move(p, result.chosen_move);
+        double move_score = score_reward_for_move(p, result.chosen_move);
+        // --- New variable reward: eval correctness + PV correctness (luck vs find) ---
+        // Expected: tactic puzzles are winning for side to move, so eval should indicate winning
+        bool isWhite = b._player;
+        // Deep eval of chosen move if available, else root static
+        int deep_cp = result.actual_eval_cp;
+        double wdl = result.actual_wdl_w;
+        auto it = root._children.find(result.chosen_move);
+        if(it != root._children.end() && it->second._node){
+            deep_cp = it->second._node->_deep_evaluation._value;
+            wdl = it->second._node->_deep_evaluation._avg_score;
+        }
+        bool eval_correct = isWhite ? (deep_cp > 150 || wdl > 0.60) : (deep_cp < -150 || wdl < 0.40);
+        // PV correctness: does engine think the line is winning till the end? Use deep wdl as proxy for PV winning
+        bool pv_correct = eval_correct; // placeholder: PV is winning if deep eval is winning
+        // If move is correct but eval says losing, it's luck (0.5), not a true find (1.0)
+        if(move_score > 0.5){
+            result.score = eval_correct ? 1.0 : 0.5;
+            // If you want finer: 0.7 if move correct but PV not winning? Keep 0.5 for now
+        } else {
+            result.score = 0.0;
+        }
+        // Store eval_score for debugging
+        result.eval_score = eval_correct ? 1.0 : 0.0;
     }
 
     auto t1 = chrono::steady_clock::now();

@@ -6,11 +6,11 @@ Make opti_chess strong with **very few nodes**. Like Lc0 or a grandmaster: look 
 
 ## Current State
 
-- **Search**: GrogrosZero (MCTS + alpha-beta + quiescence)
+- **Search**: GrogrosZero (MCTS + alpha-beta + quiescence) selective `10,2,0` (move1 full 10, moves2-5 depth2, rest 0 static-only)
 - **Eval**: Hand-crafted evaluation (symmetric, 2170+ positions validated)
-- **Build**: C++20/MSVC/CMake/raylib GUI
-- **Lichess 2000 benchmark (100ms/puzzle)**: 181/2000 (9.1%) baseline
-- **With selective deepening**: 212/2000 (10.6%) = **+31 puzzles (+17%)**
+- **Build**: C++20/MSVC/CMake/raylib GUI (`build/release/Release/opti_chess.exe`)
+- **Lichess 2000 benchmark (100ms/puzzle)**: `181/2000 (9.1%)` baseline full10 → `251/2000 (12.6%)` selective `10,2,0` (+70, +38%) — `10,2,2` 237/2000, `10,6,0` 240/2000
+- **Lichess 500 variable-reward (0.5 luck, 1.0 true)**: `98/500` baseline → `135/500` `10,2,0` → `119/500` `10,2,2`
 - **Node concentration**: 53% → 66% on best move with selective deepening
 - **Selfplay**: alpha=0.005 gives +126 Elo vs GUI default
 
@@ -39,10 +39,11 @@ Make opti_chess strong with **very few nodes**. Like Lc0 or a grandmaster: look 
 - Repetition detection fixes (minimal_copy_data, copy_data, is_irreversible_move)
 - MVV-LVA move ordering (Board::sort_moves)
 
-### Selective Deepening (current best)
-- Move 1: full depth, moves 2-5: depth 6, moves 6+: depth 3
-- Result: 212/2000 (+31 puzzles), 66% nodes on best move
-- **Root cause of 11 regressions**: robin_map iteration order is random, NOT quality-sorted. Moves explored last get depth 3 even if they're the best move.
+### Selective Deepening (current best `10,2,0`)
+- Move1 `10` full, moves2-5 `2`, rest `0` static-only
+- Result: `251/2000 (12.6%)` vs `181` baseline; `10,2,2` `237`, `10,6,0` `240` — even depths only
+- **Root cause of regressions**: `board.cpp:1707` `sort_moves` MVV-LVA + `pen` puts best tail (e.g. `after Bc4 Qe2 static -1195` `score -31500 oc1`) last → gets `0`. `Qe2` hallucination at `depth0` (looks winning) vs `depth2` (refuted by `Bxe2`) explains `10,2,0` vs `10,2,2` gap
+- **Puzzle reward**: variable `0.5` luck (move correct but eval says losing) vs `1.0` true find (`puzzle.cpp` deep eval sign check)
 
 ## Phase 1: Eval-Ordered Children + Move Ordering (NEXT)
 
@@ -149,7 +150,13 @@ Replace hand-crafted eval with a neural network. Add a **policy value** for each
 5. Integrate into opti_chess
 6. Benchmark improvement
 
-## Phase 5: NPS Optimization
+## Phase 5: UI Tunability (next)
+
+- Sliders / textBoxes for `alpha, beta, gamma, quiescence_depth, selective tiers (10,2,0), _explore_checks, _tt_main_search, _tt_node_dag` in `gui.h:97` / `gui.cpp:1138`
+- Live per-move `iters/nodes/static/deep` display already in `PuzzleDiagnostic` — expose in GUI arrows panel
+- Presets: `10` baseline / `10,2,0` / `10,2,2` + variable-reward benchmark button
+
+## Phase 6: NPS Optimization
 
 ### Goal
 Hot path optimization: make the core search loop as fast as possible.
