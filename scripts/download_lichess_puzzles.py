@@ -71,11 +71,18 @@ def stream_decompress_rows(csv_path: str):
             yield row
 
 
-def extract_puzzles(count: int, min_rating: int, max_rating: int) -> list:
-    """Extract puzzles from the Lichess CSV cache."""
+def extract_puzzles(count: int, min_rating: int, max_rating: int,
+                    themes: list = None, per_theme: int = 0) -> list:
+    """Extract puzzles from the Lichess CSV cache.
+    
+    If themes is provided, only keep puzzles matching one of the listed themes.
+    If per_theme > 0, limit to that many per theme (and ignore count).
+    """
     puzzles = []
+    by_theme_count = {}
     total_read = 0
     total_skipped = 0
+    target = per_theme * len(themes) if (themes and per_theme > 0) else count
 
     for row in stream_decompress_rows(CACHE_FILE):
         total_read += 1
@@ -84,6 +91,11 @@ def extract_puzzles(count: int, min_rating: int, max_rating: int) -> list:
             continue
 
         puzzle_id, fen, moves_str, rating_str, *_ = row
+
+        # Theme is field index 7 (Themes column)
+        theme = row[7].strip() if len(row) > 7 else ""
+        # Take first theme as primary
+        primary_theme = theme.split()[0] if theme else "unknown"
 
         try:
             rating = int(rating_str)
@@ -94,6 +106,16 @@ def extract_puzzles(count: int, min_rating: int, max_rating: int) -> list:
         if rating < min_rating or rating > max_rating:
             total_skipped += 1
             continue
+
+        # Filter by theme if specified
+        if themes:
+            if primary_theme not in themes:
+                total_skipped += 1
+                continue
+            # Per-theme limit
+            if per_theme > 0 and by_theme_count.get(primary_theme, 0) >= per_theme:
+                total_skipped += 1
+                continue
 
         moves = moves_str.strip().split()
         if len(moves) < 2:
@@ -126,9 +148,14 @@ def extract_puzzles(count: int, min_rating: int, max_rating: int) -> list:
             continue
 
         name = f"lichess_{puzzle_id}_r{rating}"
-        puzzles.append((puzzle_fen, san, name))
+        puzzles.append((puzzle_fen, san, name, primary_theme))
+        by_theme_count[primary_theme] = by_theme_count.get(primary_theme, 0) + 1
 
-        if len(puzzles) >= count:
+        if per_theme > 0:
+            # Stop when all themes have enough
+            if all(by_theme_count.get(t, 0) >= per_theme for t in themes):
+                break
+        elif len(puzzles) >= count:
             break
 
         if total_read % 100000 == 0:
@@ -143,6 +170,12 @@ def main():
     parser.add_argument("--count", type=int, default=2000, help="Number of puzzles to extract (default: 2000)")
     parser.add_argument("--min-rating", type=int, default=1000, help="Min puzzle rating (default: 1000)")
     parser.add_argument("--max-rating", type=int, default=2500, help="Max puzzle rating (default: 2500)")
+    parser.add_argument("--themes", nargs="*", default=None,
+                        help="Filter by Lichess themes (e.g. fork pin mate advantage)")
+    parser.add_argument("--per-theme", type=int, default=250,
+                        help="Puzzles per theme when --themes is set (default: 250)")
+    parser.add_argument("--out", default=None,
+                        help="Output file (default: tests/lichess_2000.txt or tests/lichess_themed.txt)")
     args = parser.parse_args()
 
     os.makedirs(CACHE_DIR, exist_ok=True)
@@ -155,21 +188,40 @@ def main():
         print(f"Using cached {CACHE_FILE} ({size_mb:.1f} MB)")
 
     # Extract puzzles
-    print(f"Extracting {args.count} puzzles (rating {args.min_rating}-{args.max_rating})...")
-    puzzles = extract_puzzles(args.count, args.min_rating, args.max_rating)
+    if args.themes:
+        print(f"Extracting {args.per_theme} puzzles per theme: {args.themes}...")
+        puzzles = extract_puzzles(0, args.min_rating, args.max_rating,
+                                  themes=args.themes, per_theme=args.per_theme)
+    else:
+        print(f"Extracting {args.count} puzzles (rating {args.min_rating}-{args.max_rating})...")
+        puzzles = extract_puzzles(args.count, args.min_rating, args.max_rating)
 
     if not puzzles:
         print("ERROR: No puzzles found!", file=sys.stderr)
         sys.exit(1)
 
     # Write output
-    out_path = os.path.join(os.path.dirname(__file__), "..", "tests", "lichess_2000.txt")
+    if args.out:
+        out_path = args.out
+    elif args.themes:
+        out_path = os.path.join(os.path.dirname(__file__), "..", "tests", "lichess_themed.txt")
+    else:
+        out_path = os.path.join(os.path.dirname(__file__), "..", "tests", "lichess_2000.txt")
     with open(out_path, "w") as f:
-        f.write("# FEN|SAN|name\n")
-        for fen, san, name in puzzles:
-            f.write(f"{fen}|{san}|{name}\n")
+        f.write("# FEN|SAN|name|theme\n")
+        for fen, san, name, theme in puzzles:
+            f.write(f"{fen}|{san}|{name}|{theme}\n")
 
     print(f"Wrote {len(puzzles)} puzzles to {out_path}")
+
+    # Per-theme stats
+    theme_counts = {}
+    for _, _, _, theme in puzzles:
+        theme_counts[theme] = theme_counts.get(theme, 0) + 1
+    if theme_counts:
+        print("  Themes:")
+        for th, cnt in sorted(theme_counts.items(), key=lambda x: -x[1]):
+            print(f"    {th}: {cnt}")
 
     # Stats
     ratings = []
