@@ -1604,19 +1604,13 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			constexpr int check_extension = 1;
 			new_depth += move.is_check() ? check_extension : 0;
 
-			// Depth reduction for the less promising moves (audit A3): the old
-			// `move_index * 2` blindly skipped late big captures. Winning
-			// captures (MVV-LVA) keep half the penalty so tactical shots stay
-			// reachable even when ordered late.
-			static constexpr int piece_vals_lmr[13] = { 0, 100, 320, 330, 500, 900, 10000, 100, 320, 330, 500, 900, 10000 };
-			bool is_winning_capture = false;
-			if (move.is_capture()) {
-				const uint8_t cap = _board->_array[move.end_row][move.end_col];
-				const uint8_t mover = _board->_array[move.start_row][move.start_col];
-				if (cap != none && mover != none)
-					is_winning_capture = piece_vals_lmr[cap] > piece_vals_lmr[mover];
+			// H1 fix: no LMR inside quiescence — captures must be resolved to a
+			// quiet position. The old `move_index * 2` formula skipped late
+		// captures entirely (with depth=3, the 3rd capture got new_depth=-1
+			// and was skipped). Only non-capture checks get a gentle reduction.
+			if (!move.is_capture() && !in_check) {
+				new_depth -= move_index;
 			}
-			new_depth -= in_check ? 0 : (is_winning_capture ? move_index : move_index * 2);
 
 			if (new_depth <= 0 && !in_check) {
 				continue; // Stop looking at moves once we are too deep
