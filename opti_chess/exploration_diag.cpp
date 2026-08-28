@@ -1977,10 +1977,10 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		// Apply a bonus while some moves are still unexamined
 		if (child->_is_stand_pat_eval) {
 			Evaluation best_eval = Evaluation();
-			//Evaluation best_eval = child->_deep_evaluation;
 
 			for (auto const& [move2, child_link2] : child->_children) {
-				if (child->_board->_player ? (child_link2._node->_deep_evaluation > best_eval) : (child_link2._node->_deep_evaluation < best_eval)) {
+				// H2 fix: always adopt the first evaluated child, then compare normally
+				if (!best_eval._evaluated || (child->_board->_player ? (child_link2._node->_deep_evaluation > best_eval) : (child_link2._node->_deep_evaluation < best_eval))) {
 					best_eval = child_link2._node->_deep_evaluation;
 				}
 			}

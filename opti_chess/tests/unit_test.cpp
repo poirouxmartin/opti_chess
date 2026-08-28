@@ -840,10 +840,12 @@ TEST(Evaluation, OperatorLessNotEvaluated) {
     a._evaluated = true;
     b._evaluated = false;
 
-    // When other is not evaluated, a < other should be true
-    // (the current code has a bug where both branches of operator< return the same as operator>)
-    // This test documents the expected behavior
-    EXPECT_TRUE(a > b);  // a > (not evaluated) = true (correct in operator>)
+    // H2 fix: unevaluated evaluations are not comparable (strict weak ordering)
+    // a > b and a < b both return false when either operand is unevaluated
+    EXPECT_FALSE(a > b);
+    EXPECT_FALSE(a < b);
+    EXPECT_FALSE(b > a);
+    EXPECT_FALSE(b < a);
 }
 
 TEST(Evaluation, OperatorGreater) {

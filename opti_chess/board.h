@@ -523,24 +523,16 @@ struct Evaluation {
 		return *this;
 	}
 
-	// Comparator
-	bool operator>(Evaluation& other) {
-		if (!other._evaluated)
-			return true;
-
-		if (!_evaluated)
-			return false;
-
+	// Comparator — strict weak ordering (H2 fix)
+	bool operator>(const Evaluation& other) const {
+		if (!_evaluated) return false;
+		if (!other._evaluated) return false;
 		return _value > other._value;
 	}
 
-	bool operator<(Evaluation& other) {
-		if (!other._evaluated)
-			return false;
-
-		if (!_evaluated)
-			return true;
-
+	bool operator<(const Evaluation& other) const {
+		if (!_evaluated) return false;
+		if (!other._evaluated) return false;
 		return _value < other._value;
 	}
 
