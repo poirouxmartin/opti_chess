@@ -102,3 +102,21 @@ All matches: fresh trees, 5000 iterations/move.
 - Puzzle score does NOT correlate 1:1 with playing strength (low-beta solved
   same 15/124 but lost 6-12 in self-play)
 - The only confirmed improvement is alpha=0.005 (beta/gamma stay at 5.0/1.10)
+
+## Lichess 2000 Benchmark — 2026-08-28
+
+2000 puzzles from Lichess DB (ratings 1000-2500), BudgetMode::NODES, 1000 iters/puzzle.
+Puzzles: `tests/lichess_2000.txt`. Script: `scripts/download_lichess_puzzles.py`.
+
+### A/B Comparison: H1+H2+H3 Fixes
+
+| Version | Solved | Score | Time | Tactical | Other |
+|---------|--------|-------|------|----------|-------|
+| Before (pre-H1/H2/H3) | **206/2000 (10.3%)** | **0.103** | 133s | 124/1430 | 82/570 |
+| After (H1+H2+H3) | 194/2000 (9.7%) | 0.097 | 420s | 120/1430 | 74/570 |
+
+**Finding:** The H1+H2+H3 fixes slightly reduced puzzle score (10.3% → 9.7%) and
+increased time 3x (66ms → 210ms/puzzle). These are **correctness fixes** (strict weak
+ordering, check evasions, quiescence LMR), not strength improvements. The regressions
+are expected at low iteration counts where the additional search branching from H3
+(check evasions) costs more than it gains.

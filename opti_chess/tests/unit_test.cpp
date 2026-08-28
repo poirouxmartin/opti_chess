@@ -4183,6 +4183,128 @@ TEST(Puzzle, ScalingBenchmark) {
 }
 
 // ============================================================================
+// LichessBenchmark2000: run 2000 puzzles from Lichess DB at quick budget
+// Env vars: OPTI_PUZZLE_BUDGET (default 1000 iters), OPTI_PUZZLE_MAX (default 2000)
+// ============================================================================
+
+TEST(Puzzle, LichessBenchmark2000) {
+	static Evaluator evaluator;
+
+	string path = "tests/lichess_2000.txt";
+	ifstream f(path);
+	if (!f.is_open()) {
+		path = "../tests/lichess_2000.txt";
+		f.open(path);
+	}
+	if (!f.is_open()) {
+		path = "opti_chess/tests/lichess_2000.txt";
+		f.open(path);
+	}
+	if (!f.is_open()) {
+		path = "../opti_chess/tests/lichess_2000.txt";
+		f.open(path);
+	}
+	ASSERT_TRUE(f.is_open()) << "lichess_2000.txt not found";
+
+	// Budget: iterations per puzzle
+	const char* budget_env = getenv("OPTI_PUZZLE_BUDGET");
+	int budget = budget_env ? atoi(budget_env) : 1000;
+
+	// Max puzzles
+	const char* max_env = getenv("OPTI_PUZZLE_MAX");
+	int max_puzzles = max_env ? atoi(max_env) : 2000;
+
+	string line;
+	int total = 0, solved = 0, unresolved = 0;
+	double total_score = 0.0;
+	int tactical_pass = 0, tactical_total = 0;
+	int mate_pass = 0, mate_total = 0;
+	int other_pass = 0, other_total = 0;
+	double total_time = 0.0;
+
+	auto t_start = chrono::steady_clock::now();
+
+	while (getline(f, line)) {
+		if (line.empty() || line[0] == '#') continue;
+		if (total >= max_puzzles) break;
+
+		// Parse FEN|SAN|name
+		size_t p1 = line.find('|');
+		size_t p2 = line.find('|', p1 + 1);
+		if (p1 == string::npos || p2 == string::npos) continue;
+
+		string fen = line.substr(0, p1);
+		string san = line.substr(p1 + 1, p2 - p1 - 1);
+		string name = line.substr(p2 + 1);
+		total++;
+
+		// Resolve SAN to Move
+		Board resolve_b;
+		resolve_b.from_fen(fen);
+		Move expected = resolve_san(resolve_b, san.c_str());
+		if (expected.start_row == -1) {
+			unresolved++;
+			continue;
+		}
+
+		// Create Puzzle with expected move as only allowed move (reward=1.0)
+		PuzzleCategory cat = auto_categorize(fen);
+		PuzzleCategory expected_cat = PuzzleCategory::TACTIC;
+		bool is_mate = (san.find('#') != string::npos);
+		if (is_mate) expected_cat = PuzzleCategory::TACTIC;
+		else if (cat == PuzzleCategory::ENDGAME) expected_cat = PuzzleCategory::ENDGAME;
+
+		vector<RatedMove> moves = { { expected, 1.0 } };
+		Puzzle p(fen, expected_cat, name, name, moves);
+
+		// Run engine
+		transposition_table.clear();
+		auto r = PuzzleRunner::run(p, BudgetMode::NODES, budget, &evaluator);
+
+		bool pass = r.score >= 0.5;
+		if (pass) solved++;
+		total_score += r.score;
+		total_time += r.time_s;
+
+		if (expected_cat == PuzzleCategory::TACTIC) {
+			tactical_total++;
+			if (pass) tactical_pass++;
+		} else if (expected_cat == PuzzleCategory::ENDGAME) {
+			// count as other for now
+			other_total++;
+			if (pass) other_pass++;
+		} else {
+			other_total++;
+			if (pass) other_pass++;
+		}
+
+		if (total % 100 == 0) {
+			cout << "  [" << total << "/" << max_puzzles << "] solved=" << solved
+				<< " avg_score=" << fixed << setprecision(3) << (total_score / total)
+				<< " time=" << fixed << setprecision(1) << total_time << "s" << endl;
+		}
+	}
+
+	auto t_end = chrono::steady_clock::now();
+	double wall_time = chrono::duration<double>(t_end - t_start).count();
+
+	cout << endl << "=== LICHESS BENCHMARK (budget=" << budget << " iters) ===" << endl;
+	cout << "  Total:     " << solved << "/" << total
+		<< " (" << fixed << setprecision(1) << (total > 0 ? 100.0 * solved / total : 0) << "%)" << endl;
+	cout << "  Avg score: " << fixed << setprecision(3) << (total > 0 ? total_score / total : 0) << endl;
+	cout << "  Wall time: " << fixed << setprecision(1) << wall_time << "s"
+		<< " (" << fixed << setprecision(1) << (total > 0 ? wall_time / total * 1000 : 0) << " ms/puzzle)" << endl;
+	cout << "  Unresolved: " << unresolved << endl;
+
+	if (tactical_total > 0)
+		cout << "  Tactical:  " << tactical_pass << "/" << tactical_total << endl;
+	if (other_total > 0)
+		cout << "  Other:     " << other_pass << "/" << other_total << endl;
+
+	EXPECT_GT(solved, 0);
+}
+
+// ============================================================================
 // Beta/Gamma sweep: test multiple parameter combos at fixed alpha=0.005
 // ============================================================================
 TEST(Puzzle, ParamSweep) {
