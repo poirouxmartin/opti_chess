@@ -1940,7 +1940,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	Move best_move;
 	double best_score = 0.0;
 
-	// Gamma (hoisted out of loop ï¿½ depends only on parent state)
+	// Gamma (hoisted out of loop — depends only on parent state)
 	const double new_gamma = gamma / (1.0 - _static_evaluation._uncertainty / 2.0) / (1.0 - _board->_adv / 2.0);
 
 	// Look at every move
@@ -2005,7 +2005,6 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 				}
 
 				score = get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player, &best_eval) * exploration_score;
-				//cout << "new score: " << score << endl;
 			}
 		}
 		// Use the evaluation gap between the moves and the stand pat?
