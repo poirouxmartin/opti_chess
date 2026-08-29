@@ -4487,6 +4487,9 @@ TEST(Puzzle, PuzzleDiagnostic) {
 // Env vars: OPTI_PUZZLE_TIME (default 0.1s per puzzle), OPTI_PUZZLE_MAX (default 5000)
 // ============================================================================
 
+
+
+
 TEST(Puzzle, LichessBenchmark5000) {
 	static Evaluator evaluator;
 
@@ -4757,4 +4760,92 @@ TEST(Puzzle, TimeBenchmark) {
 	}
 
 	EXPECT_GT(max_total_solved, 0);
+}
+
+TEST(Puzzle, GuiLikeBench10s) {
+	// Replicate exactly what the GUI does: buffer-allocated board + root node,
+	// set globals before each grogros_zero call, incremental iteration batches.
+	static Evaluator evaluator;
+
+	// Ensure buffers are initialized (like GUI init_buffers)
+	if (!monte_board_buffer._init) {
+		PoolSizing ps = compute_pool_sizing();
+		monte_board_buffer.init(ps.board_length);
+	}
+	if (!monte_node_buffer._init) {
+		PoolSizing ps = compute_pool_sizing();
+		monte_node_buffer.init(ps.node_length);
+	}
+
+	const char* fens[] = {
+		"1k6/8/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1",
+		"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+		"8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+	};
+
+	const char* labels[] = { "Kb1 endgame", "Kiwipete", "Rook endgame" };
+
+	struct Mode { bool tt_main; bool tt_dag; const char* label; };
+	Mode modes[] = {
+		{ false, false, "OFF" },
+		{ true,  false, "TT" },
+		{ false, true,  "DAG" },
+	};
+
+	double budget_sec = 10.0;
+
+	for (int fi = 0; fi < 3; fi++) {
+		Board fen_board;
+		fen_board.from_fen(fens[fi]);
+		cout << "\n=== " << labels[fi] << " ===" << endl;
+
+		for (auto& mode : modes) {
+			monte_board_buffer.reset();
+			monte_node_buffer.reset();
+			transposition_table.clear();
+			node_map.clear();
+			g_buffers_full_logged = false;
+
+			g_tt_main_search = mode.tt_main;
+			g_tt_node_dag = mode.tt_dag;
+
+			Board* root_board = monte_board_buffer.get_first_free_board();
+			ASSERT_NE(root_board, nullptr);
+			root_board->copy_data(fen_board, false, false);
+			root_board->_is_active = true;
+
+			Node* root = monte_node_buffer.get_first_free_node();
+			ASSERT_NE(root, nullptr);
+			root->reset(false);
+			root->_board = root_board;
+			root->_is_active = true;
+
+			clock_t t_start = clock();
+			double elapsed = 0.0;
+
+			while (elapsed < budget_sec) {
+				int ips = max(1, root->get_ips());
+				int iters = max(1, ips / 60);
+				if (iters > 100000) iters = 100000;
+
+				root->grogros_zero(&monte_board_buffer, &evaluator,
+					0.005, 5.0, 1.10, iters, 10);
+
+				if (mode.tt_dag) dag_debug_report();
+
+				elapsed = (clock() - t_start) / (double)CLOCKS_PER_SEC;
+			}
+
+			double actual_time = (clock() - t_start) / (double)CLOCKS_PER_SEC;
+			Move best_move = root->get_most_explored_child_move();
+
+			cout << mode.label
+			     << " | chosen=" << root_board->move_label(best_move)
+			     << " eval=" << root->_deep_evaluation._value
+			     << " wdl=" << fixed << setprecision(3) << root->_deep_evaluation._avg_score
+			     << " nodes=" << root->_nodes
+			     << " iters=" << root->_iterations
+			     << " time=" << setprecision(2) << actual_time << "s" << endl;
+		}
+	}
 }
