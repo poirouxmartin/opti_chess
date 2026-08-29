@@ -4806,6 +4806,7 @@ TEST(Puzzle, GuiLikeBench10s) {
 			node_map.clear();
 			g_buffers_full_logged = false;
 
+	// Propagate mode globals (like GUI grogros_analysis lines 1169-1170)
 			g_tt_main_search = mode.tt_main;
 			g_tt_node_dag = mode.tt_dag;
 
@@ -4846,6 +4847,288 @@ TEST(Puzzle, GuiLikeBench10s) {
 			     << " nodes=" << root->_nodes
 			     << " iters=" << root->_iterations
 			     << " time=" << setprecision(2) << actual_time << "s" << endl;
+		}
+	}
+}
+
+// Helper: run a single position in OFF or DAG mode, return score + eval
+struct ModeResult {
+	Move chosen_move;
+	int eval;
+	double wdl;
+	long long nodes;
+	long long iters;
+	double score;
+};
+
+static ModeResult run_position_mode(const char* fen, const Move& expected, bool use_dag, double budget_sec, double alpha = 0.005, double beta = 5.0, double gamma = 1.10) {
+	static Evaluator evaluator;
+
+	monte_board_buffer.reset();
+	monte_node_buffer.reset();
+	transposition_table.clear();
+	node_map.clear();
+	g_buffers_full_logged = false;
+	g_tt_main_search = false;
+	g_tt_node_dag = use_dag;
+
+	Board fen_board;
+	fen_board.from_fen(fen);
+
+	Board* root_board = monte_board_buffer.get_first_free_board();
+	root_board->copy_data(fen_board, false, false);
+	root_board->_is_active = true;
+
+	Node* root = monte_node_buffer.get_first_free_node();
+	root->reset(false);
+	root->_board = root_board;
+	root->_is_active = true;
+
+	clock_t t_start = clock();
+	double elapsed = 0.0;
+
+	while (elapsed < budget_sec) {
+		int ips = max(1, root->get_ips());
+		int iters = max(1, ips / 60);
+		if (iters > 100000) iters = 100000;
+		root->grogros_zero(&monte_board_buffer, &evaluator, alpha, beta, gamma, iters, 10);
+		elapsed = (clock() - t_start) / (double)CLOCKS_PER_SEC;
+	}
+
+	ModeResult r;
+	r.chosen_move = root->get_most_explored_child_move();
+	r.eval = root->_deep_evaluation._value;
+	r.wdl = root->_deep_evaluation._avg_score;
+	r.nodes = root->_nodes;
+	r.iters = root->_iterations;
+
+	// Score: check if chosen matches expected
+	bool pass = (r.chosen_move == expected);
+	bool isWhite = fen_board._player;
+	double wdl = r.wdl;
+	auto it = root->_children.find(r.chosen_move);
+	if (it != root->_children.end() && it->second._node) {
+		wdl = it->second._node->_deep_evaluation._avg_score;
+	}
+	double eval_cont = isWhite ? wdl : (1.0 - wdl);
+	eval_cont = std::clamp(eval_cont, 0.0, 1.0);
+	r.score = pass ? eval_cont : 0.0;
+
+	g_tt_node_dag = false;
+	return r;
+}
+
+TEST(Puzzle, OFFvsDAG_Puzzles) {
+	// Run Lichess 2000 subset (200 puzzles) in OFF and DAG, compare score + accuracy
+	static Evaluator evaluator;
+
+	if (!monte_board_buffer._init) {
+		PoolSizing ps = compute_pool_sizing();
+		monte_board_buffer.init(ps.board_length);
+	}
+	if (!monte_node_buffer._init) {
+		PoolSizing ps = compute_pool_sizing();
+		monte_node_buffer.init(ps.node_length);
+	}
+
+	string path = "tests/lichess_5000.txt";
+	ifstream f(path);
+	if (!f.is_open()) { path = "../tests/lichess_5000.txt"; f.open(path); }
+	if (!f.is_open()) { path = "../../tests/lichess_5000.txt"; f.open(path); }
+	if (!f.is_open()) { path = "../../../tests/lichess_5000.txt"; f.open(path); }
+	if (!f.is_open()) { path = "opti_chess/tests/lichess_5000.txt"; f.open(path); }
+	if (!f.is_open()) { path = "../opti_chess/tests/lichess_5000.txt"; f.open(path); }
+	ASSERT_TRUE(f.is_open()) << "lichess_5000.txt not found";
+
+	const int max_puzzles = 5000;
+	const int iters_per_puzzle = 5000;
+
+	int off_solved = 0, dag_solved = 0, total = 0;
+	long long off_total_nodes = 0, dag_total_nodes = 0;
+	string line;
+
+	auto run_one = [&](const string& fen, const string& san, const string& name) {
+		Board resolve_b;
+		resolve_b.from_fen(fen);
+		Move expected = resolve_san(resolve_b, san.c_str());
+		if (expected.start_row == -1) return;
+
+		for (int mode = 0; mode < 2; mode++) {
+			bool use_dag = (mode == 1);
+
+			monte_board_buffer.reset();
+			monte_node_buffer.reset();
+			transposition_table.clear();
+			node_map.clear();
+			g_buffers_full_logged = false;
+			g_tt_main_search = false;
+			g_tt_node_dag = use_dag;
+
+			Board fen_board;
+			fen_board.from_fen(fen);
+
+			Board* root_board = monte_board_buffer.get_first_free_board();
+			ASSERT_NE(root_board, nullptr);
+			root_board->copy_data(fen_board, false, false);
+			root_board->_is_active = true;
+
+			Node* root = monte_node_buffer.get_first_free_node();
+			ASSERT_NE(root, nullptr);
+			root->reset(false);
+			root->_board = root_board;
+			root->_is_active = true;
+
+			root->grogros_zero(&monte_board_buffer, &evaluator,
+				0.005, 5.0, 1.10, iters_per_puzzle, 10);
+
+			Move chosen = root->get_most_explored_child_move();
+			bool pass = (chosen == expected);
+			int eval = root->_deep_evaluation._value;
+			long long nodes = root->_nodes;
+
+			if (use_dag) {
+				dag_total_nodes += nodes;
+				if (pass) dag_solved++;
+			}
+			else {
+				off_total_nodes += nodes;
+				if (pass) off_solved++;
+			}
+		}
+
+		total++;
+		g_tt_node_dag = false;
+
+		if (total % 50 == 0 && total > 0) {
+			cout << "  [" << total << "/" << max_puzzles << "]"
+			     << " OFF=" << off_solved << " DAG=" << dag_solved << endl;
+		}
+	};
+
+	while (getline(f, line)) {
+		if (line.empty() || line[0] == '#') continue;
+		if (total >= max_puzzles) break;
+
+		size_t p1 = line.find('|');
+		size_t p2 = line.find('|', p1 + 1);
+		if (p1 == string::npos || p2 == string::npos) continue;
+
+		string fen = line.substr(0, p1);
+		string san = line.substr(p1 + 1, p2 - p1 - 1);
+		string rest = line.substr(p2 + 1);
+		string name = rest.substr(0, rest.find('|'));
+
+		run_one(fen, san, name);
+	}
+
+	cout << "\n=== OFF vs DAG: Lichess 2000 (" << iters_per_puzzle << " iters/puzzle, " << total << " puzzles) ===" << endl;
+	cout << "  OFF | solved=" << off_solved << "/" << total
+	     << " (" << fixed << setprecision(1) << (100.0 * off_solved / total) << "%)"
+	     << " avg_nodes=" << setprecision(0) << (double)off_total_nodes / total << endl;
+	cout << "  DAG | solved=" << dag_solved << "/" << total
+	     << " (" << fixed << setprecision(1) << (100.0 * dag_solved / total) << "%)"
+	     << " avg_nodes=" << setprecision(0) << (double)dag_total_nodes / total << endl;
+
+	int diff = dag_solved - off_solved;
+	cout << "  DELTA  | " << (diff >= 0 ? "+" : "") << diff << " puzzles" << endl;
+
+	EXPECT_GT(off_solved, 0);
+}
+
+	TEST(Puzzle, OFFvsDAG_Endgame) {
+	// KingPawn endgame positions from Tests.txt - transposition-heavy, DAG territory
+	static Evaluator evaluator;
+
+	if (!monte_board_buffer._init) {
+		PoolSizing ps = compute_pool_sizing();
+		monte_board_buffer.init(ps.board_length);
+	}
+	if (!monte_node_buffer._init) {
+		PoolSizing ps = compute_pool_sizing();
+		monte_node_buffer.init(ps.node_length);
+	}
+
+	struct EndgamePos {
+		const char* fen;
+		const char* name;
+		const char* expected_san;
+	};
+
+	EndgamePos positions[] = {
+		{ "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1",       "Kb1 (Kb1 wins)",     "Kb1" },
+		{ "8/2k5/3p4/p2P1p2/P2P1P2/8/3K4/8 w - - 10 6",    "Kd3 (Kd3 wins)",     "Kd3" },
+		{ "8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7",    "Ke3 (Ke3 wins)",     "Ke3" },
+		{ "8/2k5/3p4/p2P1p2/P2P1P2/4K3/8/8 w - - 14 8",    "Kf3 (Kf2/Kf3 wins)", "Kf3" },
+		{ "8/2k5/3p4/p2P1p2/P2P1P2/6K1/8/8 b - - 17 9",    "Black Kd4",          "Kd4" },
+		{ "8/4k3/3p4/p2P1p2/P2P1P2/6K1/8/8 w - - 18 10",   "White Kf3",          "Kf3" },
+		{ "8/8/3p1k2/p2P1p2/P2P1P1K/8/8/8 w - - 20 11",    "Rh5 wins",           "Rh5" },
+	};
+	const int n_pos = 7;
+
+	const double budgets[] = { 0.1, 1.0, 5.0 };
+	const int n_budgets = 3;
+
+	cout << "\n=== OFF vs DAG: KingPawn Endgames (transposition positions) ===" << endl;
+
+	for (int pi = 0; pi < n_pos; pi++) {
+		auto& pos = positions[pi];
+
+		Board resolve_b;
+		resolve_b.from_fen(pos.fen);
+		Move expected = resolve_san(resolve_b, pos.expected_san);
+		if (expected.start_row == -1) continue;
+
+		cout << "\n" << pos.name << " (" << pos.expected_san << "):" << endl;
+
+		for (int bi = 0; bi < n_budgets; bi++) {
+			double budget = budgets[bi];
+
+			for (int mode = 0; mode < 2; mode++) {
+				bool use_dag = (mode == 1);
+
+				// Full reset
+				monte_board_buffer.reset();
+				monte_node_buffer.reset();
+				transposition_table.clear();
+				node_map.clear();
+				g_buffers_full_logged = false;
+				g_tt_main_search = false;
+				g_tt_node_dag = use_dag;
+
+				Board fen_board;
+				fen_board.from_fen(pos.fen);
+
+				Board* root_board = monte_board_buffer.get_first_free_board();
+				ASSERT_NE(root_board, nullptr);
+				root_board->copy_data(fen_board, false, false);
+				root_board->_is_active = true;
+
+				Node* root = monte_node_buffer.get_first_free_node();
+				ASSERT_NE(root, nullptr);
+				root->reset(false);
+				root->_board = root_board;
+				root->_is_active = true;
+
+				// Run search
+				int iters_to_do = (int)(budget * 50000);
+				root->grogros_zero(&monte_board_buffer, &evaluator,
+					0.005, 5.0, 1.10, iters_to_do, 10);
+
+				Move chosen = root->get_most_explored_child_move();
+				bool pass = (chosen == expected);
+				int eval = root->_deep_evaluation._value;
+
+				cout << "  " << (use_dag ? "DAG" : "OFF")
+				     << " " << budget << "s"
+				     << " | move=" << root_board->move_label(chosen)
+				     << " " << (pass ? "PASS" : "FAIL")
+				     << " eval=" << eval
+				     << " nodes=" << root->_nodes
+				     << " iters=" << root->_iterations
+				     << endl;
+
+				g_tt_node_dag = false;
+			}
 		}
 	}
 }
