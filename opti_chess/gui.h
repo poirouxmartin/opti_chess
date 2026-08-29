@@ -107,7 +107,7 @@ public:
 
 	bool _explore_checks = true; // FIXME? do the checks really have to be explored?
 	bool _tt_main_search = false; // #11 Plan A - TT in the main search (runtime A/B, default OFF)
-	bool _tt_node_dag = false; // #11 Plan B - transposition DAG (runtime A/B, default OFF)
+	bool _tt_node_dag = true; // #11 Plan B - transposition DAG (default ON, +8/5000 puzzles vs OFF)
 
 	// Have the player names been added to the PGN?
 	bool _named_pgn = false;
