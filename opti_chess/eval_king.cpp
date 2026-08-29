@@ -788,6 +788,7 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	const int king_safety = b_king_weakness - w_king_weakness;
 
 	int _ks_result = king_safety;
+	if (king_safety_cache.size() > 8192) king_safety_cache.clear();
 	king_safety_cache[_zobrist_key ^ (uint64_t)(activity_diff * 1000003 + 0x9e3779b97f4a7c15ULL)] = _ks_result;
 	return _ks_result;
 }
