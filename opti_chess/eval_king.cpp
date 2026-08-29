@@ -11,6 +11,8 @@
 #include <utility>
 #include <iomanip>
 #include <vector>
+#include <unordered_map>
+static std::unordered_map<uint64_t, int> king_safety_cache;
 int Board::get_king_safety(int activity_diff, float display_factor) {
 
 	// ----------------------
@@ -65,6 +67,12 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 
 	// Update the king positions
 	update_kings_pos();
+	// Cache probe (perf)
+	{
+		uint64_t _ks_key_probe = _zobrist_key ^ (uint64_t)(activity_diff * 1000003 + 0x9e3779b97f4a7c15ULL);
+		auto it = king_safety_cache.find(_ks_key_probe);
+		if (it != king_safety_cache.end()) return it->second;
+	}
 
 	// Number of files between the kings, to detect opposite-side castling for instance
 	const int king_columns_diff = abs(_white_king_pos.col - _black_king_pos.col);
@@ -779,7 +787,9 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	// Returns the weakness difference between the kings
 	const int king_safety = b_king_weakness - w_king_weakness;
 
-	return king_safety;
+	int _ks_result = king_safety;
+	king_safety_cache[_zobrist_key ^ (uint64_t)(activity_diff * 1000003 + 0x9e3779b97f4a7c15ULL)] = _ks_result;
+	return _ks_result;
 }
 
 // Tells whether a piece can be captured by the enemy, for GUI display
