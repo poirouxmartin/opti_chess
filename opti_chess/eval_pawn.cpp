@@ -11,16 +11,8 @@
 #include <utility>
 #include <iomanip>
 #include <vector>
-#include <unordered_map>
-static std::unordered_map<uint64_t, int> pawn_cache;
 int Board::get_pawn_structure(float display_factor)
 {
-	// Perf cache: pawn structure by pawn bitboards
-	{
-		uint64_t _pawn_key = _bitboards[w_pawn] ^ (_bitboards[b_pawn] << 1);
-		auto it = pawn_cache.find(_pawn_key);
-		if (it != pawn_cache.end()) return it->second;
-	}
 
 	// Still to add:
 	// Pawn island count
@@ -672,12 +664,7 @@ int Board::get_pawn_structure(float display_factor)
 
 	// We still need to check whether the enemy pawn is in front of or behind the other pawn
 
-	
-	{
-		uint64_t _pawn_key2 = _bitboards[w_pawn] ^ (_bitboards[b_pawn] << 1);
-		pawn_cache[_pawn_key2] = pawn_structure;
-	}
-return pawn_structure;
+	return pawn_structure;
 }
 
 // Returns how long the engine should spend on the next move, in ms, from a factor k and the remaining clocks
