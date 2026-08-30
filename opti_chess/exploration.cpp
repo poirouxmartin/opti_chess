@@ -43,7 +43,7 @@ constexpr uint8_t display_repetition_limit = 3;
 // anchor -> depends only on D = distance to mate, which is a property of the
 // position); on probe, rebuild it using the _moves_count of the current node.
 // Mate threshold = the is_eval_mate / #1 idiom (10*|e| > mate_value), robust:
-// robuste : |stored| ~ mate_value(1e8) - D´+¢mate_ply + mc´+¢mate_ply, mc/D petits.
+// robuste : |stored| ~ mate_value(1e8) - Dï¿½+ï¿½mate_ply + mcï¿½+ï¿½mate_ply, mc/D petits.
 inline int tt_normalize_mate(int eval, int moves_count) {
 	if (10 * abs(eval) > mate_value)
 		return eval + (eval > 0 ? 1 : -1) * moves_count * mate_ply;
@@ -886,7 +886,7 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		// edge loops back here => spin + parent eval frozen/inconsistent depending
 		// on the path. That is the evidence to confirm.
 		if (dag_dbg_take()) {
-			cout << "[DAG] ´+¢3-cut child_key=" << std::hex << child->_board->_zobrist_key
+			cout << "[DAG] ï¿½+ï¿½3-cut child_key=" << std::hex << child->_board->_zobrist_key
 			     << std::dec << " child_pc=" << child->_parent_count
 			     << " parent_eval=" << _deep_evaluation._value
 			     << " (fige, edge non devaluee)\n"
@@ -1002,8 +1002,9 @@ void recycle_detached_node(Node* node) {
 	// #11 Plan B - a detached, recycled node must no longer be reachable
 	// through node_map (dangling pointer / resurrection). Erase the entry only
 	// if it really points at THIS node (a miss may have rewritten it).
+	// Use _saved_zobrist because reset_board() already zeroed _zobrist_key.
 	if (g_tt_node_dag && node->_board != nullptr) {
-		const auto it = node_map.find(node->_board->_zobrist_key);
+		const auto it = node_map.find(node->_saved_zobrist);
 		if (it != node_map.end() && it->second == node) {
 			node_map.erase(it);
 		}
@@ -1017,29 +1018,44 @@ void recycle_detached_node(Node* node) {
 		monte_node_buffer.free_index(node->_buffer_index);
 }
 
-// Resets the node and its children, and deletes them all
-void Node::reset(bool recursive) {
-	_latest_first_move_explored = -1;
-	_nodes = 0;
-	_iterations = 0;
-	_parent_count = 0;
+// Resets a single node's own fields (non-recursive part).
+static void reset_node_fields(Node* node) {
+	node->_latest_first_move_explored = -1;
+	node->_nodes = 0;
+	node->_iterations = 0;
+	node->_parent_count = 0;
 
-	if (_board != nullptr) {
-		_board->reset_board();
+	if (node->_board != nullptr) {
+		node->_saved_zobrist = node->_board->_zobrist_key;
+		node->_board->reset_board();
 	}
 
-	_initialized = false;
-	_is_terminal = false;
-	_can_explore = true;
-	_time_spent = 0;
-	_fully_explored = false;
-	_static_evaluation.reset();
-	_deep_evaluation.reset();
-	_quiescence_depth = 0;
-	_is_active = false;
-	_is_stand_pat_eval = true;
+	node->_initialized = false;
+	node->_is_terminal = false;
+	node->_can_explore = true;
+	node->_time_spent = 0;
+	node->_fully_explored = false;
+	node->_static_evaluation.reset();
+	node->_deep_evaluation.reset();
+	node->_quiescence_depth = 0;
+	node->_is_active = false;
+	node->_is_stand_pat_eval = true;
+}
+
+// Resets the node and its children, and deletes them all.
+// Uses an explicit worklist to avoid stack overflow on deep trees.
+void Node::reset(bool recursive) {
+	reset_node_fields(this);
 
 	if (recursive) {
+		// Worklist of nodes whose subtrees need resetting.
+		// Recycle list preserves bottom-up order (children before parents).
+		thread_local vector<Node*> worklist;
+		thread_local vector<Node*> to_recycle;
+		worklist.clear();
+		to_recycle.clear();
+
+		// Seed: queue this node's direct children.
 		for (auto const& [_, child_link] : _children) {
 			if (child_link._node == nullptr) {
 				continue;
@@ -1048,11 +1064,37 @@ void Node::reset(bool recursive) {
 			child_link._node->_parent_count--;
 
 			if (child_link._node->_parent_count <= 0) {
-				child_link._node->reset(true);
-				// Approach B: the child is permanently detached -> recycle it (and its
-				// board). NEVER `this` (reused in place).
-				recycle_detached_node(child_link._node);
+				worklist.push_back(child_link._node);
 			}
+		}
+
+		// Iteratively reset the entire subtree.
+		while (!worklist.empty()) {
+			Node* node = worklist.back();
+			worklist.pop_back();
+
+			reset_node_fields(node);
+
+			// Queue this node's own children.
+			for (auto const& [child_move, child_link] : node->_children) {
+				if (child_link._node == nullptr) {
+					continue;
+				}
+
+				child_link._node->_parent_count--;
+
+				if (child_link._node->_parent_count <= 0) {
+					worklist.push_back(child_link._node);
+				}
+			}
+
+			node->_children.clear();
+			to_recycle.push_back(node);
+		}
+
+		// Recycle in reverse order: deepest nodes first, then parents.
+		for (auto it = to_recycle.rbegin(); it != to_recycle.rend(); ++it) {
+			recycle_detached_node(*it);
 		}
 	}
 
@@ -1392,7 +1434,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	// Node initialisation
 	init_node();
 
-	// #7 / B-1 ´+¢ null-safe path history (appel manuel quiescence via main_gui.h) :
+	// #7 / B-1 ï¿½+ï¿½ null-safe path history (appel manuel quiescence via main_gui.h) :
 	// a local history owned for the WHOLE duration of the call. It must be declared
 	// at function scope (never per move, otherwise path_history dangles on the
 	// destroyed local of the previous iteration). Same idiom as grogros_zero.
@@ -1883,7 +1925,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	Move best_move;
 	double best_score = 0.0;
 
-	// Gamma (hoisted out of loop ´+¢ depends only on parent state)
+	// Gamma (hoisted out of loop ï¿½+ï¿½ depends only on parent state)
 	const double new_gamma = gamma / (1.0 - _static_evaluation._uncertainty / 2.0) / (1.0 - _board->_adv / 2.0);
 
 	// Look at every move
@@ -2435,5 +2477,5 @@ NodeBuffer monte_node_buffer;
 // as a reset/remove frees space.
 bool g_buffers_full_logged = false;
 bool g_tt_main_search = false;
-bool g_tt_node_dag = false; // #11 Plan B ´+¢ voir exploration.h
-robin_map<uint64_t, Node*> node_map; // #11 Plan B ´+¢ voir exploration.h
+bool g_tt_node_dag = false; // #11 Plan B ï¿½+ï¿½ voir exploration.h
+robin_map<uint64_t, Node*> node_map; // #11 Plan B ï¿½+ï¿½ voir exploration.h
