@@ -10,7 +10,7 @@ Make opti_chess strong with **very few nodes**. Like Lc0 or a grandmaster: look 
 - **Eval**: Hand-crafted evaluation (symmetric, 2170+ positions validated)
 - **Build**: C++20/MSVC/CMake/raylib GUI (`build/release/Release/opti_chess.exe`)
 - **Repetition**: Stockfish-style twofold (twofold for non-root, threefold for root); dead quiescence rep check removed
-- **Lichess 5000 benchmark (100ms/puzzle)**: `1245/5000 (24.9%)` current best
+- **Lichess 5000 benchmark (100ms/puzzle)**: `1245/5000 (24.9%)` current best, 1225 last measured
 - **Lichess 2000 benchmark (100ms/puzzle)**: `538/2000 (26.9%)`
 - **Node concentration**: 53% → 66% on best move with selective deepening
 - **Selfplay**: alpha=0.005 gives +126 Elo vs GUI default
@@ -243,13 +243,16 @@ Hot path optimization: make the core search loop as fast as possible.
 - **Buffer sizing floor**: Fixed — 1GB minimum (up from 500MB)
 - **Remaining**: Reproduce random position with corruption detector, identify root cause
 
-### 2. Remove Fullscreen Default
-- Default window 1920x1080 = fullscreen on most monitors → reduce to ~1280x720
-- Remove `HideCursor()` at startup
+### 2. Remove Fullscreen Default (DONE)
+- Default window 1280x720 (was 1920x1080)
+- `HideCursor()` commented out at startup
 
 ### 3. Twofold Repetition Fix (DONE)
-- `g_search_root_key` was overwritten on every recursive `grogros_zero` call — fixed to only set when `g_dag_recursion_depth == 0`
-- Non-root positions now correctly get twofold, root keeps threefold
+- `g_search_root_key` set only when `g_dag_recursion_depth == 0` (Stockfish-style depth-0)
+- `repetition_limit = 3` (FIDE threefold); twofold for non-root positions via `g_search_root_key` check
+- Both `exploration.cpp` and `exploration_diag.cpp` aligned (commit d708f3c)
+- Root position keeps threefold (opponent might have avoided it before search)
+- `position_is_draw_by_repetition` expanded with explicit root-key check
 
 ### 4. Selective Deepening Re-evaluation
 - `10,2,0` is current best. With bug fixes accumulated, re-test:
@@ -283,12 +286,10 @@ Hot path optimization: make the core search loop as fast as possible.
 - Lazy SMP with shared TT (long-term, ~3x speedup)
 - SIMD batch evaluation for quiescence
 
-### 10. Buffer Management Fix
-- "Buffer is full" happens frequently → can't reset mid-session
-- `reset_buffers()` only clears TT/node_map, not board/node buffers
-- Need: proper buffer recycling or dynamic resizing
-- **Fixed**: buffer sizing floor (500MB min), old root board freed before new allocation
-- **Remaining**: DAG orphaned node leak — nodes with parent_count > 0 from recycled parents accumulate
+### 10. Buffer Management Fix (DONE)
+- **Buffer sizing floor**: 1GB minimum in `compute_pool_sizing()`
+- **Old root board freed**: `reset_game()` frees before allocating new
+- **DAG orphaned node leak fixed**: `recycle_tree()` walks reachable tree before `node_map.clear()` (commit 2955933)
 
 ## Rules
 
