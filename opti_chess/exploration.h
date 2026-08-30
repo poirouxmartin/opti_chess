@@ -163,6 +163,11 @@ public:
 	// Index in monte_node_buffer (-1 = object outside the buffer: do not recycle)
 	int _buffer_index = -1;
 
+	// Zobrist key snapshot taken before Node::reset() zeroes the board.
+	// Used by recycle_detached_node to erase the correct node_map entry
+	// even after reset_board() has cleared _board->_zobrist_key.
+	uint64_t _saved_zobrist = 0;
+
 	// To add: evaluation?, node count?...
 
 	// Constructors
