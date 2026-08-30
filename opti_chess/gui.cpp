@@ -989,6 +989,10 @@ bool GUI::play_move_keep(Move move)
 					Node* child = child_link._node;
 					child->_parent_count--;
 					if (child->_parent_count <= 0) {
+						debug_log("[play_move_keep] recycling child move=%d->%d child=%p parent_count=0 nodes=%d iters=%d children=%d",
+							(int)m.start_row * 8 + m.start_col, (int)m.end_row * 8 + m.end_col,
+							(void*)child, (int)child->_nodes, (int)child->_iterations,
+							(int)child->_children.size());
 						child->reset(true);
 						// Enfant non choisi definitivement detache -> recyclage.
 						recycle_detached_node(child);
@@ -1781,6 +1785,15 @@ void GUI::reset_game() {
 
 	reset_buffers();
 	bool current_orientation = get_board_orientation();
+
+	// Free old root's board FIRST to reclaim a slot before allocating the new one.
+	Node* const old_root = _root_exploration_node;
+	Board* const old_board = old_root ? old_root->_board : nullptr;
+	if (old_board && old_board->_buffer_index >= 0 && !monte_board_buffer._bulk_resetting) {
+		monte_board_buffer.free_index(old_board->_buffer_index);
+		old_board->_buffer_index = -1; // prevent double-free in recycle_detached_node
+	}
+
 	_board = monte_board_buffer.get_first_free_board();
 	if (!_board) {
 		debug_log("[reset_game] CRITICAL: board buffer full! get_first_free_board returned null");
@@ -1794,8 +1807,7 @@ void GUI::reset_game() {
 	// Former root: recursive reset (recycles its subtrees through approach B),
 	// then replaced by a new node -> explicit recycling of the old one
 	// (node + board), otherwise 1 node + 1 board leak on every reset.
-	Node* const old_root = _root_exploration_node;
-	_root_exploration_node->reset();
+	old_root->reset();
 	recycle_detached_node(old_root);
 	_update_variants = true;
 	_board_orientation = current_orientation;
