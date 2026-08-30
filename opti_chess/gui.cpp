@@ -11,7 +11,7 @@
 #include <cstdarg>
 
 // --- Debug logging ---
-bool g_debug = (getenv("OPTI_DEBUG") != nullptr);
+bool g_debug = true;
 static ofstream g_debug_file;
 
 static void ensure_debug_file() {
