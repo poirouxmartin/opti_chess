@@ -1278,6 +1278,22 @@ void GUI::draw()
 		return;
 	}
 
+	// Board corruption detector: track the board's FEN hash across frames.
+	// If it changes WITHOUT play_move_keep being called, log the corruption.
+	{
+		static uint64_t prev_zobrist = 0;
+		const uint64_t cur_zobrist = _board->_zobrist_key;
+
+		if (prev_zobrist != 0 && cur_zobrist != prev_zobrist) {
+			debug_log("[draw] BOARD CHANGED: prev=%016llX cur=%016llX fen=%s root_board_zob=%016llX same_as_root=%d",
+				(unsigned long long)prev_zobrist, (unsigned long long)cur_zobrist,
+				_board->to_fen().c_str(),
+				(unsigned long long)(_root_exploration_node->_board ? _root_exploration_node->_board->_zobrist_key : 0),
+				(int)(_board == _root_exploration_node->_board));
+		}
+		prev_zobrist = cur_zobrist;
+	}
+
 
 	// *** CLICS SOURIS ***
 

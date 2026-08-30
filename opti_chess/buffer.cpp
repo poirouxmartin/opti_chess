@@ -127,6 +127,12 @@ PoolSizing compute_pool_sizing(double ram_fraction, unsigned long long hard_cap_
 	if (budget > hard_cap_bytes)
 		budget = hard_cap_bytes;
 
+	// Minimum floor: even on battery with low reported RAM, guarantee at least
+	// 500 MB for the flat arrays so the engine can still do meaningful analysis.
+	constexpr unsigned long long min_budget_bytes = 500ULL * 1024 * 1024;
+	if (budget < min_budget_bytes)
+		budget = min_budget_bytes;
+
 	// The real RSS is ~ rss_overhead_factor * (flat arrays + flat TT), because
 	// the robin_map _children/_positions_history/TT grow on the heap outside of
 	// sizeof. The flat structures are therefore allocated at budget/factor, so
