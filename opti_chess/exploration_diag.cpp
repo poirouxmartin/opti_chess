@@ -423,7 +423,9 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	PositionHistory local_path_history;
 	PositionHistory* base_path_history = path_history != nullptr ? path_history : &local_path_history;
 	ensure_position_in_history(*base_path_history, *_board);
-	g_search_root_key = _board->_zobrist_key;
+	// Only set at top level — non-root positions get twofold, root keeps threefold
+	if (g_dag_recursion_depth == 0)
+		g_search_root_key = _board->_zobrist_key;
 
 	// INITIALISATION
 	if (!_initialized) {
