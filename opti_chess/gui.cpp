@@ -8,6 +8,30 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ranges"
+#include <cstdarg>
+
+// --- Debug logging ---
+bool g_debug = (getenv("OPTI_DEBUG") != nullptr);
+static ofstream g_debug_file;
+
+static void ensure_debug_file() {
+	if (g_debug && !g_debug_file.is_open()) {
+		g_debug_file.open("opti_chess_debug.log", ios::app);
+		g_debug_file << "\n=== session start ===" << endl;
+	}
+}
+
+void debug_log(const char* fmt, ...) {
+	if (!g_debug) return;
+	ensure_debug_file();
+	char buf[1024];
+	va_list args;
+	va_start(args, fmt);
+	vsnprintf(buf, sizeof(buf), fmt, args);
+	va_end(args);
+	g_debug_file << buf << endl;
+	g_debug_file.flush();
+}
 
 // Updates the clocks of the players
 void GUI::update_time() {
@@ -307,6 +331,11 @@ void GUI::draw_exploration_arrows()
 {
 	// Vector of arrows to display
 	_grogros_arrows.clear();
+
+	if (!_root_exploration_node || !_root_exploration_node->_board) {
+		debug_log("[draw_exploration_arrows] root or root board null, skipping");
+		return;
+	}
 
 	if (_root_exploration_node->_nodes <= 1 || _root_exploration_node->_is_terminal)
 		return;
@@ -890,6 +919,22 @@ void GUI::draw_simple_arrow_from_coord(const int i1, const int j1, const int i2,
 // Plays a move, keeping the GrogrosZero search
 bool GUI::play_move_keep(Move move)
 {
+	debug_log("[play_move_keep] enter move=%d->%d promo=%d board=%p root=%p root_board=%p",
+		(int)move.start_row * 8 + move.start_col,
+		(int)move.end_row * 8 + move.end_col,
+		(int)move.promo_piece,
+		(void*)_board, (void*)_root_exploration_node,
+		_root_exploration_node ? (void*)_root_exploration_node->_board : nullptr);
+
+	if (!_board) {
+		debug_log("[play_move_keep] CRITICAL: _board is null!");
+		return false;
+	}
+	if (!_root_exploration_node) {
+		debug_log("[play_move_keep] CRITICAL: _root_exploration_node is null!");
+		return false;
+	}
+
 	_board->assign_move_flags(&move);
 
 	// Make sure the move is legal
@@ -923,9 +968,17 @@ bool GUI::play_move_keep(Move move)
 	}
 
 	// If the move was actually computed
-	else {
+		else {
 		if (_root_exploration_node->_children.contains(move)) {
 			Node* next_root = _root_exploration_node->_children[move]._node;
+
+			debug_log("[play_move_keep] move found in children, next_root=%p parent_count=%d",
+				(void*)next_root, next_root ? next_root->_parent_count : -1);
+
+			if (!next_root || !next_root->_board) {
+				debug_log("[play_move_keep] CRITICAL: next_root or its board is null!");
+				return false;
+			}
 
 			// Former root: detached further down (replaced by next_root), not reused
 			// in place -> to be recycled explicitly (approach B).
@@ -961,6 +1014,11 @@ bool GUI::play_move_keep(Move move)
 			// Reassign _board BEFORE recycling the old root so that _board
 			// is never a dangling pointer to a recycled buffer slot.
 			_board = _root_exploration_node->_board;
+
+			debug_log("[play_move_keep] new root: board=%p root=%p children=%d iters=%d",
+				(void*)_board, (void*)_root_exploration_node,
+				(int)_root_exploration_node->_children.size(),
+				(int)_root_exploration_node->_iterations);
 
 			// Former root, now orphaned (next_root is the new root):
 			// recycling of its node + board (B_R), distinct from next_root.
@@ -1142,6 +1200,12 @@ uint8_t GUI::clicked_piece() const
 void GUI::grogros_analysis(int iterations) {
 	// Nodes to explore per frame, aiming at _target_fps FPS
 
+	if (!_root_exploration_node || !_board) {
+		debug_log("[grogros_analysis] CRITICAL: root=%p board=%p — skipping",
+			(void*)_root_exploration_node, (void*)_board);
+		return;
+	}
+
 	// Iterations per second
 	int iterations_per_second = _root_exploration_node->get_ips();
 
@@ -1192,6 +1256,22 @@ void GUI::draw()
 		load_resources();
 		resize_GUI();
 		PlaySound(_game_begin_sound);
+	}
+
+	// Null guard: if root or board is null, draw a black screen with a message
+	if (!_board || !_root_exploration_node || !_root_exploration_node->_board) {
+		BeginDrawing();
+		ClearBackground(BLACK);
+		const char* msg = "[CRASH GUARD] _board or _root_exploration_node is null";
+		DrawText(msg, 20, 20, 20, RED);
+		char buf[256];
+		snprintf(buf, sizeof(buf), "_board=%p root=%p root_board=%p",
+			(void*)_board, (void*)_root_exploration_node,
+			_root_exploration_node ? (void*)_root_exploration_node->_board : nullptr);
+		DrawText(buf, 20, 50, 16, YELLOW);
+		EndDrawing();
+		debug_log("[draw] null guard triggered: %s", msg);
+		return;
 	}
 
 
@@ -1664,6 +1744,14 @@ void GUI::draw()
 
 // Loads a position from a FEN
 void GUI::load_FEN(const string fen, bool display) {
+	debug_log("[load_FEN] fen=%s root=%p board=%p", fen.c_str(),
+		(void*)_root_exploration_node, (void*)_board);
+
+	if (!_root_exploration_node || !_board) {
+		debug_log("[load_FEN] CRITICAL: root or board null, skipping");
+		return;
+	}
+
 	// TODO: the FEN has to be validated
 	//_board->from_fen(fen);
 	//update_global_pgn();
@@ -1683,6 +1771,10 @@ void GUI::load_FEN(const string fen, bool display) {
 // Resets the game
 void GUI::reset_game() {
 	cout << "*** RESETING GAME ***\n" << endl;
+	debug_log("[reset_game] enter boards_free=%d nodes_free=%d root=%p board=%p",
+		monte_board_buffer.get_first_free_index(),
+		monte_node_buffer.get_first_free_index(),
+		(void*)_root_exploration_node, (void*)_board);
 
 	cout << _global_pgn << endl;
 	cout << _pgn << endl;
@@ -1690,6 +1782,11 @@ void GUI::reset_game() {
 	reset_buffers();
 	bool current_orientation = get_board_orientation();
 	_board = monte_board_buffer.get_first_free_board();
+	if (!_board) {
+		debug_log("[reset_game] CRITICAL: board buffer full! get_first_free_board returned null");
+		cout << "[CRASH] board buffer full in reset_game" << endl;
+		return;
+	}
 	_board->restart();
 	_board->_is_active = true;
 	_game_tree.reset();
@@ -1703,8 +1800,14 @@ void GUI::reset_game() {
 	_update_variants = true;
 	_board_orientation = current_orientation;
 	_root_exploration_node = monte_node_buffer.get_first_free_node();
+	if (!_root_exploration_node) {
+		debug_log("[reset_game] CRITICAL: node buffer full! get_first_free_node returned null");
+		cout << "[CRASH] node buffer full in reset_game" << endl;
+		return;
+	}
 	_root_exploration_node->_board = _board;
 
+	debug_log("[reset_game] done root=%p board=%p", (void*)_root_exploration_node, (void*)_board);
 	PlaySound(_game_begin_sound);
 
 	cout << "\n*** GAME RESET DONE ***" << endl;
@@ -1749,6 +1852,12 @@ void GUI::update_grogros_zero_name() {
 
 // Plays the GrogrosZero move or not, depending on the time left
 void GUI::play_grogros_zero_move(float time_proportion_per_move) {
+
+	if (!_board || !_root_exploration_node) {
+		debug_log("[play_grogros_zero_move] null guard: board=%p root=%p",
+			(void*)_board, (void*)_root_exploration_node);
+		return;
+	}
 
 	// Positions bug:
 	// rnbq1rk1/pp1p1ppp/7n/2p1P3/3p4/3B1N1P/PPPN1PP1/R2Q1RK1 w - - 0 10: it does not play Ne4

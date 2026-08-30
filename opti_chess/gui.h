@@ -4,6 +4,7 @@
 #include <string>
 #include "raylib.h"
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include "board.h"
 #include "game_tree.h"
@@ -11,6 +12,10 @@
 #include "windows_tests.h"
 
 using namespace std;
+
+// Debug logging (enabled by OPTI_DEBUG=1 env var)
+extern bool g_debug;
+void debug_log(const char* fmt, ...);
 
 // TODO: add const in a lot more places
 
@@ -20,8 +25,8 @@ public:
 	// Variables
 
 	// Dimensions of the window
-	int _screen_width = 1920;
-	int _screen_height = 1080;
+	int _screen_width = 1280;
+	int _screen_height = 720;
 
 	// Displayed board
 	Board *_board;
