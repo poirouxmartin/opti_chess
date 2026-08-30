@@ -9,8 +9,9 @@ Make opti_chess strong with **very few nodes**. Like Lc0 or a grandmaster: look 
 - **Search**: GrogrosZero (MCTS + alpha-beta + quiescence) selective `10,2,0` (move1 full 10, moves2-5 depth2, rest 0 static-only)
 - **Eval**: Hand-crafted evaluation (symmetric, 2170+ positions validated)
 - **Build**: C++20/MSVC/CMake/raylib GUI (`build/release/Release/opti_chess.exe`)
-- **Lichess 2000 benchmark (100ms/puzzle)**: `181/2000 (9.1%)` baseline full10 → `251/2000 (12.6%)` selective `10,2,0` (+70, +38%) — `10,2,2` 237/2000, `10,6,0` 240/2000
-- **Lichess 500 variable-reward (0.5 luck, 1.0 true)**: `98/500` baseline → `135/500` `10,2,0` → `119/500` `10,2,2`
+- **Repetition**: Stockfish-style twofold (twofold for non-root, threefold for root); dead quiescence rep check removed
+- **Lichess 5000 benchmark (100ms/puzzle)**: `1245/5000 (24.9%)` current best
+- **Lichess 2000 benchmark (100ms/puzzle)**: `538/2000 (26.9%)`
 - **Node concentration**: 53% → 66% on best move with selective deepening
 - **Selfplay**: alpha=0.005 gives +126 Elo vs GUI default
 
@@ -31,6 +32,10 @@ Make opti_chess strong with **very few nodes**. Like Lc0 or a grandmaster: look 
 - eval_delta formula inversion (critical: was giving opposite sign)
 - TT scale isolation, memory cap
 - `get_winnable` OOB, `reset_bitboard` bound, `get_pawn_push_threats` OOB
+- **Stack overflow**: `Node::reset(true)` converted from recursive to iterative worklist (exploration.cpp + exploration_diag.cpp)
+- **`_saved_zobrist`**: Saved before `reset_board()` in `reset_node_fields()`, used by `recycle_detached_node()` for correct `node_map` erase
+- **Board buffer exhaustion**: `reset_game()` frees old root board before allocating new one
+- **Buffer sizing**: 500MB minimum floor in `compute_pool_sizing()` to prevent tiny buffers on battery
 
 ### Search Improvements
 - Quiescence check extension 0→1
@@ -197,6 +202,57 @@ Hot path optimization: make the core search loop as fast as possible.
 4. If solved count improves AND no regression on other tests: keep change
 5. If regression: analyze root cause, fix or revert
 
+## Roadmap (Current Priority Order)
+
+### 1. GUI Crash & Random Position Investigation (ACTIVE)
+- **Stack overflow**: Fixed — `Node::reset(true)` converted to iterative worklist
+- **Random position bug**: Board corruption detected 0.5s after playing a move. `_board` points to correct position but contents change during analysis. Corruption detector added to `draw()`. Need debug log to identify the mechanism. Possible cause: DAG node recycling affecting boards via shared pointers, or buffer reuse while `_board` still references a freed slot.
+- **Board buffer exhaustion**: Fixed — `reset_game()` now frees old root board before allocating new one. Buffer sizing floor (500MB min) added to prevent tiny buffers on battery.
+- **Node buffer leak**: DAG orphaned nodes (parent_count > 0 from recycled parents) accumulate without being freed. `reset_buffers()` clears node_map but doesn't free orphaned nodes. Need: track live nodes or do a full buffer sweep before clearing.
+- **Remaining**: Reproduce random position with corruption detector, identify root cause
+
+### 2. Remove Fullscreen Default
+- Default window 1920x1080 = fullscreen on most monitors → reduce to ~1280x720
+- Remove `HideCursor()` at startup
+
+### 3. Twofold Repetition Fix
+- `g_search_root_key` is overwritten on every recursive `grogros_zero` call — should only be set at top level
+- This is a bug: non-root positions get threefold instead of twofold when recursed
+- Fix: only set when `g_dag_recursion_depth == 0`
+
+### 4. Selective Deepening Re-evaluation
+- `10,2,0` is current best. With bug fixes accumulated, re-test:
+  - `10,2,2`: move1-5 full 10, moves6+ depth 2
+  - `10,6,2`: move1-5 full 10, moves6-10 depth 6, rest depth 2
+- Expected: some regressions fixed by accumulated improvements
+
+### 5. Full Algorithmic Audit
+- Search for implementation mistakes hiding in the code
+- Systematic review of every search function
+- Focus on correctness bugs, not performance
+
+### 6. Node Usage / Wastage Optimisation
+- Target: 90% of nodes spent on top move on average
+- Target: <1% of nodes on worthless moves
+- Current: ~66% on best, ~34% on other moves
+
+### 7. TT + DAG Audit & Improvements
+- Check code for mistakes in TT storage/lookup
+- Analyse TT hit rate % and other stats
+- DAG node sharing efficiency
+
+### 8. CPU Hotpath Optimisation + RAM Usage
+- Profile hot path, reduce cache misses
+- Optimise inner loops
+- Reduce memory footprint
+
+### 9. Buffer Management Fix
+- "Buffer is full" happens frequently → can't reset mid-session
+- `reset_buffers()` only clears TT/node_map, not board/node buffers
+- Need: proper buffer recycling or dynamic resizing
+- **Fixed**: buffer sizing floor (500MB min), old root board freed before new allocation
+- **Remaining**: DAG orphaned node leak — nodes with parent_count > 0 from recycled parents accumulate
+
 ## Rules
 
 1. **No correctness regressions** — if a "fix" hurts performance, revert it
@@ -208,9 +264,11 @@ Hot path optimization: make the core search loop as fast as possible.
 
 ## Success Criteria
 
-- [ ] 2000+ puzzle benchmark: 250+/2000 (12.5%+) solved at 100ms
-- [ ] Node concentration: 80%+ on best move
-- [ ] Wasted nodes: <10%
+- [ ] 5000 puzzle benchmark: 4000+/5000 (80%+) solved at 100ms
+- [ ] 2000 puzzle benchmark: 1600+/2000 (80%+) solved at 100ms
+- [ ] Node concentration: 90%+ on best move
+- [ ] Wasted nodes: <1%
+- [ ] No GUI crashes during analysis + move playback
 - [ ] TT working and providing measurable node savings
 - [ ] NN evaluation integrated and improving strength
 - [ ] NPS improved by 50%+
