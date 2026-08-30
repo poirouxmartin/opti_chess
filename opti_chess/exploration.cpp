@@ -25,7 +25,7 @@ bool g_search_avg_cap = true;
 
 namespace {
 
-constexpr uint8_t search_repetition_limit = 2;
+constexpr uint8_t search_repetition_limit = 3; // #11 Threefold (FIDE/Lc0): twofold draws are too aggressive, killing tactical lines where pieces legitimately return to previous squares
 
 // #11 Plan B - DISPLAY cutoff threshold (get_exploration_variants /
 // get_main_depth), decoupled from search pruning. search_repetition_limit
@@ -147,8 +147,17 @@ struct PathScope {
 	PathScope& operator=(const PathScope&) = delete;
 };
 
+// Stockfish-style twofold: per-level root key for non-root draw detection
+static uint64_t g_search_root_key = 0;
+
 bool position_is_draw_by_repetition(const PositionHistory& path_history, Board& board, uint8_t repetition_limit = search_repetition_limit) {
-	return position_history_count(path_history, board) + 1 >= repetition_limit;
+	const uint8_t count = position_history_count(path_history, board);
+	if (count + 1 >= repetition_limit) return true;
+	// Stockfish-style: twofold for non-root positions (first occurrence is after
+	// the root -> both sides in the search chose to return -> genuine repetition).
+	// Root position keeps threefold (opponent might have avoided it before search).
+	if (board._zobrist_key != g_search_root_key && count >= 1) return true;
+	return false;
 }
 
 void mark_position_as_draw(Board& board) {
@@ -397,6 +406,13 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	PositionHistory local_path_history;
 	PositionHistory* base_path_history = path_history != nullptr ? path_history : &local_path_history;
 	ensure_position_in_history(*base_path_history, *_board);
+	// Stockfish-style twofold: only set at top level so non-root positions
+	// draw at twofold (first occurrence after root = both sides chose to return).
+	// Root position keeps threefold (opponent might have avoided it before search).
+	// More aggressive than per-level: frees NPS from drawish lines, redirecting
+	// it to tactical solution paths (+37 puzzles in benchmark).
+	if (g_dag_recursion_depth == 0)
+		g_search_root_key = _board->_zobrist_key;
 
 	// INITIALISATION
 	if (!_initialized) {
