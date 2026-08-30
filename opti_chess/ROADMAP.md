@@ -161,25 +161,56 @@ Replace hand-crafted eval with a neural network. Add a **policy value** for each
 - Live per-move `iters/nodes/static/deep` display already in `PuzzleDiagnostic` — expose in GUI arrows panel
 - Presets: `10` baseline / `10,2,0` / `10,2,2` + variable-reward benchmark button
 
-## Phase 6: NPS Optimization
+## Phase 6: Parallelisation
+
+### Goal
+Exploit multi-core CPUs to search more positions in the same wall-clock time.
+
+### 6.1 Parallel Iterative Deepening
+- Multiple threads search the same root with independent time budgets
+- Best result from any thread is used; PV is merged
+- Simple to implement, near-linear speedup with 2-4 threads
+
+### 6.2 Root Parallelisation
+- Each thread searches a different root move
+- Best move across all threads is selected
+- Ideal when move ordering is accurate (policy head gives good priors)
+
+### 6.3 Lazy SMP (Long-term)
+- Threads share a single TT (read/write with atomics or locks)
+- Each thread explores independently but benefits from TT hits from other threads
+- Stockfish-style: proven technique, ~3x speedup with 4 threads
+
+### 6.4 SIMD Batch Evaluation
+- Evaluate multiple positions simultaneously (SIMD lanes)
+- Complements NN evaluation (batch inference)
+- Useful for quiescence search where many positions are evaluated independently
+
+### 6.5 Implementation Notes
+- Use `std::thread` or thread pool (no OS-specific APIs)
+- TT must be thread-safe (atomic writes or fine-grained locking)
+- Node buffer allocation must be thread-local or partitioned
+- Board buffer: each thread gets its own sub-range
+- Benchmark: measure NPS scaling with 1/2/4/8 threads
+
+## Phase 7: NPS Optimization
 
 ### Goal
 Hot path optimization: make the core search loop as fast as possible.
 
-### 5.1 Hot Path Analysis
+### 7.1 Hot Path Analysis
 - Profile `grogros_zero`, `explore_new_move`, `quiescence`
 - Identify cache misses, branch mispredictions
 - Optimize inner loops
 
-### 5.2 Memory Layout
+### 7.2 Memory Layout
 - Node struct alignment
 - Child map (robin_map) vs sorted array
 - Board representation efficiency
 
-### 5.3 SIMD / Parallel
-- Evaluate multiple positions simultaneously
+### 7.3 SIMD
+- Evaluate multiple positions simultaneously (SIMD lanes)
 - Batch NN inference
-- Parallel tree search
 
 ## Measurement
 
@@ -246,7 +277,13 @@ Hot path optimization: make the core search loop as fast as possible.
 - Optimise inner loops
 - Reduce memory footprint
 
-### 9. Buffer Management Fix
+### 9. Parallelisation
+- Parallel iterative deepening (2-4 threads, near-linear speedup)
+- Root parallelisation (one thread per root move)
+- Lazy SMP with shared TT (long-term, ~3x speedup)
+- SIMD batch evaluation for quiescence
+
+### 10. Buffer Management Fix
 - "Buffer is full" happens frequently → can't reset mid-session
 - `reset_buffers()` only clears TT/node_map, not board/node buffers
 - Need: proper buffer recycling or dynamic resizing

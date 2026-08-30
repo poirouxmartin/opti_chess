@@ -128,8 +128,8 @@ PoolSizing compute_pool_sizing(double ram_fraction, unsigned long long hard_cap_
 		budget = hard_cap_bytes;
 
 	// Minimum floor: even on battery with low reported RAM, guarantee at least
-	// 500 MB for the flat arrays so the engine can still do meaningful analysis.
-	constexpr unsigned long long min_budget_bytes = 500ULL * 1024 * 1024;
+	// 1 GB for the flat arrays so the engine can still do meaningful analysis.
+	constexpr unsigned long long min_budget_bytes = 1024ULL * 1024 * 1024;
 	if (budget < min_budget_bytes)
 		budget = min_budget_bytes;
 
