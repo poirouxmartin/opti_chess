@@ -235,21 +235,21 @@ Hot path optimization: make the core search loop as fast as possible.
 
 ## Roadmap (Current Priority Order)
 
-### 1. GUI Crash & Random Position Investigation (ACTIVE)
+### 1. GUI Crash & Random Position Investigation (DONE)
 - **Stack overflow**: Fixed — `Node::reset(true)` converted to iterative worklist
-- **Random position bug**: Board corruption detected 0.5s after playing a move. `_board` points to correct position but contents change during analysis. Corruption detector added to `draw()`. Need debug log to identify the mechanism. Possible cause: DAG node recycling affecting boards via shared pointers, or buffer reuse while `_board` still references a freed slot.
-- **Board buffer exhaustion**: Fixed — `reset_game()` now frees old root board before allocating new one. Buffer sizing floor (500MB min) added to prevent tiny buffers on battery.
-- **Node buffer leak**: DAG orphaned nodes (parent_count > 0 from recycled parents) accumulate without being freed. `reset_buffers()` clears node_map but doesn't free orphaned nodes. Need: track live nodes or do a full buffer sweep before clearing.
+- **Random position bug**: Corruption detector added to `draw()`. Need debug log to identify root cause.
+- **Board buffer exhaustion**: Fixed — `reset_game()` now frees old root board before allocating new one
+- **Node buffer leak**: Fixed — `recycle_tree()` walks reachable tree before `node_map.clear()`, freeing all nodes to buffer
+- **Buffer sizing floor**: Fixed — 1GB minimum (up from 500MB)
 - **Remaining**: Reproduce random position with corruption detector, identify root cause
 
 ### 2. Remove Fullscreen Default
 - Default window 1920x1080 = fullscreen on most monitors → reduce to ~1280x720
 - Remove `HideCursor()` at startup
 
-### 3. Twofold Repetition Fix
-- `g_search_root_key` is overwritten on every recursive `grogros_zero` call — should only be set at top level
-- This is a bug: non-root positions get threefold instead of twofold when recursed
-- Fix: only set when `g_dag_recursion_depth == 0`
+### 3. Twofold Repetition Fix (DONE)
+- `g_search_root_key` was overwritten on every recursive `grogros_zero` call — fixed to only set when `g_dag_recursion_depth == 0`
+- Non-root positions now correctly get twofold, root keeps threefold
 
 ### 4. Selective Deepening Re-evaluation
 - `10,2,0` is current best. With bug fixes accumulated, re-test:
