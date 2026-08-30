@@ -2213,6 +2213,57 @@ void GUI::init_buffers() const {
 	}
 }
 
+// Walk the entire reachable tree from `root` and return every node (and its
+// board) to the buffer free-list.  parent_count is set to 0 on every node so
+// that the bottom-up recycle order is respected.  This must be called BEFORE
+// node_map.clear() — otherwise orphaned DAG nodes (parent_count > 0 from
+// recycled parents) would never be freed (#node-buffer-leak).
+static void recycle_tree(Node* root) {
+	if (root == nullptr)
+		return;
+
+	thread_local vector<Node*> worklist;
+	thread_local vector<Node*> to_recycle;
+	worklist.clear();
+	to_recycle.clear();
+
+	// Seed: reset root's own parent_count (will be recycled by caller)
+	root->_parent_count = 0;
+
+	// BFS: push all direct children
+	for (auto const& [_, child_link] : root->_children) {
+		if (child_link._node == nullptr)
+			continue;
+		child_link._node->_parent_count = 0;
+		worklist.push_back(child_link._node);
+	}
+
+	// Walk the rest of the tree
+	while (!worklist.empty()) {
+		Node* node = worklist.back();
+		worklist.pop_back();
+
+		for (auto const& [_, child_link] : node->_children) {
+			if (child_link._node == nullptr)
+				continue;
+			child_link._node->_parent_count = 0;
+			worklist.push_back(child_link._node);
+		}
+		to_recycle.push_back(node);
+	}
+
+	// Recycle deepest-first (children before parents)
+	for (auto it = to_recycle.rbegin(); it != to_recycle.rend(); ++it) {
+		Node* node = *it;
+		// Free board buffer slot
+		if (node->_board != nullptr && node->_board->_buffer_index >= 0 && !monte_board_buffer._bulk_resetting)
+			monte_board_buffer.free_index(node->_board->_buffer_index);
+		// Free node buffer slot
+		if (node->_buffer_index >= 0 && !monte_node_buffer._bulk_resetting)
+			monte_node_buffer.free_index(node->_buffer_index);
+	}
+}
+
 // Resets the buffers
 // #12: do NOT sweep the whole capacity. monte_*_buffer.reset() looped over
 // 5M Board::reset_board() + 10M Node::reset(false) - each clearing a
@@ -2222,6 +2273,9 @@ void GUI::init_buffers() const {
 // just after by load_FEN (gui.cpp:1504) and reset_game (gui.cpp:1530).
 // The O(capacity) sweep was purely redundant.
 void GUI::reset_buffers() const {
+	// Return all reachable nodes to the buffer free-list before clearing
+	// node_map, so orphaned DAG nodes don't leak (#node-buffer-leak).
+	recycle_tree(_root_exploration_node);
 	transposition_table.clear();
 	node_map.clear(); // #11 Plan B — purge le DAG en meme temps que la TT (pas de pointeur pendant inter-recherches)
 }
