@@ -373,8 +373,13 @@ void GUI::draw_exploration_arrows()
 
 	// Draw the arrows
 	for (const Move move : iterated_moves_vector) {
-		const ChildLink& child_link = _root_exploration_node->_children[move];
+		const auto it = _root_exploration_node->_children.find(move);
+		if (it == _root_exploration_node->_children.end())
+			continue;
+		const ChildLink& child_link = it->second;
 		Node const *child = child_link._node;
+		if (!child || !child->_board)
+			continue;
 		const int mate = _root_exploration_node->_board->is_eval_mate(child->_deep_evaluation._value);
 		draw_arrow(move, _root_exploration_node->_board->_player, move_color(child_link._chosen_iterations, _root_exploration_node->_iterations, child->_iterations == 0), -1.0f, true, child->_deep_evaluation._avg_score, mate, move == best_move, move == best_eval_move);
 	}
@@ -940,11 +945,10 @@ bool GUI::play_move_keep(Move move)
 
 			//cout << "toto" << endl;
 
-			// Reset the board
-			_root_exploration_node->_board->reset_board();
+			// Reset the node (non-recursive): clears fields, resets board
+			// internally, and clears _children.  Do NOT call reset_board()
+			// explicitly — Node::reset already handles it.
 			_root_exploration_node->reset(false);
-
-			_board->reset_board();
 
 			//cout << "tata" << endl;
 
@@ -954,12 +958,13 @@ bool GUI::play_move_keep(Move move)
 			next_root->_parent_count--;
 			_root_exploration_node = next_root;
 
+			// Reassign _board BEFORE recycling the old root so that _board
+			// is never a dangling pointer to a recycled buffer slot.
+			_board = _root_exploration_node->_board;
+
 			// Former root, now orphaned (next_root is the new root):
 			// recycling of its node + board (B_R), distinct from next_root.
 			recycle_detached_node(old_root);
-
-			// Update the board
-			_board = _root_exploration_node->_board;
 			//_root_exploration_node->_board = &_board;
 		}
 
@@ -996,6 +1001,9 @@ bool GUI::play_move_keep(Move move)
 
 	// Any played move invalidates a stale promotion picker
 	_promotion_pending = false;
+
+	// Clear stale arrows from the old root so they cannot be clicked
+	_grogros_arrows.clear();
 
 	return true;
 }
@@ -1156,7 +1164,7 @@ void GUI::grogros_analysis(int iterations) {
 	// With the transpositions, _nodes represents the propagated search volume,
 	// not necessarily the number of unique boards still active in the buffer.
 	// We only stop when the buffer really is full.
-	if (monte_board_buffer.get_first_free_index() == -1) {
+	if (monte_board_buffer.is_full()) {
 		iterations_to_explore = 0;
 	}
 
