@@ -423,10 +423,13 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	PositionHistory local_path_history;
 	PositionHistory* base_path_history = path_history != nullptr ? path_history : &local_path_history;
 	ensure_position_in_history(*base_path_history, *_board);
-	// Set per recursive call: twofold check compares against immediate parent,
-	// not the actual root. This avoids over-pruning tactical lines where
-	// positions legitimately repeat within a subtree (gained +39 puzzles).
-	g_search_root_key = _board->_zobrist_key;
+	// Stockfish-style twofold: only set at top level so non-root positions
+	// draw at twofold (first occurrence after root = both sides chose to return).
+	// Root position keeps threefold (opponent might have avoided it before search).
+	// More aggressive than per-level: frees NPS from drawish lines, redirecting
+	// it to tactical solution paths (+37 puzzles in benchmark).
+	if (g_dag_recursion_depth == 0)
+		g_search_root_key = _board->_zobrist_key;
 
 	// INITIALISATION
 	if (!_initialized) {
