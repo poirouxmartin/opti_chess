@@ -44,8 +44,8 @@ inline int main_ui() {
 	// Space between the text lines
 	SetTextLineSpacing(4);
 
-	// Cursor
-	HideCursor();
+	// Cursor (hidden when hovering the board, see draw())
+	// HideCursor();
 
 	// Shader for the selected pieces
 	main_GUI._selected_shader = LoadShader(0, "resources/shaders/outline.fs");
