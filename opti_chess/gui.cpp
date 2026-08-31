@@ -1046,19 +1046,7 @@ bool GUI::play_move_keep(Move move)
 	}
 
 	_root_exploration_node->_board = _board;
-
-	// #6: systematic TT/node_map clear on position change.
-	// BUT do NOT call recycle_tree when the root was promoted from a child
-	// (path 2): that would destroy the very subtree we want to preserve.
-	if (!_root_exploration_node->_children.empty()) {
-		// Path 2: subtree preserved — only purge stale bookkeeping.
-		transposition_table.clear();
-		node_map.clear();
-	}
-	else {
-		// Paths 1 & 3: root has no live children — safe to recycle.
-		reset_buffers();
-	}
+	reset_buffers(); // #6: systematic TT/node_map clear on position change
 
 	_board->get_moves();
 
@@ -2242,16 +2230,13 @@ static void recycle_tree(Node* root) {
 	// Seed: reset root's own parent_count (will be recycled by caller)
 	root->_parent_count = 0;
 
-	// BFS: push all direct children, then clear root's map so that a
-	// subsequent reset(true) won't re-walk (and double-free) these
-	// already-queued nodes.
+	// BFS: push all direct children
 	for (auto const& [_, child_link] : root->_children) {
 		if (child_link._node == nullptr)
 			continue;
 		child_link._node->_parent_count = 0;
 		worklist.push_back(child_link._node);
 	}
-	root->_children.clear();
 
 	// Walk the rest of the tree
 	while (!worklist.empty()) {
@@ -2288,9 +2273,6 @@ static void recycle_tree(Node* root) {
 // just after by load_FEN (gui.cpp:1504) and reset_game (gui.cpp:1530).
 // The O(capacity) sweep was purely redundant.
 void GUI::reset_buffers() const {
-	// Return all reachable nodes to the buffer free-list before clearing
-	// node_map, so orphaned DAG nodes don't leak (#node-buffer-leak).
-	recycle_tree(_root_exploration_node);
 	transposition_table.clear();
 	node_map.clear(); // #11 Plan B — purge le DAG en meme temps que la TT (pas de pointeur pendant inter-recherches)
 }
