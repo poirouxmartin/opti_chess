@@ -757,7 +757,26 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 			}
 		}
 
+		// Save the existing deep evaluation before quiescence potentially
+		// overwrites it with a shallower result (selective deepening).
+		// If the child already had a properly searched evaluation (from a
+		// deeper quiescence or DAG sharing), preserve the better value.
+		const int old_deep_value = child->_deep_evaluation._value;
+		const bool had_deep_eval = child->_deep_evaluation._evaluated;
+
 		child->quiescence(board_buffer, eval, child_depth, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, &branch_history);
+
+		// If the child had a deeper/better quiescence result before, restore it.
+		// This prevents selective deepening (depth 0) from overwriting a correct
+		// deep evaluation with a stale stand-pat value.
+		if (had_deep_eval && child->_deep_evaluation._evaluated) {
+			const int color = child->_board->get_color();
+			const int old_better = old_deep_value * color;
+			const int new_better = child->_deep_evaluation._value * color;
+			if (old_better > new_better) {
+				child->_deep_evaluation._value = old_deep_value;
+			}
+		}
 
 		child->_fully_explored = true;
 }
@@ -1830,12 +1849,6 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				PathScope _ps(branch_history, *child->_board);
 				score = - child->quiescence(board_buffer, eval, new_depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, beta_margin, &branch_history);
 			}
-			// Mark the child as fully explored so that explore_new_move does not
-			// re-run quiescence with a reduced depth (selective deepening) and
-			// overwrite the correct deep evaluation with a stale stand-pat value.
-			// Bug repro: Qxe5 got -912 from deep quiescence, then explore_new_move
-			// re-ran quiescence at depth 0, overwriting it with static 322.
-			child->_fully_explored = true;
 			const int previous_child_nodes = child_link != nullptr ? child_link->_propagated_nodes : 0;
 			_nodes += child->_nodes - previous_child_nodes;
 			if (child_link != nullptr) {
