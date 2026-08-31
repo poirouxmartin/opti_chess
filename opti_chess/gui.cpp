@@ -1046,7 +1046,19 @@ bool GUI::play_move_keep(Move move)
 	}
 
 	_root_exploration_node->_board = _board;
-	reset_buffers(); // #6: systematic TT/node_map clear on position change
+
+	// #6: systematic TT/node_map clear on position change.
+	// BUT do NOT call recycle_tree when the root was promoted from a child
+	// (path 2): that would destroy the very subtree we want to preserve.
+	if (!_root_exploration_node->_children.empty()) {
+		// Path 2: subtree preserved — only purge stale bookkeeping.
+		transposition_table.clear();
+		node_map.clear();
+	}
+	else {
+		// Paths 1 & 3: root has no live children — safe to recycle.
+		reset_buffers();
+	}
 
 	_board->get_moves();
 
@@ -2230,13 +2242,16 @@ static void recycle_tree(Node* root) {
 	// Seed: reset root's own parent_count (will be recycled by caller)
 	root->_parent_count = 0;
 
-	// BFS: push all direct children
+	// BFS: push all direct children, then clear root's map so that a
+	// subsequent reset(true) won't re-walk (and double-free) these
+	// already-queued nodes.
 	for (auto const& [_, child_link] : root->_children) {
 		if (child_link._node == nullptr)
 			continue;
 		child_link._node->_parent_count = 0;
 		worklist.push_back(child_link._node);
 	}
+	root->_children.clear();
 
 	// Walk the rest of the tree
 	while (!worklist.empty()) {
