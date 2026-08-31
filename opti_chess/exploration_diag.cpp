@@ -23,9 +23,9 @@ static int probe_fully_explored_count(const Node* n) {
 // (fresh AND persistent trees, 8-12 games x 2000 iters) scored every
 // combination of these features BELOW legacy - best combo 37.5%, worst 0%
 // (b1b54ac data). Re-enable individually after a winning match only.
-bool g_search_value_propagation = false;
-bool g_search_trust_prior = false;
-bool g_search_avg_cap = false;
+bool g_search_value_propagation = false;  // negamax hygiene: OFF for now, causes -20% regression at 100ms
+bool g_search_trust_prior = false;        // Bayesian prior: OFF, spreads exploration too much
+bool g_search_avg_cap = false;            // cap softmax suppression: OFF, spreads exploration too much
 
 bool g_adaptive_quiescence = (getenv("OPTI_ADAPTIVE") != nullptr);
 bool g_selective_deepening = (getenv("OPTI_NO_SELECTIVE") == nullptr); // selective 212/2000 is new baseline (disable with OPTI_NO_SELECTIVE=1)
