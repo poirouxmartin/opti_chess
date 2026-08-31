@@ -1830,6 +1830,12 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				PathScope _ps(branch_history, *child->_board);
 				score = - child->quiescence(board_buffer, eval, new_depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, beta_margin, &branch_history);
 			}
+			// Mark the child as fully explored so that explore_new_move does not
+			// re-run quiescence with a reduced depth (selective deepening) and
+			// overwrite the correct deep evaluation with a stale stand-pat value.
+			// Bug repro: Qxe5 got -912 from deep quiescence, then explore_new_move
+			// re-ran quiescence at depth 0, overwriting it with static 322.
+			child->_fully_explored = true;
 			const int previous_child_nodes = child_link != nullptr ? child_link->_propagated_nodes : 0;
 			_nodes += child->_nodes - previous_child_nodes;
 			if (child_link != nullptr) {

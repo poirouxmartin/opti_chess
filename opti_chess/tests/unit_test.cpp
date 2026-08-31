@@ -4514,6 +4514,8 @@ TEST(Puzzle, LichessBenchmark5000) {
 	string line;
 	int total = 0, solved = 0, unresolved = 0;
 	double total_score = 0.0;
+	long long total_nodes = 0;
+	double total_time_s = 0.0;
 	map<string, pair<int, int>> by_theme;
 
 	auto t_start = chrono::steady_clock::now();
@@ -4559,6 +4561,8 @@ TEST(Puzzle, LichessBenchmark5000) {
 		bool pass = r.score >= 0.5;
 		if (pass) solved++;
 		total_score += r.score;
+		total_nodes += r.total_nodes;
+		total_time_s += r.time_s;
 
 		auto& th = by_theme[theme];
 		th.first++;
@@ -4579,6 +4583,10 @@ TEST(Puzzle, LichessBenchmark5000) {
 	cout << "  Avg score: " << fixed << setprecision(3) << (total > 0 ? total_score / total : 0) << endl;
 	cout << "  Wall time: " << fixed << setprecision(1) << wall_time << "s"
 		<< " (" << fixed << setprecision(1) << (total > 0 ? wall_time / total * 1000 : 0) << " ms/puzzle)" << endl;
+	cout << "  Total nodes: " << total_nodes << endl;
+	cout << "  Avg nodes/puzzle: " << fixed << setprecision(0) << (total > 0 ? (double)total_nodes / total : 0) << endl;
+	cout << "  Total search time: " << fixed << setprecision(3) << total_time_s << "s" << endl;
+	cout << "  Avg NPS: " << fixed << setprecision(0) << (total_time_s > 0 ? total_nodes / total_time_s : 0) << endl;
 	cout << "  Unresolved: " << unresolved << endl;
 
 	cout << endl << "  Per-theme:" << endl;
@@ -5131,4 +5139,73 @@ TEST(Puzzle, OFFvsDAG_Puzzles) {
 			}
 		}
 	}
+}
+
+// ============================================================================
+// Bug repro: after hxg4, Qxe5 should eval ~-912 but engine shows ~322
+// ============================================================================
+TEST(Puzzle, Qxe5Bug) {
+	const char* fen_after_hxg4 = "7k/p4pr1/2pp4/2p1nR1/2P1P1pq/PPQ4P/2N3K1/8 w - - 0 39";
+
+	Evaluator evaluator;
+	Board b;
+	b.from_fen(fen_after_hxg4);
+
+	transposition_table.clear();
+	monte_node_buffer.init(500000, false);
+	monte_board_buffer.init(500000, false);
+	node_map.clear();
+
+	BoardBuffer board_buf(500 * 1024 * 1024);
+	board_buf.init(500000, false);
+
+	Node root(&b);
+
+	const double alpha = 0.005;
+	const double beta = 5.0;
+	const double gamma = 1.10;
+	const int qdepth = 10;
+	const int iters = 10000;
+
+	root.grogros_zero(&board_buf, &evaluator, alpha, beta, gamma, iters, qdepth, nullptr, nullptr, 0);
+
+	cout << "=== Qxe5Bug: position after hxg4 ===" << endl;
+	cout << "  FEN: " << fen_after_hxg4 << endl;
+	cout << "  root iterations=" << root._iterations
+	     << "  children=" << root._children.size() << endl;
+
+	for (auto& [mv, cl] : root._children) {
+		if (cl._node == nullptr) continue;
+
+		Board lbl;
+		lbl.from_fen(fen_after_hxg4);
+		string san = lbl.move_label(mv);
+
+		cout << "  " << san
+		     << "  static_eval=" << cl._node->_static_evaluation._value
+		     << "  deep_eval=" << cl._node->_deep_evaluation._value
+		     << "  iters=" << cl._chosen_iterations
+		     << "  fully_explored=" << cl._node->_fully_explored
+		     << "  qdepth=" << cl._node->_quiescence_depth
+		     << endl;
+
+		if (san == "Qxe5") {
+			cout << "  >>> Qxe5 static_eval=" << cl._node->_static_evaluation._value
+			     << "  deep_eval=" << cl._node->_deep_evaluation._value
+			     << "  iters=" << cl._chosen_iterations
+			     << "  qdepth=" << cl._node->_quiescence_depth
+			     << endl;
+			// Static eval is +322 (material looks good for White after capturing knight).
+			// The BUG was that deep_eval was being overwritten from -912 back to 322
+			// because quiescence wasn't marked _fully_explored, so explore_new_move
+			// re-ran quiescence at depth 0 and overwrote the correct value.
+			// After fix: deep_eval should be strongly negative (tactic found).
+			EXPECT_LT(cl._node->_deep_evaluation._value, 0)
+				<< "Qxe5 deep eval should be negative (after dxe5, Rh5+ wins for Black)";
+		}
+	}
+
+	board_buf.remove();
+	monte_node_buffer.remove();
+	monte_board_buffer.remove();
 }
