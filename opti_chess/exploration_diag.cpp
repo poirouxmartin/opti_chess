@@ -759,23 +759,23 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 
 		// Save the existing deep evaluation before quiescence potentially
 		// overwrites it with a shallower result (selective deepening).
-		// If the child already had a properly searched evaluation (from a
-		// deeper quiescence or DAG sharing), preserve the better value.
-		const int old_deep_value = child->_deep_evaluation._value;
-		const bool had_deep_eval = child->_deep_evaluation._evaluated;
+		// If the child already had a deeper searched evaluation (from a
+		// previous quiescence or DAG sharing), preserve it entirely.
+		const Evaluation old_deep_evaluation = child->_deep_evaluation;
+		const int old_quiescence_depth = child->_quiescence_depth;
 
 		child->quiescence(board_buffer, eval, child_depth, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, &branch_history);
 
-		// If the child had a deeper/better quiescence result before, restore it.
+		// If the child had a deeper quiescence result before, restore it.
 		// This prevents selective deepening (depth 0) from overwriting a correct
 		// deep evaluation with a stale stand-pat value.
-		if (had_deep_eval && child->_deep_evaluation._evaluated) {
-			const int color = child->_board->get_color();
-			const int old_better = old_deep_value * color;
-			const int new_better = child->_deep_evaluation._value * color;
-			if (old_better > new_better) {
-				child->_deep_evaluation._value = old_deep_value;
-			}
+		// Compare by quiescence_depth (not by "which is better for side-to-move",
+		// which breaks mate scores: e.g. -M3 is more accurate than +50 even
+		// though +50 looks "better" for the side-to-move).
+		if (old_deep_evaluation._evaluated && child->_deep_evaluation._evaluated
+			&& old_quiescence_depth > child_depth) {
+			child->_deep_evaluation = old_deep_evaluation;
+			child->_quiescence_depth = old_quiescence_depth;
 		}
 
 		child->_fully_explored = true;
