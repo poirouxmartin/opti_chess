@@ -4,6 +4,44 @@
 
 Make opti_chess strong with **very few nodes**. Like Lc0 or a grandmaster: look deep in interesting variations, discard all other moves quickly. Don't spend time on moves we know will be bad — while never missing a tactical opportunity.
 
+## IMMEDIATE ACTION ITEMS (2026-08-31)
+
+**All must be done in order. Nothing skipped.**
+
+### A1. Fix Quiescence/Evaluation Overwrite Bug (CRITICAL)
+- **Bug**: When a node is explored via DAG/TT from one path, its deep_eval gets set. When the same position is then explored via the main search path, the new quiescence result OVERWRITES the correct value already stored. E.g. Qxe5 gets correct -912 from quiescence, then a separate exploration pass overwrites it with static 322.
+- **Root cause**: `explore_new_move` or quiescence doesn't check if a correct deep_eval already exists before overwriting.
+- **Fix**: Before overwriting `_deep_evaluation`, check if the existing value is already a properly searched value (not just static). If so, keep the better (more negative for Black) value.
+- **After fix**: Re-run Qxe5Bug test + LichessBenchmark5000.
+
+### A2. Audit exploration.cpp Features Lost in exploration_diag.cpp
+- exploration.cpp has `g_search_value_propagation=true`, `g_search_trust_prior=true`, `g_search_avg_cap=true` (all false in diag)
+- These may improve benchmarks. Understand what each does, then benchmark each 1-by-1.
+- exploration.cpp is NOT dead code — it has unique features worth testing.
+
+### A3. Investigate 30K vs 130K NPS (GUI vs Tests)
+- User reports GUI shows ~30K NPS. Tests show 130K.
+- User says drawing is <10% of CPU time. Something else is wrong.
+- Need to profile what's eating CPU in the GUI path.
+- If UI rendering IS the issue: implement parallel UI (render thread separate from search).
+- If NOT: find the real bottleneck. GUI and tests must produce same NPS for same work.
+
+### A4. Harmonize ALL GUI & Tests Settings
+- GUI uses: alpha=0.005, beta=5.0, gamma=1.10, quiescence_depth=10
+- Tests use: alpha=0.00001, beta=5.0, gamma=1.10 (in run_puzzle) or alpha=0.0, beta=1.0, gamma=0.5 (PuzzleRunner TIME mode)
+- These MUST be identical. User tunes in GUI, benchmarks must match.
+- After harmonizing: re-run benchmark with GUI parameters.
+
+### A5. Test 10,2,2 and 10,6,2 vs 10,2,0
+- With all fixes applied and parameters harmonized, re-test selective deepening configs.
+
+### Key Discoveries (2026-08-31)
+- `exploration.cpp` is NOT dead code — has unique features (`g_search_value_propagation`, `g_search_trust_prior`, `g_search_avg_cap`) that exploration_diag.cpp lacks
+- `exploration_diag.cpp` was created at commit 7030754 as temp diagnostic copy; files drifted apart
+- GUI and tests compile same source files (exploration_diag.cpp) but use DIFFERENT parameters
+- Qxe5 bug: selective deepening gives qdepth=0 to tail moves, hiding tactics. Also: quiescence overwrite bug discovered — correct eval gets overwritten by stale exploration.
+- NPS gap 130K (tests) vs 30K (GUI) is NOT just rendering — needs investigation
+
 ## Current State
 
 - **Search**: GrogrosZero (MCTS + alpha-beta + quiescence) selective `10,2,0` (move1 full 10, moves2-5 depth2, rest 0 static-only)
