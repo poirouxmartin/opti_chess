@@ -372,22 +372,12 @@ void GUI::draw_exploration_arrows()
 		return;
 	}
 
-	// Skip if nothing to show
-	if (_root_exploration_node->_nodes <= 1 || _root_exploration_node->_is_terminal)
+	// Use the pre-computed snapshot (taken under _tree_mutex in draw())
+	if (!_tree_snapshot.valid)
 		return;
 
-	// Acquire lock for all _children reads (robin_map iterators invalidated on insert)
-	std::lock_guard<std::mutex> lock(_tree_mutex);
-
-	// Move to highlight
-	const Move best_move = _root_exploration_node->get_most_explored_child_move();
-
-	// Move with the best evaluation
-	const Move best_eval_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
-
-	if (best_eval_move.is_null_move()) {
-		cout << "null best eval move" << endl;
-	}
+	const Move best_move = _tree_snapshot.best_move;
+	const Move best_eval_move = _tree_snapshot.best_eval_move;
 
 	// Is a piece selected?
 	const bool is_selected = _selected_pos.row != -1 && _selected_pos.col != -1;
@@ -395,31 +385,28 @@ void GUI::draw_exploration_arrows()
 	// Build a vector with the moves explored by GrogrosZero
 	vector<Move> iterated_moves_vector;
 
-	for (auto const& [move, child_link] : _root_exploration_node->_children) {
-		Node const* child = child_link._node;
+	for (auto const& entry : _tree_snapshot.arrows) {
 		// If a piece is selected, draw every arrow for that piece
 		if (is_selected) {
-			if (_selected_pos.row == move.start_row && _selected_pos.col == move.start_col)
-				iterated_moves_vector.push_back(move);
+			if (_selected_pos.row == entry.move.start_row && _selected_pos.col == entry.move.start_col)
+				iterated_moves_vector.push_back(entry.move);
 		}
 
 		// Otherwise, draw the arrows of the most explored moves
 		else {
 			// The highlighted moves are not added for now
-			if (move == best_move || move == best_eval_move)
+			if (entry.move == best_move || entry.move == best_eval_move)
 				continue;
 
 			// Has the move been explored by GrogrosZero, or only by the quiescence?
-			if (_root_exploration_node->_iterations > 0) {
-				if (static_cast<float>(child_link._chosen_iterations) / static_cast<float>(_root_exploration_node->_iterations) > _arrow_rate) {
-					iterated_moves_vector.push_back(move);
+			if (_tree_snapshot.iterations > 0) {
+				if (static_cast<float>(entry.chosen_iterations) / static_cast<float>(_tree_snapshot.iterations) > _arrow_rate) {
+					iterated_moves_vector.push_back(entry.move);
 				}
 			}
 			else {
-				// TODO: quiescence arrows
-				// in red? in white? with a "?" at the end?
-				if (_root_exploration_node->_nodes > 0) {
-					iterated_moves_vector.push_back(move);
+				if (_tree_snapshot.nodes > 0) {
+					iterated_moves_vector.push_back(entry.move);
 				}
 			}
 		}
@@ -439,17 +426,16 @@ void GUI::draw_exploration_arrows()
 		}
 	}
 
-	// Draw the arrows
+	// Draw the arrows using snapshot data
 	for (const Move move : iterated_moves_vector) {
-		const auto it = _root_exploration_node->_children.find(move);
-		if (it == _root_exploration_node->_children.end())
+		// Find the arrow entry in the snapshot
+		auto it = std::find_if(_tree_snapshot.arrows.begin(), _tree_snapshot.arrows.end(),
+			[&](const TreeSnapshot::ArrowEntry& e) { return e.move == move; });
+		if (it == _tree_snapshot.arrows.end())
 			continue;
-		const ChildLink& child_link = it->second;
-		Node const *child = child_link._node;
-		if (!child || !child->_board)
-			continue;
-		const int mate = _root_exploration_node->_board->is_eval_mate(child->_deep_evaluation._value);
-		draw_arrow(move, _root_exploration_node->_board->_player, move_color(child_link._chosen_iterations, _root_exploration_node->_iterations, child->_iterations == 0), -1.0f, true, child->_deep_evaluation._avg_score, mate, move == best_move, move == best_eval_move);
+
+		const int mate = _root_exploration_node->_board->is_eval_mate(it->eval_value);
+		draw_arrow(move, _root_exploration_node->_board->_player, move_color(it->chosen_iterations, _tree_snapshot.iterations, it->child_iterations == 0), -1.0f, true, it->eval_avg_score, mate, it->is_best_move, it->is_best_eval_move);
 	}
 }
 
@@ -1493,6 +1479,41 @@ void GUI::draw()
 		prev_zobrist = cur_zobrist;
 	}
 
+	// Take a snapshot of the tree state under a single lock.
+	// This ensures arrows and eval display are consistent with each other,
+	// even while the background worker mutates the tree.
+	_tree_snapshot.valid = false;
+	_tree_snapshot.arrows.clear();
+	if (_root_exploration_node && _root_exploration_node->_board
+		&& _root_exploration_node->_nodes > 1 && !_root_exploration_node->_is_terminal) {
+		std::lock_guard<std::mutex> lock(_tree_mutex);
+		_tree_snapshot.best_move = _root_exploration_node->get_most_explored_child_move();
+		_tree_snapshot.best_eval_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
+		if (!_tree_snapshot.best_eval_move.is_null_move()) {
+			_tree_snapshot.best_evaluation = _root_exploration_node->_children[_tree_snapshot.best_eval_move]._node->_deep_evaluation;
+		}
+		_tree_snapshot.iterations = _root_exploration_node->_iterations;
+		_tree_snapshot.nodes = _root_exploration_node->_nodes;
+		_tree_snapshot.time_spent = _root_exploration_node->_time_spent;
+		_tree_snapshot.avg_score = _root_exploration_node->_deep_evaluation._avg_score;
+
+		// Build arrow data under the same lock
+		for (auto const& [move, child_link] : _root_exploration_node->_children) {
+			Node const* child = child_link._node;
+			if (!child) continue;
+			_tree_snapshot.arrows.push_back({
+				move,
+				(int)child_link._chosen_iterations,
+				(int)child->_iterations,
+				move == _tree_snapshot.best_move,
+				move == _tree_snapshot.best_eval_move,
+				child->_deep_evaluation._value,
+				child->_deep_evaluation._avg_score
+			});
+		}
+		_tree_snapshot.valid = true;
+	}
+
 
 	// *** CLICS SOURIS ***
 
@@ -1845,31 +1866,19 @@ void GUI::draw()
 	// Grogros analysis
 	string monte_carlo_text = static_cast<string>(_grogros_analysis ? "STOP GrogrosZero-Auto (CTRL-H)" : "RUN GrogrosZero-Auto (CTRL-G)") + "\nCONTROLS (H)" + "\n\nSEARCH PARAMETERS\nalpha: " + to_string(_alpha) + "\nbeta: " + to_string(_beta) + "\ngamma : " + to_string(_gamma) + "\nq_depth : " + to_string(_quiescence_depth) + "\nexplore checks : " + (_explore_checks ? "true" : "false") + "\nTT main search : " + (_tt_main_search ? "true" : "false") + " (I)" + "\nTT node DAG : " + (_tt_node_dag ? "true" : "false") + " (O)";
 	
-	// If a search has happened
-	if (_root_exploration_node->children_count() != 0 && _drawing_arrows) {
+	// If a search has happened (use snapshot for consistency)
+	if (_tree_snapshot.valid && _drawing_arrows) {
 
-		// Acquire lock for all _children reads
-		std::lock_guard<std::mutex> lock(_tree_mutex);
+		Move best_move = _tree_snapshot.best_eval_move;
 
-		// Best evaluation
-		//int best_eval = _root_exploration_node->_deep_evaluation._value;
-		Move best_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
-
-		// A NaN-poisoned score ranking can return the null stand-pat key even
-		// when children exist; skip the eval panel for this refresh instead of
-		// inserting/dereferencing a phantom child. BUT the interaction overlays
-		// must still be drawn: the promotion picker INPUT stays active every
-		// frame, and skipping its DRAW left invisible clickable tiles - the
-		// next board click silently completed a "random" promotion.
 		if (best_move.is_null_move()) {
 			if (_promotion_pending)
 				draw_promotion_picker();
 			draw_texture(_cursor_texture, _mouse_pos.x - _cursor_size / 2, _mouse_pos.y - _cursor_size / 2, WHITE);
 			return;
 		}
-		Evaluation best_evaluation = _root_exploration_node->_children[best_move]._node->_deep_evaluation;
+		Evaluation best_evaluation = _tree_snapshot.best_evaluation;
 
-		//bool all_moves_explored = _root_exploration_node->get_fully_explored_children_count() == _root_exploration_node->_board->_got_moves;
 		bool all_moves_explored = _root_exploration_node->children_count() == _root_exploration_node->_board->_got_moves;
 
 		if (!all_moves_explored && ((_board->_player && _root_exploration_node->_static_evaluation > best_evaluation) || (!_board->_player && _root_exploration_node->_static_evaluation < best_evaluation))) {
@@ -1911,15 +1920,15 @@ void GUI::draw()
 		
 		int max_depth = _root_exploration_node->get_main_depth(_alpha, _beta);
 		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components +
-			"\nTime: " + clock_to_string(_root_exploration_node->_time_spent, true) +
+			"\nTime: " + clock_to_string(_tree_snapshot.time_spent, true) +
 			"\nDepth: " + to_string(max_depth) +
-			"\nQdepth: " + (_root_exploration_node->_iterations == 0 ? to_string(_root_exploration_node->_quiescence_depth) : "N/A") +
+			"\nQdepth: " + (_tree_snapshot.iterations == 0 ? to_string(_root_exploration_node->_quiescence_depth) : "N/A") +
 			"\nEval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) + eval +
 			"\nConfidence: " + to_string(100 - (int)(100 * best_evaluation._uncertainty)) + "%" +
 			"\nWinnable: " + to_string(static_cast<int>(best_evaluation._winnable_white * 100)) + "% / " + to_string(static_cast<int>(best_evaluation._winnable_black * 100)) + "%" +
 			"\n" + _wdl.to_string() + "\nScore: " + score_string(best_evaluation._avg_score) +
-			"\nNodes: " + int_to_round_string(_root_exploration_node->_nodes) + "/" + int_to_round_string(monte_board_buffer._length) + " (" + int_to_round_string(_root_exploration_node->_nodes / (static_cast<float>(_root_exploration_node->_time_spent + 1) / CLOCKS_PER_SEC)) + "N/s)" +
-			"\nIterations: " + int_to_round_string(_root_exploration_node->_iterations) + " (" + int_to_round_string(_root_exploration_node->_iterations / (static_cast<float>(_root_exploration_node->_time_spent + 1) / CLOCKS_PER_SEC)) + "I/s)" +
+			"\nNodes: " + int_to_round_string(_tree_snapshot.nodes) + "/" + int_to_round_string(monte_board_buffer._length) + " (" + int_to_round_string(_tree_snapshot.nodes / (static_cast<float>(_tree_snapshot.time_spent + 1) / CLOCKS_PER_SEC)) + "N/s)" +
+			"\nIterations: " + int_to_round_string(_tree_snapshot.iterations) + " (" + int_to_round_string(_tree_snapshot.iterations / (static_cast<float>(_tree_snapshot.time_spent + 1) / CLOCKS_PER_SEC)) + "I/s)" +
 				"\n\n" + transposition_table.stats_string();
 		
 		// Display of the GrogrosZero analysis parameters
