@@ -221,6 +221,31 @@ public:
 	std::mutex _tree_mutex;
 	double _compute_budget_s = 0.1;
 
+	// Snapshot of tree state for consistent display during background computation
+	// Taken under _tree_mutex once per frame, used by draw_exploration_arrows and eval display
+	struct TreeSnapshot {
+		Move best_move;
+		Move best_eval_move;
+		Evaluation best_evaluation;
+		int iterations = 0;
+		int nodes = 0;
+		int time_spent = 0;
+		float avg_score = 0.0f;
+		bool valid = false;
+		// Arrow data: move + chosen_iterations for each child
+		struct ArrowEntry {
+			Move move;
+			int chosen_iterations;
+			int child_iterations;
+			bool is_best_move;
+			bool is_best_eval_move;
+			int eval_value;
+			float eval_avg_score;
+		};
+		vector<ArrowEntry> arrows;
+	};
+	TreeSnapshot _tree_snapshot;
+
 	// Search tree, variations played in the PGN
 	GameTree _game_tree;
 
