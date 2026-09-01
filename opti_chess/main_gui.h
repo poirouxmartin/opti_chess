@@ -738,14 +738,7 @@ inline int main_ui() {
 			// GrogrosZero analysis
 			if (main_GUI._grogros_analysis || main_GUI._white_player == main_GUI._grogros_zero_name || main_GUI._black_player == main_GUI._grogros_zero_name) {
 				main_GUI.init_buffers();
-				if (main_GUI._white_player == main_GUI._grogros_zero_name || main_GUI._black_player == main_GUI._grogros_zero_name) {
-					// Player is GrogrosZero — inline computation (needed for play_grogros_zero_move)
-					main_GUI.grogros_analysis(-1);
-				}
-				else {
-					// Auto analysis (Ctrl-G) — background worker
-					main_GUI.grogros_analysis(0);
-				}
+				main_GUI.grogros_analysis(0);
 			} else {
 				// No analysis needed — stop any running background worker
 				main_GUI.stop_compute();

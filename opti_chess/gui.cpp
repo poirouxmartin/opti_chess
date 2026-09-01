@@ -372,14 +372,12 @@ void GUI::draw_exploration_arrows()
 		return;
 	}
 
-	// Skip tree iteration while background computation is running AND not paused
-	// (robin_map iterators are invalidated on insert — concurrent read = crash)
-	// When paused (_compute_done=true), the lock is free and tree is stable
-	if (_compute_running.load(std::memory_order_acquire) && !_compute_done.load(std::memory_order_acquire))
-		return;
-
+	// Skip if nothing to show
 	if (_root_exploration_node->_nodes <= 1 || _root_exploration_node->_is_terminal)
 		return;
+
+	// Acquire lock for all _children reads (robin_map iterators invalidated on insert)
+	std::lock_guard<std::mutex> lock(_tree_mutex);
 
 	// Move to highlight
 	const Move best_move = _root_exploration_node->get_most_explored_child_move();
@@ -1386,7 +1384,7 @@ void GUI::run_puzzle_headless(double time_s) {
 // Background computation thread: runs grogros_zero in a tight loop
 // Uses shared monte_board_buffer/monte_node_buffer (safe: GUI doesn't allocate during search)
 // _compute_budget_s == 0 means run indefinitely until _compute_running is set to false
-// Every ~1 second, pauses briefly so the main thread can read the tree for display
+// All _children reads in draw() are protected by _tree_mutex — no pause needed
 void GUI::compute_worker() {
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 
@@ -1395,7 +1393,6 @@ void GUI::compute_worker() {
 	_update_variants = true;
 
 	int iter_since_update = 0;
-	auto last_display_update = std::chrono::steady_clock::now();
 	clock_t begin = clock();
 	while (_compute_running.load(std::memory_order_relaxed)) {
 		// Time budget check: if > 0, respect it (puzzle mode); if == 0, run forever (continuous)
@@ -1414,18 +1411,6 @@ void GUI::compute_worker() {
 			_update_variants = true;
 			if (g_tt_node_dag)
 				dag_debug_report();
-		}
-		// Periodic display pause: every ~1 second, pause so the main thread can read the tree
-		auto now = std::chrono::steady_clock::now();
-		if (std::chrono::duration<double>(now - last_display_update).count() >= 1.0) {
-			_compute_done.store(true, std::memory_order_release);
-			// Wait for main thread to signal "continue" or "stop"
-			while (_compute_running.load(std::memory_order_relaxed) && !_compute_continue.load(std::memory_order_acquire)) {
-				std::this_thread::sleep_for(std::chrono::milliseconds(1));
-			}
-			_compute_continue.store(false, std::memory_order_release);
-			_compute_done.store(false, std::memory_order_release);
-			last_display_update = std::chrono::steady_clock::now();
 		}
 	}
 	_compute_done.store(true, std::memory_order_release);
@@ -1452,14 +1437,12 @@ void GUI::start_compute(double time_s) {
 // Stops background computation and waits for it to finish
 void GUI::stop_compute() {
 	_compute_running.store(false, std::memory_order_release);
-	_compute_continue.store(true, std::memory_order_release); // Unblock if paused
 	if (_compute_thread_handle) {
 		WaitForSingleObject(_compute_thread_handle, INFINITE);
 		CloseHandle(_compute_thread_handle);
 		_compute_thread_handle = nullptr;
 	}
 	_compute_done.store(false, std::memory_order_release);
-	_compute_continue.store(false, std::memory_order_release);
 }
 
 // Draws the GUI
@@ -1859,26 +1842,8 @@ void GUI::draw()
 	// If a search has happened
 	if (_root_exploration_node->children_count() != 0 && _drawing_arrows) {
 
-		// While compute worker is running and NOT paused, show simplified status
-		if (_compute_running.load(std::memory_order_acquire) && !_compute_done.load(std::memory_order_acquire)) {
-
-			int nodes = _root_exploration_node->_nodes;
-			int iters = _root_exploration_node->_iterations;
-			int nps = _root_exploration_node->_time_spent > 0 ? (int)(nodes / (static_cast<float>(_root_exploration_node->_time_spent) / CLOCKS_PER_SEC)) : 0;
-
-			string computing_text = monte_carlo_text +
-				"\n\nCOMPUTING..." +
-				"\nIterations: " + int_to_round_string(iters) +
-				"\nNodes: " + int_to_round_string(nodes) + "/" + int_to_round_string(monte_board_buffer._length) +
-				"\nNPS: " + int_to_round_string(nps);
-
-			slider_text(computing_text, _board_padding_x + _board_size + _text_size / 2, _text_size, _screen_width - _text_size - _board_padding_x - _board_size, _board_size * 9 / 16, _text_size / 4, &_monte_carlo_slider, _text_color);
-
-			if (_promotion_pending)
-				draw_promotion_picker();
-			draw_texture(_cursor_texture, _mouse_pos.x - _cursor_size / 2, _mouse_pos.y - _cursor_size / 2, WHITE);
-			return;
-		}
+		// Acquire lock for all _children reads
+		std::lock_guard<std::mutex> lock(_tree_mutex);
 
 		// Best evaluation
 		//int best_eval = _root_exploration_node->_deep_evaluation._value;
@@ -1991,10 +1956,6 @@ void GUI::draw()
 
 	// Display of the cursor
 	draw_texture(_cursor_texture, _mouse_pos.x - _cursor_size / 2, _mouse_pos.y - _cursor_size / 2, WHITE);
-
-	// Signal the background worker to resume after we've finished reading the tree
-	if (_compute_done.load(std::memory_order_acquire))
-		_compute_continue.store(true, std::memory_order_release);
 }
 
 // Loads a position from a FEN
