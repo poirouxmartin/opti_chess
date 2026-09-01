@@ -63,6 +63,10 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
     monte_node_buffer.reset();
     monte_board_buffer.reset();
     node_map.clear();
+    g_buffers_full_logged = false;
+
+    const bool prev_dag = g_tt_node_dag;
+    g_tt_node_dag = true;
 
     Node root(&b);
 
@@ -79,6 +83,8 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
         int qdepth = (int)budget;
         root.grogros_zero(&monte_board_buffer, evaluator, 0.0, 1.0, 0.5, iters, qdepth, nullptr, nullptr, 0);
     }
+
+    g_tt_node_dag = prev_dag;
 
     result.iterations = root._iterations;
     result.total_nodes = root.get_total_nodes();
