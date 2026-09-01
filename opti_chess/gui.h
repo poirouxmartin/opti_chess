@@ -581,6 +581,9 @@ public:
 	// Starts a GrogrosZero analysis
 	void grogros_analysis(int nodes = -1);
 
+	// Runs a puzzle headlessly with the GUI's parameters, prints live results to cout
+	void run_puzzle_headless(double time_s = 0.1);
+
 	// Loads a position from a FEN
 	void load_FEN(const string fen, bool display = true);
 
