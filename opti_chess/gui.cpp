@@ -9,6 +9,9 @@
 #include <string.h>
 #include "ranges"
 #include <cstdarg>
+#include <regex>
+#include <fstream>
+#include <iomanip>
 
 // --- Debug logging ---
 bool g_debug = true;
@@ -31,6 +34,24 @@ void debug_log(const char* fmt, ...) {
 	va_end(args);
 	g_debug_file << buf << endl;
 	g_debug_file.flush();
+}
+
+// FEN extraction helper for puzzle lookup
+static string extract_fen_from_line(const string& line) {
+	static const std::regex fen_regex(R"((?:[rnbqkpRNBQKP1-8]+(?:\/[rnbqkpRNBQKP1-8]+){7})\s+[wb]\s+(?:-|[KQkq]{1,4})\s+(?:-|[a-h][1-8])\s+\d+\s+\d+)");
+	std::smatch m;
+	if (std::regex_search(line, m, fen_regex)) {
+		return m.str(0);
+	}
+	return string();
+}
+
+static string trim_copy(string s) {
+	const char* ws = " \t\n\r";
+	size_t start = s.find_first_not_of(ws);
+	if (start == string::npos) return string();
+	size_t end = s.find_last_not_of(ws);
+	return s.substr(start, end - start + 1);
 }
 
 // Updates the clocks of the players
@@ -1250,6 +1271,94 @@ void GUI::grogros_analysis(int iterations) {
 		dag_debug_report(); // #11 Plan B — diagnostic une ligne par batch (cumulatif)
 	}
 	_update_variants = true;
+}
+
+// Runs a puzzle headlessly with the GUI's parameters, prints live results to cout
+// Uses the GUI's own root node and buffers (same code path as normal analysis)
+void GUI::run_puzzle_headless(double time_s) {
+	if (!_board || !_root_exploration_node) {
+		cout << "[puzzle] no board loaded" << endl;
+		return;
+	}
+
+	string fen = _board->to_fen();
+	cout << "[puzzle] FEN: " << fen << endl;
+	cout << "[puzzle] params: alpha=" << _alpha << " beta=" << _beta << " gamma=" << _gamma
+		<< " qdepth=" << _quiescence_depth << " dag=" << _tt_node_dag << endl;
+	cout << "[puzzle] budget: " << time_s << "s" << endl;
+
+	// Resolve expected move: look up current FEN in lichess_5000.txt
+	string expected_san;
+	string puzzle_name;
+	{
+		ifstream file("tests/lichess_5000.txt");
+		string line;
+		while (getline(file, line)) {
+			if (line.empty() || line[0] == '#') continue;
+			string fen_part = extract_fen_from_line(line);
+			if (fen_part == fen) {
+				size_t fen_end = line.find(fen_part) + fen_part.size();
+				string rest = line.substr(fen_end);
+				rest.erase(0, rest.find_first_not_of(" \t"));
+				size_t space = rest.find(' ');
+				if (space != string::npos) {
+					expected_san = rest.substr(0, space);
+					puzzle_name = rest.substr(space + 1);
+					size_t comment = puzzle_name.find("//");
+					if (comment != string::npos) puzzle_name = puzzle_name.substr(0, comment);
+					puzzle_name = trim_copy(puzzle_name);
+				}
+				break;
+			}
+		}
+	}
+
+	if (!expected_san.empty()) {
+		cout << "[puzzle] expected: " << expected_san << " (" << puzzle_name << ")" << endl;
+	} else {
+		cout << "[puzzle] no expected move found in lichess_5000.txt" << endl;
+	}
+
+	// Reset everything — same as loading a fresh FEN
+	init_buffers();
+	reset_buffers();
+	_root_exploration_node->reset();
+	_root_exploration_node->_board = _board;
+	_root_exploration_node->_is_active = true;
+	_board->_is_active = true;
+	g_buffers_full_logged = false;
+
+	// Pause continuous analysis so next frame doesn't overwrite results
+	bool was_analysis = _grogros_analysis;
+	_grogros_analysis = false;
+
+	// Run search in a tight clock loop — same as PuzzleRunner::run TIME mode
+	// Call grogros_zero directly on the root node (NOT grogros_analysis which is frame-based)
+	g_tt_node_dag = _tt_node_dag;
+	g_tt_main_search = _tt_main_search;
+	_update_variants = true;
+
+	clock_t begin = clock();
+	while ((double)(clock() - begin) / CLOCKS_PER_SEC < time_s) {
+		_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, 1, _quiescence_depth);
+	}
+	clock_t end = clock();
+
+	Move chosen = _root_exploration_node->get_most_explored_child_move();
+	string chosen_san = _board->move_label(chosen);
+	int iters = _root_exploration_node->_iterations;
+	int nodes = _root_exploration_node->get_total_nodes();
+	double elapsed = (double)(end - begin) / CLOCKS_PER_SEC;
+	int nps = elapsed > 0 ? (int)(nodes / elapsed) : 0;
+	bool solved = (!expected_san.empty() && chosen_san == expected_san);
+
+	cout << "[puzzle] chosen: " << chosen_san
+		<< (solved ? " CORRECT" : " WRONG")
+		<< endl;
+	cout << "[puzzle] iters=" << iters << " nodes=" << nodes
+		<< " time=" << fixed << setprecision(3) << elapsed << "s"
+		<< " NPS=" << nps << endl;
+	cout << endl;
 }
 
 // Draws the GUI
