@@ -404,7 +404,7 @@ inline int main_ui() {
 			main_GUI.init_buffers();
 		}
 
-		// G - GrogrosZero
+		// G - GrogrosZero (hold for inline computation)
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyDown(KEY_G)) {
 			main_GUI.init_buffers();
 
@@ -413,7 +413,7 @@ inline int main_ui() {
 				//main_GUI._board->grogros_zero(nullptr, nodes_per_frame, main_GUI._beta, main_GUI._k_add, false, 0, &grogros_network);
 				false;
 			else
-				main_GUI.grogros_analysis();
+				main_GUI.grogros_analysis(-1);
 		}
 
 		// LCTRL-G - Starts GrogrosZero in automatic search
@@ -738,7 +738,14 @@ inline int main_ui() {
 			// GrogrosZero analysis
 			if (main_GUI._grogros_analysis || main_GUI._white_player == main_GUI._grogros_zero_name || main_GUI._black_player == main_GUI._grogros_zero_name) {
 				main_GUI.init_buffers();
-				main_GUI.grogros_analysis();
+				if (main_GUI._white_player == main_GUI._grogros_zero_name || main_GUI._black_player == main_GUI._grogros_zero_name) {
+					// Player is GrogrosZero — inline computation (needed for play_grogros_zero_move)
+					main_GUI.grogros_analysis(-1);
+				}
+				else {
+					// Auto analysis (Ctrl-G) — background worker
+					main_GUI.grogros_analysis(0);
+				}
 			} else {
 				// No analysis needed — stop any running background worker
 				main_GUI.stop_compute();

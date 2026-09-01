@@ -218,6 +218,7 @@ public:
 	void* _compute_thread_handle = nullptr;
 	std::atomic<bool> _compute_running{ false };
 	std::atomic<bool> _compute_done{ false };
+	std::atomic<bool> _compute_continue{ false };
 	std::mutex _tree_mutex;
 	double _compute_budget_s = 0.1;
 
