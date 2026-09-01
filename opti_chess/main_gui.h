@@ -404,10 +404,10 @@ inline int main_ui() {
 			main_GUI.init_buffers();
 		}
 
-		// G - GrogrosZero (background computation)
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_G)) {
+		// G - GrogrosZero (hold for inline computation)
+		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyDown(KEY_G)) {
 			main_GUI.init_buffers();
-			main_GUI.grogros_analysis(0);  // Start background worker
+			main_GUI.grogros_analysis(-1);
 		}
 
 		// LCTRL-G - Starts GrogrosZero in automatic search
@@ -730,11 +730,14 @@ inline int main_ui() {
 			//cout << "test" << endl;
 
 			// GrogrosZero analysis
-			if (main_GUI._grogros_analysis || main_GUI._white_player == main_GUI._grogros_zero_name || main_GUI._black_player == main_GUI._grogros_zero_name) {
+			// Only start background worker for CTRL-G auto-analysis, NOT when it's GrogrosZero's turn
+			// (play_grogros_zero_move handles its own computation)
+			bool is_grogros_turn = (main_GUI._board->_player && main_GUI._white_player == main_GUI._grogros_zero_name) || (!main_GUI._board->_player && main_GUI._black_player == main_GUI._grogros_zero_name);
+			if (main_GUI._grogros_analysis && !is_grogros_turn) {
 				main_GUI.init_buffers();
 				main_GUI.grogros_analysis(0);
-			} else {
-				// No analysis needed — stop any running background worker
+			} else if (!is_grogros_turn) {
+				// No analysis needed and not GrogrosZero's turn — stop any running background worker
 				main_GUI.stop_compute();
 			}
 
