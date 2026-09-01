@@ -404,16 +404,10 @@ inline int main_ui() {
 			main_GUI.init_buffers();
 		}
 
-		// G - GrogrosZero (hold for inline computation)
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyDown(KEY_G)) {
+		// G - GrogrosZero (background computation)
+		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_G)) {
 			main_GUI.init_buffers();
-
-			// LSHIFT - Use of the neural network
-			if (IsKeyDown(KEY_LEFT_SHIFT))
-				//main_GUI._board->grogros_zero(nullptr, nodes_per_frame, main_GUI._beta, main_GUI._k_add, false, 0, &grogros_network);
-				false;
-			else
-				main_GUI.grogros_analysis(-1);
+			main_GUI.grogros_analysis(0);  // Start background worker
 		}
 
 		// LCTRL-G - Starts GrogrosZero in automatic search

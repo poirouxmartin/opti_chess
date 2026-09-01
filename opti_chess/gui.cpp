@@ -2093,6 +2093,7 @@ void GUI::update_grogros_zero_name() {
 }
 
 // Plays the GrogrosZero move or not, depending on the time left
+// Non-blocking: if the worker is still running, signal it to stop and defer the move to the next frame
 void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 	if (!_board || !_root_exploration_node) {
@@ -2101,7 +2102,18 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 		return;
 	}
 
-	stop_compute();
+	// If the worker is still running, signal it to stop and defer the move
+	if (_compute_running.load(std::memory_order_acquire)) {
+		_compute_running.store(false, std::memory_order_release);
+		return;  // Will be called again next frame when worker is done
+	}
+
+	// Clean up the thread handle if the worker just finished
+	if (_compute_thread_handle) {
+		WaitForSingleObject(_compute_thread_handle, INFINITE);
+		CloseHandle(_compute_thread_handle);
+		_compute_thread_handle = nullptr;
+	}
 
 	// Positions bug:
 	// rnbq1rk1/pp1p1ppp/7n/2p1P3/3p4/3B1N1P/PPPN1PP1/R2Q1RK1 w - - 0 10: it does not play Ne4
