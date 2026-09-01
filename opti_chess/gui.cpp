@@ -372,9 +372,10 @@ void GUI::draw_exploration_arrows()
 		return;
 	}
 
-	// Skip tree iteration while background computation is running
+	// Skip tree iteration while background computation is running AND not paused
 	// (robin_map iterators are invalidated on insert — concurrent read = crash)
-	if (_compute_running.load(std::memory_order_acquire))
+	// When paused (_compute_done=true), the lock is free and tree is stable
+	if (_compute_running.load(std::memory_order_acquire) && !_compute_done.load(std::memory_order_acquire))
 		return;
 
 	if (_root_exploration_node->_nodes <= 1 || _root_exploration_node->_is_terminal)
@@ -1242,8 +1243,10 @@ uint8_t GUI::clicked_piece() const
 	return _board->_array[_clicked_pos.row][_clicked_pos.col];
 }
 
-// Starts a GrogrosZero analysis on a background thread
-// If the worker is already running, this is a no-op.
+// Starts a GrogrosZero analysis
+// iterations ==  0: background worker (Ctrl-G auto analysis, Ctrl-Up/Down play)
+// iterations == -1: inline, auto-calculated iterations per frame (G key hold, playing modes)
+// iterations == N:  inline, exactly N iterations (Enter key)
 void GUI::grogros_analysis(int iterations) {
 	if (!_root_exploration_node || !_board) {
 		debug_log("[grogros_analysis] CRITICAL: root=%p board=%p — skipping",
@@ -1251,17 +1254,27 @@ void GUI::grogros_analysis(int iterations) {
 		return;
 	}
 
-	// If the worker is already running, nothing to do
-	if (_compute_running.load(std::memory_order_acquire))
-		return;
-
-	// Stop any previous completed worker (join its thread)
-	stop_compute();
-
 	g_tt_main_search = _tt_main_search;
 	g_tt_node_dag = _tt_node_dag;
 
-	// Explicit iteration count (Enter key, single-step) — run inline
+	// Inline mode with auto-calculated iterations (G key hold, playing modes)
+	if (iterations == -1) {
+		int iterations_per_second = _root_exploration_node->get_ips();
+		int iterations_to_explore = iterations_per_second / _target_fps;
+		if (iterations_to_explore == 0)
+			iterations_to_explore = 1;
+		if (monte_board_buffer.is_full())
+			iterations_to_explore = 0;
+		if (iterations_to_explore > 0) {
+			_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations_to_explore, _quiescence_depth);
+			if (g_tt_node_dag)
+				dag_debug_report();
+			_update_variants = true;
+		}
+		return;
+	}
+
+	// Inline mode with explicit iteration count (Enter key)
 	if (iterations > 0) {
 		_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations, _quiescence_depth);
 		if (g_tt_node_dag)
@@ -1270,7 +1283,10 @@ void GUI::grogros_analysis(int iterations) {
 		return;
 	}
 
-	// Continuous mode — start background worker (budget=0 means run until stopped)
+	// Background mode (iterations == 0) — start worker if not already running
+	if (_compute_running.load(std::memory_order_acquire))
+		return;
+	stop_compute();
 	start_compute(0);
 }
 
@@ -1330,7 +1346,6 @@ void GUI::run_puzzle_headless(double time_s) {
 	g_buffers_full_logged = false;
 
 	// Pause continuous analysis so next frame doesn't overwrite results
-	bool was_analysis = _grogros_analysis;
 	_grogros_analysis = false;
 
 	// Run search in a tight clock loop — same as PuzzleRunner::run TIME mode
@@ -1371,6 +1386,7 @@ void GUI::run_puzzle_headless(double time_s) {
 // Background computation thread: runs grogros_zero in a tight loop
 // Uses shared monte_board_buffer/monte_node_buffer (safe: GUI doesn't allocate during search)
 // _compute_budget_s == 0 means run indefinitely until _compute_running is set to false
+// Every ~1 second, pauses briefly so the main thread can read the tree for display
 void GUI::compute_worker() {
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 
@@ -1379,6 +1395,7 @@ void GUI::compute_worker() {
 	_update_variants = true;
 
 	int iter_since_update = 0;
+	auto last_display_update = std::chrono::steady_clock::now();
 	clock_t begin = clock();
 	while (_compute_running.load(std::memory_order_relaxed)) {
 		// Time budget check: if > 0, respect it (puzzle mode); if == 0, run forever (continuous)
@@ -1397,6 +1414,18 @@ void GUI::compute_worker() {
 			_update_variants = true;
 			if (g_tt_node_dag)
 				dag_debug_report();
+		}
+		// Periodic display pause: every ~1 second, pause so the main thread can read the tree
+		auto now = std::chrono::steady_clock::now();
+		if (std::chrono::duration<double>(now - last_display_update).count() >= 1.0) {
+			_compute_done.store(true, std::memory_order_release);
+			// Wait for main thread to signal "continue" or "stop"
+			while (_compute_running.load(std::memory_order_relaxed) && !_compute_continue.load(std::memory_order_acquire)) {
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			}
+			_compute_continue.store(false, std::memory_order_release);
+			_compute_done.store(false, std::memory_order_release);
+			last_display_update = std::chrono::steady_clock::now();
 		}
 	}
 	_compute_done.store(true, std::memory_order_release);
@@ -1423,11 +1452,14 @@ void GUI::start_compute(double time_s) {
 // Stops background computation and waits for it to finish
 void GUI::stop_compute() {
 	_compute_running.store(false, std::memory_order_release);
+	_compute_continue.store(true, std::memory_order_release); // Unblock if paused
 	if (_compute_thread_handle) {
 		WaitForSingleObject(_compute_thread_handle, INFINITE);
 		CloseHandle(_compute_thread_handle);
 		_compute_thread_handle = nullptr;
 	}
+	_compute_done.store(false, std::memory_order_release);
+	_compute_continue.store(false, std::memory_order_release);
 }
 
 // Draws the GUI
@@ -1827,9 +1859,8 @@ void GUI::draw()
 	// If a search has happened
 	if (_root_exploration_node->children_count() != 0 && _drawing_arrows) {
 
-		// While compute worker is running, show a simplified "computing" status
-		// (skip _children reads — robin_map iterators are invalidated on insert)
-		if (_compute_running.load(std::memory_order_acquire)) {
+		// While compute worker is running and NOT paused, show simplified status
+		if (_compute_running.load(std::memory_order_acquire) && !_compute_done.load(std::memory_order_acquire)) {
 
 			int nodes = _root_exploration_node->_nodes;
 			int iters = _root_exploration_node->_iterations;
@@ -1960,6 +1991,10 @@ void GUI::draw()
 
 	// Display of the cursor
 	draw_texture(_cursor_texture, _mouse_pos.x - _cursor_size / 2, _mouse_pos.y - _cursor_size / 2, WHITE);
+
+	// Signal the background worker to resume after we've finished reading the tree
+	if (_compute_done.load(std::memory_order_acquire))
+		_compute_continue.store(true, std::memory_order_release);
 }
 
 // Loads a position from a FEN
