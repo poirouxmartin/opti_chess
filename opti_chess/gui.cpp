@@ -1379,6 +1379,7 @@ void GUI::run_puzzle_headless(double time_s) {
 // Uses shared monte_board_buffer/monte_node_buffer (safe: GUI doesn't allocate during search)
 // _compute_budget_s == 0 means run indefinitely until _compute_running is set to false
 // All _children reads in draw() are protected by _tree_mutex — no pause needed
+// The worker takes the snapshot while holding the lock, so the main thread never needs to lock.
 void GUI::compute_worker() {
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 
@@ -1400,6 +1401,34 @@ void GUI::compute_worker() {
 			const int bg_quiescence_depth = min(_quiescence_depth, 4);
 			std::lock_guard<std::mutex> lock(_tree_mutex);
 			_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, 1, bg_quiescence_depth);
+
+			// Take snapshot while holding the lock — main thread reads it lock-free
+			if (_root_exploration_node->_board && _root_exploration_node->_nodes >= 1 && !_root_exploration_node->_is_terminal) {
+				_tree_snapshot.best_move = _root_exploration_node->get_most_explored_child_move();
+				_tree_snapshot.best_eval_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
+				if (!_tree_snapshot.best_eval_move.is_null_move()) {
+					_tree_snapshot.best_evaluation = _root_exploration_node->_children[_tree_snapshot.best_eval_move]._node->_deep_evaluation;
+				}
+				_tree_snapshot.iterations = _root_exploration_node->_iterations;
+				_tree_snapshot.nodes = _root_exploration_node->_nodes;
+				_tree_snapshot.time_spent = _root_exploration_node->_time_spent;
+				_tree_snapshot.avg_score = _root_exploration_node->_deep_evaluation._avg_score;
+				_tree_snapshot.arrows.clear();
+				for (auto const& [move, child_link] : _root_exploration_node->_children) {
+					Node const* child = child_link._node;
+					if (!child) continue;
+					_tree_snapshot.arrows.push_back({
+						move,
+						(int)child_link._chosen_iterations,
+						(int)child->_iterations,
+						move == _tree_snapshot.best_move,
+						move == _tree_snapshot.best_eval_move,
+						child->_deep_evaluation._value,
+						child->_deep_evaluation._avg_score
+					});
+				}
+				_tree_snapshot.valid = true;
+			}
 		}
 		// Signal GUI update every iteration for smooth display
 		_update_variants = true;
@@ -1478,42 +1507,9 @@ void GUI::draw()
 		prev_zobrist = cur_zobrist;
 	}
 
-	// Take a snapshot of the tree state under a single lock.
-	// Use try_lock to NEVER block the main thread — if the worker holds the lock,
-	// keep the previous snapshot (slightly stale but good enough for display).
-	if (_root_exploration_node && _root_exploration_node->_board
-		&& _root_exploration_node->_nodes >= 1 && !_root_exploration_node->_is_terminal) {
-		if (_tree_mutex.try_lock()) {
-			_tree_snapshot.arrows.clear();
-			_tree_snapshot.best_move = _root_exploration_node->get_most_explored_child_move();
-			_tree_snapshot.best_eval_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
-			if (!_tree_snapshot.best_eval_move.is_null_move()) {
-				_tree_snapshot.best_evaluation = _root_exploration_node->_children[_tree_snapshot.best_eval_move]._node->_deep_evaluation;
-			}
-			_tree_snapshot.iterations = _root_exploration_node->_iterations;
-			_tree_snapshot.nodes = _root_exploration_node->_nodes;
-			_tree_snapshot.time_spent = _root_exploration_node->_time_spent;
-			_tree_snapshot.avg_score = _root_exploration_node->_deep_evaluation._avg_score;
-
-			// Build arrow data under the same lock
-			for (auto const& [move, child_link] : _root_exploration_node->_children) {
-				Node const* child = child_link._node;
-				if (!child) continue;
-				_tree_snapshot.arrows.push_back({
-					move,
-					(int)child_link._chosen_iterations,
-					(int)child->_iterations,
-					move == _tree_snapshot.best_move,
-					move == _tree_snapshot.best_eval_move,
-					child->_deep_evaluation._value,
-					child->_deep_evaluation._avg_score
-				});
-			}
-			_tree_snapshot.valid = true;
-			_tree_mutex.unlock();
-		}
-		// else: worker holds lock, keep previous snapshot (already valid)
-	}
+	// Snapshot is now taken by the worker while holding the lock.
+	// Main thread reads it lock-free — no try_lock needed.
+	// The snapshot is updated every iteration (~1ms), so it's always fresh.
 
 
 	// *** CLICS SOURIS ***
