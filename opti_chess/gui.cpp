@@ -1409,8 +1409,6 @@ void GUI::compute_worker() {
 		if (++iter_since_update >= 100) {
 			iter_since_update = 0;
 			_update_variants = true;
-			if (g_tt_node_dag)
-				dag_debug_report();
 		}
 	}
 	_compute_done.store(true, std::memory_order_release);
