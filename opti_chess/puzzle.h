@@ -85,7 +85,7 @@ class PuzzleRunner {
 public:
     static PuzzleResult run(const Puzzle& p, BudgetMode mode, double budget,
         Evaluator* evaluator = nullptr, int quiescence_depth = 10,
-        double alpha = 0.00001, double beta = 5.0, double gamma = 1.10);
+        double alpha = 0.005, double beta = 5.0, double gamma = 1.10);
 
     struct BatchResult {
         int total = 0;

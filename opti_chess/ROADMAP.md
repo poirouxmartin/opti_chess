@@ -8,32 +8,34 @@ Make opti_chess strong with **very few nodes**. Like Lc0 or a grandmaster: look 
 
 **All must be done in order. Nothing skipped.**
 
-### A1. Fix Quiescence/Evaluation Overwrite Bug (CRITICAL)
-- **Bug**: When a node is explored via DAG/TT from one path, its deep_eval gets set. When the same position is then explored via the main search path, the new quiescence result OVERWRITES the correct value already stored. E.g. Qxe5 gets correct -912 from quiescence, then a separate exploration pass overwrites it with static 322.
-- **Root cause**: `explore_new_move` or quiescence doesn't check if a correct deep_eval already exists before overwriting.
-- **Fix**: Before overwriting `_deep_evaluation`, check if the existing value is already a properly searched value (not just static). If so, keep the better (more negative for Black) value.
-- **After fix**: Re-run Qxe5Bug test + LichessBenchmark5000.
+### A1. Fix Quiescence/Evaluation Overwrite Bug (DONE)
+- **Bug**: When a node is explored via DAG/TT from one path, its deep_eval gets set. When the same position is then explored via the main search path, the new quiescence result OVERWRITES the correct value already stored. E.g. Qxe5 gets correct -1505 from quiescence, then a separate exploration pass overwrites it with static 322.
+- **Root cause**: `explore_new_move` re-ran quiescence on already-explored children with reduced depth (selective deepening depth 0), overwriting the correct value.
+- **Fix v1** (83f0f29): Save/restore `_value` only — caused mate sign inversion bugs (only _value restored, _avg_score/_wdl inconsistent; comparison by "better for side-to-move" wrong for mates).
+- **Fix v2** (b8703bd): Save full `Evaluation` struct + `_quiescence_depth`, compare by depth (deeper = more accurate), restore full struct.
+- **Benchmark**: 1183/5000 at 116K NPS (cold CPU) vs 1207 baseline at 135K NPS → comparable after NPS normalization. Mate themes: +11, backRankMate: +9, fork: +4.
 
-### A2. Audit exploration.cpp Features Lost in exploration_diag.cpp
+### A2. Audit exploration.cpp Features (DONE)
 - exploration.cpp has `g_search_value_propagation=true`, `g_search_trust_prior=true`, `g_search_avg_cap=true` (all false in diag)
-- These may improve benchmarks. Understand what each does, then benchmark each 1-by-1.
-- exploration.cpp is NOT dead code — it has unique features worth testing.
+- All three tested individually on LichessBenchmark5000:
+  - `g_search_value_propagation=true`: **992/5000 (-20%)** — negamax hygiene breaks puzzle scoring at 100ms
+  - `g_search_trust_prior=true` + `g_search_avg_cap=true`: **1134/5000 (-3%)** — spreads exploration too much
+- All three prevent the engine from concentrating on the right move quickly at 100ms
+- May be useful at longer time controls or selfplay — keep as tunable flags
+- Kept all OFF in exploration_diag.cpp (committed a9b4f4a)
 
-### A3. Investigate 30K vs 130K NPS (GUI vs Tests)
-- User reports GUI shows ~30K NPS. Tests show 130K.
-- User says drawing is <10% of CPU time. Something else is wrong.
-- Need to profile what's eating CPU in the GUI path.
-- If UI rendering IS the issue: implement parallel UI (render thread separate from search).
-- If NOT: find the real bottleneck. GUI and tests must produce same NPS for same work.
+### A3. Investigate 30K vs 130K NPS (GUI vs Tests) (DONE)
+- Root cause: combination of thermal throttling (~2×), persistent tree depth (~2-3×), and DAG overhead (~1.5×)
+- Not a code bug — inherent to the GUI's persistent-tree architecture
 
-### A4. Harmonize ALL GUI & Tests Settings
-- GUI uses: alpha=0.005, beta=5.0, gamma=1.10, quiescence_depth=10
-- Tests use: alpha=0.00001, beta=5.0, gamma=1.10 (in run_puzzle) or alpha=0.0, beta=1.0, gamma=0.5 (PuzzleRunner TIME mode)
-- These MUST be identical. User tunes in GUI, benchmarks must match.
-- After harmonizing: re-run benchmark with GUI parameters.
+### A4. Harmonize GUI & Tests + Enable DAG (DONE)
+- PuzzleRunner defaults changed: alpha=0.005 (was 0.00001), matching GUI
+- DAG enabled in PuzzleRunner::run (`g_tt_node_dag=true`)
+- NPS diagnostic removed from gui.cpp (temporary tool)
+- **New baseline**: 1239/5000 (24.8%) at 133K NPS with DAG ON
 
-### A5. Test 10,2,2 and 10,6,2 vs 10,2,0
-- With all fixes applied and parameters harmonized, re-test selective deepening configs.
+### A5. Test 10,2,2 and 10,6,2 vs 10,2,0 (NEXT)
+- With all fixes applied, parameters harmonized, and DAG ON, re-test selective deepening configs
 
 ### Key Discoveries (2026-08-31)
 - `exploration.cpp` is NOT dead code — has unique features (`g_search_value_propagation`, `g_search_trust_prior`, `g_search_avg_cap`) that exploration_diag.cpp lacks
@@ -44,11 +46,11 @@ Make opti_chess strong with **very few nodes**. Like Lc0 or a grandmaster: look 
 
 ## Current State
 
-- **Search**: GrogrosZero (MCTS + alpha-beta + quiescence) selective `10,2,0` (move1 full 10, moves2-5 depth2, rest 0 static-only)
+- **Search**: GrogrosZero (MCTS + alpha-beta + quiescence) selective `10,2,0` (move1 full 10, moves2-5 depth2, rest 0 static-only); DAG node sharing ON
 - **Eval**: Hand-crafted evaluation (symmetric, 2170+ positions validated)
 - **Build**: C++20/MSVC/CMake/raylib GUI (`build/release/Release/opti_chess.exe`)
 - **Repetition**: Stockfish-style twofold (twofold for non-root, threefold for root); dead quiescence rep check removed
-- **Lichess 5000 benchmark (100ms/puzzle)**: `1196/5000 (23.9%)` baseline at `ca5ab03` (2026-08-31)
+- **Lichess 5000 benchmark (100ms/puzzle)**: `1239/5000 (24.8%)` with DAG ON at `133K NPS` (2026-09-01)
 - **Lichess 2000 benchmark (100ms/puzzle)**: `538/2000 (26.9%)`
 - **Node concentration**: 53% → 66% on best move with selective deepening
 - **Selfplay**: alpha=0.005 gives +126 Elo vs GUI default
@@ -142,8 +144,8 @@ Currently ~44% of nodes go to "other" moves (not best, not expected). Want <1%.
 ## Phase 3: Transposition Table Investigation
 
 ### Status
-- TT exists with `tt_main_search` and `tt_node_dag` flags (both OFF by default)
-- Need to investigate: does it work? Why is it disabled?
+- DAG (`tt_node_dag`) enabled by default — +56 puzzles vs OFF, +15% NPS (1239/5000 at 133K)
+- TT main search (`tt_main_search`) still OFF by default
 
 ### TODO
 - [ ] Test with TT enabled (`_tt_main_search=true`)
