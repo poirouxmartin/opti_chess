@@ -1479,38 +1479,40 @@ void GUI::draw()
 	}
 
 	// Take a snapshot of the tree state under a single lock.
-	// This ensures arrows and eval display are consistent with each other,
-	// even while the background worker mutates the tree.
-	_tree_snapshot.valid = false;
+	// Use try_lock to NEVER block the main thread — if the worker holds the lock,
+	// keep the previous snapshot (slightly stale but good enough for display).
 	_tree_snapshot.arrows.clear();
 	if (_root_exploration_node && _root_exploration_node->_board
 		&& _root_exploration_node->_nodes > 1 && !_root_exploration_node->_is_terminal) {
-		std::lock_guard<std::mutex> lock(_tree_mutex);
-		_tree_snapshot.best_move = _root_exploration_node->get_most_explored_child_move();
-		_tree_snapshot.best_eval_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
-		if (!_tree_snapshot.best_eval_move.is_null_move()) {
-			_tree_snapshot.best_evaluation = _root_exploration_node->_children[_tree_snapshot.best_eval_move]._node->_deep_evaluation;
-		}
-		_tree_snapshot.iterations = _root_exploration_node->_iterations;
-		_tree_snapshot.nodes = _root_exploration_node->_nodes;
-		_tree_snapshot.time_spent = _root_exploration_node->_time_spent;
-		_tree_snapshot.avg_score = _root_exploration_node->_deep_evaluation._avg_score;
+		if (_tree_mutex.try_lock()) {
+			_tree_snapshot.best_move = _root_exploration_node->get_most_explored_child_move();
+			_tree_snapshot.best_eval_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
+			if (!_tree_snapshot.best_eval_move.is_null_move()) {
+				_tree_snapshot.best_evaluation = _root_exploration_node->_children[_tree_snapshot.best_eval_move]._node->_deep_evaluation;
+			}
+			_tree_snapshot.iterations = _root_exploration_node->_iterations;
+			_tree_snapshot.nodes = _root_exploration_node->_nodes;
+			_tree_snapshot.time_spent = _root_exploration_node->_time_spent;
+			_tree_snapshot.avg_score = _root_exploration_node->_deep_evaluation._avg_score;
 
-		// Build arrow data under the same lock
-		for (auto const& [move, child_link] : _root_exploration_node->_children) {
-			Node const* child = child_link._node;
-			if (!child) continue;
-			_tree_snapshot.arrows.push_back({
-				move,
-				(int)child_link._chosen_iterations,
-				(int)child->_iterations,
-				move == _tree_snapshot.best_move,
-				move == _tree_snapshot.best_eval_move,
-				child->_deep_evaluation._value,
-				child->_deep_evaluation._avg_score
-			});
+			// Build arrow data under the same lock
+			for (auto const& [move, child_link] : _root_exploration_node->_children) {
+				Node const* child = child_link._node;
+				if (!child) continue;
+				_tree_snapshot.arrows.push_back({
+					move,
+					(int)child_link._chosen_iterations,
+					(int)child->_iterations,
+					move == _tree_snapshot.best_move,
+					move == _tree_snapshot.best_eval_move,
+					child->_deep_evaluation._value,
+					child->_deep_evaluation._avg_score
+				});
+			}
+			_tree_snapshot.valid = true;
+			_tree_mutex.unlock();
 		}
-		_tree_snapshot.valid = true;
+		// else: worker holds lock, keep previous snapshot (already valid)
 	}
 
 
