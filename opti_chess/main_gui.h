@@ -431,6 +431,7 @@ inline int main_ui() {
 		// LCTRL-H - Stops the automatic search of GrogrosZero
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_H)) {
 			main_GUI._grogros_analysis = false;
+			main_GUI.stop_compute();
 		}
 
 		// H - Shows/hides the arrows, shows/hides the controls
@@ -738,6 +739,9 @@ inline int main_ui() {
 			if (main_GUI._grogros_analysis || main_GUI._white_player == main_GUI._grogros_zero_name || main_GUI._black_player == main_GUI._grogros_zero_name) {
 				main_GUI.init_buffers();
 				main_GUI.grogros_analysis();
+			} else {
+				// No analysis needed — stop any running background worker
+				main_GUI.stop_compute();
 			}
 
 			// When it is its turn (TODO: a function for that)

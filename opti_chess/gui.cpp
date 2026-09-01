@@ -13,13 +13,18 @@
 #include <fstream>
 #include <iomanip>
 
-// Win32 thread priority (forward declarations to avoid windows.h / raylib DrawTextEx conflict)
+// Win32 thread priority + thread creation (forward declarations to avoid windows.h / raylib DrawTextEx conflict)
 extern "C" {
 	__declspec(dllimport) void* __stdcall GetCurrentThread();
 	__declspec(dllimport) int __stdcall SetThreadPriority(void* hThread, int nPriority);
+	__declspec(dllimport) unsigned long __stdcall WaitForSingleObject(void* hHandle, unsigned long dwMilliseconds);
+	__declspec(dllimport) int __stdcall CloseHandle(void* hObject);
 }
 #ifndef THREAD_PRIORITY_HIGHEST
 #define THREAD_PRIORITY_HIGHEST 2
+#endif
+#ifndef INFINITE
+#define INFINITE 0xFFFFFFFF
 #endif
 
 // --- Debug logging ---
@@ -970,6 +975,8 @@ bool GUI::play_move_keep(Move move)
 		return false;
 	}
 
+	stop_compute();
+
 	_board->assign_move_flags(&move);
 
 	// Make sure the move is legal
@@ -1235,59 +1242,36 @@ uint8_t GUI::clicked_piece() const
 	return _board->_array[_clicked_pos.row][_clicked_pos.col];
 }
 
-// Starts a GrogrosZero analysis
+// Starts a GrogrosZero analysis on a background thread
+// If the worker is already running, this is a no-op.
 void GUI::grogros_analysis(int iterations) {
-	// Nodes to explore per frame, aiming at _target_fps FPS
-
 	if (!_root_exploration_node || !_board) {
 		debug_log("[grogros_analysis] CRITICAL: root=%p board=%p — skipping",
 			(void*)_root_exploration_node, (void*)_board);
 		return;
 	}
 
-	// Stop any background computation before modifying the tree
+	// If the worker is already running, nothing to do
+	if (_compute_running.load(std::memory_order_acquire))
+		return;
+
+	// Stop any previous completed worker (join its thread)
 	stop_compute();
 
-	// Iterations per second
-	int iterations_per_second = _root_exploration_node->get_ips();
+	g_tt_main_search = _tt_main_search;
+	g_tt_node_dag = _tt_node_dag;
 
-	// Maximum iterations per second
-	//constexpr int max_iterations_per_second = 100000;
-
-	//if (iterations_per_second > max_iterations_per_second) {
-	//	//cout << "Too many iterations per second? : " << iterations_per_second << endl;
-	//	iterations_per_second = 0;
-	//}
-
-	int iterations_to_explore = iterations_per_second / _target_fps;
-	if (iterations_to_explore == 0)
-		iterations_to_explore = 1;
-
-	//int iterations_to_explore = _root_exploration_node->get_avg_nps() / 60;
-	//if (iterations_to_explore == 0)
-	//	iterations_to_explore = _nodes_per_frame;
-
-	// With the transpositions, _nodes represents the propagated search volume,
-	// not necessarily the number of unique boards still active in the buffer.
-	// We only stop when the buffer really is full.
-	if (monte_board_buffer.is_full()) {
-		iterations_to_explore = 0;
+	// Explicit iteration count (Enter key, single-step) — run inline
+	if (iterations > 0) {
+		_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations, _quiescence_depth);
+		if (g_tt_node_dag)
+			dag_debug_report();
+		_update_variants = true;
+		return;
 	}
 
-	if (iterations_to_explore <= 0) {
-		cout << "Buffer full, so no more to explore -> iterations <= 0 to be expected" << endl;
-	}
-
-	//cout << "IPS: " << _root_exploration_node->get_ips() << ", exploring " << iterations_to_explore << " nodes" << endl;
-
-	g_tt_main_search = _tt_main_search; // #11 Plan A — propage le toggle au global lu dans exploration.cpp
-	g_tt_node_dag = _tt_node_dag; // #11 Plan B — propage le toggle au global lu dans exploration.cpp
-	_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations == -1 ? iterations_to_explore : iterations, _quiescence_depth); // TODO: make the node count configurable
-
-	if (g_tt_node_dag) {
-		dag_debug_report(); // #11 Plan B — diagnostic une ligne par batch (cumulatif)
-	}
-	_update_variants = true;
+	// Continuous mode — start background worker (budget=0 means run until stopped)
+	start_compute(0);
 }
 
 // Runs a puzzle headlessly with the GUI's parameters, prints live results to cout
@@ -1386,6 +1370,7 @@ void GUI::run_puzzle_headless(double time_s) {
 
 // Background computation thread: runs grogros_zero in a tight loop
 // Uses shared monte_board_buffer/monte_node_buffer (safe: GUI doesn't allocate during search)
+// _compute_budget_s == 0 means run indefinitely until _compute_running is set to false
 void GUI::compute_worker() {
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 
@@ -1393,17 +1378,36 @@ void GUI::compute_worker() {
 	g_tt_main_search = _tt_main_search;
 	_update_variants = true;
 
+	int iter_since_update = 0;
 	clock_t begin = clock();
 	while (_compute_running.load(std::memory_order_relaxed)) {
-		if ((double)(clock() - begin) / CLOCKS_PER_SEC >= _compute_budget_s)
+		// Time budget check: if > 0, respect it (puzzle mode); if == 0, run forever (continuous)
+		if (_compute_budget_s > 0 && (double)(clock() - begin) / CLOCKS_PER_SEC >= _compute_budget_s)
+			break;
+		// Stop if buffer is full
+		if (monte_board_buffer.is_full())
 			break;
 		{
 			std::lock_guard<std::mutex> lock(_tree_mutex);
 			_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, 1, _quiescence_depth);
 		}
+		// Periodic GUI updates (every 100 iterations to avoid overhead)
+		if (++iter_since_update >= 100) {
+			iter_since_update = 0;
+			_update_variants = true;
+			if (g_tt_node_dag)
+				dag_debug_report();
+		}
 	}
 	_compute_done.store(true, std::memory_order_release);
 	_compute_running.store(false, std::memory_order_release);
+}
+
+// Background thread entry point (16MB stack via _beginthreadex)
+static unsigned __stdcall compute_worker_entry(void* param) {
+	GUI* self = static_cast<GUI*>(param);
+	self->compute_worker();
+	return 0;
 }
 
 // Starts background computation with the given time budget
@@ -1412,14 +1416,18 @@ void GUI::start_compute(double time_s) {
 	_compute_budget_s = time_s;
 	_compute_done.store(false, std::memory_order_release);
 	_compute_running.store(true, std::memory_order_release);
-	_compute_thread = std::thread(&GUI::compute_worker, this);
+	// 16MB stack (same as main thread) — quiescence recursion needs it
+	_compute_thread_handle = reinterpret_cast<void*>(_beginthreadex(nullptr, 16 * 1024 * 1024, compute_worker_entry, this, 0, nullptr));
 }
 
 // Stops background computation and waits for it to finish
 void GUI::stop_compute() {
 	_compute_running.store(false, std::memory_order_release);
-	if (_compute_thread.joinable())
-		_compute_thread.join();
+	if (_compute_thread_handle) {
+		WaitForSingleObject(_compute_thread_handle, INFINITE);
+		CloseHandle(_compute_thread_handle);
+		_compute_thread_handle = nullptr;
+	}
 }
 
 // Draws the GUI
@@ -1816,8 +1824,30 @@ void GUI::draw()
 	// Grogros analysis
 	string monte_carlo_text = static_cast<string>(_grogros_analysis ? "STOP GrogrosZero-Auto (CTRL-H)" : "RUN GrogrosZero-Auto (CTRL-G)") + "\nCONTROLS (H)" + "\n\nSEARCH PARAMETERS\nalpha: " + to_string(_alpha) + "\nbeta: " + to_string(_beta) + "\ngamma : " + to_string(_gamma) + "\nq_depth : " + to_string(_quiescence_depth) + "\nexplore checks : " + (_explore_checks ? "true" : "false") + "\nTT main search : " + (_tt_main_search ? "true" : "false") + " (I)" + "\nTT node DAG : " + (_tt_node_dag ? "true" : "false") + " (O)";
 	
-	// If a search has happened (skip _children reads while compute worker is running)
-	if (_root_exploration_node->children_count() != 0 && _drawing_arrows && !_compute_running.load(std::memory_order_acquire)) {
+	// If a search has happened
+	if (_root_exploration_node->children_count() != 0 && _drawing_arrows) {
+
+		// While compute worker is running, show a simplified "computing" status
+		// (skip _children reads — robin_map iterators are invalidated on insert)
+		if (_compute_running.load(std::memory_order_acquire)) {
+
+			int nodes = _root_exploration_node->_nodes;
+			int iters = _root_exploration_node->_iterations;
+			int nps = _root_exploration_node->_time_spent > 0 ? (int)(nodes / (static_cast<float>(_root_exploration_node->_time_spent) / CLOCKS_PER_SEC)) : 0;
+
+			string computing_text = monte_carlo_text +
+				"\n\nCOMPUTING..." +
+				"\nIterations: " + int_to_round_string(iters) +
+				"\nNodes: " + int_to_round_string(nodes) + "/" + int_to_round_string(monte_board_buffer._length) +
+				"\nNPS: " + int_to_round_string(nps);
+
+			slider_text(computing_text, _board_padding_x + _board_size + _text_size / 2, _text_size, _screen_width - _text_size - _board_padding_x - _board_size, _board_size * 9 / 16, _text_size / 4, &_monte_carlo_slider, _text_color);
+
+			if (_promotion_pending)
+				draw_promotion_picker();
+			draw_texture(_cursor_texture, _mouse_pos.x - _cursor_size / 2, _mouse_pos.y - _cursor_size / 2, WHITE);
+			return;
+		}
 
 		// Best evaluation
 		//int best_eval = _root_exploration_node->_deep_evaluation._value;
@@ -2059,6 +2089,8 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 			(void*)_board, (void*)_root_exploration_node);
 		return;
 	}
+
+	stop_compute();
 
 	// Positions bug:
 	// rnbq1rk1/pp1p1ppp/7n/2p1P3/3p4/3B1N1P/PPPN1PP1/R2Q1RK1 w - - 0 10: it does not play Ne4

@@ -9,6 +9,7 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <process.h>
 #include "board.h"
 #include "game_tree.h"
 #include "exploration.h"
@@ -213,7 +214,8 @@ public:
 	vector<thread> _threads_grogros_zero;
 
 	// --- Background computation thread ---
-	std::thread _compute_thread;
+	// Uses Windows HANDLE with 16MB stack (std::thread defaults to 1MB, too small for quiescence recursion)
+	void* _compute_thread_handle = nullptr;
 	std::atomic<bool> _compute_running{ false };
 	std::atomic<bool> _compute_done{ false };
 	std::mutex _tree_mutex;
