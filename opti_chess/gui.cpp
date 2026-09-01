@@ -1386,7 +1386,6 @@ void GUI::compute_worker() {
 	g_tt_main_search = _tt_main_search;
 	_update_variants = true;
 
-	int iter_since_update = 0;
 	clock_t begin = clock();
 	while (_compute_running.load(std::memory_order_relaxed)) {
 		// Time budget check: if > 0, respect it (puzzle mode); if == 0, run forever (continuous)
@@ -1396,14 +1395,14 @@ void GUI::compute_worker() {
 		if (monte_board_buffer.is_full())
 			break;
 		{
+			// Use reduced quiescence depth for background worker to keep iterations fast
+			// (full depth can take 10s+ per iteration, blocking the main thread's snapshot)
+			const int bg_quiescence_depth = min(_quiescence_depth, 4);
 			std::lock_guard<std::mutex> lock(_tree_mutex);
-			_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, 1, _quiescence_depth);
+			_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, 1, bg_quiescence_depth);
 		}
-		// Periodic GUI updates (every 100 iterations to avoid overhead)
-		if (++iter_since_update >= 100) {
-			iter_since_update = 0;
-			_update_variants = true;
-		}
+		// Signal GUI update every iteration for smooth display
+		_update_variants = true;
 	}
 	_compute_done.store(true, std::memory_order_release);
 	_compute_running.store(false, std::memory_order_release);
