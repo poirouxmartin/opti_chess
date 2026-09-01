@@ -13,6 +13,15 @@
 #include <fstream>
 #include <iomanip>
 
+// Win32 thread priority (forward declarations to avoid windows.h / raylib DrawTextEx conflict)
+extern "C" {
+	__declspec(dllimport) void* __stdcall GetCurrentThread();
+	__declspec(dllimport) int __stdcall SetThreadPriority(void* hThread, int nPriority);
+}
+#ifndef THREAD_PRIORITY_HIGHEST
+#define THREAD_PRIORITY_HIGHEST 2
+#endif
+
 // --- Debug logging ---
 bool g_debug = true;
 static ofstream g_debug_file;
@@ -357,6 +366,11 @@ void GUI::draw_exploration_arrows()
 		debug_log("[draw_exploration_arrows] root or root board null, skipping");
 		return;
 	}
+
+	// Skip tree iteration while background computation is running
+	// (robin_map iterators are invalidated on insert — concurrent read = crash)
+	if (_compute_running.load(std::memory_order_acquire))
+		return;
 
 	if (_root_exploration_node->_nodes <= 1 || _root_exploration_node->_is_terminal)
 		return;
@@ -1231,6 +1245,9 @@ void GUI::grogros_analysis(int iterations) {
 		return;
 	}
 
+	// Stop any background computation before modifying the tree
+	stop_compute();
+
 	// Iterations per second
 	int iterations_per_second = _root_exploration_node->get_ips();
 
@@ -1338,27 +1355,71 @@ void GUI::run_puzzle_headless(double time_s) {
 	g_tt_main_search = _tt_main_search;
 	_update_variants = true;
 
-	clock_t begin = clock();
-	while ((double)(clock() - begin) / CLOCKS_PER_SEC < time_s) {
-		_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, 1, _quiescence_depth);
+	// Start background computation thread — keeps the window responsive
+	start_compute(time_s);
+
+	// Render loop: window stays responsive while the worker runs
+	while (!_compute_done.load(std::memory_order_acquire)) {
+		if (WindowShouldClose()) break;
+		BeginDrawing();
+		draw();
+		EndDrawing();
 	}
-	clock_t end = clock();
+
+	stop_compute();
 
 	Move chosen = _root_exploration_node->get_most_explored_child_move();
 	string chosen_san = _board->move_label(chosen);
 	int iters = _root_exploration_node->_iterations;
 	int nodes = _root_exploration_node->get_total_nodes();
-	double elapsed = (double)(end - begin) / CLOCKS_PER_SEC;
-	int nps = elapsed > 0 ? (int)(nodes / elapsed) : 0;
+	int nps = _compute_budget_s > 0 ? (int)(nodes / _compute_budget_s) : 0;
 	bool solved = (!expected_san.empty() && chosen_san == expected_san);
 
 	cout << "[puzzle] chosen: " << chosen_san
 		<< (solved ? " CORRECT" : " WRONG")
 		<< endl;
 	cout << "[puzzle] iters=" << iters << " nodes=" << nodes
-		<< " time=" << fixed << setprecision(3) << elapsed << "s"
+		<< " time=" << fixed << setprecision(3) << _compute_budget_s << "s"
 		<< " NPS=" << nps << endl;
 	cout << endl;
+}
+
+// Background computation thread: runs grogros_zero in a tight loop
+// Uses shared monte_board_buffer/monte_node_buffer (safe: GUI doesn't allocate during search)
+void GUI::compute_worker() {
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+
+	g_tt_node_dag = _tt_node_dag;
+	g_tt_main_search = _tt_main_search;
+	_update_variants = true;
+
+	clock_t begin = clock();
+	while (_compute_running.load(std::memory_order_relaxed)) {
+		if ((double)(clock() - begin) / CLOCKS_PER_SEC >= _compute_budget_s)
+			break;
+		{
+			std::lock_guard<std::mutex> lock(_tree_mutex);
+			_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, 1, _quiescence_depth);
+		}
+	}
+	_compute_done.store(true, std::memory_order_release);
+	_compute_running.store(false, std::memory_order_release);
+}
+
+// Starts background computation with the given time budget
+void GUI::start_compute(double time_s) {
+	stop_compute();
+	_compute_budget_s = time_s;
+	_compute_done.store(false, std::memory_order_release);
+	_compute_running.store(true, std::memory_order_release);
+	_compute_thread = std::thread(&GUI::compute_worker, this);
+}
+
+// Stops background computation and waits for it to finish
+void GUI::stop_compute() {
+	_compute_running.store(false, std::memory_order_release);
+	if (_compute_thread.joinable())
+		_compute_thread.join();
 }
 
 // Draws the GUI
@@ -1755,8 +1816,8 @@ void GUI::draw()
 	// Grogros analysis
 	string monte_carlo_text = static_cast<string>(_grogros_analysis ? "STOP GrogrosZero-Auto (CTRL-H)" : "RUN GrogrosZero-Auto (CTRL-G)") + "\nCONTROLS (H)" + "\n\nSEARCH PARAMETERS\nalpha: " + to_string(_alpha) + "\nbeta: " + to_string(_beta) + "\ngamma : " + to_string(_gamma) + "\nq_depth : " + to_string(_quiescence_depth) + "\nexplore checks : " + (_explore_checks ? "true" : "false") + "\nTT main search : " + (_tt_main_search ? "true" : "false") + " (I)" + "\nTT node DAG : " + (_tt_node_dag ? "true" : "false") + " (O)";
 	
-	// If a search has happened
-	if (_root_exploration_node->children_count() != 0 && _drawing_arrows) {
+	// If a search has happened (skip _children reads while compute worker is running)
+	if (_root_exploration_node->children_count() != 0 && _drawing_arrows && !_compute_running.load(std::memory_order_acquire)) {
 
 		// Best evaluation
 		//int best_eval = _root_exploration_node->_deep_evaluation._value;
@@ -1881,6 +1942,8 @@ void GUI::load_FEN(const string fen, bool display) {
 		return;
 	}
 
+	stop_compute();
+
 	// TODO: the FEN has to be validated
 	//_board->from_fen(fen);
 	//update_global_pgn();
@@ -1899,6 +1962,7 @@ void GUI::load_FEN(const string fen, bool display) {
 
 // Resets the game
 void GUI::reset_game() {
+	stop_compute();
 	cout << "*** RESETING GAME ***\n" << endl;
 	debug_log("[reset_game] enter boards_free=%d nodes_free=%d root=%p board=%p",
 		monte_board_buffer.get_first_free_index(),

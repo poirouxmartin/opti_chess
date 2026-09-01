@@ -6,6 +6,9 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <thread>
+#include <mutex>
+#include <atomic>
 #include "board.h"
 #include "game_tree.h"
 #include "exploration.h"
@@ -208,6 +211,13 @@ public:
 
 	// Threads for the child boards of GrogrosZero
 	vector<thread> _threads_grogros_zero;
+
+	// --- Background computation thread ---
+	std::thread _compute_thread;
+	std::atomic<bool> _compute_running{ false };
+	std::atomic<bool> _compute_done{ false };
+	std::mutex _tree_mutex;
+	double _compute_budget_s = 0.1;
 
 	// Search tree, variations played in the PGN
 	GameTree _game_tree;
@@ -583,6 +593,15 @@ public:
 
 	// Runs a puzzle headlessly with the GUI's parameters, prints live results to cout
 	void run_puzzle_headless(double time_s = 0.1);
+
+	// Background computation thread: runs grogros_zero in a tight loop
+	void compute_worker();
+
+	// Starts background computation with the given time budget
+	void start_compute(double time_s);
+
+	// Stops background computation and waits for it to finish
+	void stop_compute();
 
 	// Loads a position from a FEN
 	void load_FEN(const string fen, bool display = true);
