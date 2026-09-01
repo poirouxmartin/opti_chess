@@ -356,7 +356,7 @@ void tt_set_probe_scale(int scale);
 // search overhead. Switch back to true to re-instrument (e.g. Bug 1 opt 1
 // work). The g_dag_* counters stay (1 increment, negligible, never printed
 // imprimes quand off).
-constexpr bool dag_debug = true;
+constexpr bool dag_debug = false;
 
 // Stockfish-style twofold: root position needs threefold (opponent might
 // avoid repetition from game history), non-root positions draw at twofold
