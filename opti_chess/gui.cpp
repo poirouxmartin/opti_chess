@@ -1043,6 +1043,9 @@ bool GUI::play_move_keep(Move move)
 
 			//cout << "toto" << endl;
 
+			// Save positions history BEFORE reset (reset clears it)
+			auto saved_positions_history = _root_exploration_node->_board->_positions_history;
+
 			// Reset the node (non-recursive): clears fields, resets board
 			// internally, and clears _children.  Do NOT call reset_board()
 			// explicitly — Node::reset already handles it.
@@ -1059,6 +1062,11 @@ bool GUI::play_move_keep(Move move)
 			// Reassign _board BEFORE recycling the old root so that _board
 			// is never a dangling pointer to a recycled buffer slot.
 			_board = _root_exploration_node->_board;
+
+			// Propagate game history to new root's board (child boards lose
+			// _positions_history during copy_data in grogros_zero)
+			_board->_positions_history = saved_positions_history;
+			_board->_positions_history[_board->_zobrist_key]++;
 
 			debug_log("[play_move_keep] new root: board=%p root=%p children=%d iters=%d",
 				(void*)_board, (void*)_root_exploration_node,
