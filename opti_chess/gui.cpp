@@ -1481,10 +1481,10 @@ void GUI::draw()
 	// Take a snapshot of the tree state under a single lock.
 	// Use try_lock to NEVER block the main thread — if the worker holds the lock,
 	// keep the previous snapshot (slightly stale but good enough for display).
-	_tree_snapshot.arrows.clear();
 	if (_root_exploration_node && _root_exploration_node->_board
-		&& _root_exploration_node->_nodes > 1 && !_root_exploration_node->_is_terminal) {
+		&& _root_exploration_node->_nodes >= 1 && !_root_exploration_node->_is_terminal) {
 		if (_tree_mutex.try_lock()) {
+			_tree_snapshot.arrows.clear();
 			_tree_snapshot.best_move = _root_exploration_node->get_most_explored_child_move();
 			_tree_snapshot.best_eval_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
 			if (!_tree_snapshot.best_eval_move.is_null_move()) {
