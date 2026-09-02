@@ -520,7 +520,7 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 			if (iteration_index % FORCED_EVERY == FORCED_EVERY - 1) {
 				long long min_visits = LLONG_MAX;
 				for (auto const& [move, link] : _children) {
-					if (!link._node->_is_terminal && link._chosen_iterations < min_visits) {
+					if (link._node && !link._node->_is_terminal && link._chosen_iterations < min_visits) {
 						min_visits = link._chosen_iterations;
 						forced = move;
 					}
@@ -1367,6 +1367,7 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 			long long best_value = LLONG_MIN;
 			Move best_move;
 			for (auto const& [move, link] : _children) {
+				if (!link._node) continue;
 				const long long v = link._node->_deep_evaluation._value * color;
 				if (v > best_value) {
 					best_value = v;
@@ -1379,9 +1380,15 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 				variants += "...";
 			}
 			else {
-				Node* best_child = _children[best_move]._node;
-				const bool new_quiescence = !quiescence && best_child->_iterations == 0;
-				variants += (new_quiescence ? "(" : "") + (_board->_player ? to_string(_board->_moves_count) + ". " : "") + _board->move_label(best_move, true) + (best_child->children_count() > 0 ? " " : "") + best_child->get_exploration_variants(alpha, beta, false, new_quiescence || quiescence, max_depth - 1, c) + (new_quiescence ? ")" : "");
+				const auto it = _children.find(best_move);
+				if (it == _children.end() || !it->second._node) {
+					variants += "...";
+				}
+				else {
+					Node* best_child = it->second._node;
+					const bool new_quiescence = !quiescence && best_child->_iterations == 0;
+					variants += (new_quiescence ? "(" : "") + (_board->_player ? to_string(_board->_moves_count) + ". " : "") + _board->move_label(best_move, true) + (best_child->children_count() > 0 ? " " : "") + best_child->get_exploration_variants(alpha, beta, false, new_quiescence || quiescence, max_depth - 1, c) + (new_quiescence ? ")" : "");
+				}
 			}
 		}
 	}
@@ -1410,6 +1417,7 @@ int Node::get_main_depth(const double alpha, const double beta, int max_depth, P
 		long long best_value = LLONG_MIN;
 		Move main_move;
 		for (auto const& [move, link] : _children) {
+			if (!link._node) continue;
 			const long long v = link._node->_deep_evaluation._value * color;
 			if (v > best_value) {
 				best_value = v;
@@ -1891,6 +1899,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			int color = _board->get_color();
 			long long best_value = LLONG_MIN;
 			for (auto const& [move, child_link] : _children) {
+				if (!child_link._node) continue;
 				const long long v = child_link._node->_deep_evaluation._value * color;
 				if (v > best_value) {
 					best_value = v;
