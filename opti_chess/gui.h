@@ -232,6 +232,7 @@ public:
 		int time_spent = 0;
 		float avg_score = 0.0f;
 		bool valid = false;
+		bool board_player = false;
 		// Arrow data: move + chosen_iterations for each child
 		struct ArrowEntry {
 			Move move;
@@ -623,6 +624,9 @@ public:
 
 	// Background computation thread: runs grogros_zero in a tight loop
 	void compute_worker();
+
+	// Updates the tree snapshot from the current root node (called from worker and inline paths)
+	void update_snapshot();
 
 	// Starts background computation with the given time budget
 	void start_compute(double time_s);
