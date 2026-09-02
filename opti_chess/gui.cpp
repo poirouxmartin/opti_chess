@@ -435,7 +435,7 @@ void GUI::draw_exploration_arrows()
 			continue;
 
 		const int mate = _root_exploration_node->_board->is_eval_mate(it->eval_value);
-		draw_arrow(move, _root_exploration_node->_board->_player, move_color(it->chosen_iterations, _tree_snapshot.iterations, it->child_iterations == 0), -1.0f, true, it->eval_avg_score, mate, it->is_best_move, it->is_best_eval_move);
+		draw_arrow(move, _tree_snapshot.board_player, move_color(it->chosen_iterations, _tree_snapshot.iterations, it->child_iterations == 0), -1.0f, true, it->eval_avg_score, mate, it->is_best_move, it->is_best_eval_move);
 	}
 }
 
@@ -1102,6 +1102,10 @@ bool GUI::play_move_keep(Move move)
 	// Clear stale arrows from the old root so they cannot be clicked
 	_grogros_arrows.clear();
 
+	// Invalidate the snapshot — it contains data from the old root
+	_tree_snapshot.valid = false;
+	_tree_snapshot.arrows.clear();
+
 	return true;
 }
 
@@ -1261,6 +1265,7 @@ void GUI::grogros_analysis(int iterations) {
 			_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations_to_explore, _quiescence_depth);
 			if (g_tt_node_dag)
 				dag_debug_report();
+			update_snapshot();
 			_update_variants = true;
 		}
 		return;
@@ -1271,6 +1276,7 @@ void GUI::grogros_analysis(int iterations) {
 		_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations, _quiescence_depth);
 		if (g_tt_node_dag)
 			dag_debug_report();
+		update_snapshot();
 		_update_variants = true;
 		return;
 	}
@@ -1376,6 +1382,40 @@ void GUI::run_puzzle_headless(double time_s) {
 }
 
 // Background computation thread: runs grogros_zero in a tight loop
+// Populates _tree_snapshot from the current root node.
+// Caller must ensure no concurrent modification (lock held, or worker stopped).
+void GUI::update_snapshot() {
+	if (_root_exploration_node->_board && _root_exploration_node->_nodes >= 1 && !_root_exploration_node->_is_terminal) {
+		_tree_snapshot.best_move = _root_exploration_node->get_most_explored_child_move();
+		_tree_snapshot.best_eval_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
+		if (!_tree_snapshot.best_eval_move.is_null_move()) {
+			const auto it = _root_exploration_node->_children.find(_tree_snapshot.best_eval_move);
+			if (it != _root_exploration_node->_children.end() && it->second._node)
+				_tree_snapshot.best_evaluation = it->second._node->_deep_evaluation;
+		}
+		_tree_snapshot.iterations = _root_exploration_node->_iterations;
+		_tree_snapshot.nodes = _root_exploration_node->_nodes;
+		_tree_snapshot.time_spent = _root_exploration_node->_time_spent;
+		_tree_snapshot.avg_score = _root_exploration_node->_deep_evaluation._avg_score;
+		_tree_snapshot.board_player = _root_exploration_node->_board->_player;
+		_tree_snapshot.arrows.clear();
+		for (auto const& [move, child_link] : _root_exploration_node->_children) {
+			Node const* child = child_link._node;
+			if (!child) continue;
+			_tree_snapshot.arrows.push_back({
+				move,
+				(int)child_link._chosen_iterations,
+				(int)child->_iterations,
+				move == _tree_snapshot.best_move,
+				move == _tree_snapshot.best_eval_move,
+				child->_deep_evaluation._value,
+				child->_deep_evaluation._avg_score
+			});
+		}
+		_tree_snapshot.valid = true;
+	}
+}
+
 // Uses shared monte_board_buffer/monte_node_buffer (safe: GUI doesn't allocate during search)
 // _compute_budget_s == 0 means run indefinitely until _compute_running is set to false
 // All _children reads in draw() are protected by _tree_mutex — no pause needed
@@ -1403,32 +1443,7 @@ void GUI::compute_worker() {
 			_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, 1, bg_quiescence_depth);
 
 			// Take snapshot while holding the lock — main thread reads it lock-free
-			if (_root_exploration_node->_board && _root_exploration_node->_nodes >= 1 && !_root_exploration_node->_is_terminal) {
-				_tree_snapshot.best_move = _root_exploration_node->get_most_explored_child_move();
-				_tree_snapshot.best_eval_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
-				if (!_tree_snapshot.best_eval_move.is_null_move()) {
-					_tree_snapshot.best_evaluation = _root_exploration_node->_children[_tree_snapshot.best_eval_move]._node->_deep_evaluation;
-				}
-				_tree_snapshot.iterations = _root_exploration_node->_iterations;
-				_tree_snapshot.nodes = _root_exploration_node->_nodes;
-				_tree_snapshot.time_spent = _root_exploration_node->_time_spent;
-				_tree_snapshot.avg_score = _root_exploration_node->_deep_evaluation._avg_score;
-				_tree_snapshot.arrows.clear();
-				for (auto const& [move, child_link] : _root_exploration_node->_children) {
-					Node const* child = child_link._node;
-					if (!child) continue;
-					_tree_snapshot.arrows.push_back({
-						move,
-						(int)child_link._chosen_iterations,
-						(int)child->_iterations,
-						move == _tree_snapshot.best_move,
-						move == _tree_snapshot.best_eval_move,
-						child->_deep_evaluation._value,
-						child->_deep_evaluation._avg_score
-					});
-				}
-				_tree_snapshot.valid = true;
-			}
+			update_snapshot();
 		}
 		// Signal GUI update every iteration for smooth display
 		_update_variants = true;
@@ -2056,8 +2071,14 @@ void GUI::reset_game() {
 bool GUI::compare_arrows(const Move m1, const Move m2) const {
 
 	// If two arrows end on the same point, display the "better" move last (on top)
-	if (m1.end_row == m2.end_row && m1.end_col == m2.end_col)
-		return _root_exploration_node->_children[m1]._node->_nodes < _root_exploration_node->_children[m2]._node->_nodes;
+	if (m1.end_row == m2.end_row && m1.end_col == m2.end_col) {
+		int n1 = 0, n2 = 0;
+		for (const auto& e : _tree_snapshot.arrows) {
+			if (e.move == m1) n1 = e.child_iterations;
+			if (e.move == m2) n2 = e.child_iterations;
+		}
+		return n1 < n2;
+	}
 
 	// If the two arrows start from the same point, display the shorter one on top
 	if (m1.start_row == m2.start_row && m1.start_col == m2.start_col) {
