@@ -2012,6 +2012,8 @@ void GUI::load_FEN(const string fen, bool display) {
 	_root_exploration_node->_board->from_fen(fen);
 	_root_exploration_node->_is_active = true;
 	_root_exploration_node->_board->_is_active = true;
+	_tree_snapshot.valid = false;
+	_tree_snapshot.arrows.clear();
 	update_global_pgn();
 	_update_variants = true;
 
@@ -2066,6 +2068,8 @@ void GUI::reset_game() {
 		return;
 	}
 	_root_exploration_node->_board = _board;
+	_tree_snapshot.valid = false;
+	_tree_snapshot.arrows.clear();
 
 	debug_log("[reset_game] done root=%p board=%p", (void*)_root_exploration_node, (void*)_board);
 	PlaySound(_game_begin_sound);
@@ -2125,8 +2129,6 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 		return;
 	}
 
-	stop_compute();
-
 	// Positions bug:
 	// rnbq1rk1/pp1p1ppp/7n/2p1P3/3p4/3B1N1P/PPPN1PP1/R2Q1RK1 w - - 0 10: it does not play Ne4
 
@@ -2144,6 +2146,8 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	if (_root_exploration_node->_iterations <= 1) {
 		return;
 	}
+
+	stop_compute();
 
 	// For the evaluation computations
 	int color = _board->get_color();
