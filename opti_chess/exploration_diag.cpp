@@ -1741,8 +1741,11 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			// Depth extension on a check: forcing moves deserve the extra ply -
 			// without it, sequences like Nxf7 Kxf7 Qf3+ Ke6 die one ply short of
 			// the quiet move that proves the compensation.
-			constexpr int check_extension = 1;
-			new_depth += move.is_check() ? check_extension : 0;
+			// Disabled (0): positive values cause unbounded recursion on long
+			// checking sequences (each check adds +1, depth never decreases).
+			// FIXME: re-enable with a proper cap (e.g. max_depth = initial quiescence_depth)
+			constexpr int check_extension = 0;
+			new_depth += (move.is_check() && depth > 0) ? check_extension : 0;
 
 			// Depth reduction for the less promising moves (audit A3): the old
 			// `move_index * 2` blindly skipped late big captures. Winning

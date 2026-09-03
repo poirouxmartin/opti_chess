@@ -1911,8 +1911,59 @@ TEST(Puzzle, KnightForkC7) {
                "Nc7+ royal fork");
 }
 
+// Crash repro: puzzle #11 from lichess_5000 triggers access violation after 10 puzzles
+TEST(Puzzle, CrashRepro_Puzzle11) {
+    // Just run the first 100 puzzles from lichess_5000.txt directly
+    static Evaluator evaluator;
+    string path = "tests/lichess_5000.txt";
+    ifstream f(path);
+    if (!f.is_open()) { path = "../tests/lichess_5000.txt"; f.open(path); }
+    if (!f.is_open()) { path = "../../tests/lichess_5000.txt"; f.open(path); }
+    if (!f.is_open()) { path = "../../../tests/lichess_5000.txt"; f.open(path); }
+    ASSERT_TRUE(f.is_open()) << "lichess_5000.txt not found";
+
+    string line;
+    int total = 0;
+    while (getline(f, line)) {
+        if (line.empty() || line[0] == '#') continue;
+        size_t p1 = line.find('|');
+        size_t p2 = line.find('|', p1 + 1);
+        if (p1 == string::npos || p2 == string::npos) continue;
+
+        string fen = line.substr(0, p1);
+        string san = line.substr(p1 + 1, p2 - p1 - 1);
+
+        total++;
+        cout << "  [" << total << "] FEN: " << fen << " SAN: " << san << endl;
+
+        Board b;
+        b.from_fen(fen);
+
+        transposition_table.clear();
+        monte_node_buffer.init(500000, false);
+        monte_board_buffer.init(500000, false);
+        monte_node_buffer.reset();
+        monte_board_buffer.reset();
+        node_map.clear();
+        g_buffers_full_logged = false;
+        g_tt_node_dag = true;
+
+        Node root(&b);
+        clock_t begin = clock();
+        while ((double)(clock() - begin) / CLOCKS_PER_SEC < 0.1) {
+            root.grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 1, 10);
+        }
+
+        Move best = root.get_most_explored_child_move();
+        cout << "    best=" << b.move_label(best) << " iters=" << root._iterations << " nodes=" << root._nodes << " OK" << endl;
+
+        if (total >= 100) break;
+    }
+    cout << "  DONE: " << total << " puzzles processed without crash" << endl;
+    EXPECT_GT(total, 10);
+}
+
 // ============================================================================
-// Eval sign tests: verify the engine gives the correct eval direction.
 // These are fast, reliable regression tests that catch eval regressions.
 // ============================================================================
 
