@@ -446,6 +446,8 @@ inline int main_ui() {
 			main_GUI._root_exploration_node->reset(); // FIXME... does this do nothing??
 			main_GUI._root_exploration_node->_is_active = true;
 			main_GUI._root_exploration_node->_board->_is_active = true;
+			main_GUI._tree_snapshot.valid = false;
+			main_GUI._tree_snapshot.arrows.clear();
 			//main_GUI._root_exploration_node = new Node(&main_GUI._board, Move());
 			cout << "Grogros's thought deleted... current moves explored: " << main_GUI._root_exploration_node->children_count() << endl;
 		}
@@ -730,15 +732,10 @@ inline int main_ui() {
 			//cout << "test" << endl;
 
 			// GrogrosZero analysis
-			// Only start background worker for CTRL-G auto-analysis, NOT when it's GrogrosZero's turn
-			// (play_grogros_zero_move handles its own computation)
-			bool is_grogros_turn = (main_GUI._board->_player && main_GUI._white_player == main_GUI._grogros_zero_name) || (!main_GUI._board->_player && main_GUI._black_player == main_GUI._grogros_zero_name);
-			if (main_GUI._grogros_analysis && !is_grogros_turn) {
+			// Start background worker whenever continuous analysis is enabled
+			if (main_GUI._grogros_analysis) {
 				main_GUI.init_buffers();
 				main_GUI.grogros_analysis(0);
-			} else if (!is_grogros_turn) {
-				// No analysis needed and not GrogrosZero's turn — stop any running background worker
-				main_GUI.stop_compute();
 			}
 
 			// When it is its turn (TODO: a function for that)
