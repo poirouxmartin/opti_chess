@@ -1102,9 +1102,15 @@ bool GUI::play_move_keep(Move move)
 	// Clear stale arrows from the old root so they cannot be clicked
 	_grogros_arrows.clear();
 
-	// Invalidate the snapshot — it contains data from the old root
-	_tree_snapshot.valid = false;
-	_tree_snapshot.arrows.clear();
+	// If the subtree was preserved, populate the snapshot immediately so arrows
+	// persist without a frame gap.  Otherwise invalidate (no data to show).
+	if (_root_exploration_node->children_count() > 0 && _root_exploration_node->_nodes >= 1) {
+		update_snapshot();
+	}
+	else {
+		_tree_snapshot.valid = false;
+		_tree_snapshot.arrows.clear();
+	}
 
 	return true;
 }
