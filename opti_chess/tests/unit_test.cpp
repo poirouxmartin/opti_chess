@@ -4606,7 +4606,6 @@ TEST(Puzzle, LichessBenchmark5000) {
 		vector<RatedMove> moves = { { expected, 1.0 } };
 		Puzzle p(fen, PuzzleCategory::TACTIC, name, name, moves);
 
-		transposition_table.clear();
 		auto r = PuzzleRunner::run(p, BudgetMode::TIME, budget_s, &evaluator);
 
 		bool pass = r.score >= 0.5;
@@ -4619,7 +4618,7 @@ TEST(Puzzle, LichessBenchmark5000) {
 		th.first++;
 		if (pass) th.second++;
 
-		if (total % 500 == 0) {
+		if (total % 50 == 0) {
 			cout << "  [" << total << "/" << max_puzzles << "] solved=" << solved
 				<< " avg_score=" << fixed << setprecision(3) << (total_score / total) << endl;
 		}
