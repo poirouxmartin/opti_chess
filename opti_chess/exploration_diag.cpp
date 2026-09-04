@@ -1960,12 +1960,28 @@ int Node::get_fully_explored_children_count() const {
 	return count;
 }
 
-// Returns the sum of the children node counts
+// Returns the sum of the children node counts.
+// DAG-safe: link-on-create joins transpositions into a graph that can loop
+// back (A->B->A via different paths, invisible to path-local repetition
+// guards). The ancestor set cuts cycle edges so the walk always terminates;
+// on acyclic graphs the result is identical to the naive recursion.
+// (Unbounded recursion here exhausted the 16MB stack: STATUS_STACK_OVERFLOW.)
 int Node::count_children_nodes() const {
+	std::unordered_set<const Node*> ancestors;
+	ancestors.insert(this);
+	return count_children_nodes_guarded(ancestors);
+}
+
+int Node::count_children_nodes_guarded(std::unordered_set<const Node*>& ancestors) const {
 	int sum = 0;
 
 	for (auto& [move, child_link] : _children) {
-		sum += child_link._node->get_total_nodes();
+		const Node* child = child_link._node;
+		if (child == nullptr) continue;
+		if (ancestors.find(child) != ancestors.end()) continue; // DAG cycle edge
+		ancestors.insert(child);
+		sum += child->get_total_nodes_guarded(ancestors);
+		ancestors.erase(child);
 	}
 
 	return sum;
@@ -1974,7 +1990,13 @@ int Node::count_children_nodes() const {
 // Returns the total node count
 // TODO: should only be used to tell whether the buffer is full
 int Node::get_total_nodes() const {
-	return count_children_nodes() + 1;
+	std::unordered_set<const Node*> ancestors;
+	ancestors.insert(this);
+	return count_children_nodes_guarded(ancestors) + 1;
+}
+
+int Node::get_total_nodes_guarded(std::unordered_set<const Node*>& ancestors) const {
+	return count_children_nodes_guarded(ancestors) + 1;
 }
 
 // Evaluates the position
