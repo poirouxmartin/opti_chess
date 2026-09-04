@@ -30,6 +30,15 @@ extern bool g_adaptive_quiescence;
 // Runtime toggle via OPTI_SELECTIVE env var (default: OFF).
 extern bool g_selective_deepening;
 
+// Hard time deadline for budgeted search (PuzzleRunner TIME mode).
+// 0 = none. Set (with g_search_abort=false) at puzzle start; quiescence
+// samples the clock (throttled 1/1024) and raises g_search_abort past due;
+// quiescence + grogros_zero then unwind promptly so overrun stays in ms.
+// Return value on abort is alpha (sound fail-soft bound, same as the
+// buffer-full early exits).
+extern clock_t g_search_deadline;
+extern bool g_search_abort;
+
 class Node;
 
 struct ChildLink {

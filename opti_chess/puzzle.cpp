@@ -21,6 +21,18 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
     PuzzleResult result;
     result.is_eval_puzzle = p.is_eval_puzzle;
     auto t0 = chrono::steady_clock::now();
+    const clock_t t_entry = clock();
+
+    // EMA of per-puzzle non-search overhead, seconds (init/reset/clear before
+    // the search + traverse/score after). TIME budgets promise TOTAL time, so
+    // the search gets budget minus expected overhead (floored). Self-tuning
+    // across machines/loads; single-threaded use (matches codebase style).
+    static double s_overhead_ema_s = 0.008;
+
+    // Hard-deadline state never leaks across calls (a TIME abort must not
+    // starve a later NODES run).
+    g_search_deadline = 0;
+    g_search_abort = false;
 
     Board b;
     b.from_fen(p.fen);
@@ -63,6 +75,7 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
     monte_node_buffer.reset();
     monte_board_buffer.reset();
     node_map.clear();
+    transposition_table.clear();
     g_buffers_full_logged = false;
 
     const bool prev_dag = g_tt_node_dag;
@@ -70,11 +83,25 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
 
     Node root(&b);
 
+    clock_t t_search_start = 0, t_search_end = 0; // TIME mode only (EMA below)
     if (mode == BudgetMode::TIME) {
-        clock_t begin = clock();
-        while ((double)(clock() - begin) / CLOCKS_PER_SEC < budget) {
+        t_search_start = clock();
+        // Search budget = total budget minus expected fixed overhead, so the
+        // whole run() call (not just the search loop) lands on budget.
+        // Floor keeps a usable search on tiny budgets / huge overhead.
+        double search_budget = budget - s_overhead_ema_s;
+        const double min_search = 0.2 * budget;
+        if (search_budget < min_search) search_budget = min_search;
+        // Hard deadline: quiescence samples the clock (throttled) and raises
+        // g_search_abort past due, so a single deep iteration cannot overrun
+        // the budget by seconds. Reset per puzzle (never leaks across runs).
+        g_search_deadline = t_search_start + (clock_t)(search_budget * CLOCKS_PER_SEC);
+        g_search_abort = false;
+        while ((double)(clock() - t_search_start) / CLOCKS_PER_SEC < search_budget) {
             root.grogros_zero(&monte_board_buffer, evaluator, alpha, beta, gamma, 1, quiescence_depth, nullptr, nullptr, 0);
         }
+        g_search_deadline = 0;
+        t_search_end = clock();
     } else if (mode == BudgetMode::NODES) {
         int iters = (int)budget;
         root.grogros_zero(&monte_board_buffer, evaluator, alpha, beta, gamma, iters, quiescence_depth, nullptr, nullptr, 0);
@@ -128,6 +155,15 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
 
     auto t1 = chrono::steady_clock::now();
     result.time_s = chrono::duration<double>(t1 - t0).count();
+    if (mode == BudgetMode::TIME && t_search_end > t_search_start) {
+        // Feed the overhead EMA: non-search time = total minus search loop.
+        // Keeps future TIME budgets landing on total time, not search-only.
+        // Spike rejection: cold first-puzzle allocs (hundreds of ms) must not
+        // poison the average; only track representative overhead.
+        double overhead = (double)(result.time_s - (t_search_end - t_search_start) / (double)CLOCKS_PER_SEC);
+        if (overhead >= 0.0 && overhead <= 3.0 * s_overhead_ema_s + 0.005)
+            s_overhead_ema_s = 0.7 * s_overhead_ema_s + 0.3 * overhead;
+    }
     return result;
 }
 

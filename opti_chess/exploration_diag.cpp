@@ -25,6 +25,11 @@ static int probe_fully_explored_count(const Node* n) {
 // (b1b54ac data). Re-enable individually after a winning match only.
 bool g_search_value_propagation = false;  // negamax hygiene: OFF for now, causes -20% regression at 100ms
 bool g_search_trust_prior = false;        // Bayesian prior: OFF, spreads exploration too much
+
+// Hard time deadline (see exploration.h). Sample counter is file-local.
+clock_t g_search_deadline = 0;
+bool g_search_abort = false;
+static unsigned g_qclock_check = 0;
 bool g_search_avg_cap = false;            // cap softmax suppression: OFF, spreads exploration too much
 
 bool g_adaptive_quiescence = (getenv("OPTI_ADAPTIVE") != nullptr);
@@ -472,8 +477,11 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	while (iterations > 0) {
 
 		// Wall-clock budget: stop cleanly when the deadline is reached
-		// (max_time == 0 keeps the pure iteration-count behaviour)
+		// (max_time == 0 keeps the pure iteration-count behaviour).
+		// Hard deadline (TIME mode): abort flag set by quiescence sampling.
 		if (max_time != 0 && clock() - begin_monte_time >= max_time)
+			break;
+		if (g_search_abort)
 			break;
 
 		// When the buffers are full we stop expanding and refine the existing tree.
@@ -1493,6 +1501,11 @@ int Node::get_ips() const {
 
 // Quiescence search, integrated into the exploration
 int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network, bool evaluate_threats, int beta_margin, PositionHistory *path_history) {
+	// Hard deadline sampling (throttled 1/1024 quiescence entries): past due
+	// -> raise the abort flag; the move loop below + grogros_zero unwind.
+	// Skipped entirely when no deadline is set (GUI/analysis: zero overhead).
+	if (g_search_deadline != 0 && ((++g_qclock_check & 1023) == 0) && clock() > g_search_deadline)
+		g_search_abort = true;
 	// Backlog. Already implemented: no cutoff while in check, beta-cutoff margin,
 	// delta pruning, emergency cutoff, threat-aware stand pat, late move reduction,
 	// capture ordering (Board::sort_moves) and transposition reuse.
@@ -1719,6 +1732,13 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	}
 	// Look at every capture
 	for (int i = 0; i < q_count; i++) {
+
+		// Hard deadline: unwind promptly (alpha = sound fail-soft bound,
+		// same convention as the buffer-full early exits below).
+		if (g_search_abort) {
+			_time_spent += clock() - begin_monte_time;
+			return alpha;
+		}
 
 		// Move
 		const Move move = q_moves[i];
