@@ -4559,6 +4559,12 @@ TEST(Puzzle, LichessBenchmark5000) {
 	const char* time_env = getenv("OPTI_PUZZLE_TIME");
 	double budget_s = time_env ? atof(time_env) : 0.1;
 
+	// Node-budget mode (deterministic, wall-clock-free): OPTI_PUZZLE_NODES=N
+	// runs BudgetMode::NODES instead of TIME. Fully reproducible with
+	// OPTI_SEED set (fixed Zobrist keys); unset = TIME mode (default).
+	const char* nodes_env = getenv("OPTI_PUZZLE_NODES");
+	int node_budget = nodes_env ? atoi(nodes_env) : 0;
+
 	// Max puzzles
 	const char* max_env = getenv("OPTI_PUZZLE_MAX");
 	int max_puzzles = max_env ? atoi(max_env) : 5000;
@@ -4574,8 +4580,12 @@ TEST(Puzzle, LichessBenchmark5000) {
 	string bench_log_path = bench_log_env ? bench_log_env : "bench_lichess5000.csv";
 	FILE* bench_log = fopen(bench_log_path.c_str(), "w");
 	if (bench_log) {
-		fprintf(bench_log, "# budget_s=%.3f max=%d quiescence_depth=10 alpha=0.005 beta=5.0 gamma=1.10\n",
-			budget_s, max_puzzles);
+		if (node_budget > 0)
+			fprintf(bench_log, "# mode=NODES budget=%d quiescence_depth=10 alpha=0.005 beta=5.0 gamma=1.10\n",
+				node_budget);
+		else
+			fprintf(bench_log, "# mode=TIME budget_s=%.3f quiescence_depth=10 alpha=0.005 beta=5.0 gamma=1.10\n",
+				budget_s);
 		fprintf(bench_log, "ordinal,fen,expected,chosen,pass,score,nodes,time_ms,wall_ms,iterations,unresolved\n");
 		fflush(bench_log);
 		cout << "  CSV log: " << bench_log_path << endl;
@@ -4633,7 +4643,9 @@ TEST(Puzzle, LichessBenchmark5000) {
 		vector<RatedMove> moves = { { expected, 1.0 } };
 		Puzzle p(fen, PuzzleCategory::TACTIC, name, name, moves);
 
-		auto r = PuzzleRunner::run(p, BudgetMode::TIME, budget_s, &evaluator);
+		auto r = (node_budget > 0)
+			? PuzzleRunner::run(p, BudgetMode::NODES, node_budget, &evaluator)
+			: PuzzleRunner::run(p, BudgetMode::TIME, budget_s, &evaluator);
 
 		bool pass = r.score >= 0.5;
 		if (pass) solved++;
