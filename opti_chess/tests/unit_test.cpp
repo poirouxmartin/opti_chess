@@ -5,6 +5,7 @@
 #define NOMINMAX
 #endif
 #include <gtest/gtest.h>
+#include <cstdio> // per-puzzle benchmark CSV log
 #include "board.h"
 #include "evaluation.h"
 #include "exploration.h"
@@ -4562,6 +4563,26 @@ TEST(Puzzle, LichessBenchmark5000) {
 	const char* max_env = getenv("OPTI_PUZZLE_MAX");
 	int max_puzzles = max_env ? atoi(max_env) : 5000;
 
+	// Skip first N puzzles (targeted repro + resume after a hang)
+	const char* skip_env = getenv("OPTI_PUZZLE_SKIP");
+	int skip_puzzles = skip_env ? atoi(skip_env) : 0;
+
+	// Per-puzzle CSV log (benchmark comparison across runs: time, nodes,
+	// moves, scores). Path via OPTI_BENCH_LOG, else bench_lichess5000.csv.
+	// Flushed per line so a killed run keeps partial data.
+	const char* bench_log_env = getenv("OPTI_BENCH_LOG");
+	string bench_log_path = bench_log_env ? bench_log_env : "bench_lichess5000.csv";
+	FILE* bench_log = fopen(bench_log_path.c_str(), "w");
+	if (bench_log) {
+		fprintf(bench_log, "# budget_s=%.3f max=%d quiescence_depth=10 alpha=0.005 beta=5.0 gamma=1.10\n",
+			budget_s, max_puzzles);
+		fprintf(bench_log, "ordinal,fen,expected,chosen,pass,score,nodes,time_ms,wall_ms,iterations,unresolved\n");
+		fflush(bench_log);
+		cout << "  CSV log: " << bench_log_path << endl;
+	} else {
+		cout << "  WARNING: cannot open CSV log " << bench_log_path << endl;
+	}
+
 	string line;
 	int total = 0, solved = 0, unresolved = 0;
 	double total_score = 0.0;
@@ -4594,12 +4615,18 @@ TEST(Puzzle, LichessBenchmark5000) {
 		}
 
 		total++;
+		if (total <= skip_puzzles) continue;
+		auto t_puzzle_start = chrono::steady_clock::now();
 
 		Board resolve_b;
 		resolve_b.from_fen(fen);
 		Move expected = resolve_san(resolve_b, san.c_str());
 		if (expected.start_row == -1) {
 			unresolved++;
+			if (bench_log) {
+				double wall_ms = chrono::duration<double>(chrono::steady_clock::now() - t_puzzle_start).count() * 1000.0;
+				fprintf(bench_log, "%d,%s,%s,,0,0.000,0,0.0,%.1f,0,1\n", total, fen.c_str(), san.c_str(), wall_ms); fflush(bench_log);
+			}
 			continue;
 		}
 
@@ -4613,6 +4640,14 @@ TEST(Puzzle, LichessBenchmark5000) {
 		total_score += r.score;
 		total_nodes += r.total_nodes;
 		total_time_s += r.time_s;
+		if (bench_log) {
+			double wall_ms = chrono::duration<double>(chrono::steady_clock::now() - t_puzzle_start).count() * 1000.0;
+			fprintf(bench_log, "%d,%s,%s,%s,%d,%.3f,%lld,%.1f,%.1f,%d,0\n",
+				total, fen.c_str(), san.c_str(), r.chosen_move_san.c_str(),
+				pass ? 1 : 0, r.score, (long long)r.total_nodes,
+				1000.0 * r.time_s, wall_ms, r.iterations);
+			fflush(bench_log);
+		}
 
 		auto& th = by_theme[theme];
 		th.first++;
