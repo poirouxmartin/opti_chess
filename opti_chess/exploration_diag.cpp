@@ -2,6 +2,7 @@
 #include "useful_functions.h"
 #include "zobrist.h"
 #include <cmath>
+#include <unordered_set>
 
 #ifdef _WIN32
 // Diagnostic-only SEH probe: walks _children without dying if the map memory
@@ -1981,42 +1982,44 @@ int Node::get_fully_explored_children_count() const {
 }
 
 // Returns the sum of the children node counts.
-// DAG-safe: link-on-create joins transpositions into a graph that can loop
-// back (A->B->A via different paths, invisible to path-local repetition
-// guards). The ancestor set cuts cycle edges so the walk always terminates;
-// on acyclic graphs the result is identical to the naive recursion.
-// (Unbounded recursion here exhausted the 16MB stack: STATUS_STACK_OVERFLOW.)
+// DAG-safe and iterative: link-on-create joins transpositions into a graph
+// that can loop back (A->B->A via different paths, invisible to path-local
+// repetition guards). A global visited set counts each distinct node once:
+// linear O(V+E), terminates on cycles, no recursion depth risk.
+// (The naive recursion exhausted the 16MB stack on cyclic graphs:
+// STATUS_STACK_OVERFLOW; a path-local ancestor set fixed the crash but
+// re-walks shared subtrees per path -> exponential on highly-shared DAGs,
+// e.g. pawn-endgame transpositions hanging get_total_nodes.)
+// Note: shared nodes are counted once, not once per parent edge (the old
+// multi-count inflated totals under DAG sharing). Identical on trees.
 int Node::count_children_nodes() const {
-	std::unordered_set<const Node*> ancestors;
-	ancestors.insert(this);
-	return count_children_nodes_guarded(ancestors);
-}
-
-int Node::count_children_nodes_guarded(std::unordered_set<const Node*>& ancestors) const {
-	int sum = 0;
-
+	std::unordered_set<const Node*> visited;
+	visited.insert(this);
+	std::vector<const Node*> stack;
+	stack.reserve(1024);
 	for (auto& [move, child_link] : _children) {
 		const Node* child = child_link._node;
 		if (child == nullptr) continue;
-		if (ancestors.find(child) != ancestors.end()) continue; // DAG cycle edge
-		ancestors.insert(child);
-		sum += child->get_total_nodes_guarded(ancestors);
-		ancestors.erase(child);
+		if (visited.insert(child).second) stack.push_back(child);
 	}
-
+	int sum = 0;
+	while (!stack.empty()) {
+		const Node* node = stack.back();
+		stack.pop_back();
+		++sum;
+		for (auto& [m2, cl2] : node->_children) {
+			const Node* c2 = cl2._node;
+			if (c2 == nullptr) continue;
+			if (visited.insert(c2).second) stack.push_back(c2);
+		}
+	}
 	return sum;
 }
 
 // Returns the total node count
 // TODO: should only be used to tell whether the buffer is full
 int Node::get_total_nodes() const {
-	std::unordered_set<const Node*> ancestors;
-	ancestors.insert(this);
-	return count_children_nodes_guarded(ancestors) + 1;
-}
-
-int Node::get_total_nodes_guarded(std::unordered_set<const Node*>& ancestors) const {
-	return count_children_nodes_guarded(ancestors) + 1;
+	return count_children_nodes() + 1;
 }
 
 // Evaluates the position
