@@ -1900,7 +1900,7 @@ TEST(Puzzle, Wac001QueenG6) {
 // WAC.002: Rxb2! removes the defender of the promotion squares
 TEST(Puzzle, Wac002Rxb2) {
     run_puzzle("8/7p/5k2/5p2/p1p2P2/Pr1pPK2/1P1R3P/8 b - - 0 1",
-               Move(2, 1, 6, 1), 30000,
+               Move(2, 1, 1, 1), 30000,
                "WAC.002 Rxb2");
 }
 
