@@ -2,6 +2,7 @@
 #include <random>
 #include <iostream>
 #include <sstream>
+#include <cstdlib>
 #include "useful_functions.h"
 
 using namespace std;
@@ -13,9 +14,11 @@ void Zobrist::generate_zobrist_keys() {
 	if (_keys_generated)
 		return;
 	
-	// Initialization of the random generator
-	random_device rd;
-	mt19937_64 gen(rd());
+	// Initialization of the random generator.
+	// OPTI_SEED=N forces deterministic keys (reproducible benchmarks);
+	// unset = random per process (current behavior).
+	const char* seed_env = getenv("OPTI_SEED");
+	mt19937_64 gen(seed_env ? (unsigned long long)atoi(seed_env) : random_device{}());
 	uniform_int_distribution<uint_fast64_t> dis(0, UINT_FAST64_MAX);
 
 	// Key generation
