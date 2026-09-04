@@ -4,6 +4,7 @@
 #include "buffer.h"
 #include <robin_map.h>
 #include <robin_hash.h>
+#include <unordered_set>
 #include <vector>
 
 using namespace tsl;
@@ -241,6 +242,12 @@ public:
 
 	// Returns the total node count
 	int get_total_nodes() const;
+
+	// Cycle-safe counting helpers (DAG can loop back via link-on-create
+	// transpositions; the ancestor set cuts cycle edges so the walk
+	// terminates; identical results on acyclic graphs).
+	int count_children_nodes_guarded(std::unordered_set<const Node*>& ancestors) const;
+	int get_total_nodes_guarded(std::unordered_set<const Node*>& ancestors) const;
 
 	// Evaluates the position
 	void evaluate_position(Evaluator* evaluator, bool display = false, Network* network = nullptr, bool game_over_check = true, bool static_only = false);
