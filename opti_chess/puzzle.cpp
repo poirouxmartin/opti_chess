@@ -21,6 +21,8 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
     // Concentration sweep hook: OPTI_GAMMA overrides the gamma arg so
     // benchmarks can A/B exploration pressure without code changes.
     if (const char* gamma_env = getenv("OPTI_GAMMA")) gamma = atof(gamma_env);
+    // Convergence-speed hook: OPTI_ALPHA overrides value discrimination.
+    if (const char* alpha_env = getenv("OPTI_ALPHA")) alpha = atof(alpha_env);
     PuzzleResult result;
     result.is_eval_puzzle = p.is_eval_puzzle;
     auto t0 = chrono::steady_clock::now();

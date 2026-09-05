@@ -229,6 +229,21 @@ UCT starving is globally right; the Qe1 disease needs a targeted cure
 NODES-500: 401 vs 403 (χ²=0.1 n.s.). Quiet 5th-rank pushes + terminating +1
 change nothing on this subset. advancedPawn (57% fail) needs another angle.
 
+### Vrais ratés : convergence speed, pas aveuglement (2026-09-05)
+- #248 c3: Rb2+ 129 vs c3 126 à 500 iters (pile ou face) → c3 626 à 2000.
+  Le bon coup tranquille met ~4× plus d'itérations à dépasser l'échec
+  clinquant. TIME-0.1s = 320 iters médianes (amp quiescence 8.8×) → classe
+  entière hors de portée.
+- Boutons globaux tous nuls : alpha 0.01/0.02 (123/122 vs 122, bit-identique
+  à 0.02), gamma, interleave, quota, contrast, trust-v2. L'UCT est à un
+  optimum local de son architecture.
+- #1152 d6 : SF le voit dès profondeur 2 (+8→+1117 monotone). Pas un
+  problème de profondeur SF — vitesse de convergence chez nous.
+- Conséquence : il faut 4× plus d'itérations/0.1s (NPS/parallélisation,
+  Phase 6/7) ou un meilleur ordering (NN, Phase 4 last). Le whack-a-mole
+  par thème a atteint ses limites.
+- Hooks `OPTI_ALPHA` (neutre, gardé), `OPTI_GAMMA` (gardé).
+
 ### Phase 3 TT audit (2026-09-05) — A4/A3 gated
 - A4 check extension: +1 → 404 vs 403 (χ²=0 n.s.). +2 → INFEASIBLE
   (tree explosion: >30 min vs 8 min for NODES-500, killed). Checks already
