@@ -4422,9 +4422,13 @@ TEST(Puzzle, PuzzleDiagnostic) {
 		b.from_fen(fen);
 		Node root(&b);
 
+		// Concentration sweep hook (mirrors PuzzleRunner::run OPTI_GAMMA).
+		double diag_gamma = 1.10;
+		if (const char* gamma_env = getenv("OPTI_GAMMA")) diag_gamma = atof(gamma_env);
+
 		clock_t begin = clock();
 		while ((double)(clock() - begin) / CLOCKS_PER_SEC < budget_s) {
-			root.grogros_zero(&monte_board_buffer, &evaluator, 0.00001, 5.0, 1.10, 1, 10, nullptr, nullptr, 0);
+			root.grogros_zero(&monte_board_buffer, &evaluator, 0.00001, 5.0, diag_gamma, 1, 10, nullptr, nullptr, 0);
 		}
 
 		Move chosen = root.get_most_explored_child_move();

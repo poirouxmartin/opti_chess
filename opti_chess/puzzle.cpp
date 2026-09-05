@@ -18,6 +18,9 @@ static double score_reward_for_move(const Puzzle& p, const Move& chosen) {
 PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
     Evaluator* evaluator, int quiescence_depth,
     double alpha, double beta, double gamma) {
+    // Concentration sweep hook: OPTI_GAMMA overrides the gamma arg so
+    // benchmarks can A/B exploration pressure without code changes.
+    if (const char* gamma_env = getenv("OPTI_GAMMA")) gamma = atof(gamma_env);
     PuzzleResult result;
     result.is_eval_puzzle = p.is_eval_puzzle;
     auto t0 = chrono::steady_clock::now();
