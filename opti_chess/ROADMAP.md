@@ -34,8 +34,18 @@ Make opti_chess strong with **very few nodes**. Like Lc0 or a grandmaster: look 
 - NPS diagnostic removed from gui.cpp (temporary tool)
 - **New baseline**: 1239/5000 (24.8%) at 133K NPS with DAG ON
 
-### A5. Test 10,2,2 and 10,6,2 vs 10,2,0 (NEXT)
-- With all fixes applied, parameters harmonized, and DAG ON, re-test selective deepening configs
+### A5. Test 10,2,2 and 10,6,2 vs 10,2,0 (DONE 2026-09-05)
+- With all fixes applied, parameters harmonized, and DAG ON, re-tested selective deepening configs
+- TIME 0.1s 5000/5000: 10,2,0 = 1142 vs 10,2,2 = 1171 (+29, McNemar p~0.36 n.s.); reversed replication -23 → pooled diff +3
+- NODES 2000 seed42: A(10,2,0) = 426, B(10,2,2) = 400, C(10,6,2) = 418 (all n.s.)
+- Decision: **keep 10,2,0**. Selective 212/2000 remains the TIME baseline.
+- New baseline: **1133/5000 (22.7%)** TIME 0.1s (`bench_5000_base2.csv`)
+
+### Order & measurement rules (2026-09-05)
+- Phases run in roadmap order, **NN (Phase 4) moved LAST**.
+- **Every change is benchmarked** before/after. Node-efficiency work uses
+  **fixed-NODES budgets** (`OPTI_PUZZLE_NODES` + `OPTI_SEED`, deterministic)
+  as the primary gate; TIME 5000 confirms only on pass.
 
 ### Key Discoveries (2026-08-31)
 - `exploration.cpp` is NOT dead code — has unique features (`g_search_value_propagation`, `g_search_trust_prior`, `g_search_avg_cap`) that exploration_diag.cpp lacks
@@ -50,7 +60,7 @@ Make opti_chess strong with **very few nodes**. Like Lc0 or a grandmaster: look 
 - **Eval**: Hand-crafted evaluation (symmetric, 2170+ positions validated)
 - **Build**: C++20/MSVC/CMake/raylib GUI (`build/release/Release/opti_chess.exe`)
 - **Repetition**: Stockfish-style twofold (twofold for non-root, threefold for root); dead quiescence rep check removed
-- **Lichess 5000 benchmark (100ms/puzzle)**: `1239/5000 (24.8%)` with DAG ON at `133K NPS` (2026-09-01)
+- **Lichess 5000 benchmark (100ms/puzzle)**: `1133/5000 (22.7%)` selective 10,2,0 + DAG ON (2026-09-05, `bench_5000_base2.csv`)
 - **Lichess 2000 benchmark (100ms/puzzle)**: `538/2000 (26.9%)`
 - **Node concentration**: 53% → 66% on best move with selective deepening
 - **Selfplay**: alpha=0.005 gives +126 Elo vs GUI default
@@ -96,7 +106,16 @@ Make opti_chess strong with **very few nodes**. Like Lc0 or a grandmaster: look 
 Selective deepening works (212/2000) but has 11 regressions because it ranks children by **exploration order** (random robin_map iteration), not by **move quality**.
 
 ### 1.1 Eval-Ordered Children
-**Idea**: After all children are evaluated, sort them by static eval from the moving side's perspective. The top-N children get full depth.
+**REJECTED 2026-09-05 — do not retry as designed.** Tiering expansion depth by
+static-eval rank (rank 0 → full, 1-4 → mid, rest → tail, `OPTI_EVAL_ORDER`)
+regresses: NODES 2000 seed42 Lichess2000 477 → 409; 500-subset 102 → 86
+(McNemar χ²=2.74 + directional confirmation). Tactical floor (captures/checks/
+promos ≥ mid) did not save it. Autopsy: puzzle solutions are often sacs with
+the WORST static eval among siblings — legacy discovery order (captures first
+via move-gen → full depth for the most forcing move) accidentally encodes
+"forcing first", which suits tactics. Static rank systematically demotes the
+solution (full → mid). Lesson: **never tier expansion depth by static eval**;
+selectivity belongs in refinement allocation (1.2), expansion depths untouched.
 
 **Implementation**:
 - In `explore_new_move`, after evaluating child static eval, insert into a sorted structure
@@ -160,7 +179,7 @@ Currently ~44% of nodes go to "other" moves (not best, not expected). Want <1%.
 - Does DAG actually share nodes between transpositions?
 - What's the overhead vs savings?
 
-## Phase 4: Neural Network Evaluation
+## Phase 4: Neural Network Evaluation (LAST — after Phases 5/6/7)
 
 ### Goal
 Replace hand-crafted eval with a neural network. Add a **policy value** for each move (probability it's the best move).
