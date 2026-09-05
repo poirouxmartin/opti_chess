@@ -181,6 +181,12 @@ Follow-up on the SAME line with VERIFIED method (adapter + raw PV):
   (User's pos1 eval complaint needs a GUI recheck — both engines agree.)
 - No aliens: all 28 Kh2-node children legal, nodefens coherent, DAG off in
   direct calls (bench via run() may differ — note for autopsies).
+- #229 CONCLUSION (user, 2026-09-05): hard 6-ply quiet sequence
+  (dxe6 Rcxd1+ Bxd1 Rxd1+ Kh2 Rd6 Qb3! Kf8 Qb4! Re7 Qxb7+), not a shocking
+  bug — engine evaluates the post-exchange position as losing for a long
+  time and never plays Qb3. Not surprising at 2000 iters. DEPRIORITIZED:
+  quiet-tactic depth is NN/move-ordering territory. Higher-yield work first
+  (WDL sac-blindness: moves FOUND but scored low; theme clusters).
 
 ### Interleave — REJECTED (2026-09-05, code removed)
 Root-level: 403 vs 403 bit-identical (fired never — `iteration_index` is
