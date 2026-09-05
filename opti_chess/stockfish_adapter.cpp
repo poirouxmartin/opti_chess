@@ -118,6 +118,11 @@ static StockfishAdapter::AnalysisResult parse_analysis(const std::string& respon
     int best_depth = 0;
     while (std::getline(iss, line)) {
         if (line.find("info depth") == std::string::npos) continue;
+        // Bound lines (fail-high/low) are not exact scores: taking them as
+        // truth poisons comparisons (e.g. a transient -728 kept over the
+        // exact verdict). Only exact lines count.
+        if (line.find("lowerbound") != std::string::npos ||
+            line.find("upperbound") != std::string::npos) continue;
         if (line.find("seldepth") == std::string::npos &&
             line.find("depth " + std::to_string(best_depth > 0 ? best_depth : 999)) == std::string::npos) {
             int d = parse_int_after(line, "depth ");
