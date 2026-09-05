@@ -74,6 +74,13 @@ experiments; user caught it from the GUI in 1 minute) must not recur:
    number is NOT truth in wild positions. Post-bxa4: SF-D22 -728 (black)
    vs SF-D30 +798 (white) on overlapping lines — horizon flip, BOTH from
    the adapter. Require 2+ depths agreeing before treating SF as truth.
+   RESOLVED 2026-09-05: no SF pathology — strict bound-free trajectories
+   show a promotion race (b8=Q) landing EXACTLY on the horizon boundary:
+   via-parent-D30 (29 plies from post-bxa4) = -824, direct-D30 (30 plies)
+   = +798. One ply flips ±800. Same nominal depth from different roots
+   covers different absolute plies — always compare at equal absolute
+   depth. `parse_analysis` now excludes bound lines (fail-high/low are
+   not exact scores).
 
 ### Key Discoveries (2026-08-31)
 - `exploration.cpp` is NOT dead code — has unique features (`g_search_value_propagation`, `g_search_trust_prior`, `g_search_avg_cap`) that exploration_diag.cpp lacks
