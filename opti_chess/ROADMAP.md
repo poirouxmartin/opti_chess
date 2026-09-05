@@ -133,6 +133,19 @@ NODES-500: value_prop 397 vs 403 (-6, χ²=1.6 n.s. — the -20% was
 contamination-amplified); trust_prior+avg_cap 401 vs 403 (χ²=0.03 n.s.).
 All OFF. Env hooks (`OPTI_VALUE_PROP`, `OPTI_TRUST_PRIOR`, `OPTI_AVG_CAP`)
 committed for future sweeps.
+Trust-prior v2 (blend _value toward static too): 367 vs 403, χ²=16.6
+SIGNIFICANT REGRESSION — scheduling follows static until ~4000 visits,
+neutering search feedback. Reverted to avg-only (neutral).
+
+### Qe1-disease: mechanism follows (no cure yet)
+- Quota-first (every child ≥8 visits): 68/500 — breadth-first collapse.
+- Contradiction-driven (|deep-static|>300, <8 visits): 81/500 — captures
+  routinely contradict statics, same collapse.
+- Score is eval_score(value) × score_score(avg) multiplicative: avg-only
+  prior is toothless (exp(0.005·(-1983-max)) ≈ 5e-5 kills Qe1 regardless),
+  but value-blend hands scheduling to statics. The cure must cap the
+  value-term's dynamic range for low-visit nodes WITHOUT substituting
+  static rank (avg_cap direction, value-side equivalent) — next experiment.
 
 ### Interleave — REJECTED (2026-09-05, code removed)
 Root-level: 403 vs 403 bit-identical (fired never — `iteration_index` is
