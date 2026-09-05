@@ -70,6 +70,10 @@ experiments; user caught it from the GUI in 1 minute) must not recur:
 6. **Two-source rule for mechanisms**: internal evidence (iters/values) +
    verified external truth. On conflict, re-verify the EXTERNAL reading
    first — the engine's numbers were right twice (Qe1, pos1).
+7. **Depth-stability required** (2026-09-05 amendment): a single-depth SF
+   number is NOT truth in wild positions. Post-bxa4: SF-D22 -728 (black)
+   vs SF-D30 +798 (white) on overlapping lines — horizon flip, BOTH from
+   the adapter. Require 2+ depths agreeing before treating SF as truth.
 
 ### Key Discoveries (2026-08-31)
 - `exploration.cpp` is NOT dead code — has unique features (`g_search_value_propagation`, `g_search_trust_prior`, `g_search_avg_cap`) that exploration_diag.cpp lacks
@@ -158,6 +162,14 @@ committed for future sweeps.
 Trust-prior v2 (blend _value toward static too): 367 vs 403, χ²=16.6
 SIGNIFICANT REGRESSION — scheduling follows static until ~4000 visits,
 neutering search feedback. Reverted to avg-only (neutral).
+
+### WDL borderline band: NO DEFECT (2026-09-05) — closed, do not recalibrate
+175 correct-move fails at 0.40-0.50 look like compression, but autopsy
+(#22 Qxa4: ours 0.487/avg, SF unstable -728@D22 vs +798@D30 on overlapping
+lines; #53/#128/#232 same pattern) shows chaotic positions where 0.4-0.5
+is HONEST uncertainty, not miscalibration. Our full-depth verdicts (bxa4:
+qd10/1286it = -9; static +22) sit inside SF's own flap range. Recalibrating
+the mapping would tune the metric, not strength. The 0.5 line is FINE.
 
 ### Qe1-disease: RETRACTED 2026-09-05 — false premise, do not use
 User (GUI) correction: Qe1 LOSES immediately (Rxe1+ wins the queen), Kh2 is
