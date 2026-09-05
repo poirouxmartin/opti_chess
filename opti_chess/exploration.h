@@ -29,6 +29,10 @@ extern bool g_adaptive_quiescence;
 // Runtime toggle via OPTI_SELECTIVE env var (default: OFF).
 extern bool g_selective_deepening;
 
+// Check extension (audit A4): +N ply on check-giving moves in quiescence.
+// Via OPTI_CHECK_EXT (default 0 = off, wired but disabled).
+extern int g_check_extension;
+
 // Hard time deadline for budgeted search (PuzzleRunner TIME mode).
 // 0 = none. Set (with g_search_abort=false) at puzzle start; quiescence
 // samples the clock (throttled 1/1024) and raises g_search_abort past due;
