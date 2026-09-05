@@ -124,16 +124,27 @@ statically-best moves wins more than it loses. Now unconditional (no flag).
 `pick_random_child` already concentrates refinement by deep eval
 (`get_move_scores` + UCT exploration term + top-5 rank boost). No duplicate built.
 
-### Gamma sweep (2026-09-05) — default UNCHANGED, `OPTI_GAMMA` hook kept
-Diagnostic 200 puzzles TIME 0.1s: γ=0.40 → 129 solved (best 80.2%) ;
-0.70 → 130 (74.6%) ; 1.10 → 135 (65.4%) ; 1.50 → 142 (53.3%) ;
-2.00 → 146 (44.3%). Concentration locks onto the wrong move earlier
-(best≠expected 65→71) ; exploration finds more tactics (fewer iters
-609 vs 691, yet more solved — allocation effect, not speed).
-BUT NODES-fixed gate (500-subset, 2000 iters, seed42): 102 vs 106,
-net +4, χ²=0.08 n.s. → gain is harness/set-dependent (diag uses stale
-alpha 0.00001 + different set), no robust win. Default stays 1.10.
-Hook committed (`puzzle.cpp` + Diagnostic) for future sweeps.
+### Gamma sweep (2026-09-05) — REJECTED again post-fix, `OPTI_GAMMA` hook kept
+Pre-fix TIME signal did not survive: NODES-500 γ=2.00 vs 1.10 → 401 vs 403,
+net -2, χ²=0.03 n.s. Global exploration pressure reallocates without gain.
+
+### A2 re-gate post-fix (2026-09-05) — rejections CONFIRMED, hooks kept
+NODES-500: value_prop 397 vs 403 (-6, χ²=1.6 n.s. — the -20% was
+contamination-amplified); trust_prior+avg_cap 401 vs 403 (χ²=0.03 n.s.).
+All OFF. Env hooks (`OPTI_VALUE_PROP`, `OPTI_TRUST_PRIOR`, `OPTI_AVG_CAP`)
+committed for future sweeps.
+
+### Interleave — REJECTED (2026-09-05, code removed)
+Root-level: 403 vs 403 bit-identical (fired never — `iteration_index` is
+legacy dead, never incremented — first gate measured nothing). Fixed that,
+re-gated at depth: forced least-visited refinement at ANY depth = 392 vs 403,
+net -11, χ²=5.3 SIGNIFICANT REGRESSION (dilutes focus on hopeless lines).
+UCT starving is globally right; the Qe1 disease needs a targeted cure
+(min-refinement quota), not blind breadth.
+
+### Pawn-break extension — REJECTED (2026-09-05, code removed)
+NODES-500: 401 vs 403 (χ²=0.1 n.s.). Quiet 5th-rank pushes + terminating +1
+change nothing on this subset. advancedPawn (57% fail) needs another angle.
 
 **Implementation**:
 - After all children are created, sort `_children` by eval
