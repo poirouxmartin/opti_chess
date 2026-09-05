@@ -2330,6 +2330,9 @@ MoveScoreList Node::get_move_scores(const double alpha, const double beta, const
 		// lets exploration - not a single early verdict - decide which lines get
 		// proven. The trust scale tracks the size of the current search so the
 		// prior stays meaningful at every budget.
+		// v2 REJECTED (367 vs 403, chi2=16.6 signif. regression): also blending
+		// _value toward static makes scheduling follow static eval until ~4000
+		// visits, neutering search feedback. Avg-only blend kept (neutral).
 		Evaluation child_eval;
 		const int child_visits = max(child_link._chosen_iterations, child->_iterations);
 		constexpr int TRUST_SCALE = 4096;
