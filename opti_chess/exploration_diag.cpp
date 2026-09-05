@@ -2654,6 +2654,19 @@ Node* NodeBuffer::get_first_free_node() {
 	node->_iterations = 0;
 	node->_board = nullptr;
 	node->_children.clear();
+	// Recycled nodes MUST NOT carry stale search state into the next puzzle:
+	// a stale _deep_evaluation + _quiescence_depth makes the explore_new_move
+	// overwrite-guard restore ANOTHER POSITION's eval over a fresh quiescence
+	// result, and a stale _static_evaluation._evaluated skips evaluation.
+	// (Found via repeat-16x same-puzzle flip: Bc7+ -> d1=R -> Bh8.)
+	node->_static_evaluation = Evaluation();
+	node->_deep_evaluation = Evaluation();
+	node->_quiescence_depth = 0;
+	node->_parent_count = 0;
+	node->_latest_first_move_explored = -1;
+	node->_time_spent = 0;
+	node->_is_stand_pat_eval = true;
+	node->_saved_zobrist = 0;
 	return node;
 }
 
