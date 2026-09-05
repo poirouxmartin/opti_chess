@@ -60,7 +60,7 @@ Make opti_chess strong with **very few nodes**. Like Lc0 or a grandmaster: look 
 - **Eval**: Hand-crafted evaluation (symmetric, 2170+ positions validated)
 - **Build**: C++20/MSVC/CMake/raylib GUI (`build/release/Release/opti_chess.exe`)
 - **Repetition**: Stockfish-style twofold (twofold for non-root, threefold for root); dead quiescence rep check removed
-- **Lichess 5000 benchmark (100ms/puzzle)**: `1133/5000 (22.7%)` selective 10,2,0 + DAG ON (2026-09-05, `bench_5000_base2.csv`)
+- **Lichess 5000 benchmark (100ms/puzzle)**: `2973/5000 (59.5%)` selective 10,2,0 + DAG ON (2026-09-05, `bench_5000_fixed.csv`, post-contamination-fix; pre-fix 1133 was contaminated)
 - **Lichess 2000 benchmark (100ms/puzzle)**: `538/2000 (26.9%)`
 - **Node concentration**: 53% → 66% on best move with selective deepening
 - **Selfplay**: alpha=0.005 gives +126 Elo vs GUI default
