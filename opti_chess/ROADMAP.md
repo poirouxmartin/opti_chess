@@ -152,6 +152,15 @@ Hook committed (`puzzle.cpp` + Diagnostic) for future sweeps.
 
 ## Phase 2: Node Efficiency — Waste < 1%
 
+### 2.0 Cross-puzzle contamination FIX (2026-09-05, commit f950412) — READ FIRST
+Repeating one puzzle 16×/process flipped the answer (Bc7+ → d1=R → Bh8,
+nodes 6026–17707): `get_first_free_node()` never reset eval state, so stale
+`_deep_evaluation` + `_quiescence_depth` from prior puzzles was restored over
+fresh quiescence results by the A1 overwrite-guard. **ALL benchmarks before
+this fix are contaminated** (batch order/contents affected outcomes):
+NODES-500 102 → 304 (χ²=165.6), CalibratedBatch 11 → 28 (stale ≥62 threshold,
+already red). Baselines below marked [PRE-FIX] must be re-established.
+
 ### Goal
 Currently ~44% of nodes go to "other" moves (not best, not expected). Want <1%.
 
