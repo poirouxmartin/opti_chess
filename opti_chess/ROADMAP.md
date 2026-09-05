@@ -124,8 +124,20 @@ selectivity belongs in refinement allocation (1.2), expansion depths untouched.
 
 **Expected gain**: Recover the 11 regressions while keeping the +31 improvements.
 
-### 1.2 Dynamic Move Reordering
-**Idea**: Once all children have been explored once, reorder them by their current eval (deep or static). The engine should dynamically shift exploration to the best moves.
+### 1.2 Dynamic Reordering — ALREADY EXISTS (2026-09-05)
+`pick_random_child` already concentrates refinement by deep eval
+(`get_move_scores` + UCT exploration term + top-5 rank boost). No duplicate built.
+
+### Gamma sweep (2026-09-05) — default UNCHANGED, `OPTI_GAMMA` hook kept
+Diagnostic 200 puzzles TIME 0.1s: γ=0.40 → 129 solved (best 80.2%) ;
+0.70 → 130 (74.6%) ; 1.10 → 135 (65.4%) ; 1.50 → 142 (53.3%) ;
+2.00 → 146 (44.3%). Concentration locks onto the wrong move earlier
+(best≠expected 65→71) ; exploration finds more tactics (fewer iters
+609 vs 691, yet more solved — allocation effect, not speed).
+BUT NODES-fixed gate (500-subset, 2000 iters, seed42): 102 vs 106,
+net +4, χ²=0.08 n.s. → gain is harness/set-dependent (diag uses stale
+alpha 0.00001 + different set), no robust win. Default stays 1.10.
+Hook committed (`puzzle.cpp` + Diagnostic) for future sweeps.
 
 **Implementation**:
 - After all children are created, sort `_children` by eval
