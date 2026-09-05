@@ -58,6 +58,16 @@ experiments; user caught it from the GUI in 1 minute) must not recur:
 2. **Sign convention stated every time**: adapter `eval_cp` is
    SIDE-TO-MOVE-relative (it flips SF's white-relative score on `" b "`);
    our `_value` is WHITE-relative. Convert explicitly before comparing.
+   POV cheat-sheet (2026-09-05 incident: -665 vs +798 confusion):
+   - SF raw (`score cp`, adapter pre-flip): ALWAYS white-relative.
+     +600 = white better, whoever moves.
+   - Adapter `eval_cp`: side-to-move-relative. +728 on black-to-move =
+     BLACK better; +584 on white-to-move = WHITE better.
+   - Ours (`_value`, `actual_eval_cp`): ALWAYS white-relative.
+     -256 on black-to-move = BLACK better 256.
+   - Cross-check rule: same position, opposite sides to move must give
+     OPPOSITE adapter signs and EQUAL ours signs. If not, the FENs differ
+     (or the flip logic is wrong) — stop and diff the FENs square by square.
 3. **A bestmove alone proves NOTHING** (losing positions have bestmoves).
    Require the SCORE. A static `eval` on a hand-made FEN is not a search
    truth — verify legality and sanity first.
