@@ -37,6 +37,7 @@ bool g_adaptive_quiescence = (getenv("OPTI_ADAPTIVE") != nullptr);
 bool g_selective_deepening = (getenv("OPTI_NO_SELECTIVE") == nullptr); // selective 212/2000 is new baseline (disable with OPTI_NO_SELECTIVE=1)
 int g_selective_tail_depth = (getenv("OPTI_SEL_TAIL") != nullptr) ? atoi(getenv("OPTI_SEL_TAIL")) : 2;
 int g_selective_mid_depth = (getenv("OPTI_SEL_MID") != nullptr) ? atoi(getenv("OPTI_SEL_MID")) : 6;
+int g_check_extension = (getenv("OPTI_CHECK_EXT") != nullptr) ? atoi(getenv("OPTI_CHECK_EXT")) : 0;
 
 namespace {
 
@@ -1782,7 +1783,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			// Disabled (0): positive values cause unbounded recursion on long
 			// checking sequences (each check adds +1, depth never decreases).
 			// FIXME: re-enable with a proper cap (e.g. max_depth = initial quiescence_depth)
-			constexpr int check_extension = 0;
+			const int check_extension = g_check_extension;
 			new_depth += (move.is_check() && depth > 0) ? check_extension : 0;
 
 			// Depth reduction for the less promising moves (audit A3): the old

@@ -229,6 +229,17 @@ UCT starving is globally right; the Qe1 disease needs a targeted cure
 NODES-500: 401 vs 403 (χ²=0.1 n.s.). Quiet 5th-rank pushes + terminating +1
 change nothing on this subset. advancedPawn (57% fail) needs another angle.
 
+### Phase 3 TT audit (2026-09-05) — A4/A3 gated
+- A4 check extension: +1 → 404 vs 403 (χ²=0 n.s.). +2 → INFEASIBLE
+  (tree explosion: >30 min vs 8 min for NODES-500, killed). Checks already
+  get full depth via the in_check rule; extra plies don't bind. Hook kept
+  (`OPTI_CHECK_EXT=N`, off).
+- A3 LMR softening (non-winning captures ×1 au lieu de ×2) : NODES-150
+  123 vs 122 (n.s.) mais wall time ×2.1 (234s vs 111s) → tuerait le mode
+  TIME (2× moins d'itérations). REJETÉ sur coût, code supprimé.
+- Restent : A1 (mono-échelle active — bénin), A2 (plafond mémoire,
+  sécurité pas strength), A5 (value-prop reste OFF).
+
 **Implementation**:
 - After all children are created, sort `_children` by eval
 - `pick_random_child` should prefer children with better eval
