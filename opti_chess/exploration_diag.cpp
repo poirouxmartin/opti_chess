@@ -730,15 +730,32 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 
 		if (!_board->_player_in_check) {
 
-			// Selective deepening: reduce depth for later-discovered moves.
-			if (g_selective_deepening || g_adaptive_quiescence) {
-				int explored = 0;
-				for (auto const& [mv, cl] : _children)
-					if (cl._node != nullptr && cl._node->_fully_explored) explored++;
-
-				if      (explored >= 5) child_depth = g_selective_tail_depth;
-				else if (explored >= 1) child_depth = min(quiescence_depth, g_selective_mid_depth); // configurable 10,2,0 etc
+		// Selective deepening by static-eval quality rank (Phase 1.1): the
+		// child is static-evaled (cheap, no quiescence) and ranked against
+		// explored siblings from the mover's perspective. Rank 0 -> full
+		// depth, ranks 1-4 -> mid, rest -> tail.
+		if (g_selective_deepening || g_adaptive_quiescence) {
+			if (!child->_static_evaluation._evaluated) {
+				child->evaluate_position(eval, false, network, true);
 			}
+			const int child_v = _board->_player
+				? child->_static_evaluation._value
+				: -child->_static_evaluation._value;
+			int explored = 0;
+			for (auto const& [mv, cl] : _children) {
+				if (cl._node != nullptr && cl._node != child
+					&& cl._node->_fully_explored
+					&& cl._node->_static_evaluation._evaluated) {
+					const int sib_v = _board->_player
+						? cl._node->_static_evaluation._value
+						: -cl._node->_static_evaluation._value;
+					if (sib_v > child_v) explored++;
+				}
+			}
+
+			if      (explored >= 5) child_depth = g_selective_tail_depth;
+			else if (explored >= 1) child_depth = min(quiescence_depth, g_selective_mid_depth); // configurable 10,6,2 etc
+		}
 
 			// Adaptive quiescence: further reduce by static eval on top of selective.
 			if (g_adaptive_quiescence && child_depth > 0) {

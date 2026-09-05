@@ -62,7 +62,7 @@ Make opti_chess strong with **very few nodes**. Like Lc0 or a grandmaster: look 
 - **Eval**: Hand-crafted evaluation (symmetric, 2170+ positions validated)
 - **Build**: C++20/MSVC/CMake/raylib GUI (`build/release/Release/opti_chess.exe`)
 - **Repetition**: Stockfish-style twofold (twofold for non-root, threefold for root); dead quiescence rep check removed
-- **Lichess 5000 benchmark (100ms/puzzle)**: `3300/5000 (66.0%)` selective 10,6,2 + DAG ON (2026-09-05, `bench_5000_C.csv`)
+- **Lichess 5000 benchmark (100ms/puzzle)**: `3369/5000 (67.4%)` selective 10,6,2 + eval-ordered tiers + DAG ON (2026-09-05, `bench_5000_D.csv`)
 - **Lichess 2000 benchmark (100ms/puzzle)**: `538/2000 (26.9%)`
 - **Node concentration**: 53% → 66% on best move with selective deepening
 - **Selfplay**: alpha=0.005 gives +126 Elo vs GUI default
@@ -107,17 +107,11 @@ Make opti_chess strong with **very few nodes**. Like Lc0 or a grandmaster: look 
 ### Problem
 Selective deepening works (212/2000) but has 11 regressions because it ranks children by **exploration order** (random robin_map iteration), not by **move quality**.
 
-### 1.1 Eval-Ordered Children
-**REJECTED 2026-09-05 — do not retry as designed.** Tiering expansion depth by
-static-eval rank (rank 0 → full, 1-4 → mid, rest → tail, `OPTI_EVAL_ORDER`)
-regresses: NODES 2000 seed42 Lichess2000 477 → 409; 500-subset 102 → 86
-(McNemar χ²=2.74 + directional confirmation). Tactical floor (captures/checks/
-promos ≥ mid) did not save it. Autopsy: puzzle solutions are often sacs with
-the WORST static eval among siblings — legacy discovery order (captures first
-via move-gen → full depth for the most forcing move) accidentally encodes
-"forcing first", which suits tactics. Static rank systematically demotes the
-solution (full → mid). Lesson: **never tier expansion depth by static eval**;
-selectivity belongs in refinement allocation (1.2), expansion depths untouched.
+### 1.1 Eval-Ordered Children — ACCEPTED post-fix (2026-09-05)
+Pre-fix rejection was contamination artifact. Re-gated under 10,6,2:
+NODES-500 +19 (χ²=9.8), TIME-5000 3369 (67.4%) vs 3300 (+69, χ²=14.2).
+With tail=2 (not 0) the sac demotion costs less, and rank-0 full depth on
+statically-best moves wins more than it loses. Now unconditional (no flag).
 
 **Implementation**:
 - In `explore_new_move`, after evaluating child static eval, insert into a sorted structure
