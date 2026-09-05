@@ -3236,9 +3236,13 @@ TEST(MoveLabel, Disambiguation) {
 
 static string strip_san_noise(const string& s) {
 	string r;
-	for (char c : s)
+	for (char c : s) {
+		// move_label appends game-result suffixes ("# 1-0", "# 0-1",
+		// " 1/2-1/2") that never appear in lichess SAN: cut at space.
+		if (c == ' ') break;
 		if (c != 'x' && c != '+' && c != '#' && c != '=')
 			r += c;
+	}
 	return r;
 }
 
@@ -3253,7 +3257,10 @@ static Move resolve_san(Board& b, const char* san) {
 			return m;
 	}
 
-	return Move(-1, -1, -1, -1);
+	// Unresolvable sentinel: Move() null. NOTE: Move(-1,-1,-1,-1) does NOT
+	// work — coords are 3-bit bitfields, -1 wraps to 7, and the old
+	// `start_row == -1` check could never fire (358 phantom mate fails).
+	return Move();
 }
 
 // Batch puzzle validator: reads FEN|SAN|name from a text file, resolves each
@@ -3288,7 +3295,7 @@ TEST(Puzzle, BatchValidate) {
 		Board resolve_b;
 		resolve_b.from_fen(fen);
 		Move expected = resolve_san(resolve_b, san.c_str());
-		if (expected.start_row == -1) {
+		if (expected.is_null_move()) {
 			unresolved++;
 			details += "  [UNRESOLVED] " + name + " SAN=" + san + "\n";
 			continue;
@@ -4290,7 +4297,7 @@ TEST(Puzzle, LichessBenchmark2000) {
 		Board resolve_b;
 		resolve_b.from_fen(fen);
 		Move expected = resolve_san(resolve_b, san.c_str());
-		if (expected.start_row == -1) {
+		if (expected.is_null_move()) {
 			unresolved++;
 			continue;
 		}
@@ -4407,7 +4414,7 @@ TEST(Puzzle, PuzzleDiagnostic) {
 		Board resolve_b;
 		resolve_b.from_fen(fen);
 		Move expected = resolve_san(resolve_b, san.c_str());
-		if (expected.start_row == -1) { unresolved++; continue; }
+		if (expected.is_null_move()) { unresolved++; continue; }
 		total++;
 
 		// Run engine (replicate PuzzleRunner logic)
@@ -4628,7 +4635,7 @@ TEST(Puzzle, LichessBenchmark5000) {
 		Board resolve_b;
 		resolve_b.from_fen(fen);
 		Move expected = resolve_san(resolve_b, san.c_str());
-		if (expected.start_row == -1) {
+		if (expected.is_null_move()) {
 			unresolved++;
 			if (bench_log) {
 				double wall_ms = chrono::duration<double>(chrono::steady_clock::now() - t_puzzle_start).count() * 1000.0;
@@ -5053,7 +5060,7 @@ TEST(Puzzle, OFFvsDAG_Puzzles) {
 		Board resolve_b;
 		resolve_b.from_fen(fen);
 		Move expected = resolve_san(resolve_b, san.c_str());
-		if (expected.start_row == -1) return;
+		if (expected.is_null_move()) return;
 
 		for (int mode = 0; mode < 2; mode++) {
 			bool use_dag = (mode == 1);
@@ -5178,7 +5185,7 @@ TEST(Puzzle, OFFvsDAG_Puzzles) {
 		Board resolve_b;
 		resolve_b.from_fen(pos.fen);
 		Move expected = resolve_san(resolve_b, pos.expected_san);
-		if (expected.start_row == -1) continue;
+		if (expected.is_null_move()) continue;
 
 		cout << "\n" << pos.name << " (" << pos.expected_san << "):" << endl;
 
