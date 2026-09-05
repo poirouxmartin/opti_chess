@@ -35,8 +35,8 @@ bool g_search_avg_cap = false;            // cap softmax suppression: OFF, sprea
 
 bool g_adaptive_quiescence = (getenv("OPTI_ADAPTIVE") != nullptr);
 bool g_selective_deepening = (getenv("OPTI_NO_SELECTIVE") == nullptr); // selective 212/2000 is new baseline (disable with OPTI_NO_SELECTIVE=1)
-int g_selective_tail_depth = (getenv("OPTI_SEL_TAIL") != nullptr) ? atoi(getenv("OPTI_SEL_TAIL")) : 0;
-int g_selective_mid_depth = (getenv("OPTI_SEL_MID") != nullptr) ? atoi(getenv("OPTI_SEL_MID")) : 2;
+int g_selective_tail_depth = (getenv("OPTI_SEL_TAIL") != nullptr) ? atoi(getenv("OPTI_SEL_TAIL")) : 2;
+int g_selective_mid_depth = (getenv("OPTI_SEL_MID") != nullptr) ? atoi(getenv("OPTI_SEL_MID")) : 6;
 
 namespace {
 

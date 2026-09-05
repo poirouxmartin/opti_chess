@@ -34,12 +34,14 @@ Make opti_chess strong with **very few nodes**. Like Lc0 or a grandmaster: look 
 - NPS diagnostic removed from gui.cpp (temporary tool)
 - **New baseline**: 1239/5000 (24.8%) at 133K NPS with DAG ON
 
-### A5. Test 10,2,2 and 10,6,2 vs 10,2,0 (DONE 2026-09-05)
-- With all fixes applied, parameters harmonized, and DAG ON, re-tested selective deepening configs
-- TIME 0.1s 5000/5000: 10,2,0 = 1142 vs 10,2,2 = 1171 (+29, McNemar p~0.36 n.s.); reversed replication -23 → pooled diff +3
-- NODES 2000 seed42: A(10,2,0) = 426, B(10,2,2) = 400, C(10,6,2) = 418 (all n.s.)
-- Decision: **keep 10,2,0**. Selective 212/2000 remains the TIME baseline.
-- New baseline: **1133/5000 (22.7%)** TIME 0.1s (`bench_5000_base2.csv`)
+### A5. Test 10,2,2 and 10,6,2 vs 10,2,0 (RE-GATED post-fix 2026-09-05)
+- Pre-fix conclusion (keep 10,2,0) was CONTAMINATION ARTIFACT — overturned.
+- NODES-500 post-fix: A(10,2,0)=304, B(10,2,2)=332 (+28, χ²=16.6),
+  C(10,6,2)=353 (+49 vs A χ²=41.9, +21 vs B χ²=12.9). All pairwise significant.
+- TIME-5000: C=3300 (66.0%) vs A=2973 (59.5%), net +327, χ²=170.0.
+- Decision: **default is now 10,6,2** (TAIL 2, MID 6). Baseline: 3300/5000.
+- Pre-fix history (contaminated, kept for traceability): 10,2,0 = 1142 vs
+  10,2,2 = 1171 (n.s.); NODES A=426 B=400 C=418 (n.s.); baseline 1133/5000.
 
 ### Order & measurement rules (2026-09-05)
 - Phases run in roadmap order, **NN (Phase 4) moved LAST**.
@@ -60,7 +62,7 @@ Make opti_chess strong with **very few nodes**. Like Lc0 or a grandmaster: look 
 - **Eval**: Hand-crafted evaluation (symmetric, 2170+ positions validated)
 - **Build**: C++20/MSVC/CMake/raylib GUI (`build/release/Release/opti_chess.exe`)
 - **Repetition**: Stockfish-style twofold (twofold for non-root, threefold for root); dead quiescence rep check removed
-- **Lichess 5000 benchmark (100ms/puzzle)**: `2973/5000 (59.5%)` selective 10,2,0 + DAG ON (2026-09-05, `bench_5000_fixed.csv`, post-contamination-fix; pre-fix 1133 was contaminated)
+- **Lichess 5000 benchmark (100ms/puzzle)**: `3300/5000 (66.0%)` selective 10,6,2 + DAG ON (2026-09-05, `bench_5000_C.csv`)
 - **Lichess 2000 benchmark (100ms/puzzle)**: `538/2000 (26.9%)`
 - **Node concentration**: 53% → 66% on best move with selective deepening
 - **Selfplay**: alpha=0.005 gives +126 Elo vs GUI default
