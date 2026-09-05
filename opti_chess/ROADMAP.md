@@ -49,6 +49,28 @@ Make opti_chess strong with **very few nodes**. Like Lc0 or a grandmaster: look 
   **fixed-NODES budgets** (`OPTI_PUZZLE_NODES` + `OPTI_SEED`, deterministic)
   as the primary gate; TIME 5000 confirms only on pass.
 
+### External-truth discipline (post-Qe1 rule, 2026-09-05) — NEVER violate
+The Qe1 incident (a whole theory built on unverified SF readings; 4 wasted
+experiments; user caught it from the GUI in 1 minute) must not recur:
+1. **Stockfish truth ONLY via `StockfishAdapter.analyze()`** (best_move +
+   eval_cp + depth + raw PV). Raw `stockfish.exe` CLI pipes DROP info lines
+   in this environment — bestmove-only readings are FORBIDDEN as evidence.
+2. **Sign convention stated every time**: adapter `eval_cp` is
+   SIDE-TO-MOVE-relative (it flips SF's white-relative score on `" b "`);
+   our `_value` is WHITE-relative. Convert explicitly before comparing.
+3. **A bestmove alone proves NOTHING** (losing positions have bestmoves).
+   Require the SCORE. A static `eval` on a hand-made FEN is not a search
+   truth — verify legality and sanity first.
+4. **Material/common-sense gate**: if an external reading contradicts basic
+   counting (hanging queen ⇒ losing, period), the READING is wrong. Stop,
+   re-verify; never build on it.
+5. **Position tracking**: every claim states FULL FEN + side to move. Never
+   reason about "the position" across plies ambiguously (the pos1-vs-root
+   drift cost another cycle).
+6. **Two-source rule for mechanisms**: internal evidence (iters/values) +
+   verified external truth. On conflict, re-verify the EXTERNAL reading
+   first — the engine's numbers were right twice (Qe1, pos1).
+
 ### Key Discoveries (2026-08-31)
 - `exploration.cpp` is NOT dead code — has unique features (`g_search_value_propagation`, `g_search_trust_prior`, `g_search_avg_cap`) that exploration_diag.cpp lacks
 - `exploration_diag.cpp` was created at commit 7030754 as temp diagnostic copy; files drifted apart
@@ -137,15 +159,28 @@ Trust-prior v2 (blend _value toward static too): 367 vs 403, χ²=16.6
 SIGNIFICANT REGRESSION — scheduling follows static until ~4000 visits,
 neutering search feedback. Reverted to avg-only (neutral).
 
-### Qe1-disease: mechanism follows (no cure yet)
-- Quota-first (every child ≥8 visits): 68/500 — breadth-first collapse.
-- Contradiction-driven (|deep-static|>300, <8 visits): 81/500 — captures
-  routinely contradict statics, same collapse.
-- Score is eval_score(value) × score_score(avg) multiplicative: avg-only
-  prior is toothless (exp(0.005·(-1983-max)) ≈ 5e-5 kills Qe1 regardless),
-  but value-blend hands scheduling to statics. The cure must cap the
-  value-term's dynamic range for low-visit nodes WITHOUT substituting
-  static rank (avg_cap direction, value-side equivalent) — next experiment.
+### Qe1-disease: RETRACTED 2026-09-05 — false premise, do not use
+User (GUI) correction: Qe1 LOSES immediately (Rxe1+ wins the queen), Kh2 is
+the only move — the engine's -1983 vs -173 was CORRECT. The author's SF
+readings supporting Qe1-good were unverified garbage (bare bestmove +
+hand-made FEN static). The 4 rejected experiments stay rejected, but the
+"defense starvation" mechanism is UNPROVEN — do not build on it.
+Follow-up on the SAME line with VERIFIED method (adapter + raw PV):
+- ROOT `3r2k1/pp4bp/4qpp1/3Pp3/8/4Q2P/4B1P1/2rR3K w`: SF-D32 +285 (dxe6),
+  we play dxe6 but value it -173. Gap ~450cp stands, both numbers verified.
+- SF is depth-UNSTABLE here: root-D32 +285 vs pos1-D34 -297 on overlapping
+  lines (after-dxe6-D30: -287). Neither SF number is ground truth; the
+  position is knife-edge. Our -173 sits inside SF's flap range.
+- VERIFIED starvation (internal, no SF needed): post-Rd6 (white) Qb3/Qc5 at
+  **1 iteration /2000** (SF-PV move unseen); e4 (+254, right direction) at 9
+  iters vs Rcxd1+ (-173) at 1366; Rd6 (SF pos1 move) at 13 iters vs Rd4
+  (502) — black's Rd4-over-Rd6 preference is a differential-refinement
+  artifact. Single-file descent, everything else starved. Legitimate
+  breadth-starvation (WAC lesson again), actionable without external truth.
+- pos1-as-black-better is NOT a bug: SF-D34 -297 ≈ our static -256 (70cp).
+  (User's pos1 eval complaint needs a GUI recheck — both engines agree.)
+- No aliens: all 28 Kh2-node children legal, nodefens coherent, DAG off in
+  direct calls (bench via run() may differ — note for autopsies).
 
 ### Interleave — REJECTED (2026-09-05, code removed)
 Root-level: 403 vs 403 bit-identical (fired never — `iteration_index` is
