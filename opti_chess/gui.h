@@ -226,6 +226,11 @@ public:
 	// watchdog in grogros_analysis.
 	std::atomic<clock_t> _worker_heartbeat{ 0 };
 	clock_t _compute_start_clock = 0;
+	// Restart backoff: worker sets when its arena is full (exit-0 churn
+	// otherwise: 6+/s stop/start with zero progress). Cleared on any
+	// productive iteration; restart gated by cooldown below.
+	std::atomic<bool> _worker_blocked_full{ false };
+	clock_t _restart_cooldown_until = 0;
 	// Persistent worker wakeup (condition_variable: no windows.h in this TU).
 	std::mutex _work_mutex;
 	std::condition_variable _work_cv;
@@ -252,6 +257,7 @@ public:
 		// never resets between moves.
 		float nps = 0.0f;
 		float ips = 0.0f;
+		string tt_stats; // worker's table (main's is empty during analysis)
 		long long snap_last_nodes = 0;
 		long long snap_last_iters = 0;
 		clock_t snap_last_clock = 0;

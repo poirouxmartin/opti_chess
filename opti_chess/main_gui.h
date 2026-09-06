@@ -443,9 +443,11 @@ inline int main_ui() {
 		// Del - Deletes the GrogrosZero search
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_DELETE)) {
 			//main_GUI._board->reset_all(true, true);
-			main_GUI.stop_compute(); // worker first: root->reset() below is not thread-safe
+			debug_log("[key] DEL pressed");
+			main_GUI.stop_compute(); // worker first: tree surgery below is not thread-safe
+			std::lock_guard<std::mutex> tree_lk(main_GUI._tree_mutex);
+			main_GUI._root_exploration_node->reset(true); // cycle-safe full recycle
 			main_GUI.reset_buffers(); // #6: systematic TT/node_map clear
-			main_GUI._root_exploration_node->reset(); // FIXME... does this do nothing??
 			main_GUI._root_exploration_node->_is_active = true;
 			main_GUI._root_exploration_node->_board->_is_active = true;
 			main_GUI._tree_snapshot.valid = false;
