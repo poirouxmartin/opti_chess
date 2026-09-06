@@ -972,7 +972,6 @@ bool GUI::play_move_keep(Move move)
 	_board->play_move_sound(move);
 
 	// Update the variations
-	_update_variants = true;
 
 	// Timestamp of the move
 	clock_t move_timestamp = _board->_player ? _time_white : _time_black;
@@ -1256,6 +1255,9 @@ void GUI::grogros_analysis(int iterations) {
 		return;
 	}
 
+	// Bench parity: env overrides (OPTI_GAMMA/ALPHA/VLOSS/TT_MAIN) apply here
+	// and in the background worker (sync_bench_env).
+	sync_bench_env();
 	g_tt_main_search = _tt_main_search;
 	g_tt_node_dag = _tt_node_dag;
 
@@ -1272,7 +1274,6 @@ void GUI::grogros_analysis(int iterations) {
 			if (g_tt_node_dag)
 				dag_debug_report();
 			update_snapshot();
-			_update_variants = true;
 		}
 		return;
 	}
@@ -1283,7 +1284,6 @@ void GUI::grogros_analysis(int iterations) {
 		if (g_tt_node_dag)
 			dag_debug_report();
 		update_snapshot();
-		_update_variants = true;
 		return;
 	}
 
@@ -1356,7 +1356,6 @@ void GUI::run_puzzle_headless(double time_s) {
 	// Call grogros_zero directly on the root node (NOT grogros_analysis which is frame-based)
 	g_tt_node_dag = _tt_node_dag;
 	g_tt_main_search = _tt_main_search;
-	_update_variants = true;
 
 	// Start background computation thread — keeps the window responsive
 	start_compute(time_s);
@@ -1404,6 +1403,19 @@ void GUI::update_snapshot() {
 		_tree_snapshot.time_spent = _root_exploration_node->_time_spent;
 		_tree_snapshot.avg_score = _root_exploration_node->_deep_evaluation._avg_score;
 		_tree_snapshot.board_player = _root_exploration_node->_board->_player;
+		// Panel fields (bench-verdict parity + never walk the tree in draw()):
+		// most-explored deep eval, root static, variants PV, main depth, counts.
+		_tree_snapshot.static_evaluation = _root_exploration_node->_static_evaluation;
+		_tree_snapshot.children_count = (int)_root_exploration_node->children_count();
+		_tree_snapshot.got_moves = _root_exploration_node->_board->_got_moves;
+		_tree_snapshot.quiescence_depth = _root_exploration_node->_quiescence_depth;
+		_tree_snapshot.main_depth = _root_exploration_node->get_main_depth(_alpha, _beta);
+		_tree_snapshot.exploration_variants = _root_exploration_node->get_exploration_variants(_alpha, _beta);
+		if (!_tree_snapshot.best_move.is_null_move()) {
+			const auto itb = _root_exploration_node->_children.find(_tree_snapshot.best_move);
+			if (itb != _root_exploration_node->_children.end() && itb->second._node)
+				_tree_snapshot.best_move_evaluation = itb->second._node->_deep_evaluation;
+		}
 		_tree_snapshot.arrows.clear();
 		for (auto const& [move, child_link] : _root_exploration_node->_children) {
 			Node const* child = child_link._node;
@@ -1429,9 +1441,9 @@ void GUI::update_snapshot() {
 void GUI::compute_worker() {
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 
+	sync_bench_env();
 	g_tt_node_dag = _tt_node_dag;
 	g_tt_main_search = _tt_main_search;
-	_update_variants = true;
 
 	clock_t begin = clock();
 	while (_compute_running.load(std::memory_order_relaxed)) {
@@ -1442,20 +1454,38 @@ void GUI::compute_worker() {
 		if (monte_board_buffer.is_full())
 			break;
 		{
-			// Use reduced quiescence depth for background worker to keep iterations fast
-			// (full depth can take 10s+ per iteration, blocking the main thread's snapshot)
-			const int bg_quiescence_depth = min(_quiescence_depth, 4);
+			// Hard deadline like the bench: quiescence samples the clock and
+			// aborts past due, so one deep iteration cannot overrun a puzzle
+			// budget by seconds. Cleared after each iteration.
+			if (_compute_budget_s > 0) {
+				const double elapsed_s = (double)(clock() - begin) / CLOCKS_PER_SEC;
+				const double remaining_s = _compute_budget_s - elapsed_s;
+				g_search_deadline.store(clock() + (clock_t)(remaining_s * CLOCKS_PER_SEC), std::memory_order_release);
+				g_search_abort.store(false, std::memory_order_release);
+			}
+			// Full quiescence depth like the bench (was clamped to 4): the
+			// main thread only reads the snapshot, so long iterations never
+			// block the UI anymore.
 			std::lock_guard<std::mutex> lock(_tree_mutex);
-			_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, 1, bg_quiescence_depth);
+			_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, 1, _quiescence_depth);
 
 			// Take snapshot while holding the lock — main thread reads it lock-free
 			update_snapshot();
+			g_search_deadline.store((clock_t)0, std::memory_order_release);
+			g_search_abort.store(false, std::memory_order_release);
 		}
-		// Signal GUI update every iteration for smooth display
-		_update_variants = true;
 	}
 	_compute_done.store(true, std::memory_order_release);
 	_compute_running.store(false, std::memory_order_release);
+}
+
+// Syncs bench env overrides into GUI search members (bench parity).
+// Called on the main thread (grogros_analysis) and once per worker start.
+void GUI::sync_bench_env() {
+	if (const char* e = getenv("OPTI_GAMMA")) _gamma = atof(e);
+	if (const char* e = getenv("OPTI_ALPHA")) _alpha = atof(e);
+	if (const char* e = getenv("OPTI_VLOSS")) g_virtual_loss = atoi(e);
+	if (getenv("OPTI_TT_MAIN")) _tt_main_search = true;
 }
 
 // Background thread entry point (16MB stack via _beginthreadex)
@@ -1882,12 +1912,13 @@ void GUI::draw()
 	slider_text(_global_pgn, _text_size / 2, _board_padding_y + _board_size + _text_size * 2, _screen_width - _text_size, _screen_height - (_board_padding_y + _board_size + _text_size * 2) - _text_size / 3, _text_size / 3, &_pgn_slider, _text_color);
 
 	// Grogros analysis
-	string monte_carlo_text = static_cast<string>(_grogros_analysis ? "STOP GrogrosZero-Auto (CTRL-H)" : "RUN GrogrosZero-Auto (CTRL-G)") + "\nCONTROLS (H)" + "\n\nSEARCH PARAMETERS\nalpha: " + to_string(_alpha) + "\nbeta: " + to_string(_beta) + "\ngamma : " + to_string(_gamma) + "\nq_depth : " + to_string(_quiescence_depth) + "\nexplore checks : " + (_explore_checks ? "true" : "false") + "\nTT main search : " + (_tt_main_search ? "true" : "false") + " (I)" + "\nTT node DAG : " + (_tt_node_dag ? "true" : "false") + " (O)";
+	string monte_carlo_text = static_cast<string>(_grogros_analysis ? "STOP GrogrosZero-Auto (CTRL-H)" : "RUN GrogrosZero-Auto (CTRL-G)") + "\nCONTROLS (H)" + "\n\nSEARCH PARAMETERS\nalpha: " + to_string(_alpha) + "\nbeta: " + to_string(_beta) + "\ngamma : " + to_string(_gamma) + "\nq_depth : " + to_string(_quiescence_depth) + "\nTT main search : " + (_tt_main_search ? "true" : "false") + " (I)" + "\nTT node DAG : " + (_tt_node_dag ? "true" : "false") + " (O)";
 	
-	// If a search has happened (use snapshot for consistency)
+	// If a search has happened (use snapshot for consistency; verdict =
+	// most-explored like the bench, not best-eval)
 	if (_tree_snapshot.valid && _drawing_arrows) {
 
-		Move best_move = _tree_snapshot.best_eval_move;
+		Move best_move = _tree_snapshot.best_move;
 
 		if (best_move.is_null_move()) {
 			if (_promotion_pending)
@@ -1895,12 +1926,12 @@ void GUI::draw()
 			draw_texture(_cursor_texture, _mouse_pos.x - _cursor_size / 2, _mouse_pos.y - _cursor_size / 2, WHITE);
 			return;
 		}
-		Evaluation best_evaluation = _tree_snapshot.best_evaluation;
+		Evaluation best_evaluation = _tree_snapshot.best_move_evaluation;
 
-		bool all_moves_explored = _root_exploration_node->children_count() == _root_exploration_node->_board->_got_moves;
+		bool all_moves_explored = _tree_snapshot.children_count == _tree_snapshot.got_moves;
 
-		if (!all_moves_explored && ((_board->_player && _root_exploration_node->_static_evaluation > best_evaluation) || (!_board->_player && _root_exploration_node->_static_evaluation < best_evaluation))) {
-			best_evaluation = _root_exploration_node->_static_evaluation;
+		if (!all_moves_explored && ((_board->_player && _tree_snapshot.static_evaluation > best_evaluation) || (!_board->_player && _tree_snapshot.static_evaluation < best_evaluation))) {
+			best_evaluation = _tree_snapshot.static_evaluation;
 		}
 
 		int best_eval = best_evaluation._value;
@@ -1936,11 +1967,11 @@ void GUI::draw()
 			evaluate_position(true, true);
 		}
 		
-		int max_depth = _root_exploration_node->get_main_depth(_alpha, _beta);
+		int max_depth = _tree_snapshot.main_depth;
 		monte_carlo_text += "\n\nSTATIC EVAL\n" + _eval_components +
 			"\nTime: " + clock_to_string(_tree_snapshot.time_spent, true) +
 			"\nDepth: " + to_string(max_depth) +
-			"\nQdepth: " + (_tree_snapshot.iterations == 0 ? to_string(_root_exploration_node->_quiescence_depth) : "N/A") +
+			"\nQdepth: " + (_tree_snapshot.iterations == 0 ? to_string(_tree_snapshot.quiescence_depth) : "N/A") +
 			"\nEval: " + ((best_eval > 0) ? static_cast<string>("+") : (mate != 0 ? static_cast<string>("-") : static_cast<string>(""))) + eval +
 			"\nConfidence: " + to_string(100 - (int)(100 * best_evaluation._uncertainty)) + "%" +
 			"\nWinnable: " + to_string(static_cast<int>(best_evaluation._winnable_white * 100)) + "% / " + to_string(static_cast<int>(best_evaluation._winnable_black * 100)) + "%" +
@@ -1952,18 +1983,14 @@ void GUI::draw()
 		// Display of the GrogrosZero analysis parameters
 		slider_text(monte_carlo_text, _board_padding_x + _board_size + _text_size / 2, _text_size, _screen_width - _text_size - _board_padding_x - _board_size, _board_size * 9 / 16, _text_size / 4, &_monte_carlo_slider, _text_color);
 
-		// GrogrosZero analysis lines
-		// TODO: this should be used too, to avoid recomputing the other parameters
-		if (_update_variants) {
-			_exploration_variants = _root_exploration_node->get_exploration_variants(_alpha, _beta);
-			_update_variants = false;
-		}
+		// GrogrosZero analysis lines (snapshot: computed under lock in update_snapshot)
+		_exploration_variants = _tree_snapshot.exploration_variants;
 
 		// Display of the variations
 		slider_text(_exploration_variants, _board_padding_x + _board_size + _text_size / 2, _board_padding_y + _board_size * 9 / 16, _screen_width - _text_size - _board_padding_x - _board_size, _board_size / 2, _text_size / 3, &_variants_slider, _text_color);
 
 		// Display of the evaluation bar
-		draw_eval_bar(_global_eval, _wdl, _root_exploration_node->_deep_evaluation._avg_score, _global_eval_text, _board_padding_x / 6, _board_padding_y, 2 * _board_padding_x / 3, _board_size, 800, _eval_bar_color_light, _eval_bar_color_gray, _eval_bar_color_dark);
+		draw_eval_bar(_global_eval, _wdl, _tree_snapshot.avg_score, _global_eval_text, _board_padding_x / 6, _board_padding_y, 2 * _board_padding_x / 3, _board_size, 800, _eval_bar_color_light, _eval_bar_color_gray, _eval_bar_color_dark);
 	}
 
 	// Display of the controls and other information
@@ -2015,7 +2042,6 @@ void GUI::load_FEN(const string fen, bool display) {
 	_tree_snapshot.valid = false;
 	_tree_snapshot.arrows.clear();
 	update_global_pgn();
-	_update_variants = true;
 
 	if (display)
 		cout << "loaded FEN : " << fen << endl;
@@ -2059,7 +2085,6 @@ void GUI::reset_game() {
 	// (node + board), otherwise 1 node + 1 board leak on every reset.
 	old_root->reset();
 	recycle_detached_node(old_root);
-	_update_variants = true;
 	_board_orientation = current_orientation;
 	_root_exploration_node = monte_node_buffer.get_first_free_node();
 	if (!_root_exploration_node) {
