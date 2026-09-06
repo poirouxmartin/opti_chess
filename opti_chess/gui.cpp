@@ -1316,6 +1316,19 @@ void GUI::grogros_analysis(int iterations) {
 			stop_compute();
 		}
 		else {
+			// Hang diagnosis: heartbeat stale >20s means stuck inside one
+			// iteration (phase 1=search 2=snapshot 3=park). Logged, not
+			// restarted (a stuck thread can't be safely reaped here).
+			const double stale_s = (double)(clock() - hb) / CLOCKS_PER_SEC;
+			if (hb != 0 && stale_s > 20.0) {
+				static clock_t last_stuck_log = 0;
+				const clock_t now_c = clock();
+				if ((double)(now_c - last_stuck_log) / CLOCKS_PER_SEC > 10.0) {
+					last_stuck_log = now_c;
+					debug_log("[grogros_analysis] worker STUCK? phase=%d stale=%.0fs",
+						(int)_worker_phase.load(std::memory_order_acquire), stale_s);
+				}
+			}
 			return;
 		}
 	}
@@ -1530,8 +1543,13 @@ void GUI::compute_worker() {
 	// diagnosed via the heartbeat below (start + iter=1/100 in debug log).
 	for (;;) {
 		{
+			// Sticky wait: blocks until a NEW wake generation arrives.
+			// (A bare notify can fire before wait() is entered and is then
+			// lost; the counter cannot be lost. No !running clause here:
+			// with it, an idle worker would busy-spin returning instantly.)
 			std::unique_lock<std::mutex> lk(_work_mutex);
-			_work_cv.wait(lk, [&] { return _compute_running.load(std::memory_order_acquire); });
+			const unsigned long long seen = _wake_gen.load(std::memory_order_acquire);
+			_work_cv.wait(lk, [&] { return _wake_gen.load(std::memory_order_acquire) != seen; });
 		}
 		if (!_compute_running.load(std::memory_order_acquire)) {
 			_compute_done.store(true, std::memory_order_release); // idle: nothing pending
@@ -1554,7 +1572,11 @@ void GUI::compute_worker() {
 		clock_t last_heavy = 0; // 4Hz throttle for PV/variants strings
 		long long iters = 0;
 		long long parked_rounds = 0; // full-arena park loop iterations (log throttle)
+		_worker_phase.store(1, std::memory_order_release); // search
+		_phase_since.store(begin, std::memory_order_release);
 		while (_compute_running.load(std::memory_order_relaxed)) {
+		_worker_phase.store(1, std::memory_order_relaxed); // search
+		_phase_since.store(clock(), std::memory_order_relaxed);
 		// Time budget check: if > 0, respect it (puzzle mode); if == 0, run forever (continuous)
 		if (_compute_budget_s > 0 && (double)(clock() - begin) / CLOCKS_PER_SEC >= _compute_budget_s) {
 			debug_log("[worker] exit-reason=budget iters=%lld", iters);
@@ -1566,6 +1588,8 @@ void GUI::compute_worker() {
 		// recycles on play/DEL; this loop re-checks space every 100ms and
 		// resumes by itself. Bounded waits keep stop_compute responsive.
 		if (monte_board_buffer.is_full()) {
+			_worker_phase.store(3, std::memory_order_release); // park
+			_phase_since.store(clock(), std::memory_order_release);
 			_worker_blocked_full.store(true, std::memory_order_release);
 			if (iters == 0 || (parked_rounds++ % 100 == 0))
 				debug_log("[worker] parked (boards full) iters=%lld", iters);
@@ -1600,8 +1624,14 @@ void GUI::compute_worker() {
 
 			// Take snapshot while holding the lock — main thread reads it lock-free.
 			// PV/variants strings at ~4Hz (heavy); arrows/evals every iteration.
+			// Heavy walks are skipped while aborting (stop_compute): they have
+			// no abort checks and would otherwise stall the stop + the main
+			// thread waiting on _tree_mutex behind it.
+			_worker_phase.store(2, std::memory_order_release); // snapshot
+			_phase_since.store(clock(), std::memory_order_release);
+			const bool aborting = g_search_abort.load(std::memory_order_acquire);
 			const clock_t now = clock();
-			const bool heavy = (double)(now - last_heavy) / CLOCKS_PER_SEC >= 0.25;
+			const bool heavy = !aborting && (double)(now - last_heavy) / CLOCKS_PER_SEC >= 0.25;
 			update_snapshot(heavy);
 			if (heavy) last_heavy = now;
 			g_search_deadline.store((clock_t)0, std::memory_order_release);
@@ -1656,6 +1686,7 @@ void GUI::start_compute(double time_s) {
 	_compute_start_clock = clock();
 	_compute_done.store(false, std::memory_order_release);
 	_compute_running.store(true, std::memory_order_release);
+	_wake_gen.fetch_add(1, std::memory_order_release); // sticky: never lost
 	_work_cv.notify_one(); // wake the persistent worker
 	debug_log("[start_compute] budget=%.2fs", time_s);
 }
@@ -1674,13 +1705,15 @@ void GUI::stop_compute() {
 	_position_epoch++;
 	if (_compute_thread_handle) {
 		_work_cv.notify_one(); // wake if idle so it observes running=false
-		int waited = 0;
-		while (!_compute_done.load(std::memory_order_acquire) && waited < 15000) {
+		// Bounded by WALL time (not iterations): sleep_for(1ms) actually
+		// sleeps ~15.6ms on stock Windows timer granularity, so count ms.
+		const clock_t t_stop0 = clock();
+		while (!_compute_done.load(std::memory_order_acquire)
+			&& (double)(clock() - t_stop0) / CLOCKS_PER_SEC < 5.0) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-			waited++;
 		}
 		if (!_compute_done.load(std::memory_order_acquire))
-			debug_log("[stop_compute] TIMEOUT waiting worker (%dms)", waited);
+			debug_log("[stop_compute] TIMEOUT waiting worker (5s wall)");
 	}
 	_compute_done.store(false, std::memory_order_release);
 }
@@ -2224,8 +2257,8 @@ void GUI::reset_game() {
 	std::lock_guard<std::mutex> tree_lk(_tree_mutex);
 	cout << "*** RESETING GAME ***\n" << endl;
 	debug_log("[reset_game] enter boards_free=%d nodes_free=%d root=%p board=%p",
-		monte_board_buffer.get_first_free_index(),
-		monte_node_buffer.get_first_free_index(),
+		(int)monte_board_buffer._free_indices.size(),
+		(int)monte_node_buffer._free_indices.size(),
 		(void*)_root_exploration_node, (void*)_board);
 
 	cout << _global_pgn << endl;
