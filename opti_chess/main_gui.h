@@ -610,6 +610,7 @@ inline int main_ui() {
 				main_GUI._white_country = "57";
 			}
 		}
+		cout << "White player: " << main_GUI._white_player << endl;
 
 		// UP/DOWN - Enables or disables GrogrosFish for the black pieces
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && !main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && main_GUI.get_board_orientation()))) {
@@ -631,6 +632,7 @@ inline int main_ui() {
 				main_GUI._black_country = "57";
 			}
 		}
+		cout << "Black player: " << main_GUI._black_player << endl;
 
 		// CTRL-UP/DOWN - Enables or disables GrogrosZero for the white pieces
 		if (IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && !main_GUI.get_board_orientation()))) {
@@ -652,6 +654,8 @@ inline int main_ui() {
 				main_GUI._white_country = "57";
 			}
 		}
+		cout << "White player: " << main_GUI._white_player << endl;
+		if (main_GUI._white_player == main_GUI._grogros_zero_name) main_GUI.auto_bot_mode();
 
 		// CTRL-UP/DOWN - Enables or disables GrogrosZero for the black pieces
 		if (IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && !main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && main_GUI.get_board_orientation()))) {
@@ -673,6 +677,8 @@ inline int main_ui() {
 				main_GUI._black_country = "57";
 			}
 		}
+		cout << "Black player: " << main_GUI._black_player << endl;
+		if (main_GUI._black_player == main_GUI._grogros_zero_name) main_GUI.auto_bot_mode();
 
 		// End of the game (to be reset too...) (the sound does not play...)
 		// Compute the end of the game here once, to avoid doing it again?

@@ -1662,6 +1662,21 @@ void GUI::compute_worker() {
 	}
 }
 
+// Quasi-auto: enabling a Zero bot also starts continuous analysis and
+// the clock (play_grogros_zero_move needs both). Idempotent.
+void GUI::auto_bot_mode() {
+	if (_white_player != _grogros_zero_name && _black_player != _grogros_zero_name)
+		return;
+	if (!_grogros_analysis) {
+		_grogros_analysis = true;
+		debug_log("[auto_bot] analysis started");
+	}
+	if (!_time) {
+		start_time();
+		debug_log("[auto_bot] clock started");
+	}
+}
+
 // Syncs bench env overrides into GUI search members (bench parity).
 // Called on the main thread (grogros_analysis) and once per worker start.
 void GUI::sync_bench_env() {
