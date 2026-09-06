@@ -1486,17 +1486,48 @@ void GUI::update_snapshot(bool heavy) {
 void GUI::compute_worker() {
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 
-	sync_bench_env();
-	g_tt_node_dag = _tt_node_dag;
-	g_tt_main_search = _tt_main_search;
+	// One-time per-thread arena init. Main-thread init_buffers() does NOT
+	// cover this thread (thread_local): without it is_full() is true on the
+	// empty free-list and every run exits with iters=0. Never bulk-reset
+	// here: own slots may hold LIVE tree nodes linked from the main tree.
+	if (!monte_board_buffer._init || !monte_node_buffer._init) {
+		const PoolSizing ps = compute_pool_sizing();
+		if (!monte_board_buffer._init)
+			monte_board_buffer.init(ps.board_length, false);
+		if (!monte_node_buffer._init)
+			monte_node_buffer.init(ps.node_length, false);
+		debug_log("[worker] arenas init boards=%d nodes=%d", ps.board_length, ps.node_length);
+	}
+	long long t_seen_epoch = -1;
 
-	debug_log("[worker] start budget=%.2fs qdepth=%d", _compute_budget_s, _quiescence_depth);
-	clock_t begin = clock();
-	clock_t last_heavy = 0; // 4Hz throttle for PV/variants strings
-	long long iters = 0;
 	// NOTE: no __try/__except here (C2712 vs lock_guard); a dead worker is
 	// diagnosed via the heartbeat below (start + iter=1/100 in debug log).
-	while (_compute_running.load(std::memory_order_relaxed)) {
+	for (;;) {
+		{
+			std::unique_lock<std::mutex> lk(_work_mutex);
+			_work_cv.wait(lk, [&] { return _compute_running.load(std::memory_order_acquire); });
+		}
+		if (!_compute_running.load(std::memory_order_acquire)) {
+			_compute_done.store(true, std::memory_order_release); // idle: nothing pending
+			continue;
+		}
+		// New position epoch: drop hint maps (entries may reference dead nodes;
+		// _is_active validation covers stragglers, clearing avoids the churn).
+		if (t_seen_epoch != _position_epoch) {
+			node_map.clear();
+			transposition_table.clear();
+			t_seen_epoch = _position_epoch;
+			debug_log("[worker] epoch %lld: cleared node_map/TT", _position_epoch);
+		}
+		sync_bench_env();
+		g_tt_node_dag = _tt_node_dag;
+		g_tt_main_search = _tt_main_search;
+
+		debug_log("[worker] start budget=%.2fs qdepth=%d", _compute_budget_s, _quiescence_depth);
+		clock_t begin = clock();
+		clock_t last_heavy = 0; // 4Hz throttle for PV/variants strings
+		long long iters = 0;
+		while (_compute_running.load(std::memory_order_relaxed)) {
 		// Time budget check: if > 0, respect it (puzzle mode); if == 0, run forever (continuous)
 		if (_compute_budget_s > 0 && (double)(clock() - begin) / CLOCKS_PER_SEC >= _compute_budget_s)
 			break;
@@ -1531,10 +1562,11 @@ void GUI::compute_worker() {
 				debug_log("[worker] iter=%lld nodes=%d", iters, (int)_root_exploration_node->_nodes);
 			_worker_heartbeat.store(clock(), std::memory_order_release);
 		}
+		_compute_done.store(true, std::memory_order_release);
+		_compute_running.store(false, std::memory_order_release);
+		debug_log("[worker] exit iters=%lld", iters);
+		}
 	}
-	_compute_done.store(true, std::memory_order_release);
-	_compute_running.store(false, std::memory_order_release);
-	debug_log("[worker] exit iters=%lld", iters);
 }
 
 // Syncs bench env overrides into GUI search members (bench parity).
@@ -1553,30 +1585,45 @@ static unsigned __stdcall compute_worker_entry(void* param) {
 	return 0;
 }
 
-// Starts background computation with the given time budget
+// Starts background computation with the given time budget.
+// The worker thread is persistent (created once): per-start creation would
+// re-allocate GB thread_local arenas every analysis (and leak them, since
+// nothing removes them at thread exit).
 void GUI::start_compute(double time_s) {
 	stop_compute();
+	if (!_compute_thread_handle) {
+		_compute_thread_handle = reinterpret_cast<void*>(_beginthreadex(nullptr, 16 * 1024 * 1024, compute_worker_entry, this, 0, nullptr));
+		_compute_start_clock = clock();
+		if (!_compute_thread_handle) {
+			debug_log("[start_compute] _beginthreadex FAILED");
+			_compute_running.store(false, std::memory_order_release);
+			return;
+		}
+		debug_log("[start_compute] persistent worker created handle=%p", _compute_thread_handle);
+	}
 	_compute_budget_s = time_s;
+	_compute_start_clock = clock();
 	_compute_done.store(false, std::memory_order_release);
 	_compute_running.store(true, std::memory_order_release);
-	// 16MB stack (same as main thread) — quiescence recursion needs it
-	_compute_thread_handle = reinterpret_cast<void*>(_beginthreadex(nullptr, 16 * 1024 * 1024, compute_worker_entry, this, 0, nullptr));
-	_compute_start_clock = clock();
-	if (!_compute_thread_handle) {
-		debug_log("[start_compute] _beginthreadex FAILED");
-		_compute_running.store(false, std::memory_order_release);
-		return;
-	}
-	debug_log("[start_compute] budget=%.2fs handle=%p", time_s, _compute_thread_handle);
+	_work_cv.notify_one(); // wake the persistent worker
+	debug_log("[start_compute] budget=%.2fs", time_s);
 }
 
-// Stops background computation and waits for it to finish
+// Stops background computation and waits for the in-flight iteration.
+// Also bumps the position epoch (worker clears its hint maps on next wake).
+// The persistent worker thread is kept (never joined/closed here).
 void GUI::stop_compute() {
 	_compute_running.store(false, std::memory_order_release);
+	_position_epoch++;
 	if (_compute_thread_handle) {
-		WaitForSingleObject(_compute_thread_handle, INFINITE);
-		CloseHandle(_compute_thread_handle);
-		_compute_thread_handle = nullptr;
+		_work_cv.notify_one(); // wake if idle so it observes running=false
+		int waited = 0;
+		while (!_compute_done.load(std::memory_order_acquire) && waited < 15000) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			waited++;
+		}
+		if (!_compute_done.load(std::memory_order_acquire))
+			debug_log("[stop_compute] TIMEOUT waiting worker (%dms)", waited);
 	}
 	_compute_done.store(false, std::memory_order_release);
 }
@@ -2130,8 +2177,8 @@ void GUI::reset_game() {
 	// Free old root's board FIRST to reclaim a slot before allocating the new one.
 	Node* const old_root = _root_exploration_node;
 	Board* const old_board = old_root ? old_root->_board : nullptr;
-	if (old_board && old_board->_buffer_index >= 0 && !monte_board_buffer._bulk_resetting) {
-		monte_board_buffer.free_index(old_board->_buffer_index);
+	if (old_board && old_board->_buffer_index >= 0 && old_board->_home_boards != nullptr && !old_board->_home_boards->_bulk_resetting) {
+		old_board->_home_boards->free_index(old_board->_buffer_index);
 		old_board->_buffer_index = -1; // prevent double-free in recycle_detached_node
 	}
 
@@ -2589,12 +2636,12 @@ static void recycle_tree(Node* root) {
 	// Recycle deepest-first (children before parents)
 	for (auto it = to_recycle.rbegin(); it != to_recycle.rend(); ++it) {
 		Node* node = *it;
-		// Free board buffer slot
-		if (node->_board != nullptr && node->_board->_buffer_index >= 0 && !monte_board_buffer._bulk_resetting)
-			monte_board_buffer.free_index(node->_board->_buffer_index);
+		// Free board buffer slot (home-arena routing: see recycle_detached_node)
+		if (node->_board != nullptr && node->_board->_buffer_index >= 0 && node->_board->_home_boards != nullptr && !node->_board->_home_boards->_bulk_resetting)
+			node->_board->_home_boards->free_index(node->_board->_buffer_index);
 		// Free node buffer slot
-		if (node->_buffer_index >= 0 && !monte_node_buffer._bulk_resetting)
-			monte_node_buffer.free_index(node->_buffer_index);
+		if (node->_buffer_index >= 0 && node->_home_nodes != nullptr && !node->_home_nodes->_bulk_resetting)
+			node->_home_nodes->free_index(node->_buffer_index);
 	}
 }
 

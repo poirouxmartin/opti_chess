@@ -13,6 +13,9 @@
 using namespace tsl;
 using PositionHistory = RepetitionHistory;
 
+// Forward: home arena of pooled nodes (defined below; set at Buffer::init).
+class NodeBuffer;
+
 // ---------------------------------------------------------------------------
 // Search feature toggles - self-play A/B testing (defaults = current best).
 // Flip per game from the self-play runner to measure non-regression:
@@ -232,6 +235,10 @@ public:
 
 	// Index in monte_node_buffer (-1 = object outside the buffer: do not recycle)
 	int _buffer_index = -1;
+
+	// Home arena that owns this slot (nullptr = outside any buffer).
+	// Cross-thread frees (GUI worker builds, main thread recycles) route here.
+	NodeBuffer* _home_nodes = nullptr;
 
 	// Zobrist key snapshot taken before Node::reset() zeroes the board.
 	// Used by recycle_detached_node to erase the correct node_map entry

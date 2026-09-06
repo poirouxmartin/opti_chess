@@ -8,6 +8,8 @@
 #include <vector>
 #include <thread>
 #include <mutex>
+#include <condition_variable>
+#include <chrono>
 #include <atomic>
 #include <process.h>
 #include "board.h"
@@ -224,6 +226,13 @@ public:
 	// watchdog in grogros_analysis.
 	std::atomic<clock_t> _worker_heartbeat{ 0 };
 	clock_t _compute_start_clock = 0;
+	// Persistent worker wakeup (condition_variable: no windows.h in this TU).
+	std::mutex _work_mutex;
+	std::condition_variable _work_cv;
+	// Position epoch: bumped (main thread, worker stopped) on every tree
+	// mutation; the worker clears its hint maps when it changes. Plain
+	// counter (never written concurrently with a live worker).
+	long long _position_epoch = 0;
 
 	// Snapshot of tree state for consistent display during background computation
 	// Taken under _tree_mutex once per frame, used by draw_exploration_arrows and eval display

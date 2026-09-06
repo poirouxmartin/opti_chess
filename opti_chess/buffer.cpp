@@ -39,6 +39,7 @@ void BoardBuffer::init(const int length, bool display) {
 	_free_indices.reserve(_length);
 	for (int i = _length - 1; i >= 0; i--) {
 		_boards[i]._buffer_index = i;
+		_boards[i]._home_boards = this; // home arena (cross-thread frees route here)
 		_free_indices.push_back(i);
 	}
 
