@@ -1362,7 +1362,9 @@ void GUI::run_puzzle_headless(double time_s) {
 		cout << "[puzzle] no expected move found in lichess_5000.txt" << endl;
 	}
 
-	// Reset everything — same as loading a fresh FEN
+	// Reset everything — same as loading a fresh FEN.
+	// Stop the worker FIRST: reset() underneath a live search is use-after-free.
+	stop_compute();
 	init_buffers();
 	reset_buffers();
 	_root_exploration_node->reset();
@@ -1536,11 +1538,15 @@ void GUI::compute_worker() {
 		long long iters = 0;
 		while (_compute_running.load(std::memory_order_relaxed)) {
 		// Time budget check: if > 0, respect it (puzzle mode); if == 0, run forever (continuous)
-		if (_compute_budget_s > 0 && (double)(clock() - begin) / CLOCKS_PER_SEC >= _compute_budget_s)
+		if (_compute_budget_s > 0 && (double)(clock() - begin) / CLOCKS_PER_SEC >= _compute_budget_s) {
+			debug_log("[worker] exit-reason=budget iters=%lld", iters);
 			break;
+		}
 		// Stop if buffer is full
-		if (monte_board_buffer.is_full())
+		if (monte_board_buffer.is_full()) {
+			debug_log("[worker] exit-reason=full iters=%lld", iters);
 			break;
+		}
 		{
 			// Hard deadline like the bench: quiescence samples the clock and
 			// aborts past due, so one deep iteration cannot overrun a puzzle
@@ -1597,7 +1603,9 @@ static unsigned __stdcall compute_worker_entry(void* param) {
 // re-allocate GB thread_local arenas every analysis (and leak them, since
 // nothing removes them at thread exit).
 void GUI::start_compute(double time_s) {
-	stop_compute();
+	// No nested stop_compute() here (it used to spin 15s and double-bump
+	// the epoch): callers stop first when needed (grogros_analysis only
+	// starts when idle; run_puzzle_headless stops explicitly below).
 	if (!_compute_thread_handle) {
 		_compute_thread_handle = reinterpret_cast<void*>(_beginthreadex(nullptr, 16 * 1024 * 1024, compute_worker_entry, this, 0, nullptr));
 		_compute_start_clock = clock();
@@ -1620,6 +1628,10 @@ void GUI::start_compute(double time_s) {
 // Also bumps the position epoch (worker clears its hint maps on next wake).
 // The persistent worker thread is kept (never joined/closed here).
 void GUI::stop_compute() {
+	debug_log("[stop_compute] enter running=%d done=%d",
+		(int)_compute_running.load(std::memory_order_acquire),
+		(int)_compute_done.load(std::memory_order_acquire));
+	_compute_running.store(false, std::memory_order_release);
 	_compute_running.store(false, std::memory_order_release);
 	_position_epoch++;
 	if (_compute_thread_handle) {
