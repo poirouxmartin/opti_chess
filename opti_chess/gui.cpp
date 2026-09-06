@@ -1310,7 +1310,9 @@ void GUI::grogros_analysis(int iterations) {
 	if (_compute_running.load(std::memory_order_acquire)) {
 		const clock_t hb = _worker_heartbeat.load(std::memory_order_acquire);
 		const double age_s = (double)(clock() - _compute_start_clock) / CLOCKS_PER_SEC;
-		if (hb == 0 && age_s > 5.0) {
+		// Dead-thread tripwire (sticky wakeups make lost-wakeup impossible;
+		// first iterations can legitimately exceed 5s, hence 30s).
+		if (hb == 0 && age_s > 30.0) {
 			debug_log("[grogros_analysis] worker running but silent for %.1fs, restarting", age_s);
 			_compute_running.store(false, std::memory_order_release);
 			stop_compute();
@@ -1555,6 +1557,10 @@ void GUI::compute_worker() {
 			_compute_done.store(true, std::memory_order_release); // idle: nothing pending
 			continue;
 		}
+		// Liveness: heartbeat at wake (before epoch-clear/init work), so the
+		// stillborn watchdog below never kills a healthy slow first iteration
+		// (GB arena init + big-map clears + cold tree can exceed 5s).
+		_worker_heartbeat.store(clock(), std::memory_order_release);
 		// New position epoch: drop hint maps (entries may reference dead nodes;
 		// _is_active validation covers stragglers, clearing avoids the churn).
 		if (t_seen_epoch != _position_epoch) {
