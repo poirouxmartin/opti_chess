@@ -234,6 +234,10 @@ public:
 	// Persistent worker wakeup (condition_variable: no windows.h in this TU).
 	std::mutex _work_mutex;
 	std::condition_variable _work_cv;
+	// Creates the persistent worker thread (+wake event) if needed. The
+	// thread self-inits its GB arenas then idles: call at startup so the
+	// first analysis doesn't stall on construction (see compute_worker).
+	void ensure_worker_thread();
 	// Wake generation (sticky notification): a bare notify can fire while
 	// the worker hasn't reached wait() yet and is then lost forever
 	// (stuck-true, no progress, watchdog blind because heartbeat is stale
