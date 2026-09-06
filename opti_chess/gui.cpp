@@ -1569,10 +1569,10 @@ void GUI::compute_worker() {
 				debug_log("[worker] iter=%lld nodes=%d", iters, (int)_root_exploration_node->_nodes);
 			_worker_heartbeat.store(clock(), std::memory_order_release);
 		}
+		}
 		_compute_done.store(true, std::memory_order_release);
 		_compute_running.store(false, std::memory_order_release);
 		debug_log("[worker] exit iters=%lld", iters);
-		}
 	}
 }
 
