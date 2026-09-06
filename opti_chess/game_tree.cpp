@@ -89,6 +89,7 @@ bool GameTree::select_previous_node() {
 	bool can_go_back = _current_node != _root;
 
 	if (can_go_back) {
+		main_GUI.stop_compute(); // worker first: root reset + board swap below
 		_current_node = _current_node->_parent;
 
 		// The board must be moved back up for the exploration too

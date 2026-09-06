@@ -835,6 +835,12 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 			const auto it = node_map.find(new_board->_zobrist_key);
 			if (it != node_map.end()) {
 				shared = it->second;
+				// Liveness: the entry may point at a recycled node (GUI
+				// play_move_keep recycles while another arena's map still
+				// references it; recycled nodes are _is_active=false).
+				// Stale => miss (rebuild below).
+				if (shared != nullptr && !shared->_is_active)
+					shared = nullptr;
 			}
 		}
 
@@ -1462,11 +1468,14 @@ void recycle_detached_node(Node* node) {
 	}
 
 	Board* board = node->_board;
-	if (board != nullptr && board->_buffer_index >= 0 && !monte_board_buffer._bulk_resetting)
-		monte_board_buffer.free_index(board->_buffer_index);
+	// Home-arena routing: the node/board may come from another thread's
+	// arena (GUI worker builds, main thread recycles). Freeing into the
+	// caller's buffer would double-allocate the slot (aliasing corruption).
+	if (board != nullptr && board->_buffer_index >= 0 && board->_home_boards != nullptr && !board->_home_boards->_bulk_resetting)
+		board->_home_boards->free_index(board->_buffer_index);
 
-	if (node->_buffer_index >= 0 && !monte_node_buffer._bulk_resetting)
-		monte_node_buffer.free_index(node->_buffer_index);
+	if (node->_buffer_index >= 0 && node->_home_nodes != nullptr && !node->_home_nodes->_bulk_resetting)
+		node->_home_nodes->free_index(node->_buffer_index);
 }
 
 // Resets a single node's own fields (non-recursive part).
@@ -3041,6 +3050,7 @@ void NodeBuffer::init(const int length, bool display) {
 	_free_indices.reserve(_length);
 	for (int i = _length - 1; i >= 0; i--) {
 		_nodes[i]._buffer_index = i;
+		_nodes[i]._home_nodes = this; // home arena (cross-thread frees route here)
 		_nodes[i]._mtx.clear(std::memory_order_relaxed); // pooled atomic_flag starts clear
 		_free_indices.push_back(i);
 	}
