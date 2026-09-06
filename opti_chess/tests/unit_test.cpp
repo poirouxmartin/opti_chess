@@ -4689,6 +4689,7 @@ TEST(Puzzle, LichessBenchmark5000) {
 	cout << "  Total search time: " << fixed << setprecision(3) << total_time_s << "s" << endl;
 	cout << "  Avg NPS: " << fixed << setprecision(0) << (total_time_s > 0 ? total_nodes / total_time_s : 0) << endl;
 	cout << "  Unresolved: " << unresolved << endl;
+	dump_qstats(); // quiescence census (OPTI_QSTATS to print, no-op otherwise)
 
 	cout << endl << "  Per-theme:" << endl;
 	vector<pair<string, pair<int, int>>> sorted_themes(by_theme.begin(), by_theme.end());

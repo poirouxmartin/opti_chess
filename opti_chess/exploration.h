@@ -33,6 +33,19 @@ extern bool g_selective_deepening;
 // Via OPTI_CHECK_EXT (default 0 = off, wired but disabled).
 extern int g_check_extension;
 
+// Quiescence exit census dump (OPTI_QSTATS to print).
+void dump_qstats();
+// Census gate (defined in exploration_diag.cpp).
+extern const bool g_qstats_on;
+
+// Phase 7a component timers (defined in eval_core.cpp).
+extern double g_t_king_safety_s;
+extern double g_t_mobility_s;
+// King-safety cache census (defined in eval_king.cpp).
+extern long long g_ks_hits;
+extern long long g_ks_miss;
+extern long long g_ks_clears;
+
 // Hard time deadline for budgeted search (PuzzleRunner TIME mode).
 // 0 = none. Set (with g_search_abort=false) at puzzle start; quiescence
 // samples the clock (throttled 1/1024) and raises g_search_abort past due;
