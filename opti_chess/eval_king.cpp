@@ -12,11 +12,11 @@
 #include <iomanip>
 #include <vector>
 #include <unordered_map>
-static std::unordered_map<uint64_t, int> king_safety_cache;
+thread_local std::unordered_map<uint64_t, int> king_safety_cache;
 // Phase 7a census (dumped in dump_qstats).
-long long g_ks_hits = 0;
-long long g_ks_miss = 0;
-long long g_ks_clears = 0;
+thread_local long long g_ks_hits = 0;
+thread_local long long g_ks_miss = 0;
+thread_local long long g_ks_clears = 0;
 extern const bool g_qstats_on;
 int Board::get_king_safety(int activity_diff, float display_factor) {
 

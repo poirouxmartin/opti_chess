@@ -7,7 +7,7 @@
 
 // Defined in exploration.cpp: logs "buffer full" exactly once.
 // Reset to false here as soon as a BoardBuffer reset/remove frees room again.
-extern bool g_buffers_full_logged;
+extern thread_local bool g_buffers_full_logged;
 
 // Default constructor: allocates nothing, init() is mandatory
 BoardBuffer::BoardBuffer() {
@@ -113,7 +113,7 @@ void BoardBuffer::display_buffer_state() const {
 }
 
 // Buffer for the Monte Carlo algorithm
-BoardBuffer monte_board_buffer;
+thread_local BoardBuffer monte_board_buffer;
 
 // Adaptive pool sizing from the physical RAM available.
 // budget = min(ram_fraction * available RAM, hard_cap); TT capped at budget/4;

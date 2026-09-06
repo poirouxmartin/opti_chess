@@ -4,6 +4,7 @@
 #include "buffer.h"
 #include <robin_map.h>
 #include <robin_hash.h>
+#include <atomic>
 #include <vector>
 
 using namespace tsl;
@@ -39,15 +40,15 @@ void dump_qstats();
 extern const bool g_qstats_on;
 
 // Phase 7a component timers (defined in eval_core.cpp).
-extern double g_t_king_safety_s;
-extern double g_t_mobility_s;
-extern double g_t_matpos_s;
-extern double g_t_pawns_s;
-extern double g_t_endgame_s;
+extern thread_local double g_t_king_safety_s;
+extern thread_local double g_t_mobility_s;
+extern thread_local double g_t_matpos_s;
+extern thread_local double g_t_pawns_s;
+extern thread_local double g_t_endgame_s;
 // King-safety cache census (defined in eval_king.cpp).
-extern long long g_ks_hits;
-extern long long g_ks_miss;
-extern long long g_ks_clears;
+extern thread_local long long g_ks_hits;
+extern thread_local long long g_ks_miss;
+extern thread_local long long g_ks_clears;
 
 // Hard time deadline for budgeted search (PuzzleRunner TIME mode).
 // 0 = none. Set (with g_search_abort=false) at puzzle start; quiescence
@@ -55,8 +56,9 @@ extern long long g_ks_clears;
 // quiescence + grogros_zero then unwind promptly so overrun stays in ms.
 // Return value on abort is alpha (sound fail-soft bound, same as the
 // buffer-full early exits).
-extern clock_t g_search_deadline;
-extern bool g_search_abort;
+// Phase 6: atomics shared by all worker threads (set once, sampled hot).
+extern std::atomic<clock_t> g_search_deadline;
+extern std::atomic<bool> g_search_abort;
 
 class Node;
 
@@ -357,10 +359,10 @@ public:
 	void display_buffer_state() const;
 };
 
-extern NodeBuffer monte_node_buffer;
+extern thread_local NodeBuffer monte_node_buffer;
 
 // Logs "buffer full" once per saturation session
-extern bool g_buffers_full_logged;
+extern thread_local bool g_buffers_full_logged;
 // #11 Plan A - active probe + TT write-back in the main search.
 // Default OFF: current behaviour byte for byte, A/B on the same binary.
 extern bool g_tt_main_search;
@@ -372,7 +374,8 @@ extern bool g_tt_node_dag;
 // #11 Plan B - Zobrist key -> LIVE Node*. Distinct from transposition_table
 // (the evaluation TT). Read and populated only when g_tt_node_dag is set. Same
 // kind of map as Node::_children (robin_map, exploration.h:43).
-extern robin_map<uint64_t, Node*> node_map;
+// thread_local: parallel workers own separate trees (Phase 6).
+extern thread_local robin_map<uint64_t, Node*> node_map;
 
 // #11 Plan B - diagnostic report (one line, toggle-gated). Called after every
 // grogros_zero batch from the GUI when g_tt_node_dag is set.

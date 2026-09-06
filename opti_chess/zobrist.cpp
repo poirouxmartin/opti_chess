@@ -94,7 +94,7 @@ void TranspositionTable::init(const int length, const Zobrist* zobrist, bool dis
 }
 
 // Instance of the transposition table
-TranspositionTable transposition_table;
+thread_local TranspositionTable transposition_table;
 
 bool TranspositionTable::contains(uint64_t key) const {
 	return _hash_table.find(key) != _hash_table.end();
