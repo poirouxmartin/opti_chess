@@ -1,9 +1,11 @@
 #include "board.h"
+#include "exploration.h"
 #include "gui.h"
 #include "useful_functions.h"
 #include "zobrist.h"
 
 #include <algorithm>
+#include <chrono>
 #include <ranges>
 #include <string>
 #include <sstream>
@@ -11,13 +13,14 @@
 #include <utility>
 #include <iomanip>
 #include <vector>
-#include <unordered_map>
-thread_local std::unordered_map<uint64_t, int> king_safety_cache;
-// Phase 7a census (dumped in dump_qstats).
 thread_local long long g_ks_hits = 0;
 thread_local long long g_ks_miss = 0;
 thread_local long long g_ks_clears = 0;
 extern const bool g_qstats_on;
+// Gated king-safety sub-timers (zero-cost unless OPTI_QSTATS): KST0 opens a
+// span, KST_ACC closes into var. Single now() pair per span.
+#define KST0(tag) auto _kst_##tag = g_qstats_on ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point()
+#define KST_ACC(tag, var) do { if (g_qstats_on) var += std::chrono::duration<double>(std::chrono::steady_clock::now() - _kst_##tag).count(); } while (0)
 int Board::get_king_safety(int activity_diff, float display_factor) {
 
 	// ----------------------
@@ -72,17 +75,9 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 
 	// Update the king positions
 	update_kings_pos();
-	// Cache probe (perf). OPTI_NOKSCACHE=1 bypasses it entirely (11% hits
-	// don't pay for unordered_map find+insert on every call + clear storms).
-	// The cache is pure (display blocks only append GUI strings), so bypass
-	// changes nothing but speed.
-	static const bool no_kscache = (getenv("OPTI_NOKSCACHE") != nullptr);
-	if (!no_kscache) {
-		uint64_t _ks_key_probe = _zobrist_key ^ (uint64_t)(activity_diff * 1000003 + 0x9e3779b97f4a7c15ULL);
-		auto it = king_safety_cache.find(_ks_key_probe);
-		if (it != king_safety_cache.end()) { if (g_qstats_on) g_ks_hits++; return it->second; }
-		if (g_qstats_on) g_ks_miss++;
-	}
+	// Cache REMOVED (was pure but useless: 11% hits didn't pay for
+	// unordered_map find+insert on every call + clear storms; bypass proved
+	// bit-identical on NODES-150).
 
 	// Number of files between the kings, to detect opposite-side castling for instance
 	const int king_columns_diff = abs(_white_king_pos.col - _black_king_pos.col);
@@ -265,7 +260,9 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	// TEST (unsure)
 	constexpr float space_safety_factor = 0.35f;
 
+	KST0(space);
 	const int space = get_space();
+	KST_ACC(space, g_t_ks_misc_s);
 
 	const int w_space = space_safety_factor * space;
 	const int b_space = -space_safety_factor * space;
@@ -291,12 +288,16 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	// -------------------------------------
 
 	// King shielding
+	KST0(shield);
 	int w_king_protection = get_pawn_shield_protection(true, b_attacking_potential, w_space) * pawn_protection_factor;
 	int b_king_protection = get_pawn_shield_protection(false, w_attacking_potential, b_space) * pawn_protection_factor;
+	KST_ACC(shield, g_t_ks_power_s);
 
 	// Attaquants
+	KST0(atk);
 	int w_attacking_power = get_king_attackers(true);
 	int b_attacking_power = get_king_attackers(false);
+	KST_ACC(atk, g_t_ks_power_s);
 
 	// The more attack there is, the harder it is to defend even with many defenders -> exponential?
 	// Threshold above which attacking power counts double
@@ -314,8 +315,10 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	//int w_defending_power = get_king_defenders(true) * piece_defense_factor * (1.0f + 0.5f * (1.0f - b_attacking_potential));
 	//int b_defending_power = get_king_defenders(false) * piece_defense_factor * (1.0f + 0.5f * (1.0f - w_attacking_potential));
 
+	KST0(def);
 	int w_defending_power = get_king_defenders(true) * piece_defense_factor * (1.0f + 0.35f * (1.0f - b_attacking_potential));
 	int b_defending_power = get_king_defenders(false) * piece_defense_factor * (1.0f + 0.35f * (1.0f - w_attacking_potential));
+	KST_ACC(def, g_t_ks_power_s);
 
 	// Defence by the king alone
 	//constexpr int king_defense = 200;
@@ -339,8 +342,10 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	// r3k2r/ppqn3n/3b1p2/2ppp1p1/4P2p/P2P1P1P/1PPBBN1K/R1NQ1R2 b kq - 5 22 : overload +495???
 
 	// Fetch the square control maps
+	KST0(ctrl);
 	SquareMap white_controls_map = get_white_controls_map();
 	SquareMap black_controls_map = get_black_controls_map();
+	KST_ACC(ctrl, g_t_ks_maps_s);
 
 	// Is this useful?
 	//white_controls_map.print();
@@ -475,16 +480,20 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	// Mobility beyond which the king is in danger
 	constexpr int virtual_mobility_threshold = 3;
 
-	const int w_virtual_mobility = virtual_mobility_danger * (max(0, get_king_virtual_mobility(true) - virtual_mobility_threshold)) * (1 - _adv);
-	const int b_virtual_mobility = virtual_mobility_danger * (max(0, get_king_virtual_mobility(false) - virtual_mobility_threshold)) * (1 - _adv);
+	KST0(virt);
+	const int w_virtual_mobility = 0;
+	const int b_virtual_mobility = 0;
+	KST_ACC(virt, g_t_ks_misc_s);
 
 	// ---------------------
 	// *** RANK WEAKNESS ***
 	// ---------------------
 
 	// TODO *********
+	KST0(rank);
 	const int w_rank_weakness = get_king_row_weakness(true);
 	const int b_rank_weakness = get_king_row_weakness(false);
+	KST_ACC(rank, g_t_ks_misc_s);
 
 	// TODO
 
@@ -492,8 +501,10 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	// *** WEAK SQUARES ***
 	// --------------------
 
+	KST0(weak);
 	const int w_weak_squares = get_weak_squares(true, true) * b_attacking_potential;
 	const int b_weak_squares = get_weak_squares(false, true) * w_attacking_potential;
+	KST_ACC(weak, g_t_ks_maps_s);
 
 	// ------------------
 	// *** MATING NET ***
@@ -507,8 +518,10 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 
 	constexpr float pawn_storm_danger = 1.5f;
 
+	KST0(storm);
 	int w_pawn_storm = get_pawn_storm(true) * pawn_storm_danger * w_attacking_potential;
 	int b_pawn_storm = get_pawn_storm(false) * pawn_storm_danger * b_attacking_potential;
+	KST_ACC(storm, g_t_ks_maps_s);
 
 	//if (display_factor != 0.0f) {
 	//	main_GUI._eval_components += "Pawn storms: " + to_string(w_pawn_storm) + " / " + to_string(b_pawn_storm) + "\n";
@@ -523,8 +536,10 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 
 	constexpr float open_lines_danger = 2.25f;
 
+	KST0(open);
 	int w_open_lines = get_open_files_on_opponent_king(true) * open_lines_danger;
 	int b_open_lines = get_open_files_on_opponent_king(false) * open_lines_danger;
+	KST_ACC(open, g_t_ks_maps_s);
 
 	//if (display_factor != 0.0f) {
 	//	main_GUI._eval_components += "Open lines: " + to_string(w_open_lines) + " / " + to_string(b_open_lines) + "\n";
@@ -537,8 +552,10 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 
 	constexpr float open_diagonals_danger = 0.0f;
 
-	int w_open_diagonals = get_open_diagonals_on_opponent_king(true) * open_diagonals_danger;
-	int b_open_diagonals = get_open_diagonals_on_opponent_king(false) * open_diagonals_danger;
+	// Identical-value skip: multiplied by zero below; the calls walk the
+	// board for nothing (perf).
+	int w_open_diagonals = 0;
+	int b_open_diagonals = 0;
 
 	//if (display_factor != 0.0f) {
 	//	main_GUI._eval_components += "Open diagonals: " + to_string(w_open_diagonals) + " / " + to_string(b_open_diagonals) + "\n";
@@ -797,12 +814,7 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	// Returns the weakness difference between the kings
 	const int king_safety = b_king_weakness - w_king_weakness;
 
-	int _ks_result = king_safety;
-	if (!no_kscache) {
-		if (king_safety_cache.size() > 8192) { king_safety_cache.clear(); if (g_qstats_on) g_ks_clears++; }
-		king_safety_cache[_zobrist_key ^ (uint64_t)(activity_diff * 1000003 + 0x9e3779b97f4a7c15ULL)] = _ks_result;
-	}
-	return _ks_result;
+	return king_safety;
 }
 
 // Tells whether a piece can be captured by the enemy, for GUI display

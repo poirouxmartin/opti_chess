@@ -53,6 +53,9 @@ void Board::game_advancement() {
 // Counts the material on the board and returns its value
 // Phase 7a component timers (seconds). Defined here, dumped in dump_qstats.
 thread_local double g_t_king_safety_s = 0.0;
+thread_local double g_t_ks_power_s = 0.0; // shield + attackers + defenders
+thread_local double g_t_ks_maps_s = 0.0; // controls + weak + storm + open files
+thread_local double g_t_ks_misc_s = 0.0; // space + virtual mobility + rank
 thread_local double g_t_mobility_s = 0.0;
 thread_local double g_t_matpos_s = 0.0;
 thread_local double g_t_pawns_s = 0.0;
