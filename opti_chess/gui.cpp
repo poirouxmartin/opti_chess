@@ -1261,8 +1261,12 @@ void GUI::grogros_analysis(int iterations) {
 	g_tt_main_search = _tt_main_search;
 	g_tt_node_dag = _tt_node_dag;
 
-	// Inline mode with auto-calculated iterations (G key hold, playing modes)
+	// Inline mode with auto-calculated iterations (G key hold, playing modes).
+	// Skipped while the background worker runs (it already covers analysis;
+	// concurrent grogros on the same tree without shared protocol corrupts).
 	if (iterations == -1) {
+		if (_compute_running.load(std::memory_order_acquire))
+			return;
 		int iterations_per_second = _root_exploration_node->get_ips();
 		int iterations_to_explore = iterations_per_second / _target_fps;
 		if (iterations_to_explore == 0)
@@ -1278,8 +1282,11 @@ void GUI::grogros_analysis(int iterations) {
 		return;
 	}
 
-	// Inline mode with explicit iteration count (Enter key)
+	// Inline mode with explicit iteration count (Enter key). Same guard as
+	// above: never search inline while the worker owns the tree.
 	if (iterations > 0) {
+		if (_compute_running.load(std::memory_order_acquire))
+			return;
 		_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations, _quiescence_depth);
 		if (g_tt_node_dag)
 			dag_debug_report();
@@ -2266,6 +2273,11 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 		return;
 	}
 
+	// Stop the worker FIRST: every read below walks _children while the
+	// worker may publish (rehash UB -> crash). The frame loop restarts the
+	// worker next frame if continuous analysis is still on.
+	stop_compute();
+
 	// Positions bug:
 	// rnbq1rk1/pp1p1ppp/7n/2p1P3/3p4/3B1N1P/PPPN1PP1/R2Q1RK1 w - - 0 10: it does not play Ne4
 
@@ -2279,12 +2291,10 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 		return;
 	}
 
-	// If no exploration has happened yet
+	// If no exploration has happened yet (worker restarts next frame if on)
 	if (_root_exploration_node->_iterations <= 1) {
 		return;
 	}
-
-	stop_compute();
 
 	// For the evaluation computations
 	int color = _board->get_color();

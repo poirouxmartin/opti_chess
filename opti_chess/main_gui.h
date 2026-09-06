@@ -242,8 +242,9 @@ inline int main_ui() {
 			main_GUI._board->print_all_bitboards();
 		}
 
-		// Q - Quiescence
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_A)) {
+		// Q - Quiescence (worker owns the tree while running: it covers analysis)
+		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_A)
+			&& !main_GUI._compute_running.load(std::memory_order_acquire)) {
 			main_GUI._root_exploration_node->quiescence(&monte_board_buffer, main_GUI._grogros_eval, main_GUI._quiescence_depth, main_GUI._alpha, main_GUI._beta);
 			main_GUI.update_snapshot(); // variants ride the snapshot now
 		}
