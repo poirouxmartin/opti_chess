@@ -60,6 +60,7 @@ struct QStats {
 	long long buffer_full = 0;
 	long long moves_looped = 0;
 	long long moves_pruned_depth = 0;
+	long long moves_pruned_delta = 0;
 	long long static_evals = 0;
 };
 thread_local QStats g_qstats;
@@ -80,7 +81,7 @@ void dump_qstats() {
 		<< " beta1=" << g_qstats.beta1 << " beta2=" << g_qstats.beta2
 		<< " normal=" << g_qstats.normal << " abort=" << g_qstats.abort
 		<< " buffull=" << g_qstats.buffer_full << " looped=" << g_qstats.moves_looped
-		<< " pruned=" << g_qstats.moves_pruned_depth << " statics=" << g_qstats.static_evals << endl;
+		<< " pruned=" << g_qstats.moves_pruned_depth << " delta=" << g_qstats.moves_pruned_delta << " statics=" << g_qstats.static_evals << endl;
 	cout << "QSTATS-TIME qeval_s=" << g_t_qeval << " qinit_s=" << g_t_qinit
 		<< " king_safety_s=" << g_t_king_safety_s << " mobility_s=" << g_t_mobility_s
 		<< " matpos_s=" << g_t_matpos_s << " pawns_s=" << g_t_pawns_s
@@ -2135,11 +2136,11 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			// Delta pruning
 			if (!move.is_checkmate()) {
 
-				constexpr int delta = 500;
+			constexpr int delta = 500;
 
-				constexpr int piece_values[6] = { 100, 300, 300, 500, 900, 10000 }; // P, N, B, R, Q, K
-				constexpr int promotion_value = 1000;
-				constexpr int check_value = 500; // Value of a check
+			constexpr int piece_values[6] = { 100, 300, 300, 500, 900, 10000 }; // P, N, B, R, Q, K
+			constexpr int promotion_value = 1000;
+			constexpr int check_value = 500; // Value of a check
 
 				// Quick estimate of what the move can bring
 				int best_estimation = 0;
@@ -2163,6 +2164,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				}
 
 				if (stand_pat + best_estimation + delta < alpha) {
+					QCOUNT(moves_pruned_delta);
 					continue; // Skip this move
 				}
 			}
