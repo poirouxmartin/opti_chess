@@ -54,6 +54,9 @@ void Board::game_advancement() {
 // Phase 7a component timers (seconds). Defined here, dumped in dump_qstats.
 double g_t_king_safety_s = 0.0;
 double g_t_mobility_s = 0.0;
+double g_t_matpos_s = 0.0;
+double g_t_pawns_s = 0.0;
+double g_t_endgame_s = 0.0;
 
 int Board::count_material(const Evaluator* eval, float closed_factor) const
 {
@@ -249,6 +252,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 		main_GUI._eval_components += "ADVANCEMENT: " + to_string(static_cast<int>(round(100 * _adv))) + "%\n";
 
 	// Nature of the position (open/closed)
+	auto t_matpos0 = std::chrono::steady_clock::now();
 	const float position_nature = get_position_nature();
 	if (display)
 		main_GUI._eval_components += "CLOSED: " + to_string(static_cast<int>(position_nature * 100.0f)) + "%\n";
@@ -357,6 +361,8 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 		main_GUI._eval_components += "--- TOTAL: " + (total_positioning >= 0 ? string("+") : string()) + to_string(total_positioning) + " ---\n";
 
 	eval->_value += total_positioning;
+	g_t_matpos_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_matpos0).count();
+	auto t_pawns0 = std::chrono::steady_clock::now();
 
 
 	// *** ACTIVITE ***
@@ -533,6 +539,8 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 	if (display)
 		main_GUI._eval_components += "--- TOTAL: " + (total_pawn_structure >= 0 ? string("+") : string()) + to_string(total_pawn_structure) + " ---\n";
 
+	g_t_pawns_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_pawns0).count();
+	auto t_endgame0 = std::chrono::steady_clock::now();
 	eval->_value += total_pawn_structure;
 
 
@@ -668,6 +676,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 	//	main_GUI._eval_components += "W/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/" + to_string(static_cast<int>(100 * 0)) + "/" + to_string(static_cast<int>(100 * (1.0f - win_chance))) + "%\n";
 
 	eval->get_WDL();
+	g_t_endgame_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_endgame0).count();
 	eval->get_average_score();
 
 	if (display) {

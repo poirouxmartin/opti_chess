@@ -259,9 +259,18 @@ change nothing on this subset. advancedPawn (57% fail) needs another angle.
    - BFS distance-map : vector-par-case → tableaux fixes (valeurs
      prouvées identiques : 150/150 + mêmes nœuds). Magnitude absolue
      masquée par throttle — structurellement supérieur, gardé.
+   - Benchmark G (post-BFS) : 3838/5000 (76.8%, +77 χ²=43) — effet vitesse
+     TIME (plus de travail/0.1s), NPS ~38.5K.
+   - Early-out potentiels≈0 : IMPOSSIBLE exact (termes placement/exposure/
+     storms non-scalés) — pas tenté.
 2. **Hotpath** : profiler (eval ? movegen ? king safety ?) et optimiser.
 3. **Parallélisation** (Phase 6) : 4× itérations/0.1s.
 4. **Ordering NN** (Phase 4, en dernier).
+
+### Objectif 1M NPS (2026-09-06) — maths
+Actuel ~38.5K (TIME). Cible ×26. Leviers : hotpath ~2-3× (static eval 65%,
+king safety 23%), parallélisation ~10-14× (20 threads) → 38.5K×3×12 ≈ 1.4M.
+Ordre : finir hotpath structurel (BFS fait), puis Phase 6.
 
 ### Phase 3 TT audit (2026-09-05) — A4/A3 gated
 - A4 check extension: +1 → 404 vs 403 (χ²=0 n.s.). +2 → INFEASIBLE
