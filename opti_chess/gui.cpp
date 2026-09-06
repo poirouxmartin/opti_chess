@@ -1288,8 +1288,11 @@ void GUI::grogros_analysis(int iterations) {
 	}
 
 	// Background mode (iterations == 0) — start worker if not already running
-	if (_compute_running.load(std::memory_order_acquire))
+	if (_compute_running.load(std::memory_order_acquire)) {
+		debug_log("[grogros_analysis] worker already running, skip");
 		return;
+	}
+	debug_log("[grogros_analysis] starting background worker");
 	stop_compute();
 	start_compute(0);
 }
@@ -1389,7 +1392,7 @@ void GUI::run_puzzle_headless(double time_s) {
 // Background computation thread: runs grogros_zero in a tight loop
 // Populates _tree_snapshot from the current root node.
 // Caller must ensure no concurrent modification (lock held, or worker stopped).
-void GUI::update_snapshot() {
+void GUI::update_snapshot(bool heavy) {
 	if (_root_exploration_node->_board && _root_exploration_node->_nodes >= 1 && !_root_exploration_node->_is_terminal) {
 		_tree_snapshot.best_move = _root_exploration_node->get_most_explored_child_move();
 		_tree_snapshot.best_eval_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
@@ -1409,8 +1412,12 @@ void GUI::update_snapshot() {
 		_tree_snapshot.children_count = (int)_root_exploration_node->children_count();
 		_tree_snapshot.got_moves = _root_exploration_node->_board->_got_moves;
 		_tree_snapshot.quiescence_depth = _root_exploration_node->_quiescence_depth;
-		_tree_snapshot.main_depth = _root_exploration_node->get_main_depth(_alpha, _beta);
-		_tree_snapshot.exploration_variants = _root_exploration_node->get_exploration_variants(_alpha, _beta);
+		// Heavy fields (PV walk + strings) at most ~4Hz in background mode;
+		// light fields (moves, arrows, evals) ride every iteration.
+		if (heavy) {
+			_tree_snapshot.main_depth = _root_exploration_node->get_main_depth(_alpha, _beta);
+			_tree_snapshot.exploration_variants = _root_exploration_node->get_exploration_variants(_alpha, _beta);
+		}
 		if (!_tree_snapshot.best_move.is_null_move()) {
 			const auto itb = _root_exploration_node->_children.find(_tree_snapshot.best_move);
 			if (itb != _root_exploration_node->_children.end() && itb->second._node)
@@ -1445,7 +1452,12 @@ void GUI::compute_worker() {
 	g_tt_node_dag = _tt_node_dag;
 	g_tt_main_search = _tt_main_search;
 
+	debug_log("[worker] start budget=%.2fs qdepth=%d", _compute_budget_s, _quiescence_depth);
 	clock_t begin = clock();
+	clock_t last_heavy = 0; // 4Hz throttle for PV/variants strings
+	long long iters = 0;
+	// NOTE: no __try/__except here (C2712 vs lock_guard); a dead worker is
+	// diagnosed via the heartbeat below (start + iter=1/100 in debug log).
 	while (_compute_running.load(std::memory_order_relaxed)) {
 		// Time budget check: if > 0, respect it (puzzle mode); if == 0, run forever (continuous)
 		if (_compute_budget_s > 0 && (double)(clock() - begin) / CLOCKS_PER_SEC >= _compute_budget_s)
@@ -1469,14 +1481,21 @@ void GUI::compute_worker() {
 			std::lock_guard<std::mutex> lock(_tree_mutex);
 			_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, 1, _quiescence_depth);
 
-			// Take snapshot while holding the lock — main thread reads it lock-free
-			update_snapshot();
+			// Take snapshot while holding the lock — main thread reads it lock-free.
+			// PV/variants strings at ~4Hz (heavy); arrows/evals every iteration.
+			const clock_t now = clock();
+			const bool heavy = (double)(now - last_heavy) / CLOCKS_PER_SEC >= 0.25;
+			update_snapshot(heavy);
+			if (heavy) last_heavy = now;
 			g_search_deadline.store((clock_t)0, std::memory_order_release);
 			g_search_abort.store(false, std::memory_order_release);
+			if (++iters == 1 || iters % 100 == 0)
+				debug_log("[worker] iter=%lld nodes=%d", iters, (int)_root_exploration_node->_nodes);
 		}
 	}
 	_compute_done.store(true, std::memory_order_release);
 	_compute_running.store(false, std::memory_order_release);
+	debug_log("[worker] exit iters=%lld", iters);
 }
 
 // Syncs bench env overrides into GUI search members (bench parity).
@@ -1503,6 +1522,7 @@ void GUI::start_compute(double time_s) {
 	_compute_running.store(true, std::memory_order_release);
 	// 16MB stack (same as main thread) — quiescence recursion needs it
 	_compute_thread_handle = reinterpret_cast<void*>(_beginthreadex(nullptr, 16 * 1024 * 1024, compute_worker_entry, this, 0, nullptr));
+	debug_log("[start_compute] budget=%.2fs handle=%p", time_s, _compute_thread_handle);
 }
 
 // Stops background computation and waits for it to finish

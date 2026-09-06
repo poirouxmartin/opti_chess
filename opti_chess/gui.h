@@ -633,7 +633,7 @@ public:
 	void compute_worker();
 
 	// Updates the tree snapshot from the current root node (called from worker and inline paths)
-	void update_snapshot();
+	void update_snapshot(bool heavy = true);
 
 	// Starts background computation with the given time budget
 	void start_compute(double time_s);
