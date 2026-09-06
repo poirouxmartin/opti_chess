@@ -189,6 +189,7 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
     // benchmarks can A/B exploration pressure without code changes.
     if (const char* gamma_env = getenv("OPTI_GAMMA")) gamma = atof(gamma_env);
     if (const char* vloss_env = getenv("OPTI_VLOSS")) g_virtual_loss = atoi(vloss_env);
+    g_tt_main_search = (getenv("OPTI_TT_MAIN") != nullptr);
     // Convergence-speed hook: OPTI_ALPHA overrides value discrimination.
     if (const char* alpha_env = getenv("OPTI_ALPHA")) alpha = atof(alpha_env);
     PuzzleResult result;
