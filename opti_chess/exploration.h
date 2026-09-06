@@ -74,13 +74,18 @@ struct ChildLink {
 	Node* _node = nullptr;
 	std::atomic<int> _chosen_iterations{ 0 };
 	int _propagated_nodes = 0;
+	// Virtual loss: descents currently inside this edge (Lazy SMP). Added to
+	// the visit count in pick_random_child so sibling threads spread out;
+	// RAII-guarded in explore_random_child (net zero on legacy path).
+	std::atomic<int> _inflight{ 0 };
 	ChildLink() = default;
 	// atomic is not copyable: copy by value snapshot (map rehash/insert).
-	ChildLink(const ChildLink& o) : _node(o._node), _chosen_iterations(o._chosen_iterations.load(std::memory_order_relaxed)), _propagated_nodes(o._propagated_nodes) {}
+	ChildLink(const ChildLink& o) : _node(o._node), _chosen_iterations(o._chosen_iterations.load(std::memory_order_relaxed)), _propagated_nodes(o._propagated_nodes), _inflight(o._inflight.load(std::memory_order_relaxed)) {}
 	ChildLink& operator=(const ChildLink& o) {
 		_node = o._node;
 		_chosen_iterations.store(o._chosen_iterations.load(std::memory_order_relaxed), std::memory_order_relaxed);
 		_propagated_nodes = o._propagated_nodes;
+		_inflight.store(o._inflight.load(std::memory_order_relaxed), std::memory_order_relaxed);
 		return *this;
 	}
 };
@@ -435,6 +440,10 @@ extern std::atomic<long long> g_dbg_claims;
 // calls. If shared results recover, corruption is concurrency-induced;
 // if still broken, it's a shared-protocol logic bug.
 extern std::recursive_mutex g_serialize_mutex;
+
+// Virtual loss weight (Lazy SMP): each in-flight descent counts as this many
+// visits in pick_random_child. OPTI_VLOSS=N overrides (default 4).
+extern int g_virtual_loss;
 
 // #11 Plan B - diagnostic report (one line, toggle-gated). Called after every
 // grogros_zero batch from the GUI when g_tt_node_dag is set.

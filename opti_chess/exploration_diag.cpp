@@ -1176,6 +1176,29 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 }
 
 // Explores a pseudo-random child board
+// Virtual loss (Lazy SMP): an edge being refined counts as penalized visits
+// so sibling threads spread out instead of herding the same stale-value line.
+// RAII: armed after the edge resolves, released on every exit below.
+struct InflightGuard {
+	Node* p; Move m; bool armed;
+	InflightGuard(Node* p_, const Move& m_) : p(p_), m(m_), armed(false) {
+		NodeLock lk(p);
+		auto it = p->_children.find(m);
+		if (it != p->_children.end() && it->second._node != nullptr) {
+			// NOTE: mutate via operator[] (existing idiom): this tsl
+			// find-iterator yields a const second (writes through it do
+			// not compile). Same lock span: find-then-[] is atomic.
+			p->_children[m]._inflight.fetch_add(1, std::memory_order_relaxed);
+			armed = true;
+		}
+	}
+	~InflightGuard() {
+		if (!armed) return;
+		NodeLock lk(p);
+		auto it = p->_children.find(m);
+		if (it != p->_children.end()) p->_children[m]._inflight.fetch_sub(1, std::memory_order_relaxed);
+	}
+};
 void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, DagExcl* dag_excl, Move forced) {
 
 	// Pick a random child - or descend into the FORCED one (round-robin guard
@@ -1233,6 +1256,7 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		_iterations++;
 		return;
 	}
+	InflightGuard _vloss(this, move);
 	// #7 / B-1 - single threaded history; push the child position for the
 	// duration of the recursion only, pop guaranteed on scope exit.
 	PositionHistory& branch_history = *path_history;
@@ -2542,8 +2566,12 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		// Move score
 		double move_score = move_scores[move];
 
-		// Facteur d'exploration
-		int child_iterations = max(child_link._chosen_iterations, child->_iterations);
+		// Facteur d'exploration (virtual loss: les descentes en cours
+		// comptent comme visites pour etalers les threads Lazy SMP;
+		// loads explicites: pas d'arithmetique sur atomic)
+		const int vl_visits = child_link._chosen_iterations.load(std::memory_order_relaxed)
+			+ child_link._inflight.load(std::memory_order_relaxed) * g_virtual_loss;
+		int child_iterations = max(vl_visits, (int)child->_iterations.load(std::memory_order_relaxed));
 
 		// Exploration score
 		double exploration_score = child_iterations == 0 ? _iterations * 2 : exp(new_gamma * log((double)_iterations / (double)child_iterations));
@@ -3110,4 +3138,5 @@ bool g_tt_node_dag = false; // #11 Plan B +�-+-� voir exploration.h
 thread_local robin_map<uint64_t, Node*> node_map; // Phase 6: per-thread trees
 std::mutex g_node_map_mutex; // Phase 6: shared-tree node_map guard
 std::atomic<long long> g_dbg_claims{ 0 }; // TEMPORARY (remove after)
+int g_virtual_loss = 4; // OPTI_VLOSS=N overrides (parsed in PuzzleRunner::run)
 std::recursive_mutex g_serialize_mutex; // TEMPORARY serialization probe (remove after)

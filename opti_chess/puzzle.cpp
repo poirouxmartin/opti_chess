@@ -188,6 +188,7 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
     // Concentration sweep hook: OPTI_GAMMA overrides the gamma arg so
     // benchmarks can A/B exploration pressure without code changes.
     if (const char* gamma_env = getenv("OPTI_GAMMA")) gamma = atof(gamma_env);
+    if (const char* vloss_env = getenv("OPTI_VLOSS")) g_virtual_loss = atoi(vloss_env);
     // Convergence-speed hook: OPTI_ALPHA overrides value discrimination.
     if (const char* alpha_env = getenv("OPTI_ALPHA")) alpha = atof(alpha_env);
     PuzzleResult result;
@@ -287,11 +288,18 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
             root.grogros_zero(&monte_board_buffer, evaluator, alpha, beta, gamma, 1, quiescence_depth, nullptr, nullptr, 0);
         }
         vector<ParallelWork> works((size_t)n_threads);
+        // Shared-tree diversification: uniform gamma herds all threads onto
+        // the same UCT line (correlated visits distort most-visited choice:
+        // shared-8 NODES-150 105 vs legacy 122). Stagger exploration per
+        // thread so rankings disagree. OPTI_GAMMA_STAGGER=1, off by default.
+        const bool stagger = (getenv("OPTI_GAMMA_STAGGER") != nullptr);
+        static const double stag[8] = { 0.6, 0.8, 0.9, 1.0, 1.15, 1.35, 1.6, 2.0 };
         for (int t = 0; t < n_threads; t++) {
             ParallelWork& w = works[(size_t)t];
             w.evaluator = evaluator;
             w.quiescence_depth = quiescence_depth;
-            w.alpha = alpha; w.beta = beta; w.gamma = gamma;
+            w.alpha = alpha; w.beta = beta;
+            w.gamma = stagger ? gamma * stag[t % 8] : gamma;
             w.thread_index = t; w.thread_count = n_threads;
             w.shared_root = &root;
         }
