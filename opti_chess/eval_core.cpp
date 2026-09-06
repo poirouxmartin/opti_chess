@@ -52,11 +52,11 @@ void Board::game_advancement() {
 
 // Counts the material on the board and returns its value
 // Phase 7a component timers (seconds). Defined here, dumped in dump_qstats.
-double g_t_king_safety_s = 0.0;
-double g_t_mobility_s = 0.0;
-double g_t_matpos_s = 0.0;
-double g_t_pawns_s = 0.0;
-double g_t_endgame_s = 0.0;
+thread_local double g_t_king_safety_s = 0.0;
+thread_local double g_t_mobility_s = 0.0;
+thread_local double g_t_matpos_s = 0.0;
+thread_local double g_t_pawns_s = 0.0;
+thread_local double g_t_endgame_s = 0.0;
 
 int Board::count_material(const Evaluator* eval, float closed_factor) const
 {

@@ -5311,3 +5311,28 @@ TEST(Puzzle, Qxe5Bug) {
 	monte_node_buffer.remove();
 	monte_board_buffer.remove();
 }
+// TEMP autopsy (delete after): Rxe7 node board check via run shared
+TEST(Puzzle, TempAutopsy16) {
+    static Evaluator evaluator;
+    const char* fen = "r6k/pp2r2p/4Rp1Q/3p4/8/1N1P2b1/PqP3PP/7K w - - 0 25";
+    Board b; b.from_fen(fen);
+    monte_node_buffer.init(500000, false);
+    monte_board_buffer.init(500000, false);
+    monte_node_buffer.reset();
+    monte_board_buffer.reset();
+    node_map.clear();
+    transposition_table.clear();
+    g_shared_tree = true;
+    Node root(&b);
+    root.grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 2000, 10, nullptr, nullptr, 0);
+    g_shared_tree = false;
+    Board lb; lb.from_fen(fen);
+    for (auto const& [mv, cl] : root._children) {
+        if (!cl._node) continue;
+        string lab = lb.move_label(mv);
+        if (lab == "Rxe7") {
+            cout << "RXE7 nodefen=" << (cl._node->_board ? cl._node->_board->to_fen() : string("NULL")) << endl;
+            cout << "RXE7 val=" << cl._node->_deep_evaluation._value << " avg=" << cl._node->_deep_evaluation._avg_score << " qd=" << cl._node->_quiescence_depth << " it=" << cl._chosen_iterations << endl;
+        }
+    }
+}
