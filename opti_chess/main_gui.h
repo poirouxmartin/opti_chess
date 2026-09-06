@@ -242,9 +242,9 @@ inline int main_ui() {
 			main_GUI._board->print_all_bitboards();
 		}
 
-		// Q - Quiescence (worker owns the tree while running: it covers analysis)
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_A)
-			&& !main_GUI._compute_running.load(std::memory_order_acquire)) {
+		// Q - Quiescence (stops the worker first, resumes after via the flag)
+		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_A)) {
+			main_GUI.stop_compute();
 			main_GUI._root_exploration_node->quiescence(&monte_board_buffer, main_GUI._grogros_eval, main_GUI._quiescence_depth, main_GUI._alpha, main_GUI._beta);
 			main_GUI.update_snapshot(); // variants ride the snapshot now
 		}
@@ -655,7 +655,6 @@ inline int main_ui() {
 			}
 		}
 		debug_log("[toggle] White player: %s", main_GUI._white_player.c_str());
-		if (main_GUI._white_player == main_GUI._grogros_zero_name) main_GUI.auto_bot_mode();
 
 		// CTRL-UP/DOWN - Enables or disables GrogrosZero for the black pieces
 		if (IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && !main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && main_GUI.get_board_orientation()))) {
@@ -678,7 +677,6 @@ inline int main_ui() {
 			}
 		}
 		debug_log("[toggle] Black player: %s", main_GUI._black_player.c_str());
-		if (main_GUI._black_player == main_GUI._grogros_zero_name) main_GUI.auto_bot_mode();
 
 		// End of the game (to be reset too...) (the sound does not play...)
 		// Compute the end of the game here once, to avoid doing it again?

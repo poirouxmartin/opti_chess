@@ -1271,11 +1271,11 @@ void GUI::grogros_analysis(int iterations) {
 	g_tt_node_dag = _tt_node_dag;
 
 	// Inline mode with auto-calculated iterations (G key hold, playing modes).
-	// Skipped while the background worker runs (it already covers analysis;
-	// concurrent grogros on the same tree without shared protocol corrupts).
+	// Stops the worker first (its analysis continues after release via the
+	// continuous flag): concurrent grogros on the same tree corrupts.
 	if (iterations == -1) {
 		if (_compute_running.load(std::memory_order_acquire))
-			return;
+			stop_compute();
 		int iterations_per_second = _root_exploration_node->get_ips();
 		int iterations_to_explore = iterations_per_second / _target_fps;
 		if (iterations_to_explore == 0)
@@ -1291,11 +1291,11 @@ void GUI::grogros_analysis(int iterations) {
 		return;
 	}
 
-	// Inline mode with explicit iteration count (Enter key). Same guard as
-	// above: never search inline while the worker owns the tree.
+	// Inline mode with explicit iteration count (Enter key). Same as above:
+	// stop the worker first, it resumes after via the continuous flag.
 	if (iterations > 0) {
 		if (_compute_running.load(std::memory_order_acquire))
-			return;
+			stop_compute();
 		_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations, _quiescence_depth);
 		if (g_tt_node_dag)
 			dag_debug_report();
@@ -1659,21 +1659,6 @@ void GUI::compute_worker() {
 		_compute_done.store(true, std::memory_order_release);
 		_compute_running.store(false, std::memory_order_release);
 		debug_log("[worker] exit iters=%lld", iters);
-	}
-}
-
-// Quasi-auto: enabling a Zero bot also starts continuous analysis and
-// the clock (play_grogros_zero_move needs both). Idempotent.
-void GUI::auto_bot_mode() {
-	if (_white_player != _grogros_zero_name && _black_player != _grogros_zero_name)
-		return;
-	if (!_grogros_analysis) {
-		_grogros_analysis = true;
-		debug_log("[auto_bot] analysis started");
-	}
-	if (!_time) {
-		start_time();
-		debug_log("[auto_bot] clock started");
 	}
 }
 

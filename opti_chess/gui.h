@@ -180,10 +180,6 @@ public:
 
 	// Syncs bench env overrides (OPTI_GAMMA/ALPHA/VLOSS/TT_MAIN) into members.
 	void sync_bench_env();
-	// Quasi-auto: enabling a Zero bot also starts continuous analysis and
-	// the clock (play_grogros_zero_move needs both: iterations to choose
-	// from, clock to spend). Idempotent; disabling the bot changes nothing.
-	void auto_bot_mode();
 
 	// Position selected in the GUI
 	Pos _selected_pos = Pos(-1, -1);
