@@ -75,7 +75,9 @@ void dump_qstats() {
 		<< " buffull=" << g_qstats.buffer_full << " looped=" << g_qstats.moves_looped
 		<< " pruned=" << g_qstats.moves_pruned_depth << " statics=" << g_qstats.static_evals << endl;
 	cout << "QSTATS-TIME qeval_s=" << g_t_qeval << " qinit_s=" << g_t_qinit
-		<< " king_safety_s=" << g_t_king_safety_s << " mobility_s=" << g_t_mobility_s << endl;
+		<< " king_safety_s=" << g_t_king_safety_s << " mobility_s=" << g_t_mobility_s
+		<< " matpos_s=" << g_t_matpos_s << " pawns_s=" << g_t_pawns_s
+		<< " endgame_s=" << g_t_endgame_s << endl;
 	cout << "QSTATS-KS hits=" << g_ks_hits << " miss=" << g_ks_miss << " clears=" << g_ks_clears << endl;
 }
 

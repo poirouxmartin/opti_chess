@@ -41,6 +41,9 @@ extern const bool g_qstats_on;
 // Phase 7a component timers (defined in eval_core.cpp).
 extern double g_t_king_safety_s;
 extern double g_t_mobility_s;
+extern double g_t_matpos_s;
+extern double g_t_pawns_s;
+extern double g_t_endgame_s;
 // King-safety cache census (defined in eval_king.cpp).
 extern long long g_ks_hits;
 extern long long g_ks_miss;
