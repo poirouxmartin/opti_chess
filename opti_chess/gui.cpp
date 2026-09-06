@@ -965,6 +965,7 @@ bool GUI::play_move_keep(Move move)
 	}
 
 	stop_compute(__FUNCTION__);
+	_position_epoch++; // real tree mutation: worker drops hint maps on next wake
 
 	// Main-thread tree mutations hold _tree_mutex (defense in depth: covers
 	// the stop_compute timeout hole where the worker might still be inside
@@ -1395,6 +1396,7 @@ void GUI::run_puzzle_headless(double time_s) {
 	// Reset everything — same as loading a fresh FEN.
 	// Stop the worker FIRST: reset() underneath a live search is use-after-free.
 	stop_compute(__FUNCTION__);
+	_position_epoch++; // real tree mutation: worker drops hint maps on next wake
 	std::lock_guard<std::mutex> tree_lk(_tree_mutex);
 	init_buffers();
 	reset_buffers();
@@ -1748,7 +1750,10 @@ void GUI::stop_compute(const char* why) {
 		// a never-started worker spins the full cap on done=false).
 		return;
 	}
-	_position_epoch++;
+	// NOTE: no _position_epoch++ here. It is bumped only by real tree
+	// mutations (play/load/reset/DEL/undo/puzzle-reset): stop_compute() also
+	// runs on plain restarts (same position, tree intact) where clearing the
+	// worker's maps would nuke TT/DAG sharing and reset displayed probes.
 	_work_cv.notify_one(); // wake parked/idle worker so it observes running=false promptly
 	if (_compute_thread_handle) {
 		// Bounded by WALL time (not iterations): sleep_for(1ms) actually
@@ -2278,6 +2283,7 @@ void GUI::load_FEN(const string fen, bool display) {
 	}
 
 	stop_compute(__FUNCTION__);
+	_position_epoch++; // real tree mutation: worker drops hint maps on next wake
 
 	std::lock_guard<std::mutex> tree_lk(_tree_mutex);
 
@@ -2301,6 +2307,7 @@ void GUI::load_FEN(const string fen, bool display) {
 // Resets the game
 void GUI::reset_game() {
 	stop_compute(__FUNCTION__);
+	_position_epoch++; // real tree mutation: worker drops hint maps on next wake
 	std::lock_guard<std::mutex> tree_lk(_tree_mutex);
 	// Boot the persistent worker (once): its thread_local GB arenas take
 	// ~1s to construct (measured 0.6s) — done here in background at startup/positions
@@ -2436,6 +2443,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	// while the worker may publish (rehash UB -> crash). The frame loop
 	// restarts the worker next frame if continuous analysis is still on.
 	stop_compute(__FUNCTION__);
+	_position_epoch++; // real tree mutation: worker drops hint maps on next wake
 
 	// For the evaluation computations
 	int color = _board->get_color();
