@@ -445,6 +445,7 @@ inline int main_ui() {
 			//main_GUI._board->reset_all(true, true);
 			debug_log("[key] DEL pressed");
 			main_GUI.stop_compute(); // worker first: tree surgery below is not thread-safe
+			main_GUI._position_epoch++; // real mutation: worker drops hint maps
 			std::lock_guard<std::mutex> tree_lk(main_GUI._tree_mutex);
 			main_GUI._root_exploration_node->reset(true); // cycle-safe full recycle
 			main_GUI.reset_buffers(); // #6: systematic TT/node_map clear

@@ -90,6 +90,7 @@ bool GameTree::select_previous_node() {
 
 	if (can_go_back) {
 		main_GUI.stop_compute(); // worker first: root reset + board swap below
+		main_GUI._position_epoch++; // real mutation
 		std::lock_guard<std::mutex> tree_lk(main_GUI._tree_mutex);
 		_current_node = _current_node->_parent;
 
