@@ -678,7 +678,7 @@ public:
 	void start_compute(double time_s);
 
 	// Stops background computation and waits for it to finish
-	void stop_compute();
+	void stop_compute(const char* why = "");
 
 	// Loads a position from a FEN
 	void load_FEN(const string fen, bool display = true);
