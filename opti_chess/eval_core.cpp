@@ -4,6 +4,7 @@
 #include "zobrist.h"
 
 #include <algorithm>
+#include <chrono>
 #include <ranges>
 #include <string>
 #include <sstream>
@@ -50,6 +51,10 @@ void Board::game_advancement() {
 }
 
 // Counts the material on the board and returns its value
+// Phase 7a component timers (seconds). Defined here, dumped in dump_qstats.
+double g_t_king_safety_s = 0.0;
+double g_t_mobility_s = 0.0;
+
 int Board::count_material(const Evaluator* eval, float closed_factor) const
 {
 	int material_count = 0;
@@ -371,7 +376,9 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Long-term piece mobility
 	if (evaluator->_long_term_piece_mobility != 0.0f) {
+		auto t_mob0 = std::chrono::steady_clock::now();
 		const int long_term_mobility = get_long_term_piece_mobility() * evaluator->_long_term_piece_mobility;
+		g_t_mobility_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_mob0).count();
 		if (display)
 			main_GUI._eval_components += "long-term piece mobility: " + (long_term_mobility >= 0 ? string("+") : string()) + to_string(long_term_mobility) + "\n";
 		total_activity += long_term_mobility;
@@ -379,7 +386,9 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Short-term piece mobility
 	if (evaluator->_short_term_piece_mobility != 0.0f) {
+		auto t_mob0 = std::chrono::steady_clock::now();
 		const int short_term_mobility = get_short_term_piece_mobility() * evaluator->_short_term_piece_mobility;
+		g_t_mobility_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_mob0).count();
 		if (display)
 			main_GUI._eval_components += "short-term piece mobility: " + (short_term_mobility >= 0 ? string("+") : string()) + to_string(short_term_mobility) + "\n";
 		total_activity += short_term_mobility;
@@ -387,7 +396,9 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Piece activity
 	if (evaluator->_piece_activity != 0.0f) {
+		auto t_mob0 = std::chrono::steady_clock::now();
 		const int piece_activity = get_piece_activity() * evaluator->_piece_activity;
+		g_t_mobility_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_mob0).count();
 		if (display)
 			main_GUI._eval_components += "piece activity: " + (piece_activity >= 0 ? string("+") : string()) + to_string(piece_activity) + "\n";
 		total_activity += piece_activity;
@@ -534,7 +545,9 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// King safety
 	if (evaluator->_king_safety != 0.0f) {
+		auto t_king0 = std::chrono::steady_clock::now();
 		const int king_safety = get_king_safety(total_activity, display * evaluator->_king_safety) * evaluator->_king_safety;
+		g_t_king_safety_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_king0).count();
 		if (display)
 			main_GUI._eval_components += "king safety: " + (king_safety >= 0 ? string("+") : string()) + to_string(king_safety) + "\n";
 		total_king += king_safety;

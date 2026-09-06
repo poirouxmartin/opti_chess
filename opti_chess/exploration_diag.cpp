@@ -39,6 +39,46 @@ int g_selective_tail_depth = (getenv("OPTI_SEL_TAIL") != nullptr) ? atoi(getenv(
 int g_selective_mid_depth = (getenv("OPTI_SEL_MID") != nullptr) ? atoi(getenv("OPTI_SEL_MID")) : 6;
 int g_check_extension = (getenv("OPTI_CHECK_EXT") != nullptr) ? atoi(getenv("OPTI_CHECK_EXT")) : 0;
 
+// Quiescence exit-path census (Phase 7a): where do the 8.8x nodes go?
+// Plain statics (single-threaded search). Dumped via dump_qstats().
+struct QStats {
+	long long entries = 0;
+	long long terminal = 0;
+	long long tt_cutoff = 0;
+	long long emergency = 0;
+	long long depth_out = 0;
+	long long beta1 = 0;
+	long long beta2 = 0;
+	long long normal = 0;
+	long long abort = 0;
+	long long buffer_full = 0;
+	long long moves_looped = 0;
+	long long moves_pruned_depth = 0;
+	long long static_evals = 0;
+};
+static QStats g_qstats;
+// Census compiled in but zero-cost when OPTI_QSTATS is unset (single
+// predictable branch per site; ~10M calls).
+const bool g_qstats_on = (getenv("OPTI_QSTATS") != nullptr);
+#define QCOUNT(f) do { if (g_qstats_on) g_qstats.f++; } while (0)
+// Phase 7a time split (seconds, steady_clock): static eval vs node init
+// (movegen+flags+sort) vs everything else (derived).
+static double g_t_qeval = 0.0;
+static double g_t_qinit = 0.0;
+void dump_qstats() {
+	if (getenv("OPTI_QSTATS") == nullptr) return;
+	cout << "QSTATS entries=" << g_qstats.entries
+		<< " terminal=" << g_qstats.terminal << " tt=" << g_qstats.tt_cutoff
+		<< " emergency=" << g_qstats.emergency << " depthout=" << g_qstats.depth_out
+		<< " beta1=" << g_qstats.beta1 << " beta2=" << g_qstats.beta2
+		<< " normal=" << g_qstats.normal << " abort=" << g_qstats.abort
+		<< " buffull=" << g_qstats.buffer_full << " looped=" << g_qstats.moves_looped
+		<< " pruned=" << g_qstats.moves_pruned_depth << " statics=" << g_qstats.static_evals << endl;
+	cout << "QSTATS-TIME qeval_s=" << g_t_qeval << " qinit_s=" << g_t_qinit
+		<< " king_safety_s=" << g_t_king_safety_s << " mobility_s=" << g_t_mobility_s << endl;
+	cout << "QSTATS-KS hits=" << g_ks_hits << " miss=" << g_ks_miss << " clears=" << g_ks_clears << endl;
+}
+
 namespace {
 
 constexpr uint8_t search_repetition_limit = 3; // #11 Threefold (FIDE/Lc0): twofold draws are too aggressive, killing tactical lines where pieces legitimately return to previous squares
@@ -1593,8 +1633,12 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	// Computation time
 	const clock_t begin_monte_time = clock();
 
+	QCOUNT(entries);
+
 	// Node initialisation
+	auto t_qinit0 = std::chrono::steady_clock::now();
 	init_node();
+	g_t_qinit += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_qinit0).count();
 
 	// #7 / B-1 +�-+-� null-safe path history (appel manuel quiescence via main_gui.h) :
 	// a local history owned for the WHOLE duration of the call. It must be declared
@@ -1611,7 +1655,10 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 	// Evaluate the position
 	if (!_static_evaluation._evaluated) {
+		QCOUNT(static_evals);
+		auto t_qeval0 = std::chrono::steady_clock::now();
 		evaluate_position(eval, false, network, true);
+		g_t_qeval += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_qeval0).count();
 	}
 	else {
 		_deep_evaluation = _static_evaluation;
@@ -1621,6 +1668,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 	// If the game is over
 	if (_is_terminal) {
+		QCOUNT(terminal);
 		_nodes = 1;
 		_iterations = 1;
 		_time_spent += clock() - begin_monte_time;
@@ -1676,9 +1724,10 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			// #11 Plan A).
 			tt_fixup_derived(_deep_evaluation);
 
-			transposition_table._stats._cutoffs++;
-			_time_spent += clock() - begin_monte_time;
-			if (tt_entry->_flag == TT_EXACT) return tt_eval;
+		transposition_table._stats._cutoffs++;
+		_time_spent += clock() - begin_monte_time;
+		QCOUNT(tt_cutoff);
+		if (tt_entry->_flag == TT_EXACT) return tt_eval;
 			if (tt_entry->_flag == TT_ALPHA) return alpha;
 			return beta; // TT_BETA / TT_STANDPAT: lower bound (fail-high) -> beta
 		}
@@ -1691,6 +1740,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	if (depth <= -4) {
 		transposition_table.store(_board->_zobrist_key, tt_normalize_mate(stand_pat, _board->_moves_count), depth, TT_STANDPAT); // #4 static lower bound; #3 canonised mate
 		_time_spent += clock() - begin_monte_time;
+		QCOUNT(emergency);
 		//cout << "emergency cutoff: " << _board->to_fen() << ", in_check: " << in_check << endl;
 		return stand_pat;
 	}
@@ -1699,6 +1749,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	if (depth <= 0 && !in_check) {
 		transposition_table.store(_board->_zobrist_key, tt_normalize_mate(stand_pat, _board->_moves_count), depth, TT_STANDPAT); // #4 static lower bound; #3 canonised mate
 		_time_spent += clock() - begin_monte_time;
+		QCOUNT(depth_out);
 		return stand_pat;
 	}
 
@@ -1724,6 +1775,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	if (stand_pat >= total_beta) {
 		transposition_table.store(_board->_zobrist_key, tt_normalize_mate(stand_pat, _board->_moves_count), depth, TT_BETA); // #5: store actual score, not beta
 		_time_spent += clock() - begin_monte_time;
+		QCOUNT(beta1);
 		//cout << "beta cutoff1: " << stand_pat << " >= " << beta << " + " << beta_margin << endl;
 		return beta;
 	}
@@ -1751,11 +1803,13 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	}
 	// Look at every capture
 	for (int i = 0; i < q_count; i++) {
+		QCOUNT(moves_looped);
 
 		// Hard deadline: unwind promptly (alpha = sound fail-soft bound,
 		// same convention as the buffer-full early exits below).
 		if (g_search_abort) {
 			_time_spent += clock() - begin_monte_time;
+			QCOUNT(abort);
 			return alpha;
 		}
 
@@ -1800,9 +1854,10 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			}
 			new_depth -= in_check ? 0 : (is_winning_capture ? move_index : move_index * 2);
 
-			if (new_depth <= 0 && !in_check) {
-				continue; // Stop looking at moves once we are too deep
-			}
+		if (new_depth <= 0 && !in_check) {
+			QCOUNT(moves_pruned_depth);
+			continue; // Stop looking at moves once we are too deep
+		}
 
 			move_index++;
 			
@@ -1880,11 +1935,12 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				// No TT sharing (same reason as in explore_new_move)
 				child = monte_node_buffer.get_first_free_node();
 
-				// Buffer full
-				if (child == nullptr) {
-					_time_spent += clock() - begin_monte_time;
-					return alpha;
-				}
+			// Buffer full
+			if (child == nullptr) {
+				_time_spent += clock() - begin_monte_time;
+				QCOUNT(buffer_full);
+				return alpha;
+			}
 
 				child->_board = new_board;
 
@@ -1905,15 +1961,16 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				child_link->_propagated_nodes = child->_nodes;
 			}
 
-			// Beta cut-off
-			if (score >= beta) {
-				// Fail-high: propagate the cutting child's searched evaluation BEFORE
-				// returning, so the parent never reads a stale static value here.
-				_deep_evaluation = child->_deep_evaluation;
-				transposition_table.store(_board->_zobrist_key, tt_normalize_mate(score, _board->_moves_count), depth, TT_BETA); // #5: store actual score, not beta
-				_time_spent += clock() - begin_monte_time;
-				return beta;
-			}
+		// Beta cut-off
+		if (score >= beta) {
+			// Fail-high: propagate the cutting child's searched evaluation BEFORE
+			// returning, so the parent never reads a stale static value here.
+			_deep_evaluation = child->_deep_evaluation;
+			transposition_table.store(_board->_zobrist_key, tt_normalize_mate(score, _board->_moves_count), depth, TT_BETA); // #5: store actual score, not beta
+			_time_spent += clock() - begin_monte_time;
+			QCOUNT(beta2);
+			return beta;
+		}
 
 			// Raise alpha if the static evaluation is higher
 			if (score > alpha) {
@@ -1983,6 +2040,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	// Computation time
 	_time_spent += clock() - begin_monte_time;
 
+	QCOUNT(normal);
 	return alpha;
 }
 

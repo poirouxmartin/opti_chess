@@ -13,6 +13,11 @@
 #include <vector>
 #include <unordered_map>
 static std::unordered_map<uint64_t, int> king_safety_cache;
+// Phase 7a census (dumped in dump_qstats).
+long long g_ks_hits = 0;
+long long g_ks_miss = 0;
+long long g_ks_clears = 0;
+extern const bool g_qstats_on;
 int Board::get_king_safety(int activity_diff, float display_factor) {
 
 	// ----------------------
@@ -67,11 +72,16 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 
 	// Update the king positions
 	update_kings_pos();
-	// Cache probe (perf)
-	{
+	// Cache probe (perf). OPTI_NOKSCACHE=1 bypasses it entirely (11% hits
+	// don't pay for unordered_map find+insert on every call + clear storms).
+	// The cache is pure (display blocks only append GUI strings), so bypass
+	// changes nothing but speed.
+	static const bool no_kscache = (getenv("OPTI_NOKSCACHE") != nullptr);
+	if (!no_kscache) {
 		uint64_t _ks_key_probe = _zobrist_key ^ (uint64_t)(activity_diff * 1000003 + 0x9e3779b97f4a7c15ULL);
 		auto it = king_safety_cache.find(_ks_key_probe);
-		if (it != king_safety_cache.end()) return it->second;
+		if (it != king_safety_cache.end()) { if (g_qstats_on) g_ks_hits++; return it->second; }
+		if (g_qstats_on) g_ks_miss++;
 	}
 
 	// Number of files between the kings, to detect opposite-side castling for instance
@@ -788,8 +798,10 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	const int king_safety = b_king_weakness - w_king_weakness;
 
 	int _ks_result = king_safety;
-	if (king_safety_cache.size() > 8192) king_safety_cache.clear();
-	king_safety_cache[_zobrist_key ^ (uint64_t)(activity_diff * 1000003 + 0x9e3779b97f4a7c15ULL)] = _ks_result;
+	if (!no_kscache) {
+		if (king_safety_cache.size() > 8192) { king_safety_cache.clear(); if (g_qstats_on) g_ks_clears++; }
+		king_safety_cache[_zobrist_key ^ (uint64_t)(activity_diff * 1000003 + 0x9e3779b97f4a7c15ULL)] = _ks_result;
+	}
 	return _ks_result;
 }
 
@@ -1991,10 +2003,10 @@ string score_string(float avg_score) {
 }
 
 // Swaps the colours of the two sides, side to move and castling rights included
-vector<Pos> Board::get_next_king_squares(SquareMap& map, Pos start_pos, int distance, bool color) const {
+int Board::get_next_king_squares(SquareMap& map, Pos start_pos, int distance, bool color, Pos* out) const {
 
-	// Initialise the list of newly controlled squares
-	vector<Pos> new_controlled_squares;
+	// Newly reached squares (at most 8 neighbours)
+	int n = 0;
 
 	// Look at the 8 possible directions
 	for (uint8_t m = 0; m < 8; m++) {
@@ -2005,11 +2017,11 @@ vector<Pos> Board::get_next_king_squares(SquareMap& map, Pos start_pos, int dist
 
 		// If the square is on the board
 		if (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
-			
+
 			// If this is a newly explored square
 			if (map._array[new_i][new_j] == 0) {
 				map._array[new_i][new_j] = distance + 1;
-				new_controlled_squares.push_back(Pos(new_i, new_j));
+				out[n++] = Pos(new_i, new_j);
 			}
 
 			// If the square is controlled by the opponent
@@ -2019,7 +2031,7 @@ vector<Pos> Board::get_next_king_squares(SquareMap& map, Pos start_pos, int dist
 		}
 	}
 
-	return new_controlled_squares;
+	return n;
 }
 
 // Returns a map of the distances from the king to every square, as the number of moves needed given the current controls
@@ -2069,19 +2081,20 @@ SquareMap Board::get_king_squares_distance(bool color) {
 	update_kings_pos();
 	Pos king_pos = color ? _white_king_pos : _black_king_pos;
 
-	// Build the distance map iteratively
-	vector<Pos> current_controlled_squares = { king_pos };
+
+// Build the distance map iteratively (stack BFS: at most 64 squares ever
+// enqueued, each exactly once - zero allocation, was vector-per-square).
+	Pos frontier[64] = { king_pos };
+	Pos next[64];
+	int frontier_n = 1;
 	int distance = 0;
-
-	// FIXME: something other than vectors may be needed, this is very slow
-
-	while (!current_controlled_squares.empty()) {
-		vector<Pos> new_controlled_squares;
-		for (const Pos& pos : current_controlled_squares) {
-			vector<Pos> current_new_controlled_squares = get_next_king_squares(distance_map, pos, distance, color);
-			new_controlled_squares.insert(new_controlled_squares.end(), current_new_controlled_squares.begin(), current_new_controlled_squares.end());
+	while (frontier_n > 0) {
+		int next_n = 0;
+		for (int k = 0; k < frontier_n; k++) {
+			next_n += get_next_king_squares(distance_map, frontier[k], distance, color, next + next_n);
 		}
-		current_controlled_squares = new_controlled_squares;
+		for (int k = 0; k < next_n; k++) frontier[k] = next[k];
+		frontier_n = next_n;
 		distance++;
 	}
 

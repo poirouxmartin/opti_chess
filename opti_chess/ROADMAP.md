@@ -244,6 +244,25 @@ change nothing on this subset. advancedPawn (57% fail) needs another angle.
   par thème a atteint ses limites.
 - Hooks `OPTI_ALPHA` (neutre, gardé), `OPTI_GAMMA` (gardé).
 
+### Plan ordonné (2026-09-05, directive utilisateur)
+1. **Nœuds quiescence** : où partent les 8.8× ? Instrumentation des sorties
+   (stand-pat, beta-cutoff, depth-out, terminal, repetition, buffer-full),
+   puis tailler le gaspillage.
+   - Census NODES-500 : 10.2M entrées — normal 39%, beta1+beta2 38%,
+     depth-out 16%, TT 5%, terminal 1%. Boucle 15.4M, prunés 34%.
+     Statics 8.5M (83% des entrées).
+   - Temps (150 puzzles, 109s) : qeval 65% (king safety 23%, mobilité 8%,
+     reste eval 34%), qinit 12%, reste 23%.
+   - King-safety cache : 11% hits, 298 clears → quasi-inutile ; map
+     prouvée pure (display = strings GUI seules) ; bypass OPTI_NOKSCACHE
+     bit-identique (150/150). Suppression du cache : à décider.
+   - BFS distance-map : vector-par-case → tableaux fixes (valeurs
+     prouvées identiques : 150/150 + mêmes nœuds). Magnitude absolue
+     masquée par throttle — structurellement supérieur, gardé.
+2. **Hotpath** : profiler (eval ? movegen ? king safety ?) et optimiser.
+3. **Parallélisation** (Phase 6) : 4× itérations/0.1s.
+4. **Ordering NN** (Phase 4, en dernier).
+
 ### Phase 3 TT audit (2026-09-05) — A4/A3 gated
 - A4 check extension: +1 → 404 vs 403 (χ²=0 n.s.). +2 → INFEASIBLE
   (tree explosion: >30 min vs 8 min for NODES-500, killed). Checks already
