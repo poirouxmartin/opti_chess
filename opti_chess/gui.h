@@ -176,8 +176,8 @@ public:
 	Evaluator* _grogros_eval = new Evaluator();
 	//Evaluator* _grogros_eval = new Evaluator(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 
-	// Do the variations need to be refreshed in the GUI?
-	bool _update_variants = false;
+	// Syncs bench env overrides (OPTI_GAMMA/ALPHA/VLOSS/TT_MAIN) into members.
+	void sync_bench_env();
 
 	// Position selected in the GUI
 	Pos _selected_pos = Pos(-1, -1);
@@ -227,6 +227,13 @@ public:
 		Move best_move;
 		Move best_eval_move;
 		Evaluation best_evaluation;
+		Evaluation best_move_evaluation; // deep eval of most-explored child (bench verdict)
+		Evaluation static_evaluation; // root static (stand-pat fallback display)
+		string exploration_variants; // computed under lock (never walked in draw)
+		int main_depth = 0;
+		int children_count = 0;
+		int got_moves = 0;
+		int quiescence_depth = 0;
 		int iterations = 0;
 		int nodes = 0;
 		int time_spent = 0;
