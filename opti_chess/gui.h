@@ -234,6 +234,14 @@ public:
 	// Persistent worker wakeup (condition_variable: no windows.h in this TU).
 	std::mutex _work_mutex;
 	std::condition_variable _work_cv;
+	// Wake generation (sticky notification): a bare notify can fire while
+	// the worker hasn't reached wait() yet and is then lost forever
+	// (stuck-true, no progress, watchdog blind because heartbeat is stale
+	// but nonzero). The counter never loses a wakeup.
+	std::atomic<unsigned long long> _wake_gen{ 0 };
+	// Worker phase for hang diagnosis (0=wait 1=search 2=snapshot 3=park).
+	std::atomic<int> _worker_phase{ 0 };
+	std::atomic<clock_t> _phase_since{ 0 };
 	// Position epoch: bumped (main thread, worker stopped) on every tree
 	// mutation; the worker clears its hint maps when it changes. Plain
 	// counter (never written concurrently with a live worker).
