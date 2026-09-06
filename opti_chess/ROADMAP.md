@@ -272,6 +272,21 @@ Actuel ~38.5K (TIME). Cible ×26. Leviers : hotpath ~2-3× (static eval 65%,
 king safety 23%), parallélisation ~10-14× (20 threads) → 38.5K×3×12 ≈ 1.4M.
 Ordre : finir hotpath structurel (BFS fait), puis Phase 6.
 
+### Phase 6 : separate-trees REJETÉ pour strength (2026-09-06, infra gardée)
+Pool persistant (_beginthreadex 16MB, thread_local arenas/TT/map/caches,
+atomics deadline/abort) : N=1 bit-identique (150/150). Bug trouvé et fixé
+en route : spawn-per-puzzle → mort par fragmentation après ~50 puzzles.
+NPS : 39K → 117K (4 threads) → 161K (8 threads), ×4.1.
+MAIS strength à wall égal : 114 → 101 (4T) → 98 (8T) à 0.1s ;
+125 → 110 à 1.0s (χ²=11.5 régression significative). Diversification gamma
+nulle (98 vs 98). Cause : 8 arbres peu profonds votants < 1 arbre profond ;
++ contention divise le NPS/thread par 2 (20K vs 39K).
+Verdict : l'infra reste (débit selfplay futur, analyse), mais le 1M NPS
+UTILE exige un arbre partagé (Lazy SMP) : tous les threads raffinent UN
+arbre → profondeur + débit. Prochaine étape si go : arbre partagé
+(spinlock par nœud à l'expansion, _chosen_iterations atomique,
+last-writer-wins sur _deep_evaluation).
+
 ### Phase 3 TT audit (2026-09-05) — A4/A3 gated
 - A4 check extension: +1 → 404 vs 403 (χ²=0 n.s.). +2 → INFEASIBLE
   (tree explosion: >30 min vs 8 min for NODES-500, killed). Checks already

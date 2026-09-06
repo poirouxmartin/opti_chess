@@ -82,4 +82,4 @@ public:
 };
 
 // Buffer for Monte Carlo
-extern BoardBuffer monte_board_buffer;
+extern thread_local BoardBuffer monte_board_buffer;

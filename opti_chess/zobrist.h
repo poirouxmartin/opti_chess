@@ -67,4 +67,4 @@ public:
 	string stats_string() const;
 };
 
-extern TranspositionTable transposition_table;
+extern thread_local TranspositionTable transposition_table;

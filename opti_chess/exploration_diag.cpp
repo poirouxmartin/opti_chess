@@ -28,9 +28,9 @@ bool g_search_value_propagation = (getenv("OPTI_VALUE_PROP") != nullptr);  // ne
 bool g_search_trust_prior = (getenv("OPTI_TRUST_PRIOR") != nullptr);        // Bayesian prior: re-gate post-fix
 
 // Hard time deadline (see exploration.h). Sample counter is file-local.
-clock_t g_search_deadline = 0;
-bool g_search_abort = false;
-static unsigned g_qclock_check = 0;
+std::atomic<clock_t> g_search_deadline{0};
+std::atomic<bool> g_search_abort{false};
+thread_local unsigned g_qclock_check = 0;
 bool g_search_avg_cap = (getenv("OPTI_AVG_CAP") != nullptr);            // cap softmax suppression: re-gate post-fix
 
 bool g_adaptive_quiescence = (getenv("OPTI_ADAPTIVE") != nullptr);
@@ -56,15 +56,15 @@ struct QStats {
 	long long moves_pruned_depth = 0;
 	long long static_evals = 0;
 };
-static QStats g_qstats;
+thread_local QStats g_qstats;
 // Census compiled in but zero-cost when OPTI_QSTATS is unset (single
 // predictable branch per site; ~10M calls).
 const bool g_qstats_on = (getenv("OPTI_QSTATS") != nullptr);
 #define QCOUNT(f) do { if (g_qstats_on) g_qstats.f++; } while (0)
 // Phase 7a time split (seconds, steady_clock): static eval vs node init
 // (movegen+flags+sort) vs everything else (derived).
-static double g_t_qeval = 0.0;
-static double g_t_qinit = 0.0;
+thread_local double g_t_qeval = 0.0;
+thread_local double g_t_qinit = 0.0;
 void dump_qstats() {
 	if (getenv("OPTI_QSTATS") == nullptr) return;
 	cout << "QSTATS entries=" << g_qstats.entries
@@ -206,7 +206,7 @@ struct PathScope {
 };
 
 // Stockfish-style twofold (defined below near other statics)
-static uint64_t g_search_root_key = 0;
+thread_local uint64_t g_search_root_key = 0;
 
 bool position_is_draw_by_repetition(const PositionHistory& path_history, Board& board, uint8_t repetition_limit = search_repetition_limit) {
 	const uint8_t count = position_history_count(path_history, board);
@@ -375,24 +375,24 @@ void Node::init_node() {
 // real depth): fires ONLY on pathological non-repetition recursion
 // (repetition is already cut by the Task 3 recheck).
 // File-local (moteur mono-thread) ; defini avant grogros_zero (usage recursif).
-static int g_dag_recursion_depth = 0;
+thread_local int g_dag_recursion_depth = 0;
 constexpr int DAG_MAX_RECURSION_DEPTH = 1024;
 
 // #11 Plan B - diagnostic counters (toggle-gated, cumulative since the last
 // GUI reset). They exist to SHOW WHAT HAPPENS (spin? sharing? deep
 // recursion?) instead of guessing. Read by dag_debug_report.
-static long long g_dag_recheck_hits = 0;  // section 3: path-local repetitions cut
-static long long g_dag_link_hits = 0;     // link-on-create: shared node reused
-static long long g_dag_link_misses = 0;   // link-on-create: new node created
-static long long g_dag_variant_cuts = 0;  // get_exploration_variants: lines cut on a cycle
-static int g_dag_max_recursion_seen = 0;  // peak grogros_zero recursion depth
+thread_local long long g_dag_recheck_hits = 0;  // section 3: path-local repetitions cut
+thread_local long long g_dag_link_hits = 0;     // link-on-create: shared node reused
+thread_local long long g_dag_link_misses = 0;   // link-on-create: new node created
+thread_local long long g_dag_variant_cuts = 0;  // get_exploration_variants: lines cut on a cycle
+thread_local int g_dag_max_recursion_seen = 0;  // peak grogros_zero recursion depth
 
 // Per-batch bounded detail (reset by dag_debug_report). The point is to SEE
 // the first events (which move is shared, which cycle, which eval) without
 // flooding the console or paying for to_fen() millions of times on the
 // hottest path (perf #1). dag_dbg_take() returns true at most DAG_DBG_MAX
 // times per batch; called only behind an already-true g_tt_node_dag guard.
-static int g_dag_dbg_emitted = 0;
+thread_local int g_dag_dbg_emitted = 0;
 constexpr int DAG_DBG_MAX = 40;
 
 // TT probe scale (audit A1): the MCTS Plan-A probe must only consume MCTS-scale
@@ -2762,11 +2762,11 @@ void NodeBuffer::display_buffer_state() const {
 }
 
 // Buffer for the Monte-Carlo algorithm
-NodeBuffer monte_node_buffer;
+thread_local NodeBuffer monte_node_buffer;
 
 // Logs "buffer full" once per saturation session; reset to false as soon
 // as a reset/remove frees space.
-bool g_buffers_full_logged = false;
+thread_local bool g_buffers_full_logged = false;
 bool g_tt_main_search = false;
 bool g_tt_node_dag = false; // #11 Plan B +�-+-� voir exploration.h
-robin_map<uint64_t, Node*> node_map; // #11 Plan B +�-+-� voir exploration.h
+thread_local robin_map<uint64_t, Node*> node_map; // Phase 6: per-thread trees
