@@ -1504,6 +1504,11 @@ static void reset_node_fields(Node* node) {
 
 // Resets the node and its children, and deletes them all.
 // Uses an explicit worklist to avoid stack overflow on deep trees.
+// Cycle-safe: under DAG the graph has diamonds AND cycles (repeated
+// positions link back). parent_count decrements alone loop forever on
+// cycles (and blow up combinatorially on diamonds), so each node is
+// processed exactly once via a visited set. Correct for FULL-subtree
+// resets (every reachable edge dies with the walk).
 void Node::reset(bool recursive) {
 	reset_node_fields(this);
 
@@ -1512,8 +1517,11 @@ void Node::reset(bool recursive) {
 		// Recycle list preserves bottom-up order (children before parents).
 		thread_local vector<Node*> worklist;
 		thread_local vector<Node*> to_recycle;
+		thread_local unordered_set<Node*> seen;
 		worklist.clear();
 		to_recycle.clear();
+		seen.clear();
+		seen.insert(this);
 
 		// Seed: queue this node's direct children.
 		for (auto const& [_, child_link] : _children) {
@@ -1523,7 +1531,7 @@ void Node::reset(bool recursive) {
 
 			child_link._node->_parent_count--;
 
-			if (child_link._node->_parent_count <= 0) {
+			if (child_link._node->_parent_count <= 0 && seen.insert(child_link._node).second) {
 				worklist.push_back(child_link._node);
 			}
 		}
@@ -1543,7 +1551,7 @@ void Node::reset(bool recursive) {
 
 				child_link._node->_parent_count--;
 
-				if (child_link._node->_parent_count <= 0) {
+				if (child_link._node->_parent_count <= 0 && seen.insert(child_link._node).second) {
 					worklist.push_back(child_link._node);
 				}
 			}

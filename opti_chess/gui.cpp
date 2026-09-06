@@ -1,4 +1,4 @@
-﻿#include "gui.h"
+#include "gui.h"
 #include "buffer.h"
 #include "useful_functions.h"
 #include "zobrist.h"
@@ -12,6 +12,7 @@
 #include <regex>
 #include <fstream>
 #include <iomanip>
+#include <unordered_set>
 
 // Win32 thread priority + thread creation (forward declarations to avoid windows.h / raylib DrawTextEx conflict)
 extern "C" {
@@ -46,7 +47,10 @@ void debug_log(const char* fmt, ...) {
 	va_start(args, fmt);
 	vsnprintf(buf, sizeof(buf), fmt, args);
 	va_end(args);
-	g_debug_file << buf << endl;
+	// Session-relative ms prefix: correlates keypresses with events.
+	static clock_t t0 = 0;
+	if (t0 == 0) t0 = clock();
+	g_debug_file << "[t+" << (long long)(clock() - t0) * 1000 / CLOCKS_PER_SEC << "ms] " << buf << endl;
 	g_debug_file.flush();
 }
 
@@ -962,6 +966,11 @@ bool GUI::play_move_keep(Move move)
 
 	stop_compute();
 
+	// Main-thread tree mutations hold _tree_mutex (defense in depth: covers
+	// the stop_compute timeout hole where the worker might still be inside
+	// an iteration instead of corrupting).
+	std::lock_guard<std::mutex> tree_lk(_tree_mutex);
+
 	_board->assign_move_flags(&move);
 
 	// Make sure the move is legal
@@ -1313,6 +1322,12 @@ void GUI::grogros_analysis(int iterations) {
 	debug_log("[grogros_analysis] starting background worker");
 	stop_compute();
 	_worker_heartbeat.store((clock_t)0, std::memory_order_release);
+	// Full-arena backoff: retry at most every 5s (else 60fps churn).
+	if (_worker_blocked_full.load(std::memory_order_acquire)) {
+		if (clock() < _restart_cooldown_until)
+			return;
+		_restart_cooldown_until = clock() + (clock_t)(5 * CLOCKS_PER_SEC);
+	}
 	start_compute(0);
 }
 
@@ -1365,6 +1380,7 @@ void GUI::run_puzzle_headless(double time_s) {
 	// Reset everything — same as loading a fresh FEN.
 	// Stop the worker FIRST: reset() underneath a live search is use-after-free.
 	stop_compute();
+	std::lock_guard<std::mutex> tree_lk(_tree_mutex);
 	init_buffers();
 	reset_buffers();
 	_root_exploration_node->reset();
@@ -1464,6 +1480,7 @@ void GUI::update_snapshot(bool heavy) {
 		if (heavy) {
 			_tree_snapshot.main_depth = _root_exploration_node->get_main_depth(_alpha, _beta);
 			_tree_snapshot.exploration_variants = _root_exploration_node->get_exploration_variants(_alpha, _beta);
+			_tree_snapshot.tt_stats = transposition_table.stats_string();
 		}
 		if (!_tree_snapshot.best_move.is_null_move()) {
 			const auto itb = _root_exploration_node->_children.find(_tree_snapshot.best_move);
@@ -1536,17 +1553,35 @@ void GUI::compute_worker() {
 		clock_t begin = clock();
 		clock_t last_heavy = 0; // 4Hz throttle for PV/variants strings
 		long long iters = 0;
+		long long parked_rounds = 0; // full-arena park loop iterations (log throttle)
 		while (_compute_running.load(std::memory_order_relaxed)) {
 		// Time budget check: if > 0, respect it (puzzle mode); if == 0, run forever (continuous)
 		if (_compute_budget_s > 0 && (double)(clock() - begin) / CLOCKS_PER_SEC >= _compute_budget_s) {
 			debug_log("[worker] exit-reason=budget iters=%lld", iters);
 			break;
 		}
-		// Stop if buffer is full
+		// Full arena: PARK instead of exiting (exit churns stop/start at
+		// 60fps with zero progress, and DAG-hit frees make the free-list
+		// oscillate around empty so a start-cooldown never engages). Main
+		// recycles on play/DEL; this loop re-checks space every 100ms and
+		// resumes by itself. Bounded waits keep stop_compute responsive.
 		if (monte_board_buffer.is_full()) {
-			debug_log("[worker] exit-reason=full iters=%lld", iters);
-			break;
+			_worker_blocked_full.store(true, std::memory_order_release);
+			if (iters == 0 || (parked_rounds++ % 100 == 0))
+				debug_log("[worker] parked (boards full) iters=%lld", iters);
+			_worker_heartbeat.store(clock(), std::memory_order_release);
+			if (t_seen_epoch != _position_epoch) {
+				node_map.clear();
+				transposition_table.clear();
+				t_seen_epoch = _position_epoch;
+			}
+			{
+				std::unique_lock<std::mutex> plk(_work_mutex);
+				_work_cv.wait_for(plk, std::chrono::milliseconds(100), [&] { return !_compute_running.load(std::memory_order_acquire); });
+			}
+			continue;
 		}
+		_worker_blocked_full.store(false, std::memory_order_release);
 		{
 			// Hard deadline like the bench: quiescence samples the clock and
 			// aborts past due, so one deep iteration cannot overrun a puzzle
@@ -1573,6 +1608,7 @@ void GUI::compute_worker() {
 			g_search_abort.store(false, std::memory_order_release);
 			if (++iters == 1 || iters % 100 == 0)
 				debug_log("[worker] iter=%lld nodes=%d", iters, (int)_root_exploration_node->_nodes);
+			_worker_blocked_full.store(false, std::memory_order_release); // productive: clear backoff
 			_worker_heartbeat.store(clock(), std::memory_order_release);
 		}
 		}
@@ -1632,7 +1668,9 @@ void GUI::stop_compute() {
 		(int)_compute_running.load(std::memory_order_acquire),
 		(int)_compute_done.load(std::memory_order_acquire));
 	_compute_running.store(false, std::memory_order_release);
-	_compute_running.store(false, std::memory_order_release);
+	// Abort the in-flight iteration too: quiescence honors it unconditionally
+	// (one-visit unwind), so stop latency is bounded even mid deep search.
+	g_search_abort.store(true, std::memory_order_release);
 	_position_epoch++;
 	if (_compute_thread_handle) {
 		_work_cv.notify_one(); // wake if idle so it observes running=false
@@ -2109,7 +2147,7 @@ void GUI::draw()
 			"\n" + _wdl.to_string() + "\nScore: " + score_string(best_evaluation._avg_score) +
 			"\nNodes: " + int_to_round_string(_tree_snapshot.nodes) + "/" + int_to_round_string(monte_board_buffer._length) + " (" + int_to_round_string(_tree_snapshot.nps) + "N/s)" +
 			"\nIterations: " + int_to_round_string(_tree_snapshot.iterations) + " (" + int_to_round_string(_tree_snapshot.ips) + "I/s)" +
-				"\n\n" + transposition_table.stats_string();
+				"\n\n" + _tree_snapshot.tt_stats;
 		
 		// Display of the GrogrosZero analysis parameters
 		slider_text(monte_carlo_text, _board_padding_x + _board_size + _text_size / 2, _text_size, _screen_width - _text_size - _board_padding_x - _board_size, _board_size * 9 / 16, _text_size / 4, &_monte_carlo_slider, _text_color);
@@ -2161,6 +2199,8 @@ void GUI::load_FEN(const string fen, bool display) {
 
 	stop_compute();
 
+	std::lock_guard<std::mutex> tree_lk(_tree_mutex);
+
 	// TODO: the FEN has to be validated
 	//_board->from_fen(fen);
 	//update_global_pgn();
@@ -2181,6 +2221,7 @@ void GUI::load_FEN(const string fen, bool display) {
 // Resets the game
 void GUI::reset_game() {
 	stop_compute();
+	std::lock_guard<std::mutex> tree_lk(_tree_mutex);
 	cout << "*** RESETING GAME ***\n" << endl;
 	debug_log("[reset_game] enter boards_free=%d nodes_free=%d root=%p board=%p",
 		monte_board_buffer.get_first_free_index(),
@@ -2616,56 +2657,6 @@ void GUI::init_buffers() const {
 	}
 }
 
-// Walk the entire reachable tree from `root` and return every node (and its
-// board) to the buffer free-list.  parent_count is set to 0 on every node so
-// that the bottom-up recycle order is respected.  This must be called BEFORE
-// node_map.clear() — otherwise orphaned DAG nodes (parent_count > 0 from
-// recycled parents) would never be freed (#node-buffer-leak).
-static void recycle_tree(Node* root) {
-	if (root == nullptr)
-		return;
-
-	thread_local vector<Node*> worklist;
-	thread_local vector<Node*> to_recycle;
-	worklist.clear();
-	to_recycle.clear();
-
-	// Seed: reset root's own parent_count (will be recycled by caller)
-	root->_parent_count = 0;
-
-	// BFS: push all direct children
-	for (auto const& [_, child_link] : root->_children) {
-		if (child_link._node == nullptr)
-			continue;
-		child_link._node->_parent_count = 0;
-		worklist.push_back(child_link._node);
-	}
-
-	// Walk the rest of the tree
-	while (!worklist.empty()) {
-		Node* node = worklist.back();
-		worklist.pop_back();
-
-		for (auto const& [_, child_link] : node->_children) {
-			if (child_link._node == nullptr)
-				continue;
-			child_link._node->_parent_count = 0;
-			worklist.push_back(child_link._node);
-		}
-		to_recycle.push_back(node);
-	}
-
-	// Recycle deepest-first (children before parents)
-	for (auto it = to_recycle.rbegin(); it != to_recycle.rend(); ++it) {
-		Node* node = *it;
-		// Free board buffer slot (home-arena routing: see recycle_detached_node)
-		if (node->_board != nullptr && node->_board->_buffer_index >= 0 && node->_board->_home_boards != nullptr && !node->_board->_home_boards->_bulk_resetting)
-			node->_board->_home_boards->free_index(node->_board->_buffer_index);
-		// Free node buffer slot
-		if (node->_buffer_index >= 0 && node->_home_nodes != nullptr && !node->_home_nodes->_bulk_resetting)
-			node->_home_nodes->free_index(node->_buffer_index);
-	}
-}
 
 // Resets the buffers
 // #12: do NOT sweep the whole capacity. monte_*_buffer.reset() looped over
