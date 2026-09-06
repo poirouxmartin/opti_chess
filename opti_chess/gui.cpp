@@ -1287,13 +1287,25 @@ void GUI::grogros_analysis(int iterations) {
 		return;
 	}
 
-	// Background mode (iterations == 0) — start worker if not already running
+	// Background mode (iterations == 0) — start worker if not already running.
+	// Stillborn watchdog: a dead worker leaves _compute_running stuck true
+	// (G keeps working inline, CTRL-G silently does nothing). If it never
+	// finished one iteration within 5s, reset and restart it.
 	if (_compute_running.load(std::memory_order_acquire)) {
-		debug_log("[grogros_analysis] worker already running, skip");
-		return;
+		const clock_t hb = _worker_heartbeat.load(std::memory_order_acquire);
+		const double age_s = (double)(clock() - _compute_start_clock) / CLOCKS_PER_SEC;
+		if (hb == 0 && age_s > 5.0) {
+			debug_log("[grogros_analysis] worker running but silent for %.1fs, restarting", age_s);
+			_compute_running.store(false, std::memory_order_release);
+			stop_compute();
+		}
+		else {
+			return;
+		}
 	}
 	debug_log("[grogros_analysis] starting background worker");
 	stop_compute();
+	_worker_heartbeat.store((clock_t)0, std::memory_order_release);
 	start_compute(0);
 }
 
@@ -1393,6 +1405,15 @@ void GUI::run_puzzle_headless(double time_s) {
 // Populates _tree_snapshot from the current root node.
 // Caller must ensure no concurrent modification (lock held, or worker stopped).
 void GUI::update_snapshot(bool heavy) {
+	// Fresh analysis after invalidation: reset throughput base (else the
+	// first window spans the idle gap and drags the EMA to zero).
+	if (!_tree_snapshot.valid) {
+		_tree_snapshot.nps = 0.0f;
+		_tree_snapshot.ips = 0.0f;
+		_tree_snapshot.snap_last_nodes = 0;
+		_tree_snapshot.snap_last_iters = 0;
+		_tree_snapshot.snap_last_clock = 0;
+	}
 	if (_root_exploration_node->_board && _root_exploration_node->_nodes >= 1 && !_root_exploration_node->_is_terminal) {
 		_tree_snapshot.best_move = _root_exploration_node->get_most_explored_child_move();
 		_tree_snapshot.best_eval_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
@@ -1412,6 +1433,23 @@ void GUI::update_snapshot(bool heavy) {
 		_tree_snapshot.children_count = (int)_root_exploration_node->children_count();
 		_tree_snapshot.got_moves = _root_exploration_node->_board->_got_moves;
 		_tree_snapshot.quiescence_depth = _root_exploration_node->_quiescence_depth;
+		// Throughput EMA over the snapshot window (uniform for worker and
+		// inline callers). dt<=0 (same tick) keeps the previous value.
+		{
+			const clock_t now_c = clock();
+			const long long nodes_c = _root_exploration_node->_nodes;
+			const long long iters_c = _root_exploration_node->_iterations;
+			if (_tree_snapshot.snap_last_clock != 0 && now_c > _tree_snapshot.snap_last_clock) {
+				const double dt = (double)(now_c - _tree_snapshot.snap_last_clock) / CLOCKS_PER_SEC;
+				const float inst_nps = (float)((nodes_c - _tree_snapshot.snap_last_nodes) / dt);
+				const float inst_ips = (float)((iters_c - _tree_snapshot.snap_last_iters) / dt);
+				if (inst_nps >= 0.0f) _tree_snapshot.nps = _tree_snapshot.nps == 0.0f ? inst_nps : 0.7f * _tree_snapshot.nps + 0.3f * inst_nps;
+				if (inst_ips >= 0.0f) _tree_snapshot.ips = _tree_snapshot.ips == 0.0f ? inst_ips : 0.7f * _tree_snapshot.ips + 0.3f * inst_ips;
+			}
+			_tree_snapshot.snap_last_nodes = nodes_c;
+			_tree_snapshot.snap_last_iters = iters_c;
+			_tree_snapshot.snap_last_clock = now_c;
+		}
 		// Heavy fields (PV walk + strings) at most ~4Hz in background mode;
 		// light fields (moves, arrows, evals) ride every iteration.
 		if (heavy) {
@@ -1491,6 +1529,7 @@ void GUI::compute_worker() {
 			g_search_abort.store(false, std::memory_order_release);
 			if (++iters == 1 || iters % 100 == 0)
 				debug_log("[worker] iter=%lld nodes=%d", iters, (int)_root_exploration_node->_nodes);
+			_worker_heartbeat.store(clock(), std::memory_order_release);
 		}
 	}
 	_compute_done.store(true, std::memory_order_release);
@@ -1522,6 +1561,12 @@ void GUI::start_compute(double time_s) {
 	_compute_running.store(true, std::memory_order_release);
 	// 16MB stack (same as main thread) — quiescence recursion needs it
 	_compute_thread_handle = reinterpret_cast<void*>(_beginthreadex(nullptr, 16 * 1024 * 1024, compute_worker_entry, this, 0, nullptr));
+	_compute_start_clock = clock();
+	if (!_compute_thread_handle) {
+		debug_log("[start_compute] _beginthreadex FAILED");
+		_compute_running.store(false, std::memory_order_release);
+		return;
+	}
 	debug_log("[start_compute] budget=%.2fs handle=%p", time_s, _compute_thread_handle);
 }
 
@@ -1996,8 +2041,8 @@ void GUI::draw()
 			"\nConfidence: " + to_string(100 - (int)(100 * best_evaluation._uncertainty)) + "%" +
 			"\nWinnable: " + to_string(static_cast<int>(best_evaluation._winnable_white * 100)) + "% / " + to_string(static_cast<int>(best_evaluation._winnable_black * 100)) + "%" +
 			"\n" + _wdl.to_string() + "\nScore: " + score_string(best_evaluation._avg_score) +
-			"\nNodes: " + int_to_round_string(_tree_snapshot.nodes) + "/" + int_to_round_string(monte_board_buffer._length) + " (" + int_to_round_string(_tree_snapshot.nodes / (static_cast<float>(_tree_snapshot.time_spent + 1) / CLOCKS_PER_SEC)) + "N/s)" +
-			"\nIterations: " + int_to_round_string(_tree_snapshot.iterations) + " (" + int_to_round_string(_tree_snapshot.iterations / (static_cast<float>(_tree_snapshot.time_spent + 1) / CLOCKS_PER_SEC)) + "I/s)" +
+			"\nNodes: " + int_to_round_string(_tree_snapshot.nodes) + "/" + int_to_round_string(monte_board_buffer._length) + " (" + int_to_round_string(_tree_snapshot.nps) + "N/s)" +
+			"\nIterations: " + int_to_round_string(_tree_snapshot.iterations) + " (" + int_to_round_string(_tree_snapshot.ips) + "I/s)" +
 				"\n\n" + transposition_table.stats_string();
 		
 		// Display of the GrogrosZero analysis parameters
