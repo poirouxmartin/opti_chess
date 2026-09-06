@@ -5,6 +5,9 @@
 #include <robin_map.h>
 #include <robin_hash.h>
 #include <atomic>
+#include <cstdio>
+#include <cstdlib>
+#include <mutex>
 #include <vector>
 
 using namespace tsl;
@@ -33,6 +36,11 @@ extern bool g_selective_deepening;
 // Check extension (audit A4): +N ply on check-giving moves in quiescence.
 // Via OPTI_CHECK_EXT (default 0 = off, wired but disabled).
 extern int g_check_extension;
+
+// Phase 6: shared-tree mode (OPTI_SHARED=1 with OPTI_THREADS>1). All workers
+// refine ONE tree (main thread's arenas): node locks guard _children,
+// atomics carry the counters, TT is sharded-shared. Default OFF.
+extern bool g_shared_tree;
 
 // Quiescence exit census dump (OPTI_QSTATS to print).
 void dump_qstats();
@@ -64,8 +72,17 @@ class Node;
 
 struct ChildLink {
 	Node* _node = nullptr;
-	int _chosen_iterations = 0;
+	std::atomic<int> _chosen_iterations{ 0 };
 	int _propagated_nodes = 0;
+	ChildLink() = default;
+	// atomic is not copyable: copy by value snapshot (map rehash/insert).
+	ChildLink(const ChildLink& o) : _node(o._node), _chosen_iterations(o._chosen_iterations.load(std::memory_order_relaxed)), _propagated_nodes(o._propagated_nodes) {}
+	ChildLink& operator=(const ChildLink& o) {
+		_node = o._node;
+		_chosen_iterations.store(o._chosen_iterations.load(std::memory_order_relaxed), std::memory_order_relaxed);
+		_propagated_nodes = o._propagated_nodes;
+		return *this;
+	}
 };
 
 // #11 Plan B - Bug 1 option 3: per-traversal exclusion (anti-spin, section 3).
@@ -140,6 +157,18 @@ public:
 	// correct when several parents share the same node.
 	robin_map<Move, ChildLink> _children;
 
+	// Phase 6: per-node spinlock guarding _children mutation + iteration under
+	// the shared tree (expand claim/publish, pick/score iteration). Only used
+	// when g_shared_tree is set; legacy path never touches it (zero cost).
+	// Cleared in get_first_free_node + NodeBuffer::init (pooled storage).
+	std::atomic_flag _mtx;
+	void lock_node() {
+		while (_mtx.test_and_set(std::memory_order_acquire)) {
+			// brief holds: plain spin (no pause intrinsic to avoid headers)
+		}
+	}
+	void unlock_node() { _mtx.clear(std::memory_order_release); }
+
 	// Children
 	//vector<Node*> _children;
 
@@ -149,11 +178,13 @@ public:
 	// Number of nodes in the current subtree.
 	// This counter is tree-local: it is only correct as long as a node is not shared
 	// between several parents.
-	int _nodes = 0;
+	// Phase 6: atomic (shared-tree concurrent adds; stats/TT-depth only).
+	std::atomic<int> _nodes{ 0 };
 	//int _nodes = count_children_nodes() + 1;
 
 	// Number of explorations by the GrogrosZero algorithm
-	int _iterations = 0;
+	// Phase 6: atomic (fetch_add) under shared tree; plain ops stay valid.
+	std::atomic<int> _iterations{ 0 };
 
 	// Number of parents referencing this node.
 	int _parent_count = 0;
@@ -306,6 +337,23 @@ public:
 	~Node();
 };
 
+// Phase 6: RAII guard for the per-node spinlock. Engaged ONLY when
+// g_shared_tree is set (zero-cost branch otherwise). Protocol: a thread
+// holds AT MOST ONE node lock at a time (never nested: no lock is held
+// across quiescence/grogros recursion), so DAG cycles cannot deadlock.
+// Every iteration/mutation of a node's _children map happens under that
+// node's lock in shared mode; child NODE fields are read lock-free
+// (racy-benign aligned words, SMP-standard last-writer-wins).
+struct NodeLock {
+	Node* n;
+	bool on;
+	explicit NodeLock(Node* node) : n(node), on(g_shared_tree) { if (on) n->lock_node(); }
+	explicit NodeLock(const Node* node) : n(const_cast<Node*>(node)), on(g_shared_tree) { if (on) n->lock_node(); }
+	~NodeLock() { if (on) n->unlock_node(); }
+	NodeLock(const NodeLock&) = delete;
+	NodeLock& operator=(const NodeLock&) = delete;
+};
+
 
 class NodeBuffer {
 public:
@@ -376,6 +424,17 @@ extern bool g_tt_node_dag;
 // kind of map as Node::_children (robin_map, exploration.h:43).
 // thread_local: parallel workers own separate trees (Phase 6).
 extern thread_local robin_map<uint64_t, Node*> node_map;
+// Phase 6: guards node_map find/insert/erase under the shared tree
+// (per-thread maps need no lock, but the mutex makes shared use safe;
+// uncontended cost is negligible vs a quiescence).
+extern std::mutex g_node_map_mutex;
+// TEMPORARY claim counter (remove after).
+extern std::atomic<long long> g_dbg_claims;
+// TEMPORARY shared-mode serialization probe (remove after): when
+// OPTI_SERIALIZE is set, one global mutex serializes whole grogros_zero
+// calls. If shared results recover, corruption is concurrency-induced;
+// if still broken, it's a shared-protocol logic bug.
+extern std::recursive_mutex g_serialize_mutex;
 
 // #11 Plan B - diagnostic report (one line, toggle-gated). Called after every
 // grogros_zero batch from the GUI when g_tt_node_dag is set.

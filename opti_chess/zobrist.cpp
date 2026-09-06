@@ -116,6 +116,9 @@ inline uint8_t tt_scale_of(int depth) {
 }
 
 const ZobristEntry* TranspositionTable::probe(uint64_t key) {
+	// OPTI_NOTT=1 disables the TT entirely (A/B isolation).
+	static const bool no_tt = (getenv("OPTI_NOTT") != nullptr);
+	if (no_tt) return nullptr;
 	_stats._lookups++;
 	const auto it = _hash_table.find(key);
 	if (it == _hash_table.end())

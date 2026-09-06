@@ -8,14 +8,19 @@
 // Diagnostic-only SEH probe: walks _children without dying if the map memory
 // was stomped by an upstream corruption. Returns -1 when the walk faults.
 static int probe_fully_explored_count(const Node* n) {
+	// Phase 6: manual lock/unlock (no RAII object: __try forbids unwinding).
+	if (g_shared_tree) const_cast<Node*>(n)->lock_node();
+	int r = -2;
 	__try {
 		int c = 0;
 		for (auto const& [_, cl] : n->_children)
 			if (cl._node != nullptr && cl._node->_fully_explored)
 				c++;
-		return c;
+		r = c;
 	}
-	__except (EXCEPTION_EXECUTE_HANDLER) { return -1; }
+	__except (EXCEPTION_EXECUTE_HANDLER) { r = -1; }
+	if (g_shared_tree) const_cast<Node*>(n)->unlock_node();
+	return r;
 }
 #endif
 
@@ -38,6 +43,7 @@ bool g_selective_deepening = (getenv("OPTI_NO_SELECTIVE") == nullptr); // select
 int g_selective_tail_depth = (getenv("OPTI_SEL_TAIL") != nullptr) ? atoi(getenv("OPTI_SEL_TAIL")) : 2;
 int g_selective_mid_depth = (getenv("OPTI_SEL_MID") != nullptr) ? atoi(getenv("OPTI_SEL_MID")) : 6;
 int g_check_extension = (getenv("OPTI_CHECK_EXT") != nullptr) ? atoi(getenv("OPTI_CHECK_EXT")) : 0;
+bool g_shared_tree = false;
 
 // Quiescence exit-path census (Phase 7a): where do the 8.8x nodes go?
 // Plain statics (single-threaded search). Dumped via dump_qstats().
@@ -57,6 +63,7 @@ struct QStats {
 	long long static_evals = 0;
 };
 thread_local QStats g_qstats;
+thread_local long long t_dbg_descents = 0; // TEMPORARY share accounting probe
 // Census compiled in but zero-cost when OPTI_QSTATS is unset (single
 // predictable branch per site; ~10M calls).
 const bool g_qstats_on = (getenv("OPTI_QSTATS") != nullptr);
@@ -147,6 +154,29 @@ inline void tt_fixup_derived(Evaluation& e) {
 	}
 	e.get_WDL();
 	e.get_average_score();
+}
+
+// Phase 6: consistent evaluation snapshot. Under the shared tree, several
+// threads write _deep_evaluation (quiescence/backup/TT-fixup on shared nodes)
+// while others read value+avg+wdl together: a plain struct copy can mix
+// vintages (torn verdicts — e.g. mate-scale value with a 0.5 avg, or NaN
+// avg with stale value), silently corrupting scheduling and backup.
+// Snapshot the single-word inputs and DERIVE wdl/avg purely: always a valid
+// verdict on near-current inputs. In legacy sequential code the derived
+// triple provably equals the stored one (every stored avg was derived from
+// these same inputs by the same functions), so N=1 is bit-identical.
+inline Evaluation deep_snapshot(const Node* node) {
+	Evaluation e;
+	e._value = node->_deep_evaluation._value;
+	e._uncertainty = node->_deep_evaluation._uncertainty;
+	e._winnable_white = node->_deep_evaluation._winnable_white;
+	e._winnable_black = node->_deep_evaluation._winnable_black;
+	e._evaluated = node->_deep_evaluation._evaluated;
+	if (e._evaluated) {
+		e.get_WDL();
+		e.get_average_score();
+	}
+	return e;
 }
 
 uint8_t position_history_count(const PositionHistory& path_history, Board& board) {
@@ -286,16 +316,22 @@ void init_tt_leaf_child(Node* child, Board* board, Evaluator* eval, Network* net
 
 // Default constructor
 Node::Node() {
+	// Phase 6: pooled/stack storage leaves atomic_flag in an unclear state;
+	// a set flag spins forever on first lock (shared-mode hang). Clear here
+	// (covers stack roots), in NodeBuffer::init and get_first_free_node.
+	_mtx.clear(std::memory_order_relaxed);
 }
 
 // Constructor taking a board
 Node::Node(Board *board) {
+	_mtx.clear(std::memory_order_relaxed);
 	_board = board;
 }
 
 // Adds a child
 void Node::add_child(Node* child, Move move) {
 	// FIXME: check whether the move is already among the children?
+	NodeLock lk(this);
 	if (_children.contains(move)) {
 		cout << "move already in children" << endl;
         return;
@@ -318,7 +354,7 @@ void Node::add_child(Node* child, Move move) {
 	// cascade on a multi-parent node -> int overflow -> negative/billions/
 	// random N). It starts at 0 and counts the iterations routed through
 	// THIS edge. OFF: tree unchanged (= child->_nodes) -> byte-identical.
-	link._propagated_nodes = g_tt_node_dag ? 0 : child->_nodes;
+	link._propagated_nodes = g_tt_node_dag ? 0 : (int)child->_nodes;
 	_children[move] = link;
 	//_nodes += child->_nodes;
 }
@@ -343,6 +379,15 @@ Move Node::get_first_unexplored_move(bool fully_explored) {
 // Initialises the node from its board
 void Node::init_node() {
 
+	if (_initialized) {
+		return;
+	}
+
+	// Phase 6 shared-tree: two threads can first-touch the same fresh node
+	// concurrently (concurrent get_moves/sort_moves on the same _moves array
+	// corrupts move gen). Double-checked lock; no-op on legacy path.
+	// Callers (quiescence entry, grogros entry) hold no node lock here.
+	NodeLock init_lk(this);
 	if (_initialized) {
 		return;
 	}
@@ -431,7 +476,16 @@ void dag_debug_report() {
 }
 
 // Nouveau GrogrosZero
+struct SerializeGuard {
+	std::unique_lock<std::recursive_mutex> lk;
+	SerializeGuard(bool q = false) : lk(g_serialize_mutex, std::defer_lock) {
+		static const bool on = (getenv("OPTI_SERIALIZE") != nullptr);
+		static const bool on_q = (getenv("OPTI_SERIALIZE_Q") != nullptr);
+		if ((q ? (on || on_q) : on)) lk.lock();
+	}
+};
 void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, PositionHistory *path_history, const clock_t max_time) {
+	SerializeGuard _ser;
 	// TODO:
 	// Depth could be added
 	// Keep the computation time
@@ -518,11 +572,14 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 
 	// Exploration
 	int iteration_index = 0;
+	if (getenv("SHARED_TRACE") != nullptr) t_dbg_descents = 0;
 	while (iterations > 0) {
+		if (getenv("SHARED_TRACE") != nullptr) t_dbg_descents++;
 
 		// Wall-clock budget: stop cleanly when the deadline is reached
 		// (max_time == 0 keeps the pure iteration-count behaviour).
 		// Hard deadline (TIME mode): abort flag set by quiescence sampling.
+		if (getenv("SHARED_TRACE") != nullptr && t_dbg_descents < 3) { fprintf(stderr, "[LOOP] iters=%d maxtime=%d abort=%d\n", iterations, (int)max_time, (int)g_search_abort.load()); fflush(stderr); }
 		if (max_time != 0 && clock() - begin_monte_time >= max_time)
 			break;
 		if (g_search_abort)
@@ -610,8 +667,13 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 // Explores a new move
 void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history) {
 
-	// Take the first unexplored move
-	const Move move = get_first_unexplored_move(true);
+	// Take the first unexplored move.
+	// Phase 6: in shared mode the unlocked pre-scan is skipped entirely
+	// (concurrent insert/rehash makes even contains() unsafe); the claim
+	// section below re-scans under lock.
+	Move move;
+	if (!g_shared_tree) {
+		move = get_first_unexplored_move(true);
 
 	// GUARD: a null return means the expansion bookkeeping disagreed with the
 	// unexplored-move scan. Without this, the null move used to be "played"
@@ -629,7 +691,44 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 			}
 		}
 		return;
+	} // end shared-skip pre-scan
 	}
+
+	// Phase 6 shared-tree claim: re-scan under the node lock (the unlocked
+	// pre-scan above may be stale) and publish a placeholder edge so no two
+	// threads build the same move. Legacy path: no-op (move stands).
+	bool claimed_mine = false;
+	if (g_shared_tree) {
+		NodeLock lk(this);
+		Move fresh = get_first_unexplored_move(true);
+		if (fresh.is_null_move()) return; // everything claimed/published for now
+		move = fresh;
+		// TEMPORARY shared-protocol bisection (remove after): no placeholder
+		// insert (pure re-scan). Tests whether placeholder lifecycle corrupts.
+		static const bool no_placeholder = (getenv("OPTI_NOPLACEHOLDER") != nullptr);
+		if (!no_placeholder) {
+			auto it = _children.find(move);
+			if (it == _children.end()) {
+				_children[move] = ChildLink(); // placeholder: _node == nullptr until publish
+				claimed_mine = true;
+				g_dbg_claims.fetch_add(1, std::memory_order_relaxed); // TEMPORARY
+			}
+			else if (it->second._node == nullptr) {
+				return; // another thread's claim in flight; retry/refine next iteration
+			}
+		}
+		// else: present real node (re-explore case) — adopt, not ours.
+	}
+
+	// Release our placeholder claim without publishing (early exits below).
+	// No-op on legacy path and when nothing was claimed.
+	auto drop_claim = [&]() {
+		if (g_shared_tree && claimed_mine) {
+			NodeLock lk(this);
+			auto it = _children.find(move);
+			if (it != _children.end() && it->second._node == nullptr) { _children.erase(it); g_dbg_claims.fetch_add(1000000, std::memory_order_relaxed); }
+		}
+	};
 
 	// #7 / B-1 - single threaded history (no more per-move copy).
 	PositionHistory& branch_history = *path_history;
@@ -642,28 +741,58 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 	bool created_new_node = false;
 
 	// If this move was already explored, but not completely
-	bool already_explored = _children.contains(move);
-	ChildLink* child_link = already_explored ? &_children[move] : nullptr;
+	// Phase 6: a claimed placeholder counts as FRESH (we own it); a present
+	// real node is adopted (re-explore). Legacy: contains check unchanged.
+	// Shared: single locked find (the unlocked contains/operator[] below used
+	// to race concurrent inserts/rehash -> map corruption -> two edges linked
+	// to the same node, e.g. hxg3/Rxe7 sharing one node+board).
+	bool already_explored = false;
+	ChildLink* child_link = nullptr;
+	if (g_shared_tree) {
+		NodeLock lk(this);
+		auto it = _children.find(move);
+		if (it != _children.end() && it->second._node == nullptr && !claimed_mine)
+			return; // another thread's claim in flight; retry next iteration
+		already_explored = (it != _children.end() && it->second._node != nullptr);
+	}
+	else {
+		already_explored = _children.contains(move);
+		child_link = already_explored ? &_children[move] : nullptr;
+	}
+	if (g_shared_tree && claimed_mine) {
+		already_explored = false;
+		child_link = nullptr;
+	}
 
 	if (already_explored) {
-		child = child_link->_node;
-
-		if (!g_tt_node_dag && _nodes <= child_link->_propagated_nodes) {
-			cout << "child nodes >= nodes???" << endl; // tree-only: false under DAG (multi-parent shared subtree)
+		// Phase 6: SINGLE lock span (non-recursive spinlock: never nest!).
+		NodeLock alock(this);
+		int snap_prop = 0;
+		if (g_shared_tree) {
+			auto it = _children.find(move);
+			child = (it != _children.end()) ? it->second._node : nullptr;
+			if (child == nullptr) return;
+			snap_prop = (it->second._node != nullptr) ? it->second._propagated_nodes : 0;
 		}
-
-		// Bug 2 model A: under DAG do not pre-subtract (the delta clamped >=0 nets
-		// out correctly at the end of the function, without underflow).
+		else {
+			child = child_link->_node;
+			snap_prop = child_link ? child_link->_propagated_nodes : 0;
+		}
+		if (!g_tt_node_dag && _nodes <= snap_prop) {
+			cout << "child nodes >= nodes???" << endl;
+		}
 		if (!g_tt_node_dag) {
-			_nodes -= child_link->_propagated_nodes;
+			_nodes -= snap_prop;
 		}
 	}
 	else {
 		// Take a slot in the buffer
 		Board* new_board = board_buffer->get_first_free_board();
 
-		if (new_board == nullptr)
+		if (new_board == nullptr) {
+			drop_claim();
 			return;
+		}
 
 		new_board->copy_data(*_board, false, false);
 		new_board->_is_active = true;
@@ -675,11 +804,13 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 			// Test position: 3Q2k1/5p1p/2p1p3/2p1P1pq/5P2/4K3/6PP/2r5 b - - 1 4
 			// Test position with known bugs: 6kr/4K2p/7B/3bN3/8/8/8/8 b - - 19 10
 
-			// Create the child node
-			child = monte_node_buffer.get_first_free_node();
+		// Create the child node
+		child = monte_node_buffer.get_first_free_node();
 
-			if (child == nullptr)
-				return;
+		if (child == nullptr) {
+			drop_claim();
+			return;
+		}
 
 			init_terminal_draw_child(child, new_board, eval, network);
 			child->_nodes = 1;
@@ -694,15 +825,18 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 			// already a LIVE Node, link the edge to that shared Node instead of
 			// rebuilding a subtree. The draw branch (above) always produces a distinct
 			// leaf - never shared. OFF: skips everything.
-			Node* shared = nullptr;
-			if (g_tt_node_dag) {
-				const auto it = node_map.find(new_board->_zobrist_key);
-				if (it != node_map.end()) {
-					shared = it->second;
-				}
+		Node* shared = nullptr;
+		if (g_tt_node_dag) {
+			// Phase 6: node_map is per-thread; guard for shared-tree future.
+			std::unique_lock<std::mutex> mlock(g_node_map_mutex, std::defer_lock);
+			if (g_shared_tree) mlock.lock();
+			const auto it = node_map.find(new_board->_zobrist_key);
+			if (it != node_map.end()) {
+				shared = it->second;
 			}
+		}
 
-			if (shared != nullptr) {
+		if (shared != nullptr) {
 				// Hit: no allocation. Give the buffer board back and point at the
 				// existing Node; add_child (below) links the edge and increments
 				// shared->_parent_count. created_new_node stays false -> no Plan A
@@ -722,25 +856,31 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 				}
 			}
 			else {
-				// Miss: normal creation + registration in node_map.
-				child = monte_node_buffer.get_first_free_node();
+			// Miss: normal creation + registration in node_map.
+			child = monte_node_buffer.get_first_free_node();
 
-				if (child == nullptr)
-					return;
+			if (child == nullptr) {
+				drop_claim();
+				return;
+			}
 
-				child->_board = new_board;
-				created_new_node = true;
+			child->_board = new_board;
+			created_new_node = true;
 
-				if (g_tt_node_dag) {
-					node_map[new_board->_zobrist_key] = child;
-					g_dag_link_misses++;
-				}
+			// Phase 6: in shared mode the node_map insert moves to publish
+			// (only COMPLETE nodes publish; a mid-build registration would
+			// hand another thread a half-built node). Legacy: unchanged.
+			if (g_tt_node_dag && !g_shared_tree) {
+				node_map[new_board->_zobrist_key] = child;
+				g_dag_link_misses++;
+			}
 			}
 		}
 	}
 
     if (child == nullptr) {
         cout << "null child and shouldn't be (explore_new_move)" << endl;
+        drop_claim();
         return;
     }
 
@@ -785,6 +925,9 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 				? child->_static_evaluation._value
 				: -child->_static_evaluation._value;
 			int explored = 0;
+			// Phase 6: siblings map walked while other threads publish;
+			// unlocked iteration races rehash (skipped/ghost entries).
+			NodeLock rlock(this);
 			for (auto const& [mv, cl] : _children) {
 				if (cl._node != nullptr && cl._node != child
 					&& cl._node->_fully_explored
@@ -830,7 +973,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		// overwrites it with a shallower result (selective deepening).
 		// If the child already had a deeper searched evaluation (from a
 		// previous quiescence or DAG sharing), preserve it entirely.
-		const Evaluation old_deep_evaluation = child->_deep_evaluation;
+		const Evaluation old_deep_evaluation = deep_snapshot(child);
 		const int old_quiescence_depth = child->_quiescence_depth;
 
 		child->quiescence(board_buffer, eval, child_depth, alpha, beta, -INT32_MAX, INT32_MAX, network, true, 0, &branch_history);
@@ -879,38 +1022,86 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		cout << "negative nodes in explore_new_move child???" << endl;
 	}
 
-	if (child->_iterations == 0) {
-		child->_iterations = 1;
+	// Phase 6: atomic init (shared-tree concurrent first-touch).
+	{
+		int zero = 0;
+		child->_iterations.compare_exchange_strong(zero, 1, std::memory_order_relaxed);
 	}
 
 	// Add the child
 	if (!already_explored) {
-		add_child(child, move);
-		// Defensive: at() here once threw "Couldn't find key." deep into long
-		// games (heap-state dependent). A missing link degrades gracefully.
-		child_link = _children.contains(move) ? &_children[move] : nullptr;
+		if (g_shared_tree && claimed_mine) {
+			NodeLock lk(this);
+			if (_children[move]._node == nullptr) {
+				_children[move]._node = child;
+				_children[move]._propagated_nodes = g_tt_node_dag ? 0 : (int)child->_nodes;
+				child->_parent_count++;
+				if (_children[move]._chosen_iterations == 0) _children[move]._chosen_iterations = 1;
+				if (g_tt_node_dag) {
+					std::lock_guard<std::mutex> mlock(g_node_map_mutex);
+					node_map[child->_board->_zobrist_key] = child;
+					g_dag_link_misses++;
+				}
+			}
+			else if (_children[move]._node != nullptr) {
+				child = _children[move]._node;
+			}
+			child_link = nullptr;
+		}
+		else if (g_shared_tree) {
+			// Shared NOPLACEHOLDER bisection path (no claim): locked
+			// insert-or-adopt, never the unlocked legacy add_child below.
+			NodeLock lk(this);
+			auto it = _children.find(move);
+			if (it == _children.end() || it->second._node == nullptr) {
+				_children[move]._node = child;
+				_children[move]._propagated_nodes = g_tt_node_dag ? 0 : (int)child->_nodes;
+				child->_parent_count++;
+				if (_children[move]._chosen_iterations == 0) _children[move]._chosen_iterations = 1;
+				if (g_tt_node_dag) {
+					std::lock_guard<std::mutex> mlock(g_node_map_mutex);
+					node_map[child->_board->_zobrist_key] = child;
+					g_dag_link_misses++;
+				}
+			}
+			else {
+				child = it->second._node;
+			}
+			child_link = nullptr;
+		}
+		else {
+			add_child(child, move);
+			child_link = _children.contains(move) ? &_children[move] : nullptr;
+		}
 	}
 
-	if (child_link->_chosen_iterations == 0) {
-		child_link->_chosen_iterations = 1;
-	}
-
-	// Bug 2 model A - per-edge _nodes accounting under DAG: delta clamped >=0,
-	// never negative, never reseeded from a shared child->_nodes (baseline =
-	// the previous _propagated_nodes; on a fresh link-on-create edge add_child
-	// set baseline=child->_nodes -> delta 0, so the foreign subtree is not
-	// absorbed). OFF: tree reseed unchanged -> byte-identical.
-	if (g_tt_node_dag) {
-		// model A, literally: +1 unit of work routed through this edge.
-		// Bounded by the iteration budget -> never overflows; fully decoupled
-		// from the self-inflating shared child->_nodes -> no more cascade.
-		// _nodes becomes a bounded "visits" proxy (spec section 6; read neither
-		// by selection nor by the budget).
-		_nodes += 1;
-		child_link->_propagated_nodes += 1;
+	// Phase 6 shared-mode edge writes via re-locked find-by-move
+	// (no dangling ChildLink refs across unlocks). Legacy untouched.
+	if (g_shared_tree) {
+		NodeLock lk(this);
+		if (_children.contains(move) && _children[move]._node != nullptr) {
+			if (_children[move]._chosen_iterations == 0) _children[move]._chosen_iterations = 1;
+			if (g_tt_node_dag) _children[move]._propagated_nodes += 1;
+			else _children[move]._propagated_nodes = child->_nodes;
+		}
 	}
 	else {
-		child_link->_propagated_nodes = child->_nodes;
+		if (child_link->_chosen_iterations == 0) {
+			child_link->_chosen_iterations = 1;
+		}
+		if (g_tt_node_dag) {
+			_nodes += 1;
+			child_link->_propagated_nodes += 1;
+		}
+		else {
+			child_link->_propagated_nodes = child->_nodes;
+		}
+	}
+	if (g_tt_node_dag && !g_shared_tree) {
+		_nodes += 1;
+	}
+	else if (g_tt_node_dag && g_shared_tree) {
+		_nodes += 1;
 	}
 	_iterations += child->_iterations;
 
@@ -931,7 +1122,9 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 
 	if (g_search_value_propagation) {
 		long long best_value = LLONG_MIN;
+		NodeLock vlock2(this);
 		for (auto const& [move, link] : _children) {
+			if (link._node == nullptr) continue;
 			const long long v = link._node->_deep_evaluation._value * color;
 			if (v > best_value) {
 				best_value = v;
@@ -953,7 +1146,15 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 	}
 	else {
 		_is_stand_pat_eval = false;
-		_deep_evaluation = _children[best_move]._node->_deep_evaluation;
+		if (g_shared_tree) {
+			NodeLock lk(this);
+			auto it = _children.find(best_move);
+			if (it != _children.end() && it->second._node != nullptr)
+				_deep_evaluation = it->second._node->_deep_evaluation;
+		}
+		else {
+			_deep_evaluation = _children[best_move]._node->_deep_evaluation;
+		}
 
 		// #11 Plan A - write-back of the refined value (the actual lever).
 		// Guard: toggle ON, not terminal (excludes path-dependent draws), not
@@ -996,8 +1197,23 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		return;
 	}
 
-	ChildLink& child_link = _children[move];
-	Node *child = child_link._node;
+	// Phase 6 shared tree: snapshot the edge under lock, never hold a
+	// ChildLink reference across the recursion below (rehash safety).
+	// Legacy: direct reference (no concurrent mutation), unchanged.
+	ChildLink* child_link = nullptr;
+	Node *child = nullptr;
+	int snap_propagated = 0;
+	if (g_shared_tree) {
+		NodeLock lk(this);
+		auto it = _children.find(move);
+		if (it == _children.end() || it->second._node == nullptr) { _iterations++; return; }
+		child = it->second._node;
+		snap_propagated = it->second._propagated_nodes;
+	}
+	else {
+		child_link = &_children[move];
+		child = child_link->_node;
+	}
 
 	// Broken-edge guard: a pooled/stale lifecycle can hand back an edge whose
 	// node (or its board) is gone. Descending used to be a guaranteed null
@@ -1021,13 +1237,13 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	// duration of the recursion only, pop guaranteed on scope exit.
 	PositionHistory& branch_history = *path_history;
 
-	if (!g_tt_node_dag && child_link._propagated_nodes >= _nodes) {
+	if (!g_tt_node_dag && !g_shared_tree && child_link && child_link->_propagated_nodes >= _nodes) {
 		if constexpr (dag_debug)
 			cout << "child nodes >= nodes in random exploration??? main position: " << _board->to_fen() << ", child position: " << child->_board->to_fen() << endl; // tree-only : faux sous DAG
 	}
 
-	// Child node count
-	const int initial_child_nodes = child_link._propagated_nodes;
+	// Child node count (shared: snapshot taken under lock above)
+	const int initial_child_nodes = g_shared_tree ? snap_propagated : (child_link ? child_link->_propagated_nodes : 0);
 
 	// #11 Plan B section 3 - DAG soundness. The child subtree may be SHARED
 	// (created through path A, descended here through path B). Repetition draw
@@ -1085,7 +1301,9 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		int color = _board->get_color();
 		long long best_value = LLONG_MIN;
 		Move best_value_move;
+		NodeLock vlock(this);
 		for (auto const& [move, link] : _children) {
+			if (link._node == nullptr) continue;
 			const long long v = link._node->_deep_evaluation._value * color;
 			if (v > best_value) {
 				best_value = v;
@@ -1102,7 +1320,15 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		// INSERT a phantom child keyed by Move() whose _node is nullptr.
 		const Move legacy_best = get_best_score_move(alpha, beta);
 		if (!legacy_best.is_null_move()) {
-			_deep_evaluation = _children[legacy_best]._node->_deep_evaluation;
+			if (g_shared_tree) {
+				NodeLock lk(this);
+				auto it = _children.find(legacy_best);
+				if (it != _children.end() && it->second._node != nullptr)
+					_deep_evaluation = it->second._node->_deep_evaluation;
+			}
+			else {
+				_deep_evaluation = _children[legacy_best]._node->_deep_evaluation;
+			}
 		}
 	}
 
@@ -1120,15 +1346,22 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	// clamped >=0 (the tree path's initial_child_nodes is ignored; a SHARED
 	// child can shrink through another path/reset -> the tree delta underflows
 	// negative). OFF: tree delta unchanged -> byte-identical.
-	if (g_tt_node_dag) {
-		// model A, literally: +1 (same as explore_new_move). Bounded, decoupled
-		// from the shared child->_nodes -> no cascade/overflow, N stays stable.
+	if (g_shared_tree) {
+		if (g_tt_node_dag) _nodes += 1;
+		else _nodes += child->_nodes - initial_child_nodes;
+		NodeLock lk(this);
+		if (_children.contains(move) && _children[move]._node != nullptr) {
+			if (g_tt_node_dag) _children[move]._propagated_nodes += 1;
+			else _children[move]._propagated_nodes = child->_nodes;
+		}
+	}
+	else if (g_tt_node_dag) {
 		_nodes += 1;
-		child_link._propagated_nodes += 1;
+		child_link->_propagated_nodes += 1;
 	}
 	else {
 		_nodes += child->_nodes - initial_child_nodes;
-		child_link._propagated_nodes = child->_nodes;
+		child_link->_propagated_nodes = child->_nodes;
 	}
 
 	if (!g_tt_node_dag && _nodes <= 0) {
@@ -1164,6 +1397,7 @@ Move Node::get_most_explored_child_move() {
 	const int node_color = has_board ? _board->get_color() : 1;
 
 	for (auto const& [move, child_link] : _children) {
+		if (child_link._node == nullptr) continue; // shared-tree claim placeholder
 		if (child_link._chosen_iterations > max) {
 			max = child_link._chosen_iterations;
 			best_move = move;
@@ -1279,7 +1513,8 @@ void Node::reset(bool recursive) {
 				}
 			}
 
-			node->_children.clear();
+	node->_children.clear();
+	node->_mtx.clear(std::memory_order_relaxed);
 			to_recycle.push_back(node);
 		}
 
@@ -1635,6 +1870,8 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	// Computation time
 	const clock_t begin_monte_time = clock();
 
+	SerializeGuard _ser_q(true);
+
 	QCOUNT(entries);
 
 	// Node initialisation
@@ -1819,7 +2056,9 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 		const Move move = q_moves[i];
 		
 		// Already explored?
-		bool already_explored = _children.contains(move);
+		// Phase 6: in shared mode the unlocked pre-read is skipped (concurrent
+		// insert/rehash makes even contains() unsafe); the claim below decides.
+		bool already_explored = g_shared_tree ? false : _children.contains(move);
 
 		// *** SHOULD THIS MOVE BE EXPLORED? ***
 
@@ -1903,13 +2142,39 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				}
 			}
 
+			// Phase 6 shared-tree claim (after prune-continues, before creation).
+			// Another thread's placeholder => skip this move this visit.
+			bool q_claimed = false;
+			if (g_shared_tree) {
+				NodeLock lk(this);
+				auto it = _children.find(move);
+				if (it == _children.end()) {
+					_children[move] = ChildLink();
+					q_claimed = true;
+					already_explored = false;
+				}
+				else if (it->second._node == nullptr) {
+					continue;
+				}
+				else {
+					already_explored = true;
+				}
+			}
+			
 			// Create the child node
 			Node *child = nullptr;
-			ChildLink* child_link = already_explored ? &_children[move] : nullptr;
+			ChildLink* child_link = (!g_shared_tree && already_explored) ? &_children[move] : nullptr;
 
 			// If this move was already explored, but not completely
 			if (already_explored) {
-				child = child_link->_node;
+				if (g_shared_tree) {
+					NodeLock lk(this);
+					auto it = _children.find(move);
+					child = (it != _children.end()) ? it->second._node : nullptr;
+				}
+				else {
+					child = child_link->_node;
+				}
 				// position pushed for the duration of the recursion by the PathScope below
 			}
 
@@ -1941,13 +2206,48 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			if (child == nullptr) {
 				_time_spent += clock() - begin_monte_time;
 				QCOUNT(buffer_full);
+				if (g_shared_tree && q_claimed) {
+					NodeLock lk(this);
+					auto it = _children.find(move);
+					if (it != _children.end() && it->second._node == nullptr) _children.erase(it);
+				}
 				return alpha;
 			}
 
 				child->_board = new_board;
 
-				add_child(child, move);
-				child_link = &_children[move];
+				if (g_shared_tree && q_claimed) {
+					NodeLock lk(this);
+					if (_children[move]._node == nullptr) {
+						_children[move]._node = child;
+						_children[move]._propagated_nodes = child->_nodes;
+						child->_parent_count++;
+					}
+					else if (_children[move]._node != nullptr) {
+						child = _children[move]._node;
+					}
+					child_link = nullptr;
+				}
+				else if (g_shared_tree) {
+					// Shared NOPLACEHOLDER bisection path (no claim): locked
+					// insert-or-adopt, never the unlocked legacy add_child below
+					// (unlocked insert races rehash -> map corruption).
+					NodeLock lk(this);
+					auto it = _children.find(move);
+					if (it == _children.end() || it->second._node == nullptr) {
+						_children[move]._node = child;
+						_children[move]._propagated_nodes = child->_nodes;
+						child->_parent_count++;
+					}
+					else {
+						child = it->second._node;
+					}
+					child_link = nullptr;
+				}
+				else {
+					add_child(child, move);
+					child_link = &_children[move];
+				}
 			}
 
 			// Recursive call on the child - #7/B-1: pushes the child position for
@@ -1957,9 +2257,23 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				PathScope _ps(branch_history, *child->_board);
 				score = - child->quiescence(board_buffer, eval, new_depth - 1, search_alpha, search_beta, -beta, -alpha, network, false, beta_margin, &branch_history);
 			}
-			const int previous_child_nodes = child_link != nullptr ? child_link->_propagated_nodes : 0;
+			int previous_child_nodes = 0;
+			if (g_shared_tree) {
+				NodeLock lk(this);
+				auto it = _children.find(move);
+				if (it != _children.end() && it->second._node != nullptr)
+					previous_child_nodes = it->second._propagated_nodes;
+			}
+			else if (child_link != nullptr) {
+				previous_child_nodes = child_link->_propagated_nodes;
+			}
 			_nodes += child->_nodes - previous_child_nodes;
-			if (child_link != nullptr) {
+			if (g_shared_tree) {
+				NodeLock lk(this);
+				if (_children.contains(move) && _children[move]._node != nullptr)
+					_children[move]._propagated_nodes = child->_nodes;
+			}
+			else if (child_link != nullptr) {
 				child_link->_propagated_nodes = child->_nodes;
 			}
 
@@ -1990,6 +2304,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 		Move best_move;
 
 		if (g_search_value_propagation) {
+			NodeLock vlock(this);
 			// Negamax hygiene: the propagated evaluation must come from the child
 			// with the best SEARCHED VALUE - that is what defines alpha. Ranking
 			// candidates by get_node_score (WDL/softmax-flavoured, used for move
@@ -2019,7 +2334,15 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 		}
 
 		if (!best_move.is_null_move()) {
-			_deep_evaluation = _children[best_move]._node->_deep_evaluation;
+			if (g_shared_tree) {
+				NodeLock lk(this);
+				auto it = _children.find(best_move);
+				if (it != _children.end() && it->second._node != nullptr)
+					_deep_evaluation = it->second._node->_deep_evaluation;
+			}
+			else {
+				_deep_evaluation = _children[best_move]._node->_deep_evaluation;
+			}
 		}
 	}
 
@@ -2050,8 +2373,9 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 int Node::get_fully_explored_children_count() const {
 	int count = 0;
 
+	NodeLock lk(this);
 	for (auto const& [_, child_link] : _children) {
-		if (child_link._node->_fully_explored) {
+		if (child_link._node != nullptr && child_link._node->_fully_explored) {
 			count++;
 		}
 	}
@@ -2118,6 +2442,9 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	// 8/8/8/1r5p/2p2k2/2Kb4/8/8 b - - 5 71 : pareil...
 	//   R3r1k1/1P3p2/3p2p1/5nb1/4r3/2P1p2P/4N3/2BK4 w - - 2 36 (Rc8 deserves a look)
 	// r1r3k1/pp2bppp/3q4/3Pnp2/4nB2/2NB4/PP3PPP/R2QR1K1 w - - 5 16 : ???
+
+	// Phase 6: serialize _children iteration/insertion under the shared tree.
+	NodeLock lk(this);
 
 	// Best explorable move
 	Move move_to_play = Move();
@@ -2210,6 +2537,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		// byte-identical to the tree.
 		if (dag_excl != nullptr && dag_excl->contains(move)) continue;
 		Node* child = child_link._node;
+		if (child == nullptr) continue; // shared-tree claim placeholder
 
 		// Move score
 		double move_score = move_scores[move];
@@ -2234,11 +2562,14 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		// R3r1k1/1P3p2/3p2p1/5nb1/4r3/2P1p2P/4N3/2BK4 w - - 2 36 : Tc8...
 
 		// Apply a bonus while some moves are still unexamined
-		if (child->_is_stand_pat_eval) {
+		// Phase 6: skipped under the shared tree (iterates the CHILD's map =
+		// nested locking; DAG cycles could deadlock — see NodeLock protocol).
+		if (!g_shared_tree && child->_is_stand_pat_eval) {
 			Evaluation best_eval = Evaluation();
 			//Evaluation best_eval = child->_deep_evaluation;
 
 			for (auto const& [move2, child_link2] : child->_children) {
+				if (child_link2._node == nullptr) continue;
 				if (child->_board->_player ? (child_link2._node->_deep_evaluation > best_eval) : (child_link2._node->_deep_evaluation < best_eval)) {
 					best_eval = child_link2._node->_deep_evaluation;
 				}
@@ -2346,9 +2677,10 @@ MoveScoreList Node::get_move_scores(const double alpha, const double beta, const
 
 	// Find the best evaluation and the best score among all possible moves
 	if (precomputed_max_eval == INT_MIN) {
-		for (auto const& [_, child_link] : _children) {
-			Node* child = child_link._node;
-			if (child->_deep_evaluation._value * color > max_eval) {
+	for (auto const& [_, child_link] : _children) {
+		Node* child = child_link._node;
+		if (child == nullptr) continue; // shared-tree claim placeholder
+		if (child->_deep_evaluation._value * color > max_eval) {
 				max_eval = child->_deep_evaluation._value * color;
 			}
 
@@ -2378,6 +2710,7 @@ MoveScoreList Node::get_move_scores(const double alpha, const double beta, const
 	// Look at every move
 	for (auto const& [move, child_link] : _children) {
 		Node* child = child_link._node;
+		if (child == nullptr) continue; // shared-tree claim placeholder (caller holds the node lock)
 		if (qdepth != -100 && child->_quiescence_depth != qdepth) {
 			continue;
 		}
@@ -2398,7 +2731,7 @@ MoveScoreList Node::get_move_scores(const double alpha, const double beta, const
 		const int child_visits = max(child_link._chosen_iterations, child->_iterations);
 		constexpr int TRUST_SCALE = 4096;
 		if (g_search_trust_prior && child_visits < TRUST_SCALE) {
-			child_eval = child->_deep_evaluation;
+			child_eval = deep_snapshot(child);
 			const float weight = (float)TRUST_SCALE / (float)(TRUST_SCALE + child_visits);
 			// Symmetric Laplace blend toward neutral: an under-refined subtree's
 			// short-term WDL verdict is unreliable in BOTH directions, so defer
@@ -2429,7 +2762,7 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 	int color = player ? 1 : -1;
 
 	// Evaluation to use
-	Evaluation eval = custom_eval != nullptr ? *custom_eval : _deep_evaluation;
+	Evaluation eval = custom_eval != nullptr ? *custom_eval : deep_snapshot(this);
 
 	// Factor 1: evaluation
 	double eval_score = eval._value * color;
@@ -2481,6 +2814,8 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 // Returns the move with the best score
 Move Node::get_best_score_move(const double alpha, const double beta, const bool consider_standpat, const int qdepth) {
 
+	NodeLock lk(this);
+
 	int color = _board->get_color();
 
 	// Best evaluation value
@@ -2492,6 +2827,7 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 	// Find the best evaluation and the best score among all possible moves
 	for (auto const& [_, child_link] : _children) {
 		Node* child = child_link._node;
+		if (child == nullptr) continue; // shared-tree claim placeholder
 		if (child->_deep_evaluation._value * color > max_eval) {
 			max_eval = child->_deep_evaluation._value * color;
 		}
@@ -2526,6 +2862,7 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 
 	for (auto const& [move, child_link] : _children) {
 		Node* child = child_link._node;
+		if (child == nullptr) continue; // shared-tree claim placeholder
 		if (qdepth != -100 && child->_quiescence_depth != qdepth) {
 			continue;
 		}
@@ -2673,6 +3010,7 @@ void NodeBuffer::init(const int length, bool display) {
 	_free_indices.reserve(_length);
 	for (int i = _length - 1; i >= 0; i--) {
 		_nodes[i]._buffer_index = i;
+		_nodes[i]._mtx.clear(std::memory_order_relaxed); // pooled atomic_flag starts clear
 		_free_indices.push_back(i);
 	}
 
@@ -2770,3 +3108,6 @@ thread_local bool g_buffers_full_logged = false;
 bool g_tt_main_search = false;
 bool g_tt_node_dag = false; // #11 Plan B +�-+-� voir exploration.h
 thread_local robin_map<uint64_t, Node*> node_map; // Phase 6: per-thread trees
+std::mutex g_node_map_mutex; // Phase 6: shared-tree node_map guard
+std::atomic<long long> g_dbg_claims{ 0 }; // TEMPORARY (remove after)
+std::recursive_mutex g_serialize_mutex; // TEMPORARY serialization probe (remove after)
