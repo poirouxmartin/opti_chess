@@ -1533,11 +1533,13 @@ void GUI::compute_worker() {
 	// here: own slots may hold LIVE tree nodes linked from the main tree.
 	if (!monte_board_buffer._init || !monte_node_buffer._init) {
 		const PoolSizing ps = compute_pool_sizing();
+		const clock_t t_init0 = clock();
 		if (!monte_board_buffer._init)
 			monte_board_buffer.init(ps.board_length, false);
 		if (!monte_node_buffer._init)
 			monte_node_buffer.init(ps.node_length, false);
-		debug_log("[worker] arenas init boards=%d nodes=%d", ps.board_length, ps.node_length);
+		debug_log("[worker] arenas init boards=%d nodes=%d (%.1fs)", ps.board_length, ps.node_length,
+			(double)(clock() - t_init0) / CLOCKS_PER_SEC);
 	}
 	long long t_seen_epoch = -1;
 
@@ -1670,6 +1672,21 @@ static unsigned __stdcall compute_worker_entry(void* param) {
 	return 0;
 }
 
+// Creates the persistent worker thread if needed. Called at startup (so
+// the GB thread_local arena init happens in background, invisible) and
+// defensively in start_compute.
+void GUI::ensure_worker_thread() {
+	if (_compute_thread_handle)
+		return;
+	_compute_thread_handle = reinterpret_cast<void*>(_beginthreadex(nullptr, 16 * 1024 * 1024, compute_worker_entry, this, 0, nullptr));
+	_compute_start_clock = clock();
+	if (!_compute_thread_handle) {
+		debug_log("[ensure_worker_thread] _beginthreadex FAILED");
+		return;
+	}
+	debug_log("[ensure_worker_thread] persistent worker created handle=%p", _compute_thread_handle);
+}
+
 // Starts background computation with the given time budget.
 // The worker thread is persistent (created once): per-start creation would
 // re-allocate GB thread_local arenas every analysis (and leak them, since
@@ -1678,15 +1695,11 @@ void GUI::start_compute(double time_s) {
 	// No nested stop_compute() here (it used to spin 15s and double-bump
 	// the epoch): callers stop first when needed (grogros_analysis only
 	// starts when idle; run_puzzle_headless stops explicitly below).
+	ensure_worker_thread();
 	if (!_compute_thread_handle) {
-		_compute_thread_handle = reinterpret_cast<void*>(_beginthreadex(nullptr, 16 * 1024 * 1024, compute_worker_entry, this, 0, nullptr));
-		_compute_start_clock = clock();
-		if (!_compute_thread_handle) {
-			debug_log("[start_compute] _beginthreadex FAILED");
-			_compute_running.store(false, std::memory_order_release);
-			return;
-		}
-		debug_log("[start_compute] persistent worker created handle=%p", _compute_thread_handle);
+		debug_log("[start_compute] no worker thread, aborting");
+		_compute_running.store(false, std::memory_order_release);
+		return;
 	}
 	_compute_budget_s = time_s;
 	_compute_start_clock = clock();
@@ -2261,6 +2274,11 @@ void GUI::load_FEN(const string fen, bool display) {
 void GUI::reset_game() {
 	stop_compute();
 	std::lock_guard<std::mutex> tree_lk(_tree_mutex);
+	// Boot the persistent worker (once): its thread_local GB arenas take
+	// ~1s to construct (measured 0.6s) — done here in background at startup/positions
+	// change so the first CTRL-G analyzes instantly instead of stalling
+	// (watchdog kills, stop timeouts). Idempotent.
+	ensure_worker_thread();
 	cout << "*** RESETING GAME ***\n" << endl;
 	debug_log("[reset_game] enter boards_free=%d nodes_free=%d root=%p board=%p",
 		(int)monte_board_buffer._free_indices.size(),
