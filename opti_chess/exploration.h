@@ -49,6 +49,9 @@ extern const bool g_qstats_on;
 
 // Phase 7a component timers (defined in eval_core.cpp).
 extern thread_local double g_t_king_safety_s;
+extern thread_local double g_t_ks_power_s;
+extern thread_local double g_t_ks_maps_s;
+extern thread_local double g_t_ks_misc_s;
 extern thread_local double g_t_mobility_s;
 extern thread_local double g_t_matpos_s;
 extern thread_local double g_t_pawns_s;
@@ -444,6 +447,7 @@ extern std::recursive_mutex g_serialize_mutex;
 // Virtual loss weight (Lazy SMP): each in-flight descent counts as this many
 // visits in pick_random_child. OPTI_VLOSS=N overrides (default 4).
 extern int g_virtual_loss;
+
 
 // #11 Plan B - diagnostic report (one line, toggle-gated). Called after every
 // grogros_zero batch from the GUI when g_tt_node_dag is set.

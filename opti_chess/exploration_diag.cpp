@@ -86,6 +86,7 @@ void dump_qstats() {
 		<< " matpos_s=" << g_t_matpos_s << " pawns_s=" << g_t_pawns_s
 		<< " endgame_s=" << g_t_endgame_s << endl;
 	cout << "QSTATS-KS hits=" << g_ks_hits << " miss=" << g_ks_miss << " clears=" << g_ks_clears << endl;
+	cout << "QSTATS-KSSUB power_s=" << g_t_ks_power_s << " maps_s=" << g_t_ks_maps_s << " misc_s=" << g_t_ks_misc_s << endl;
 }
 
 namespace {
