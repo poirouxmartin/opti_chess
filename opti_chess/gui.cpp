@@ -964,7 +964,7 @@ bool GUI::play_move_keep(Move move)
 		return false;
 	}
 
-	stop_compute();
+	stop_compute(__FUNCTION__);
 
 	// Main-thread tree mutations hold _tree_mutex (defense in depth: covers
 	// the stop_compute timeout hole where the worker might still be inside
@@ -1315,7 +1315,7 @@ void GUI::grogros_analysis(int iterations) {
 		if (hb == 0 && age_s > 30.0) {
 			debug_log("[grogros_analysis] worker running but silent for %.1fs, restarting", age_s);
 			_compute_running.store(false, std::memory_order_release);
-			stop_compute();
+			stop_compute(__FUNCTION__);
 		}
 		else {
 			// Hang diagnosis: heartbeat stale >20s means stuck inside one
@@ -1335,7 +1335,7 @@ void GUI::grogros_analysis(int iterations) {
 		}
 	}
 	debug_log("[grogros_analysis] starting background worker");
-	stop_compute();
+	stop_compute(__FUNCTION__);
 	_worker_heartbeat.store((clock_t)0, std::memory_order_release);
 	// Full-arena backoff: retry at most every 5s (else 60fps churn).
 	if (_worker_blocked_full.load(std::memory_order_acquire)) {
@@ -1394,7 +1394,7 @@ void GUI::run_puzzle_headless(double time_s) {
 
 	// Reset everything — same as loading a fresh FEN.
 	// Stop the worker FIRST: reset() underneath a live search is use-after-free.
-	stop_compute();
+	stop_compute(__FUNCTION__);
 	std::lock_guard<std::mutex> tree_lk(_tree_mutex);
 	init_buffers();
 	reset_buffers();
@@ -1423,7 +1423,7 @@ void GUI::run_puzzle_headless(double time_s) {
 		EndDrawing();
 	}
 
-	stop_compute();
+	stop_compute(__FUNCTION__);
 
 	Move chosen = _root_exploration_node->get_most_explored_child_move();
 	string chosen_san = _board->move_label(chosen);
@@ -1542,18 +1542,24 @@ void GUI::compute_worker() {
 			(double)(clock() - t_init0) / CLOCKS_PER_SEC);
 	}
 	long long t_seen_epoch = -1;
+	unsigned long long t_seen_gen = 0;
 
 	// NOTE: no __try/__except here (C2712 vs lock_guard); a dead worker is
 	// diagnosed via the heartbeat below (start + iter=1/100 in debug log).
 	for (;;) {
+		// Poll for work at 100ms cadence. A condition_variable wait was
+		// tried here and dropped: across the start/stop churn its wakeups
+		// got lost silently (stuck worker, stop timeouts) in ways immune
+		// to generation counters. State polling cannot miss a wakeup;
+		// 100ms start latency is invisible. (The park path below still uses
+		// wait_for, but its timeout makes it self-healing.)
 		{
-			// Sticky wait: blocks until a NEW wake generation arrives.
-			// (A bare notify can fire before wait() is entered and is then
-			// lost; the counter cannot be lost. No !running clause here:
-			// with it, an idle worker would busy-spin returning instantly.)
-			std::unique_lock<std::mutex> lk(_work_mutex);
-			const unsigned long long seen = _wake_gen.load(std::memory_order_acquire);
-			_work_cv.wait(lk, [&] { return _wake_gen.load(std::memory_order_acquire) != seen; });
+			const unsigned long long cur = _wake_gen.load(std::memory_order_acquire);
+			if (cur == t_seen_gen) {
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				continue;
+			}
+			t_seen_gen = cur;
 		}
 		if (!_compute_running.load(std::memory_order_acquire)) {
 			_compute_done.store(true, std::memory_order_release); // idle: nothing pending
@@ -1703,9 +1709,16 @@ void GUI::start_compute(double time_s) {
 	}
 	_compute_budget_s = time_s;
 	_compute_start_clock = clock();
-	_compute_done.store(false, std::memory_order_release);
-	_compute_running.store(true, std::memory_order_release);
-	_wake_gen.fetch_add(1, std::memory_order_release); // sticky: never lost
+	{
+		// Textbook condition_variable protocol: shared state (done/running/
+		// generation) under _work_mutex, notify after unlock. A lock-free
+		// notify can fire between the waiter's predicate check and blocking
+		// and is then lost forever (stuck worker, no progress, stop timeouts).
+		std::lock_guard<std::mutex> lk(_work_mutex);
+		_compute_done.store(false, std::memory_order_release);
+		_compute_running.store(true, std::memory_order_release);
+		_wake_gen.fetch_add(1, std::memory_order_release); // sticky: never lost
+	}
 	_work_cv.notify_one(); // wake the persistent worker
 	debug_log("[start_compute] budget=%.2fs", time_s);
 }
@@ -1713,17 +1726,31 @@ void GUI::start_compute(double time_s) {
 // Stops background computation and waits for the in-flight iteration.
 // Also bumps the position epoch (worker clears its hint maps on next wake).
 // The persistent worker thread is kept (never joined/closed here).
-void GUI::stop_compute() {
-	debug_log("[stop_compute] enter running=%d done=%d",
+void GUI::stop_compute(const char* why) {
+	debug_log("[stop_compute:%s] enter running=%d done=%d", why,
 		(int)_compute_running.load(std::memory_order_acquire),
 		(int)_compute_done.load(std::memory_order_acquire));
-	_compute_running.store(false, std::memory_order_release);
-	// Abort the in-flight iteration too: quiescence honors it unconditionally
-	// (one-visit unwind), so stop latency is bounded even mid deep search.
-	g_search_abort.store(true, std::memory_order_release);
+	bool was_running = false;
+	{
+		// Same protocol as start_compute: state flip under the mutex so the
+		// worker's predicate check can never miss it (lost wakeup). The poll
+		// below runs UNLOCKED (a stuck worker must never wedge the UI thread
+		// on this mutex).
+		std::lock_guard<std::mutex> lk(_work_mutex);
+		was_running = _compute_running.exchange(false, std::memory_order_acq_rel);
+		// Abort the in-flight iteration too: quiescence honors it unconditionally
+		// (one-visit unwind), so stop latency is bounded even mid deep search.
+		g_search_abort.store(true, std::memory_order_release);
+	}
+	if (!was_running) {
+		// Nothing to wait for (idle or never started): skip poll AND epoch
+		// bump (else every idle stop needlessly clears the worker's maps and
+		// a never-started worker spins the full cap on done=false).
+		return;
+	}
 	_position_epoch++;
+	_work_cv.notify_one(); // wake parked/idle worker so it observes running=false promptly
 	if (_compute_thread_handle) {
-		_work_cv.notify_one(); // wake if idle so it observes running=false
 		// Bounded by WALL time (not iterations): sleep_for(1ms) actually
 		// sleeps ~15.6ms on stock Windows timer granularity, so count ms.
 		const clock_t t_stop0 = clock();
@@ -1732,7 +1759,8 @@ void GUI::stop_compute() {
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 		if (!_compute_done.load(std::memory_order_acquire))
-			debug_log("[stop_compute] TIMEOUT waiting worker (5s wall)");
+			debug_log("[stop_compute] TIMEOUT waiting worker (5s wall) phase=%d",
+				(int)_worker_phase.load(std::memory_order_acquire));
 	}
 	_compute_done.store(false, std::memory_order_release);
 }
@@ -2249,7 +2277,7 @@ void GUI::load_FEN(const string fen, bool display) {
 		return;
 	}
 
-	stop_compute();
+	stop_compute(__FUNCTION__);
 
 	std::lock_guard<std::mutex> tree_lk(_tree_mutex);
 
@@ -2272,7 +2300,7 @@ void GUI::load_FEN(const string fen, bool display) {
 
 // Resets the game
 void GUI::reset_game() {
-	stop_compute();
+	stop_compute(__FUNCTION__);
 	std::lock_guard<std::mutex> tree_lk(_tree_mutex);
 	// Boot the persistent worker (once): its thread_local GB arenas take
 	// ~1s to construct (measured 0.6s) — done here in background at startup/positions
@@ -2383,11 +2411,6 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 		return;
 	}
 
-	// Stop the worker FIRST: every read below walks _children while the
-	// worker may publish (rehash UB -> crash). The frame loop restarts the
-	// worker next frame if continuous analysis is still on.
-	stop_compute();
-
 	// Positions bug:
 	// rnbq1rk1/pp1p1ppp/7n/2p1P3/3p4/3B1N1P/PPPN1PP1/R2Q1RK1 w - - 0 10: it does not play Ne4
 
@@ -2401,10 +2424,18 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 		return;
 	}
 
-	// If no exploration has happened yet (worker restarts next frame if on)
+	// If no exploration has happened yet (lock-free atomic read; the frame
+	// loop restarts the worker next frame if continuous analysis is on).
+	// Checked BEFORE stop_compute to avoid stop/start churn every frame
+	// while the tree is still cold.
 	if (_root_exploration_node->_iterations <= 1) {
 		return;
 	}
+
+	// Stop the worker NOW (not earlier): every read below walks _children
+	// while the worker may publish (rehash UB -> crash). The frame loop
+	// restarts the worker next frame if continuous analysis is still on.
+	stop_compute(__FUNCTION__);
 
 	// For the evaluation computations
 	int color = _board->get_color();
