@@ -220,6 +220,10 @@ public:
 	std::atomic<bool> _compute_done{ false };
 	std::mutex _tree_mutex;
 	double _compute_budget_s = 0.1;
+	// Worker heartbeat (clock of last finished iteration) for the stillborn
+	// watchdog in grogros_analysis.
+	std::atomic<clock_t> _worker_heartbeat{ 0 };
+	clock_t _compute_start_clock = 0;
 
 	// Snapshot of tree state for consistent display during background computation
 	// Taken under _tree_mutex once per frame, used by draw_exploration_arrows and eval display
@@ -234,6 +238,14 @@ public:
 		int children_count = 0;
 		int got_moves = 0;
 		int quiescence_depth = 0;
+		// Measured throughput (EMA over snapshot windows): wall-clock based,
+		// unlike _time_spent which nests per-node intervals (x depth) and
+		// never resets between moves.
+		float nps = 0.0f;
+		float ips = 0.0f;
+		long long snap_last_nodes = 0;
+		long long snap_last_iters = 0;
+		clock_t snap_last_clock = 0;
 		int iterations = 0;
 		int nodes = 0;
 		int time_spent = 0;
