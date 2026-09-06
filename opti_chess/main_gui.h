@@ -741,8 +741,11 @@ inline int main_ui() {
 			//cout << "test" << endl;
 
 			// GrogrosZero analysis
-			// Start background worker whenever continuous analysis is enabled
-			if (main_GUI._grogros_analysis) {
+			// Runs whenever continuous analysis is on OR a bot plays either
+			// side (June behavior: setting a bot auto-starts analysis; moves
+			// still need the clock, like June). Same tree/search as G-hold,
+			// nothing is cleared on (re)starts (epoch only on mutations).
+			if (main_GUI._grogros_analysis || main_GUI._white_player == main_GUI._grogros_zero_name || main_GUI._black_player == main_GUI._grogros_zero_name) {
 				main_GUI.init_buffers();
 				main_GUI.grogros_analysis(0);
 			}
