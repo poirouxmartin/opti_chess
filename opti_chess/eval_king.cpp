@@ -862,11 +862,23 @@ int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls
 	//constexpr float has_trait_multiplier = 2.0f;
 	constexpr float has_trait_multiplier = 1.0f;
 
+	// Defender-to-move discount on mate threats: a mating idea available to
+	// the attacker with the DEFENDER to move leaves one tempo to parry. One
+	// mating move is likely parried (nearly cancelled), two sometimes are,
+	// three or more cannot all be parried (kept). Tunables.
+	constexpr float one_mate_threat_factor = 0.1f;
+	constexpr float two_mate_threats_factor = 0.5f;
+
 	//3r2k1/pp3r2/2q2pp1/3n3P/7Q/7R/1B5P/4R2K b - - 0 33: an enormous number of discoveries here
 	//rnb2bnr/pppp1k1p/5q2/8/5B2/5Q2/PPP3PP/RN3RK1 b - - 0 11: why are the checks better for Black?
 
 	int safe_checks_value = 0;
 	int unsafe_checks_value = 0;
+
+	// Mate-threat subtotal: safe checks with no escape and no block leave the
+	// opponent with zero replies, i.e. the checking move mates on the spot.
+	int mate_threat_value = 0;
+	int mate_threat_count = 0;
 
 	// Position of the opposing king
 	update_kings_pos();
@@ -979,11 +991,16 @@ int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls
 
 				//cout << "is safe check: " << is_safe_check;
 
-				if (is_safe_check) {
-					// Add the safe check value
-					//cout << "color: " << color << ", king_escapes : " << king_escapes << ", piece_blocks : " << piece_blocks << ", division : " << division << ", value : " << initial_safe_check_value / division << endl;
-					safe_checks_value += max(multiplier * initial_safe_check_value / division, (float)initial_unsafe_check_value); // A safe check always beats an unsafe one
+			if (is_safe_check) {
+				// Add the safe check value
+				//cout << "color: " << color << ", king_escapes : " << king_escapes << ", piece_blocks : " << piece_blocks << ", division : " << division << ", value : " << initial_safe_check_value / division << endl;
+				const int v = max(multiplier * initial_safe_check_value / division, (float)initial_unsafe_check_value); // A safe check always beats an unsafe one
+				safe_checks_value += v;
+				if (king_escapes == 0 && piece_blocks == 0) {
+					mate_threat_value += v;
+					mate_threat_count++;
 				}
+			}
 				else {
 					// Add the unsafe check value
 					//cout << "color: " << color << "value : " << initial_unsafe_check_value << endl;
@@ -1007,7 +1024,15 @@ int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls
 		}
 	}
 
-	return (safe_checks_value + unsafe_checks_value) * (_player == color ? has_trait_multiplier : 1.0f);
+	float mate_threat_factor = 1.0f;
+	if (_player != color && mate_threat_count > 0) {
+		// Defender to move: one tempo to parry the mating ideas.
+		mate_threat_factor = mate_threat_count == 1 ? one_mate_threat_factor
+			: (mate_threat_count == 2 ? two_mate_threats_factor : 1.0f);
+	}
+	const int checks_total = (safe_checks_value - mate_threat_value)
+		+ (int)(mate_threat_value * mate_threat_factor) + unsafe_checks_value;
+	return checks_total * (_player == color ? has_trait_multiplier : 1.0f);
 }
 
 // Returns the move generation speed
