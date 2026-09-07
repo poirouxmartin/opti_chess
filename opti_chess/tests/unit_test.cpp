@@ -1310,6 +1310,51 @@ TEST(Perf, EvalNPS) {
     SUCCEED();
 }
 
+TEST(Perf, FromFenProfile) {
+    static const char* fens[] = {
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        "8/3k4/8/8/4K3/8/8/4R3 w - - 0 1",
+    };
+    constexpr int nfens = sizeof(fens) / sizeof(fens[0]);
+    constexpr int reps = 200;
+    Evaluator evaluator;
+    Board b;
+    Evaluation eval;
+
+    // 1. from_fen alone
+    clock_t t0 = clock();
+    for (int i = 0; i < reps; i++)
+        for (int k = 0; k < nfens; k++)
+            b.from_fen(fens[k]);
+    double us_fen = (double)(clock() - t0) / CLOCKS_PER_SEC * 1e6 / (reps * nfens);
+
+    // 2. evaluate alone (cold caches, as PuzzleRunner::run sees it)
+    b.from_fen(fens[1]);
+    t0 = clock();
+    for (int i = 0; i < reps; i++) {
+        b._controls_map_valid = false;
+        b._advancement = false;
+        eval._evaluated = false;
+        b.evaluate(&eval, &evaluator, false, nullptr, true);
+    }
+    double us_eval = (double)(clock() - t0) / CLOCKS_PER_SEC * 1e6 / reps;
+
+    // 3. full STATIC_EVAL run (from_fen + evaluate + scoring)
+    t0 = clock();
+    for (int i = 0; i < reps; i++) {
+        Puzzle p;
+        p.fen = fens[i % nfens]; p.category = PuzzleCategory::EVALUATION;
+        PuzzleRunner::run(p, BudgetMode::STATIC_EVAL, 0, &evaluator);
+    }
+    double us_run = (double)(clock() - t0) / CLOCKS_PER_SEC * 1e6 / reps;
+
+    cout << "  from_fen: " << fixed << setprecision(1) << us_fen << "us"
+        << " | evaluate: " << us_eval << "us"
+        << " | STATIC_EVAL run: " << us_run << "us" << endl;
+    SUCCEED();
+}
+
 // ============================================================================
 // Performance: eval sub-component NPS
 // ============================================================================
