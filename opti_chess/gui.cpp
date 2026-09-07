@@ -1734,6 +1734,8 @@ void GUI::ensure_worker_thread() {
 		debug_log("[ensure_worker_thread] _beginthreadex FAILED");
 		return;
 	}
+	if (get_boost_mode())
+		SetThreadPriority(_compute_thread_handle, THREAD_PRIORITY_HIGHEST);
 	debug_log("[ensure_worker_thread] persistent worker created handle=%p", _compute_thread_handle);
 }
 

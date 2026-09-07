@@ -6,6 +6,7 @@
 #include "zobrist.h"
 #include <io.h>
 #include <fcntl.h>
+#include <cstdlib>
 #include "tests.h"
 
 // Boost mode (defined in gui.cpp, no windows.h here): HIGH process/thread
@@ -25,6 +26,14 @@ inline void gui_draw() {
 // Main
 inline int main_ui() {
 	// Write an Init function for raylib?
+
+	// Boost ON by default (max available in userspace: HIGH process priority
+	// + HIGHEST worker threads; REALTIME deliberately excluded: needs admin
+	// and can starve input). OPTI_BOOST=0 opts out; CTRL-B toggles at runtime.
+	{
+		const char* b = getenv("OPTI_BOOST");
+		if (!b || b[0] != '0') set_boost_mode(true);
+	}
 
 	// Resizable window
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
