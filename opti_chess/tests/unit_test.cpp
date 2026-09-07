@@ -3886,6 +3886,213 @@ TEST(Puzzle, EvalCategoryReport) {
 	}
 }
 
+// ============================================================================
+// Eval error attribution: WHICH component is broken, not just by how much.
+// A 100k-position SF-labeled dataset is scored with STATIC_EVAL (~1s per
+// pass), errors are bucketed by a material taxonomy, and the worst positions
+// per bucket point at the eval component to fix (e.g. EG/pawn bad but
+// EG/rook fine => pawn-endgame code, not the global endgame coef).
+// Env: OPTI_EVAL_DATASET=path/to/labels.csv (lines: fen,sf_cp, # comments).
+//      OPTI_EVAL_REPORT=out.csv dumps per-position errors for offline filtering.
+//      OPTI_EVAL_TOP=N worst positions printed (default 20).
+// Without OPTI_EVAL_DATASET: smoke fallback, live-labels a small curated list
+// spanning the taxonomy at OPTI_EVAL_DEPTH (default 14, fast).
+static string eval_taxonomy(const string& fen) {
+	int wp = 0, bp = 0, wn = 0, bn = 0, wb = 0, bb = 0, wr = 0, br = 0, wq = 0, bq = 0;
+	for (char c : fen) {
+		if (c == ' ') break;
+		if (c == '/') continue;
+		if (c >= '1' && c <= '8') continue;
+		bool is_white = (c >= 'A' && c <= 'Z');
+		switch ((char)tolower(c)) {
+		case 'p': if (is_white) wp++; else bp++; break;
+		case 'n': if (is_white) wn++; else bn++; break;
+		case 'b': if (is_white) wb++; else bb++; break;
+		case 'r': if (is_white) wr++; else br++; break;
+		case 'q': if (is_white) wq++; else bq++; break;
+		}
+	}
+	int total_pieces = wp + bp + wn + bn + wb + bb + wr + br + wq + bq;
+	int total_material = wp + bp + (wn + bn + wb + bb) * 3 + (wr + br) * 5 + (wq + bq) * 9;
+	bool endgame = (total_pieces <= 10 || total_material <= 20); // same cut as auto_categorize
+	if (endgame) {
+		bool hasQ = (wq + bq) > 0, hasR = (wr + br) > 0, hasM = (wn + bn + wb + bb) > 0;
+		if (!hasQ && !hasR && !hasM) return "EG/pawn";
+		if (hasQ) return "EG/queen";
+		if (hasR) return "EG/rook";
+		if (hasM) return "EG/minor";
+		return "EG/mixed";
+	}
+	if (total_pieces >= 30) return "OPEN/full";
+	if (wq + bq == 0) return "MG/noqueen";
+	return "MG/queens";
+}
+
+struct EvalLabelRow { string fen; int sf_cp = 0; };
+
+static vector<EvalLabelRow> load_eval_dataset(const string& path) {
+	vector<EvalLabelRow> rows;
+	ifstream f(path);
+	if (!f.is_open()) return rows;
+	string line;
+	while (getline(f, line)) {
+		if (line.empty() || line[0] == '#') continue;
+		size_t comma = line.rfind(','); // FEN has spaces but no commas
+		if (comma == string::npos) continue;
+		EvalLabelRow r;
+		r.fen = line.substr(0, comma);
+		try { r.sf_cp = stoi(line.substr(comma + 1)); }
+		catch (...) { continue; }
+		rows.push_back(r);
+	}
+	return rows;
+}
+
+static int eval_depth_env(int fallback) {
+	if (const char* e = getenv("OPTI_EVAL_DEPTH")) {
+		int d = atoi(e);
+		if (d >= 8 && d <= 40) return d;
+	}
+	return fallback;
+}
+
+TEST(Puzzle, EvalAttribution) {
+	static Evaluator evaluator;
+	vector<EvalLabelRow> rows;
+	bool live_labeled = false;
+
+	if (const char* ds = getenv("OPTI_EVAL_DATASET")) {
+		rows = load_eval_dataset(ds);
+		cout << "  Dataset: " << ds << " (" << rows.size() << " rows)" << endl;
+	}
+	if (rows.empty()) {
+		// Smoke fallback: curated FENs spanning the taxonomy, live-labeled.
+		static const char* curated[] = {
+			"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+			"r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+			"r1bq1rk1/ppp2ppp/2n2n2/3pp3/2PP4/2N1PN2/PP3PPP/R1BQKB1R w KQ - 0 5",
+			"r1bqk2r/pppp1Npp/2n2n2/2b1p3/2B1P3/8/PPPP1PPP/RNBQK2R w KQkq - 0 4",
+			"8/3k4/8/8/4K3/8/8/4R3 w - - 0 1",
+			"8/8/4k3/8/3K4/8/8/8 w - - 0 1",
+			"8/5pk1/5p1p/8/8/5P1P/5PK1/8 w - - 0 1",
+			"r5k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",
+			"4r1k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1",
+			"6k1/5ppp/8/8/8/2B5/5PPP/6K1 w - - 0 1",
+		};
+		string sf_path = find_stockfish();
+		StockfishAdapter sf(sf_path);
+		if (!sf.is_available()) { cout << "  [SKIP] Stockfish not found" << endl; return; }
+		int depth = eval_depth_env(14);
+		cout << "  Smoke fallback: live-labeling " << (sizeof(curated) / sizeof(curated[0]))
+			<< " positions (depth " << depth << ")..." << endl;
+		for (auto f : curated) {
+			auto a = sf.analyze(f, depth);
+			if (a.best_move.empty() || a.is_mate) continue;
+			rows.push_back({ f, a.eval_cp });
+		}
+		live_labeled = true;
+	}
+	if (rows.empty()) { cout << "  [SKIP] no rows" << endl; return; }
+
+	struct Err { string fen; string bucket; int ours = 0; int sf = 0; int err = 0; };
+	vector<Err> errs;
+	errs.reserve(rows.size());
+	map<string, pair<int, long long>> by_bucket; // bucket -> (n, sum_err)
+	long long total_err = 0;
+	int skipped = 0;
+	for (auto& row : rows) {
+		Puzzle p;
+		p.fen = row.fen; p.category = PuzzleCategory::EVALUATION;
+		auto r = PuzzleRunner::run(p, BudgetMode::STATIC_EVAL, 0, &evaluator);
+		// Game-over exact scores (mate) are not static-eval errors; SF mates excluded at label time.
+		if (abs(r.actual_eval_cp) >= 29000) { skipped++; continue; }
+		string bucket = eval_taxonomy(row.fen);
+		int e = abs(r.actual_eval_cp - row.sf_cp);
+		errs.push_back({ row.fen, bucket, r.actual_eval_cp, row.sf_cp, e });
+		auto& b = by_bucket[bucket];
+		b.first++;
+		b.second += e;
+		total_err += e;
+	}
+	sort(errs.begin(), errs.end(), [](const Err& a, const Err& b) { return a.err > b.err; });
+
+	cout << endl << "=== EVAL ATTRIBUTION (" << errs.size() << " scored, " << skipped << " mate-skipped"
+		<< (live_labeled ? ", live depth)" : ", dataset)") << endl;
+	cout << "  MAE global: " << fixed << setprecision(1)
+		<< ((double)total_err / max<size_t>(1, errs.size())) << "cp" << endl;
+	// Buckets sorted by MAE desc: the top bucket is where to look first.
+	vector<tuple<string, int, double>> buckets;
+	for (auto& [name, data] : by_bucket)
+		buckets.push_back({ name, data.first, (double)data.second / data.first });
+	sort(buckets.begin(), buckets.end(),
+		[](const auto& a, const auto& b) { return get<2>(a) > get<2>(b); });
+	for (auto& [name, n, mae] : buckets)
+		cout << "  " << name << ": n=" << n << " MAE=" << fixed << setprecision(1) << mae << "cp" << endl;
+
+	int top = 20;
+	if (const char* t = getenv("OPTI_EVAL_TOP")) top = max(1, atoi(t));
+	cout << "  --- worst " << min<size_t>(top, errs.size()) << " ---" << endl;
+	for (size_t i = 0; i < errs.size() && (int)i < top; i++) {
+		auto& e = errs[i];
+		cout << "  err=" << e.err << "cp [" << e.bucket << "] ours=" << e.ours
+			<< " sf=" << e.sf << " " << e.fen << endl;
+	}
+	if (const char* rep = getenv("OPTI_EVAL_REPORT")) {
+		ofstream o(rep);
+		if (o.is_open()) {
+			for (auto& e : errs)
+				o << e.fen << "," << e.bucket << "," << e.ours << "," << e.sf << "," << e.err << "\n";
+			cout << "  Report dumped: " << rep << endl;
+		}
+	}
+	SUCCEED();
+}
+
+// Labels FENs with Stockfish into a CSV for EvalAttribution (run once, offline).
+// Input: OPTI_EVAL_FENS=file (one FEN per line, # comments). Output:
+// OPTI_EVAL_OUT=labels.csv (default eval_labels.csv). Depth via OPTI_EVAL_DEPTH
+// (default 20). Stability gate: analyzed at D and D-4, row kept only if both
+// exact (no mate) and |diff| <= 60cp. No input file => SKIP (zero gate cost).
+TEST(Puzzle, EvalLabel) {
+	const char* fens_path = getenv("OPTI_EVAL_FENS");
+	if (!fens_path) { cout << "  [SKIP] OPTI_EVAL_FENS not set" << endl; return; }
+	ifstream f(fens_path);
+	if (!f.is_open()) { cout << "  [SKIP] cannot open " << fens_path << endl; return; }
+	string sf_path = find_stockfish();
+	StockfishAdapter sf(sf_path);
+	if (!sf.is_available()) { cout << "  [SKIP] Stockfish not found" << endl; return; }
+	const char* out_path = getenv("OPTI_EVAL_OUT");
+	string out = out_path ? out_path : "eval_labels.csv";
+	int depth = eval_depth_env(20);
+	int stable_gate = 60;
+	if (const char* g = getenv("OPTI_EVAL_STABLE")) stable_gate = max(10, atoi(g));
+
+	vector<string> fens;
+	string line;
+	while (getline(f, line)) {
+		if (line.empty() || line[0] == '#') continue;
+		if (line.find('/') == string::npos) continue;
+		fens.push_back(line);
+	}
+	cout << "  Labeling " << fens.size() << " FENs (depth " << depth
+		<< "/" << (depth - 4) << ", gate " << stable_gate << "cp) -> " << out << endl;
+	ofstream o(out);
+	int kept = 0, unstable = 0, mates = 0;
+	for (size_t i = 0; i < fens.size(); i++) {
+		auto a = sf.analyze(fens[i], depth);
+		auto b = sf.analyze(fens[i], depth - 4);
+		if (a.best_move.empty() || b.best_move.empty()) continue;
+		if (a.is_mate || b.is_mate) { mates++; continue; }
+		if (abs(a.eval_cp - b.eval_cp) > stable_gate) { unstable++; continue; }
+		o << fens[i] << "," << a.eval_cp << "\n";
+		kept++;
+		if ((i + 1) % 100 == 0) cout << "  ... " << (i + 1) << "/" << fens.size() << endl;
+	}
+	o.close();
+	cout << "  kept=" << kept << " unstable=" << unstable << " mates=" << mates << endl;
+	EXPECT_GT(kept, 0);
+}
+
 static PuzzleCategory auto_categorize(const string& fen) {
 	int wp = 0, bp = 0, wn = 0, bn = 0, wb = 0, bb = 0, wr = 0, br = 0, wq = 0, bq = 0;
 	char side = 'w';
