@@ -169,6 +169,11 @@ bool GUI::new_bind_game() {
 	_binding_solo = true;
 	_binding_full = false;
 	_click_bind = true;
+	// June behavior: a bound game clicks its moves (the injection gate was
+	// added later for safety; CTRL+A remains the kill-switch to stop clicking
+	// while keeping the binding readout).
+	input_injection_enabled = true;
+	cout << "input injection ON (bound game will click its moves; CTRL+A to stop clicking)" << endl;
 	if (!monte_board_buffer._init || !monte_node_buffer._init) {
 		const PoolSizing ps = compute_pool_sizing();
 		if (!monte_board_buffer._init)

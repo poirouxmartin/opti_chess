@@ -251,8 +251,10 @@ inline int main_ui() {
 
 		// CTRL-T - Looks for the chess website board on screen, and starts a game
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_T)) {
+			debug_log("[key] CTRL-T pressed, probing %d sites", (int)main_GUI._chess_sites.size());
 			for (auto& site : main_GUI._chess_sites) {
 				bool located_board = locate_chessboard(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom, site);
+				debug_log("[bind] site=%s located=%d", site._name.c_str(), (int)located_board);
 				if (located_board) {
 					main_GUI._current_site = site;
 					main_GUI.new_bind_game();
