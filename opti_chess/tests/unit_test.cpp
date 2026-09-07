@@ -3644,6 +3644,31 @@ TEST(Puzzle, Qg7MateRegression) {
 	EXPECT_GE(r.score, 0.5);
 }
 
+// Dumps eval component breakdowns (display mode) for FENs listed in
+// OPTI_EVAL_DUMP (one per line), first OPTI_EVAL_DUMPN (default 50).
+// Diagnostic utility for the eval-attribution hunt (zero gate cost).
+TEST(Debug, DumpComponents) {
+	const char* path = getenv("OPTI_EVAL_DUMP");
+	if (!path) { cout << "  [SKIP] OPTI_EVAL_DUMP not set" << endl; return; }
+	int n = 50;
+	if (const char* e = getenv("OPTI_EVAL_DUMPN")) n = max(1, atoi(e));
+	ifstream f(path);
+	static Evaluator evaluator;
+	int i = 0;
+	string line;
+	while (i < n && getline(f, line)) {
+		if (line.empty() || line[0] == '#') continue;
+		Board b;
+		b.from_fen(line);
+		Evaluation e;
+		b.evaluate(&e, &evaluator, true, nullptr, true);
+		cout << "### " << line << " => " << e._value << endl;
+		cout << main_GUI._eval_components << endl;
+		i++;
+	}
+	SUCCEED();
+}
+
 TEST(Puzzle, TacticalSuite) {
 	string sf_path = find_stockfish();
 	StockfishAdapter sf(sf_path);
