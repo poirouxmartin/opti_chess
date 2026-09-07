@@ -33,6 +33,10 @@ void Board::from_fen(string fen)
 	// Piece placement
 	while (row >= 0) {
 		if (iterator >= static_cast<int>(fen.size())) {
+			// A partial FEN may end exactly here: valid only right after
+			// completing rank 1 (row 0 fully filled). Anything else is a
+			// genuinely truncated placement.
+			if (row == 0 && col == 8) break;
 			fen_fail("truncated");
 			return;
 		}
@@ -87,16 +91,19 @@ void Board::from_fen(string fen)
 		return;
 	}
 
+	// Everything after the placement is optional (partial FENs load with
+	// sensible defaults instead of failing to an empty board). Missing side
+	// to move defaults to White, missing castling/EP to none, missing
+	// counters stay at their reset values.
+
 	// Side to move
-	if (iterator >= static_cast<int>(fen.size())) {
-		fen_fail("missing side to move");
-		return;
+	_player = true;
+	if (iterator < static_cast<int>(fen.size()) && (fen[iterator] == 'w' || fen[iterator] == 'b')) {
+		_player = (fen[iterator] == 'w');
+		iterator++;
 	}
-	c = fen[iterator];
-
-	_player = c == 'w';
-
-	iterator += 2;
+	if (iterator < static_cast<int>(fen.size()) && fen[iterator] == ' ')
+		iterator++;
 
 	// Roques
 	_castling_rights.k_w = false; _castling_rights.q_w = false; _castling_rights.k_b = false; _castling_rights.q_b = false;
@@ -118,40 +125,46 @@ void Board::from_fen(string fen)
 		}
 		iterator++;
 	}
-
-	if (iterator >= static_cast<int>(fen.size())) {
-		fen_fail("missing en passant");
-		return;
-	}
-
-	// Skip the separating space; the en passant field starts here
-	iterator++;
-	c = fen[iterator];
+	if (iterator < static_cast<int>(fen.size()) && fen[iterator] == ' ')
+		iterator++;
 
 	// En passant
-	if (c == '-')
-		_en_passant_col = -1;
-	else {
-		_en_passant_col = fen[iterator] - 'a';
-		iterator++;
+	_en_passant_col = -1;
+	if (iterator < static_cast<int>(fen.size()) && fen[iterator] != ' ') {
+		if (fen[iterator] == '-') {
+			iterator++;
+		}
+		else if (fen[iterator] >= 'a' && fen[iterator] <= 'h') {
+			_en_passant_col = fen[iterator] - 'a';
+			iterator++;
+			if (iterator < static_cast<int>(fen.size()) && fen[iterator] != ' ')
+				iterator++; // rank digit
+		}
 	}
+	if (iterator < static_cast<int>(fen.size()) && fen[iterator] == ' ')
+		iterator++;
 
-	iterator += 2;
 	string s;
 	while (iterator < static_cast<int>(fen.size()) && fen[iterator] != ' ') {
 		s += fen[iterator];
 		iterator++;
 	}
-	if (!s.empty()) _half_moves_count = stoi(s);
+	if (!s.empty()) {
+		try { _half_moves_count = stoi(s); }
+		catch (...) {}
+	}
 
-	iterator++;
-	fen += ' ';
+	if (iterator < static_cast<int>(fen.size()) && fen[iterator] == ' ')
+		iterator++;
 	s = "";
 	while (iterator < static_cast<int>(fen.size()) && fen[iterator] != ' ') {
 		s += fen[iterator];
 		iterator++;
 	}
-	if (!s.empty()) _moves_count = stoi(s);
+	if (!s.empty()) {
+		try { _moves_count = stoi(s); }
+		catch (...) {}
+	}
 
 	_got_moves = -1;
 

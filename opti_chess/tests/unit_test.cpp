@@ -2901,6 +2901,52 @@ TEST(FEN, MinimalValidPositionLoads) {
 	EXPECT_GT(b._got_moves, 0);
 }
 
+TEST(FEN, PartialFenLoads) {
+	// Everything after the placement is optional: truncated FENs (cloud
+	// evals without counters, copy-pastes ending at the side to move...)
+	// load with defaults instead of failing to an empty board.
+	Board ref;
+	ref.from_fen("2kr2r1/pp5p/4q1b1/6P1/3N1p2/P7/1P1R2PP/R1B3K1 w Q - 0 1");
+	EXPECT_TRUE(ref.fen_ok());
+
+	// Same position, decreasing suffixes: identical board every time.
+	const char* with_rights[] = {
+		"2kr2r1/pp5p/4q1b1/6P1/3N1p2/P7/1P1R2PP/R1B3K1 w Q - 0 1",
+		"2kr2r1/pp5p/4q1b1/6P1/3N1p2/P7/1P1R2PP/R1B3K1 w Q -",
+		"2kr2r1/pp5p/4q1b1/6P1/3N1p2/P7/1P1R2PP/R1B3K1 w Q",
+	};
+	for (auto f : with_rights) {
+		Board b;
+		b.from_fen(f);
+		EXPECT_TRUE(b.fen_ok()) << f;
+		EXPECT_TRUE(b._player) << f;
+		EXPECT_TRUE(b._castling_rights.q_w) << f;
+		EXPECT_FALSE(b._castling_rights.k_w) << f;
+		EXPECT_EQ(b.to_fen(), ref.to_fen()) << f;
+	}
+
+	// Suffixes without rights: defaults apply, board still loads.
+	const char* without_rights[] = {
+		"2kr2r1/pp5p/4q1b1/6P1/3N1p2/P7/1P1R2PP/R1B3K1 w - - 0 1",
+		"2kr2r1/pp5p/4q1b1/6P1/3N1p2/P7/1P1R2PP/R1B3K1 w -",
+		"2kr2r1/pp5p/4q1b1/6P1/3N1p2/P7/1P1R2PP/R1B3K1 w",
+		"2kr2r1/pp5p/4q1b1/6P1/3N1p2/P7/1P1R2PP/R1B3K1",
+	};
+	for (auto f : without_rights) {
+		Board b;
+		b.from_fen(f);
+		EXPECT_TRUE(b.fen_ok()) << f;
+		EXPECT_TRUE(b._player) << f;
+		EXPECT_EQ(b._en_passant_col, -1) << f;
+	}
+
+	// Black to move truncated: side still honored.
+	Board bb;
+	bb.from_fen("2kr2r1/pp5p/4q1b1/6P1/3N1p2/P7/1P1R2PP/R1B3K1 b");
+	EXPECT_TRUE(bb.fen_ok());
+	EXPECT_FALSE(bb._player);
+}
+
 
 
 
