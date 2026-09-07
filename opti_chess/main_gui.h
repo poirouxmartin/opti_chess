@@ -551,13 +551,21 @@ inline int main_ui() {
 			main_GUI._time_white = 540000;
 		}
 
-		// P - Puzzle test: run current FEN, keep analysis visible, print results to console
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_P)) {
+		// P - Plays the move recommended by the GrogrosZero algorithm (June behavior)
+		if (!IsKeyDown(KEY_LEFT_CONTROL) && !IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_P)) {
+			if (main_GUI._root_exploration_node->children_count() > 0)
+				((main_GUI._click_bind && main_GUI._board->click_m_move(main_GUI._root_exploration_node->get_most_explored_child_move(), main_GUI.get_board_orientation())) || true) && main_GUI.play_move_keep(main_GUI._root_exploration_node->get_most_explored_child_move());
+			else
+				cout << "no more moves are in memory" << endl;
+		}
+
+		// CTRL-P - Puzzle test: run current FEN, keep analysis visible, print results to console
+		if (IsKeyDown(KEY_LEFT_CONTROL) && !IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_P)) {
 			main_GUI.run_puzzle_headless();
 		}
 
 		// LShift-P - Puzzle test with 1s budget
-		if (IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_P)) {
+		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_P)) {
 			main_GUI.run_puzzle_headless(1.0);
 		}
 
