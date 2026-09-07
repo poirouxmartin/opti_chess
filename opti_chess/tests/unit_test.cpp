@@ -4196,24 +4196,37 @@ TEST(Puzzle, EvalAttribution) {
 // Node::quiescence directly, which returns a genuinely searched value.
 // Input OPTI_EVAL_DATASET (fen,sf_cp). Mate scores on either side => loud,
 // excluded. Deterministic, no seed needed (no Zobrist randomness in qsearch).
-// Env: OPTI_EVAL_QGATE (default 60cp), OPTI_EVAL_QUIET_OUT (default
-//      eval_quiet.csv), OPTI_EVAL_QMAX (cap rows, 0=all).
+// Env: OPTI_EVAL_QGATE (default 60cp), OPTI_EVAL_QDEPTH (default 10),
+//      OPTI_EVAL_QSTRIDE (uniform 1-in-N subsample, default 1),
+//      OPTI_EVAL_QUIET_OUT (default eval_quiet.csv), OPTI_EVAL_QMAX (cap rows,
+//      0=all), OPTI_EVAL_QVERBOSE (per-row trace).
 TEST(Puzzle, EvalQuietScreen) {
 	const char* ds = getenv("OPTI_EVAL_DATASET");
 	if (!ds) { cout << "  [SKIP] OPTI_EVAL_DATASET not set" << endl; return; }
 	auto rows = load_eval_dataset(ds);
 	if (rows.empty()) { cout << "  [SKIP] no rows" << endl; return; }
 	static Evaluator evaluator;
-	int qgate = 60, qmax = 0;
+	int qgate = 60, qmax = 0, qdepth = 10, qstride = 1;
 	if (const char* e = getenv("OPTI_EVAL_QGATE")) qgate = max(5, atoi(e));
 	if (const char* e = getenv("OPTI_EVAL_QMAX")) qmax = max(0, atoi(e));
+	if (const char* e = getenv("OPTI_EVAL_QDEPTH")) qdepth = max(1, atoi(e));
+	if (const char* e = getenv("OPTI_EVAL_QSTRIDE")) qstride = max(1, atoi(e));
 	const char* out_path = getenv("OPTI_EVAL_QUIET_OUT");
 	string out = out_path ? out_path : "eval_quiet.csv";
 	if (qmax > 0 && (int)rows.size() > qmax) rows.resize(qmax);
 
+	// Quiescence allocates child nodes/boards from the monte arenas. A pure
+	// STATIC PuzzleRunner::run returns BEFORE arena init (puzzle.cpp), so
+	// without this the first quiescence finds uninit arenas, allocates
+	// nothing, and returns stand-pat: the screen goes vacuous (kept 100%).
+	// init() is idempotent (no-op once sized, same call run() makes).
+	monte_node_buffer.init(500000, false);
+	monte_board_buffer.init(500000, false);
+
 	ofstream o(out);
 	int kept = 0, loud = 0, skipped = 0;
 	for (size_t i = 0; i < rows.size(); i++) {
+		if ((int)(i % (size_t)qstride) != 0) continue; // uniform subsample
 		Puzzle p;
 		p.fen = rows[i].fen; p.category = PuzzleCategory::EVALUATION;
 		auto rs = PuzzleRunner::run(p, BudgetMode::STATIC_EVAL, 0, &evaluator);
@@ -4223,10 +4236,20 @@ TEST(Puzzle, EvalQuietScreen) {
 		monte_node_buffer.reset();
 		monte_board_buffer.reset();
 		Node n(&b);
-		int q = n.quiescence(&monte_board_buffer, &evaluator, 10,
+		// init_node stamps terminal mates into deep (Qg7 regression fix);
+		// without it a mate-in-1 reads as static and looks "quiet".
+		n.init_node();
+		int q = n.quiescence(&monte_board_buffer, &evaluator, qdepth,
 			0.00001, 5.0, -INT32_MAX, INT32_MAX, nullptr, true, 0, nullptr);
 		if (!b._player) q = -q; // quiescence is side-to-move relative; static is white-relative
-		if (abs(q) >= 29000) { skipped++; continue; }
+		if (getenv("OPTI_EVAL_QVERBOSE"))
+			cout << "  row" << i << " player=" << b._player << " static=" << rs.actual_eval_cp
+				<< " q=" << q << " diff=" << abs(q - rs.actual_eval_cp) << " " << rows[i].fen << endl;
+		if (abs(q) >= mate_value / 2) {
+			// Searched mate: loud by definition (tactics decided the position).
+			loud++;
+			continue;
+		}
 		if (abs(q - rs.actual_eval_cp) <= qgate) {
 			o << rows[i].fen << "," << rows[i].sf_cp << "\n";
 			kept++;
@@ -4237,7 +4260,7 @@ TEST(Puzzle, EvalQuietScreen) {
 	}
 	o.close();
 	cout << "  QUIET: kept=" << kept << " loud=" << loud << " skipped=" << skipped
-		<< " (qgate=" << qgate << "cp) -> " << out << endl;
+		<< " (qdepth=" << qdepth << " qgate=" << qgate << "cp) -> " << out << endl;
 	EXPECT_GT(kept, 0);
 }
 // Input: OPTI_EVAL_FENS=file (one FEN per line, # comments). Output:
