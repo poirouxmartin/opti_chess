@@ -54,6 +54,43 @@ void debug_log(const char* fmt, ...) {
 	g_debug_file.flush();
 }
 
+// --- Boost mode (bench/game performance) ---
+// HIGH_PRIORITY_CLASS on the process + HIGHEST on GUI/compute/search threads
+// so benches and long games aren't preempted (the machine already runs the
+// High Performance power scheme; a PowerCreateRequest execution request was
+// tried but the API refuses it on this box with rc=1684, so it stays out).
+// No windows.h (raylib conflict): manual decls, kernel32 only.
+extern "C" {
+	__declspec(dllimport) void* __stdcall GetCurrentProcess();
+	__declspec(dllimport) int __stdcall SetPriorityClass(void* hProcess, unsigned long dwPriorityClass);
+}
+#ifndef HIGH_PRIORITY_CLASS
+#define HIGH_PRIORITY_CLASS 0x00000080
+#endif
+#ifndef NORMAL_PRIORITY_CLASS
+#define NORMAL_PRIORITY_CLASS 0x00000020
+#endif
+#ifndef THREAD_PRIORITY_NORMAL
+#define THREAD_PRIORITY_NORMAL 0
+#endif
+
+static bool s_boost_mode = false;
+
+bool get_boost_mode() { return s_boost_mode; }
+
+void set_boost_mode(bool on) {
+	s_boost_mode = on;
+	SetPriorityClass(GetCurrentProcess(), on ? HIGH_PRIORITY_CLASS : NORMAL_PRIORITY_CLASS);
+	SetThreadPriority(GetCurrentThread(), on ? THREAD_PRIORITY_HIGHEST : THREAD_PRIORITY_NORMAL);
+	if (main_GUI._compute_thread_handle)
+		SetThreadPriority(main_GUI._compute_thread_handle, on ? THREAD_PRIORITY_HIGHEST : THREAD_PRIORITY_NORMAL);
+	for (auto& t : main_GUI._threads_grogros_zero)
+		if (t.joinable())
+			SetThreadPriority(t.native_handle(), on ? THREAD_PRIORITY_HIGHEST : THREAD_PRIORITY_NORMAL);
+	debug_log("[boost] %s (prio=%s)", on ? "ON" : "OFF", on ? "HIGH" : "NORMAL");
+	cout << "Boost mode " << (on ? "ON (HIGH process/thread priority)" : "OFF") << endl;
+}
+
 // FEN extraction helper for puzzle lookup
 static string extract_fen_from_line(const string& line) {
 	static const std::regex fen_regex(R"((?:[rnbqkpRNBQKP1-8]+(?:\/[rnbqkpRNBQKP1-8]+){7})\s+[wb]\s+(?:-|[KQkq]{1,4})\s+(?:-|[a-h][1-8])\s+\d+\s+\d+)");

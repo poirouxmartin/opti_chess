@@ -8,6 +8,11 @@
 #include <fcntl.h>
 #include "tests.h"
 
+// Boost mode (defined in gui.cpp, no windows.h here): HIGH process/thread
+// priority for benches and long games. Toggled with CTRL-B.
+bool get_boost_mode();
+void set_boost_mode(bool on);
+
 // Draws the GUI
 inline void gui_draw() {
 	if (!main_GUI._draw)
@@ -284,6 +289,12 @@ inline int main_ui() {
 			std::cout << (input_injection_enabled
 				? "input injection ON - Play-Computer mode only"
 				: "input injection OFF") << std::endl;
+		}
+
+		// LCTRL-B - Boost mode: HIGH process/thread priority
+		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_B)) {
+			set_boost_mode(!get_boost_mode());
+			debug_log("[key] CTRL-B boost=%d", (int)get_boost_mode());
 		}
 
 		// Changes to the size of the window
