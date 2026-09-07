@@ -6,6 +6,7 @@
 #include <windows.h>
 #include <sstream>
 #include <algorithm>
+#include <cmath>
 
 struct StockfishImpl {
     HANDLE hStd_IN_Wr = NULL;
@@ -184,6 +185,37 @@ StockfishAdapter::AnalysisResult StockfishAdapter::analyze_with_move(
     return r;
 }
 
+static StockfishAdapter::StaticResult parse_static_eval(const std::string& response) {
+    StockfishAdapter::StaticResult r;
+    // The transcript may hold several evals (one process, many positions):
+    // the LAST "Final evaluation" line is ours. Value is side-to-move
+    // relative with an explicit "(white side)"/"(black side)" tag.
+    size_t pos = response.rfind("Final evaluation");
+    if (pos == std::string::npos) return r;
+    std::string tail = response.substr(pos);
+    if (tail.find("none (in check)") != std::string::npos) { r.in_check = true; return r; }
+    size_t num = tail.find_first_of("+-0123456789", 17); // skip the label
+    if (num == std::string::npos) return r;
+    try {
+        double pawns = std::stod(tail.substr(num));
+        r.eval_cp = (int)std::round(pawns * 100.0);
+        if (tail.find("(black side)") != std::string::npos) r.eval_cp = -r.eval_cp;
+        r.ok = true;
+    }
+    catch (...) {}
+    return r;
+}
+
+StockfishAdapter::StaticResult StockfishAdapter::static_eval(const std::string& fen) {
+    if (!is_available()) return {};
+    _impl->send_cmd("ucinewgame"); // clear correction history: session-order noise otherwise
+    _impl->send_cmd("position fen " + fen);
+    _impl->send_cmd("eval");
+    _impl->send_cmd("isready");
+    std::string response = _impl->read_until("readyok", 10000);
+    return parse_static_eval(response);
+}
+
 #else
 
 struct StockfishImpl {};
@@ -197,5 +229,6 @@ void StockfishAdapter::send(const std::string&) {}
 std::string StockfishAdapter::read_until(const std::string&, int) { return ""; }
 StockfishAdapter::AnalysisResult StockfishAdapter::analyze(const std::string&, int) { return {}; }
 StockfishAdapter::AnalysisResult StockfishAdapter::analyze_with_move(const std::string&, const std::string&, int) { return {}; }
+StockfishAdapter::StaticResult StockfishAdapter::static_eval(const std::string&) { return {}; }
 
 #endif

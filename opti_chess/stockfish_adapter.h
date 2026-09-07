@@ -36,4 +36,13 @@ public:
 
     AnalysisResult analyze(const std::string& fen, int depth = 20);
     AnalysisResult analyze_with_move(const std::string& fen, const std::string& move_uci, int depth = 20);
+
+    // Raw NNUE static eval (no search) via the `eval` command, white-relative
+    // cp. Apples-to-apples truth for tuning a static evaluation function.
+    struct StaticResult {
+        int eval_cp = 0;
+        bool ok = false;
+        bool in_check = false; // side to move in check: SF prints no static eval
+    };
+    StaticResult static_eval(const std::string& fen);
 };

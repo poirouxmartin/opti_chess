@@ -4180,22 +4180,38 @@ TEST(Puzzle, EvalLabel) {
 		if (line.find('/') == string::npos) continue;
 		fens.push_back(line);
 	}
+	// Static mode (OPTI_EVAL_STATIC=1): raw NNUE eval via the `eval` command,
+	// no search, deterministic. Milliseconds per position: the 100k-scale
+	// path for static-vs-static attribution. Default: deep search + gate.
+	bool use_static = false;
+	if (const char* s = getenv("OPTI_EVAL_STATIC")) use_static = (s[0] != '0');
 	cout << "  Labeling " << fens.size() << " FENs (depth " << depth
-		<< "/" << (depth - 4) << ", gate " << stable_gate << "cp) -> " << out << endl;
+		<< "/" << (depth - 4) << ", gate " << stable_gate << "cp"
+		<< (use_static ? ", STATIC NNUE" : "") << ") -> " << out << endl;
 	ofstream o(out);
-	int kept = 0, unstable = 0, mates = 0;
+	int kept = 0, unstable = 0, mates = 0, incheck = 0;
 	for (size_t i = 0; i < fens.size(); i++) {
-		auto a = sf.analyze(fens[i], depth);
-		auto b = sf.analyze(fens[i], depth - 4);
-		if (a.best_move.empty() || b.best_move.empty()) continue;
-		if (a.is_mate || b.is_mate) { mates++; continue; }
-		if (abs(a.eval_cp - b.eval_cp) > stable_gate) { unstable++; continue; }
-		o << fens[i] << "," << a.eval_cp << "\n";
-		kept++;
+		if (use_static) {
+			auto s = sf.static_eval(fens[i]);
+			if (s.in_check) { incheck++; continue; }
+			if (!s.ok) continue;
+			o << fens[i] << "," << s.eval_cp << "\n";
+			kept++;
+		}
+		else {
+			auto a = sf.analyze(fens[i], depth);
+			auto b = sf.analyze(fens[i], depth - 4);
+			if (a.best_move.empty() || b.best_move.empty()) continue;
+			if (a.is_mate || b.is_mate) { mates++; continue; }
+			if (abs(a.eval_cp - b.eval_cp) > stable_gate) { unstable++; continue; }
+			o << fens[i] << "," << a.eval_cp << "\n";
+			kept++;
+		}
 		if ((i + 1) % 100 == 0) cout << "  ... " << (i + 1) << "/" << fens.size() << endl;
 	}
 	o.close();
-	cout << "  kept=" << kept << " unstable=" << unstable << " mates=" << mates << endl;
+	cout << "  kept=" << kept << " unstable=" << unstable << " mates=" << mates
+		<< " incheck=" << incheck << endl;
 	EXPECT_GT(kept, 0);
 }
 
