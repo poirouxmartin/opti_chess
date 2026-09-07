@@ -869,6 +869,12 @@ int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls
 	constexpr float one_mate_threat_factor = 0.1f;
 	constexpr float two_mate_threats_factor = 0.5f;
 
+	// Same tempo logic for a LONE checking idea (no mate delivered): with the
+	// defender to move and a single checking move available, the parry tempo
+	// halves the idea. Mate threats keep their own discount (no double-dip);
+	// attacker to move delivers now, untouched. Tunable.
+	constexpr float single_check_idea_factor = 0.5f;
+
 	//3r2k1/pp3r2/2q2pp1/3n3P/7Q/7R/1B5P/4R2K b - - 0 33: an enormous number of discoveries here
 	//rnb2bnr/pppp1k1p/5q2/8/5B2/5Q2/PPP3PP/RN3RK1 b - - 0 11: why are the checks better for Black?
 
@@ -879,6 +885,7 @@ int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls
 	// opponent with zero replies, i.e. the checking move mates on the spot.
 	int mate_threat_value = 0;
 	int mate_threat_count = 0;
+	int checks_count = 0;
 
 	// Position of the opposing king
 	update_kings_pos();
@@ -931,11 +938,12 @@ int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls
 			uint64_t saved_occupancies[sizeof(b._occupancies) / sizeof(uint64_t)];
 			memcpy(saved_occupancies, b._occupancies, sizeof(saved_occupancies));
 
-			// Play the move and see whether it gives check
-			b.make_move(move);
+		// Play the move and see whether it gives check
+		b.make_move(move);
 
-			// TODO: replace with "does the move attack the king"?
-			if (b.in_check()) {
+		// TODO: replace with "does the move attack the king"?
+		if (b.in_check()) {
+			checks_count++;
 				// Check path (rare): restore state, then use full copy for get_moves
 				memcpy(b._array, saved_array, sizeof(saved_array));
 				b._player = saved_player;
@@ -1030,8 +1038,13 @@ int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls
 		mate_threat_factor = mate_threat_count == 1 ? one_mate_threat_factor
 			: (mate_threat_count == 2 ? two_mate_threats_factor : 1.0f);
 	}
-	const int checks_total = (safe_checks_value - mate_threat_value)
-		+ (int)(mate_threat_value * mate_threat_factor) + unsafe_checks_value;
+	float single_idea_factor = 1.0f;
+	if (_player != color && mate_threat_count == 0 && checks_count == 1) {
+		// Lone non-mating idea with defender to move: one tempo parries it.
+		single_idea_factor = single_check_idea_factor;
+	}
+	const int checks_total = (int)(((safe_checks_value - mate_threat_value) + unsafe_checks_value) * single_idea_factor)
+		+ (int)(mate_threat_value * mate_threat_factor);
 	return checks_total * (_player == color ? has_trait_multiplier : 1.0f);
 }
 
