@@ -591,8 +591,17 @@ inline int main_ui() {
 			cout << main_game_over << endl;
 		}
 
-		// UP/DOWN - Enables or disables GrogrosFish for the white pieces
+		// UP/DOWN - Enables or disables GrogrosFish for the white pieces.
+		// Shared 400ms debounce (toggle_debounce_ms): OS key auto-repeat
+		// would otherwise replay the toggle several times per press and
+		// leave the bot state random.
+		static long long toggle_debounce_ms = 0;
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && !main_GUI.get_board_orientation()))) {
+			const long long now_toggle_ms = (long long)clock() * 1000 / CLOCKS_PER_SEC;
+			if (now_toggle_ms - toggle_debounce_ms < 400)
+				{} // repeat: ignore
+			else {
+			toggle_debounce_ms = now_toggle_ms;
 			if (main_GUI._white_player.substr(0, 11) == "GrogrosFish")
 			{
 				main_GUI._white_player = "White";
@@ -610,11 +619,17 @@ inline int main_ui() {
 				main_GUI._white_url = "https://images.chesscomfiles.com/uploads/v1/user/284728633.4af59e2f.50x50o.0c8cdf830b69.png";
 				main_GUI._white_country = "57";
 			}
+			debug_log("[toggle] White player: %s", main_GUI._white_player.c_str());
+			}
 		}
-		debug_log("[toggle] White player: %s", main_GUI._white_player.c_str());
 
 		// UP/DOWN - Enables or disables GrogrosFish for the black pieces
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && !main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && main_GUI.get_board_orientation()))) {
+			const long long now_toggle_ms = (long long)clock() * 1000 / CLOCKS_PER_SEC;
+			if (now_toggle_ms - toggle_debounce_ms < 400)
+				{} // repeat: ignore
+			else {
+			toggle_debounce_ms = now_toggle_ms;
 			if (main_GUI._black_player.substr(0, 11) == "GrogrosFish")
 			{
 				main_GUI._black_player = "Black";
@@ -632,11 +647,17 @@ inline int main_ui() {
 				main_GUI._black_url = "https://images.chesscomfiles.com/uploads/v1/user/284728633.4af59e2f.50x50o.0c8cdf830b69.png";
 				main_GUI._black_country = "57";
 			}
+			debug_log("[toggle] Black player: %s", main_GUI._black_player.c_str());
+			}
 		}
-		debug_log("[toggle] Black player: %s", main_GUI._black_player.c_str());
 
 		// CTRL-UP/DOWN - Enables or disables GrogrosZero for the white pieces
 		if (IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && !main_GUI.get_board_orientation()))) {
+			const long long now_toggle_ms = (long long)clock() * 1000 / CLOCKS_PER_SEC;
+			if (now_toggle_ms - toggle_debounce_ms < 400)
+				{} // repeat: ignore
+			else {
+			toggle_debounce_ms = now_toggle_ms;
 			if (main_GUI._white_player == main_GUI._grogros_zero_name)
 			{
 				main_GUI._white_player = "White";
@@ -654,11 +675,17 @@ inline int main_ui() {
 				main_GUI._white_url = "https://images.chesscomfiles.com/uploads/v1/user/284728633.4af59e2f.50x50o.0c8cdf830b69.png";
 				main_GUI._white_country = "57";
 			}
+			debug_log("[toggle] White player: %s", main_GUI._white_player.c_str());
+			}
 		}
-		debug_log("[toggle] White player: %s", main_GUI._white_player.c_str());
 
 		// CTRL-UP/DOWN - Enables or disables GrogrosZero for the black pieces
 		if (IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && !main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && main_GUI.get_board_orientation()))) {
+			const long long now_toggle_ms = (long long)clock() * 1000 / CLOCKS_PER_SEC;
+			if (now_toggle_ms - toggle_debounce_ms < 400)
+				{} // repeat: ignore
+			else {
+			toggle_debounce_ms = now_toggle_ms;
 			if (main_GUI._black_player == main_GUI._grogros_zero_name)
 			{
 				main_GUI._black_player = "Black";
@@ -676,8 +703,9 @@ inline int main_ui() {
 				main_GUI._black_url = "https://images.chesscomfiles.com/uploads/v1/user/284728633.4af59e2f.50x50o.0c8cdf830b69.png";
 				main_GUI._black_country = "57";
 			}
+			debug_log("[toggle] Black player: %s", main_GUI._black_player.c_str());
+			}
 		}
-		debug_log("[toggle] Black player: %s", main_GUI._black_player.c_str());
 
 		// End of the game (to be reset too...) (the sound does not play...)
 		// Compute the end of the game here once, to avoid doing it again?
