@@ -250,6 +250,9 @@ public:
 	// mutation; the worker clears its hint maps when it changes. Plain
 	// counter (never written concurrently with a live worker).
 	long long _position_epoch = 0;
+	// Last full play evaluation (clock): caps play_grogros_zero_move stops
+	// at ~1Hz so analysis runs uninterrupted while the bot waits.
+	clock_t _last_play_eval = 0;
 
 	// Snapshot of tree state for consistent display during background computation
 	// Taken under _tree_mutex once per frame, used by draw_exploration_arrows and eval display

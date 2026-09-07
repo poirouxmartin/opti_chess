@@ -2439,11 +2439,57 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 		return;
 	}
 
+	// Snapshot gate (no stop): skip the stop/read cycle entirely when even
+	// the earliest play time isn't reached, so analysis runs uninterrupted
+	// while the bot waits (June semantics: play never interrupts search
+	// unless playing). Proven safe: threshold_min <= any full-decision
+	// threshold below (is_best=true, wait factor=1), so a real play
+	// decision always passes this gate; a skip only means "not yet".
+	// Plus an eval-agreement proxy for wait_for_best_move (full decision
+	// waits when best UCT != most-explored; arrow evals agree in that case
+	// only by luck, so disagreement skips the stop too) and a 1s minimum
+	// interval between full evaluations (caps stops at ~1Hz worst case).
+	{
+		const Move snap_best = _tree_snapshot.best_move;
+		if (snap_best.is_null_move())
+			return;
+		const clock_t now_p = clock();
+		if ((double)(now_p - _last_play_eval) / CLOCKS_PER_SEC < 1.0)
+			return;
+		double snap_pct = 0.0;
+		bool evals_agree = false;
+		if (_tree_snapshot.iterations > 0) {
+			const int color_sign = _board->_player ? 1 : -1;
+			int best_c = INT_MIN, most_c = INT_MIN;
+			for (auto const& a : _tree_snapshot.arrows) {
+				const int c = color_sign * a.eval_value;
+				if (c > best_c) best_c = c;
+				if (a.move == snap_best) {
+					snap_pct = (double)a.chosen_iterations / (double)_tree_snapshot.iterations;
+					most_c = c;
+				}
+			}
+			evals_agree = (best_c == most_c);
+		}
+		if (!evals_agree)
+			return;
+		// Mirrors the full decision below (same time_to_play_move, adv,
+		// supposed_ips blend with average_nps=5000 / consistent_factor=0.35).
+		double snap_max_move_time = _board->_player
+			? time_to_play_move(_time_white, _time_black, time_proportion_per_move)
+			: time_to_play_move(_time_black, _time_white, time_proportion_per_move);
+		snap_max_move_time *= 1.0f + _board->_adv;
+		const double snap_ips = 5000.0 + ((double)_tree_snapshot.ips - 5000.0) * 0.35;
+		const double snap_threshold_min = snap_ips * (snap_max_move_time * (1.0 - snap_pct) / 1000.0);
+		if ((double)_tree_snapshot.iterations < snap_threshold_min)
+			return;
+		_last_play_eval = now_p;
+	}
+
 	// Stop the worker NOW (not earlier): every read below walks _children
 	// while the worker may publish (rehash UB -> crash). The frame loop
 	// restarts the worker next frame if continuous analysis is still on.
 	stop_compute(__FUNCTION__);
-	_position_epoch++; // real tree mutation: worker drops hint maps on next wake
 
 	// For the evaluation computations
 	int color = _board->get_color();
@@ -2617,6 +2663,10 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 		}
 
 		//cout << nodes_to_play << ", max move time : " << max_move_time << ", supposed speed : " << supposed_grogros_speed << ", nodes : " << _root_exploration_node->_nodes << endl;
+		// NOTE: no _position_epoch++ here. play_move_keep keeps the subtree:
+		// node_map/TT entries stay valid (position-keyed; freed siblings fail
+		// _is_active validation). Clearing on every move would nuke DAG/TT
+		// sharing and force a cold restart each move.
 		((_click_bind && _board->click_m_move(_root_exploration_node->get_most_explored_child_move(), get_board_orientation())) || true) && play_move_keep(_root_exploration_node->get_most_explored_child_move());
 	}
 
