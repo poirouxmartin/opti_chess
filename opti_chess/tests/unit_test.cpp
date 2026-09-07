@@ -3612,6 +3612,38 @@ static vector<RatedMove> sf_calibrate(StockfishAdapter& sf, const string& fen,
 	return moves;
 }
 
+// Regression: Qg7# must be found, scored as mate, and game_over/is_game_over
+// must agree. Chain of three bugs once hid it: (1) game_over() never stored
+// its result, so a second query returned stale unterminated; (2) init_node
+// flagged terminal mates without stamping the mate value into deep eval;
+// (3) quiescence wiped a stamped mate deep back to static on revisit.
+TEST(Puzzle, Qg7MateRegression) {
+	const char* fen = "5rk1/1b5p/4pQpP/4N3/2P2P2/6P1/8/6K1 w - - 0 37";
+
+	// Terminal consistency: repeated queries agree, init stamps mate-scale deep.
+	{
+		Board b;
+		b.from_fen(fen);
+		Move qg7; qg7.start_col = 5; qg7.start_row = 5; qg7.end_col = 6; qg7.end_row = 6;
+		b.make_move(qg7);
+		EXPECT_EQ(b.game_over(2), white_win);
+		EXPECT_EQ(b.is_game_over(2), white_win);
+		EXPECT_EQ(b.game_over(2), white_win);
+		Node n(&b);
+		n.init_node();
+		EXPECT_TRUE(n._is_terminal);
+		EXPECT_GT(n._deep_evaluation._value, mate_value / 2);
+	}
+
+	// Search plays the mate, even at tiny budgets.
+	static Evaluator evaluator;
+	Move m_best; m_best.start_col = 5; m_best.start_row = 5; m_best.end_col = 6; m_best.end_row = 6;
+	Puzzle p(fen, PuzzleCategory::TACTIC, "mate", "Qg7mate", { {m_best, 1.0} });
+	auto r = PuzzleRunner::run(p, BudgetMode::NODES, 500, &evaluator);
+	EXPECT_EQ(r.chosen_move_san, "Qg7# 1-0");
+	EXPECT_GE(r.score, 0.5);
+}
+
 TEST(Puzzle, TacticalSuite) {
 	string sf_path = find_stockfish();
 	StockfishAdapter sf(sf_path);
@@ -4154,7 +4186,60 @@ TEST(Puzzle, EvalAttribution) {
 	SUCCEED();
 }
 
-// Labels FENs with Stockfish into a CSV for EvalAttribution (run once, offline).
+// Quiet screen ("radar tactique"): keeps dataset rows where OUR OWN quiescence
+// agrees with our static eval, i.e. positions that are quiet FOR THIS ENGINE
+// (NNUE paper's M1 criterion: |static - qsearch| <= 60cp). Those are the rows
+// where a deep-SF label is clean supervision for tuning the static function;
+// the rest is tactics (pattern-hunt material). NOTE: an earlier version
+// compared STATIC vs NODES runs, but NODES actual_eval_cp is ALSO static
+// (puzzle.cpp) — that screen was vacuous (kept 100%). This one calls
+// Node::quiescence directly, which returns a genuinely searched value.
+// Input OPTI_EVAL_DATASET (fen,sf_cp). Mate scores on either side => loud,
+// excluded. Deterministic, no seed needed (no Zobrist randomness in qsearch).
+// Env: OPTI_EVAL_QGATE (default 60cp), OPTI_EVAL_QUIET_OUT (default
+//      eval_quiet.csv), OPTI_EVAL_QMAX (cap rows, 0=all).
+TEST(Puzzle, EvalQuietScreen) {
+	const char* ds = getenv("OPTI_EVAL_DATASET");
+	if (!ds) { cout << "  [SKIP] OPTI_EVAL_DATASET not set" << endl; return; }
+	auto rows = load_eval_dataset(ds);
+	if (rows.empty()) { cout << "  [SKIP] no rows" << endl; return; }
+	static Evaluator evaluator;
+	int qgate = 60, qmax = 0;
+	if (const char* e = getenv("OPTI_EVAL_QGATE")) qgate = max(5, atoi(e));
+	if (const char* e = getenv("OPTI_EVAL_QMAX")) qmax = max(0, atoi(e));
+	const char* out_path = getenv("OPTI_EVAL_QUIET_OUT");
+	string out = out_path ? out_path : "eval_quiet.csv";
+	if (qmax > 0 && (int)rows.size() > qmax) rows.resize(qmax);
+
+	ofstream o(out);
+	int kept = 0, loud = 0, skipped = 0;
+	for (size_t i = 0; i < rows.size(); i++) {
+		Puzzle p;
+		p.fen = rows[i].fen; p.category = PuzzleCategory::EVALUATION;
+		auto rs = PuzzleRunner::run(p, BudgetMode::STATIC_EVAL, 0, &evaluator);
+		if (abs(rs.actual_eval_cp) >= 29000) { skipped++; continue; }
+		Board b;
+		b.from_fen(rows[i].fen);
+		monte_node_buffer.reset();
+		monte_board_buffer.reset();
+		Node n(&b);
+		int q = n.quiescence(&monte_board_buffer, &evaluator, 10,
+			0.00001, 5.0, -INT32_MAX, INT32_MAX, nullptr, true, 0, nullptr);
+		if (!b._player) q = -q; // quiescence is side-to-move relative; static is white-relative
+		if (abs(q) >= 29000) { skipped++; continue; }
+		if (abs(q - rs.actual_eval_cp) <= qgate) {
+			o << rows[i].fen << "," << rows[i].sf_cp << "\n";
+			kept++;
+		}
+		else loud++;
+		if ((i + 1) % 500 == 0) cout << "  ... " << (i + 1) << "/" << rows.size()
+			<< " kept=" << kept << " loud=" << loud << endl;
+	}
+	o.close();
+	cout << "  QUIET: kept=" << kept << " loud=" << loud << " skipped=" << skipped
+		<< " (qgate=" << qgate << "cp) -> " << out << endl;
+	EXPECT_GT(kept, 0);
+}
 // Input: OPTI_EVAL_FENS=file (one FEN per line, # comments). Output:
 // OPTI_EVAL_OUT=labels.csv (default eval_labels.csv). Depth via OPTI_EVAL_DEPTH
 // (default 20). Stability gate: analyzed at D and D-4, row kept only if both

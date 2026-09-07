@@ -410,6 +410,27 @@ void Node::init_node() {
 		_can_explore = false;
 		_is_terminal = true;
 
+		// Stamp the exact terminal value into the deep evaluation: it may
+		// still hold a static eval computed before terminality was known
+		// (evaluate_position only READS _game_over_value). Without this, a
+		// terminal mate stays invisible to selection and score: e.g. Qg7#
+		// sat at 1 visit with deep=+1123 while a longer mate hogged the
+		// tree, and the proven-win override in get_most_explored_child_move
+		// (which keys off mate-scale deep values) could never fire.
+		// Mirrors Board::evaluate's terminal branch (eval_core.cpp).
+		if (_board->_game_over_value == draw) {
+			_deep_evaluation._value = 0;
+		}
+		else {
+			_deep_evaluation._value = (-mate_value + _board->_moves_count * mate_ply) * _board->get_color();
+		}
+		_deep_evaluation._evaluated = true;
+		_deep_evaluation._uncertainty = 0;
+		_deep_evaluation._winnable_white = (_board->_game_over_value == white_win) ? 1.0f : 0.0f;
+		_deep_evaluation._winnable_black = (_board->_game_over_value == black_win) ? 1.0f : 0.0f;
+		_deep_evaluation.get_WDL();
+		_deep_evaluation.get_average_score();
+
 		return;
 	}
 
@@ -1942,7 +1963,11 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 		evaluate_position(eval, false, network, true);
 		g_t_qeval += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_qeval0).count();
 	}
-	else {
+	else if (!_is_terminal) {
+		// Terminal nodes keep their stamped mate/draw deep evaluation:
+		// overwriting it with the static value hides mates from selection
+		// and score (e.g. Qg7# sat at 1 visit with deep=+1123 while a
+		// longer mate hogged 90k+ visits).
 		_deep_evaluation = _static_evaluation;
 	}
 
