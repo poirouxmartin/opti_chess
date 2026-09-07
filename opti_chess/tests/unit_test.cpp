@@ -4039,11 +4039,13 @@ TEST(Puzzle, EvalAttribution) {
 	}
 	if (rows.empty()) { cout << "  [SKIP] no rows" << endl; return; }
 
-	struct Err { string fen; string bucket; int ours = 0; int sf = 0; int err = 0; };
+	struct Err { string fen; string bucket; int ours = 0; int sf = 0; int err = 0; double gap = 0.0; };
 	vector<Err> errs;
 	errs.reserve(rows.size());
 	map<string, pair<int, long long>> by_bucket; // bucket -> (n, sum_err)
+	map<string, pair<int, double>> by_bucket_gap; // bucket -> (n, sum_gap)
 	long long total_err = 0;
+	double total_gap = 0.0;
 	int skipped = 0;
 	for (auto& row : rows) {
 		Puzzle p;
@@ -4053,40 +4055,53 @@ TEST(Puzzle, EvalAttribution) {
 		if (abs(r.actual_eval_cp) >= 29000) { skipped++; continue; }
 		string bucket = eval_taxonomy(row.fen);
 		int e = abs(r.actual_eval_cp - row.sf_cp);
-		errs.push_back({ row.fen, bucket, r.actual_eval_cp, row.sf_cp, e });
+		double g = eval_gap_cp(r.actual_eval_cp, row.sf_cp);
+		errs.push_back({ row.fen, bucket, r.actual_eval_cp, row.sf_cp, e, g });
 		auto& b = by_bucket[bucket];
 		b.first++;
 		b.second += e;
+		auto& bg = by_bucket_gap[bucket];
+		bg.first++;
+		bg.second += g;
 		total_err += e;
+		total_gap += g;
 	}
-	sort(errs.begin(), errs.end(), [](const Err& a, const Err& b) { return a.err > b.err; });
+	sort(errs.begin(), errs.end(), [](const Err& a, const Err& b) {
+		if (a.gap != b.gap) return a.gap > b.gap;
+		return a.err > b.err;
+		});
 
 	cout << endl << "=== EVAL ATTRIBUTION (" << errs.size() << " scored, " << skipped << " mate-skipped"
 		<< (live_labeled ? ", live depth)" : ", dataset)") << endl;
 	cout << "  MAE global: " << fixed << setprecision(1)
-		<< ((double)total_err / max<size_t>(1, errs.size())) << "cp" << endl;
-	// Buckets sorted by MAE desc: the top bucket is where to look first.
-	vector<tuple<string, int, double>> buckets;
+		<< ((double)total_err / max<size_t>(1, errs.size())) << "cp"
+		<< " | mean gap: " << fixed << setprecision(3)
+		<< (total_gap / max<size_t>(1, errs.size())) << endl;
+	// Buckets sorted by mean gap desc: the top bucket is where to look first.
+	vector<tuple<string, int, double, double>> buckets;
 	for (auto& [name, data] : by_bucket)
-		buckets.push_back({ name, data.first, (double)data.second / data.first });
+		buckets.push_back({ name, data.first, (double)data.second / data.first,
+			by_bucket_gap[name].second / by_bucket_gap[name].first });
 	sort(buckets.begin(), buckets.end(),
-		[](const auto& a, const auto& b) { return get<2>(a) > get<2>(b); });
-	for (auto& [name, n, mae] : buckets)
-		cout << "  " << name << ": n=" << n << " MAE=" << fixed << setprecision(1) << mae << "cp" << endl;
+		[](const auto& a, const auto& b) { return get<3>(a) > get<3>(b); });
+	for (auto& [name, n, mae, gap] : buckets)
+		cout << "  " << name << ": n=" << n << " MAE=" << fixed << setprecision(1) << mae
+			<< "cp gap=" << fixed << setprecision(3) << gap << endl;
 
 	int top = 20;
 	if (const char* t = getenv("OPTI_EVAL_TOP")) top = max(1, atoi(t));
 	cout << "  --- worst " << min<size_t>(top, errs.size()) << " ---" << endl;
 	for (size_t i = 0; i < errs.size() && (int)i < top; i++) {
 		auto& e = errs[i];
-		cout << "  err=" << e.err << "cp [" << e.bucket << "] ours=" << e.ours
+		cout << "  gap=" << fixed << setprecision(3) << e.gap
+			<< " err=" << e.err << "cp [" << e.bucket << "] ours=" << e.ours
 			<< " sf=" << e.sf << " " << e.fen << endl;
 	}
 	if (const char* rep = getenv("OPTI_EVAL_REPORT")) {
 		ofstream o(rep);
 		if (o.is_open()) {
 			for (auto& e : errs)
-				o << e.fen << "," << e.bucket << "," << e.ours << "," << e.sf << "," << e.err << "\n";
+				o << e.fen << "," << e.bucket << "," << e.ours << "," << e.sf << "," << e.err << "," << fixed << setprecision(4) << e.gap << "\n";
 			cout << "  Report dumped: " << rep << endl;
 		}
 	}

@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <cmath>
 #include <functional>
 #include "board.h"
 
@@ -48,6 +49,22 @@ struct RatedMove {
     Move move;
     double reward;
 };
+
+// Nature-first gap between two white-relative cp evals: the WDL-derived
+// expected-score difference dominates, raw cp only breaks ties within a
+// nature. +300 vs +50 (different natures) >> +1000 vs +480 (both winning).
+// Uses the engine's own cp->WDL curve (zero uncertainty, fully winnable).
+inline double eval_gap_cp(int ours_cp, int ref_cp) {
+    Evaluation a, b;
+    a.reset(); b.reset();
+    a._value = ours_cp; a._evaluated = true;
+    b._value = ref_cp; b._evaluated = true;
+    a.get_WDL(); a.get_average_score();
+    b.get_WDL(); b.get_average_score();
+    double wdl_gap = fabs((double)a._avg_score - (double)b._avg_score);
+    double cp_gap = fmin(1.0, fabs((double)ours_cp - (double)ref_cp) / 1000.0);
+    return wdl_gap + 0.1 * cp_gap;
+}
 
 struct Puzzle {
     string fen;
