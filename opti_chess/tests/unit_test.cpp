@@ -3683,6 +3683,33 @@ TEST(Debug, MobilityPerPiece) {
 	SUCCEED();
 }
 
+// Passed-pawn model cases (docs/passed-pawns-roadmap.md, Part A): one FEN
+// per scenario. SF18-static labels baked in; bands are wide on purpose —
+// they guard direction and magnitude sanity (sign flips, explosions), not
+// exact values. Labels: clean +1, candidate +151, N-blocked +7,
+// rook-controlled -368, connected +561/+491, out-of-square +497.
+TEST(Puzzle, PassedPawnCases) {
+	static Evaluator evaluator;
+	struct Case { const char* fen; int sf; };
+	static const Case cases[] = {
+		{ "4k3/8/8/4P3/8/4K3/8/8 w - - 0 1", 1 }, // clean passer
+		{ "4k3/8/3p4/4P3/5P2/4K3/8/8 w - - 0 1", 151 }, // pawn-blocked -> candidate
+		{ "4k3/8/4n3/4P3/8/8/4K3/8 w - - 0 1", 7 }, // knight-blocked
+		{ "4k3/4r3/8/4P3/8/4K3/8/8 w - - 0 1", -368 }, // rook-controlled file
+		{ "4k3/8/8/3PP3/8/4K3/8/8 w - - 0 1", 561 }, // connected
+		{ "4k3/8/8/3PP3/5P2/4K3/8/8 w - - 0 1", 491 }, // protected + connected
+		{ "k7/8/8/4P3/8/4K3/8/8 w - - 0 1", 497 }, // king out of square
+	};
+	for (auto& c : cases) {
+		Puzzle p;
+		p.fen = c.fen; p.category = PuzzleCategory::EVALUATION;
+		auto r = PuzzleRunner::run(p, BudgetMode::STATIC_EVAL, 0, &evaluator);
+		if (abs(c.sf) > 200)
+			EXPECT_TRUE((r.actual_eval_cp > 0) == (c.sf > 0)) << c.fen;
+		EXPECT_LT(abs(r.actual_eval_cp), 1500) << c.fen;
+	}
+}
+
 TEST(Puzzle, TacticalSuite) {
 	string sf_path = find_stockfish();
 	StockfishAdapter sf(sf_path);

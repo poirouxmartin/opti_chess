@@ -4,6 +4,7 @@
 #include "zobrist.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <ranges>
 #include <string>
 #include <sstream>
@@ -242,6 +243,35 @@ int Board::get_pawn_structure(float display_factor)
 
 	// 8/5bB1/8/5PP1/8/4K3/p7/1k6 w - - 1 9: winning for White; the square is controlled for the other passed pawn
 
+	// Passed-pawn model (docs/passed-pawns-roadmap.md, Part A):
+	// V(s) per square ahead, min-capped by controls, blocker malus by
+	// piece, square rule with tempo + free king path (scaled outside pure
+	// pawn endings), candidates via local majority, global max(Vi - k*i).
+	static const float pp_gradient_k = [] {
+		const char* e = getenv("OPTI_PP_K");
+		return e ? (float)atof(e) : 75.0f;
+	}();
+	static const float pp_cand_factor = [] {
+		const char* e = getenv("OPTI_PP_CAND");
+		return e ? (float)atof(e) : 0.0f;
+	}();
+	static const float pp_nonpawn_square_scale = [] {
+		const char* e = getenv("OPTI_PP_SQSCALE");
+		return e ? (float)atof(e) : 0.5f;
+	}();
+	// Forward pull: V = V0 + m*(Vmax_path - V0), so the current square
+	// anchors the value and the path ahead only pulls forward.
+	static const float pp_pull_m = [] {
+		const char* e = getenv("OPTI_PP_PULL");
+		return e ? (float)atof(e) : 0.0f;
+	}();
+	// min-cap when a square is controlled and no friendly pawn protects it
+	static constexpr int pp_pawn_control_cap = 100;
+	static constexpr int pp_piece_control_cap = 320;
+	// opportunity-cost malus for the side owning the blocker, by piece
+	// (knight blockades cheap, queen babysitting punished); pawns/king: 0
+	static constexpr int pp_blocker_malus[7] = { 0, 0, 40, 60, 120, 250, 0 };
+
 	// Passed pawn value table, indexed by how far the pawn has advanced
 	static constexpr int passed_pawns[8] = { 0, 175, 175, 280, 450, 750, 1250, 0 };
 
@@ -303,38 +333,62 @@ int Board::get_pawn_structure(float display_factor)
 				// If there is a potentially passed pawn
 				if (pawns_white[row][col]) {
 
-					// No pawn on the same or an adjacent file at a strictly higher rank
-					bool is_passed_pawn = true;
-					for (uint8_t k = row + 1; k < 7; k++) {
-						if ((col > 0 && _array[k][col - 1] == b_pawn) || _array[k][col] == b_pawn || (col < 7 && _array[k][col + 1] == b_pawn)) {
-							is_passed_pawn = false;
-							break;
+				// No pawn on the same or an adjacent file at a strictly higher rank
+				bool is_passed_pawn = true;
+				bool pawn_blocked = false;
+				for (uint8_t k = row + 1; k < 7; k++) {
+					if ((col > 0 && _array[k][col - 1] == b_pawn) || _array[k][col] == b_pawn || (col < 7 && _array[k][col + 1] == b_pawn)) {
+						is_passed_pawn = false;
+						pawn_blocked = true;
+						break;
+					}
+				}
+
+				// Blocked by an enemy pawn: not passed, but a candidate if the
+				// local pawn majority can force it through.
+				if (!is_passed_pawn && pawn_blocked) {
+					int own = 0, enemy = 0;
+					for (int c = max(0, (int)col - 1); c <= min(7, (int)col + 1); c++)
+						for (int r = 0; r < 8; r++) {
+							if (pawns_white[r][c]) own++;
+							if (pawns_black[r][c]) enemy++;
+						}
+					if (own > enemy)
+						passed_pawns_value += pp_cand_factor * passed_pawns[row] * passed_adv;
+					continue;
+				}
+
+				// If this is a passed pawn
+				if (is_passed_pawn) {
+
+					// Controls and blocks
+					float division_factor = 1.0f;
+					uint8_t nearest_blocker = none;
+
+					// Look for a blocker
+					for (uint8_t k = row + 1; k <= 7; k++) {
+						const uint8_t blocker = _array[k][col];
+						if (blocker == b_pawn) {
+							// Enemy pawn: no table entry (knight..king only),
+							// and the most permanent blocker (pawns never move
+							// backward) -> strongest divisor. Indexing with
+							// b_pawn(7)-8 = -1 used to read out of bounds.
+							division_factor += block_division_per_piece[0] - 1.0f;
+						}
+						else if (is_black(blocker)) {
+							division_factor += block_division_per_piece[blocker - 8] - 1.0f;
+							if (nearest_blocker == none) nearest_blocker = blocker;
+						}
+						else if (is_white(blocker)) {
+							division_factor += self_block_division - 1.0f;
+							if (nearest_blocker == none) nearest_blocker = blocker;
 						}
 					}
 
-					// If this is a passed pawn
-					if (is_passed_pawn) {
-
-						// Controls and blocks
-						float division_factor = 1.0f;
-
-						// Look for a blocker
-						for (uint8_t k = row + 1; k <= 7; k++) {
-							const uint8_t blocker = _array[k][col];
-							if (blocker == b_pawn) {
-								// Enemy pawn: no table entry (knight..king only),
-								// and the most permanent blocker (pawns never move
-								// backward) -> strongest divisor. Indexing with
-								// b_pawn(7)-8 = -1 used to read out of bounds.
-								division_factor += block_division_per_piece[0] - 1.0f;
-							}
-							else if (is_black(blocker)) {
-								division_factor += block_division_per_piece[blocker - 8] - 1.0f;
-							}
-							else if (is_white(blocker)) {
-								division_factor += self_block_division - 1.0f;
-							}
-						}
+					// Opportunity-cost malus for the side owning the blocker
+					// (knight blockades cheap, queen babysitting punished).
+					if (nearest_blocker != none && is_black(nearest_blocker))
+						passed_pawns_value += pp_blocker_malus[piece_type(nearest_blocker)];
 
 					// Remove the pawn to test x-ray control over the square
 					_array[row][col] = none;
@@ -357,6 +411,8 @@ int Board::get_pawn_structure(float display_factor)
 
 					SquareMap white_controls_map = get_white_controls_map();
 					SquareMap black_controls_map = get_black_controls_map();
+					SquareMap white_pawns_map = get_pawns_controls(true);
+					SquareMap black_pawns_map = get_pawns_controls(false);
 
 					for (uint8_t k = row + 1; k <= 7; k++) {
 						int controls_diff = max(0, black_controls_map._array[k][col] - white_controls_map._array[k][col]);
@@ -372,25 +428,46 @@ int Board::get_pawn_structure(float display_factor)
 						_controls_map_valid = false;
 
 
-						int passed_value = passed_pawns[row] * (!has_black_pieces ? 1.5f : 1.0f);
-
-						// Is it connected to another pawn?
-						if ((col > 0 && (pawns_white[row][col - 1] || pawns_white[row - 1][col - 1])) || (col < 7 && (pawns_white[row][col + 1] || pawns_white[row - 1][col + 1]))) {
-							passed_value *= connected_passed_pawn_bonus;
+					// Path value: anchored at the current square, pulled forward
+					// by the best square ahead (so advancement has a gradient
+					// without revaluing the pawn as if already advanced).
+					float best_path = 0.0f;
+					float v0 = 0.0f;
+					bool first = true;
+					for (uint8_t k = row; k <= 6; k++) {
+						int sq_base = passed_pawns[k];
+						// Min-cap: enemy-controlled without friendly pawn
+						// protection (protected squares keep full value).
+						if (black_controls_map._array[k][col] > 0 && white_pawns_map._array[k][col] == 0) {
+							int cap = black_pawns_map._array[k][col] > 0 ? pp_pawn_control_cap : pp_piece_control_cap;
+							if (sq_base > cap) sq_base = cap;
 						}
-
-						// Pawn endgame -> is the king inside the square of the passed pawn?
-						bool out_of_square = !has_black_pieces && !in_king_square(Pos(row, col), false);
-
-						//cout << "Passed pawn: " << square_name(row, col) << ", Is pawn endgame: " << pawn_endgame << ", Out of square: " << out_of_square << ", bonus: " << out_of_square * out_of_square_bonus[row] << endl;
-
-						// Add the passed pawn value
-						passed_pawns_value += (passed_value / division_factor + out_of_square * out_of_square_bonus[row]) * passed_adv;
-						//cout << "Passed pawn: " << square_name(row, col) << ", Value: " << (passed_value / division_factor + out_of_square * out_of_square_bonus[row]) * passed_adv << " (passed_value: " << passed_value << ", division_factor: " << division_factor << ", out_of_square bonus: " << out_of_square * out_of_square_bonus[row] << ") * passed_adv: " << passed_adv << endl;
-
-						// Only the most advanced pawn on the file counts: the ones behind it are stuck
-						break;
+						float cand = (float)sq_base - pp_gradient_k * (k - row);
+						if (first) { v0 = cand > 0.0f ? cand : 0.0f; first = false; }
+						if (cand > best_path) best_path = cand;
 					}
+
+					float path_value = v0 + pp_pull_m * (best_path > v0 ? best_path - v0 : 0.0f);
+
+					// Is it connected to another pawn?
+					if ((col > 0 && (pawns_white[row][col - 1] || pawns_white[row - 1][col - 1])) || (col < 7 && (pawns_white[row][col + 1] || pawns_white[row - 1][col + 1]))) {
+						path_value *= connected_passed_pawn_bonus;
+					}
+					if (!has_black_pieces) path_value *= 1.5f;
+
+					// King outside the square? Tempo-aware (in_king_square)
+					// with a free promotion square; scaled outside pure pawn
+					// endings (no more all-or-nothing gate).
+					bool out_of_square = !in_king_square(Pos(row, col), false)
+						&& black_controls_map._array[7][col] == 0;
+					float sq_scale = pawn_endgame ? 1.0f : pp_nonpawn_square_scale;
+
+					// Add the passed pawn value
+					passed_pawns_value += (path_value / division_factor + (out_of_square ? sq_scale * out_of_square_bonus[row] : 0.0f)) * passed_adv;
+
+					// Only the most advanced pawn on the file counts: the ones behind it are stuck
+					break;
+				}
 
 				}
 			}
@@ -407,37 +484,60 @@ int Board::get_pawn_structure(float display_factor)
 				// If there is a potentially passed pawn
 				if (pawns_black[row][col]) {
 
-					// No pawn on the same or an adjacent file at a strictly higher rank
-					bool is_passed_pawn = true;
-					for (uint8_t k = row - 1; k > 0; k--) {
-						if ((col > 0 && _array[k][col - 1] == w_pawn) || _array[k][col] == w_pawn || (col < 7 && _array[k][col + 1] == w_pawn)) {
-							is_passed_pawn = false;
-							break;
+				// No pawn on the same or an adjacent file at a strictly higher rank
+				bool is_passed_pawn = true;
+				bool pawn_blocked = false;
+				for (uint8_t k = row - 1; k > 0; k--) {
+					if ((col > 0 && _array[k][col - 1] == w_pawn) || _array[k][col] == w_pawn || (col < 7 && _array[k][col + 1] == w_pawn)) {
+						is_passed_pawn = false;
+						pawn_blocked = true;
+						break;
+					}
+				}
+
+				// Blocked by an enemy pawn: candidate if the local majority
+				// can force it through.
+				if (!is_passed_pawn && pawn_blocked) {
+					int own = 0, enemy = 0;
+					for (int c = max(0, (int)col - 1); c <= min(7, (int)col + 1); c++)
+						for (int r = 0; r < 8; r++) {
+							if (pawns_black[r][c]) own++;
+							if (pawns_white[r][c]) enemy++;
+						}
+					if (own > enemy)
+						passed_pawns_value -= pp_cand_factor * passed_pawns[7 - row] * passed_adv;
+					continue;
+				}
+
+				// If this is a passed pawn
+				if (is_passed_pawn) {
+
+					// Controls and blocks
+					float division_factor = 1.0f;
+					uint8_t nearest_blocker = none;
+
+					// Look for a blocker
+					for (int_fast8_t k = row - 1; k >= 0; k--) {
+						const uint8_t blocker = _array[k][col];
+						if (blocker == w_pawn) {
+							// Mirror of the white side: enemy pawn has no
+							// table entry; w_pawn(1)-2 = -1 used to read
+							// out of bounds.
+							division_factor += block_division_per_piece[0] - 1.0f;
+						}
+						else if (is_white(blocker)) {
+							division_factor += block_division_per_piece[blocker - 2] - 1.0f;
+							if (nearest_blocker == none) nearest_blocker = blocker;
+						}
+						else if (is_black(blocker)) {
+							division_factor += self_block_division - 1.0f;
+							if (nearest_blocker == none) nearest_blocker = blocker;
 						}
 					}
 
-					// If this is a passed pawn
-					if (is_passed_pawn) {
-
-						// Controls and blocks
-						float division_factor = 1.0f;
-
-						// Look for a blocker
-						for (int_fast8_t k = row - 1; k >= 0; k--) {
-							const uint8_t blocker = _array[k][col];
-							if (blocker == w_pawn) {
-								// Mirror of the white side: enemy pawn has no
-								// table entry; w_pawn(1)-2 = -1 used to read
-								// out of bounds.
-								division_factor += block_division_per_piece[0] - 1.0f;
-							}
-							else if (is_white(blocker)) {
-								division_factor += block_division_per_piece[blocker - 2] - 1.0f;
-							}
-							else if (is_black(blocker)) {
-								division_factor += self_block_division - 1.0f;
-							}
-						}
+					// Opportunity-cost malus for the side owning the blocker.
+					if (nearest_blocker != none && is_white(nearest_blocker))
+						passed_pawns_value -= pp_blocker_malus[piece_type(nearest_blocker)];
 
 					// Remove the pawn to test x-ray control over the square
 					_array[row][col] = none;
@@ -458,6 +558,8 @@ int Board::get_pawn_structure(float display_factor)
 
 					SquareMap white_controls_map = get_white_controls_map();
 					SquareMap black_controls_map = get_black_controls_map();
+					SquareMap white_pawns_map = get_pawns_controls(true);
+					SquareMap black_pawns_map = get_pawns_controls(false);
 
 					for (int_fast8_t k = row - 1; k >= 0; k--) {
 						int controls_diff = max(0, white_controls_map._array[k][col] - black_controls_map._array[k][col]);
@@ -472,18 +574,39 @@ int Board::get_pawn_structure(float display_factor)
 					if (vertical_xray)
 						_controls_map_valid = false;
 
-						int passed_value = passed_pawns[7 - row] * (!has_white_pieces ? 1.5f : 1.0f);
+						int passed_value = 0;
+						{
+							// Path value: best square ahead, min-capped by
+							// controls, with distance decay so the pawn is
+							// pulled forward.
+							float best_path = 0.0f;
+							float v0 = 0.0f;
+							bool first_sq = true;
+							for (int_fast8_t k = row; k >= 1; k--) {
+								int sq_base = passed_pawns[7 - k];
+								if (white_controls_map._array[k][col] > 0 && black_pawns_map._array[k][col] == 0) {
+									int cap = white_pawns_map._array[k][col] > 0 ? pp_pawn_control_cap : pp_piece_control_cap;
+									if (sq_base > cap) sq_base = cap;
+								}
+								float cand = (float)sq_base - pp_gradient_k * (row - k);
+								if (first_sq) { v0 = cand > 0.0f ? cand : 0.0f; first_sq = false; }
+								if (cand > best_path) best_path = cand;
+							}
+							passed_value = (int)(v0 + pp_pull_m * (best_path > v0 ? best_path - v0 : 0.0f));
+						}
 
 						// Is it connected to another pawn?
 						if ((col > 0 && (pawns_black[row][col - 1] || pawns_black[row + 1][col - 1])) || (col < 7 && (pawns_black[row][col + 1] || pawns_black[row + 1][col + 1]))) {
-							passed_value *= connected_passed_pawn_bonus;
+							passed_value = (int)(passed_value * connected_passed_pawn_bonus);
 						}
+						if (!has_white_pieces) passed_value = (int)(passed_value * 1.5f);
 
 						//8/8/4p2p/1R6/pPpP1k2/K6P/8/8 b - - 0 43
-						//cout << "Passed pawn: " << square_name(row, col) << " (" << passed_value << " ) | " << division_factor << ": " << passed_value / division_factor * passed_adv << endl;
-
-						// Pawn endgame -> is the king inside the square of the passed pawn?
-						bool out_of_square = !has_white_pieces && !in_king_square(Pos(row, col), true);
+						// King outside the square? Tempo-aware with a free
+						// promotion square; scaled outside pure pawn endings.
+						bool out_of_square = !in_king_square(Pos(row, col), true)
+							&& white_controls_map._array[0][col] == 0;
+						float sq_scale = pawn_endgame ? 1.0f : pp_nonpawn_square_scale;
 
 						//cout << "Passed pawn: " << square_name(row, col) << ", Is pawn endgame: " << pawn_endgame << ", Out of square: " << out_of_square << ", bonus: " << out_of_square * out_of_square_bonus[7 - row] << endl;
 
@@ -492,7 +615,7 @@ int Board::get_pawn_structure(float display_factor)
 						// 8/8/8/8/8/1p5P/p5k1/K7 w - - 0 54
 
 						// Add the passed pawn value
-						passed_pawns_value -= (passed_value / division_factor + out_of_square * out_of_square_bonus[7 - row]) * passed_adv;
+						passed_pawns_value -= (passed_value / division_factor + (out_of_square ? sq_scale * out_of_square_bonus[7 - row] : 0.0f)) * passed_adv;
 						//cout << "Passed pawn: " << square_name(row, col) << ", Value: " << -(passed_value / division_factor + out_of_square * out_of_square_bonus[7 - row]) * passed_adv << " (passed_value: " << passed_value << ", division_factor: " << division_factor << ", out_of_square bonus: " << out_of_square * out_of_square_bonus[7 - row] << ") * passed_adv: " << passed_adv << endl;
 
 						// Only the most advanced pawn on the file counts: the ones behind it are stuck
