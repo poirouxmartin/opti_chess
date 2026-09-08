@@ -854,7 +854,7 @@ int Board::get_king_virtual_mobility(bool color) {
 int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls, bool color)
 {
 	constexpr int initial_safe_check_value_default = 250;
-	constexpr int initial_unsafe_check_value_default = 0;
+	constexpr int initial_unsafe_check_value_default = 25;
 	constexpr float no_escape_multiplier_default = 2.5f;
 	// Tunables below default to the constexpr above; OPTI_KS_* env overrides
 	// exist for dataset-driven tuning (coordinate descent) without rebuilds.
