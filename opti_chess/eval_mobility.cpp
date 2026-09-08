@@ -4,6 +4,7 @@
 #include "zobrist.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <ranges>
 #include <string>
 #include <sstream>
@@ -1697,6 +1698,14 @@ int Board::get_long_term_piece_mobility(bool display) const {
 		return _array[r][c];
 	};
 
+	// Relief: count accessible squares (raw) BEFORE the blocking discounts,
+	// then blend back part of the discounted-away mobility. relief=0 keeps
+	// today's behaviour exactly (env OPTI_MOB_RELIEF for bank tuning).
+	static const float mob_relief = [] {
+		const char* e = getenv("OPTI_MOB_RELIEF");
+		return e ? (float)atof(e) : 0.0f;
+	}();
+
 	// For each piece
 	uint64_t occ = _occupancies[2];
 	while (occ) {
@@ -1706,6 +1715,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 		uint8_t piece = _array[row][col];
 
 		double piece_mobility = 0.0;
+		double raw_mobility = 0.0;
 
 		// White pawn
 		if (piece == w_pawn) {
@@ -1724,6 +1734,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && white_blocked_pieces._array[new_row][new_col] == 0 && !black_pawns_controls._array[new_row][new_col]) {
 						uint8_t target_piece = piece_at(new_row, new_col);
 						piece_mobility += blocking_piece_mult[piece_type(target_piece)];
+						raw_mobility += 1.0;
 					}
 				}
 			}
@@ -1752,6 +1763,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 
 						if (!black_pawns_controls._array[new_row][new_col]) {
 							piece_mobility += cumulative_blocking_factor;
+							raw_mobility += 1.0;
 						}
 
 						new_row += d_row;
@@ -1784,6 +1796,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 
 						if (!black_pawns_controls._array[new_row][new_col]) {
 							piece_mobility += cumulative_blocking_factor;
+							raw_mobility += 1.0;
 						}
 
 						new_row += d_row;
@@ -1801,6 +1814,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && white_blocked_pieces._array[new_row][new_col] == 0 && !black_pieces_controls._array[new_row][new_col]) {
 						uint8_t target_piece = piece_at(new_row, new_col);
 						piece_mobility += blocking_piece_mult[piece_type(target_piece)];
+						raw_mobility += 1.0;
 					}
 				}
 			}
@@ -1822,6 +1836,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && black_blocked_pieces._array[new_row][new_col] == 0 && !white_pawns_controls._array[new_row][new_col]) {
 						uint8_t target_piece = piece_at(new_row, new_col);
 						piece_mobility += blocking_piece_mult[piece_type(target_piece)];
+						raw_mobility += 1.0;
 					}
 				}
 			}
@@ -1850,6 +1865,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 
 						if (!white_pawns_controls._array[new_row][new_col]) {
 							piece_mobility += cumulative_blocking_factor;
+							raw_mobility += 1.0;
 						}
 
 						new_row += d_row;
@@ -1882,6 +1898,7 @@ int Board::get_long_term_piece_mobility(bool display) const {
 
 						if (!white_pawns_controls._array[new_row][new_col]) {
 							piece_mobility += cumulative_blocking_factor;
+							raw_mobility += 1.0;
 						}
 
 						new_row += d_row;
@@ -1899,13 +1916,18 @@ int Board::get_long_term_piece_mobility(bool display) const {
 					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && black_blocked_pieces._array[new_row][new_col] == 0 && !white_pieces_controls._array[new_row][new_col]) {
 						uint8_t target_piece = piece_at(new_row, new_col);
 						piece_mobility += blocking_piece_mult[piece_type(target_piece)];
+						raw_mobility += 1.0;
 					}
 				}
 			}
 
-			//if (display) {
-			//	cout << piece_name(piece) << " on " << square_name(row, col), ", mobility: " << piece_mobility << endl;
-			//}
+		//if (display) {
+		//	cout << piece_name(piece) << " on " << square_name(row, col), ", mobility: " << piece_mobility << endl;
+		//}
+
+		// Relief: blend back part of the discounted-away mobility. relief=0
+		// keeps piece_mobility (discounted count) exactly as before.
+		piece_mobility += (raw_mobility - piece_mobility) * mob_relief;
 
 			// Interpolation bounds must respect EACH table's own size (pawn 5,
 			// knight/king 9, bishop/rook 15, queen 29): an unrestricted pawn
