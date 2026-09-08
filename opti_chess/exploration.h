@@ -288,6 +288,10 @@ public:
 	// Returns the most explored child move
 	Move get_most_explored_child_move();
 
+	// Display continuation move: most explored (ties: searched value),
+	// proven terminal wins first; value-argmax fallback when unexplored.
+	Move get_display_continuation_move() const;
+
 	// Resets the node and its children, and deletes them all
 	void reset(bool recursive = true);
 

@@ -1429,6 +1429,52 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	_iterations++;
 }
 
+// Display continuation: July design (most explored, ties by searched value,
+// proven terminal wins first) with the August 2026 fallback (value-argmax)
+// ONLY when nothing was explored (stand-pat-ranked nodes). A raw
+// value-argmax walk trusts unvisited deep spikes and displays ghost second
+// moves (e.g. a 1-visit flashy check over the well-explored recapture).
+Move Node::get_display_continuation_move() const {
+	Move best_move = Move();
+	long long best_visits = -1;
+	long long best_val = LLONG_MIN;
+	bool proven_win = false;
+	const int node_color = _board != nullptr ? _board->get_color() : 1;
+	for (auto const& [move, link] : _children) {
+		if (!link._node) continue;
+		const long long v = (long long)link._chosen_iterations;
+		const long long val = (long long)link._node->_deep_evaluation._value * node_color;
+		if (link._node->_is_terminal && val > 0 && 2 * val > mate_value && val > best_val) {
+			best_val = val;
+			best_move = move;
+			best_visits = v;
+			proven_win = true;
+			continue;
+		}
+		if (proven_win) continue; // a proven win already leads
+		if (v > best_visits || (v == best_visits && val > best_val)) {
+			best_visits = v;
+			best_val = val;
+			best_move = move;
+		}
+	}
+	if (!proven_win && !best_move.is_null_move() && best_visits == 0) {
+		// Nothing explored: August fallback (stand-pat case).
+		long long fb_val = LLONG_MIN;
+		Move fb_move;
+		for (auto const& [move, link] : _children) {
+			if (!link._node) continue;
+			const long long val = (long long)link._node->_deep_evaluation._value * node_color;
+			if (val > fb_val) {
+				fb_val = val;
+				fb_move = move;
+			}
+		}
+		if (!fb_move.is_null_move()) best_move = fb_move;
+	}
+	return best_move;
+}
+
 // Returns the most explored child
 Move Node::get_most_explored_child_move() {
 	int max = -1;
@@ -1726,24 +1772,12 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 
 		}
 
-		// Otherwise display only the most explored move
-		else {
-			// Single-line continuation: follow the VALUE-argmax child (same truth
-			// the propagation uses); the score-based pick truncated lines on
-			// stand-pat-ranked nodes.
-			int color = _board->get_color();
-			long long best_value = LLONG_MIN;
-			Move best_move;
-			for (auto const& [move, link] : _children) {
-				if (!link._node) continue;
-				const long long v = link._node->_deep_evaluation._value * color;
-				if (v > best_value) {
-					best_value = v;
-					best_move = move;
-				}
-			}
-
-			// Standpat
+		// Otherwise display only the continuation move: most explored
+		// (ties: searched value), proven terminal wins first; value-argmax
+		// fallback when unexplored (see get_display_continuation_move).
+		Move best_move = get_display_continuation_move();
+		{
+			// Single-line continuation
 			if (best_move.is_null_move()) {
 				variants += "...";
 			}
@@ -1778,20 +1812,8 @@ int Node::get_main_depth(const double alpha, const double beta, int max_depth, P
 	}
 
 	if (children_count() > 0) {
-		// Walk the PV by SEARCHED VALUE (consistent with the propagation truth):
-		// the score-based walk died on stand-pat-ranked nodes, displaying a
-		// stuck "Depth: 2" no matter how deep the search actually went.
-		int color = _board->get_color();
-		long long best_value = LLONG_MIN;
-		Move main_move;
-		for (auto const& [move, link] : _children) {
-			if (!link._node) continue;
-			const long long v = link._node->_deep_evaluation._value * color;
-			if (v > best_value) {
-				best_value = v;
-				main_move = move;
-			}
-		}
+		// Same walk as the variant text (see get_display_continuation_move).
+		Move main_move = get_display_continuation_move();
 
 		if (main_move.is_null_move()) {
 			return 0;
