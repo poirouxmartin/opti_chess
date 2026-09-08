@@ -1699,11 +1699,11 @@ int Board::get_long_term_piece_mobility(bool display) const {
 	};
 
 	// Relief: count accessible squares (raw) BEFORE the blocking discounts,
-	// then blend back part of the discounted-away mobility. relief=0 keeps
-	// today's behaviour exactly (env OPTI_MOB_RELIEF for bank tuning).
+	// then blend back part of the discounted-away mobility (env
+	// OPTI_MOB_RELIEF for bank tuning; 0.5 play-neutral, MAE -5).
 	static const float mob_relief = [] {
 		const char* e = getenv("OPTI_MOB_RELIEF");
-		return e ? (float)atof(e) : 0.0f;
+		return e ? (float)atof(e) : 0.5f;
 	}();
 
 	// For each piece
