@@ -21,21 +21,22 @@ jobs:
       # CalibratedBatch/TestsTxtBatch/Progress ParamSweep are wall-clock heavy.
       - name: fast test suites
         run: ctest --test-dir opti_chess/build/windows-release --output-on-failure -E "Debug\.|Perf\.|LichessBenchmark|CalibratedBatch|TestsTxtBatch|TimeBudgetLadder|ScalingBenchmark|TimeBenchmark|GuiLikeBench|ParamSweep"
-      # Puzzle gate: fixed nodes + seed => load-proof; fails below threshold.
-      - name: GATE-50 puzzle threshold
+      # Puzzle gate: fixed nodes + seed => load-proof and solid (500 positions);
+      # fails below threshold.
+      - name: GATE-500 puzzle threshold
         shell: pwsh
         env:
           OPTI_PUZZLE_NODES: '2000'
           OPTI_SEED: '42'
-          OPTI_PUZZLE_MAX: '50'
-          OPTI_GATE_MIN_SOLVED: '43'
+          OPTI_PUZZLE_MAX: '500'
+          OPTI_GATE_MIN_SOLVED: '400'
         run: >
           $out = & opti_chess/build/windows-release/Release/opti_chess_tests.exe
           --gtest_filter=Puzzle.LichessBenchmark5000 2>&1 | Out-String;
-          echo $out; if ($out -match '\[50/50\] solved=(\d+)') {
+          echo $out; if ($out -match '\[500/500\] solved=(\d+)') {
           if ([int]$Matches[1] -lt [int]$env:OPTI_GATE_MIN_SOLVED) {
-          Write-Error "GATE-50 regression: $($Matches[1]) < $env:OPTI_GATE_MIN_SOLVED"; exit 1 } }
-          else { Write-Error 'GATE-50 output not recognized'; exit 1 }
+          Write-Error "GATE-500 regression: $($Matches[1]) < $env:OPTI_GATE_MIN_SOLVED"; exit 1 } }
+          else { Write-Error 'GATE-500 output not recognized'; exit 1 }
       - uses: actions/upload-artifact@v7
         with:
           name: opti_chess-windows-x64
