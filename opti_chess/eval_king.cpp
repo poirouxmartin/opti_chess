@@ -903,6 +903,8 @@ int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls
 	int mate_threat_value = 0;
 	int mate_threat_count = 0;
 	int checks_count = 0;
+	int safe_count = 0;
+	int unsafe_count = 0;
 
 	// Position of the opposing king
 	update_kings_pos();
@@ -1021,16 +1023,18 @@ int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls
 				//cout << "color: " << color << ", king_escapes : " << king_escapes << ", piece_blocks : " << piece_blocks << ", division : " << division << ", value : " << initial_safe_check_value / division << endl;
 				const int v = max(multiplier * initial_safe_check_value / division, (float)initial_unsafe_check_value); // A safe check always beats an unsafe one
 				safe_checks_value += v;
+				safe_count++;
 				if (king_escapes == 0 && piece_blocks == 0) {
 					mate_threat_value += v;
 					mate_threat_count++;
 				}
 			}
-				else {
-					// Add the unsafe check value
-					//cout << "color: " << color << "value : " << initial_unsafe_check_value << endl;
-					unsafe_checks_value += initial_unsafe_check_value;
-				}
+			else {
+				// Add the unsafe check value
+				//cout << "color: " << color << "value : " << initial_unsafe_check_value << endl;
+				unsafe_checks_value += initial_unsafe_check_value;
+				unsafe_count++;
+			}
 
 			}
 
@@ -1062,6 +1066,16 @@ int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls
 	}
 	const int checks_total = (int)(((safe_checks_value - mate_threat_value) + unsafe_checks_value) * single_idea_factor)
 		+ (int)(mate_threat_value * mate_threat_factor);
+	// Detail breakdown for offline attribution (display only, env-gated).
+	{
+		static const bool ks_detail = getenv("OPTI_KS_DETAIL") != nullptr;
+		if (ks_detail) {
+			main_GUI._eval_components += "KSDETAIL: atk=" + to_string(color)
+				+ " stm=" + to_string(_player) + " checks=" + to_string(checks_count)
+				+ " safe_n=" + to_string(safe_count) + " unsafe_n=" + to_string(unsafe_count)
+				+ " mate_n=" + to_string(mate_threat_count) + "\n";
+		}
+	}
 	return checks_total * (_player == color ? has_trait_multiplier : 1.0f);
 }
 
