@@ -3669,6 +3669,20 @@ TEST(Debug, DumpComponents) {
 	SUCCEED();
 }
 
+// TEMP: per-piece long/short mobility on a FEN (OPTI_EVAL_MOBFEN).
+TEST(Debug, MobilityPerPiece) {
+	const char* fen = getenv("OPTI_EVAL_MOBFEN");
+	if (!fen) { cout << "  [SKIP] OPTI_EVAL_MOBFEN not set" << endl; return; }
+	Board b;
+	b.from_fen(fen);
+	cout << "== LONG ==" << endl;
+	int lt = b.get_long_term_piece_mobility(true);
+	cout << "== SHORT ==" << endl;
+	int st = b.get_short_term_piece_mobility(true);
+	cout << "TOTAL long=" << lt << " short=" << st << endl;
+	SUCCEED();
+}
+
 TEST(Puzzle, TacticalSuite) {
 	string sf_path = find_stockfish();
 	StockfishAdapter sf(sf_path);
