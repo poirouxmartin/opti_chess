@@ -1672,6 +1672,14 @@ int Board::get_long_term_piece_mobility(bool display) const {
 	static const int* virtual_mobilities[6] = { pawn_virtual_mobility, knight_virtual_mobility, bishop_virtual_mobility, rook_virtual_mobility, queen_virtual_mobility, king_virtual_mobility };
 
 	// Mobility counted after meeting a piece
+	// TODO (tuning candidate): softer blocking factors — pawn 0.75,
+	// knight 0.9, bishop 0.85, rook 0.8, queen 0.65, king 0.35.
+	// TODO (tuning candidate): soften the table low end (bishop/queen/knight
+	// index 0-1 nuke at -450..-3000); clean-binary data only (Sep 2026 stale
+	// episode showed polluted binaries exaggerating it).
+	// TODO (retry): own-pawn-ahead ray cap (0/1/2 by pawn pushes, captures
+	// lift it). Attempt Sep 2026 moved French queen the wrong way on a
+	// polluted binary — unproven either way, needs clean-binary validation.
 	static constexpr float blocking_piece_mult[7] = { 1.0f, 0.4f, 0.65f, 0.55f, 0.45f, 0.35f, 0.1f }; // By the type of piece met (none, pawn, knight, bishop, rook, queen, king)
 
 	// Piece control map, for the king

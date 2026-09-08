@@ -396,7 +396,11 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 	// Short-term piece mobility
 	if (evaluator->_short_term_piece_mobility != 0.0f) {
 		auto t_mob0 = std::chrono::steady_clock::now();
-		const int short_term_mobility = get_short_term_piece_mobility() * evaluator->_short_term_piece_mobility;
+		// TODO: damp short-term mobility in closed positions (multiply by
+		// (1 - closed_damp * position_nature)) and compensate by raising the
+		// default _short_term_piece_mobility coef. closed_damp=0 = no change.
+		constexpr float closed_damp = 0.0f;
+		const int short_term_mobility = static_cast<int>(get_short_term_piece_mobility() * evaluator->_short_term_piece_mobility * (1.0f - closed_damp * position_nature));
 		g_t_mobility_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_mob0).count();
 		if (display)
 			main_GUI._eval_components += "short-term piece mobility: " + (short_term_mobility >= 0 ? string("+") : string()) + to_string(short_term_mobility) + "\n";
@@ -414,6 +418,8 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 	}
 
 	// Knight activity
+	// TODO (review): central enemy outposts (e.g. Nd5 vs unmoved knights)
+	// read light here (French: -20 white-rel); bulk sits in weak squares.
 	if (evaluator->_knight_activity != 0.0f) {
 		const int knight_activity = get_knight_activity() * evaluator->_knight_activity;
 		if (display)

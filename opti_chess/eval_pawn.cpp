@@ -177,9 +177,13 @@ int Board::get_pawn_structure(float display_factor)
 				}
 			}
 		}
-	}
+			}
 
-	// Black pawns
+			// TODO (new component): overextension / V-structure — advanced pawn
+			// tips unsupported by pawns behind (e.g. c5/e5 tips with a d5 hole).
+			// No dedicated code exists today (closest: weak squares, space).
+
+			// Black pawns
 	for (uint8_t col = 0; col < 8; col++) {
 		for (uint8_t row = 6; row > 0; row--) {
 			if (pawns_black[row][col]) {
