@@ -854,8 +854,8 @@ int Board::get_king_virtual_mobility(bool color) {
 int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls, bool color)
 {
 	constexpr int initial_safe_check_value_default = 250;
-	constexpr int initial_unsafe_check_value_default = 25;
-	constexpr float no_escape_multiplier_default = 2.5f;
+	constexpr int initial_unsafe_check_value_default = 5;
+	constexpr float no_escape_multiplier_default = 4.0f;
 	// Tunables below default to the constexpr above; OPTI_KS_* env overrides
 	// exist for dataset-driven tuning (coordinate descent) without rebuilds.
 	// Env is read once per process (function-static cache, no hot-path cost).
@@ -883,14 +883,14 @@ int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls
 	// the attacker with the DEFENDER to move leaves one tempo to parry. One
 	// mating move is likely parried (nearly cancelled), two sometimes are,
 	// three or more cannot all be parried (kept). Tunables (see OPTI_KS_*).
-	const float one_mate_threat_factor = ks_env("OPTI_KS_MATE1", 0.1f);
+	const float one_mate_threat_factor = ks_env("OPTI_KS_MATE1", 0.05f);
 	const float two_mate_threats_factor = ks_env("OPTI_KS_MATE2", 0.5f);
 
 	// Same tempo logic for a LONE checking idea (no mate delivered): with the
 	// defender to move and a single checking move available, the parry tempo
 	// halves the idea. Mate threats keep their own discount (no double-dip);
 	// attacker to move delivers now, untouched. Tunable (see OPTI_KS_*).
-	const float single_check_idea_factor = ks_env("OPTI_KS_SINGLE", 0.5f);
+	const float single_check_idea_factor = ks_env("OPTI_KS_SINGLE", 0.7f);
 
 	//3r2k1/pp3r2/2q2pp1/3n3P/7Q/7R/1B5P/4R2K b - - 0 33: an enormous number of discoveries here
 	//rnb2bnr/pppp1k1p/5q2/8/5B2/5Q2/PPP3PP/RN3RK1 b - - 0 11: why are the checks better for Black?
