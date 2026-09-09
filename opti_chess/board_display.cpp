@@ -134,10 +134,12 @@ string Board::move_label(Move move, bool use_uft8)
 	if (move.is_check())
 		return s + "+";
 
-	Board temp_board = *this;
-	temp_board.make_move(move, false);
+	Board temp_board(*this, false, true);
+	temp_board.make_move(move, false, true);
 
-	if (temp_board.is_game_over() == draw) {
+	// FIDE threefold (same rule as the game declaration): the temp board
+	// carries the game history so the 3rd occurrence labels "1/2-1/2".
+	if (temp_board.is_game_over(3) == draw) {
 		return s + " 1/2-1/2";
 	}
 

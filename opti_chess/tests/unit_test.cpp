@@ -3669,6 +3669,9 @@ TEST(Puzzle, RepetitionPerpetual) {
 	// Kb8, Qb6+, Kc8, Qc6+ (3rd Qc6+: threefold draw)
 	b.make_move(mv(2, 7, 1, 7), false, true);
 	b.make_move(mv(2, 5, 1, 5), false, true);
+	// Display labels follow the same threefold rule: the 2nd Kc8 (labeled
+	// on its pre-move board) has no draw marker...
+	EXPECT_EQ(b.move_label(mv(1, 7, 2, 7)).find("1/2"), string::npos);
 	b.make_move(mv(1, 7, 2, 7), false, true);
 	b.make_move(mv(1, 5, 2, 5), false, true);
 	EXPECT_EQ(b.repetition_count(), 3);
