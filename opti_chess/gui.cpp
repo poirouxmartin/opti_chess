@@ -1120,6 +1120,13 @@ bool GUI::play_move_keep(Move move)
 			// _positions_history during copy_data in grogros_zero)
 			_board->_positions_history = saved_positions_history;
 			_board->_positions_history[_board->_zobrist_key]++;
+			int cnt_now = _board->repetition_count();
+			debug_log("[recycle] hist=%d count=%d", (int)_board->_positions_history.size(), cnt_now);
+			// Terminal memo must be recomputed: the adopted board carries
+			// the search's twofold verdict, the game needs threefold. This
+			// path never calls make_move (which clears the flag), so without
+			// this no terminal state is ever re-checked here.
+			_board->_game_over_checked = false;
 
 			debug_log("[play_move_keep] new root: board=%p root=%p children=%d iters=%d",
 				(void*)_board, (void*)_root_exploration_node,

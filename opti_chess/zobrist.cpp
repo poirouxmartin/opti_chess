@@ -54,6 +54,14 @@ void Zobrist::generate_zobrist_keys() {
 Zobrist::Zobrist() {
 }
 
+// Process-wide shared keys, generated once (function-static init is
+// thread-safe: concurrent first callers block until keys exist).
+Zobrist& shared_zobrist() {
+	static Zobrist z;
+	z.generate_zobrist_keys();
+	return z;
+}
+
 // Default constructor of the transposition table
 TranspositionTable::TranspositionTable()
 {
@@ -75,14 +83,15 @@ void TranspositionTable::init(const int length, const Zobrist* zobrist, bool dis
 	_hash_table.reserve(length);
 	_length = length;
 
-	// Initialization of the Zobrist keys (if none is given)
-	if (zobrist != nullptr)
+	// Zobrist keys are process-wide shared (one generation for every
+	// thread): per-thread random keys silently break cross-thread
+	// repetition detection (game history vs adopted search boards).
+	if (zobrist != nullptr) {
 		_zobrist = *zobrist;
+		_zobrist.generate_zobrist_keys();
+	}
 	else
-		_zobrist = Zobrist();
-
-	// Generation of the Zobrist keys
-	_zobrist.generate_zobrist_keys();
+		_zobrist = shared_zobrist();
 
 	_init = true;
 

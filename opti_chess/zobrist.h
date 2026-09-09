@@ -20,6 +20,11 @@ public:
 	void generate_zobrist_keys();
 };
 
+// Process-wide shared Zobrist keys, generated once for every thread.
+// Per-thread random keys silently break cross-thread repetition detection
+// (game history vs adopted search boards) and cross-thread TT sharing.
+Zobrist& shared_zobrist();
+
 
 enum TTFlag : uint8_t {
 	TT_EXACT = 0,

@@ -3675,6 +3675,10 @@ TEST(Puzzle, RepetitionPerpetual) {
 	EXPECT_EQ(b.is_game_over(3), draw);
 }
 
+
+
+
+
 // Dumps eval component breakdowns (display mode) for FENs listed in
 // OPTI_EVAL_DUMP (one per line), first OPTI_EVAL_DUMPN (default 50).
 // Diagnostic utility for the eval-attribution hunt (zero gate cost).
