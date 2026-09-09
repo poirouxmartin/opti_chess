@@ -312,7 +312,7 @@ int Board::get_pawn_structure(float display_factor)
 
 	// Divisor per controlling piece (knight, bishop, rook, queen, king)
 	//static constexpr float control_division_per_piece[5] = { 1.5f, 1.75f, 1.35f, 1.2f, 1.35f };
-	static constexpr float control_division = 1.75f;
+	static constexpr float control_division = 2.5f;
 
 	// Divisor per blocking piece (knight, bishop, rook, queen, king)
 	static constexpr float block_division_per_piece[5] = { 2.75f, 2.15f, 2.0f, 1.55f, 2.3f };
@@ -474,6 +474,11 @@ int Board::get_pawn_structure(float display_factor)
 						int sq_base = passed_pawns[k];
 						sq_base = pp_cap(sq_base, black_controls_map._array[k][col], black_pawns_map._array[k][col], white_pawns_map._array[k][col]);
 						if ((float)sq_base < worst_path) worst_path = (float)sq_base;
+						{
+							static const bool sqdbg = getenv("OPTI_PP_SQDBG") != nullptr;
+							if (sqdbg)
+								main_GUI._eval_components += "PPSQ w " + to_string((int)col) + to_string((int)k) + " base=" + to_string(sq_base) + " e=" + to_string(black_controls_map._array[k][col]) + " f=" + to_string(white_pawns_map._array[k][col]) + '\n';
+						}
 					}
 					
 					bool w_connected = (col > 0 && (pawns_white[row][col - 1] || pawns_white[row - 1][col - 1])) || (col < 7 && (pawns_white[row][col + 1] || pawns_white[row - 1][col + 1]));
@@ -616,6 +621,11 @@ int Board::get_pawn_structure(float display_factor)
 								int sq_base = passed_pawns[7 - k];
 								sq_base = pp_cap(sq_base, white_controls_map._array[k][col], white_pawns_map._array[k][col], black_pawns_map._array[k][col]);
 								if ((float)sq_base < worst_path) worst_path = (float)sq_base;
+								{
+									static const bool sqdbg = getenv("OPTI_PP_SQDBG") != nullptr;
+									if (sqdbg)
+										main_GUI._eval_components += "PPSQ b " + to_string((int)col) + to_string((int)k) + " base=" + to_string(sq_base) + " e=" + to_string(white_controls_map._array[k][col]) + " f=" + to_string(black_pawns_map._array[k][col]) + '\n';
+								}
 							}
 							
 							passed_value = (int)worst_path;
