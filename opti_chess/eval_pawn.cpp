@@ -713,7 +713,7 @@ int Board::get_pawn_structure(float display_factor)
 	// pawn-structure coef stays untouched).
 	static const float pp_scale = [] {
 		const char* e = getenv("OPTI_PP_SCALE");
-		return e ? (float)atof(e) : 1.0f;
+		return e ? (float)atof(e) : 2.0f;
 	}();
 	pawn_structure += passed_pawns_value * pp_scale;
 
