@@ -522,7 +522,14 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Pawn structure
 	if (evaluator->_pawn_structure != 0.0f) {
-		const int pawn_structure = get_pawn_structure(display * evaluator->_pawn_structure) * evaluator->_pawn_structure;
+		auto t_mob0 = std::chrono::steady_clock::now();
+		// Whole-component coef, env-tunable for bank experiments.
+		static const float pawn_struct_coef = [] {
+			const char* e = getenv("OPTI_PAWN_STRUCT");
+			return e ? (float)atof(e) : -1.0f;
+		}();
+		const float ps_coef = pawn_struct_coef < 0.0f ? evaluator->_pawn_structure : pawn_struct_coef;
+		const int pawn_structure = get_pawn_structure(display * ps_coef) * ps_coef;
 		//if (display)
 		//	main_GUI._eval_components += "pawn structure: " + (pawn_structure >= 0 ? string("+") : string()) + to_string(pawn_structure) + "\n";
 		total_pawn_structure += pawn_structure;
