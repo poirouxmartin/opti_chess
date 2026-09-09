@@ -272,6 +272,10 @@ int Board::get_pawn_structure(float display_factor)
 	// (knight blockades cheap, queen babysitting punished); pawns/king: 0
 	static constexpr int pp_blocker_malus[7] = { 0, 0, 40, 60, 120, 250, 0 };
 
+	// Passed-pawn model (docs/passed-pawns-roadmap.md, Part A).
+	// Parallel new-model path was trialled and removed (hotter V_base
+	// table hurt MAE everywhere); legacy magnitudes kept.
+
 	// Local pawn majority around a file: can our majority force a blocked
 	// pawn through? (candidate graft point)
 	auto pp_majority = [&](int col, bool white) -> bool {
@@ -343,7 +347,8 @@ int Board::get_pawn_structure(float display_factor)
 	// Does Black still have pieces?
 	bool has_black_pieces = has_pieces(false);
 
-	// For each file
+
+		// For each file
 	for (uint8_t col = 0; col < 8; col++) {
 
 		// Only the most advanced pawn on the file counts, since the others would be stuck behind it
@@ -463,7 +468,8 @@ int Board::get_pawn_structure(float display_factor)
 					float path_value = v0 + pp_pull_m * (best_path > v0 ? best_path - v0 : 0.0f);
 
 					// Is it connected to another pawn?
-					if ((col > 0 && (pawns_white[row][col - 1] || pawns_white[row - 1][col - 1])) || (col < 7 && (pawns_white[row][col + 1] || pawns_white[row - 1][col + 1]))) {
+					bool w_connected = (col > 0 && (pawns_white[row][col - 1] || pawns_white[row - 1][col - 1])) || (col < 7 && (pawns_white[row][col + 1] || pawns_white[row - 1][col + 1]));
+					if (w_connected) {
 						path_value *= connected_passed_pawn_bonus;
 					}
 					if (!has_black_pieces) path_value *= 1.5f;
@@ -475,7 +481,7 @@ int Board::get_pawn_structure(float display_factor)
 						&& black_controls_map._array[7][col] == 0;
 					float sq_scale = pawn_endgame ? 1.0f : pp_nonpawn_square_scale;
 
-					// Add the passed pawn value
+					// Add the passed pawn value (legacy path)
 					passed_pawns_value += (path_value / division_factor + (out_of_square ? sq_scale * out_of_square_bonus[row] : 0.0f)) * passed_adv;
 
 					// Only the most advanced pawn on the file counts: the ones behind it are stuck
@@ -600,7 +606,8 @@ int Board::get_pawn_structure(float display_factor)
 						}
 
 						// Is it connected to another pawn?
-						if ((col > 0 && (pawns_black[row][col - 1] || pawns_black[row + 1][col - 1])) || (col < 7 && (pawns_black[row][col + 1] || pawns_black[row + 1][col + 1]))) {
+						bool b_connected = (col > 0 && (pawns_black[row][col - 1] || pawns_black[row + 1][col - 1])) || (col < 7 && (pawns_black[row][col + 1] || pawns_black[row + 1][col + 1]));
+						if (b_connected) {
 							passed_value = (int)(passed_value * connected_passed_pawn_bonus);
 						}
 						if (!has_white_pieces) passed_value = (int)(passed_value * 1.5f);
@@ -618,9 +625,8 @@ int Board::get_pawn_structure(float display_factor)
 
 						// 8/8/8/8/8/1p5P/p5k1/K7 w - - 0 54
 
-						// Add the passed pawn value
+						// Add the passed pawn value (legacy path)
 						passed_pawns_value -= (passed_value / division_factor + (out_of_square ? sq_scale * out_of_square_bonus[7 - row] : 0.0f)) * passed_adv;
-						//cout << "Passed pawn: " << square_name(row, col) << ", Value: " << -(passed_value / division_factor + out_of_square * out_of_square_bonus[7 - row]) * passed_adv << " (passed_value: " << passed_value << ", division_factor: " << division_factor << ", out_of_square bonus: " << out_of_square * out_of_square_bonus[7 - row] << ") * passed_adv: " << passed_adv << endl;
 
 						// Only the most advanced pawn on the file counts: the ones behind it are stuck
 						break;
