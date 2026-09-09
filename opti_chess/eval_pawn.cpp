@@ -492,8 +492,9 @@ int Board::get_pawn_structure(float display_factor)
 					// with a free promotion square AND a free path: no enemy
 					// control on any square ahead (a piece holding the path
 					// stops the pawn even when the king is out). Friendly
-					// pawn protection lifts the block. Scaled outside pure
-					// pawn endings.
+					// pawn protection lifts the block. Full bonus in pawn
+					// endings, or when one push away anywhere (quiescence is
+					// blind to quiet promotions: static must score them).
 					bool path_free = true;
 					for (uint8_t k = row + 1; k <= 7; k++) {
 						if (black_controls_map._array[k][col] > 0 && white_pawns_map._array[k][col] == 0) { path_free = false; break; }
@@ -503,6 +504,11 @@ int Board::get_pawn_structure(float display_factor)
 
 					// Add the passed pawn value (legacy path)
 					passed_pawns_value += (path_value / division_factor) * passed_adv;
+					{
+						static const bool ppd = getenv("OPTI_PP_DIAG") != nullptr;
+						if (ppd)
+							main_GUI._eval_components += "PPDIAG w " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)path_value) + " div=" + to_string(division_factor) + '\n';
+					}
 					if (out_of_square) {
 						oos_white += sq_scale * out_of_square_bonus[row];
 						if (7 - row < oos_wdist) oos_wdist = 7 - row;
@@ -640,8 +646,9 @@ int Board::get_pawn_structure(float display_factor)
 
 						//8/8/4p2p/1R6/pPpP1k2/K6P/8/8 b - - 0 43
 						// King outside the square? Tempo-aware with a free path
-						// (no enemy control ahead) and promotion square;
-						// scaled outside pure pawn endings.
+						// (no enemy control ahead) and promotion square.
+						// Full bonus in pawn endings, or one push away
+						// anywhere (quiescence-blind quiet promotions).
 						bool path_free = true;
 						for (int_fast8_t k = row - 1; k >= 0; k--) {
 							if (white_controls_map._array[k][col] > 0 && black_pawns_map._array[k][col] == 0) { path_free = false; break; }
@@ -657,6 +664,11 @@ int Board::get_pawn_structure(float display_factor)
 
 						// Add the passed pawn value (legacy path)
 						passed_pawns_value -= (passed_value / division_factor) * passed_adv;
+						{
+							static const bool ppd2 = getenv("OPTI_PP_DIAG") != nullptr;
+							if (ppd2)
+								main_GUI._eval_components += "PPDIAG b " + to_string((int)col) + to_string((int)row) + " path=" + to_string(passed_value) + " div=" + to_string(division_factor) + '\n';
+						}
 						if (out_of_square) {
 							oos_black += sq_scale * out_of_square_bonus[7 - row];
 							if (row < oos_bdist) oos_bdist = row;
