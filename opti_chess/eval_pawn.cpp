@@ -490,10 +490,16 @@ int Board::get_pawn_structure(float display_factor)
 					if (!has_black_pieces) path_value *= 1.5f;
 
 					// King outside the square? Tempo-aware (in_king_square)
-					// with a free promotion square; scaled outside pure pawn
-					// endings (no more all-or-nothing gate).
-					bool out_of_square = !in_king_square(Pos(row, col), false)
-						&& black_controls_map._array[7][col] == 0;
+					// with a free promotion square AND a free path: no enemy
+					// control on any square ahead (a piece holding the path
+					// stops the pawn even when the king is out). Friendly
+					// pawn protection lifts the block. Scaled outside pure
+					// pawn endings.
+					bool path_free = true;
+					for (uint8_t k = row + 1; k <= 7; k++) {
+						if (black_controls_map._array[k][col] > 0 && white_pawns_map._array[k][col] == 0) { path_free = false; break; }
+					}
+					bool out_of_square = !in_king_square(Pos(row, col), false) && path_free;
 					float sq_scale = pawn_endgame ? 1.0f : pp_nonpawn_square_scale;
 
 					// Add the passed pawn value (legacy path)
@@ -637,10 +643,14 @@ int Board::get_pawn_structure(float display_factor)
 						if (!has_white_pieces) passed_value = (int)(passed_value * 1.5f);
 
 						//8/8/4p2p/1R6/pPpP1k2/K6P/8/8 b - - 0 43
-						// King outside the square? Tempo-aware with a free
-						// promotion square; scaled outside pure pawn endings.
-						bool out_of_square = !in_king_square(Pos(row, col), true)
-							&& white_controls_map._array[0][col] == 0;
+						// King outside the square? Tempo-aware with a free path
+						// (no enemy control ahead) and promotion square;
+						// scaled outside pure pawn endings.
+						bool path_free = true;
+						for (int_fast8_t k = row - 1; k >= 0; k--) {
+							if (white_controls_map._array[k][col] > 0 && black_pawns_map._array[k][col] == 0) { path_free = false; break; }
+						}
+						bool out_of_square = !in_king_square(Pos(row, col), true) && path_free;
 						float sq_scale = pawn_endgame ? 1.0f : pp_nonpawn_square_scale;
 
 						//cout << "Passed pawn: " << square_name(row, col) << ", Is pawn endgame: " << pawn_endgame << ", Out of square: " << out_of_square << ", bonus: " << out_of_square * out_of_square_bonus[7 - row] << endl;
