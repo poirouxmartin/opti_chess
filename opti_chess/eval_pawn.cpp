@@ -466,24 +466,18 @@ int Board::get_pawn_structure(float display_factor)
 						_controls_map_valid = false;
 
 
-					// Path value: anchored at the current square, pulled forward
-					// by the best square ahead (so advancement has a gradient
-					// without revaluing the pawn as if already advanced).
-					float best_path = 0.0f;
-					float v0 = 0.0f;
-					bool first = true;
+					// Path value: weakest link - min over ALL squares ahead
+					// (min-capped). No break: every square is examined, the
+					// hardest one caps the whole push.
+					float worst_path = 1e30f;
 					for (uint8_t k = row; k <= 6; k++) {
 						int sq_base = passed_pawns[k];
 						sq_base = pp_cap(sq_base, black_controls_map._array[k][col], black_pawns_map._array[k][col], white_pawns_map._array[k][col]);
-						float cand = (float)sq_base - pp_gradient_k * (k - row);
-						if (first) { v0 = cand > 0.0f ? cand : 0.0f; first = false; }
-						if (cand > best_path) best_path = cand;
+						if ((float)sq_base < worst_path) worst_path = (float)sq_base;
 					}
-
-					float path_value = v0 + pp_pull_m * (best_path > v0 ? best_path - v0 : 0.0f);
-
-					// Is it connected to another pawn?
+					
 					bool w_connected = (col > 0 && (pawns_white[row][col - 1] || pawns_white[row - 1][col - 1])) || (col < 7 && (pawns_white[row][col + 1] || pawns_white[row - 1][col + 1]));
+					float path_value = worst_path;
 					if (w_connected) {
 						path_value *= connected_passed_pawn_bonus;
 					}
@@ -507,11 +501,6 @@ int Board::get_pawn_structure(float display_factor)
 					if (out_of_square) {
 						oos_white += sq_scale * out_of_square_bonus[row];
 						if (7 - row < oos_wdist) oos_wdist = 7 - row;
-					}
-					{
-						static const bool pp_diag = getenv("OPTI_PP_DIAG") != nullptr;
-						if (pp_diag)
-							main_GUI._eval_components += "PPDIAG w " + to_string((int)col) + to_string((int)row) + " base=" + to_string((int)path_value) + " div=" + to_string(division_factor) + "\n";
 					}
 
 					// Only the most advanced pawn on the file counts: the ones behind it are stuck
@@ -619,20 +608,17 @@ int Board::get_pawn_structure(float display_factor)
 
 						int passed_value = 0;
 						{
-							// Path value: best square ahead, min-capped by
-							// controls, with distance decay so the pawn is
-							// pulled forward.
-							float best_path = 0.0f;
-							float v0 = 0.0f;
-							bool first_sq = true;
+							// Path value: weakest link - min over ALL squares ahead
+							// (min-capped). No break: every square is examined, the
+							// hardest one caps the whole push.
+							float worst_path = 1e30f;
 							for (int_fast8_t k = row; k >= 1; k--) {
 								int sq_base = passed_pawns[7 - k];
 								sq_base = pp_cap(sq_base, white_controls_map._array[k][col], white_pawns_map._array[k][col], black_pawns_map._array[k][col]);
-								float cand = (float)sq_base - pp_gradient_k * (row - k);
-								if (first_sq) { v0 = cand > 0.0f ? cand : 0.0f; first_sq = false; }
-								if (cand > best_path) best_path = cand;
+								if ((float)sq_base < worst_path) worst_path = (float)sq_base;
 							}
-							passed_value = (int)(v0 + pp_pull_m * (best_path > v0 ? best_path - v0 : 0.0f));
+							
+							passed_value = (int)worst_path;
 						}
 
 						// Is it connected to another pawn?
@@ -664,11 +650,6 @@ int Board::get_pawn_structure(float display_factor)
 						if (out_of_square) {
 							oos_black += sq_scale * out_of_square_bonus[7 - row];
 							if (row < oos_bdist) oos_bdist = row;
-						}
-						{
-							static const bool pp_diag_b = getenv("OPTI_PP_DIAG") != nullptr;
-							if (pp_diag_b)
-								main_GUI._eval_components += "PPDIAG b " + to_string((int)col) + to_string((int)row) + " base=" + to_string(passed_value) + " div=" + to_string(division_factor) + "\n";
 						}
 
 						// Only the most advanced pawn on the file counts: the ones behind it are stuck
