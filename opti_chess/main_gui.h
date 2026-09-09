@@ -793,6 +793,10 @@ inline int main_ui() {
 
 		//main_GUI._board->_game_over_checked = false;  // Re-checked, for the threefold case (during the search a single repetition is already called a finished game)
 		//if (main_GUI._board->is_game_over(3) == 0) {
+		// Terminal check on the live board after every move (repetition,
+		// fifty-move, stalemate, mate): nothing else calls is_game_over()
+		// here, so without this draws are never declared in play.
+		if (!main_GUI._board->_game_over_checked) main_GUI._board->is_game_over(3);
 		if (main_GUI._board->_game_over_value == unterminated) {
 			// GrogrosZero
 

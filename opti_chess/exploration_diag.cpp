@@ -548,6 +548,11 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	// explore_random_child - every iteration restores the history to this state.
 	PositionHistory local_path_history;
 	PositionHistory* base_path_history = path_history != nullptr ? path_history : &local_path_history;
+	// Seed with the game prefix: the root node shares the live board, so
+	// its _positions_history IS the game history; buffer boards carry none
+	// (copy drops it), keeping today's behavior there. Without this,
+	// repetitions spanning game + search are invisible in the tree.
+	if (path_history == nullptr) local_path_history = _board->_positions_history;
 	ensure_position_in_history(*base_path_history, *_board);
 	// Stockfish-style twofold: only set at top level so non-root positions
 	// draw at twofold (first occurrence after root = both sides chose to return).

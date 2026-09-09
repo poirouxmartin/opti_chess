@@ -3644,6 +3644,37 @@ TEST(Puzzle, Qg7MateRegression) {
 	EXPECT_GE(r.score, 0.5);
 }
 
+// Perpetual by repetition (game rule, FIDE threefold):
+// 2kr1r2/Q7/2p5/7P/1PP5/4Pp2/P7/2K5 w, Qb6 f2 Qxc6+ Kb8 Qb6+ Kc8
+// Qc6+ ... must draw EXACTLY at the 3rd Qc6+ (count 3), never before
+// (2nd Qc6+ is still unterminated), never missed.
+TEST(Puzzle, RepetitionPerpetual) {
+	Board b;
+	b.from_fen("2kr1r2/Q7/2p5/7P/1PP5/4Pp2/P7/2K5 w - - 0 1");
+	EXPECT_EQ(b.repetition_count(), 1);
+	auto mv = [](int sc, int sr, int ec, int er) {
+		Move m; m.start_col = sc; m.start_row = sr; m.end_col = ec; m.end_row = er;
+		return m;
+	};
+	// Qb6, f2, Qxc6+, Kb8, Qb6+, Kc8, Qc6+ (2nd Qc6+: count 2, no draw yet)
+	b.make_move(mv(0, 6, 1, 5), false, true);
+	b.make_move(mv(5, 2, 5, 1), false, true);
+	b.make_move(mv(1, 5, 2, 5), false, true);
+	b.make_move(mv(2, 7, 1, 7), false, true);
+	b.make_move(mv(2, 5, 1, 5), false, true);
+	b.make_move(mv(1, 7, 2, 7), false, true);
+	b.make_move(mv(1, 5, 2, 5), false, true);
+	EXPECT_EQ(b.repetition_count(), 2);
+	EXPECT_EQ(b.is_game_over(3), unterminated);
+	// Kb8, Qb6+, Kc8, Qc6+ (3rd Qc6+: threefold draw)
+	b.make_move(mv(2, 7, 1, 7), false, true);
+	b.make_move(mv(2, 5, 1, 5), false, true);
+	b.make_move(mv(1, 7, 2, 7), false, true);
+	b.make_move(mv(1, 5, 2, 5), false, true);
+	EXPECT_EQ(b.repetition_count(), 3);
+	EXPECT_EQ(b.is_game_over(3), draw);
+}
+
 // Dumps eval component breakdowns (display mode) for FENs listed in
 // OPTI_EVAL_DUMP (one per line), first OPTI_EVAL_DUMPN (default 50).
 // Diagnostic utility for the eval-attribution hunt (zero gate cost).

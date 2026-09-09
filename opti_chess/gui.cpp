@@ -1132,12 +1132,21 @@ bool GUI::play_move_keep(Move move)
 			//_root_exploration_node->_board = &_board;
 		}
 
-		// Otherwise, simply play the move
+			// Otherwise, simply play the move
 		else {
+			// Save the game history: reset() below also clears the shared
+			// live board (reset_board wipes _positions_history and zeroes
+			// the key), so every unsearched move would erase repetitions.
+			auto saved_game_history = _board->_positions_history;
 			// Delete every search
 			_root_exploration_node->reset();
 			_root_exploration_node->_is_active = true;
 
+			// Restore the prefix and re-sync the key (reset zeroed it) so
+			// the pushed move extends full-based keys. make_move drops the
+			// prefix itself on irreversible moves.
+			_board->_positions_history = saved_game_history;
+			_board->get_zobrist_key();
 			// Simply play the move
 			_board->make_move(move, false, true);
 			_board->_is_active = true;
