@@ -855,7 +855,7 @@ int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls
 {
 	constexpr int initial_safe_check_value_default = 250;
 	constexpr int initial_unsafe_check_value_default = 5;
-	constexpr float no_escape_multiplier_default = 4.0f;
+	constexpr float no_escape_multiplier_default = 2.5f;
 	// Tunables below default to the constexpr above; OPTI_KS_* env overrides
 	// exist for dataset-driven tuning (coordinate descent) without rebuilds.
 	// Env is read once per process (function-static cache, no hot-path cost).
