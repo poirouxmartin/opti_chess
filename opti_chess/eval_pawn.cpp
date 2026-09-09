@@ -470,8 +470,9 @@ int Board::get_pawn_structure(float display_factor)
 					// (min-capped). No break: every square is examined, the
 					// hardest one caps the whole push.
 					float worst_path = 1e30f;
-					for (uint8_t k = row; k <= 6; k++) {
-						int sq_base = passed_pawns[k];
+					// Promotion square included (base = about-to-queen value).
+					for (uint8_t k = row; k <= 7; k++) {
+						int sq_base = passed_pawns[k <= 6 ? k : 6];
 						sq_base = pp_cap(sq_base, black_controls_map._array[k][col], black_pawns_map._array[k][col], white_pawns_map._array[k][col]);
 						if ((float)sq_base < worst_path) worst_path = (float)sq_base;
 						{
@@ -504,6 +505,11 @@ int Board::get_pawn_structure(float display_factor)
 
 					// Add the passed pawn value (legacy path)
 					passed_pawns_value += (path_value / division_factor) * passed_adv;
+					{
+						static const bool ppd = getenv("OPTI_PP_DIAG") != nullptr;
+						if (ppd)
+							main_GUI._eval_components += "PPDIAG w " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)path_value) + " div=" + to_string(division_factor) + '\n';
+					}
 					{
 						static const bool ppd = getenv("OPTI_PP_DIAG") != nullptr;
 						if (ppd)
@@ -623,14 +629,14 @@ int Board::get_pawn_structure(float display_factor)
 							// (min-capped). No break: every square is examined, the
 							// hardest one caps the whole push.
 							float worst_path = 1e30f;
-							for (int_fast8_t k = row; k >= 1; k--) {
-								int sq_base = passed_pawns[7 - k];
+							for (int_fast8_t k = row; k >= 0; k--) {
+								int sq_base = passed_pawns[k >= 1 ? 7 - k : 6];
 								sq_base = pp_cap(sq_base, white_controls_map._array[k][col], white_pawns_map._array[k][col], black_pawns_map._array[k][col]);
 								if ((float)sq_base < worst_path) worst_path = (float)sq_base;
 								{
 									static const bool sqdbg = getenv("OPTI_PP_SQDBG") != nullptr;
 									if (sqdbg)
-										main_GUI._eval_components += "PPSQ b " + to_string((int)col) + to_string((int)k) + " base=" + to_string(sq_base) + " e=" + to_string(white_controls_map._array[k][col]) + " f=" + to_string(black_pawns_map._array[k][col]) + '\n';
+										main_GUI._eval_components += "PPSQ b P" + to_string((int)col) + to_string((int)row) + " sq" + to_string((int)k) + " base=" + to_string(sq_base) + " e=" + to_string(white_controls_map._array[k][col]) + " f=" + to_string(black_pawns_map._array[k][col]) + '\n';
 								}
 							}
 							
@@ -664,6 +670,11 @@ int Board::get_pawn_structure(float display_factor)
 
 						// Add the passed pawn value (legacy path)
 						passed_pawns_value -= (passed_value / division_factor) * passed_adv;
+						{
+						static const bool ppd2 = getenv("OPTI_PP_DIAG") != nullptr;
+						if (ppd2)
+						main_GUI._eval_components += "PPDIAG b " + to_string((int)col) + to_string((int)row) + " path=" + to_string(passed_value) + " div=" + to_string(division_factor) + '\n';
+						}
 						{
 							static const bool ppd2 = getenv("OPTI_PP_DIAG") != nullptr;
 							if (ppd2)
