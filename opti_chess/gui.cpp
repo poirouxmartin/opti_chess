@@ -1047,11 +1047,27 @@ bool GUI::play_move_keep(Move move)
 
 	// If the move was actually computed
 		else {
+		// Defense in depth against tree/board desync (transposition aliasing
+		// or a worker still inside an iteration across stop_compute): adopt
+		// the recycled child ONLY if its board is really this move played
+		// from here. Otherwise the board "teleports" to another line.
+		bool recycle_ok = false;
+		Node* next_root = nullptr;
 		if (_root_exploration_node->_children.contains(move)) {
-			Node* next_root = _root_exploration_node->_children[move]._node;
+			next_root = _root_exploration_node->_children[move]._node;
 
 			debug_log("[play_move_keep] move found in children, next_root=%p parent_count=%d",
 				(void*)next_root, next_root ? next_root->_parent_count : -1);
+
+			if (next_root && next_root->_board) {
+				Board expect = *_board;
+				expect.make_move(move, false, true);
+				recycle_ok = (expect == *next_root->_board);
+				if (!recycle_ok)
+					debug_log("[play_move_keep] CRITICAL: recycled board mismatch, falling back to fresh move");
+			}
+		}
+		if (recycle_ok) {
 
 			if (!next_root || !next_root->_board) {
 				debug_log("[play_move_keep] CRITICAL: next_root or its board is null!");
