@@ -709,7 +709,13 @@ int Board::get_pawn_structure(float display_factor)
 	if (display_factor != 0.0f)
 		main_GUI._eval_components += "passed pawns: " + (passed_pawns_value >= 0 ? string("+") : string()) + to_string(static_cast<int>(passed_pawns_value * display_factor)) + "\n";
 
-	pawn_structure += passed_pawns_value;
+	// Passed-passer sub-component scale (env-tunable; the ×0.2 global
+	// pawn-structure coef stays untouched).
+	static const float pp_scale = [] {
+		const char* e = getenv("OPTI_PP_SCALE");
+		return e ? (float)atof(e) : 1.0f;
+	}();
+	pawn_structure += passed_pawns_value * pp_scale;
 
 
 	// Connected pawns
