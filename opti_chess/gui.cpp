@@ -35,7 +35,7 @@ static ofstream g_debug_file;
 static void ensure_debug_file() {
 	if (g_debug && !g_debug_file.is_open()) {
 		g_debug_file.open("opti_chess_debug.log", ios::app);
-		g_debug_file << "\n=== session start ===" << endl;
+		g_debug_file << "\n=== session start (build __DATE__ __TIME__) ===" << endl;
 	}
 }
 
