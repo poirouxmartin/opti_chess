@@ -272,6 +272,30 @@ int Board::get_pawn_structure(float display_factor)
 	// (knight blockades cheap, queen babysitting punished); pawns/king: 0
 	static constexpr int pp_blocker_malus[7] = { 0, 0, 40, 60, 120, 250, 0 };
 
+	// Local pawn majority around a file: can our majority force a blocked
+	// pawn through? (candidate graft point)
+	auto pp_majority = [&](int col, bool white) -> bool {
+		int own = 0, enemy = 0;
+		for (int c = max(0, col - 1); c <= min(7, col + 1); c++)
+			for (int r = 0; r < 8; r++) {
+				bool mine = white ? pawns_white[r][c] : pawns_black[r][c];
+				bool theirs = white ? pawns_black[r][c] : pawns_white[r][c];
+				if (mine) own++;
+				if (theirs) enemy++;
+			}
+		return own > enemy;
+	};
+
+	// Min-cap of a square value by enemy controls (protected squares with a
+	// friendly pawn keep full value). Graft point for protected handling.
+	auto pp_cap = [&](int sq_base, int e_ctrl, int e_pawn, int f_pawn) -> int {
+		if (e_ctrl > 0 && f_pawn == 0) {
+			int cap = e_pawn > 0 ? pp_pawn_control_cap : pp_piece_control_cap;
+			if (sq_base > cap) sq_base = cap;
+		}
+		return sq_base;
+	};
+
 	// Passed pawn value table, indexed by how far the pawn has advanced
 	static constexpr int passed_pawns[8] = { 0, 175, 175, 280, 450, 750, 1250, 0 };
 
@@ -347,13 +371,7 @@ int Board::get_pawn_structure(float display_factor)
 				// Blocked by an enemy pawn: not passed, but a candidate if the
 				// local pawn majority can force it through.
 				if (!is_passed_pawn && pawn_blocked) {
-					int own = 0, enemy = 0;
-					for (int c = max(0, (int)col - 1); c <= min(7, (int)col + 1); c++)
-						for (int r = 0; r < 8; r++) {
-							if (pawns_white[r][c]) own++;
-							if (pawns_black[r][c]) enemy++;
-						}
-					if (own > enemy)
+					if (pp_majority(col, true))
 						passed_pawns_value += pp_cand_factor * passed_pawns[row] * passed_adv;
 					continue;
 				}
@@ -436,12 +454,7 @@ int Board::get_pawn_structure(float display_factor)
 					bool first = true;
 					for (uint8_t k = row; k <= 6; k++) {
 						int sq_base = passed_pawns[k];
-						// Min-cap: enemy-controlled without friendly pawn
-						// protection (protected squares keep full value).
-						if (black_controls_map._array[k][col] > 0 && white_pawns_map._array[k][col] == 0) {
-							int cap = black_pawns_map._array[k][col] > 0 ? pp_pawn_control_cap : pp_piece_control_cap;
-							if (sq_base > cap) sq_base = cap;
-						}
+						sq_base = pp_cap(sq_base, black_controls_map._array[k][col], black_pawns_map._array[k][col], white_pawns_map._array[k][col]);
 						float cand = (float)sq_base - pp_gradient_k * (k - row);
 						if (first) { v0 = cand > 0.0f ? cand : 0.0f; first = false; }
 						if (cand > best_path) best_path = cand;
@@ -498,13 +511,7 @@ int Board::get_pawn_structure(float display_factor)
 				// Blocked by an enemy pawn: candidate if the local majority
 				// can force it through.
 				if (!is_passed_pawn && pawn_blocked) {
-					int own = 0, enemy = 0;
-					for (int c = max(0, (int)col - 1); c <= min(7, (int)col + 1); c++)
-						for (int r = 0; r < 8; r++) {
-							if (pawns_black[r][c]) own++;
-							if (pawns_white[r][c]) enemy++;
-						}
-					if (own > enemy)
+					if (pp_majority(col, false))
 						passed_pawns_value -= pp_cand_factor * passed_pawns[7 - row] * passed_adv;
 					continue;
 				}
@@ -584,10 +591,7 @@ int Board::get_pawn_structure(float display_factor)
 							bool first_sq = true;
 							for (int_fast8_t k = row; k >= 1; k--) {
 								int sq_base = passed_pawns[7 - k];
-								if (white_controls_map._array[k][col] > 0 && black_pawns_map._array[k][col] == 0) {
-									int cap = white_pawns_map._array[k][col] > 0 ? pp_pawn_control_cap : pp_piece_control_cap;
-									if (sq_base > cap) sq_base = cap;
-								}
+								sq_base = pp_cap(sq_base, white_controls_map._array[k][col], white_pawns_map._array[k][col], black_pawns_map._array[k][col]);
 								float cand = (float)sq_base - pp_gradient_k * (row - k);
 								if (first_sq) { v0 = cand > 0.0f ? cand : 0.0f; first_sq = false; }
 								if (cand > best_path) best_path = cand;
