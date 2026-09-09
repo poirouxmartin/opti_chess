@@ -328,6 +328,14 @@ int Board::get_pawn_structure(float display_factor)
 	const float passed_adv = eval_from_progress(1, _adv, passed_adv_factor);
 	float passed_pawns_value = 0.0f;
 
+	// Out-of-square bonuses per side (accumulated, race-adjusted below):
+	// whoever queens first decides; the slower queen comes too late
+	// (distraction value only).
+	float oos_white = 0.0f, oos_black = 0.0f;
+	int oos_wdist = 99, oos_bdist = 99;
+	// Share kept by the slower side in a promotion race (tunable).
+	static constexpr float race_loser_share = 0.3f;
+
 	//print_array(s_white, 8);
 	//print_array(s_black, 8);
 
@@ -482,7 +490,16 @@ int Board::get_pawn_structure(float display_factor)
 					float sq_scale = pawn_endgame ? 1.0f : pp_nonpawn_square_scale;
 
 					// Add the passed pawn value (legacy path)
-					passed_pawns_value += (path_value / division_factor + (out_of_square ? sq_scale * out_of_square_bonus[row] : 0.0f)) * passed_adv;
+					passed_pawns_value += (path_value / division_factor) * passed_adv;
+					if (out_of_square) {
+						oos_white += sq_scale * out_of_square_bonus[row];
+						if (7 - row < oos_wdist) oos_wdist = 7 - row;
+					}
+					{
+						static const bool pp_diag = getenv("OPTI_PP_DIAG") != nullptr;
+						if (pp_diag)
+							main_GUI._eval_components += "PPDIAG w " + to_string((int)col) + to_string((int)row) + " base=" + to_string((int)path_value) + " div=" + to_string(division_factor) + "\n";
+					}
 
 					// Only the most advanced pawn on the file counts: the ones behind it are stuck
 					break;
@@ -626,7 +643,16 @@ int Board::get_pawn_structure(float display_factor)
 						// 8/8/8/8/8/1p5P/p5k1/K7 w - - 0 54
 
 						// Add the passed pawn value (legacy path)
-						passed_pawns_value -= (passed_value / division_factor + (out_of_square ? sq_scale * out_of_square_bonus[7 - row] : 0.0f)) * passed_adv;
+						passed_pawns_value -= (passed_value / division_factor) * passed_adv;
+						if (out_of_square) {
+							oos_black += sq_scale * out_of_square_bonus[7 - row];
+							if (row < oos_bdist) oos_bdist = row;
+						}
+						{
+							static const bool pp_diag_b = getenv("OPTI_PP_DIAG") != nullptr;
+							if (pp_diag_b)
+								main_GUI._eval_components += "PPDIAG b " + to_string((int)col) + to_string((int)row) + " base=" + to_string(passed_value) + " div=" + to_string(division_factor) + "\n";
+						}
 
 						// Only the most advanced pawn on the file counts: the ones behind it are stuck
 						break;
@@ -636,6 +662,16 @@ int Board::get_pawn_structure(float display_factor)
 			}
 		}
 	}
+
+	// Promotion race: unstoppable passers on both sides. Whoever queens
+	// first (tempo-adjusted) decides; the slower queen is heavily
+	// discounted but not zeroed (distraction / sacrifice value remains).
+	if (oos_white > 0.0f && oos_black > 0.0f) {
+		bool white_first = (oos_wdist < oos_bdist) || (oos_wdist == oos_bdist && _player);
+		if (white_first) oos_black *= race_loser_share;
+		else oos_white *= race_loser_share;
+	}
+	passed_pawns_value += (oos_white - oos_black) * passed_adv;
 
 	//cout << "Passed pawns total value: " << passed_pawns_value << endl;
 
