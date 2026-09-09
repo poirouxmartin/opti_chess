@@ -841,6 +841,7 @@ inline int main_ui() {
 
 			if (!main_game_over) {
 				main_GUI._time = false;
+				debug_log("[gameover] value=%d", (int)main_GUI._board->_game_over_value);
 				main_GUI._board->display_pgn();
 				main_game_over = true;
 			}
