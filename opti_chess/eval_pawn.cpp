@@ -423,6 +423,22 @@ int Board::get_pawn_structure(float display_factor)
 	// Does Black still have pieces?
 	bool has_black_pieces = has_pieces(false);
 
+	// Candidate malus: one square less (base-table delta between the push
+	// square and the square behind) plus a small extra (env-tunable). The
+	// push costs time and resolves tension: a candidate must stay strictly
+	// below the passer it will become.
+	static const float pp_cand_malus_extra = [] {
+		const char* e = getenv("OPTI_PP_CANDMALUS");
+		return e ? (float)atof(e) : 50.0f;
+	}();
+	auto pp_cand_malus = [&](int srow, bool white) -> float {
+		int idx = white ? (srow <= 6 ? srow : 6) : (srow >= 1 ? 7 - srow : 6);
+		int prev = idx > 0 ? idx - 1 : 0;
+		float d = (float)(passed_pawns[idx] - passed_pawns[prev]);
+		if (d < 0.0f) d = 0.0f;
+		return d + pp_cand_malus_extra;
+	};
+
 	// Hypothetical passer value if the blocked pawn pushed to (col, srow):
 	// same machinery as a real passer (weakest-link capped path, division,
 	// connection, endgame mult), read-only on current maps (the pawn still
@@ -514,17 +530,19 @@ int Board::get_pawn_structure(float display_factor)
 						float candR = pp_candidate_R(col, row, true);
 						if (candR > 0.0f && pp_cand_factor > 0.0f) {
 							float Vhyp = 0.0f;
-							if (_array[row + 1][col] == none) Vhyp = pp_hyp_passer(col, (int)row + 1, true, has_black_pieces);
+							int bestSr = -1;
+							if (_array[row + 1][col] == none) { Vhyp = pp_hyp_passer(col, (int)row + 1, true, has_black_pieces); bestSr = (int)row + 1; }
 							if (col > 0 && is_black(_array[row + 1][col - 1])) {
 								float v = pp_hyp_passer(col - 1, (int)row + 1, true, has_black_pieces);
-								if (v > Vhyp) Vhyp = v;
+								if (v > Vhyp) { Vhyp = v; bestSr = (int)row + 1; }
 							}
 							if (col < 7 && is_black(_array[row + 1][col + 1])) {
 								float v = pp_hyp_passer(col + 1, (int)row + 1, true, has_black_pieces);
-								if (v > Vhyp) Vhyp = v;
+								if (v > Vhyp) { Vhyp = v; bestSr = (int)row + 1; }
 							}
-							if (Vhyp > 0.0f)
-								passed_pawns_value += pp_cand_factor * candR * Vhyp * passed_adv;
+							float Vnet = Vhyp - (bestSr >= 0 ? pp_cand_malus(bestSr, true) : 0.0f);
+							if (Vnet > 0.0f)
+								passed_pawns_value += pp_cand_factor * candR * Vnet * passed_adv;
 						}
 					}
 					{
@@ -722,17 +740,19 @@ int Board::get_pawn_structure(float display_factor)
 						float candR = pp_candidate_R(col, row, false);
 						if (candR > 0.0f && pp_cand_factor > 0.0f) {
 							float Vhyp = 0.0f;
-							if (_array[row - 1][col] == none) Vhyp = pp_hyp_passer(col, (int)row - 1, false, has_white_pieces);
+							int bestSr = -1;
+							if (_array[row - 1][col] == none) { Vhyp = pp_hyp_passer(col, (int)row - 1, false, has_white_pieces); bestSr = (int)row - 1; }
 							if (col > 0 && is_white(_array[row - 1][col - 1])) {
 								float v = pp_hyp_passer(col - 1, (int)row - 1, false, has_white_pieces);
-								if (v > Vhyp) Vhyp = v;
+								if (v > Vhyp) { Vhyp = v; bestSr = (int)row - 1; }
 							}
 							if (col < 7 && is_white(_array[row - 1][col + 1])) {
 								float v = pp_hyp_passer(col + 1, (int)row - 1, false, has_white_pieces);
-								if (v > Vhyp) Vhyp = v;
+								if (v > Vhyp) { Vhyp = v; bestSr = (int)row - 1; }
 							}
-							if (Vhyp > 0.0f)
-								passed_pawns_value -= pp_cand_factor * candR * Vhyp * passed_adv;
+							float Vnet = Vhyp - (bestSr >= 0 ? pp_cand_malus(bestSr, false) : 0.0f);
+							if (Vnet > 0.0f)
+								passed_pawns_value -= pp_cand_factor * candR * Vnet * passed_adv;
 						}
 					}
 					{
