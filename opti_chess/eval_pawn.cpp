@@ -265,6 +265,13 @@ int Board::get_pawn_structure(float display_factor)
 		const char* e = getenv("OPTI_PP_PULL");
 		return e ? (float)atof(e) : 0.0f;
 	}();
+	// Passer sub-component scale (applied to every passer above,
+	// before display: the x0.2 structure coef applies later outside).
+	static const float pp_scale = [] {
+		const char* e = getenv("OPTI_PP_SCALE");
+		return e ? (float)atof(e) : 2.5f;
+	}();
+
 	// min-cap when a square is controlled and no friendly pawn protects it
 	static constexpr int pp_pawn_control_cap = 100;
 	static constexpr int pp_piece_control_cap = 320;
@@ -704,6 +711,10 @@ int Board::get_pawn_structure(float display_factor)
 	}
 	passed_pawns_value += (oos_white - oos_black) * passed_adv;
 
+	// Passer sub-component scale: applied here so display AND total
+	// see scaled values (the x0.2 structure coef applies later outside).
+	passed_pawns_value *= pp_scale;
+
 	//cout << "Passed pawns total value: " << passed_pawns_value << endl;
 
 	if (display_factor != 0.0f)
@@ -711,11 +722,7 @@ int Board::get_pawn_structure(float display_factor)
 
 	// Passed-passer sub-component scale (env-tunable; the ×0.2 global
 	// pawn-structure coef stays untouched).
-	static const float pp_scale = [] {
-		const char* e = getenv("OPTI_PP_SCALE");
-		return e ? (float)atof(e) : 2.5f;
-	}();
-	pawn_structure += passed_pawns_value * pp_scale;
+	pawn_structure += passed_pawns_value;
 
 
 	// Connected pawns
