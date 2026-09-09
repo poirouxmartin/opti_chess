@@ -257,7 +257,7 @@ int Board::get_pawn_structure(float display_factor)
 	}();
 	static const float pp_nonpawn_square_scale = [] {
 		const char* e = getenv("OPTI_PP_SQSCALE");
-		return e ? (float)atof(e) : 0.5f;
+		return e ? (float)atof(e) : 0.0f;
 	}();
 	// Forward pull: V = V0 + m*(Vmax_path - V0), so the current square
 	// anchors the value and the path ahead only pulls forward.
