@@ -276,22 +276,29 @@ int Board::get_pawn_structure(float display_factor)
 	// Parallel new-model path was trialled and removed (hotter V_base
 	// table hurt MAE everywhere); legacy magnitudes kept.
 
-	// Local pawn majority around a file: can our majority force a blocked
-	// pawn through? (candidate graft point)
-	auto pp_majority = [&](int col, bool white) -> bool {
+	// Wing pawn majority around a file: can our majority force a blocked
+	// pawn through? Queenside (a-d) or kingside (e-h) counts — stricter
+	// than file-local (which fires in every locked center). Requires a
+	// DECISIVE margin (2+) and an advanced pawn (close to mattering):
+	// a 4v3 on the back ranks forces nothing. Candidate graft point.
+	auto pp_majority = [&](int col, int row, bool white) -> bool {
+		if (white && row < 3) return false;
+		if (!white && row > 4) return false;
+		int lo = col <= 3 ? 0 : 4, hi = col <= 3 ? 3 : 7;
 		int own = 0, enemy = 0;
-		for (int c = max(0, col - 1); c <= min(7, col + 1); c++)
+		for (int c = lo; c <= hi; c++)
 			for (int r = 0; r < 8; r++) {
 				bool mine = white ? pawns_white[r][c] : pawns_black[r][c];
 				bool theirs = white ? pawns_black[r][c] : pawns_white[r][c];
 				if (mine) own++;
 				if (theirs) enemy++;
 			}
-		return own > enemy;
+		return own >= enemy + 2;
 	};
 
 	// Min-cap of a square value by enemy controls (protected squares with a
-	// friendly pawn keep full value). Graft point for protected handling.
+	// friendly pawn keep full value). Piece-protected softening tried and
+	// reverted (no MAE gain, play leaned negative).
 	auto pp_cap = [&](int sq_base, int e_ctrl, int e_pawn, int f_pawn) -> int {
 		if (e_ctrl > 0 && f_pawn == 0) {
 			int cap = e_pawn > 0 ? pp_pawn_control_cap : pp_piece_control_cap;
@@ -384,7 +391,7 @@ int Board::get_pawn_structure(float display_factor)
 				// Blocked by an enemy pawn: not passed, but a candidate if the
 				// local pawn majority can force it through.
 				if (!is_passed_pawn && pawn_blocked) {
-					if (pp_majority(col, true))
+					if (pp_majority(col, row, true))
 						passed_pawns_value += pp_cand_factor * passed_pawns[row] * passed_adv;
 					continue;
 				}
@@ -534,7 +541,7 @@ int Board::get_pawn_structure(float display_factor)
 				// Blocked by an enemy pawn: candidate if the local majority
 				// can force it through.
 				if (!is_passed_pawn && pawn_blocked) {
-					if (pp_majority(col, false))
+					if (pp_majority(col, row, false))
 						passed_pawns_value -= pp_cand_factor * passed_pawns[7 - row] * passed_adv;
 					continue;
 				}
