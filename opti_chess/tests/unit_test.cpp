@@ -3710,6 +3710,44 @@ TEST(Puzzle, PassedPawnCases) {
 	}
 }
 
+// TEMP: teleport bug — play e5..e8=Q line, check board integrity.
+TEST(Debug, TeleportRepro) {
+	Board b;
+	b.from_fen("4k3/8/8/4P3/8/4K3/8/8 w - - 0 1");
+	auto show = [&](const char* tag) {
+		int queens = 0, kings = 0;
+		for (int r = 0; r < 8; r++)
+			for (int c = 0; c < 8; c++) {
+				uint8_t p = b._array[r][c];
+				if (p == w_queen || p == b_queen) queens++;
+				if (p == w_king || p == b_king) kings++;
+			}
+		cout << "  " << tag << " fen=" << b.to_fen() << " Q=" << queens << " K=" << kings << endl;
+	};
+	show("start");
+	// e5-e6, black Ke8-d8 (say), e6-e7, Kd8-c8, e7-e8=Q: drive via get_moves + make
+	for (int ply = 0; ply < 14; ply++) {
+		b.get_moves();
+		if (b._got_moves == 0) { cout << "  no moves at ply " << ply << endl; break; }
+		// prefer promotion, then pawn push, else first move
+		Move* pick = &b._moves[0];
+		for (int i = 0; i < b._got_moves; i++)
+			if (b._moves[i].is_promotion()) { pick = &b._moves[i]; break; }
+		if (!pick->is_promotion()) {
+			for (int i = 0; i < b._got_moves; i++) {
+				uint8_t p = b._array[b._moves[i].start_row][b._moves[i].start_col];
+				if ((p == w_pawn || p == b_pawn) && b._moves[i].start_col == b._moves[i].end_col) { pick = &b._moves[i]; break; }
+			}
+		}
+		Move m = *pick;
+		char buf[8];
+		snprintf(buf, sizeof(buf), "%c%d%c%d%s", 'a' + m.start_col, m.start_row + 1, 'a' + m.end_col, m.end_row + 1, m.is_promotion() ? "=Q" : "");
+		b.make_move(m);
+		show(buf);
+	}
+	SUCCEED();
+}
+
 TEST(Puzzle, TacticalSuite) {
 	string sf_path = find_stockfish();
 	StockfishAdapter sf(sf_path);
