@@ -303,6 +303,60 @@ int Board::get_pawn_structure(float display_factor)
 		return own >= enemy + 2;
 	};
 
+	// Same wing count as pp_majority but returns the raw margin (probe use).
+	auto pp_margin = [&](int col, int row, bool white) -> int {
+		int lo = col <= 3 ? 0 : 4, hi = col <= 3 ? 3 : 7;
+		int own = 0, enemy = 0;
+		for (int c = lo; c <= hi; c++)
+			for (int r = 0; r < 8; r++) {
+				if (white ? pawns_white[r][c] : pawns_black[r][c]) own++;
+				if (white ? pawns_black[r][c] : pawns_white[r][c]) enemy++;
+			}
+		return own - enemy;
+	};
+
+	// Break potential of a pawn blocked by an enemy pawn. Breaks are a pawn
+	// business (never pieces: only pawn controls count), and a pawn majority
+	// is required (wing margin >= 1, else 0). R is the malus on top of the
+	// hypothetical passer value (pp_hyp_passer): max of local pawn-tension
+	// resolution and wing-majority resolution (margin/2).
+	auto pp_candidate_R = [&](int col, int row, bool white) -> float {
+		int mg = pp_margin(col, row, white);
+		if (mg < 1) return 0.0f;
+		int bcol = -1, brow = -1;
+		if (white) {
+			for (uint8_t k = row + 1; k < 7 && brow < 0; k++) {
+				if (_array[k][col] == b_pawn) { bcol = col; brow = (int)k; }
+				else if (col > 0 && _array[k][col - 1] == b_pawn) { bcol = col - 1; brow = (int)k; }
+				else if (col < 7 && _array[k][col + 1] == b_pawn) { bcol = col + 1; brow = (int)k; }
+			}
+		}
+		else {
+			for (int k = (int)row - 1; k > 0 && brow < 0; k--) {
+				if (_array[k][col] == w_pawn) { bcol = col; brow = k; }
+				else if (col > 0 && _array[k][col - 1] == w_pawn) { bcol = col - 1; brow = k; }
+				else if (col < 7 && _array[k][col + 1] == w_pawn) { bcol = col + 1; brow = k; }
+			}
+		}
+		SquareMap ownPM = get_pawns_controls(white);
+		SquareMap enPM = get_pawns_controls(!white);
+		int own = 0, en = 0;
+		int adv = white ? (int)row + 1 : (int)row - 1;
+		if (adv >= 0 && adv <= 7) {
+			own += (int)ownPM._array[adv][col];
+			en += (int)enPM._array[adv][col];
+		}
+		if (brow >= 0) {
+			own += (int)ownPM._array[brow][bcol];
+			en += (int)enPM._array[brow][bcol];
+		}
+		float leverR = (float)(own - en + 1) / 3.0f;
+		leverR = leverR < 0.0f ? 0.0f : (leverR > 1.0f ? 1.0f : leverR);
+		float majR = (float)mg / 2.0f;
+		majR = majR < 0.0f ? 0.0f : (majR > 1.0f ? 1.0f : majR);
+		return leverR > majR ? leverR : majR;
+	};
+
 	// Min-cap of a square value by enemy controls (protected squares with a
 	// friendly pawn keep full value). Piece-protected softening tried and
 	// reverted (no MAE gain, play leaned negative).
@@ -369,6 +423,63 @@ int Board::get_pawn_structure(float display_factor)
 	// Does Black still have pieces?
 	bool has_black_pieces = has_pieces(false);
 
+	// Hypothetical passer value if the blocked pawn pushed to (col, srow):
+	// same machinery as a real passer (weakest-link capped path, division,
+	// connection, endgame mult), read-only on current maps (the pawn still
+	// sits on its square: its own controls are counted, approximation).
+	// No out-of-square race bonus (belongs to established passers). Used as
+	// the UPPER BOUND of a candidate: a candidate is worth at most the
+	// passer it will become.
+	auto pp_hyp_passer = [&](int col, int srow, bool white, bool hasEnemyPieces) -> float {
+		SquareMap ownCM = white ? get_white_controls_map() : get_black_controls_map();
+		SquareMap enCM = white ? get_black_controls_map() : get_white_controls_map();
+		SquareMap ownPM = get_pawns_controls(white);
+		SquareMap enPM = get_pawns_controls(!white);
+		float worst_path = 1e30f;
+		float division_factor = 1.0f;
+		float path_value = 0.0f;
+		if (white) {
+			for (uint8_t k = srow; k <= 7; k++) {
+				int sq_base = passed_pawns[k <= 6 ? k : 6];
+				sq_base = pp_cap(sq_base, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col]);
+				if ((float)sq_base < worst_path) worst_path = (float)sq_base;
+			}
+			for (uint8_t k = srow + 1; k <= 7; k++) {
+				const uint8_t blocker = _array[k][col];
+				if (blocker == b_pawn) division_factor += block_division_per_piece[0] - 1.0f;
+				else if (is_black(blocker)) division_factor += block_division_per_piece[blocker - 8] - 1.0f;
+				else if (is_white(blocker)) division_factor += self_block_division - 1.0f;
+				int cd = max(0, (int)enCM._array[k][col] - (int)ownCM._array[k][col]);
+				division_factor += (control_division - 1.0f) * cd;
+			}
+			path_value = worst_path;
+			bool conn = (col > 0 && (pawns_white[srow][col - 1] || pawns_white[srow - 1][col - 1])) || (col < 7 && (pawns_white[srow][col + 1] || pawns_white[srow - 1][col + 1]));
+			if (conn) path_value *= connected_passed_pawn_bonus;
+			if (!hasEnemyPieces) path_value *= 1.5f;
+			return path_value / division_factor;
+		}
+		else {
+			for (int k = srow; k >= 0; k--) {
+				int sq_base = passed_pawns[k >= 1 ? 7 - k : 6];
+				sq_base = pp_cap(sq_base, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col]);
+				if ((float)sq_base < worst_path) worst_path = (float)sq_base;
+			}
+			for (int k = srow - 1; k >= 0; k--) {
+				const uint8_t blocker = _array[k][col];
+				if (blocker == w_pawn) division_factor += block_division_per_piece[0] - 1.0f;
+				else if (is_white(blocker)) division_factor += block_division_per_piece[blocker - 2] - 1.0f;
+				else if (is_black(blocker)) division_factor += self_block_division - 1.0f;
+				int cd = max(0, (int)enCM._array[k][col] - (int)ownCM._array[k][col]);
+				division_factor += (control_division - 1.0f) * cd;
+			}
+			path_value = worst_path;
+			bool conn = (col > 0 && (pawns_black[srow][col - 1] || pawns_black[srow + 1][col - 1])) || (col < 7 && (pawns_black[srow][col + 1] || pawns_black[srow + 1][col + 1]));
+			if (conn) path_value *= connected_passed_pawn_bonus;
+			if (!hasEnemyPieces) path_value *= 1.5f;
+			return path_value / division_factor;
+		}
+	};
+
 
 		// For each file
 	for (uint8_t col = 0; col < 8; col++) {
@@ -395,11 +506,58 @@ int Board::get_pawn_structure(float display_factor)
 					}
 				}
 
-				// Blocked by an enemy pawn: not passed, but a candidate if the
-				// local pawn majority can force it through.
+				// Blocked by an enemy pawn: not passed, but a candidate. Pawns
+				// only break, a majority is required (see pp_candidate_R);
+				// worth at most the passer it will become (pp_hyp_passer).
 				if (!is_passed_pawn && pawn_blocked) {
-					if (pp_majority(col, row, true))
-						passed_pawns_value += pp_cand_factor * passed_pawns[row] * passed_adv;
+					{
+						float candR = pp_candidate_R(col, row, true);
+						if (candR > 0.0f && pp_cand_factor > 0.0f) {
+							float Vhyp = 0.0f;
+							if (_array[row + 1][col] == none) Vhyp = pp_hyp_passer(col, (int)row + 1, true, has_black_pieces);
+							if (col > 0 && is_black(_array[row + 1][col - 1])) {
+								float v = pp_hyp_passer(col - 1, (int)row + 1, true, has_black_pieces);
+								if (v > Vhyp) Vhyp = v;
+							}
+							if (col < 7 && is_black(_array[row + 1][col + 1])) {
+								float v = pp_hyp_passer(col + 1, (int)row + 1, true, has_black_pieces);
+								if (v > Vhyp) Vhyp = v;
+							}
+							if (Vhyp > 0.0f)
+								passed_pawns_value += pp_cand_factor * candR * Vhyp * passed_adv;
+						}
+					}
+					{
+						static const bool canddbg = getenv("OPTI_CANDDBG") != nullptr;
+						if (canddbg) {
+							int bcol = -1, brow = -1;
+							for (uint8_t k = row + 1; k < 7 && brow < 0; k++) {
+								if (_array[k][col] == b_pawn) { bcol = col; brow = (int)k; }
+								else if (col > 0 && _array[k][col - 1] == b_pawn) { bcol = col - 1; brow = (int)k; }
+								else if (col < 7 && _array[k][col + 1] == b_pawn) { bcol = col + 1; brow = (int)k; }
+							}
+							SquareMap wcm = get_white_controls_map();
+							SquareMap bcm = get_black_controls_map();
+							SquareMap wpm = get_pawns_controls(true);
+							SquareMap bpm = get_pawns_controls(false);
+							int ownA = 0, enA = 0, ownB = 0, enB = 0;
+							int adv = (int)row + 1;
+							if (adv <= 7) {
+								ownA = (int)wcm._array[adv][col] + (int)wpm._array[adv][col];
+								enA = (int)bcm._array[adv][col] + (int)bpm._array[adv][col];
+							}
+							if (brow >= 0) {
+								ownB = (int)wcm._array[brow][bcol] + (int)wpm._array[brow][bcol];
+								enB = (int)bcm._array[brow][bcol] + (int)bpm._array[brow][bcol];
+							}
+							int mg = pp_margin(col, row, true);
+							float leverR = (float)(ownA + ownB - enA - enB + 1) / 3.0f;
+							leverR = leverR < 0.0f ? 0.0f : (leverR > 1.0f ? 1.0f : leverR);
+							float majR = (float)mg / 2.0f;
+							majR = majR < 0.0f ? 0.0f : (majR > 1.0f ? 1.0f : majR);
+							main_GUI._eval_components += "CAND w " + to_string((int)col) + to_string((int)row) + " adv=" + to_string(ownA) + "/" + to_string(enA) + " blk=" + to_string(ownB) + "/" + to_string(enB) + " margin=" + to_string(mg) + " leverR=" + to_string(leverR) + " majR=" + to_string(majR) + " fires=" + (pp_majority(col, row, true) ? "1" : "0") + '\n';
+						}
+					}
 					continue;
 				}
 
@@ -557,11 +715,57 @@ int Board::get_pawn_structure(float display_factor)
 					}
 				}
 
-				// Blocked by an enemy pawn: candidate if the local majority
-				// can force it through.
+			// Blocked by an enemy pawn: candidate (mirror of the white side:
+			// pawns break, majority required, capped by hypothetical passer).
 				if (!is_passed_pawn && pawn_blocked) {
-					if (pp_majority(col, row, false))
-						passed_pawns_value -= pp_cand_factor * passed_pawns[7 - row] * passed_adv;
+					{
+						float candR = pp_candidate_R(col, row, false);
+						if (candR > 0.0f && pp_cand_factor > 0.0f) {
+							float Vhyp = 0.0f;
+							if (_array[row - 1][col] == none) Vhyp = pp_hyp_passer(col, (int)row - 1, false, has_white_pieces);
+							if (col > 0 && is_white(_array[row - 1][col - 1])) {
+								float v = pp_hyp_passer(col - 1, (int)row - 1, false, has_white_pieces);
+								if (v > Vhyp) Vhyp = v;
+							}
+							if (col < 7 && is_white(_array[row - 1][col + 1])) {
+								float v = pp_hyp_passer(col + 1, (int)row - 1, false, has_white_pieces);
+								if (v > Vhyp) Vhyp = v;
+							}
+							if (Vhyp > 0.0f)
+								passed_pawns_value -= pp_cand_factor * candR * Vhyp * passed_adv;
+						}
+					}
+					{
+						static const bool canddbg = getenv("OPTI_CANDDBG") != nullptr;
+						if (canddbg) {
+							int bcol = -1, brow = -1;
+							for (int k = (int)row - 1; k > 0 && brow < 0; k--) {
+								if (_array[k][col] == w_pawn) { bcol = col; brow = k; }
+								else if (col > 0 && _array[k][col - 1] == w_pawn) { bcol = col - 1; brow = k; }
+								else if (col < 7 && _array[k][col + 1] == w_pawn) { bcol = col + 1; brow = k; }
+							}
+							SquareMap wcm = get_white_controls_map();
+							SquareMap bcm = get_black_controls_map();
+							SquareMap wpm = get_pawns_controls(true);
+							SquareMap bpm = get_pawns_controls(false);
+							int ownA = 0, enA = 0, ownB = 0, enB = 0;
+							int adv = (int)row - 1;
+							if (adv >= 0) {
+								ownA = (int)bcm._array[adv][col] + (int)bpm._array[adv][col];
+								enA = (int)wcm._array[adv][col] + (int)wpm._array[adv][col];
+							}
+							if (brow >= 0) {
+								ownB = (int)bcm._array[brow][bcol] + (int)bpm._array[brow][bcol];
+								enB = (int)wcm._array[brow][bcol] + (int)wpm._array[brow][bcol];
+							}
+							int mg = pp_margin(col, row, false);
+							float leverR = (float)(ownA + ownB - enA - enB + 1) / 3.0f;
+							leverR = leverR < 0.0f ? 0.0f : (leverR > 1.0f ? 1.0f : leverR);
+							float majR = (float)mg / 2.0f;
+							majR = majR < 0.0f ? 0.0f : (majR > 1.0f ? 1.0f : majR);
+							main_GUI._eval_components += "CAND b " + to_string((int)col) + to_string((int)row) + " adv=" + to_string(ownA) + "/" + to_string(enA) + " blk=" + to_string(ownB) + "/" + to_string(enB) + " margin=" + to_string(mg) + " leverR=" + to_string(leverR) + " majR=" + to_string(majR) + " fires=" + (pp_majority(col, row, false) ? "1" : "0") + '\n';
+						}
+					}
 					continue;
 				}
 
