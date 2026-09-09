@@ -253,7 +253,7 @@ int Board::get_pawn_structure(float display_factor)
 	}();
 	static const float pp_cand_factor = [] {
 		const char* e = getenv("OPTI_PP_CAND");
-		return e ? (float)atof(e) : 0.0f;
+		return e ? (float)atof(e) : 1.0f;
 	}();
 	static const float pp_nonpawn_square_scale = [] {
 		const char* e = getenv("OPTI_PP_SQSCALE");
