@@ -3716,6 +3716,52 @@ TEST(Puzzle, SearchRepetitionPlumbing) {
 	SUCCEED();
 }
 
+// Search-side repetition VALUE (permanent guard for the Qc6+ perpetual):
+// 2kr1r2/Q7/2p5/7P/1PP5/4Pp2/P7/2K5 w, 1.Qb6 f2 2.Qxc6+ Kb8 3.Qb6+ Kc8.
+// 4.Qc6+ returns EXACTLY to the post-2.Qxc6+ position (king never left c8
+// except the b8 excursion), so search must value it draw (twofold), not +247.
+// The draw leaf is created at first sight (quiescence or expansion), hence
+// deterministic: value 0, terminal, avg 0.5.
+TEST(Puzzle, Qc6RepetitionDraw) {
+	static Evaluator evaluator;
+	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
+	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+	auto mv = [](int sc, int sr, int ec, int er) {
+		Move m; m.start_col = sc; m.start_row = sr; m.end_col = ec; m.end_row = er;
+		return m;
+	};
+	{
+		monte_board_buffer.reset(); monte_node_buffer.reset();
+		transposition_table.clear(); node_map.clear();
+		g_buffers_full_logged = false; g_tt_main_search = false; g_tt_node_dag = true;
+		Board b;
+		b.from_fen("2kr1r2/Q7/2p5/7P/1PP5/4Pp2/P7/2K5 w - - 0 1");
+		b.make_move(mv(0, 6, 1, 5), false, true); // Qb6
+		b.make_move(mv(5, 2, 5, 1), false, true); // f2
+		b.make_move(mv(1, 5, 2, 5), false, true); // Qxc6+
+		b.make_move(mv(2, 7, 1, 7), false, true); // Kb8
+		b.make_move(mv(2, 5, 1, 5), false, true); // Qb6+
+		b.make_move(mv(1, 7, 2, 7), false, true); // Kc8
+		Board* root_board = monte_board_buffer.get_first_free_board();
+		root_board->copy_data(b, false, true); // with game history, like the live GUI board
+		root_board->_is_active = true;
+		Node* root = monte_node_buffer.get_first_free_node();
+		root->reset(false);
+		root->_board = root_board;
+		root->_is_active = true;
+		root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 2000, 10);
+		Move qc6 = mv(1, 5, 2, 5);
+		auto it = root->_children.find(qc6);
+		ASSERT_TRUE(it != root->_children.end() && it->second._node != nullptr);
+		Node* n1 = it->second._node;
+		EXPECT_EQ(n1->_deep_evaluation._value, 0);
+		EXPECT_TRUE(n1->_is_terminal);
+		EXPECT_DOUBLE_EQ(n1->_deep_evaluation._avg_score, 0.5);
+		EXPECT_LT(root->_deep_evaluation._value, 150); // was +247 (repetition-blind quiescence)
+		g_tt_node_dag = false;
+	}
+}
+
 
 
 

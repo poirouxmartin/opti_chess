@@ -1697,9 +1697,13 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 				new_board->copy_data(*_board, false, false);
 				new_board->_is_active = true;
 				new_board->make_move(move, false, true);
-					// Quiescence repetition check removed: captures change material (can never repeat),
-					// and quiet-check evasions are already caught by explore_new_move before quiescence.
 
+				// Repetition draw in quiescence (Qc6+ perpetual fix): captures
+				// can never repeat a previous position (material strictly
+				// decreases along the path), but quiet checks, evasions and
+				// promos can. path_history == nullptr keeps legacy behaviour.
+				const bool q_is_rep_draw = (path_history != nullptr && !move.is_capture()
+					&& position_is_draw_by_repetition(branch_history, *new_board));
 					// position pushed for the duration of the recursion by the PathScope below
 					// zobrist key is already computed incrementally by make_move()
 
@@ -1713,6 +1717,13 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 					}
 
 					child->_board = new_board;
+
+					// Score the repetition draw here (not in the recursion): the
+					// fresh node becomes a draw leaf mirroring explore_new_move,
+					// so the recursion below returns 0 via the terminal fast path.
+					if (q_is_rep_draw) {
+						init_terminal_draw_child(child, new_board, eval, network);
+					}
 				}
 
 				add_child(child, move);
