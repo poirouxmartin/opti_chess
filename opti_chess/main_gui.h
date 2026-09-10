@@ -81,8 +81,8 @@ inline int main_ui() {
 	// Parameters of the AI
 	int search_depth = 6;
 
-	// End of the game
-	bool main_game_over = false;
+	// End of the game: global flag (defined in gui.cpp), so game, search
+	// display and move gating share one game-over state.
 
 	// Sets the timers up
 	main_GUI._board->reset_timers();

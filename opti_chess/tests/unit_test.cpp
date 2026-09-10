@@ -3691,10 +3691,12 @@ TEST(Puzzle, RepetitionPerpetual) {
 
 
 
-// TEMP: plumbing check — does the second Qc6+ match the first via
-// position_is_draw_by_repetition on a plain make_move chain (no search)?
+
+
+// Search-side repetition plumbing (permanent guard): the 2nd Qc6+ matches
+// the 1st via position_is_draw_by_repetition (twofold in search).
 bool position_is_draw_by_repetition(const PositionHistory& path_history, Board& board, uint8_t repetition_limit);
-TEST(Puzzle, TempRepPlumbing) {
+TEST(Puzzle, SearchRepetitionPlumbing) {
 	Board b;
 	b.from_fen("2kr1r2/Q7/2p5/7P/1PP5/4Pp2/P7/2K5 w - - 0 1");
 	auto mv = [](int sc, int sr, int ec, int er) {

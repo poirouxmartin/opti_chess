@@ -90,9 +90,15 @@ bool GameTree::select_previous_node() {
 
 	if (can_go_back) {
 		main_GUI.stop_compute(); // worker first: root reset + board swap below
-		main_GUI._position_epoch++; // real mutation
+		main_GUI._position_epoch++; // real tree mutation: worker drops hint maps on next wake
 		std::lock_guard<std::mutex> tree_lk(main_GUI._tree_mutex);
 		_current_node = _current_node->_parent;
+		// Back before the terminal position: the game is playable again.
+		main_game_over = false;
+		// Force a fresh terminal evaluation (threefold): the adopted board
+		// may carry a stale search-time memo (twofold), which would
+		// re-trigger the game-over branch without rechecking.
+		main_GUI._board->_game_over_checked = false;
 
 		// The board must be moved back up for the exploration too
 		main_GUI.reset_buffers(); // #6: systematic TT/node_map clear

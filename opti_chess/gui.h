@@ -23,6 +23,9 @@ using namespace std;
 extern bool g_debug;
 void debug_log(const char* fmt, ...);
 
+// Game over flag (defined in gui.cpp, read here to block moves/banner)
+extern bool main_game_over;
+
 // TODO: add const in a lot more places
 
 // GUI

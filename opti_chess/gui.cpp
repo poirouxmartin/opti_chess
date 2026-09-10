@@ -32,10 +32,13 @@ extern "C" {
 bool g_debug = true;
 static ofstream g_debug_file;
 
+// End-of-game flag, shared by the main loop, the display and move gating.
+bool main_game_over = false;
+
 static void ensure_debug_file() {
 	if (g_debug && !g_debug_file.is_open()) {
 		g_debug_file.open("opti_chess_debug.log", ios::app);
-		g_debug_file << "\n=== session start (build __DATE__ __TIME__) ===" << endl;
+		g_debug_file << "\n=== session start (build " << __DATE__ << " " << __TIME__ << ") ===" << endl;
 	}
 }
 
@@ -1201,6 +1204,9 @@ bool GUI::play_move_keep(Move move)
 // Intercepts a user move (click or drag): opens the promotion picker
 // when the move is a pawn reaching the last rank, plays it otherwise.
 bool GUI::play_user_move(const int start_row, const int start_col, const int end_row, const int end_col) {
+	// No moves after game over (undo, new game or paste to continue)
+	if (main_game_over)
+		return false;
 	if (_board->_got_moves == -1)
 		_board->get_moves();
 
@@ -1923,7 +1929,8 @@ void GUI::draw()
 		bool has_played = false;
 
 		// If the GrogrosZero search arrows are there, and no piece is selected
-		if (_drawing_arrows && !selected_piece()) {
+		// (no moves at all after game over: undo, new game or paste to continue)
+		if (_drawing_arrows && !selected_piece() && !main_game_over) {
 
 			// Iterate backwards to play the most recent arrow (the visible one when they overlap)
 			for (Move move : ranges::reverse_view(_grogros_arrows))
@@ -2343,7 +2350,20 @@ void GUI::draw()
 	// Promotion picker overlay (above the pieces)
 	if (_promotion_pending)
 		draw_promotion_picker();
-
+	// Game-over banner: a declared draw/win must be VISIBLE (a silent flag
+	// reads as "never happens" to users).
+	if (main_game_over) {
+		string over_text = "1/2-1/2";
+		if (_board->_game_over_value == white_win) over_text = "1-0";
+		else if (_board->_game_over_value == black_win) over_text = "0-1";
+		else if (_board->repetition_count() >= 3) over_text = "1/2-1/2 repetition";
+		float over_size = _text_size * 2.0f;
+		Vector2 over_w = MeasureTextEx(_text_font, over_text.c_str(), over_size, _font_spacing * over_size);
+		float over_x = _board_padding_x + (_board_size - over_w.x) / 2.0f;
+		float over_y = _board_padding_y + (_board_size - over_w.y) / 2.0f;
+		DrawRectangle(_board_padding_x, over_y - 10, _board_size, over_w.y + 20, Fade(BLACK, 0.7f));
+		DrawTextEx(_text_font, over_text.c_str(), { over_x, over_y }, over_size, _font_spacing * over_size, WHITE);
+	}
 	// Display of the cursor
 	draw_texture(_cursor_texture, _mouse_pos.x - _cursor_size / 2, _mouse_pos.y - _cursor_size / 2, WHITE);
 }
@@ -2366,6 +2386,7 @@ void GUI::load_FEN(const string fen, bool display) {
 	// TODO: the FEN has to be validated
 	//_board->from_fen(fen);
 	//update_global_pgn();
+	main_game_over = false; // new positions start playable
 	reset_buffers();
 	_root_exploration_node->reset();
 	_root_exploration_node->_board = _board;
@@ -2391,6 +2412,7 @@ void GUI::reset_game() {
 	// (watchdog kills, stop timeouts). Idempotent.
 	ensure_worker_thread();
 	cout << "*** RESETING GAME ***\n" << endl;
+	main_game_over = false; // new games start playable
 	debug_log("[reset_game] enter boards_free=%d nodes_free=%d root=%p board=%p",
 		(int)monte_board_buffer._free_indices.size(),
 		(int)monte_node_buffer._free_indices.size(),
