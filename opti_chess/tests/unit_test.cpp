@@ -3676,6 +3676,13 @@ TEST(Puzzle, RepetitionPerpetual) {
 	b.make_move(mv(1, 5, 2, 5), false, true);
 	EXPECT_EQ(b.repetition_count(), 3);
 	EXPECT_EQ(b.is_game_over(3), draw);
+	// The user's full line goes on (4th Qc6+): still a draw, never missed.
+	b.make_move(mv(2, 7, 1, 7), false, true);
+	b.make_move(mv(2, 5, 1, 5), false, true);
+	b.make_move(mv(1, 7, 2, 7), false, true);
+	b.make_move(mv(1, 5, 2, 5), false, true);
+	EXPECT_EQ(b.repetition_count(), 4);
+	EXPECT_EQ(b.is_game_over(3), draw);
 }
 
 
