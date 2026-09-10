@@ -3682,6 +3682,8 @@ TEST(Puzzle, RepetitionPerpetual) {
 
 
 
+
+
 // TEMP: plumbing check — does the second Qc6+ match the first via
 // position_is_draw_by_repetition on a plain make_move chain (no search)?
 bool position_is_draw_by_repetition(const PositionHistory& path_history, Board& board, uint8_t repetition_limit);

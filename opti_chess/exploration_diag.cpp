@@ -1668,6 +1668,9 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 	// -> affichage strictement inchange.
 	PositionHistory local_chain;
 	PositionHistory* c = chain != nullptr ? chain : &local_chain;
+	// Seed the displayed line with the game prefix (same as search): a repeat
+	// already seen in the game is one occurrence closer to threefold here.
+	if (chain == nullptr) local_chain = _board->_positions_history;
 	_board->get_zobrist_key();
 	// Cut at the real draw: threefold (FIDE) under DAG; twofold = historical
 	// historique quand OFF -> strictement byte-identique (count+1>=limite,
@@ -1687,7 +1690,9 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 				     << " @ " << _board->to_fen() << endl;
 			}
 		}
-		return "...";
+		// Third occurrence on the displayed line = real threefold: SAY the
+		// draw instead of cutting silently (the user asked to SEE nulles).
+		return " 1/2-1/2";
 	}
 	(*c)[_board->_zobrist_key]++;
 
