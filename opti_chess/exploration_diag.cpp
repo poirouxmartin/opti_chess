@@ -1650,8 +1650,13 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 		return "...";
 	}
 
-	// End of the variation
+	// End of the variation: stop AND SAY SO (a silent stop reads as "never
+	// a draw"). Search terminals use the search rule (twofold); the game
+	// declaration (threefold) lives in the game flow.
 	if (_board->_game_over_value) {
+		if (_board->_game_over_value == draw) return " 1/2-1/2";
+		if (_board->_game_over_value == white_win) return " 1-0";
+		if (_board->_game_over_value == black_win) return " 0-1";
 		return "";
 	}
 
