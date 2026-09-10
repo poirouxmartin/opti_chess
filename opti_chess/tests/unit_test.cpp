@@ -3680,6 +3680,31 @@ TEST(Puzzle, RepetitionPerpetual) {
 
 
 
+// TEMP: plumbing check — does the second Qc6+ match the first via
+// position_is_draw_by_repetition on a plain make_move chain (no search)?
+bool position_is_draw_by_repetition(const PositionHistory& path_history, Board& board, uint8_t repetition_limit);
+TEST(Puzzle, TempRepPlumbing) {
+	Board b;
+	b.from_fen("2kr1r2/Q7/2p5/7P/1PP5/4Pp2/P7/2K5 w - - 0 1");
+	auto mv = [](int sc, int sr, int ec, int er) {
+		Move m; m.start_col = sc; m.start_row = sr; m.end_col = ec; m.end_row = er;
+		return m;
+	};
+	b.make_move(mv(0, 6, 1, 5), false, true); // Qb6
+	b.make_move(mv(5, 2, 5, 1), false, true); // f2
+	b.make_move(mv(1, 5, 2, 5), false, true); // Qxc6+
+	b.make_move(mv(2, 7, 1, 7), false, true); // Kb8
+	b.make_move(mv(2, 5, 1, 5), false, true); // Qb6+
+	b.make_move(mv(1, 7, 2, 7), false, true); // Kc8
+	PositionHistory ph = b._positions_history;
+	Board c(b, true, true);
+	c.make_move(mv(1, 5, 2, 5), false, true); // Qc6+ (2nd occurrence)
+	cout << "plumbing: " << (position_is_draw_by_repetition(ph, c, 3) ? "DRAW" : "NO-DRAW") << endl;
+	SUCCEED();
+}
+
+
+
 
 
 
