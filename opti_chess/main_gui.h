@@ -45,8 +45,9 @@ inline int main_ui() {
 	// To avoid printing every piece of information (the log level goes from 0 to 7 -> 7 = nothing)
 	SetTraceLogLevel(LOG_ALL);
 
-	// Initialization of the window
-	InitWindow(main_GUI._screen_width, main_GUI._screen_height, "Grogros Chess");
+	// Initialization of the window (build stamp in the title: kills all
+	// stale-binary doubt at a glance)
+	InitWindow(main_GUI._screen_width, main_GUI._screen_height, ("Grogros Chess [" __DATE__ " " __TIME__ "]"));
 
 	// Initialization of the audio
 	InitAudioDevice();
