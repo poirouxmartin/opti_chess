@@ -356,8 +356,11 @@ int Board::get_pawn_structure(float display_factor)
 	// Blocked by a friendly piece
 	static constexpr float self_block_division = 1.5f;
 
-	// Bonus for connected passed pawns
-	constexpr float connected_passed_pawn_bonus = 1.65f;
+	// Bonus for connected passed pawns: 1.0 (neutralised). Connected
+	// pawns already protect their front squares (triggering enemy caps)
+	// and uncap by advancing; the explicit multiplier overvalued them
+	// (stacked x1.65 with the no-pieces x1.5). Kept as a factor, not deleted.
+	constexpr float connected_passed_pawn_bonus = 1.0f;
 
 
 	// Passed pawn whose path is controlled by an enemy piece
@@ -388,6 +391,19 @@ int Board::get_pawn_structure(float display_factor)
 	// Bonus when the king is outside the square of the passed pawn
 	constexpr int out_of_square_bonus[8] = { 0, 1000, 1050, 1100, 1200, 1325, 1500, 0 };
 	//constexpr int out_of_square_bonus[8] = { 0, 500, 500, 500, 500, 500, 500, 0 };
+	// Exponential scale (trial): near-queen out-of-square passers are
+	// worth much more than distant ones (~x2 per rank). Env-tunable.
+	// Default OFF: measured +18cp MAE worse on SF-dyn quiet EG
+	// (linear table kept until the race coupling lands).
+	static const bool pp_oos_exp = [] {
+		const char* e = getenv("OPTI_PP_OOSEXP");
+		return e ? (e[0] != '0') : false;
+	}();
+	static constexpr int out_of_square_bonus_exp[8] = { 0, 150, 300, 600, 1200, 2400, 4800, 0 };
+	auto pp_oos_bonus = [&](int idx) -> float {
+		int i = idx < 0 ? 0 : (idx > 7 ? 7 : idx);
+		return (float)(pp_oos_exp ? out_of_square_bonus_exp[i] : out_of_square_bonus[i]);
+	};
 
 	// Are we in a pawn endgame?
 	bool pawn_endgame = is_pawn_endgame();
@@ -660,6 +676,11 @@ int Board::get_pawn_structure(float display_factor)
 						path_value *= connected_passed_pawn_bonus;
 					}
 					if (!has_black_pieces) path_value *= 1.5f;
+				// About to queen, unstoppable: one push, clear file, promo
+				// square uncontrolled. Worth queen-minus-tempo (~x1.5) even
+				// with enemy pieces on the board. Exclusive with the
+				// no-pieces multiplier above (same 1.5, never stacked).
+				else if (row == 6 && cut_k == 8 && black_controls_map._array[7][col] == 0) path_value *= 1.5f;
 
 					// King outside the square? Tempo-aware (in_king_square)
 					// with a free promotion square AND a free path: no enemy
@@ -682,10 +703,10 @@ int Board::get_pawn_structure(float display_factor)
 						if (ppd)
 							main_GUI._eval_components += "PPDIAG w " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)path_value) + " div=" + to_string(division_factor) + '\n';
 					}
-					if (out_of_square) {
-						oos_white += sq_scale * out_of_square_bonus[row];
-						if (7 - row < oos_wdist) oos_wdist = 7 - row;
-					}
+				if (out_of_square) {
+					oos_white += sq_scale * pp_oos_bonus(row);
+					if (7 - row < oos_wdist) oos_wdist = 7 - row;
+				}
 
 					// Only the most advanced pawn on the file counts: the ones behind it are stuck
 					break;
@@ -864,6 +885,8 @@ int Board::get_pawn_structure(float display_factor)
 							passed_value = passed_value * connected_passed_pawn_bonus;
 						}
 						if (!has_white_pieces) passed_value = passed_value * 1.5f;
+					// About to queen, unstoppable (mirror of white).
+					else if (row == 1 && cut_k == -1 && white_controls_map._array[0][col] == 0) passed_value = passed_value * 1.5f;
 
 						//8/8/4p2p/1R6/pPpP1k2/K6P/8/8 b - - 0 43
 						// King outside the square? Tempo-aware with a free path
@@ -890,10 +913,10 @@ int Board::get_pawn_structure(float display_factor)
 						if (ppd2)
 						main_GUI._eval_components += "PPDIAG b " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)passed_value) + " div=" + to_string(division_factor) + '\n';
 						}
-						if (out_of_square) {
-							oos_black += sq_scale * out_of_square_bonus[7 - row];
-							if (row < oos_bdist) oos_bdist = row;
-						}
+					if (out_of_square) {
+						oos_black += sq_scale * pp_oos_bonus(7 - row);
+						if (row < oos_bdist) oos_bdist = row;
+					}
 
 						// Only the most advanced pawn on the file counts: the ones behind it are stuck
 						break;
