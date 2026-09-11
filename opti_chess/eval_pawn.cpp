@@ -266,8 +266,9 @@ int Board::get_pawn_structure(float display_factor)
 	static constexpr int pp_pawn_control_cap = 100;
 	static constexpr int pp_piece_control_cap = 320;
 	// opportunity-cost malus for the side owning the blocker, by piece
-	// (knight blockades cheap, queen babysitting punished); pawns/king: 0
-	static constexpr int pp_blocker_malus[7] = { 0, 0, 40, 60, 120, 250, 0 };
+	// (knight blockades cheap, queen babysitting punished, king 85);
+	// pawns: 0 (same-file-ahead pawn means candidate branch anyway)
+	static constexpr int pp_blocker_malus[7] = { 0, 0, 40, 60, 120, 250, 85 };
 
 	// Passed-pawn model (docs/passed-pawns-roadmap.md, Part A).
 	// Parallel new-model path was trialled and removed (hotter V_base
@@ -429,12 +430,18 @@ int Board::get_pawn_structure(float display_factor)
 		float division_factor = 1.0f;
 		float path_value = 0.0f;
 		if (white) {
-			for (uint8_t k = srow; k <= 7; k++) {
+			// Cut at the first blocker (same semantics as real passers;
+			// no malus here: pp_cand_malus prices the push outside).
+			uint8_t hcut = 8;
+			for (uint8_t k = srow + 1; k <= 7; k++) {
+				if (_array[k][col] != none) { hcut = k; break; }
+			}
+			for (uint8_t k = srow; k <= 7 && k <= hcut; k++) {
 				int sq_base = passed_pawns[k <= 6 ? k : 6];
 				sq_base = pp_cap(sq_base, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col]);
 				if ((float)sq_base < worst_path) worst_path = (float)sq_base;
 			}
-			for (uint8_t k = srow + 1; k <= 7; k++) {
+			for (uint8_t k = srow + 1; k <= 7 && k <= hcut; k++) {
 				const uint8_t blocker = _array[k][col];
 				if (blocker == b_pawn) division_factor += block_division_per_piece[0] - 1.0f;
 				else if (is_black(blocker)) division_factor += block_division_per_piece[blocker - 8] - 1.0f;
@@ -449,18 +456,23 @@ int Board::get_pawn_structure(float display_factor)
 			return path_value / division_factor;
 		}
 		else {
-			for (int k = srow; k >= 0; k--) {
+			int hcut = -1;
+			for (int k = srow - 1; k >= 0; k--) {
+				if (_array[k][col] != none) { hcut = k; break; }
+			}
+			for (int k = srow; k >= 0 && k >= hcut; k--) {
 				int sq_base = passed_pawns[k >= 1 ? 7 - k : 6];
 				sq_base = pp_cap(sq_base, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col]);
 				if ((float)sq_base < worst_path) worst_path = (float)sq_base;
 			}
-			for (int k = srow - 1; k >= 0; k--) {
+			for (int k = srow - 1; k >= 0 && k >= hcut; k--) {
 				const uint8_t blocker = _array[k][col];
 				if (blocker == w_pawn) division_factor += block_division_per_piece[0] - 1.0f;
 				else if (is_white(blocker)) division_factor += block_division_per_piece[blocker - 2] - 1.0f;
 				else if (is_black(blocker)) division_factor += self_block_division - 1.0f;
 				int cd = max(0, (int)enCM._array[k][col] - (int)ownCM._array[k][col]);
 				division_factor += (control_division - 1.0f) * cd;
+				if (blocker != none) break;
 			}
 			path_value = worst_path;
 			bool conn = (col > 0 && (pawns_black[srow][col - 1] || pawns_black[srow + 1][col - 1])) || (col < 7 && (pawns_black[srow][col + 1] || pawns_black[srow + 1][col + 1]));
@@ -560,25 +572,29 @@ int Board::get_pawn_structure(float display_factor)
 					float division_factor = 1.0f;
 					uint8_t nearest_blocker = none;
 
-					// Look for a blocker
-					for (uint8_t k = row + 1; k <= 7; k++) {
-						const uint8_t blocker = _array[k][col];
-						if (blocker == b_pawn) {
-							// Enemy pawn: no table entry (knight..king only),
-							// and the most permanent blocker (pawns never move
-							// backward) -> strongest divisor. Indexing with
-							// b_pawn(7)-8 = -1 used to read out of bounds.
-							division_factor += block_division_per_piece[0] - 1.0f;
-						}
-						else if (is_black(blocker)) {
-							division_factor += block_division_per_piece[blocker - 8] - 1.0f;
-							if (nearest_blocker == none) nearest_blocker = blocker;
-						}
-						else if (is_white(blocker)) {
-							division_factor += self_block_division - 1.0f;
-							if (nearest_blocker == none) nearest_blocker = blocker;
-						}
+				// First blocker on the file cuts the path: a passer is worth
+				// its reachable tension, not fractions of queen-dreams. Only
+				// the first blocker divides (by its type) and takes the malus.
+				uint8_t cut_k = 8;
+				for (uint8_t k = row + 1; k <= 7; k++) {
+					const uint8_t blocker = _array[k][col];
+					if (blocker == none) continue;
+					cut_k = k;
+					if (blocker == b_pawn) {
+						// Same-file-ahead pawn means candidate branch, so this
+						// is unreachable in practice; kept for safety.
+						division_factor += block_division_per_piece[0] - 1.0f;
 					}
+					else if (is_black(blocker)) {
+						division_factor += block_division_per_piece[blocker - 8] - 1.0f;
+						nearest_blocker = blocker;
+					}
+					else if (is_white(blocker)) {
+						division_factor += self_block_division - 1.0f;
+						nearest_blocker = blocker;
+					}
+					break;
+				}
 
 					// Opportunity-cost malus for the side owning the blocker
 					// (knight blockades cheap, queen babysitting punished).
@@ -609,10 +625,10 @@ int Board::get_pawn_structure(float display_factor)
 					SquareMap white_pawns_map = get_pawns_controls(true);
 					SquareMap black_pawns_map = get_pawns_controls(false);
 
-					for (uint8_t k = row + 1; k <= 7; k++) {
-						int controls_diff = max(0, black_controls_map._array[k][col] - white_controls_map._array[k][col]);
-						division_factor += (control_division - 1.0f) * controls_diff;
-					}
+				for (uint8_t k = row + 1; k <= 7 && k <= cut_k; k++) {
+					int controls_diff = max(0, black_controls_map._array[k][col] - white_controls_map._array[k][col]);
+					division_factor += (control_division - 1.0f) * controls_diff;
+				}
 
 					// Put the pawn back
 					_array[row][col] = w_pawn;
@@ -623,12 +639,11 @@ int Board::get_pawn_structure(float display_factor)
 						_controls_map_valid = false;
 
 
-					// Path value: weakest link - min over ALL squares ahead
-					// (min-capped). No break: every square is examined, the
-					// hardest one caps the whole push.
-					float worst_path = 1e30f;
-					// Promotion square included (base = about-to-queen value).
-					for (uint8_t k = row; k <= 7; k++) {
+				// Path value: weakest link - min over the REACHABLE squares
+				// (up to and including the first blocker, min-capped).
+				// Promotion square included (base = about-to-queen value).
+				float worst_path = 1e30f;
+				for (uint8_t k = row; k <= 7 && k <= cut_k; k++) {
 						int sq_base = passed_pawns[k <= 6 ? k : 6];
 						sq_base = pp_cap(sq_base, black_controls_map._array[k][col], black_pawns_map._array[k][col], white_pawns_map._array[k][col]);
 						if ((float)sq_base < worst_path) worst_path = (float)sq_base;
@@ -765,24 +780,25 @@ int Board::get_pawn_structure(float display_factor)
 					float division_factor = 1.0f;
 					uint8_t nearest_blocker = none;
 
-					// Look for a blocker
-					for (int_fast8_t k = row - 1; k >= 0; k--) {
-						const uint8_t blocker = _array[k][col];
-						if (blocker == w_pawn) {
-							// Mirror of the white side: enemy pawn has no
-							// table entry; w_pawn(1)-2 = -1 used to read
-							// out of bounds.
-							division_factor += block_division_per_piece[0] - 1.0f;
-						}
-						else if (is_white(blocker)) {
-							division_factor += block_division_per_piece[blocker - 2] - 1.0f;
-							if (nearest_blocker == none) nearest_blocker = blocker;
-						}
-						else if (is_black(blocker)) {
-							division_factor += self_block_division - 1.0f;
-							if (nearest_blocker == none) nearest_blocker = blocker;
-						}
+				// First blocker below cuts the path (mirror of white).
+				int cut_k = -1;
+				for (int_fast8_t k = row - 1; k >= 0; k--) {
+					const uint8_t blocker = _array[k][col];
+					if (blocker == none) continue;
+					cut_k = k;
+					if (blocker == w_pawn) {
+						division_factor += block_division_per_piece[0] - 1.0f;
 					}
+					else if (is_white(blocker)) {
+						division_factor += block_division_per_piece[blocker - 2] - 1.0f;
+						nearest_blocker = blocker;
+					}
+					else if (is_black(blocker)) {
+						division_factor += self_block_division - 1.0f;
+						nearest_blocker = blocker;
+					}
+					break;
+				}
 
 					// Opportunity-cost malus for the side owning the blocker.
 					if (nearest_blocker != none && is_white(nearest_blocker))
@@ -810,10 +826,10 @@ int Board::get_pawn_structure(float display_factor)
 					SquareMap white_pawns_map = get_pawns_controls(true);
 					SquareMap black_pawns_map = get_pawns_controls(false);
 
-					for (int_fast8_t k = row - 1; k >= 0; k--) {
-						int controls_diff = max(0, white_controls_map._array[k][col] - black_controls_map._array[k][col]);
-						division_factor += (control_division - 1.0f) * controls_diff;
-					}
+				for (int_fast8_t k = row - 1; k >= 0 && k >= cut_k; k--) {
+					int controls_diff = max(0, white_controls_map._array[k][col] - black_controls_map._array[k][col]);
+					division_factor += (control_division - 1.0f) * controls_diff;
+				}
 
 					// Put the pawn back
 					_array[row][col] = b_pawn;
@@ -825,11 +841,10 @@ int Board::get_pawn_structure(float display_factor)
 
 						float passed_value = 0.0f;
 						{
-							// Path value: weakest link - min over ALL squares ahead
-							// (min-capped). No break: every square is examined, the
-							// hardest one caps the whole push.
-							float worst_path = 1e30f;
-							for (int_fast8_t k = row; k >= 0; k--) {
+						// Path value: weakest link - min over the REACHABLE
+						// squares (down to and including the first blocker).
+						float worst_path = 1e30f;
+						for (int_fast8_t k = row; k >= 0 && k >= cut_k; k--) {
 								int sq_base = passed_pawns[k >= 1 ? 7 - k : 6];
 								sq_base = pp_cap(sq_base, white_controls_map._array[k][col], white_pawns_map._array[k][col], black_pawns_map._array[k][col]);
 								if ((float)sq_base < worst_path) worst_path = (float)sq_base;
