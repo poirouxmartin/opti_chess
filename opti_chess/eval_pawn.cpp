@@ -247,22 +247,12 @@ int Board::get_pawn_structure(float display_factor)
 	// V(s) per square ahead, min-capped by controls, blocker malus by
 	// piece, square rule with tempo + free king path (scaled outside pure
 	// pawn endings), candidates via local majority, global max(Vi - k*i).
-	static const float pp_gradient_k = [] {
-		const char* e = getenv("OPTI_PP_K");
-		return e ? (float)atof(e) : 75.0f;
-	}();
 	static const float pp_cand_factor = [] {
 		const char* e = getenv("OPTI_PP_CAND");
 		return e ? (float)atof(e) : 1.0f;
 	}();
 	static const float pp_nonpawn_square_scale = [] {
 		const char* e = getenv("OPTI_PP_SQSCALE");
-		return e ? (float)atof(e) : 0.0f;
-	}();
-	// Forward pull: V = V0 + m*(Vmax_path - V0), so the current square
-	// anchors the value and the path ahead only pulls forward.
-	static const float pp_pull_m = [] {
-		const char* e = getenv("OPTI_PP_PULL");
 		return e ? (float)atof(e) : 0.0f;
 	}();
 	// Passer sub-component scale (applied to every passer above,
@@ -283,27 +273,11 @@ int Board::get_pawn_structure(float display_factor)
 	// Parallel new-model path was trialled and removed (hotter V_base
 	// table hurt MAE everywhere); legacy magnitudes kept.
 
-	// Wing pawn majority around a file: can our majority force a blocked
-	// pawn through? Queenside (a-d) or kingside (e-h) counts — stricter
-	// than file-local (which fires in every locked center). Requires a
-	// DECISIVE margin (2+) and an advanced pawn (close to mattering):
-	// a 4v3 on the back ranks forces nothing. Candidate graft point.
-	auto pp_majority = [&](int col, int row, bool white) -> bool {
-		if (white && row < 3) return false;
-		if (!white && row > 4) return false;
-		int lo = col <= 3 ? 0 : 4, hi = col <= 3 ? 3 : 7;
-		int own = 0, enemy = 0;
-		for (int c = lo; c <= hi; c++)
-			for (int r = 0; r < 8; r++) {
-				bool mine = white ? pawns_white[r][c] : pawns_black[r][c];
-				bool theirs = white ? pawns_black[r][c] : pawns_white[r][c];
-				if (mine) own++;
-				if (theirs) enemy++;
-			}
-		return own >= enemy + 2;
-	};
-
-	// Same wing count as pp_majority but returns the raw margin (probe use).
+	// Wing pawn majority around a file (queenside a-d, kingside e-h):
+	// mid-game breaks come from a simple +1 margin, so candidates gate
+	// on that (pp_candidate_R); the stricter decisive-margin variant
+	// was dead code and is removed.
+	// Wing count returning the raw margin (probe use).
 	auto pp_margin = [&](int col, int row, bool white) -> int {
 		int lo = col <= 3 ? 0 : 4, hi = col <= 3 ? 3 : 7;
 		int own = 0, enemy = 0;
@@ -573,7 +547,7 @@ int Board::get_pawn_structure(float display_factor)
 							leverR = leverR < 0.0f ? 0.0f : (leverR > 1.0f ? 1.0f : leverR);
 							float majR = (float)mg / 2.0f;
 							majR = majR < 0.0f ? 0.0f : (majR > 1.0f ? 1.0f : majR);
-							main_GUI._eval_components += "CAND w " + to_string((int)col) + to_string((int)row) + " adv=" + to_string(ownA) + "/" + to_string(enA) + " blk=" + to_string(ownB) + "/" + to_string(enB) + " margin=" + to_string(mg) + " leverR=" + to_string(leverR) + " majR=" + to_string(majR) + " fires=" + (pp_majority(col, row, true) ? "1" : "0") + '\n';
+							main_GUI._eval_components += "CAND w " + to_string((int)col) + to_string((int)row) + " adv=" + to_string(ownA) + "/" + to_string(enA) + " blk=" + to_string(ownB) + "/" + to_string(enB) + " margin=" + to_string(mg) + " leverR=" + to_string(leverR) + " majR=" + to_string(majR) + " fires=" + (mg >= 1 ? "1" : "0") + '\n';
 						}
 					}
 					continue;
@@ -693,11 +667,6 @@ int Board::get_pawn_structure(float display_factor)
 						if (ppd)
 							main_GUI._eval_components += "PPDIAG w " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)path_value) + " div=" + to_string(division_factor) + '\n';
 					}
-					{
-						static const bool ppd = getenv("OPTI_PP_DIAG") != nullptr;
-						if (ppd)
-							main_GUI._eval_components += "PPDIAG w " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)path_value) + " div=" + to_string(division_factor) + '\n';
-					}
 					if (out_of_square) {
 						oos_white += sq_scale * out_of_square_bonus[row];
 						if (7 - row < oos_wdist) oos_wdist = 7 - row;
@@ -783,7 +752,7 @@ int Board::get_pawn_structure(float display_factor)
 							leverR = leverR < 0.0f ? 0.0f : (leverR > 1.0f ? 1.0f : leverR);
 							float majR = (float)mg / 2.0f;
 							majR = majR < 0.0f ? 0.0f : (majR > 1.0f ? 1.0f : majR);
-							main_GUI._eval_components += "CAND b " + to_string((int)col) + to_string((int)row) + " adv=" + to_string(ownA) + "/" + to_string(enA) + " blk=" + to_string(ownB) + "/" + to_string(enB) + " margin=" + to_string(mg) + " leverR=" + to_string(leverR) + " majR=" + to_string(majR) + " fires=" + (pp_majority(col, row, false) ? "1" : "0") + '\n';
+							main_GUI._eval_components += "CAND b " + to_string((int)col) + to_string((int)row) + " adv=" + to_string(ownA) + "/" + to_string(enA) + " blk=" + to_string(ownB) + "/" + to_string(enB) + " margin=" + to_string(mg) + " leverR=" + to_string(leverR) + " majR=" + to_string(majR) + " fires=" + (mg >= 1 ? "1" : "0") + '\n';
 						}
 					}
 					continue;
@@ -854,7 +823,7 @@ int Board::get_pawn_structure(float display_factor)
 					if (vertical_xray)
 						_controls_map_valid = false;
 
-						int passed_value = 0;
+						float passed_value = 0.0f;
 						{
 							// Path value: weakest link - min over ALL squares ahead
 							// (min-capped). No break: every square is examined, the
@@ -871,15 +840,15 @@ int Board::get_pawn_structure(float display_factor)
 								}
 							}
 							
-							passed_value = (int)worst_path;
+							passed_value = worst_path;
 						}
 
 						// Is it connected to another pawn?
 						bool b_connected = (col > 0 && (pawns_black[row][col - 1] || pawns_black[row + 1][col - 1])) || (col < 7 && (pawns_black[row][col + 1] || pawns_black[row + 1][col + 1]));
 						if (b_connected) {
-							passed_value = (int)(passed_value * connected_passed_pawn_bonus);
+							passed_value = passed_value * connected_passed_pawn_bonus;
 						}
-						if (!has_white_pieces) passed_value = (int)(passed_value * 1.5f);
+						if (!has_white_pieces) passed_value = passed_value * 1.5f;
 
 						//8/8/4p2p/1R6/pPpP1k2/K6P/8/8 b - - 0 43
 						// King outside the square? Tempo-aware with a free path
@@ -901,15 +870,10 @@ int Board::get_pawn_structure(float display_factor)
 
 						// Add the passed pawn value (legacy path)
 						passed_pawns_value -= (passed_value / division_factor) * passed_adv;
-						{
+					{
 						static const bool ppd2 = getenv("OPTI_PP_DIAG") != nullptr;
 						if (ppd2)
-						main_GUI._eval_components += "PPDIAG b " + to_string((int)col) + to_string((int)row) + " path=" + to_string(passed_value) + " div=" + to_string(division_factor) + '\n';
-						}
-						{
-							static const bool ppd2 = getenv("OPTI_PP_DIAG") != nullptr;
-							if (ppd2)
-								main_GUI._eval_components += "PPDIAG b " + to_string((int)col) + to_string((int)row) + " path=" + to_string(passed_value) + " div=" + to_string(division_factor) + '\n';
+						main_GUI._eval_components += "PPDIAG b " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)passed_value) + " div=" + to_string(division_factor) + '\n';
 						}
 						if (out_of_square) {
 							oos_black += sq_scale * out_of_square_bonus[7 - row];
