@@ -675,12 +675,9 @@ int Board::get_pawn_structure(float display_factor)
 					if (w_connected) {
 						path_value *= connected_passed_pawn_bonus;
 					}
-					if (!has_black_pieces) path_value *= 1.5f;
-				// About to queen, unstoppable: one push, clear file, promo
-				// square uncontrolled. Worth queen-minus-tempo (~x1.5) even
-				// with enemy pieces on the board. Exclusive with the
-				// no-pieces multiplier above (same 1.5, never stacked).
-				else if (row == 6 && cut_k == 8 && black_controls_map._array[7][col] == 0) path_value *= 1.5f;
+					// General x1.5 for every passer (not just no-enemy-pieces):
+				// passers are systematically undervalued.
+				path_value *= 1.5f;
 
 					// King outside the square? Tempo-aware (in_king_square)
 					// with a free promotion square AND a free path: no enemy
@@ -884,9 +881,8 @@ int Board::get_pawn_structure(float display_factor)
 						if (b_connected) {
 							passed_value = passed_value * connected_passed_pawn_bonus;
 						}
-						if (!has_white_pieces) passed_value = passed_value * 1.5f;
-					// About to queen, unstoppable (mirror of white).
-					else if (row == 1 && cut_k == -1 && white_controls_map._array[0][col] == 0) passed_value = passed_value * 1.5f;
+						// General x1.5 for every passer (mirror of white).
+					passed_value = passed_value * 1.5f;
 
 						//8/8/4p2p/1R6/pPpP1k2/K6P/8/8 b - - 0 43
 						// King outside the square? Tempo-aware with a free path
