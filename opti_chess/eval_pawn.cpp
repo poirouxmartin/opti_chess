@@ -251,10 +251,7 @@ int Board::get_pawn_structure(float display_factor)
 		const char* e = getenv("OPTI_PP_CAND");
 		return e ? (float)atof(e) : 1.0f;
 	}();
-	static const float pp_nonpawn_square_scale = [] {
-		const char* e = getenv("OPTI_PP_SQSCALE");
-		return e ? (float)atof(e) : 0.0f;
-	}();
+	// (Removed) Non-endgame square scale (oos pool muted permanently).
 	// Passer sub-component scale (applied to every passer above,
 	// before display: the x0.2 structure coef applies later outside).
 	static const float pp_scale = [] {
@@ -374,13 +371,7 @@ int Board::get_pawn_structure(float display_factor)
 	const float passed_adv = eval_from_progress(1, _adv, passed_adv_factor);
 	float passed_pawns_value = 0.0f;
 
-	// Out-of-square bonuses per side (accumulated, race-adjusted below):
-	// whoever queens first decides; the slower queen comes too late
-	// (distraction value only).
-	float oos_white = 0.0f, oos_black = 0.0f;
-	int oos_wdist = 99, oos_bdist = 99;
-	// Share kept by the slower side in a promotion race (tunable).
-	static constexpr float race_loser_share = 0.3f;
+	// (Removed) Out-of-square pool: muted permanently (see below).
 
 	//print_array(s_white, 8);
 	//print_array(s_black, 8);
@@ -388,25 +379,7 @@ int Board::get_pawn_structure(float display_factor)
 	//Map white_controls_map = get_white_controls_map();
 	//Map black_controls_map = get_black_controls_map();
 
-	// Bonus when the king is outside the square of the passed pawn
-	constexpr int out_of_square_bonus[8] = { 0, 1000, 1050, 1100, 1200, 1325, 1500, 0 };
-	//constexpr int out_of_square_bonus[8] = { 0, 500, 500, 500, 500, 500, 500, 0 };
-	// Exponential scale (trial): near-queen out-of-square passers are
-	// worth much more than distant ones (~x2 per rank). Env-tunable.
-	// Default OFF: measured +18cp MAE worse on SF-dyn quiet EG
-	// (linear table kept until the race coupling lands).
-	static const bool pp_oos_exp = [] {
-		const char* e = getenv("OPTI_PP_OOSEXP");
-		return e ? (e[0] != '0') : false;
-	}();
-	static constexpr int out_of_square_bonus_exp[8] = { 0, 150, 300, 600, 1200, 2400, 4800, 0 };
-	auto pp_oos_bonus = [&](int idx) -> float {
-		int i = idx < 0 ? 0 : (idx > 7 ? 7 : idx);
-		return (float)(pp_oos_exp ? out_of_square_bonus_exp[i] : out_of_square_bonus[i]);
-	};
-
-	// Are we in a pawn endgame?
-	bool pawn_endgame = is_pawn_endgame();
+	// (Removed) Out-of-square bonus tables: pool muted permanently.
 
 	// Does White still have pieces?
 	bool has_white_pieces = has_pieces(true);
@@ -680,38 +653,20 @@ int Board::get_pawn_structure(float display_factor)
 					if (w_connected) {
 						path_value *= connected_passed_pawn_bonus;
 					}
-					// General x1.5 for every passer (not just no-enemy-pieces):
+				// General x1.5 for every passer (not just no-enemy-pieces):
 				// passers are systematically undervalued.
 				path_value *= 1.5f;
 
-					// King outside the square? Tempo-aware (in_king_square)
-					// with a free promotion square AND a free path: no enemy
-					// control on any square ahead (a piece holding the path
-					// stops the pawn even when the king is out). Friendly
-					// pawn protection lifts the block. Full bonus in pawn
-					// endings, or when one push away anywhere (quiescence is
-					// blind to quiet promotions: static must score them).
-					bool path_free = true;
-					for (uint8_t k = row + 1; k <= 7; k++) {
-						if (black_controls_map._array[k][col] > 0 && white_pawns_map._array[k][col] == 0) { path_free = false; break; }
-					}
-					bool out_of_square = !in_king_square(Pos(row, col), false) && path_free;
-					float sq_scale = pawn_endgame ? 1.0f : pp_nonpawn_square_scale;
-
-					// Add the passed pawn value (legacy path)
-					passed_pawns_value += (path_value / division_factor) * passed_adv;
-					{
-						static const bool ppd = getenv("OPTI_PP_DIAG") != nullptr;
-						if (ppd)
-							main_GUI._eval_components += "PPDIAG w " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)path_value) + " div=" + to_string(division_factor) + '\n';
-					}
-				if (out_of_square) {
-					oos_white += sq_scale * pp_oos_bonus(row);
-					if (7 - row < oos_wdist) oos_wdist = 7 - row;
+				// Add the passed pawn value (legacy path)
+				passed_pawns_value += (path_value / division_factor) * passed_adv;
+				{
+					static const bool ppd = getenv("OPTI_PP_DIAG") != nullptr;
+					if (ppd)
+						main_GUI._eval_components += "PPDIAG w " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)path_value) + " div=" + to_string(division_factor) + '\n';
 				}
 
-					// Only the most advanced pawn on the file counts: the ones behind it are stuck
-					break;
+				// Only the most advanced pawn on the file counts: the ones behind it are stuck
+				break;
 				}
 
 				}
@@ -884,41 +839,25 @@ int Board::get_pawn_structure(float display_factor)
 						if (b_connected) {
 							passed_value = passed_value * connected_passed_pawn_bonus;
 						}
-						// General x1.5 for every passer (mirror of white).
+					// General x1.5 for every passer (mirror of white).
 					passed_value = passed_value * 1.5f;
 
-						//8/8/4p2p/1R6/pPpP1k2/K6P/8/8 b - - 0 43
-						// King outside the square? Tempo-aware with a free path
-						// (no enemy control ahead) and promotion square.
-						// Full bonus in pawn endings, or one push away
-						// anywhere (quiescence-blind quiet promotions).
-						bool path_free = true;
-						for (int_fast8_t k = row - 1; k >= 0; k--) {
-							if (white_controls_map._array[k][col] > 0 && black_pawns_map._array[k][col] == 0) { path_free = false; break; }
-						}
-						bool out_of_square = !in_king_square(Pos(row, col), true) && path_free;
-						float sq_scale = pawn_endgame ? 1.0f : pp_nonpawn_square_scale;
+					// 8/8/4p2p/1R6/pPpP1k2/K6P/8/8 b - - 0 43
 
-						//cout << "Passed pawn: " << square_name(row, col) << ", Is pawn endgame: " << pawn_endgame << ", Out of square: " << out_of_square << ", bonus: " << out_of_square * out_of_square_bonus[7 - row] << endl;
+					// 8/8/7P/6p1/pP1p4/P7/3Kpk2/8 w - - 2 8
 
-						// 8/8/7P/6p1/pP1p4/P7/3Kpk2/8 w - - 2 8
+					// 8/8/8/8/8/1p5P/p5k1/K7 w - - 0 54
 
-						// 8/8/8/8/8/1p5P/p5k1/K7 w - - 0 54
-
-						// Add the passed pawn value (legacy path)
-						passed_pawns_value -= (passed_value / division_factor) * passed_adv;
+					// Add the passed pawn value (legacy path)
+					passed_pawns_value -= (passed_value / division_factor) * passed_adv;
 					{
 						static const bool ppd2 = getenv("OPTI_PP_DIAG") != nullptr;
 						if (ppd2)
 						main_GUI._eval_components += "PPDIAG b " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)passed_value) + " div=" + to_string(division_factor) + '\n';
-						}
-					if (out_of_square) {
-						oos_black += sq_scale * pp_oos_bonus(7 - row);
-						if (row < oos_bdist) oos_bdist = row;
 					}
 
-						// Only the most advanced pawn on the file counts: the ones behind it are stuck
-						break;
+					// Only the most advanced pawn on the file counts: the ones behind it are stuck
+					break;
 					}
 
 				}
@@ -926,23 +865,9 @@ int Board::get_pawn_structure(float display_factor)
 		}
 	}
 
-	// Promotion race: unstoppable passers on both sides. Whoever queens
-	// first (tempo-adjusted) decides; the slower queen is heavily
-	// discounted but not zeroed (distraction / sacrifice value remains).
-	if (oos_white > 0.0f && oos_black > 0.0f) {
-		bool white_first = (oos_wdist < oos_bdist) || (oos_wdist == oos_bdist && _player);
-		if (white_first) oos_black *= race_loser_share;
-		else oos_white *= race_loser_share;
-	}
-	// Diagnostic mute for the out-of-square pool (env-gated, default
-	// off): OPTI_PP_NOOOS=1 zeroes the oos term to isolate the path
-	// (weakest-link + divisions) contribution.
-	static const bool pp_nooos = [] {
-		const char* e = getenv("OPTI_PP_NOOOS");
-		return e ? (e[0] != '0') : false;
-	}();
-	if (!pp_nooos)
-		passed_pawns_value += (oos_white - oos_black) * passed_adv;
+	// (Removed) Out-of-square pool and promotion race: measured -14cp
+	// EG-dyn MAE for zero puzzle cost when muted (OPTI_PP_NOOOS trial);
+	// permanently removed. Path (weakest-link + divisions) only.
 
 	// Passer sub-component scale: applied here so display AND total
 	// see scaled values (the x0.2 structure coef applies later outside).
