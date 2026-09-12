@@ -349,6 +349,17 @@ int Board::get_pawn_structure(float display_factor)
 	// pressure on a square, own square included) divides the pawn value.
 	static constexpr float blocked_path_divisor = 5.0f;
 
+	// Side-to-move tempo credit (env-tunable, fractions of a square): a
+	// runner owned by the side to move, with a free next square, prices
+	// its own square interpolated toward the next one:
+	// base' = base + f*(base_next - base). Gated on runners only
+	// (enemy king out of the square AND path free of enemy controls),
+	// so blocked pawns never touch it. 0 = off.
+	static const float pp_tempo_f = [] {
+		const char* e = getenv("OPTI_PP_TEMPO");
+		return e ? (float)atof(e) : 0.5f;
+	}();
+
 	// (Removed) Divisor per blocking piece: a blocker is exactly one
 	// control on its square now (see blocker scans below).
 
@@ -421,6 +432,12 @@ int Board::get_pawn_structure(float display_factor)
 		// Cut-or-cap: stop squares excluded (own square priced, /5 if
 		// hanging); any enemy stop divides by blocked_path_divisor.
 		bool hstopped = false;
+		bool htempo = false;
+		if (pp_tempo_f > 0.0f && _player && srow < 7 && _array[srow + 1][col] == none) {
+			int En = (int)enCM._array[srow + 1][col] + (int)enPM._array[srow + 1][col];
+			int Fn = (int)ownCM._array[srow + 1][col] + (int)ownPM._array[srow + 1][col];
+			if (En <= Fn) htempo = true;
+		}
 		for (uint8_t k = srow; k <= 7; k++) {
 			if (k > srow) {
 				const uint8_t occ = _array[k][col];
@@ -433,6 +450,10 @@ int Board::get_pawn_structure(float display_factor)
 				if (Ek > Fk) { hstopped = true; break; }
 			}
 			int sq_base = passed_pawns[k <= 6 ? k : 6];
+			if (k == srow && htempo) {
+				int sq_next = passed_pawns[(srow + 1) <= 6 ? (srow + 1) : 6];
+				sq_base = sq_base + (int)(pp_tempo_f * (float)(sq_next - sq_base));
+			}
 			sq_base = pp_cap(sq_base, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col]);
 			if ((float)sq_base < worst_path) worst_path = (float)sq_base;
 		}
@@ -450,6 +471,12 @@ int Board::get_pawn_structure(float display_factor)
 		}
 		else {
 		bool hstopped_b = false;
+		bool htempo_b = false;
+		if (pp_tempo_f > 0.0f && !_player && srow > 0 && _array[srow - 1][col] == none) {
+			int En = (int)enCM._array[srow - 1][col] + (int)enPM._array[srow - 1][col];
+			int Fn = (int)ownCM._array[srow - 1][col] + (int)ownPM._array[srow - 1][col];
+			if (En <= Fn) htempo_b = true;
+		}
 		for (int k = srow; k >= 0; k--) {
 			if (k < srow) {
 				const uint8_t occ = _array[k][col];
@@ -462,6 +489,10 @@ int Board::get_pawn_structure(float display_factor)
 				if (Ek > Fk) { hstopped_b = true; break; }
 			}
 			int sq_base = passed_pawns[k >= 1 ? 7 - k : 6];
+			if (k == srow && htempo_b) {
+				int sq_next = passed_pawns[(srow - 1) >= 1 ? 7 - (srow - 1) : 6];
+				sq_base = sq_base + (int)(pp_tempo_f * (float)(sq_next - sq_base));
+			}
 			sq_base = pp_cap(sq_base, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col]);
 			if ((float)sq_base < worst_path) worst_path = (float)sq_base;
 		}
@@ -629,6 +660,18 @@ int Board::get_pawn_structure(float display_factor)
 				float worst_path = 1e30f;
 				int worst_k = row;
 				bool path_stopped = false;
+				// Tempo credit: white runner, white to move, next free.
+				bool tempo_push = false;
+				if (pp_tempo_f > 0.0f && _player && row < 7 && _array[row + 1][col] == none) {
+					int En = (int)black_controls_map._array[row + 1][col] + (int)black_pawns_map._array[row + 1][col];
+					int Fn = (int)white_controls_map._array[row + 1][col] + (int)white_pawns_map._array[row + 1][col];
+					if (En <= Fn && !in_king_square(Pos(row, col), false)) {
+						tempo_push = true;
+						for (uint8_t q = row + 1; q <= 7; q++) {
+							if (black_controls_map._array[q][col] > 0 && white_pawns_map._array[q][col] == 0) { tempo_push = false; break; }
+						}
+					}
+				}
 				for (uint8_t k = row; k <= 7; k++) {
 					if (k > row) {
 						const uint8_t occ = _array[k][col];
@@ -641,6 +684,10 @@ int Board::get_pawn_structure(float display_factor)
 						if (Ek > Fk) { path_stopped = true; break; }
 					}
 					int sq_base = passed_pawns[k <= 6 ? k : 6];
+					if (k == row && tempo_push) {
+						int sq_next = passed_pawns[(row + 1) <= 6 ? (row + 1) : 6];
+						sq_base = sq_base + (int)(pp_tempo_f * (float)(sq_next - sq_base));
+					}
 					sq_base = pp_cap(sq_base, black_controls_map._array[k][col], black_pawns_map._array[k][col], white_pawns_map._array[k][col]);
 						if ((float)sq_base < worst_path) { worst_path = (float)sq_base; worst_k = k; }
 						{
@@ -816,6 +863,18 @@ int Board::get_pawn_structure(float display_factor)
 						float worst_path = 1e30f;
 						int worst_k = row;
 						bool path_stopped = false;
+						// Tempo credit (mirror): black runner, black to move.
+						bool tempo_push_b = false;
+						if (pp_tempo_f > 0.0f && !_player && row > 0 && _array[row - 1][col] == none) {
+							int En = (int)white_controls_map._array[row - 1][col] + (int)white_pawns_map._array[row - 1][col];
+							int Fn = (int)black_controls_map._array[row - 1][col] + (int)black_pawns_map._array[row - 1][col];
+							if (En <= Fn && !in_king_square(Pos(row, col), true)) {
+								tempo_push_b = true;
+								for (int_fast8_t q = row - 1; q >= 0; q--) {
+									if (white_controls_map._array[q][col] > 0 && black_pawns_map._array[q][col] == 0) { tempo_push_b = false; break; }
+								}
+							}
+						}
 						{
 						// Path value: weakest link - min over the INCLUDED
 						// squares (own square always; below until the first
@@ -838,6 +897,10 @@ int Board::get_pawn_structure(float display_factor)
 								if (Ek > Fk) { path_stopped = true; break; }
 							}
 							int sq_base = passed_pawns[k >= 1 ? 7 - k : 6];
+							if (k == row && tempo_push_b) {
+								int sq_next = passed_pawns[(row - 1) >= 1 ? 7 - (row - 1) : 6];
+								sq_base = sq_base + (int)(pp_tempo_f * (float)(sq_next - sq_base));
+							}
 							sq_base = pp_cap(sq_base, white_controls_map._array[k][col], white_pawns_map._array[k][col], black_pawns_map._array[k][col]);
 								if ((float)sq_base < worst_path) { worst_path = sq_base; worst_k = k; }
 								{
