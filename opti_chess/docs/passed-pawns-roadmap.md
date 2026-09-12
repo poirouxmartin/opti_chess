@@ -150,3 +150,14 @@ sans preuve). UI async : fait (? à vérifier).
 - [EN COURS] Bug Fegatello (quiescence aveugle aux compensations à 4 plis).
 - Étendre : tout nouveau mécanisme = test de non-régression dédié.
 
+### P8 — Idées notées (non codées, à benchmarker)
+- [NOTÉ 2026-09-12] "Pion au trait" : si le passeur a le trait, compter son
+  chemin depuis la case devant lui (poussée vue comme acquise). Doute : la
+  poussée est déjà dans l'arbre de recherche (double-compte) ; ne créditer en
+  statique que les avancées calmes hors-horizon. Promotion EXCLUE du mécanisme
+  (prime about-to-move séparée, à spécifier). Réserve : incertain, benchmark
+  MAE + NODES avant de trancher.
+- [NOTÉ 2026-09-12] Course intelligente (remplace l'oos supprimé) : bonus =
+  f(marge de course) avec tempo (voir spec chat 2026-09-12) ; seul le gagnant
+  touche, perdant = 0.
+
