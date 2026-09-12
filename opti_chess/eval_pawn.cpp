@@ -340,18 +340,17 @@ int Board::get_pawn_structure(float display_factor)
 		return sq_base;
 	};
 
-	// Passed pawn value table, indexed by how far the pawn has advanced
-	static constexpr int passed_pawns[8] = { 0, 175, 175, 280, 450, 750, 1250, 0 };
+	// Passed pawn value table, indexed by how far the pawn has advanced.
+	// Geometric x2: each rank is worth at least twice the previous one
+	// (anchor 1280 ~= queen + tempo on 7th).
+	static constexpr int passed_pawns[8] = { 0, 40, 80, 160, 320, 640, 1280, 0 };
 
-	// Divisor per controlling piece (knight, bishop, rook, queen, king)
-	//static constexpr float control_division_per_piece[5] = { 1.5f, 1.75f, 1.35f, 1.2f, 1.35f };
-	static constexpr float control_division = 2.5f;
+	// A stop on the path (enemy piece, or enemy pressure beating allied
+	// pressure on a square, own square included) divides the pawn value.
+	static constexpr float blocked_path_divisor = 5.0f;
 
 	// (Removed) Divisor per blocking piece: a blocker is exactly one
 	// control on its square now (see blocker scans below).
-
-	// Blocked by a friendly piece
-	static constexpr float self_block_division = 1.5f;
 
 	// Bonus for connected passed pawns: 1.0 (neutralised). Connected
 	// pawns already protect their front squares (triggering enemy caps)
@@ -416,63 +415,67 @@ int Board::get_pawn_structure(float display_factor)
 		SquareMap ownPM = get_pawns_controls(white);
 		SquareMap enPM = get_pawns_controls(!white);
 		float worst_path = 1e30f;
-		float division_factor = 1.0f;
 		float path_value = 0.0f;
 		if (white) {
-			// Cut at the first blocker (same semantics as real passers;
-			// no malus here: pp_cand_malus prices the push outside).
-			uint8_t hcut = 8;
-			for (uint8_t k = srow + 1; k <= 7; k++) {
-				if (_array[k][col] != none) { hcut = k; break; }
+			// (No malus here: pp_cand_malus prices the push outside.)
+		// Cut-or-cap: stop squares excluded (own square priced, /5 if
+		// hanging); any enemy stop divides by blocked_path_divisor.
+		bool hstopped = false;
+		for (uint8_t k = srow; k <= 7; k++) {
+			if (k > srow) {
+				const uint8_t occ = _array[k][col];
+				if (occ != none) {
+					if (is_black(occ)) hstopped = true;
+					break;
+				}
+				int Ek = (int)enCM._array[k][col] + (int)enPM._array[k][col];
+				int Fk = (int)ownCM._array[k][col] + (int)ownPM._array[k][col];
+				if (Ek > Fk) { hstopped = true; break; }
 			}
-		// Blocker = one control on its square (physical presence),
-		// priced by the standard control machinery below; no
-		// separate per-type table.
-		bool hblock_enemy = (hcut <= 7 && is_black(_array[hcut][col]));
-		for (uint8_t k = srow; k <= 7 && k <= hcut; k++) {
 			int sq_base = passed_pawns[k <= 6 ? k : 6];
-			sq_base = pp_cap(sq_base, enCM._array[k][col] + (k == hcut && hblock_enemy ? 1 : 0), enPM._array[k][col], ownPM._array[k][col]);
+			sq_base = pp_cap(sq_base, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col]);
 			if ((float)sq_base < worst_path) worst_path = (float)sq_base;
 		}
-		for (uint8_t k = srow + 1; k <= 7 && k <= hcut; k++) {
-			const uint8_t blocker = _array[k][col];
-			int block_ctrl = 0;
-			if (is_white(blocker)) division_factor += self_block_division - 1.0f;
-			else if (blocker != none) block_ctrl = 1;
-			int cd = max(0, (int)enCM._array[k][col] + block_ctrl - (int)ownCM._array[k][col]);
-			division_factor += (control_division - 1.0f) * cd;
+		{
+			int E0 = (int)enCM._array[srow][col] + (int)enPM._array[srow][col];
+			int F0 = (int)ownCM._array[srow][col] + (int)ownPM._array[srow][col];
+			if (E0 > F0) hstopped = true;
 		}
 			path_value = worst_path;
 			bool conn = (col > 0 && (pawns_white[srow][col - 1] || pawns_white[srow - 1][col - 1])) || (col < 7 && (pawns_white[srow][col + 1] || pawns_white[srow - 1][col + 1]));
 			if (conn) path_value *= connected_passed_pawn_bonus;
 			if (!hasEnemyPieces) path_value *= 1.5f;
-			return path_value / division_factor;
+			if (hstopped) path_value /= blocked_path_divisor;
+			return path_value;
 		}
 		else {
-			int hcut = -1;
-			for (int k = srow - 1; k >= 0; k--) {
-				if (_array[k][col] != none) { hcut = k; break; }
+		bool hstopped_b = false;
+		for (int k = srow; k >= 0; k--) {
+			if (k < srow) {
+				const uint8_t occ = _array[k][col];
+				if (occ != none) {
+					if (is_white(occ)) hstopped_b = true;
+					break;
+				}
+				int Ek = (int)enCM._array[k][col] + (int)enPM._array[k][col];
+				int Fk = (int)ownCM._array[k][col] + (int)ownPM._array[k][col];
+				if (Ek > Fk) { hstopped_b = true; break; }
 			}
-		bool hblock_enemy_b = (hcut >= 0 && is_white(_array[hcut][col]));
-		for (int k = srow; k >= 0 && k >= hcut; k--) {
 			int sq_base = passed_pawns[k >= 1 ? 7 - k : 6];
-			sq_base = pp_cap(sq_base, enCM._array[k][col] + (k == hcut && hblock_enemy_b ? 1 : 0), enPM._array[k][col], ownPM._array[k][col]);
+			sq_base = pp_cap(sq_base, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col]);
 			if ((float)sq_base < worst_path) worst_path = (float)sq_base;
 		}
-		for (int k = srow - 1; k >= 0 && k >= hcut; k--) {
-			const uint8_t blocker = _array[k][col];
-			int block_ctrl = 0;
-			if (is_black(blocker)) division_factor += self_block_division - 1.0f;
-			else if (blocker != none) block_ctrl = 1;
-			int cd = max(0, (int)enCM._array[k][col] + block_ctrl - (int)ownCM._array[k][col]);
-			division_factor += (control_division - 1.0f) * cd;
-			if (blocker != none) break;
+		{
+			int E0 = (int)enCM._array[srow][col] + (int)enPM._array[srow][col];
+			int F0 = (int)ownCM._array[srow][col] + (int)ownPM._array[srow][col];
+			if (E0 > F0) hstopped_b = true;
 		}
 			path_value = worst_path;
 			bool conn = (col > 0 && (pawns_black[srow][col - 1] || pawns_black[srow + 1][col - 1])) || (col < 7 && (pawns_black[srow][col + 1] || pawns_black[srow + 1][col + 1]));
 			if (conn) path_value *= connected_passed_pawn_bonus;
 			if (!hasEnemyPieces) path_value *= 1.5f;
-			return path_value / division_factor;
+			if (hstopped_b) path_value /= blocked_path_divisor;
+			return path_value;
 		}
 	};
 
@@ -562,33 +565,17 @@ int Board::get_pawn_structure(float display_factor)
 				// If this is a passed pawn
 				if (is_passed_pawn) {
 
-					// Controls and blocks
-					float division_factor = 1.0f;
+					// Cut-or-cap: first enemy piece ahead only noted for
+					// the stuck-piece malus; the pricing loop handles stops.
 					uint8_t nearest_blocker = none;
 
-			// First blocker on the file cuts the path: a passer is worth
-			// its reachable tension, not fractions of queen-dreams. A
-			// blocker counts as exactly one control on its square
-			// (physical presence), priced by the standard control
-			// machinery (pp_cap + netted division) below; no separate
-			// per-type table.
-			uint8_t cut_k = 8;
+			// First enemy piece ahead: stuck-piece malus (no division).
 			for (uint8_t k = row + 1; k <= 7; k++) {
 				const uint8_t blocker = _array[k][col];
 				if (blocker == none) continue;
-				cut_k = k;
-				// Own traffic jam: unrelated to enemy control.
-				if (is_white(blocker)) {
-					division_factor += self_block_division - 1.0f;
-					nearest_blocker = blocker;
-				}
-				else {
-					// Enemy block (piece or pawn): one control.
-					nearest_blocker = blocker;
-				}
+				if (!is_white(blocker)) nearest_blocker = blocker;
 				break;
 			}
-			bool enemy_block = (cut_k <= 7 && nearest_blocker != none && is_black(nearest_blocker));
 
 					// Opportunity-cost malus for the side owning the blocker
 					// (knight blockades cheap, queen babysitting punished).
@@ -619,10 +606,8 @@ int Board::get_pawn_structure(float display_factor)
 					SquareMap white_pawns_map = get_pawns_controls(true);
 					SquareMap black_pawns_map = get_pawns_controls(false);
 
-			for (uint8_t k = row + 1; k <= 7 && k <= cut_k; k++) {
-				int controls_diff = max(0, black_controls_map._array[k][col] + (enemy_block && k == cut_k ? 1 : 0) - white_controls_map._array[k][col]);
-				division_factor += (control_division - 1.0f) * controls_diff;
-			}
+			// (Removed) Cumulative control division: the path loop
+			// below prices each square (cut-or-cap) independently.
 
 					// Put the pawn back
 					_array[row][col] = w_pawn;
@@ -633,19 +618,42 @@ int Board::get_pawn_structure(float display_factor)
 						_controls_map_valid = false;
 
 
-				// Path value: weakest link - min over the REACHABLE squares
-				// (up to and including the first blocker, min-capped).
-				// Promotion square included (base = about-to-queen value).
+				// Path value: weakest link - min over the INCLUDED squares
+				// (own square always; ahead until the first stop). A stop =
+				// piece on it (excluded), or enemy pressure (pieces+pawns)
+				// beating allied pressure (excluded). Own square E>F also
+				// stops (/5) but stays priced. Included squares price
+				// min(base, cap-if-pressured, pawn-cover lifts). Any enemy
+				// stop divides by blocked_path_divisor; own piece stops
+				// without dividing. Promotion square included.
 				float worst_path = 1e30f;
-				for (uint8_t k = row; k <= 7 && k <= cut_k; k++) {
+				int worst_k = row;
+				bool path_stopped = false;
+				for (uint8_t k = row; k <= 7; k++) {
+					if (k > row) {
+						const uint8_t occ = _array[k][col];
+						if (occ != none) {
+							if (is_black(occ)) path_stopped = true;
+							break;
+						}
+						int Ek = (int)black_controls_map._array[k][col] + (int)black_pawns_map._array[k][col];
+						int Fk = (int)white_controls_map._array[k][col] + (int)white_pawns_map._array[k][col];
+						if (Ek > Fk) { path_stopped = true; break; }
+					}
 					int sq_base = passed_pawns[k <= 6 ? k : 6];
-					sq_base = pp_cap(sq_base, black_controls_map._array[k][col] + (enemy_block && k == cut_k ? 1 : 0), black_pawns_map._array[k][col], white_pawns_map._array[k][col]);
-						if ((float)sq_base < worst_path) worst_path = (float)sq_base;
+					sq_base = pp_cap(sq_base, black_controls_map._array[k][col], black_pawns_map._array[k][col], white_pawns_map._array[k][col]);
+						if ((float)sq_base < worst_path) { worst_path = (float)sq_base; worst_k = k; }
 						{
 							static const bool sqdbg = getenv("OPTI_PP_SQDBG") != nullptr;
 							if (sqdbg)
 								main_GUI._eval_components += "PPSQ w " + to_string((int)col) + to_string((int)k) + " base=" + to_string(sq_base) + " e=" + to_string(black_controls_map._array[k][col]) + " f=" + to_string(white_pawns_map._array[k][col]) + '\n';
 						}
+					}
+					// Own square under enemy pressure: hanging (/5), kept.
+					{
+						int E0 = (int)black_controls_map._array[row][col] + (int)black_pawns_map._array[row][col];
+						int F0 = (int)white_controls_map._array[row][col] + (int)white_pawns_map._array[row][col];
+						if (E0 > F0) path_stopped = true;
 					}
 					
 					bool w_connected = (col > 0 && (pawns_white[row][col - 1] || pawns_white[row - 1][col - 1])) || (col < 7 && (pawns_white[row][col + 1] || pawns_white[row - 1][col + 1]));
@@ -656,13 +664,14 @@ int Board::get_pawn_structure(float display_factor)
 				// General x1.5 for every passer (not just no-enemy-pieces):
 				// passers are systematically undervalued.
 				path_value *= 1.5f;
+				if (path_stopped) path_value /= blocked_path_divisor;
 
 				// Add the passed pawn value (legacy path)
-				passed_pawns_value += (path_value / division_factor) * passed_adv;
+				passed_pawns_value += path_value * passed_adv;
 				{
 					static const bool ppd = getenv("OPTI_PP_DIAG") != nullptr;
 					if (ppd)
-						main_GUI._eval_components += "PPDIAG w " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)path_value) + " div=" + to_string(division_factor) + '\n';
+						main_GUI._eval_components += "PPDIAG w " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)path_value) + " minsq=" + to_string((int)worst_k) + " st=" + to_string(path_stopped ? 1 : 0) + '\n';
 				}
 
 				// Only the most advanced pawn on the file counts: the ones behind it are stuck
@@ -754,27 +763,17 @@ int Board::get_pawn_structure(float display_factor)
 				// If this is a passed pawn
 				if (is_passed_pawn) {
 
-					// Controls and blocks
-					float division_factor = 1.0f;
+					// Cut-or-cap: first enemy piece below only noted for
+					// the stuck-piece malus; the pricing loop handles stops.
 					uint8_t nearest_blocker = none;
 
-			// First blocker below cuts the path (mirror of white:
-			// blocker = one control, no per-type table).
-			int cut_k = -1;
+			// First enemy piece below: stuck-piece malus (no division).
 			for (int_fast8_t k = row - 1; k >= 0; k--) {
 				const uint8_t blocker = _array[k][col];
 				if (blocker == none) continue;
-				cut_k = k;
-				if (is_black(blocker)) {
-					division_factor += self_block_division - 1.0f;
-					nearest_blocker = blocker;
-				}
-				else {
-					nearest_blocker = blocker;
-				}
+				if (is_white(blocker)) nearest_blocker = blocker;
 				break;
 			}
-			bool enemy_block = (cut_k >= 0 && nearest_blocker != none && is_white(nearest_blocker));
 
 					// Opportunity-cost malus for the side owning the blocker.
 					if (nearest_blocker != none && is_white(nearest_blocker))
@@ -802,10 +801,8 @@ int Board::get_pawn_structure(float display_factor)
 					SquareMap white_pawns_map = get_pawns_controls(true);
 					SquareMap black_pawns_map = get_pawns_controls(false);
 
-			for (int_fast8_t k = row - 1; k >= 0 && k >= cut_k; k--) {
-				int controls_diff = max(0, white_controls_map._array[k][col] + (enemy_block && k == cut_k ? 1 : 0) - black_controls_map._array[k][col]);
-				division_factor += (control_division - 1.0f) * controls_diff;
-			}
+			// (Removed) Cumulative control division: the path loop
+			// below prices each square (cut-or-cap) independently.
 
 					// Put the pawn back
 					_array[row][col] = b_pawn;
@@ -816,14 +813,33 @@ int Board::get_pawn_structure(float display_factor)
 						_controls_map_valid = false;
 
 						float passed_value = 0.0f;
-						{
-						// Path value: weakest link - min over the REACHABLE
-						// squares (down to and including the first blocker).
 						float worst_path = 1e30f;
-					for (int_fast8_t k = row; k >= 0 && k >= cut_k; k--) {
+						int worst_k = row;
+						bool path_stopped = false;
+						{
+						// Path value: weakest link - min over the INCLUDED
+						// squares (own square always; below until the first
+						// stop). Stop = piece on it, or enemy pressure
+						// (pieces+pawns) beating allied pressure (both
+						// excluded). Own square E>F also stops (/5) but
+						// stays priced. Included squares price min(base,
+						// cap-if-pressured, pawn-cover lifts). Any enemy
+						// stop divides by blocked_path_divisor; own piece
+						// stops without dividing.
+					for (int_fast8_t k = row; k >= 0; k--) {
+							if (k < row) {
+								const uint8_t occ = _array[k][col];
+								if (occ != none) {
+									if (is_white(occ)) path_stopped = true;
+									break;
+								}
+								int Ek = (int)white_controls_map._array[k][col] + (int)white_pawns_map._array[k][col];
+								int Fk = (int)black_controls_map._array[k][col] + (int)black_pawns_map._array[k][col];
+								if (Ek > Fk) { path_stopped = true; break; }
+							}
 							int sq_base = passed_pawns[k >= 1 ? 7 - k : 6];
-							sq_base = pp_cap(sq_base, white_controls_map._array[k][col] + (enemy_block && k == cut_k ? 1 : 0), white_pawns_map._array[k][col], black_pawns_map._array[k][col]);
-								if ((float)sq_base < worst_path) worst_path = (float)sq_base;
+							sq_base = pp_cap(sq_base, white_controls_map._array[k][col], white_pawns_map._array[k][col], black_pawns_map._array[k][col]);
+								if ((float)sq_base < worst_path) { worst_path = sq_base; worst_k = k; }
 								{
 									static const bool sqdbg = getenv("OPTI_PP_SQDBG") != nullptr;
 									if (sqdbg)
@@ -833,6 +849,12 @@ int Board::get_pawn_structure(float display_factor)
 							
 							passed_value = worst_path;
 						}
+						// Own square under enemy pressure: hanging (/5), kept.
+						{
+							int E0 = (int)white_controls_map._array[row][col] + (int)white_pawns_map._array[row][col];
+							int F0 = (int)black_controls_map._array[row][col] + (int)black_pawns_map._array[row][col];
+							if (E0 > F0) path_stopped = true;
+						}
 
 						// Is it connected to another pawn?
 						bool b_connected = (col > 0 && (pawns_black[row][col - 1] || pawns_black[row + 1][col - 1])) || (col < 7 && (pawns_black[row][col + 1] || pawns_black[row + 1][col + 1]));
@@ -841,6 +863,7 @@ int Board::get_pawn_structure(float display_factor)
 						}
 					// General x1.5 for every passer (mirror of white).
 					passed_value = passed_value * 1.5f;
+					if (path_stopped) passed_value /= blocked_path_divisor;
 
 					// 8/8/4p2p/1R6/pPpP1k2/K6P/8/8 b - - 0 43
 
@@ -849,11 +872,11 @@ int Board::get_pawn_structure(float display_factor)
 					// 8/8/8/8/8/1p5P/p5k1/K7 w - - 0 54
 
 					// Add the passed pawn value (legacy path)
-					passed_pawns_value -= (passed_value / division_factor) * passed_adv;
+					passed_pawns_value -= passed_value * passed_adv;
 					{
 						static const bool ppd2 = getenv("OPTI_PP_DIAG") != nullptr;
 						if (ppd2)
-						main_GUI._eval_components += "PPDIAG b " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)passed_value) + " div=" + to_string(division_factor) + '\n';
+						main_GUI._eval_components += "PPDIAG b " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)passed_value) + " minsq=" + to_string((int)worst_k) + " st=" + to_string(path_stopped ? 1 : 0) + '\n';
 					}
 
 					// Only the most advanced pawn on the file counts: the ones behind it are stuck
