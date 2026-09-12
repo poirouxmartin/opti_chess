@@ -931,7 +931,15 @@ int Board::get_pawn_structure(float display_factor)
 		if (white_first) oos_black *= race_loser_share;
 		else oos_white *= race_loser_share;
 	}
-	passed_pawns_value += (oos_white - oos_black) * passed_adv;
+	// Diagnostic mute for the out-of-square pool (env-gated, default
+	// off): OPTI_PP_NOOOS=1 zeroes the oos term to isolate the path
+	// (weakest-link + divisions) contribution.
+	static const bool pp_nooos = [] {
+		const char* e = getenv("OPTI_PP_NOOOS");
+		return e ? (e[0] != '0') : false;
+	}();
+	if (!pp_nooos)
+		passed_pawns_value += (oos_white - oos_black) * passed_adv;
 
 	// Passer sub-component scale: applied here so display AND total
 	// see scaled values (the x0.2 structure coef applies later outside).
