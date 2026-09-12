@@ -15,6 +15,8 @@
 int Board::get_pawn_structure(float display_factor)
 {
 
+	update_kings_pos();  // pp_cap king check needs fresh king squares
+
 	// Still to add:
 	// Pawn island count
 	// Weak pawns
@@ -331,9 +333,15 @@ int Board::get_pawn_structure(float display_factor)
 
 	// Min-cap of a square value by enemy controls (protected squares with a
 	// friendly pawn keep full value). Piece-protected softening tried and
-	// reverted (no MAE gain, play leaned negative).
-	auto pp_cap = [&](int sq_base, int e_ctrl, int e_pawn, int f_pawn) -> int {
-		if (e_ctrl > 0 && f_pawn == 0) {
+	// reverted (no MAE gain, play leaned negative). The enemy KING never
+	// triggers the cap (unsacrificable); it still counts for cut/hanging.
+	auto pp_cap = [&](int sq_base, int e_ctrl, int e_pawn, int f_pawn, int sq_row, int sq_col, bool enemy_white) -> int {
+		int e = e_ctrl;
+		if (e > 0) {
+			Pos kp = enemy_white ? _white_king_pos : _black_king_pos;
+			if (abs(sq_row - kp.row) <= 1 && abs(sq_col - kp.col) <= 1) e--;
+		}
+		if (e > 0 && f_pawn == 0) {
 			int cap = e_pawn > 0 ? pp_pawn_control_cap : pp_piece_control_cap;
 			if (sq_base > cap) sq_base = cap;
 		}
@@ -461,7 +469,7 @@ int Board::get_pawn_structure(float display_factor)
 				int sq_next = passed_pawns[(srow + 1) <= 6 ? (srow + 1) : 6];
 				sq_base = sq_base + (int)(pp_tempo_f * (float)(sq_next - sq_base));
 			}
-			sq_base = pp_cap(sq_base, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col]);
+			sq_base = pp_cap(sq_base, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col], k, col, !white);
 			if ((float)sq_base < worst_path) worst_path = (float)sq_base;
 		}
 		{
@@ -507,7 +515,7 @@ int Board::get_pawn_structure(float display_factor)
 				int sq_next = passed_pawns[(srow - 1) >= 1 ? 7 - (srow - 1) : 6];
 				sq_base = sq_base + (int)(pp_tempo_f * (float)(sq_next - sq_base));
 			}
-			sq_base = pp_cap(sq_base, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col]);
+			sq_base = pp_cap(sq_base, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col], k, col, !white);
 			if ((float)sq_base < worst_path) worst_path = (float)sq_base;
 		}
 		{
@@ -708,7 +716,7 @@ int Board::get_pawn_structure(float display_factor)
 						int sq_next = passed_pawns[(row + 1) <= 6 ? (row + 1) : 6];
 						sq_base = sq_base + (int)(pp_tempo_f * (float)(sq_next - sq_base));
 					}
-					sq_base = pp_cap(sq_base, black_controls_map._array[k][col], black_pawns_map._array[k][col], white_pawns_map._array[k][col]);
+					sq_base = pp_cap(sq_base, black_controls_map._array[k][col], black_pawns_map._array[k][col], white_pawns_map._array[k][col], k, col, false);
 						if ((float)sq_base < worst_path) { worst_path = (float)sq_base; worst_k = k; }
 						{
 							static const bool sqdbg = getenv("OPTI_PP_SQDBG") != nullptr;
@@ -925,7 +933,7 @@ int Board::get_pawn_structure(float display_factor)
 								int sq_next = passed_pawns[(row - 1) >= 1 ? 7 - (row - 1) : 6];
 								sq_base = sq_base + (int)(pp_tempo_f * (float)(sq_next - sq_base));
 							}
-							sq_base = pp_cap(sq_base, white_controls_map._array[k][col], white_pawns_map._array[k][col], black_pawns_map._array[k][col]);
+							sq_base = pp_cap(sq_base, white_controls_map._array[k][col], white_pawns_map._array[k][col], black_pawns_map._array[k][col], k, col, true);
 								if ((float)sq_base < worst_path) { worst_path = sq_base; worst_k = k; }
 								{
 									static const bool sqdbg = getenv("OPTI_PP_SQDBG") != nullptr;
