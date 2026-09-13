@@ -381,6 +381,15 @@ int Board::get_pawn_structure(float display_factor)
 		}
 	const float pp_tempo_f = (!any_piece && pp_tempo_env >= 1.0f) ? pp_tempo_env : (pp_tempo_env < 0.5f ? pp_tempo_env : 0.5f);
 
+	// Own-square hang relief (env-tunable, default off): a runner that can
+	// advance this turn (tempo_push) vacates its square, so enemy pressure
+	// on it must not divide it. Only blocked pawns (or no-tempo positions)
+	// keep the /5. OPTI_PP_TEMPOHANG=1 to trial.
+	static const bool pp_tempohang = [] {
+		const char* e = getenv("OPTI_PP_TEMPOHANG");
+		return e ? (e[0] != '0') : false;
+	}();
+
 	// (Removed) Divisor per blocking piece: a blocker is exactly one
 	// control on its square now (see blocker scans below).
 
@@ -470,7 +479,7 @@ int Board::get_pawn_structure(float display_factor)
 		{
 			int E0 = (int)enCM._array[srow][col] + (int)enPM._array[srow][col];
 			int F0 = (int)ownCM._array[srow][col] + (int)ownPM._array[srow][col];
-			if (!hexcl && E0 > F0) hown_hang = true;
+			if (!hexcl && E0 > F0 && !(pp_tempohang && htempo)) hown_hang = true;
 		}
 		uint8_t hloop = hexcl ? (uint8_t)(srow + 1) : (uint8_t)srow;
 		for (uint8_t k = hloop; k <= 7; k++) {
@@ -537,7 +546,7 @@ int Board::get_pawn_structure(float display_factor)
 		{
 			int E0 = (int)enCM._array[srow][col] + (int)enPM._array[srow][col];
 			int F0 = (int)ownCM._array[srow][col] + (int)ownPM._array[srow][col];
-			if (!hexcl_b && E0 > F0) hown_hang_b = true;
+			if (!hexcl_b && E0 > F0 && !(pp_tempohang && htempo_b)) hown_hang_b = true;
 		}
 		int hloop_b = hexcl_b ? srow - 1 : srow;
 		for (int k = hloop_b; k >= 0; k--) {
@@ -762,7 +771,7 @@ int Board::get_pawn_structure(float display_factor)
 				{
 					int E0 = (int)black_controls_map._array[row][col] + (int)black_pawns_map._array[row][col];
 					int F0 = (int)white_controls_map._array[row][col] + (int)white_pawns_map._array[row][col];
-					if (!tempo_excl && E0 > F0) own_hang = true;
+					if (!tempo_excl && E0 > F0 && !(pp_tempohang && tempo_push)) own_hang = true;
 				}
 				for (uint8_t k = loop_start; k <= 7; k++) {
 					if (k > row) {
@@ -987,7 +996,7 @@ int Board::get_pawn_structure(float display_factor)
 						{
 							int E0 = (int)white_controls_map._array[row][col] + (int)white_pawns_map._array[row][col];
 							int F0 = (int)black_controls_map._array[row][col] + (int)black_pawns_map._array[row][col];
-							if (!tempo_excl_b && E0 > F0) own_hang_b = true;
+							if (!tempo_excl_b && E0 > F0 && !(pp_tempohang && tempo_push_b)) own_hang_b = true;
 						}
 						{
 						// Path value: weakest link - min over the INCLUDED
