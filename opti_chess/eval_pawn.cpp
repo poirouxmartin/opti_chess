@@ -339,7 +339,7 @@ int Board::get_pawn_structure(float display_factor)
 		int e = e_ctrl;
 		if (e > 0) {
 			Pos kp = enemy_white ? _white_king_pos : _black_king_pos;
-			if (abs(sq_row - kp.row) <= 1 && abs(sq_col - kp.col) <= 1) e--;
+				if (abs(sq_row - kp.row) <= 1 && abs(sq_col - kp.col) <= 1) e--;
 		}
 		if (e > 0 && f_pawn == 0) {
 			int cap = e_pawn > 0 ? pp_pawn_control_cap : pp_piece_control_cap;
@@ -355,7 +355,10 @@ int Board::get_pawn_structure(float display_factor)
 
 	// A stop on the path (enemy piece, or enemy pressure beating allied
 	// pressure on a square, own square included) divides the pawn value.
-	static constexpr float blocked_path_divisor = 5.0f;
+	static const float blocked_path_divisor = [] {
+		const char* e = getenv("OPTI_PP_BLOCKDIV");
+		return e ? (float)atof(e) : 5.0f;
+	}();
 
 	// Side-to-move tempo credit (env-tunable, fractions of a square): a
 	// runner owned by the side to move, with a free next square, prices
@@ -363,10 +366,20 @@ int Board::get_pawn_structure(float display_factor)
 	// base' = base + f*(base_next - base). Gated on runners only
 	// (enemy king out of the square AND path free of enemy controls),
 	// so blocked pawns never touch it. 0 = off.
-	static const float pp_tempo_f = [] {
+	static const float pp_tempo_env = [] {
 		const char* e = getenv("OPTI_PP_TEMPO");
 		return e ? (float)atof(e) : 0.5f;
 	}();
+	// Exclusion (f>=1) only in pawn endings: with pieces on board the
+	// runner gate is blind to piece interception, so the credit is
+	// capped at half a square (interpolation).
+	bool any_piece = false;
+	for (int pi = 0; pi < 8 && !any_piece; pi++)
+		for (int pj = 0; pj < 8; pj++) {
+			const uint8_t pp = _array[pi][pj];
+			if (pp != none && pp != w_pawn && pp != b_pawn && pp != w_king && pp != b_king) { any_piece = true; break; }
+		}
+	const float pp_tempo_f = (!any_piece && pp_tempo_env >= 1.0f) ? pp_tempo_env : (pp_tempo_env < 0.5f ? pp_tempo_env : 0.5f);
 
 	// (Removed) Divisor per blocking piece: a blocker is exactly one
 	// control on its square now (see blocker scans below).
@@ -452,6 +465,12 @@ int Board::get_pawn_structure(float display_factor)
 			}
 		}
 		bool hexcl = (htempo && pp_tempo_f >= 1.0f);
+		bool hown_hang = false;
+		{
+			int E0 = (int)enCM._array[srow][col] + (int)enPM._array[srow][col];
+			int F0 = (int)ownCM._array[srow][col] + (int)ownPM._array[srow][col];
+			if (!hexcl && E0 > F0) hown_hang = true;
+		}
 		uint8_t hloop = hexcl ? (uint8_t)(srow + 1) : (uint8_t)srow;
 		for (uint8_t k = hloop; k <= 7; k++) {
 			if (k > srow) {
@@ -462,13 +481,21 @@ int Board::get_pawn_structure(float display_factor)
 				}
 				int Ek = (int)enCM._array[k][col] + (int)enPM._array[k][col];
 				int Fk = (int)ownCM._array[k][col] + (int)ownPM._array[k][col];
-				if (Ek > Fk) { hstopped = true; break; }
+				if (Ek > Fk) {
+					int sq_stop = passed_pawns[k <= 6 ? k : 6];
+					sq_stop = pp_cap(sq_stop, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col], k, col, !white);
+					sq_stop = (int)((float)sq_stop / blocked_path_divisor);
+					if ((float)sq_stop < worst_path) worst_path = (float)sq_stop;
+					hstopped = true;
+					break;
+				}
 			}
 			int sq_base = passed_pawns[k <= 6 ? k : 6];
 			if (k == srow && htempo && !hexcl) {
 				int sq_next = passed_pawns[(srow + 1) <= 6 ? (srow + 1) : 6];
 				sq_base = sq_base + (int)(pp_tempo_f * (float)(sq_next - sq_base));
 			}
+			if (k == srow && hown_hang) sq_base = (int)((float)sq_base / blocked_path_divisor);
 			sq_base = pp_cap(sq_base, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col], k, col, !white);
 			if ((float)sq_base < worst_path) worst_path = (float)sq_base;
 		}
@@ -481,7 +508,6 @@ int Board::get_pawn_structure(float display_factor)
 			bool conn = (col > 0 && (pawns_white[srow][col - 1] || pawns_white[srow - 1][col - 1])) || (col < 7 && (pawns_white[srow][col + 1] || pawns_white[srow - 1][col + 1]));
 			if (conn) path_value *= connected_passed_pawn_bonus;
 			if (!hasEnemyPieces) path_value *= 1.5f;
-			if (hstopped) path_value /= blocked_path_divisor;
 			return path_value;
 		}
 		else {
@@ -498,6 +524,12 @@ int Board::get_pawn_structure(float display_factor)
 			}
 		}
 		bool hexcl_b = (htempo_b && pp_tempo_f >= 1.0f);
+		bool hown_hang_b = false;
+		{
+			int E0 = (int)enCM._array[srow][col] + (int)enPM._array[srow][col];
+			int F0 = (int)ownCM._array[srow][col] + (int)ownPM._array[srow][col];
+			if (!hexcl_b && E0 > F0) hown_hang_b = true;
+		}
 		int hloop_b = hexcl_b ? srow - 1 : srow;
 		for (int k = hloop_b; k >= 0; k--) {
 			if (k < srow) {
@@ -508,13 +540,21 @@ int Board::get_pawn_structure(float display_factor)
 				}
 				int Ek = (int)enCM._array[k][col] + (int)enPM._array[k][col];
 				int Fk = (int)ownCM._array[k][col] + (int)ownPM._array[k][col];
-				if (Ek > Fk) { hstopped_b = true; break; }
+				if (Ek > Fk) {
+					int sq_stop = passed_pawns[k >= 1 ? 7 - k : 6];
+					sq_stop = pp_cap(sq_stop, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col], k, col, !white);
+					sq_stop = (int)((float)sq_stop / blocked_path_divisor);
+					if ((float)sq_stop < worst_path) worst_path = (float)sq_stop;
+					hstopped_b = true;
+					break;
+				}
 			}
 			int sq_base = passed_pawns[k >= 1 ? 7 - k : 6];
 			if (k == srow && htempo_b && !hexcl_b) {
 				int sq_next = passed_pawns[(srow - 1) >= 1 ? 7 - (srow - 1) : 6];
 				sq_base = sq_base + (int)(pp_tempo_f * (float)(sq_next - sq_base));
 			}
+			if (k == srow && hown_hang_b) sq_base = (int)((float)sq_base / blocked_path_divisor);
 			sq_base = pp_cap(sq_base, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col], k, col, !white);
 			if ((float)sq_base < worst_path) worst_path = (float)sq_base;
 		}
@@ -527,7 +567,6 @@ int Board::get_pawn_structure(float display_factor)
 			bool conn = (col > 0 && (pawns_black[srow][col - 1] || pawns_black[srow + 1][col - 1])) || (col < 7 && (pawns_black[srow][col + 1] || pawns_black[srow + 1][col + 1]));
 			if (conn) path_value *= connected_passed_pawn_bonus;
 			if (!hasEnemyPieces) path_value *= 1.5f;
-			if (hstopped_b) path_value /= blocked_path_divisor;
 			return path_value;
 		}
 	};
@@ -700,6 +739,13 @@ int Board::get_pawn_structure(float display_factor)
 				uint8_t loop_start = row;
 				tempo_excl = (tempo_push && pp_tempo_f >= 1.0f);
 				loop_start = tempo_excl ? (uint8_t)(row + 1) : row;
+				// Own square hanging: /5 on it (unless tempo-excluded).
+				bool own_hang = false;
+				{
+					int E0 = (int)black_controls_map._array[row][col] + (int)black_pawns_map._array[row][col];
+					int F0 = (int)white_controls_map._array[row][col] + (int)white_pawns_map._array[row][col];
+					if (!tempo_excl && E0 > F0) own_hang = true;
+				}
 				for (uint8_t k = loop_start; k <= 7; k++) {
 					if (k > row) {
 						const uint8_t occ = _array[k][col];
@@ -709,7 +755,16 @@ int Board::get_pawn_structure(float display_factor)
 						}
 						int Ek = (int)black_controls_map._array[k][col] + (int)black_pawns_map._array[k][col];
 						int Fk = (int)white_controls_map._array[k][col] + (int)white_pawns_map._array[k][col];
-						if (Ek > Fk) { path_stopped = true; break; }
+						if (Ek > Fk) {
+							// Controlled square: worth base/5 (cap first),
+							// included (it drives the min); beyond excluded.
+							int sq_stop = passed_pawns[k <= 6 ? k : 6];
+							sq_stop = pp_cap(sq_stop, black_controls_map._array[k][col], black_pawns_map._array[k][col], white_pawns_map._array[k][col], k, col, false);
+							sq_stop = (int)((float)sq_stop / blocked_path_divisor);
+							if ((float)sq_stop < worst_path) { worst_path = (float)sq_stop; worst_k = k; }
+							path_stopped = true;
+							break;
+						}
 					}
 					int sq_base = passed_pawns[k <= 6 ? k : 6];
 					if (k == row && tempo_push && !tempo_excl) {
@@ -717,20 +772,15 @@ int Board::get_pawn_structure(float display_factor)
 						sq_base = sq_base + (int)(pp_tempo_f * (float)(sq_next - sq_base));
 					}
 					sq_base = pp_cap(sq_base, black_controls_map._array[k][col], black_pawns_map._array[k][col], white_pawns_map._array[k][col], k, col, false);
+					if (k == row && own_hang) sq_base = (int)((float)sq_base / blocked_path_divisor);
 						if ((float)sq_base < worst_path) { worst_path = (float)sq_base; worst_k = k; }
 						{
 							static const bool sqdbg = getenv("OPTI_PP_SQDBG") != nullptr;
 							if (sqdbg)
-								main_GUI._eval_components += "PPSQ w " + to_string((int)col) + to_string((int)k) + " base=" + to_string(sq_base) + " e=" + to_string(black_controls_map._array[k][col]) + " f=" + to_string(white_pawns_map._array[k][col]) + '\n';
+								main_GUI._eval_components += "PPSQ w " + to_string((int)col) + to_string((int)k) + " base=" + to_string(sq_base) + " e=" + to_string(black_controls_map._array[k][col]) + " f=" + to_string(white_pawns_map._array[k][col]) + " E=" + to_string((int)black_controls_map._array[k][col] + (int)black_pawns_map._array[k][col]) + " F=" + to_string((int)white_controls_map._array[k][col] + (int)white_pawns_map._array[k][col]) + '\n';
 						}
 					}
 					// Own square under enemy pressure: hanging (/5), kept.
-					{
-						int E0 = (int)black_controls_map._array[row][col] + (int)black_pawns_map._array[row][col];
-						int F0 = (int)white_controls_map._array[row][col] + (int)white_pawns_map._array[row][col];
-						if (!tempo_excl && E0 > F0) path_stopped = true;
-					}
-					
 					bool w_connected = (col > 0 && (pawns_white[row][col - 1] || pawns_white[row - 1][col - 1])) || (col < 7 && (pawns_white[row][col + 1] || pawns_white[row - 1][col + 1]));
 					float path_value = worst_path;
 					if (w_connected) {
@@ -739,14 +789,13 @@ int Board::get_pawn_structure(float display_factor)
 				// General x1.5 for every passer (not just no-enemy-pieces):
 				// passers are systematically undervalued.
 				path_value *= 1.5f;
-				if (path_stopped) path_value /= blocked_path_divisor;
 
 				// Add the passed pawn value (legacy path)
 				passed_pawns_value += path_value * passed_adv;
 				{
 					static const bool ppd = getenv("OPTI_PP_DIAG") != nullptr;
 					if (ppd)
-						main_GUI._eval_components += "PPDIAG w " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)path_value) + " minsq=" + to_string((int)worst_k) + " st=" + to_string(path_stopped ? 1 : 0) + '\n';
+						main_GUI._eval_components += "PPDIAG w " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)path_value) + " minsq=" + to_string((int)worst_k) + " st=" + to_string((path_stopped || own_hang) ? 1 : 0) + '\n';
 				}
 
 				// Only the most advanced pawn on the file counts: the ones behind it are stuck
@@ -895,6 +944,13 @@ int Board::get_pawn_structure(float display_factor)
 						bool tempo_push_b = false;
 						bool tempo_excl_b = false;
 						int_fast8_t loop_start_b = row;
+						// Own square hanging: /5 on it (unless tempo-excluded).
+						bool own_hang_b = false;
+						{
+							int E0 = (int)white_controls_map._array[row][col] + (int)white_pawns_map._array[row][col];
+							int F0 = (int)black_controls_map._array[row][col] + (int)black_pawns_map._array[row][col];
+							if (!tempo_excl_b && E0 > F0) own_hang_b = true;
+						}
 						if (pp_tempo_f > 0.0f && !_player && row > 0 && _array[row - 1][col] == none) {
 							int En = (int)white_controls_map._array[row - 1][col] + (int)white_pawns_map._array[row - 1][col];
 							int Fn = (int)black_controls_map._array[row - 1][col] + (int)black_pawns_map._array[row - 1][col];
@@ -926,7 +982,14 @@ int Board::get_pawn_structure(float display_factor)
 								}
 								int Ek = (int)white_controls_map._array[k][col] + (int)white_pawns_map._array[k][col];
 								int Fk = (int)black_controls_map._array[k][col] + (int)black_pawns_map._array[k][col];
-								if (Ek > Fk) { path_stopped = true; break; }
+								if (Ek > Fk) {
+									int sq_stop = passed_pawns[k >= 1 ? 7 - k : 6];
+									sq_stop = pp_cap(sq_stop, white_controls_map._array[k][col], white_pawns_map._array[k][col], black_pawns_map._array[k][col], k, col, true);
+									sq_stop = (int)((float)sq_stop / blocked_path_divisor);
+											if ((float)sq_stop < worst_path) { worst_path = (float)sq_stop; worst_k = k; }
+									path_stopped = true;
+									break;
+								}
 							}
 							int sq_base = passed_pawns[k >= 1 ? 7 - k : 6];
 							if (k == row && tempo_push_b && !tempo_excl_b) {
@@ -934,6 +997,7 @@ int Board::get_pawn_structure(float display_factor)
 								sq_base = sq_base + (int)(pp_tempo_f * (float)(sq_next - sq_base));
 							}
 							sq_base = pp_cap(sq_base, white_controls_map._array[k][col], white_pawns_map._array[k][col], black_pawns_map._array[k][col], k, col, true);
+							if (k == row && own_hang_b) sq_base = (int)((float)sq_base / blocked_path_divisor);
 								if ((float)sq_base < worst_path) { worst_path = sq_base; worst_k = k; }
 								{
 									static const bool sqdbg = getenv("OPTI_PP_SQDBG") != nullptr;
@@ -944,13 +1008,6 @@ int Board::get_pawn_structure(float display_factor)
 							
 							passed_value = worst_path;
 						}
-						// Own square under enemy pressure: hanging (/5), kept.
-						{
-							int E0 = (int)white_controls_map._array[row][col] + (int)white_pawns_map._array[row][col];
-							int F0 = (int)black_controls_map._array[row][col] + (int)black_pawns_map._array[row][col];
-							if (!tempo_excl_b && E0 > F0) path_stopped = true;
-						}
-
 						// Is it connected to another pawn?
 						bool b_connected = (col > 0 && (pawns_black[row][col - 1] || pawns_black[row + 1][col - 1])) || (col < 7 && (pawns_black[row][col + 1] || pawns_black[row + 1][col + 1]));
 						if (b_connected) {
@@ -958,7 +1015,6 @@ int Board::get_pawn_structure(float display_factor)
 						}
 					// General x1.5 for every passer (mirror of white).
 					passed_value = passed_value * 1.5f;
-					if (path_stopped) passed_value /= blocked_path_divisor;
 
 					// 8/8/4p2p/1R6/pPpP1k2/K6P/8/8 b - - 0 43
 
@@ -971,7 +1027,7 @@ int Board::get_pawn_structure(float display_factor)
 					{
 						static const bool ppd2 = getenv("OPTI_PP_DIAG") != nullptr;
 						if (ppd2)
-						main_GUI._eval_components += "PPDIAG b " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)passed_value) + " minsq=" + to_string((int)worst_k) + " st=" + to_string(path_stopped ? 1 : 0) + '\n';
+						main_GUI._eval_components += "PPDIAG b " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)passed_value) + " minsq=" + to_string((int)worst_k) + " st=" + to_string((path_stopped || own_hang_b) ? 1 : 0) + '\n';
 					}
 
 					// Only the most advanced pawn on the file counts: the ones behind it are stuck
