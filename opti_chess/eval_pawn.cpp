@@ -968,15 +968,6 @@ int Board::get_pawn_structure(float display_factor)
 						bool path_stopped = false;
 						// Tempo credit (mirror): black runner, black to move.
 						bool tempo_push_b = false;
-						bool tempo_excl_b = false;
-						int_fast8_t loop_start_b = row;
-						// Own square hanging: /5 on it (unless tempo-excluded).
-						bool own_hang_b = false;
-						{
-							int E0 = (int)white_controls_map._array[row][col] + (int)white_pawns_map._array[row][col];
-							int F0 = (int)black_controls_map._array[row][col] + (int)black_pawns_map._array[row][col];
-							if (!tempo_excl_b && E0 > F0) own_hang_b = true;
-						}
 						if (pp_tempo_f > 0.0f && !_player && row > 0 && _array[row - 1][col] == none) {
 							int En = (int)white_controls_map._array[row - 1][col] + (int)white_pawns_map._array[row - 1][col];
 							int Fn = (int)black_controls_map._array[row - 1][col] + (int)black_pawns_map._array[row - 1][col];
@@ -986,6 +977,17 @@ int Board::get_pawn_structure(float display_factor)
 									if (white_controls_map._array[q][col] > 0 && black_pawns_map._array[q][col] == 0) { tempo_push_b = false; break; }
 								}
 							}
+						}
+						// Exclusion (mirror of white): an escaping runner is neither
+						// anchored on its square nor hanged by it: price from ahead.
+						bool tempo_excl_b = (tempo_push_b && pp_tempo_f >= 1.0f);
+						int_fast8_t loop_start_b = tempo_excl_b ? (int_fast8_t)(row - 1) : (int_fast8_t)row;
+						// Own square hanging: /5 on it (unless tempo-excluded).
+						bool own_hang_b = false;
+						{
+							int E0 = (int)white_controls_map._array[row][col] + (int)white_pawns_map._array[row][col];
+							int F0 = (int)black_controls_map._array[row][col] + (int)black_pawns_map._array[row][col];
+							if (!tempo_excl_b && E0 > F0) own_hang_b = true;
 						}
 						{
 						// Path value: weakest link - min over the INCLUDED
@@ -997,8 +999,6 @@ int Board::get_pawn_structure(float display_factor)
 						// cap-if-pressured, pawn-cover lifts). Any enemy
 						// stop divides by blocked_path_divisor; own piece
 						// stops without dividing.
-						tempo_excl_b = (tempo_push_b && pp_tempo_f >= 1.0f);
-						loop_start_b = tempo_excl_b ? (int_fast8_t)(row - 1) : (int_fast8_t)row;
 					for (int_fast8_t k = loop_start_b; k >= 0; k--) {
 							if (k < row) {
 								const uint8_t occ = _array[k][col];
