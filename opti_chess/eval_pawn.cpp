@@ -450,8 +450,9 @@ int Board::get_pawn_structure(float display_factor)
 		float path_value = 0.0f;
 		if (white) {
 			// (No malus here: pp_cand_malus prices the push outside.)
-		// Cut-or-cap: stop squares excluded (own square priced, /5 if
-		// hanging); any enemy stop divides by blocked_path_divisor.
+		// Cut-or-cap: enemy stops (piece or pressure) included
+		// at base/5 (cap first), driving the min; beyond
+		// excluded. Own square priced (/5 if hanging).
 		bool hstopped = false;
 		bool htempo = false;
 		if (pp_tempo_f > 0.0f && _player && srow < 7 && _array[srow + 1][col] == none) {
@@ -476,7 +477,15 @@ int Board::get_pawn_structure(float display_factor)
 			if (k > srow) {
 				const uint8_t occ = _array[k][col];
 				if (occ != none) {
-					if (is_black(occ)) hstopped = true;
+					if (is_black(occ)) {
+						// Blocked square: worth base/5 (cap first),
+						// included (it can drive the min); beyond excluded.
+						int sq_blk = passed_pawns[k <= 6 ? k : 6];
+						sq_blk = pp_cap(sq_blk, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col], k, col, !white);
+						sq_blk = (int)((float)sq_blk / blocked_path_divisor);
+						if ((float)sq_blk < worst_path) worst_path = (float)sq_blk;
+						hstopped = true;
+					}
 					break;
 				}
 				int Ek = (int)enCM._array[k][col] + (int)enPM._array[k][col];
@@ -535,7 +544,15 @@ int Board::get_pawn_structure(float display_factor)
 			if (k < srow) {
 				const uint8_t occ = _array[k][col];
 				if (occ != none) {
-					if (is_white(occ)) hstopped_b = true;
+					if (is_white(occ)) {
+						// Blocked square: worth base/5 (cap first),
+						// included (it can drive the min); beyond excluded.
+						int sq_blk = passed_pawns[k >= 1 ? 7 - k : 6];
+						sq_blk = pp_cap(sq_blk, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col], k, col, !white);
+						sq_blk = (int)((float)sq_blk / blocked_path_divisor);
+						if ((float)sq_blk < worst_path) worst_path = (float)sq_blk;
+						hstopped_b = true;
+					}
 					break;
 				}
 				int Ek = (int)enCM._array[k][col] + (int)enPM._array[k][col];
@@ -712,9 +729,10 @@ int Board::get_pawn_structure(float display_factor)
 
 				// Path value: weakest link - min over the INCLUDED squares
 				// (own square always; ahead until the first stop). A stop =
-				// piece on it (excluded), or enemy pressure (pieces+pawns)
-				// beating allied pressure (excluded). Own square E>F also
-				// stops (/5) but stays priced. Included squares price
+				// enemy piece on it (included at base/5, cap first;
+				// beyond excluded), or enemy pressure beating allied
+				// pressure (same pricing). Own square E>F also stops
+				// (/5) but stays priced. Included squares price
 				// min(base, cap-if-pressured, pawn-cover lifts). Any enemy
 				// stop divides by blocked_path_divisor; own piece stops
 				// without dividing. Promotion square included.
@@ -750,7 +768,15 @@ int Board::get_pawn_structure(float display_factor)
 					if (k > row) {
 						const uint8_t occ = _array[k][col];
 						if (occ != none) {
-							if (is_black(occ)) path_stopped = true;
+							if (is_black(occ)) {
+								// Blocked square: worth base/5 (cap first),
+								// included (it can drive the min); beyond excluded.
+								int sq_blk = passed_pawns[k <= 6 ? k : 6];
+								sq_blk = pp_cap(sq_blk, black_controls_map._array[k][col], black_pawns_map._array[k][col], white_pawns_map._array[k][col], k, col, false);
+								sq_blk = (int)((float)sq_blk / blocked_path_divisor);
+								if ((float)sq_blk < worst_path) { worst_path = (float)sq_blk; worst_k = k; }
+								path_stopped = true;
+							}
 							break;
 						}
 						int Ek = (int)black_controls_map._array[k][col] + (int)black_pawns_map._array[k][col];
@@ -964,10 +990,10 @@ int Board::get_pawn_structure(float display_factor)
 						{
 						// Path value: weakest link - min over the INCLUDED
 						// squares (own square always; below until the first
-						// stop). Stop = piece on it, or enemy pressure
-						// (pieces+pawns) beating allied pressure (both
-						// excluded). Own square E>F also stops (/5) but
-						// stays priced. Included squares price min(base,
+						// stop). Stop = enemy piece on it (included at
+						// base/5, cap first; beyond excluded), or enemy
+						// pressure beating allied pressure (same pricing).
+						// Own square E>F also stops (/5) but stays priced. Included squares price min(base,
 						// cap-if-pressured, pawn-cover lifts). Any enemy
 						// stop divides by blocked_path_divisor; own piece
 						// stops without dividing.
@@ -977,7 +1003,15 @@ int Board::get_pawn_structure(float display_factor)
 							if (k < row) {
 								const uint8_t occ = _array[k][col];
 								if (occ != none) {
-									if (is_white(occ)) path_stopped = true;
+									if (is_white(occ)) {
+										// Blocked square: worth base/5 (cap first),
+										// included (it can drive the min); beyond excluded.
+										int sq_blk = passed_pawns[k >= 1 ? 7 - k : 6];
+										sq_blk = pp_cap(sq_blk, white_controls_map._array[k][col], white_pawns_map._array[k][col], black_pawns_map._array[k][col], k, col, true);
+										sq_blk = (int)((float)sq_blk / blocked_path_divisor);
+										if ((float)sq_blk < worst_path) { worst_path = (float)sq_blk; worst_k = k; }
+										path_stopped = true;
+									}
 									break;
 								}
 								int Ek = (int)white_controls_map._array[k][col] + (int)white_pawns_map._array[k][col];
