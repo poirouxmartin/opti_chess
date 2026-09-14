@@ -1354,12 +1354,23 @@ void GUI::grogros_analysis(int iterations) {
 	if (iterations == -1) {
 		if (_compute_running.load(std::memory_order_acquire))
 			stop_compute();
+		// stop_compute() always raises g_search_abort (even when idle):
+		// clear it or the inline search below breaks instantly with zero
+		// work and zero logging ("analysis stops for no reason").
+		if (g_search_abort.load(std::memory_order_acquire)) {
+			debug_log("[grogros_analysis] clearing stale abort (inline G-hold)");
+			g_search_abort.store(false, std::memory_order_release);
+		}
+		g_search_deadline.store((clock_t)0, std::memory_order_release);
 		int iterations_per_second = _root_exploration_node->get_ips();
 		int iterations_to_explore = iterations_per_second / _target_fps;
 		if (iterations_to_explore == 0)
 			iterations_to_explore = 1;
-		if (monte_board_buffer.is_full())
+		if (monte_board_buffer.is_full() || monte_node_buffer.is_full()) {
+			debug_log("[grogros_analysis] inline 0 iters (arenas full: boards=%d nodes=%d)",
+				(int)monte_board_buffer._length, (int)monte_node_buffer._length);
 			iterations_to_explore = 0;
+		}
 		if (iterations_to_explore > 0) {
 			_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations_to_explore, _quiescence_depth);
 			if (g_tt_node_dag)
@@ -1374,6 +1385,12 @@ void GUI::grogros_analysis(int iterations) {
 	if (iterations > 0) {
 		if (_compute_running.load(std::memory_order_acquire))
 			stop_compute();
+		// Same stale-abort purge as the G-hold path above.
+		if (g_search_abort.load(std::memory_order_acquire)) {
+			debug_log("[grogros_analysis] clearing stale abort (inline ENTER)");
+			g_search_abort.store(false, std::memory_order_release);
+		}
+		g_search_deadline.store((clock_t)0, std::memory_order_release);
 		_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations, _quiescence_depth);
 		if (g_tt_node_dag)
 			dag_debug_report();
@@ -1680,12 +1697,15 @@ void GUI::compute_worker() {
 		// oscillate around empty so a start-cooldown never engages). Main
 		// recycles on play/DEL; this loop re-checks space every 100ms and
 		// resumes by itself. Bounded waits keep stop_compute responsive.
-		if (monte_board_buffer.is_full()) {
+		// Both arenas gate: nodes fill without boards when search refines
+		// (no expansion), boards fill on expansion — either stalls progress.
+		if (monte_board_buffer.is_full() || monte_node_buffer.is_full()) {
 			_worker_phase.store(3, std::memory_order_release); // park
 			_phase_since.store(clock(), std::memory_order_release);
 			_worker_blocked_full.store(true, std::memory_order_release);
 			if (iters == 0 || (parked_rounds++ % 100 == 0))
-				debug_log("[worker] parked (boards full) iters=%lld", iters);
+				debug_log("[worker] parked (arenas full: boards_full=%d nodes_full=%d) iters=%lld",
+					(int)monte_board_buffer.is_full(), (int)monte_node_buffer.is_full(), iters);
 			_worker_heartbeat.store(clock(), std::memory_order_release);
 			if (t_seen_epoch != _position_epoch) {
 				node_map.clear();

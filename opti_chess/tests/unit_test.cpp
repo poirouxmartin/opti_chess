@@ -3762,6 +3762,41 @@ TEST(Puzzle, Qc6RepetitionDraw) {
 	}
 }
 
+// Stale-abort stall (GUI "analysis stops for no reason"): stop_compute()
+// always raises g_search_abort, and the inline G-hold/ENTER paths used to
+// call grogros_zero without clearing it -> the loop broke instantly with
+// zero expansion and zero logging. Locks both halves of the contract:
+// abort set => no expansion; abort cleared (the GUI fix) => progress.
+TEST(Puzzle, StaleAbortStallsSearch) {
+	static Evaluator evaluator;
+	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
+	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+	monte_board_buffer.reset(); monte_node_buffer.reset();
+	transposition_table.clear(); node_map.clear();
+	g_buffers_full_logged = false; g_tt_main_search = false; g_tt_node_dag = false;
+	g_search_deadline.store((clock_t)0, std::memory_order_release);
+	Board b;
+	b.from_fen("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4");
+	Board* root_board = monte_board_buffer.get_first_free_board();
+	ASSERT_TRUE(root_board != nullptr);
+	root_board->copy_data(b, false, true);
+	root_board->_is_active = true;
+	Node* root = monte_node_buffer.get_first_free_node();
+	ASSERT_TRUE(root != nullptr);
+	root->reset(false);
+	root->_board = root_board;
+	root->_is_active = true;
+	// Stale abort (as left by stop_compute): search must not expand.
+	g_search_abort.store(true, std::memory_order_release);
+	root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 50, 10);
+	EXPECT_EQ(root->children_count(), (size_t)0) << "stale abort must stall expansion (GUI bug symptom)";
+	// Cleared abort (the GUI inline fix): same call must make progress.
+	g_search_abort.store(false, std::memory_order_release);
+	root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 50, 10);
+	EXPECT_GT(root->children_count(), (size_t)0) << "cleared abort must allow expansion";
+	g_search_abort.store(false, std::memory_order_release);
+}
+
 
 
 
