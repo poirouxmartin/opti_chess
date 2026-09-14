@@ -2279,7 +2279,7 @@ void GUI::draw()
 			draw_texture(_cursor_texture, _mouse_pos.x - _cursor_size / 2, _mouse_pos.y - _cursor_size / 2, WHITE);
 			return;
 		}
-		Evaluation best_evaluation = _tree_snapshot.best_move_evaluation;
+		Evaluation best_evaluation = _tree_snapshot.display_evaluation();
 
 		bool all_moves_explored = _tree_snapshot.children_count == _tree_snapshot.got_moves;
 

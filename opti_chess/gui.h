@@ -296,6 +296,17 @@ public:
 			float eval_avg_score;
 		};
 		vector<ArrowEntry> arrows;
+		// Header display rule: show the BEST line found (best score), not the
+		// most-visited move (visit counts drive play, not display). Without
+		// this the header lags on visits: e.g. a freshly found mate stays
+		// buried in the variants while the header still shows the old
+		// most-visited eval. Falls back to the most-visited eval when no
+		// scored move is available yet.
+		const Evaluation& display_evaluation() const {
+			if (!best_eval_move.is_null_move() && best_evaluation._evaluated)
+				return best_evaluation;
+			return best_move_evaluation;
+		}
 	};
 	TreeSnapshot _tree_snapshot;
 

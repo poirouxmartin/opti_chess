@@ -3797,6 +3797,114 @@ TEST(Puzzle, StaleAbortStallsSearch) {
 	g_search_abort.store(false, std::memory_order_release);
 }
 
+// Header display coherence: eval/cp, mate announcement, WDL, bar and score
+// must all come from the SAME line — the best found, not the most-visited
+// move (which drives play). Symptom: fresh Dxh7#9 buried in the variants
+// while the header still showed the most-visited +0.6.
+TEST(GUI, DisplayEvalPrefersBestScore) {
+	GUI::TreeSnapshot snap;
+	auto mk_move = [](int sc, int sr, int ec, int er) {
+		Move m; m.start_col = sc; m.start_row = sr; m.end_col = ec; m.end_row = er;
+		return m;
+	};
+	// Most-visited line: quiet +60cp.
+	snap.best_move = mk_move(1, 0, 2, 2);
+	snap.best_move_evaluation._value = 60;
+	snap.best_move_evaluation._evaluated = true;
+	snap.best_move_evaluation.get_WDL();
+	snap.best_move_evaluation.get_average_score();
+	// No scored move yet -> header falls back to most-visited.
+	EXPECT_EQ(&snap.display_evaluation(), &snap.best_move_evaluation);
+	EXPECT_EQ(snap.display_evaluation()._value, 60);
+	// Best-score line: mate in 9 for White (mate-scale value, zero
+	// uncertainty, as stamped by the terminal path).
+	snap.best_eval_move = mk_move(3, 4, 7, 7);
+	snap.best_evaluation._value = mate_value - 9 * mate_ply;
+	snap.best_evaluation._evaluated = true;
+	snap.best_evaluation._uncertainty = 0.0f;
+	snap.best_evaluation._winnable_white = 1.0f;
+	snap.best_evaluation._winnable_black = 0.0f;
+	snap.best_evaluation.get_WDL();
+	snap.best_evaluation.get_average_score();
+	// Header must announce the mate, with a coherent all-win WDL.
+	const Evaluation& shown = snap.display_evaluation();
+	EXPECT_EQ(&shown, &snap.best_evaluation);
+	EXPECT_GT(10.0 * abs((double)shown._value), (double)mate_value);
+	EXPECT_FLOAT_EQ(shown._wdl.win_chance, 1.0f);
+	EXPECT_FLOAT_EQ(shown._wdl.draw_chance, 0.0f);
+	EXPECT_FLOAT_EQ(shown._wdl.lose_chance, 0.0f);
+	EXPECT_DOUBLE_EQ(shown._avg_score, 1.0);
+	// Unevaluated best-score entry -> fallback to most-visited.
+	snap.best_evaluation._evaluated = false;
+	EXPECT_EQ(&snap.display_evaluation(), &snap.best_move_evaluation);
+}
+
+// End-to-end mate announcement on the reported position:
+// rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 0 1.
+// Dxh7 forces mate in 9; the header (via display_evaluation over the same
+// snapshot fields update_snapshot fills) must announce the mate even when
+// Dxh7 is not the most-visited move. Deterministic: NODES budget + OPTI_SEED.
+TEST(Puzzle, Dxh7MateAnnounced) {
+	static Evaluator evaluator;
+	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
+	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+	monte_board_buffer.reset(); monte_node_buffer.reset();
+	transposition_table.clear(); node_map.clear();
+	g_buffers_full_logged = false; g_tt_main_search = false; g_tt_node_dag = false;
+	g_search_abort.store(false, std::memory_order_release);
+	g_search_deadline.store((clock_t)0, std::memory_order_release);
+	Board b;
+	b.from_fen("rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 0 1");
+	Move dxh7 = resolve_san(b, "Qxh7");
+	ASSERT_FALSE(dxh7.is_null_move());
+	Board* root_board = monte_board_buffer.get_first_free_board();
+	ASSERT_TRUE(root_board != nullptr);
+	root_board->copy_data(b, false, true);
+	root_board->_is_active = true;
+	Node* root = monte_node_buffer.get_first_free_node();
+	ASSERT_TRUE(root != nullptr);
+	root->reset(false);
+	root->_board = root_board;
+	root->_is_active = true;
+	// Chunked like GUI snapshots over time: prints the transient window
+	// where the mate is found (best-score) but not yet most-visited.
+	for (int chunk = 0; chunk < 10; chunk++) {
+		root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 2000, 10);
+		Move m = root->get_most_explored_child_move();
+		Move bs = root->get_best_score_move(0.005, 5.0);
+		int mv = 0, bv = 0;
+		auto im = root->_children.find(m);
+		if (im != root->_children.end() && im->second._node != nullptr) mv = im->second._node->_deep_evaluation._value;
+		auto ib = root->_children.find(bs);
+		if (ib != root->_children.end() && ib->second._node != nullptr) bv = ib->second._node->_deep_evaluation._value;
+		cout << "  chunk " << (chunk + 1) << ": most=" << b.move_label(m, true)
+			<< " eval=" << mv << " | best=" << b.move_label(bs, true) << " eval=" << bv << endl;
+	}
+	// Same snapshot fields update_snapshot fills (gui.cpp).
+	GUI::TreeSnapshot snap;
+	snap.best_move = root->get_most_explored_child_move();
+	snap.best_eval_move = root->get_best_score_move(0.005, 5.0);
+	if (!snap.best_eval_move.is_null_move()) {
+		const auto it = root->_children.find(snap.best_eval_move);
+		if (it != root->_children.end() && it->second._node != nullptr)
+			snap.best_evaluation = it->second._node->_deep_evaluation;
+	}
+	if (!snap.best_move.is_null_move()) {
+		const auto itb = root->_children.find(snap.best_move);
+		if (itb != root->_children.end() && itb->second._node != nullptr)
+			snap.best_move_evaluation = itb->second._node->_deep_evaluation;
+	}
+	cout << "  most-visited: " << b.move_label(snap.best_move, true)
+		<< " eval=" << snap.best_move_evaluation._value
+		<< " | best-score: " << b.move_label(snap.best_eval_move, true)
+		<< " eval=" << snap.best_evaluation._value << endl;
+	EXPECT_EQ(snap.best_eval_move, dxh7) << "best line must be Dxh7";
+	const Evaluation& shown = snap.display_evaluation();
+	EXPECT_GT(10.0 * abs((double)shown._value), (double)mate_value)
+		<< "header must announce the mate, not the most-visited eval";
+	g_search_abort.store(false, std::memory_order_release);
+}
+
 
 
 
