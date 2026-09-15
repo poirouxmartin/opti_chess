@@ -254,20 +254,22 @@ int Board::get_pawn_structure(float display_factor)
 		return e ? (float)atof(e) : 1.0f;
 	}();
 	// (Removed) Non-endgame square scale (oos pool muted permanently).
-	// Passer sub-component scale (applied to every passer above,
-	// before display: the x0.2 structure coef applies later outside).
+	// Passer sub-component scale: single internal factor compensating the
+	// x0.2 global structure coef applied later outside (net x1.0, so the
+	// table and the 100/320 caps read as true cp). Env-tunable.
 	static const float pp_scale = [] {
 		const char* e = getenv("OPTI_PP_SCALE");
-		return e ? (float)atof(e) : 2.5f;
+		return e ? (float)atof(e) : 5.0f;
 	}();
 
 	// min-cap when a square is controlled and no friendly pawn protects it
 	static constexpr int pp_pawn_control_cap = 100;
 	static constexpr int pp_piece_control_cap = 320;
 	// opportunity-cost malus for the side owning the blocker, by piece
-	// (knight blockades cheap, queen babysitting punished, king 85);
-	// pawns: 0 (same-file-ahead pawn means candidate branch anyway)
-	static constexpr int pp_blocker_malus[7] = { 0, 0, 40, 60, 120, 250, 85 };
+	// (knight blockades cheap, queen babysitting punished, king 42);
+	// pawns: 0 (same-file-ahead pawn means candidate branch anyway).
+	// Halved vs history: the old stack scaled these x0.5 final, now x1.0.
+	static constexpr int pp_blocker_malus[7] = { 0, 0, 20, 30, 60, 125, 42 };
 
 	// Passed-pawn model (docs/passed-pawns-roadmap.md, Part A).
 	// Parallel new-model path was trialled and removed (hotter V_base
@@ -412,19 +414,14 @@ int Board::get_pawn_structure(float display_factor)
 
 	// (Removed) Out-of-square bonus tables: pool muted permanently.
 
-	// Does White still have pieces?
-	bool has_white_pieces = has_pieces(true);
-
-	// Does Black still have pieces?
-	bool has_black_pieces = has_pieces(false);
-
 	// Candidate malus: one square less (base-table delta between the push
 	// square and the square behind) plus a small extra (env-tunable). The
 	// push costs time and resolves tension: a candidate must stay strictly
-	// below the passer it will become.
+	// below the passer it will become. Extra halved vs history (old stack
+	// scaled it x0.5 final, now x1.0) so the push cost stays -25 final.
 	static const float pp_cand_malus_extra = [] {
 		const char* e = getenv("OPTI_PP_CANDMALUS");
-		return e ? (float)atof(e) : 50.0f;
+		return e ? (float)atof(e) : 25.0f;
 	}();
 	auto pp_cand_malus = [&](int srow, bool white) -> float {
 		int idx = white ? (srow <= 6 ? srow : 6) : (srow >= 1 ? 7 - srow : 6);
@@ -441,7 +438,7 @@ int Board::get_pawn_structure(float display_factor)
 	// No out-of-square race bonus (belongs to established passers). Used as
 	// the UPPER BOUND of a candidate: a candidate is worth at most the
 	// passer it will become.
-	auto pp_hyp_passer = [&](int col, int srow, bool white, bool hasEnemyPieces) -> float {
+	auto pp_hyp_passer = [&](int col, int srow, bool white) -> float {
 		SquareMap ownCM = white ? get_white_controls_map() : get_black_controls_map();
 		SquareMap enCM = white ? get_black_controls_map() : get_white_controls_map();
 		SquareMap ownPM = get_pawns_controls(white);
@@ -456,8 +453,8 @@ int Board::get_pawn_structure(float display_factor)
 		bool hstopped = false;
 		bool htempo = false;
 		if (pp_tempo_f > 0.0f && _player && srow < 7 && _array[srow + 1][col] == none) {
-			int En = (int)enCM._array[srow + 1][col] + (int)enPM._array[srow + 1][col];
-			int Fn = (int)ownCM._array[srow + 1][col] + (int)ownPM._array[srow + 1][col];
+			int En = (int)enCM._array[srow + 1][col];
+			int Fn = (int)ownCM._array[srow + 1][col];
 			if (En <= Fn && !in_king_square(Pos(srow, col), false)) {
 				htempo = true;
 				for (int q = srow + 1; q <= 7; q++) {
@@ -468,8 +465,8 @@ int Board::get_pawn_structure(float display_factor)
 		bool hexcl = (htempo && pp_tempo_f >= 1.0f);
 		bool hown_hang = false;
 		{
-			int E0 = (int)enCM._array[srow][col] + (int)enPM._array[srow][col];
-			int F0 = (int)ownCM._array[srow][col] + (int)ownPM._array[srow][col];
+			int E0 = (int)enCM._array[srow][col];
+			int F0 = (int)ownCM._array[srow][col];
 			if (!hexcl && E0 > F0 && !htempo) hown_hang = true;
 		}
 		uint8_t hloop = hexcl ? (uint8_t)(srow + 1) : (uint8_t)srow;
@@ -488,8 +485,8 @@ int Board::get_pawn_structure(float display_factor)
 					}
 					break;
 				}
-				int Ek = (int)enCM._array[k][col] + (int)enPM._array[k][col];
-				int Fk = (int)ownCM._array[k][col] + (int)ownPM._array[k][col];
+				int Ek = (int)enCM._array[k][col];
+				int Fk = (int)ownCM._array[k][col];
 				if (Ek > Fk) {
 					int sq_stop = passed_pawns[k <= 6 ? k : 6];
 					sq_stop = pp_cap(sq_stop, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col], k, col, !white);
@@ -509,22 +506,21 @@ int Board::get_pawn_structure(float display_factor)
 			if ((float)sq_base < worst_path) worst_path = (float)sq_base;
 		}
 		{
-			int E0 = (int)enCM._array[srow][col] + (int)enPM._array[srow][col];
-			int F0 = (int)ownCM._array[srow][col] + (int)ownPM._array[srow][col];
+			int E0 = (int)enCM._array[srow][col];
+			int F0 = (int)ownCM._array[srow][col];
 			if (E0 > F0) hstopped = true;
 		}
 			path_value = worst_path;
 			bool conn = (col > 0 && (pawns_white[srow][col - 1] || pawns_white[srow - 1][col - 1])) || (col < 7 && (pawns_white[srow][col + 1] || pawns_white[srow - 1][col + 1]));
 			if (conn) path_value *= connected_passed_pawn_bonus;
-			if (!hasEnemyPieces) path_value *= 1.5f;
 			return path_value;
 		}
 		else {
 		bool hstopped_b = false;
 		bool htempo_b = false;
 		if (pp_tempo_f > 0.0f && !_player && srow > 0 && _array[srow - 1][col] == none) {
-			int En = (int)enCM._array[srow - 1][col] + (int)enPM._array[srow - 1][col];
-			int Fn = (int)ownCM._array[srow - 1][col] + (int)ownPM._array[srow - 1][col];
+			int En = (int)enCM._array[srow - 1][col];
+			int Fn = (int)ownCM._array[srow - 1][col];
 			if (En <= Fn && !in_king_square(Pos(srow, col), true)) {
 				htempo_b = true;
 				for (int q = srow - 1; q >= 0; q--) {
@@ -535,8 +531,8 @@ int Board::get_pawn_structure(float display_factor)
 		bool hexcl_b = (htempo_b && pp_tempo_f >= 1.0f);
 		bool hown_hang_b = false;
 		{
-			int E0 = (int)enCM._array[srow][col] + (int)enPM._array[srow][col];
-			int F0 = (int)ownCM._array[srow][col] + (int)ownPM._array[srow][col];
+			int E0 = (int)enCM._array[srow][col];
+			int F0 = (int)ownCM._array[srow][col];
 			if (!hexcl_b && E0 > F0 && !htempo_b) hown_hang_b = true;
 		}
 		int hloop_b = hexcl_b ? srow - 1 : srow;
@@ -555,8 +551,8 @@ int Board::get_pawn_structure(float display_factor)
 					}
 					break;
 				}
-				int Ek = (int)enCM._array[k][col] + (int)enPM._array[k][col];
-				int Fk = (int)ownCM._array[k][col] + (int)ownPM._array[k][col];
+				int Ek = (int)enCM._array[k][col];
+				int Fk = (int)ownCM._array[k][col];
 				if (Ek > Fk) {
 					int sq_stop = passed_pawns[k >= 1 ? 7 - k : 6];
 					sq_stop = pp_cap(sq_stop, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col], k, col, !white);
@@ -576,14 +572,13 @@ int Board::get_pawn_structure(float display_factor)
 			if ((float)sq_base < worst_path) worst_path = (float)sq_base;
 		}
 		{
-			int E0 = (int)enCM._array[srow][col] + (int)enPM._array[srow][col];
-			int F0 = (int)ownCM._array[srow][col] + (int)ownPM._array[srow][col];
+			int E0 = (int)enCM._array[srow][col];
+			int F0 = (int)ownCM._array[srow][col];
 			if (E0 > F0) hstopped_b = true;
 		}
 			path_value = worst_path;
 			bool conn = (col > 0 && (pawns_black[srow][col - 1] || pawns_black[srow + 1][col - 1])) || (col < 7 && (pawns_black[srow][col + 1] || pawns_black[srow + 1][col + 1]));
 			if (conn) path_value *= connected_passed_pawn_bonus;
-			if (!hasEnemyPieces) path_value *= 1.5f;
 			return path_value;
 		}
 	};
@@ -623,13 +618,13 @@ int Board::get_pawn_structure(float display_factor)
 						if (candR > 0.0f && pp_cand_factor > 0.0f) {
 							float Vhyp = 0.0f;
 							int bestSr = -1;
-							if (_array[row + 1][col] == none) { Vhyp = pp_hyp_passer(col, (int)row + 1, true, has_black_pieces); bestSr = (int)row + 1; }
+							if (_array[row + 1][col] == none) { Vhyp = pp_hyp_passer(col, (int)row + 1, true); bestSr = (int)row + 1; }
 							if (col > 0 && is_black(_array[row + 1][col - 1])) {
-								float v = pp_hyp_passer(col - 1, (int)row + 1, true, has_black_pieces);
+								float v = pp_hyp_passer(col - 1, (int)row + 1, true);
 								if (v > Vhyp) { Vhyp = v; bestSr = (int)row + 1; }
 							}
 							if (col < 7 && is_black(_array[row + 1][col + 1])) {
-								float v = pp_hyp_passer(col + 1, (int)row + 1, true, has_black_pieces);
+								float v = pp_hyp_passer(col + 1, (int)row + 1, true);
 								if (v > Vhyp) { Vhyp = v; bestSr = (int)row + 1; }
 							}
 							float Vnet = Vhyp - (bestSr >= 0 ? pp_cand_malus(bestSr, true) : 0.0f);
@@ -653,12 +648,12 @@ int Board::get_pawn_structure(float display_factor)
 							int ownA = 0, enA = 0, ownB = 0, enB = 0;
 							int adv = (int)row + 1;
 							if (adv <= 7) {
-								ownA = (int)wcm._array[adv][col] + (int)wpm._array[adv][col];
-								enA = (int)bcm._array[adv][col] + (int)bpm._array[adv][col];
+								ownA = (int)wcm._array[adv][col];
+								enA = (int)bcm._array[adv][col];
 							}
 							if (brow >= 0) {
-								ownB = (int)wcm._array[brow][bcol] + (int)wpm._array[brow][bcol];
-								enB = (int)bcm._array[brow][bcol] + (int)bpm._array[brow][bcol];
+								ownB = (int)wcm._array[brow][bcol];
+								enB = (int)bcm._array[brow][bcol];
 							}
 							int mg = pp_margin(col, row, true);
 							float leverR = (float)(ownA + ownB - enA - enB + 1) / 3.0f;
@@ -742,8 +737,8 @@ int Board::get_pawn_structure(float display_factor)
 				// Tempo credit: white runner, white to move, next free.
 				bool tempo_push = false;
 				if (pp_tempo_f > 0.0f && _player && row < 7 && _array[row + 1][col] == none) {
-					int En = (int)black_controls_map._array[row + 1][col] + (int)black_pawns_map._array[row + 1][col];
-					int Fn = (int)white_controls_map._array[row + 1][col] + (int)white_pawns_map._array[row + 1][col];
+					int En = (int)black_controls_map._array[row + 1][col];
+					int Fn = (int)white_controls_map._array[row + 1][col];
 					if (En <= Fn && !in_king_square(Pos(row, col), false)) {
 						tempo_push = true;
 						for (uint8_t q = row + 1; q <= 7; q++) {
@@ -761,8 +756,8 @@ int Board::get_pawn_structure(float display_factor)
 				// this turn (tempo-excluded runners skip the square anyway).
 				bool own_hang = false;
 				{
-					int E0 = (int)black_controls_map._array[row][col] + (int)black_pawns_map._array[row][col];
-					int F0 = (int)white_controls_map._array[row][col] + (int)white_pawns_map._array[row][col];
+					int E0 = (int)black_controls_map._array[row][col];
+					int F0 = (int)white_controls_map._array[row][col];
 					if (!tempo_excl && E0 > F0 && !tempo_push) own_hang = true;
 				}
 				for (uint8_t k = loop_start; k <= 7; k++) {
@@ -780,8 +775,8 @@ int Board::get_pawn_structure(float display_factor)
 							}
 							break;
 						}
-						int Ek = (int)black_controls_map._array[k][col] + (int)black_pawns_map._array[k][col];
-						int Fk = (int)white_controls_map._array[k][col] + (int)white_pawns_map._array[k][col];
+						int Ek = (int)black_controls_map._array[k][col];
+						int Fk = (int)white_controls_map._array[k][col];
 						if (Ek > Fk) {
 							// Controlled square: worth base/5 (cap first),
 							// included (it drives the min); beyond excluded.
@@ -804,7 +799,7 @@ int Board::get_pawn_structure(float display_factor)
 						{
 							static const bool sqdbg = getenv("OPTI_PP_SQDBG") != nullptr;
 							if (sqdbg)
-								main_GUI._eval_components += "PPSQ w " + to_string((int)col) + to_string((int)k) + " base=" + to_string(sq_base) + " e=" + to_string(black_controls_map._array[k][col]) + " f=" + to_string(white_pawns_map._array[k][col]) + " E=" + to_string((int)black_controls_map._array[k][col] + (int)black_pawns_map._array[k][col]) + " F=" + to_string((int)white_controls_map._array[k][col] + (int)white_pawns_map._array[k][col]) + '\n';
+								main_GUI._eval_components += "PPSQ w " + to_string((int)col) + to_string((int)k) + " base=" + to_string(sq_base) + " e=" + to_string(black_controls_map._array[k][col]) + " f=" + to_string(white_pawns_map._array[k][col]) + " E=" + to_string((int)black_controls_map._array[k][col]) + " F=" + to_string((int)white_controls_map._array[k][col]) + '\n';
 						}
 					}
 					// Own square under enemy pressure: hanging (/5), kept.
@@ -813,9 +808,6 @@ int Board::get_pawn_structure(float display_factor)
 					if (w_connected) {
 						path_value *= connected_passed_pawn_bonus;
 					}
-				// General x1.5 for every passer (not just no-enemy-pieces):
-				// passers are systematically undervalued.
-				path_value *= 1.5f;
 
 				// Add the passed pawn value (legacy path)
 				passed_pawns_value += path_value * passed_adv;
@@ -863,13 +855,13 @@ int Board::get_pawn_structure(float display_factor)
 						if (candR > 0.0f && pp_cand_factor > 0.0f) {
 							float Vhyp = 0.0f;
 							int bestSr = -1;
-							if (_array[row - 1][col] == none) { Vhyp = pp_hyp_passer(col, (int)row - 1, false, has_white_pieces); bestSr = (int)row - 1; }
+							if (_array[row - 1][col] == none) { Vhyp = pp_hyp_passer(col, (int)row - 1, false); bestSr = (int)row - 1; }
 							if (col > 0 && is_white(_array[row - 1][col - 1])) {
-								float v = pp_hyp_passer(col - 1, (int)row - 1, false, has_white_pieces);
+								float v = pp_hyp_passer(col - 1, (int)row - 1, false);
 								if (v > Vhyp) { Vhyp = v; bestSr = (int)row - 1; }
 							}
 							if (col < 7 && is_white(_array[row - 1][col + 1])) {
-								float v = pp_hyp_passer(col + 1, (int)row - 1, false, has_white_pieces);
+								float v = pp_hyp_passer(col + 1, (int)row - 1, false);
 								if (v > Vhyp) { Vhyp = v; bestSr = (int)row - 1; }
 							}
 							float Vnet = Vhyp - (bestSr >= 0 ? pp_cand_malus(bestSr, false) : 0.0f);
@@ -893,12 +885,12 @@ int Board::get_pawn_structure(float display_factor)
 							int ownA = 0, enA = 0, ownB = 0, enB = 0;
 							int adv = (int)row - 1;
 							if (adv >= 0) {
-								ownA = (int)bcm._array[adv][col] + (int)bpm._array[adv][col];
-								enA = (int)wcm._array[adv][col] + (int)wpm._array[adv][col];
+								ownA = (int)bcm._array[adv][col];
+								enA = (int)wcm._array[adv][col];
 							}
 							if (brow >= 0) {
-								ownB = (int)bcm._array[brow][bcol] + (int)bpm._array[brow][bcol];
-								enB = (int)wcm._array[brow][bcol] + (int)wpm._array[brow][bcol];
+								ownB = (int)bcm._array[brow][bcol];
+								enB = (int)wcm._array[brow][bcol];
 							}
 							int mg = pp_margin(col, row, false);
 							float leverR = (float)(ownA + ownB - enA - enB + 1) / 3.0f;
@@ -970,8 +962,8 @@ int Board::get_pawn_structure(float display_factor)
 						// Tempo credit (mirror): black runner, black to move.
 						bool tempo_push_b = false;
 						if (pp_tempo_f > 0.0f && !_player && row > 0 && _array[row - 1][col] == none) {
-							int En = (int)white_controls_map._array[row - 1][col] + (int)white_pawns_map._array[row - 1][col];
-							int Fn = (int)black_controls_map._array[row - 1][col] + (int)black_pawns_map._array[row - 1][col];
+							int En = (int)white_controls_map._array[row - 1][col];
+							int Fn = (int)black_controls_map._array[row - 1][col];
 							if (En <= Fn && !in_king_square(Pos(row, col), true)) {
 								tempo_push_b = true;
 								for (int_fast8_t q = row - 1; q >= 0; q--) {
@@ -987,8 +979,8 @@ int Board::get_pawn_structure(float display_factor)
 						// this turn (tempo-excluded runners skip the square anyway).
 						bool own_hang_b = false;
 						{
-							int E0 = (int)white_controls_map._array[row][col] + (int)white_pawns_map._array[row][col];
-							int F0 = (int)black_controls_map._array[row][col] + (int)black_pawns_map._array[row][col];
+							int E0 = (int)white_controls_map._array[row][col];
+							int F0 = (int)black_controls_map._array[row][col];
 							if (!tempo_excl_b && E0 > F0 && !tempo_push_b) own_hang_b = true;
 						}
 						{
@@ -1016,8 +1008,8 @@ int Board::get_pawn_structure(float display_factor)
 									}
 									break;
 								}
-								int Ek = (int)white_controls_map._array[k][col] + (int)white_pawns_map._array[k][col];
-								int Fk = (int)black_controls_map._array[k][col] + (int)black_pawns_map._array[k][col];
+								int Ek = (int)white_controls_map._array[k][col];
+								int Fk = (int)black_controls_map._array[k][col];
 								if (Ek > Fk) {
 									int sq_stop = passed_pawns[k >= 1 ? 7 - k : 6];
 									sq_stop = pp_cap(sq_stop, white_controls_map._array[k][col], white_pawns_map._array[k][col], black_pawns_map._array[k][col], k, col, true);
@@ -1049,9 +1041,6 @@ int Board::get_pawn_structure(float display_factor)
 						if (b_connected) {
 							passed_value = passed_value * connected_passed_pawn_bonus;
 						}
-					// General x1.5 for every passer (mirror of white).
-					passed_value = passed_value * 1.5f;
-
 					// 8/8/4p2p/1R6/pPpP1k2/K6P/8/8 b - - 0 43
 
 					// 8/8/7P/6p1/pP1p4/P7/3Kpk2/8 w - - 2 8
