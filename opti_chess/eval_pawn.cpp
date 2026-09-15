@@ -262,6 +262,29 @@ int Board::get_pawn_structure(float display_factor)
 		return e ? (float)atof(e) : 5.0f;
 	}();
 
+	// Promotion race (established passers only, v1, roadmap P8). Per
+	// passer: arrival in plies (2d-1 owner to move, 2d otherwise, no
+	// kui tempo under exclusion) + certainty (enemy king out of square
+	// with tempo, clear road, tenable own square). Global earliest
+	// certain arrival wins (winner-takes-all, losers 0); margin in
+	// plies vs the best certain enemy answer (none = runaway): <=0 none,
+	// 1 half, >=2 full top-up toward quasi-queen. Total capped at the
+	// END (path + topup <= Q by construction); per-square caps already
+	// inside the path. Pre-scale units == final cp (net x1.0 scheme).
+	// v1 limits: no from-afar piece interception (needs attacker-value
+	// maps, roadmap A.1), no Chebyshev-inside rescue (conservative).
+	static const float pp_race_f = [] {
+		const char* e = getenv("OPTI_PP_RACE");
+		return e ? (float)atof(e) : 1.0f;
+	}();
+	static const float pp_race_q = [] {
+		const char* e = getenv("OPTI_PP_RACE_Q");
+		return e ? (float)atof(e) : 900.0f;
+	}();
+	struct PPRaceCand { bool white; int arrival; int col; float path; bool certain; };
+	PPRaceCand race_cands[16];
+	int race_n = 0;
+
 	// min-cap when a square is controlled and no friendly pawn protects it.
 	// Pre-scale units (net x1.0 here): effective 75/240 final, as before.
 	static constexpr int pp_pawn_control_cap = 75;
@@ -820,6 +843,16 @@ int Board::get_pawn_structure(float display_factor)
 						main_GUI._eval_components += "PPDIAG w " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)path_value) + " minsq=" + to_string((int)worst_k) + " st=" + to_string((path_stopped || own_hang) ? 1 : 0) + '\n';
 				}
 
+				// Race candidate: arrival in plies + certainty (king out
+				// with tempo, clear road, tenable own square).
+				if (pp_race_f > 0.0f && race_n < 16) {
+					int d_push = 7 - (int)row;
+					int arrival = 2 * d_push - ((_player && !tempo_excl) ? 1 : 0);
+					bool sq_ok = (int)black_controls_map._array[row][col] <= (int)white_controls_map._array[row][col];
+					bool certain = !in_king_square(Pos(row, col), false) && !path_stopped && !own_hang && sq_ok;
+					race_cands[race_n++] = { true, arrival, (int)col, path_value, certain };
+				}
+
 				// Only the most advanced pawn on the file counts: the ones behind it are stuck
 				break;
 				}
@@ -1058,6 +1091,15 @@ int Board::get_pawn_structure(float display_factor)
 						main_GUI._eval_components += "PPDIAG b " + to_string((int)col) + to_string((int)row) + " path=" + to_string((int)passed_value) + " minsq=" + to_string((int)worst_k) + " st=" + to_string((path_stopped || own_hang_b) ? 1 : 0) + '\n';
 					}
 
+					// Race candidate (mirror of white).
+					if (pp_race_f > 0.0f && race_n < 16) {
+						int d_push = (int)row;
+						int arrival = 2 * d_push - ((!_player && !tempo_excl_b) ? 1 : 0);
+						bool sq_ok = (int)white_controls_map._array[row][col] <= (int)black_controls_map._array[row][col];
+						bool certain = !in_king_square(Pos(row, col), true) && !path_stopped && !own_hang_b && sq_ok;
+						race_cands[race_n++] = { false, arrival, (int)col, passed_value, certain };
+					}
+
 					// Only the most advanced pawn on the file counts: the ones behind it are stuck
 					break;
 					}
@@ -1067,9 +1109,51 @@ int Board::get_pawn_structure(float display_factor)
 		}
 	}
 
-	// (Removed) Out-of-square pool and promotion race: measured -14cp
-	// EG-dyn MAE for zero puzzle cost when muted (OPTI_PP_NOOOS trial);
-	// permanently removed. Path (weakest-link + divisions) only.
+	// Promotion race: earliest certain arrival wins (winner-takes-all),
+	// top-up toward quasi-queen by ply margin, capped at the END.
+	// Runaway (no certain enemy answer) only ever gets half: lone
+	// passers routinely disappoint (opposition, stalemate, checks).
+	// A queen promoting with check flips the race: excluded (ray scan
+	// on the winner only). Promotion square must be empty.
+	if (pp_race_f > 0.0f && race_n > 0) {
+		int best_w = 1000000, best_b = 1000000, bi_w = -1, bi_b = -1;
+		for (int i = 0; i < race_n; i++) {
+			if (!race_cands[i].certain) continue;
+			if (race_cands[i].white) { if (race_cands[i].arrival < best_w) { best_w = race_cands[i].arrival; bi_w = i; } }
+			else { if (race_cands[i].arrival < best_b) { best_b = race_cands[i].arrival; bi_b = i; } }
+		}
+		int wi = -1, margin = 0;
+		bool runaway = false;
+		if (bi_w >= 0 && (bi_b < 0 || best_w <= best_b)) { wi = bi_w; if (bi_b >= 0) margin = best_b - best_w; else runaway = true; }
+		else if (bi_b >= 0) { wi = bi_b; if (bi_w >= 0) margin = best_w - best_b; else runaway = true; }
+		if (wi >= 0) {
+			// Promotion square must be empty and the fresh queen must
+			// not give check (it would flip the race): otherwise void.
+			const int wcol = race_cands[wi].col;
+			const uint8_t pr = race_cands[wi].white ? 7 : 0;
+			bool promo_ok = (_array[pr][wcol] == none);
+			if (promo_ok) {
+				const Pos kp = race_cands[wi].white ? _black_king_pos : _white_king_pos;
+				const int dr = (int)kp.row - (int)pr, dc = (int)kp.col - wcol;
+				if ((dr == 0 || dc == 0 || abs(dr) == abs(dc)) && (dr != 0 || dc != 0)) {
+					const int sr = (dr > 0) - (dr < 0), sc = (dc > 0) - (dc < 0);
+					int r = (int)pr + sr, c = wcol + sc;
+					bool blocked = false;
+					while (r != (int)kp.row || c != (int)kp.col) { if (_array[r][c] != none) { blocked = true; break; } r += sr; c += sc; }
+					if (!blocked) promo_ok = false;
+				}
+			}
+			float frac = (!promo_ok || margin <= 0) ? 0.0f : (runaway || margin == 1 ? 0.5f : 1.0f);
+			float topup = (frac > 0.0f ? max(0.0f, pp_race_q - race_cands[wi].path) * frac : 0.0f) * pp_race_f;
+			if (topup > 0.0f) {
+				if (race_cands[wi].white) passed_pawns_value += topup * passed_adv;
+				else passed_pawns_value -= topup * passed_adv;
+				static const bool rdiag = getenv("OPTI_PP_RDIAG") != nullptr;
+				if (rdiag)
+					main_GUI._eval_components += string("RDIAG ") + (race_cands[wi].white ? "w " : "b ") + to_string(race_cands[wi].col) + " arr=" + to_string(race_cands[wi].arrival) + " mg=" + to_string(margin) + " top=" + to_string((int)topup) + '\n';
+			}
+		}
+	}
 
 	// Passer sub-component scale: applied here so display AND total
 	// see scaled values (the x0.2 structure coef applies later outside).
