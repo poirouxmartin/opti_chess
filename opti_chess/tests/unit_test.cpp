@@ -3918,6 +3918,17 @@ TEST(Puzzle, WorkerStatusText) {
 		"worker: REFINING (arenas full) iters=10 - DEL to recycle");
 }
 
+// Bug #1 viz ("au moins"): buffer occupancy + FULL flags shown in the UI.
+// buffer_status_text is pure; fields are filled by update_snapshot().
+TEST(Puzzle, BufferStatusText) {
+	EXPECT_EQ(buffer_status_text(0, 0, 0, 0, 0, 0, 0),
+		"buffers:\nboards: 0/0\nnodes: 0/0\nTT: 0/uncapped\nnodemap: 0");
+	EXPECT_EQ(buffer_status_text(123, 641763, 456, 641763, 5000000, 5000000, 789),
+		"buffers:\nboards: 123/641763\nnodes: 456/641763\nTT: 5000000/5000000 FULL\nnodemap: 789");
+	EXPECT_EQ(buffer_status_text(641763, 641763, 641763, 641763, 12, 5000000, 0),
+		"buffers:\nboards: 641763/641763 FULL\nnodes: 641763/641763 FULL\nTT: 12/5000000\nnodemap: 0");
+}
+
 // Bug #1 (capped arenas keep refining): saturating the arenas used to park
 // the worker forever ("analysis stops after ~30s for no reason"). Drain the
 // free-lists (simulated saturation), run capped iterations, and assert the

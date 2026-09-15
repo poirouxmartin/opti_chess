@@ -1623,6 +1623,16 @@ void GUI::update_snapshot(bool heavy) {
 				child->_deep_evaluation._avg_score
 			});
 		}
+		// Buffer occupancy for the panel (bug #1 viz). O(1) reads of the
+		// CALLER's own thread_local structures (no cross-thread race):
+		// worker iterations show worker arenas, inline searches main's.
+		_tree_snapshot.arena_boards_cap = monte_board_buffer._length;
+		_tree_snapshot.arena_boards_used = (long long)monte_board_buffer._length - (long long)monte_board_buffer._free_indices.size();
+		_tree_snapshot.arena_nodes_cap = monte_node_buffer._length;
+		_tree_snapshot.arena_nodes_used = (long long)monte_node_buffer._length - (long long)monte_node_buffer._free_indices.size();
+		_tree_snapshot.tt_cap = transposition_table._length;
+		_tree_snapshot.tt_used = (long long)transposition_table._hash_table.size();
+		_tree_snapshot.nodemap_used = (long long)node_map.size();
 		_tree_snapshot.valid = true;
 	}
 }
@@ -2277,7 +2287,10 @@ void GUI::draw()
 	string monte_carlo_text = static_cast<string>(_grogros_analysis ? "STOP GrogrosZero-Auto (CTRL-H)" : "RUN GrogrosZero-Auto (CTRL-G)") + "\nCONTROLS (H)" + "\n\nSEARCH PARAMETERS\nalpha: " + to_string(_alpha) + "\nbeta: " + to_string(_beta) + "\ngamma : " + to_string(_gamma) + "\nq_depth : " + to_string(_quiescence_depth) + "\nTT main search : " + (_tt_main_search ? "true" : "false") + " (I)" + "\nTT node DAG : " + (_tt_node_dag ? "true" : "false") + " (O)"
 		+ "\n" + worker_status_text(_compute_running.load(std::memory_order_acquire),
 			_worker_blocked_full.load(std::memory_order_acquire),
-			_tree_snapshot.iterations);
+			_tree_snapshot.iterations)
+		+ "\n" + buffer_status_text(_tree_snapshot.arena_boards_used, _tree_snapshot.arena_boards_cap,
+			_tree_snapshot.arena_nodes_used, _tree_snapshot.arena_nodes_cap,
+			_tree_snapshot.tt_used, _tree_snapshot.tt_cap, _tree_snapshot.nodemap_used);
 	
 	// If a search has happened (use snapshot for consistency; verdict =
 	// most-explored like the bench, not best-eval)

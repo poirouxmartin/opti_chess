@@ -37,6 +37,21 @@ inline string worker_status_text(bool running, bool capped_full, long long iters
 	return "worker: SEARCHING";
 }
 
+// Buffer occupancy line (bug #1 "au moins": sizes + FULL flags in the UI).
+// Pure function for unit tests; fields come from the snapshot.
+inline string buffer_status_text(long long boards_used, long long boards_cap,
+	long long nodes_used, long long nodes_cap,
+	long long tt_used, long long tt_cap, long long nodemap_used) {
+	string s = "buffers:\nboards: " + to_string(boards_used) + "/" + to_string(boards_cap);
+	if (boards_cap > 0 && boards_used >= boards_cap) s += " FULL";
+	s += "\nnodes: " + to_string(nodes_used) + "/" + to_string(nodes_cap);
+	if (nodes_cap > 0 && nodes_used >= nodes_cap) s += " FULL";
+	s += "\nTT: " + to_string(tt_used) + "/" + (tt_cap > 0 ? to_string(tt_cap) : string("uncapped"));
+	if (tt_cap > 0 && tt_used >= tt_cap) s += " FULL";
+	s += "\nnodemap: " + to_string(nodemap_used);
+	return s;
+}
+
 // TODO: add const in a lot more places
 
 // GUI
@@ -294,6 +309,17 @@ public:
 		int nodes = 0;
 		int time_spent = 0;
 		float avg_score = 0.0f;
+		// Buffer occupancy for the panel (bug #1 "au moins": sizes + FULL
+		// flags in the UI). Filled by update_snapshot() on the searching
+		// thread (worker's arenas under worker search, main's under inline
+		// search), read lock-free in draw(). used = cap - free.size().
+		long long arena_boards_used = 0;
+		long long arena_boards_cap = 0;
+		long long arena_nodes_used = 0;
+		long long arena_nodes_cap = 0;
+		long long tt_used = 0;
+		long long tt_cap = 0; // 0 = never init'ed on this thread (uncapped)
+		long long nodemap_used = 0;
 		bool valid = false;
 		bool board_player = false;
 		// Arrow data: move + chosen_iterations for each child
