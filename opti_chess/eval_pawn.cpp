@@ -281,6 +281,14 @@ int Board::get_pawn_structure(float display_factor)
 		const char* e = getenv("OPTI_PP_RACE_Q");
 		return e ? (float)atof(e) : 900.0f;
 	}();
+	static const float pp_race_m1 = [] {
+		const char* e = getenv("OPTI_PP_RACE_M1");
+		return e ? (float)atof(e) : 0.25f;
+	}();
+	static const float pp_race_rw = [] {
+		const char* e = getenv("OPTI_PP_RACE_RW");
+		return e ? (float)atof(e) : 0.5f;
+	}();
 	struct PPRaceCand { bool white; int arrival; int col; float path; bool certain; };
 	PPRaceCand race_cands[16];
 	int race_n = 0;
@@ -760,6 +768,7 @@ int Board::get_pawn_structure(float display_factor)
 				float worst_path = 1e30f;
 				int worst_k = row;
 				bool path_stopped = false;
+				bool path_own_block = false;
 				// Tempo credit: white runner, white to move, next free.
 				bool tempo_push = false;
 				if (pp_tempo_f > 0.0f && _player && row < 7 && _array[row + 1][col] == none) {
@@ -799,6 +808,7 @@ int Board::get_pawn_structure(float display_factor)
 								if ((float)sq_blk < worst_path) { worst_path = (float)sq_blk; worst_k = k; }
 								path_stopped = true;
 							}
+							else path_own_block = true;
 							break;
 						}
 						int Ek = (int)black_controls_map._array[k][col];
@@ -849,7 +859,7 @@ int Board::get_pawn_structure(float display_factor)
 					int d_push = 7 - (int)row;
 					int arrival = 2 * d_push - ((_player && !tempo_excl) ? 1 : 0);
 					bool sq_ok = (int)black_controls_map._array[row][col] <= (int)white_controls_map._array[row][col];
-					bool certain = !in_king_square(Pos(row, col), false) && !path_stopped && !own_hang && sq_ok;
+					bool certain = !in_king_square(Pos(row, col), false) && !path_stopped && !path_own_block && !own_hang && sq_ok;
 					race_cands[race_n++] = { true, arrival, (int)col, path_value, certain };
 				}
 
@@ -995,6 +1005,7 @@ int Board::get_pawn_structure(float display_factor)
 						float worst_path = 1e30f;
 						int worst_k = row;
 						bool path_stopped = false;
+						bool path_own_block = false;
 						// Tempo credit (mirror): black runner, black to move.
 						bool tempo_push_b = false;
 						if (pp_tempo_f > 0.0f && !_player && row > 0 && _array[row - 1][col] == none) {
@@ -1042,6 +1053,7 @@ int Board::get_pawn_structure(float display_factor)
 										if ((float)sq_blk < worst_path) { worst_path = (float)sq_blk; worst_k = k; }
 										path_stopped = true;
 									}
+									else path_own_block = true;
 									break;
 								}
 								int Ek = (int)white_controls_map._array[k][col];
@@ -1096,7 +1108,7 @@ int Board::get_pawn_structure(float display_factor)
 						int d_push = (int)row;
 						int arrival = 2 * d_push - ((!_player && !tempo_excl_b) ? 1 : 0);
 						bool sq_ok = (int)white_controls_map._array[row][col] <= (int)black_controls_map._array[row][col];
-						bool certain = !in_king_square(Pos(row, col), true) && !path_stopped && !own_hang_b && sq_ok;
+						bool certain = !in_king_square(Pos(row, col), true) && !path_stopped && !path_own_block && !own_hang_b && sq_ok;
 						race_cands[race_n++] = { false, arrival, (int)col, passed_value, certain };
 					}
 
@@ -1143,7 +1155,7 @@ int Board::get_pawn_structure(float display_factor)
 					if (!blocked) promo_ok = false;
 				}
 			}
-			float frac = (!promo_ok || margin <= 0) ? 0.0f : (runaway || margin == 1 ? 0.5f : 1.0f);
+			float frac = (!promo_ok || margin <= 0) ? 0.0f : (runaway ? pp_race_rw : (margin == 1 ? pp_race_m1 : 1.0f));
 			float topup = (frac > 0.0f ? max(0.0f, pp_race_q - race_cands[wi].path) * frac : 0.0f) * pp_race_f;
 			if (topup > 0.0f) {
 				if (race_cands[wi].white) passed_pawns_value += topup * passed_adv;
