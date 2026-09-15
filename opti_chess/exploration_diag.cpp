@@ -835,6 +835,12 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 		child = monte_node_buffer.get_first_free_node();
 
 		if (child == nullptr) {
+			// Saturation plug (bug #1): the board popped above was never
+			// attached — give the slot back, or boards drain while nodes
+			// are full and both arenas end up wedged.
+			if (new_board->_buffer_index >= 0 && !monte_board_buffer._bulk_resetting) {
+				monte_board_buffer.free_index(new_board->_buffer_index);
+			}
 			drop_claim();
 			return;
 		}
@@ -893,6 +899,10 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 			child = monte_node_buffer.get_first_free_node();
 
 			if (child == nullptr) {
+				// Saturation plug (bug #1): same orphaned-board give-back as above.
+				if (new_board->_buffer_index >= 0 && !monte_board_buffer._bulk_resetting) {
+					monte_board_buffer.free_index(new_board->_buffer_index);
+				}
 				drop_claim();
 				return;
 			}
@@ -2313,6 +2323,11 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 
 			// Buffer full
 			if (child == nullptr) {
+				// Saturation plug (bug #1): the scratch board popped above
+				// was never attached — give the slot back.
+				if (new_board->_buffer_index >= 0 && !monte_board_buffer._bulk_resetting) {
+					monte_board_buffer.free_index(new_board->_buffer_index);
+				}
 				_time_spent += clock() - begin_monte_time;
 				QCOUNT(buffer_full);
 				if (g_shared_tree && q_claimed) {

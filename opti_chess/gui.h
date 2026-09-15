@@ -26,6 +26,17 @@ void debug_log(const char* fmt, ...);
 // Game over flag (defined in gui.cpp, read here to block moves/banner)
 extern bool main_game_over;
 
+// Worker status line (bug #1: the analysis never goes silent). Pure function
+// of the worker atomics so it is unit-testable and callable lock-free from
+// draw(). The worker refines in place when arenas are full (it never parks),
+// so the only states are IDLE / SEARCHING / REFINING.
+inline string worker_status_text(bool running, bool capped_full, long long iters) {
+	if (!running) return "worker: IDLE";
+	if (capped_full)
+		return "worker: REFINING (arenas full) iters=" + to_string(iters) + " - DEL to recycle";
+	return "worker: SEARCHING";
+}
+
 // TODO: add const in a lot more places
 
 // GUI

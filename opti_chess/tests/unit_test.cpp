@@ -3905,6 +3905,80 @@ TEST(Puzzle, Dxh7MateAnnounced) {
 	g_search_abort.store(false, std::memory_order_release);
 }
 
+// Bug #1 (analysis never goes silent): worker_status_text is a pure function
+// of the worker atomics shown in the analysis panel. The worker refines in
+// place on full arenas (never parks), hence IDLE / SEARCHING / REFINING.
+TEST(Puzzle, WorkerStatusText) {
+	EXPECT_EQ(worker_status_text(false, false, 0), "worker: IDLE");
+	EXPECT_EQ(worker_status_text(false, true, 50721), "worker: IDLE");
+	EXPECT_EQ(worker_status_text(true, false, 1200), "worker: SEARCHING");
+	EXPECT_EQ(worker_status_text(true, true, 50721),
+		"worker: REFINING (arenas full) iters=50721 - DEL to recycle");
+	EXPECT_EQ(worker_status_text(true, true, 10),
+		"worker: REFINING (arenas full) iters=10 - DEL to recycle");
+}
+
+// Bug #1 (capped arenas keep refining): saturating the arenas used to park
+// the worker forever ("analysis stops after ~30s for no reason"). Drain the
+// free-lists (simulated saturation), run capped iterations, and assert the
+// search terminates, consumes nothing (no expansion, no saturation leak)
+// and still visits children (refinement). Drained indices are restored and
+// the probe tree recycled, so later tests are unaffected.
+TEST(Puzzle, CappedArenaRefines) {
+	static Evaluator evaluator;
+	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
+	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+	monte_board_buffer.reset(); monte_node_buffer.reset();
+	transposition_table.clear(); node_map.clear();
+	g_buffers_full_logged = false; g_tt_main_search = false; g_tt_node_dag = false;
+	g_search_abort.store(false, std::memory_order_release);
+	g_search_deadline.store((clock_t)0, std::memory_order_release);
+	Board b;
+	b.from_fen("rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 0 1");
+	Board* root_board = monte_board_buffer.get_first_free_board();
+	ASSERT_TRUE(root_board != nullptr);
+	root_board->copy_data(b, false, true);
+	root_board->_is_active = true;
+	Node* root = monte_node_buffer.get_first_free_node();
+	ASSERT_TRUE(root != nullptr);
+	root->reset(false);
+	root->_board = root_board;
+	root->_is_active = true;
+	auto child_visits = [&]() {
+		long long v = 0;
+		for (const auto& kv : root->_children)
+			v += kv.second._chosen_iterations.load(std::memory_order_relaxed);
+		return v;
+	};
+	// Phase 1: grow a small tree.
+	root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 1500, 10);
+	ASSERT_GT(root->children_count(), 0);
+	const long long visits_grown = child_visits();
+	// Phase 2: simulate saturation by draining the free-lists.
+	std::vector<int> saved_boards, saved_nodes;
+	saved_boards.reserve(monte_board_buffer._free_indices.size());
+	saved_nodes.reserve(monte_node_buffer._free_indices.size());
+	int bi = 0;
+	while ((bi = monte_board_buffer.get_first_free_index()) != -1) saved_boards.push_back(bi);
+	int ni = 0;
+	while ((ni = monte_node_buffer.get_first_free_index()) != -1) saved_nodes.push_back(ni);
+	ASSERT_TRUE(monte_board_buffer.is_full());
+	ASSERT_TRUE(monte_node_buffer.is_full());
+	// Phase 3: capped iterations must terminate, consume nothing, refine.
+	root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 200, 10);
+	EXPECT_TRUE(monte_board_buffer._free_indices.empty());
+	EXPECT_TRUE(monte_node_buffer._free_indices.empty());
+	EXPECT_GT(child_visits(), visits_grown);
+	// Phase 4: restore the drained slots, recycle the probe tree.
+	for (auto it = saved_boards.rbegin(); it != saved_boards.rend(); ++it)
+		monte_board_buffer.free_index(*it);
+	for (auto it = saved_nodes.rbegin(); it != saved_nodes.rend(); ++it)
+		monte_node_buffer.free_index(*it);
+	recycle_detached_node(root);
+	transposition_table.clear(); node_map.clear();
+	g_search_abort.store(false, std::memory_order_release);
+}
+
 
 
 

@@ -1367,9 +1367,9 @@ void GUI::grogros_analysis(int iterations) {
 		if (iterations_to_explore == 0)
 			iterations_to_explore = 1;
 		if (monte_board_buffer.is_full() || monte_node_buffer.is_full()) {
-			debug_log("[grogros_analysis] inline 0 iters (arenas full: boards=%d nodes=%d)",
+			debug_log("[grogros_analysis] inline refining (arenas full: boards=%d nodes=%d)",
 				(int)monte_board_buffer._length, (int)monte_node_buffer._length);
-			iterations_to_explore = 0;
+			iterations_to_explore = 1;
 		}
 		if (iterations_to_explore > 0) {
 			_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, iterations_to_explore, _quiescence_depth);
@@ -1424,6 +1424,17 @@ void GUI::grogros_analysis(int iterations) {
 					last_stuck_log = now_c;
 					debug_log("[grogros_analysis] worker STUCK? phase=%d stale=%.0fs",
 						(int)_worker_phase.load(std::memory_order_acquire), stale_s);
+				}
+			}
+			// Capped-full hint (bug #1): CTRL-G while the worker refines on
+			// full arenas used to be a silent no-op ("analysis stopped for
+			// no reason"). Throttled to the same 10s cadence as above.
+			if (_worker_blocked_full.load(std::memory_order_acquire)) {
+				static clock_t last_parked_log = 0;
+				const clock_t now_c = clock();
+				if ((double)(now_c - last_parked_log) / CLOCKS_PER_SEC > 10.0) {
+					last_parked_log = now_c;
+					debug_log("[grogros_analysis] worker capped (arenas full) - refining in place (DEL recycles)");
 				}
 			}
 			return;
@@ -1634,8 +1645,13 @@ void GUI::compute_worker() {
 			monte_board_buffer.init(ps.board_length, false);
 		if (!monte_node_buffer._init)
 			monte_node_buffer.init(ps.node_length, false);
-		debug_log("[worker] arenas init boards=%d nodes=%d (%.1fs)", ps.board_length, ps.node_length,
-			(double)(clock() - t_init0) / CLOCKS_PER_SEC);
+		// Bug #1: the TT is thread_local — without this the worker's map
+		// has _length == 0 (eviction disabled) and grows unbounded while
+		// the main thread's TT stays capped. Fixed buffer for the TT too.
+		if (!transposition_table._init)
+			transposition_table.init(ps.tt_length, nullptr, false);
+		debug_log("[worker] arenas init boards=%d nodes=%d tt=%d (%.1fs)", ps.board_length, ps.node_length,
+			ps.tt_length, (double)(clock() - t_init0) / CLOCKS_PER_SEC);
 	}
 	long long t_seen_epoch = -1;
 	unsigned long long t_seen_gen = 0;
@@ -1681,7 +1697,6 @@ void GUI::compute_worker() {
 		clock_t begin = clock();
 		clock_t last_heavy = 0; // 4Hz throttle for PV/variants strings
 		long long iters = 0;
-		long long parked_rounds = 0; // full-arena park loop iterations (log throttle)
 		_worker_phase.store(1, std::memory_order_release); // search
 		_phase_since.store(begin, std::memory_order_release);
 		while (_compute_running.load(std::memory_order_relaxed)) {
@@ -1692,33 +1707,21 @@ void GUI::compute_worker() {
 			debug_log("[worker] exit-reason=budget iters=%lld", iters);
 			break;
 		}
-		// Full arena: PARK instead of exiting (exit churns stop/start at
-		// 60fps with zero progress, and DAG-hit frees make the free-list
-		// oscillate around empty so a start-cooldown never engages). Main
-		// recycles on play/DEL; this loop re-checks space every 100ms and
-		// resumes by itself. Bounded waits keep stop_compute responsive.
-		// Both arenas gate: nodes fill without boards when search refines
-		// (no expansion), boards fill on expansion — either stalls progress.
-		if (monte_board_buffer.is_full() || monte_node_buffer.is_full()) {
-			_worker_phase.store(3, std::memory_order_release); // park
-			_phase_since.store(clock(), std::memory_order_release);
-			_worker_blocked_full.store(true, std::memory_order_release);
-			if (iters == 0 || (parked_rounds++ % 100 == 0))
-				debug_log("[worker] parked (arenas full: boards_full=%d nodes_full=%d) iters=%lld",
-					(int)monte_board_buffer.is_full(), (int)monte_node_buffer.is_full(), iters);
-			_worker_heartbeat.store(clock(), std::memory_order_release);
-			if (t_seen_epoch != _position_epoch) {
-				node_map.clear();
-				transposition_table.clear();
-				t_seen_epoch = _position_epoch;
-			}
-			{
-				std::unique_lock<std::mutex> plk(_work_mutex);
-				_work_cv.wait_for(plk, std::chrono::milliseconds(100), [&] { return !_compute_running.load(std::memory_order_acquire); });
-			}
-			continue;
+		// Full arenas: REFINE instead of parking (bug #1). The tree only
+		// grows, so nothing recycles arenas mid-analysis and a park never
+		// resolves by itself ("analysis stops after ~30s for no reason").
+		// grogros_zero already handles this: can_expand=false stops
+		// expansion and every iteration refines the existing tree (values
+		// keep converging, iters keep climbing). Play (J) / DEL recycle
+		// and expansion resumes by itself. Either arena stalling progress
+		// used to park; now both just cap expansion (nodes stall on
+		// refine-only, boards on expansion — same flag, no stall).
+		const bool capped = monte_board_buffer.is_full() || monte_node_buffer.is_full();
+		if (capped && !_worker_blocked_full.load(std::memory_order_relaxed)) {
+			debug_log("[worker] arenas full (boards_full=%d nodes_full=%d) - refining existing tree, iters=%lld",
+				(int)monte_board_buffer.is_full(), (int)monte_node_buffer.is_full(), iters);
 		}
-		_worker_blocked_full.store(false, std::memory_order_release);
+		_worker_blocked_full.store(capped, std::memory_order_release);
 		{
 			// Hard deadline like the bench: quiescence samples the clock and
 			// aborts past due, so one deep iteration cannot overrun a puzzle
@@ -1751,7 +1754,9 @@ void GUI::compute_worker() {
 			g_search_abort.store(false, std::memory_order_release);
 			if (++iters == 1 || iters % 100 == 0)
 				debug_log("[worker] iter=%lld nodes=%d", iters, (int)_root_exploration_node->_nodes);
-			_worker_blocked_full.store(false, std::memory_order_release); // productive: clear backoff
+			// NOTE: _worker_blocked_full is owned by the capped check at the
+			// top of the loop — never cleared here (that oscillated the flag
+			// true/false every iteration and spammed the transition log).
 			_worker_heartbeat.store(clock(), std::memory_order_release);
 		}
 		}
@@ -1839,6 +1844,10 @@ void GUI::stop_compute(const char* why) {
 		// on this mutex).
 		std::lock_guard<std::mutex> lk(_work_mutex);
 		was_running = _compute_running.exchange(false, std::memory_order_acq_rel);
+		// Fresh state on stop: the capped flag is re-assessed every worker
+		// round, so a stale true must not linger (it would trip the
+		// restart backoff in grogros_analysis after CTRL-H + recycle).
+		_worker_blocked_full.store(false, std::memory_order_release);
 		// Abort the in-flight iteration too: quiescence honors it unconditionally
 		// (one-visit unwind), so stop latency is bounded even mid deep search.
 		g_search_abort.store(true, std::memory_order_release);
@@ -2265,7 +2274,10 @@ void GUI::draw()
 	slider_text(_global_pgn, _text_size / 2, _board_padding_y + _board_size + _text_size * 2, _screen_width - _text_size, _screen_height - (_board_padding_y + _board_size + _text_size * 2) - _text_size / 3, _text_size / 3, &_pgn_slider, _text_color);
 
 	// Grogros analysis
-	string monte_carlo_text = static_cast<string>(_grogros_analysis ? "STOP GrogrosZero-Auto (CTRL-H)" : "RUN GrogrosZero-Auto (CTRL-G)") + "\nCONTROLS (H)" + "\n\nSEARCH PARAMETERS\nalpha: " + to_string(_alpha) + "\nbeta: " + to_string(_beta) + "\ngamma : " + to_string(_gamma) + "\nq_depth : " + to_string(_quiescence_depth) + "\nTT main search : " + (_tt_main_search ? "true" : "false") + " (I)" + "\nTT node DAG : " + (_tt_node_dag ? "true" : "false") + " (O)";
+	string monte_carlo_text = static_cast<string>(_grogros_analysis ? "STOP GrogrosZero-Auto (CTRL-H)" : "RUN GrogrosZero-Auto (CTRL-G)") + "\nCONTROLS (H)" + "\n\nSEARCH PARAMETERS\nalpha: " + to_string(_alpha) + "\nbeta: " + to_string(_beta) + "\ngamma : " + to_string(_gamma) + "\nq_depth : " + to_string(_quiescence_depth) + "\nTT main search : " + (_tt_main_search ? "true" : "false") + " (I)" + "\nTT node DAG : " + (_tt_node_dag ? "true" : "false") + " (O)"
+		+ "\n" + worker_status_text(_compute_running.load(std::memory_order_acquire),
+			_worker_blocked_full.load(std::memory_order_acquire),
+			_tree_snapshot.iterations);
 	
 	// If a search has happened (use snapshot for consistency; verdict =
 	// most-explored like the bench, not best-eval)
