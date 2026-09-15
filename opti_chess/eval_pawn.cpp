@@ -262,9 +262,10 @@ int Board::get_pawn_structure(float display_factor)
 		return e ? (float)atof(e) : 5.0f;
 	}();
 
-	// min-cap when a square is controlled and no friendly pawn protects it
-	static constexpr int pp_pawn_control_cap = 100;
-	static constexpr int pp_piece_control_cap = 320;
+	// min-cap when a square is controlled and no friendly pawn protects it.
+	// Pre-scale units (net x1.0 here): effective 75/240 final, as before.
+	static constexpr int pp_pawn_control_cap = 75;
+	static constexpr int pp_piece_control_cap = 240;
 	// opportunity-cost malus for the side owning the blocker, by piece
 	// (knight blockades cheap, queen babysitting punished, king 42);
 	// pawns: 0 (same-file-ahead pawn means candidate branch anyway).
@@ -351,9 +352,11 @@ int Board::get_pawn_structure(float display_factor)
 	};
 
 	// Passed pawn value table, indexed by how far the pawn has advanced.
-	// Geometric x2: each rank is worth at least twice the previous one
-	// (anchor 1280 ~= queen + tempo on 7th).
-	static constexpr int passed_pawns[8] = { 0, 40, 80, 160, 320, 640, 1280, 0 };
+	// Geometric x2: each rank is worth at least twice the previous one.
+	// Pre-scale units (single x5 internal factor, x0.2 global structure
+	// coef): values read as the historical finals, behaviour unchanged
+	// (free 7th = 960 final, as with the old 1280 x1.5 x2.5 x0.2 stack).
+	static constexpr int passed_pawns[8] = { 0, 30, 60, 120, 240, 480, 960, 0 };
 
 	// A stop on the path (enemy piece, or enemy pressure beating allied
 	// pressure on a square, own square included) divides the pawn value.
@@ -453,8 +456,8 @@ int Board::get_pawn_structure(float display_factor)
 		bool hstopped = false;
 		bool htempo = false;
 		if (pp_tempo_f > 0.0f && _player && srow < 7 && _array[srow + 1][col] == none) {
-			int En = (int)enCM._array[srow + 1][col];
-			int Fn = (int)ownCM._array[srow + 1][col];
+			int En = (int)enCM._array[srow + 1][col] + (int)enPM._array[srow + 1][col];
+			int Fn = (int)ownCM._array[srow + 1][col] + (int)ownPM._array[srow + 1][col];
 			if (En <= Fn && !in_king_square(Pos(srow, col), false)) {
 				htempo = true;
 				for (int q = srow + 1; q <= 7; q++) {
@@ -465,8 +468,8 @@ int Board::get_pawn_structure(float display_factor)
 		bool hexcl = (htempo && pp_tempo_f >= 1.0f);
 		bool hown_hang = false;
 		{
-			int E0 = (int)enCM._array[srow][col];
-			int F0 = (int)ownCM._array[srow][col];
+			int E0 = (int)enCM._array[srow][col] + (int)enPM._array[srow][col];
+			int F0 = (int)ownCM._array[srow][col] + (int)ownPM._array[srow][col];
 			if (!hexcl && E0 > F0 && !htempo) hown_hang = true;
 		}
 		uint8_t hloop = hexcl ? (uint8_t)(srow + 1) : (uint8_t)srow;
@@ -485,8 +488,8 @@ int Board::get_pawn_structure(float display_factor)
 					}
 					break;
 				}
-				int Ek = (int)enCM._array[k][col];
-				int Fk = (int)ownCM._array[k][col];
+				int Ek = (int)enCM._array[k][col] + (int)enPM._array[k][col];
+				int Fk = (int)ownCM._array[k][col] + (int)ownPM._array[k][col];
 				if (Ek > Fk) {
 					int sq_stop = passed_pawns[k <= 6 ? k : 6];
 					sq_stop = pp_cap(sq_stop, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col], k, col, !white);
@@ -506,8 +509,8 @@ int Board::get_pawn_structure(float display_factor)
 			if ((float)sq_base < worst_path) worst_path = (float)sq_base;
 		}
 		{
-			int E0 = (int)enCM._array[srow][col];
-			int F0 = (int)ownCM._array[srow][col];
+			int E0 = (int)enCM._array[srow][col] + (int)enPM._array[srow][col];
+			int F0 = (int)ownCM._array[srow][col] + (int)ownPM._array[srow][col];
 			if (E0 > F0) hstopped = true;
 		}
 			path_value = worst_path;
@@ -519,8 +522,8 @@ int Board::get_pawn_structure(float display_factor)
 		bool hstopped_b = false;
 		bool htempo_b = false;
 		if (pp_tempo_f > 0.0f && !_player && srow > 0 && _array[srow - 1][col] == none) {
-			int En = (int)enCM._array[srow - 1][col];
-			int Fn = (int)ownCM._array[srow - 1][col];
+			int En = (int)enCM._array[srow - 1][col] + (int)enPM._array[srow - 1][col];
+			int Fn = (int)ownCM._array[srow - 1][col] + (int)ownPM._array[srow - 1][col];
 			if (En <= Fn && !in_king_square(Pos(srow, col), true)) {
 				htempo_b = true;
 				for (int q = srow - 1; q >= 0; q--) {
@@ -531,8 +534,8 @@ int Board::get_pawn_structure(float display_factor)
 		bool hexcl_b = (htempo_b && pp_tempo_f >= 1.0f);
 		bool hown_hang_b = false;
 		{
-			int E0 = (int)enCM._array[srow][col];
-			int F0 = (int)ownCM._array[srow][col];
+			int E0 = (int)enCM._array[srow][col] + (int)enPM._array[srow][col];
+			int F0 = (int)ownCM._array[srow][col] + (int)ownPM._array[srow][col];
 			if (!hexcl_b && E0 > F0 && !htempo_b) hown_hang_b = true;
 		}
 		int hloop_b = hexcl_b ? srow - 1 : srow;
@@ -551,8 +554,8 @@ int Board::get_pawn_structure(float display_factor)
 					}
 					break;
 				}
-				int Ek = (int)enCM._array[k][col];
-				int Fk = (int)ownCM._array[k][col];
+				int Ek = (int)enCM._array[k][col] + (int)enPM._array[k][col];
+				int Fk = (int)ownCM._array[k][col] + (int)ownPM._array[k][col];
 				if (Ek > Fk) {
 					int sq_stop = passed_pawns[k >= 1 ? 7 - k : 6];
 					sq_stop = pp_cap(sq_stop, enCM._array[k][col], enPM._array[k][col], ownPM._array[k][col], k, col, !white);
@@ -572,8 +575,8 @@ int Board::get_pawn_structure(float display_factor)
 			if ((float)sq_base < worst_path) worst_path = (float)sq_base;
 		}
 		{
-			int E0 = (int)enCM._array[srow][col];
-			int F0 = (int)ownCM._array[srow][col];
+			int E0 = (int)enCM._array[srow][col] + (int)enPM._array[srow][col];
+			int F0 = (int)ownCM._array[srow][col] + (int)ownPM._array[srow][col];
 			if (E0 > F0) hstopped_b = true;
 		}
 			path_value = worst_path;
@@ -648,12 +651,12 @@ int Board::get_pawn_structure(float display_factor)
 							int ownA = 0, enA = 0, ownB = 0, enB = 0;
 							int adv = (int)row + 1;
 							if (adv <= 7) {
-								ownA = (int)wcm._array[adv][col];
-								enA = (int)bcm._array[adv][col];
+								ownA = (int)wcm._array[adv][col] + (int)wpm._array[adv][col];
+								enA = (int)bcm._array[adv][col] + (int)bpm._array[adv][col];
 							}
 							if (brow >= 0) {
-								ownB = (int)wcm._array[brow][bcol];
-								enB = (int)bcm._array[brow][bcol];
+								ownB = (int)wcm._array[brow][bcol] + (int)wpm._array[brow][bcol];
+								enB = (int)bcm._array[brow][bcol] + (int)bpm._array[brow][bcol];
 							}
 							int mg = pp_margin(col, row, true);
 							float leverR = (float)(ownA + ownB - enA - enB + 1) / 3.0f;
@@ -737,8 +740,8 @@ int Board::get_pawn_structure(float display_factor)
 				// Tempo credit: white runner, white to move, next free.
 				bool tempo_push = false;
 				if (pp_tempo_f > 0.0f && _player && row < 7 && _array[row + 1][col] == none) {
-					int En = (int)black_controls_map._array[row + 1][col];
-					int Fn = (int)white_controls_map._array[row + 1][col];
+					int En = (int)black_controls_map._array[row + 1][col] + (int)black_pawns_map._array[row + 1][col];
+					int Fn = (int)white_controls_map._array[row + 1][col] + (int)white_pawns_map._array[row + 1][col];
 					if (En <= Fn && !in_king_square(Pos(row, col), false)) {
 						tempo_push = true;
 						for (uint8_t q = row + 1; q <= 7; q++) {
@@ -756,8 +759,8 @@ int Board::get_pawn_structure(float display_factor)
 				// this turn (tempo-excluded runners skip the square anyway).
 				bool own_hang = false;
 				{
-					int E0 = (int)black_controls_map._array[row][col];
-					int F0 = (int)white_controls_map._array[row][col];
+					int E0 = (int)black_controls_map._array[row][col] + (int)black_pawns_map._array[row][col];
+					int F0 = (int)white_controls_map._array[row][col] + (int)white_pawns_map._array[row][col];
 					if (!tempo_excl && E0 > F0 && !tempo_push) own_hang = true;
 				}
 				for (uint8_t k = loop_start; k <= 7; k++) {
@@ -775,8 +778,8 @@ int Board::get_pawn_structure(float display_factor)
 							}
 							break;
 						}
-						int Ek = (int)black_controls_map._array[k][col];
-						int Fk = (int)white_controls_map._array[k][col];
+						int Ek = (int)black_controls_map._array[k][col] + (int)black_pawns_map._array[k][col];
+						int Fk = (int)white_controls_map._array[k][col] + (int)white_pawns_map._array[k][col];
 						if (Ek > Fk) {
 							// Controlled square: worth base/5 (cap first),
 							// included (it drives the min); beyond excluded.
@@ -799,7 +802,7 @@ int Board::get_pawn_structure(float display_factor)
 						{
 							static const bool sqdbg = getenv("OPTI_PP_SQDBG") != nullptr;
 							if (sqdbg)
-								main_GUI._eval_components += "PPSQ w " + to_string((int)col) + to_string((int)k) + " base=" + to_string(sq_base) + " e=" + to_string(black_controls_map._array[k][col]) + " f=" + to_string(white_pawns_map._array[k][col]) + " E=" + to_string((int)black_controls_map._array[k][col]) + " F=" + to_string((int)white_controls_map._array[k][col]) + '\n';
+								main_GUI._eval_components += "PPSQ w " + to_string((int)col) + to_string((int)k) + " base=" + to_string(sq_base) + " e=" + to_string(black_controls_map._array[k][col]) + " f=" + to_string(white_pawns_map._array[k][col]) + " E=" + to_string((int)black_controls_map._array[k][col] + (int)black_pawns_map._array[k][col]) + " F=" + to_string((int)white_controls_map._array[k][col] + (int)white_pawns_map._array[k][col]) + '\n';
 						}
 					}
 					// Own square under enemy pressure: hanging (/5), kept.
@@ -885,12 +888,12 @@ int Board::get_pawn_structure(float display_factor)
 							int ownA = 0, enA = 0, ownB = 0, enB = 0;
 							int adv = (int)row - 1;
 							if (adv >= 0) {
-								ownA = (int)bcm._array[adv][col];
-								enA = (int)wcm._array[adv][col];
+								ownA = (int)bcm._array[adv][col] + (int)bpm._array[adv][col];
+								enA = (int)wcm._array[adv][col] + (int)wpm._array[adv][col];
 							}
 							if (brow >= 0) {
-								ownB = (int)bcm._array[brow][bcol];
-								enB = (int)wcm._array[brow][bcol];
+								ownB = (int)bcm._array[brow][bcol] + (int)bpm._array[brow][bcol];
+								enB = (int)wcm._array[brow][bcol] + (int)wpm._array[brow][bcol];
 							}
 							int mg = pp_margin(col, row, false);
 							float leverR = (float)(ownA + ownB - enA - enB + 1) / 3.0f;
@@ -962,8 +965,8 @@ int Board::get_pawn_structure(float display_factor)
 						// Tempo credit (mirror): black runner, black to move.
 						bool tempo_push_b = false;
 						if (pp_tempo_f > 0.0f && !_player && row > 0 && _array[row - 1][col] == none) {
-							int En = (int)white_controls_map._array[row - 1][col];
-							int Fn = (int)black_controls_map._array[row - 1][col];
+							int En = (int)white_controls_map._array[row - 1][col] + (int)white_pawns_map._array[row - 1][col];
+							int Fn = (int)black_controls_map._array[row - 1][col] + (int)black_pawns_map._array[row - 1][col];
 							if (En <= Fn && !in_king_square(Pos(row, col), true)) {
 								tempo_push_b = true;
 								for (int_fast8_t q = row - 1; q >= 0; q--) {
@@ -979,8 +982,8 @@ int Board::get_pawn_structure(float display_factor)
 						// this turn (tempo-excluded runners skip the square anyway).
 						bool own_hang_b = false;
 						{
-							int E0 = (int)white_controls_map._array[row][col];
-							int F0 = (int)black_controls_map._array[row][col];
+							int E0 = (int)white_controls_map._array[row][col] + (int)white_pawns_map._array[row][col];
+							int F0 = (int)black_controls_map._array[row][col] + (int)black_pawns_map._array[row][col];
 							if (!tempo_excl_b && E0 > F0 && !tempo_push_b) own_hang_b = true;
 						}
 						{
@@ -1008,8 +1011,8 @@ int Board::get_pawn_structure(float display_factor)
 									}
 									break;
 								}
-								int Ek = (int)white_controls_map._array[k][col];
-								int Fk = (int)black_controls_map._array[k][col];
+								int Ek = (int)white_controls_map._array[k][col] + (int)white_pawns_map._array[k][col];
+								int Fk = (int)black_controls_map._array[k][col] + (int)black_pawns_map._array[k][col];
 								if (Ek > Fk) {
 									int sq_stop = passed_pawns[k >= 1 ? 7 - k : 6];
 									sq_stop = pp_cap(sq_stop, white_controls_map._array[k][col], white_pawns_map._array[k][col], black_pawns_map._array[k][col], k, col, true);
