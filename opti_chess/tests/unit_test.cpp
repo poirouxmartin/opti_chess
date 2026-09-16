@@ -3800,6 +3800,75 @@ TEST(Puzzle, NodeMapStaysCapped) {
 	g_tt_node_dag = false;
 }
 
+// TD-004 census (R1-DAG Kd3 stability): walk the Kd3 and Kf3 subtrees after
+// a 20k DAG search. Frozen fantasy = big live subtree, no proven draws,
+// static value; converged win = exhausted/terminal-heavy. Diagnostic prints
+// + structural asserts only (run-to-run wobble, TD-008: never exact values).
+TEST(Puzzle, Kd3SubtreeCensus) {
+	static Evaluator evaluator;
+	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
+	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+	monte_board_buffer.reset(); monte_node_buffer.reset();
+	transposition_table.clear(); node_map.clear();
+	g_buffers_full_logged = false; g_tt_main_search = false; g_tt_node_dag = true;
+	g_search_abort.store(false, std::memory_order_release);
+	g_search_deadline.store((clock_t)0, std::memory_order_release);
+	Board b;
+	b.from_fen("8/2k5/3p4/p2P1p2/P2P1P2/4K3/8/8 w - - 14 8");
+	Board* root_board = monte_board_buffer.get_first_free_board();
+	ASSERT_TRUE(root_board != nullptr);
+	root_board->copy_data(b, false, true);
+	root_board->_is_active = true;
+	Node* root = monte_node_buffer.get_first_free_node();
+	ASSERT_TRUE(root != nullptr);
+	root->reset(false);
+	root->_board = root_board;
+	root->_is_active = true;
+	root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 20000, 10);
+	auto census = [&](const Move& mv, const char* tag) {
+		auto it = root->_children.find(mv);
+		if (it == root->_children.end() || it->second._node == nullptr) {
+			cout << "  " << tag << ": child missing" << endl;
+			return;
+		}
+		std::unordered_set<Node*> seen;
+		long long n_total = 0, n_term0 = 0, n_termMate = 0, n_nonterm = 0;
+		int maxd = 0;
+		vector<pair<Node*, int>> st = { { it->second._node, 1 } };
+		while (!st.empty()) {
+			auto [nd, d] = st.back(); st.pop_back();
+			if (nd == nullptr || !seen.insert(nd).second) continue;
+			n_total++; maxd = max(maxd, d);
+			if (nd->_is_terminal) {
+				if (nd->_deep_evaluation._value == 0) n_term0++;
+				else n_termMate++;
+			} else n_nonterm++;
+			for (auto const& [cm, cl] : nd->_children)
+				if (cl._node != nullptr) st.emplace_back(cl._node, d + 1);
+		}
+		const Evaluation& ev = it->second._node->_deep_evaluation;
+		cout << "  " << tag << ": total=" << n_total << " maxdepth=" << maxd
+			<< " term_draw0=" << n_term0 << " term_nonzero=" << n_termMate
+			<< " nonterm=" << n_nonterm << " value=" << ev._value << " avg=" << ev._avg_score << endl;
+	};
+	Board probe_b;
+	probe_b.from_fen("8/2k5/3p4/p2P1p2/P2P1P2/4K3/8/8 w - - 14 8");
+	Move kd3 = resolve_san(probe_b, "Kd3");
+	Move kf3 = resolve_san(probe_b, "Kf3");
+	Move most = root->get_most_explored_child_move();
+	Move best = root->get_best_score_move(0.005, 5.0);
+	cout << "  [R1-DAG-20k census] most=" << b.move_label(most, true)
+		<< " best=" << b.move_label(best, true)
+		<< " deep=" << root->_deep_evaluation._value << endl;
+	census(kd3, "Kd3");
+	census(kf3, "Kf3");
+	// Structural invariants only (never exact moves/values: TD-008 wobble).
+	EXPECT_FALSE(kd3.is_null_move());
+	EXPECT_FALSE(kf3.is_null_move());
+	g_tt_node_dag = false;
+	g_search_abort.store(false, std::memory_order_release);
+}
+
 // Stale-abort stall (GUI "analysis stops for no reason"): stop_compute()
 // always raises g_search_abort, and the inline G-hold/ENTER paths used to
 // call grogros_zero without clearing it -> the loop broke instantly with
