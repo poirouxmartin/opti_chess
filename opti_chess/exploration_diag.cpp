@@ -691,6 +691,24 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	return;
 }
 
+// TD-001: node_map (DAG-only index) must not grow unbounded. Mirror the TT
+// amortized policy (zobrist.cpp Audit A2): when size reaches the node-pool
+// capacity, evict ~1/8 of the entries with a deterministic stride. Erasing a
+// map entry never touches the Node itself: a later probe just misses and
+// rebuilds (tree-equivalent), so eviction is always safe. Callers hold the
+// same locking as the insert they precede (mlock in shared publish paths).
+inline void enforce_node_map_cap() {
+	if (!g_tt_node_dag) return;
+	const int cap = monte_node_buffer._length > 0 ? monte_node_buffer._length : (1 << 20);
+	if (static_cast<int>(node_map.size()) < cap) return;
+	size_t target = node_map.size() / 8 + 1;
+	size_t idx = 0;
+	for (auto it = node_map.begin(); it != node_map.end() && target > 0;) {
+		if ((idx++ % 8) == 0) { it = node_map.erase(it); --target; }
+		else ++it;
+	}
+}
+
 // Explores a new move
 void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history) {
 
@@ -914,6 +932,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 			// (only COMPLETE nodes publish; a mid-build registration would
 			// hand another thread a half-built node). Legacy: unchanged.
 			if (g_tt_node_dag && !g_shared_tree) {
+				enforce_node_map_cap();
 				node_map[new_board->_zobrist_key] = child;
 				g_dag_link_misses++;
 			}
@@ -1082,6 +1101,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 				if (_children[move]._chosen_iterations == 0) _children[move]._chosen_iterations = 1;
 				if (g_tt_node_dag) {
 					std::lock_guard<std::mutex> mlock(g_node_map_mutex);
+					enforce_node_map_cap();
 					node_map[child->_board->_zobrist_key] = child;
 					g_dag_link_misses++;
 				}
@@ -1103,6 +1123,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 				if (_children[move]._chosen_iterations == 0) _children[move]._chosen_iterations = 1;
 				if (g_tt_node_dag) {
 					std::lock_guard<std::mutex> mlock(g_node_map_mutex);
+					enforce_node_map_cap();
 					node_map[child->_board->_zobrist_key] = child;
 					g_dag_link_misses++;
 				}

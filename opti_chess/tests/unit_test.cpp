@@ -3767,6 +3767,39 @@ TEST(Puzzle, Qc6RepetitionDraw) {
 	}
 }
 
+// TD-001: node_map (DAG-only index) stays capped at the node-pool size.
+// Flood past the cap with safe-miss entries (nullptr values can never
+// link-hit), run a DAG search (each insert enforces the 1/8-stride
+// eviction, TT policy mirror), assert size() <= cap afterwards.
+TEST(Puzzle, NodeMapStaysCapped) {
+	static Evaluator evaluator;
+	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
+	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+	monte_board_buffer.reset(); monte_node_buffer.reset();
+	transposition_table.clear(); node_map.clear();
+	g_buffers_full_logged = false; g_tt_main_search = false; g_tt_node_dag = true;
+	Board b;
+	b.from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
+	Board* root_board = monte_board_buffer.get_first_free_board();
+	ASSERT_TRUE(root_board != nullptr);
+	root_board->copy_data(b, false, true);
+	root_board->_is_active = true;
+	Node* root = monte_node_buffer.get_first_free_node();
+	ASSERT_TRUE(root != nullptr);
+	root->reset(false);
+	root->_board = root_board;
+	root->_is_active = true;
+	const int cap = monte_node_buffer._length > 0 ? monte_node_buffer._length : (1 << 20);
+	uint64_t k = 0x9E3779B97F4A7C15ULL;
+	for (int i = 0; i < cap + 5000; i++) { k += 0x9E3779B97F4A7C15ULL; node_map[k] = nullptr; }
+	EXPECT_GT((int)node_map.size(), cap);
+	root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 2000, 10);
+	EXPECT_LE((int)node_map.size(), cap);
+	EXPECT_TRUE(root->_children.size() > 0);
+	node_map.clear();
+	g_tt_node_dag = false;
+}
+
 // Stale-abort stall (GUI "analysis stops for no reason"): stop_compute()
 // always raises g_search_abort, and the inline G-hold/ENTER paths used to
 // call grogros_zero without clearing it -> the loop broke instantly with
