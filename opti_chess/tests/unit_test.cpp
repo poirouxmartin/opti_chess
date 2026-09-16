@@ -3717,7 +3717,7 @@ TEST(Puzzle, SearchRepetitionPlumbing) {
 	PositionHistory ph = b._positions_history;
 	Board c(b, true, true);
 	c.make_move(mv(1, 5, 2, 5), false, true); // Qc6+ (2nd occurrence)
-	cout << "plumbing: " << (position_is_draw_by_repetition(ph, c, 3) ? "DRAW" : "NO-DRAW") << endl;
+	cout << "plumbing: " << (position_is_draw_by_repetition(ph, c, 2) ? "DRAW" : "NO-DRAW") << endl;
 	SUCCEED();
 }
 

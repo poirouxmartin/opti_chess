@@ -92,7 +92,7 @@ void dump_qstats() {
 
 namespace {
 
-	constexpr uint8_t search_repetition_limit = 3; // Search: twofold (root included, see position_is_draw_by_repetition) — a repeat scores draw instantly. Game declaration stays threefold (FIDE) in the game flow.
+	constexpr uint8_t search_repetition_limit = 2; // Search: twofold, root included — a repeat (2nd occurrence) scores draw instantly. Game declaration stays threefold (FIDE) in the game flow.
 
 // #11 Plan B - DISPLAY cutoff threshold (get_exploration_variants /
 // get_main_depth), decoupled from search pruning. search_repetition_limit
@@ -242,12 +242,10 @@ thread_local uint64_t g_search_root_key = 0;
 
 bool position_is_draw_by_repetition(const PositionHistory& path_history, Board& board, uint8_t repetition_limit = search_repetition_limit) {
 	const uint8_t count = position_history_count(path_history, board);
+	// Twofold in search, root included: the 2nd occurrence scores draw
+	// instantly, redirecting search to wins elsewhere. Game declaration
+	// stays threefold (FIDE) in the game flow.
 	if (count + 1 >= repetition_limit) return true;
-	// Twofold in search, root included (revert of root-threefold): a repeat
-	// means both sides already returned here once, so scoring it draw
-	// instantly redirects search to wins elsewhere. Game declaration stays
-	// threefold (FIDE) in the game flow.
-	if (count >= 1) return true;
 	return false;
 }
 
