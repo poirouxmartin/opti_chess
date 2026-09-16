@@ -254,6 +254,11 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 	if (display)
 		main_GUI._eval_components += "ADVANCEMENT: " + to_string(static_cast<int>(round(100 * _adv))) + "%\n";
 
+	// Control maps, computed ONCE per evaluation on the stack (TD-004 diet:
+	// no Board storage) and threaded as const ref into every eval section.
+	EvalControls eval_ctx;
+	compute_eval_controls(eval_ctx);
+
 	// Nature of the position (open/closed)
 	auto t_matpos0 = std::chrono::steady_clock::now();
 	const float position_nature = get_position_nature();
@@ -338,7 +343,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Trapped pieces
 	if (evaluator->_trapped_pieces != 0.0f) {
-		const int trapped_pieces = get_trapped_pieces() * evaluator->_trapped_pieces;
+		const int trapped_pieces = get_trapped_pieces(eval_ctx) * evaluator->_trapped_pieces;
 		if (display)
 			main_GUI._eval_components += "trapped pieces: " + (trapped_pieces >= 0 ? string("+") : string()) + to_string(trapped_pieces) + "\n";
 		total_positioning += trapped_pieces;
@@ -346,7 +351,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Pawn push threatening an enemy piece
 	if (evaluator->_pawn_push_threats != 0.0f) {
-		const int pawn_push_threat = get_pawn_push_threats() * evaluator->_pawn_push_threats;
+		const int pawn_push_threat = get_pawn_push_threats(eval_ctx) * evaluator->_pawn_push_threats;
 		if (display)
 			main_GUI._eval_components += "pawn push threats: " + (pawn_push_threat >= 0 ? string("+") : string()) + to_string(pawn_push_threat) + "\n";
 		total_positioning += pawn_push_threat;
@@ -354,7 +359,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Queen safety
 	if (evaluator->_queen_safety != 0.0f) {
-		const int queen_safety = (get_queen_safety(true) - get_queen_safety(false)) * evaluator->_queen_safety;
+		const int queen_safety = (get_queen_safety(true, eval_ctx) - get_queen_safety(false, eval_ctx)) * evaluator->_queen_safety;
 		if (display)
 			main_GUI._eval_components += "queen safety: " + (queen_safety >= 0 ? string("+") : string()) + to_string(queen_safety) + "\n";
 		total_positioning += queen_safety;
@@ -386,7 +391,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 	// Long-term piece mobility
 	if (evaluator->_long_term_piece_mobility != 0.0f) {
 		auto t_mob0 = std::chrono::steady_clock::now();
-		const int long_term_mobility = get_long_term_piece_mobility() * evaluator->_long_term_piece_mobility;
+		const int long_term_mobility = get_long_term_piece_mobility(eval_ctx) * evaluator->_long_term_piece_mobility;
 		g_t_mobility_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_mob0).count();
 		if (display)
 			main_GUI._eval_components += "long-term piece mobility: " + (long_term_mobility >= 0 ? string("+") : string()) + to_string(long_term_mobility) + "\n";
@@ -400,7 +405,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 		// (1 - closed_damp * position_nature)) and compensate by raising the
 		// default _short_term_piece_mobility coef. closed_damp=0 = no change.
 		constexpr float closed_damp = 0.0f;
-		const int short_term_mobility = static_cast<int>(get_short_term_piece_mobility() * evaluator->_short_term_piece_mobility * (1.0f - closed_damp * position_nature));
+		const int short_term_mobility = static_cast<int>(get_short_term_piece_mobility(eval_ctx) * evaluator->_short_term_piece_mobility * (1.0f - closed_damp * position_nature));
 		g_t_mobility_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_mob0).count();
 		if (display)
 			main_GUI._eval_components += "short-term piece mobility: " + (short_term_mobility >= 0 ? string("+") : string()) + to_string(short_term_mobility) + "\n";
@@ -410,7 +415,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 	// Piece activity
 	if (evaluator->_piece_activity != 0.0f) {
 		auto t_mob0 = std::chrono::steady_clock::now();
-		const int piece_activity = get_piece_activity() * evaluator->_piece_activity;
+		const int piece_activity = get_piece_activity(eval_ctx) * evaluator->_piece_activity;
 		g_t_mobility_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_mob0).count();
 		if (display)
 			main_GUI._eval_components += "piece activity: " + (piece_activity >= 0 ? string("+") : string()) + to_string(piece_activity) + "\n";
@@ -529,7 +534,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 			return e ? (float)atof(e) : -1.0f;
 		}();
 		const float ps_coef = pawn_struct_coef < 0.0f ? evaluator->_pawn_structure : pawn_struct_coef;
-		const int pawn_structure = get_pawn_structure(display * ps_coef) * ps_coef;
+		const int pawn_structure = get_pawn_structure(display * ps_coef, eval_ctx) * ps_coef;
 		//if (display)
 		//	main_GUI._eval_components += "pawn structure: " + (pawn_structure >= 0 ? string("+") : string()) + to_string(pawn_structure) + "\n";
 		total_pawn_structure += pawn_structure;
@@ -545,7 +550,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Weak squares and outposts
 	if (evaluator->_weak_squares != 0.0f) {
-		const int weak_squares = (-get_weak_squares(true) + get_weak_squares(false)) * evaluator->_weak_squares * (1.0f + position_nature);
+		const int weak_squares = (-get_weak_squares(true, false, eval_ctx) + get_weak_squares(false, false, eval_ctx)) * evaluator->_weak_squares * (1.0f + position_nature);
 		if (display)
 			main_GUI._eval_components += "weak squares: " + (weak_squares >= 0 ? string("+") : string()) + to_string(weak_squares) + "\n";
 		total_pawn_structure += weak_squares;
@@ -570,7 +575,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 	// King safety
 	if (evaluator->_king_safety != 0.0f) {
 		auto t_king0 = std::chrono::steady_clock::now();
-		const int king_safety = get_king_safety(total_activity, display * evaluator->_king_safety) * evaluator->_king_safety;
+		const int king_safety = get_king_safety(total_activity, display * evaluator->_king_safety, eval_ctx) * evaluator->_king_safety;
 		g_t_king_safety_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_king0).count();
 		if (display)
 			main_GUI._eval_components += "king safety: " + (king_safety >= 0 ? string("+") : string()) + to_string(king_safety) + "\n";
@@ -616,7 +621,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// King proximity to the pawns in the endgame
 	if (evaluator->_king_proximity != 0.0f) {
-		const int king_proximity = get_king_proximity() * evaluator->_king_proximity;
+		const int king_proximity = get_king_proximity(eval_ctx) * evaluator->_king_proximity;
 		if (display)
 			main_GUI._eval_components += "king proximity: " + (king_proximity >= 0 ? string("+") : string()) + to_string(king_proximity) + "\n";
 		total_endgame += king_proximity;
@@ -747,12 +752,11 @@ int Board::material_difference() const
 	return mat;
 }
 
-// Resets the evaluation components
+// Resets the evaluation components (TD-004 diet: control maps live in the
+// caller-owned EvalControls, not in Board, so nothing to invalidate here).
 void Board::reset_eval() {
 	_displayed_components = false;
 	_advancement = false; _adv = 0;
-	_controls_map_valid = false;
-	_pawns_controls_valid = false;
 }
 int Board::get_updated_piece_values() const {
 	// Rook penalty based on the number of non-open files

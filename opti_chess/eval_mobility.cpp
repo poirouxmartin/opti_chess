@@ -386,10 +386,10 @@ int Board::get_alignments() const
 }
 
 // Updates the king positions
-int Board::get_piece_activity() const
+int Board::get_piece_activity(const EvalControls& ctx) const
 {
-	SquareMap white_map = get_white_controls_map();
-	SquareMap black_map = get_black_controls_map();
+	const SquareMap& white_map = ctx.white;
+	const SquareMap& black_map = ctx.black;
 
 	// 2r2b2/q4p1k/P1P3p1/1p1rBpPp/1P1NbP1P/2Q5/4R3/R4K2 w - - 4 37: not better for White?
 
@@ -425,15 +425,12 @@ int Board::get_piece_activity() const
 	return eval_from_progress(white_activity - black_activity, _adv, advancement_factor);
 }
 
-// Returns the map of control counts for each square, for White
-SquareMap Board::get_white_controls_map() const
+// Computes the piece-control maps of both sides into caller-owned storage.
+// Pure function of the position (always computed as a pair).
+void Board::compute_piece_controls(SquareMap& white_out, SquareMap& black_out) const
 {
-	if (_controls_map_valid)
-		return _cached_white_controls;
-
-	// Compute both maps together (always called as a pair)
-	_cached_white_controls = SquareMap();
-	_cached_black_controls = SquareMap();
+	white_out = SquareMap();
+	black_out = SquareMap();
 
 	uint64_t occ = _occupancies[2];
 	while (occ) {
@@ -442,26 +439,20 @@ SquareMap Board::get_white_controls_map() const
 		const uint8_t col = sq & 7;
 		const uint8_t piece = _array[row][col];
 		if (is_white(piece)) {
-			add_piece_controls(&_cached_white_controls, row, col, piece);
+			add_piece_controls(&white_out, row, col, piece);
 		}
 		else if (is_black(piece)) {
-			add_piece_controls(&_cached_black_controls, row, col, piece);
+			add_piece_controls(&black_out, row, col, piece);
 		}
 	}
-
-	_controls_map_valid = true;
-	return _cached_white_controls;
 }
 
-// Returns the map of control counts for each square, for Black
-SquareMap Board::get_black_controls_map() const
+// Computes all four evaluation control maps at once (pieces + pawns).
+void Board::compute_eval_controls(EvalControls& out) const
 {
-	if (_controls_map_valid)
-		return _cached_black_controls;
-
-	// Trigger computation (always computed together with white map)
-	get_white_controls_map();
-	return _cached_black_controls;
+	compute_piece_controls(out.white, out.black);
+	compute_pawn_controls_map(_array, true, out.white_pawns);
+	compute_pawn_controls_map(_array, false, out.black_pawns);
 }
 
 // Adds the control of one piece to a map
@@ -1425,7 +1416,7 @@ int Board::get_piece_mobility(bool display) const {
 }
 
 // Tells whether the pawn can move
-int Board::get_short_term_piece_mobility(bool display) const {
+int Board::get_short_term_piece_mobility(const EvalControls& ctx, bool display) const {
 
 	// 3n1krr/1p1bq2p/1Pp1p1pP/2Pp1pP1/3P1P1N/3BP3/Q4K1R/R7 w - - 9 8: Black's mobility really is terrible here
 	
@@ -1439,9 +1430,9 @@ int Board::get_short_term_piece_mobility(bool display) const {
 
 	static const int* real_mobilities[6] = { pawn_real_mobility, knight_real_mobility, bishop_real_mobility, rook_real_mobility, queen_real_mobility, king_real_mobility };
 
-	// Pawn control map
-	SquareMap white_pawns_controls = get_pawns_controls(true);
-	SquareMap black_pawns_controls = get_pawns_controls(false);
+	// Pawn control maps (threaded from the evaluate() context: computed once)
+	const SquareMap& white_pawns_controls = ctx.white_pawns;
+	const SquareMap& black_pawns_controls = ctx.black_pawns;
 
 	// Piece mobility
 	int white_mobility = 0;
@@ -1653,7 +1644,7 @@ int Board::get_short_term_piece_mobility(bool display) const {
 
 	return eval_from_progress(white_mobility - black_mobility, _adv, advancement_factor);
 }
-int Board::get_long_term_piece_mobility(bool display) const {
+int Board::get_long_term_piece_mobility(const EvalControls& ctx, bool display) const {
 
 	// TEST: b1N3kr/7p/6pB/4p3/8/8/PP3P1P/4K3 w - - 0 32, after Nd6 the king and rook are blocked
 	// 2r2rk1/1pqbb3/p3pp2/3pP1p1/7p/P1N1Q2P/1PP2PP1/3R1KBR w - - 0 24: dreadful activity for White
@@ -1682,17 +1673,17 @@ int Board::get_long_term_piece_mobility(bool display) const {
 	// polluted binary — unproven either way, needs clean-binary validation.
 	static constexpr float blocking_piece_mult[7] = { 1.0f, 0.4f, 0.65f, 0.55f, 0.45f, 0.35f, 0.1f }; // By the type of piece met (none, pawn, knight, bishop, rook, queen, king)
 
-	// Piece control map, for the king
-	SquareMap white_pieces_controls = get_white_controls_map();
-	SquareMap black_pieces_controls = get_black_controls_map();
+	// Piece control maps (threaded from the evaluate() context: computed once)
+	const SquareMap& white_pieces_controls = ctx.white;
+	const SquareMap& black_pieces_controls = ctx.black;
 
 	// Blocked piece map
 	SquareMap white_blocked_pieces = get_all_blocked_pieces(true, black_pieces_controls);
 	SquareMap black_blocked_pieces = get_all_blocked_pieces(false, white_pieces_controls);
 
-	// Pawn control map
-	SquareMap white_pawns_controls = get_pawns_controls(true);
-	SquareMap black_pawns_controls = get_pawns_controls(false);
+	// Pawn control maps (threaded from the evaluate() context: computed once)
+	const SquareMap& white_pawns_controls = ctx.white_pawns;
+	const SquareMap& black_pawns_controls = ctx.black_pawns;
 
 	// Piece mobility
 	int white_mobility = 0;

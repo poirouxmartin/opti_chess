@@ -23,7 +23,7 @@ extern const bool g_qstats_on;
 // span, KST_ACC closes into var. Single now() pair per span.
 #define KST0(tag) auto _kst_##tag = g_qstats_on ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point()
 #define KST_ACC(tag, var) do { if (g_qstats_on) var += std::chrono::duration<double>(std::chrono::steady_clock::now() - _kst_##tag).count(); } while (0)
-int Board::get_king_safety(int activity_diff, float display_factor) {
+int Board::get_king_safety(int activity_diff, float display_factor, const EvalControls& ctx) {
 
 	// ----------------------
 	// *** POSITIONS TEST ***
@@ -343,10 +343,10 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	//rnq1k2r/pp2bp2/2p5/3p4/5Pb1/P2P1NPp/1PP4K/R1BQ1R1N b kq - 0 17: overload on our own h3 pawn??
 	// r3k2r/ppqn3n/3b1p2/2ppp1p1/4P2p/P2P1P1P/1PPBBN1K/R1NQ1R2 b kq - 5 22 : overload +495???
 
-	// Fetch the square control maps
+	// Square control maps (threaded from the evaluate() context: computed once)
 	KST0(ctrl);
-	SquareMap white_controls_map = get_white_controls_map();
-	SquareMap black_controls_map = get_black_controls_map();
+	const SquareMap& white_controls_map = ctx.white;
+	const SquareMap& black_controls_map = ctx.black;
 	KST_ACC(ctrl, g_t_ks_maps_s);
 
 	// Is this useful?
@@ -504,8 +504,8 @@ int Board::get_king_safety(int activity_diff, float display_factor) {
 	// --------------------
 
 	KST0(weak);
-	const int w_weak_squares = get_weak_squares(true, true) * b_attacking_potential;
-	const int b_weak_squares = get_weak_squares(false, true) * w_attacking_potential;
+	const int w_weak_squares = get_weak_squares(true, true, ctx) * b_attacking_potential;
+	const int b_weak_squares = get_weak_squares(false, true, ctx) * w_attacking_potential;
 	KST_ACC(weak, g_t_ks_maps_s);
 
 	// ------------------
@@ -851,7 +851,7 @@ int Board::get_king_virtual_mobility(bool color) {
 }
 
 // Returns the number of safe checks in the position, for both sides
-int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls, bool color)
+int Board::get_checks_value(const SquareMap* white_controls, const SquareMap* black_controls, bool color)
 {
 	constexpr int initial_safe_check_value_default = 250;
 	constexpr int initial_unsafe_check_value_default = 5;
@@ -1080,7 +1080,7 @@ int Board::get_checks_value(SquareMap* white_controls, SquareMap* black_controls
 }
 
 // Returns the move generation speed
-int Board::get_king_proximity()
+int Board::get_king_proximity(const EvalControls& ctx)
 {
 	// TEST: 8/8/8/1k1K3p/6p1/6P1/7P/8 w - - 0 25
 	// TEST: 8/8/3k2b1/1p5p/1P1K2p1/1B4P1/7P/8 w - - 6 12
@@ -1129,8 +1129,8 @@ int Board::get_king_proximity()
 
 	constexpr float self_pawn_multiplier = 0.25f;
 
-	SquareMap white_king_distances = get_king_squares_distance(true);
-	SquareMap black_king_distances = get_king_squares_distance(false);
+	SquareMap white_king_distances = get_king_squares_distance(true, ctx);
+	SquareMap black_king_distances = get_king_squares_distance(false, ctx);
 
 	int n_pawns = 0;
 
@@ -1249,10 +1249,10 @@ int Board::get_king_proximity()
 
 
 // Computes rook activity and mobility
-int Board::get_king_escape_squares(bool color) {
+int Board::get_king_escape_squares(bool color, const EvalControls& ctx) {
 
-	// Square control by the enemy pieces
-	SquareMap control_map = color ? get_black_controls_map() : get_white_controls_map();
+	// Square control by the enemy pieces (threaded from the evaluate() context)
+	const SquareMap& control_map = color ? ctx.black : ctx.white;
 
 	// King position
 	update_kings_pos();
@@ -2116,7 +2116,7 @@ int Board::get_next_king_squares(SquareMap& map, Pos start_pos, int distance, bo
 }
 
 // Returns a map of the distances from the king to every square, as the number of moves needed given the current controls
-SquareMap Board::get_king_squares_distance(bool color) {
+SquareMap Board::get_king_squares_distance(bool color, const EvalControls& ctx) {
 	// TODO: tedious, but probably very strong
 
 	//8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7: the black king can reach neither a4, d5 nor d4, short of going all the way round
@@ -2130,8 +2130,8 @@ SquareMap Board::get_king_squares_distance(bool color) {
 	// 8/5b2/8/1p1k1BKp/1P4p1/6P1/7P/8 b - - 17 17: the white king is closer
 
 
-	// Enemy control map
-	SquareMap control_map = color ? get_black_controls_map() : get_white_controls_map();
+	// Enemy control map (threaded from the evaluate() context)
+	const SquareMap& control_map = color ? ctx.black : ctx.white;
 
 	// Map initialisation
 
@@ -2499,7 +2499,7 @@ int Board::get_king_placement_weakness(bool player) {
 	return get_long_term_king_weakness(player, current_weakness, kingside_weakness, queenside_weakness);
 	//return current_weakness;
 }
-int Board::get_queen_safety(bool color) const {
+int Board::get_queen_safety(bool color, const EvalControls& ctx) const {
 
 	// Factors to evaluate:
 	// - tempi that can be gained against the queen
@@ -2546,7 +2546,7 @@ int Board::get_queen_safety(bool color) const {
 	// TODO: consider only the safe moves
 	//Map base_controls = color ? get_black_controls_map() : get_white_controls_map();
 
-	SquareMap opponent_controls = color ? get_white_controls_map() : get_black_controls_map();
+	const SquareMap& opponent_controls = color ? ctx.white : ctx.black;
 
 	// Count the number of moves attacking the queen
 	// Instead of copying the full Board per move, patch _array in place

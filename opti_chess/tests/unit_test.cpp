@@ -1292,7 +1292,6 @@ TEST(Perf, EvalNPS) {
 
         clock_t start = clock();
         for (int i = 0; i < evals_per_position; i++) {
-            b._controls_map_valid = false;
             b._advancement = false;
             b.evaluate(&eval, &evaluator, false, nullptr, true);
         }
@@ -1333,7 +1332,6 @@ TEST(Perf, FromFenProfile) {
     b.from_fen(fens[1]);
     t0 = clock();
     for (int i = 0; i < reps; i++) {
-        b._controls_map_valid = false;
         b._advancement = false;
         eval._evaluated = false;
         b.evaluate(&eval, &evaluator, false, nullptr, true);
@@ -1365,9 +1363,10 @@ TEST(Perf, KingSafetyNPS) {
 
     // Use a position with active king safety
     b.from_fen("r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4");
-    b._controls_map_valid = false;
     b._advancement = false;
-    int ks = b.get_king_safety(0);
+    EvalControls ks_ctx;
+    b.compute_eval_controls(ks_ctx);
+    int ks = b.get_king_safety(0, 0.0f, ks_ctx);
     // Use a middlegame position where king safety is nonzero; skip if zero
     if (ks == 0) {
         // Kiwipete: more active position
@@ -1379,9 +1378,10 @@ TEST(Perf, KingSafetyNPS) {
     clock_t start = clock();
     int result = 0;
     for (int i = 0; i < iterations; i++) {
-        b._controls_map_valid = false;
         b._advancement = false;
-        result += b.get_king_safety(0);
+        EvalControls ictx;
+        b.compute_eval_controls(ictx);
+        result += b.get_king_safety(0, 0.0f, ictx);
     }
     clock_t end = clock();
     double elapsed_sec = (double)(end - start) / CLOCKS_PER_SEC;
@@ -1400,9 +1400,10 @@ TEST(Perf, PawnStructureNPS) {
     clock_t start = clock();
     int result = 0;
     for (int i = 0; i < iterations; i++) {
-        b._controls_map_valid = false;
         b._advancement = false;
-        result += b.get_pawn_structure();
+        EvalControls ictx;
+        b.compute_eval_controls(ictx);
+        result += b.get_pawn_structure(0.0f, ictx);
     }
     clock_t end = clock();
     double elapsed_sec = (double)(end - start) / CLOCKS_PER_SEC;
@@ -1420,9 +1421,10 @@ TEST(Perf, PieceActivityNPS) {
     clock_t start = clock();
     int result = 0;
     for (int i = 0; i < iterations; i++) {
-        b._controls_map_valid = false;
         b._advancement = false;
-        result += b.get_piece_activity();
+        EvalControls ictx;
+        b.compute_eval_controls(ictx);
+        result += b.get_piece_activity(ictx);
     }
     clock_t end = clock();
     double elapsed_sec = (double)(end - start) / CLOCKS_PER_SEC;
@@ -1445,10 +1447,8 @@ TEST(Perf, ChecksValueNPS) {
     clock_t start = clock();
     int result = 0;
     for (int i = 0; i < iterations; i++) {
-        b._controls_map_valid = false;
         b._advancement = false;
         result += b.get_checks_value(&wm, &bm, true);
-        b._controls_map_valid = false;
         result += b.get_checks_value(&wm, &bm, false);
     }
     clock_t end = clock();
@@ -2152,7 +2152,6 @@ TEST(Perf, SearchBreakdown) {
 
     bench("evaluate()", [&]() {
         b = original;
-        b._controls_map_valid = false;
         b._advancement = false;
         b.evaluate(&eval, &evaluator, false, nullptr, false);
     }, 5000);
@@ -2172,16 +2171,16 @@ TEST(Perf, SearchBreakdown) {
 
     bench("get_checks_value()", [&]() {
         b = original;
-        b._controls_map_valid = false;
         b._advancement = false;
         b.get_checks_value(&wm, &bm, true);
     }, 5000);
 
     bench("get_king_safety()", [&]() {
         b = original;
-        b._controls_map_valid = false;
         b._advancement = false;
-        b.get_king_safety(0);
+        EvalControls bctx;
+        b.compute_eval_controls(bctx);
+        b.get_king_safety(0, 0.0f, bctx);
     }, 5000);
 
     bench("Board copy ctor", [&]() {
@@ -2202,8 +2201,9 @@ TEST(Perf, SearchBreakdown) {
     }, 5000);
 
     bench("controls_map()", [&]() {
-        b._controls_map_valid = false;
-        b.get_white_controls_map();
+        b = original;
+        EvalControls bctx;
+        b.compute_eval_controls(bctx);
     }, 5000);
 
     bench("init_node()", [&]() {
@@ -2223,8 +2223,9 @@ TEST(Perf, SearchBreakdown) {
 
     bench("get_pawn_structure()", [&]() {
         b._advancement = false;
-        b._controls_map_valid = false;
-        b.get_pawn_structure();
+        EvalControls bctx;
+        b.compute_eval_controls(bctx);
+        b.get_pawn_structure(0.0f, bctx);
     }, 5000);
 
     bench("count_material()", [&]() {
@@ -2292,7 +2293,6 @@ TEST(Perf, EvalProfile) {
     bench("get_position_nature", [&]() {
         b = original;
         b._advancement = false;
-        b._controls_map_valid = false;
         b.get_position_nature();
     });
 
@@ -2335,71 +2335,73 @@ TEST(Perf, EvalProfile) {
 
     bench("get_trapped_pieces", [&]() {
         b = original;
-        b._controls_map_valid = false;
         b._advancement = false;
-        b.get_trapped_pieces();
+        EvalControls bctx;
+        b.compute_eval_controls(bctx);
+        b.get_trapped_pieces(bctx);
     });
 
     bench("get_pawn_push_threats", [&]() {
         b = original;
-        b._controls_map_valid = false;
         b._advancement = false;
-        b.get_pawn_push_threats();
+        EvalControls bctx;
+        b.compute_eval_controls(bctx);
+        b.get_pawn_push_threats(bctx);
     });
 
     bench("get_queen_safety(x2)", [&]() {
         b = original;
-        b._controls_map_valid = false;
         b._advancement = false;
-        b.get_queen_safety(true);
-        b.get_queen_safety(false);
+        EvalControls bctx;
+        b.compute_eval_controls(bctx);
+        b.get_queen_safety(true, bctx);
+        b.get_queen_safety(false, bctx);
     });
 
     bench("get_long_term_piece_mobility", [&]() {
         b = original;
         b._advancement = false;
-        b._controls_map_valid = false;
-        b.get_long_term_piece_mobility();
+        EvalControls bctx;
+        b.compute_eval_controls(bctx);
+        b.get_long_term_piece_mobility(bctx);
     });
 
     bench("get_short_term_piece_mobility", [&]() {
         b = original;
         b._advancement = false;
-        b._controls_map_valid = false;
-        b.get_short_term_piece_mobility();
+        EvalControls bctx;
+        b.compute_eval_controls(bctx);
+        b.get_short_term_piece_mobility(bctx);
     });
 
     bench("get_piece_activity", [&]() {
         b = original;
         b._advancement = false;
-        b._controls_map_valid = false;
-        b.get_piece_activity();
+        EvalControls bctx;
+        b.compute_eval_controls(bctx);
+        b.get_piece_activity(bctx);
     });
 
     bench("get_knight_activity", [&]() {
         b = original;
-        b._controls_map_valid = false;
         b._advancement = false;
         b.get_knight_activity();
     });
 
     bench("get_bishop_activity", [&]() {
         b = original;
-        b._controls_map_valid = false;
         b._advancement = false;
         b.get_bishop_activity();
     });
 
     bench("get_rook_activity", [&]() {
         b = original;
-        b._controls_map_valid = false;
         b._advancement = false;
         b.get_rook_activity();
     });
 
     bench("get_attacks_and_defenses", [&]() {
         b = original;
-        b._controls_map_valid = false;
         b._advancement = false;
         b.get_attacks_and_defenses();
     });
@@ -2418,30 +2420,32 @@ TEST(Perf, EvalProfile) {
     bench("get_pawn_structure", [&]() {
         b = original;
         b._advancement = false;
-        b._controls_map_valid = false;
-        b.get_pawn_structure();
+        EvalControls bctx;
+        b.compute_eval_controls(bctx);
+        b.get_pawn_structure(0.0f, bctx);
     });
 
     bench("get_bishop_pawns", [&]() {
         b = original;
         b._advancement = false;
-        b._controls_map_valid = false;
         b.get_bishop_pawns();
     });
 
     bench("get_weak_squares(x2)", [&]() {
         b = original;
-        b._controls_map_valid = false;
         b._advancement = false;
-        b.get_weak_squares(true);
-        b.get_weak_squares(false);
+        EvalControls bctx;
+        b.compute_eval_controls(bctx);
+        b.get_weak_squares(true, false, bctx);
+        b.get_weak_squares(false, false, bctx);
     });
 
     bench("get_king_safety", [&]() {
         b = original;
-        b._controls_map_valid = false;
         b._advancement = false;
-        b.get_king_safety(0);
+        EvalControls bctx;
+        b.compute_eval_controls(bctx);
+        b.get_king_safety(0, 0.0f, bctx);
     });
 
     bench("get_kings_opposition", [&]() {
@@ -2453,7 +2457,9 @@ TEST(Perf, EvalProfile) {
     bench("get_king_proximity", [&]() {
         b = original;
         b._advancement = false;
-        b.get_king_proximity();
+        EvalControls bctx;
+        b.compute_eval_controls(bctx);
+        b.get_king_proximity(bctx);
     });
 
     bench("get_king_centralization(x2)", [&]() {
@@ -2482,16 +2488,15 @@ TEST(Perf, EvalProfile) {
         b.get_winnable_values(&e, 0.5f);
     });
 
-    bench("get_controls_map (cached)", [&]() {
+    bench("get_controls_map (computed)", [&]() {
         b = original;
-        b._controls_map_valid = false;
         b._advancement = false;
-        b.get_white_controls_map();
+        EvalControls bctx;
+        b.compute_eval_controls(bctx);
     });
 
     bench("FULL evaluate()", [&]() {
         b = original;
-        b._controls_map_valid = false;
         b._advancement = false;
         b.reset_eval();
         b.evaluate(&eval, &evaluator, false, nullptr, false);
@@ -4029,10 +4034,12 @@ TEST(Debug, MobilityPerPiece) {
 	if (!fen) { cout << "  [SKIP] OPTI_EVAL_MOBFEN not set" << endl; return; }
 	Board b;
 	b.from_fen(fen);
+	EvalControls mctx;
+	b.compute_eval_controls(mctx);
 	cout << "== LONG ==" << endl;
-	int lt = b.get_long_term_piece_mobility(true);
+	int lt = b.get_long_term_piece_mobility(mctx, true);
 	cout << "== SHORT ==" << endl;
-	int st = b.get_short_term_piece_mobility(true);
+	int st = b.get_short_term_piece_mobility(mctx, true);
 	cout << "TOTAL long=" << lt << " short=" << st << endl;
 	SUCCEED();
 }

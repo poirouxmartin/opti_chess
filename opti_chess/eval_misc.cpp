@@ -625,7 +625,7 @@ int Board::get_fianchetto_value() const
 }
 
 // Tells whether the square is controlled by a side -> by the opponent? to be confirmed
-int Board::get_weak_squares(bool color, bool around_king) {
+int Board::get_weak_squares(bool color, bool around_king, const EvalControls& ctx) {
 	// Weak square: one no pawn can protect any more (no pawns on a lower rank of the adjacent files), when no pawn stands on it
 	// Bonus for enemy pawn control over the weak square
 	// Bonus for the outpost of a knight, a bishop or a rook
@@ -691,9 +691,9 @@ int Board::get_weak_squares(bool color, bool around_king) {
 	// Weak square value
 	int weak_squares_value = 0;
 
-	// Square controls
-	SquareMap white_controls = get_white_controls_map();
-	SquareMap black_controls = get_black_controls_map();
+	// Square controls (threaded from the evaluate() context: computed once)
+	const SquareMap& white_controls = ctx.white;
+	const SquareMap& black_controls = ctx.black;
 
 
 	if (around_king) {
@@ -1498,7 +1498,7 @@ void Board::get_winnable_values(Evaluation* eval, float position_nature) const {
 }
 
 // Returns the activity of the bishops along the diagonals
-int Board::get_trapped_pieces() const {
+int Board::get_trapped_pieces(const EvalControls& ctx) const {
 	// Isolated piece: one far from the other friendly pieces
 
 	// TODO: adapt this to endgames too, so the king closes on the pawns? same for the knights
@@ -1611,8 +1611,8 @@ int Board::get_trapped_pieces() const {
 
 	// Damping factor when the piece can capture an enemy one back (TODO)
 
-	const SquareMap w_controls = get_white_controls_map();
-	const SquareMap b_controls = get_black_controls_map();
+	const SquareMap& w_controls = ctx.white;
+	const SquareMap& b_controls = ctx.black;
 
 	//w_controls.print();
 	//b_controls.print();

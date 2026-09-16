@@ -12,7 +12,7 @@
 #include <utility>
 #include <iomanip>
 #include <vector>
-int Board::get_pawn_structure(float display_factor)
+int Board::get_pawn_structure(float display_factor, const EvalControls& ctx)
 {
 
 	update_kings_pos();  // pp_cap king check needs fresh king squares
@@ -312,8 +312,8 @@ int Board::get_pawn_structure(float display_factor)
 				else if (col < 7 && _array[k][col + 1] == w_pawn) { bcol = col + 1; brow = k; }
 			}
 		}
-		SquareMap ownPM = get_pawns_controls(white);
-		SquareMap enPM = get_pawns_controls(!white);
+		const SquareMap& ownPM = white ? ctx.white_pawns : ctx.black_pawns;
+		const SquareMap& enPM = white ? ctx.black_pawns : ctx.white_pawns;
 		int own = 0, en = 0;
 		int adv = white ? (int)row + 1 : (int)row - 1;
 		if (adv >= 0 && adv <= 7) {
@@ -442,10 +442,10 @@ int Board::get_pawn_structure(float display_factor)
 	// the UPPER BOUND of a candidate: a candidate is worth at most the
 	// passer it will become.
 	auto pp_hyp_passer = [&](int col, int srow, bool white, bool hasEnemyPieces) -> float {
-		SquareMap ownCM = white ? get_white_controls_map() : get_black_controls_map();
-		SquareMap enCM = white ? get_black_controls_map() : get_white_controls_map();
-		SquareMap ownPM = get_pawns_controls(white);
-		SquareMap enPM = get_pawns_controls(!white);
+		const SquareMap& ownCM = white ? ctx.white : ctx.black;
+		const SquareMap& enCM = white ? ctx.black : ctx.white;
+		const SquareMap& ownPM = white ? ctx.white_pawns : ctx.black_pawns;
+		const SquareMap& enPM = white ? ctx.black_pawns : ctx.white_pawns;
 		float worst_path = 1e30f;
 		float path_value = 0.0f;
 		if (white) {
@@ -646,10 +646,10 @@ int Board::get_pawn_structure(float display_factor)
 								else if (col > 0 && _array[k][col - 1] == b_pawn) { bcol = col - 1; brow = (int)k; }
 								else if (col < 7 && _array[k][col + 1] == b_pawn) { bcol = col + 1; brow = (int)k; }
 							}
-							SquareMap wcm = get_white_controls_map();
-							SquareMap bcm = get_black_controls_map();
-							SquareMap wpm = get_pawns_controls(true);
-							SquareMap bpm = get_pawns_controls(false);
+						const SquareMap& wcm = ctx.white;
+						const SquareMap& bcm = ctx.black;
+						const SquareMap& wpm = ctx.white_pawns;
+						const SquareMap& bpm = ctx.black_pawns;
 							int ownA = 0, enA = 0, ownB = 0, enB = 0;
 							int adv = (int)row + 1;
 							if (adv <= 7) {
@@ -694,10 +694,11 @@ int Board::get_pawn_structure(float display_factor)
 					// Remove the pawn to test x-ray control over the square
 					_array[row][col] = none;
 
-					// The cached control maps still see the removed pawn. A stale map
-					// only matters when a rook/queen sits BELOW the pawn with a clear
-					// file (the diff loop reads squares above it on the same file):
-					// recompute honestly only in that case.
+					// Control maps WITHOUT the removed pawn. A recompute only
+					// matters when a rook/queen sits BELOW the pawn with a clear
+					// file (the pricing loop reads squares above it on the same
+					// file): recompute honestly only in that case, else reuse
+					// the evaluate() context.
 					bool vertical_xray = false;
 					for (int j = row - 1; j >= 0; --j) {
 						const uint8_t pj = _array[j][col];
@@ -707,24 +708,24 @@ int Board::get_pawn_structure(float display_factor)
 						}
 					}
 
-					if (vertical_xray)
-						_controls_map_valid = false;
-
-					SquareMap white_controls_map = get_white_controls_map();
-					SquareMap black_controls_map = get_black_controls_map();
-					SquareMap white_pawns_map = get_pawns_controls(true);
-					SquareMap black_pawns_map = get_pawns_controls(false);
+					SquareMap white_controls_map, black_controls_map, white_pawns_map, black_pawns_map;
+					if (vertical_xray) {
+						compute_piece_controls(white_controls_map, black_controls_map);
+						compute_pawn_controls_map(_array, true, white_pawns_map);
+						compute_pawn_controls_map(_array, false, black_pawns_map);
+					}
+					else {
+						white_controls_map = ctx.white;
+						black_controls_map = ctx.black;
+						white_pawns_map = ctx.white_pawns;
+						black_pawns_map = ctx.black_pawns;
+					}
 
 			// (Removed) Cumulative control division: the path loop
 			// below prices each square (cut-or-cap) independently.
 
-					// Put the pawn back
+					// Put the pawn back (no cache to invalidate: maps are locals)
 					_array[row][col] = w_pawn;
-
-					// Only invalidate when the maps were rebuilt WITHOUT the pawn;
-					// otherwise the cache still describes the restored position
-					if (vertical_xray)
-						_controls_map_valid = false;
 
 
 				// Path value: weakest link - min over the INCLUDED squares
@@ -886,10 +887,10 @@ int Board::get_pawn_structure(float display_factor)
 								else if (col > 0 && _array[k][col - 1] == w_pawn) { bcol = col - 1; brow = k; }
 								else if (col < 7 && _array[k][col + 1] == w_pawn) { bcol = col + 1; brow = k; }
 							}
-							SquareMap wcm = get_white_controls_map();
-							SquareMap bcm = get_black_controls_map();
-							SquareMap wpm = get_pawns_controls(true);
-							SquareMap bpm = get_pawns_controls(false);
+						const SquareMap& wcm = ctx.white;
+						const SquareMap& bcm = ctx.black;
+						const SquareMap& wpm = ctx.white_pawns;
+						const SquareMap& bpm = ctx.black_pawns;
 							int ownA = 0, enA = 0, ownB = 0, enB = 0;
 							int adv = (int)row - 1;
 							if (adv >= 0) {
@@ -934,7 +935,8 @@ int Board::get_pawn_structure(float display_factor)
 					_array[row][col] = none;
 
 					// Mirror of the white side: only a rook/queen ABOVE with a clear
-					// file can x-ray the squares read below
+					// file can x-ray the squares read below. Recompute honestly
+					// only in that case, else reuse the evaluate() context.
 					bool vertical_xray = false;
 					for (int j = row + 1; j < 8; ++j) {
 						const uint8_t pj = _array[j][col];
@@ -944,24 +946,24 @@ int Board::get_pawn_structure(float display_factor)
 						}
 					}
 
-					if (vertical_xray)
-						_controls_map_valid = false;
-
-					SquareMap white_controls_map = get_white_controls_map();
-					SquareMap black_controls_map = get_black_controls_map();
-					SquareMap white_pawns_map = get_pawns_controls(true);
-					SquareMap black_pawns_map = get_pawns_controls(false);
+					SquareMap white_controls_map, black_controls_map, white_pawns_map, black_pawns_map;
+					if (vertical_xray) {
+						compute_piece_controls(white_controls_map, black_controls_map);
+						compute_pawn_controls_map(_array, true, white_pawns_map);
+						compute_pawn_controls_map(_array, false, black_pawns_map);
+					}
+					else {
+						white_controls_map = ctx.white;
+						black_controls_map = ctx.black;
+						white_pawns_map = ctx.white_pawns;
+						black_pawns_map = ctx.black_pawns;
+					}
 
 			// (Removed) Cumulative control division: the path loop
 			// below prices each square (cut-or-cap) independently.
 
-					// Put the pawn back
+					// Put the pawn back (no cache to invalidate: maps are locals)
 					_array[row][col] = b_pawn;
-
-					// Only invalidate when the maps were rebuilt WITHOUT the pawn;
-					// otherwise the cache still describes the restored position
-					if (vertical_xray)
-						_controls_map_valid = false;
 
 						float passed_value = 0.0f;
 						float worst_path = 1e30f;
@@ -1255,7 +1257,7 @@ int Board::get_pawn_structure(float display_factor)
 // Returns how long the engine should spend on the next move, in ms, from a factor k and the remaining clocks
 
 // Computes and returns the net attack/defence balance
-int Board::get_pawn_push_threats() const {
+int Board::get_pawn_push_threats(const EvalControls& ctx) const {
 
 	// 1r3r2/1nqb2bk/3p2pp/3Ppp2/p1P5/2BB1N1P/3Q1PP1/R3R1K1 w - - 0 29: e4 is a serious threat
 	// r4rk1/qp1bbppp/p3pn2/2Pp4/PP1Q1B2/2P2N2/3N1PPP/R3K2R w KQ - 3 15: neither e5 nor g5 is really playable here
@@ -1264,8 +1266,8 @@ int Board::get_pawn_push_threats() const {
 	// The push must be unobstructed, by a piece or by enemy control
 	// TODO: improve the control handling; as it stands a bishop is never threatened, even with the pawn protected
 	
-	SquareMap white_controls = get_white_controls_map();
-	SquareMap black_controls = get_black_controls_map();
+	const SquareMap& white_controls = ctx.white;
+	const SquareMap& black_controls = ctx.black;
 
 	int w_threats = 0;
 	int b_threats = 0;
