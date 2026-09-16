@@ -2270,19 +2270,14 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			const int check_extension = g_check_extension;
 			new_depth += (move.is_check() && depth > 0) ? check_extension : 0;
 
-			// Depth reduction for the less promising moves (audit A3): the old
-			// `move_index * 2` blindly skipped late big captures. Winning
-			// captures (MVV-LVA) keep half the penalty so tactical shots stay
-			// reachable even when ordered late.
-			static constexpr int piece_vals_lmr[13] = { 0, 100, 320, 330, 500, 900, 10000, 100, 320, 330, 500, 900, 10000 };
-			bool is_winning_capture = false;
-			if (move.is_capture()) {
-				const uint8_t cap = _board->_array[move.end_row][move.end_col];
-				const uint8_t mover = _board->_array[move.start_row][move.start_col];
-				if (cap != none && mover != none)
-					is_winning_capture = piece_vals_lmr[cap] > piece_vals_lmr[mover];
-			}
-			new_depth -= in_check ? 0 : (is_winning_capture ? move_index : move_index * 2);
+		// H1 re-applied (TD-005): no LMR inside quiescence on captures —
+		// captures must be resolved to a quiet position. The
+		// `move_index * 2` formula skipped late captures entirely (with
+		// depth=3, the 3rd capture got new_depth=-1 and was skipped).
+		// Only non-capture checks get a gentle reduction when not in check.
+		if (!move.is_capture() && !in_check) {
+			new_depth -= move_index;
+		}
 
 		if (new_depth <= 0 && !in_check) {
 			QCOUNT(moves_pruned_depth);
@@ -3180,8 +3175,10 @@ int Node::minimal_quiescence(Evaluator* eval, int depth, double search_alpha, do
 		// Move
 		const Move move = _board->_moves[i];
 
-		// Captures, checks and promotions are explored
-		if (move.is_capture() || move.is_promotion() || move.is_checkmate()) {
+		// H3 re-applied (TD-005): captures, checks, promotions, and quiet
+		// evasions when in check are explored (king sidesteps and blocks
+		// must be searched alongside captures, else legal evasions are missed).
+		if (in_check || move.is_capture() || move.is_promotion() || move.is_checkmate()) {
 
 			// Delta pruning, disabled here
 			//constexpr int delta = 250;
