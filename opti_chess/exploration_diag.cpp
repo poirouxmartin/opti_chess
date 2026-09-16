@@ -451,6 +451,9 @@ constexpr int DAG_MAX_RECURSION_DEPTH = 1024;
 // GUI reset). They exist to SHOW WHAT HAPPENS (spin? sharing? deep
 // recursion?) instead of guessing. Read by dag_debug_report.
 thread_local long long g_dag_recheck_hits = 0;  // section 3: path-local repetitions cut
+thread_local long long g_dag_demerit_adds = 0;     // TD-002: draw-demerit records (cut edges, this call)
+thread_local long long g_dag_demerit_skips = 0;    // TD-002: backup ranking skips of demerited children
+thread_local long long g_dag_demerit_fallbacks = 0; // TD-002: all-demerited fallbacks to plain max
 thread_local long long g_dag_link_hits = 0;     // link-on-create: shared node reused
 thread_local long long g_dag_link_misses = 0;   // link-on-create: new node created
 thread_local long long g_dag_variant_cuts = 0;  // get_exploration_variants: lines cut on a cycle
@@ -508,7 +511,7 @@ struct SerializeGuard {
 		if ((q ? (on || on_q) : on)) lk.lock();
 	}
 };
-void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, PositionHistory *path_history, const clock_t max_time) {
+void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int iterations, int quiescence_depth, Network* network, PositionHistory *path_history, const clock_t max_time, DagExcl* dag_excl) {
 	SerializeGuard _ser;
 	// TODO:
 	// Depth could be added
@@ -591,11 +594,17 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		return;
 	}
 
-	// #11 Plan B - Bug 1 opt 3: per-traversal exclusion shared by ALL iterations
-	// of THIS grogros_zero call (lives on this frame's stack only, never on a
-	// shared node/edge). OFF: passed as nullptr, never consulted -> behaviour
-	// byte-identical to the tree.
-	DagExcl dag_excl;
+	// #11 Plan B - Bug 1 opt 3 + TD-002: ONE per-traversal exclusion list for
+	// the whole call tree. The outermost call owns it (stack); nested descents
+	// inherit the pointer so DEEP repetition cuts stay effective for the rest
+	// of the call: the cyclic edge is not re-selected, the parent refreshes
+	// its backup from its other children, and shared fantasy values cannot
+	// freeze. A fresh list per nesting level made deep cuts inoperative (the
+	// list died with its single-iteration frame). Lives on stacks only, never
+	// on a shared node/edge (invariant 772183a). OFF (nullptr): fresh local
+	// list, never consulted -> byte-identical to the tree.
+	DagExcl dag_excl_local;
+	DagExcl* excl = dag_excl ? dag_excl : &dag_excl_local;
 
 	// Exploration
 	int iteration_index = 0;
@@ -663,7 +672,7 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 				}
 			}
 
-			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr, forced);
+			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? excl : nullptr, forced);
 		}
 
 		// Buffers full AND nothing to refine here: clean stop + single log line
@@ -1369,15 +1378,40 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		// stack, never on a shared structure: invariant 772183a respected; still
 		// mutates NOTHING shared).
 		// Without the list (OFF / overflow): conservative cut, unchanged.
-		if (dag_excl != nullptr) dag_excl->add(move);
+		// TD-002: record the child as drawish for the rest of THIS call, so
+		// later backups re-rank around it instead of freezing on its shared
+		// fantasy value (spec section 3). Stack only, never shared state.
+		if (dag_excl != nullptr) {
+			dag_excl->add(move);
+			if (child->_board != nullptr && dag_excl->draw_add(child->_board->_zobrist_key)) g_dag_demerit_adds++;
+		}
 		_iterations++;
 		return;
 	}
 
+	// Bug #3 - tree-mode descent re-check. explore_new_move cuts repetitions
+	// at expansion, but once the tree is built every iteration re-descends the
+	// trunk through here WITHOUT any repetition test, so cyclic lines are
+	// chased forever (Kb8 shuffle: 55-deep, +697 in a dead draw) and fantasy
+	// values freeze. In a pure tree the path to this child is unique and the
+	// root prefix is fixed for the whole search, so a repeat found here is a
+	// real draw: score it exactly like the expansion check above, then fall
+	// through — the child is terminal now, the recursion is a no-op, and the
+	// normal backup below re-ranks with the draw in place. DAG/sharing modes
+	// keep their non-propagating cut above: writing onto a shared node would
+	// corrupt the other paths (GHI). Already-terminal children (mate) are left
+	// alone: the mate ended the game before any repeat.
+	// _nodes/_iterations are deliberately untouched: orphaned grandchildren
+	// stay allocated (arena) and counted, so the ancestors' propagated
+	// counters below (child->_nodes - initial_child_nodes) stay exact.
+	if (!g_tt_node_dag && !g_shared_tree && !child->_is_terminal &&
+	    position_is_draw_by_repetition(branch_history, *child->_board)) {
+		init_terminal_draw_child(child, child->_board, eval, network);
+	}
 	// Explore the child
 	{
 		PathScope _ps(branch_history, *child->_board);
-		child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &branch_history); // The child evaluation is updated here
+		child->grogros_zero(board_buffer, eval, alpha, beta, gamma, 1, quiescence_depth, network, &branch_history, 0, dag_excl); // The child evaluation is updated here (TD-002: inherit the call-wide exclusion list)
 	}
 
 	// Update the board evaluation with the best move - by SEARCHED VALUE
@@ -1389,14 +1423,33 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		int color = _board->get_color();
 		long long best_value = LLONG_MIN;
 		Move best_value_move;
+		// TD-002: parallel unfiltered trackers (all-demerited fallback).
+		long long best_value_all = LLONG_MIN;
+		Move best_value_move_all;
+		bool skipped_any = false;
 		NodeLock vlock(this);
 		for (auto const& [move, link] : _children) {
 			if (link._node == nullptr) continue;
+			// TD-002: children proven drawish on this call's paths don't
+			// compete (re-rank around shared fantasy values). Stored node
+			// values are untouched (no GHI corruption); OFF: dag_excl is
+			// nullptr, behaviour identical.
+			const bool demerited = (dag_excl != nullptr && link._node->_board != nullptr && dag_excl->draw_contains(link._node->_board->_zobrist_key));
 			const long long v = link._node->_deep_evaluation._value * color;
+			if (v > best_value_all) {
+				best_value_all = v;
+				best_value_move_all = move;
+			}
+			if (demerited) { skipped_any = true; g_dag_demerit_skips++; continue; }
 			if (v > best_value) {
 				best_value = v;
 				best_value_move = move;
 			}
+		}
+		if (best_value_move.is_null_move() && skipped_any) {
+			g_dag_demerit_fallbacks++;
+			best_value = best_value_all;
+			best_value_move = best_value_move_all;
 		}
 		if (!best_value_move.is_null_move()) {
 			_deep_evaluation = _children[best_value_move]._node->_deep_evaluation;
@@ -1406,7 +1459,8 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 		// Legacy ranking. GUARD: on NaN scores every comparison fails and
 		// get_best_score_move returns the null move - operator[] would then
 		// INSERT a phantom child keyed by Move() whose _node is nullptr.
-		const Move legacy_best = get_best_score_move(alpha, beta);
+		// TD-002: consult this call's draw demerits (nullptr when OFF).
+		const Move legacy_best = get_best_score_move(alpha, beta, false, -100, dag_excl);
 		if (!legacy_best.is_null_move()) {
 			if (g_shared_tree) {
 				NodeLock lk(this);
@@ -2970,7 +3024,7 @@ double Node::get_node_score(const double alpha, const double beta, const int max
 }
 
 // Returns the move with the best score
-Move Node::get_best_score_move(const double alpha, const double beta, const bool consider_standpat, const int qdepth) {
+Move Node::get_best_score_move(const double alpha, const double beta, const bool consider_standpat, const int qdepth, const DagExcl* demerit) {
 
 	NodeLock lk(this);
 
@@ -2986,6 +3040,9 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 	for (auto const& [_, child_link] : _children) {
 		Node* child = child_link._node;
 		if (child == nullptr) continue; // shared-tree claim placeholder
+		// TD-002: demerited children (proven drawish this call) are invisible
+		// to the ranking, normalization included. Default nullptr: unchanged.
+		if (demerit != nullptr && child->_board != nullptr && demerit->draw_contains(child->_board->_zobrist_key)) continue;
 		if (child->_deep_evaluation._value * color > max_eval) {
 			max_eval = child->_deep_evaluation._value * color;
 		}
@@ -3010,11 +3067,19 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 	Move best_move = Move();
 	double best_score = -DBL_MAX;
 
+	// TD-002: parallel unfiltered trackers (all-demerited fallback to the
+	// pre-TD-002 ranking). Scores are computed once per child, below.
+	Move best_move_all = Move();
+	double best_score_all = -DBL_MAX;
+	bool skipped_any = false;
+
 	if (consider_standpat) {
 		const double standpat_score = get_node_score(alpha, beta, max_eval, max_avg_score, _board->_player);
 		if (std::isfinite(standpat_score)) {
 			best_score = standpat_score;
 			best_move = Move();
+			best_score_all = standpat_score;
+			best_move_all = Move();
 		}
 	}
 
@@ -3029,10 +3094,27 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 		// NaN scores (overflowed softmax terms) must never win: every comparison
 		// against NaN is false, which would leave best_move as the null stand-pat
 		// key and poison every caller that indexes _children with it.
+		if (std::isfinite(score) && (score > best_score_all || (best_move_all.is_null_move() && score == best_score_all))) {
+			best_score_all = score;
+			best_move_all = move;
+		}
+		// TD-002: demerited children don't compete (see normalization above).
+		if (demerit != nullptr && child->_board != nullptr && demerit->draw_contains(child->_board->_zobrist_key)) {
+			skipped_any = true;
+			g_dag_demerit_skips++;
+			continue;
+		}
 		if (std::isfinite(score) && (score > best_score || (best_move.is_null_move() && score == best_score))) {
 			best_score = score;
 			best_move = move;
 		}
+	}
+
+	// TD-002: all-demerited falls back to the unfiltered ranking.
+	if (best_move.is_null_move() && skipped_any) {
+		g_dag_demerit_fallbacks++;
+		best_score = best_score_all;
+		best_move = best_move_all;
 	}
 
 	//cout << "best move: " << _board->move_label(best_move) << " | best score: " << best_score << endl;

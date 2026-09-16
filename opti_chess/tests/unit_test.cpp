@@ -3956,6 +3956,112 @@ TEST(Puzzle, WorkerStatusText) {
 		"worker: REFINING (arenas full) iters=10 - DEL to recycle");
 }
 
+// TEMPORARY scratch (bug #3 triage, user repros 2026-09-15). NOT committed as-is:
+// R1 Ke2/Ke3 win "instant before", R2 Nxf7 seen very late, R3 deep eval flips
+// to Black in a good White position. Prints most-explored + best-score +
+// root eval per (fen, budget). Convert to asserts once diagnosed.
+TEST(Puzzle, ScratchBug3Repros) {
+	static Evaluator evaluator;
+	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
+	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+	const char* fens[] = {
+		"8/2k5/3p4/p2P1p2/P2P1P2/4K3/8/8 w - - 14 8",
+		"r1bqkb1r/ppp2ppp/2n5/3np1N1/2B5/8/PPPP1PPP/RNBQK2R w KQkq - 0 6",
+		"r1bq1b1r/ppp1k1pp/8/n2Bp3/8/5Q2/PPPP1PPP/RNB1K2R w KQ - 1 9",
+	};
+	const int budgets_small[] = { 2000, 20000 };
+	const int budgets_all[] = { 2000, 20000, 200000, 1000000 };
+	const bool deep = (getenv("OPTI_PROBE_DEEP") != nullptr);
+	const int* budgets = deep ? budgets_all : budgets_small;
+	const int nbudgets = deep ? 4 : 2;
+	for (auto fen : fens) {
+	for (int bi = 0; bi < nbudgets; bi++) {
+		const int nodes = budgets[bi];
+	for (bool dag : { false, true }) {
+		monte_board_buffer.reset(); monte_node_buffer.reset();
+		transposition_table.clear(); node_map.clear();
+		g_buffers_full_logged = false; g_tt_main_search = false; g_tt_node_dag = dag;
+		g_search_abort.store(false, std::memory_order_release);
+		g_search_deadline.store((clock_t)0, std::memory_order_release);
+		Board b;
+		b.from_fen(fen);
+		Board* root_board = monte_board_buffer.get_first_free_board();
+		ASSERT_TRUE(root_board != nullptr);
+		root_board->copy_data(b, false, true);
+		root_board->_is_active = true;
+		Node* root = monte_node_buffer.get_first_free_node();
+		ASSERT_TRUE(root != nullptr);
+		root->reset(false);
+		root->_board = root_board;
+		root->_is_active = true;
+		root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, nodes, 10);
+		Move most = root->get_most_explored_child_move();
+		Move best = root->get_best_score_move(0.005, 5.0);
+		cout << "  [" << fen << " n=" << nodes << " dag=" << dag << "] most=" << b.move_label(most, true)
+			<< " best=" << b.move_label(best, true)
+			<< " deep=" << root->_deep_evaluation._value
+			<< " avg=" << root->_deep_evaluation._avg_score
+			<< " freeB=" << monte_board_buffer._free_indices.size()
+			<< " freeN=" << monte_node_buffer._free_indices.size() << endl;
+		g_search_abort.store(false, std::memory_order_release);
+	}
+	}
+	}
+}
+
+// TD-002: R1 DAG must leave the Ke2 shuffle (shared +113 fantasy, frozen
+// bit-identical 2k->1M pre-fix). DAG counters printed for triage.
+extern thread_local long long g_dag_recheck_hits;
+extern thread_local long long g_dag_link_hits;
+extern thread_local long long g_dag_link_misses;
+extern thread_local long long g_dag_demerit_adds;
+extern thread_local long long g_dag_demerit_skips;
+extern thread_local long long g_dag_demerit_fallbacks;
+TEST(Puzzle, DagDrawDemeritR1) {
+	static Evaluator evaluator;
+	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
+	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+	monte_board_buffer.reset(); monte_node_buffer.reset();
+	transposition_table.clear(); node_map.clear();
+	g_buffers_full_logged = false; g_tt_main_search = false; g_tt_node_dag = true;
+	g_search_abort.store(false, std::memory_order_release);
+	g_search_deadline.store((clock_t)0, std::memory_order_release);
+	g_dag_recheck_hits = 0; g_dag_link_hits = 0; g_dag_link_misses = 0;
+	g_dag_demerit_adds = 0; g_dag_demerit_skips = 0; g_dag_demerit_fallbacks = 0;
+	Board b;
+	b.from_fen("8/2k5/3p4/p2P1p2/P2P1P2/4K3/8/8 w - - 14 8");
+	Board* root_board = monte_board_buffer.get_first_free_board();
+	ASSERT_TRUE(root_board != nullptr);
+	root_board->copy_data(b, false, true);
+	root_board->_is_active = true;
+	Node* root = monte_node_buffer.get_first_free_node();
+	ASSERT_TRUE(root != nullptr);
+	root->reset(false);
+	root->_board = root_board;
+	root->_is_active = true;
+	root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 20000, 10);
+	Move most = root->get_most_explored_child_move();
+	Move best = root->get_best_score_move(0.005, 5.0);
+	cout << "  [R1-DAG-20k] most=" << b.move_label(most, true)
+		<< " best=" << b.move_label(best, true)
+		<< " deep=" << root->_deep_evaluation._value
+		<< " avg=" << root->_deep_evaluation._avg_score
+		<< " recheck=" << g_dag_recheck_hits
+		<< " linkhit=" << g_dag_link_hits
+		<< " linkmiss=" << g_dag_link_misses
+		<< " dem_add=" << g_dag_demerit_adds
+		<< " dem_skip=" << g_dag_demerit_skips
+		<< " dem_fb=" << g_dag_demerit_fallbacks << endl;
+	// Ticket criterion (robust to search variance): the Ke2 shuffle is gone
+	// from visits AND ranking. (best==Kf3 exactly is NOT asserted: OFF itself
+	// spreads visits over Kd2/Kf2/Kf3 across budgets, and Kd3 is verified a
+	// good move by OFF reference: post-Kd3 +85/0.58 at 20k.)
+	EXPECT_NE(b.move_label(most, true), "Ke2");
+	EXPECT_NE(b.move_label(best, true), "Ke2");
+	g_tt_node_dag = false;
+	g_search_abort.store(false, std::memory_order_release);
+}
+
 // Bug #1 viz ("au moins"): buffer occupancy + FULL flags shown in the UI.
 // buffer_status_text is pure; fields are filled by update_snapshot().
 TEST(Puzzle, BufferStatusText) {

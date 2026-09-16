@@ -113,6 +113,24 @@ struct DagExcl {
 	void add(const Move& m) {
 		if (count < CAP && !contains(m)) moves[count++] = m;
 	}
+	// TD-002: call-scoped draw demerits, keyed by CHILD zobrist (spec section 3,
+	// "path-local draw value"). A repetition cut proves the child draws on the
+	// current path; later backups in the SAME call skip demerited children when
+	// re-ranking, so a shared fantasy value cannot freeze the parent. Never
+	// stored on shared nodes/edges (invariant 772183a); fresh every call (no
+	// staleness, no reset hooks). Overflow: drop the record (conservative cut).
+	static constexpr int DCAP = 256;
+	uint64_t draw_keys[DCAP] = {};
+	int draw_count = 0;
+	bool draw_contains(uint64_t k) const {
+		if (k == 0) return false;
+		for (int i = 0; i < draw_count; ++i) if (draw_keys[i] == k) return true;
+		return false;
+	}
+	bool draw_add(uint64_t k) {
+		if (k != 0 && draw_count < DCAP && !draw_contains(k)) { draw_keys[draw_count++] = k; return true; }
+		return false;
+	}
 };
 
 // Stack-allocated move score list replacing robin_map<Move, double>.
@@ -276,8 +294,9 @@ public:
 	// Initializes the node from its board
 	void init_node();
 
-	// New GrogrosZero
-	void grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int nodes, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, const clock_t max_time = 0);
+	// New GrogrosZero. TD-002: an optional call-wide repetition-exclusion list;
+	// nested descents inherit the top call's list (default: fresh local list).
+	void grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int nodes, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, const clock_t max_time = 0, DagExcl* dag_excl = nullptr);
 
 	// Explores a new move
 	void explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr);
@@ -336,7 +355,11 @@ public:
 	double get_node_score(const double alpha, const double beta, const int max_eval, const double max_avg_score, const bool player, Evaluation *custom_eval = nullptr) const;
 
 	// Returns the move with the best score
-	Move get_best_score_move(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100);
+	// TD-002: optional call-scoped draw demerits (DagExcl::draw_*); demerited
+	// children are skipped when ranking (normalization and argmax), so a
+	// backup re-ranks around shared fantasy values. All-demerited falls back
+	// to the unfiltered ranking. Default nullptr: every other caller unchanged.
+	Move get_best_score_move(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100, const DagExcl* demerit = nullptr);
 
 	// Returns a forecast value of the node score, when the maximum evaluations are unknown (for the quiescence)
 	int get_previsonal_node_score(const double alpha, const double beta, const bool player) const;
