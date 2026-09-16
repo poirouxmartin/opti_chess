@@ -4506,7 +4506,7 @@ TEST(Puzzle, EvalAttribution) {
 		if (abs(r.actual_eval_cp) >= 29000) { skipped++; continue; }
 		string bucket = eval_taxonomy(row.fen);
 		int e = abs(r.actual_eval_cp - row.sf_cp);
-		double g = eval_gap_cp(r.actual_eval_cp, row.sf_cp);
+		double g = eval_gap_cp(r.actual_eval_cp, row.sf_cp, fen_material_total(row.fen));
 		errs.push_back({ row.fen, bucket, r.actual_eval_cp, row.sf_cp, e, g });
 		auto& b = by_bucket[bucket];
 		b.first++;
