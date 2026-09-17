@@ -1165,6 +1165,13 @@ int Board::get_pawn_structure(float display_factor)
 					main_GUI._eval_components += string("RDIAG ") + (race_cands[wi].white ? "w " : "b ") + to_string(race_cands[wi].col) + " arr=" + to_string(race_cands[wi].arrival) + " mg=" + to_string(margin) + " top=" + to_string((int)topup) + '\n';
 			}
 		}
+		// RDUEL : diagnostic double-course (positions respectives des
+		// deux candidats certains). Inerte, flag OPTI_PP_RDIAG.
+		{
+			static const bool rdiag2 = getenv("OPTI_PP_RDIAG") != nullptr;
+			if (rdiag2)
+				main_GUI._eval_components += string("RDUEL biw=") + to_string(bi_w) + " bestw=" + to_string(best_w) + " bib=" + to_string(bi_b) + " bestb=" + to_string(best_b) + " ppv=" + to_string((int)passed_pawns_value) + '\n';
+		}
 	}
 
 	// Passer sub-component scale: applied here so display AND total
