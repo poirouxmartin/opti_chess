@@ -1136,31 +1136,6 @@ bool GUI::play_move_keep(Move move)
 				(int)_root_exploration_node->_children.size(),
 				(int)_root_exploration_node->_iterations);
 
-			// Equity on re-root (warm-start): the kept subtree arrives with a
-			// visit history skewed for the PARENT position (e.g. 40k vs 7):
-			// continued reflection would lock onto the hog forever (softmax +
-			// top-5 boost + best-only backup) and never prove the starved
-			// lines - unlike a fresh root, where neutral priors give every
-			// move its fair early share. Re-level the DIRECT children's visit
-			// counts (values/structure/nodes kept: proof is preserved,
-			// scheduling restarts fair, trust prior re-engages uniformly).
-			// Fresh-run paths (tests/benches) never execute this.
-			// Env-guard: OPTI_KEEP_EQUITY=0 restores legacy (keep counts).
-			static const bool keep_equity = [] {
-				const char* e = getenv("OPTI_KEEP_EQUITY");
-				return e == nullptr || atoi(e) != 0;
-			}();
-			if (keep_equity) {
-				// (la boucle voit des const : const_cast localise a nos
-				// propres compteurs de visite, rien d'autre n'est touche)
-				for (auto& [m, link] : next_root->_children) {
-					const_cast<std::atomic<int>&>(link._chosen_iterations).store(1, std::memory_order_relaxed);
-					if (link._node != nullptr)
-						link._node->_iterations.store(1, std::memory_order_relaxed);
-				}
-				debug_log("[play_move_keep] equity: direct children visits releveled to 1");
-			}
-
 			// Former root, now orphaned (next_root is the new root):
 			// recycling of its node + board (B_R), distinct from next_root.
 			recycle_detached_node(old_root);
