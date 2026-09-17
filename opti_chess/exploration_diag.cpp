@@ -2,6 +2,7 @@
 #include "useful_functions.h"
 #include "zobrist.h"
 #include <cmath>
+#include <cstdlib>
 #include <unordered_set>
 
 #ifdef _WIN32
@@ -2551,6 +2552,31 @@ void Node::evaluate_position(Evaluator* evaluator, bool display, Network * netwo
 	}
 }
 
+// Poussee silencieuse d'une case par un pion passe (aucun pion adverse
+// devant, colonne + adjacentes) : heuristique cheap (lecture _array, pas
+// de structure de pions) pour reperer les coups qui creent une menace de
+// promotion. Sert au prior passeurs de la selection (pick_random_child).
+static bool is_passed_push(const Board* b, const Move& move) {
+	if (move.is_capture() || move.is_promotion()) return false;
+	const bool white = b->_player;
+	if (b->_array[move.start_row][move.start_col] != (white ? w_pawn : b_pawn)) return false;
+	if (move.end_col != move.start_col) return false;
+	const int8_t dir = white ? 1 : -1;
+	if (move.end_row != move.start_row + dir) return false;
+	if (b->_array[move.end_row][move.end_col] != none) return false;
+	const uint8_t en = white ? b_pawn : w_pawn;
+	// Cases DEVANT, apres la poussee (end_row + dir) : la case de depart
+	// contient encore le pion lui-meme, il faut partir d'au-dela.
+	int k = (int)move.end_row + dir;
+	while (white ? (k <= 7) : (k >= 0)) {
+		if (b->_array[k][move.end_col] == en) return false;
+		if (move.end_col > 0 && b->_array[k][move.end_col - 1] == en) return false;
+		if (move.end_col < 7 && b->_array[k][move.end_col + 1] == en) return false;
+		k += dir;
+	}
+	return true;
+}
+
 // Returns a pseudo-random child node, weighted by evaluations and node counts
 Move Node::pick_random_child(const double alpha, const double beta, const double gamma, const DagExcl* dag_excl) {
 	// Positions where every move wins and the search wastes time separating them:
@@ -2639,6 +2665,30 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	for (int i = 0; i < top_count; ++i) {
 		Move m = top[i].move;
 		move_scores[m] = top[i].score * boost_table[i];
+	}
+
+	// Prior passeurs : les poussees de pions passes (is_passed_push, defini
+	// plus haut dans ce fichier) obtiennent une part d'exploration garantie,
+	// qui decroit avec les visites (comme le trust prior) pour ne pas
+	// verrouiller ensuite. Sans lui, une ligne comme ...c2 (premiere
+	// impression -2600 via g8=Q+ en quiescence) ne recoit que des miettes et
+	// n'est jamais validee. Selection seule (la PV via get_best_score_move
+	// est intacte). OFF par defaut (OPTI_PRIOR_PASSER), calibre sur probes.
+	static const double passer_prior = [] {
+		const char* e = getenv("OPTI_PRIOR_PASSER");
+		return e ? atof(e) : 5.0;
+	}();
+	if (passer_prior > 0.0) {
+		for (auto& [move, score] : move_scores) {
+			if (!is_passed_push(_board, move)) continue;
+			int visits = 0;
+			auto it = _children.find(move);
+			if (it != _children.end() && it->second._node != nullptr) {
+				visits = max(it->second._chosen_iterations, it->second._node->_iterations);
+				if (visits < 0) visits = 0;
+			}
+			score *= 1.0 + passer_prior / (1.0 + (double)visits);
+		}
 	}
 
 	Move best_move;
