@@ -3933,6 +3933,12 @@ TEST(Debug, DumpComponents) {
 		b.evaluate(&e, &evaluator, true, nullptr, true);
 		cout << "### " << line << " => " << e._value << endl;
 		cout << main_GUI._eval_components << endl;
+		if (getenv("OPTI_DUMP_MOVES") != nullptr) {
+			b.get_moves();
+			cout << "MOVES n=" << (int)b._got_moves << " player=" << (b._player ? "w" : "b") << endl;
+			for (int m = 0; m < b._got_moves; m++)
+				cout << "  " << b.move_label(b._moves[m]) << endl;
+		}
 		i++;
 	}
 	SUCCEED();
