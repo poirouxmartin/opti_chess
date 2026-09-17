@@ -253,6 +253,19 @@ int Board::get_pawn_structure(float display_factor)
 		const char* e = getenv("OPTI_PP_CAND");
 		return e ? (float)atof(e) : 1.0f;
 	}();
+	// Threat floor (potential) for live candidates: fraction of the next-rank
+	// passer table value, scaled by the LOCAL LEVER (pawn tension won on the
+	// break and blocker squares) — not the wing majority, which pays distant
+	// speculation that never breaks through in pieceful middlegames.
+	// Attenuators: lever (lost tension = 0), POT (modesty), passed_adv.
+	// Piece damper: with N/B/R/Q on board the break is usually held by a
+	// piece (Vnet knows it); the threat is real only in pawn (+kings)
+	// endings, quartered otherwise. 0 = off.
+	constexpr float cand_pot_piece_damp = 0.25f;
+	static const float pp_cand_pot = [] {
+		const char* e = getenv("OPTI_PP_CANDPOT");
+		return e ? (float)atof(e) : 0.2f;
+	}();
 	// (Removed) Non-endgame square scale (oos pool muted permanently).
 	// Passer sub-component scale: single internal factor compensating the
 	// x0.2 global structure coef applied later outside (net x1.0, so the
@@ -328,7 +341,7 @@ int Board::get_pawn_structure(float display_factor)
 	// is required (wing margin >= 1, else 0). R is the malus on top of the
 	// hypothetical passer value (pp_hyp_passer): max of local pawn-tension
 	// resolution and wing-majority resolution (margin/2).
-	auto pp_candidate_R = [&](int col, int row, bool white) -> float {
+	auto pp_candidate_R = [&](int col, int row, bool white, float* lever_out = nullptr) -> float {
 		int mg = pp_margin(col, row, white);
 		if (mg < 1) return 0.0f;
 		int bcol = -1, brow = -1;
@@ -362,6 +375,7 @@ int Board::get_pawn_structure(float display_factor)
 		leverR = leverR < 0.0f ? 0.0f : (leverR > 1.0f ? 1.0f : leverR);
 		float majR = (float)mg / 2.0f;
 		majR = majR < 0.0f ? 0.0f : (majR > 1.0f ? 1.0f : majR);
+		if (lever_out) *lever_out = leverR;
 		return leverR > majR ? leverR : majR;
 	};
 
@@ -648,7 +662,8 @@ int Board::get_pawn_structure(float display_factor)
 				// worth at most the passer it will become (pp_hyp_passer).
 				if (!is_passed_pawn && pawn_blocked) {
 					{
-						float candR = pp_candidate_R(col, row, true);
+						float leverW = 0.0f;
+						float candR = pp_candidate_R(col, row, true, &leverW);
 						if (candR > 0.0f && pp_cand_factor > 0.0f) {
 							float Vhyp = 0.0f;
 							int bestSr = -1;
@@ -661,9 +676,11 @@ int Board::get_pawn_structure(float display_factor)
 								float v = pp_hyp_passer(col + 1, (int)row + 1, true);
 								if (v > Vhyp) { Vhyp = v; bestSr = (int)row + 1; }
 							}
-							float Vnet = Vhyp - (bestSr >= 0 ? pp_cand_malus(bestSr, true) : 0.0f);
-							if (Vnet > 0.0f)
-								passed_pawns_value += pp_cand_factor * candR * Vnet * passed_adv;
+						float Vnet = Vhyp - (bestSr >= 0 ? pp_cand_malus(bestSr, true) : 0.0f);
+						float potFloor = pp_cand_pot * leverW * (float)passed_pawns[(row + 1) <= 6 ? (row + 1) : 6] * (any_piece ? cand_pot_piece_damp : 1.0f);
+						if (Vnet < potFloor) Vnet = potFloor;
+						if (Vnet > 0.0f)
+							passed_pawns_value += pp_cand_factor * candR * Vnet * passed_adv;
 						}
 					}
 					{
@@ -897,7 +914,8 @@ int Board::get_pawn_structure(float display_factor)
 			// pawns break, majority required, capped by hypothetical passer).
 				if (!is_passed_pawn && pawn_blocked) {
 					{
-						float candR = pp_candidate_R(col, row, false);
+						float leverB = 0.0f;
+						float candR = pp_candidate_R(col, row, false, &leverB);
 						if (candR > 0.0f && pp_cand_factor > 0.0f) {
 							float Vhyp = 0.0f;
 							int bestSr = -1;
@@ -910,9 +928,11 @@ int Board::get_pawn_structure(float display_factor)
 								float v = pp_hyp_passer(col + 1, (int)row - 1, false);
 								if (v > Vhyp) { Vhyp = v; bestSr = (int)row - 1; }
 							}
-							float Vnet = Vhyp - (bestSr >= 0 ? pp_cand_malus(bestSr, false) : 0.0f);
-							if (Vnet > 0.0f)
-								passed_pawns_value -= pp_cand_factor * candR * Vnet * passed_adv;
+						float Vnet = Vhyp - (bestSr >= 0 ? pp_cand_malus(bestSr, false) : 0.0f);
+						float potFloor = pp_cand_pot * leverB * (float)passed_pawns[((int)row - 1) >= 1 ? (8 - (int)row) : 6] * (any_piece ? cand_pot_piece_damp : 1.0f);
+						if (Vnet < potFloor) Vnet = potFloor;
+						if (Vnet > 0.0f)
+							passed_pawns_value -= pp_cand_factor * candR * Vnet * passed_adv;
 						}
 					}
 					{
