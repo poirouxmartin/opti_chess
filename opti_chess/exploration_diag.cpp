@@ -652,9 +652,14 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 			// scheduler must not be allowed to starve a line to death before its
 			// subtree had any chance to speak. The cost is negligible and the
 			// guarantee is absolute: no root line can go unproven.
-			constexpr int FORCED_EVERY = 1 << 30; // disabled: pure breadth destroys tactical focus
+			// Env-tunable (OPTI_FORCED_EVERY), OFF by default (1<<30): pure
+			// breadth destroys tactical focus, calibrate on probes + GATE.
+			static const int forced_every = [] {
+				const char* e = getenv("OPTI_FORCED_EVERY");
+				return e ? atoi(e) : (1 << 30);
+			}();
 			Move forced;
-			if (iteration_index % FORCED_EVERY == FORCED_EVERY - 1) {
+			if (forced_every > 0 && iteration_index % forced_every == forced_every - 1) {
 				long long min_visits = LLONG_MAX;
 				for (auto const& [move, link] : _children) {
 					if (link._node && !link._node->_is_terminal && link._chosen_iterations < min_visits) {
