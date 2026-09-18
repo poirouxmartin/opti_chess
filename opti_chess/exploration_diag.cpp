@@ -44,6 +44,7 @@ bool g_selective_deepening = (getenv("OPTI_NO_SELECTIVE") == nullptr); // select
 int g_selective_tail_depth = (getenv("OPTI_SEL_TAIL") != nullptr) ? atoi(getenv("OPTI_SEL_TAIL")) : 2;
 int g_selective_mid_depth = (getenv("OPTI_SEL_MID") != nullptr) ? atoi(getenv("OPTI_SEL_MID")) : 6;
 int g_check_extension = (getenv("OPTI_CHECK_EXT") != nullptr) ? atoi(getenv("OPTI_CHECK_EXT")) : 0;
+int g_forced_every = (getenv("OPTI_FORCED_EVERY") != nullptr) ? atoi(getenv("OPTI_FORCED_EVERY")) : (1 << 30);
 bool g_shared_tree = false;
 
 // Quiescence exit-path census (Phase 7a): where do the 8.8x nodes go?
@@ -654,12 +655,8 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 			// guarantee is absolute: no root line can go unproven.
 			// Env-tunable (OPTI_FORCED_EVERY), OFF by default (1<<30): pure
 			// breadth destroys tactical focus, calibrate on probes + GATE.
-			static const int forced_every = [] {
-				const char* e = getenv("OPTI_FORCED_EVERY");
-				return e ? atoi(e) : (1 << 30);
-			}();
 			Move forced;
-			if (forced_every > 0 && iteration_index % forced_every == forced_every - 1) {
+			if (g_forced_every > 0 && iteration_index % g_forced_every == g_forced_every - 1) {
 				long long min_visits = LLONG_MAX;
 				for (auto const& [move, link] : _children) {
 					if (link._node && !link._node->_is_terminal && link._chosen_iterations < min_visits) {

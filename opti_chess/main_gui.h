@@ -608,6 +608,17 @@ inline int main_ui() {
 				cout << "no more moves are in memory" << endl;
 		}
 
+		// Y - Cycles forced exploration (anti-starvation round-robin): OFF -> 1024 -> 256 -> 64 -> 16 -> OFF
+		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_Y)) {
+			if (g_forced_every >= (1 << 30)) g_forced_every = 1024;
+			else if (g_forced_every == 1024) g_forced_every = 256;
+			else if (g_forced_every == 256) g_forced_every = 64;
+			else if (g_forced_every == 64) g_forced_every = 16;
+			else g_forced_every = (1 << 30);
+			if (g_forced_every >= (1 << 30)) debug_log("[key] Y pressed, forced exploration OFF");
+			else debug_log("[key] Y pressed, forced exploration every %d", g_forced_every);
+		}
+
 		// Return - Starts and stops the clock
 		if (IsKeyPressed(KEY_SPACE)) {
 			if (main_GUI._time)
