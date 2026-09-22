@@ -670,6 +670,24 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 					g_forced_fired.fetch_add(1, std::memory_order_relaxed);
 			}
 
+			// Decay temporel : toutes les H descentes, divise par 2 les visites
+			// des enfants directs (plancher 1, structure/valeurs gardees).
+			// L'histoire ancienne pese exponentiellement moins : les hogs
+			// historiques redescendent sous le seuil du trust prior (4096) qui
+			// les re-adoucit, rouvrant la competition au lieu de la verrouiller.
+			// OFF par defaut (OPTI_DECAY_EVERY=0). Mesure seule juge (GATE+probes).
+			static const int decay_every = [] {
+				const char* e = getenv("OPTI_DECAY_EVERY");
+				return e ? atoi(e) : 0;
+			}();
+			if (decay_every > 0 && (int)_iterations % decay_every == decay_every - 1) {
+				for (auto& [move, link] : _children) {
+					const_cast<std::atomic<int>&>(link._chosen_iterations).store(max(1, (int)link._chosen_iterations / 2), std::memory_order_relaxed);
+					if (link._node != nullptr)
+						link._node->_iterations.store(max(1, (int)link._node->_iterations / 2), std::memory_order_relaxed);
+				}
+			}
+
 			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr, forced);
 		}
 
