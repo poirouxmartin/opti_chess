@@ -42,8 +42,10 @@ extern int g_check_extension;
 
 // Forced exploration (anti-starvation round-robin): every Nth refinement
 // descends into the least-visited child. Via OPTI_FORCED_EVERY (default
-// 1<<30 = OFF). GUI key Y cycles OFF/1024/256/64/16 live.
+// 1<<30 = OFF). GUI key Y/Z cycles OFF/1024/256/64/16 live.
 extern int g_forced_every;
+// Firing counter (proof the guard acts, shown in GUI + worker exit log).
+extern std::atomic<long long> g_forced_fired;
 
 // Phase 6: shared-tree mode (OPTI_SHARED=1 with OPTI_THREADS>1). All workers
 // refine ONE tree (main thread's arenas): node locks guard _children,

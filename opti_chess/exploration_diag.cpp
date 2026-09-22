@@ -45,6 +45,7 @@ int g_selective_tail_depth = (getenv("OPTI_SEL_TAIL") != nullptr) ? atoi(getenv(
 int g_selective_mid_depth = (getenv("OPTI_SEL_MID") != nullptr) ? atoi(getenv("OPTI_SEL_MID")) : 6;
 int g_check_extension = (getenv("OPTI_CHECK_EXT") != nullptr) ? atoi(getenv("OPTI_CHECK_EXT")) : 0;
 int g_forced_every = (getenv("OPTI_FORCED_EVERY") != nullptr) ? atoi(getenv("OPTI_FORCED_EVERY")) : (1 << 30);
+std::atomic<long long> g_forced_fired{0};
 bool g_shared_tree = false;
 
 // Quiescence exit-path census (Phase 7a): where do the 8.8x nodes go?
@@ -600,7 +601,6 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	DagExcl dag_excl;
 
 	// Exploration
-	int iteration_index = 0;
 	if (getenv("SHARED_TRACE") != nullptr) t_dbg_descents = 0;
 	while (iterations > 0) {
 		if (getenv("SHARED_TRACE") != nullptr) t_dbg_descents++;
@@ -647,16 +647,18 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		// EXPLORING AN ALREADY-EXPLORED MOVE (refinement)
 		else if (children_count() > 0) {
 
-			// Forced round-robin: every FORCED_EVERY-th refinement descends into
-			// the LEAST-visited child. Early WDL verdicts are unreliable (a
-			// sacrifice only proves itself several quiet plies deeper), so the
-			// scheduler must not be allowed to starve a line to death before its
-			// subtree had any chance to speak. The cost is negligible and the
-			// guarantee is absolute: no root line can go unproven.
-			// Env-tunable (OPTI_FORCED_EVERY), OFF by default (1<<30): pure
-			// breadth destroys tactical focus, calibrate on probes + GATE.
+			// Forced round-robin: every Nth descent THROUGH THIS NODE goes to
+			// the LEAST-visited child. Uses the persistent _iterations counter,
+			// NOT a per-call loop index (the GUI worker calls grogros_zero(1)
+			// per tick: a local index would stay 0 forever and the guard would
+			// never fire - which is exactly what happened before this fix).
+			// Early WDL verdicts are unreliable (a sacrifice only proves itself
+			// several quiet plies deeper), so the scheduler must not be allowed
+			// to starve a line to death before its subtree had any chance to
+			// speak. Env-tunable (OPTI_FORCED_EVERY), strictly OFF by default
+			// (the < (1<<30) early-out keeps default behaviour bit-identical).
 			Move forced;
-			if (g_forced_every > 0 && iteration_index % g_forced_every == g_forced_every - 1) {
+			if (g_forced_every > 0 && g_forced_every < (1 << 30) && (int)_iterations % g_forced_every == g_forced_every - 1) {
 				long long min_visits = LLONG_MAX;
 				for (auto const& [move, link] : _children) {
 					if (link._node && !link._node->_is_terminal && link._chosen_iterations < min_visits) {
@@ -664,6 +666,8 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 						forced = move;
 					}
 				}
+				if (!forced.is_null_move())
+					g_forced_fired.fetch_add(1, std::memory_order_relaxed);
 			}
 
 			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr, forced);
