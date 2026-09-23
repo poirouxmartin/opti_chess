@@ -41,8 +41,8 @@ bool g_search_avg_cap = (getenv("OPTI_AVG_CAP") != nullptr);            // cap s
 
 bool g_adaptive_quiescence = (getenv("OPTI_ADAPTIVE") != nullptr);
 bool g_selective_deepening = (getenv("OPTI_NO_SELECTIVE") == nullptr); // selective 212/2000 is new baseline (disable with OPTI_NO_SELECTIVE=1)
-int g_selective_tail_depth = (getenv("OPTI_SEL_TAIL") != nullptr) ? atoi(getenv("OPTI_SEL_TAIL")) : 2;
-int g_selective_mid_depth = (getenv("OPTI_SEL_MID") != nullptr) ? atoi(getenv("OPTI_SEL_MID")) : 6;
+int g_selective_tail_depth = (getenv("OPTI_SEL_TAIL") != nullptr) ? atoi(getenv("OPTI_SEL_TAIL")) : 10;
+int g_selective_mid_depth = (getenv("OPTI_SEL_MID") != nullptr) ? atoi(getenv("OPTI_SEL_MID")) : 10;
 int g_check_extension = (getenv("OPTI_CHECK_EXT") != nullptr) ? atoi(getenv("OPTI_CHECK_EXT")) : 0;
 int g_forced_every = (getenv("OPTI_FORCED_EVERY") != nullptr) ? atoi(getenv("OPTI_FORCED_EVERY")) : (1 << 30);
 std::atomic<long long> g_forced_fired{0};
@@ -668,24 +668,6 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 				}
 				if (!forced.is_null_move())
 					g_forced_fired.fetch_add(1, std::memory_order_relaxed);
-			}
-
-			// Decay temporel : toutes les H descentes, divise par 2 les visites
-			// des enfants directs (plancher 1, structure/valeurs gardees).
-			// L'histoire ancienne pese exponentiellement moins : les hogs
-			// historiques redescendent sous le seuil du trust prior (4096) qui
-			// les re-adoucit, rouvrant la competition au lieu de la verrouiller.
-			// OFF par defaut (OPTI_DECAY_EVERY=0). Mesure seule juge (GATE+probes).
-			static const int decay_every = [] {
-				const char* e = getenv("OPTI_DECAY_EVERY");
-				return e ? atoi(e) : 0;
-			}();
-			if (decay_every > 0 && (int)_iterations % decay_every == decay_every - 1) {
-				for (auto& [move, link] : _children) {
-					const_cast<std::atomic<int>&>(link._chosen_iterations).store(max(1, (int)link._chosen_iterations / 2), std::memory_order_relaxed);
-					if (link._node != nullptr)
-						link._node->_iterations.store(max(1, (int)link._node->_iterations / 2), std::memory_order_relaxed);
-				}
 			}
 
 			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr, forced);
