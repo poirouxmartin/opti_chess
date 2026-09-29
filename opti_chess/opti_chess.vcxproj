@@ -189,7 +189,8 @@
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <OpenMPSupport>true</OpenMPSupport>
       <EnableModules>true</EnableModules>
-      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/utf-8 /bigobj %(AdditionalOptions)</AdditionalOptions>
+      <ForcedIncludeFiles>excpt.h</ForcedIncludeFiles>
       <ControlFlowGuard>false</ControlFlowGuard>
       <OmitFramePointers>true</OmitFramePointers>
       <ExceptionHandling>false</ExceptionHandling>
@@ -205,6 +206,7 @@
       <AdditionalLibraryDirectories>C:\Users\poiro\Documents\Info\Librairies\raylib-5.5_win64_msvc16\lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>raylib.lib;winmm.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <StackReserveSize>16777216</StackReserveSize>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Lichess-release|x64'">
@@ -239,40 +241,39 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="buffer.cpp" />
-    <ClCompile Include="evaluation.cpp" />
-    <ClCompile Include="exploration.cpp" />
-    <ClCompile Include="game_tree.cpp" />
-    <ClCompile Include="generation.cpp" />
-    <ClCompile Include="gui.cpp" />
-    <ClCompile Include="league.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="main_gui.h" />
-    <ClCompile Include="main_lichess.h" />
-    <ClCompile Include="match.cpp" />
-    <ClCompile Include="neural_network.cpp" />
     <ClCompile Include="board.cpp" />
-    <ClCompile Include="player.cpp" />
+    <ClCompile Include="board_display.cpp" />
+    <ClCompile Include="board_fen.cpp" />
+    <ClCompile Include="buffer.cpp" />
+    <ClCompile Include="eval_core.cpp" />
+    <ClCompile Include="eval_king.cpp" />
+    <ClCompile Include="eval_misc.cpp" />
+    <ClCompile Include="eval_mobility.cpp" />
+    <ClCompile Include="eval_pawn.cpp" />
+    <ClCompile Include="evaluation.cpp" />
+    <ClCompile Include="exploration_diag.cpp" />
+    <ClCompile Include="game_tree.cpp" />
+    <ClCompile Include="gui.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="neural_network.cpp" />
     <ClCompile Include="tests.cpp" />
-    <ClCompile Include="time_tests.cpp" />
     <ClCompile Include="useful_functions.cpp" />
     <ClCompile Include="windows_tests.cpp" />
     <ClCompile Include="zobrist.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="board.h" />
     <ClInclude Include="buffer.h" />
     <ClInclude Include="evaluation.h" />
     <ClInclude Include="exploration.h" />
     <ClInclude Include="game_tree.h" />
-    <ClInclude Include="generation.h" />
     <ClInclude Include="gui.h" />
-    <ClInclude Include="league.h" />
-    <ClInclude Include="match.h" />
+    <ClInclude Include="main_gui.h" />
+    <ClInclude Include="main_lichess.h" />
     <ClInclude Include="neural_network.h" />
-    <ClInclude Include="board.h" />
-    <ClInclude Include="player.h" />
+    <ClInclude Include="puzzle.h" />
+    <ClInclude Include="stockfish_adapter.h" />
     <ClInclude Include="tests.h" />
-    <ClInclude Include="time_tests.h" />
     <ClInclude Include="useful_functions.h" />
     <ClInclude Include="windows_tests.h" />
     <ClInclude Include="zobrist.h" />

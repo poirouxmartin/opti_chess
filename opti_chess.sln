@@ -14,6 +14,8 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
 		Debug|x86 = Debug|x86
+		Lichess-release|x64 = Lichess-release|x64
+		Lichess-release|x86 = Lichess-release|x86
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
 	EndGlobalSection
@@ -22,6 +24,10 @@ Global
 		{5E81ACB0-B254-4C59-8BBC-379AB53313B7}.Debug|x64.Build.0 = Debug|x64
 		{5E81ACB0-B254-4C59-8BBC-379AB53313B7}.Debug|x86.ActiveCfg = Debug|Win32
 		{5E81ACB0-B254-4C59-8BBC-379AB53313B7}.Debug|x86.Build.0 = Debug|Win32
+		{5E81ACB0-B254-4C59-8BBC-379AB53313B7}.Lichess-release|x64.ActiveCfg = Lichess-release|x64
+		{5E81ACB0-B254-4C59-8BBC-379AB53313B7}.Lichess-release|x64.Build.0 = Lichess-release|x64
+		{5E81ACB0-B254-4C59-8BBC-379AB53313B7}.Lichess-release|x86.ActiveCfg = Lichess-release|Win32
+		{5E81ACB0-B254-4C59-8BBC-379AB53313B7}.Lichess-release|x86.Build.0 = Lichess-release|Win32
 		{5E81ACB0-B254-4C59-8BBC-379AB53313B7}.Release|x64.ActiveCfg = Release|x64
 		{5E81ACB0-B254-4C59-8BBC-379AB53313B7}.Release|x64.Build.0 = Release|x64
 		{5E81ACB0-B254-4C59-8BBC-379AB53313B7}.Release|x86.ActiveCfg = Release|Win32
