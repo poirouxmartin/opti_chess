@@ -264,7 +264,7 @@ void init_terminal_draw_child(Node* child, Board* board, Evaluator* eval, Networ
 	child->_is_terminal = true;
 }
 
-// #11 Plan A - frozen leaf carrying a trustworthy value taken from the TT.
+// #11 Plan A - TT-seeded leaf carrying a trustworthy value taken from the TT.
 // Structurally modelled on init_terminal_draw_child. Terminal detection comes
 // first: Board::evaluate(check_game_over=true) does not COMPUTE game over
 // (is_game_over() is commented out there, board.cpp:1548); it only READS
@@ -277,6 +277,15 @@ void init_terminal_draw_child(Node* child, Board* board, Evaluator* eval, Networ
 // _iterations=1): the UCT exploration term (see pick_random_child, the
 // exploration term over _iterations) then behaves exactly as it does for
 // existing terminal/draw leaves.
+// Bug #4 - the leaf is SEEDED, not frozen (_can_explore=true): a frozen leaf
+// permanently poisons its ancestors with the first TT value ever probed
+// (measured: Kb8 fortress reads +585 at 50k nodes instead of the converged 0,
+// because early hot statics can never be refined). A seeded leaf refines like
+// any node, so values converge exactly as with the TT off; the TT only saves
+// the initial quiescence and seeds better priors. _fully_explored stays true
+// (skips the initial quiescence in explore_new_move, keeps fec bookkeeping
+// exact) and _initialized stays true (grogros_zero never reruns quiescence
+// over the seed).
 void init_tt_leaf_child(Node* child, Board* board, Evaluator* eval, Network* network, int white_relative_value) {
 	child->_board = board;
 
@@ -307,11 +316,9 @@ void init_tt_leaf_child(Node* child, Board* board, Evaluator* eval, Network* net
 	child->_iterations = 1;
 	child->_is_stand_pat_eval = false;
 	child->_fully_explored = true;
-	child->_can_explore = false;
-	// Durable freeze: without _initialized=true, grogros_zero would rerun
-	// quiescence (overwriting the TT value) if the leaf is revisited as
-	// best_move. Combined with grogros_zero's early !_can_explore return,
-	// the leaf stays genuinely frozen.
+	child->_can_explore = true;
+	// Seeded, not frozen (bug #4): _initialized=true keeps grogros_zero from
+	// rerunning quiescence over the TT seed on the first refinement visit.
 	child->_initialized = true;
 }
 

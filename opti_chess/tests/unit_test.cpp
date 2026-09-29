@@ -17,6 +17,7 @@
 #include "stockfish_adapter.h"
 #include <chrono>
 #include <algorithm>
+#include <unordered_set>
 #include <vector>
 #include <cmath>
 
@@ -3276,8 +3277,8 @@ TEST(FenCorpus, TestsTxtInvariants) {
 							minor_fens += to_string(ev._value) + "/" + to_string(evm._value) + ": " + fen + "\n";
 					}
 				}
-			}
 	}
+}
 	}
 
 	cout << "=== FEN CORPUS: " << total << " positions scanned"
@@ -3288,7 +3289,6 @@ TEST(FenCorpus, TestsTxtInvariants) {
 	EXPECT_GT(total, 1000) << "corpus parsing regressed?";
 	EXPECT_TRUE(failures.empty()) << failures.size() / 64 << "+ corpus issues (see log)";
 }
-
 
 // TEMP DIAG: minor asymmetry component hunt
 
@@ -4097,13 +4097,131 @@ TEST(Puzzle, CappedArenaRefines) {
 	g_search_abort.store(false, std::memory_order_release);
 }
 
+// Bug #2 (eval/WDL incoherence): the header once showed the most-visited
+// eval (+0.6) with the best-line WDL (1000/0/0). This probe replays the exact
+// transient window (chunked search on the Dxh7 FEN + a quiet FEN) and asserts
+// the SHOWN pair always comes from ONE move's node, plus a systematic
+// intra-node check: every displayed Evaluation re-derives (get_WDL +
+// get_average_score) from its own (value, uncertainty, winnable_*).
+TEST(Puzzle, EvalWdlCoherence) {
+	static Evaluator evaluator;
+	const char* fens[] = {
+		"rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 0 1",
+		"r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 4 5",
+	};
+	for (auto fen : fens) {
+		if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
+		if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+		monte_board_buffer.reset(); monte_node_buffer.reset();
+		transposition_table.clear(); node_map.clear();
+		g_buffers_full_logged = false; g_tt_main_search = false; g_tt_node_dag = false;
+		g_search_abort.store(false, std::memory_order_release);
+		g_search_deadline.store((clock_t)0, std::memory_order_release);
+		Board b;
+		b.from_fen(fen);
+		Board* root_board = monte_board_buffer.get_first_free_board();
+		ASSERT_TRUE(root_board != nullptr);
+		root_board->copy_data(b, false, true);
+		root_board->_is_active = true;
+		Node* root = monte_node_buffer.get_first_free_node();
+		ASSERT_TRUE(root != nullptr);
+		root->reset(false);
+		root->_board = root_board;
+		root->_is_active = true;
+		for (int chunk = 0; chunk < 10; chunk++) {
+			root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 2000, 10);
+			// Same fields update_snapshot fills (gui.cpp).
+			Move most = root->get_most_explored_child_move();
+			Move bscore = root->get_best_score_move(0.005, 5.0);
+			Evaluation most_eval, best_eval;
+			auto im = root->_children.find(most);
+			if (im != root->_children.end() && im->second._node != nullptr) most_eval = im->second._node->_deep_evaluation;
+			auto ib = root->_children.find(bscore);
+			if (ib != root->_children.end() && ib->second._node != nullptr) best_eval = ib->second._node->_deep_evaluation;
+			// Header display rule (gui.h TreeSnapshot::display_evaluation).
+			const Evaluation& shown = (!bscore.is_null_move() && best_eval._evaluated) ? best_eval : most_eval;
+			const int sv = shown._value;
+			const bool shown_mate = (10LL * llabs((long long)sv) > (long long)mate_value);
+			cout << "  [" << fen << " chunk " << (chunk + 1) << "] most=" << b.move_label(most, true)
+				<< " eval=" << most_eval._value << " | best=" << b.move_label(bscore, true)
+				<< " eval=" << best_eval._value << " | shown=" << sv
+				<< " WDL=" << (int)(1000 * shown._wdl.win_chance) << "/" << (int)(1000 * shown._wdl.draw_chance)
+				<< "/" << (int)(1000 * shown._wdl.lose_chance) << " avg=" << shown._avg_score << endl;
+			// (A) the user's symptom, exactly: small non-mate eval with a
+			// near-certain WDL (or mate eval without one). get_WDL maps
+			// |v|<=110 to at most a 50/50 verdict, so anything stronger is a
+			// proven cross-move or stale-field mix.
+			if (!shown_mate && llabs((long long)sv) <= 110) {
+				EXPECT_LE(shown._wdl.win_chance, 0.6f) << "chunk " << chunk << " " << fen << " shown=" << sv;
+				EXPECT_LE(shown._wdl.lose_chance, 0.6f) << "chunk " << chunk << " " << fen << " shown=" << sv;
+			}
+			if (shown_mate) {
+				const float side = sv > 0 ? shown._wdl.win_chance : shown._wdl.lose_chance;
+				EXPECT_GT(side, 0.99f) << "chunk " << chunk << " " << fen << " shown=" << sv;
+			}
+			// (B) intra-node: every root child re-derives from its own inputs.
+			for (auto const& [mv, link] : root->_children) {
+				if (link._node == nullptr || !link._node->_deep_evaluation._evaluated) continue;
+				const Evaluation& e = link._node->_deep_evaluation;
+				Evaluation re;
+				re._value = e._value; re._uncertainty = e._uncertainty;
+				re._winnable_white = e._winnable_white; re._winnable_black = e._winnable_black;
+				re._evaluated = true;
+				re.get_WDL(); re.get_average_score();
+				const float dw = fabsf(re._wdl.win_chance - e._wdl.win_chance);
+				const float dd = fabsf(re._wdl.draw_chance - e._wdl.draw_chance);
+				const float dl = fabsf(re._wdl.lose_chance - e._wdl.lose_chance);
+				const float da = fabsf(re._avg_score - e._avg_score);
+				EXPECT_LT(dw + dd + dl + da, 1e-3f)
+					<< "chunk " << chunk << " " << fen << " move=" << b.move_label(mv, true)
+					<< " val=" << e._value << " storedWDL=" << e._wdl.win_chance << "/" << e._wdl.draw_chance << "/" << e._wdl.lose_chance
+					<< " reWDL=" << re._wdl.win_chance << "/" << re._wdl.draw_chance << "/" << re._wdl.lose_chance
+					<< " avg=" << e._avg_score << " reAvg=" << re._avg_score;
+			}
+		}
+		g_search_abort.store(false, std::memory_order_release);
+	}
+}
 
+class Network;
+void init_tt_leaf_child(Node* child, Board* board, Evaluator* eval, Network* network, int white_relative_value);
 
-
-
-
-
-
+// Bug #4 (TT frozen leaf): a TT-seeded leaf must stay refinable
+// (_can_explore=true). A frozen leaf permanently poisoned ancestors with
+// the first TT value ever probed (measured: Kb8 fortress +585 at 50k
+// nodes instead of the converged 0). Pins the seeded-leaf contract:
+// TT value kept, counters exact, refinability flags set.
+TEST(Puzzle, TtSeededLeafStaysRefinable) {
+	static Evaluator evaluator;
+	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
+	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+	const char* fens[] = {
+		"8/2k5/3p4/p2P1p2/P2P1P2/4K3/8/8 w - - 14 8",
+		"8/1k6/1P6/1K6/8/8/8/8 b - - 2 24",
+	};
+	const int seeds[] = { 100, -50 };
+	for (int i = 0; i < 2; i++) {
+		monte_board_buffer.reset(); monte_node_buffer.reset();
+		Board b;
+		b.from_fen(fens[i]);
+		Board* board = monte_board_buffer.get_first_free_board();
+		ASSERT_TRUE(board != nullptr);
+		board->copy_data(b, false, true);
+		board->_is_active = true;
+		Node* child = monte_node_buffer.get_first_free_node();
+		ASSERT_TRUE(child != nullptr);
+		child->reset(false);
+		init_tt_leaf_child(child, board, &evaluator, nullptr, seeds[i]);
+		EXPECT_FALSE(child->_is_terminal) << fens[i];
+		EXPECT_TRUE(child->_deep_evaluation._evaluated) << fens[i];
+		EXPECT_EQ(child->_deep_evaluation._value, seeds[i]) << fens[i];
+		EXPECT_TRUE(child->_fully_explored) << fens[i];
+		EXPECT_TRUE(child->_initialized) << fens[i];
+		EXPECT_TRUE(child->_can_explore) << fens[i] << " (bug #4: seeded, not frozen)";
+		EXPECT_EQ(child->_nodes.load(), 1) << fens[i];
+		EXPECT_EQ(child->_iterations.load(), 1) << fens[i];
+	}
+}
 
 // Dumps eval component breakdowns (display mode) for FENs listed in
 // OPTI_EVAL_DUMP (one per line), first OPTI_EVAL_DUMPN (default 50).
