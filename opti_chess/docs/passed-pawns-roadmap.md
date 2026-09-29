@@ -157,7 +157,10 @@ sans preuve). UI async : fait (? à vérifier).
   statique que les avancées calmes hors-horizon. Promotion EXCLUE du mécanisme
   (prime about-to-move séparée, à spécifier). Réserve : incertain, benchmark
   MAE + NODES avant de trancher.
-- [NOTÉ 2026-09-12] Course intelligente (remplace l'oos supprimé) : bonus =
-  f(marge de course) avec tempo (voir spec chat 2026-09-12) ; seul le gagnant
-  touche, perdant = 0.
+- [EN COURS 2026-09-15] Course intelligente (remplace l'oos supprimé) : v1
+  arrivées en plis (2d−1 trait, 2d sinon, sans tempo sous exclusion),
+  certain = roi hors carré avec tempo + route claire + case tenable,
+  winner-takes-all, marge 1 → moitié / ≥2 → plein vers quasi-dame (900),
+  capé à la fin. Pas de BFS (Chebyshev suffit), pas d'interception
+  lointaine (A.1, prochaine étape) ; knobs OPTI_PP_RACE / OPTI_PP_RACE_Q.
 

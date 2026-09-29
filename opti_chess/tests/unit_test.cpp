@@ -4243,6 +4243,12 @@ TEST(Debug, DumpComponents) {
 		b.evaluate(&e, &evaluator, true, nullptr, true);
 		cout << "### " << line << " => " << e._value << endl;
 		cout << main_GUI._eval_components << endl;
+		if (getenv("OPTI_DUMP_MOVES") != nullptr) {
+			b.get_moves();
+			cout << "MOVES n=" << (int)b._got_moves << " player=" << (b._player ? "w" : "b") << endl;
+			for (int m = 0; m < b._got_moves; m++)
+				cout << "  " << b.move_label(b._moves[m]) << endl;
+		}
 		i++;
 	}
 	SUCCEED();
@@ -4818,7 +4824,7 @@ TEST(Puzzle, EvalAttribution) {
 		if (abs(r.actual_eval_cp) >= 29000) { skipped++; continue; }
 		string bucket = eval_taxonomy(row.fen);
 		int e = abs(r.actual_eval_cp - row.sf_cp);
-		double g = eval_gap_cp(r.actual_eval_cp, row.sf_cp);
+		double g = eval_gap_cp(r.actual_eval_cp, row.sf_cp, fen_material_total(row.fen));
 		errs.push_back({ row.fen, bucket, r.actual_eval_cp, row.sf_cp, e, g });
 		auto& b = by_bucket[bucket];
 		b.first++;

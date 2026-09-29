@@ -2,6 +2,7 @@
 #include "useful_functions.h"
 #include "zobrist.h"
 #include <cmath>
+#include <cstdlib>
 #include <unordered_set>
 
 #ifdef _WIN32
@@ -40,9 +41,11 @@ bool g_search_avg_cap = (getenv("OPTI_AVG_CAP") != nullptr);            // cap s
 
 bool g_adaptive_quiescence = (getenv("OPTI_ADAPTIVE") != nullptr);
 bool g_selective_deepening = (getenv("OPTI_NO_SELECTIVE") == nullptr); // selective 212/2000 is new baseline (disable with OPTI_NO_SELECTIVE=1)
-int g_selective_tail_depth = (getenv("OPTI_SEL_TAIL") != nullptr) ? atoi(getenv("OPTI_SEL_TAIL")) : 2;
-int g_selective_mid_depth = (getenv("OPTI_SEL_MID") != nullptr) ? atoi(getenv("OPTI_SEL_MID")) : 6;
+int g_selective_tail_depth = (getenv("OPTI_SEL_TAIL") != nullptr) ? atoi(getenv("OPTI_SEL_TAIL")) : 10;
+int g_selective_mid_depth = (getenv("OPTI_SEL_MID") != nullptr) ? atoi(getenv("OPTI_SEL_MID")) : 10;
 int g_check_extension = (getenv("OPTI_CHECK_EXT") != nullptr) ? atoi(getenv("OPTI_CHECK_EXT")) : 0;
+int g_forced_every = (getenv("OPTI_FORCED_EVERY") != nullptr) ? atoi(getenv("OPTI_FORCED_EVERY")) : (1 << 30);
+std::atomic<long long> g_forced_fired{0};
 bool g_shared_tree = false;
 
 // Quiescence exit-path census (Phase 7a): where do the 8.8x nodes go?
@@ -603,7 +606,6 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	DagExcl dag_excl;
 
 	// Exploration
-	int iteration_index = 0;
 	if (getenv("SHARED_TRACE") != nullptr) t_dbg_descents = 0;
 	while (iterations > 0) {
 		if (getenv("SHARED_TRACE") != nullptr) t_dbg_descents++;
@@ -650,15 +652,18 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		// EXPLORING AN ALREADY-EXPLORED MOVE (refinement)
 		else if (children_count() > 0) {
 
-			// Forced round-robin: every FORCED_EVERY-th refinement descends into
-			// the LEAST-visited child. Early WDL verdicts are unreliable (a
-			// sacrifice only proves itself several quiet plies deeper), so the
-			// scheduler must not be allowed to starve a line to death before its
-			// subtree had any chance to speak. The cost is negligible and the
-			// guarantee is absolute: no root line can go unproven.
-			constexpr int FORCED_EVERY = 1 << 30; // disabled: pure breadth destroys tactical focus
+			// Forced round-robin: every Nth descent THROUGH THIS NODE goes to
+			// the LEAST-visited child. Uses the persistent _iterations counter,
+			// NOT a per-call loop index (the GUI worker calls grogros_zero(1)
+			// per tick: a local index would stay 0 forever and the guard would
+			// never fire - which is exactly what happened before this fix).
+			// Early WDL verdicts are unreliable (a sacrifice only proves itself
+			// several quiet plies deeper), so the scheduler must not be allowed
+			// to starve a line to death before its subtree had any chance to
+			// speak. Env-tunable (OPTI_FORCED_EVERY), strictly OFF by default
+			// (the < (1<<30) early-out keeps default behaviour bit-identical).
 			Move forced;
-			if (iteration_index % FORCED_EVERY == FORCED_EVERY - 1) {
+			if (g_forced_every > 0 && g_forced_every < (1 << 30) && (int)_iterations % g_forced_every == g_forced_every - 1) {
 				long long min_visits = LLONG_MAX;
 				for (auto const& [move, link] : _children) {
 					if (link._node && !link._node->_is_terminal && link._chosen_iterations < min_visits) {
@@ -666,6 +671,8 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 						forced = move;
 					}
 				}
+				if (!forced.is_null_move())
+					g_forced_fired.fetch_add(1, std::memory_order_relaxed);
 			}
 
 			explore_random_child(board_buffer, eval, alpha, beta, gamma, quiescence_depth, network, base_path_history, g_tt_node_dag ? &dag_excl : nullptr, forced);
@@ -2587,6 +2594,31 @@ void Node::evaluate_position(Evaluator* evaluator, bool display, Network * netwo
 	}
 }
 
+// Poussee silencieuse d'une case par un pion passe (aucun pion adverse
+// devant, colonne + adjacentes) : heuristique cheap (lecture _array, pas
+// de structure de pions) pour reperer les coups qui creent une menace de
+// promotion. Sert au prior passeurs de la selection (pick_random_child).
+static bool is_passed_push(const Board* b, const Move& move) {
+	if (move.is_capture() || move.is_promotion()) return false;
+	const bool white = b->_player;
+	if (b->_array[move.start_row][move.start_col] != (white ? w_pawn : b_pawn)) return false;
+	if (move.end_col != move.start_col) return false;
+	const int8_t dir = white ? 1 : -1;
+	if (move.end_row != move.start_row + dir) return false;
+	if (b->_array[move.end_row][move.end_col] != none) return false;
+	const uint8_t en = white ? b_pawn : w_pawn;
+	// Cases DEVANT, apres la poussee (end_row + dir) : la case de depart
+	// contient encore le pion lui-meme, il faut partir d'au-dela.
+	int k = (int)move.end_row + dir;
+	while (white ? (k <= 7) : (k >= 0)) {
+		if (b->_array[k][move.end_col] == en) return false;
+		if (move.end_col > 0 && b->_array[k][move.end_col - 1] == en) return false;
+		if (move.end_col < 7 && b->_array[k][move.end_col + 1] == en) return false;
+		k += dir;
+	}
+	return true;
+}
+
 // Returns a pseudo-random child node, weighted by evaluations and node counts
 Move Node::pick_random_child(const double alpha, const double beta, const double gamma, const DagExcl* dag_excl) {
 	// Positions where every move wins and the search wastes time separating them:
@@ -2675,6 +2707,30 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	for (int i = 0; i < top_count; ++i) {
 		Move m = top[i].move;
 		move_scores[m] = top[i].score * boost_table[i];
+	}
+
+	// Prior passeurs : les poussees de pions passes (is_passed_push, defini
+	// plus haut dans ce fichier) obtiennent une part d'exploration garantie,
+	// qui decroit avec les visites (comme le trust prior) pour ne pas
+	// verrouiller ensuite. Sans lui, une ligne comme ...c2 (premiere
+	// impression -2600 via g8=Q+ en quiescence) ne recoit que des miettes et
+	// n'est jamais validee. Selection seule (la PV via get_best_score_move
+	// est intacte). OFF par defaut (OPTI_PRIOR_PASSER), calibre sur probes.
+	static const double passer_prior = [] {
+		const char* e = getenv("OPTI_PRIOR_PASSER");
+		return e ? atof(e) : 5.0;
+	}();
+	if (passer_prior > 0.0) {
+		for (auto& [move, score] : move_scores) {
+			if (!is_passed_push(_board, move)) continue;
+			int visits = 0;
+			auto it = _children.find(move);
+			if (it != _children.end() && it->second._node != nullptr) {
+				visits = max(it->second._chosen_iterations, it->second._node->_iterations);
+				if (visits < 0) visits = 0;
+			}
+			score *= 1.0 + passer_prior / (1.0 + (double)visits);
+		}
 	}
 
 	Move best_move;

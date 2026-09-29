@@ -1772,7 +1772,7 @@ void GUI::compute_worker() {
 		}
 		_compute_done.store(true, std::memory_order_release);
 		_compute_running.store(false, std::memory_order_release);
-		debug_log("[worker] exit iters=%lld", iters);
+		debug_log("[worker] exit iters=%lld forced_fired=%lld", iters, (long long)g_forced_fired);
 	}
 }
 
@@ -2356,6 +2356,8 @@ void GUI::draw()
 			"\n" + _wdl.to_string() + "\nScore: " + score_string(best_evaluation._avg_score) +
 			"\nNodes: " + int_to_round_string(_tree_snapshot.nodes) + "/" + int_to_round_string(monte_board_buffer._length) + " (" + int_to_round_string(_tree_snapshot.nps) + "N/s)" +
 			"\nIterations: " + int_to_round_string(_tree_snapshot.iterations) + " (" + int_to_round_string(_tree_snapshot.ips) + "I/s)" +
+			"\nForced: " + (g_forced_every >= (1 << 30) ? static_cast<string>("OFF (Y/Z)") : (to_string(g_forced_every) + " (Y/Z)")) +
+			"\nFired: " + to_string((long long)g_forced_fired) +
 				"\n\n" + _tree_snapshot.tt_stats;
 		
 		// Display of the GrogrosZero analysis parameters
@@ -2374,7 +2376,7 @@ void GUI::draw()
 	// Display of the controls and other information
 	else {
 		// Touches
-		static string keys_information = "CTRL-G: Start GrogrosZero analysis\nCTRL-H: Stop GrogrosZero analysis\n\n";
+		static string keys_information = "CTRL-G: Start GrogrosZero analysis\nCTRL-H: Stop GrogrosZero analysis\nY/Z: Cycle forced exploration (OFF/1024/256/64/16)\n\n";
 
 		// Binding chess.com
 		static string binding_information;
