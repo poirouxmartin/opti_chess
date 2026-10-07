@@ -4097,6 +4097,251 @@ TEST(Puzzle, CappedArenaRefines) {
 	g_search_abort.store(false, std::memory_order_release);
 }
 
+// Probe (buffer-full blindness): user reports that once arenas saturate,
+// analysis collapses to a handful of (capture) moves — e.g. FEN1 shows only
+// Fxe4, FEN3 misses winning Nc6. Phase A checks load_FEN-style cycles
+// (search + recursive reset + TT clear) reclaim every slot (no slow leak).
+// Phase B characterizes root breadth with arenas nearly full (diagnostic
+// prints; the invariant assert lands with the fix).
+TEST(Puzzle, BufferFullRootCoverage) {
+	static Evaluator evaluator;
+	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
+	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+	const char* fens[] = {
+		"2rq1rk1/1b1nbppp/p2pp3/np4P1/3NPP1P/2N1B3/PPPQ2B1/1K1R3R w - - 3 15",
+		"2r1r1k1/4b1pp/bq1pPnP1/4n3/3NP3/1PN3Q1/1P4B1/1KBR1R2 b - - 0 13",
+		"r1r4k/q3P1pP/3p1b2/4n3/3NP3/1PN5/1P2BQ2/1KB3R1 b - - 0 23",
+	};
+	auto free_counts = []() {
+		return std::make_pair(monte_board_buffer._free_indices.size(),
+			monte_node_buffer._free_indices.size());
+	};
+	auto dump_root = [&](Board& b, Node* root, const char* tag) {
+		Move most = root->get_most_explored_child_move();
+		Move best = root->get_best_score_move(0.005, 5.0);
+		int ncapt = 0;
+		long long vtot = 0;
+		for (auto const& [mv, link] : root->_children) {
+			if (mv.is_capture()) ncapt++;
+			vtot += link._chosen_iterations.load(std::memory_order_relaxed);
+		}
+		cout << "  [" << tag << "] legal=" << (int)b._got_moves
+			<< " children=" << root->children_count()
+			<< " captures_in_tree=" << ncapt << " visits=" << vtot
+			<< " most=" << b.move_label(most, true)
+			<< " best=" << b.move_label(best, true)
+			<< " deep=" << root->_deep_evaluation._value
+			<< " freeB=" << monte_board_buffer._free_indices.size()
+			<< " freeN=" << monte_node_buffer._free_indices.size() << endl;
+	};
+	// Phase A: 3 load cycles, same root+board reused like load_FEN.
+	monte_board_buffer.reset(); monte_node_buffer.reset();
+	transposition_table.clear(); node_map.clear();
+	g_buffers_full_logged = false; g_tt_main_search = false; g_tt_node_dag = false;
+	g_search_abort.store(false, std::memory_order_release);
+	g_search_deadline.store((clock_t)0, std::memory_order_release);
+	Board* board = monte_board_buffer.get_first_free_board();
+	ASSERT_TRUE(board != nullptr);
+	Node* root = monte_node_buffer.get_first_free_node();
+	ASSERT_TRUE(root != nullptr);
+	const auto free0 = free_counts();
+	for (int cycle = 0; cycle < 3; cycle++) {
+		Board b;
+		b.from_fen(fens[cycle % 3]);
+		board->copy_data(b, false, true);
+		board->_is_active = true;
+		root->reset(false);
+		root->_board = board;
+		root->_is_active = true;
+		root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 3000, 10);
+		transposition_table.clear(); node_map.clear();
+		root->reset();
+		const auto freec = free_counts();
+		cout << "  [cycle " << cycle << "] freeB=" << freec.first << " freeN=" << freec.second << endl;
+		EXPECT_EQ(freec.first, free0.first) << "board leak on cycle " << cycle;
+		EXPECT_EQ(freec.second, free0.second) << "node leak on cycle " << cycle;
+	}
+	recycle_detached_node(root);
+	// Phase B: control (roomy) vs near-full on FEN1.
+	for (int phase = 0; phase < 2; phase++) {
+		monte_board_buffer.reset(); monte_node_buffer.reset();
+		transposition_table.clear(); node_map.clear();
+		g_buffers_full_logged = false;
+		g_search_abort.store(false, std::memory_order_release);
+		g_search_deadline.store((clock_t)0, std::memory_order_release);
+		Board b;
+		b.from_fen(fens[0]);
+		Board* rb = monte_board_buffer.get_first_free_board();
+		ASSERT_TRUE(rb != nullptr);
+		rb->copy_data(b, false, true);
+		rb->_is_active = true;
+		Node* rr = monte_node_buffer.get_first_free_node();
+		ASSERT_TRUE(rr != nullptr);
+		rr->reset(false);
+		rr->_board = rb;
+		rr->_is_active = true;
+		std::vector<int> held_b, held_n;
+		if (phase == 1) {
+			// Leave ~3000 slots: a 20000-node search rams the cap mid-run.
+			while (monte_board_buffer._free_indices.size() > 3000)
+				held_b.push_back(monte_board_buffer.get_first_free_index());
+			while (monte_node_buffer._free_indices.size() > 3000)
+				held_n.push_back(monte_node_buffer.get_first_free_index());
+		}
+		rr->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, phase == 0 ? 5000 : 20000, 10);
+		dump_root(b, rr, phase == 0 ? "roomy" : "nearfull");
+		if (phase == 0) {
+			b.get_moves();
+			EXPECT_EQ(rr->children_count(), (size_t)b._got_moves) << "control must expand every legal move";
+		}
+		for (auto it = held_b.rbegin(); it != held_b.rend(); ++it)
+			monte_board_buffer.free_index(*it);
+		for (auto it = held_n.rbegin(); it != held_n.rend(); ++it)
+			monte_node_buffer.free_index(*it);
+		recycle_detached_node(rr);
+		transposition_table.clear(); node_map.clear();
+		g_search_abort.store(false, std::memory_order_release);
+	}
+}
+
+// Probe (chunked worker path): GUI analysis calls grogros_zero in small
+// chunks on the SAME root while arenas fill. Simulate on FEN1 from a
+// drained start (30k free) with 400x150 iterations; dump most/best + visit
+// concentration every 50 chunks. Detects visit collapse onto captures.
+TEST(Puzzle, ChunkedSaturation) {
+	static Evaluator evaluator;
+	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
+	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+	monte_board_buffer.reset(); monte_node_buffer.reset();
+	transposition_table.clear(); node_map.clear();
+	g_buffers_full_logged = false; g_tt_main_search = false; g_tt_node_dag = false;
+	g_search_abort.store(false, std::memory_order_release);
+	g_search_deadline.store((clock_t)0, std::memory_order_release);
+	Board b;
+	b.from_fen("2rq1rk1/1b1nbppp/p2pp3/np4P1/3NPP1P/2N1B3/PPPQ2B1/1K1R3R w - - 3 15");
+	Board* root_board = monte_board_buffer.get_first_free_board();
+	ASSERT_TRUE(root_board != nullptr);
+	root_board->copy_data(b, false, true);
+	root_board->_is_active = true;
+	Node* root = monte_node_buffer.get_first_free_node();
+	ASSERT_TRUE(root != nullptr);
+	root->reset(false);
+	root->_board = root_board;
+	root->_is_active = true;
+	std::vector<int> held_b, held_n;
+	while (monte_board_buffer._free_indices.size() > 30000)
+		held_b.push_back(monte_board_buffer.get_first_free_index());
+	while (monte_node_buffer._free_indices.size() > 30000)
+		held_n.push_back(monte_node_buffer.get_first_free_index());
+	for (int chunk = 1; chunk <= 400; chunk++) {
+		root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 150, 10);
+		if (chunk % 50 == 0) {
+			Move most = root->get_most_explored_child_move();
+			Move best = root->get_best_score_move(0.005, 5.0);
+			long long vtot = 0, vtop = 0;
+			Move topm;
+			for (auto const& [mv, link] : root->_children) {
+				long long v = link._chosen_iterations.load(std::memory_order_relaxed);
+				vtot += v;
+				if (v > vtop) { vtop = v; topm = mv; }
+			}
+			cout << "  [chunk " << chunk << "] children=" << root->children_count()
+				<< " most=" << b.move_label(most, true)
+				<< " best=" << b.move_label(best, true)
+				<< " deep=" << root->_deep_evaluation._value
+				<< " top=" << b.move_label(topm, true) << "(" << vtop << "/" << vtot << ")"
+				<< " freeB=" << monte_board_buffer._free_indices.size()
+				<< " freeN=" << monte_node_buffer._free_indices.size() << endl;
+		}
+	}
+	// TD-010 health asserts: breadth stays complete and visits must not
+	// collapse onto one move (pre-fix: f5 69% frozen over 52k iters).
+	b.get_moves();
+	EXPECT_EQ(root->children_count(), (size_t)b._got_moves) << "saturated breadth must stay complete";
+	long long hvtot = 0, hvtop = 0;
+	for (auto const& [hvmv, hvlink] : root->_children) {
+		long long hv = hvlink._chosen_iterations.load(std::memory_order_relaxed);
+		hvtot += hv;
+		hvtop = max(hvtop, hv);
+	}
+	const double top_share = hvtot > 0 ? (double)hvtop / (double)hvtot : 1.0;
+	cout << "  [chunked-health] top_share=" << top_share << endl;
+	EXPECT_LT(top_share, 0.55) << "visit collapse (pre-fix f5 at 69%)";
+	cout << "  [final per-child visits]" << endl;
+	for (auto const& [mv, link] : root->_children) {
+		cout << "    " << b.move_label(mv, true)
+			<< " cap=" << (mv.is_capture() ? 1 : 0)
+			<< " visits=" << link._chosen_iterations.load(std::memory_order_relaxed)
+			<< " val=" << (link._node ? link._node->_deep_evaluation._value : 999999) << endl;
+	}
+	// One level deeper: HOW does Bf3 read -906 while its static is +132?
+	{
+		Board bb;
+		bb.from_fen("2rq1rk1/1b1nbppp/p2pp3/np4P1/3NPP1P/2N1B3/PPPQ2B1/1K1R3R w - - 3 15");
+		Move mbf3 = resolve_san(bb, "Bf3");
+		auto it = root->_children.find(mbf3);
+		if (it != root->_children.end() && it->second._node != nullptr) {
+			Node* nb = it->second._node;
+			cout << "  [Bf3 node] val=" << nb->_deep_evaluation._value
+				<< " avg=" << nb->_deep_evaluation._avg_score
+				<< " static=" << nb->_static_evaluation._value
+				<< " nodes=" << nb->_nodes.load() << " iters=" << nb->_iterations.load()
+				<< " term=" << nb->_is_terminal << " fullexp=" << nb->_fully_explored
+				<< " canexp=" << nb->_can_explore << " children=" << nb->children_count() << endl;
+			for (auto const& [mv2, link2] : nb->_children) {
+				cout << "    reply " << bb.move_label(mv2, true)
+					<< " visits=" << link2._chosen_iterations.load(std::memory_order_relaxed)
+					<< " val=" << (link2._node ? link2._node->_deep_evaluation._value : 999999)
+					<< " term=" << (link2._node ? link2._node->_is_terminal : false) << endl;
+			}
+		} else cout << "  [Bf3 node] missing?!" << endl;
+	}
+	// Descend the minimizing path: at which ply does +static become -900?
+	{
+		Board wb;
+		wb.from_fen("2rq1rk1/1b1nbppp/p2pp3/np4P1/3NPP1P/2N1B3/PPPQ2B1/1K1R3R w - - 3 15");
+		Move mbf3 = resolve_san(wb, "Bf3");
+		auto it = root->_children.find(mbf3);
+		Node* cur = (it != root->_children.end()) ? it->second._node : nullptr;
+		Board lb(wb);
+		Move played = mbf3;
+		for (int ply = 0; cur != nullptr && ply < 6; ply++) {
+			lb.make_move(played, false, false);
+			cout << "  [ply " << ply << " " << wb.move_label(played, true)
+				<< " fen=" << lb.to_fen()
+				<< "] static=" << cur->_static_evaluation._value
+				<< " deep=" << cur->_deep_evaluation._value
+				<< " avg=" << cur->_deep_evaluation._avg_score
+				<< " visits=" << cur->_iterations.load()
+				<< " children=" << cur->children_count() << endl;
+			if (cur->_children.empty()) break;
+			// Black (odd ply) minimizes white-relative value, white maximizes.
+			bool black_to_move = (ply % 2 == 0);
+			long long extreme = black_to_move ? LLONG_MAX : LLONG_MIN;
+			Move next;
+			for (auto const& [mv2, link2] : cur->_children) {
+				if (!link2._node) continue;
+				long long v = link2._node->_deep_evaluation._value;
+				if ((black_to_move && v < extreme) || (!black_to_move && v > extreme)) {
+					extreme = v; next = mv2;
+				}
+			}
+			if (next.is_null_move()) break;
+			auto itn = cur->_children.find(next);
+			cur = itn->second._node;
+			played = next;
+		}
+	}
+	for (auto it = held_b.rbegin(); it != held_b.rend(); ++it)
+		monte_board_buffer.free_index(*it);
+	for (auto it = held_n.rbegin(); it != held_n.rend(); ++it)
+		monte_node_buffer.free_index(*it);
+	recycle_detached_node(root);
+	transposition_table.clear(); node_map.clear();
+	g_tt_node_dag = false;
+	g_search_abort.store(false, std::memory_order_release);
+}
+
 // Bug #2 (eval/WDL incoherence): the header once showed the most-visited
 // eval (+0.6) with the best-line WDL (1000/0/0). This probe replays the exact
 // transient window (chunked search on the Dxh7 FEN + a quiet FEN) and asserts

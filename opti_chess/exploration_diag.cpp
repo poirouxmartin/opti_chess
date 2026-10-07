@@ -2733,6 +2733,26 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		}
 	}
 
+	// TD-010 saturation guard: when arenas are capped, refinement-only
+	// search freezes onto the early leader (measured FEN1: f5/+246
+	// bit-identical over 52k iters, 69% visits, ~20 moves <=16 visits).
+	// Cause: softmax underflow crushes early-negative children to ~1e-100,
+	// so score = move_score * exploration can never recover them, and the
+	// top-5 x25 boost locks the leader. Floor crushed scores at a fraction
+	// of the best move_score so the exploration term can schedule every
+	// expanded child again. Gated on saturation: roomy searches bind a
+	// zero floor (bit-identical behaviour while expansion is possible).
+	static const double score_floor_frac = [] {
+		const char* e = getenv("OPTI_SCORE_FLOOR");
+		return e ? atof(e) : 0.01;
+	}();
+	double score_floor = 0.0;
+	if (score_floor_frac > 0.0 && (monte_board_buffer.is_full() || monte_node_buffer.is_full())) {
+		double m = 0.0;
+		for (auto const& [_, s] : move_scores) m = max(m, s);
+		score_floor = m * score_floor_frac;
+	}
+
 	Move best_move;
 	double best_score = 0.0;
 
@@ -2812,6 +2832,12 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 				//cout << "new score: " << score << endl;
 			}
 		}
+		// TD-010 floor (computed above, 0.0 unless capped): a crushed
+		// move_score must stay schedulable via the exploration term.
+		// Applied to the final score so the stand-pat re-rank path above
+		// is covered identically.
+		const double floored_score = score_floor * exploration_score;
+		if (score < floored_score) score = floored_score;
 		// Use the evaluation gap between the moves and the stand pat?
 
 		//cout << "move: " << _board->move_label(move) << " | move_score: " << move_score << " | exploration_score : " << exploration_score << " | fully_explored : " << child->get_fully_explored_children_count() << " / " << child->children_count() << " = score : " << score << endl;
