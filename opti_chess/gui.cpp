@@ -2287,10 +2287,7 @@ void GUI::draw()
 	string monte_carlo_text = static_cast<string>(_grogros_analysis ? "STOP GrogrosZero-Auto (CTRL-H)" : "RUN GrogrosZero-Auto (CTRL-G)") + "\nCONTROLS (H)" + "\n\nSEARCH PARAMETERS\nalpha: " + to_string(_alpha) + "\nbeta: " + to_string(_beta) + "\ngamma : " + to_string(_gamma) + "\nq_depth : " + to_string(_quiescence_depth) + "\nTT main search : " + (_tt_main_search ? "true" : "false") + " (I)" + "\nTT node DAG : " + (_tt_node_dag ? "true" : "false") + " (O)"
 		+ "\n" + worker_status_text(_compute_running.load(std::memory_order_acquire),
 			_worker_blocked_full.load(std::memory_order_acquire),
-			_tree_snapshot.iterations)
-		+ "\n" + buffer_status_text(_tree_snapshot.arena_boards_used, _tree_snapshot.arena_boards_cap,
-			_tree_snapshot.arena_nodes_used, _tree_snapshot.arena_nodes_cap,
-			_tree_snapshot.tt_used, _tree_snapshot.tt_cap, _tree_snapshot.nodemap_used);
+			_tree_snapshot.iterations);
 	
 	// If a search has happened (use snapshot for consistency; verdict =
 	// most-explored like the bench, not best-eval)
@@ -2358,7 +2355,10 @@ void GUI::draw()
 			"\nIterations: " + int_to_round_string(_tree_snapshot.iterations) + " (" + int_to_round_string(_tree_snapshot.ips) + "I/s)" +
 			"\nForced: " + (g_forced_every >= (1 << 30) ? static_cast<string>("OFF (Y/Z)") : (to_string(g_forced_every) + " (Y/Z)")) +
 			"\nFired: " + to_string((long long)g_forced_fired) +
-				"\n\n" + _tree_snapshot.tt_stats;
+				"\n\n" + _tree_snapshot.tt_stats +
+			"\n" + buffer_status_text(_tree_snapshot.arena_boards_used, _tree_snapshot.arena_boards_cap,
+				_tree_snapshot.arena_nodes_used, _tree_snapshot.arena_nodes_cap,
+				_tree_snapshot.tt_used, _tree_snapshot.tt_cap, _tree_snapshot.nodemap_used);
 		
 		// Display of the GrogrosZero analysis parameters
 		slider_text(monte_carlo_text, _board_padding_x + _board_size + _text_size / 2, _text_size, _screen_width - _text_size - _board_padding_x - _board_size, _board_size * 9 / 16, _text_size / 4, &_monte_carlo_slider, _text_color);
