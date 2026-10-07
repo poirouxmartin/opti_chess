@@ -1732,6 +1732,13 @@ void GUI::compute_worker() {
 				(int)monte_board_buffer.is_full(), (int)monte_node_buffer.is_full(), iters);
 		}
 		_worker_blocked_full.store(capped, std::memory_order_release);
+		// Batch worker iterations: 1 iter + full snapshot per loop capped the
+		// worker at ~1kHz loop overhead (mutex + snapshot + clocks), so NPS
+		// pinned near 999N/s on every position instead of measuring search
+		// speed (batched engine runs ~50x faster). 100 iters/loop keeps
+		// ~10Hz snapshots, per-iteration abort checks (same stop latency),
+		// and per-loop heartbeat/watchdog semantics unchanged.
+		const int worker_batch = 100;
 		{
 			// Hard deadline like the bench: quiescence samples the clock and
 			// aborts past due, so one deep iteration cannot overrun a puzzle
@@ -1746,10 +1753,10 @@ void GUI::compute_worker() {
 			// main thread only reads the snapshot, so long iterations never
 			// block the UI anymore.
 			std::lock_guard<std::mutex> lock(_tree_mutex);
-			_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, 1, _quiescence_depth);
+			_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, worker_batch, _quiescence_depth);
 
 			// Take snapshot while holding the lock — main thread reads it lock-free.
-			// PV/variants strings at ~4Hz (heavy); arrows/evals every iteration.
+			// PV/variants strings at ~4Hz (heavy); arrows/evals every batch.
 			// Heavy walks are skipped while aborting (stop_compute): they have
 			// no abort checks and would otherwise stall the stop + the main
 			// thread waiting on _tree_mutex behind it.
@@ -1762,7 +1769,8 @@ void GUI::compute_worker() {
 			if (heavy) last_heavy = now;
 			g_search_deadline.store((clock_t)0, std::memory_order_release);
 			g_search_abort.store(false, std::memory_order_release);
-			if (++iters == 1 || iters % 100 == 0)
+			iters += worker_batch;
+			if (iters == worker_batch || iters % 1000 == 0)
 				debug_log("[worker] iter=%lld nodes=%d", iters, (int)_root_exploration_node->_nodes);
 			// NOTE: _worker_blocked_full is owned by the capped check at the
 			// top of the loop — never cleared here (that oscillated the flag
