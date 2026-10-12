@@ -274,16 +274,20 @@ int main(int argc, char* argv[]) {
 	// GUI-like kept trees. Search params: --new-alpha=X --old-beta=Y etc.
 	for (int i = 3; i < argc; i++) {
 		const string a = argv[i];
+		// Prefix match with the literal's own length (hand-counted substr lengths
+		// silently disabled the beta/gamma flags)
+		auto value_of = [&a](const string& prefix, double& out) {
+			if (a.rfind(prefix, 0) != 0) return false;
+			out = strtod(a.c_str() + prefix.size(), nullptr);
+			return true;
+		};
 		if (a == "-vp") { cli_disable_value_propagation = true; g_search_value_propagation = false; }
 		else if (a == "-tp") { cli_disable_trust_prior = true; g_search_trust_prior = false; }
 		else if (a == "-cap") { cli_disable_avg_cap = true; g_search_avg_cap = false; }
 		else if (a == "--persist") persist_trees = true;
-		else if (a.substr(0, 12) == "--new-alpha=") new_alpha = stod(a.substr(12));
-		else if (a.substr(0, 12) == "--new-beta=") new_beta = stod(a.substr(11));
-		else if (a.substr(0, 13) == "--new-gamma=") new_gamma = stod(a.substr(13));
-		else if (a.substr(0, 12) == "--old-alpha=") old_alpha = stod(a.substr(12));
-		else if (a.substr(0, 12) == "--old-beta=") old_beta = stod(a.substr(11));
-		else if (a.substr(0, 13) == "--old-gamma=") old_gamma = stod(a.substr(13));
+		else if (value_of("--new-alpha=", new_alpha) || value_of("--new-beta=", new_beta) || value_of("--new-gamma=", new_gamma)
+			|| value_of("--old-alpha=", old_alpha) || value_of("--old-beta=", old_beta) || value_of("--old-gamma=", old_gamma)) {}
+		else cerr << "unknown argument: " << a << endl;
 	}
 
 	if (persist_trees) {
