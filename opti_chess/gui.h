@@ -37,12 +37,14 @@ inline string worker_status_text(bool running, bool capped_full, long long iters
 	return "worker: SEARCHING";
 }
 
-// Buffer occupancy line (bug #1 "au moins": sizes + FULL flags in the UI).
-// Pure function for unit tests; fields come from the snapshot.
+// Search-arena occupancy block (single copy, bottom of the analysis panel).
+// Fields come from the snapshot, i.e. the SEARCHING thread's own arenas
+// (worker under CTRL-G, main under inline G/Enter): used = cap - free.
+// Pure function for unit tests.
 inline string buffer_status_text(long long boards_used, long long boards_cap,
 	long long nodes_used, long long nodes_cap,
 	long long tt_used, long long tt_cap, long long nodemap_used) {
-	string s = "buffers:\nboards: " + to_string(boards_used) + "/" + to_string(boards_cap);
+	string s = "search arenas (this analysis):\nboards: " + to_string(boards_used) + "/" + to_string(boards_cap);
 	if (boards_cap > 0 && boards_used >= boards_cap) s += " FULL";
 	s += "\nnodes: " + to_string(nodes_used) + "/" + to_string(nodes_cap);
 	if (nodes_cap > 0 && nodes_used >= nodes_cap) s += " FULL";
@@ -296,15 +298,15 @@ public:
 		int children_count = 0;
 		int got_moves = 0;
 		int quiescence_depth = 0;
-		// Measured throughput (EMA over snapshot windows): wall-clock based,
-		// unlike _time_spent which nests per-node intervals (x depth) and
-		// never resets between moves.
+		// Measured throughput (GLOBAL average: total work since this analysis
+		// started / wall-clock elapsed). Unlike _time_spent which nests
+		// per-node intervals (x depth) and never resets between moves.
 		float nps = 0.0f;
 		float ips = 0.0f;
 		string tt_stats; // worker's table (main's is empty during analysis)
-		long long snap_last_nodes = 0;
-		long long snap_last_iters = 0;
-		clock_t snap_last_clock = 0;
+		clock_t snap_t0_clock = 0; // analysis start (fresh snapshot base)
+		long long snap_base_node_allocs = 0; // cumulative allocs at t0
+		long long snap_base_iters = 0; // root iterations at t0
 		int iterations = 0;
 		int nodes = 0;
 		int time_spent = 0;

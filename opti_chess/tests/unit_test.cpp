@@ -1255,6 +1255,10 @@ TEST(Board, SizeOf) {
     cout << "sizeof(Board) = " << sizeof(Board) << endl;
     cout << "sizeof(Move) = " << sizeof(Move) << endl;
     cout << "sizeof(SquareMap) = " << sizeof(SquareMap) << endl;
+    cout << "sizeof(Node) = " << sizeof(Node) << endl;
+    cout << "sizeof(ChildLink) = " << sizeof(ChildLink) << endl;
+    cout << "sizeof(Evaluation) = " << sizeof(Evaluation) << endl;
+    cout << "sizeof(ZobristEntry) = " << sizeof(ZobristEntry) << endl;
 }
 
 // ============================================================================
@@ -4029,11 +4033,11 @@ TEST(Puzzle, WorkerStatusText) {
 // buffer_status_text is pure; fields are filled by update_snapshot().
 TEST(Puzzle, BufferStatusText) {
 	EXPECT_EQ(buffer_status_text(0, 0, 0, 0, 0, 0, 0),
-		"buffers:\nboards: 0/0\nnodes: 0/0\nTT: 0/uncapped\nnodemap: 0");
+		"search arenas (this analysis):\nboards: 0/0\nnodes: 0/0\nTT: 0/uncapped\nnodemap: 0");
 	EXPECT_EQ(buffer_status_text(123, 641763, 456, 641763, 5000000, 5000000, 789),
-		"buffers:\nboards: 123/641763\nnodes: 456/641763\nTT: 5000000/5000000 FULL\nnodemap: 789");
+		"search arenas (this analysis):\nboards: 123/641763\nnodes: 456/641763\nTT: 5000000/5000000 FULL\nnodemap: 789");
 	EXPECT_EQ(buffer_status_text(641763, 641763, 641763, 641763, 12, 5000000, 0),
-		"buffers:\nboards: 641763/641763 FULL\nnodes: 641763/641763 FULL\nTT: 12/5000000\nnodemap: 0");
+		"search arenas (this analysis):\nboards: 641763/641763 FULL\nnodes: 641763/641763 FULL\nTT: 12/5000000\nnodemap: 0");
 }
 
 // Bug #1 (capped arenas keep refining): saturating the arenas used to park
@@ -4336,6 +4340,259 @@ TEST(Puzzle, ChunkedSaturation) {
 		monte_board_buffer.free_index(*it);
 	for (auto it = held_n.rbegin(); it != held_n.rend(); ++it)
 		monte_node_buffer.free_index(*it);
+	recycle_detached_node(root);
+	transposition_table.clear(); node_map.clear();
+	g_tt_node_dag = false;
+	g_search_abort.store(false, std::memory_order_release);
+}
+
+// Probe (session accumulation, DAG on like the GUI): 4 cycles of
+// search-30k + reset_buffers + recursive root reset on rotating FENs.
+// If free counts ratchet down, load_FEN-style cycling leaks (the user's
+// 90%-full-on-new-position). Prints + asserts stability.
+TEST(Puzzle, SessionAccumulation) {
+	static Evaluator evaluator;
+	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
+	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+	const char* fens[] = {
+		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+		"2rq1rk1/1b1nbppp/p2pp3/np4P1/3NPP1P/2N1B3/PPPQ2B1/1K1R3R w - - 3 15",
+		"2r1r1k1/4b1pp/bq1pPnP1/4n3/3NP3/1PN3Q1/1P4B1/1KBR1R2 b - - 0 13",
+		"r1r4k/q3P1pP/3p1b2/4n3/3NP3/1PN5/1P2BQ2/1KB3R1 b - - 0 23",
+	};
+	monte_board_buffer.reset(); monte_node_buffer.reset();
+	transposition_table.clear(); node_map.clear();
+	g_buffers_full_logged = false; g_tt_main_search = false; g_tt_node_dag = true;
+	g_search_abort.store(false, std::memory_order_release);
+	g_search_deadline.store((clock_t)0, std::memory_order_release);
+	Board* board = monte_board_buffer.get_first_free_board();
+	ASSERT_TRUE(board != nullptr);
+	Node* root = monte_node_buffer.get_first_free_node();
+	ASSERT_TRUE(root != nullptr);
+	const size_t freeB0 = monte_board_buffer._free_indices.size();
+	const size_t freeN0 = monte_node_buffer._free_indices.size();
+	for (bool dag : { true, false }) {
+	g_tt_node_dag = dag;
+	for (int cycle = 0; cycle < 4; cycle++) {
+		Board b;
+		b.from_fen(fens[cycle % 4]);
+		board->copy_data(b, false, true);
+		board->_is_active = true;
+		root->reset(false);
+		root->_board = board;
+		root->_is_active = true;
+		root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 30000, 10);
+		const size_t usedB = monte_board_buffer._length - monte_board_buffer._free_indices.size();
+		const size_t usedN = monte_node_buffer._length - monte_node_buffer._free_indices.size();
+		transposition_table.clear(); node_map.clear();
+		root->reset();
+		const size_t freeB = monte_board_buffer._free_indices.size();
+		const size_t freeN = monte_node_buffer._free_indices.size();
+		cout << "  [dag=" << dag << " cycle " << cycle << "] usedB=" << usedB << " usedN=" << usedN
+			<< " freeB=" << freeB << " freeN=" << freeN << endl;
+		EXPECT_EQ(freeB, freeB0) << "board leak dag=" << dag << " cycle " << cycle;
+		EXPECT_EQ(freeN, freeN0) << "node leak dag=" << dag << " cycle " << cycle;
+	}
+	monte_board_buffer.reset(); monte_node_buffer.reset();
+	transposition_table.clear(); node_map.clear();
+	}
+	recycle_detached_node(root);
+	transposition_table.clear(); node_map.clear();
+	g_tt_node_dag = false;
+	g_search_abort.store(false, std::memory_order_release);
+}
+
+// TEMP census (remove after): which nodes stay active after a full DAG
+// reset? Histogram of _parent_count over active slots fingers the leak.
+TEST(Puzzle, TempLeakCensus) {
+	static Evaluator evaluator;
+	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
+	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+	monte_board_buffer.reset(); monte_node_buffer.reset();
+	transposition_table.clear(); node_map.clear();
+	g_buffers_full_logged = false; g_tt_main_search = false; g_tt_node_dag = true;
+	g_search_abort.store(false, std::memory_order_release);
+	g_search_deadline.store((clock_t)0, std::memory_order_release);
+	Board b;
+	b.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+	Board* board = monte_board_buffer.get_first_free_board();
+	board->copy_data(b, false, true);
+	board->_is_active = true;
+	Node* root = monte_node_buffer.get_first_free_node();
+	root->reset(false);
+	root->_board = board;
+	root->_is_active = true;
+	root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 30000, 10);
+	// Pre-reset BFS (mirrors the reset walk's reachability, no mutation).
+	std::unordered_set<Node*> reach;
+	std::vector<int> pcpre(monte_node_buffer._length, 0);
+	std::vector<int> incoming(monte_node_buffer._length, 0);
+	{
+		std::vector<Node*> stack;
+		stack.push_back(root);
+		reach.insert(root);
+		while (!stack.empty()) {
+			Node* cur = stack.back(); stack.pop_back();
+			for (auto const& [mm, ll] : cur->_children) {
+				if (ll._node == nullptr || !ll._node->_is_active) continue;
+				int slot = (int)(ll._node - monte_node_buffer._nodes);
+				if (slot >= 0 && slot < monte_node_buffer._length) incoming[slot]++;
+				if (reach.insert(ll._node).second) stack.push_back(ll._node);
+			}
+		}
+		for (int s = 0; s < monte_node_buffer._length; s++)
+			pcpre[s] = monte_node_buffer._nodes[s]._parent_count;
+	}
+	transposition_table.clear(); node_map.clear();
+	// Cycle check (DFS colors): a back edge to a gray node = directed cycle.
+	// Refcount reset deadlocks on cycles (counts never drain) while books
+	// stay balanced — exactly the observed signature. Prints first cycle.
+	{
+		std::unordered_map<Node*, int> color; // 1=gray, 2=black
+		std::vector<Node*> stack;
+		std::unordered_map<Node*, Node*> parent_of;
+		stack.push_back(root);
+		long long backedges = 0;
+		Node* cyc_from = nullptr;
+		Node* cyc_to = nullptr;
+		while (!stack.empty() && backedges < 1) {
+			Node* cur = stack.back();
+			auto itc = color.find(cur);
+			if (itc == color.end()) {
+				color[cur] = 1;
+				for (auto const& [mm, ll] : cur->_children) {
+					if (ll._node == nullptr || !ll._node->_is_active) continue;
+					auto it2 = color.find(ll._node);
+					if (it2 == color.end()) {
+						parent_of[ll._node] = cur;
+						stack.push_back(ll._node);
+					}
+					else if (it2->second == 1) {
+						backedges++;
+						cyc_from = cur;
+						cyc_to = ll._node;
+						break;
+					}
+				}
+			}
+			else {
+				color[cur] = 2;
+				stack.pop_back();
+			}
+		}
+		cout << "  [cycles] backedges=" << backedges << endl;
+		if (cyc_from && cyc_to) {
+			string ff = (cyc_from->_board) ? cyc_from->_board->to_fen() : string("<noboard>");
+			string tf = (cyc_to->_board) ? cyc_to->_board->to_fen() : string("<noboard>");
+			cout << "  [cycle-ex] from=" << ff << endl << "    to=" << tf << endl;
+		}
+	}
+	// Replica of the count-gated walk (stranding census, no mutation).
+	{
+		cout << "  [root-children-pc]";
+		for (auto const& [mm, ll] : root->_children) {
+			if (ll._node == nullptr) { cout << " null"; continue; }
+			cout << " " << ll._node->_parent_count;
+		}
+		cout << endl;
+		std::unordered_set<Node*> seen2;
+		std::vector<Node*> work;
+		std::unordered_map<Node*, int> sim_pc;
+		for (int s = 0; s < monte_node_buffer._length; s++)
+			sim_pc[&monte_node_buffer._nodes[s]] = monte_node_buffer._nodes[s]._parent_count;
+		seen2.insert(root);
+		long long queued = 0, processed = 0;
+		for (auto const& [mm, ll] : root->_children) {
+			if (ll._node == nullptr) continue;
+			if (--sim_pc[ll._node] <= 0 && seen2.insert(ll._node).second) { work.push_back(ll._node); queued++; }
+		}
+		Node* first_stranded = nullptr;
+		while (!work.empty()) {
+			Node* nd = work.back(); work.pop_back();
+			processed++;
+			for (auto const& [mm, ll] : nd->_children) {
+				if (ll._node == nullptr) continue;
+				if (--sim_pc[ll._node] <= 0 && seen2.insert(ll._node).second) { work.push_back(ll._node); queued++; }
+				else if (sim_pc[ll._node] > 0 && first_stranded == nullptr && !reach.count(ll._node)) {
+					first_stranded = ll._node;
+				}
+			}
+		}
+		// Stranded = in reach but never queued: re-derive (pc never hit 0).
+		long long stranded = 0;
+		Node* strand_ex = nullptr;
+		for (auto* nd : reach) {
+			if (nd == root) continue;
+			if (seen2.count(nd) == 0) { stranded++; if (!strand_ex) strand_ex = nd; }
+		}
+		cout << "  [replica] queued=" << queued << " processed=" << processed
+			<< " reach=" << reach.size() << " stranded=" << stranded << endl;
+		if (strand_ex) {
+			string fen = (strand_ex->_board != nullptr) ? strand_ex->_board->to_fen() : string("<noboard>");
+			cout << "  [stranded-ex] pc=" << strand_ex->_parent_count << " fen=" << fen << endl;
+			// Owner map (single pass) + walk the owner chain to prove cycle.
+			std::vector<int> owner_of(monte_node_buffer._length, -1);
+			for (int j = 0; j < monte_node_buffer._length; j++) {
+				Node* cand = &monte_node_buffer._nodes[j];
+				if (!cand->_is_active || cand->_children.empty()) continue;
+				for (auto const& [mm, ll] : cand->_children) {
+					if (ll._node == nullptr || !ll._node->_is_active) continue;
+					int slot = (int)(ll._node - monte_node_buffer._nodes);
+					if (slot >= 0 && slot < monte_node_buffer._length && owner_of[slot] == -1)
+						owner_of[slot] = j;
+				}
+			}
+			std::unordered_set<int> chain_seen;
+			int cur = (int)(strand_ex - monte_node_buffer._nodes);
+			int steps = 0;
+			for (; steps < 1000; steps++) {
+				if (cur < 0 || chain_seen.count(cur)) break;
+				chain_seen.insert(cur);
+				cur = owner_of[cur];
+			}
+			Node* endn = (cur >= 0 && cur < monte_node_buffer._length) ? &monte_node_buffer._nodes[cur] : nullptr;
+			string ef = (endn && endn->_board) ? endn->_board->to_fen() : string("<none>");
+			cout << "  [chain] steps=" << steps << " cycle=" << (cur >= 0 && chain_seen.count(cur) ? 1 : 0)
+				<< " endslot=" << cur << " endpc=" << (endn ? endn->_parent_count : -999)
+				<< " fen=" << ef << endl;
+		}
+	}
+	// TOTAL live incoming edges were ++'d without an edge. Prints first 5.
+	{
+		std::vector<int> total_in(monte_node_buffer._length, 0);
+		for (int j = 0; j < monte_node_buffer._length; j++) {
+			Node* cand = &monte_node_buffer._nodes[j];
+			if (!cand->_is_active || cand->_children.empty()) continue;
+			for (auto const& [mm, ll] : cand->_children) {
+				if (ll._node == nullptr || !ll._node->_is_active) continue;
+				int slot = (int)(ll._node - monte_node_buffer._nodes);
+				if (slot >= 0 && slot < monte_node_buffer._length) total_in[slot]++;
+			}
+		}
+		int over = 0;
+		for (int s = 0; s < monte_node_buffer._length && over < 5; s++) {
+			Node* nd = &monte_node_buffer._nodes[s];
+			if (!nd->_is_active || !reach.count(nd)) continue;
+			if (nd->_parent_count > total_in[s]) {
+				string fen = (nd->_board != nullptr) ? nd->_board->to_fen() : string("<noboard>");
+				cout << "  [overcount] slot=" << s << " pc=" << nd->_parent_count
+					<< " incoming=" << total_in[s] << " fen=" << fen << endl;
+				over++;
+			}
+		}
+		cout << "  [overcount-total] over=" << over << endl;
+	}
+	root->reset();
+	long long active = 0, pc0 = 0, pc1 = 0, pc2 = 0, pc3p = 0;
+	for (int i = 0; i < monte_node_buffer._length; i++) {
+		Node* nd = &monte_node_buffer._nodes[i];
+		if (!nd->_is_active) continue;
+		active++;
+		int pc = nd->_parent_count;
+		if (pc <= 0) pc0++; else if (pc == 1) pc1++; else if (pc == 2) pc2++; else pc3p++;
+	}
+	cout << "  [census-post] active=" << active << " pc0=" << pc0 << " pc1=" << pc1
+		<< " pc2=" << pc2 << " pc3+=" << pc3p << endl;
 	recycle_detached_node(root);
 	transposition_table.clear(); node_map.clear();
 	g_tt_node_dag = false;
@@ -6684,7 +6941,181 @@ TEST(Puzzle, Qxe5Bug) {
 	monte_node_buffer.remove();
 	monte_board_buffer.remove();
 }
+// Display repetition cut: the variant text must not claim a draw on its own
+// root. The display chain is seeded with the game history (which already
+// counts the current position), so the line-start occurrence must not be
+// double-counted: fresh FEN (count=1) shows moves in BOTH modes (DAG OFF
+// used to collapse to " 1/2-1/2" unconditionally), a repeat (count=2) still
+// shows moves with DAG ON, and only a genuine threefold (count=3) prints
+// the draw. Also guards verdict stability across a real saturation boundary
+// (grow roomy -> fill naturally -> refine while full).
+TEST(Puzzle, DisplayRepetitionCut) {
+    static Evaluator evaluator;
+    monte_node_buffer.init(30000, false);
+    monte_board_buffer.init(30000, false);
+    monte_node_buffer.reset();
+    monte_board_buffer.reset();
+    node_map.clear();
+    transposition_table.clear();
+    g_buffers_full_logged = false; g_tt_main_search = false;
+    g_search_abort.store(false, std::memory_order_release);
+    g_search_deadline.store((clock_t)0, std::memory_order_release);
+    Board b;
+    b.from_fen("2rq1rk1/1b1nbppp/p2pp3/np4P1/3NPP1P/2N1B3/PPPQ2B1/1K1R3R w - - 3 15");
+    Board* root_board = monte_board_buffer.get_first_free_board();
+    ASSERT_TRUE(root_board != nullptr);
+    root_board->copy_data(b, false, true);
+    root_board->_is_active = true;
+    Node* root = monte_node_buffer.get_first_free_node();
+    ASSERT_TRUE(root != nullptr);
+    root->reset(false);
+    root->_board = root_board;
+    root->_is_active = true;
+    root_board->get_zobrist_key();
+    for (bool dag : { false, true }) {
+        g_tt_node_dag = dag;
+        root_board->_positions_history[root_board->_zobrist_key] = 1; // fresh FEN
+        root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 500, 10);
+        ASSERT_GT(root->children_count(), (size_t)0);
+        string vars_fresh = root->get_exploration_variants(0.005, 5.0);
+        EXPECT_NE(vars_fresh, " 1/2-1/2") << "fresh root must show moves, dag=" << dag;
+        EXPECT_NE(vars_fresh.find("Eval:"), string::npos) << "fresh root shows eval lines, dag=" << dag;
+        EXPECT_GT(root->get_main_depth(0.005, 5.0), 0) << "fresh root has depth, dag=" << dag;
+        root_board->_positions_history[root_board->_zobrist_key] = 2; // repeat (e.g. after J)
+        string vars_rep = root->get_exploration_variants(0.005, 5.0);
+        if (dag) {
+            EXPECT_NE(vars_rep, " 1/2-1/2") << "repeat root still shows moves with DAG ON";
+            EXPECT_NE(vars_rep.find("Eval:"), string::npos);
+        }
+        else {
+            EXPECT_EQ(vars_rep, " 1/2-1/2") << "repeat root is a search-twofold draw with DAG OFF";
+        }
+        root_board->_positions_history[root_board->_zobrist_key] = 3; // genuine threefold
+        EXPECT_EQ(root->get_exploration_variants(0.005, 5.0), " 1/2-1/2")
+            << "threefold root shows the draw, dag=" << dag;
+        root_board->_positions_history[root_board->_zobrist_key] = 1; // restore for search phases
+    }
+    // Verdict stability across a saturation boundary (drain-simulated so it
+    // holds on any arena size: init() is a no-op when an earlier test
+    // already sized the pools).
+    g_tt_node_dag = false;
+    root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 3000, 10);
+    const Move most_roomy = root->get_most_explored_child_move();
+    const Move best_roomy = root->get_best_score_move(0.005, 5.0);
+    const int deep_roomy = root->_deep_evaluation._value;
+    std::vector<int> saved_boards, saved_nodes;
+    int bi = 0;
+    while ((bi = monte_board_buffer.get_first_free_index()) != -1) saved_boards.push_back(bi);
+    int ni = 0;
+    while ((ni = monte_node_buffer.get_first_free_index()) != -1) saved_nodes.push_back(ni);
+    ASSERT_TRUE(monte_board_buffer.is_full() && monte_node_buffer.is_full());
+    root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 200, 10); // refine while full
+    EXPECT_EQ(root->get_most_explored_child_move(), most_roomy) << "most-explored stable across saturation";
+    EXPECT_EQ(root->get_best_score_move(0.005, 5.0), best_roomy) << "best-score stable across saturation";
+    EXPECT_EQ(root->_deep_evaluation._value, deep_roomy) << "root value stable across saturation";
+    for (auto it = saved_boards.rbegin(); it != saved_boards.rend(); ++it)
+        monte_board_buffer.free_index(*it);
+    for (auto it = saved_nodes.rbegin(); it != saved_nodes.rend(); ++it)
+        monte_node_buffer.free_index(*it);
+    recycle_detached_node(root);
+    transposition_table.clear(); node_map.clear();
+    g_tt_node_dag = false;
+    g_search_abort.store(false, std::memory_order_release);
+}
 // TEMP autopsy (delete after): Rxe7 node board check via run shared
+// TEMP probe (convert after): cross-thread DEL sequence. Worker thread builds
+// the tree (GUI background analysis), main thread resets it (DEL handler:
+// stop + reset(true) + TT/nodemap clear), then worker relaunches. Asserts
+// BOTH arenas drain fully and the relaunched search is sane.
+TEST(Puzzle, CrossThreadRecycleProbe) {
+    static Evaluator evaluator;
+    monte_node_buffer.init(30000, false);
+    monte_board_buffer.init(30000, false);
+    // NOTE: no reset() here (other tests own the pools; init is a no-op when
+    // sized). This test only pops root+board and recycles them at the end;
+    // the worker thread resets nothing (GUI worker never bulk-resets).
+    node_map.clear();
+    transposition_table.clear();
+    g_buffers_full_logged = false; g_tt_main_search = false; g_tt_node_dag = true;
+    g_search_abort.store(false, std::memory_order_release);
+    g_search_deadline.store((clock_t)0, std::memory_order_release);
+    Board b;
+    b.from_fen("2rq1rk1/1b1nbppp/p2pp3/np4P1/3NPP1P/2N1B3/PPPQ2B1/1K1R3R w - - 3 15");
+    Board* root_board = monte_board_buffer.get_first_free_board();
+    ASSERT_TRUE(root_board != nullptr);
+    root_board->copy_data(b, false, true);
+    root_board->_is_active = true;
+    Node* root = monte_node_buffer.get_first_free_node();
+    ASSERT_TRUE(root != nullptr);
+    root->reset(false);
+    root->_board = root_board;
+    root->_is_active = true;
+    // Worker builds (own arenas, like GUI background analysis). All
+    // worker-thread_local reads happen ON the worker thread (a reader on
+    // another thread would see ITS OWN fresh thread_local instances).
+    // ONE persistent worker thread (thread_local arenas live on it): build ->
+    // main DEL-resets -> worker reads its own arenas + relaunches.
+    std::atomic<int> phase{ 0 };
+    size_t w_freeB = 0, w_freeN = 0, w_map = 0, w_kids = 0;
+    size_t w_freeB2 = 0, w_freeN2 = 0, w_lenB = 0, w_lenN = 0;
+    Move most_after;
+    int deep_after = 0;
+    size_t kids = 0;
+    std::thread worker([&]() {
+        monte_node_buffer.init(30000, false);
+        monte_board_buffer.init(30000, false);
+        root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 40000, 10);
+        w_freeB = monte_board_buffer._free_indices.size();
+        w_freeN = monte_node_buffer._free_indices.size();
+        w_map = node_map.size();
+        w_kids = root->children_count();
+        phase.store(1);
+        while (phase.load() < 2) std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        node_map.clear(); // worker "wake": epoch-equivalent map clear
+        transposition_table.clear();
+        w_freeB2 = monte_board_buffer._free_indices.size();
+        w_freeN2 = monte_node_buffer._free_indices.size();
+        w_lenB = (size_t)monte_board_buffer._length;
+        w_lenN = (size_t)monte_node_buffer._length;
+        root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 10000, 10);
+        most_after = root->get_most_explored_child_move();
+        deep_after = root->_deep_evaluation._value;
+        kids = root->children_count();
+        phase.store(3);
+    });
+    while (phase.load() < 1) std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    const Move most_before = root->get_most_explored_child_move();
+    const int deep_before = root->_deep_evaluation._value;
+    cout << "  [xthread built] most=" << b.move_label(most_before, true)
+        << " deep=" << deep_before
+        << " mainFreeB=" << monte_board_buffer._free_indices.size()
+        << " mainFreeN=" << monte_node_buffer._free_indices.size()
+        << " workerFreeB=" << w_freeB << " workerFreeN=" << w_freeN
+        << " workerMap=" << w_map << " kids=" << w_kids << endl;
+    // DEL on main: recursive reset + map clears.
+    root->reset(true);
+    transposition_table.clear(); node_map.clear();
+    root->_is_active = true;
+    root_board->_is_active = true;
+    cout << "  [xthread afterDEL] mainFreeB=" << monte_board_buffer._free_indices.size()
+        << " mainFreeN=" << monte_node_buffer._free_indices.size() << endl;
+    phase.store(2);
+    while (phase.load() < 3) std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    worker.join();
+    cout << "  [xthread workerFreeB2]=" << w_freeB2 << " workerFreeN2=" << w_freeN2 << endl;
+    cout << "  [xthread relaunch] most=" << b.move_label(most_after, true)
+        << " deep=" << deep_after << " children=" << kids << endl;
+    // Cross-thread DEL must fully drain the builder's arenas (home-arena
+    // routing), and the relaunched search must expand again.
+    EXPECT_EQ(w_freeB2, w_lenB) << "worker board arena fully reclaimed";
+    EXPECT_EQ(w_freeN2, w_lenN) << "worker node arena fully reclaimed";
+    EXPECT_GT(kids, (size_t)0) << "relaunch expands";
+    EXPECT_FALSE(most_after.is_null_move()) << "relaunch has a verdict";
+    recycle_detached_node(root);
+    transposition_table.clear(); node_map.clear();
+    g_tt_node_dag = false;
+    g_search_abort.store(false, std::memory_order_release);
+}
 TEST(Puzzle, TempAutopsy16) {
     static Evaluator evaluator;
     const char* fen = "r6k/pp2r2p/4Rp1Q/3p4/8/1N1P2b1/PqP3PP/7K w - - 0 25";

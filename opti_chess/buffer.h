@@ -29,6 +29,19 @@ PoolSizing compute_pool_sizing(double ram_fraction = 0.5,
                                int tt_max_entries = 5000000,
                                double rss_overhead_factor = 2.0);
 
+// Shared pool sizing: computed once on the main thread (GUI::init_buffers)
+// and consumed by the worker arenas so both threads run the SAME capacities.
+// Per-thread compute_pool_sizing() drifts as the first arenas eat RAM,
+// leaving the worker with smaller pools that saturate early.
+extern PoolSizing g_shared_pool_sizing;
+extern bool g_shared_pool_sizing_set;
+
+// Cumulative allocation counters (per thread, never decremented): the work
+// measure behind the global-average NPS (total nodes / total time). Bumped
+// on every successful pop; recycle/give-back never touch them.
+extern thread_local long long g_board_allocs;
+extern thread_local long long g_node_allocs;
+
 class BoardBuffer {
 public:
 

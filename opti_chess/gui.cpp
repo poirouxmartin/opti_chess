@@ -1552,14 +1552,14 @@ void GUI::run_puzzle_headless(double time_s) {
 // Populates _tree_snapshot from the current root node.
 // Caller must ensure no concurrent modification (lock held, or worker stopped).
 void GUI::update_snapshot(bool heavy) {
-	// Fresh analysis after invalidation: reset throughput base (else the
-	// first window spans the idle gap and drags the EMA to zero).
+	// Fresh analysis after invalidation: reset the global-average base (t0 +
+	// cumulative work counters), so idle gaps never dilute the rate.
 	if (!_tree_snapshot.valid) {
 		_tree_snapshot.nps = 0.0f;
 		_tree_snapshot.ips = 0.0f;
-		_tree_snapshot.snap_last_nodes = 0;
-		_tree_snapshot.snap_last_iters = 0;
-		_tree_snapshot.snap_last_clock = 0;
+		_tree_snapshot.snap_t0_clock = clock();
+		_tree_snapshot.snap_base_node_allocs = g_node_allocs;
+		_tree_snapshot.snap_base_iters = _root_exploration_node->_iterations.load(std::memory_order_relaxed);
 	}
 	if (_root_exploration_node->_board && _root_exploration_node->_nodes >= 1 && !_root_exploration_node->_is_terminal) {
 		_tree_snapshot.best_move = _root_exploration_node->get_most_explored_child_move();
@@ -1580,22 +1580,19 @@ void GUI::update_snapshot(bool heavy) {
 		_tree_snapshot.children_count = (int)_root_exploration_node->children_count();
 		_tree_snapshot.got_moves = _root_exploration_node->_board->_got_moves;
 		_tree_snapshot.quiescence_depth = _root_exploration_node->_quiescence_depth;
-		// Throughput EMA over the snapshot window (uniform for worker and
-		// inline callers). dt<=0 (same tick) keeps the previous value.
+		// Global-average throughput since this analysis started (uniform for
+		// worker and inline callers): total nodes ever allocated on this
+		// thread since t0 / wall-clock elapsed. No EMA window, no jitter.
 		{
 			const clock_t now_c = clock();
-			const long long nodes_c = _root_exploration_node->_nodes;
-			const long long iters_c = _root_exploration_node->_iterations;
-			if (_tree_snapshot.snap_last_clock != 0 && now_c > _tree_snapshot.snap_last_clock) {
-				const double dt = (double)(now_c - _tree_snapshot.snap_last_clock) / CLOCKS_PER_SEC;
-				const float inst_nps = (float)((nodes_c - _tree_snapshot.snap_last_nodes) / dt);
-				const float inst_ips = (float)((iters_c - _tree_snapshot.snap_last_iters) / dt);
-				if (inst_nps >= 0.0f) _tree_snapshot.nps = _tree_snapshot.nps == 0.0f ? inst_nps : 0.7f * _tree_snapshot.nps + 0.3f * inst_nps;
-				if (inst_ips >= 0.0f) _tree_snapshot.ips = _tree_snapshot.ips == 0.0f ? inst_ips : 0.7f * _tree_snapshot.ips + 0.3f * inst_ips;
+			const long long iters_c = _root_exploration_node->_iterations.load(std::memory_order_relaxed);
+			if (now_c > _tree_snapshot.snap_t0_clock) {
+				const double dt = (double)(now_c - _tree_snapshot.snap_t0_clock) / CLOCKS_PER_SEC;
+				if (dt > 0.0) {
+					_tree_snapshot.nps = (float)((g_node_allocs - _tree_snapshot.snap_base_node_allocs) / dt);
+					_tree_snapshot.ips = (float)((iters_c - _tree_snapshot.snap_base_iters) / dt);
+				}
 			}
-			_tree_snapshot.snap_last_nodes = nodes_c;
-			_tree_snapshot.snap_last_iters = iters_c;
-			_tree_snapshot.snap_last_clock = now_c;
 		}
 		// Heavy fields (PV walk + strings) at most ~4Hz in background mode;
 		// light fields (moves, arrows, evals) ride every iteration.
@@ -1649,7 +1646,10 @@ void GUI::compute_worker() {
 	// empty free-list and every run exits with iters=0. Never bulk-reset
 	// here: own slots may hold LIVE tree nodes linked from the main tree.
 	if (!monte_board_buffer._init || !monte_node_buffer._init) {
-		const PoolSizing ps = compute_pool_sizing();
+		// Same capacities as the main arenas (cached at startup): a fresh
+		// per-thread compute would see less free RAM and size smaller pools
+		// that saturate early.
+		const PoolSizing ps = g_shared_pool_sizing_set ? g_shared_pool_sizing : compute_pool_sizing();
 		const clock_t t_init0 = clock();
 		if (!monte_board_buffer._init)
 			monte_board_buffer.init(ps.board_length, false);
@@ -1660,8 +1660,9 @@ void GUI::compute_worker() {
 		// the main thread's TT stays capped. Fixed buffer for the TT too.
 		if (!transposition_table._init)
 			transposition_table.init(ps.tt_length, nullptr, false);
-		debug_log("[worker] arenas init boards=%d nodes=%d tt=%d (%.1fs)", ps.board_length, ps.node_length,
-			ps.tt_length, (double)(clock() - t_init0) / CLOCKS_PER_SEC);
+		debug_log("[worker] arenas init boards=%d nodes=%d tt=%d cached=%d cacheB=%d (%.1fs)", ps.board_length, ps.node_length,
+			ps.tt_length, (int)g_shared_pool_sizing_set, g_shared_pool_sizing_set ? g_shared_pool_sizing.board_length : -1,
+			(double)(clock() - t_init0) / CLOCKS_PER_SEC);
 	}
 	long long t_seen_epoch = -1;
 	unsigned long long t_seen_gen = 0;
@@ -2359,8 +2360,8 @@ void GUI::draw()
 			"\nConfidence: " + to_string(100 - (int)(100 * best_evaluation._uncertainty)) + "%" +
 			"\nWinnable: " + to_string(static_cast<int>(best_evaluation._winnable_white * 100)) + "% / " + to_string(static_cast<int>(best_evaluation._winnable_black * 100)) + "%" +
 			"\n" + _wdl.to_string() + "\nScore: " + score_string(best_evaluation._avg_score) +
-			"\nNodes: " + int_to_round_string(_tree_snapshot.nodes) + "/" + int_to_round_string(monte_board_buffer._length) + " (" + int_to_round_string(_tree_snapshot.nps) + "N/s)" +
-			"\nIterations: " + int_to_round_string(_tree_snapshot.iterations) + " (" + int_to_round_string(_tree_snapshot.ips) + "I/s)" +
+			"\nTree nodes: " + int_to_round_string(_tree_snapshot.nodes) + " (" + int_to_round_string(_tree_snapshot.nps) + " N/s avg)" +
+			"\nIterations: " + int_to_round_string(_tree_snapshot.iterations) + " (" + int_to_round_string(_tree_snapshot.ips) + " I/s avg)" +
 			"\nForced: " + (g_forced_every >= (1 << 30) ? static_cast<string>("OFF (Y/Z)") : (to_string(g_forced_every) + " (Y/Z)")) +
 			"\nFired: " + to_string((long long)g_forced_fired) +
 				"\n\n" + _tree_snapshot.tt_stats +
@@ -2443,6 +2444,18 @@ void GUI::reset_game() {
 	stop_compute(__FUNCTION__);
 	_position_epoch++; // real tree mutation: worker drops hint maps on next wake
 	std::lock_guard<std::mutex> tree_lk(_tree_mutex);
+	// Size + init the main arenas BEFORE the worker boots (first write wins
+	// the shared sizing): the constructor path reaches here before any
+	// init_buffers call, and the worker sizes itself from the cache.
+	if (!g_shared_pool_sizing_set) {
+		const PoolSizing ps0 = compute_pool_sizing();
+		g_shared_pool_sizing = ps0;
+		g_shared_pool_sizing_set = true;
+		if (!monte_board_buffer._init)
+			monte_board_buffer.init(ps0.board_length);
+		if (!monte_node_buffer._init)
+			monte_node_buffer.init(ps0.node_length);
+	}
 	// Boot the persistent worker (once): its thread_local GB arenas take
 	// ~1s to construct (measured 0.6s) — done here in background at startup/positions
 	// change so the first CTRL-G analyzes instantly instead of stalling
@@ -2450,9 +2463,10 @@ void GUI::reset_game() {
 	ensure_worker_thread();
 	cout << "*** RESETING GAME ***\n" << endl;
 	main_game_over = false; // new games start playable
-	debug_log("[reset_game] enter boards_free=%d nodes_free=%d root=%p board=%p",
-		(int)monte_board_buffer._free_indices.size(),
-		(int)monte_node_buffer._free_indices.size(),
+	debug_log("[reset_game] enter boards_free=%d/%d nodes_free=%d/%d cache=%d cacheB=%d root=%p board=%p",
+		(int)monte_board_buffer._free_indices.size(), monte_board_buffer._length,
+		(int)monte_node_buffer._free_indices.size(), monte_node_buffer._length,
+		(int)g_shared_pool_sizing_set, g_shared_pool_sizing_set ? g_shared_pool_sizing.board_length : -1,
 		(void*)_root_exploration_node, (void*)_board);
 
 	cout << _global_pgn << endl;
@@ -2928,9 +2942,18 @@ void GUI::evaluate_position(bool display, bool static_only) {
 // Initializes the buffers
 void GUI::init_buffers() const {
 
-	// Adaptive sizing from the available physical RAM (#13)
-	if (!monte_board_buffer._init || !monte_node_buffer._init) {
+	// Adaptive sizing from the available physical RAM (#13), computed ONCE
+	// and shared with the worker arenas (per-thread recompute drifts as the
+	// first arenas eat RAM, leaving the worker with smaller pools).
+	// First write wins: the GUI constructor path (reset_game below) sizes
+	// before the worker thread boots, so both arenas match.
+	if (!g_shared_pool_sizing_set) {
 		const PoolSizing ps = compute_pool_sizing();
+		g_shared_pool_sizing = ps;
+		g_shared_pool_sizing_set = true;
+	}
+	const PoolSizing ps = g_shared_pool_sizing;
+	if (!monte_board_buffer._init || !monte_node_buffer._init) {
 		if (!monte_board_buffer._init)
 			monte_board_buffer.init(ps.board_length);
 		if (!monte_node_buffer._init)

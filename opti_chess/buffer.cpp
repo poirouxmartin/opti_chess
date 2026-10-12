@@ -94,6 +94,7 @@ Board* BoardBuffer::get_first_free_board() {
 	if (index == -1)
 		return nullptr;
 
+	g_board_allocs++;
 	Board* board = &_boards[index];
 	board->_is_active = true;
 	return board;
@@ -115,6 +116,12 @@ void BoardBuffer::display_buffer_state() const {
 
 // Buffer for the Monte Carlo algorithm
 thread_local BoardBuffer monte_board_buffer;
+
+// Shared sizing cache (see buffer.h) + cumulative alloc counters.
+PoolSizing g_shared_pool_sizing;
+bool g_shared_pool_sizing_set = false;
+thread_local long long g_board_allocs = 0;
+thread_local long long g_node_allocs = 0;
 
 // Adaptive pool sizing from the physical RAM available.
 // budget = min(ram_fraction * available RAM, hard_cap); TT capped at budget/4;

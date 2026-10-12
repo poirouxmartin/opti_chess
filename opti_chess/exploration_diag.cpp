@@ -3,6 +3,7 @@
 #include "zobrist.h"
 #include <cmath>
 #include <cstdlib>
+#include <unordered_map>
 #include <unordered_set>
 
 #ifdef _WIN32
@@ -1627,6 +1628,36 @@ void Node::reset(bool recursive) {
 	reset_node_fields(this);
 
 	if (recursive) {
+		// TD-011: snapshot reachability BEFORE the walk clears maps (cycle
+		// collection needs the live edge set; a post-walk traversal cannot
+		// pass walked nodes' cleared maps to reach stranded residue).
+		// Home-arena based (reset may run on another thread than the
+		// builder); skipped for non-pooled roots (cyc_home null).
+		NodeBuffer* cyc_home = (this->_buffer_index >= 0 && this->_home_nodes != nullptr)
+			? this->_home_nodes : nullptr;
+		if (cyc_home != nullptr && (!cyc_home->_init || cyc_home->_nodes == nullptr || cyc_home->_length <= 0))
+			cyc_home = nullptr;
+		std::vector<char> cyc_inR;
+		if (cyc_home != nullptr) {
+			const int CN = cyc_home->_length;
+			Node* const cbase = cyc_home->_nodes;
+			cyc_inR.assign(CN, 0);
+			if (this >= cbase && this < cbase + CN) {
+				std::vector<Node*> cst;
+				cst.push_back(this);
+				cyc_inR[(int)(this - cbase)] = 1;
+				while (!cst.empty()) {
+					Node* cur = cst.back(); cst.pop_back();
+					for (auto const& [mm, ll] : cur->_children) {
+						Node* ch = ll._node;
+						if (ch == nullptr || !ch->_is_active) continue;
+						if (ch < cbase || ch >= cbase + CN) continue;
+						int slot = (int)(ch - cbase);
+						if (!cyc_inR[slot]) { cyc_inR[slot] = 1; cst.push_back(ch); }
+					}
+				}
+			}
+		}
 		// Worklist of nodes whose subtrees need resetting.
 		// Recycle list preserves bottom-up order (children before parents).
 		thread_local vector<Node*> worklist;
@@ -1679,6 +1710,125 @@ void Node::reset(bool recursive) {
 		for (auto it = to_recycle.rbegin(); it != to_recycle.rend(); ++it) {
 			recycle_detached_node(*it);
 		}
+
+		// TD-011 phase 2 — cycle collection. The count-gated walk above
+		// deadlocks on reference cycles (DAG back-edges via cross-branch
+		// ancestor adoption: books stay balanced so no counter ever trips,
+		// yet nothing drains; measured 20k-450k stranded nodes per DAG
+		// search+reset). BFS from root over still-active nodes reaches
+		// exactly the unprocessed residue (walked nodes have cleared maps),
+		// so this is a no-op when clean. Keep the closed subset with no
+		// live edge crossing to survivors (fixpoint) and free it with the
+		// same slot hygiene as recycling. Home-arena based (reset may run
+		// on another thread than the builder); skipped for non-pooled roots.
+		// Remainder = pre-walk reachability minus recycled. (A post-walk BFS
+		// cannot pass walked nodes' cleared maps to reach it.)
+		const int HN = (int)cyc_inR.size();
+		Node* const hbase = (cyc_home != nullptr) ? cyc_home->_nodes : nullptr;
+		std::vector<char> inR2(std::move(cyc_inR));
+		if (hbase != nullptr) {
+			for (auto* n : to_recycle) {
+				if (n != nullptr && n >= hbase && n < hbase + HN)
+					inR2[(int)(n - hbase)] = 0;
+			}
+			if (this >= hbase && this < hbase + HN) inR2[(int)(this - hbase)] = 0; // root retained by caller
+		}
+		std::vector<int> r2list;
+		r2list.reserve(1024);
+		bool any_r2 = false;
+		if (hbase != nullptr) {
+			for (int s = 0; s < HN; s++) if (inR2[s]) { r2list.push_back(s); any_r2 = true; }
+		}
+		if (any_r2) {
+				// Exact outside-incoming (single pass over live maps: root,
+				// kept trees, garbage uniformly) + R2-internal edges + reverse
+				// adjacency, all in one pass. Inactive owners contribute
+				// nothing (walked ones have cleared maps; the entry-reset
+				// inactivated the root, whose map dies at _children.clear()
+				// below anyway).
+				std::unordered_map<int, int> ext_in;
+				ext_in.reserve(r2list.size() * 2);
+				std::vector<std::pair<int, int>> iedges;
+				iedges.reserve(r2list.size() * 2);
+				std::unordered_map<int, std::vector<int>> rev;
+				rev.reserve(r2list.size() * 2);
+				for (int j = 0; j < HN; j++) {
+					Node* cand = &hbase[j];
+					if (!cand->_is_active || cand->_children.empty()) continue;
+					for (auto const& [mm, ll] : cand->_children) {
+						Node* t = ll._node;
+						if (t == nullptr || !t->_is_active) continue;
+						if (t < hbase || t >= hbase + HN) continue;
+						int ts = (int)(t - hbase);
+						if (!inR2[ts]) continue;
+						if (inR2[j]) { iedges.emplace_back(j, ts); rev[ts].push_back(j); }
+						else ext_in[ts]++;
+					}
+				}
+				// Queue-cascade closed set: drop members touching survivors.
+				std::unordered_set<int> dropped;
+				dropped.reserve(r2list.size() * 2);
+				std::vector<int> q;
+				auto drop = [&](int s) {
+					if (dropped.insert(s).second) q.push_back(s);
+				};
+				for (int s : r2list) {
+					if (ext_in[s] > 0) { drop(s); continue; }
+					Node* m = &hbase[s];
+					for (auto const& [mm, ll] : m->_children) {
+						Node* t = ll._node;
+						if (t == nullptr || !t->_is_active) continue;
+						if (t < hbase || t >= hbase + HN) continue;
+						if (!inR2[(int)(t - hbase)]) { drop(s); break; }
+					}
+				}
+				while (!q.empty()) {
+					int s = q.back(); q.pop_back();
+					auto it = rev.find(s);
+					if (it != rev.end()) for (int r : it->second) {
+						if (inR2[r] && !dropped.count(r)) drop(r);
+					}
+					Node* ms = &hbase[s];
+					for (auto const& [mm, ll] : ms->_children) {
+						Node* t = ll._node;
+						if (t == nullptr || !t->_is_active) continue;
+						if (t < hbase || t >= hbase + HN) continue;
+						int ts = (int)(t - hbase);
+						if (inR2[ts] && !dropped.count(ts)) drop(ts);
+					}
+				}
+				auto collected = [&](int s) { return inR2[s] && !dropped.count(s); };
+				// Survivor bookkeeping: edges from collected members vanish
+				// with them, so decrement survivor counts (else they strand
+				// later on stale +1s).
+				for (auto const& [a, b2] : iedges) {
+					if (!collected(a)) continue;
+					Node* t = &hbase[b2];
+					if (!t->_is_active || collected(b2)) continue;
+					t->_parent_count--;
+				}
+				// Free the closed set (mirror recycle_detached_node hygiene).
+				long long ncoll = 0;
+				for (int s : r2list) {
+					if (!collected(s)) continue;
+					Node* m = &hbase[s];
+					if (g_tt_node_dag && m->_board != nullptr) {
+						const auto it = node_map.find(m->_board->_zobrist_key);
+						if (it != node_map.end() && it->second == m) node_map.erase(it);
+					}
+					Board* b = m->_board;
+					if (b != nullptr && b->_buffer_index >= 0 && b->_home_boards != nullptr && !b->_home_boards->_bulk_resetting)
+						b->_home_boards->free_index(b->_buffer_index);
+					m->_is_active = false;
+					if (b != nullptr) b->_is_active = false;
+					m->_mtx.clear(std::memory_order_relaxed);
+					if (s >= 0 && m->_buffer_index >= 0 && m->_home_nodes != nullptr && !m->_home_nodes->_bulk_resetting)
+						m->_home_nodes->free_index(m->_buffer_index);
+					ncoll++;
+				}
+				if (ncoll > 0)
+					cout << "[reset] cycle-collected " << ncoll << " nodes" << endl;
+			}
 	}
 
 	_children.clear();
@@ -1721,7 +1871,14 @@ string Node::get_exploration_variants(const double alpha, const double beta, boo
 	const auto _ch_it = c->find(_board->_zobrist_key);
 	const int _ch_seen = _ch_it != c->end() ? static_cast<int>(_ch_it->second) : 0;
 	const uint8_t _disp_limit = g_tt_node_dag ? display_repetition_limit : search_repetition_limit;
-	if (_ch_seen + 1 >= _disp_limit) {
+	// Line-start frame (outermost call, chain == nullptr): the current
+	// position is already counted in the seeded game history, so the
+	// displayed occurrence must NOT double-count it (else every FEN-loaded
+	// root with DAG OFF, and every repeated root with DAG ON, collapses to
+	// " 1/2-1/2"). Cut only on a genuinely reached limit. Deeper frames keep
+	// the +1 (a new occurrence down the line).
+	const bool _line_start = (chain == nullptr);
+	if ((_line_start ? _ch_seen >= _disp_limit : _ch_seen + 1 >= _disp_limit)) {
 		// Bounded detail: WHERE the displayed line loops back (depth reached
 		// before the cycle). Quantifies the "near-infinite variations" on the
 		// display side. Guarded by g_tt_node_dag: OFF -> tree threshold unchanged.
@@ -3306,6 +3463,7 @@ Node* NodeBuffer::get_first_free_node() {
 	if (index == -1)
 		return nullptr;
 
+	g_node_allocs++;
 	Node* node = &_nodes[index];
 	node->_is_active = true;
 	node->_initialized = false;
