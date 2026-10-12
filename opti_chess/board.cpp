@@ -242,35 +242,11 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 			bool en_passant = (row == 3 + player && _en_passant_col == new_col);
 
 			if (en_passant) {
-				// A lateral discovered check is the one case en passant can expose, and it is
-				// handled below. Test: rnbqkbn1/ppppp3/6p1/3KPp1r/8/7p/PPPP1PPP/RNBQ1BNR w q f6 0 7
-				// Rank: ... straight slider ... enemy pawn, friendly pawn ... king ...
-
-				// If the king is on the same rank, to the right of the pawn
-				Pos king_pos = player ? _white_king_pos : _black_king_pos;
-				if (king_pos.row == row && king_pos.col > col) {
-
-					// Iterate leftwards
-					for (int c = new_col - 1; c >= 0; c--) {
-						uint8_t p = _array[row][c];
-
-						// If we hit a piece
-						if (p != none) {
-
-							// Stop on a friendly piece
-							if (is_ally(p, player))
-								break;
-
-							// Hitting an enemy straight-line slider means a discovered check
-							if (is_rectilinear(p)) {
-								en_passant = false;
-							}
-
-							break;
-						}
-					}
-				}
-
+				// A lateral discovered check is the one case en passant can expose (both pawns
+				// leave the rank). Test: rnbqkbn1/ppppp3/6p1/3KPp1r/8/7p/PPPP1PPP/RNBQ1BNR w q f6 0 7
+				const Pos king_pos = player ? _white_king_pos : _black_king_pos;
+				if (en_passant_exposes_king(player, row, col, new_col))
+					en_passant = false;
 
 				// While in check, the move must interpose (or capture the checking pawn).
 				// The last clause covers being checked by a pawn that just advanced two
@@ -312,34 +288,10 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 			bool en_passant = (row == 3 + player && _en_passant_col == new_col);
 
 			if (en_passant) {
-				// Mirror of the case above, with the king on the other side of the pawn.
-				// Seul cas possible:
-				// Rank: ... king ... friendly pawn, enemy pawn ... straight slider ...
-				
-				// If the king is on the same rank, to the left of the pawn
-				Pos king_pos = player ? _white_king_pos : _black_king_pos;
-				if (king_pos.row == row && king_pos.col < col) {
-
-					// Iterate rightwards
-					for (int c = new_col + 1; c < 8; c++) {
-						uint8_t p = _array[row][c];
-
-						// If we hit a piece
-						if (p != none) {
-
-							// Stop on a friendly piece
-							if (is_ally(p, player))
-								break;
-
-							// Hitting an enemy straight-line slider means a discovered check
-							if (is_rectilinear(p)) {
-								en_passant = false;
-							}
-
-							break;
-						}
-					}
-				}
+				// Same lateral discovered-check test as the left capture
+				const Pos king_pos = player ? _white_king_pos : _black_king_pos;
+				if (en_passant_exposes_king(player, row, col, new_col))
+					en_passant = false;
 
 				// While in check, the move must interpose
 				if (en_passant)
@@ -349,6 +301,28 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 	}
 
 	return true;
+}
+
+// En passant removes two pawns from the same rank at once, which the pin detection cannot see.
+// Walk the rank from the king towards the pawns, skipping both pawn squares: the first other
+// piece met decides (enemy rook/queen = discovered check). Covers both king sides, both
+// capture directions, and blockers between the king and the pawns.
+// Tests: 4k3/8/8/K2pP2r/8/8/8/8 w - d6 0 1 (illegal), 4k3/8/8/r2pP1BK/8/8/8/8 w - d6 0 1 (legal)
+bool Board::en_passant_exposes_king(const bool player, const uint8_t row, const uint8_t col, const int new_col) const noexcept {
+	const Pos king_pos = player ? _white_king_pos : _black_king_pos;
+	if (king_pos.row != row)
+		return false;
+
+	const int step = king_pos.col < col ? 1 : -1;
+	for (int c = king_pos.col + step; c >= 0 && c < 8; c += step) {
+		if (c == col || c == new_col)
+			continue;
+		const uint8_t p = _array[row][c];
+		if (p != none)
+			return !is_ally(p, player) && is_rectilinear(p);
+	}
+
+	return false;
 }
 
 // Adds the moves of a knight, accounting for pins and checks

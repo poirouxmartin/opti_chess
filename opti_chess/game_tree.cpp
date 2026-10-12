@@ -2,22 +2,24 @@
 #include "board.h"
 #include "gui.h"
 #include "zobrist.h"
+#include <algorithm>
 
 // Default constructor
 GameTreeNode::GameTreeNode() {
 }
 
 // Constructor from a board and a move
-GameTreeNode::GameTreeNode(Board board, Move move, string move_label, const GameTreeNode& parent) {
+GameTreeNode::GameTreeNode(Board board, Move move, string move_label, GameTreeNode* parent) {
 	_move = move;
 	_move_label = move_label;
 	_board = board;
-	_parent = (GameTreeNode*)&parent;
+	_parent = parent;
 }
 
 // Adds a child
-void GameTreeNode::add_child(GameTreeNode child) {
-	_children.push_back(child);
+void GameTreeNode::add_child(unique_ptr<GameTreeNode> child) {
+	child->_parent = this;
+	_children.push_back(std::move(child));
 }
 
 // Displays the tree
@@ -30,15 +32,15 @@ string GameTreeNode::tree_display(GameTreeNode *current_node) {
 
 	// Principal variation
 	if (_children.size() > 0)
-		display += + " " + (_board._player ? to_string(_board._moves_count) + ". " : "") + _children[0]._move_label;
+		display += + " " + (_board._player ? to_string(_board._moves_count) + ". " : "") + _children[0]->_move_label;
 
 	// Other variations
 	for (int i = 1; i < _children.size(); i++)
-		display += " (" + to_string(_board._moves_count) + (_board._player ?  + ". " : "... ") + _children[i]._move_label + _children[i].tree_display(current_node) + ")";
+		display += " (" + to_string(_board._moves_count) + (_board._player ?  + ". " : "... ") + _children[i]->_move_label + _children[i]->tree_display(current_node) + ")";
 
 	// Principal variation
 	if (_children.size() > 0)
-		display += _children[0].tree_display(current_node);
+		display += _children[0]->tree_display(current_node);
 
 	return display;
 }
@@ -58,15 +60,15 @@ GameTree::GameTree() : _root(nullptr), _current_node(nullptr) {
 
 // Constructor from a board
 GameTree::GameTree(Board board) {
-	_root = new GameTreeNode(board, Move(), "", GameTreeNode());
+	_root = new GameTreeNode(board, Move(), "", nullptr);
 	_current_node = _root;
 }
 
 // Selects the next node
 bool GameTree::select_next_node(Move move) {
 	for (int i = 0; i < _current_node->_children.size(); i++)
-		if (_current_node->_children[i]._move == move) {
-			_current_node = &(_current_node->_children[i]);
+		if (_current_node->_children[i]->_move == move) {
+			_current_node = _current_node->_children[i].get();
 			return true;
 		}
 
@@ -78,7 +80,7 @@ bool GameTree::select_first_next_node() {
 	bool can_go_forward = _current_node->_children.size() > 0;
 
 	if (can_go_forward) {
-		main_GUI.play_move_keep((_current_node->_children[0])._move);
+		main_GUI.play_move_keep(_current_node->_children[0]->_move);
 	}
 
 	return can_go_forward;
@@ -118,11 +120,6 @@ bool GameTree::select_previous_node() {
 	return can_go_back;
 }
 
-// Adds a child
-void GameTree::add_child(GameTreeNode child) {
-	_current_node->add_child(child);
-}
-
 // Adds a child from a board and a move
 void GameTree::add_child(Board board, Move move, string move_label) {
 
@@ -134,12 +131,12 @@ void GameTree::add_child(Board board, Move move, string move_label) {
 
 	// Check that the move does not already exist
 	for (int i = 0; i < _current_node->_children.size(); i++)
-		if (_current_node->_children[i]._move == move)
+		if (_current_node->_children[i]->_move == move)
 			return;
 
 	board.make_move(move, false, true);
 
-	_current_node->add_child(GameTreeNode(board, move, move_label, *_current_node));
+	_current_node->add_child(make_unique<GameTreeNode>(board, move, move_label, _current_node));
 }
 
 // Adds a child from a move
@@ -153,14 +150,14 @@ void GameTree::add_child(Move move, string additional_label) {
 
 	// Check that the move does not already exist
 	for (int i = 0; i < _current_node->_children.size(); i++)
-		if (_current_node->_children[i]._move == move)
+		if (_current_node->_children[i]->_move == move)
 			return;
 
 	Board board = _current_node->_board;
 	string move_label = board.move_label(move) + (additional_label.empty() ? "" : " " + additional_label);
 	board.make_move(move, false, true);
 
-	_current_node->add_child(GameTreeNode(board, move, move_label, *_current_node));
+	_current_node->add_child(make_unique<GameTreeNode>(board, move, move_label, _current_node));
 }
 
 // Displays the tree
@@ -180,54 +177,30 @@ void GameTree::reset() {
 void GameTree::new_tree(Board& board) {
 	if (_root)
 		_root->reset();
-	_root = new GameTreeNode(board, Move(), "", GameTreeNode());
+	_root = new GameTreeNode(board, Move(), "", nullptr);
 	_current_node = _root;
 }
 
 // Promotes the current variation to the main variation
 bool GameTree::promote_current_variation() {
 
-	// FIXME: there are still bugs here........
+	// Walk up to the first ancestor level where the line is not the main one, and move it
+	// to first place there. Nodes are heap-allocated, so only the owning pointers move:
+	// _current_node, _parent links and the GUI board pointer all stay valid.
+	for (GameTreeNode* node = _current_node; node != _root; node = node->_parent) {
+		auto& siblings = node->_parent->_children;
+		int position = 0;
+		while (position < (int)siblings.size() && siblings[position].get() != node)
+			position++;
+		if (position == (int)siblings.size())
+			return false; // not linked to its parent: corrupt tree, leave it alone
+		if (position == 0)
+			continue;
 
-	// At the root there is nothing to promote
-	if (_current_node == _root)
-		return false;
-
-	// First check whether the current move is the main one of the variation
-
-	// If it is, look at the parent
-	if (_current_node->_parent->_children[0]._move == _current_node->_move) {
-		_current_node = _current_node->_parent;
-
-		// Promote the parent
-		return promote_current_variation();
+		std::rotate(siblings.begin(), siblings.begin() + position, siblings.begin() + position + 1);
+		return true;
 	}
 
-	// Otherwise, promote the variation to the main variation
-
-	// First store the current variation
-	GameTreeNode temp = *_current_node;
-
-	// Shift the other variations up to the current one
-	
-	// Look for the current variation
-	int variant_position = 0;
-	for (int i = 1; i < _current_node->_parent->_children.size(); i++) {
-		if (_current_node->_parent->_children[i]._move == _current_node->_move) {
-			variant_position = i;
-			break;
-		}
-	}
-		
-	// Shift the variations
-	for (int j = variant_position; j > 0; j--)
-		_current_node->_parent->_children[j] = _current_node->_parent->_children[j - 1];
-
-	// Put the current variation in first position
-	_current_node->_parent->_children[0] = temp;
-
-	//*_current_node = _current_node->_parent->_children[0];
-	// FIXME: this does not work, we are not on the right node
-
-	return true;
+	// Already on the main line (or at the root)
+	return false;
 }

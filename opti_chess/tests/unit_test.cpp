@@ -135,10 +135,12 @@ TEST(Perft, Kiwipete) {
 TEST(Perft, Position3) {
     Board b;
     b.from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1");
+    // Reference: chessprogramming.org/Perft_Results. The old 192/2826/43403
+    // were the counts of the en passant lateral-pin bug (AUDIT B-01).
     EXPECT_EQ(b.count_nodes_at_depth(1), 14);
-    EXPECT_EQ(b.count_nodes_at_depth(2), 192);
-    EXPECT_EQ(b.count_nodes_at_depth(3), 2826);
-    EXPECT_EQ(b.count_nodes_at_depth(4), 43403);
+    EXPECT_EQ(b.count_nodes_at_depth(2), 191);
+    EXPECT_EQ(b.count_nodes_at_depth(3), 2812);
+    EXPECT_EQ(b.count_nodes_at_depth(4), 43238);
 }
 
 TEST(Perft, Position4) {
@@ -2622,6 +2624,10 @@ static SearchOutcome solve_once(const char* fen, const int iterations_in) {
 
 	BoardBuffer board_buf(500 * 1024 * 1024);
 	board_buf.init(500000, false);
+	// init() is a no-op on a live arena: drop whatever an earlier test left
+	// (a full pool capped the search at one node and runs diverged)
+	monte_node_buffer.remove();
+	monte_board_buffer.remove();
 	monte_node_buffer.init(500000, false);
 	monte_board_buffer.init(500000, false);
 
@@ -2747,6 +2753,10 @@ static Move search_best_move_fresh(const char* fen, const int iterations) {
 
 	BoardBuffer board_buf(500 * 1024 * 1024);
 	board_buf.init(500000, false);
+	// init() is a no-op on a live arena: drop whatever an earlier test left
+	// (a full pool capped the search at one node and runs diverged)
+	monte_node_buffer.remove();
+	monte_board_buffer.remove();
 	monte_node_buffer.init(500000, false);
 	monte_board_buffer.init(500000, false);
 
@@ -2930,7 +2940,9 @@ TEST(FEN, PartialFenLoads) {
 		b.from_fen(f);
 		EXPECT_TRUE(b.fen_ok()) << f;
 		EXPECT_TRUE(b._player) << f;
-		EXPECT_TRUE(b._castling_rights.q_w) << f;
+		// "Q" is parsed but dropped: the king is on g1, not e1, and the old
+		// loader kept it, which let movegen castle Kg1-e1 (AUDIT B-03)
+		EXPECT_FALSE(b._castling_rights.q_w) << f;
 		EXPECT_FALSE(b._castling_rights.k_w) << f;
 		EXPECT_EQ(b.to_fen(), ref.to_fen()) << f;
 	}
@@ -3316,7 +3328,7 @@ TEST(MoveLabel, Disambiguation) {
 	// Unambiguous single knight: no disambiguation
 	// (pawn on the board so the draw-result suffix cannot kick in)
 	Board s;
-	s.from_fen("k7/8/8/8/8/8/1N6/KP6 w - - 0 1");
+	s.from_fen("k7/8/8/8/8/1P6/1N6/K7 w - - 0 1"); // (a pawn on rank 1 is now rejected)
 	s.get_moves();
 	EXPECT_EQ(s.move_label(Move(1, 1, 3, 2)), "Nc4");
 
@@ -7139,4 +7151,133 @@ TEST(Puzzle, TempAutopsy16) {
             cout << "RXE7 val=" << cl._node->_deep_evaluation._value << " avg=" << cl._node->_deep_evaluation._avg_score << " qd=" << cl._node->_quiescence_depth << " it=" << cl._chosen_iterations << endl;
         }
     }
+}
+
+// ============================================================================
+// Audit regressions (docs/AUDIT.md): en passant lateral pins, FEN hardening
+// ============================================================================
+
+#include "game_tree.h"
+
+static bool has_move(Board& b, int r1, int c1, int r2, int c2) {
+    b.get_moves();
+    for (int i = 0; i < b._got_moves; i++) {
+        const Move& m = b._moves[i];
+        if (m.start_row == r1 && m.start_col == c1 && m.end_row == r2 && m.end_col == c2)
+            return true;
+    }
+    return false;
+}
+
+// En passant removes two pawns from one rank: a rook behind them pins both.
+// The old scan only covered one king side per capture direction and ignored
+// blockers between the pawns and the king (perft pos3 d5 gave 677046).
+TEST(MoveGen, EnPassantLateralPinKingLeftCaptureLeft) {
+    Board b;
+    b.from_fen("4k3/8/8/K2pP2r/8/8/8/8 w - d6 0 1");
+    EXPECT_FALSE(has_move(b, 4, 4, 5, 3)); // exd6 exposes Ka5 to Rh5
+    EXPECT_EQ(b._got_moves, naive_legal_count(b));
+}
+
+TEST(MoveGen, EnPassantLateralPinKingRightCaptureRight) {
+    Board b;
+    b.from_fen("4k3/8/8/r2Pp2K/8/8/8/8 w - e6 0 1");
+    EXPECT_FALSE(has_move(b, 4, 3, 5, 4)); // dxe6 exposes Kh5 to Ra5
+    EXPECT_EQ(b._got_moves, naive_legal_count(b));
+}
+
+TEST(MoveGen, EnPassantBlockedPinStaysLegal) {
+    Board b;
+    b.from_fen("4k3/8/8/r2pP1BK/8/8/8/8 w - d6 0 1");
+    EXPECT_TRUE(has_move(b, 4, 4, 5, 3)); // Bg5 shields Kh5: exd6 is legal
+    EXPECT_EQ(b._got_moves, naive_legal_count(b));
+}
+
+TEST(MoveGen, EnPassantLateralPinBlack) {
+    Board b;
+    b.from_fen("8/8/8/8/R2pP2k/8/8/4K3 b - e3 0 1");
+    EXPECT_FALSE(has_move(b, 3, 3, 2, 4)); // dxe3 exposes Kh4 to Ra4
+    EXPECT_EQ(b._got_moves, naive_legal_count(b));
+}
+
+TEST(Perft, Position3Depth5) {
+    Board b;
+    b.from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1");
+    EXPECT_EQ(b.count_nodes_at_depth(5, false), 674624);
+}
+
+TEST(FEN, CastlingRightWithoutRookDropped) {
+    Board b;
+    b.from_fen("4k3/8/8/8/8/8/8/3K4 w K - 0 1");
+    EXPECT_FALSE(b._castling_rights.k_w);
+    EXPECT_FALSE(has_move(b, 0, 3, 0, 5));
+}
+
+TEST(FEN, PhantomEnPassantDropped) {
+    Board b;
+    b.from_fen("4k3/8/8/3NP3/8/8/8/4K3 w - d6 0 1");
+    EXPECT_EQ(b._en_passant_col, -1);
+    EXPECT_FALSE(has_move(b, 4, 4, 5, 3)); // used to delete the Nd5
+}
+
+TEST(FEN, EnPassantKeptWhenCapturable) {
+    Board b;
+    b.from_fen("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1");
+    EXPECT_EQ(b._en_passant_col, 3);
+    EXPECT_TRUE(has_move(b, 4, 4, 5, 3));
+}
+
+// GUI move tree: children used to live by value in a vector, so adding a
+// sibling reallocated it and left grandchildren's _parent dangling, and
+// promote_current_variation left _current_node on the wrong move.
+TEST(GameTree, ParentStableAfterSiblingInsert) {
+    Board b;
+    b.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    GameTree t(b);
+    const Move e4(1, 4, 3, 4), e5(6, 4, 4, 4), d4(1, 3, 3, 3);
+    t.add_child(e4, "");
+    ASSERT_TRUE(t.select_next_node(e4));
+    GameTreeNode* e4_node = t._current_node;
+    t.add_child(e5, "");
+    ASSERT_TRUE(t.select_next_node(e5));
+    t._current_node = t._root;
+    t.add_child(d4, ""); // sibling of e4
+    ASSERT_TRUE(t.select_next_node(e4));
+    EXPECT_EQ(t._current_node, e4_node);
+    ASSERT_TRUE(t.select_next_node(e5));
+    EXPECT_EQ(t._current_node->_parent, e4_node);
+}
+
+TEST(GameTree, PromoteKeepsCurrentNode) {
+    Board b;
+    b.from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    GameTree t(b);
+    const Move e4(1, 4, 3, 4), e5(6, 4, 4, 4), d4(1, 3, 3, 3);
+    t.add_child(d4, "");
+    t.add_child(e4, "");
+    ASSERT_TRUE(t.select_next_node(e4));
+    t.add_child(e5, "");
+    ASSERT_TRUE(t.select_next_node(e5));
+    GameTreeNode* e5_node = t._current_node;
+    EXPECT_TRUE(t.promote_current_variation());
+    EXPECT_EQ(t._current_node, e5_node);
+    EXPECT_EQ(t._root->_children[0]->_move, e4);
+    EXPECT_EQ(t._root->_children[1]->_move, d4);
+    EXPECT_EQ(e5_node->_parent, t._root->_children[0].get());
+    EXPECT_FALSE(t.promote_current_variation()); // already the main line
+}
+
+TEST(FEN, PawnOnBackRankRejected) {
+    Board b;
+    b.from_fen("P3k3/8/8/8/8/8/8/4K3 w - - 0 1"); // eval read _array[8] for it
+    EXPECT_EQ(b._array[7][0], 0);
+    EXPECT_EQ(b._array[0][4], 0);
+}
+
+TEST(FEN, RankOverflowFailsSafe) {
+    Board b;
+    b.from_fen("PPPPPPPPP/8/8/8/8/8/8/k6K w - - 0 1"); // 9 pieces on rank 8
+    for (int r = 0; r < 8; r++)
+        for (int c = 0; c < 8; c++)
+            EXPECT_EQ(b._array[r][c], 0);
 }

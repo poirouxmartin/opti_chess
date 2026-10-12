@@ -25,8 +25,9 @@ constexpr uint8_t max_half_moves = 100;
 
 // Maximum number of stored moves per position (TD-004: deliberate memory diet).
 // Sharp promotion-storm positions can legally exceed 100 (record 218);
-// beyond the cap add_move() silently drops moves. Pool sizing adapts to the
-// smaller stride (see compute_pool_sizing).
+// beyond the cap add_move() silently drops moves (accepted risk, see docs/AUDIT.md:
+// perft d1 of R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNN1KB1 w - - 0 1 gives 100, not 218).
+// Pool sizing adapts to the smaller stride (see compute_pool_sizing).
 constexpr uint8_t max_moves = 100;
 
 // Value of a checkmate
@@ -699,6 +700,9 @@ public:
 
 	// Adds the moves of a pawn, accounting for the pins and the checks
 	bool add_pawn_moves(const bool player, const uint8_t row, const uint8_t col, uint8_t &iterator, const PinnedSquare &pin, const bool in_check, const uint64_t &interposition_mask) noexcept;
+
+	// True if capturing en passant from (row, col) to new_col would expose the king along the rank
+	bool en_passant_exposes_king(const bool player, const uint8_t row, const uint8_t col, const int new_col) const noexcept;
 
 	// Adds the moves of a knight, accounting for the pins and the checks
 	bool add_knight_moves(const bool player, const uint8_t row, const uint8_t col, uint8_t &iterator, const PinnedSquare &pin, const bool in_check, const uint64_t& interposition_mask) noexcept;

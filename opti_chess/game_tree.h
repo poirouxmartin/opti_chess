@@ -1,6 +1,7 @@
 #pragma once
 #include "board.h"
 #include <vector>
+#include <memory>
 
 
 // Node of the game tree
@@ -16,11 +17,12 @@ class GameTreeNode {
 	// Board
 	Board _board;
 
-	// Children
-	vector<GameTreeNode> _children;
+	// Children (heap nodes: addresses stay valid when siblings are added or reordered,
+	// _parent / _current_node / the GUI board pointer all point into the tree)
+	vector<unique_ptr<GameTreeNode>> _children;
 
-	// Parent
-	GameTreeNode* _parent;
+	// Parent (nullptr at the root)
+	GameTreeNode* _parent = nullptr;
 
 	// Time left for the player who is not to move
 	clock_t _time; // TODO
@@ -31,13 +33,13 @@ class GameTreeNode {
 	// Default constructor
 	GameTreeNode();
 
-	// Constructor from a board and a move
-	GameTreeNode(Board, Move, string, const GameTreeNode&);
+	// Constructor from a board, a move and the parent node
+	GameTreeNode(Board, Move, string, GameTreeNode* parent);
 
 	// Methods
 
 	// Adds a child
-	void add_child(GameTreeNode);
+	void add_child(unique_ptr<GameTreeNode>);
 
 	// Displays the tree
 	string tree_display(GameTreeNode *current_node);
@@ -74,9 +76,6 @@ class GameTree {
 
 	// Selects the previous node
 	bool select_previous_node();
-
-	// Adds a child
-	void add_child(GameTreeNode);
 
 	// Adds a child from a board and a move
 	void add_child(Board, Move, string);

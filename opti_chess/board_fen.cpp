@@ -41,6 +41,11 @@ void Board::from_fen(string fen)
 			return;
 		}
 		c = fen[iterator];
+		// A 9th piece on a rank used to write past _array[row][7] into the next members
+		if (col >= 8 && isalpha(static_cast<unsigned char>(c))) {
+			fen_fail("row overflow");
+			return;
+		}
 		switch (c) {
 		case '/': case ' ': row -= 1; col = 0; break;
 		case 'P': _array[row][col] = w_pawn; col++; break;
@@ -91,6 +96,26 @@ void Board::from_fen(string fen)
 		return;
 	}
 
+	// Pawns on rank 1/8 or more than 9 queens per side are unreachable, and the eval reads
+	// _array[row +- 1] / queens_pos[9] without guards for them (out-of-bounds on such input)
+	int w_queens = 0, b_queens = 0;
+	for (int c2 = 0; c2 < 8; c2++) {
+		if (is_pawn(_array[0][c2]) || is_pawn(_array[7][c2])) {
+			fen_fail("pawn on first or last rank");
+			return;
+		}
+	}
+	for (int r = 0; r < 8; r++) {
+		for (int c2 = 0; c2 < 8; c2++) {
+			w_queens += _array[r][c2] == w_queen;
+			b_queens += _array[r][c2] == b_queen;
+		}
+	}
+	if (w_queens > 9 || b_queens > 9) {
+		fen_fail("too many queens");
+		return;
+	}
+
 	// Everything after the placement is optional (partial FENs load with
 	// sensible defaults instead of failing to an empty board). Missing side
 	// to move defaults to White, missing castling/EP to none, missing
@@ -128,6 +153,13 @@ void Board::from_fen(string fen)
 	if (iterator < static_cast<int>(fen.size()) && fen[iterator] == ' ')
 		iterator++;
 
+	// Drop rights whose king/rook are not on their home squares: movegen trusts the flags
+	// and make_move would conjure a rook (e.g. 4k3/8/8/8/8/8/8/3K4 w K - 0 1 played Kf1 + Rf1)
+	_castling_rights.k_w &= _array[0][4] == w_king && _array[0][7] == w_rook;
+	_castling_rights.q_w &= _array[0][4] == w_king && _array[0][0] == w_rook;
+	_castling_rights.k_b &= _array[7][4] == b_king && _array[7][7] == b_rook;
+	_castling_rights.q_b &= _array[7][4] == b_king && _array[7][0] == b_rook;
+
 	// En passant
 	_en_passant_col = -1;
 	if (iterator < static_cast<int>(fen.size()) && fen[iterator] != ' ') {
@@ -143,6 +175,23 @@ void Board::from_fen(string fen)
 	}
 	if (iterator < static_cast<int>(fen.size()) && fen[iterator] == ' ')
 		iterator++;
+
+	// Keep the en passant file only under make_move's convention: the opponent pawn just
+	// double-pushed on that file and one of ours stands next to it. Otherwise movegen
+	// accepts a phantom capture that deletes whatever stands on the target's rank
+	// (4k3/8/8/3NP3/8/8/8/4K3 w - d6 0 1 removed the knight), and the Zobrist key differs
+	// from the same position reached by play (missed repetitions).
+	if (_en_passant_col != -1) {
+		const int ep = _en_passant_col;
+		const int r = _player ? 4 : 3; // rank of the double-pushed pawn
+		const int dir = _player ? 1 : -1; // towards the squares it crossed
+		const uint8_t pushed = _player ? b_pawn : w_pawn;
+		const uint8_t ours = _player ? w_pawn : b_pawn;
+		const bool valid = _array[r][ep] == pushed && _array[r + dir][ep] == none
+			&&((ep > 0 && _array[r][ep - 1] == ours) || (ep < 7 && _array[r][ep + 1] == ours));
+		if (!valid)
+			_en_passant_col = -1;
+	}
 
 	string s;
 	while (iterator < static_cast<int>(fen.size()) && fen[iterator] != ' ') {
