@@ -11,6 +11,8 @@ jobs:
     runs-on: windows-latest
     defaults:
       run:
+        # Every run step below uses paths relative to opti_chess/ (upload-artifact
+        # is not a run step: its path stays relative to the workspace)
         working-directory: opti_chess
     steps:
       - uses: actions/checkout@v7
@@ -18,9 +20,10 @@ jobs:
       - run: cmake --build --preset windows-release
       # Non-regression gate (fast, deterministic; slow TIME benchmarks stay manual).
       # Debug/Perf excluded (diagnostics + micro-benchmarks); LichessBenchmark*/
-      # CalibratedBatch/TestsTxtBatch/Progress ParamSweep are wall-clock heavy.
+      # CalibratedBatch/TestsTxtBatch/Progress ParamSweep are wall-clock heavy,
+      # OFFvsDAG_Puzzles runs 5000 puzzles twice (hours).
       - name: fast test suites
-        run: ctest --test-dir opti_chess/build/windows-release --output-on-failure -E "Debug\.|Perf\.|LichessBenchmark|CalibratedBatch|TestsTxtBatch|TimeBudgetLadder|ScalingBenchmark|TimeBenchmark|GuiLikeBench|ParamSweep"
+        run: ctest --test-dir build/windows-release -C Release --output-on-failure -E "Debug\.|Perf\.|LichessBenchmark|CalibratedBatch|TestsTxtBatch|TimeBudgetLadder|ScalingBenchmark|TimeBenchmark|GuiLikeBench|ParamSweep|OFFvsDAG"
       # Puzzle gate: fixed nodes + seed => load-proof and solid (500 positions);
       # fails below threshold.
       - name: GATE-500 puzzle threshold
@@ -31,7 +34,7 @@ jobs:
           OPTI_PUZZLE_MAX: '500'
           OPTI_GATE_MIN_SOLVED: '400'
         run: >
-          $out = & opti_chess/build/windows-release/Release/opti_chess_tests.exe
+          $out = & build/windows-release/Release/opti_chess_tests.exe
           --gtest_filter=Puzzle.LichessBenchmark5000 2>&1 | Out-String;
           echo $out; if ($out -match '\[500/500\] solved=(\d+)') {
           if ([int]$Matches[1] -lt [int]$env:OPTI_GATE_MIN_SOLVED) {
