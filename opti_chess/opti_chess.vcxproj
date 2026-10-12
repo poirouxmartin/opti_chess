@@ -242,6 +242,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="board.cpp" />
+    <ClCompile Include="movegen.cpp" />
     <ClCompile Include="board_display.cpp" />
     <ClCompile Include="board_fen.cpp" />
     <ClCompile Include="buffer.cpp" />
