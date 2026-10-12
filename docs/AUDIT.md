@@ -216,3 +216,16 @@ and every step is measured.
 | S-4 | `from_fen` pure; GUI-side `load_position()` takes over PGN/orientation/game tree updates | proposed | GUI session check (AGENTS.md GUI rule) |
 | S-5 | eval breakdown through an optional caller-owned struct instead of `main_GUI` writes; drop raylib from board.h (move the 3 display members to the GUI) | proposed | eval gates + NPS + McNemar NODES-500 |
 | S-6 | directories + `engine_core` without raylib; regenerate opti_chess.vcxproj from the new layout; re-pin the baseline worktree | proposed, needs Martin's go (branch churn, baseline worktree) | full harness + baseline re-snap |
+## 8. Verification log (2026-10-12)
+
+- Clean full rebuild (`--clean-first`) of tests + GUI + CLI before every measurement
+  (AGENTS.md stale-linkage rule).
+- `scripts/harness.ps1`: perft-suite quick 7/7, gtest 145/145 (CI set), UCI smoke (no
+  illegal move), bench signature 8a8961478e14dd47; `perft-suite full` 7/7 (597M nodes).
+- GUI session driven by `keybd_event` (arrows need the extended flag and scancodes 0x4B/0x4D,
+  otherwise GLFW drops them): CTRL-G analysis, J twice (play), LEFT twice (back in the game
+  tree: worker stopped and restarted), RIGHT (forward), CTRL-L (promote), CTRL-G, CTRL-H. Process
+  alive throughout, worker `iter=` climbing, clean `exit iters=N` at each stop, 0
+  TIMEOUT/CRITICAL lines in `opti_chess_debug.log`.
+- Not run: the hour-long benchmarks (Lichess 2000/5000, OFFvsDAG, McNemar gates). The fixes do
+  not touch search or eval code; B-14/B-15 stay open precisely because they would need them.
