@@ -453,21 +453,14 @@ bool Board::get_moves() noexcept {
 
 			// Fetch a square holding a friendly piece
 			int sq = pop_lsb(bb);  // 0..63
-			const uint64_t sq_mask = SQUARE_MASKS[sq];
-
-			// Determine the piece type by looking through the bitboards
-			uint8_t piece = 0;
-			int first_type = player ? w_pawn : b_pawn;
-			for (int type = first_type; type <= first_type + 4; type++) {
-				if (_bitboards[type] & sq_mask) {
-					piece = type;
-					break;
-				}
-			}
 
 			// Conversion en row/col
 			uint8_t row = sq >> 3;
 			uint8_t col = sq & 7;
+
+			// Piece type: a single array read instead of scanning up to 5 bitboards
+			// (the king, absent from that scan, falls through every branch below)
+			const uint8_t piece = _array[row][col];
 
 			// Pawn
 			if (is_pawn(piece)) {
