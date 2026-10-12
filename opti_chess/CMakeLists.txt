@@ -240,5 +240,22 @@ elseif(NOT WIN32)
     target_link_options(opti_chess_selfplay PRIVATE -flto)
 endif()
 
+# Headless harness: perft suite, bench, minimal UCI (no window)
+add_executable(opti_chess_cli
+    cli.cpp
+)
+target_link_libraries(opti_chess_cli PRIVATE engine_lib)
+target_compile_features(opti_chess_cli PRIVATE cxx_std_20)
+if(MSVC)
+    target_compile_options(opti_chess_cli PRIVATE ${MSVC_OPT_FLAGS})
+    if(NOT ASAN_BUILD)
+        target_link_options(opti_chess_cli PRIVATE /LTCG)
+    endif()
+    target_link_options(opti_chess_cli PRIVATE /STACK:16777216)
+elseif(NOT WIN32)
+    target_compile_options(opti_chess_cli PRIVATE ${GCC_OPT_FLAGS})
+    target_link_options(opti_chess_cli PRIVATE -flto)
+endif()
+
 include(GoogleTest)
 gtest_discover_tests(opti_chess_tests)
