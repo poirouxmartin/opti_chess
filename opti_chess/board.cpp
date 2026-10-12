@@ -934,7 +934,10 @@ long long int Board::count_nodes_at_depth(int depth, bool display, bool main) {
 	get_moves();
 	long long int nodes_count = 0;
 
-	Board b;
+	// One child board per depth, reused across calls: constructing a Board allocates its
+	// history map, which cost one malloc/free per internal node (perft depth < 64)
+	static thread_local Board children[64];
+	Board& b = children[depth];
 
 	for (int m = 0; m < _got_moves; m++) {
 		b.minimal_copy_data(*this);
