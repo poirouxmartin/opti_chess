@@ -740,9 +740,6 @@ public:
 	// Plays a move
 	void make_move(const Move& move, const bool pgn = false, const bool add_to_history = false) noexcept;
 
-	// Undoes a move
-	void unmake_move(Move move, uint8_t p1, uint8_t p2, int en_passant_col, int prev_half_count, bool k_castle, bool q_castle, bool is_castle, bool is_promotion, bool is_en_passant);
-
 	// Returns the advancement of the game (0 = opening, 1 = endgame)
 	void game_advancement();
 

@@ -269,7 +269,6 @@
     <ClInclude Include="game_tree.h" />
     <ClInclude Include="gui.h" />
     <ClInclude Include="main_gui.h" />
-    <ClInclude Include="main_lichess.h" />
     <ClInclude Include="neural_network.h" />
     <ClInclude Include="puzzle.h" />
     <ClInclude Include="stockfish_adapter.h" />

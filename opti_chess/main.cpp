@@ -1,14 +1,6 @@
-#include "main_lichess.h"
 #include "main_gui.h"
 
-bool lichess = false;
-
+// GUI entry point. Headless use (perft, bench, UCI): opti_chess_cli (cli.cpp).
 int main() {
-
-	if (lichess)
-		main_lichess();
-	else
-		main_ui();
-
+	main_ui();
 }
-

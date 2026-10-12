@@ -160,7 +160,7 @@ install(DIRECTORY resources/ DESTINATION share/opti_chess/resources)
 # Unit tests (GoogleTest + CTest)
 # ---------------------------------------------------------------------------
 # Shared library: engine sources without main.cpp, gui.cpp, main_gui.h,
-# main_lichess.h, windows_tests.cpp, tests.cpp (GUI-dependent).
+# windows_tests.cpp, tests.cpp (GUI-dependent).
 # raylib is linked so that board.h compiles, but tests never open a window.
 set(ENGINE_SOURCES
     board.cpp

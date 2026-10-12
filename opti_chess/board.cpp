@@ -1377,65 +1377,6 @@ inline void Board::make_move(const Move& move, const bool pgn, const bool add_to
 	return;
 }
 
-// Unmakes a move
-void Board::unmake_move(Move move, uint8_t p1, uint8_t p2, int en_passant_col, int prev_half_count, bool k_castle, bool q_castle, bool is_castle, bool is_promotion, bool is_en_passant) {
-	// TODO
-
-	// TODO: decide whether to mirror everything make_move does (eval reset and so on)
-	// TODO: would a faster make_move_minimal be worth it?
-
-	// Side that played the move
-	_player = !_player;
-
-	// Put the pieces back
-	_array[move.start_row][move.start_col] = p1;
-
-	// TODO: handle the special cases (castling, en passant, promotion?)
-	if (is_castle) {
-
-		// The rook must be restored too, then the pre-unmake king square cleared
-		int direction = (move.end_col - move.start_col) / 2;
-		_array[move.end_row][move.end_col + direction] = w_rook + 6 * _player;
-		_array[move.end_row][move.end_col] = none;
-	}
-	else if (is_en_passant) {
-
-		// The enemy pawn has to go back to the right square
-		_array[move.start_row][move.end_col] = w_pawn + 6 * _player;
-
-		// Clear the capture square
-		_array[move.end_row][move.end_col] = none;
-	}
-
-	// By default, put the captured piece back on its square
-	else {
-		_array[move.end_row][move.end_col] = p2;
-	}
-
-
-	if (_player) {
-		_castling_rights.k_w = k_castle;
-		_castling_rights.q_w = q_castle;
-	}
-	else {
-		_castling_rights.k_b = k_castle;
-		_castling_rights.q_b = q_castle;
-	}
-
-	_half_moves_count = prev_half_count;
-	!_player && _moves_count--;
-	_en_passant_col = en_passant_col;
-
-	if (p1 == w_king) {
-		_white_king_pos.row = move.start_row;
-		_white_king_pos.col = move.start_col;
-	}
-	else if (p1 == b_king) {
-		_black_king_pos.row = move.start_row;
-		_black_king_pos.col = move.start_col;
-	}
-}
-
 // Returns how far the game has progressed (0 = opening, 1 = endgame)
 int Board::game_over(int max_repetitions) {
 
