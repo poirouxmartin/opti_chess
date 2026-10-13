@@ -909,6 +909,7 @@ int Board::get_checks_value(const SquareMap* white_controls, const SquareMap* bl
 	// Position of the opposing king
 	update_kings_pos();
 	const Pos king_pos = color ? _black_king_pos : _white_king_pos;
+	const int king_sq = king_pos.row * 8 + king_pos.col;
 
 	// Look at every possible move for the player
 	Board b(*this);
@@ -929,6 +930,10 @@ int Board::get_checks_value(const SquareMap* white_controls, const SquareMap* bl
 		
 		// Move
 		const Move& move = b._moves[i];
+
+		// A move that does not give check changes no counter below: skip make_move and in_check
+		if (!b.move_may_give_check(move, king_sq))
+			continue;
 
 		// Destination square of the move
 		const uint8_t i2 = move.end_row;

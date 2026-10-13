@@ -855,25 +855,32 @@ uint64_t square_reach_mask(const int sq) noexcept
 }
 
 // Conservative filter: false only when the move certainly cannot check the king on king_sq.
-// A check needs the destination on a line or knight jump from that king (direct check), the
-// origin on a line from it (discovered check), castling (the rook) or en passant (captured pawn)
+// Castling, en passant and promotions answer true (left to the caller's trial move); any other
+// move is tested exactly: the mover's pieces after the move, seen from the king square with the
+// occupancy after the move (direct and discovered checks alike), as in_check would see them
 bool Board::move_may_give_check(const Move& move, const int king_sq) const noexcept
 {
-	const int from = move.start_row * 8 + move.start_col;
-	const int to = move.end_row * 8 + move.end_col;
-
-	if ((ATTACKS.lines[king_sq] & SQUARE_MASKS[from]) || ((ATTACKS.lines[king_sq] | ATTACKS.knight[king_sq]) & SQUARE_MASKS[to]))
-		return true;
-
 	const uint8_t piece = _array[move.start_row][move.start_col];
 
-	// Castling
 	if (is_king(piece) && abs(move.end_col - move.start_col) == 2)
 		return true;
-
-	// En passant
-	if (is_pawn(piece) && move.end_col != move.start_col && _array[move.end_row][move.end_col] == none)
+	if (is_pawn(piece) && (move.end_row == 0 || move.end_row == 7 || (move.end_col != move.start_col && _array[move.end_row][move.end_col] == none)))
 		return true;
 
-	return false;
+	const uint64_t from_bb = SQUARE_MASKS[move.start_row * 8 + move.start_col];
+	const uint64_t to_bb = SQUARE_MASKS[move.end_row * 8 + move.end_col];
+	const uint64_t occ = (_occupancies[2] & ~from_bb) | to_bb;
+
+	// Mover's pieces of each type (1..6 = pawn..king) after the move
+	const bool white = piece <= w_king;
+	const uint64_t* own = _bitboards + (white ? 0 : 6);
+	const int moved_type = white ? piece : piece - 6;
+	auto after = [&](const int type) {
+		return (own[type] & ~from_bb) | (type == moved_type ? to_bb : 0);
+	};
+
+	return ((ATTACKS.knight[king_sq] & after(2))
+		| (ATTACKS.pawn[white ? 1 : 0][king_sq] & after(1))
+		| (diag_attacks(king_sq, occ) & (after(3) | after(5)))
+		| (rect_attacks(king_sq, occ) & (after(4) | after(5)))) != 0;
 }
