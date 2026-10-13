@@ -4,7 +4,65 @@
 #include "board.h"
 
 #include <algorithm>
+#include <bit>
 #include <cstdlib>
+
+namespace {
+
+	// Precomputed attack tables (square index = row * 8 + col, row 0 = rank 1)
+	struct AttackTables {
+		uint64_t knight[64];
+		uint64_t king[64];
+		uint64_t pawn[2][64];	// [0]: squares a white pawn on sq captures, [1]: same for a black pawn
+		uint64_t ray[8][64];	// empty-board rays, in all_directions order (0-3 diagonal, 4-7 straight)
+	};
+
+	constexpr AttackTables make_attack_tables() {
+		AttackTables t{};
+		for (int sq = 0; sq < 64; sq++) {
+			const int r = sq >> 3, c = sq & 7;
+			auto set = [](uint64_t& bb, int rr, int cc) { if (rr >= 0 && rr < 8 && cc >= 0 && cc < 8) bb |= 1ULL << (rr * 8 + cc); };
+			for (int k = 0; k < 8; k++)
+				set(t.knight[sq], r + knight_directions[k][0], c + knight_directions[k][1]);
+			for (int d = 0; d < 8; d++) {
+				const int dr = all_directions[d][0], dc = all_directions[d][1];
+				set(t.king[sq], r + dr, c + dc);
+				for (int rr = r + dr, cc = c + dc; rr >= 0 && rr < 8 && cc >= 0 && cc < 8; rr += dr, cc += dc)
+					t.ray[d][sq] |= 1ULL << (rr * 8 + cc);
+			}
+			set(t.pawn[0][sq], r + 1, c - 1);
+			set(t.pawn[0][sq], r + 1, c + 1);
+			set(t.pawn[1][sq], r - 1, c - 1);
+			set(t.pawn[1][sq], r - 1, c + 1);
+		}
+		return t;
+	}
+
+	constexpr AttackTables ATTACKS = make_attack_tables();
+
+	// Squares reached along one ray, stopping on (and including) the first blocker
+	inline uint64_t ray_attacks(const int d, const int sq, const uint64_t occ) noexcept {
+		const uint64_t ray = ATTACKS.ray[d][sq];
+		const uint64_t blockers = ray & occ;
+		if (!blockers)
+			return ray;
+		// Directions 2, 3, 6, 7 increase the square index: nearest blocker = lowest bit
+		const bool increasing = (d & 2) != 0;
+		const int b = increasing ? std::countr_zero(blockers) : 63 - std::countl_zero(blockers);
+		return ray ^ ATTACKS.ray[d][b];
+	}
+
+	inline uint64_t diag_attacks(const int sq, const uint64_t occ) noexcept {
+		return ray_attacks(0, sq, occ) | ray_attacks(1, sq, occ) | ray_attacks(2, sq, occ) | ray_attacks(3, sq, occ);
+	}
+
+	inline uint64_t rect_attacks(const int sq, const uint64_t occ) noexcept {
+		return ray_attacks(4, sq, occ) | ray_attacks(5, sq, occ) | ray_attacks(6, sq, occ) | ray_attacks(7, sq, occ);
+	}
+
+	constexpr uint64_t FILE_A = 0x0101010101010101ULL;
+	constexpr uint64_t FILE_H = 0x8080808080808080ULL;
+}
 
 // Adds a move to a move list
 inline bool Board::add_move(const Move move, uint8_t &iterator, const uint8_t piece) noexcept
@@ -523,174 +581,38 @@ uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingsid
 	const uint8_t min_col = max(0, king_pos.col - 1 - queenside_castle_check);
 	const uint8_t max_col = min(7, king_pos.col + 1 + kingside_castle_check);
 
-	// Control map around the king
+	// Every square attacked by an enemy piece, built from attack tables.
+	// Sliders see through the king under consideration (it cannot hide behind itself).
+	const uint64_t* enemy = _bitboards + (player ? 6 : 0);	// enemy[1..6] = pawn..king
+	const uint64_t occ = _occupancies[2] & ~_bitboards[player ? w_king : b_king];
+
+	// Pawns, all at once: black pawns capture downwards, white pawns upwards
+	uint64_t attacked = player
+		? ((enemy[1] >> 7) & ~FILE_A) | ((enemy[1] >> 9) & ~FILE_H)
+		: ((enemy[1] << 7) & ~FILE_H) | ((enemy[1] << 9) & ~FILE_A);
+
+	for (uint64_t bb = enemy[2]; bb;)
+		attacked |= ATTACKS.knight[pop_lsb(bb)];
+
+	for (uint64_t bb = enemy[3] | enemy[5]; bb;)
+		attacked |= diag_attacks(pop_lsb(bb), occ);
+
+	for (uint64_t bb = enemy[4] | enemy[5]; bb;)
+		attacked |= rect_attacks(pop_lsb(bb), occ);
+
+	if (enemy[6])
+		attacked |= ATTACKS.king[std::countr_zero(enemy[6])];
+
+	// Keep the action zone only, and map it onto the 3x5 control bits
+	uint64_t zone = 0;
+	const uint64_t zone_row = (0xFFULL >> (7 - max_col + min_col)) << min_col;
+	for (int r = min_row; r <= max_row; r++)
+		zone |= zone_row << (r * 8);
+
 	uint16_t controls = 0;
-
-	// The king under consideration
-	const uint8_t piece_king = player ? w_king : b_king;
-
-	// Pawn direction by side, for the control zone
-	const int8_t pawn_dir = player ? -1 : 1;
-
-	// Iterate over the enemy pieces
-	uint64_t bb = _occupancies[player];
-
-	while (bb) {
-
-		// Fetch a square holding a friendly piece
-		int sq = pop_lsb(bb);  // 0..63
-		const uint64_t sq_mask = SQUARE_MASKS[sq];
-
-		// Determine the piece type by looking through the bitboards
-		uint8_t piece = 0;
-		int first_type = player ? b_pawn : w_pawn;
-		for (int type = first_type; type <= first_type + 5; type++) {
-			if (_bitboards[type] & sq_mask) {
-				piece = type;
-				break;
-			}
-		}
-
-		// Conversion en row/col
-		uint8_t row = sq >> 3;
-		uint8_t col = sq & 7;
-
-		// Pawn
-		if (is_pawn(piece)) {
-
-			uint8_t control_row = row + pawn_dir;
-
-			// Skip when the pawn cannot control the zone
-			if (!is_in_fast(control_row, min_row, max_row))
-				continue;
-
-			// Left control
-			if (is_in_fast(col - 1, min_col, max_col))
-				controls |= control_bit(control_row - king_pos.row, col - 1 - king_pos.col);
-
-			// Right control
-			if (is_in_fast(col + 1, min_col, max_col))
-				controls |= control_bit(control_row - king_pos.row, col + 1 - king_pos.col);
-
-			continue;
-		}
-
-		// Knight
-		if (is_knight(piece)) {
-
-			// Iterate over the directions
-			for (int k = 0; k < 8; k++) {
-					
-				// FIXME *** possible d'optimiser en coupant certaines directions?
-
-				// Skip when the knight cannot control the zone
-				const uint8_t new_row = row + knight_directions[k][0];
-				if (!is_in_fast(new_row, min_row, max_row))
-					continue;
-
-				const uint8_t new_col = col + knight_directions[k][1];
-				if (!is_in_fast(new_col, min_col, max_col))
-					continue;
-
-				controls |= control_bit(new_row - king_pos.row, new_col - king_pos.col);
-			}
-
-			continue;
-		}
-
-		// Slider rectiligne
-		if (is_rectilinear(piece)) {
-
-			// Iterate over the directions
-			for (int d = 0; d < 4; d++) {
-
-				// Direction
-				const uint8_t d_row = rect_directions[d][0];
-				const uint8_t d_col = rect_directions[d][1];
-
-			uint8_t current_row = row + d_row;
-				uint8_t current_col = col + d_col;
-
-				// Skip when the direction cannot control the zone
-				if ((d_row == -1 && current_row < min_row) || (d_row == 1 && current_row > max_row) || (d_col == -1 && current_col < min_col) || (d_col == 1 && current_col > max_col))
-					continue;
-
-				// Advance along the direction
-				while (current_row >= 0 && current_row < 8 && current_col >= 0 && current_col < 8) {
-
-					// Inside the zone, add the control
-					if (is_in_fast(current_row, min_row, max_row) && is_in_fast(current_col, min_col, max_col))
-						controls |= control_bit(current_row - king_pos.row, current_col - king_pos.col);
-
-					// Stop on a piece (except the king, where we carry on)
-					const uint8_t p2 = _array[current_row][current_col];
-					if (p2 != none && p2 != piece_king)
-						break;
-
-					current_row += d_row;
-					current_col += d_col;
-				}
-			}
-		}
-
-		// Slider diagonal
-		if (is_diagonal(piece)) {
-
-			// Iterate over the directions
-			for (int d = 0; d < 4; d++) {
-
-				// Direction
-				const uint8_t d_row = diag_directions[d][0];
-				const uint8_t d_col = diag_directions[d][1];
-
-				uint8_t current_row = row + d_row;
-				uint8_t current_col = col + d_col;
-
-				// Skip when the direction cannot control the zone
-				if ((d_row == -1 && current_row < min_row) || (d_row == 1 && current_row > max_row) || (d_col == -1 && current_col < min_col) || (d_col == 1 && current_col > max_col))
-					continue;
-
-				// Advance along the direction
-				while (current_row >= 0 && current_row < 8 && current_col >= 0 && current_col < 8) {
-
-					// Inside the zone, add the control
-					if (is_in(current_row, min_row, max_row) && is_in(current_col, min_col, max_col))
-						controls |= control_bit(current_row - king_pos.row, current_col - king_pos.col);
-
-					// Stop on a piece (except the king, where we carry on)
-					const uint8_t p2 = _array[current_row][current_col];
-					if (p2 != none && p2 != piece_king)
-						break;
-
-					current_row += d_row;
-					current_col += d_col;
-				}
-			}
-
-			continue;
-		}
-
-		// King
-		if (is_king(piece)) {
-
-			// Iterate over the directions
-			for (int k = 0; k < 8; k++) {
-
-				// Skip when the king cannot control the zone
-				const uint8_t new_row = row + all_directions[k][0];
-
-				if (!is_in_fast(new_row, min_row, max_row))
-					continue;
-
-				const uint8_t new_col = col + all_directions[k][1];
-				if (!is_in_fast(new_col, min_col, max_col))
-					continue;
-
-				controls |= control_bit(new_row - king_pos.row, new_col - king_pos.col);
-			}
-
-			continue;
-		}
+	for (uint64_t hits = attacked & zone; hits;) {
+		const int sq = pop_lsb(hits);
+		controls |= control_bit((sq >> 3) - king_pos.row, (sq & 7) - king_pos.col);
 	}
 
 	return controls;
@@ -702,6 +624,21 @@ PieceSquare Board::get_square_attacker(Pos square, int* n_attackers) const noexc
 	const uint8_t square_col = square.col;
 
 	PieceSquare attacker = PieceSquare(none, { -1, -1 });
+
+	// Bitboard pre-check: with no attacker at all (by far the common case) answer at once;
+	// otherwise the walk below finds the attacker(s) in its usual order
+	{
+		const int sq = square_row * 8 + square_col;
+		const uint64_t* enemy = _bitboards + (_player ? 6 : 0);	// enemy[1..6] = pawn..king
+		const uint64_t occ = _occupancies[2];
+		const uint64_t attackers = (ATTACKS.knight[sq] & enemy[2])
+			| (ATTACKS.pawn[_player ? 0 : 1][sq] & enemy[1])
+			| (ATTACKS.king[sq] & enemy[6])
+			| (diag_attacks(sq, occ) & (enemy[3] | enemy[5]))
+			| (rect_attacks(sq, occ) & (enemy[4] | enemy[5]));
+		if (!attackers)
+			return attacker;
+	}
 
 	// Pawn direction by side, for captures
 	const int pawn_dir = _player ? 1 : -1;
@@ -821,8 +758,18 @@ PinsMap Board::get_pins(bool player) const noexcept {
 	uint8_t king_row = player ? _white_king_pos.row : _black_king_pos.row;
 	uint8_t king_col = player ? _white_king_pos.col : _black_king_pos.col;
 
+	// Enemy sliders able to pin along each kind of direction
+	const uint64_t* enemy = _bitboards + (player ? 6 : 0);
+	const uint64_t diag_pinners = enemy[3] | enemy[5];
+	const uint64_t rect_pinners = enemy[4] | enemy[5];
+	const int king_sq = king_row * 8 + king_col;
+
 	// Walk the directions
 	for (int d = 0; d < 8; d++) {
+
+		// No matching enemy slider anywhere on this ray: no pin possible, skip the walk
+		if (!(ATTACKS.ray[d][king_sq] & (d < 4 ? diag_pinners : rect_pinners)))
+			continue;
 
 		// Direction being visited
 		int8_t d_row = all_directions[d][0];
