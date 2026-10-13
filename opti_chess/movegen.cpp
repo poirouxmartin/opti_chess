@@ -15,6 +15,7 @@ namespace {
 		uint64_t king[64];
 		uint64_t pawn[2][64];	// [0]: squares a white pawn on sq captures, [1]: same for a black pawn
 		uint64_t ray[8][64];	// empty-board rays, in all_directions order (0-3 diagonal, 4-7 straight)
+		uint64_t lines[64];		// union of the 8 rays (every square a queen on an empty board reaches)
 	};
 
 	constexpr AttackTables make_attack_tables() {
@@ -29,6 +30,7 @@ namespace {
 				set(t.king[sq], r + dr, c + dc);
 				for (int rr = r + dr, cc = c + dc; rr >= 0 && rr < 8 && cc >= 0 && cc < 8; rr += dr, cc += dc)
 					t.ray[d][sq] |= 1ULL << (rr * 8 + cc);
+				t.lines[sq] |= t.ray[d][sq];
 			}
 			set(t.pawn[0][sq], r + 1, c - 1);
 			set(t.pawn[0][sq], r + 1, c + 1);
@@ -844,4 +846,28 @@ bool Board::in_check(bool update_king_pos) noexcept
 	const int king_sq = _player ? _white_king_pos.row * 8 + _white_king_pos.col : _black_king_pos.row * 8 + _black_king_pos.col;
 
 	return enemy_attackers(_bitboards, _occupancies[2], _player, king_sq) != 0;
+}
+
+// Conservative filter: false only when the move certainly cannot check the king on king_sq.
+// A check needs the destination on a line or knight jump from that king (direct check), the
+// origin on a line from it (discovered check), castling (the rook) or en passant (captured pawn)
+bool Board::move_may_give_check(const Move& move, const int king_sq) const noexcept
+{
+	const int from = move.start_row * 8 + move.start_col;
+	const int to = move.end_row * 8 + move.end_col;
+
+	if ((ATTACKS.lines[king_sq] & SQUARE_MASKS[from]) || ((ATTACKS.lines[king_sq] | ATTACKS.knight[king_sq]) & SQUARE_MASKS[to]))
+		return true;
+
+	const uint8_t piece = _array[move.start_row][move.start_col];
+
+	// Castling
+	if (is_king(piece) && abs(move.end_col - move.start_col) == 2)
+		return true;
+
+	// En passant
+	if (is_pawn(piece) && move.end_col != move.start_col && _array[move.end_row][move.end_col] == none)
+		return true;
+
+	return false;
 }

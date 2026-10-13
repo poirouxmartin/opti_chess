@@ -1708,6 +1708,14 @@ void Board::assign_move_flags(Move* move) {
 		move->set_flag(IS_CAPTURE);
 	}
 
+	// A move that cannot check the enemy king gets neither IS_CHECK nor IS_MATE: skip the trial
+	// make_move below (the enemy king square comes from its bitboard, never stale)
+	if (const uint64_t enemy_king = _bitboards[_player ? b_king : w_king];
+		enemy_king && !move_may_give_check(*move, static_cast<int>(_tzcnt_u64(enemy_king)))) {
+		move->set_flag(FLAGS_EVALUATED);
+		return;
+	}
+
 	// Evaluate on a copy using save/restore (cheaper than Board copy)
 	uint8_t saved_array[8][8];
 	memcpy(saved_array, _array, sizeof(saved_array));

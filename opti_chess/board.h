@@ -743,6 +743,9 @@ public:
 	// Returns whether there is a check
 	bool in_check(bool update_king_pos = true) noexcept;
 
+	// Conservative filter: false only when the move cannot check the king on king_sq (row * 8 + col)
+	bool move_may_give_check(const Move& move, int king_sq) const noexcept;
+
 	// Displays the list of moves
 	void display_moves();
 
