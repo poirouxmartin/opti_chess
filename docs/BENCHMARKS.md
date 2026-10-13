@@ -130,3 +130,38 @@ Next candidates: `get_weak_squares` (4 calls, 48-square scans), `get_checks_valu
 own `get_moves` and the check-path `get_moves` (escape counting), `sort_moves` rebuilding a full
 control map per node, `get_moves` itself (generation order must stay identical, or go through
 the McNemar gate).
+
+## Night 3 (2026-10-13, 05:56-07:30): check counting and quiescence overhead
+
+Callee breakdown of the second profile (direct callees, % of all samples):
+`get_checks_value` 13.9 % = its `get_moves` for the attacker 5.7 + trial `make_move` 3.1 +
+`in_check` 2.5 + `std::map` env lookups 1.1 + self 0.9 + `Board` copy 0.5; by call site,
+the check-path `b_check.get_moves()` (escape counting) is the largest single line (3.4 %).
+`Node::quiescence` 92 % inclusive = `evaluate` 76.5 + `assign_move_flags` 4.7 + `sort_moves` 4.7
+(`compute_piece_controls` 1.7, `std::sort` 1.6, self 1.2) + `get_moves` 1.6 + self 1.2.
+N2-8 (exact check test, measured above) already removed most trial `make_move` / `in_check`
+calls from `get_checks_value`.
+
+| step | change | A/B (7 rounds, bench nodes/s median) | verdict |
+|---|---|---|---|
+| N3-1 | slider moves (`add_rect_moves`, `add_diag_moves`, used by every `get_moves`, including the two in `get_checks_value`) from the ray tables, same generation order (nearest square first, same direction order) | 55 498 -> 53 486 (-3.6 %, B ahead 1/7) | **no**, reverted (perft 7/7 and signature were identical) |
+| N3-2 | `sort_moves` walks only the opponent's pieces (the only map it reads) | 55 670 -> 53 888 (-3.2 %, 1/7); re-measured against a fresh control build of HEAD: 54 049 -> 53 400 (-1.2 %, 1/7) | **no**, reverted |
+| control | two clean builds of the same commit (79791f9), 5 rounds | 54 579 vs 54 563 (2/5) | build-to-build effect below 1 % |
+
+Both rejected changes do strictly less work per call, yet measured slower in a repeatable way
+(and the control rules out a build or ordering artefact); the likely cause is code layout /
+inlining changes under `/GL /LTCG` in the hot `get_moves` and `sort_moves` paths. Patches kept
+locally (`C:\tmp\n3s1_slider_rays_rejected.patch`, `C:\tmp\n3s2_sort_opponent_map.patch`)
+for a later attempt with PGO or explicit `__forceinline` control.
+
+### Before / after (all of 2026-10-13)
+
+| | bench 2000 (nodes/s) | perft-suite full (Mnps) | perft | signature | same-session A/B |
+|---|---|---|---|---|---|
+| start of night 1 (633f76a) | 36 313 | 42.05 | 7/7 | 8a8961478e14dd47 | vs 0852f15 |
+| end of night 1 (0852f15) | 38 732 (+7 %) | 57.22 (+36 %) | 7/7 | 8a8961478e14dd47 | vs 633f76a |
+| start of night 2 (0230b98) | 49 912 | 73.08 | 7/7 | 8a8961478e14dd47 | vs 5c6283f |
+| end of night 2 / night 3 (5c6283f code, HEAD 79791f9) | 56 863 (+13.9 %) | 72.63 | 7/7 | 8a8961478e14dd47 | vs 0230b98 |
+
+Night 3 kept no code change: both candidates failed the A/B. Absolute levels differ between
+sessions (machine state); compare only within a row pair measured in the same session.
