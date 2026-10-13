@@ -15,3 +15,9 @@ CLAUDE.md
 /docs/
 
 tests/.cache/
+
+# Local benchmark and harness outputs (puzzle CSVs for McNemar, harness logs, GUI debug log)
+bench_lichess5000.csv
+/build/bench_bin/
+/build/harness/
+opti_chess_debug.log
