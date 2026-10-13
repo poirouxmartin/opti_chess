@@ -7200,6 +7200,59 @@ TEST(MoveGen, EnPassantLateralPinBlack) {
     EXPECT_EQ(b._got_moves, naive_legal_count(b));
 }
 
+// Walks the move tree below `board` (depth plies) and checks every legal move:
+// whenever the engine's in_check() says the move gives check, move_may_give_check()
+// must not filter it out. Counts the moves tested in `tested`.
+static void check_may_give_check_tree(Board& board, int depth, int fen_index, int& tested) {
+    board.get_moves();
+    board.update_kings_pos();
+    // Square of the king of the side NOT to move (the king that can be checked)
+    const int ksq = board._player ? board._black_king_pos.row * 8 + board._black_king_pos.col
+                                  : board._white_king_pos.row * 8 + board._white_king_pos.col;
+
+    for (int i = 0; i < board._got_moves; i++) {
+        const Move m = board._moves[i];
+        Board child;
+        child.minimal_copy_data(board);
+        child.make_move(m);
+
+        // Ground truth: in_check() on the copy, where the side to move is the opponent
+        const bool gives_check = child.in_check();
+        if (gives_check)
+            EXPECT_TRUE(board.move_may_give_check(m, ksq))
+                << "FEN index " << fen_index << ": move " << board.move_label(m) << " gives check but was filtered out";
+        tested++;
+
+        if (depth > 0)
+            check_may_give_check_tree(child, depth - 1, fen_index, tested);
+    }
+}
+
+// move_may_give_check() is a conservative filter used by quiescence: a false
+// negative would silently drop a checking move from the search.
+TEST(MoveGen, MayGiveCheckNeverMissesACheck) {
+    static const char* fens[] = {
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+        "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
+        "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
+        "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
+        "4k3/8/8/K2pP2r/8/8/8/8 w - d6 0 1",
+        "3r2k1/pp3r2/2q2pp1/3n3P/7Q/7R/1B5P/4R2K b - - 0 33",
+    };
+    const int n_fens = sizeof(fens) / sizeof(fens[0]);
+
+    int tested = 0;
+    for (int f = 0; f < n_fens; f++) {
+        // Root, each child and each grandchild: depth-2 tree
+        Board root;
+        root.from_fen(fens[f]);
+        check_may_give_check_tree(root, 2, f, tested);
+    }
+    EXPECT_GT(tested, 1000);
+}
+
 TEST(Perft, Position3Depth5) {
     Board b;
     b.from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1");
