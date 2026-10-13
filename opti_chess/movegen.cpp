@@ -60,6 +60,16 @@ namespace {
 		return ray_attacks(4, sq, occ) | ray_attacks(5, sq, occ) | ray_attacks(6, sq, occ) | ray_attacks(7, sq, occ);
 	}
 
+	// Enemy pieces attacking square sq, the side to move being player (true = white)
+	inline uint64_t enemy_attackers(const uint64_t* bitboards, const uint64_t occ, const bool player, const int sq) noexcept {
+		const uint64_t* enemy = bitboards + (player ? 6 : 0);	// enemy[1..6] = pawn..king
+		return (ATTACKS.knight[sq] & enemy[2])
+			| (ATTACKS.pawn[player ? 0 : 1][sq] & enemy[1])
+			| (ATTACKS.king[sq] & enemy[6])
+			| (diag_attacks(sq, occ) & (enemy[3] | enemy[5]))
+			| (rect_attacks(sq, occ) & (enemy[4] | enemy[5]));
+	}
+
 	constexpr uint64_t FILE_A = 0x0101010101010101ULL;
 	constexpr uint64_t FILE_H = 0x8080808080808080ULL;
 }
@@ -627,18 +637,8 @@ PieceSquare Board::get_square_attacker(Pos square, int* n_attackers) const noexc
 
 	// Bitboard pre-check: with no attacker at all (by far the common case) answer at once;
 	// otherwise the walk below finds the attacker(s) in its usual order
-	{
-		const int sq = square_row * 8 + square_col;
-		const uint64_t* enemy = _bitboards + (_player ? 6 : 0);	// enemy[1..6] = pawn..king
-		const uint64_t occ = _occupancies[2];
-		const uint64_t attackers = (ATTACKS.knight[sq] & enemy[2])
-			| (ATTACKS.pawn[_player ? 0 : 1][sq] & enemy[1])
-			| (ATTACKS.king[sq] & enemy[6])
-			| (diag_attacks(sq, occ) & (enemy[3] | enemy[5]))
-			| (rect_attacks(sq, occ) & (enemy[4] | enemy[5]));
-		if (!attackers)
-			return attacker;
-	}
+	if (!enemy_attackers(_bitboards, _occupancies[2], _player, square_row * 8 + square_col))
+		return attacker;
 
 	// Pawn direction by side, for captures
 	const int pawn_dir = _player ? 1 : -1;
@@ -840,168 +840,8 @@ bool Board::in_check(bool update_king_pos) noexcept
 	if (update_king_pos)
 		update_kings_pos();
 
-	const int king_row = _player ? _white_king_pos.row : _black_king_pos.row;
-	const int king_col = _player ? _white_king_pos.col : _black_king_pos.col;
+	// Attack-table test from the king square: same answer as walking the lines around the king
+	const int king_sq = _player ? _white_king_pos.row * 8 + _white_king_pos.col : _black_king_pos.row * 8 + _black_king_pos.col;
 
-	// Faster approach: start from the king to find the potential attackers:
-	// Walk the diagonals, ranks and files, and see whether an enemy piece attacks the king along them
-
-	// TODO: merge with the equivalents in the other functions?
-
-	const int enemy_knight = 2 + _player * 6;
-
-	for (int k = 0; k < 8; k++) {
-
-		// Skip a knight square that is off the board
-		const int nrow = king_row + knight_directions[k][0];
-		if (!is_in(nrow, 0, 7))
-			continue;
-
-		const int ncol = king_col + knight_directions[k][1];
-		if (!is_in(ncol, 0, 7))
-			continue;
-
-		// An attacking knight means check, so return true
-		if (_array[nrow][ncol] == enemy_knight)
-			return true;
-	}
-
-	// TODO: is there a cheaper order to scan the lines in, given the opponent is more likely to attack through the centre?
-
-	// Look along ranks and files
-
-	// Gauche
-	for (int col = king_col - 1; col >= 0; col--)
-	{
-		// If there is a piece
-		if (const uint8_t piece = _array[king_row][col]; piece != none)
-		{
-			// If the piece is not ours, check for a rook, a queen, or a king at distance 1
-			if (piece < 7 != _player)
-				if (is_rectilinear(piece) || (is_king(piece) && col == king_col - 1))
-					return true;
-
-			break;
-		}
-	}
-
-	// Droite
-	for (int col = king_col + 1; col < 8; col++)
-	{
-		if (const uint8_t piece = _array[king_row][col]; piece != none)
-		{
-			if (piece < 7 != _player)
-				if (is_rectilinear(piece) || (is_king(piece) && col == king_col + 1))
-					return true;
-
-			break;
-		}
-	}
-
-	// Haut
-	for (int row = king_row - 1; row >= 0; row--)
-	{
-		if (const uint8_t piece = _array[row][king_col]; piece != none)
-		{
-			if (piece < 7 != _player)
-				if (is_rectilinear(piece) || (is_king(piece) && row == king_row - 1))
-					return true;
-
-			break;
-		}
-	}
-
-	// Bas
-	for (int row = king_row + 1; row < 8; row++)
-	{
-		if (const uint8_t piece = _array[row][king_col]; piece != none)
-		{
-			if (piece < 7 != _player)
-				if (is_rectilinear(piece) || (is_king(piece) && row == king_row + 1))
-					return true;
-
-			break;
-		}
-	}
-
-	// Look along the diagonals
-
-	// Diagonale bas-gauche
-	for (int row = king_row - 1, col = king_col - 1; row >= 0 && col >= 0; row--, col--)
-	{
-		if (const uint8_t piece = _array[row][col]; piece != none)
-		{
-			if (piece < 7 != _player)
-			{
-				if (is_diagonal(piece) || (is_king(piece) && (abs(king_row - row) == 1)))
-					return true;
-
-				// Special case for pawns
-				if (piece == w_pawn && abs(king_col - col) == 1)
-					return true;
-			}
-
-			break;
-		}
-	}
-
-	// Diagonal bas-droite
-	for (int row = king_row - 1, col = king_col + 1; row >= 0 && col < 8; row--, col++)
-	{
-		if (const uint8_t piece = _array[row][col]; piece != none)
-		{
-			if ((piece < 7) != _player)
-			{
-				if (is_diagonal(piece) || (is_king(piece) && (abs(king_row - row) == 1)))
-					return true;
-
-				// Special case for pawns
-				if (piece == w_pawn && abs(king_col - col) == 1)
-					return true;
-			}
-
-			break;
-		}
-	}
-
-	// Diagonale haut-gauche
-	for (int row = king_row + 1, col = king_col - 1; row < 8 && col >= 0; row++, col--)
-	{
-		if (const uint8_t piece = _array[row][col]; piece != none)
-		{
-			if ((piece < 7) != _player)
-			{
-				if (is_diagonal(piece) || (is_king(piece) && (abs(king_row - row) == 1)))
-					return true;
-
-				// Pawns
-
-				if (piece == b_pawn && abs(king_col - col) == 1)
-					return true;
-			}
-
-			break;
-		}
-	}
-
-	// Diagonale haut-droite
-	for (int row = king_row + 1, col = king_col + 1; row < 8 && col < 8; row++, col++)
-	{
-		if (const uint8_t piece = _array[row][col]; piece != none)
-		{
-			if ((piece < 7) != _player)
-			{
-				if (is_diagonal(piece) || (is_king(piece) && (abs(king_row - row) == 1)))
-					return true;
-
-				// Pawns
-				if (piece == b_pawn && abs(king_col - col) == 1)
-					return true;
-			}
-
-			break;
-		}
-	}
-
-	return false;
+	return enemy_attackers(_bitboards, _occupancies[2], _player, king_sq) != 0;
 }
