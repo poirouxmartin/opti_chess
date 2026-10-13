@@ -1,3 +1,5 @@
+> Superseded by [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) (2026-10-13); kept for history.
+
 # OptiChess architecture
 
 OptiChess is an experimental single-process chess application. The main executable launches a raylib GUI and embeds the GrogrosZero engine directly; there is no separate engine service or command-line protocol in the supported desktop workflow.
