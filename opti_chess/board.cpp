@@ -1712,6 +1712,9 @@ void Board::assign_move_flags(Move* move) {
 	// make_move below (the enemy king square comes from its bitboard, never stale)
 	if (const uint64_t enemy_king = _bitboards[_player ? b_king : w_king];
 		enemy_king && !move_may_give_check(*move, static_cast<int>(_tzcnt_u64(enemy_king)))) {
+		// The trial make_move resets the cached game advancement (reset_eval) and the restore
+		// below does not undo it; sort_moves reads _adv right after, so keep that side effect
+		reset_eval();
 		move->set_flag(FLAGS_EVALUATED);
 		return;
 	}
