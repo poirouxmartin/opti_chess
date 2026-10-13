@@ -2175,9 +2175,11 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	QCOUNT(entries);
 
 	// Node initialisation
-	auto t_qinit0 = std::chrono::steady_clock::now();
+	// The time split is only printed under OPTI_QSTATS: skip the clock reads otherwise
+	const auto t_qinit0 = g_qstats_on ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point();
 	init_node();
-	g_t_qinit += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_qinit0).count();
+	if (g_qstats_on)
+		g_t_qinit += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_qinit0).count();
 
 	// #7 / B-1 +�-+-� null-safe path history (appel manuel quiescence via main_gui.h) :
 	// a local history owned for the WHOLE duration of the call. It must be declared
@@ -2195,9 +2197,10 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	// Evaluate the position
 	if (!_static_evaluation._evaluated) {
 		QCOUNT(static_evals);
-		auto t_qeval0 = std::chrono::steady_clock::now();
+		const auto t_qeval0 = g_qstats_on ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point();
 		evaluate_position(eval, false, network, true);
-		g_t_qeval += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_qeval0).count();
+		if (g_qstats_on)
+			g_t_qeval += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_qeval0).count();
 	}
 	else if (!_is_terminal) {
 		// Terminal nodes keep their stamped mate/draw deep evaluation:

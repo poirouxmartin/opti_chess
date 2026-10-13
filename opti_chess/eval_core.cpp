@@ -61,6 +61,12 @@ thread_local double g_t_matpos_s = 0.0;
 thread_local double g_t_pawns_s = 0.0;
 thread_local double g_t_endgame_s = 0.0;
 
+// Gated component timers (zero-cost unless OPTI_QSTATS, the only case where they are printed):
+// EVT0 opens a span, EVT_ACC closes it into var. Same idiom as KST0/KST_ACC in eval_king.cpp.
+extern const bool g_qstats_on;
+#define EVT0(tag) auto _evt_##tag = g_qstats_on ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point()
+#define EVT_ACC(tag, var) do { if (g_qstats_on) var += std::chrono::duration<double>(std::chrono::steady_clock::now() - _evt_##tag).count(); } while (0)
+
 int Board::count_material(const Evaluator* eval, float closed_factor) const
 {
 	int material_count = 0;
@@ -260,7 +266,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 	compute_eval_controls(eval_ctx);
 
 	// Nature of the position (open/closed)
-	auto t_matpos0 = std::chrono::steady_clock::now();
+	EVT0(matpos);
 	const float position_nature = get_position_nature();
 	if (display)
 		main_GUI._eval_components += "CLOSED: " + to_string(static_cast<int>(position_nature * 100.0f)) + "%\n";
@@ -369,8 +375,8 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 		main_GUI._eval_components += "--- TOTAL: " + (total_positioning >= 0 ? string("+") : string()) + to_string(total_positioning) + " ---\n";
 
 	eval->_value += total_positioning;
-	g_t_matpos_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_matpos0).count();
-	auto t_pawns0 = std::chrono::steady_clock::now();
+	EVT_ACC(matpos, g_t_matpos_s);
+	EVT0(pawns);
 
 
 	// *** ACTIVITE ***
@@ -390,9 +396,9 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Long-term piece mobility
 	if (evaluator->_long_term_piece_mobility != 0.0f) {
-		auto t_mob0 = std::chrono::steady_clock::now();
+		EVT0(mob);
 		const int long_term_mobility = get_long_term_piece_mobility(eval_ctx) * evaluator->_long_term_piece_mobility;
-		g_t_mobility_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_mob0).count();
+		EVT_ACC(mob, g_t_mobility_s);
 		if (display)
 			main_GUI._eval_components += "long-term piece mobility: " + (long_term_mobility >= 0 ? string("+") : string()) + to_string(long_term_mobility) + "\n";
 		total_activity += long_term_mobility;
@@ -400,13 +406,13 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Short-term piece mobility
 	if (evaluator->_short_term_piece_mobility != 0.0f) {
-		auto t_mob0 = std::chrono::steady_clock::now();
+		EVT0(mob);
 		// TODO: damp short-term mobility in closed positions (multiply by
 		// (1 - closed_damp * position_nature)) and compensate by raising the
 		// default _short_term_piece_mobility coef. closed_damp=0 = no change.
 		constexpr float closed_damp = 0.0f;
 		const int short_term_mobility = static_cast<int>(get_short_term_piece_mobility(eval_ctx) * evaluator->_short_term_piece_mobility * (1.0f - closed_damp * position_nature));
-		g_t_mobility_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_mob0).count();
+		EVT_ACC(mob, g_t_mobility_s);
 		if (display)
 			main_GUI._eval_components += "short-term piece mobility: " + (short_term_mobility >= 0 ? string("+") : string()) + to_string(short_term_mobility) + "\n";
 		total_activity += short_term_mobility;
@@ -414,9 +420,9 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Piece activity
 	if (evaluator->_piece_activity != 0.0f) {
-		auto t_mob0 = std::chrono::steady_clock::now();
+		EVT0(mob);
 		const int piece_activity = get_piece_activity(eval_ctx) * evaluator->_piece_activity;
-		g_t_mobility_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_mob0).count();
+		EVT_ACC(mob, g_t_mobility_s);
 		if (display)
 			main_GUI._eval_components += "piece activity: " + (piece_activity >= 0 ? string("+") : string()) + to_string(piece_activity) + "\n";
 		total_activity += piece_activity;
@@ -527,7 +533,6 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Pawn structure
 	if (evaluator->_pawn_structure != 0.0f) {
-		auto t_mob0 = std::chrono::steady_clock::now();
 		// Whole-component coef, env-tunable for bank experiments.
 		static const float pawn_struct_coef = [] {
 			const char* e = getenv("OPTI_PAWN_STRUCT");
@@ -560,8 +565,8 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 	if (display)
 		main_GUI._eval_components += "--- TOTAL: " + (total_pawn_structure >= 0 ? string("+") : string()) + to_string(total_pawn_structure) + " ---\n";
 
-	g_t_pawns_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_pawns0).count();
-	auto t_endgame0 = std::chrono::steady_clock::now();
+	EVT_ACC(pawns, g_t_pawns_s);
+	EVT0(endgame);
 	eval->_value += total_pawn_structure;
 
 
@@ -574,9 +579,9 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// King safety
 	if (evaluator->_king_safety != 0.0f) {
-		auto t_king0 = std::chrono::steady_clock::now();
+		EVT0(king);
 		const int king_safety = get_king_safety(total_activity, display * evaluator->_king_safety, eval_ctx) * evaluator->_king_safety;
-		g_t_king_safety_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_king0).count();
+		EVT_ACC(king, g_t_king_safety_s);
 		if (display)
 			main_GUI._eval_components += "king safety: " + (king_safety >= 0 ? string("+") : string()) + to_string(king_safety) + "\n";
 		total_king += king_safety;
@@ -697,7 +702,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 	//	main_GUI._eval_components += "W/D/L: " + to_string(static_cast<int>(100 * win_chance)) + "/" + to_string(static_cast<int>(100 * 0)) + "/" + to_string(static_cast<int>(100 * (1.0f - win_chance))) + "%\n";
 
 	eval->get_WDL();
-	g_t_endgame_s += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_endgame0).count();
+	EVT_ACC(endgame, g_t_endgame_s);
 	eval->get_average_score();
 
 	if (display) {
