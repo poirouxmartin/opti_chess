@@ -2529,6 +2529,15 @@ int Board::get_queen_safety(bool color, const EvalControls& ctx) const {
 		}
 	}
 
+	// No queen: nothing to attack, the value below would be 0
+	if (queens_count == 0)
+		return 0;
+
+	// Squares from which a piece could attack one of the queens
+	uint64_t queens_mask = 0;
+	for (uint8_t q = 0; q < queens_count; q++)
+		queens_mask |= 1ULL << (queens_pos[q].row * 8 + queens_pos[q].col);
+
 	// Look at every opponent move
 	Board b(*this);
 	b._player = !color;
@@ -2552,6 +2561,10 @@ int Board::get_queen_safety(bool color, const EvalControls& ctx) const {
 	// Instead of copying the full Board per move, patch _array in place
 	for (uint8_t m = 0; m < b._got_moves; m++) {
 		Move& move = b._moves[m];
+
+		// A destination that reaches no queen on any board adds nothing: skip the patch and the map
+		if (!(square_reach_mask(move.end_row * 8 + move.end_col) & queens_mask))
+			continue;
 
 		// Determine the piece (with possible promotion)
 		const uint8_t saved_start = b._array[move.start_row][move.start_col];

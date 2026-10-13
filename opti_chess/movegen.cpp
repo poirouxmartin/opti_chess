@@ -848,6 +848,12 @@ bool Board::in_check(bool update_king_pos) noexcept
 	return enemy_attackers(_bitboards, _occupancies[2], _player, king_sq) != 0;
 }
 
+// Every square a piece standing on sq could attack on some board: queen lines plus knight jumps
+uint64_t square_reach_mask(const int sq) noexcept
+{
+	return ATTACKS.lines[sq] | ATTACKS.knight[sq];
+}
+
 // Conservative filter: false only when the move certainly cannot check the king on king_sq.
 // A check needs the destination on a line or knight jump from that king (direct check), the
 // origin on a line from it (discovered check), castling (the rook) or en passant (captured pawn)

@@ -504,6 +504,9 @@ inline int pop_lsb(uint64_t& bb) noexcept {
 	return sq;
 }
 
+// Every square a piece standing on sq could attack on some board: queen lines plus knight jumps (movegen.cpp)
+uint64_t square_reach_mask(int sq) noexcept;
+
 struct Evaluation {
 
 	// Variables
