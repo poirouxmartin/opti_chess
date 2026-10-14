@@ -504,6 +504,9 @@ inline int pop_lsb(uint64_t& bb) noexcept {
 	return sq;
 }
 
+// Invalide le cache d'évaluation de tous les threads (eval_core.cpp)
+void eval_cache_clear();
+
 // Every square a piece standing on sq could attack on some board: queen lines plus knight jumps (movegen.cpp)
 uint64_t square_reach_mask(int sq) noexcept;
 
@@ -775,6 +778,9 @@ public:
 
 	// Evaluates the position with heuristics
 	void evaluate(Evaluation* eval, Evaluator* evaluator = nullptr, bool display = false, Network* n = nullptr, bool check_game_over = false);
+
+	// Clé du cache d'évaluation : Zobrist recalculé (+ demi-coups si l'Evaluator les lit)
+	uint64_t eval_cache_key(const Evaluator* evaluator) const;
 
 	// Loads the board from a FEN
 	void from_fen(string);

@@ -4,7 +4,10 @@
 #include "zobrist.h"
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
+#include <cstdlib>
+#include <memory>
 #include <ranges>
 #include <string>
 #include <sstream>
@@ -66,6 +69,73 @@ thread_local double g_t_endgame_s = 0.0;
 extern const bool g_qstats_on;
 #define EVT0(tag) auto _evt_##tag = g_qstats_on ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point()
 #define EVT_ACC(tag, var) do { if (g_qstats_on) var += std::chrono::duration<double>(std::chrono::steady_clock::now() - _evt_##tag).count(); } while (0)
+
+// Cache d'évaluation : table à adressage direct, une par thread (allouée au premier appel),
+// indexée par une clé Zobrist recalculée (le _zobrist_key de la Board n'est pas tenu à jour
+// par make_move sans historique). L'évaluation heuristique est une fonction pure de la
+// position (pièces, trait, roques, en passant), du compteur de demi-coups (seulement si
+// _push != 0) et de l'Evaluator : un hit rend exactement le résultat du calcul.
+// OPTI_EVAL_CACHE=0 le désactive (A/B sur le même binaire).
+namespace {
+	struct EvalCacheEntry {
+		uint64_t key;
+		const Evaluator* evaluator;
+		uint32_t generation;
+		int value;
+		float uncertainty;
+		float winnable_white;
+		float winnable_black;
+		float avg_score;
+		WDL wdl;
+	};
+
+	constexpr size_t eval_cache_bits = 17;
+	constexpr size_t eval_cache_size = size_t(1) << eval_cache_bits;
+
+	const bool g_eval_cache_on = [] {
+		const char* v = std::getenv("OPTI_EVAL_CACHE");
+		return !(v && v[0] == '0');
+	}();
+
+	std::atomic<uint32_t> g_eval_cache_generation{ 1 };
+
+	thread_local std::unique_ptr<EvalCacheEntry[]> t_eval_cache;
+}
+
+// Invalide toutes les entrées (à appeler quand les paramètres d'un Evaluator changent)
+void eval_cache_clear() {
+	g_eval_cache_generation.fetch_add(1, std::memory_order_relaxed);
+}
+
+static EvalCacheEntry& eval_cache_slot(uint64_t key) {
+	if (!t_eval_cache)
+		t_eval_cache = std::make_unique<EvalCacheEntry[]>(eval_cache_size); // zéro : clé 0, génération 0 (jamais valide)
+	return t_eval_cache[key & (eval_cache_size - 1)];
+}
+
+uint64_t Board::eval_cache_key(const Evaluator* evaluator) const {
+	if (!transposition_table._zobrist._keys_generated)
+		transposition_table._zobrist = shared_zobrist();
+	const Zobrist& zobrist = transposition_table._zobrist;
+
+	uint64_t key = zobrist._initial_key;
+	uint64_t occ = _occupancies[2];
+	while (occ) {
+		const int sq = pop_lsb(occ);
+		key ^= zobrist._board_keys[sq][_array[sq >> 3][sq & 7] - 1];
+	}
+	key ^= zobrist._castling_keys[_castling_rights.k_w + _castling_rights.q_w * 2 + _castling_rights.k_b * 4 + _castling_rights.q_b * 8];
+	if (_en_passant_col != -1)
+		key ^= zobrist._en_passant_keys[_en_passant_col];
+	if (_player == 1)
+		key ^= zobrist._player_key;
+
+	// Le terme de forteresse lit le compteur de demi-coups
+	if (evaluator->_push != 0.0f)
+		key ^= (static_cast<uint64_t>(_half_moves_count) + 1) * 0x9E3779B97F4A7C15ull;
+
+	return key;
+}
 
 int Board::count_material(const Evaluator* eval, float closed_factor) const
 {
@@ -246,6 +316,31 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 		// Game not over
 		return;
+	}
+
+	// Cache d'évaluation (jamais en mode affichage : les composantes doivent être recalculées)
+	EvalCacheEntry* cache_slot = nullptr;
+	uint64_t cache_key = 0;
+	uint32_t cache_generation = 0;
+	if (g_eval_cache_on && !display) {
+		cache_key = eval_cache_key(evaluator);
+		cache_generation = g_eval_cache_generation.load(std::memory_order_relaxed);
+		cache_slot = &eval_cache_slot(cache_key);
+		if (cache_slot->key == cache_key && cache_slot->evaluator == evaluator && cache_slot->generation == cache_generation) {
+			// Mêmes effets de bord que le calcul complet (_adv est relu par sort_moves)
+			_displayed_components = false;
+			game_advancement();
+			update_kings_pos();
+
+			eval->_value = cache_slot->value;
+			eval->_uncertainty = cache_slot->uncertainty;
+			eval->_winnable_white = cache_slot->winnable_white;
+			eval->_winnable_black = cache_slot->winnable_black;
+			eval->_avg_score = cache_slot->avg_score;
+			eval->_wdl = cache_slot->wdl;
+			eval->_evaluated = true;
+			return;
+		}
 	}
 
 	_displayed_components = display;
@@ -713,6 +808,18 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// The evaluation has been performed
 	eval->_evaluated = true;
+
+	if (cache_slot) {
+		cache_slot->key = cache_key;
+		cache_slot->evaluator = evaluator;
+		cache_slot->generation = cache_generation;
+		cache_slot->value = eval->_value;
+		cache_slot->uncertainty = eval->_uncertainty;
+		cache_slot->winnable_white = eval->_winnable_white;
+		cache_slot->winnable_black = eval->_winnable_black;
+		cache_slot->avg_score = eval->_avg_score;
+		cache_slot->wdl = eval->_wdl;
+	}
 
 	// EXPERIMENTAL
 	//Node node(this);
