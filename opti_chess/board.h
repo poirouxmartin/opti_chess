@@ -1025,6 +1025,9 @@ public:
 	// Computes every move up to a certain depth, and returns the total node count
 	long long int count_nodes_at_depth(int depth, bool display = true, bool main = false);
 
+	// Perft avec comptage groupé à la profondeur 1 (mêmes comptes, sans jouer les feuilles)
+	long long int count_nodes_bulk(int depth);
+
 	// Parallelized version
 	long long int count_nodes_at_depth_parallelized(int depth, bool display, bool main = false);
 

@@ -962,6 +962,30 @@ long long int Board::count_nodes_at_depth(int depth, bool display, bool main) {
 	return nodes_count;
 }
 
+// Perft avec comptage groupé (bulk counting) : à la profondeur 1, le nombre de coups
+// légaux suffit, sans jouer ni recopier les coups feuilles. Mêmes comptes que
+// count_nodes_at_depth (get_moves ne produit que des coups légaux).
+long long int Board::count_nodes_bulk(int depth) {
+	if (depth == 0)
+		return 1;
+
+	get_moves();
+	if (depth == 1)
+		return _got_moves;
+
+	long long int nodes_count = 0;
+	static thread_local Board children[64];
+	Board& b = children[depth];
+
+	for (int m = 0; m < _got_moves; m++) {
+		b.minimal_copy_data(*this);
+		b.make_move(_moves[m]);
+		nodes_count += b.count_nodes_bulk(depth - 1);
+	}
+
+	return nodes_count;
+}
+
 // Parallelised version
 long long int Board::count_nodes_at_depth_parallelized(int depth, bool display, bool main) {
 	if (depth == 0)

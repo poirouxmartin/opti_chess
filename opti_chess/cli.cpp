@@ -15,8 +15,9 @@ static const string START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w K
 
 static int usage() {
     cerr << "usage: opti_chess_cli perft <depth> [fen...]\n"
+         << "       opti_chess_cli perft-bulk <depth> [fen...]\n"
          << "       opti_chess_cli divide <depth> [fen...]\n"
-         << "       opti_chess_cli perft-suite [quick|full]\n"
+         << "       opti_chess_cli perft-suite [quick|full] [bulk]\n"
          << "       opti_chess_cli bench [iterations]\n"
          << "       opti_chess_cli uci\n";
     return 2;
@@ -61,14 +62,14 @@ static bool uci_to_move(Board& b, const string& s, Move& out) {
     return false;
 }
 
-static int cmd_perft(int argc, char** argv) {
+static int cmd_perft(int argc, char** argv, bool bulk) {
     if (argc < 3) return usage();
     int depth = (int)strtoll(argv[2], nullptr, 10);
     Board b;
     b.from_fen(fen_from_args(argc, argv, 3));
     if (!b.fen_ok()) { cerr << "bad fen\n"; return 2; }
     double t0 = now_s();
-    long long n = b.count_nodes_at_depth(depth, false);
+    long long n = bulk ? b.count_nodes_bulk(depth) : b.count_nodes_at_depth(depth, false);
     double ms = (now_s() - t0) * 1000.0;
     cout << "nodes=" << n << " time_ms=" << fixed << setprecision(1) << ms
          << " mnps=" << setprecision(2) << (ms > 0 ? n / ms / 1000.0 : 0.0) << endl;
@@ -128,6 +129,12 @@ static int cmd_suite(int argc, char** argv) {
         if (mode == "full") full = true;
         else if (mode != "quick") return usage();
     }
+    bool bulk = false;
+    if (argc > 3) {
+        if (string(argv[3]) == "bulk") bulk = true;
+        else return usage();
+    }
+    cout << "mode: " << (bulk ? "bulk counting" : "copy-make") << endl;
     const int rows = (int)(sizeof(SUITE) / sizeof(SUITE[0]));
     int ok = 0;
     long long total_nodes = 0;
@@ -140,7 +147,7 @@ static int cmd_suite(int argc, char** argv) {
         Board b;
         b.from_fen(r.fen);
         double t0 = now_s();
-        long long n = b.count_nodes_at_depth(depth, false);
+        long long n = bulk ? b.count_nodes_bulk(depth) : b.count_nodes_at_depth(depth, false);
         double ms = (now_s() - t0) * 1000.0;
         bool good = n == expected;
         if (good) ok++;
@@ -346,7 +353,8 @@ int main(int argc, char** argv) {
     }
     if (argc < 2) return usage();
     string cmd = argv[1];
-    if (cmd == "perft") return cmd_perft(argc, argv);
+    if (cmd == "perft") return cmd_perft(argc, argv, false);
+    if (cmd == "perft-bulk") return cmd_perft(argc, argv, true);
     if (cmd == "divide") return cmd_divide(argc, argv);
     if (cmd == "perft-suite") return cmd_suite(argc, argv);
     if (cmd == "bench") return cmd_bench(argc, argv);
