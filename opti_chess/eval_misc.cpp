@@ -24,6 +24,7 @@
 #include <utility>
 #include <iomanip>
 #include <vector>
+#include <memory>
 float Board::get_attacks_and_defenses() const
 {
 	// TODO: revisit, to model real threats more faithfully
@@ -624,6 +625,276 @@ int Board::get_fianchetto_value() const
 	return fianchetti * 25.0f * (1.0f - _adv);
 }
 
+// Classification des cases faibles : ne dépend que des pions (aucune lecture de pièce ni de contrôle),
+// elle est donc mise en cache par structure de pions (voir weak_square_masks)
+struct WeakSquareMasks { uint64_t weak; uint64_t safe; }; // safe = sûre mais pas faible
+
+static WeakSquareMasks compute_weak_square_masks(const uint8_t (&a)[8][8], bool color) {
+	WeakSquareMasks masks{ 0, 0 };
+
+	// White's weak squares
+	if (color) {
+
+		// For each square
+		for (uint8_t row = 1; row < 7; row++) {
+			for (uint8_t col = 0; col < 8; col++) {
+
+				if (a[row][col] == w_pawn || a[row][col] == b_pawn)
+					continue;
+
+				// No pawn on the square, so for now assume it is a weak and safe square
+				bool weak = true;
+				bool safe = true;
+
+				// Unless this is the left edge
+				if (col > 0) {
+
+					// Look at the rank of the nearest white pawn able to control the square
+					int can_control = -1;
+					bool blocking_pawn = false;
+
+					for (int_fast8_t k = row - 1; k > 0; k--) {
+						if (a[k][col - 1] == w_pawn) {
+							weak = false;
+							if (!blocking_pawn) {
+								can_control = k;
+								break;
+							}
+						}
+
+						// If a black pawn blocks the white pawn
+						if (a[k][col - 1] == b_pawn) {
+							blocking_pawn = true;
+						}
+					}
+
+					// Can a black pawn stop the white pawn from controlling the weak square?
+					bool no_control = false;
+
+					if (can_control != -1) {
+						for (int_fast8_t k = row; k > can_control + 1; k--) {
+							if (a[k][col] == b_pawn || (col > 1 && a[k][col - 2] == b_pawn)) {
+								no_control = true;
+								break;
+							}
+						}
+					}
+
+				// A white pawn can control the weak square and no black pawn can attack it, so it is not a weak square
+				if (can_control != -1 && !no_control) {
+					//if (weak)
+					//	cout << "shouldn't be weak here.. ?" << endl;
+					weak = false;
+					safe = false;
+				}
+			}
+
+			if (!weak && !safe)
+				continue;
+
+			// Unless this is the left edge
+			if (col < 7) {
+
+					// Look at the rank of the nearest white pawn able to control the square
+					int can_control = -1;
+					bool blocking_pawn = false;
+
+					for (int_fast8_t k = row - 1; k > 0; k--) {
+						if (a[k][col + 1] == w_pawn) {
+							weak = false;
+							if (!blocking_pawn) {
+								can_control = k;
+								break;
+							}
+						}
+
+						// If a black pawn blocks the white pawn
+						if (a[k][col + 1] == b_pawn) {
+							blocking_pawn = true;
+						}
+					}
+
+					// Can a black pawn stop the white pawn from controlling the weak square?
+					bool no_control = false;
+
+					if (can_control != -1) {
+						for (int_fast8_t k = row; k > can_control + 1; k--) {
+							if (a[k][col] == b_pawn || (col < 6 && a[k][col + 2] == b_pawn)) {
+								no_control = true;
+								break;
+							}
+						}
+					}
+
+				// A white pawn can control the weak square and no black pawn can attack it, so it is not a weak square
+				if (can_control != -1 && !no_control) {
+					//if (weak)
+					//	cout << "shouldn't be weak here.. ?" << endl;
+					weak = false;
+					safe = false;
+				}
+			}
+
+			if (!weak && !safe)
+				continue;
+
+				// This is a weak or safe square
+				const uint64_t bit = 1ull << (row * 8 + col);
+				if (weak)
+					masks.weak |= bit;
+				else
+					masks.safe |= bit;
+			}
+		}
+	}
+
+	// Black's weak squares
+	else {
+
+		// For each square
+		for (uint8_t row = 1; row < 7; row++) {
+			for (uint8_t col = 0; col < 8; col++) {
+
+				if (a[row][col] == w_pawn || a[row][col] == b_pawn)
+					continue;
+
+				// No pawn on the square, so for now assume it is a weak and safe square
+				bool weak = true;
+				bool safe = true;
+
+				// Unless this is the left edge
+				if (col > 0) {
+
+					// Look at the rank of the nearest black pawn able to control the square
+					int can_control = -1;
+					bool blocking_pawn = false;
+
+					for (int_fast8_t k = row + 1; k < 7; k++) {
+						if (a[k][col - 1] == b_pawn) {
+							weak = false;
+							if (!blocking_pawn) {
+								can_control = k;
+								break;
+							}
+						}
+
+						// If a white pawn blocks the black pawn
+						if (a[k][col - 1] == w_pawn) {
+							blocking_pawn = true;
+						}
+					}
+
+					// Can a white pawn stop the black pawn from controlling the weak square?
+					bool no_control = false;
+
+					if (can_control != -1) {
+						for (int_fast8_t k = row; k < can_control - 1; k++) {
+							if (a[k][col] == w_pawn || (col > 1 && a[k][col - 2] == w_pawn)) {
+								no_control = true;
+								break;
+							}
+						}
+					}
+
+					// A black pawn can control the weak square and no white pawn can attack it, so it is not a weak square
+					if (can_control != -1 && !no_control) {
+						//if (weak)
+						//	cout << "shouldn't be weak here.. ?" << endl;
+						weak = false;
+						safe = false;
+					}
+				}
+
+				if (!weak && !safe)
+					continue;
+
+				// Unless this is the left edge
+				if (col < 7) {
+
+					// Look at the rank of the nearest black pawn able to control the square
+					int can_control = -1;
+					bool blocking_pawn = false;
+
+					for (int_fast8_t k = row + 1; k < 7; k++) {
+						if (a[k][col + 1] == b_pawn) {
+							weak = false;
+							if (!blocking_pawn) {
+								can_control = k;
+								break;
+							}
+						}
+
+						// If a white pawn blocks the black pawn
+						if (a[k][col + 1] == w_pawn) {
+							blocking_pawn = true;
+						}
+					}
+
+					// Can a white pawn stop the black pawn from controlling the weak square?
+					bool no_control = false;
+
+					if (can_control != -1) {
+						for (int_fast8_t k = row; k < can_control - 1; k++) {
+							if (a[k][col] == w_pawn || (col < 6 && a[k][col + 2] == w_pawn)) {
+								no_control = true;
+								break;
+							}
+						}
+					}
+
+					// A black pawn can control the weak square and no white pawn can attack it, so it is not a weak square
+					if (can_control != -1 && !no_control) {
+						//if (weak)
+						//	cout << "shouldn't be weak here.. ?" << endl;
+						weak = false;
+						safe = false;
+					}
+				}
+
+				if (!weak && !safe)
+					continue;
+
+				// This is a weak or safe square
+				const uint64_t bit = 1ull << (row * 8 + col);
+				if (weak)
+					masks.weak |= bit;
+				else
+					masks.safe |= bit;
+			}
+		}
+	}
+
+	return masks;
+}
+
+namespace {
+	struct WeakSquareCacheEntry { uint64_t white_pawns; uint64_t black_pawns; WeakSquareMasks masks[2]; bool valid; };
+	constexpr size_t weak_square_cache_size = 1 << 14;
+	thread_local std::unique_ptr<WeakSquareCacheEntry[]> t_weak_square_cache;
+}
+
+// Weak square masks of the given color, cached by the exact pawn structure (both pawn bitboards)
+static const WeakSquareMasks& weak_square_masks(const Board& b, bool color) {
+	// Zero-initialised on first use: valid = false
+	if (!t_weak_square_cache)
+		t_weak_square_cache = std::make_unique<WeakSquareCacheEntry[]>(weak_square_cache_size);
+
+	const uint64_t white_pawns = b._bitboards[w_pawn];
+	const uint64_t black_pawns = b._bitboards[b_pawn];
+
+	WeakSquareCacheEntry& entry = t_weak_square_cache[(white_pawns * 0x9E3779B97F4A7C15ull ^ black_pawns * 0xC2B2AE3D27D4EB4Full) >> (64 - 14)];
+
+	if (!entry.valid || entry.white_pawns != white_pawns || entry.black_pawns != black_pawns) {
+		entry.masks[0] = compute_weak_square_masks(b._array, true);
+		entry.masks[1] = compute_weak_square_masks(b._array, false);
+		entry.white_pawns = white_pawns;
+		entry.black_pawns = black_pawns;
+		entry.valid = true;
+	}
+
+	return entry.masks[color ? 0 : 1];
+}
+
 // Tells whether the square is controlled by a side -> by the opponent? to be confirmed
 int Board::get_weak_squares(bool color, bool around_king, const EvalControls& ctx) {
 	// Weak square: one no pawn can protect any more (no pawns on a lower rank of the adjacent files), when no pawn stands on it
@@ -703,6 +974,9 @@ int Board::get_weak_squares(bool color, bool around_king, const EvalControls& ct
 	// King position
 	Pos king_pos = color ? _white_king_pos : _black_king_pos;
 
+	// Weak square classification (pawn-only, cached by pawn structure)
+	const WeakSquareMasks& masks = weak_square_masks(*this, color);
+
 	// White's weak squares
 	if (color) {
 
@@ -713,104 +987,10 @@ int Board::get_weak_squares(bool color, bool around_king, const EvalControls& ct
 		for (uint8_t row = 1; row < 7; row++) {
 			for (uint8_t col = 0; col < 8; col++) {
 
-				if (_array[row][col] == w_pawn || _array[row][col] == b_pawn)
+				const uint64_t bit = 1ull << (row * 8 + col);
+				if (!((masks.weak | masks.safe) & bit))
 					continue;
-
-				// No pawn on the square, so for now assume it is a weak and safe square
-				bool weak = true;
-				bool safe = true;
-
-				// Unless this is the left edge
-				if (col > 0) {
-
-					// Look at the rank of the nearest white pawn able to control the square
-					int can_control = -1;
-					bool blocking_pawn = false;
-
-					for (int_fast8_t k = row - 1; k > 0; k--) {
-						if (_array[k][col - 1] == w_pawn) {
-							weak = false;
-							if (!blocking_pawn) {
-								can_control = k;
-								break;
-							}
-						}
-
-						// If a black pawn blocks the white pawn
-						if (_array[k][col - 1] == b_pawn) {
-							blocking_pawn = true;
-						}
-					}
-
-					// Can a black pawn stop the white pawn from controlling the weak square?
-					bool no_control = false;
-
-					if (can_control != -1) {
-						for (int_fast8_t k = row; k > can_control + 1; k--) {
-							if (_array[k][col] == b_pawn || (col > 1 && _array[k][col - 2] == b_pawn)) {
-								no_control = true;
-								break;
-							}
-						}
-					}
-
-				// A white pawn can control the weak square and no black pawn can attack it, so it is not a weak square
-				if (can_control != -1 && !no_control) {
-					//if (weak)
-					//	cout << "shouldn't be weak here.. ?" << endl;
-					weak = false;
-					safe = false;
-				}
-			}
-
-			if (!weak && !safe)
-				continue;
-
-			// Unless this is the left edge
-			if (col < 7) {
-
-					// Look at the rank of the nearest white pawn able to control the square
-					int can_control = -1;
-					bool blocking_pawn = false;
-
-					for (int_fast8_t k = row - 1; k > 0; k--) {
-						if (_array[k][col + 1] == w_pawn) {
-							weak = false;
-							if (!blocking_pawn) {
-								can_control = k;
-								break;
-							}
-						}
-
-						// If a black pawn blocks the white pawn
-						if (_array[k][col + 1] == b_pawn) {
-							blocking_pawn = true;
-						}
-					}
-
-					// Can a black pawn stop the white pawn from controlling the weak square?
-					bool no_control = false;
-
-					if (can_control != -1) {
-						for (int_fast8_t k = row; k > can_control + 1; k--) {
-							if (_array[k][col] == b_pawn || (col < 6 && _array[k][col + 2] == b_pawn)) {
-								no_control = true;
-								break;
-							}
-						}
-					}
-
-				// A white pawn can control the weak square and no black pawn can attack it, so it is not a weak square
-				if (can_control != -1 && !no_control) {
-					//if (weak)
-					//	cout << "shouldn't be weak here.. ?" << endl;
-					weak = false;
-					safe = false;
-				}
-			}
-
-			if (!weak && !safe)
-				continue;
+				const bool weak = (masks.weak & bit) != 0;
 
 				if (display)
 					cout << "W weak square: " << Pos(row, col).square() << ": " << (weak ? "weak " : "safe");
@@ -906,104 +1086,10 @@ int Board::get_weak_squares(bool color, bool around_king, const EvalControls& ct
 		for (uint8_t row = 1; row < 7; row++) {
 			for (uint8_t col = 0; col < 8; col++) {
 
-				if (_array[row][col] == w_pawn || _array[row][col] == b_pawn)
+				const uint64_t bit = 1ull << (row * 8 + col);
+				if (!((masks.weak | masks.safe) & bit))
 					continue;
-
-				// No pawn on the square, so for now assume it is a weak and safe square
-				bool weak = true;
-				bool safe = true;
-
-				// Unless this is the left edge
-				if (col > 0) {
-
-					// Look at the rank of the nearest black pawn able to control the square
-					int can_control = -1;
-					bool blocking_pawn = false;
-
-					for (int_fast8_t k = row + 1; k < 7; k++) {
-						if (_array[k][col - 1] == b_pawn) {
-							weak = false;
-							if (!blocking_pawn) {
-								can_control = k;
-								break;
-							}
-						}
-
-						// If a white pawn blocks the black pawn
-						if (_array[k][col - 1] == w_pawn) {
-							blocking_pawn = true;
-						}
-					}
-
-					// Can a white pawn stop the black pawn from controlling the weak square?
-					bool no_control = false;
-
-					if (can_control != -1) {
-						for (int_fast8_t k = row; k < can_control - 1; k++) {
-							if (_array[k][col] == w_pawn || (col > 1 && _array[k][col - 2] == w_pawn)) {
-								no_control = true;
-								break;
-							}
-						}
-					}
-
-					// A black pawn can control the weak square and no white pawn can attack it, so it is not a weak square
-					if (can_control != -1 && !no_control) {
-						//if (weak)
-						//	cout << "shouldn't be weak here.. ?" << endl;
-						weak = false;
-						safe = false;
-					}
-				}
-
-				if (!weak && !safe)
-					continue;
-
-				// Unless this is the left edge
-				if (col < 7) {
-
-					// Look at the rank of the nearest black pawn able to control the square
-					int can_control = -1;
-					bool blocking_pawn = false;
-
-					for (int_fast8_t k = row + 1; k < 7; k++) {
-						if (_array[k][col + 1] == b_pawn) {
-							weak = false;
-							if (!blocking_pawn) {
-								can_control = k;
-								break;
-							}
-						}
-
-						// If a white pawn blocks the black pawn
-						if (_array[k][col + 1] == w_pawn) {
-							blocking_pawn = true;
-						}
-					}
-
-					// Can a white pawn stop the black pawn from controlling the weak square?
-					bool no_control = false;
-
-					if (can_control != -1) {
-						for (int_fast8_t k = row; k < can_control - 1; k++) {
-							if (_array[k][col] == w_pawn || (col < 6 && _array[k][col + 2] == w_pawn)) {
-								no_control = true;
-								break;
-							}
-						}
-					}
-
-					// A black pawn can control the weak square and no white pawn can attack it, so it is not a weak square
-					if (can_control != -1 && !no_control) {
-						//if (weak)
-						//	cout << "shouldn't be weak here.. ?" << endl;
-						weak = false;
-						safe = false;
-					}
-				}
-
-				if (!weak && !safe)
-					continue;
+				const bool weak = (masks.weak & bit) != 0;
 
 				if (display)
 					cout << "B weak square: " << Pos(row, col).square() << ": " << (weak ? "weak " : "safe");
