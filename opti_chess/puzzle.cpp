@@ -53,7 +53,9 @@ struct ParallelWork {
     long long total_nodes = 0;
     int root_static_value = 0;
     float root_static_avg = 0.5f;
-    struct ChildStat { Move mv; long long visits = 0; float avg = 0.5f; };
+    // win_value : valeur de mat pour le camp au trait si l'enfant est terminal et gagnant, sinon 0
+    // (même règle que Node::get_most_explored_child_move : un mat n'est jamais visité par l'UCT)
+    struct ChildStat { Move mv; long long visits = 0; float avg = 0.5f; int win_value = 0; };
     vector<ChildStat> children;
 };
 
@@ -123,9 +125,16 @@ static void run_search_share(ParallelWork* w) {
     w->total_nodes = root->get_total_nodes();
     w->root_static_value = root->_static_evaluation._value;
     w->root_static_avg = root->_static_evaluation._avg_score;
+    const int root_color = b.get_color();
     for (auto const& [mv, link] : root->_children) {
-        if (link._node)
-            w->children.push_back({ mv, (long long)link._chosen_iterations, link._node->_deep_evaluation._avg_score });
+        if (link._node) {
+            int win_value = 0;
+            if (link._node->_is_terminal) {
+                const int v = link._node->_deep_evaluation._value * root_color;
+                if (2 * v > mate_value) win_value = v;
+            }
+            w->children.push_back({ mv, (long long)link._chosen_iterations, link._node->_deep_evaluation._avg_score, win_value });
+        }
     }
 }
 
@@ -390,6 +399,8 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
         struct Agg { Move mv; long long visits = 0; double avgw = 0.0; };
         vector<Agg> agg;
         long long total_iters = 0, total_nodes = 0;
+        Move proven_win_move = Move();
+        int proven_win_value = 0;
         for (auto& w : works) {
             total_iters += w.iterations; total_nodes += w.total_nodes;
             for (auto& c : w.children) {
@@ -398,6 +409,10 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
                 if (k == agg.size()) agg.push_back({ c.mv, 0, 0.0 });
                 agg[k].visits += c.visits;
                 agg[k].avgw += (double)c.visits * (double)c.avg;
+                if (c.win_value > proven_win_value) {
+                    proven_win_value = c.win_value;
+                    proven_win_move = c.mv;
+                }
             }
         }
         result.iterations = total_iters;
@@ -411,6 +426,16 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
                 result.chosen_move = a.mv;
                 best_avg = a.visits > 0 ? a.avgw / (double)a.visits : 0.5;
             }
+        }
+        // Mat trouvé par un des arbres : joué quelles que soient les visites (le plus court mat a la plus grande valeur)
+        if (!proven_win_move.is_null_move()) {
+            for (auto& a : agg) {
+                if (a.mv == proven_win_move) {
+                    best_avg = a.visits > 0 ? a.avgw / (double)a.visits : 0.5;
+                    break;
+                }
+            }
+            result.chosen_move = proven_win_move;
         }
         result.chosen_move_san = b.move_label(result.chosen_move);
         result.actual_eval_cp = works[0].root_static_value;
