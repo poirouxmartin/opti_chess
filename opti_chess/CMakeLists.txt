@@ -126,6 +126,8 @@ elseif(MSVC)
     # /Oi intrinsics, /Ot favor fast code, /Ob3 aggressive inlining,
     # /GS- no buffer security checks, /bigobj for large TUs
     # /FI excpt.h: SEH probe macros for exploration's diagnostic walk
+    # (/arch:AVX2 measured 2026-10-15: bench +3.3 % / perft +4.4 %, 5/7 rounds,
+    # inside the noise, and it changes the bench signature: not kept)
     set(MSVC_OPT_FLAGS /Ox /fp:fast /GL /Oi /Ot /Ob3 /GS- /bigobj /FIexcpt.h)
 endif()
 

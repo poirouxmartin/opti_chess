@@ -525,9 +525,11 @@ void Node::init_node() {
 		return;
 	}
 
-	// Generates and sorts the moves
-	_board->assign_all_move_flags();
-	_board->sort_moves();
+	// Generates and sorts the moves. sort_moves flags every move it sorts:
+	// the separate flag pass is only needed when the moves were already sorted
+	// (it used to run before every sort, flagging each move twice).
+	if (!_board->sort_moves())
+		_board->assign_all_move_flags();
 }
 
 // #11 Plan B section 7 - anti-runaway guard. High constant (> any plausible

@@ -210,6 +210,8 @@ static int cmd_bench(int argc, char** argv) {
     cout << "total nodes=" << sum_nodes << " ms=" << fixed << setprecision(1) << sum_ms
          << " nodes/s=" << setprecision(0) << (sum_ms > 0 ? sum_nodes / (sum_ms / 1000.0) : 0.0) << endl;
     cout << "signature=" << hex << setw(16) << setfill('0') << hash << dec << setfill(' ') << endl;
+    if (g_qstats_on)
+        dump_qstats(); // OPTI_QSTATS: quiescence exit census
     return 0;
 }
 
