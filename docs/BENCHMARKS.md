@@ -9,7 +9,8 @@ Commands:
 
 - `opti_chess_cli perft-suite full`: 7 positions, 597 236 237 nodes, copy-make, no bulk counting.
 - `opti_chess_cli bench 2000`: 8 positions, 2000 iterations each, `OPTI_SEED=42`; node counts and
-  the signature are deterministic (`835175` nodes, signature `8a8961478e14dd47`).
+  the signature are deterministic (`835175` nodes, signature `8a8961478e14dd47` up to the
+  repetition fix of 2026-10-15; since then `832192` nodes, signature `e5cc2d99503b0425`).
 - `scripts/perf_compare.ps1 -A old.exe -B new.exe -Rounds 5`: interleaved A/B runs, medians.
 
 Run-to-run spread on this machine is about +-10 % and the absolute level drifts over a session
@@ -230,3 +231,24 @@ The `BUG: too many attacks` lines came from `Node::init_node`: it set `_initiali
 | 7cb5af9 | 65.26 (4/5 ahead; copy-make code untouched this session) | 223.05 | 52 321 (+11.4 %, 5/5 ahead) | 7/7 | 8a8961478e14dd47 |
 
 Puzzles: TIME-100 3559 -> 3636 (+77, chi2 42.2, B-only 107 / A-only 30); NODES-500 4049 -> 4049 (identical).
+
+## Repetitions under the DAG (2026-10-15, branch dev/poiroux/gui-audit, a328976)
+
+Not a speed change: a search correctness fix (see the commit message). `opti_chess_cli search
+100000 <fen>`, DAG on, value white POV, after 100k iterations:
+
+| position | expected | before | after |
+|---|---|---|---|
+| Fine #70 `8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1` | win, only 1.Kb1 | +199, 1 182 boards (search spinning on cut cycles), Kb2 | +378, 500k boards, Kb2, the PV wins a5 |
+| `8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7` | win | +140 | +559 |
+| `6k1/8/7P/7K/8/8/8/8 w - - 3 72` | draw | +612 | 0 |
+| `8/8/8/7k/8/qp6/p7/K5R1 w - - 0 1` | draw (desperado rook) | 0 | 0 |
+| `rn2k1r1/pppRpRpp/bb6/q7/6n1/8/PPPPPPPP/1NB1KBN1 w - - 0 1` | draw (perpetual) | 0 | 0 |
+
+Still open on Fine #70: the root plays 1.Kb2 (only 1.Kb1 wins) and the value drifts down once
+the 500k-board arena is full (+635 at 40k iterations, +67 at 300k).
+
+Non-regression: `Puzzle.LichessBenchmark5000` NODES-500 SEED-42 4052/5000 vs 4049/5000
+(`build/bench_bin/nodes500_full.csv`), b=17 c=20, McNemar chi2=0.11 (not significant).
+`bench 2000`: 832 192 nodes, new signature `e5cc2d99503b0425`, 56 044 nodes/s (single run, no
+A/B; the speed comparison belongs to the optimisation pass).
