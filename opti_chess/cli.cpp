@@ -347,7 +347,8 @@ static int cmd_search(int argc, char** argv) {
              << " boards " << (monte_board_buffer._length - (int)monte_board_buffer._free_indices.size())
              << " value " << root._deep_evaluation._value
              << " best " << (bm.is_null_move() ? string("0000") : move_to_uci(b, bm))
-             << " depth " << root.get_main_depth(0.005, 5.0) << endl;
+             << " depth " << root.get_main_depth(0.005, 5.0)
+             << " pruned " << g_pruned_nodes << endl;
     }
     cout << "pv " << root.get_exploration_variants(0.005, 5.0, true, false, 60) << endl;
 

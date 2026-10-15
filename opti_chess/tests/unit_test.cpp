@@ -4060,6 +4060,8 @@ TEST(Puzzle, BufferStatusText) {
 // the probe tree recycled, so later tests are unaffected.
 TEST(Puzzle, CappedArenaRefines) {
 	static Evaluator evaluator;
+	// Tests the refine-only behaviour of a full arena: no pruning
+	struct NoPrune { bool saved = g_arena_pruning; NoPrune() { g_arena_pruning = false; } ~NoPrune() { g_arena_pruning = saved; } } no_prune;
 	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
 	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
 	monte_board_buffer.reset(); monte_node_buffer.reset();
@@ -6963,6 +6965,8 @@ TEST(Puzzle, Qxe5Bug) {
 // (grow roomy -> fill naturally -> refine while full).
 TEST(Puzzle, DisplayRepetitionCut) {
     static Evaluator evaluator;
+    // The saturation check below is about refining a full arena: no pruning
+    struct NoPrune { bool saved = g_arena_pruning; NoPrune() { g_arena_pruning = false; } ~NoPrune() { g_arena_pruning = saved; } } no_prune;
     monte_node_buffer.init(30000, false);
     monte_board_buffer.init(30000, false);
     monte_node_buffer.reset();

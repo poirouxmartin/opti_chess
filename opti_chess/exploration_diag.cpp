@@ -224,6 +224,12 @@ void unrecord_position_in_history(PositionHistory& path_history, uint64_t key) {
 // #11 repetition: keys of the current search path, root first (PathScope
 // pushes/pops them, the root grogros_zero frame sets the base). Gives the
 // search ply of a repeated position (see BackupResult).
+// Arena pruning (prune_full_arenas): nodes freed so far, retry gate per root
+thread_local long long g_pruned_nodes = 0;
+thread_local const Node* t_prune_root = nullptr;
+thread_local long long t_prune_retry = 0;
+bool prune_full_arenas(Node* root);
+
 thread_local std::vector<uint64_t> g_path_keys;
 thread_local int g_path_base = 0;
 // XOR of the keys on the path: identifies the SET of path positions, which is
@@ -708,6 +714,15 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		if (g_search_abort)
 			break;
 
+		// Search root, arenas full: collapse light subtrees so expansion goes on
+		// (retried only after 1000 more iterations when nothing could be freed)
+		if (path_history == nullptr && (monte_board_buffer.is_full() || monte_node_buffer.is_full())
+			&& (t_prune_root != this || _iterations >= t_prune_retry)) {
+			t_prune_root = this;
+			if (!prune_full_arenas(this))
+				t_prune_retry = _iterations + 1000;
+		}
+
 		// When the buffers are full we stop expanding and refine the existing tree.
 		const bool can_expand = !monte_board_buffer.is_full() && !monte_node_buffer.is_full();
 
@@ -772,8 +787,9 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		// Buffers full AND nothing to refine here: clean stop + single log line
 		else {
 			if (!g_buffers_full_logged) {
-				cout << "buffer full - tree capped at " << _nodes
-				     << " nodes, refining the existing one" << endl;
+				// (_nodes of this node was printed here: "capped at 1 nodes" at a leaf)
+				cout << "buffer full - " << monte_node_buffer._length - (int)monte_node_buffer._free_indices.size()
+				     << " nodes in use, refining the existing tree" << endl;
 				g_buffers_full_logged = true;
 			}
 			break;
@@ -1693,6 +1709,82 @@ static void reset_node_fields(Node* node) {
 	node->_is_active = false;
 	node->_is_stand_pat_eval = true;
 	node->_has_path_value = false;
+}
+
+// Arenas full: collapses the subtrees of the nodes visited fewer than
+// min_iterations times, so the search keeps expanding (the tree used to stop
+// growing for good once an arena was full). A collapsed node keeps its value
+// and becomes a leaf again (re-expanded if the search comes back to it).
+// Nodes no longer referenced are recycled with the reset() bookkeeping
+// (parent counts); cycles left unreachable wait for the next full reset.
+// The root is never freed. Returns the number of nodes recycled.
+static int collapse_light_subtrees(Node* root, int min_iterations) {
+	Node* const base = monte_node_buffer._nodes;
+	const int length = monte_node_buffer._length;
+	auto slot = [&](const Node* p) -> int { return (p >= base && p < base + length) ? (int)(p - base) : -1; };
+
+	thread_local std::vector<char> mark;
+	mark.assign(length, 0);
+	if (slot(root) >= 0) mark[slot(root)] = 1;
+
+	// Light nodes with children, found by a walk over the heavy part
+	std::vector<Node*> stack{ root };
+	std::vector<Node*> light;
+	while (!stack.empty()) {
+		Node* p = stack.back();
+		stack.pop_back();
+		for (auto const& [m, link] : p->_children) {
+			Node* c = link._node;
+			const int s = c != nullptr ? slot(c) : -1;
+			if (s < 0 || mark[s] || !c->_is_active) continue;
+			mark[s] = 1;
+			if (c->_children.empty()) continue;
+			if (c->_iterations < min_iterations) light.push_back(c);
+			else stack.push_back(c);
+		}
+	}
+
+	// Detach their children; free what nothing references any more
+	std::fill(mark.begin(), mark.end(), 0);
+	std::vector<Node*> worklist, to_recycle;
+	auto release = [&](Node* c) {
+		const int s = c != nullptr ? slot(c) : -1;
+		if (s < 0 || c == root || !c->_is_active) return;
+		c->_parent_count--;
+		if (c->_parent_count <= 0 && !mark[s]) {
+			mark[s] = 1;
+			worklist.push_back(c);
+		}
+	};
+	for (Node* c : light) {
+		for (auto const& [m, link] : c->_children) release(link._node);
+		c->_children.clear();
+	}
+	while (!worklist.empty()) {
+		Node* x = worklist.back();
+		worklist.pop_back();
+		for (auto const& [m, link] : x->_children) release(link._node);
+		x->_children.clear();
+		reset_node_fields(x);
+		to_recycle.push_back(x);
+	}
+	for (Node* x : to_recycle) recycle_detached_node(x);
+	return (int)to_recycle.size();
+}
+
+// Frees about a quarter of the node arena (threshold raised x4 until enough
+// is freed). g_arena_pruning false (OPTI_NO_PRUNE=1) keeps the old
+// refine-only behaviour.
+bool g_arena_pruning = getenv("OPTI_NO_PRUNE") == nullptr;
+bool prune_full_arenas(Node* root) {
+	if (!g_arena_pruning || g_shared_tree || !monte_node_buffer._init)
+		return false;
+	const int target = max(1, monte_node_buffer._length / 4);
+	int freed = 0;
+	for (long long t = 4; t <= max(4LL, (long long)root->_iterations) && freed < target; t *= 4)
+		freed += collapse_light_subtrees(root, (int)min(t, (long long)INT_MAX));
+	g_pruned_nodes += freed;
+	return freed > 0;
 }
 
 // Resets the node and its children, and deletes them all.

@@ -137,6 +137,13 @@ struct BackupResult {
 	bool set = false;
 };
 
+// Arenas full: frees about a quarter of the node arena by collapsing rarely
+// visited subtrees (called by the search root). g_pruned_nodes counts them.
+class Node;
+bool prune_full_arenas(Node* root);
+extern thread_local long long g_pruned_nodes;
+extern bool g_arena_pruning; // default on, OPTI_NO_PRUNE=1 turns it off
+
 // Stack-allocated move score list replacing robin_map<Move, double>.
 // Zero heap allocation; O(n) lookup is fine for ~30 children.
 struct MoveScoreList {
