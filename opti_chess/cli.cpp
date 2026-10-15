@@ -23,7 +23,8 @@ static int usage() {
          << "       opti_chess_cli bench [iterations]\n"
          << "       opti_chess_cli uci\n"
          << "       opti_chess_cli search <iterations> [fen...]   (OPTI_NO_DAG=1: tree mode)\n"
-         << "       opti_chess_cli solve <max_iterations> <uci,uci|-> <min_value> <fen...>\n";
+         << "       opti_chess_cli solve <max_iterations> <uci,uci|-> <min_value> <fen...>\n"
+         << "       opti_chess_cli absolve <max_depth> <fen...>   (experimental alpha-beta + TT)\n";
     return 2;
 }
 
@@ -463,6 +464,139 @@ static int cmd_solve(int argc, char** argv) {
     return solved_at >= 0 ? 0 : 1;
 }
 
+// ---------------------------------------------------------------------------
+// Experimental alpha-beta + TT solver (absolve). Independent of GrogrosZero:
+// measures how fast a classical iterative-deepening negamax with a
+// transposition table solves positions such as the Fine #70 ladder.
+// Evaluation: material + pawn advancement only (side to move POV).
+// Repetition of a position on the current path = draw.
+// ---------------------------------------------------------------------------
+namespace ab {
+
+constexpr int MATE = 100000;
+constexpr int INF = 1000000;
+
+struct TTEntry {
+    uint64_t key = 0;
+    int score = 0;
+    int8_t depth = -1;
+    uint8_t flag = 0; // 1 exact, 2 lower, 3 upper
+    Move best;
+};
+
+static vector<TTEntry> tt;
+static long long nodes = 0;
+static vector<uint64_t> path;
+
+static int evaluate_light(const Board& b) {
+    static constexpr int values[13] = { 0, 100, 320, 330, 500, 900, 0, 100, 320, 330, 500, 900, 0 };
+    int score = 0;
+    for (int r = 0; r < 8; r++)
+        for (int c = 0; c < 8; c++) {
+            const int p = b._array[r][c];
+            if (p == 0) continue;
+            int v = values[p];
+            if (p == 1) v += 6 * r;          // white pawn advancement
+            if (p == 7) v += 6 * (7 - r);    // black pawn advancement
+            score += p <= 6 ? v : -v;
+        }
+    return b._player ? score : -score;
+}
+
+static bool is_capture(const Board& b, const Move& m) {
+    return b._array[m.end_row][m.end_col] != 0;
+}
+
+static int negamax(Board& b, int depth, int alpha, int beta, int ply) {
+    nodes++;
+    // Repetition on the current path: draw
+    for (size_t i = 0; i + 1 < path.size(); i++)
+        if (path[i] == b._zobrist_key) return 0;
+
+    TTEntry& e = tt[b._zobrist_key & (tt.size() - 1)];
+    Move tt_move;
+    if (e.key == b._zobrist_key) {
+        tt_move = e.best;
+        if (e.depth >= depth) {
+            int s = e.score;
+            if (s > MATE - 1000) s -= ply; else if (s < -MATE + 1000) s += ply;
+            if (e.flag == 1) return s;
+            if (e.flag == 2 && s >= beta) return s;
+            if (e.flag == 3 && s <= alpha) return s;
+        }
+    }
+
+    b.get_moves();
+    if (b._got_moves == 0)
+        return b._player_in_check ? -(MATE - ply) : 0;
+    if (depth <= 0)
+        return evaluate_light(b);
+
+    // Order: TT move, captures (victim value), the rest
+    const int n = b._got_moves;
+    Move moves[max_moves];
+    int keys[max_moves];
+    for (int i = 0; i < n; i++) {
+        moves[i] = b._moves[i];
+        keys[i] = 0;
+        if (moves[i] == tt_move) keys[i] = 1 << 20;
+        else if (is_capture(b, moves[i])) keys[i] = 1000 + b._array[moves[i].end_row][moves[i].end_col];
+    }
+    for (int i = 1; i < n; i++) {
+        const Move m = moves[i]; const int k = keys[i]; int j = i - 1;
+        while (j >= 0 && keys[j] < k) { moves[j + 1] = moves[j]; keys[j + 1] = keys[j]; j--; }
+        moves[j + 1] = m; keys[j + 1] = k;
+    }
+
+    const int alpha0 = alpha;
+    int best = -INF;
+    Move best_move;
+    for (int i = 0; i < n; i++) {
+        Board child(b);
+        child.make_move(moves[i], false, false); // no history map: no allocation per node
+        child.get_zobrist_key();
+        path.push_back(child._zobrist_key);
+        const int s = -negamax(child, depth - 1, -beta, -alpha, ply + 1);
+        path.pop_back();
+        if (s > best) { best = s; best_move = moves[i]; }
+        if (s > alpha) alpha = s;
+        if (alpha >= beta) break;
+    }
+
+    int stored = best;
+    if (stored > MATE - 1000) stored += ply; else if (stored < -MATE + 1000) stored -= ply;
+    e.key = b._zobrist_key;
+    e.score = stored;
+    e.depth = (int8_t)min(depth, 127);
+    e.flag = best <= alpha0 ? 3 : (best >= beta ? 2 : 1);
+    e.best = best_move;
+    return best;
+}
+
+} // namespace ab
+
+// absolve <max_depth> <fen>: iterative deepening, one line per depth
+static int cmd_absolve(int argc, char** argv) {
+    if (argc < 4) return usage();
+    const int max_depth = atoi(argv[2]);
+    const string fen = fen_from_args(argc, argv, 3);
+    ab::tt.assign(size_t(1) << 22, ab::TTEntry());
+    Board b;
+    b.from_fen(fen);
+    const double t0 = now_s();
+    for (int d = 1; d <= max_depth; d++) {
+        ab::nodes = 0;
+        ab::path.assign(1, b._zobrist_key);
+        Board root(b);
+        const int score = ab::negamax(root, d, -ab::INF, ab::INF, 0);
+        const ab::TTEntry& e = ab::tt[b._zobrist_key & (ab::tt.size() - 1)];
+        const string best = e.key == b._zobrist_key ? move_to_uci(b, e.best) : string("0000");
+        cout << "depth " << d << " score " << score << " best " << best
+             << " nodes " << ab::nodes << " ms " << (long long)((now_s() - t0) * 1000.0) << endl;
+    }
+    return 0;
+}
+
 static int cmd_uci() {
     string cur = START_FEN;
     string line;
@@ -514,5 +648,6 @@ int main(int argc, char** argv) {
     if (cmd == "uci") return cmd_uci();
     if (cmd == "search") return cmd_search(argc, argv);
     if (cmd == "solve") return cmd_solve(argc, argv);
+    if (cmd == "absolve") return cmd_absolve(argc, argv);
     return usage();
 }
