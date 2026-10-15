@@ -48,6 +48,7 @@ inline int main_ui() {
 	// Initialization of the window (build stamp in the title: kills all
 	// stale-binary doubt at a glance)
 	InitWindow(main_GUI._screen_width, main_GUI._screen_height, ("Grogros Chess [" __DATE__ " " __TIME__ "]"));
+	SetWindowMinSize(400, 300);
 
 	// Initialization of the audio
 	InitAudioDevice();
@@ -130,14 +131,7 @@ inline int main_ui() {
 
 		// Full screen
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_F11)) {
-			if (!IsWindowMaximized())
-				SetWindowState(FLAG_WINDOW_MAXIMIZED);
-			else
-				ClearWindowState(FLAG_WINDOW_MAXIMIZED);
-			if (!IsWindowFullscreen())
-				SetWindowState(FLAG_FULLSCREEN_MODE);
-			else
-				ClearWindowState(FLAG_FULLSCREEN_MODE);
+			ToggleBorderlessWindowed(); // FLAG_FULLSCREEN_MODE changed the monitor resolution
 		}
 
 		// T - Tests
@@ -253,11 +247,11 @@ inline int main_ui() {
 		}
 
 		// B - Bitboards
-		if (IsKeyPressed(KEY_B)) {
+		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_B)) {
 			main_GUI._board->print_all_bitboards();
 		}
 
-		// Q - Quiescence (stops the worker first, resumes after via the flag)
+		// A - Quiescence (stops the worker first, resumes after via the flag)
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_A)) {
 			main_GUI.stop_compute();
 			main_GUI._root_exploration_node->quiescence(&monte_board_buffer, main_GUI._grogros_eval, main_GUI._quiescence_depth, main_GUI._alpha, main_GUI._beta);
@@ -316,7 +310,7 @@ inline int main_ui() {
 
 		// S - Saves the FEN in data/text.txt
 		if (IsKeyPressed(KEY_S)) {
-			SaveFileText("data/test.txt", const_cast<char*>(main_GUI._current_fen.c_str()));
+			SaveFileText("data/text.txt", const_cast<char*>(main_GUI._current_fen.c_str()));
 			cout << "saved FEN : " << main_GUI._current_fen << endl;
 		}
 
@@ -399,14 +393,14 @@ inline int main_ui() {
 		//     cout << "loaded PGN : " << pgn << endl;
 		// }
 
-		// A - Game analysis on chess.com (A)
+		// Q - Game analysis on chess.com
 		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_Q)) {
 			SetClipboardText(main_GUI._global_pgn.c_str());
 			cout << "copied PGN for analysis on chess.com : \n" << main_GUI._global_pgn << endl;
 			OpenURL("https://www.chess.com/analysis");
 		}
 
-		// LCTRL-A - Live game analysis on chess.com, by GrogrosZero
+		// LCTRL-Q - Live game analysis on chess.com, by GrogrosZero
 		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_Q)) {
 			main_GUI.new_bind_analysis();
 		}
@@ -423,7 +417,7 @@ inline int main_ui() {
 		}
 
 		// B - Creation of the buffer
-		if (IsKeyPressed(KEY_B)) {
+		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_B)) {
 			cout << "available memory : " << long_int_to_round_string(get_total_system_memory()) << "b" << endl;
 			main_GUI.init_buffers();
 		}
@@ -443,7 +437,7 @@ inline int main_ui() {
 		// Enter - GrogrosZero, 1 node: DEBUG
 		if (IsKeyPressed(KEY_ENTER)) {
 			main_GUI.init_buffers();
-			main_GUI.grogros_analysis(IsKeyPressed(KEY_LEFT_SHIFT) ? 10 : 1);
+			main_GUI.grogros_analysis(IsKeyDown(KEY_LEFT_SHIFT) ? 10 : 1);
 		}
 
 		// LCTRL-H - Stops the automatic search of GrogrosZero
@@ -517,56 +511,59 @@ inline int main_ui() {
 
 		// Keypads - set the time (in minutes)
 
+		// Digits are typed into a clock text box while it is being edited
+		const bool editing_clock = main_GUI._white_time_text_box.active || main_GUI._black_time_text_box.active;
+
 		// 1 - 1 minute
-		if (IsKeyPressed(KEY_KP_1)) {
+		if (!editing_clock && IsKeyPressed(KEY_KP_1)) {
 			main_GUI._time_black = 60000;
 			main_GUI._time_white = 60000;
 		}
 
 		// 2 - 2 minutes
-		if (IsKeyPressed(KEY_KP_2)) {
+		if (!editing_clock && IsKeyPressed(KEY_KP_2)) {
 			main_GUI._time_black = 120000;
 			main_GUI._time_white = 120000;
 		}
 
 		// 3 - 3 minutes
-		if (IsKeyPressed(KEY_KP_3)) {
+		if (!editing_clock && IsKeyPressed(KEY_KP_3)) {
 			main_GUI._time_black = 180000;
 			main_GUI._time_white = 180000;
 		}
 
 		// 4 - 4 minutes
-		if (IsKeyPressed(KEY_KP_4)) {
+		if (!editing_clock && IsKeyPressed(KEY_KP_4)) {
 			main_GUI._time_black = 240000;
 			main_GUI._time_white = 240000;
 		}
 
 		// 5 - 5 minutes
-		if (IsKeyPressed(KEY_KP_5)) {
+		if (!editing_clock && IsKeyPressed(KEY_KP_5)) {
 			main_GUI._time_black = 300000;
 			main_GUI._time_white = 300000;
 		}
 
 		// 6 - 6 minutes
-		if (IsKeyPressed(KEY_KP_6)) {
+		if (!editing_clock && IsKeyPressed(KEY_KP_6)) {
 			main_GUI._time_black = 360000;
 			main_GUI._time_white = 360000;
 		}
 
 		// 7 - 7 minutes
-		if (IsKeyPressed(KEY_KP_7)) {
+		if (!editing_clock && IsKeyPressed(KEY_KP_7)) {
 			main_GUI._time_black = 420000;
 			main_GUI._time_white = 420000;
 		}
 
 		// 8 - 8 minutes
-		if (IsKeyPressed(KEY_KP_8)) {
+		if (!editing_clock && IsKeyPressed(KEY_KP_8)) {
 			main_GUI._time_black = 480000;
 			main_GUI._time_white = 480000;
 		}
 
 		// 9 - 9 minutes
-		if (IsKeyPressed(KEY_KP_9)) {
+		if (!editing_clock && IsKeyPressed(KEY_KP_9)) {
 			main_GUI._time_black = 540000;
 			main_GUI._time_white = 540000;
 		}
@@ -590,7 +587,7 @@ inline int main_ui() {
 		}
 
 		// J - Plays the move recommended by the GrogrosZero algorithm
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_J)) {
+		if (!IsKeyDown(KEY_LEFT_CONTROL) && !IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_J)) {
 			if (main_GUI._root_exploration_node->children_count() > 0)
 				((main_GUI._click_bind && main_GUI._board->click_m_move(main_GUI._root_exploration_node->get_most_explored_child_move(), main_GUI.get_board_orientation())) || true) && main_GUI.play_move_keep(main_GUI._root_exploration_node->get_most_explored_child_move());
 			else
@@ -622,7 +619,7 @@ inline int main_ui() {
 			}
 		}
 
-		// Return - Starts and stops the clock
+		// Space - Starts and stops the clock
 		if (IsKeyPressed(KEY_SPACE)) {
 			if (main_GUI._time)
 				main_GUI.stop_time();
@@ -630,7 +627,16 @@ inline int main_ui() {
 				main_GUI.start_time();
 		}
 
-		// Z - Zobrist key of the current position
+		// Flag fall: a clock reaching zero stops the game clock (it used to go negative)
+		if (main_GUI._time && (main_GUI._time_white <= 0 || main_GUI._time_black <= 0)) {
+			const bool white_flagged = main_GUI._time_white <= 0;
+			main_GUI.stop_time();
+			if (white_flagged) main_GUI._time_white = 0; else main_GUI._time_black = 0;
+			debug_log("[flag] %s out of time", white_flagged ? "White" : "Black");
+			cout << (white_flagged ? "White" : "Black") << " lost on time" << endl;
+		}
+
+		// W - Zobrist key of the current position
 		if (IsKeyPressed(KEY_W)) {
 			cout << "Zobrist key : " << main_GUI._board->_zobrist_key << endl;
 			cout << main_game_over << endl;
@@ -794,7 +800,8 @@ inline int main_ui() {
 		// Makes the AI play automatically, according to the parameters
 
 		// Checked again here, because draws by repetition are cut short by the algorithm
-		if (main_GUI._board->_game_over_checked && main_GUI._board->_game_over_value == draw) {
+		// Once the game is declared over, this must not run every frame (it rewrote the root node each frame)
+			if (!main_game_over && main_GUI._board->_game_over_checked && main_GUI._board->_game_over_value == draw) {
 			game_over:
 
 			//cout << "Game seems to be over... or is it?" << endl;
@@ -855,6 +862,7 @@ inline int main_ui() {
 		else {
 
 			if (!main_game_over) {
+				main_GUI.stop_compute(); // no point searching a finished game
 				main_GUI._time = false;
 				debug_log("[gameover] value=%d", (int)main_GUI._board->_game_over_value);
 				main_GUI._board->display_pgn();

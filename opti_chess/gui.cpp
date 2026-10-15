@@ -694,6 +694,7 @@ void GUI::load_resources() {
 
 // Scales the images and the texts of the GUI to the right size
 void GUI::resize_GUI() {
+	if (_screen_width <= 0 || _screen_height <= 0) return; // minimized: keep the current textures
 	const int min_screen = min(_screen_height, _screen_width);
 	_board_size = _board_scale * min_screen;
 	_board_padding_y = (_screen_height - _board_size) / 4.0f;
@@ -710,9 +711,11 @@ void GUI::resize_GUI() {
 		Image piece_image = ImageCopy(_piece_images[i]);
 		ImageResize(&piece_image, _piece_size, _piece_size);
 		Texture2D texture = LoadTextureFromImage(piece_image);
+		UnloadImage(piece_image);
 		//GenTextureMipmaps(&texture);
 		//SetTextureFilter(texture, TEXTURE_FILTER_TRILINEAR);
 		//SetTextureWrap(texture, TEXTURE_WRAP_CLAMP);
+		if (_piece_textures[i].id != 0) UnloadTexture(_piece_textures[i]);
 		_piece_textures[i] = texture;
 	}
 
@@ -723,19 +726,25 @@ void GUI::resize_GUI() {
 	_grogros_size = _board_size / 16.0f;
 	Image grogros_copy = ImageCopy(_grogros_image);
 	ImageResize(&grogros_copy, _grogros_size, _grogros_size);
+	if (_grogros_texture.id != 0) UnloadTexture(_grogros_texture);
 	_grogros_texture = LoadTextureFromImage(grogros_copy);
+	UnloadImage(grogros_copy);
 
 	// Curseur
 	Image cursor_copy = ImageCopy(_cursor_image);
 	ImageResize(&cursor_copy, _cursor_size, _cursor_size);
+	if (_cursor_texture.id != 0) UnloadTexture(_cursor_texture);
 	_cursor_texture = LoadTextureFromImage(cursor_copy);
+	UnloadImage(cursor_copy);
 
 	// Mini pieces (for the count of the pieces captured during the game)
 	_mini_piece_size = _text_size / 3;
 	for (int i = 0; i < 12; i++) {
 		Image mini_piece_image = ImageCopy(_mini_piece_images[i]);
 		ImageResize(&mini_piece_image, _mini_piece_size, _mini_piece_size);
+		if (_mini_piece_textures[i].id != 0) UnloadTexture(_mini_piece_textures[i]);
 		_mini_piece_textures[i] = LoadTextureFromImage(mini_piece_image);
+		UnloadImage(mini_piece_image);
 	}
 
 	log_geometry();
@@ -2024,15 +2033,21 @@ void GUI::draw()
 		if (_drawing_arrows && !selected_piece()) {
 
 			// Iterate backwards to play the most recent arrow (the visible one when they overlap)
-			for (Move move : ranges::reverse_view(_grogros_arrows))
-			{
+			Move arrow_move;
+			bool arrow_found = false;
+			for (Move move : ranges::reverse_view(_grogros_arrows)) {
 				if (move.end_row == _clicked_pos.row && move.end_col == _clicked_pos.col) {
-					if (_click_bind)
-						_board->click_m_move(move, get_board_orientation());
-					play_move_keep(move);
-					has_played = true;
-					continue;
+					arrow_move = move;
+					arrow_found = true;
+					break;
 				}
+			}
+			// Played after the loop: play_move_keep clears _grogros_arrows
+			if (arrow_found) {
+				if (_click_bind)
+					_board->click_m_move(arrow_move, get_board_orientation());
+				play_move_keep(arrow_move);
+				has_played = true;
 			}
 		}
 

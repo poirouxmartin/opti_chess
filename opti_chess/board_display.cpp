@@ -283,6 +283,19 @@ bool Board::click_m_move(const Move m, const bool orientation) const
 	return true;
 }
 
+// Parses a text box value; false if empty or invalid (the value is then left unchanged)
+static bool parse_box_value(const string& text, int& value) {
+	if (text.empty())
+		return false;
+	try {
+		value = stoi(text);
+		return true;
+	}
+	catch (...) {
+		return false;
+	}
+}
+
 // Updates a text box
 void update_text_box(TextBox& text_box) {
 	// If a click happens
@@ -302,7 +315,8 @@ void update_text_box(TextBox& text_box) {
 		else {
 			// Deactivate, and update the value
 			if (text_box.active) {
-				text_box.value = stoi(text_box.text);
+				if (!parse_box_value(text_box.text, text_box.value))
+					text_box.text = to_string(text_box.value);
 				text_box.active = false;
 			}
 		}
@@ -320,7 +334,8 @@ void update_text_box(TextBox& text_box) {
 					text_box.text.pop_back();
 			}
 			else if (key == KEY_ENTER) {
-				text_box.value = stoi(text_box.text);
+				if (!parse_box_value(text_box.text, text_box.value))
+					text_box.text = to_string(text_box.value);
 				text_box.active = false;
 			}
 
