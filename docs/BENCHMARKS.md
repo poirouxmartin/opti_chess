@@ -215,8 +215,12 @@ All kept steps leave every search output identical: NODES-500 at 7cb5af9 gives 4
 | 12 threads, separate trees + per-thread gamma stagger | 3584 (71.7 %) | 531 576 | -52, chi2 13.3; **rejected** |
 | 12 threads, shared tree (`OPTI_SHARED=1`) | died after 1279 puzzles, 109 `BUG: too many attacks` lines | - | data race |
 | 12 threads, shared tree + `OPTI_GAMMA_STAGGER=1` | 3741 (74.8 %) | 368 011 | +105, chi2 11.7; not published (same race) |
+| 12 threads, shared tree, after the `init_node` fix | access violation after 1390 puzzles (no `BUG:` line any more) | 365 199 (partial) | still racing |
+| 12 threads, shared tree + stagger, after the `init_node` fix | access violation after 416 puzzles | 380 594 (partial) | still racing |
 
 7cb5af9 fixes the merge: workers reported only visits, while the single-thread choice also plays a terminal child that mates (the UCT loop never visits terminal children). The search is deterministic, so 12 separate trees explore nearly the same lines and the 9x throughput does not turn into solved puzzles; only the shared tree does, and it is not safe yet. In NODES mode (`bench`) the iterations are split across threads, which shrinks every tree and makes nodes/s scaling meaningless, so it is not reported.
+
+The `BUG: too many attacks` lines came from `Node::init_node`: it set `_initialized` before generating and sorting the moves, so another thread skipped the lock and read the board while `assign_move_flags` had a trial move applied in place. The flag is now published (release) at the end of the initialisation and read with acquire; single-thread output is unchanged (bench signature, NODES-500). The shared tree still crashes: evaluations and quiescence searches on existing shared nodes run without the node lock (`exploration_diag.cpp` quiescence entry and `evaluate_position`), so the shared mode stays off and its 3741 is not a published result.
 
 ### Before / after (same interleaved session, 5 rounds, 59d7939 vs 7cb5af9)
 
