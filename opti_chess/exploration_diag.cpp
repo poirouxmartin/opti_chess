@@ -391,7 +391,8 @@ Move Node::get_first_unexplored_move(bool fully_explored) {
 // Initialises the node from its board
 void Node::init_node() {
 
-	if (_initialized) {
+	// Lecture acquire : en arbre partagé, _initialized n'est publié qu'une fois le nœud prêt
+	if (std::atomic_ref<bool>(_initialized).load(std::memory_order_acquire)) {
 		return;
 	}
 
@@ -404,7 +405,14 @@ void Node::init_node() {
 		return;
 	}
 
-	_initialized = true;
+	// Le drapeau était posé AVANT le travail : un autre thread voyait le nœud initialisé
+	// pendant get_moves / sort_moves et pendant le coup d'essai de assign_move_flags (plateau
+	// modifié en place), d'où des plateaux incohérents en arbre partagé. Publié en sortie de
+	// portée (avant le déverrouillage), sur tous les chemins de retour.
+	struct InitPublish {
+		bool& flag;
+		~InitPublish() { std::atomic_ref<bool>(flag).store(true, std::memory_order_release); }
+	} init_publish{ _initialized };
 
 	if (_board == nullptr) {
 		cout << "null board in init_node" << endl;
