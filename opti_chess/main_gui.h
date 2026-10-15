@@ -470,12 +470,9 @@ inline int main_ui() {
 			main_GUI.stop_compute(); // worker first: tree surgery below is not thread-safe
 			main_GUI._position_epoch++; // real mutation: worker drops hint maps
 			std::lock_guard<std::mutex> tree_lk(main_GUI._tree_mutex);
-			main_GUI._root_exploration_node->reset(true); // cycle-safe full recycle
-			main_GUI.reset_buffers(); // #6: systematic TT/node_map clear
-			main_GUI._root_exploration_node->_is_active = true;
-			main_GUI._root_exploration_node->_board->_is_active = true;
-			main_GUI._tree_snapshot.valid = false;
-			main_GUI._tree_snapshot.arrows.clear();
+			// Cycle-safe full recycle; the live board keeps its key, history
+			// and en passant column (a bare reset wiped them)
+			main_GUI.reset_search_keep_board();
 			//main_GUI._root_exploration_node = new Node(&main_GUI._board, Move());
 			cout << "Grogros's thought deleted... current moves explored: " << main_GUI._root_exploration_node->children_count() << endl;
 		}

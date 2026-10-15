@@ -616,6 +616,14 @@ public:
 	void log_geometry() const;
 	void log_position(const char* tag) const;
 
+	// Replaces root + live board with a fresh pool-owned copy of `position`
+	// (worker stopped and _tree_mutex held by the caller)
+	bool install_position(const Board& position);
+
+	// Clears the search tree but keeps the live position intact: Node::reset
+	// wipes its board's key, history and en passant column (same preconditions)
+	void reset_search_keep_board();
+
 	// Draws the arrows from the values of the Monte Carlo algorithm
 	//void draw_monte_carlo_arrows();
 

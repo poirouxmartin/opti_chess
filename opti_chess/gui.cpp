@@ -502,20 +502,6 @@ void GUI::switch_orientation() {
 	log_geometry();
 }
 
-// Logs the board geometry: scripts/gui_drive.ps1 maps squares to pixels with it
-void GUI::log_geometry() const {
-	debug_log("[geom] w=%d h=%d pad_x=%.1f pad_y=%.1f tile=%.1f orient=%d",
-		_screen_width, _screen_height, _board_padding_x, _board_padding_y, _tile_size, (int)_board_orientation);
-}
-
-// Logs the live position (and the geometry: orientation can follow the position)
-void GUI::log_position(const char* tag) const {
-	if (!_board)
-		return;
-	log_geometry();
-	debug_log("[pos] %s fen=%s", tag, _board->to_fen().c_str());
-}
-
 // Helper for the board display (returns i if board_orientation is set, 7 - i otherwise)
 int GUI::orientation_index(const int i) const {
 	if (_board_orientation)
@@ -753,6 +739,62 @@ void GUI::resize_GUI() {
 	}
 
 	log_geometry();
+}
+
+// Logs the board geometry: scripts/gui_drive.ps1 maps squares to pixels with it
+void GUI::log_geometry() const {
+	debug_log("[geom] w=%d h=%d pad_x=%.1f pad_y=%.1f tile=%.1f orient=%d",
+		_screen_width, _screen_height, _board_padding_x, _board_padding_y, _tile_size, (int)_board_orientation);
+}
+
+// Logs the live position (and the geometry: orientation can follow the position)
+void GUI::log_position(const char* tag) const {
+	if (!_board)
+		return;
+	log_geometry();
+	debug_log("[pos] %s fen=%s", tag, _board->to_fen().c_str());
+}
+
+// Replaces root + live board with a fresh pool-owned copy of `position`
+bool GUI::install_position(const Board& position) {
+	reset_buffers();
+	// Old root first (node + board back to the pools), THEN allocate: the
+	// reverse order can hand the freed slot back and leave it doubly owned
+	if (Node* const old_root = _root_exploration_node) {
+		old_root->reset();
+		recycle_detached_node(old_root);
+	}
+	Board* const board = monte_board_buffer.get_first_free_board();
+	Node* const root = board ? monte_node_buffer.get_first_free_node() : nullptr;
+	if (!root) {
+		debug_log("[install_position] CRITICAL: pools full");
+		return false;
+	}
+	board->copy_data(position, true, true);
+	board->_game_over_checked = false;
+	board->_is_active = true;
+	root->_board = board;
+	root->_is_active = true;
+	_board = board;
+	_root_exploration_node = root;
+	_tree_snapshot.valid = false;
+	_tree_snapshot.arrows.clear();
+	_grogros_arrows.clear();
+	return true;
+}
+
+// Clears the search tree but keeps the live position intact
+void GUI::reset_search_keep_board() {
+	const Board saved(*_board, true, true);
+	_root_exploration_node->reset();
+	_board->copy_data(saved, true, true);
+	_root_exploration_node->_board = _board;
+	_root_exploration_node->_is_active = true;
+	_board->_is_active = true;
+	reset_buffers();
+	_tree_snapshot.valid = false;
+	_tree_snapshot.arrows.clear();
+	_grogros_arrows.clear();
 }
 
 // Applies the new dimensions of the window
@@ -1050,7 +1092,9 @@ bool GUI::play_move_keep(Move move)
 	string additional_time_str = _time ? clock_to_timestamp(move_timestamp, true) : "";
 
 	// Tree of the game
-	_game_tree._current_node->_board = *_board;
+	// copy_data, not operator=: the implicit assignment also copies the pool
+	// slot (_buffer_index/_home_boards) into the tree's storage
+	_game_tree._current_node->_board.copy_data(*_board, true, true);
 	_game_tree.add_child(move, additional_time_str);
 
 	// FIXME: the real cases to distinguish:
@@ -1161,19 +1205,8 @@ bool GUI::play_move_keep(Move move)
 
 			// Otherwise, simply play the move
 		else {
-			// Save the game history: reset() below also clears the shared
-			// live board (reset_board wipes _positions_history and zeroes
-			// the key), so every unsearched move would erase repetitions.
-			auto saved_game_history = _board->_positions_history;
-			// Delete every search
-			_root_exploration_node->reset();
-			_root_exploration_node->_is_active = true;
-
-			// Restore the prefix and re-sync the key (reset zeroed it) so
-			// the pushed move extends full-based keys. make_move drops the
-			// prefix itself on irreversible moves.
-			_board->_positions_history = saved_game_history;
-			_board->get_zobrist_key();
+			// Delete every search, keeping the live board's key and history
+			reset_search_keep_board();
 			// Simply play the move
 			_board->make_move(move, false, true);
 			_board->_is_active = true;
@@ -1522,11 +1555,7 @@ void GUI::run_puzzle_headless(double time_s) {
 	_position_epoch++; // real tree mutation: worker drops hint maps on next wake
 	std::lock_guard<std::mutex> tree_lk(_tree_mutex);
 	init_buffers();
-	reset_buffers();
-	_root_exploration_node->reset();
-	_root_exploration_node->_board = _board;
-	_root_exploration_node->_is_active = true;
-	_board->_is_active = true;
+	reset_search_keep_board();
 	g_buffers_full_logged = false;
 
 	// Pause continuous analysis so next frame doesn't overwrite results
@@ -2443,14 +2472,15 @@ void GUI::load_FEN(const string fen, bool display) {
 	//_board->from_fen(fen);
 	//update_global_pgn();
 	main_game_over = false; // new positions start playable
-	reset_buffers();
-	_root_exploration_node->reset();
-	_root_exploration_node->_board = _board;
-	_root_exploration_node->_board->from_fen(fen);
-	_root_exploration_node->_is_active = true;
-	_root_exploration_node->_board->_is_active = true;
-	_tree_snapshot.valid = false;
-	_tree_snapshot.arrows.clear();
+	reset_search_keep_board();
+	_board->from_fen(fen);
+	_board->_is_active = true;
+	// GUI side of a load (Board::from_fen no longer touches the GUI)
+	_game_tree.new_tree(*_board);
+	_initial_fen = fen;
+	if (_board_orientation != _board->_player)
+		switch_orientation(); // side to move at the bottom
+	_pgn = _game_tree.tree_display();
 	update_global_pgn();
 	log_position("load");
 
@@ -2494,39 +2524,20 @@ void GUI::reset_game() {
 	reset_buffers();
 	bool current_orientation = get_board_orientation();
 
-	// Free old root's board FIRST to reclaim a slot before allocating the new one.
-	Node* const old_root = _root_exploration_node;
-	Board* const old_board = old_root ? old_root->_board : nullptr;
-	if (old_board && old_board->_buffer_index >= 0 && old_board->_home_boards != nullptr && !old_board->_home_boards->_bulk_resetting) {
-		old_board->_home_boards->free_index(old_board->_buffer_index);
-		old_board->_buffer_index = -1; // prevent double-free in recycle_detached_node
-	}
-
-	_board = monte_board_buffer.get_first_free_board();
-	if (!_board) {
-		debug_log("[reset_game] CRITICAL: board buffer full! get_first_free_board returned null");
-		cout << "[CRASH] board buffer full in reset_game" << endl;
+	// Old root (node + board) goes back to the pools BEFORE the new slots are
+	// taken. Freeing the board first and resetting the old root afterwards
+	// wiped the new board whenever the pool handed the same slot back, then
+	// released it while live (two owners).
+	Board start;
+	start.restart();
+	if (!install_position(start)) {
+		cout << "[CRASH] buffers full in reset_game" << endl;
 		return;
 	}
-	_board->restart();
-	_board->_is_active = true;
-	_game_tree.reset();
+	_game_tree.new_tree(*_board);
 	reset_pgn();
-	// Former root: recursive reset (recycles its subtrees through approach B),
-	// then replaced by a new node -> explicit recycling of the old one
-	// (node + board), otherwise 1 node + 1 board leak on every reset.
-	old_root->reset();
-	recycle_detached_node(old_root);
+	_pgn = _game_tree.tree_display();
 	_board_orientation = current_orientation;
-	_root_exploration_node = monte_node_buffer.get_first_free_node();
-	if (!_root_exploration_node) {
-		debug_log("[reset_game] CRITICAL: node buffer full! get_first_free_node returned null");
-		cout << "[CRASH] node buffer full in reset_game" << endl;
-		return;
-	}
-	_root_exploration_node->_board = _board;
-	_tree_snapshot.valid = false;
-	_tree_snapshot.arrows.clear();
 
 	debug_log("[reset_game] done root=%p board=%p", (void*)_root_exploration_node, (void*)_board);
 	log_position("reset");

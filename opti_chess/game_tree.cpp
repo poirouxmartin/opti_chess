@@ -102,16 +102,9 @@ bool GameTree::select_previous_node() {
 		// re-trigger the game-over branch without rechecking.
 		main_GUI._board->_game_over_checked = false;
 
-		// The board must be moved back up for the exploration too
-		main_GUI.reset_buffers(); // #6: systematic TT/node_map clear
-		main_GUI._root_exploration_node->reset();
-		main_GUI._root_exploration_node->_board = &_current_node->_board;
-		main_GUI._root_exploration_node->_is_active = true;
-		main_GUI._board = &_current_node->_board;
-		main_GUI._board->reset_eval();
-		main_GUI._board->update_bitboards();
-		main_GUI._tree_snapshot.valid = false;
-		main_GUI._tree_snapshot.arrows.clear();
+		// Live board = a pool-owned COPY of the stored position. Aliasing the
+		// tree node's board let the next move overwrite the history in place.
+		main_GUI.install_position(_current_node->_board);
 
 		// Refresh the display
 		main_GUI._pgn = tree_display();
@@ -154,7 +147,9 @@ void GameTree::add_child(Move move, string additional_label) {
 		if (_current_node->_children[i]->_move == move)
 			return;
 
-	Board board = _current_node->_board;
+	// Full copy: a partial copy keeps _got_moves but not _moves, so the SAN
+	// label would be built from a stale move list
+	Board board(_current_node->_board, true, true);
 	string move_label = board.move_label(move) + (additional_label.empty() ? "" : " " + additional_label);
 	board.make_move(move, false, true);
 
@@ -176,8 +171,7 @@ void GameTree::reset() {
 
 // New tree from a board
 void GameTree::new_tree(Board& board) {
-	if (_root)
-		_root->reset();
+	delete _root; // children are owned by unique_ptr
 	_root = new GameTreeNode(board, Move(), "", nullptr);
 	_current_node = _root;
 }

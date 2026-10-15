@@ -226,13 +226,8 @@ void Board::from_fen(string fen)
 
 	update_bitboards();
 
-	// Orient the board for the side to move
-	main_GUI._board_orientation = _player;
-
-	// Update the position FEN in the GUI
-	main_GUI._initial_fen = fen;
-
-	main_GUI._game_tree.new_tree(*this);
+	// No GUI side effects here: every parse (FEN probes, puzzle workers, perft)
+	// used to flip the display and replace the game tree. GUI::load_FEN does it.
 }
 
 // Returns the FEN of the board
