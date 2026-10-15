@@ -57,4 +57,8 @@ key Y
 key Y
 key Y
 alive
+# Q: chess.com analysis; OPTI_NO_BROWSER makes it log the URL instead of opening a browser
+key Q
+wait 500
+expect_log \[url\] https://www.chess.com/analysis
 expect_nolog TIMEOUT|CRITICAL

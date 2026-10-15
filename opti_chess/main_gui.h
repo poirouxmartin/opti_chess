@@ -14,6 +14,11 @@
 bool get_boost_mode();
 void set_boost_mode(bool on);
 
+// Either CTRL key (only the left one used to be checked)
+inline bool ctrl_down() {
+	return IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+}
+
 // Draws the GUI
 inline void gui_draw() {
 	if (!main_GUI._draw)
@@ -130,12 +135,12 @@ inline int main_ui() {
 		// INPUTS
 
 		// Full screen
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_F11)) {
+		if (!ctrl_down() && IsKeyPressed(KEY_F11)) {
 			ToggleBorderlessWindowed(); // FLAG_FULLSCREEN_MODE changed the monitor resolution
 		}
 
 		// T - Tests
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_T)) {
+		if (!ctrl_down() && IsKeyPressed(KEY_T)) {
 
 			//main_GUI._board->get_pins(main_GUI._board->_player).print();
 			//main_GUI._board->get_moves_fast();
@@ -247,19 +252,19 @@ inline int main_ui() {
 		}
 
 		// B - Bitboards
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_B)) {
+		if (!ctrl_down() && IsKeyPressed(KEY_B)) {
 			main_GUI._board->print_all_bitboards();
 		}
 
 		// A - Quiescence (stops the worker first, resumes after via the flag)
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_A)) {
+		if (!ctrl_down() && IsKeyPressed(KEY_A)) {
 			main_GUI.stop_compute();
 			main_GUI._root_exploration_node->quiescence(&monte_board_buffer, main_GUI._grogros_eval, main_GUI._quiescence_depth, main_GUI._alpha, main_GUI._beta);
 			main_GUI.update_snapshot(); // variants ride the snapshot now
 		}
 
 		// CTRL-T - Looks for the chess website board on screen, and starts a game
-		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_T)) {
+		if (ctrl_down() && IsKeyPressed(KEY_T)) {
 			debug_log("[key] CTRL-T pressed, probing %d sites", (int)main_GUI._chess_sites.size());
 			for (auto& site : main_GUI._chess_sites) {
 				bool located_board = locate_chessboard(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom, site);
@@ -273,7 +278,7 @@ inline int main_ui() {
 		}
 
 		// LCTRL-Q - Full binding
-		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_Q)) {
+		if (ctrl_down() && IsKeyPressed(KEY_Q)) {
 			for (auto& site : main_GUI._chess_sites) {
 				bool located_board = locate_chessboard(main_GUI._binding_left, main_GUI._binding_top, main_GUI._binding_right, main_GUI._binding_bottom, site);
 				if (located_board) {
@@ -286,7 +291,7 @@ inline int main_ui() {
 
 		// LCTRL-A - Automatic play mode (chess.com binding) -> checks the binding only on the opponent's moves
 		// This is the only place input injection is turned on: binding alone reads the board, it never clicks.
-		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_A)) {
+		if (ctrl_down() && IsKeyPressed(KEY_A)) {
 			main_GUI._binding_solo = !main_GUI._binding_solo;
 			main_GUI._click_bind = !main_GUI._click_bind;
 			input_injection_enabled = main_GUI._click_bind;
@@ -296,7 +301,7 @@ inline int main_ui() {
 		}
 
 		// LCTRL-B - Boost mode: HIGH process/thread priority
-		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_B)) {
+		if (ctrl_down() && IsKeyPressed(KEY_B)) {
 			set_boost_mode(!get_boost_mode());
 			debug_log("[key] CTRL-B boost=%d", (int)get_boost_mode());
 		}
@@ -317,7 +322,7 @@ inline int main_ui() {
 		// L - Loads the FEN from data/text.txt. LoadFileText returns NULL when
 		// the file is missing: constructing a std::string from that NULL used
 		// to crash outright.
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_L)) {
+		if (!ctrl_down() && IsKeyPressed(KEY_L)) {
 			char* file_fen = LoadFileText("data/text.txt");
 			if (file_fen == nullptr) {
 				cout << "load FEN: data/text.txt not found" << endl;
@@ -340,24 +345,24 @@ inline int main_ui() {
 		}
 
 		// I - #11 Plan A: toggles the TT in the main search (runtime A/B)
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_I)) {
+		if (!ctrl_down() && IsKeyPressed(KEY_I)) {
 			main_GUI._tt_main_search = !main_GUI._tt_main_search;
 			cout << "TT main search : " << (main_GUI._tt_main_search ? "true" : "false") << endl;
 		}
 
 		// O - #11 Plan B: toggles the transposition DAG (runtime A/B)
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_O)) {
+		if (!ctrl_down() && IsKeyPressed(KEY_O)) {
 			main_GUI._tt_node_dag = !main_GUI._tt_node_dag;
 			cout << "TT node DAG : " << (main_GUI._tt_node_dag ? "true" : "false") << endl;
 		}
 
 		// LCTRL-N - Starts a new game
-		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_N)) {
+		if (ctrl_down() && IsKeyPressed(KEY_N)) {
 			main_GUI.reset_game();
 		}
 
 		// Use of the neural network
-		// if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_N)) {
+		// if (!ctrl_down() && IsKeyPressed(KEY_N)) {
 		//     use_neural_network = !use_neural_network;
 		// }
 
@@ -387,21 +392,25 @@ inline int main_ui() {
 		}
 
 		// // Pastes the PGN from the clipboard (and loads it)
-		// if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_V)) {
+		// if (ctrl_down() && IsKeyPressed(KEY_V)) {
 		//     string pgn = GetClipboardText();
 		//     main_GUI._board->from_pgn(pgn);
 		//     cout << "loaded PGN : " << pgn << endl;
 		// }
 
 		// Q - Game analysis on chess.com
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_Q)) {
+		if (!ctrl_down() && IsKeyPressed(KEY_Q)) {
 			SetClipboardText(main_GUI._global_pgn.c_str());
 			cout << "copied PGN for analysis on chess.com : \n" << main_GUI._global_pgn << endl;
-			OpenURL("https://www.chess.com/analysis");
+			// OPTI_NO_BROWSER (set by scripts/gui_drive.ps1): log the URL instead of opening a browser
+			if (std::getenv("OPTI_NO_BROWSER") != nullptr)
+				debug_log("[url] https://www.chess.com/analysis");
+			else
+				OpenURL("https://www.chess.com/analysis");
 		}
 
 		// LCTRL-Q - Live game analysis on chess.com, by GrogrosZero
-		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_Q)) {
+		if (ctrl_down() && IsKeyPressed(KEY_Q)) {
 			main_GUI.new_bind_analysis();
 		}
 
@@ -417,19 +426,19 @@ inline int main_ui() {
 		}
 
 		// B - Creation of the buffer
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_B)) {
+		if (!ctrl_down() && IsKeyPressed(KEY_B)) {
 			cout << "available memory : " << long_int_to_round_string(get_total_system_memory()) << "b" << endl;
 			main_GUI.init_buffers();
 		}
 
 		// G - GrogrosZero (hold for inline computation)
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyDown(KEY_G)) {
+		if (!ctrl_down() && IsKeyDown(KEY_G)) {
 			main_GUI.init_buffers();
 			main_GUI.grogros_analysis(-1);
 		}
 
 		// LCTRL-G - Starts GrogrosZero in automatic search
-		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_G)) {
+		if (ctrl_down() && IsKeyPressed(KEY_G)) {
 			main_GUI.init_buffers();
 			main_GUI._grogros_analysis = true;
 		}
@@ -441,13 +450,13 @@ inline int main_ui() {
 		}
 
 		// LCTRL-H - Stops the automatic search of GrogrosZero
-		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_H)) {
+		if (ctrl_down() && IsKeyPressed(KEY_H)) {
 			main_GUI._grogros_analysis = false;
 			main_GUI.stop_compute();
 		}
 
 		// H - Shows/hides the arrows, shows/hides the controls
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_H)) {
+		if (!ctrl_down() && IsKeyPressed(KEY_H)) {
 			main_GUI.switch_arrow_drawing();
 		}
 
@@ -458,7 +467,7 @@ inline int main_ui() {
 		}
 
 		// Del - Deletes the GrogrosZero search
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_DELETE)) {
+		if (!ctrl_down() && IsKeyPressed(KEY_DELETE)) {
 			//main_GUI._board->reset_all(true, true);
 			debug_log("[key] DEL pressed");
 			main_GUI.stop_compute(); // worker first: tree surgery below is not thread-safe
@@ -472,7 +481,7 @@ inline int main_ui() {
 		}
 
 		// CTRL - Del - Deletes the Monte Carlo buffer
-		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_DELETE)) {
+		if (ctrl_down() && IsKeyPressed(KEY_DELETE)) {
 			cout << "FIXME BEFORE USING" << endl;
 
 			//main_GUI._board->reset_all(true, true);
@@ -487,7 +496,7 @@ inline int main_ui() {
 		}
 
 		// D - Prints every legal move of the position in the console
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_D)) {
+		if (!ctrl_down() && IsKeyPressed(KEY_D)) {
 			//main_GUI._draw = true;
 			main_GUI._board->display_moves();
 			monte_board_buffer.display_buffer_state();
@@ -502,7 +511,7 @@ inline int main_ui() {
 		}
 
 		// CTRL - L - Promotes the current variation to the main variation
-		if (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_L)) {
+		if (ctrl_down() && IsKeyPressed(KEY_L)) {
 			//cout << main_GUI._game_tree._current_node->_move_label << endl;
 			main_GUI._game_tree.promote_current_variation();
 			//cout << main_GUI._game_tree._current_node->_move_label << endl;
@@ -569,7 +578,7 @@ inline int main_ui() {
 		}
 
 		// P - Plays the move recommended by the GrogrosZero algorithm (June behavior)
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && !IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_P)) {
+		if (!ctrl_down() && !IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_P)) {
 			if (main_GUI._root_exploration_node->children_count() > 0)
 				((main_GUI._click_bind && main_GUI._board->click_m_move(main_GUI._root_exploration_node->get_most_explored_child_move(), main_GUI.get_board_orientation())) || true) && main_GUI.play_move_keep(main_GUI._root_exploration_node->get_most_explored_child_move());
 			else
@@ -577,17 +586,17 @@ inline int main_ui() {
 		}
 
 		// CTRL-P - Puzzle test: run current FEN, keep analysis visible, print results to console
-		if (IsKeyDown(KEY_LEFT_CONTROL) && !IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_P)) {
+		if (ctrl_down() && !IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_P)) {
 			main_GUI.run_puzzle_headless();
 		}
 
 		// LShift-P - Puzzle test with 1s budget
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_P)) {
+		if (!ctrl_down() && IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_P)) {
 			main_GUI.run_puzzle_headless(1.0);
 		}
 
 		// J - Plays the move recommended by the GrogrosZero algorithm
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && !IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_J)) {
+		if (!ctrl_down() && !IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_J)) {
 			if (main_GUI._root_exploration_node->children_count() > 0)
 				((main_GUI._click_bind && main_GUI._board->click_m_move(main_GUI._root_exploration_node->get_most_explored_child_move(), main_GUI.get_board_orientation())) || true) && main_GUI.play_move_keep(main_GUI._root_exploration_node->get_most_explored_child_move());
 			else
@@ -604,7 +613,7 @@ inline int main_ui() {
 
 		// Y/Z - Cycles forced exploration (anti-starvation round-robin): OFF -> 1024 -> 256 -> 64 -> 16 -> OFF
 		// (both physical positions: Y on QWERTY = Z on AZERTY, raylib reads positions)
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && (IsKeyPressed(KEY_Y) || IsKeyPressed(KEY_Z))) {
+		if (!ctrl_down() && (IsKeyPressed(KEY_Y) || IsKeyPressed(KEY_Z))) {
 			if (g_forced_every >= (1 << 30)) g_forced_every = 1024;
 			else if (g_forced_every == 1024) g_forced_every = 256;
 			else if (g_forced_every == 256) g_forced_every = 64;
@@ -647,7 +656,7 @@ inline int main_ui() {
 		// would otherwise replay the toggle several times per press and
 		// leave the bot state random.
 		static long long toggle_debounce_ms = 0;
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && !main_GUI.get_board_orientation()))) {
+		if (!ctrl_down() && ((IsKeyPressed(KEY_DOWN) && main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && !main_GUI.get_board_orientation()))) {
 			const long long now_toggle_ms = (long long)clock() * 1000 / CLOCKS_PER_SEC;
 			if (now_toggle_ms - toggle_debounce_ms < 400)
 				{} // repeat: ignore
@@ -675,7 +684,7 @@ inline int main_ui() {
 		}
 
 		// UP/DOWN - Enables or disables GrogrosFish for the black pieces
-		if (!IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && !main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && main_GUI.get_board_orientation()))) {
+		if (!ctrl_down() && ((IsKeyPressed(KEY_DOWN) && !main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && main_GUI.get_board_orientation()))) {
 			const long long now_toggle_ms = (long long)clock() * 1000 / CLOCKS_PER_SEC;
 			if (now_toggle_ms - toggle_debounce_ms < 400)
 				{} // repeat: ignore
@@ -703,7 +712,7 @@ inline int main_ui() {
 		}
 
 		// CTRL-UP/DOWN - Enables or disables GrogrosZero for the white pieces
-		if (IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && !main_GUI.get_board_orientation()))) {
+		if (ctrl_down() && ((IsKeyPressed(KEY_DOWN) && main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && !main_GUI.get_board_orientation()))) {
 			const long long now_toggle_ms = (long long)clock() * 1000 / CLOCKS_PER_SEC;
 			if (now_toggle_ms - toggle_debounce_ms < 400)
 				{} // repeat: ignore
@@ -731,7 +740,7 @@ inline int main_ui() {
 		}
 
 		// CTRL-UP/DOWN - Enables or disables GrogrosZero for the black pieces
-		if (IsKeyDown(KEY_LEFT_CONTROL) && ((IsKeyPressed(KEY_DOWN) && !main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && main_GUI.get_board_orientation()))) {
+		if (ctrl_down() && ((IsKeyPressed(KEY_DOWN) && !main_GUI.get_board_orientation()) || (IsKeyPressed(KEY_UP) && main_GUI.get_board_orientation()))) {
 			const long long now_toggle_ms = (long long)clock() * 1000 / CLOCKS_PER_SEC;
 			if (now_toggle_ms - toggle_debounce_ms < 400)
 				{} // repeat: ignore

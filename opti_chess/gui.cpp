@@ -490,10 +490,12 @@ void GUI::draw_exploration_arrows()
 
 // Returns the square matching a position in the GUI
 Pos GUI::get_pos_from_GUI(const float x, const float y) {
-	if (!is_in(x, _board_padding_x, _board_padding_x + _board_size) || !is_in(y, _board_padding_y, _board_padding_y + _board_size))
+	// Half-open tiles: the top/right edge pixels used to map to index 8
+	const int col = static_cast<int>(std::floor((x - _board_padding_x) / _tile_size));
+	const int row = 7 - static_cast<int>(std::floor((y - _board_padding_y) / _tile_size));
+	if (col < 0 || col > 7 || row < 0 || row > 7)
 		return Pos(-1, -1);
-	else
-		return Pos(orientation_index(8 - (y - _board_padding_y) / _tile_size), orientation_index((x - _board_padding_x) / _tile_size));
+	return Pos(orientation_index(row), orientation_index(col));
 }
 
 // Changes the orientation of the board
@@ -2359,6 +2361,10 @@ void GUI::draw()
 		+ "\n" + worker_status_text(_compute_running.load(std::memory_order_acquire),
 			_worker_blocked_full.load(std::memory_order_acquire),
 			_tree_snapshot.iterations);
+
+	// A GrogrosZero bot only moves while the clock runs: say so
+	if (!_time && (_white_player == _grogros_zero_name || _black_player == _grogros_zero_name))
+		monte_carlo_text += "\nBOT WAITS: start the clock (SPACE)";
 	
 	// If a search has happened (use snapshot for consistency; verdict =
 	// most-explored like the bench, not best-eval)
@@ -2561,28 +2567,27 @@ void GUI::reset_game() {
 	cout << "\n*** GAME RESET DONE ***" << endl;
 }
 
-// Compares two Grogros analysis arrows
+// Draw order of two Grogros analysis arrows (true: m1 is drawn first, below m2).
+// Must be a strict weak ordering for std::ranges::sort (the old version returned true
+// for unrelated or equal arrows: undefined behaviour). The most explored arrows are
+// drawn last (on top), then the longer arrows below the shorter ones.
 bool GUI::compare_arrows(const Move m1, const Move m2) const {
-
-	// If two arrows end on the same point, display the "better" move last (on top)
-	if (m1.end_row == m2.end_row && m1.end_col == m2.end_col) {
-		int n1 = 0, n2 = 0;
-		for (const auto& e : _tree_snapshot.arrows) {
-			if (e.move == m1) n1 = e.child_iterations;
-			if (e.move == m2) n2 = e.child_iterations;
-		}
+	int n1 = 0, n2 = 0;
+	for (const auto& e : _tree_snapshot.arrows) {
+		if (e.move == m1) n1 = e.child_iterations;
+		if (e.move == m2) n2 = e.child_iterations;
+	}
+	if (n1 != n2)
 		return n1 < n2;
-	}
 
-	// If the two arrows start from the same point, display the shorter one on top
-	if (m1.start_row == m2.start_row && m1.start_col == m2.start_col) {
-		const int d1 = (m1.start_row - m1.end_row) * (m1.start_row - m1.end_row) + (m1.start_col - m1.end_col) * (m1.start_col - m1.end_col);
-		const int d2 = (m2.start_row - m2.end_row) * (m2.start_row - m2.end_row) + (m2.start_col - m2.end_col) * (m2.start_col - m2.end_col);
-
+	const int d1 = (m1.start_row - m1.end_row) * (m1.start_row - m1.end_row) + (m1.start_col - m1.end_col) * (m1.start_col - m1.end_col);
+	const int d2 = (m2.start_row - m2.end_row) * (m2.start_row - m2.end_row) + (m2.start_col - m2.end_col) * (m2.start_col - m2.end_col);
+	if (d1 != d2)
 		return d1 > d2;
-	}
 
-	return true;
+	const int k1 = ((m1.start_row * 8 + m1.start_col) * 8 + m1.end_row) * 8 + m1.end_col;
+	const int k2 = ((m2.start_row * 8 + m2.start_col) * 8 + m2.end_row) * 8 + m2.end_col;
+	return k1 < k2;
 }
 
 // Returns the date in the 'yyyymmdd' format

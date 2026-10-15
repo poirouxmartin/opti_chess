@@ -75,6 +75,8 @@ foreach ($l in $rawLines) {
   $stepList.Add($l)
 }
 if (-not (Test-Path -LiteralPath $Exe)) { Write-Host "exe not found: $Exe"; exit 2 }
+# A locked workstation (LogonUI running) swallows synthetic input and screenshots
+if (Get-Process -Name 'LogonUI' -ErrorAction SilentlyContinue) { Write-Host 'desktop is locked: synthetic input cannot reach the GUI'; exit 3 }
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
 # ---------- Win32 P/Invoke (single Add-Type) ----------
@@ -125,6 +127,8 @@ $script:LogFile = Join-Path (Split-Path $Exe) 'opti_chess_debug.log'
 $script:LogStart = 0
 if (Test-Path -LiteralPath $script:LogFile) { $script:LogStart = (Get-Item -LiteralPath $script:LogFile).Length }
 
+# Never open a real browser from tests: the GUI logs "[url] ..." instead
+$env:OPTI_NO_BROWSER = '1'
 $proc = Start-Process -FilePath $Exe -WorkingDirectory (Split-Path $Exe) -PassThru
 $deadline = (Get-Date).AddSeconds(20)
 while ($true) {
@@ -225,21 +229,35 @@ function Get-VKCode([string]$name) {
   if ($named.ContainsKey($name)) { return [int]$named[$name] }
   if ($name -match '^KP([0-9])$') { return (0x60 + [int]$Matches[1]) }
   if ($name -match '^F([1-9]|1[0-2])$') { return (0x6F + [int]$Matches[1]) }
-  if ($name -match '^[A-Z]$') { return [int][char]$name }
-  if ($name -match '^[0-9]$') { return (0x30 + [int]$name) }
+  if ($name -match '^[A-Z0-9]$') { return [int][char]$name }
   throw "unknown key '$name'"
 }
 
+# raylib names letter/digit keys by their US-QWERTY position (GLFW maps scan
+# codes). On AZERTY, MapVirtualKey('A') gives the scan code of the key that
+# raylib reads as KEY_Q (Q opens chess.com), so letters/digits use fixed US scan codes.
+$US_SCAN = @{ Q = 0x10; W = 0x11; E = 0x12; R = 0x13; T = 0x14; Y = 0x15; U = 0x16; I = 0x17; O = 0x18; P = 0x19;
+              A = 0x1E; S = 0x1F; D = 0x20; F = 0x21; G = 0x22; H = 0x23; J = 0x24; K = 0x25; L = 0x26;
+              Z = 0x2C; X = 0x2D; C = 0x2E; V = 0x2F; B = 0x30; N = 0x31; M = 0x32;
+              '1' = 0x02; '2' = 0x03; '3' = 0x04; '4' = 0x05; '5' = 0x06; '6' = 0x07; '7' = 0x08; '8' = 0x09; '9' = 0x0A; '0' = 0x0B }
+
 function Send-Combo([string]$combo, [int]$holdMs) {
-  $codes = @($combo.ToUpper().Split('+') | ForEach-Object { Get-VKCode $_ })
+  $names = @($combo.ToUpper().Split('+'))
+  $codes = @($names | ForEach-Object { Get-VKCode $_ })
   $key = $codes[$codes.Count - 1]
+  $last = $names[$names.Count - 1]
   $mods = @()
   for ($i = 0; $i -lt $codes.Count - 1; $i++) { $mods += $codes[$i] }
   # GLFW maps keys by scan code: send the real one (scan 0 + extended flag
   # is unmapped, scan 0 alone turns arrows into keypad keys)
   foreach ($m in $mods) { [OptiGuiDrive.Native]::keybd_event([byte]$m, [byte][OptiGuiDrive.Native]::MapVirtualKey([uint32]$m, 0), 0, [UIntPtr]::Zero) }
   $ext = $EXTENDED_VKS -contains $key
-  $scan = [byte][OptiGuiDrive.Native]::MapVirtualKey([uint32]$key, 0)
+  if ($US_SCAN.ContainsKey($last)) {
+    $scan = [byte]$US_SCAN[$last]
+    $key = [int][OptiGuiDrive.Native]::MapVirtualKey([uint32]$scan, 1)
+  } else {
+    $scan = [byte][OptiGuiDrive.Native]::MapVirtualKey([uint32]$key, 0)
+  }
   [OptiGuiDrive.Native]::keybd_event([byte]$key, $scan, $(if ($ext) { $KEYEVENTF_EXTENDEDKEY } else { [uint32]0 }), [UIntPtr]::Zero)
   Start-Sleep -Milliseconds $holdMs
   [OptiGuiDrive.Native]::keybd_event([byte]$key, $scan, $(if ($ext) { $KEYEVENTF_EXTENDEDKEY -bor $KEYUP } else { $KEYUP }), [UIntPtr]::Zero)
