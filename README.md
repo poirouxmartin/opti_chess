@@ -14,6 +14,27 @@
 
 ---
 
+## Performance
+
+Measured on one machine on 2026-10-15 (AMD Ryzen 9 9900X, 12 cores / 24 threads, 32 GB RAM, Windows 11 build 26300, MSVC 19.51 Release `/Ox /Ob3 /fp:fast /GL /LTCG`), commit 7cb5af9. Speeds are medians of 5 interleaved runs; on this machine runs spread by about +-10 %. Node counts, perft results and the bench signature are deterministic.
+
+| benchmark | result | command |
+|---|---|---|
+| Perft, copy-make: 7 positions, 597 236 237 nodes, all equal to the [reference counts](https://www.chessprogramming.org/Perft_Results) | 65.3 M nodes/s | `opti_chess_cli perft-suite full` |
+| Perft, bulk counting at depth 1 (same positions, same counts) | 223.1 M nodes/s | `opti_chess_cli perft-suite full bulk` |
+| Search, 1 thread: 8 positions x 2000 iterations, 835 175 nodes, signature `8a8961478e14dd47` | 52 321 nodes/s | `OPTI_SEED=42 opti_chess_cli bench 2000` |
+| Search, 12 threads (separate trees), aggregate over the 100 ms puzzle run | 525 307 nodes/s | puzzle command below + `OPTI_THREADS=12` |
+| Lichess puzzles, 500 iterations each, 1 thread | 4049 / 5000 (81.0 %) | `OPTI_SEED=42 OPTI_PUZZLE_NODES=500 opti_chess_tests --gtest_filter=Puzzle.LichessBenchmark5000` |
+| Lichess puzzles, 100 ms each, 1 thread | 3636 / 5000 (72.7 %) | `OPTI_SEED=42 OPTI_PUZZLE_TIME=0.1 opti_chess_tests --gtest_filter=Puzzle.LichessBenchmark5000` |
+| Lichess puzzles, 100 ms each, 12 threads | 3596 / 5000 (71.9 %) | same + `OPTI_THREADS=12` |
+
+- A search node is a tree node with its own full evaluation (about 40 heuristic terms) and a quiescence search, so these nodes/s are not comparable with alpha-beta engines that count every make-move. The search is evaluation-bound: 78 % of the time is in `Board::evaluate`.
+- Multi-threading: 12 threads give 9x the single-thread throughput (525 307 vs 58 090 nodes/s over the two 100 ms puzzle runs) but do not solve more puzzles (3596 vs 3636, a significant loss on McNemar's test): the search is deterministic, so 12 separate trees explore nearly the same lines. A shared-tree mode solves more (3741) but has a known data race and is not counted here.
+- Gains of the last optimisation session against 59d7939: search 46 951 -> 52 321 nodes/s (+11 %, interleaved runs), 100 ms puzzles 3559 -> 3636 (puzzle-by-puzzle McNemar chi2 = 42). Every optimisation is output-exact: the 500-iteration run picks the same move in all 5000 puzzles before and after.
+- The CLI runs from `opti_chess/`, the puzzle test from the repository root (it reads `tests/lichess_5000.txt`). Step-by-step history, profiles and rejected attempts: [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
+
+---
+
 ## What is actually interesting here
 
 If you only read one section, read this one — these are the problems the project spends its time on:
@@ -255,7 +276,7 @@ CI also runs `Puzzle.LichessBenchmark5000` as a GATE-500 check, which fails if f
 
 ---
 
-## Performance and memory model
+## Performance design and memory model
 
 Search speed is the main design constraint, and it drives most of the structural choices:
 

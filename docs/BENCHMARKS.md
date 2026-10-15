@@ -165,3 +165,64 @@ for a later attempt with PGO or explicit `__forceinline` control.
 
 Night 3 kept no code change: both candidates failed the A/B. Absolute levels differ between
 sessions (machine state); compare only within a row pair measured in the same session.
+
+## Night 4 (2026-10-14/15, branch dev/perf-showcase)
+
+Same machine and protocol (clean rebuild of tests + GUI + CLI, `scripts/harness.ps1 -Full`: perft-suite full 7/7, 146 gtest, UCI smoke, bench `835175` nodes / signature `8a8961478e14dd47`; eval gtest subset `Puzzle.EvaluationSuite:Puzzle.EndgameSuite:Eval*`, 19/19). Puzzle gates on `tests/lichess_5000.txt` (`Puzzle.LichessBenchmark5000`, `OPTI_SEED=42`, run from the repo root), compared puzzle by puzzle with McNemar (significant iff chi2 > 3.84).
+
+Start of session (59d7939): harness perft 59.04 Mnps, bench 48 478 nodes/s; NODES-500 (`OPTI_PUZZLE_NODES=500`) 4049/5000 (81.0 %), 52 522 nodes/s; TIME-100 (`OPTI_PUZZLE_TIME=0.1`) 3559/5000 (71.2 %), 52 225 nodes/s.
+
+### Profile (bench 2000, 57 645 samples, VS Diagnostics CpuUsageHigh + xperf, /Zi build)
+
+| | self % | inclusive % |
+|---|---|---|
+| `Node::quiescence` | 1.2 | 91.7 |
+| `Board::evaluate` | 3.9 | 77.9 |
+| `Board::get_king_safety` | 2.7 | 26.9 |
+| `Board::get_moves` | 11.9 | 12.2 |
+| `Board::get_checks_value` | - | 11.7 |
+| `Board::get_weak_squares` | 8.0 | 8.0 |
+| `Board::get_long_term_piece_mobility` | 4.0 | 7.5 |
+| `Board::get_queen_safety` | 1.3 | 6.8 |
+| `Board::add_piece_controls` | 5.2 | 5.2 |
+| `Board::assign_move_flags` | 1.0 | 5.0 |
+| `Board::sort_moves` | 1.2 | 4.9 |
+| `Board::get_alignments` | 4.7 | 4.7 |
+
+A bench "node" is a tree node with one full evaluation and one quiescence search; the search is evaluation-bound.
+
+### Steps
+
+| step | commit | change | A/B | kept |
+|---|---|---|---|---|
+| N4-1 | b4864df | per-thread evaluation cache (2^17 direct-mapped entries) keyed by a recomputed Zobrist key, plus the halfmove clock when the fortress term reads it; a hit returns the exact stored result | bench 48 782 -> 52 112 (+6.8 %, 5/5, same binary with `OPTI_EVAL_CACHE=0` as A) | yes |
+| N4-2 | 7346715 | perft bulk counting (`perft-bulk`, `perft-suite [quick|full] bulk`): depth 1 returns the legal move count; `Perft.BulkCountingMatchesReference` | perft-suite full copy-make 59.75 / 60.27 / 56.99 vs bulk 220.05 / 219.08 / 221.63 Mnps, 7/7 both | yes (perft only) |
+| N4-3 | 1ec60fa | weak-square classification (pawn scans, 4 calls per evaluation) computed once per pawn structure, per-thread table keyed by both pawn bitboards (exact key) | bench 52 940 -> 54 714 (+3.4 %, 7/7) | yes |
+| N4-4 | - | legal moves of each side generated once per evaluation and shared by `get_checks_value` and `get_queen_safety` (4 -> 2 `get_moves` per evaluation) | v1 (array in `EvalControls`): 56 550 -> 52 524 (2/7); v2 (thread_local array): 55 026 -> 53 545 (2/9) | **no**, reverted (patch `C:\tmp\n4_shared_legal_moves_rejected.patch`) |
+| N4-5 | - | MSVC PGO (`/GENPROFILE`, training `bench 2000` + `perft-suite quick`, relink `/USEPROFILE`, 100 % of functions optimised with profile data) | bench 55 714 -> 53 372 (1/7), perft 56.93 -> 55.27 | **no** |
+
+N4-4 does strictly less work and stayed slower over two variants, the same pattern as N3-1 and N3-2; PGO did not recover it either. While writing N4-4 we found that `get_queen_safety` patched a copied board before `add_piece_controls`, but `add_piece_controls` reads `this`, so the patch never had an effect: the slider-blocking intent of that term is not implemented today (behaviour unchanged, noted for a later eval fix).
+
+All kept steps leave every search output identical: NODES-500 at 7cb5af9 gives 4049/5000 with the same chosen move in all 5000 puzzles and the same total node count (93 200 396) as at 59d7939, at 56 792 nodes/s instead of 52 522.
+
+### Parallel search (`OPTI_THREADS`, Lichess 5000, 100 ms per puzzle)
+
+| configuration | solved | aggregate nodes/s | vs 1 thread (McNemar) |
+|---|---|---|---|
+| 1 thread (1ec60fa) | 3636 (72.7 %) | 58 090 | - |
+| 12 threads, separate trees, merge on summed visits (1ec60fa) | 3235 (64.7 %) | 524 203 | -401, chi2 298 |
+| 12 threads, separate trees, merge also keeps proven mates (7cb5af9) | 3596 (71.9 %) | 525 307 | -40, chi2 8.5 |
+| 12 threads, separate trees + per-thread gamma stagger | 3584 (71.7 %) | 531 576 | -52, chi2 13.3; **rejected** |
+| 12 threads, shared tree (`OPTI_SHARED=1`) | died after 1279 puzzles, 109 `BUG: too many attacks` lines | - | data race |
+| 12 threads, shared tree + `OPTI_GAMMA_STAGGER=1` | 3741 (74.8 %) | 368 011 | +105, chi2 11.7; not published (same race) |
+
+7cb5af9 fixes the merge: workers reported only visits, while the single-thread choice also plays a terminal child that mates (the UCT loop never visits terminal children). The search is deterministic, so 12 separate trees explore nearly the same lines and the 9x throughput does not turn into solved puzzles; only the shared tree does, and it is not safe yet. In NODES mode (`bench`) the iterations are split across threads, which shrinks every tree and makes nodes/s scaling meaningless, so it is not reported.
+
+### Before / after (same interleaved session, 5 rounds, 59d7939 vs 7cb5af9)
+
+| | perft-suite full copy-make (Mnps) | perft-suite full bulk (Mnps) | bench 2000 (nodes/s) | perft | signature |
+|---|---|---|---|---|---|
+| 59d7939 | 57.07 | - | 46 951 | 7/7 | 8a8961478e14dd47 |
+| 7cb5af9 | 65.26 (4/5 ahead; copy-make code untouched this session) | 223.05 | 52 321 (+11.4 %, 5/5 ahead) | 7/7 | 8a8961478e14dd47 |
+
+Puzzles: TIME-100 3559 -> 3636 (+77, chi2 42.2, B-only 107 / A-only 30); NODES-500 4049 -> 4049 (identical).
