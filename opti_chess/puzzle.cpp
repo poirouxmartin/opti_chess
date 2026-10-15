@@ -508,6 +508,7 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
     result.chosen_move = root.get_most_explored_child_move();
     result.chosen_move_san = b.move_label(result.chosen_move);
     result.actual_eval_cp = root._static_evaluation._value;
+    result.searched_eval_cp = root._deep_evaluation._value;
     result.actual_wdl_w = root._static_evaluation._avg_score;
 
     if (p.is_eval_puzzle) {

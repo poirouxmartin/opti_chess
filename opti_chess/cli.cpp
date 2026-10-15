@@ -1,5 +1,7 @@
 #include "board.h"
 #include "puzzle.h"
+#include "exploration.h"
+#include "zobrist.h"
 #include <chrono>
 #include <iomanip>
 #include <iostream>
@@ -19,7 +21,8 @@ static int usage() {
          << "       opti_chess_cli divide <depth> [fen...]\n"
          << "       opti_chess_cli perft-suite [quick|full] [bulk]\n"
          << "       opti_chess_cli bench [iterations]\n"
-         << "       opti_chess_cli uci\n";
+         << "       opti_chess_cli uci\n"
+         << "       opti_chess_cli search <iterations> [fen...]   (OPTI_NO_DAG=1: tree mode)\n";
     return 2;
 }
 
@@ -293,7 +296,8 @@ static void cmd_go(const vector<string>& tok, const string& fen) {
     }
 
     PuzzleResult r = PuzzleRunner::run(p, mode, budget);
-    int score = white ? r.actual_eval_cp : -r.actual_eval_cp;
+    // Searched value (actual_eval_cp is the root static eval)
+    int score = white ? r.searched_eval_cp : -r.searched_eval_cp;
     long long ms = (long long)(r.time_s * 1000.0 + 0.5);
     cout << "info nodes " << r.total_nodes << " time " << ms << " score cp " << score << endl;
 
@@ -308,6 +312,86 @@ static void cmd_go(const vector<string>& tok, const string& fen) {
         }
     }
     cout << "bestmove " << best << endl;
+}
+
+// Searches a FEN like PuzzleRunner NODES mode (DAG on unless OPTI_NO_DAG) and
+// prints the SEARCHED root value (white POV), not the static eval, at 10 steps
+static int cmd_search(int argc, char** argv) {
+    if (argc < 3) return usage();
+    const int iters = atoi(argv[2]);
+    const string fen = fen_from_args(argc, argv, 3);
+    static Evaluator evaluator;
+    monte_node_buffer.init(500000, false);
+    monte_board_buffer.init(500000, false);
+    monte_node_buffer.reset();
+    monte_board_buffer.reset();
+    node_map.clear();
+    transposition_table.clear();
+    g_buffers_full_logged = false;
+    g_tt_node_dag = getenv("OPTI_NO_DAG") == nullptr;
+    g_tt_main_search = getenv("OPTI_TT_MAIN") != nullptr;
+
+    Board b;
+    b.from_fen(fen);
+    Node root(&b);
+    const double t0 = now_s();
+    int done = 0;
+    for (int step = 1; step <= 10; step++) {
+        const int target = (int)((long long)iters * step / 10);
+        if (target > done)
+            root.grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, target - done, 10, nullptr, nullptr, 0);
+        done = target;
+        const Move bm = root.get_most_explored_child_move();
+        cout << "iters " << done
+             << " ms " << (long long)((now_s() - t0) * 1000.0)
+             << " boards " << (monte_board_buffer._length - (int)monte_board_buffer._free_indices.size())
+             << " value " << root._deep_evaluation._value
+             << " best " << (bm.is_null_move() ? string("0000") : move_to_uci(b, bm))
+             << " depth " << root.get_main_depth(0.005, 5.0) << endl;
+    }
+    cout << "pv " << root.get_exploration_variants(0.005, 5.0, true, false, 60) << endl;
+
+    // OPTI_SEARCH_DUMP=1: root children, then the children of the most explored one
+    if (getenv("OPTI_SEARCH_DUMP") != nullptr) {
+        auto dump = [](Node& n, const char* tag) {
+            for (auto const& [m, link] : n._children) {
+                if (link._node == nullptr) continue;
+                Node* c = link._node;
+                cout << tag << " " << move_to_uci(*n._board, m)
+                     << " visits " << link._chosen_iterations
+                     << " stored " << c->_deep_evaluation._value
+                     << " avg " << c->_deep_evaluation._avg_score
+                     << " standpat " << c->_is_stand_pat_eval
+                     << " kids " << c->children_count() << "/" << (int)c->_board->_got_moves
+                     << " pathval " << (c->_has_path_value ? to_string(c->_path_value._value) : string("-"))
+                     << " pc " << c->_parent_count << endl;
+                cout << "   line " << c->get_exploration_variants(0.005, 5.0, true, false, 40) << endl;
+            }
+        };
+        // Origin of the root value: follow children holding the same value
+        {
+            Node* n = &root;
+            const int v = root._deep_evaluation._value;
+            for (int d = 0; d < 200 && n != nullptr; d++) {
+                Node* next = nullptr;
+                for (auto const& [m, link] : n->_children)
+                    if (link._node != nullptr && link._node->_deep_evaluation._value == v) { next = link._node; break; }
+                if (next == nullptr) {
+                    cout << "origin depth " << d << " fen " << n->_board->to_fen()
+                         << " terminal " << n->_is_terminal << " standpat " << n->_is_stand_pat_eval
+                         << " static " << n->_static_evaluation._value << " deep " << n->_deep_evaluation._value
+                         << " avg " << n->_deep_evaluation._avg_score << " qdepth " << n->_quiescence_depth
+                         << " kids " << n->children_count() << "/" << (int)n->_board->_got_moves << endl;
+                    break;
+                }
+                n = next;
+            }
+        }
+        dump(root, "root");
+        const Move bm = root.get_most_explored_child_move();
+        if (!bm.is_null_move()) dump(*root._children[bm]._node, "best");
+    }
+    return 0;
 }
 
 static int cmd_uci() {
@@ -359,5 +443,6 @@ int main(int argc, char** argv) {
     if (cmd == "perft-suite") return cmd_suite(argc, argv);
     if (cmd == "bench") return cmd_bench(argc, argv);
     if (cmd == "uci") return cmd_uci();
+    if (cmd == "search") return cmd_search(argc, argv);
     return usage();
 }

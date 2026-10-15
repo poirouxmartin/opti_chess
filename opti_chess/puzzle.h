@@ -124,6 +124,7 @@ struct PuzzleResult {
     Move chosen_move;
     string chosen_move_san;
     int actual_eval_cp = 0;
+    int searched_eval_cp = 0; // root searched value (white POV); actual_eval_cp is the static eval
     double actual_wdl_w = 0.5;
     int iterations = 0;
     int total_nodes = 0;
