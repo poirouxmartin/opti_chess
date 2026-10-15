@@ -26,6 +26,10 @@ class NodeBuffer;
 // ---------------------------------------------------------------------------
 extern bool g_search_value_propagation;
 extern bool g_search_trust_prior;
+//   g_qcheck_min_depth: quiescence looks at quiet checks only while the
+//     remaining depth is >= this (default 8 = first 3 plies of depth 10;
+//     OPTI_QCHECK_MIN_DEPTH, 0 = every depth)
+extern int g_qcheck_min_depth;
 extern bool g_search_avg_cap;
 
 // Adaptive quiescence depth: reduce depth for moves that look bad statically.

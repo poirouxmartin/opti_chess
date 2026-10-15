@@ -31,8 +31,14 @@ static int probe_fully_explored_count(const Node* n) {
 // (fresh AND persistent trees, 8-12 games x 2000 iters) scored every
 // combination of these features BELOW legacy - best combo 37.5%, worst 0%
 // (b1b54ac data). Re-enable individually after a winning match only.
-bool g_search_value_propagation = (getenv("OPTI_VALUE_PROP") != nullptr);  // negamax hygiene: re-gate post-fix (was -20% contaminated)
+// Value propagation ON by default since 2026-10-15 (after the repetition fix):
+// NODES-500 4052 -> 4070 (b=61 c=79, chi2 2.1, not significant) and the Fine #70
+// ladder steps 8/8/3p1k2/p2P1p2/P2P1P1K/8/8/8 w and 8/4k3/3p4/p2P1p2/P2P1P2/6K1/8/8 w
+// solved in 500 iterations instead of 45k / 87k. OPTI_VALUE_PROP=0 restores legacy.
+bool g_search_value_propagation = [] { const char* e = getenv("OPTI_VALUE_PROP"); return !(e && e[0] == '0'); }();
 bool g_search_trust_prior = (getenv("OPTI_TRUST_PRIOR") != nullptr);        // Bayesian prior: re-gate post-fix
+// Quiescence: quiet checks only while depth >= this (see Node::quiescence)
+int g_qcheck_min_depth = [] { const char* e = getenv("OPTI_QCHECK_MIN_DEPTH"); return e ? atoi(e) : 8; }();
 
 // Hard time deadline (see exploration.h). Sample counter is file-local.
 std::atomic<clock_t> g_search_deadline{0};
@@ -1771,7 +1777,43 @@ static int collapse_light_subtrees(Node* root, int min_iterations) {
 		to_recycle.push_back(x);
 	}
 	for (Node* x : to_recycle) recycle_detached_node(x);
-	return (int)to_recycle.size();
+	int freed = (int)to_recycle.size();
+
+	// Cycles inside a detached subtree keep their parent counts above 0 and no
+	// later reset can reach them (leak): free every active node of the arena
+	// the root no longer reaches
+	std::fill(mark.begin(), mark.end(), 0);
+	if (slot(root) >= 0) mark[slot(root)] = 1;
+	stack.assign(1, root);
+	while (!stack.empty()) {
+		Node* p = stack.back();
+		stack.pop_back();
+		for (auto const& [m, link] : p->_children) {
+			Node* c = link._node;
+			const int s = c != nullptr ? slot(c) : -1;
+			if (s < 0 || mark[s] || !c->_is_active) continue;
+			mark[s] = 1;
+			stack.push_back(c);
+		}
+	}
+	std::vector<Node*> unreachable;
+	for (int s = 0; s < length; s++) {
+		Node* x = base + s;
+		if (!mark[s] && x->_is_active && x->_buffer_index >= 0)
+			unreachable.push_back(x);
+	}
+	// Their edges die with them: a reachable child keeps an exact parent count
+	for (Node* x : unreachable) {
+		for (auto const& [m, link] : x->_children)
+			if (link._node != nullptr && link._node->_is_active) link._node->_parent_count--;
+		x->_children.clear();
+	}
+	for (Node* x : unreachable) {
+		reset_node_fields(x);
+		recycle_detached_node(x);
+	}
+	freed += (int)unreachable.size();
+	return freed;
 }
 
 // Frees about a quarter of the node arena (threshold raised x4 until enough
@@ -1786,7 +1828,9 @@ bool prune_full_arenas(Node* root) {
 	for (long long t = 4; t <= max(4LL, (long long)root->_iterations) && freed < target; t *= 4)
 		freed += collapse_light_subtrees(root, (int)min(t, (long long)INT_MAX));
 	g_pruned_nodes += freed;
-	return freed > 0;
+	// Freeing only a handful of nodes would refill at once and walk the whole
+	// tree again on every iteration: that counts as a failure (retry later)
+	return freed >= target / 8;
 }
 
 // Resets the node and its children, and deletes them all.
@@ -1802,31 +1846,19 @@ void Node::reset(bool recursive) {
 	if (recursive) {
 		// TD-011: snapshot reachability BEFORE the walk clears maps (cycle
 		// collection needs the live edge set; a post-walk traversal cannot
-		// pass walked nodes' cleared maps to reach stranded residue).
-		// Home-arena based (reset may run on another thread than the
-		// builder); skipped for non-pooled roots (cyc_home null).
-		NodeBuffer* cyc_home = (this->_buffer_index >= 0 && this->_home_nodes != nullptr)
-			? this->_home_nodes : nullptr;
-		if (cyc_home != nullptr && (!cyc_home->_init || cyc_home->_nodes == nullptr || cyc_home->_length <= 0))
-			cyc_home = nullptr;
-		std::vector<char> cyc_inR;
-		if (cyc_home != nullptr) {
-			const int CN = cyc_home->_length;
-			Node* const cbase = cyc_home->_nodes;
-			cyc_inR.assign(CN, 0);
-			if (this >= cbase && this < cbase + CN) {
-				std::vector<Node*> cst;
-				cst.push_back(this);
-				cyc_inR[(int)(this - cbase)] = 1;
-				while (!cst.empty()) {
-					Node* cur = cst.back(); cst.pop_back();
-					for (auto const& [mm, ll] : cur->_children) {
-						Node* ch = ll._node;
-						if (ch == nullptr || !ch->_is_active) continue;
-						if (ch < cbase || ch >= cbase + CN) continue;
-						int slot = (int)(ch - cbase);
-						if (!cyc_inR[slot]) { cyc_inR[slot] = 1; cst.push_back(ch); }
-					}
+		// pass walked nodes' cleared maps to reach stranded residue). Over
+		// every arena: the root may live in another arena than its tree (GUI:
+		// root in the main thread arena, tree built by the worker thread),
+		// and a reset limited to the root's arena leaked the worker's cycles.
+		std::unordered_set<Node*> pre_reach;
+		{
+			std::vector<Node*> cst{ this };
+			while (!cst.empty()) {
+				Node* cur = cst.back(); cst.pop_back();
+				for (auto const& [mm, ll] : cur->_children) {
+					Node* ch = ll._node;
+					if (ch == nullptr || !ch->_is_active || ch->_buffer_index < 0 || ch->_home_nodes == nullptr) continue;
+					if (pre_reach.insert(ch).second) cst.push_back(ch);
 				}
 			}
 		}
@@ -1883,124 +1915,87 @@ void Node::reset(bool recursive) {
 			recycle_detached_node(*it);
 		}
 
-		// TD-011 phase 2 — cycle collection. The count-gated walk above
-		// deadlocks on reference cycles (DAG back-edges via cross-branch
-		// ancestor adoption: books stay balanced so no counter ever trips,
-		// yet nothing drains; measured 20k-450k stranded nodes per DAG
-		// search+reset). BFS from root over still-active nodes reaches
-		// exactly the unprocessed residue (walked nodes have cleared maps),
-		// so this is a no-op when clean. Keep the closed subset with no
-		// live edge crossing to survivors (fixpoint) and free it with the
-		// same slot hygiene as recycling. Home-arena based (reset may run
-		// on another thread than the builder); skipped for non-pooled roots.
-		// Remainder = pre-walk reachability minus recycled. (A post-walk BFS
-		// cannot pass walked nodes' cleared maps to reach it.)
-		const int HN = (int)cyc_inR.size();
-		Node* const hbase = (cyc_home != nullptr) ? cyc_home->_nodes : nullptr;
-		std::vector<char> inR2(std::move(cyc_inR));
-		if (hbase != nullptr) {
-			for (auto* n : to_recycle) {
-				if (n != nullptr && n >= hbase && n < hbase + HN)
-					inR2[(int)(n - hbase)] = 0;
-			}
-			if (this >= hbase && this < hbase + HN) inR2[(int)(this - hbase)] = 0; // root retained by caller
-		}
-		std::vector<int> r2list;
-		r2list.reserve(1024);
-		bool any_r2 = false;
-		if (hbase != nullptr) {
-			for (int s = 0; s < HN; s++) if (inR2[s]) { r2list.push_back(s); any_r2 = true; }
-		}
-		if (any_r2) {
-				// Exact outside-incoming (single pass over live maps: root,
-				// kept trees, garbage uniformly) + R2-internal edges + reverse
-				// adjacency, all in one pass. Inactive owners contribute
-				// nothing (walked ones have cleared maps; the entry-reset
-				// inactivated the root, whose map dies at _children.clear()
-				// below anyway).
-				std::unordered_map<int, int> ext_in;
-				ext_in.reserve(r2list.size() * 2);
-				std::vector<std::pair<int, int>> iedges;
-				iedges.reserve(r2list.size() * 2);
-				std::unordered_map<int, std::vector<int>> rev;
-				rev.reserve(r2list.size() * 2);
-				for (int j = 0; j < HN; j++) {
-					Node* cand = &hbase[j];
+		// TD-011 phase 2 - cycle collection. The count-gated walk above
+		// deadlocks on reference cycles (DAG back-edges): books stay balanced
+		// so no counter ever trips, yet nothing drains. Residue = pre-walk
+		// reachability minus recycled. Keep the closed subset with no live
+		// edge crossing to survivors (fixpoint) and free it with the same
+		// slot hygiene as recycling. Referrers are searched in every arena
+		// holding residue, plus the root's.
+		for (Node* n : to_recycle) pre_reach.erase(n);
+		pre_reach.erase(this);
+		if (!pre_reach.empty()) {
+			std::unordered_set<NodeBuffer*> arenas;
+			for (Node* n : pre_reach) arenas.insert(n->_home_nodes);
+			if (_buffer_index >= 0 && _home_nodes != nullptr) arenas.insert(_home_nodes);
+			std::unordered_map<Node*, int> ext_in;
+			std::vector<std::pair<Node*, Node*>> iedges;
+			std::unordered_map<Node*, std::vector<Node*>> rev;
+			for (NodeBuffer* a : arenas) {
+				if (a == nullptr || !a->_init || a->_nodes == nullptr) continue;
+				for (int j = 0; j < a->_length; j++) {
+					Node* cand = &a->_nodes[j];
 					if (!cand->_is_active || cand->_children.empty()) continue;
+					const bool cand_in = pre_reach.count(cand) > 0;
 					for (auto const& [mm, ll] : cand->_children) {
 						Node* t = ll._node;
-						if (t == nullptr || !t->_is_active) continue;
-						if (t < hbase || t >= hbase + HN) continue;
-						int ts = (int)(t - hbase);
-						if (!inR2[ts]) continue;
-						if (inR2[j]) { iedges.emplace_back(j, ts); rev[ts].push_back(j); }
-						else ext_in[ts]++;
+						if (t == nullptr || !t->_is_active || pre_reach.count(t) == 0) continue;
+						if (cand_in) { iedges.emplace_back(cand, t); rev[t].push_back(cand); }
+						else ext_in[t]++;
 					}
 				}
-				// Queue-cascade closed set: drop members touching survivors.
-				std::unordered_set<int> dropped;
-				dropped.reserve(r2list.size() * 2);
-				std::vector<int> q;
-				auto drop = [&](int s) {
-					if (dropped.insert(s).second) q.push_back(s);
-				};
-				for (int s : r2list) {
-					if (ext_in[s] > 0) { drop(s); continue; }
-					Node* m = &hbase[s];
-					for (auto const& [mm, ll] : m->_children) {
-						Node* t = ll._node;
-						if (t == nullptr || !t->_is_active) continue;
-						if (t < hbase || t >= hbase + HN) continue;
-						if (!inR2[(int)(t - hbase)]) { drop(s); break; }
-					}
-				}
-				while (!q.empty()) {
-					int s = q.back(); q.pop_back();
-					auto it = rev.find(s);
-					if (it != rev.end()) for (int r : it->second) {
-						if (inR2[r] && !dropped.count(r)) drop(r);
-					}
-					Node* ms = &hbase[s];
-					for (auto const& [mm, ll] : ms->_children) {
-						Node* t = ll._node;
-						if (t == nullptr || !t->_is_active) continue;
-						if (t < hbase || t >= hbase + HN) continue;
-						int ts = (int)(t - hbase);
-						if (inR2[ts] && !dropped.count(ts)) drop(ts);
-					}
-				}
-				auto collected = [&](int s) { return inR2[s] && !dropped.count(s); };
-				// Survivor bookkeeping: edges from collected members vanish
-				// with them, so decrement survivor counts (else they strand
-				// later on stale +1s).
-				for (auto const& [a, b2] : iedges) {
-					if (!collected(a)) continue;
-					Node* t = &hbase[b2];
-					if (!t->_is_active || collected(b2)) continue;
-					t->_parent_count--;
-				}
-				// Free the closed set (mirror recycle_detached_node hygiene).
-				long long ncoll = 0;
-				for (int s : r2list) {
-					if (!collected(s)) continue;
-					Node* m = &hbase[s];
-					if (g_tt_node_dag && m->_board != nullptr) {
-						const auto it = node_map.find(m->_board->_zobrist_key);
-						if (it != node_map.end() && it->second == m) node_map.erase(it);
-					}
-					Board* b = m->_board;
-					if (b != nullptr && b->_buffer_index >= 0 && b->_home_boards != nullptr && !b->_home_boards->_bulk_resetting)
-						b->_home_boards->free_index(b->_buffer_index);
-					m->_is_active = false;
-					if (b != nullptr) b->_is_active = false;
-					m->_mtx.clear(std::memory_order_relaxed);
-					if (s >= 0 && m->_buffer_index >= 0 && m->_home_nodes != nullptr && !m->_home_nodes->_bulk_resetting)
-						m->_home_nodes->free_index(m->_buffer_index);
-					ncoll++;
-				}
-				if (ncoll > 0)
-					cout << "[reset] cycle-collected " << ncoll << " nodes" << endl;
 			}
+			// Queue-cascade closed set: drop members touching survivors.
+			std::unordered_set<Node*> dropped;
+			std::vector<Node*> q;
+			auto drop = [&](Node* n) { if (dropped.insert(n).second) q.push_back(n); };
+			for (Node* n : pre_reach) {
+				const auto e = ext_in.find(n);
+				if (e != ext_in.end() && e->second > 0) { drop(n); continue; }
+				for (auto const& [mm, ll] : n->_children) {
+					Node* t = ll._node;
+					if (t == nullptr || !t->_is_active) continue;
+					if (pre_reach.count(t) == 0) { drop(n); break; }
+				}
+			}
+			while (!q.empty()) {
+				Node* n = q.back(); q.pop_back();
+				const auto it = rev.find(n);
+				if (it != rev.end()) for (Node* r : it->second) drop(r);
+				for (auto const& [mm, ll] : n->_children) {
+					Node* t = ll._node;
+					if (t == nullptr || !t->_is_active || pre_reach.count(t) == 0) continue;
+					drop(t);
+				}
+			}
+			auto collected = [&](Node* n) { return pre_reach.count(n) > 0 && dropped.count(n) == 0; };
+			// Survivor bookkeeping: edges from collected members vanish with them
+			for (auto const& [a, b2] : iedges) {
+				if (!collected(a)) continue;
+				if (!b2->_is_active || collected(b2)) continue;
+				b2->_parent_count--;
+			}
+			// Free the closed set (mirror recycle_detached_node hygiene).
+			long long ncoll = 0;
+			for (Node* m : pre_reach) {
+				if (!collected(m)) continue;
+				if (g_tt_node_dag && m->_board != nullptr) {
+					const auto it = node_map.find(m->_board->_zobrist_key);
+					if (it != node_map.end() && it->second == m) node_map.erase(it);
+				}
+				Board* b = m->_board;
+				if (b != nullptr && b->_buffer_index >= 0 && b->_home_boards != nullptr && !b->_home_boards->_bulk_resetting)
+					b->_home_boards->free_index(b->_buffer_index);
+				m->_is_active = false;
+				if (b != nullptr) b->_is_active = false;
+				m->_mtx.clear(std::memory_order_relaxed);
+				if (m->_buffer_index >= 0 && m->_home_nodes != nullptr && !m->_home_nodes->_bulk_resetting)
+					m->_home_nodes->free_index(m->_buffer_index);
+				ncoll++;
+			}
+			if (ncoll > 0)
+				cout << "[reset] cycle-collected " << ncoll << " nodes" << endl;
+		}
 	}
 
 	_children.clear();
@@ -2515,9 +2510,14 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	// Capture-only local (no shared mutation)
 	Move q_moves[max_moves];
 	int q_count = 0;
+	// Quiet checks only while depth >= OPTI_QCHECK_MIN_DEPTH (default 8: the first
+	// three plies of the usual depth-10 quiescence; 0 = at every depth). Chained
+	// quiet checks blew quiescence up once queens were on the board. 2026-10-15:
+	// TIME-100 3665 -> 3846/5000 (b=94 c=275, chi2 87.8); NODES-500 alone 4052 -> 4016.
+	const bool quiet_checks = depth >= g_qcheck_min_depth;
 	for (int _qi = 0; _qi < _board->_got_moves; ++_qi) {
 		const Move &qm = _board->_moves[_qi];
-		if (in_check || qm.is_capture() || qm.is_promotion() || qm.is_check() || qm.is_checkmate()) q_moves[q_count++] = qm;
+		if (in_check || qm.is_capture() || qm.is_promotion() || qm.is_checkmate() || (quiet_checks && qm.is_check())) q_moves[q_count++] = qm;
 	}
 	// Look at every capture
 	for (int i = 0; i < q_count; i++) {

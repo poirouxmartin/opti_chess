@@ -3969,6 +3969,10 @@ TEST(GUI, DisplayEvalPrefersBestScore) {
 // Dxh7 is not the most-visited move. Deterministic: NODES budget + OPTI_SEED.
 TEST(Puzzle, Dxh7MateAnnounced) {
 	static Evaluator evaluator;
+	// This test is about the header announcing a mate that the search found.
+	// The #7 runs on quiet checks: with the default quiet-check limit
+	// (g_qcheck_min_depth 8) it is found after ~100k iterations, not 20k.
+	struct AllChecks { int saved = g_qcheck_min_depth; AllChecks() { g_qcheck_min_depth = 0; } ~AllChecks() { g_qcheck_min_depth = saved; } } all_checks;
 	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
 	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
 	monte_board_buffer.reset(); monte_node_buffer.reset();
@@ -6787,6 +6791,52 @@ TEST(Puzzle, OFFvsDAG_Puzzles) {
 	cout << "  DELTA  | " << (diff >= 0 ? "+" : "") << diff << " puzzles" << endl;
 
 	EXPECT_GT(off_solved, 0);
+}
+
+// Fine #70 (Lasker-Reichhelm) worked backwards from the end of the winning line
+// (Tests.txt:1822-1825, 901-904): the easy steps must be solved within a small
+// budget (same search as opti_chess_cli solve: DAG on, 500 iteration chunks).
+// The harder steps (Kf3, Ke3, Kd3, the start 1.Kb1) are measured with
+// opti_chess_cli solve and recorded in docs/BENCHMARKS.md.
+TEST(Endgame, Fine70LadderEasySteps) {
+	static Evaluator evaluator;
+	// Same pools as the other tests (resizing them here shrank the arenas of
+	// every later test)
+	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
+	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+
+	struct Step { const char* fen; const char* expected; int max_iters; };
+	const Step steps[] = {
+		{ "8/8/3p1k2/p2P1p2/P2P1P1K/8/8/8 w - - 20 11", "h4h5", 2000 },
+		{ "8/4k3/3p4/p2P1p2/P2P1P2/6K1/8/8 w - - 18 10", "g3h4", 2000 },
+	};
+	auto uci = [](const Move& m) {
+		string s;
+		s += char('a' + m.start_col); s += char('1' + m.start_row);
+		s += char('a' + m.end_col); s += char('1' + m.end_row);
+		return s;
+	};
+	const bool prev_dag = g_tt_node_dag;
+	g_tt_node_dag = true;
+	for (const Step& st : steps) {
+		monte_node_buffer.reset();
+		monte_board_buffer.reset();
+		node_map.clear();
+		transposition_table.clear();
+		Board b;
+		b.from_fen(st.fen);
+		Node root(&b);
+		for (int done = 0; done < st.max_iters; done += 500)
+			root.grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 500, 10, nullptr, nullptr, 0);
+		const Move best = root.get_most_explored_child_move();
+		EXPECT_EQ(uci(best), st.expected) << st.fen;
+		EXPECT_GT(root._deep_evaluation._value * b.get_color(), 50) << st.fen;
+		recycle_detached_node(&root);
+	}
+	g_tt_node_dag = prev_dag;
+	monte_node_buffer.reset();
+	monte_board_buffer.reset();
+	node_map.clear();
 }
 
 	TEST(Puzzle, OFFvsDAG_Endgame) {
