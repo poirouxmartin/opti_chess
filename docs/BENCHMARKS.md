@@ -252,3 +252,16 @@ Non-regression: `Puzzle.LichessBenchmark5000` NODES-500 SEED-42 4052/5000 vs 404
 (`build/bench_bin/nodes500_full.csv`), b=17 c=20, McNemar chi2=0.11 (not significant).
 `bench 2000`: 832 192 nodes, new signature `e5cc2d99503b0425`, 56 044 nodes/s (single run, no
 A/B; the speed comparison belongs to the optimisation pass).
+
+### Pruning full arenas (same day)
+
+Once an arena was full the search only refined the existing tree: values stopped improving
+(Fine #70 +635 at 40k iterations, +67 at 300k). The search root now collapses the subtrees of
+rarely visited nodes (visit threshold x4 until a quarter of the node arena is free); a collapsed
+node keeps its value and can be expanded again. `OPTI_NO_PRUNE=1` restores refine-only.
+
+`search 300000` Fine #70: with pruning the value reaches +1283..+1334 (PV queens the a-pawn)
+between 120k and 210k iterations, then settles at +450 (root plays Ka2); without it, +67 (Kb2).
+Pruning costs time once the arena is full (expansions instead of refines): 278 s vs 42 s for
+the 300k iterations. Draws stay 0 (`6k1/8/7P/7K/8/8/8/8 w`, rook desperado, perpetual).
+`bench 2000` and NODES-500 never fill the arena: signature `e5cc2d99503b0425` unchanged.
