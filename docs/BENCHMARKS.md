@@ -308,3 +308,44 @@ unchanged signature are kept on a 5/7 majority.
 3. Lighter nodes: `Board::_moves[100]` (300 B) and three `Evaluation` per `Node` dominate the
    arena entry; moves in a separate pool would at least double the arena capacity.
 4. Incremental evaluation (or an NNUE-style network) once the terms are bitboard-based.
+
+## Fine #70 ladder (2026-10-15/16, main)
+
+Lasker-Reichhelm 1901, worked backwards from the end of the winning line (Tests.txt:1822-1825,
+901-904). `opti_chess_cli solve <max> <moves> 50 <fen>`: first 500-iteration chunk from which the
+most explored root move is an expected one with value >= +50, held until 100k iterations.
+
+| step | FEN | expected | before (legacy backup, all quiet checks) | after (value propagation + quiet checks in the first 3 quiescence plies) |
+|---|---|---|---|---|
+| S1 | `8/8/3p1k2/p2P1p2/P2P1P1K/8/8/8 w - - 20 11` | Kh5 | 45 000 it, 5.5 s | 500 it, 16 ms |
+| S2 | `8/4k3/3p4/p2P1p2/P2P1P2/6K1/8/8 w - - 18 10` | Kh4 | not in 100k (Kf2) | 500 it, 12 ms |
+| S4 | `8/2k5/3p4/p2P1p2/P2P1P2/4K3/8/8 w - - 14 8` | Kf2/Kf3 | not in 100k | not in 100k (Kd3) |
+| S5 | `8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7` | Ke3/Ke2 | not in 100k | not in 100k (Kd2); tree mode 11 000 it |
+| S6 | `8/2k5/3p4/p2P1p2/P2P1P2/8/3K4/8 w - - 10 6` | Kd3 | not in 100k | not in 100k |
+| S7 | `8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1` | Kb1 | not in 100k (Kb2) | Kb1 from 13 500 it (1.7 s) at 20k, Kb2 again at 100k |
+
+`Endgame.Fine70LadderEasySteps` checks S1 and S2 within 2000 iterations.
+
+Causes found on the way:
+- The legacy backup ranks children by the softmax score (value and WDL mixed), not by value: under
+  the DAG it made S2 take 87 500 iterations instead of 500 (`OPTI_VALUE_PROP=1`).
+- Quiescence considered quiet checks at every depth: once queens appear it chained checks (up to
+  68 quiescence nodes per iteration on S4, 1.36M entries for 20k iterations).
+- Arena pruning reported success after freeing a handful of nodes and then walked the whole tree on
+  every iteration; it also left cycles that no reset could reach, and `Node::reset` collected cycles
+  only in the root's own arena (GUI: root in the main thread arena, tree built by the worker).
+
+Gates (`Puzzle.LichessBenchmark5000`, SEED-42, McNemar vs the previous default):
+
+| setting | NODES-500 | TIME-100 |
+|---|---|---|
+| previous default | 4052 | 3636 (night 4 reference) |
+| value propagation | 4070 (b=61 c=79, chi2 2.1) | 3665 |
+| quiet checks limited (qcheck 8) | 4016 (b=67 c=31, chi2 12.5, worse) | - |
+| both (new default) | 4024 (b=109 c=81, chi2 3.84) | **3846 (vs value propagation alone: b=94 c=275, chi2 87.8)** |
+
+At equal nodes the check limit loses puzzles; at equal time it wins clearly (40 % less work per
+node). Known cost: the Lasker mate `rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 0 1`
+(Qxh7+, mate in 7 through quiet checks) needs about 100k iterations instead of 20k
+(`Puzzle.Dxh7MateAnnounced` runs with `g_qcheck_min_depth = 0`). `bench 2000`: 701 866 nodes,
+signature `469254f17b2357bb`.
