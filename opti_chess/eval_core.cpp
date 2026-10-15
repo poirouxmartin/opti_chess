@@ -15,6 +15,9 @@
 #include <utility>
 #include <iomanip>
 #include <vector>
+
+thread_local int g_fortress_half_moves = -1;
+
 void Board::game_advancement() {
 	if (_advancement)
 		return;
@@ -130,9 +133,9 @@ uint64_t Board::eval_cache_key(const Evaluator* evaluator) const {
 	if (_player == 1)
 		key ^= zobrist._player_key;
 
-	// Le terme de forteresse lit le compteur de demi-coups
+	// Le terme de forteresse lit le compteur de demi-coups (celui de la racine en recherche)
 	if (evaluator->_push != 0.0f)
-		key ^= (static_cast<uint64_t>(_half_moves_count) + 1) * 0x9E3779B97F4A7C15ull;
+		key ^= (static_cast<uint64_t>(fortress_half_moves()) + 1) * 0x9E3779B97F4A7C15ull;
 
 	return key;
 }
@@ -749,7 +752,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Forteresse
 	if (evaluator->_push != 0.0f) {
-		const float push = 1 - static_cast<float>(_half_moves_count) * evaluator->_push / max_half_moves;
+		const float push = 1 - static_cast<float>(fortress_half_moves()) * evaluator->_push / max_half_moves;
 		const int fortress = 100.0f - push * 100.0f;
 		const int fortress_value = eval->_value * (push - 1);
 		if (display)

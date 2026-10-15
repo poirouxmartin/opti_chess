@@ -122,6 +122,21 @@ struct DagExcl {
 	}
 };
 
+// #11 repetition under the DAG (graph history interaction). A repetition is
+// path-local: a child whose position is already on the current search path
+// is scored as a draw FOR THIS PATH, in selection and in both backups. Shared
+// nodes only store what does not depend on the path above them: a value is
+// stored when every repetition it used repeats the node itself or a position
+// below it. The path-local value goes up the recursion in a BackupResult.
+// dep = shallowest search ply (0 = root, -1 = game history before the root)
+// of a repeated position the value depends on; INT_MAX = path-independent.
+struct BackupResult {
+	Evaluation value;
+	int dep = INT_MAX;
+	uint64_t dep_key = 0; // key of the repeated position at ply dep
+	bool set = false;
+};
+
 // Stack-allocated move score list replacing robin_map<Move, double>.
 // Zero heap allocation; O(n) lookup is fine for ~30 children.
 struct MoveScoreList {
@@ -237,6 +252,15 @@ public:
 	// The evaluation value is the stand pat
 	bool _is_stand_pat_eval = true;
 
+	// #11 repetition: last value of this node that depended on a position above
+	// it (a repetition of _path_dep_key scored as a draw), computed with the set
+	// of path positions hashed in _path_sig. Reused only for that same set
+	// (see path_child_eval / BackupResult).
+	bool _has_path_value = false;
+	uint64_t _path_dep_key = 0;
+	uint64_t _path_sig = 0;
+	Evaluation _path_value;
+
 	// Whether it is active in the buffer
 	bool _is_active = false;
 
@@ -284,13 +308,18 @@ public:
 	void init_node();
 
 	// New GrogrosZero
-	void grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int nodes, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, const clock_t max_time = 0);
+	void grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double alpha, const double beta, const double gamma, int nodes, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, const clock_t max_time = 0, BackupResult* out = nullptr);
 
 	// Explores a new move
-	void explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr);
+	void explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, BackupResult* out = nullptr);
 
 	// Explores a pseudo-random child board
-	void explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, DagExcl* dag_excl = nullptr, Move forced = Move());
+	void explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network = nullptr, PositionHistory *path_history = nullptr, DagExcl* dag_excl = nullptr, Move forced = Move(), BackupResult* out = nullptr);
+
+	// Backs up this node's value from its children for the current path
+	// (repetition children = draw, `over` replaces the descended child's value)
+	// Returns the chosen move (null = stand pat kept)
+	Move backup_value(double alpha, double beta, bool consider_standpat, const PositionHistory* path, const Move& over_move, const BackupResult* over, BackupResult* out);
 
 	// Returns the most explored child move
 	Move get_most_explored_child_move();
@@ -334,16 +363,18 @@ public:
 	void evaluate_position(Evaluator* evaluator, bool display = false, Network* network = nullptr, bool game_over_check = true, bool static_only = false);
 
 	// Returns a pseudo-random child node (depending on the evaluations and the node count)
-	Move pick_random_child(const double alpha, const double beta, const double gamma, const DagExcl* dag_excl = nullptr);
+	Move pick_random_child(const double alpha, const double beta, const double gamma, const DagExcl* dag_excl = nullptr, const PositionHistory* path = nullptr);
 
 	// Returns the score of a move. Alpha raises the weight of the evaluation, beta raises the weight of the win rate
-	MoveScoreList get_move_scores(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100, int precomputed_max_eval = INT_MIN, double precomputed_max_avg_score = 0.0) const;
+	// (path: children repeating a position of the search path are scored as draws)
+	MoveScoreList get_move_scores(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100, int precomputed_max_eval = INT_MIN, double precomputed_max_avg_score = 0.0, const PositionHistory* path = nullptr) const;
 
 	// Returns the value of the node
 	double get_node_score(const double alpha, const double beta, const int max_eval, const double max_avg_score, const bool player, Evaluation *custom_eval = nullptr) const;
 
 	// Returns the move with the best score
-	Move get_best_score_move(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100);
+	// (path / over_move+over_eval: same per-path substitutions as backup_value)
+	Move get_best_score_move(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100, const PositionHistory* path = nullptr, const Move& over_move = Move(), const Evaluation* over_eval = nullptr, int min_dep_ply = INT_MIN);
 
 	// Returns a forecast value of the node score, when the maximum evaluations are unknown (for the quiescence)
 	int get_previsonal_node_score(const double alpha, const double beta, const bool player) const;

@@ -23,6 +23,9 @@ constexpr enum piece_type { none = 0, w_pawn = 1, w_knight = 2, w_bishop = 3, w_
 // Number of half-moves before the game is declared drawn
 constexpr uint8_t max_half_moves = 100;
 
+// Search root half-move clock for the fortress term (-1: none, use the board's)
+extern thread_local int g_fortress_half_moves;
+
 // Maximum number of stored moves per position (TD-004: deliberate memory diet).
 // Sharp promotion-storm positions can legally exceed 100 (record 218);
 // beyond the cap add_move() silently drops moves (accepted risk, see docs/AUDIT.md:
@@ -655,6 +658,12 @@ public:
 
 	// Number of half-moves (since the last pawn move or capture, and reset to zero on each of those)
 	uint8_t _half_moves_count = 0;
+
+	// Half-move clock read by the fortress term: the search root's clock while
+	// a search runs (g_fortress_half_moves >= 0). The clock is not in the
+	// Zobrist key, so a shared (transposed) node must not be evaluated with the
+	// clock of whichever path reached it first.
+	int fortress_half_moves() const { return g_fortress_half_moves >= 0 ? g_fortress_half_moves : _half_moves_count; }
 
 	// Number of moves of the game
 	uint_fast16_t _moves_count = 1;
