@@ -265,3 +265,46 @@ between 120k and 210k iterations, then settles at +450 (root plays Ka2); without
 Pruning costs time once the arena is full (expansions instead of refines): 278 s vs 42 s for
 the 300k iterations. Draws stay 0 (`6k1/8/7P/7K/8/8/8/8 w`, rook desperado, perpetual).
 `bench 2000` and NODES-500 never fill the arena: signature `e5cc2d99503b0425` unchanged.
+
+## Single-thread pass (2026-10-15, after the repetition fix)
+
+### Diagnosis
+
+Profile of `bench 2000` (VS Diagnostics CpuUsageHigh + xperf, `/Zi` + `/DEBUG` through `CL` /
+`_LINK_`, 53 966 samples in the CLI module): `Node::quiescence` 90.6 % inclusive,
+`Board::evaluate` 75.5 %, `get_king_safety` 25.8 %, `get_moves` 11.9 % (11.6 % self),
+`get_checks_value` 11.9 %, `get_long_term_piece_mobility` 7.6 %, `get_queen_safety` 7.3 %,
+`add_piece_controls` 5.9 %, `sort_moves` 5.5 %, `get_pawn_structure` 5.2 %, `assign_move_flags`
+5.2 %, `move_may_give_check` 4.7 %, then about 15 eval terms at 2-4 % self each. No single
+hot spot: the evaluation is a long list of array-scanning terms.
+
+Quiescence census (`OPTI_QSTATS=1 opti_chess_cli bench 2000`, now printed by the bench):
+874 990 entries, 818 612 full static evaluations (94 %); exits: stand-pat cutoff 246 337 (28 %),
+cutoff after a move 247 196, full loop 247 045, depth exhausted 88 154, TT 44 516. Time: eval
+12 s, node init (move generation, flags, sort) 2 s, of about 16 s. A bench "node" is one full
+evaluation at about 15 us: 1M nodes/s needs about 1 us per node, out of reach of any tuning of
+this evaluation (see the roadmap below).
+
+### Steps (A/B `scripts/perf_compare.ps1`, 7 interleaved rounds, medians)
+
+| change | bench nodes/s A -> B | perft Mnps A -> B | signature | verdict |
+|---|---|---|---|---|
+| `init_node` flagged every move twice (`assign_all_move_flags`, then again in `sort_moves`): one pass | 53 714 -> 55 088 (+2.6 %, 5/7) | 61.4 -> 63.1 (6/7) | unchanged | **kept** |
+| `/arch:AVX2` | 54 113 -> 55 887 (+3.3 %, 5/7) | 60.1 -> 62.7 (5/7) | changed (FMA rounding) | no: noise level, would need the puzzle gate |
+| defer move flags + sort in quiescence past the stand-pat / depth / TT exits | - | - | changed twice (the flag pass's `reset_eval` and trial moves feed the eval and the sort's raw `_adv`) | no: not exact |
+| eval cache 2^17 -> 2^20 entries | 54 352 -> 54 746 (+0.7 %, 4/7) | 60.3 -> 60.4 | unchanged | no: noise, +40 MB |
+
+Noise on this machine is about +-5 % per run; only steps that do strictly less work with an
+unchanged signature are kept on a 5/7 majority.
+
+### Roadmap towards 1M nodes/s (not started)
+
+1. Attack maps from magic bitboards computed once per evaluation (both sides, x-rays), and every
+   term (mobility, controls, king attackers/defenders, alignments, safe checks, queen safety)
+   reading them instead of scanning `_array`. `get_checks_value` and `get_queen_safety` alone run
+   up to four legal move generations per evaluation. Changes the evaluation: McNemar gate.
+2. Lazy evaluation in quiescence: material + PST first, full evaluation only near the window
+   (28 % of quiescence nodes cut on the stand pat).
+3. Lighter nodes: `Board::_moves[100]` (300 B) and three `Evaluation` per `Node` dominate the
+   arena entry; moves in a separate pool would at least double the arena capacity.
+4. Incremental evaluation (or an NNUE-style network) once the terms are bitboard-based.
