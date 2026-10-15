@@ -1,0 +1,42 @@
+# FEN paste, en passant (also after DEL), promotion picker, history after a FEN load.
+wait 1500
+clip rnbqkbnr/ppp1pppp/8/8/3p4/8/PPPPPPPP/RNBQKBNR w KQkq - 0 3
+key V
+expect_fen rnbqkbnr/ppp1pppp/8/8/3p4/8/PPPPPPPP/RNBQKBNR w KQkq -
+drag e2 e4
+expect_fen rnbqkbnr/ppp1pppp/8/8/3pP3/8/PPPP1PPP/RNBQKBNR b KQkq e3
+drag d4 e3
+expect_fen rnbqkbnr/ppp1pppp/8/8/8/4p3/PPPP1PPP/RNBQKBNR w KQkq -
+key LEFT
+expect_fen rnbqkbnr/ppp1pppp/8/8/3pP3/8/PPPP1PPP/RNBQKBNR b KQkq e3
+key DEL
+drag d4 e3
+expect_fen rnbqkbnr/ppp1pppp/8/8/8/4p3/PPPP1PPP/RNBQKBNR w KQkq -
+key LEFT
+key LEFT
+expect_fen rnbqkbnr/ppp1pppp/8/8/3p4/8/PPPPPPPP/RNBQKBNR w KQkq -
+key LEFT
+expect_fen rnbqkbnr/ppp1pppp/8/8/3p4/8/PPPPPPPP/RNBQKBNR w KQkq -
+# White promotion: picker tiles from a8 downward are Q R B N
+clip 8/P6k/8/8/8/8/6K1/8 w - - 0 1
+key V
+drag a7 a8
+click a6
+expect_fen B7/7k/8/8/8/8/6K1/8 b - -
+# Black promotion: tiles from a1 upward are Q R B N
+clip 8/7k/8/8/8/8/p5K1/8 b - - 0 1
+key V
+drag a2 a1
+click a4
+expect_fen 8/7k/8/8/8/8/6K1/n7 w - -
+# Flipped board: same black promotion, click-click, picks the rook
+key F
+clip 8/7k/8/8/8/8/p5K1/8 b - - 0 1
+key V
+click a2
+click a1
+click a2
+expect_fen 8/7k/8/8/8/8/6K1/r7 w - -
+key F
+alive
+shot fen_ep_promo

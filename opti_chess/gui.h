@@ -611,6 +611,11 @@ public:
 	// Removes the last move from the PGN
 	bool remove_last_move_PGN();
 
+	// Logs the board geometry ("[geom] ...") and the live position ("[pos] <tag> fen=..."):
+	// scripts/gui_drive.ps1 maps squares and asserts on them
+	void log_geometry() const;
+	void log_position(const char* tag) const;
+
 	// Draws the arrows from the values of the Monte Carlo algorithm
 	//void draw_monte_carlo_arrows();
 

@@ -1,0 +1,60 @@
+# Engine analysis, arrow clicks, bot play, game over, resize/minimize, misc keys.
+wait 2000
+key CTRL+G
+wait 4000
+expect_log iter=
+shot analysis
+# Arrow clicks: arrows end on these squares at the start position
+click e4
+wait 1500
+click e5
+wait 1500
+click f3
+wait 1500
+alive
+key J
+wait 1000
+key CTRL+H
+wait 1000
+expect_log exit iters=
+# Bot: GrogrosZero plays White, clock started
+key CTRL+N
+key CTRL+DOWN
+key SPACE
+wait 10000
+expect_log \[pos\] move
+key CTRL+DOWN
+key SPACE
+alive
+# Game over with continuous analysis on (mated position)
+key CTRL+G
+clip rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3
+key V
+wait 3000
+expect_log \[gameover\]
+key CTRL+H
+alive
+# Window
+resize 600 400
+resize 1400 900
+resize 200 150
+resize 1200 800
+minimize
+wait 1500
+restore
+alive
+shot after_resize
+# Misc keys
+key CTRL+N
+key A
+key ENTER
+key D
+key E
+key W
+key Y
+key Y
+key Y
+key Y
+key Y
+alive
+expect_nolog TIMEOUT|CRITICAL

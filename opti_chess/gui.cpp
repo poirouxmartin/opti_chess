@@ -499,6 +499,21 @@ Pos GUI::get_pos_from_GUI(const float x, const float y) {
 // Changes the orientation of the board
 void GUI::switch_orientation() {
 	_board_orientation = !_board_orientation;
+	log_geometry();
+}
+
+// Logs the board geometry: scripts/gui_drive.ps1 maps squares to pixels with it
+void GUI::log_geometry() const {
+	debug_log("[geom] w=%d h=%d pad_x=%.1f pad_y=%.1f tile=%.1f orient=%d",
+		_screen_width, _screen_height, _board_padding_x, _board_padding_y, _tile_size, (int)_board_orientation);
+}
+
+// Logs the live position (and the geometry: orientation can follow the position)
+void GUI::log_position(const char* tag) const {
+	if (!_board)
+		return;
+	log_geometry();
+	debug_log("[pos] %s fen=%s", tag, _board->to_fen().c_str());
 }
 
 // Helper for the board display (returns i if board_orientation is set, 7 - i otherwise)
@@ -736,6 +751,8 @@ void GUI::resize_GUI() {
 		ImageResize(&mini_piece_image, _mini_piece_size, _mini_piece_size);
 		_mini_piece_textures[i] = LoadTextureFromImage(mini_piece_image);
 	}
+
+	log_geometry();
 }
 
 // Applies the new dimensions of the window
@@ -1198,6 +1215,7 @@ bool GUI::play_move_keep(Move move)
 		_tree_snapshot.arrows.clear();
 	}
 
+	log_position("move");
 	return true;
 }
 
@@ -2434,6 +2452,7 @@ void GUI::load_FEN(const string fen, bool display) {
 	_tree_snapshot.valid = false;
 	_tree_snapshot.arrows.clear();
 	update_global_pgn();
+	log_position("load");
 
 	if (display)
 		cout << "loaded FEN : " << fen << endl;
@@ -2510,6 +2529,7 @@ void GUI::reset_game() {
 	_tree_snapshot.arrows.clear();
 
 	debug_log("[reset_game] done root=%p board=%p", (void*)_root_exploration_node, (void*)_board);
+	log_position("reset");
 	PlaySound(_game_begin_sound);
 
 	cout << "\n*** GAME RESET DONE ***" << endl;

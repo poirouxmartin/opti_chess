@@ -115,6 +115,7 @@ bool GameTree::select_previous_node() {
 
 		// Refresh the display
 		main_GUI._pgn = tree_display();
+		main_GUI.log_position("back");
 	}
 
 	return can_go_back;
