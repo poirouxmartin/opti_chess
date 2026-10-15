@@ -72,11 +72,13 @@ Note: engine_window passes on both. The arrow-click iterator bug (G-06) and the 
 | G-18 | Low | main_gui.h comments | Key comments named wrong keys (A/Q, Space, W). | Fixed |
 | G-19 | Medium | main_gui.h:282 and :410 | CTRL-Q bound twice: toggles full binding AND starts live analysis on chess.com. | Open (needs a decision on which keeps CTRL-Q) |
 | G-20 | Medium | main_gui.h:647-700 | UP/DOWN "GrogrosFish" toggles rename the player, but nothing plays (grogrosfish calls commented out at :843-847). | Open (remove the toggle or wire it to a bot) |
-| G-21 | Low | gui.cpp:2579 | GrogrosZero bot only moves while the clock runs (Space). Intended per comments, but silent for users. | Open (UX) |
-| G-22 | Low | main_gui.h:106-107 | Startup `new Board()` / `new Node()` leaked once (replaced by reset_game). | Open |
-| G-23 | Low | main_gui.h (all handlers) | Only LEFT CTRL is checked; C/X/V/E/R/F also fire with CTRL. | Open |
-| G-24 | Low | gui.cpp:492-497 (get_pos_from_GUI) | The board's top edge pixel maps to row 8 (out of range, ignored). | Open |
+| G-21 | Low | gui.cpp:2579 | GrogrosZero bot only moves while the clock runs (Space). Intended per comments, but silent for users. | Fixed (status text "BOT WAITS: start the clock (SPACE)") |
+| G-22 | Low | main_gui.h:106-107 | Startup `new Board()` / `new Node()` leaked once (replaced by reset_game). | Won't fix (one-time, a few hundred bytes; deleting them safely needs Node ownership changes) |
+| G-23 | Low | main_gui.h (all handlers) | Only LEFT CTRL is checked; C/X/V/E/R/F also fire with CTRL. | Fixed for RIGHT CTRL (ctrl_down()). C/X/V with CTRL kept on purpose (CTRL-C/X/V copy/paste work); E/R/F/S have no CTRL binding. |
+| G-24 | Low | gui.cpp:492-497 (get_pos_from_GUI) | The board's top edge pixel maps to row 8 (out of range, ignored). | Fixed (half-open tiles) |
 | G-25 | Info | TODO_list.txt:185,264 | Low FPS when idle (12 FPS) not reproduced or measured here. | Open |
+| G-26 | High | gui.cpp:2565-2586 (compare_arrows) | Comparator passed to std::ranges::sort returned true for unrelated or equal arrows (not a strict weak ordering: undefined behaviour, can read out of range). | Fixed (iterations, then length, then squares) |
+| G-27 | High | scripts/gui_drive.ps1 (test harness) | On an AZERTY layout the driver sent `key A` as the physical key raylib reads as KEY_Q, so the scenario opened chess.com in the default browser on every run (and W/Z, M were also mis-sent). | Fixed: fixed US scan codes for letters/digits; the driver sets OPTI_NO_BROWSER=1 and Q then logs `[url] ...` instead of calling OpenURL |
 
 ## Verification
 
@@ -85,6 +87,7 @@ Note: engine_window passes on both. The arrow-click iterator bug (G-06) and the 
 
 ## Remaining
 
-- G-19 to G-25 (see above).
+- G-19, G-20 (need a decision), G-25 (not measured).
+- The G-21/G-23/G-24/G-26/G-27 changes passed the harness but the scenarios were not re-run: the workstation was locked (LogonUI), which swallows synthetic input. The driver now exits with code 3 and "desktop is locked" in that case. Re-run the three scenarios once unlocked; engine_window.txt now checks that Q logs `[url]` instead of opening a browser.
 - Shared-tree race (docs/BENCHMARKS.md) unchanged.
 - The arrow-click (G-06) and slot-reuse (G-02) fixes are verified by code and by the absence of the log line, not by a deterministic crash repro.
