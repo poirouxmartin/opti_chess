@@ -22,7 +22,8 @@ static int usage() {
          << "       opti_chess_cli perft-suite [quick|full] [bulk]\n"
          << "       opti_chess_cli bench [iterations]\n"
          << "       opti_chess_cli uci\n"
-         << "       opti_chess_cli search <iterations> [fen...]   (OPTI_NO_DAG=1: tree mode)\n";
+         << "       opti_chess_cli search <iterations> [fen...]   (OPTI_NO_DAG=1: tree mode)\n"
+         << "       opti_chess_cli solve <max_iterations> <uci,uci|-> <min_value> <fen...>\n";
     return 2;
 }
 
@@ -316,6 +317,11 @@ static void cmd_go(const vector<string>& tok, const string& fen) {
     cout << "bestmove " << best << endl;
 }
 
+// DAG counters (exploration_diag.cpp)
+extern thread_local long long g_dag_link_hits;
+extern thread_local long long g_dag_link_misses;
+extern thread_local long long g_dag_recheck_hits;
+
 // Searches a FEN like PuzzleRunner NODES mode (DAG on unless OPTI_NO_DAG) and
 // prints the SEARCHED root value (white POV), not the static eval, at 10 steps
 static int cmd_search(int argc, char** argv) {
@@ -350,7 +356,9 @@ static int cmd_search(int argc, char** argv) {
              << " value " << root._deep_evaluation._value
              << " best " << (bm.is_null_move() ? string("0000") : move_to_uci(b, bm))
              << " depth " << root.get_main_depth(0.005, 5.0)
-             << " pruned " << g_pruned_nodes << endl;
+             << " pruned " << g_pruned_nodes
+             << " map " << node_map.size() << " hits " << g_dag_link_hits << " misses " << g_dag_link_misses
+             << " reps " << g_dag_recheck_hits << endl;
     }
     cout << "pv " << root.get_exploration_variants(0.005, 5.0, true, false, 60) << endl;
 
@@ -395,6 +403,64 @@ static int cmd_search(int argc, char** argv) {
         if (!bm.is_null_move()) dump(*root._children[bm]._node, "best");
     }
     return 0;
+}
+
+// Time to solve: searches in chunks of 500 iterations up to max_iters and
+// reports the first chunk from which the most explored root move is one of
+// the expected UCI moves (comma list, "-" = any) with a value >= min_value
+// for the side to move, holding until the end. Exit code 0 = solved.
+static int cmd_solve(int argc, char** argv) {
+    if (argc < 6) return usage();
+    const int max_iters = atoi(argv[2]);
+    const string expected = argv[3];
+    const int min_value = atoi(argv[4]);
+    const string fen = fen_from_args(argc, argv, 5);
+    static Evaluator evaluator;
+    monte_node_buffer.init(500000, false);
+    monte_board_buffer.init(500000, false);
+    monte_node_buffer.reset();
+    monte_board_buffer.reset();
+    node_map.clear();
+    transposition_table.clear();
+    g_buffers_full_logged = false;
+    g_tt_node_dag = getenv("OPTI_NO_DAG") == nullptr;
+
+    Board b;
+    b.from_fen(fen);
+    Node root(&b);
+    const int color = b.get_color();
+    auto is_expected = [&](const string& mv) {
+        if (expected == "-") return true;
+        return ("," + expected + ",").find("," + mv + ",") != string::npos;
+    };
+    const double t0 = now_s();
+    long long solved_at = -1;
+    double solved_ms = 0;
+    int done = 0;
+    string best = "0000";
+    int value = 0;
+    while (done < max_iters) {
+        const int chunk = min(500, max_iters - done);
+        root.grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, chunk, 10, nullptr, nullptr, 0);
+        done += chunk;
+        const Move bm = root.get_most_explored_child_move();
+        best = bm.is_null_move() ? string("0000") : move_to_uci(b, bm);
+        value = root._deep_evaluation._value * color;
+        const bool ok = is_expected(best) && value >= min_value;
+        if (ok && solved_at < 0) { solved_at = done; solved_ms = (now_s() - t0) * 1000.0; }
+        if (!ok) solved_at = -1;
+    }
+    const double total_ms = (now_s() - t0) * 1000.0;
+    if (solved_at >= 0)
+        cout << "solved iters " << solved_at << " ms " << (long long)solved_ms;
+    else
+        cout << "unsolved";
+    cout << " | final best " << best << " value " << value << " iters " << done
+         << " ms " << (long long)total_ms
+         << " boards " << (monte_board_buffer._length - (int)monte_board_buffer._free_indices.size()) << endl;
+    if (g_qstats_on)
+        dump_qstats(); // OPTI_QSTATS: quiescence census
+    return solved_at >= 0 ? 0 : 1;
 }
 
 static int cmd_uci() {
@@ -447,5 +513,6 @@ int main(int argc, char** argv) {
     if (cmd == "bench") return cmd_bench(argc, argv);
     if (cmd == "uci") return cmd_uci();
     if (cmd == "search") return cmd_search(argc, argv);
+    if (cmd == "solve") return cmd_solve(argc, argv);
     return usage();
 }
