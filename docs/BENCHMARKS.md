@@ -349,3 +349,18 @@ node). Known cost: the Lasker mate `rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP
 (Qxh7+, mate in 7 through quiet checks) needs about 100k iterations instead of 20k
 (`Puzzle.Dxh7MateAnnounced` runs with `g_qcheck_min_depth = 0`). `bench 2000`: 701 866 nodes,
 signature `469254f17b2357bb`.
+
+### Same ladder with a classical alpha-beta + TT (`opti_chess_cli absolve`, experimental)
+
+Iterative-deepening negamax, 4M-entry TT (TT move first, then captures), repetition on the path =
+draw, evaluation = material + 6 cp per pawn rank. Independent of GrogrosZero.
+
+| step | expected | first depth with the move | time | stable from |
+|---|---|---|---|---|
+| S1 | Kh5 | 5 | < 1 ms | depth 5 (+248..+260) |
+| S2 | Kh4 | 7 | < 1 ms | depth 7 |
+| S4 | Kf2/Kf3 | 11 (Kf2) | < 1 ms | depth 11, depth 30 in 0.5 s |
+| S7 | **Kb1** | 21 | 9 ms | depth 25, 33 ms (+254); depth 34 in 1.3 s |
+
+The transposition table collapses the king manoeuvres: depth 25+ in tens of milliseconds, where
+the GrogrosZero tree does not hold 1.Kb1 after 100k iterations (about 40 s).
