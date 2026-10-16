@@ -1956,6 +1956,13 @@ void Node::reset(bool recursive) {
 			for (Node* n : pre_reach) {
 				const auto e = ext_in.find(n);
 				if (e != ext_in.end() && e->second > 0) { drop(n); continue; }
+				// A referrer may live in an arena the scan above does not cover
+				// (GUI: the old root in the main thread arena, the tree in the
+				// worker's). More parents than residue in-edges = referenced from
+				// outside: never collect it. Freeing it here freed the GUI's new
+				// root (a transposition of a recycled sibling) and its board.
+				const auto r = rev.find(n);
+				if (n->_parent_count > (r == rev.end() ? 0 : (int)r->second.size())) { drop(n); continue; }
 				for (auto const& [mm, ll] : n->_children) {
 					Node* t = ll._node;
 					if (t == nullptr || !t->_is_active) continue;

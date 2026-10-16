@@ -4470,6 +4470,37 @@ TEST(Puzzle, SessionAccumulation) {
 		const size_t freeN = monte_node_buffer._free_indices.size();
 		cout << "  [dag=" << dag << " cycle " << cycle << "] usedB=" << usedB << " usedN=" << usedN
 			<< " freeB=" << freeB << " freeN=" << freeN << endl;
+		if (freeN != freeN0) {
+			// Census of the nodes the reset left active (intermittent leak)
+			std::unordered_map<Node*, int> in_deg;
+			std::vector<Node*> live;
+			for (int j = 0; j < monte_node_buffer._length; j++) {
+				Node* n = &monte_node_buffer._nodes[j];
+				if (!n->_is_active || n == root) continue;
+				live.push_back(n);
+				for (auto const& [mm, ll] : n->_children)
+					if (ll._node != nullptr && ll._node->_is_active) in_deg[ll._node]++;
+			}
+			int no_in = 0, terminal = 0, uninit = 0, with_kids = 0, pc_mismatch = 0;
+			for (Node* n : live) {
+				const int d = in_deg.count(n) ? in_deg[n] : 0;
+				if (d == 0) no_in++;
+				if (n->_is_terminal) terminal++;
+				if (!n->_initialized) uninit++;
+				if (!n->_children.empty()) with_kids++;
+				if (n->_parent_count != d) pc_mismatch++;
+			}
+			cout << "  [leak census] live=" << live.size() << " no_in_edge=" << no_in << " terminal=" << terminal
+				<< " uninitialized=" << uninit << " with_children=" << with_kids << " parent_count!=in_degree=" << pc_mismatch << endl;
+			int shown = 0;
+			for (Node* n : live) {
+				const int d = in_deg.count(n) ? in_deg[n] : 0;
+				if (d != 0 || shown >= 5) continue;
+				shown++;
+				cout << "    orphan-root pc=" << n->_parent_count << " kids=" << n->_children.size() << " iters=" << n->_iterations.load()
+					<< " init=" << n->_initialized << " term=" << n->_is_terminal << " fen=" << (n->_board ? n->_board->to_fen() : string("null")) << endl;
+			}
+		}
 		EXPECT_EQ(freeB, freeB0) << "board leak dag=" << dag << " cycle " << cycle;
 		EXPECT_EQ(freeN, freeN0) << "node leak dag=" << dag << " cycle " << cycle;
 	}
