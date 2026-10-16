@@ -359,7 +359,8 @@ static int cmd_search(int argc, char** argv) {
              << " depth " << root.get_main_depth(0.005, 5.0)
              << " pruned " << g_pruned_nodes
              << " map " << node_map.size() << " hits " << g_dag_link_hits << " misses " << g_dag_link_misses
-             << " reps " << g_dag_recheck_hits << endl;
+             << " reps " << g_dag_recheck_hits
+             << " proven " << (int)root._proven << endl;
     }
     cout << "pv " << root.get_exploration_variants(0.005, 5.0, true, false, 60) << endl;
 
@@ -458,7 +459,8 @@ static int cmd_solve(int argc, char** argv) {
         cout << "unsolved";
     cout << " | final best " << best << " value " << value << " iters " << done
          << " ms " << (long long)total_ms
-         << " boards " << (monte_board_buffer._length - (int)monte_board_buffer._free_indices.size()) << endl;
+         << " boards " << (monte_board_buffer._length - (int)monte_board_buffer._free_indices.size())
+         << " proven " << (int)root._proven << endl;
     if (g_qstats_on)
         dump_qstats(); // OPTI_QSTATS: quiescence census
     return solved_at >= 0 ? 0 : 1;

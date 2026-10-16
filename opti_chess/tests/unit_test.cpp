@@ -20,6 +20,7 @@
 #include <unordered_set>
 #include <vector>
 #include <cmath>
+#include <memory>
 
 // ============================================================================
 // Test-scale knob: OPTI_TEST_SCALE=N divides every heavy SEARCH budget
@@ -3841,6 +3842,44 @@ TEST(Search, RepetitionUnderDag) {
 		} else if (qh2_seen) {
 			EXPECT_GT(qh2_value, 500) << "no ghost draw from the in-search cycle";
 		}
+	}
+	g_tt_node_dag = false;
+}
+
+// MCTS-Solver (OPTI_SOLVER, off by default): a mate in one is proven at the
+// root (root proven = side to move wins), and the default search never sets
+// a proven flag above the leaves.
+TEST(Search, SolverProvesMateInOne) {
+	static Evaluator evaluator;
+	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
+	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+	struct SolverOn { bool saved = g_mcts_solver; SolverOn() { g_mcts_solver = true; } ~SolverOn() { g_mcts_solver = saved; } };
+	for (int solver = 1; solver >= 0; solver--) {
+		std::unique_ptr<SolverOn> on;
+		if (solver) on = std::make_unique<SolverOn>();
+		monte_board_buffer.reset(); monte_node_buffer.reset();
+		transposition_table.clear(); node_map.clear();
+		g_buffers_full_logged = false; g_tt_main_search = false; g_tt_node_dag = true;
+		g_search_abort.store(false, std::memory_order_release);
+		g_search_deadline.store((clock_t)0, std::memory_order_release);
+		Board b;
+		b.from_fen("6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1");
+		const Move mate = resolve_san(b, "Rd8#");
+		ASSERT_FALSE(mate.is_null_move());
+		Board* root_board = monte_board_buffer.get_first_free_board();
+		ASSERT_TRUE(root_board != nullptr);
+		root_board->copy_data(b, false, true);
+		root_board->_is_active = true;
+		Node* root = monte_node_buffer.get_first_free_node();
+		ASSERT_TRUE(root != nullptr);
+		root->reset(false);
+		root->_board = root_board;
+		root->_is_active = true;
+		root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 2000, 10);
+		cout << "  solver=" << solver << " proven=" << (int)root->_proven << " best=" << b.move_label(root->get_most_explored_child_move(), true) << endl;
+		EXPECT_EQ(root->get_most_explored_child_move(), mate);
+		if (solver) EXPECT_EQ(root->_proven, 1) << "mate in one proves the root";
+		else EXPECT_EQ(root->_proven, 0) << "no propagation without the solver";
 	}
 	g_tt_node_dag = false;
 }

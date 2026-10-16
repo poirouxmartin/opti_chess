@@ -364,3 +364,16 @@ draw, evaluation = material + 6 cp per pawn rank. Independent of GrogrosZero.
 
 The transposition table collapses the king manoeuvres: depth 25+ in tens of milliseconds, where
 the GrogrosZero tree does not hold 1.Kb1 after 100k iterations (about 40 s).
+
+## MCTS-Solver prototype (OPTI_SOLVER=1, off by default) - 2026-10-16
+
+Game results proven at real game-over leaves (mate, stalemate, material draw; never path-local repetition draws) propagate up: a child proven winning for the side to move proves the node; every legal move expanded and proven proves a draw (one drawn) or a loss. Proven nodes below the root are no longer selected; the root keeps answering. `get_most_explored_child_move` plays a proven win and avoids a proven loss. `search`/`solve` print `proven` (1 white wins, -1 black wins, 2 draw).
+
+| Test | Solver off | Solver on |
+|---|---|---|
+| Lasker #7 (`solve 300000 h5h7 99000000`) | 98 500 iterations | 59 000 iterations, root proven |
+| Fine #70 S1 Kh5 / S2 Kh4 | 500 / 1 000 | 500 / 1 000 (identical) |
+| Fine #70 S4-S7 (100k iterations) | unsolved | unsolved (identical trees) |
+| Lichess 5000, NODES-500, SEED 42 | 4024 | 4026 (b=2, c=4, chi2 0.17, n.s.) |
+
+Reading: the solver only helps where proofs are reachable (forced mates). In Fine #70 nothing is provable within the horizon (the win ends in a promotion far beyond any mate), so the trees are identical: the pawn-ending weakness is in selection/backup, not in proof propagation.

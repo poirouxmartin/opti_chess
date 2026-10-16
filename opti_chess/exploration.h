@@ -31,6 +31,11 @@ extern bool g_search_trust_prior;
 //     OPTI_QCHECK_MIN_DEPTH, 0 = every depth)
 extern int g_qcheck_min_depth;
 extern bool g_search_avg_cap;
+//   g_mcts_solver: MCTS-Solver (OPTI_SOLVER=1, default off). Game results
+//     proven at the leaves propagate up: a move proven winning proves the
+//     node, all moves expanded and proven prove a loss or a draw. Proven
+//     nodes below the root are no longer explored.
+extern bool g_mcts_solver;
 
 // Adaptive quiescence depth: reduce depth for moves that look bad statically.
 // Runtime toggle via OPTI_ADAPTIVE env var (default: OFF for baseline comparison).
@@ -257,6 +262,11 @@ public:
 	// Is this a terminal node?
 	bool _is_terminal = false;
 
+	// Proven game result (MCTS-Solver, path-independent): 0 unknown, 1 white
+	// wins, -1 black wins, 2 draw. Set at game-over leaves; propagated up
+	// only when g_mcts_solver is on.
+	int8_t _proven = 0;
+
 	// Node initialized?
 	bool _initialized = false;
 
@@ -331,6 +341,9 @@ public:
 	// (repetition children = draw, `over` replaces the descended child's value)
 	// Returns the chosen move (null = stand pat kept)
 	Move backup_value(double alpha, double beta, bool consider_standpat, const PositionHistory* path, const Move& over_move, const BackupResult* over, BackupResult* out);
+
+	// MCTS-Solver step: proves this node from its children's proven results
+	void solver_update();
 
 	// Returns the most explored child move
 	Move get_most_explored_child_move();

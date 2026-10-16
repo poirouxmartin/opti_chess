@@ -39,6 +39,11 @@ bool g_search_value_propagation = [] { const char* e = getenv("OPTI_VALUE_PROP")
 bool g_search_trust_prior = (getenv("OPTI_TRUST_PRIOR") != nullptr);        // Bayesian prior: re-gate post-fix
 // Quiescence: quiet checks only while depth >= this (see Node::quiescence)
 int g_qcheck_min_depth = [] { const char* e = getenv("OPTI_QCHECK_MIN_DEPTH"); return e ? atoi(e) : 8; }();
+// MCTS-Solver (see exploration.h), off by default
+bool g_mcts_solver = [] { const char* e = getenv("OPTI_SOLVER"); return e && e[0] == '1'; }();
+// Node of the outermost grogros_zero frame: a proven root keeps answering
+// (its iterations still count), only proven nodes below it are frozen
+thread_local Node* g_solver_root = nullptr;
 
 // Hard time deadline (see exploration.h). Sample counter is file-local.
 std::atomic<clock_t> g_search_deadline{0};
@@ -510,6 +515,7 @@ void Node::init_node() {
 		_fully_explored = true;
 		_can_explore = false;
 		_is_terminal = true;
+		_proven = _board->_game_over_value == draw ? 2 : (_board->_game_over_value == white_win ? 1 : -1);
 
 		// Stamp the exact terminal value into the deep evaluation: it may
 		// still hold a static eval computed before terminality was known
@@ -641,6 +647,8 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	struct DagRecGuard {
 		~DagRecGuard() { g_dag_recursion_depth -= 1; }
 	} _dag_rec_guard;
+	if (g_dag_recursion_depth == 1)
+		g_solver_root = this;
 
 	// Computation time
 	const clock_t begin_monte_time = clock();
@@ -1475,6 +1483,45 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	_iterations++;
 }
 
+// MCTS-Solver step. Only game results proven at real game-over leaves are
+// used (never path-local repetition draws), so a proof holds on every path
+// and survives DAG sharing. A child proven winning for the side to move
+// proves the node; otherwise every legal move expanded and proven proves a
+// draw (if one is drawn) or a loss. The node value needs no change: the
+// argmax backup already picks the mate-scale or drawn child.
+void Node::solver_update() {
+	if (_board == nullptr || _board->_got_moves <= 0)
+		return;
+	const int color = _board->get_color();
+	int proven_children = 0;
+	bool has_draw = false;
+	int8_t result = 0;
+	{
+		NodeLock lk(this);
+		for (auto const& [m, link] : _children) {
+			const Node* c = link._node;
+			if (c == nullptr || c->_proven == 0)
+				continue;
+			if (c->_proven == color) {
+				result = (int8_t)color;
+				break;
+			}
+			proven_children++;
+			if (c->_proven == 2)
+				has_draw = true;
+		}
+	}
+	if (result == 0 && proven_children == _board->_got_moves)
+		result = has_draw ? 2 : (int8_t)-color;
+	if (result == 0)
+		return;
+	_proven = result;
+	if (this != g_solver_root) {
+		_can_explore = false;
+		_fully_explored = true;
+	}
+}
+
 // Backs up the node value from its children (see BackupResult). path == nullptr:
 // tree behaviour (stored child values only). Under the DAG two values are
 // computed: the value for THIS path (children repeating a path position count
@@ -1483,6 +1530,9 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 // otherwise it stores the value computed without those path-local draws.
 Move Node::backup_value(double alpha, double beta, bool consider_standpat, const PositionHistory* path, const Move& over_move, const BackupResult* over, BackupResult* out) {
 	const int ply = path != nullptr ? path_current_ply() : 0;
+
+	if (g_mcts_solver && _proven == 0)
+		solver_update();
 
 	// Best child for the path (local) or keeping only the substitutions that
 	// depend on this node or below (intrinsic: what the node may store)
@@ -1648,14 +1698,22 @@ Move Node::get_most_explored_child_move() {
 	const bool has_board = _board != nullptr;
 	const int node_color = has_board ? _board->get_color() : 1;
 
+	// Solver: a move proven losing is only played when every move is
+	int max_unlost = -1;
+	Move best_unlost = Move();
+
 	for (auto const& [move, child_link] : _children) {
 		if (child_link._node == nullptr) continue; // shared-tree claim placeholder
 		if (child_link._chosen_iterations > max) {
 			max = child_link._chosen_iterations;
 			best_move = move;
 		}
+		if (g_mcts_solver && has_board && child_link._node->_proven != -node_color && child_link._chosen_iterations > max_unlost) {
+			max_unlost = child_link._chosen_iterations;
+			best_unlost = move;
+		}
 
-		if (has_board && child_link._node != nullptr && child_link._node->_is_terminal) {
+		if (has_board && child_link._node != nullptr && (child_link._node->_is_terminal || (g_mcts_solver && child_link._node->_proven == node_color))) {
 			const int child_value = child_link._node->_deep_evaluation._value * node_color;
 			if (child_value > proven_win_value && 2 * child_value > mate_value) {
 				proven_win_value = child_value;
@@ -1666,6 +1724,9 @@ Move Node::get_most_explored_child_move() {
 
 	if (!proven_win_move.is_null_move())
 		return proven_win_move;
+
+	if (!best_unlost.is_null_move())
+		return best_unlost;
 
 	return best_move;
 }
@@ -1712,6 +1773,7 @@ static void reset_node_fields(Node* node) {
 
 	node->_initialized = false;
 	node->_is_terminal = false;
+	node->_proven = 0;
 	node->_can_explore = true;
 	node->_time_spent = 0;
 	node->_fully_explored = false;
@@ -3693,6 +3755,7 @@ Node* NodeBuffer::get_first_free_node() {
 	node->_fully_explored = false;
 	node->_can_explore = true;
 	node->_is_terminal = false;
+	node->_proven = 0;
 	node->_nodes = 0;
 	node->_iterations = 0;
 	node->_board = nullptr;
