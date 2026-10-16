@@ -286,7 +286,7 @@ public:
 	clock_t _last_play_eval = 0;
 
 	// Snapshot of tree state for consistent display during background computation
-	// Taken under _tree_mutex once per frame, used by draw_exploration_arrows and eval display
+	// Filled by update_snapshot, copied by the UI thread once per frame (refresh_snapshot)
 	struct TreeSnapshot {
 		Move best_move;
 		Move best_eval_move;
@@ -347,7 +347,12 @@ public:
 			return best_move_evaluation;
 		}
 	};
-	TreeSnapshot _tree_snapshot;
+	TreeSnapshot _tree_snapshot;   // UI thread's copy (refresh_snapshot), the only one draw code reads
+	TreeSnapshot _snapshot_work;   // filled by update_snapshot (worker, or UI with the worker stopped)
+	TreeSnapshot _snapshot_published; // last complete snapshot, guarded by _snapshot_mutex
+	std::mutex _snapshot_mutex;
+	void refresh_snapshot();
+	void invalidate_snapshot();
 
 	// Search tree, variations played in the PGN
 	GameTree _game_tree;
