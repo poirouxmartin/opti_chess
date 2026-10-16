@@ -3669,8 +3669,13 @@ bool NodeBuffer::reset() {
 	g_buffers_full_logged = false;
 	_free_indices.clear();
 	_free_indices.reserve(_length);
-	for (int i = _length - 1; i >= 0; i--)
+	for (int i = _length - 1; i >= 0; i--) {
 		_free_indices.push_back(i);
+		// Every slot is free again: a stale active flag (with its stale
+		// children) made Node::reset's cycle collection see a phantom
+		// referrer and keep dead nodes (SessionAccumulation leak)
+		_nodes[i]._is_active = false;
+	}
 
 	return true;
 }
