@@ -3783,6 +3783,68 @@ TEST(Puzzle, Qc6RepetitionDraw) {
 	}
 }
 
+// Repetitions under the DAG, winning side (K+Q vs K, 8/8/8/4k3/8/8/8/K6Q w - - 0 1).
+// With game history 1.Qh2+ Kd5 2.Qh1+ Ke5, 3.Qh2+ repeats a position of the
+// game: that child is a draw for this path and must not be the move. Without the
+// history the same child is a normal winning node, and the in-search cycle
+// Qh2+ Kd5 Qh1+ Ke5 (back to the root) must not drag the root to a draw.
+// Regression: init_node used the twofold game-over rule on the root board,
+// which carries the game history, so a root seen once before was frozen as a
+// terminal draw (value 0, no children, null move played).
+TEST(Search, RepetitionUnderDag) {
+	static Evaluator evaluator;
+	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
+	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+	const char* fen = "8/8/8/4k3/8/8/8/K6Q w - - 0 1";
+	for (int with_history = 1; with_history >= 0; with_history--) {
+		monte_board_buffer.reset(); monte_node_buffer.reset();
+		transposition_table.clear(); node_map.clear();
+		g_buffers_full_logged = false; g_tt_main_search = false; g_tt_node_dag = true;
+		g_search_abort.store(false, std::memory_order_release);
+		g_search_deadline.store((clock_t)0, std::memory_order_release);
+		Board b;
+		b.from_fen(fen);
+		const Move qh2 = resolve_san(b, "Qh2+");
+		ASSERT_FALSE(qh2.is_null_move());
+		if (with_history) {
+			for (const char* san : { "Qh2+", "Kd5", "Qh1+", "Ke5" }) {
+				const Move m = resolve_san(b, san);
+				ASSERT_FALSE(m.is_null_move()) << san;
+				b.make_move(m, false, true);
+			}
+		}
+		Board* root_board = monte_board_buffer.get_first_free_board();
+		ASSERT_TRUE(root_board != nullptr);
+		root_board->copy_data(b, false, true);
+		root_board->_is_active = true;
+		Node* root = monte_node_buffer.get_first_free_node();
+		ASSERT_TRUE(root != nullptr);
+		root->reset(false);
+		root->_board = root_board;
+		root->_is_active = true;
+		for (int chunk = 0; chunk < 10; chunk++)
+			root->grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 2000, 10);
+		const Move most = root->get_most_explored_child_move();
+		const Move best = root->get_best_score_move(0.005, 5.0);
+		// Under the DAG a game repetition is a path-local draw (selection and
+		// backup), so the child node keeps its intrinsic value: no check on it.
+		const auto it = root->_children.find(qh2);
+		const bool qh2_seen = it != root->_children.end() && it->second._node != nullptr;
+		const int qh2_value = qh2_seen ? it->second._node->_deep_evaluation._value : 0;
+		cout << "  history=" << with_history << " root=" << root->_deep_evaluation._value
+			<< " most=" << b.move_label(most, true) << " best=" << b.move_label(best, true)
+			<< " Qh2+=" << qh2_value << endl;
+		EXPECT_GT(root->_deep_evaluation._value, 500) << "K+Q vs K stays winning";
+		if (with_history) {
+			EXPECT_NE(most, qh2) << "the repeating move must not be played";
+			EXPECT_NE(best, qh2);
+		} else if (qh2_seen) {
+			EXPECT_GT(qh2_value, 500) << "no ghost draw from the in-search cycle";
+		}
+	}
+	g_tt_node_dag = false;
+}
+
 // TD-001: node_map (DAG-only index) stays capped at the node-pool size.
 // Flood past the cap with safe-miss entries (nullptr values can never
 // link-hit), run a DAG search (each insert enforces the 1/8-stride

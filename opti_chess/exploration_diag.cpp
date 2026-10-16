@@ -499,7 +499,11 @@ void Node::init_node() {
 	}
 
 	_board->get_moves();
-	_board->is_game_over();
+	// Threefold (FIDE): only the search root carries the game history (buffer
+	// boards drop it), and a position seen once before in the game is not a
+	// finished game. The default twofold froze such a root as a draw with no
+	// search at all; in-search repetitions are path-local (path_child_eval).
+	_board->is_game_over(3);
 
 	// If the game is over
 	if (_board->_game_over_value != unterminated) {
