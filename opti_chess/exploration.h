@@ -238,6 +238,17 @@ public:
 	// Number of parents referencing this node.
 	int _parent_count = 0;
 
+	// DAG value propagation (OPTI_DAG_PROPAGATE): parents recorded by add_child.
+	// Never removed: an entry is valid while that parent still links this node
+	// by that move (checked on use), so recycling and pruning need no bookkeeping.
+	static constexpr int max_parent_refs = 4;
+	Node* _parent_refs[max_parent_refs] = {};
+	Move _parent_moves[max_parent_refs];
+	uint8_t _n_parent_refs = 0;
+	uint32_t _propagate_epoch = 0;
+	void add_parent_ref(Node* parent, const Move& move);
+	void propagate_value_change();
+
 	// TODO: several node types are needed: quiet nodes (the ones searched by GrogrosZero), quiescence nodes, transposition nodes...
 	// The research_nodes will be used for Grogros's thinking time, arrow drawing and so on...
 

@@ -44,6 +44,13 @@ bool g_mcts_solver = [] { const char* e = getenv("OPTI_SOLVER"); return e && e[0
 // Node of the outermost grogros_zero frame: a proven root keeps answering
 // (its iterations still count), only proven nodes below it are frozen
 thread_local Node* g_solver_root = nullptr;
+// DAG value propagation, off by default: a changed stored value is pushed to
+// the parents off the current path (they keep a stale value otherwise: only
+// the path parent backs up). Value = max recomputes per change (1 = 64).
+// Experiment: DAG nodes store the path value (repetition draws included, as a
+// TT stores) instead of the value without the cycle-closing moves
+bool g_dag_store_local = getenv("OPTI_DAG_STORE_LOCAL") != nullptr;
+int g_dag_propagate = [] { const char* e = getenv("OPTI_DAG_PROPAGATE"); const int v = e ? atoi(e) : 0; return v == 1 ? 64 : max(v, 0); }();
 
 // Hard time deadline (see exploration.h). Sample counter is file-local.
 std::atomic<clock_t> g_search_deadline{0};
@@ -443,6 +450,8 @@ void Node::add_child(Node* child, Move move) {
 	}
 
 	child->_parent_count++;
+	if (g_dag_propagate > 0 && g_tt_node_dag)
+		child->add_parent_ref(this, move);
 	ChildLink link;
 	link._node = child;
 	// Bug 2 model A (literal, decoupled per-edge): under DAG the edge counter
@@ -453,6 +462,62 @@ void Node::add_child(Node* child, Move move) {
 	link._propagated_nodes = g_tt_node_dag ? 0 : (int)child->_nodes;
 	_children[move] = link;
 	//_nodes += child->_nodes;
+}
+
+// Parent entry still valid: that parent links this node by that move
+static inline bool parent_ref_valid(const Node* child, Node* parent, const Move& move) {
+	if (parent == nullptr || !parent->_is_active || parent->_board == nullptr) return false;
+	const auto it = parent->_children.find(move);
+	return it != parent->_children.end() && it->second._node == child;
+}
+
+void Node::add_parent_ref(Node* parent, const Move& move) {
+	for (int i = 0; i < _n_parent_refs; i++)
+		if (_parent_refs[i] == parent && _parent_moves[i] == move) return;
+	if (_n_parent_refs == max_parent_refs) {
+		// Full: drop the entries that are no longer edges
+		int k = 0;
+		for (int i = 0; i < _n_parent_refs; i++)
+			if (parent_ref_valid(this, _parent_refs[i], _parent_moves[i])) {
+				_parent_refs[k] = _parent_refs[i];
+				_parent_moves[k] = _parent_moves[i];
+				k++;
+			}
+		_n_parent_refs = (uint8_t)k;
+		if (k == max_parent_refs) return; // more parents than slots: those back up when visited
+	}
+	_parent_refs[_n_parent_refs] = parent;
+	_parent_moves[_n_parent_refs] = move;
+	_n_parent_refs++;
+}
+
+// Recompute the off-path parents of this node from their children's stored
+// values, then theirs if they changed. Each node at most once per change
+// (cycles), at most g_dag_propagate recomputes. Path parents are skipped:
+// they back up on return with the path (repetitions) in hand.
+void Node::propagate_value_change() {
+	static thread_local uint32_t epoch = 0;
+	static thread_local std::vector<Node*> work;
+	if (++epoch == 0) epoch = 1;
+	work.clear();
+	_propagate_epoch = epoch;
+	work.push_back(this);
+	int budget = g_dag_propagate;
+	while (!work.empty() && budget > 0) {
+		Node* n = work.back();
+		work.pop_back();
+		for (int i = 0; i < n->_n_parent_refs && budget > 0; i++) {
+			Node* p = n->_parent_refs[i];
+			if (!parent_ref_valid(n, p, n->_parent_moves[i]) || p->_propagate_epoch == epoch) continue;
+			p->_propagate_epoch = epoch;
+			if (p->_is_terminal || path_first_ply(p->_board->_zobrist_key) >= 0) continue;
+			budget--;
+			const int before = p->_deep_evaluation._value;
+			const bool partial = p->children_count() < (size_t)p->_board->_got_moves;
+			p->backup_value(0, 0, partial, nullptr, Move(), nullptr, nullptr);
+			if (p->_deep_evaluation._value != before) work.push_back(p);
+		}
+	}
 }
 
 // Returns the number of children
@@ -1607,8 +1672,13 @@ Move Node::backup_value(double alpha, double beta, bool consider_standpat, const
 	// Tree mode and the search root own their path: store the path value.
 	// Otherwise store the intrinsic value and cache the path value with the
 	// position it depends on (reused by any path containing it).
-	const bool store_local = path == nullptr || !g_tt_node_dag || ply == 0;
+	const bool store_local = path == nullptr || !g_tt_node_dag || ply == 0 || g_dag_store_local;
+	const int previous_value = _deep_evaluation._value;
 	_deep_evaluation = store_local ? local_value : stored_value;
+	// Off-path parents (the recompute itself runs path-free: no re-entry)
+	if (g_dag_propagate > 0 && path != nullptr && g_tt_node_dag && g_search_value_propagation && !g_shared_tree
+		&& _n_parent_refs > 1 && _deep_evaluation._value != previous_value)
+		propagate_value_change();
 	_has_path_value = path_dependent && !store_local;
 	if (_has_path_value) {
 		_path_value = local_value;
@@ -1765,6 +1835,7 @@ static void reset_node_fields(Node* node) {
 	node->_nodes = 0;
 	node->_iterations = 0;
 	node->_parent_count = 0;
+	node->_n_parent_refs = 0;
 
 	if (node->_board != nullptr) {
 		node->_saved_zobrist = node->_board->_zobrist_key;
@@ -3769,6 +3840,7 @@ Node* NodeBuffer::get_first_free_node() {
 	node->_deep_evaluation = Evaluation();
 	node->_quiescence_depth = 0;
 	node->_parent_count = 0;
+	node->_n_parent_refs = 0;
 	node->_latest_first_move_explored = -1;
 	node->_time_spent = 0;
 	node->_is_stand_pat_eval = true;
