@@ -7,6 +7,8 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <cstdlib>
 #include <cstdint>
@@ -362,6 +364,55 @@ static int cmd_search(int argc, char** argv) {
              << " reps " << g_dag_recheck_hits
              << " proven " << (int)root._proven << endl;
     }
+    // OPTI_SEARCH_CENSUS=1: read-only iterative DFS over the explored graph.
+    // Key = board->_zobrist_key, the same key node_map is indexed with (exploration_diag.cpp:1079, 1248, 1270).
+    const char* census_env = getenv("OPTI_SEARCH_CENSUS");
+    if (census_env != nullptr && string(census_env) == "1") {
+        unordered_set<Node*> visited;
+        unordered_map<uint64_t, int> nodes_per_key;
+        int terminal = 0;
+        int maxdepth = 0;
+        int expanded = 0, stale_low = 0, stale_high = 0, with_path = 0;
+        vector<pair<Node*, int>> stack;
+        stack.push_back({ &root, 0 });
+        while (!stack.empty()) {
+            const pair<Node*, int> top = stack.back();
+            stack.pop_back();
+            Node* n = top.first;
+            if (!visited.insert(n).second) continue;
+            if (top.second > maxdepth) maxdepth = top.second;
+            if (n->_is_terminal) terminal++;
+            nodes_per_key[n->_board != nullptr ? n->_board->_zobrist_key : 0]++;
+            // Stale value: stored value differs from the best stored child value
+            // (path-local draws are invisible here, nodes with a path value counted apart)
+            if (!n->_is_terminal && n->_board != nullptr) {
+                const int color = n->_board->get_color();
+                long long best = LLONG_MIN;
+                for (auto const& [cm, cl] : n->_children)
+                    if (cl._node != nullptr) best = max(best, (long long)cl._node->_deep_evaluation._value * color);
+                if (best != LLONG_MIN) {
+                    expanded++;
+                    const long long own = (long long)n->_deep_evaluation._value * color;
+                    if (n->_has_path_value) with_path++;
+                    else if (own < best) stale_low++;
+                    else if (own > best && !n->_is_stand_pat_eval) stale_high++;
+                }
+            }
+            for (auto const& [cm, cl] : n->_children)
+                if (cl._node != nullptr) stack.push_back({ cl._node, top.second + 1 });
+        }
+        int dup_keys = 0;
+        int max_dup = 0;
+        for (auto const& [key, cnt] : nodes_per_key) {
+            if (cnt > 1) dup_keys++;
+            if (cnt > max_dup) max_dup = cnt;
+        }
+        cout << "census nodes=" << visited.size() << " distinct_keys=" << nodes_per_key.size()
+             << " dup_keys=" << dup_keys << " max_dup=" << max_dup
+             << " terminal=" << terminal << " maxdepth=" << maxdepth << endl;
+        cout << "stale expanded=" << expanded << " low=" << stale_low << " high=" << stale_high
+             << " with_path=" << with_path << endl;
+    }
     cout << "pv " << root.get_exploration_variants(0.005, 5.0, true, false, 60) << endl;
 
     // OPTI_SEARCH_DUMP=1: root children, then the children of the most explored one
@@ -381,25 +432,33 @@ static int cmd_search(int argc, char** argv) {
                 cout << "   line " << c->get_exploration_variants(0.005, 5.0, true, false, 40) << endl;
             }
         };
-        // Origin of the root value: follow children holding the same value
-        {
-            Node* n = &root;
-            const int v = root._deep_evaluation._value;
+        // Origin of a node's value: follow children holding the same value
+        auto origin = [](Node* n, const char* tag) {
+            const int v = n->_deep_evaluation._value;
+            string path;
             for (int d = 0; d < 200 && n != nullptr; d++) {
                 Node* next = nullptr;
                 for (auto const& [m, link] : n->_children)
-                    if (link._node != nullptr && link._node->_deep_evaluation._value == v) { next = link._node; break; }
+                    if (link._node != nullptr && link._node->_deep_evaluation._value == v) {
+                        next = link._node;
+                        path += move_to_uci(*n->_board, m) + " ";
+                        break;
+                    }
                 if (next == nullptr) {
-                    cout << "origin depth " << d << " fen " << n->_board->to_fen()
+                    cout << tag << " depth " << d << " fen " << n->_board->to_fen()
                          << " terminal " << n->_is_terminal << " standpat " << n->_is_stand_pat_eval
                          << " static " << n->_static_evaluation._value << " deep " << n->_deep_evaluation._value
                          << " avg " << n->_deep_evaluation._avg_score << " qdepth " << n->_quiescence_depth
-                         << " kids " << n->children_count() << "/" << (int)n->_board->_got_moves << endl;
+                         << " kids " << n->children_count() << "/" << (int)n->_board->_got_moves
+                         << " path " << path << endl;
                     break;
                 }
                 n = next;
             }
-        }
+        };
+        origin(&root, "origin");
+        for (auto const& [m, link] : root._children)
+            if (link._node != nullptr) origin(link._node, ("origin_" + move_to_uci(*root._board, m)).c_str());
         dump(root, "root");
         const Move bm = root.get_most_explored_child_move();
         if (!bm.is_null_move()) dump(*root._children[bm]._node, "best");
