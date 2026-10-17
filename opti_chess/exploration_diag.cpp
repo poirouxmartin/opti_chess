@@ -492,9 +492,11 @@ void Node::add_parent_ref(Node* parent, const Move& move) {
 }
 
 // Recompute the off-path parents of this node from their children's stored
-// values, then theirs if they changed. Each node at most once per change
-// (cycles), at most g_dag_propagate recomputes. Path parents are skipped:
-// they back up on return with the path (repetitions) in hand.
+// values, then theirs if they changed, breadth first. A node is queued at
+// most once at a time but may be recomputed again when another of its
+// children changes later in the wave; at most g_dag_propagate recomputes
+// (cycles). Path parents are skipped: they back up on return with the path
+// (repetitions) in hand.
 void Node::propagate_value_change() {
 	static thread_local uint32_t epoch = 0;
 	static thread_local std::vector<Node*> work;
@@ -502,20 +504,23 @@ void Node::propagate_value_change() {
 	work.clear();
 	_propagate_epoch = epoch;
 	work.push_back(this);
+	size_t head = 0;
 	int budget = g_dag_propagate;
-	while (!work.empty() && budget > 0) {
-		Node* n = work.back();
-		work.pop_back();
+	while (head < work.size() && budget > 0) {
+		Node* n = work[head++];
+		n->_propagate_epoch = 0; // dequeued: may be queued again
 		for (int i = 0; i < n->_n_parent_refs && budget > 0; i++) {
 			Node* p = n->_parent_refs[i];
-			if (!parent_ref_valid(n, p, n->_parent_moves[i]) || p->_propagate_epoch == epoch) continue;
-			p->_propagate_epoch = epoch;
+			if (!parent_ref_valid(n, p, n->_parent_moves[i])) continue;
 			if (p->_is_terminal || path_first_ply(p->_board->_zobrist_key) >= 0) continue;
 			budget--;
 			const int before = p->_deep_evaluation._value;
 			const bool partial = p->children_count() < (size_t)p->_board->_got_moves;
 			p->backup_value(0, 0, partial, nullptr, Move(), nullptr, nullptr);
-			if (p->_deep_evaluation._value != before) work.push_back(p);
+			if (p->_deep_evaluation._value != before && p->_propagate_epoch != epoch) {
+				p->_propagate_epoch = epoch;
+				work.push_back(p);
+			}
 		}
 	}
 }
