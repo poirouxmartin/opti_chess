@@ -324,6 +324,7 @@ static void cmd_go(const vector<string>& tok, const string& fen) {
 extern thread_local long long g_dag_link_hits;
 extern thread_local long long g_dag_link_misses;
 extern thread_local long long g_dag_recheck_hits;
+extern long long g_parent_ref_drops;
 
 // Searches a FEN like PuzzleRunner NODES mode (DAG on unless OPTI_NO_DAG) and
 // prints the SEARCHED root value (white POV), not the static eval, at 10 steps
@@ -372,6 +373,9 @@ static int cmd_search(int argc, char** argv) {
         unordered_map<uint64_t, int> nodes_per_key;
         int terminal = 0;
         int maxdepth = 0;
+        int fifty_term = 0, fifty_shared = 0, term_draw = 0, max_clock = 0;
+        int refs_full = 0, pc_over = 0;
+        int ply_hist[64] = {};
         int expanded = 0, stale_low = 0, stale_high = 0, with_path = 0;
         vector<pair<Node*, int>> stack;
         stack.push_back({ &root, 0 });
@@ -382,7 +386,22 @@ static int cmd_search(int argc, char** argv) {
             if (!visited.insert(n).second) continue;
             if (top.second > maxdepth) maxdepth = top.second;
             if (n->_is_terminal) terminal++;
+            if (n->_n_parent_refs == Node::max_parent_refs) refs_full++;
+            if (n->_parent_count > Node::max_parent_refs) pc_over++;
+            if (n->_board != nullptr) max_clock = max(max_clock, (int)n->_board->_half_moves_count);
+            if (n->_is_terminal && n->_board != nullptr) {
+                if (n->_board->_half_moves_count >= max_half_moves) {
+                    fifty_term++;
+                    if (n->_parent_count > 1) fifty_shared++;
+                }
+                if (n->_board->_game_over_value == draw) term_draw++;
+            }
             nodes_per_key[n->_board != nullptr ? n->_board->_zobrist_key : 0]++;
+            // True game-ply distance from the root (DFS labels overcount in a DAG)
+            if (n->_board != nullptr) {
+                const int d = (2 * n->_board->_moves_count + !n->_board->_player) - (2 * b._moves_count + !b._player);
+                if (d >= 0 && d < 64) ply_hist[d]++;
+            }
             // Stale value: stored value differs from the best stored child value
             // (path-local draws are invisible here, nodes with a path value counted apart)
             if (!n->_is_terminal && n->_board != nullptr) {
@@ -409,9 +428,16 @@ static int cmd_search(int argc, char** argv) {
         }
         cout << "census nodes=" << visited.size() << " distinct_keys=" << nodes_per_key.size()
              << " dup_keys=" << dup_keys << " max_dup=" << max_dup
-             << " terminal=" << terminal << " maxdepth=" << maxdepth << endl;
+             << " terminal=" << terminal << " maxdepth=" << maxdepth
+             << " fifty_term=" << fifty_term << " fifty_shared=" << fifty_shared
+             << " max_clock=" << max_clock << " term_draw=" << term_draw << " ref_drops=" << g_parent_ref_drops
+             << " refs_full=" << refs_full << " pc_over=" << pc_over << endl;
         cout << "stale expanded=" << expanded << " low=" << stale_low << " high=" << stale_high
              << " with_path=" << with_path << endl;
+        cout << "plies";
+        for (int d = 0; d < 64; d++)
+            if (ply_hist[d] != 0) cout << " " << d << ":" << ply_hist[d];
+        cout << endl;
     }
     cout << "pv " << root.get_exploration_variants(0.005, 5.0, true, false, 60) << endl;
 
@@ -462,6 +488,34 @@ static int cmd_search(int argc, char** argv) {
         dump(root, "root");
         const Move bm = root.get_most_explored_child_move();
         if (!bm.is_null_move()) dump(*root._children[bm]._node, "best");
+    }
+
+    // OPTI_SEARCH_LINE="a1b1 a7b7 ...": walk a given line in the explored graph,
+    // print each node and the stored value of every child (where the value is lost)
+    if (const char* line_env = getenv("OPTI_SEARCH_LINE")) {
+        const string line = line_env;
+        Node* n = &root;
+        size_t pos = 0;
+        for (int ply = 0; n != nullptr; ply++) {
+            while (pos < line.size() && line[pos] == ' ') pos++;
+            const size_t end = line.find(' ', pos);
+            const string mv = pos < line.size() ? line.substr(pos, end == string::npos ? string::npos : end - pos) : string();
+            pos = end == string::npos ? line.size() : end;
+            cout << "line " << ply << " deep " << n->_deep_evaluation._value << " static " << n->_static_evaluation._value
+                 << " kids " << n->children_count() << "/" << (int)n->_board->_got_moves << " fe " << n->_fully_explored
+                 << " sp " << n->_is_stand_pat_eval << " it " << n->_iterations << " pc " << n->_parent_count
+                 << " term " << n->_is_terminal << " next " << (mv.empty() ? string("-") : mv) << " |";
+            Node* next = nullptr;
+            for (auto const& [m, link] : n->_children) {
+                if (link._node == nullptr) continue;
+                const string u = move_to_uci(*n->_board, m);
+                cout << " " << u << ":" << link._node->_deep_evaluation._value << "/" << link._chosen_iterations;
+                if (u == mv) next = link._node;
+            }
+            cout << endl;
+            if (mv.empty()) break;
+            n = next;
+        }
     }
     return 0;
 }
