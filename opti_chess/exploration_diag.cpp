@@ -51,6 +51,18 @@ thread_local Node* g_solver_root = nullptr;
 // TT stores) instead of the value without the cycle-closing moves
 bool g_dag_store_local = getenv("OPTI_DAG_STORE_LOCAL") != nullptr;
 int g_dag_propagate = [] { const char* e = getenv("OPTI_DAG_PROPAGATE"); const int v = e ? atoi(e) : 0; return v == 1 ? 64 : max(v, 0); }();
+long long g_parent_ref_drops = 0; // add_parent_ref calls lost because every slot held a live parent
+// Stand-pat of a partially explored node in the MCTS backup. 0 (default):
+// against the node's current backed-up value (a ratchet) while some child is
+// not fully explored. 1: against the static evaluation, only while some legal
+// move has no child yet. 2: never (best explored child only).
+int g_standpat_mode = [] { const char* e = getenv("OPTI_STANDPAT_MODE"); return e ? atoi(e) : 0; }();
+// Layered DAG (OPTI_DAG_LAYERED): positions are shared only when reached at the
+// same game ply, so every edge goes from ply p to p+1 and the graph has no cycle.
+bool g_dag_layered = getenv("OPTI_DAG_LAYERED") != nullptr;
+inline uint64_t dag_key(const Board& b) {
+	return g_dag_layered ? b._zobrist_key ^ ((uint64_t)(2 * b._moves_count + !b._player) * 0x9E3779B97F4A7C15ull) : b._zobrist_key;
+}
 
 // Hard time deadline (see exploration.h). Sample counter is file-local.
 std::atomic<clock_t> g_search_deadline{0};
@@ -471,6 +483,9 @@ static inline bool parent_ref_valid(const Node* child, Node* parent, const Move&
 	return it != parent->_children.end() && it->second._node == child;
 }
 
+// Parents of a node beyond its max_parent_refs slots (same validity rule)
+thread_local robin_map<Node*, std::vector<std::pair<Node*, Move>>> g_extra_parent_refs;
+
 void Node::add_parent_ref(Node* parent, const Move& move) {
 	for (int i = 0; i < _n_parent_refs; i++)
 		if (_parent_refs[i] == parent && _parent_moves[i] == move) return;
@@ -484,7 +499,17 @@ void Node::add_parent_ref(Node* parent, const Move& move) {
 				k++;
 			}
 		_n_parent_refs = (uint8_t)k;
-		if (k == max_parent_refs) return; // more parents than slots: those back up when visited
+		if (k == max_parent_refs) {
+			// More parents than slots: kept in the side table (propagation must reach them all)
+			auto& extra = g_extra_parent_refs[this];
+			for (auto const& [p, m] : extra)
+				if (p == parent && m == move) return;
+			if (extra.size() >= 64)
+				std::erase_if(extra, [this](const std::pair<Node*, Move>& e) { return !parent_ref_valid(this, e.first, e.second); });
+			extra.emplace_back(parent, move);
+			g_parent_ref_drops++;
+			return;
+		}
 	}
 	_parent_refs[_n_parent_refs] = parent;
 	_parent_moves[_n_parent_refs] = move;
@@ -506,21 +531,40 @@ void Node::propagate_value_change() {
 	work.push_back(this);
 	size_t head = 0;
 	int budget = g_dag_propagate;
+	// Layered DAG: a node is on the path only at its own ply (the same position
+	// at another ply is another node). Path ply of a node = base + its game ply.
+	auto game_ply = [](const Node* x) { return 2 * x->_board->_moves_count + !x->_board->_player; };
+	const int base = path_current_ply() - game_ply(this);
+	auto on_path = [&](const Node* p) {
+		const uint64_t key = p->_board->_zobrist_key;
+		if (!g_dag_layered) return path_first_ply(key) >= 0;
+		const int d = base + game_ply(p);
+		return d >= 0 && g_path_base + d < (int)g_path_keys.size() && g_path_keys[g_path_base + d] == key;
+	};
 	while (head < work.size() && budget > 0) {
 		Node* n = work[head++];
 		n->_propagate_epoch = 0; // dequeued: may be queued again
-		for (int i = 0; i < n->_n_parent_refs && budget > 0; i++) {
-			Node* p = n->_parent_refs[i];
-			if (!parent_ref_valid(n, p, n->_parent_moves[i])) continue;
-			if (p->_is_terminal || path_first_ply(p->_board->_zobrist_key) >= 0) continue;
+		auto recompute = [&](Node* p, const Move& pm) {
+			if (!parent_ref_valid(n, p, pm)) return;
+			if (p->_is_terminal || on_path(p)) return;
 			budget--;
 			const int before = p->_deep_evaluation._value;
-			const bool partial = p->children_count() < (size_t)p->_board->_got_moves;
+			const bool partial = g_standpat_mode != 2 && p->children_count() < (size_t)p->_board->_got_moves;
 			p->backup_value(0, 0, partial, nullptr, Move(), nullptr, nullptr);
 			if (p->_deep_evaluation._value != before && p->_propagate_epoch != epoch) {
 				p->_propagate_epoch = epoch;
 				work.push_back(p);
 			}
+		};
+		for (int i = 0; i < n->_n_parent_refs && budget > 0; i++)
+			recompute(n->_parent_refs[i], n->_parent_moves[i]);
+		if (n->_n_parent_refs == max_parent_refs && !g_extra_parent_refs.empty()) {
+			const auto it = g_extra_parent_refs.find(n);
+			if (it != g_extra_parent_refs.end())
+				for (auto const& [p, pm] : it->second) {
+					if (budget <= 0) break;
+					recompute(p, pm);
+				}
 		}
 	}
 }
@@ -1094,7 +1138,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 			// Phase 6: node_map is per-thread; guard for shared-tree future.
 			std::unique_lock<std::mutex> mlock(g_node_map_mutex, std::defer_lock);
 			if (g_shared_tree) mlock.lock();
-			const auto it = node_map.find(new_board->_zobrist_key);
+			const auto it = node_map.find(dag_key(*new_board));
 			if (it != node_map.end()) {
 				shared = it->second;
 				// Liveness: the entry may point at a recycled node (GUI
@@ -1146,7 +1190,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 			// hand another thread a half-built node). Legacy: unchanged.
 			if (g_tt_node_dag && !g_shared_tree && !repeats) {
 				enforce_node_map_cap();
-				node_map[new_board->_zobrist_key] = child;
+				node_map[dag_key(*new_board)] = child;
 				g_dag_link_misses++;
 			}
 			}
@@ -1315,7 +1359,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 				if (g_tt_node_dag) {
 					std::lock_guard<std::mutex> mlock(g_node_map_mutex);
 					enforce_node_map_cap();
-					node_map[child->_board->_zobrist_key] = child;
+					node_map[dag_key(*child->_board)] = child;
 					g_dag_link_misses++;
 				}
 			}
@@ -1337,7 +1381,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 				if (g_tt_node_dag) {
 					std::lock_guard<std::mutex> mlock(g_node_map_mutex);
 					enforce_node_map_cap();
-					node_map[child->_board->_zobrist_key] = child;
+					node_map[dag_key(*child->_board)] = child;
 					g_dag_link_misses++;
 				}
 			}
@@ -1380,7 +1424,9 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 	else if (g_tt_node_dag && g_shared_tree) {
 		_nodes += 1;
 	}
-	_iterations += child->_iterations;
+	// A linked shared node brings visits made through other parents: this
+	// descent is one visit of this node (layered DAG; default unchanged)
+	_iterations += (g_dag_layered && g_tt_node_dag && !created_new_node && !already_explored) ? 1 : (int)child->_iterations;
 
 	// Have all moves already been explored?
 	bool all_moves_explored = (get_fully_explored_children_count()) == _board->_got_moves;
@@ -1395,7 +1441,9 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 	// explore_random_child): get_node_score ranking decoupled from value exactly
 	// in tactical positions, propagating sibling evaluations over the best line.
 	// Stand pat (null move) while some moves are still unexplored
-	const Move best_move = backup_value(alpha, beta, !all_moves_explored, g_tt_node_dag ? &branch_history : nullptr, Move(), nullptr, out);
+	const bool standpat = g_standpat_mode == 0 ? !all_moves_explored
+		: g_standpat_mode == 1 && children_count() < (size_t)_board->_got_moves;
+	const Move best_move = backup_value(alpha, beta, standpat, g_tt_node_dag ? &branch_history : nullptr, Move(), nullptr, out);
 	_is_stand_pat_eval = best_move.is_null_move();
 
 	// FIXME: what to do when every child has been examined and no move improves the evaluation?
@@ -1619,13 +1667,14 @@ Move Node::backup_value(double alpha, double beta, bool consider_standpat, const
 			if (link._node == nullptr) continue;
 			if (!local && path != nullptr && position_is_draw_by_repetition(*path, *link._node->_board)) continue; // cycle edge
 			const Evaluation* e = (ov != nullptr && m == over_move) ? ov : path_child_eval(path, link._node, nullptr, min_ply);
-			const long long v = (long long)(e != nullptr ? e->_value : link._node->_deep_evaluation._value) * color;
+			long long v = (long long)(e != nullptr ? e->_value : link._node->_deep_evaluation._value) * color;
 			if (v > best_value) {
 				best_value = v;
 				best = m;
 			}
 		}
-		if (consider_standpat && _deep_evaluation._value * color >= best_value)
+		const Evaluation& standpat = (g_standpat_mode == 1 && _static_evaluation._evaluated) ? _static_evaluation : _deep_evaluation;
+		if (consider_standpat && standpat._value * color >= best_value)
 			return Move();
 		return best;
 	};
@@ -1655,6 +1704,8 @@ Move Node::backup_value(double alpha, double beta, bool consider_standpat, const
 	const Move local_move = pick(true);
 	if (local_move.is_null_move()) {
 		// Stand pat (or NaN scores): the node keeps its own value
+		if (g_standpat_mode == 1 && _static_evaluation._evaluated)
+			_deep_evaluation = _static_evaluation;
 		_has_path_value = false;
 		if (out != nullptr) { out->value = _deep_evaluation; out->dep = INT_MAX; out->set = true; }
 		return local_move;
@@ -1841,9 +1892,10 @@ static void reset_node_fields(Node* node) {
 	node->_iterations = 0;
 	node->_parent_count = 0;
 	node->_n_parent_refs = 0;
+	if (!g_extra_parent_refs.empty()) g_extra_parent_refs.erase(node);
 
 	if (node->_board != nullptr) {
-		node->_saved_zobrist = node->_board->_zobrist_key;
+		node->_saved_zobrist = dag_key(*node->_board);
 		node->_board->reset_board();
 	}
 
@@ -2129,7 +2181,7 @@ void Node::reset(bool recursive) {
 			for (Node* m : pre_reach) {
 				if (!collected(m)) continue;
 				if (g_tt_node_dag && m->_board != nullptr) {
-					const auto it = node_map.find(m->_board->_zobrist_key);
+					const auto it = node_map.find(dag_key(*m->_board));
 					if (it != node_map.end() && it->second == m) node_map.erase(it);
 				}
 				Board* b = m->_board;
@@ -3188,8 +3240,18 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		}
 	}
 
-	// Apply the bonus
-	for (int i = 0; i < top_count; ++i) {
+	// Apply the bonus. OPTI_TIE_RANK: tied scores share the bonus of their rank
+	// (rank = number of top scores strictly above), instead of ranks taken from
+	// the hash order of _children (equal-valued transpositions are common in a DAG)
+	static const bool tie_rank = getenv("OPTI_TIE_RANK") != nullptr;
+	if (tie_rank) {
+		for (auto& [move, score] : move_scores) {
+			int r = 0;
+			while (r < top_count && top[r].score > score) r++;
+			if (r < top_count) score *= boost_table[r];
+		}
+	}
+	else for (int i = 0; i < top_count; ++i) {
 		Move m = top[i].move;
 		move_scores[m] = top[i].score * boost_table[i];
 	}
@@ -3846,6 +3908,7 @@ Node* NodeBuffer::get_first_free_node() {
 	node->_quiescence_depth = 0;
 	node->_parent_count = 0;
 	node->_n_parent_refs = 0;
+	if (!g_extra_parent_refs.empty()) g_extra_parent_refs.erase(node);
 	node->_latest_first_move_explored = -1;
 	node->_time_spent = 0;
 	node->_is_stand_pat_eval = true;
