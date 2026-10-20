@@ -511,6 +511,12 @@ extern bool g_tt_main_search;
 // OFF = the current tree byte for byte. Not meant to be ON with g_tt_main_search.
 extern bool g_tt_node_dag;
 
+// OPTI_DAG_EXACT (default off): periodic exact game-value refresh of the DAG
+// (refresh_graph_values in exploration_diag.cpp). Every g_dag_exact_every
+// iterations, 0 = adaptive.
+extern bool g_dag_exact;
+extern int g_dag_exact_every;
+
 // #11 Plan B - Zobrist key -> LIVE Node*. Distinct from transposition_table
 // (the evaluation TT). Read and populated only when g_tt_node_dag is set. Same
 // kind of map as Node::_children (robin_map, exploration.h:43).

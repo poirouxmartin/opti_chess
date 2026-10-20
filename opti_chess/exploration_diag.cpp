@@ -1,6 +1,7 @@
 #include "exploration.h"
 #include "useful_functions.h"
 #include "zobrist.h"
+#include "graph_game.h"
 #include <cmath>
 #include <cstdlib>
 #include <unordered_map>
@@ -60,6 +61,10 @@ int g_standpat_mode = [] { const char* e = getenv("OPTI_STANDPAT_MODE"); return 
 // Layered DAG (OPTI_DAG_LAYERED): positions are shared only when reached at the
 // same game ply, so every edge goes from ply p to p+1 and the graph has no cycle.
 bool g_dag_layered = getenv("OPTI_DAG_LAYERED") != nullptr;
+// Exact DAG refresh (OPTI_DAG_EXACT, default off): see refresh_graph_values.
+// OPTI_DAG_EXACT_EVERY = iterations between refreshes (0 = max(128, reach / 8)).
+bool g_dag_exact = [] { const char* e = getenv("OPTI_DAG_EXACT"); return e && e[0] != '0'; }();
+int g_dag_exact_every = [] { const char* e = getenv("OPTI_DAG_EXACT_EVERY"); return e ? atoi(e) : 0; }();
 inline uint64_t dag_key(const Board& b) {
 	return g_dag_layered ? b._zobrist_key ^ ((uint64_t)(2 * b._moves_count + !b._player) * 0x9E3779B97F4A7C15ull) : b._zobrist_key;
 }
@@ -721,6 +726,64 @@ void dag_debug_report() {
 	g_dag_dbg_emitted = 0; // fresh detail window on the next batch
 }
 
+// OPTI_DAG_EXACT: recomputes every DAG value reachable from root as the exact game
+// value with draw on infinite play (graph_game.h). Single-threaded only (call site
+// checks !g_shared_tree). Returns the number of reachable nodes.
+int refresh_graph_values(Node* root, const PositionHistory& game_history) {
+	thread_local vector<Node*> nodes;
+	thread_local vector<Node*> stack;
+	thread_local robin_map<Node*, int> index;
+	thread_local GraphGame g;
+	thread_local GraphGameScratch s;
+	thread_local vector<int> value;
+	nodes.clear(); stack.clear(); index.clear(); g.clear();
+
+	// Walk from the root: index on first discovery
+	nodes.push_back(root);
+	index[root] = 0;
+	stack.push_back(root);
+	while (!stack.empty()) {
+		Node* n = stack.back();
+		stack.pop_back();
+		for (auto const& [move, link] : n->_children) {
+			Node* c = link._node;
+			if (c == nullptr || index.count(c)) continue;
+			index[c] = (int)nodes.size();
+			nodes.push_back(c);
+			stack.push_back(c);
+		}
+	}
+
+	// Build the game graph (indices are stable: nodes[i] <-> node i)
+	const int reach = (int)nodes.size();
+	for (int i = 0; i < reach; i++) {
+		Node* n = nodes[i];
+		int links = 0;
+		for (auto const& [move, link] : n->_children)
+			if (link._node != nullptr) links++;
+		// A repetition of a game-path position is a draw (root excluded: its key is in the history)
+		const bool history_draw = n != root && position_history_count(game_history, *n->_board) > 0;
+		const bool terminal = n->_is_terminal || links == 0 || history_draw;
+		if (terminal) {
+			g.add_node(n->_board->_player, true, false, history_draw ? 0 : n->_deep_evaluation._value);
+			continue;
+		}
+		// Stand pat: one more option when not every legal move has a child yet
+		const bool has_floor = n->_board->_got_moves > 0 && links < n->_board->_got_moves && n->_static_evaluation._evaluated;
+		g.add_node(n->_board->_player, false, has_floor, has_floor ? n->_static_evaluation._value : 0);
+		for (auto const& [move, link] : n->_children)
+			if (link._node != nullptr) g.add_child(index[link._node]);
+	}
+
+	solve_graph_game(g, value, s);
+	for (int i = 0; i < reach; i++) {
+		Node* n = nodes[i];
+		if (!g.terminal[i]) n->_deep_evaluation._value = value[i];
+		n->_has_path_value = false;
+	}
+	return reach;
+}
+
 // Nouveau GrogrosZero
 struct SerializeGuard {
 	std::unique_lock<std::recursive_mutex> lk;
@@ -836,6 +899,8 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 
 	// Exploration
 	if (getenv("SHARED_TRACE") != nullptr) t_dbg_descents = 0;
+	// OPTI_DAG_EXACT: exact refresh every exact_next iterations (outermost frame only)
+	int exact_since = 0, exact_next = g_dag_exact_every > 0 ? g_dag_exact_every : 1024;
 	while (iterations > 0) {
 		if (getenv("SHARED_TRACE") != nullptr) t_dbg_descents++;
 
@@ -930,13 +995,23 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		}
 
 		iterations--;
+		if (g_dag_exact && g_tt_node_dag && !g_shared_tree && g_dag_recursion_depth == 1 && ++exact_since >= exact_next) {
+			const int reach = refresh_graph_values(this, *base_path_history);
+			exact_since = 0;
+			// Fixed 1024 on small graphs (Fine #70 S1: 7000 iterations vs 24500 with reach / 8),
+			// growing with the graph so the amortised cost stays about 32 nodes per iteration
+			exact_next = g_dag_exact_every > 0 ? g_dag_exact_every : max(1024, reach / 32);
+		}
 	}
-	
+
 	// FIXME: this should not happen. Under DAG, _nodes is a per-edge proxy
 	// bound (Bug 2 model A, clamped >=0): tree guard silenced (Task 4).
 	if (!g_tt_node_dag && _nodes <= 0) {
 		cout << "negative nodes in grogros zero???" << endl;
 	}
+	// OPTI_DAG_EXACT: final exact refresh of the DAG at the end of the outermost call
+	if (g_dag_exact && g_tt_node_dag && !g_shared_tree && g_dag_recursion_depth == 1)
+		refresh_graph_values(this, *base_path_history);
 
 	// Computation time
 	_time_spent += clock() - begin_monte_time;
