@@ -439,6 +439,92 @@ static int cmd_search(int argc, char** argv) {
             if (ply_hist[d] != 0) cout << " " << d << ":" << ply_hist[d];
         cout << endl;
     }
+    // OPTI_SEARCH_MINIMAX=1: recompute a plain minimax over the explored graph
+    // (leaf = stored value, partially expanded node = max(static, best child),
+    // path repetitions ignored) and compare it with the stored values.
+    if (getenv("OPTI_SEARCH_MINIMAX") != nullptr) {
+        const int root_ply = 2 * b._moves_count + !b._player;
+        auto ply_of = [&](const Node* x) { return 2 * x->_board->_moves_count + !x->_board->_player - root_ply; };
+        unordered_map<const Node*, long long> memo;
+        int leaf_hist[64] = {}, partial_hist[64] = {}, diff_hist[64] = {};
+        int diffs = 0, shown = 0;
+        // Iterative post-order DFS (graphs can be deep)
+        vector<pair<Node*, bool>> st;
+        unordered_set<const Node*> opened; // expanded once (cycles: never reopen)
+        st.push_back({ &root, false });
+        while (!st.empty()) {
+            auto [n, done_kids] = st.back();
+            st.pop_back();
+            if (memo.count(n)) continue;
+            if (!done_kids) {
+                if (!opened.insert(n).second) continue;
+                st.push_back({ n, true });
+                for (auto const& [cm, cl] : n->_children)
+                    if (cl._node != nullptr && !memo.count(cl._node) && !opened.count(cl._node)) st.push_back({ cl._node, false });
+                continue;
+            }
+            const int d = ply_of(n);
+            const int dd = d < 0 ? 0 : (d > 63 ? 63 : d);
+            const int color = n->_board->get_color();
+            long long best = LLONG_MIN;
+            int kids = 0;
+            for (auto const& [cm, cl] : n->_children) {
+                if (cl._node == nullptr) continue;
+                auto it = memo.find(cl._node);
+                if (it == memo.end()) continue; // cycle back-edge (non-layered DAG): skip
+                kids++;
+                best = max(best, it->second * color);
+            }
+            long long v;
+            if (n->_is_terminal || kids == 0) {
+                v = n->_deep_evaluation._value;
+                if (!n->_is_terminal) leaf_hist[dd]++;
+            } else {
+                if (kids < (int)n->_board->_got_moves) {
+                    partial_hist[dd]++;
+                    if (n->_static_evaluation._evaluated)
+                        best = max(best, (long long)n->_static_evaluation._value * color);
+                }
+                v = best * color;
+            }
+            memo[n] = v;
+            if (v != n->_deep_evaluation._value) {
+                diffs++;
+                diff_hist[dd]++;
+                if (shown < 8) {
+                    shown++;
+                    cout << "mmdiff ply " << d << " stored " << n->_deep_evaluation._value << " minimax " << v
+                         << " kids " << kids << "/" << (int)n->_board->_got_moves << " sp " << n->_is_stand_pat_eval
+                         << " path " << n->_has_path_value << " pc " << n->_parent_count << " fen " << n->_board->to_fen() << endl;
+                }
+            }
+        }
+        cout << "minimax root stored " << root._deep_evaluation._value << " recomputed " << memo[&root]
+             << " nodes " << memo.size() << " diffs " << diffs << endl;
+        for (auto const& [m, link] : root._children)
+            if (link._node != nullptr)
+                cout << "minimax " << move_to_uci(b, m) << " stored " << link._node->_deep_evaluation._value
+                     << " recomputed " << memo[link._node] << " visits " << link._chosen_iterations << endl;
+        auto hist = [](const char* tag, const int* h) {
+            cout << tag;
+            for (int d = 0; d < 64; d++)
+                if (h[d] != 0) cout << " " << d << ":" << h[d];
+            cout << endl;
+        };
+        hist("mm_leaves", leaf_hist);
+        hist("mm_partial", partial_hist);
+        hist("mm_diffs", diff_hist);
+        // OPTI_SEARCH_COPIES="<fen>": every node of that position (all plies)
+        if (const char* copies_fen = getenv("OPTI_SEARCH_COPIES")) {
+            Board cb;
+            cb.from_fen(copies_fen);
+            for (auto const& [cn, cv] : memo)
+                if (cn->_board->_zobrist_key == cb._zobrist_key)
+                    cout << "copy ply " << ply_of(cn) << " stored " << cn->_deep_evaluation._value << " minimax " << cv
+                         << " it " << cn->_iterations << " kids " << cn->_children.size() << "/" << (int)cn->_board->_got_moves
+                         << " pc " << cn->_parent_count << " sp " << cn->_is_stand_pat_eval << endl;
+        }
+    }
     cout << "pv " << root.get_exploration_variants(0.005, 5.0, true, false, 60) << endl;
 
     // OPTI_SEARCH_DUMP=1: root children, then the children of the most explored one
@@ -564,6 +650,8 @@ static int cmd_solve(int argc, char** argv) {
         const bool ok = is_expected(best) && value >= min_value;
         if (ok && solved_at < 0) { solved_at = done; solved_ms = (now_s() - t0) * 1000.0; }
         if (!ok) solved_at = -1;
+        if (getenv("OPTI_SOLVE_TRACE") != nullptr)
+            cout << "trace " << done << " " << best << " " << root._deep_evaluation._value << endl;
     }
     const double total_ms = (now_s() - t0) * 1000.0;
     if (solved_at >= 0)
