@@ -8,7 +8,7 @@
 
 ![OptiChess analysis board](opti_chess/resources/readme/project_highlight.png)
 
-**OptiChess** is a research-oriented chess engine and analysis GUI written in modern C++20, built solo over several years (~23,000 lines). It is centred on **GrogrosZero**, a hybrid search that mixes UCT-style node selection with alpha-beta pruning, an integrated quiescence search, and WDL (win/draw/loss) statistical evaluation.
+**OptiChess** is a research-oriented chess engine and analysis GUI written in modern C++20, built solo over several years (~23,000 lines). Its main search is **GrogrosZero**, the project's own Monte Carlo tree search (MCTS) with UCT-style node selection, a quiescence search at the leaves and WDL (win/draw/loss) statistical evaluation. Alpha-beta is present but secondary: it bounds the leaf quiescence, and a separate classical alpha-beta search is available as an option (`opti_chess_cli absolve`). An MCTS-Solver (proven wins and losses propagated up the tree) is experimental: it is being tested on a separate research branch and is not part of `main` yet.
 
 > **Note:** OptiChess is an experimental project focused on algorithmic research and performance work. It has a minimal UCI loop (see [Headless CLI and UCI](#headless-cli-and-uci)), but it is not a full UCI engine and it is not intended for competitive play. See [Project status](#project-status) for the honest limits.
 
@@ -51,7 +51,8 @@ If you only read one section, read this one — these are the problems the proje
 
 | Component | Description |
 |-----------|-------------|
-| **GrogrosZero** | Hybrid search: UCT-style node selection + alpha-beta pruning + quiescence (`exploration_diag.cpp`, declarations in `exploration.h`) |
+| **GrogrosZero** | Main search, used by the GUI, UCI, CLI and self-play: MCTS with UCT-style node selection + quiescence at the leaves (`exploration_diag.cpp`, declarations in `exploration.h`); an experimental MCTS-Solver is tested on a research branch, not in `main` |
+| **Alpha-beta** | Secondary: alpha-beta bounds inside the leaf quiescence, plus a standalone classical alpha-beta with its own TT, used only by `opti_chess_cli absolve` (`cli.cpp`) |
 | **Evaluation** | 30 weights in `Evaluator` — material, mobility, king safety, weak squares, trapped pieces, pawn structure… (`evaluation.h`, `eval_*.cpp`) |
 | **Transposition table** | Zobrist-keyed, depth-aware, side-to-move scores (`zobrist.cpp`) |
 | **Move generation** | Legal generation from the array board with bitboards for attacks, pins and checks (`movegen.cpp`, `board.cpp`, `board_fen.cpp`) |
