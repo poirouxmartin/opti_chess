@@ -36,6 +36,15 @@
   3. **Full buffer → clean refinement** of the existing tree (the `can_expand` gate in `grogros_zero`) instead of a busy spin; the per-iteration `cout` was removed.
 - **⚠️ Known residual (non-blocking)**: some console spam remains in the buffer-full condition, coming from a source other than the `cout` calls removed in T5; the regression gate (PERFT 1/2 + EVALUATION stable) still passes. To be tracked separately.
 
+### #15 — GHI: ghost values on repetition cycles in the DAG
+- **Status**: ✅ fixed behind `OPTI_DAG_EXACT=1` (**off by default**; Lichess puzzle benchmark with the flag pending). Date: 2026-10-20.
+- **Files**: `graph_game.h` (new, `solve_graph_game`), `exploration_diag.cpp` (`refresh_graph_values`), `docs/BENCHMARKS.md` (section "Exact DAG values with repetition draws").
+- **Symptom**: Fine #70 (`8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1`, only winning move Kb1): plain search plays a1b2 even at 300 000 iterations (final value 453). The stored root value is 241 while a recomputation over the graph gives 142. With `OPTI_DAG_LAYERED`, the whole graph freezes at 211 (alpha-beta: 130).
+- **Cause**: node values in the cyclic DAG are max/min backups. A cycle of king shuffles can support its own value (ghost value). Repetition draws were applied only on the current descent path, never in the stored values (graph history interaction). In layered mode, ply copies let White postpone forever to a thin optimistic frontier.
+- **Fix**: exact value of the finite game graph in which infinite play is a draw, computed by two attractor passes (`solve_graph_game`, O(E + S log S)) and written back to every reachable node every `max(1024, reachable/32)` iterations (`OPTI_DAG_EXACT_EVERY=<n>` overrides). Disabled under the shared tree. Details: `ALGORITHMS.md` §8.6.
+- **Tests**: `GraphGame.*` (6 unit tests on hand-built graphs: acyclic minimax, ghost cycle resolved, infinite play is a draw, negative ghost, stand-pat floor, terminal ignores edges); `Endgame.Fine70ExactDagSolvesLadder` (S4, S5, S6, S7 with the flag, budgets 20000/20000/20000/40000).
+- **Result**: S7 solved from 9 500 iterations (Kb1, value 1247 at 100 000), against unsolved for plain search. Limits: mate distance not re-encoded; values can drift between refreshes.
+
 ---
 
 ## ⬜ Open — by severity
@@ -104,6 +113,7 @@
 - **✅ A implemented & measured (2026-05-17, branch `feature/tt-main-search`) — INSUFFICIENT, as anticipated.** A complete implementation behind the runtime toggle `g_tt_main_search` (default OFF), reviewed by several agents, byte-identical when OFF (non-regression on PERFT 1/2 + EVALUATION confirmed by the user).
   - **Measurement (blocked king-and-pawn endgame, fixed iteration budget)**: OFF → Nodes 431k, Iter 431k (1:1), NPS 40k and stable. ON → Nodes 447k (unchanged), **Iter 6.1M (14×)**, Stores **29.8M ≈ Overwrites 29.8M** for **12.8k entries** (≈0 net), NPS **40k→7k and falling**, **no depth gain at all** (if anything, less).
   - **Root cause (architectural, not a bug)**: a *frozen scalar* TT leaf truncates every transposed line at the depth of its first freeze (a shallow one), so the PV cannot deepen — a depth cap. And once a front is entirely frozen, the iteration-budgeted MCTS loop has no progress left to make and spins (14× the iterations, collapsing NPS, write-back rewriting the same value 29.8M times). The "Lague-style" gain requires *continuing the deep subtree through the transposition* (sharing), which scalar value reuse structurally cannot do. This confirms the contingency stated in the spec ("B only if A is insufficient").
+  - **Follow-up (2026-10-20)**: the DAG ghost values that still block Fine #70 under node sharing are fixed behind `OPTI_DAG_EXACT=1`, see #15.
   - **User decision (2026-05-17)**: **pivot to plan B (DAG / node sharing)**. The plan A code is kept on its branch, OFF (correct and harmless); whether to keep it OFF or revert it is to be settled at the plan B brainstorm. Plan A spec and plan: `docs/superpowers/{specs,plans}/2026-05-17-optichess-tt-main-search*`.
 
 ### ✅ #14 — Persistent evaluation/score inconsistency on a value coming from the TT (generalisation of #1 to the non-mate case)
@@ -115,6 +125,10 @@
 - **Fix applied**: generalise the #1 v2 fix to the non-mate case — force `_uncertainty = 0` on **every** TT cutoff (consistent with the *trusted* terminal/mate/NN paths at `board.cpp:1558/1575/1592`, which all set `_uncertainty=0` and then recompute the WDL). The `_winnable_* = 0/1 by sign` override stays **mate-only** (it avoids the `winning_eval/_winnable` scaling on a huge mate score; outside mate the static `_winnable_*` are a legitimate property of the position and are preserved). `_avg_score` becomes a deterministic monotone function of `_value`, so value and score always correlate.
 - **⚠️ Expected effect on the search**: `get_node_score` consumes `_uncertainty`; quiescence leaves that hit a cutoff go from static uncertainty to 0, so their WDL/score becomes sharper. The *display* change is intended; the impact on move ordering is to be validated at the runtime gate (playing strength / EVALUATION).
 - **Interaction with #3 (not fixed here)**: #3 (wrong mate distance through a transposition, `_moves_count` not hashed) remains open and independent — it affects the *magnitude* inside the mate band, not the value↔score correlation. To be handled separately.
+
+### 🟠 #16 — Search result depends on earlier searches in the same process
+- **Status**: ⬜ open, to investigate.
+- **Detail**: search result depends on earlier searches in the same process (suspected child-map capacity of reused pool slots changing tie-break order); seen in `Endgame.Fine70ExactDagSolvesLadder` (S7 solve point 9 500 to 15 000 iterations depending on prior tests; see `docs/BENCHMARKS.md`, section "Exact DAG values with repetition draws").
 
 ---
 

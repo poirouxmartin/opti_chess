@@ -322,6 +322,27 @@ position_is_draw_by_repetition(path, board) {
 ### 8.5 Cloning per iteration
 `grogros_zero` clones `base_path` on every outer iteration (`exploration.cpp:185`), so sibling branches cannot pollute each other.
 
+### 8.6 Exact graph values (`OPTI_DAG_EXACT=1`, off by default, 2026-10-20)
+**Problem.** In the DAG, stored values are backups over a cyclic graph. The path-local draws of 8.4 are never written into the stored values, so a cycle of king shuffles can hold a self-supporting ("ghost") value.
+
+**Semantics.** `solve_graph_game` (`graph_game.h`) returns the exact value of the finite game graph in which infinite play (a repetition cycle) is a draw (0). On a finite graph this equals the minimax value with first-repetition draws at the root, and has no ghost values.
+
+**Algorithm.** Two attractor passes:
+- Positive pass: sources are leaf payoffs and stand-pat floors > 0, taken by decreasing payoff. A Max node joins at the first option reached; a Min node joins when all its options are reached.
+- Negative pass: symmetric.
+- Nodes joined in neither pass: 0.
+- Cost O(E + S log S), E edges and S sources.
+
+**Write-back.** `refresh_graph_values` (`exploration_diag.cpp`) walks every node reachable from the root and writes these values back:
+- terminal node: game-over value;
+- unexpanded leaf: its quiescence value;
+- position of the game history before the root: draw (0);
+- partially expanded node: keeps its static evaluation as a stand-pat option.
+
+**Schedule.** Called from the outermost `grogros_zero` frame every `max(1024, reachable/32)` iterations (`OPTI_DAG_EXACT_EVERY=<n>` overrides), and at the end of each call. Normal backups run in between. Disabled under the shared (parallel) tree.
+
+**Limits.** Mate distance is not re-encoded: values move up unchanged, as in the normal backup. Values can drift between refreshes. The `OPTI_SEARCH_MINIMAX` checker skips back edges and is not exact on a cyclic graph (Fine #70 a1b1: 126, exact about 1200). Tests: `GraphGame.*`. Results: `docs/BENCHMARKS.md`, section "Exact DAG values".
+
 ---
 
 ## 9. Computing the "best move" — the flow

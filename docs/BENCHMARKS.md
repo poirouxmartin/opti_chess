@@ -246,7 +246,9 @@ Not a speed change: a search correctness fix (see the commit message). `opti_che
 | `rn2k1r1/pppRpRpp/bb6/q7/6n1/8/PPPPPPPP/1NB1KBN1 w - - 0 1` | draw (perpetual) | 0 | 0 |
 
 Still open on Fine #70: the root plays 1.Kb2 (only 1.Kb1 wins) and the value drifts down once
-the 500k-board arena is full (+635 at 40k iterations, +67 at 300k).
+the 500k-board arena is full (+635 at 40k iterations, +67 at 300k). The cause (ghost values on
+cycles) and the exact-value fix behind `OPTI_DAG_EXACT=1` are in the section below
+(2026-10-20).
 
 Non-regression: `Puzzle.LichessBenchmark5000` NODES-500 SEED-42 4052/5000 vs 4049/5000
 (`build/bench_bin/nodes500_full.csv`), b=17 c=20, McNemar chi2=0.11 (not significant).
@@ -364,6 +366,59 @@ draw, evaluation = material + 6 cp per pawn rank. Independent of GrogrosZero.
 
 The transposition table collapses the king manoeuvres: depth 25+ in tens of milliseconds, where
 the GrogrosZero tree does not hold 1.Kb1 after 100k iterations (about 40 s).
+
+## Exact DAG values with repetition draws (OPTI_DAG_EXACT, 2026-10-20)
+
+**Problem.** In the position-keyed DAG (default mode), node values are max/min backups over a
+cyclic graph. A cycle of king shuffles can hold a self-supporting ("ghost") value, and repetition
+draws were applied only on the current descent path, never in the stored values (graph history
+interaction). On Fine #70 (only winning move 1.Kb1):
+
+- plain search plays a1b2 even at 300 000 iterations (final value 453);
+- the stored root value is 241, while a recomputation over the graph gives 142;
+- in `OPTI_DAG_LAYERED` mode the whole graph freezes at 211 (alpha-beta: 130), because the
+  ply-layered copies let White postpone forever to a thin optimistic frontier.
+
+**Fix** (`OPTI_DAG_EXACT=1`, off by default; `OPTI_DAG_EXACT_EVERY=<n>` overrides the refresh
+interval). `opti_chess/graph_game.h` (`solve_graph_game`) computes the exact value of the finite
+game graph in which infinite play (a repetition cycle) is a draw. `refresh_graph_values`
+(`exploration_diag.cpp`) writes these values back to every node reachable from the root. Semantics,
+algorithm and schedule: `opti_chess/ALGORITHMS.md` §8. Disabled under the shared (parallel) tree.
+Tests: `GraphGame.*` (6 unit tests on hand-built graphs) and `Endgame.Fine70ExactDagSolvesLadder`
+(S4, S5, S6, S7 with the flag, budgets 20000/20000/20000/40000).
+
+Ladder, `opti_chess_cli solve 100000 <expected> 50 <fen>`; values in centipawns from the side to
+move at 100 000 iterations; "solved N" = first chunk from which the move stays correct until
+100 000:
+
+| step | expected | plain | `OPTI_DAG_EXACT=1` |
+|---|---|---|---|
+| S1 | Kh5 | solved 500 it / 16 ms (485) | solved 500 / 16 ms (1830) |
+| S2 | Kh4 | solved 1 000 / 30 ms (1307) | solved 1 000 / 39 ms (1877) |
+| S4 | Kf2/Kf3 | unsolved, Kd3 351 | solved 9 500 / 643 ms, Kf3 1735 |
+| S5 | Ke3/Ke2 | unsolved, Kd2 336 | solved 11 000 / 1648 ms, Ke2 1735 |
+| S6 | Kd3 | unsolved, Ke1 393 | solved 6 000 / 365 ms, Kd3 1197 |
+| S7 | Kb1 | unsolved, Kb2 241 | solved 9 500 / 905-1116 ms, Kb1 1247 |
+
+**S7 with the flag.** `search 100000` gives a1b2 at 10 000 iterations, then a1b1 from 20 000 to
+100 000 (value 1216, 22.2 s). The result is identical for `OPTI_SEED` 1..8 (deterministic).
+
+Refresh schedule, S7 (first solved chunk): earlier rule (first refresh at 128, then every
+reachable/8) 24 500; fixed interval 64 / 256 / 1024: 9 000 / 12 000 / 7 000; current rule
+(every max(1024, reachable/32)) 9 500; with `OPTI_STANDPAT_MODE=1`: 8 500; with `OPTI_TIE_RANK=1`:
+15 500.
+
+Same-process sensitivity: in the gtest `Endgame.Fine70ExactDagSolvesLadder` (S4, S5, S6 then S7 in one process, pool slots reused) the solve point of S7 moves between 9500 and 15000 iterations depending on the searches run before it (alone: 15000; after Search.RepetitionUnderDag: 14000; after Search.SolverProvesMateInOne: 9500; full harness: 12000), S4 between 8500 and 16000. The move is always right by the end of the budget (S7 40000, others 20000). Suspected cause, not yet verified: reused node slots keep their child-map capacity, so the child iteration order and the tie-breaks differ from a fresh process. The CLI (fresh process) is deterministic: OPTI_SEED 1..8 give the same 9500.
+
+**Oracle.** Alpha-beta `opti_chess_cli absolve 34` on S7: a1b2 (130) up to depth 20, a1b1 from
+depth 21, stable a1b1 (260) from depth 26; depth 34 takes 3.85 M nodes, 1.4 s.
+
+**Limits.** Mate distance is not re-encoded (values move up unchanged, as in the normal backup).
+Between refreshes values can drift. The CLI checker `OPTI_SEARCH_MINIMAX` skips back edges and is
+**not** exact on a cyclic graph: it reports 126 for a1b1, where the exact value is about 1200.
+
+**Speed.** With the flags off: `bench 2000` gives 61-66 k nodes/s, signature `469254f17b2357bb`
+unchanged (no regression). Lichess puzzle benchmark with the flag: pending.
 
 ## MCTS-Solver prototype (OPTI_SOLVER=1, off by default) - 2026-10-16
 
