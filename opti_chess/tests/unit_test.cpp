@@ -9,6 +9,7 @@
 #include "board.h"
 #include "evaluation.h"
 #include "exploration.h"
+#include "graph_game.h"
 #include "gui.h"
 #include "buffer.h"
 #include "zobrist.h"
@@ -6971,6 +6972,74 @@ TEST(Endgame, Fine70LadderEasySteps) {
 	node_map.clear();
 }
 
+TEST(Endgame, Fine70ExactDagSolvesLadder) {
+	// Without OPTI_DAG_EXACT the position-keyed DAG keeps ghost (self-supporting cycle) values and
+	// plays a1b2 even at 300000 iterations; with the exact graph refresh Kb1 is found at 9500
+	// (CLI solve, 2026-10-20: S4 9500, S5 11000, S6 6000 iterations, all stable to 100000).
+	static Evaluator evaluator;
+	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
+	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+
+	// Restores the globals on every exit path, failures included.
+	struct Restore {
+		bool dag, exact; int every;
+		Restore() : dag(g_tt_node_dag), exact(g_dag_exact), every(g_dag_exact_every) {}
+		~Restore() { g_tt_node_dag = dag; g_dag_exact = exact; g_dag_exact_every = every; }
+	} restore;
+	g_tt_node_dag = true;
+	g_dag_exact = true;
+	g_dag_exact_every = 0;
+
+	struct Step { const char* fen; vector<string> expected; int max_iters; };
+	const Step steps[] = {
+		{ "8/2k5/3p4/p2P1p2/P2P1P2/4K3/8/8 w - - 14 8", {"e3f2", "e3f3"}, 20000 },
+		{ "8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7", {"d3e3", "d3e2"}, 20000 },
+		{ "8/2k5/3p4/p2P1p2/P2P1P2/8/3K4/8 w - - 10 6", {"d2d3"}, 20000 },
+		{ "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1", {"a1b1"}, 40000 },
+	};
+	// After other searches in the same process (Search.RepetitionUnderDag, SolverProvesMateInOne)
+	// the trajectory differs (suspected: reused pool slots keep their child-map capacity, so the
+	// iteration order and the tie-breaks change); the budgets leave room for that.
+	auto uci = [](const Move& m) {
+		string s;
+		s += char('a' + m.start_col); s += char('1' + m.start_row);
+		s += char('a' + m.end_col); s += char('1' + m.end_row);
+		return s;
+	};
+	for (const Step& st : steps) {
+		monte_node_buffer.reset();
+		monte_board_buffer.reset();
+		node_map.clear();
+		transposition_table.clear();
+		Board b;
+		b.from_fen(st.fen);
+		Node root(&b);
+		const bool trace = getenv("OPTI_TEST_TRACE") != nullptr;
+		auto is_expected = [&](const string& mv) {
+			for (const string& e : st.expected) if (mv == e) return true;
+			return false;
+		};
+		int solved_at = -1;
+		for (int done = 0; done < st.max_iters; done += 500) {
+			root.grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 500, 10, nullptr, nullptr, 0);
+			const string mv = uci(root.get_most_explored_child_move());
+			if (!is_expected(mv)) solved_at = -1;
+			else if (solved_at < 0) solved_at = done + 500;
+			if (trace)
+				cout << "trace " << done + 500 << " " << mv << " " << root._deep_evaluation._value << endl;
+		}
+		const string best = uci(root.get_most_explored_child_move());
+		cout << "  " << st.fen << " best " << best << " solved_at " << solved_at << endl;
+		const bool found = is_expected(best);
+		EXPECT_TRUE(found) << st.fen << " played " << best;
+		EXPECT_GT(root._deep_evaluation._value * b.get_color(), 50) << st.fen;
+		recycle_detached_node(&root);
+	}
+	monte_node_buffer.reset();
+	monte_board_buffer.reset();
+	node_map.clear();
+}
+
 	TEST(Puzzle, OFFvsDAG_Endgame) {
 	// KingPawn endgame positions from Tests.txt - transposition-heavy, DAG territory
 	static Evaluator evaluator;
@@ -7540,4 +7609,75 @@ TEST(FEN, RankOverflowFailsSafe) {
     for (int r = 0; r < 8; r++)
         for (int c = 0; c < 8; c++)
             EXPECT_EQ(b._array[r][c], 0);
+}
+
+// graph_game.h: exact game value with draw on infinite play (OPTI_DAG_EXACT)
+TEST(GraphGame, AcyclicMinimax) {
+    GraphGame g; GraphGameScratch s; std::vector<int> v;
+    g.add_node(true, false, false, 0);  g.add_child(1); g.add_child(2);   // 0 root, max
+    g.add_node(false, false, false, 0); g.add_child(3); g.add_child(4);   // 1 A, min
+    g.add_node(false, false, false, 0); g.add_child(5); g.add_child(6);   // 2 B, min
+    g.add_node(false, true, false, 30);                                   // 3 leaf
+    g.add_node(false, true, false, -10);                                  // 4 leaf
+    g.add_node(false, true, false, 5);                                    // 5 leaf
+    g.add_node(false, true, false, 20);                                   // 6 leaf
+    solve_graph_game(g, v, s);
+    EXPECT_EQ(v[1], -10);
+    EXPECT_EQ(v[2], 5);
+    EXPECT_EQ(v[0], 5);
+}
+
+TEST(GraphGame, GhostCycleResolved) {
+    GraphGame g; GraphGameScratch s; std::vector<int> v;
+    g.add_node(true, false, false, 0);  g.add_child(1); g.add_child(2);   // 0 X, max
+    g.add_node(false, false, false, 0); g.add_child(0); g.add_child(3);   // 1 Y, min
+    g.add_node(false, true, false, 10);                                   // 2 leaf
+    g.add_node(false, true, false, 300);                                  // 3 leaf
+    solve_graph_game(g, v, s);
+    EXPECT_EQ(v[0], 10);
+    EXPECT_EQ(v[1], 10);
+}
+
+TEST(GraphGame, InfinitePlayIsDraw) {
+    GraphGame g; GraphGameScratch s; std::vector<int> v;
+    g.add_node(true, false, false, 0);  g.add_child(1); g.add_child(2);   // 0 X, max
+    g.add_node(false, false, false, 0); g.add_child(0); g.add_child(3);   // 1 Y, min
+    g.add_node(false, true, false, -20);                                  // 2 leaf
+    g.add_node(false, true, false, 50);                                   // 3 leaf
+    solve_graph_game(g, v, s);
+    EXPECT_EQ(v[0], 0);
+    EXPECT_EQ(v[1], 0);
+}
+
+TEST(GraphGame, NegativeGhost) {
+    GraphGame g; GraphGameScratch s; std::vector<int> v;
+    g.add_node(false, false, false, 0); g.add_child(1); g.add_child(2);   // 0 X, min
+    g.add_node(true, false, false, 0);  g.add_child(0); g.add_child(3);   // 1 Y, max
+    g.add_node(false, true, false, -10);                                  // 2 leaf
+    g.add_node(false, true, false, -300);                                 // 3 leaf
+    solve_graph_game(g, v, s);
+    EXPECT_EQ(v[0], -10);
+    EXPECT_EQ(v[1], -10);
+}
+
+TEST(GraphGame, StandPatFloor) {
+    GraphGame g; GraphGameScratch s; std::vector<int> v;
+    g.add_node(true, false, true, 40); g.add_child(1);                    // max, floor 40
+    g.add_node(false, true, false, 10);                                   // leaf 10
+    solve_graph_game(g, v, s);
+    EXPECT_EQ(v[0], 40);
+
+    g.clear();
+    g.add_node(false, false, true, 40); g.add_child(1);                   // min, floor 40
+    g.add_node(false, true, false, 10);                                   // leaf 10
+    solve_graph_game(g, v, s);
+    EXPECT_EQ(v[0], 10);
+}
+
+TEST(GraphGame, TerminalIgnoresEdges) {
+    GraphGame g; GraphGameScratch s; std::vector<int> v;
+    g.add_node(true, true, false, 7); g.add_child(1);                     // terminal 7, edge ignored
+    g.add_node(false, true, false, 100);                                  // leaf 100
+    solve_graph_game(g, v, s);
+    EXPECT_EQ(v[0], 7);
 }
