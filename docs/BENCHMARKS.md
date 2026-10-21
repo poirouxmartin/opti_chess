@@ -418,7 +418,7 @@ Between refreshes values can drift. The CLI checker `OPTI_SEARCH_MINIMAX` skips 
 **not** exact on a cyclic graph: it reports 126 for a1b1, where the exact value is about 1200.
 
 **Speed.** With the flags off: `bench 2000` gives 61-66 k nodes/s, signature `469254f17b2357bb`
-unchanged (no regression). Lichess puzzle benchmark with the flag: pending.
+unchanged (no regression). Lichess puzzle bench (Puzzle.LichessBenchmark5000, NODES-500, SEED-42, 2026-10-21): flag off 4024/5000 (80.5%), avg score 0.741; flag on 4024/5000, avg score 0.741. Identical pass/fail on all 5000 puzzles (McNemar b = c = 0, no discordant pair) and identical total nodes (48039209); wall time 671.8 s vs 686.5 s (avg 71543 vs 70018 nodes/s). At 500 nodes the periodic refresh (every max(1024, reach/32) iterations) never fires; only the final refresh runs, so this bench shows the flag is harmless on tactics, not that it helps them.
 
 ## MCTS-Solver prototype (OPTI_SOLVER=1, off by default) - 2026-10-16
 
