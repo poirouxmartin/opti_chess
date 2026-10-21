@@ -420,6 +420,18 @@ Between refreshes values can drift. The CLI checker `OPTI_SEARCH_MINIMAX` skips 
 **Speed.** With the flags off: `bench 2000` gives 61-66 k nodes/s, signature `469254f17b2357bb`
 unchanged (no regression). Lichess puzzle bench (Puzzle.LichessBenchmark5000, NODES-500, SEED-42, 2026-10-21): flag off 4024/5000 (80.5%), avg score 0.741; flag on 4024/5000, avg score 0.741. Identical pass/fail on all 5000 puzzles (McNemar b = c = 0, no discordant pair) and identical total nodes (48039209); wall time 671.8 s vs 686.5 s (avg 71543 vs 70018 nodes/s). At 500 nodes the periodic refresh (every max(1024, reach/32) iterations) never fires; only the final refresh runs, so this bench shows the flag is harmless on tactics, not that it helps them.
 
+| NODES-500, SEED-42 | Flag off | `OPTI_DAG_EXACT=1` |
+|---|---|---|
+| Solved | 4024/5000 (80.5%) | 4024/5000 (80.5%) |
+| Avg score | 0.741 | 0.741 |
+| Avg time per puzzle | 134.3 ms | 137.2 ms (+2.2%) |
+| Avg nodes/s | 71543 | 70018 |
+
+McNemar: b = 0, c = 0, chi2 undefined (no discordant pair), exact p = 1.0. Verdict: **neutral**
+(not significant), so the default stays off. The +2.2% time is the final refresh plus run-to-run
+noise; with identical node counts it does not change the result. A bench where the periodic
+refresh actually fires (NODES-2000 or more) is still needed before deciding on the default.
+
 ## MCTS-Solver prototype (OPTI_SOLVER=1, off by default) - 2026-10-16
 
 Game results proven at real game-over leaves (mate, stalemate, material draw; never path-local repetition draws) propagate up: a child proven winning for the side to move proves the node; every legal move expanded and proven proves a draw (one drawn) or a loss. Proven nodes below the root are no longer selected; the root keeps answering. `get_most_explored_child_move` plays a proven win and avoids a proven loss. `search`/`solve` print `proven` (1 white wins, -1 black wins, 2 draw).
