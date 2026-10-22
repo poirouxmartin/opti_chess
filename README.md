@@ -204,7 +204,7 @@ quit
 
 The replies include `uciok`, `readyok`, `info nodes ...` and `bestmove <move>`.
 
-Search option: `OPTI_DAG_EXACT=1` (with `OPTI_DAG_EXACT_EVERY=<n>` to set the refresh interval) makes the DAG search use exact values on the cyclic game graph, with repetition cycles scored as draws. On Fine #70 it finds the only winning move, 1.Kb1, in about 1 s. The flag is off by default; see [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
+Search mode: DAG search is the default. It always uses exact values on the cyclic game graph, with repetition cycles scored as draws (`OPTI_DAG_EXACT_EVERY=<n>` sets the refresh interval). On Fine #70 it finds the only winning move, 1.Kb1, in about 1 s. `OPTI_NO_DAG=1` gives the pure tree search. See [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
 
 ---
 

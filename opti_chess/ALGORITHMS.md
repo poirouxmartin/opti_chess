@@ -322,7 +322,7 @@ position_is_draw_by_repetition(path, board) {
 ### 8.5 Cloning per iteration
 `grogros_zero` clones `base_path` on every outer iteration (`exploration.cpp:185`), so sibling branches cannot pollute each other.
 
-### 8.6 Exact graph values (`OPTI_DAG_EXACT=1`, off by default, 2026-10-20)
+### 8.6 Exact graph values (DAG mode, always on)
 **Problem.** In the DAG, stored values are backups over a cyclic graph. The path-local draws of 8.4 are never written into the stored values, so a cycle of king shuffles can hold a self-supporting ("ghost") value.
 
 **Semantics.** `solve_graph_game` (`graph_game.h`) returns the exact value of the finite game graph in which infinite play (a repetition cycle) is a draw (0). On a finite graph this equals the minimax value with first-repetition draws at the root, and has no ghost values.
@@ -339,7 +339,11 @@ position_is_draw_by_repetition(path, board) {
 - position of the game history before the root: draw (0);
 - partially expanded node: keeps its static evaluation as a stand-pat option.
 
+The refresh also recomputes `_wdl` and `_avg_score` from the new value (mate values: uncertainty 0, winnable from the sign). Parent-ref value propagation (`add_parent_ref`, `propagate_value_change`) and the `OPTI_DAG_PROPAGATE`/`_STORE_LOCAL`/`_LAYERED` variants were removed (2026-10-22).
+
 **Schedule.** Called from the outermost `grogros_zero` frame every `max(1024, reachable/32)` iterations (`OPTI_DAG_EXACT_EVERY=<n>` overrides), and at the end of each call. Normal backups run in between. Disabled under the shared (parallel) tree.
+
+**Clock in the key.** `dag_key()` mixes the halfmove clock into the key when `_half_moves_count >= 70` (`DAG_CLOCK_SPLIT`), so positions near the 50-move rule are not shared across clocks. Below 70, a shared node keeps the clock of the path that created it. Residual: a quiet subtree deeper than about 30 plies could see the wrong 50-move draw.
 
 **Limits.** Mate distance is not re-encoded: values move up unchanged, as in the normal backup. Values can drift between refreshes. The `OPTI_SEARCH_MINIMAX` checker skips back edges and is not exact on a cyclic graph (Fine #70 a1b1: 126, exact about 1200). Tests: `GraphGame.*`. Results: `docs/BENCHMARKS.md`, section "Exact DAG values".
 
