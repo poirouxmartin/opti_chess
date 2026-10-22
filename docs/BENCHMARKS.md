@@ -444,3 +444,18 @@ Game results proven at real game-over leaves (mate, stalemate, material draw; ne
 | Lichess 5000, NODES-500, SEED 42 | 4024 | 4026 (b=2, c=4, chi2 0.17, n.s.) |
 
 Reading: the solver only helps where proofs are reachable (forced mates). In Fine #70 nothing is provable within the horizon (the win ends in a promotion far beyond any mate), so the trees are identical: the pawn-ending weakness is in selection/backup, not in proof propagation.
+
+## 2026-10-22: tree vs DAG vs exact DAG in games (decision 61)
+
+Setup: `opti_chess_selfplay 200 1000 --modes=NEW,OLD --openings=100 --seed=7` (commit 7e2a713). 100 random 8-ply openings, each played twice with colours swapped; 1000 iterations per move; fresh tree per move (`node_map` cleared); adjudication: resign at +900 for 4 moves, draw cap 240 plies. Limit: each search starts from a FEN without the game history, so engines do not see repetitions already played in the game (symmetric for both sides).
+
+| Match (NEW vs OLD) | NEW-OLD-draws | Score NEW | Elo NEW (95%) | ms/move NEW / OLD | Avg plies |
+|---|---|---|---|---|---|
+| tree vs DAG | 90-95-15 | 48.75% | -8.7 [-55.4, +37.8] | 261 / 264 | 54.3 |
+| exact DAG vs tree | 90-91-19 | 49.75% | -1.7 [-47.8, +44.3] | 265 / 253 | 57.0 |
+
+End reasons: 185 / 181 resignations, 15 / 19 draws by the rules, 0 cap. No error lines, pools intact (60000/60000 boards, 120000/120000 nodes free after every ply).
+
+Fine #70 ladder (`Puzzle.OFFvsDAG_Endgame`, 5 positions x 3 time budgets 0.1/1/5 s, time-based so not deterministic): tree 4/15, DAG 2/15, exact DAG 8/15. Two ladder positions are skipped (move not resolved) and the test asserts nothing.
+
+Verdict: in games the three modes are indistinguishable at this sample size (both intervals contain 0; 200 games only detect differences of roughly 45 Elo). The DAG brings no measurable gain over the pure tree in games, the exact DAG brings nothing over the DAG on puzzles (4024/5000 in both), and the DAG is worse than the tree on the Fine #70 ladder; the exact DAG only helps on that ladder.
