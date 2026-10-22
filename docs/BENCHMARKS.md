@@ -459,3 +459,19 @@ End reasons: 185 / 181 resignations, 15 / 19 draws by the rules, 0 cap. No error
 Fine #70 ladder (`Puzzle.OFFvsDAG_Endgame`, 5 positions x 3 time budgets 0.1/1/5 s, time-based so not deterministic): tree 4/15, DAG 2/15, exact DAG 8/15. Two ladder positions are skipped (move not resolved) and the test asserts nothing.
 
 Verdict: in games the three modes are indistinguishable at this sample size (both intervals contain 0; 200 games only detect differences of roughly 45 Elo). The DAG brings no measurable gain over the pure tree in games, the exact DAG brings nothing over the DAG on puzzles (4024/5000 in both), and the DAG is worse than the tree on the Fine #70 ladder; the exact DAG only helps on that ladder.
+
+## 2026-10-22 - exact DAG as the only DAG mode (branch dev/poiroux/dag-exact, commits 1d15ce4 + 8b6dfdb)
+
+The exact graph-game refresh (cycles and game-history repetitions scored as draws, periodic + final refresh, mate-only certainty after write-back) is now the only DAG mode. Legacy flags OPTI_DAG_EXACT, OPTI_DAG_LAYERED, OPTI_DAG_PROPAGATE, OPTI_DAG_STORE_LOCAL and parent-ref propagation are removed. OPTI_NO_DAG=1 still gives the pure tree.
+
+| Check | Result |
+|---|---|
+| harness -Full | perft 7/7, gtest 156/156, UCI ALL OK |
+| bench | nodes=701226, 12737.1 ms, 55054 nodes/s, signature 29ae53c1996ef1e6 (intended change) |
+| Puzzle.OFFvsDAG_Endgame (Fine #70 ladder set, 15 runs) | DAG 9/15 (0.1 s 2/5, 1 s 3/5, 5 s 4/5) vs tree 4/15 |
+| LichessBenchmark5000 NODES-500 SEED-42 | 4024/5000 (80.5%), avg score 0.740, 704.1 s |
+| McNemar vs nodes500_solver_off.csv | 4024 vs 4024, b=4 c=4, chi2=0.125, not significant; chosen moves identical 5000/5000, total nodes identical (48039209) |
+| Selfplay 200 games, 1000 it/move, 100 openings x2 colors, seed 7, dag vs tree | 92 W / 17 D / 91 L, score 50.25%, Elo +1.7 [-44.6, +48.1] 95% |
+| Selfplay ms/move | dag 249.4 vs tree 239.3 (+4%) |
+
+Open: the 4/4 discordant solved flags despite identical moves are unexplained (likely tie/scoring detail in the CSV). The 50-move clock enters the DAG key only from half-move 70 (DAG_CLOCK_SPLIT); below that a shared node keeps its creator's clock.
