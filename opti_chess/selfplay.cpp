@@ -18,10 +18,9 @@
 // Colors alternate each game. Fresh search tree every move (unbiased, simple).
 //
 // Usage: opti_chess_selfplay [games] [iterations_per_move] [options]
-//   --modes=NEW,OLD   search mode of each side, one of tree | dag | exact
-//                     tree  = g_tt_node_dag off, g_dag_exact off
-//                     dag   = g_tt_node_dag on,  g_dag_exact off
-//                     exact = g_tt_node_dag on,  g_dag_exact on
+//   --modes=NEW,OLD   search mode of each side, one of tree | dag (exact = alias of dag)
+//                     tree = g_tt_node_dag off
+//                     dag  = g_tt_node_dag on (exact game values, the only DAG behaviour)
 //                     With --modes both sides get the default toggles (all on),
 //                     then the mover's mode is applied before each search.
 //                     Incompatible with --persist.
@@ -40,19 +39,18 @@ static double new_alpha = 0.00001, new_beta = 5.0, new_gamma = 1.10;
 static double old_alpha = 0.00001, old_beta = 5.0, old_gamma = 1.10;
 
 // --modes=NEW,OLD: search mode per side (used only when modes_given)
-enum SearchMode { MODE_TREE, MODE_DAG, MODE_EXACT };
+enum SearchMode { MODE_TREE, MODE_DAG };
 static bool modes_given = false;
 static SearchMode new_mode = MODE_TREE;
 static SearchMode old_mode = MODE_TREE;
 
 static const char* mode_name(const SearchMode m) {
-	return m == MODE_DAG ? "dag" : (m == MODE_EXACT ? "exact" : "tree");
+	return m == MODE_DAG ? "dag" : "tree";
 }
 
 static bool parse_mode_name(const string& s, SearchMode& out) {
 	if (s == "tree") out = MODE_TREE;
-	else if (s == "dag") out = MODE_DAG;
-	else if (s == "exact") out = MODE_EXACT;
+	else if (s == "dag" || s == "exact") out = MODE_DAG; // exact: legacy alias
 	else return false;
 	return true;
 }
@@ -93,7 +91,6 @@ static void set_config(bool new_engine) {
 	if (modes_given) {
 		const SearchMode m = new_engine ? new_mode : old_mode;
 		g_tt_node_dag = (m != MODE_TREE);
-		g_dag_exact = (m == MODE_EXACT);
 	}
 }
 
@@ -414,7 +411,7 @@ int main(int argc, char* argv[]) {
 			if (comma == string::npos
 				|| !parse_mode_name(spec.substr(0, comma), new_mode)
 				|| !parse_mode_name(spec.substr(comma + 1), old_mode)) {
-				cerr << "bad --modes value (expected NEW,OLD with tree|dag|exact): " << a << endl;
+				cerr << "bad --modes value (expected NEW,OLD with tree|dag):" << a << endl;
 				return 2;
 			}
 			modes_given = true;

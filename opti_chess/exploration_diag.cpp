@@ -45,28 +45,19 @@ bool g_mcts_solver = [] { const char* e = getenv("OPTI_SOLVER"); return e && e[0
 // Node of the outermost grogros_zero frame: a proven root keeps answering
 // (its iterations still count), only proven nodes below it are frozen
 thread_local Node* g_solver_root = nullptr;
-// DAG value propagation, off by default: a changed stored value is pushed to
-// the parents off the current path (they keep a stale value otherwise: only
-// the path parent backs up). Value = max recomputes per change (1 = 64).
-// Experiment: DAG nodes store the path value (repetition draws included, as a
-// TT stores) instead of the value without the cycle-closing moves
-bool g_dag_store_local = getenv("OPTI_DAG_STORE_LOCAL") != nullptr;
-int g_dag_propagate = [] { const char* e = getenv("OPTI_DAG_PROPAGATE"); const int v = e ? atoi(e) : 0; return v == 1 ? 64 : max(v, 0); }();
-long long g_parent_ref_drops = 0; // add_parent_ref calls lost because every slot held a live parent
+long long g_parent_ref_drops = 0; // read by cli diagnostics; no writer since OPTI_DAG_PROPAGATE was removed (always 0)
 // Stand-pat of a partially explored node in the MCTS backup. 0 (default):
 // against the node's current backed-up value (a ratchet) while some child is
 // not fully explored. 1: against the static evaluation, only while some legal
 // move has no child yet. 2: never (best explored child only).
 int g_standpat_mode = [] { const char* e = getenv("OPTI_STANDPAT_MODE"); return e ? atoi(e) : 0; }();
-// Layered DAG (OPTI_DAG_LAYERED): positions are shared only when reached at the
-// same game ply, so every edge goes from ply p to p+1 and the graph has no cycle.
-bool g_dag_layered = getenv("OPTI_DAG_LAYERED") != nullptr;
-// Exact DAG refresh (OPTI_DAG_EXACT, default off): see refresh_graph_values.
-// OPTI_DAG_EXACT_EVERY = iterations between refreshes (0 = max(128, reach / 8)).
-bool g_dag_exact = [] { const char* e = getenv("OPTI_DAG_EXACT"); return e && e[0] != '0'; }();
+// Exact DAG refresh: see refresh_graph_values.
+// OPTI_DAG_EXACT_EVERY = iterations between refreshes (0 = max(1024, reach / 32)).
 int g_dag_exact_every = [] { const char* e = getenv("OPTI_DAG_EXACT_EVERY"); return e ? atoi(e) : 0; }();
+// Near the 50-move rule the value depends on the clock: no sharing across clocks there
+constexpr int DAG_CLOCK_SPLIT = 70;
 inline uint64_t dag_key(const Board& b) {
-	return g_dag_layered ? b._zobrist_key ^ ((uint64_t)(2 * b._moves_count + !b._player) * 0x9E3779B97F4A7C15ull) : b._zobrist_key;
+	return b._zobrist_key ^ (b._half_moves_count >= DAG_CLOCK_SPLIT ? (uint64_t)(b._half_moves_count + 1) * 0xD6E8FEB86659FD93ULL : 0);
 }
 
 // Hard time deadline (see exploration.h). Sample counter is file-local.
@@ -467,8 +458,6 @@ void Node::add_child(Node* child, Move move) {
 	}
 
 	child->_parent_count++;
-	if (g_dag_propagate > 0 && g_tt_node_dag)
-		child->add_parent_ref(this, move);
 	ChildLink link;
 	link._node = child;
 	// Bug 2 model A (literal, decoupled per-edge): under DAG the edge counter
@@ -479,99 +468,6 @@ void Node::add_child(Node* child, Move move) {
 	link._propagated_nodes = g_tt_node_dag ? 0 : (int)child->_nodes;
 	_children[move] = link;
 	//_nodes += child->_nodes;
-}
-
-// Parent entry still valid: that parent links this node by that move
-static inline bool parent_ref_valid(const Node* child, Node* parent, const Move& move) {
-	if (parent == nullptr || !parent->_is_active || parent->_board == nullptr) return false;
-	const auto it = parent->_children.find(move);
-	return it != parent->_children.end() && it->second._node == child;
-}
-
-// Parents of a node beyond its max_parent_refs slots (same validity rule)
-thread_local robin_map<Node*, std::vector<std::pair<Node*, Move>>> g_extra_parent_refs;
-
-void Node::add_parent_ref(Node* parent, const Move& move) {
-	for (int i = 0; i < _n_parent_refs; i++)
-		if (_parent_refs[i] == parent && _parent_moves[i] == move) return;
-	if (_n_parent_refs == max_parent_refs) {
-		// Full: drop the entries that are no longer edges
-		int k = 0;
-		for (int i = 0; i < _n_parent_refs; i++)
-			if (parent_ref_valid(this, _parent_refs[i], _parent_moves[i])) {
-				_parent_refs[k] = _parent_refs[i];
-				_parent_moves[k] = _parent_moves[i];
-				k++;
-			}
-		_n_parent_refs = (uint8_t)k;
-		if (k == max_parent_refs) {
-			// More parents than slots: kept in the side table (propagation must reach them all)
-			auto& extra = g_extra_parent_refs[this];
-			for (auto const& [p, m] : extra)
-				if (p == parent && m == move) return;
-			if (extra.size() >= 64)
-				std::erase_if(extra, [this](const std::pair<Node*, Move>& e) { return !parent_ref_valid(this, e.first, e.second); });
-			extra.emplace_back(parent, move);
-			g_parent_ref_drops++;
-			return;
-		}
-	}
-	_parent_refs[_n_parent_refs] = parent;
-	_parent_moves[_n_parent_refs] = move;
-	_n_parent_refs++;
-}
-
-// Recompute the off-path parents of this node from their children's stored
-// values, then theirs if they changed, breadth first. A node is queued at
-// most once at a time but may be recomputed again when another of its
-// children changes later in the wave; at most g_dag_propagate recomputes
-// (cycles). Path parents are skipped: they back up on return with the path
-// (repetitions) in hand.
-void Node::propagate_value_change() {
-	static thread_local uint32_t epoch = 0;
-	static thread_local std::vector<Node*> work;
-	if (++epoch == 0) epoch = 1;
-	work.clear();
-	_propagate_epoch = epoch;
-	work.push_back(this);
-	size_t head = 0;
-	int budget = g_dag_propagate;
-	// Layered DAG: a node is on the path only at its own ply (the same position
-	// at another ply is another node). Path ply of a node = base + its game ply.
-	auto game_ply = [](const Node* x) { return 2 * x->_board->_moves_count + !x->_board->_player; };
-	const int base = path_current_ply() - game_ply(this);
-	auto on_path = [&](const Node* p) {
-		const uint64_t key = p->_board->_zobrist_key;
-		if (!g_dag_layered) return path_first_ply(key) >= 0;
-		const int d = base + game_ply(p);
-		return d >= 0 && g_path_base + d < (int)g_path_keys.size() && g_path_keys[g_path_base + d] == key;
-	};
-	while (head < work.size() && budget > 0) {
-		Node* n = work[head++];
-		n->_propagate_epoch = 0; // dequeued: may be queued again
-		auto recompute = [&](Node* p, const Move& pm) {
-			if (!parent_ref_valid(n, p, pm)) return;
-			if (p->_is_terminal || on_path(p)) return;
-			budget--;
-			const int before = p->_deep_evaluation._value;
-			const bool partial = g_standpat_mode != 2 && p->children_count() < (size_t)p->_board->_got_moves;
-			p->backup_value(0, 0, partial, nullptr, Move(), nullptr, nullptr);
-			if (p->_deep_evaluation._value != before && p->_propagate_epoch != epoch) {
-				p->_propagate_epoch = epoch;
-				work.push_back(p);
-			}
-		};
-		for (int i = 0; i < n->_n_parent_refs && budget > 0; i++)
-			recompute(n->_parent_refs[i], n->_parent_moves[i]);
-		if (n->_n_parent_refs == max_parent_refs && !g_extra_parent_refs.empty()) {
-			const auto it = g_extra_parent_refs.find(n);
-			if (it != g_extra_parent_refs.end())
-				for (auto const& [p, pm] : it->second) {
-					if (budget <= 0) break;
-					recompute(p, pm);
-				}
-		}
-	}
 }
 
 // Returns the number of children
@@ -726,7 +622,7 @@ void dag_debug_report() {
 	g_dag_dbg_emitted = 0; // fresh detail window on the next batch
 }
 
-// OPTI_DAG_EXACT: recomputes every DAG value reachable from root as the exact game
+// DAG mode: recomputes every DAG value reachable from root as the exact game
 // value with draw on infinite play (graph_game.h). Single-threaded only (call site
 // checks !g_shared_tree). Returns the number of reachable nodes.
 int refresh_graph_values(Node* root, const PositionHistory& game_history) {
@@ -778,7 +674,18 @@ int refresh_graph_values(Node* root, const PositionHistory& game_history) {
 	solve_graph_game(g, value, s);
 	for (int i = 0; i < reach; i++) {
 		Node* n = nodes[i];
-		if (!g.terminal[i]) n->_deep_evaluation._value = value[i];
+		if (!g.terminal[i] && n->_deep_evaluation._value != value[i]) {
+			Evaluation& e = n->_deep_evaluation;
+			e._value = value[i];
+			// A mate value is certain (same as tt_fixup_derived); other values keep their uncertainty
+			if (10 * abs(e._value) > mate_value) {
+				e._uncertainty = 0.0f;
+				e._winnable_white = e._value > 0 ? 1.0f : 0.0f;
+				e._winnable_black = e._value < 0 ? 1.0f : 0.0f;
+			}
+			n->_deep_evaluation.get_WDL();
+			n->_deep_evaluation.get_average_score();
+		}
 		n->_has_path_value = false;
 	}
 	return reach;
@@ -899,7 +806,7 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 
 	// Exploration
 	if (getenv("SHARED_TRACE") != nullptr) t_dbg_descents = 0;
-	// OPTI_DAG_EXACT: exact refresh every exact_next iterations (outermost frame only)
+	// DAG mode: exact refresh every exact_next iterations (outermost frame only)
 	int exact_since = 0, exact_next = g_dag_exact_every > 0 ? g_dag_exact_every : 1024;
 	while (iterations > 0) {
 		if (getenv("SHARED_TRACE") != nullptr) t_dbg_descents++;
@@ -995,7 +902,7 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		}
 
 		iterations--;
-		if (g_dag_exact && g_tt_node_dag && !g_shared_tree && g_dag_recursion_depth == 1 && ++exact_since >= exact_next) {
+		if (g_tt_node_dag && !g_shared_tree && g_dag_recursion_depth == 1 && ++exact_since >= exact_next) {
 			const int reach = refresh_graph_values(this, *base_path_history);
 			exact_since = 0;
 			// Fixed 1024 on small graphs (Fine #70 S1: 7000 iterations vs 24500 with reach / 8),
@@ -1009,8 +916,8 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	if (!g_tt_node_dag && _nodes <= 0) {
 		cout << "negative nodes in grogros zero???" << endl;
 	}
-	// OPTI_DAG_EXACT: final exact refresh of the DAG at the end of the outermost call
-	if (g_dag_exact && g_tt_node_dag && !g_shared_tree && g_dag_recursion_depth == 1)
+	// Final exact refresh of the DAG at the end of the outermost call
+	if (g_tt_node_dag && !g_shared_tree && g_dag_recursion_depth == 1)
 		refresh_graph_values(this, *base_path_history);
 
 	// Computation time
@@ -1501,7 +1408,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 	}
 	// A linked shared node brings visits made through other parents: this
 	// descent is one visit of this node (layered DAG; default unchanged)
-	_iterations += (g_dag_layered && g_tt_node_dag && !created_new_node && !already_explored) ? 1 : (int)child->_iterations;
+	_iterations += (int)child->_iterations;
 
 	// Have all moves already been explored?
 	bool all_moves_explored = (get_fully_explored_children_count()) == _board->_got_moves;
@@ -1803,13 +1710,8 @@ Move Node::backup_value(double alpha, double beta, bool consider_standpat, const
 	// Tree mode and the search root own their path: store the path value.
 	// Otherwise store the intrinsic value and cache the path value with the
 	// position it depends on (reused by any path containing it).
-	const bool store_local = path == nullptr || !g_tt_node_dag || ply == 0 || g_dag_store_local;
-	const int previous_value = _deep_evaluation._value;
+	const bool store_local = path == nullptr || !g_tt_node_dag || ply == 0;
 	_deep_evaluation = store_local ? local_value : stored_value;
-	// Off-path parents (the recompute itself runs path-free: no re-entry)
-	if (g_dag_propagate > 0 && path != nullptr && g_tt_node_dag && g_search_value_propagation && !g_shared_tree
-		&& _n_parent_refs > 1 && _deep_evaluation._value != previous_value)
-		propagate_value_change();
 	_has_path_value = path_dependent && !store_local;
 	if (_has_path_value) {
 		_path_value = local_value;
@@ -1967,7 +1869,6 @@ static void reset_node_fields(Node* node) {
 	node->_iterations = 0;
 	node->_parent_count = 0;
 	node->_n_parent_refs = 0;
-	if (!g_extra_parent_refs.empty()) g_extra_parent_refs.erase(node);
 
 	if (node->_board != nullptr) {
 		node->_saved_zobrist = dag_key(*node->_board);
@@ -3983,7 +3884,6 @@ Node* NodeBuffer::get_first_free_node() {
 	node->_quiescence_depth = 0;
 	node->_parent_count = 0;
 	node->_n_parent_refs = 0;
-	if (!g_extra_parent_refs.empty()) g_extra_parent_refs.erase(node);
 	node->_latest_first_move_explored = -1;
 	node->_time_spent = 0;
 	node->_is_stand_pat_eval = true;

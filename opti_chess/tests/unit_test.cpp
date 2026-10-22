@@ -6973,8 +6973,8 @@ TEST(Endgame, Fine70LadderEasySteps) {
 }
 
 TEST(Endgame, Fine70ExactDagSolvesLadder) {
-	// Without OPTI_DAG_EXACT the position-keyed DAG keeps ghost (self-supporting cycle) values and
-	// plays a1b2 even at 300000 iterations; with the exact graph refresh Kb1 is found at 9500
+	// Without the exact graph refresh the position-keyed DAG keeps ghost (self-supporting cycle) values and
+	// plays a1b2 even at 300000 iterations; with the exact graph refresh (DAG mode) Kb1 is found at 9500
 	// (CLI solve, 2026-10-20: S4 9500, S5 11000, S6 6000 iterations, all stable to 100000).
 	static Evaluator evaluator;
 	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
@@ -6982,12 +6982,11 @@ TEST(Endgame, Fine70ExactDagSolvesLadder) {
 
 	// Restores the globals on every exit path, failures included.
 	struct Restore {
-		bool dag, exact; int every;
-		Restore() : dag(g_tt_node_dag), exact(g_dag_exact), every(g_dag_exact_every) {}
-		~Restore() { g_tt_node_dag = dag; g_dag_exact = exact; g_dag_exact_every = every; }
+		bool dag; int every;
+		Restore() : dag(g_tt_node_dag), every(g_dag_exact_every) {}
+		~Restore() { g_tt_node_dag = dag; g_dag_exact_every = every; }
 	} restore;
 	g_tt_node_dag = true;
-	g_dag_exact = true;
 	g_dag_exact_every = 0;
 
 	struct Step { const char* fen; vector<string> expected; int max_iters; };
@@ -7611,7 +7610,7 @@ TEST(FEN, RankOverflowFailsSafe) {
             EXPECT_EQ(b._array[r][c], 0);
 }
 
-// graph_game.h: exact game value with draw on infinite play (OPTI_DAG_EXACT)
+// graph_game.h: exact game value with draw on infinite play (DAG refresh)
 TEST(GraphGame, AcyclicMinimax) {
     GraphGame g; GraphGameScratch s; std::vector<int> v;
     g.add_node(true, false, false, 0);  g.add_child(1); g.add_child(2);   // 0 root, max
