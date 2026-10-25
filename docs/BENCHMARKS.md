@@ -246,7 +246,9 @@ Not a speed change: a search correctness fix (see the commit message). `opti_che
 | `rn2k1r1/pppRpRpp/bb6/q7/6n1/8/PPPPPPPP/1NB1KBN1 w - - 0 1` | draw (perpetual) | 0 | 0 |
 
 Still open on Fine #70: the root plays 1.Kb2 (only 1.Kb1 wins) and the value drifts down once
-the 500k-board arena is full (+635 at 40k iterations, +67 at 300k).
+the 500k-board arena is full (+635 at 40k iterations, +67 at 300k). The cause (ghost values on
+cycles) and the exact-value fix behind `OPTI_DAG_EXACT=1` are in the section below
+(2026-10-20).
 
 Non-regression: `Puzzle.LichessBenchmark5000` NODES-500 SEED-42 4052/5000 vs 4049/5000
 (`build/bench_bin/nodes500_full.csv`), b=17 c=20, McNemar chi2=0.11 (not significant).
@@ -364,3 +366,112 @@ draw, evaluation = material + 6 cp per pawn rank. Independent of GrogrosZero.
 
 The transposition table collapses the king manoeuvres: depth 25+ in tens of milliseconds, where
 the GrogrosZero tree does not hold 1.Kb1 after 100k iterations (about 40 s).
+
+## Exact DAG values with repetition draws (OPTI_DAG_EXACT, 2026-10-20)
+
+**Problem.** In the position-keyed DAG (default mode), node values are max/min backups over a
+cyclic graph. A cycle of king shuffles can hold a self-supporting ("ghost") value, and repetition
+draws were applied only on the current descent path, never in the stored values (graph history
+interaction). On Fine #70 (only winning move 1.Kb1):
+
+- plain search plays a1b2 even at 300 000 iterations (final value 453);
+- the stored root value is 241, while a recomputation over the graph gives 142;
+- in `OPTI_DAG_LAYERED` mode the whole graph freezes at 211 (alpha-beta: 130), because the
+  ply-layered copies let White postpone forever to a thin optimistic frontier.
+
+**Fix** (`OPTI_DAG_EXACT=1`, off by default; `OPTI_DAG_EXACT_EVERY=<n>` overrides the refresh
+interval). `opti_chess/graph_game.h` (`solve_graph_game`) computes the exact value of the finite
+game graph in which infinite play (a repetition cycle) is a draw. `refresh_graph_values`
+(`exploration_diag.cpp`) writes these values back to every node reachable from the root. Semantics,
+algorithm and schedule: `opti_chess/ALGORITHMS.md` §8. Disabled under the shared (parallel) tree.
+Tests: `GraphGame.*` (6 unit tests on hand-built graphs) and `Endgame.Fine70ExactDagSolvesLadder`
+(S4, S5, S6, S7 with the flag, budgets 20000/20000/20000/40000).
+
+Ladder, `opti_chess_cli solve 100000 <expected> 50 <fen>`; values in centipawns from the side to
+move at 100 000 iterations; "solved N" = first chunk from which the move stays correct until
+100 000:
+
+| step | expected | plain | `OPTI_DAG_EXACT=1` |
+|---|---|---|---|
+| S1 | Kh5 | solved 500 it / 16 ms (485) | solved 500 / 16 ms (1830) |
+| S2 | Kh4 | solved 1 000 / 30 ms (1307) | solved 1 000 / 39 ms (1877) |
+| S4 | Kf2/Kf3 | unsolved, Kd3 351 | solved 9 500 / 643 ms, Kf3 1735 |
+| S5 | Ke3/Ke2 | unsolved, Kd2 336 | solved 11 000 / 1648 ms, Ke2 1735 |
+| S6 | Kd3 | unsolved, Ke1 393 | solved 6 000 / 365 ms, Kd3 1197 |
+| S7 | Kb1 | unsolved, Kb2 241 | solved 9 500 / 905-1116 ms, Kb1 1247 |
+
+**S7 with the flag.** `search 100000` gives a1b2 at 10 000 iterations, then a1b1 from 20 000 to
+100 000 (value 1216, 22.2 s). The result is identical for `OPTI_SEED` 1..8 (deterministic).
+
+Refresh schedule, S7 (first solved chunk): earlier rule (first refresh at 128, then every
+reachable/8) 24 500; fixed interval 64 / 256 / 1024: 9 000 / 12 000 / 7 000; current rule
+(every max(1024, reachable/32)) 9 500; with `OPTI_STANDPAT_MODE=1`: 8 500; with `OPTI_TIE_RANK=1`:
+15 500.
+
+Same-process sensitivity: in the gtest `Endgame.Fine70ExactDagSolvesLadder` (S4, S5, S6 then S7 in one process, pool slots reused) the solve point of S7 moves between 9500 and 15000 iterations depending on the searches run before it (alone: 15000; after Search.RepetitionUnderDag: 14000; after Search.SolverProvesMateInOne: 9500; full harness: 12000), S4 between 8500 and 16000. The move is always right by the end of the budget (S7 40000, others 20000). Suspected cause, not yet verified: reused node slots keep their child-map capacity, so the child iteration order and the tie-breaks differ from a fresh process. The CLI (fresh process) is deterministic: OPTI_SEED 1..8 give the same 9500.
+
+**Oracle.** Alpha-beta `opti_chess_cli absolve 34` on S7: a1b2 (130) up to depth 20, a1b1 from
+depth 21, stable a1b1 (260) from depth 26; depth 34 takes 3.85 M nodes, 1.4 s.
+
+**Limits.** Mate distance is not re-encoded (values move up unchanged, as in the normal backup).
+Between refreshes values can drift. The CLI checker `OPTI_SEARCH_MINIMAX` skips back edges and is
+**not** exact on a cyclic graph: it reports 126 for a1b1, where the exact value is about 1200.
+
+**Speed.** With the flags off: `bench 2000` gives 61-66 k nodes/s, signature `469254f17b2357bb`
+unchanged (no regression). Lichess puzzle bench (Puzzle.LichessBenchmark5000, NODES-500, SEED-42, 2026-10-21): flag off 4024/5000 (80.5%), avg score 0.741; flag on 4024/5000, avg score 0.741. Identical pass/fail on all 5000 puzzles (McNemar b = c = 0, no discordant pair) and identical total nodes (48039209); wall time 671.8 s vs 686.5 s (avg 71543 vs 70018 nodes/s). At 500 nodes the periodic refresh (every max(1024, reach/32) iterations) never fires; only the final refresh runs, so this bench shows the flag is harmless on tactics, not that it helps them.
+
+| NODES-500, SEED-42 | Flag off | `OPTI_DAG_EXACT=1` |
+|---|---|---|
+| Solved | 4024/5000 (80.5%) | 4024/5000 (80.5%) |
+| Avg score | 0.741 | 0.741 |
+| Avg time per puzzle | 134.3 ms | 137.2 ms (+2.2%) |
+| Avg nodes/s | 71543 | 70018 |
+
+McNemar: b = 0, c = 0, chi2 undefined (no discordant pair), exact p = 1.0. Verdict: **neutral**
+(not significant), so the default stays off. The +2.2% time is the final refresh plus run-to-run
+noise; with identical node counts it does not change the result. A bench where the periodic
+refresh actually fires (NODES-2000 or more) is still needed before deciding on the default.
+
+## MCTS-Solver prototype (OPTI_SOLVER=1, off by default) - 2026-10-16
+
+Game results proven at real game-over leaves (mate, stalemate, material draw; never path-local repetition draws) propagate up: a child proven winning for the side to move proves the node; every legal move expanded and proven proves a draw (one drawn) or a loss. Proven nodes below the root are no longer selected; the root keeps answering. `get_most_explored_child_move` plays a proven win and avoids a proven loss. `search`/`solve` print `proven` (1 white wins, -1 black wins, 2 draw).
+
+| Test | Solver off | Solver on |
+|---|---|---|
+| Lasker #7 (`solve 300000 h5h7 99000000`) | 98 500 iterations | 59 000 iterations, root proven |
+| Fine #70 S1 Kh5 / S2 Kh4 | 500 / 1 000 | 500 / 1 000 (identical) |
+| Fine #70 S4-S7 (100k iterations) | unsolved | unsolved (identical trees) |
+| Lichess 5000, NODES-500, SEED 42 | 4024 | 4026 (b=2, c=4, chi2 0.17, n.s.) |
+
+Reading: the solver only helps where proofs are reachable (forced mates). In Fine #70 nothing is provable within the horizon (the win ends in a promotion far beyond any mate), so the trees are identical: the pawn-ending weakness is in selection/backup, not in proof propagation.
+
+## 2026-10-22: tree vs DAG vs exact DAG in games (decision 61)
+
+Setup: `opti_chess_selfplay 200 1000 --modes=NEW,OLD --openings=100 --seed=7` (commit 7e2a713). 100 random 8-ply openings, each played twice with colours swapped; 1000 iterations per move; fresh tree per move (`node_map` cleared); adjudication: resign at +900 for 4 moves, draw cap 240 plies. Limit: each search starts from a FEN without the game history, so engines do not see repetitions already played in the game (symmetric for both sides).
+
+| Match (NEW vs OLD) | NEW-OLD-draws | Score NEW | Elo NEW (95%) | ms/move NEW / OLD | Avg plies |
+|---|---|---|---|---|---|
+| tree vs DAG | 90-95-15 | 48.75% | -8.7 [-55.4, +37.8] | 261 / 264 | 54.3 |
+| exact DAG vs tree | 90-91-19 | 49.75% | -1.7 [-47.8, +44.3] | 265 / 253 | 57.0 |
+
+End reasons: 185 / 181 resignations, 15 / 19 draws by the rules, 0 cap. No error lines, pools intact (60000/60000 boards, 120000/120000 nodes free after every ply).
+
+Fine #70 ladder (`Puzzle.OFFvsDAG_Endgame`, 5 positions x 3 time budgets 0.1/1/5 s, time-based so not deterministic): tree 4/15, DAG 2/15, exact DAG 8/15. Two ladder positions are skipped (move not resolved) and the test asserts nothing.
+
+Verdict: in games the three modes are indistinguishable at this sample size (both intervals contain 0; 200 games only detect differences of roughly 45 Elo). The DAG brings no measurable gain over the pure tree in games, the exact DAG brings nothing over the DAG on puzzles (4024/5000 in both), and the DAG is worse than the tree on the Fine #70 ladder; the exact DAG only helps on that ladder.
+
+## 2026-10-22 - exact DAG as the only DAG mode (branch dev/poiroux/dag-exact, commits 1d15ce4 + 8b6dfdb)
+
+The exact graph-game refresh (cycles and game-history repetitions scored as draws, periodic + final refresh, mate-only certainty after write-back) is now the only DAG mode. Legacy flags OPTI_DAG_EXACT, OPTI_DAG_LAYERED, OPTI_DAG_PROPAGATE, OPTI_DAG_STORE_LOCAL and parent-ref propagation are removed. OPTI_NO_DAG=1 still gives the pure tree.
+
+| Check | Result |
+|---|---|
+| harness -Full | perft 7/7, gtest 156/156, UCI ALL OK |
+| bench | nodes=701226, 12737.1 ms, 55054 nodes/s, signature 29ae53c1996ef1e6 (intended change) |
+| Puzzle.OFFvsDAG_Endgame (Fine #70 ladder set, 15 runs) | DAG 9/15 (0.1 s 2/5, 1 s 3/5, 5 s 4/5) vs tree 4/15 |
+| LichessBenchmark5000 NODES-500 SEED-42 | 4024/5000 (80.5%), avg score 0.740, 704.1 s |
+| McNemar vs nodes500_solver_off.csv | 4024 vs 4024, b=4 c=4, chi2=0.125, not significant; chosen moves identical 5000/5000, total nodes identical (48039209) |
+| Selfplay 200 games, 1000 it/move, 100 openings x2 colors, seed 7, dag vs tree | 92 W / 17 D / 91 L, score 50.25%, Elo +1.7 [-44.6, +48.1] 95% |
+| Selfplay ms/move | dag 249.4 vs tree 239.3 (+4%) |
+
+Open: the 4/4 discordant solved flags despite identical moves are unexplained (likely tie/scoring detail in the CSV). The 50-move clock enters the DAG key only from half-move 70 (DAG_CLOCK_SPLIT); below that a shared node keeps its creator's clock.

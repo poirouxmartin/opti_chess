@@ -31,6 +31,11 @@ extern bool g_search_trust_prior;
 //     OPTI_QCHECK_MIN_DEPTH, 0 = every depth)
 extern int g_qcheck_min_depth;
 extern bool g_search_avg_cap;
+//   g_mcts_solver: MCTS-Solver (OPTI_SOLVER=1, default off). Game results
+//     proven at the leaves propagate up: a move proven winning proves the
+//     node, all moves expanded and proven prove a loss or a draw. Proven
+//     nodes below the root are no longer explored.
+extern bool g_mcts_solver;
 
 // Adaptive quiescence depth: reduce depth for moves that look bad statically.
 // Runtime toggle via OPTI_ADAPTIVE env var (default: OFF for baseline comparison).
@@ -233,6 +238,13 @@ public:
 	// Number of parents referencing this node.
 	int _parent_count = 0;
 
+	// Parent slots: never filled any more (no writer since OPTI_DAG_PROPAGATE was removed).
+	// Still reset on recycle and read by the cli diagnostics.
+	static constexpr int max_parent_refs = 4;
+	Node* _parent_refs[max_parent_refs] = {};
+	Move _parent_moves[max_parent_refs];
+	uint8_t _n_parent_refs = 0;
+
 	// TODO: several node types are needed: quiet nodes (the ones searched by GrogrosZero), quiescence nodes, transposition nodes...
 	// The research_nodes will be used for Grogros's thinking time, arrow drawing and so on...
 
@@ -256,6 +268,11 @@ public:
 
 	// Is this a terminal node?
 	bool _is_terminal = false;
+
+	// Proven game result (MCTS-Solver, path-independent): 0 unknown, 1 white
+	// wins, -1 black wins, 2 draw. Set at game-over leaves; propagated up
+	// only when g_mcts_solver is on.
+	int8_t _proven = 0;
 
 	// Node initialized?
 	bool _initialized = false;
@@ -331,6 +348,9 @@ public:
 	// (repetition children = draw, `over` replaces the descended child's value)
 	// Returns the chosen move (null = stand pat kept)
 	Move backup_value(double alpha, double beta, bool consider_standpat, const PositionHistory* path, const Move& over_move, const BackupResult* over, BackupResult* out);
+
+	// MCTS-Solver step: proves this node from its children's proven results
+	void solver_update();
 
 	// Returns the most explored child move
 	Move get_most_explored_child_move();
@@ -486,6 +506,10 @@ extern bool g_tt_main_search;
 // #11 Plan B - transposition DAG (node sharing). Runtime A/B, default OFF:
 // OFF = the current tree byte for byte. Not meant to be ON with g_tt_main_search.
 extern bool g_tt_node_dag;
+
+// Periodic exact game-value refresh of the DAG (refresh_graph_values in
+// exploration_diag.cpp). Every g_dag_exact_every iterations, 0 = adaptive.
+extern int g_dag_exact_every;
 
 // #11 Plan B - Zobrist key -> LIVE Node*. Distinct from transposition_table
 // (the evaluation TT). Read and populated only when g_tt_node_dag is set. Same

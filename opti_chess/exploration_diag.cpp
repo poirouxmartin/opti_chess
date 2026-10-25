@@ -1,6 +1,7 @@
 #include "exploration.h"
 #include "useful_functions.h"
 #include "zobrist.h"
+#include "graph_game.h"
 #include <cmath>
 #include <cstdlib>
 #include <unordered_map>
@@ -39,6 +40,25 @@ bool g_search_value_propagation = [] { const char* e = getenv("OPTI_VALUE_PROP")
 bool g_search_trust_prior = (getenv("OPTI_TRUST_PRIOR") != nullptr);        // Bayesian prior: re-gate post-fix
 // Quiescence: quiet checks only while depth >= this (see Node::quiescence)
 int g_qcheck_min_depth = [] { const char* e = getenv("OPTI_QCHECK_MIN_DEPTH"); return e ? atoi(e) : 8; }();
+// MCTS-Solver (see exploration.h), off by default
+bool g_mcts_solver = [] { const char* e = getenv("OPTI_SOLVER"); return e && e[0] == '1'; }();
+// Node of the outermost grogros_zero frame: a proven root keeps answering
+// (its iterations still count), only proven nodes below it are frozen
+thread_local Node* g_solver_root = nullptr;
+long long g_parent_ref_drops = 0; // read by cli diagnostics; no writer since OPTI_DAG_PROPAGATE was removed (always 0)
+// Stand-pat of a partially explored node in the MCTS backup. 0 (default):
+// against the node's current backed-up value (a ratchet) while some child is
+// not fully explored. 1: against the static evaluation, only while some legal
+// move has no child yet. 2: never (best explored child only).
+int g_standpat_mode = [] { const char* e = getenv("OPTI_STANDPAT_MODE"); return e ? atoi(e) : 0; }();
+// Exact DAG refresh: see refresh_graph_values.
+// OPTI_DAG_EXACT_EVERY = iterations between refreshes (0 = max(1024, reach / 32)).
+int g_dag_exact_every = [] { const char* e = getenv("OPTI_DAG_EXACT_EVERY"); return e ? atoi(e) : 0; }();
+// Near the 50-move rule the value depends on the clock: no sharing across clocks there
+constexpr int DAG_CLOCK_SPLIT = 70;
+inline uint64_t dag_key(const Board& b) {
+	return b._zobrist_key ^ (b._half_moves_count >= DAG_CLOCK_SPLIT ? (uint64_t)(b._half_moves_count + 1) * 0xD6E8FEB86659FD93ULL : 0);
+}
 
 // Hard time deadline (see exploration.h). Sample counter is file-local.
 std::atomic<clock_t> g_search_deadline{0};
@@ -499,13 +519,18 @@ void Node::init_node() {
 	}
 
 	_board->get_moves();
-	_board->is_game_over();
+	// Threefold (FIDE): only the search root carries the game history (buffer
+	// boards drop it), and a position seen once before in the game is not a
+	// finished game. The default twofold froze such a root as a draw with no
+	// search at all; in-search repetitions are path-local (path_child_eval).
+	_board->is_game_over(3);
 
 	// If the game is over
 	if (_board->_game_over_value != unterminated) {
 		_fully_explored = true;
 		_can_explore = false;
 		_is_terminal = true;
+		_proven = _board->_game_over_value == draw ? 2 : (_board->_game_over_value == white_win ? 1 : -1);
 
 		// Stamp the exact terminal value into the deep evaluation: it may
 		// still hold a static eval computed before terminality was known
@@ -597,6 +622,75 @@ void dag_debug_report() {
 	g_dag_dbg_emitted = 0; // fresh detail window on the next batch
 }
 
+// DAG mode: recomputes every DAG value reachable from root as the exact game
+// value with draw on infinite play (graph_game.h). Single-threaded only (call site
+// checks !g_shared_tree). Returns the number of reachable nodes.
+int refresh_graph_values(Node* root, const PositionHistory& game_history) {
+	thread_local vector<Node*> nodes;
+	thread_local vector<Node*> stack;
+	thread_local robin_map<Node*, int> index;
+	thread_local GraphGame g;
+	thread_local GraphGameScratch s;
+	thread_local vector<int> value;
+	nodes.clear(); stack.clear(); index.clear(); g.clear();
+
+	// Walk from the root: index on first discovery
+	nodes.push_back(root);
+	index[root] = 0;
+	stack.push_back(root);
+	while (!stack.empty()) {
+		Node* n = stack.back();
+		stack.pop_back();
+		for (auto const& [move, link] : n->_children) {
+			Node* c = link._node;
+			if (c == nullptr || index.count(c)) continue;
+			index[c] = (int)nodes.size();
+			nodes.push_back(c);
+			stack.push_back(c);
+		}
+	}
+
+	// Build the game graph (indices are stable: nodes[i] <-> node i)
+	const int reach = (int)nodes.size();
+	for (int i = 0; i < reach; i++) {
+		Node* n = nodes[i];
+		int links = 0;
+		for (auto const& [move, link] : n->_children)
+			if (link._node != nullptr) links++;
+		// A repetition of a game-path position is a draw (root excluded: its key is in the history)
+		const bool history_draw = n != root && position_history_count(game_history, *n->_board) > 0;
+		const bool terminal = n->_is_terminal || links == 0 || history_draw;
+		if (terminal) {
+			g.add_node(n->_board->_player, true, false, history_draw ? 0 : n->_deep_evaluation._value);
+			continue;
+		}
+		// Stand pat: one more option when not every legal move has a child yet
+		const bool has_floor = n->_board->_got_moves > 0 && links < n->_board->_got_moves && n->_static_evaluation._evaluated;
+		g.add_node(n->_board->_player, false, has_floor, has_floor ? n->_static_evaluation._value : 0);
+		for (auto const& [move, link] : n->_children)
+			if (link._node != nullptr) g.add_child(index[link._node]);
+	}
+
+	solve_graph_game(g, value, s);
+	for (int i = 0; i < reach; i++) {
+		Node* n = nodes[i];
+		if (!g.terminal[i] && n->_deep_evaluation._value != value[i]) {
+			Evaluation& e = n->_deep_evaluation;
+			e._value = value[i];
+			// A mate value is certain (same as tt_fixup_derived); other values keep their uncertainty
+			if (10 * abs(e._value) > mate_value) {
+				e._uncertainty = 0.0f;
+				e._winnable_white = e._value > 0 ? 1.0f : 0.0f;
+				e._winnable_black = e._value < 0 ? 1.0f : 0.0f;
+			}
+			n->_deep_evaluation.get_WDL();
+			n->_deep_evaluation.get_average_score();
+		}
+		n->_has_path_value = false;
+	}
+	return reach;
+}
+
 // Nouveau GrogrosZero
 struct SerializeGuard {
 	std::unique_lock<std::recursive_mutex> lk;
@@ -637,6 +731,8 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	struct DagRecGuard {
 		~DagRecGuard() { g_dag_recursion_depth -= 1; }
 	} _dag_rec_guard;
+	if (g_dag_recursion_depth == 1)
+		g_solver_root = this;
 
 	// Computation time
 	const clock_t begin_monte_time = clock();
@@ -710,6 +806,8 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 
 	// Exploration
 	if (getenv("SHARED_TRACE") != nullptr) t_dbg_descents = 0;
+	// DAG mode: exact refresh every exact_next iterations (outermost frame only)
+	int exact_since = 0, exact_next = g_dag_exact_every > 0 ? g_dag_exact_every : 1024;
 	while (iterations > 0) {
 		if (getenv("SHARED_TRACE") != nullptr) t_dbg_descents++;
 
@@ -804,13 +902,23 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 		}
 
 		iterations--;
+		if (g_tt_node_dag && !g_shared_tree && g_dag_recursion_depth == 1 && ++exact_since >= exact_next) {
+			const int reach = refresh_graph_values(this, *base_path_history);
+			exact_since = 0;
+			// Fixed 1024 on small graphs (Fine #70 S1: 7000 iterations vs 24500 with reach / 8),
+			// growing with the graph so the amortised cost stays about 32 nodes per iteration
+			exact_next = g_dag_exact_every > 0 ? g_dag_exact_every : max(1024, reach / 32);
+		}
 	}
-	
+
 	// FIXME: this should not happen. Under DAG, _nodes is a per-edge proxy
 	// bound (Bug 2 model A, clamped >=0): tree guard silenced (Task 4).
 	if (!g_tt_node_dag && _nodes <= 0) {
 		cout << "negative nodes in grogros zero???" << endl;
 	}
+	// Final exact refresh of the DAG at the end of the outermost call
+	if (g_tt_node_dag && !g_shared_tree && g_dag_recursion_depth == 1)
+		refresh_graph_values(this, *base_path_history);
 
 	// Computation time
 	_time_spent += clock() - begin_monte_time;
@@ -1012,7 +1120,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 			// Phase 6: node_map is per-thread; guard for shared-tree future.
 			std::unique_lock<std::mutex> mlock(g_node_map_mutex, std::defer_lock);
 			if (g_shared_tree) mlock.lock();
-			const auto it = node_map.find(new_board->_zobrist_key);
+			const auto it = node_map.find(dag_key(*new_board));
 			if (it != node_map.end()) {
 				shared = it->second;
 				// Liveness: the entry may point at a recycled node (GUI
@@ -1064,7 +1172,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 			// hand another thread a half-built node). Legacy: unchanged.
 			if (g_tt_node_dag && !g_shared_tree && !repeats) {
 				enforce_node_map_cap();
-				node_map[new_board->_zobrist_key] = child;
+				node_map[dag_key(*new_board)] = child;
 				g_dag_link_misses++;
 			}
 			}
@@ -1233,7 +1341,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 				if (g_tt_node_dag) {
 					std::lock_guard<std::mutex> mlock(g_node_map_mutex);
 					enforce_node_map_cap();
-					node_map[child->_board->_zobrist_key] = child;
+					node_map[dag_key(*child->_board)] = child;
 					g_dag_link_misses++;
 				}
 			}
@@ -1255,7 +1363,7 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 				if (g_tt_node_dag) {
 					std::lock_guard<std::mutex> mlock(g_node_map_mutex);
 					enforce_node_map_cap();
-					node_map[child->_board->_zobrist_key] = child;
+					node_map[dag_key(*child->_board)] = child;
 					g_dag_link_misses++;
 				}
 			}
@@ -1298,7 +1406,9 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 	else if (g_tt_node_dag && g_shared_tree) {
 		_nodes += 1;
 	}
-	_iterations += child->_iterations;
+	// A linked shared node brings visits made through other parents: this
+	// descent is one visit of this node (layered DAG; default unchanged)
+	_iterations += (int)child->_iterations;
 
 	// Have all moves already been explored?
 	bool all_moves_explored = (get_fully_explored_children_count()) == _board->_got_moves;
@@ -1313,7 +1423,9 @@ void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double a
 	// explore_random_child): get_node_score ranking decoupled from value exactly
 	// in tactical positions, propagating sibling evaluations over the best line.
 	// Stand pat (null move) while some moves are still unexplored
-	const Move best_move = backup_value(alpha, beta, !all_moves_explored, g_tt_node_dag ? &branch_history : nullptr, Move(), nullptr, out);
+	const bool standpat = g_standpat_mode == 0 ? !all_moves_explored
+		: g_standpat_mode == 1 && children_count() < (size_t)_board->_got_moves;
+	const Move best_move = backup_value(alpha, beta, standpat, g_tt_node_dag ? &branch_history : nullptr, Move(), nullptr, out);
 	_is_stand_pat_eval = best_move.is_null_move();
 
 	// FIXME: what to do when every child has been examined and no move improves the evaluation?
@@ -1471,6 +1583,45 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 	_iterations++;
 }
 
+// MCTS-Solver step. Only game results proven at real game-over leaves are
+// used (never path-local repetition draws), so a proof holds on every path
+// and survives DAG sharing. A child proven winning for the side to move
+// proves the node; otherwise every legal move expanded and proven proves a
+// draw (if one is drawn) or a loss. The node value needs no change: the
+// argmax backup already picks the mate-scale or drawn child.
+void Node::solver_update() {
+	if (_board == nullptr || _board->_got_moves <= 0)
+		return;
+	const int color = _board->get_color();
+	int proven_children = 0;
+	bool has_draw = false;
+	int8_t result = 0;
+	{
+		NodeLock lk(this);
+		for (auto const& [m, link] : _children) {
+			const Node* c = link._node;
+			if (c == nullptr || c->_proven == 0)
+				continue;
+			if (c->_proven == color) {
+				result = (int8_t)color;
+				break;
+			}
+			proven_children++;
+			if (c->_proven == 2)
+				has_draw = true;
+		}
+	}
+	if (result == 0 && proven_children == _board->_got_moves)
+		result = has_draw ? 2 : (int8_t)-color;
+	if (result == 0)
+		return;
+	_proven = result;
+	if (this != g_solver_root) {
+		_can_explore = false;
+		_fully_explored = true;
+	}
+}
+
 // Backs up the node value from its children (see BackupResult). path == nullptr:
 // tree behaviour (stored child values only). Under the DAG two values are
 // computed: the value for THIS path (children repeating a path position count
@@ -1479,6 +1630,9 @@ void Node::explore_random_child(BoardBuffer* board_buffer, Evaluator* eval, doub
 // otherwise it stores the value computed without those path-local draws.
 Move Node::backup_value(double alpha, double beta, bool consider_standpat, const PositionHistory* path, const Move& over_move, const BackupResult* over, BackupResult* out) {
 	const int ply = path != nullptr ? path_current_ply() : 0;
+
+	if (g_mcts_solver && _proven == 0)
+		solver_update();
 
 	// Best child for the path (local) or keeping only the substitutions that
 	// depend on this node or below (intrinsic: what the node may store)
@@ -1495,13 +1649,14 @@ Move Node::backup_value(double alpha, double beta, bool consider_standpat, const
 			if (link._node == nullptr) continue;
 			if (!local && path != nullptr && position_is_draw_by_repetition(*path, *link._node->_board)) continue; // cycle edge
 			const Evaluation* e = (ov != nullptr && m == over_move) ? ov : path_child_eval(path, link._node, nullptr, min_ply);
-			const long long v = (long long)(e != nullptr ? e->_value : link._node->_deep_evaluation._value) * color;
+			long long v = (long long)(e != nullptr ? e->_value : link._node->_deep_evaluation._value) * color;
 			if (v > best_value) {
 				best_value = v;
 				best = m;
 			}
 		}
-		if (consider_standpat && _deep_evaluation._value * color >= best_value)
+		const Evaluation& standpat = (g_standpat_mode == 1 && _static_evaluation._evaluated) ? _static_evaluation : _deep_evaluation;
+		if (consider_standpat && standpat._value * color >= best_value)
 			return Move();
 		return best;
 	};
@@ -1531,6 +1686,8 @@ Move Node::backup_value(double alpha, double beta, bool consider_standpat, const
 	const Move local_move = pick(true);
 	if (local_move.is_null_move()) {
 		// Stand pat (or NaN scores): the node keeps its own value
+		if (g_standpat_mode == 1 && _static_evaluation._evaluated)
+			_deep_evaluation = _static_evaluation;
 		_has_path_value = false;
 		if (out != nullptr) { out->value = _deep_evaluation; out->dep = INT_MAX; out->set = true; }
 		return local_move;
@@ -1644,14 +1801,22 @@ Move Node::get_most_explored_child_move() {
 	const bool has_board = _board != nullptr;
 	const int node_color = has_board ? _board->get_color() : 1;
 
+	// Solver: a move proven losing is only played when every move is
+	int max_unlost = -1;
+	Move best_unlost = Move();
+
 	for (auto const& [move, child_link] : _children) {
 		if (child_link._node == nullptr) continue; // shared-tree claim placeholder
 		if (child_link._chosen_iterations > max) {
 			max = child_link._chosen_iterations;
 			best_move = move;
 		}
+		if (g_mcts_solver && has_board && child_link._node->_proven != -node_color && child_link._chosen_iterations > max_unlost) {
+			max_unlost = child_link._chosen_iterations;
+			best_unlost = move;
+		}
 
-		if (has_board && child_link._node != nullptr && child_link._node->_is_terminal) {
+		if (has_board && child_link._node != nullptr && (child_link._node->_is_terminal || (g_mcts_solver && child_link._node->_proven == node_color))) {
 			const int child_value = child_link._node->_deep_evaluation._value * node_color;
 			if (child_value > proven_win_value && 2 * child_value > mate_value) {
 				proven_win_value = child_value;
@@ -1662,6 +1827,9 @@ Move Node::get_most_explored_child_move() {
 
 	if (!proven_win_move.is_null_move())
 		return proven_win_move;
+
+	if (!best_unlost.is_null_move())
+		return best_unlost;
 
 	return best_move;
 }
@@ -1700,14 +1868,16 @@ static void reset_node_fields(Node* node) {
 	node->_nodes = 0;
 	node->_iterations = 0;
 	node->_parent_count = 0;
+	node->_n_parent_refs = 0;
 
 	if (node->_board != nullptr) {
-		node->_saved_zobrist = node->_board->_zobrist_key;
+		node->_saved_zobrist = dag_key(*node->_board);
 		node->_board->reset_board();
 	}
 
 	node->_initialized = false;
 	node->_is_terminal = false;
+	node->_proven = 0;
 	node->_can_explore = true;
 	node->_time_spent = 0;
 	node->_fully_explored = false;
@@ -1952,6 +2122,13 @@ void Node::reset(bool recursive) {
 			for (Node* n : pre_reach) {
 				const auto e = ext_in.find(n);
 				if (e != ext_in.end() && e->second > 0) { drop(n); continue; }
+				// A referrer may live in an arena the scan above does not cover
+				// (GUI: the old root in the main thread arena, the tree in the
+				// worker's). More parents than residue in-edges = referenced from
+				// outside: never collect it. Freeing it here freed the GUI's new
+				// root (a transposition of a recycled sibling) and its board.
+				const auto r = rev.find(n);
+				if (n->_parent_count > (r == rev.end() ? 0 : (int)r->second.size())) { drop(n); continue; }
 				for (auto const& [mm, ll] : n->_children) {
 					Node* t = ll._node;
 					if (t == nullptr || !t->_is_active) continue;
@@ -1980,7 +2157,7 @@ void Node::reset(bool recursive) {
 			for (Node* m : pre_reach) {
 				if (!collected(m)) continue;
 				if (g_tt_node_dag && m->_board != nullptr) {
-					const auto it = node_map.find(m->_board->_zobrist_key);
+					const auto it = node_map.find(dag_key(*m->_board));
 					if (it != node_map.end() && it->second == m) node_map.erase(it);
 				}
 				Board* b = m->_board;
@@ -3039,8 +3216,18 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		}
 	}
 
-	// Apply the bonus
-	for (int i = 0; i < top_count; ++i) {
+	// Apply the bonus. OPTI_TIE_RANK: tied scores share the bonus of their rank
+	// (rank = number of top scores strictly above), instead of ranks taken from
+	// the hash order of _children (equal-valued transpositions are common in a DAG)
+	static const bool tie_rank = getenv("OPTI_TIE_RANK") != nullptr;
+	if (tie_rank) {
+		for (auto& [move, score] : move_scores) {
+			int r = 0;
+			while (r < top_count && top[r].score > score) r++;
+			if (r < top_count) score *= boost_table[r];
+		}
+	}
+	else for (int i = 0; i < top_count; ++i) {
 		Move m = top[i].move;
 		move_scores[m] = top[i].score * boost_table[i];
 	}
@@ -3658,8 +3845,13 @@ bool NodeBuffer::reset() {
 	g_buffers_full_logged = false;
 	_free_indices.clear();
 	_free_indices.reserve(_length);
-	for (int i = _length - 1; i >= 0; i--)
+	for (int i = _length - 1; i >= 0; i--) {
 		_free_indices.push_back(i);
+		// Every slot is free again: a stale active flag (with its stale
+		// children) made Node::reset's cycle collection see a phantom
+		// referrer and keep dead nodes (SessionAccumulation leak)
+		_nodes[i]._is_active = false;
+	}
 
 	return true;
 }
@@ -3677,6 +3869,7 @@ Node* NodeBuffer::get_first_free_node() {
 	node->_fully_explored = false;
 	node->_can_explore = true;
 	node->_is_terminal = false;
+	node->_proven = 0;
 	node->_nodes = 0;
 	node->_iterations = 0;
 	node->_board = nullptr;
@@ -3690,6 +3883,7 @@ Node* NodeBuffer::get_first_free_node() {
 	node->_deep_evaluation = Evaluation();
 	node->_quiescence_depth = 0;
 	node->_parent_count = 0;
+	node->_n_parent_refs = 0;
 	node->_latest_first_move_explored = -1;
 	node->_time_spent = 0;
 	node->_is_stand_pat_eval = true;

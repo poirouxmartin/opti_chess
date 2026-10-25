@@ -1,0 +1,54 @@
+# Deep think (2 min continuous analysis, arenas fill and recycle), then a
+# 5+0 self-play game (GrogrosZero on both sides, ~10 min wall at most).
+# No A / Q keys: nothing here may open a browser.
+wait 2000
+key CTRL+G
+wait 30000
+expect_log iter=
+alive
+wait 30000
+alive
+wait 30000
+alive
+wait 30000
+alive
+shot deep_think
+key CTRL+H
+wait 2000
+expect_log exit iters=
+# Self-play: new game, 5 min each, bots on both colours, start the clock
+key CTRL+N
+# Resetting a 2-minute tree takes seconds; keys sent meanwhile are lost
+wait 15000
+key KP5
+key CTRL+DOWN
+wait 600
+key CTRL+UP
+wait 600
+key SPACE
+wait 60000
+expect_log \[pos\] move
+alive
+wait 60000
+alive
+wait 60000
+alive
+wait 60000
+alive
+wait 60000
+alive
+shot selfplay_mid
+wait 60000
+alive
+wait 60000
+alive
+wait 60000
+alive
+wait 60000
+alive
+wait 60000
+alive
+wait 30000
+alive
+shot selfplay_end
+expect_nolog TIMEOUT|CRITICAL|STUCK

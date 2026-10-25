@@ -111,6 +111,8 @@ Transposition modes (both are experimental and both default to off):
 - `g_tt_node_dag` (same): share nodes between transpositions in a DAG (`node_map`), instead of a tree. Toggled with `O` in the GUI.
 - `g_shared_tree` (same): shared-tree mode with node locks (`NodeLock`), off by default.
 
+With the DAG, `OPTI_DAG_EXACT=1` (off by default) periodically rewrites the stored values of all reachable nodes with the exact value of the game graph, where a repetition cycle is a draw (`graph_game.h`, `refresh_graph_values` in `exploration_diag.cpp`). This removes the ghost values that cycles of king shuffles can keep; details in `opti_chess/ALGORITHMS.md` §8.6.
+
 Search time is limited by `g_search_deadline` and `g_search_abort` (atomics in `exploration.h`).
 
 ## Evaluation

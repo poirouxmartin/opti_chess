@@ -44,6 +44,10 @@ static void ensure_debug_file() {
 
 void debug_log(const char* fmt, ...) {
 	if (!g_debug) return;
+	// Called from the UI and the worker threads: one writer at a time (the
+	// unguarded stream interleaved lines and is a data race)
+	static std::mutex log_mutex;
+	std::lock_guard<std::mutex> lk(log_mutex);
 	ensure_debug_file();
 	char buf[1024];
 	va_list args;
@@ -788,8 +792,7 @@ bool GUI::install_position(const Board& position) {
 	root->_is_active = true;
 	_board = board;
 	_root_exploration_node = root;
-	_tree_snapshot.valid = false;
-	_tree_snapshot.arrows.clear();
+	invalidate_snapshot();
 	_grogros_arrows.clear();
 	return true;
 }
@@ -803,8 +806,7 @@ void GUI::reset_search_keep_board() {
 	_root_exploration_node->_is_active = true;
 	_board->_is_active = true;
 	reset_buffers();
-	_tree_snapshot.valid = false;
-	_tree_snapshot.arrows.clear();
+	invalidate_snapshot();
 	_grogros_arrows.clear();
 }
 
@@ -1255,8 +1257,7 @@ bool GUI::play_move_keep(Move move)
 		update_snapshot();
 	}
 	else {
-		_tree_snapshot.valid = false;
-		_tree_snapshot.arrows.clear();
+		invalidate_snapshot();
 	}
 
 	log_position("move");
@@ -1610,70 +1611,72 @@ void GUI::run_puzzle_headless(double time_s) {
 // Populates _tree_snapshot from the current root node.
 // Caller must ensure no concurrent modification (lock held, or worker stopped).
 void GUI::update_snapshot(bool heavy) {
+	// Fills the writer-side copy, then publishes it (see _snapshot_published)
+	TreeSnapshot& s = _snapshot_work;
 	// Fresh analysis after invalidation: reset the global-average base (t0 +
 	// cumulative work counters), so idle gaps never dilute the rate.
-	if (!_tree_snapshot.valid) {
-		_tree_snapshot.nps = 0.0f;
-		_tree_snapshot.ips = 0.0f;
-		_tree_snapshot.snap_t0_clock = clock();
-		_tree_snapshot.snap_base_node_allocs = g_node_allocs;
-		_tree_snapshot.snap_base_iters = _root_exploration_node->_iterations.load(std::memory_order_relaxed);
+	if (!s.valid) {
+		s.nps = 0.0f;
+		s.ips = 0.0f;
+		s.snap_t0_clock = clock();
+		s.snap_base_node_allocs = g_node_allocs;
+		s.snap_base_iters = _root_exploration_node->_iterations.load(std::memory_order_relaxed);
 	}
 	if (_root_exploration_node->_board && _root_exploration_node->_nodes >= 1 && !_root_exploration_node->_is_terminal) {
-		_tree_snapshot.best_move = _root_exploration_node->get_most_explored_child_move();
-		_tree_snapshot.best_eval_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
-		if (!_tree_snapshot.best_eval_move.is_null_move()) {
-			const auto it = _root_exploration_node->_children.find(_tree_snapshot.best_eval_move);
+		s.best_move = _root_exploration_node->get_most_explored_child_move();
+		s.best_eval_move = _root_exploration_node->get_best_score_move(_alpha, _beta);
+		if (!s.best_eval_move.is_null_move()) {
+			const auto it = _root_exploration_node->_children.find(s.best_eval_move);
 			if (it != _root_exploration_node->_children.end() && it->second._node)
-				_tree_snapshot.best_evaluation = it->second._node->_deep_evaluation;
+				s.best_evaluation = it->second._node->_deep_evaluation;
 		}
-		_tree_snapshot.iterations = _root_exploration_node->_iterations;
-		_tree_snapshot.nodes = _root_exploration_node->_nodes;
-		_tree_snapshot.time_spent = _root_exploration_node->_time_spent;
-		_tree_snapshot.avg_score = _root_exploration_node->_deep_evaluation._avg_score;
-		_tree_snapshot.board_player = _root_exploration_node->_board->_player;
+		s.iterations = _root_exploration_node->_iterations;
+		s.nodes = _root_exploration_node->_nodes;
+		s.time_spent = _root_exploration_node->_time_spent;
+		s.avg_score = _root_exploration_node->_deep_evaluation._avg_score;
+		s.board_player = _root_exploration_node->_board->_player;
 		// Panel fields (bench-verdict parity + never walk the tree in draw()):
 		// most-explored deep eval, root static, variants PV, main depth, counts.
-		_tree_snapshot.static_evaluation = _root_exploration_node->_static_evaluation;
-		_tree_snapshot.children_count = (int)_root_exploration_node->children_count();
-		_tree_snapshot.got_moves = _root_exploration_node->_board->_got_moves;
-		_tree_snapshot.quiescence_depth = _root_exploration_node->_quiescence_depth;
+		s.static_evaluation = _root_exploration_node->_static_evaluation;
+		s.children_count = (int)_root_exploration_node->children_count();
+		s.got_moves = _root_exploration_node->_board->_got_moves;
+		s.quiescence_depth = _root_exploration_node->_quiescence_depth;
 		// Global-average throughput since this analysis started (uniform for
 		// worker and inline callers): total nodes ever allocated on this
 		// thread since t0 / wall-clock elapsed. No EMA window, no jitter.
 		{
 			const clock_t now_c = clock();
 			const long long iters_c = _root_exploration_node->_iterations.load(std::memory_order_relaxed);
-			if (now_c > _tree_snapshot.snap_t0_clock) {
-				const double dt = (double)(now_c - _tree_snapshot.snap_t0_clock) / CLOCKS_PER_SEC;
+			if (now_c > s.snap_t0_clock) {
+				const double dt = (double)(now_c - s.snap_t0_clock) / CLOCKS_PER_SEC;
 				if (dt > 0.0) {
-					_tree_snapshot.nps = (float)((g_node_allocs - _tree_snapshot.snap_base_node_allocs) / dt);
-					_tree_snapshot.ips = (float)((iters_c - _tree_snapshot.snap_base_iters) / dt);
+					s.nps = (float)((g_node_allocs - s.snap_base_node_allocs) / dt);
+					s.ips = (float)((iters_c - s.snap_base_iters) / dt);
 				}
 			}
 		}
 		// Heavy fields (PV walk + strings) at most ~4Hz in background mode;
 		// light fields (moves, arrows, evals) ride every iteration.
 		if (heavy) {
-			_tree_snapshot.main_depth = _root_exploration_node->get_main_depth(_alpha, _beta);
-			_tree_snapshot.exploration_variants = _root_exploration_node->get_exploration_variants(_alpha, _beta);
-			_tree_snapshot.tt_stats = transposition_table.stats_string();
+			s.main_depth = _root_exploration_node->get_main_depth(_alpha, _beta);
+			s.exploration_variants = _root_exploration_node->get_exploration_variants(_alpha, _beta);
+			s.tt_stats = transposition_table.stats_string();
 		}
-		if (!_tree_snapshot.best_move.is_null_move()) {
-			const auto itb = _root_exploration_node->_children.find(_tree_snapshot.best_move);
+		if (!s.best_move.is_null_move()) {
+			const auto itb = _root_exploration_node->_children.find(s.best_move);
 			if (itb != _root_exploration_node->_children.end() && itb->second._node)
-				_tree_snapshot.best_move_evaluation = itb->second._node->_deep_evaluation;
+				s.best_move_evaluation = itb->second._node->_deep_evaluation;
 		}
-		_tree_snapshot.arrows.clear();
+		s.arrows.clear();
 		for (auto const& [move, child_link] : _root_exploration_node->_children) {
 			Node const* child = child_link._node;
 			if (!child) continue;
-			_tree_snapshot.arrows.push_back({
+			s.arrows.push_back({
 				move,
 				(int)child_link._chosen_iterations,
 				(int)child->_iterations,
-				move == _tree_snapshot.best_move,
-				move == _tree_snapshot.best_eval_move,
+				move == s.best_move,
+				move == s.best_eval_move,
 				child->_deep_evaluation._value,
 				child->_deep_evaluation._avg_score
 			});
@@ -1681,15 +1684,38 @@ void GUI::update_snapshot(bool heavy) {
 		// Buffer occupancy for the panel (bug #1 viz). O(1) reads of the
 		// CALLER's own thread_local structures (no cross-thread race):
 		// worker iterations show worker arenas, inline searches main's.
-		_tree_snapshot.arena_boards_cap = monte_board_buffer._length;
-		_tree_snapshot.arena_boards_used = (long long)monte_board_buffer._length - (long long)monte_board_buffer._free_indices.size();
-		_tree_snapshot.arena_nodes_cap = monte_node_buffer._length;
-		_tree_snapshot.arena_nodes_used = (long long)monte_node_buffer._length - (long long)monte_node_buffer._free_indices.size();
-		_tree_snapshot.tt_cap = transposition_table._length;
-		_tree_snapshot.tt_used = (long long)transposition_table._hash_table.size();
-		_tree_snapshot.nodemap_used = (long long)node_map.size();
-		_tree_snapshot.valid = true;
+		s.arena_boards_cap = monte_board_buffer._length;
+		s.arena_boards_used = (long long)monte_board_buffer._length - (long long)monte_board_buffer._free_indices.size();
+		s.arena_nodes_cap = monte_node_buffer._length;
+		s.arena_nodes_used = (long long)monte_node_buffer._length - (long long)monte_node_buffer._free_indices.size();
+		s.tt_cap = transposition_table._length;
+		s.tt_used = (long long)transposition_table._hash_table.size();
+		s.nodemap_used = (long long)node_map.size();
+		s.valid = true;
 	}
+	std::lock_guard<std::mutex> lk(_snapshot_mutex);
+	_snapshot_published = s;
+}
+
+// UI thread: takes its own copy of the last published snapshot. The worker
+// rewrites _snapshot_work (arrows vector, strings) while the UI draws, so the
+// UI must never read the writer's copy: that race crashed the arrow sort.
+void GUI::refresh_snapshot() {
+	std::lock_guard<std::mutex> lk(_snapshot_mutex);
+	_tree_snapshot = _snapshot_published;
+}
+
+// Drops every copy of the snapshot (new root: nothing valid to show)
+void GUI::invalidate_snapshot() {
+	_snapshot_work.valid = false;
+	_snapshot_work.arrows.clear();
+	{
+		std::lock_guard<std::mutex> lk(_snapshot_mutex);
+		_snapshot_published.valid = false;
+		_snapshot_published.arrows.clear();
+	}
+	_tree_snapshot.valid = false;
+	_tree_snapshot.arrows.clear();
 }
 
 // Uses shared monte_board_buffer/monte_node_buffer (safe: GUI doesn't allocate during search)
@@ -1814,7 +1840,8 @@ void GUI::compute_worker() {
 			std::lock_guard<std::mutex> lock(_tree_mutex);
 			_root_exploration_node->grogros_zero(&monte_board_buffer, _grogros_eval, _alpha, _beta, _gamma, worker_batch, _quiescence_depth);
 
-			// Take snapshot while holding the lock — main thread reads it lock-free.
+			// Take snapshot while holding the lock; it is published under
+			// _snapshot_mutex and the main thread reads only its own copy.
 			// PV/variants strings at ~4Hz (heavy); arrows/evals every batch.
 			// Heavy walks are skipped while aborting (stop_compute): they have
 			// no abort checks and would otherwise stall the stop + the main
@@ -1958,6 +1985,9 @@ void GUI::stop_compute(const char* why) {
 // Draws the GUI
 void GUI::draw()
 {
+	// This frame reads one consistent copy of the search snapshot
+	refresh_snapshot();
+
 	// Loading of the textures, if not already done
 	if (!_loaded_resources) {
 		load_resources();
@@ -2617,6 +2647,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 			(void*)_board, (void*)_root_exploration_node);
 		return;
 	}
+	refresh_snapshot();
 
 	// Positions bug:
 	// rnbq1rk1/pp1p1ppp/7n/2p1P3/3p4/3B1N1P/PPPN1PP1/R2Q1RK1 w - - 0 10: it does not play Ne4
@@ -2671,8 +2702,6 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 			}
 			evals_agree = (best_c == most_c);
 		}
-		if (!evals_agree)
-			return;
 		// Mirrors the full decision below (same time_to_play_move, adv,
 		// supposed_ips blend with average_nps=5000 / consistent_factor=0.35).
 		double snap_max_move_time = _board->_player
@@ -2680,6 +2709,10 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 			: time_to_play_move(_time_black, _time_white, time_proportion_per_move);
 		snap_max_move_time *= 1.0f + _board->_adv;
 		const double snap_ips = 5000.0 + ((double)_tree_snapshot.ips - 5000.0) * 0.35;
+		// Disagreement waits, but not forever: past 3x the base budget the
+		// full decision runs anyway (it lost on time with a mate in one).
+		if (!evals_agree && (double)_tree_snapshot.iterations < 3.0 * snap_ips * snap_max_move_time / 1000.0)
+			return;
 		const double snap_threshold_min = snap_ips * (snap_max_move_time * (1.0 - snap_pct) / 1000.0);
 		if ((double)_tree_snapshot.iterations < snap_threshold_min)
 			return;
@@ -2819,6 +2852,10 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 		cout << "max move time : " << max_move_time << endl;
 		max_move_time = DBL_MAX;
 	}
+
+	// Never spend more than a tenth of the remaining clock on one move (the
+	// wait factor is unbounded when the best and most explored moves differ)
+	max_move_time = min(max_move_time, 0.1 * (double)(_board->_player ? _time_white : _time_black));
 
 	// Assumed number of iterations per second
 	//constexpr int supposed_ips = 1000;
