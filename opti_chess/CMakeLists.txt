@@ -214,6 +214,8 @@ set(BUILD_GAMES OFF CACHE BOOL "" FORCE)
 
 add_executable(opti_chess_tests
     tests/unit_test.cpp
+    tests/rules_test.cpp
+    tests/uci_test.cpp
 )
 target_link_libraries(opti_chess_tests PRIVATE engine_lib GTest::gtest_main)
 target_compile_features(opti_chess_tests PRIVATE cxx_std_20)
