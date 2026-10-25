@@ -2,6 +2,7 @@
 #include "puzzle.h"
 #include "exploration.h"
 #include "zobrist.h"
+#include "uci.h"
 #include <chrono>
 #include <iomanip>
 #include <iostream>
@@ -14,8 +15,6 @@
 #include <cstdint>
 
 using namespace std;
-
-static const string START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 static int usage() {
     cerr << "usage: opti_chess_cli perft <depth> [fen...]\n"
@@ -41,32 +40,7 @@ static string fen_from_args(int argc, char** argv, int from) {
         if (!fen.empty()) fen += ' ';
         fen += argv[i];
     }
-    return fen.empty() ? START_FEN : fen;
-}
-
-// Square names: file a-h, rank 1-8; promotion suffix only for pawn moves to last rank
-static string move_to_uci(const Board& b, const Move& m) {
-    string s;
-    s += char('a' + m.start_col);
-    s += char('1' + m.start_row);
-    s += char('a' + m.end_col);
-    s += char('1' + m.end_row);
-    int piece = b._array[m.start_row][m.start_col];
-    if ((piece == 1 || piece == 7) && (m.end_row == 0 || m.end_row == 7))
-        s += "qrbn"[m.get_promo_piece()];
-    return s;
-}
-
-// Legal move matching a UCI string
-static bool uci_to_move(Board& b, const string& s, Move& out) {
-    b.get_moves();
-    for (int i = 0; i < b._got_moves; i++) {
-        if (move_to_uci(b, b._moves[i]) == s) {
-            out = b._moves[i];
-            return true;
-        }
-    }
-    return false;
+    return fen.empty() ? UCI_START_FEN : fen;
 }
 
 static int cmd_perft(int argc, char** argv, bool bulk) {
@@ -219,89 +193,17 @@ static int cmd_bench(int argc, char** argv) {
     return 0;
 }
 
-// Applies "position" tokens to a FEN, returns the resulting FEN
-static string apply_position(const vector<string>& tok, const string& cur) {
-    if (tok.size() < 2) return cur;
-    string fen;
-    size_t i = 2;
-    if (tok[1] == "startpos") {
-        fen = START_FEN;
-    } else if (tok[1] == "fen") {
-        for (; i < tok.size() && i < 8 && tok[i] != "moves"; i++) {
-            if (!fen.empty()) fen += ' ';
-            fen += tok[i];
-        }
-    } else {
-        return cur;
-    }
-    Board b;
-    b.from_fen(fen);
-    if (!b.fen_ok()) {
-        cout << "info string bad fen" << endl;
-        return cur;
-    }
-    if (i < tok.size() && tok[i] == "moves") {
-        for (size_t j = i + 1; j < tok.size(); j++) {
-            Move m;
-            if (!uci_to_move(b, tok[j], m)) {
-                cout << "info string illegal move " << tok[j] << endl;
-                break;
-            }
-            b.make_move(m, false, true);
-        }
-    }
-    return b.to_fen();
-}
-
 static void cmd_go(const vector<string>& tok, const string& fen) {
-    long long nodes = 0, movetime = 0, depth = 0, wtime = 0, btime = 0, winc = 0, binc = 0;
-    bool infinite = false;
-    for (size_t i = 1; i < tok.size(); i++) {
-        if (tok[i] == "infinite") { infinite = true; continue; }
-        if (i + 1 >= tok.size()) break;
-        const string& key = tok[i];
-        char* end = nullptr;
-        long long v = strtoll(tok[i + 1].c_str(), &end, 10);
-        if (end != tok[i + 1].c_str() && *end == '\0') {
-            if (key == "nodes") nodes = v;
-            else if (key == "movetime") movetime = v;
-            else if (key == "depth") depth = v;
-            else if (key == "wtime") wtime = v;
-            else if (key == "btime") btime = v;
-            else if (key == "winc") winc = v;
-            else if (key == "binc") binc = v;
-        }
-        i++;
-    }
-
     Board b;
     b.from_fen(fen);
     bool white = b._player;
-    long long mytime = white ? wtime : btime;
-    long long myinc = white ? winc : binc;
 
     Puzzle p;
     p.fen = fen;
     p.category = PuzzleCategory::TACTIC;
-    BudgetMode mode = BudgetMode::NODES;
-    double budget = 2000.0;
-    if (nodes > 0) {
-        budget = (double)nodes;
-    } else if (movetime > 0) {
-        mode = BudgetMode::TIME;
-        budget = movetime / 1000.0;
-    } else if (mytime > 0) {
-        mode = BudgetMode::TIME;
-        budget = (mytime / 30.0 + myinc / 2.0) / 1000.0;
-        if (budget < 0.05) budget = 0.05;
-        if (budget > 10.0) budget = 10.0;
-    } else if (infinite) {
-        budget = 20000.0;
-    } else if (depth > 0) {
-        budget = 2000.0;
-    }
+    UciBudget ub = uci_go_budget(tok, white);
 
-    PuzzleResult r = PuzzleRunner::run(p, mode, budget);
+    PuzzleResult r = PuzzleRunner::run(p, ub.mode, ub.budget);
     // Searched value (actual_eval_cp is the root static eval)
     int score = white ? r.searched_eval_cp : -r.searched_eval_cp;
     long long ms = (long long)(r.time_s * 1000.0 + 0.5);
@@ -309,14 +211,9 @@ static void cmd_go(const vector<string>& tok, const string& fen) {
 
     // Chosen move must be among the legal moves, otherwise 0000
     string best = "0000";
-    b.get_moves();
+    Move legal;
     string want = move_to_uci(b, r.chosen_move);
-    for (int i = 0; i < b._got_moves; i++) {
-        if (move_to_uci(b, b._moves[i]) == want) {
-            best = want;
-            break;
-        }
-    }
+    if (uci_to_move(b, want, legal)) best = want;
     cout << "bestmove " << best << endl;
 }
 
@@ -801,7 +698,7 @@ static int cmd_absolve(int argc, char** argv) {
 }
 
 static int cmd_uci() {
-    string cur = START_FEN;
+    string cur = UCI_START_FEN;
     string line;
     while (getline(cin, line)) {
         while (!line.empty() && (line.back() == '\r' || line.back() == ' ')) line.pop_back();
@@ -819,9 +716,11 @@ static int cmd_uci() {
         } else if (c == "isready") {
             cout << "readyok" << endl;
         } else if (c == "ucinewgame") {
-            cur = START_FEN;
+            cur = UCI_START_FEN;
         } else if (c == "position") {
-            cur = apply_position(tok, cur);
+            vector<string> info;
+            cur = uci_apply_position(tok, cur, &info);
+            for (const string& msg : info) cout << msg << endl;
         } else if (c == "go") {
             cmd_go(tok, cur);
         } else if (c == "quit") {

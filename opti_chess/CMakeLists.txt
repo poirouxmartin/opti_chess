@@ -186,6 +186,7 @@ set(ENGINE_SOURCES
     zobrist.cpp
     stockfish_adapter.cpp
     puzzle.cpp
+    uci.cpp
 )
 
 add_library(engine_lib STATIC ${ENGINE_SOURCES})
