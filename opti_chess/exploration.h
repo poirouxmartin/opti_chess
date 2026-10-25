@@ -65,6 +65,8 @@ extern bool g_shared_tree;
 void dump_qstats();
 // Census gate (defined in exploration_diag.cpp).
 extern const bool g_qstats_on;
+// Shared-tree trace gate (SHARED_TRACE, read once at startup).
+extern const bool g_shared_trace;
 
 // Phase 7a component timers (defined in eval_core.cpp).
 extern thread_local double g_t_king_safety_s;

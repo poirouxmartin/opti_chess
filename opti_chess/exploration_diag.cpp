@@ -98,6 +98,8 @@ thread_local long long t_dbg_descents = 0; // TEMPORARY share accounting probe
 // Census compiled in but zero-cost when OPTI_QSTATS is unset (single
 // predictable branch per site; ~10M calls).
 const bool g_qstats_on = (getenv("OPTI_QSTATS") != nullptr);
+// SHARED_TRACE: shared-tree loop trace on stderr (read once, not per iteration)
+const bool g_shared_trace = (getenv("SHARED_TRACE") != nullptr);
 #define QCOUNT(f) do { if (g_qstats_on) g_qstats.f++; } while (0)
 // Phase 7a time split (seconds, steady_clock): static eval vs node init
 // (movegen+flags+sort) vs everything else (derived).
@@ -140,7 +142,7 @@ constexpr uint8_t display_repetition_limit = 3;
 // anchor -> depends only on D = distance to mate, which is a property of the
 // position); on probe, rebuild it using the _moves_count of the current node.
 // Mate threshold = the is_eval_mate / #1 idiom (10*|e| > mate_value), robust:
-// robuste : |stored| ~ mate_value(1e8) - D+�-+-�mate_ply + mc+�-+-�mate_ply, mc/D petits.
+// robuste : |stored| ~ mate_value(1e8) - D*mate_ply + mc*mate_ply, mc/D petits.
 inline int tt_normalize_mate(int eval, int moves_count) {
 	if (10 * abs(eval) > mate_value)
 		return eval + (eval > 0 ? 1 : -1) * moves_count * mate_ply;
@@ -805,16 +807,16 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	}
 
 	// Exploration
-	if (getenv("SHARED_TRACE") != nullptr) t_dbg_descents = 0;
+	if (g_shared_trace) t_dbg_descents = 0;
 	// DAG mode: exact refresh every exact_next iterations (outermost frame only)
 	int exact_since = 0, exact_next = g_dag_exact_every > 0 ? g_dag_exact_every : 1024;
 	while (iterations > 0) {
-		if (getenv("SHARED_TRACE") != nullptr) t_dbg_descents++;
+		if (g_shared_trace) t_dbg_descents++;
 
 		// Wall-clock budget: stop cleanly when the deadline is reached
 		// (max_time == 0 keeps the pure iteration-count behaviour).
 		// Hard deadline (TIME mode): abort flag set by quiescence sampling.
-		if (getenv("SHARED_TRACE") != nullptr && t_dbg_descents < 3) { fprintf(stderr, "[LOOP] iters=%d maxtime=%d abort=%d\n", iterations, (int)max_time, (int)g_search_abort.load()); fflush(stderr); }
+		if (g_shared_trace && t_dbg_descents < 3) { fprintf(stderr, "[LOOP] iters=%d maxtime=%d abort=%d\n", iterations, (int)max_time, (int)g_search_abort.load()); fflush(stderr); }
 		if (max_time != 0 && clock() - begin_monte_time >= max_time)
 			break;
 		if (g_search_abort)
@@ -2525,7 +2527,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	if (g_qstats_on)
 		g_t_qinit += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_qinit0).count();
 
-	// #7 / B-1 +�-+-� null-safe path history (appel manuel quiescence via main_gui.h) :
+	// #7 / B-1 - null-safe path history (appel manuel quiescence via main_gui.h) :
 	// a local history owned for the WHOLE duration of the call. It must be declared
 	// at function scope (never per move, otherwise path_history dangles on the
 	// destroyed local of the previous iteration). Same idiom as grogros_zero.
@@ -3279,7 +3281,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	Move best_move;
 	double best_score = 0.0;
 
-	// Gamma (hoisted out of loop +�-+-� depends only on parent state)
+	// Gamma (hoisted out of loop - depends only on parent state)
 	const double new_gamma = gamma / (1.0 - _static_evaluation._uncertainty / 2.0) / (1.0 - _board->_adv / 2.0);
 
 	// Look at every move
@@ -3909,7 +3911,7 @@ thread_local NodeBuffer monte_node_buffer;
 // as a reset/remove frees space.
 thread_local bool g_buffers_full_logged = false;
 bool g_tt_main_search = false;
-bool g_tt_node_dag = false; // #11 Plan B +�-+-� voir exploration.h
+bool g_tt_node_dag = false; // #11 Plan B - see exploration.h
 thread_local robin_map<uint64_t, Node*> node_map; // Phase 6: per-thread trees
 std::mutex g_node_map_mutex; // Phase 6: shared-tree node_map guard
 std::atomic<long long> g_dbg_claims{ 0 }; // TEMPORARY (remove after)

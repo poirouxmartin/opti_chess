@@ -108,9 +108,9 @@ static void run_search_share(ParallelWork* w) {
         b.from_fen(w->fen);
     }
     if (w->iters > 0) {
-        if (getenv("SHARED_TRACE") != nullptr) { fprintf(stderr, "[SHARE] iters=%d\n", w->iters); fflush(stderr); }
+        if (g_shared_trace) { fprintf(stderr, "[SHARE] iters=%d\n", w->iters); fflush(stderr); }
         root->grogros_zero(&monte_board_buffer, w->evaluator, w->alpha, w->beta, gamma, w->iters, w->quiescence_depth, nullptr, nullptr, 0);
-        if (getenv("SHARED_TRACE") != nullptr) { fprintf(stderr, "[SHARE] done root_iters=%d\n", (int)root->_iterations); fflush(stderr); }
+        if (g_shared_trace) { fprintf(stderr, "[SHARE] done root_iters=%d\n", (int)root->_iterations); fflush(stderr); }
     } else {
         while (!g_search_abort.load(std::memory_order_relaxed)
             && (double)(clock() - w->t_search_start) / CLOCKS_PER_SEC < w->search_budget_s) {
@@ -118,7 +118,7 @@ static void run_search_share(ParallelWork* w) {
         }
     }
     if (w->shared_root != nullptr) {
-        if (getenv("SHARED_TRACE") != nullptr) { fprintf(stderr, "[SHARE] share-iters=%d descs=%lld\n", w->iters, t_dbg_descents); fflush(stderr); }
+        if (g_shared_trace) { fprintf(stderr, "[SHARE] share-iters=%d descs=%lld\n", w->iters, t_dbg_descents); fflush(stderr); }
         return; // shared tree: main collects post-join (no concurrent map walk)
     }
     w->iterations = root->_iterations;
@@ -343,7 +343,7 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
         g_tt_node_dag = prev_dag;
         g_shared_tree = false;
         did_shared_search = true;
-        if (getenv("SHARED_TRACE") != nullptr) {
+        if (g_shared_trace) {
             fprintf(stderr, "SHARED-ROOT children=%d claims=%lld\n", (int)root._children.size(), (long long)g_dbg_claims);
             for (auto const& [mv2, link2] : root._children) {
                 if (!link2._node) continue;
