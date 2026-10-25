@@ -858,19 +858,16 @@ int Board::get_checks_value(const SquareMap* white_controls, const SquareMap* bl
 	constexpr float no_escape_multiplier_default = 2.5f;
 	// Tunables below default to the constexpr above; OPTI_KS_* env overrides
 	// exist for dataset-driven tuning (coordinate descent) without rebuilds.
-	// Env is read once per process (function-static cache, no hot-path cost).
+	// Env is read once per process: each tunable is a function-local static,
+	// initialised thread-safely on first use (no lookup on the hot path, no
+	// shared mutable cache for the search threads to race on).
 	auto ks_env = [](const char* name, float fallback) -> float {
-		static std::map<std::string, float> cache;
-		auto it = cache.find(name);
-		if (it != cache.end()) return it->second;
 		const char* e = getenv(name);
-		float v = e ? (float)atof(e) : fallback;
-		cache[name] = v;
-		return v;
+		return e ? (float)atof(e) : fallback;
 	};
-	const int initial_safe_check_value = (int)ks_env("OPTI_KS_SAFE", (float)initial_safe_check_value_default);
-	const int initial_unsafe_check_value = (int)ks_env("OPTI_KS_UNSAFE", (float)initial_unsafe_check_value_default);
-	const float no_escape_multiplier = ks_env("OPTI_KS_NOESC", no_escape_multiplier_default);
+	static const int initial_safe_check_value = (int)ks_env("OPTI_KS_SAFE", (float)initial_safe_check_value_default);
+	static const int initial_unsafe_check_value = (int)ks_env("OPTI_KS_UNSAFE", (float)initial_unsafe_check_value_default);
+	static const float no_escape_multiplier = ks_env("OPTI_KS_NOESC", no_escape_multiplier_default);
 	constexpr float inital_division = 1.0f;
 	constexpr float king_escape_division_add = 0.35f;
 	constexpr float piece_block_division_add = 1.00f;
@@ -883,14 +880,14 @@ int Board::get_checks_value(const SquareMap* white_controls, const SquareMap* bl
 	// the attacker with the DEFENDER to move leaves one tempo to parry. One
 	// mating move is likely parried (nearly cancelled), two sometimes are,
 	// three or more cannot all be parried (kept). Tunables (see OPTI_KS_*).
-	const float one_mate_threat_factor = ks_env("OPTI_KS_MATE1", 0.05f);
-	const float two_mate_threats_factor = ks_env("OPTI_KS_MATE2", 0.5f);
+	static const float one_mate_threat_factor = ks_env("OPTI_KS_MATE1", 0.05f);
+	static const float two_mate_threats_factor = ks_env("OPTI_KS_MATE2", 0.5f);
 
 	// Same tempo logic for a LONE checking idea (no mate delivered): with the
 	// defender to move and a single checking move available, the parry tempo
 	// halves the idea. Mate threats keep their own discount (no double-dip);
 	// attacker to move delivers now, untouched. Tunable (see OPTI_KS_*).
-	const float single_check_idea_factor = ks_env("OPTI_KS_SINGLE", 0.7f);
+	static const float single_check_idea_factor = ks_env("OPTI_KS_SINGLE", 0.7f);
 
 	//3r2k1/pp3r2/2q2pp1/3n3P/7Q/7R/1B5P/4R2K b - - 0 33: an enormous number of discoveries here
 	//rnb2bnr/pppp1k1p/5q2/8/5B2/5Q2/PPP3PP/RN3RK1 b - - 0 11: why are the checks better for Black?
