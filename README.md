@@ -8,7 +8,7 @@
 
 ![OptiChess analysis board](opti_chess/resources/readme/project_highlight.png)
 
-**OptiChess** is a research-oriented chess engine and analysis GUI written in modern C++20, built solo over several years (~23,000 lines). Its main search is **GrogrosZero**, the project's own Monte Carlo tree search (MCTS) with UCT-style node selection, a quiescence search at the leaves and WDL (win/draw/loss) statistical evaluation. Alpha-beta is present but secondary: it bounds the leaf quiescence, and a separate classical alpha-beta search is available as an option (`opti_chess_cli absolve`). An MCTS-Solver (proven wins and losses propagated up the tree) is experimental: it is being tested on a separate research branch and is not part of `main` yet.
+**OptiChess** is a research-oriented chess engine and analysis GUI written in modern C++20, built solo over several years (~23,000 lines). Its main search is **GrogrosZero**, the project's own Monte Carlo tree search (MCTS) with UCT-style node selection, a quiescence search at the leaves and WDL (win/draw/loss) statistical evaluation. Alpha-beta is present but secondary: it bounds the leaf quiescence, and a separate classical alpha-beta search is available as an option (`opti_chess_cli absolve`). An MCTS-Solver (proven wins and losses propagated up the tree) is experimental: it is in the code but off by default, and is enabled with `OPTI_SOLVER=1`.
 
 > **Note:** OptiChess is an experimental project focused on algorithmic research and performance work. It has a minimal UCI loop (see [Headless CLI and UCI](#headless-cli-and-uci)), but it is not a full UCI engine and it is not intended for competitive play. See [Project status](#project-status) for the honest limits.
 
@@ -28,6 +28,8 @@ Measured on one machine on 2026-10-15 (AMD Ryzen 9 9900X, 12 cores / 24 threads,
 | Lichess puzzles, 100 ms each, 1 thread | 3636 / 5000 (72.7 %) | `OPTI_SEED=42 OPTI_PUZZLE_TIME=0.1 opti_chess_tests --gtest_filter=Puzzle.LichessBenchmark5000` |
 | Lichess puzzles, 100 ms each, 12 threads | 3596 / 5000 (71.9 %) | same + `OPTI_THREADS=12` |
 
+Since then the default search changed (value backup, exact DAG): on the current tree `bench 2000` gives 701 226 nodes, signature `29ae53c1996ef1e6`, and the NODES-500 puzzle run solves 4024/5000; speeds have not been re-measured.
+
 - A search node is a tree node with its own full evaluation (about 40 heuristic terms) and a quiescence search, so these nodes/s are not comparable with alpha-beta engines that count every make-move. The search is evaluation-bound: 78 % of the time is in `Board::evaluate`.
 - Multi-threading: 12 threads give 9x the single-thread throughput (525 307 vs 58 090 nodes/s over the two 100 ms puzzle runs) but do not solve more puzzles (3596 vs 3636, a significant loss on McNemar's test): the search is deterministic, so 12 separate trees explore nearly the same lines. A shared-tree mode solves more (3741) but has a known data race and is not counted here.
 - Gains of the last optimisation session against 59d7939: search 46 951 -> 52 321 nodes/s (+11 %, interleaved runs), 100 ms puzzles 3559 -> 3636 (puzzle-by-puzzle McNemar chi2 = 42). Every optimisation is output-exact: the 500-iteration run picks the same move in all 5000 puzzles before and after.
@@ -43,7 +45,7 @@ If you only read one section, read this one — these are the problems the proje
 - **Mate scores must be normalised by ply inside the TT.** A mate-in-N stored at one depth and read at another is wrong unless it is re-based on retrieval. This was a real bug, tracked and fixed — see [`BUGFIXES.md`](opti_chess/BUGFIXES.md).
 - **Repetition state is path-local.** The same position reached by two different move orders does not share draw state during exploration, otherwise transpositions corrupt each other's threefold detection.
 - **A bounded, zero-allocation search.** `Node` and `Board` objects are drawn from pools sized at startup from available physical memory. When a pool fills, the engine *refines* the existing tree instead of allocating — the process has a memory ceiling by construction.
-- **A/B toggles at runtime.** Two experimental search paths (TT in the main search, and a transposition **DAG** instead of a tree) can be switched on and off live with `I` and `O` while the engine runs, so both branches are compared on the same position without a rebuild.
+- **A/B toggles.** Two search paths can be switched in the GUI with `I` (transposition table in the main search, off by default) and `O` (transposition **DAG** instead of a tree, on by default), so both branches are compared on the same position without a rebuild. In the DAG mode the stored values are periodically replaced by the exact value of the game graph, where a repetition cycle is a draw.
 
 ---
 
@@ -51,10 +53,11 @@ If you only read one section, read this one — these are the problems the proje
 
 | Component | Description |
 |-----------|-------------|
-| **GrogrosZero** | Main search, used by the GUI, UCI, CLI and self-play: MCTS with UCT-style node selection + quiescence at the leaves (`exploration_diag.cpp`, declarations in `exploration.h`); an experimental MCTS-Solver is tested on a research branch, not in `main` |
+| **GrogrosZero** | Main search, used by the GUI, UCI, CLI and self-play: MCTS with UCT-style node selection + quiescence at the leaves (`exploration_diag.cpp`, declarations in `exploration.h`); an experimental MCTS-Solver is in the code, off by default (`OPTI_SOLVER=1`) |
 | **Alpha-beta** | Secondary: alpha-beta bounds inside the leaf quiescence, plus a standalone classical alpha-beta with its own TT, used only by `opti_chess_cli absolve` (`cli.cpp`) |
 | **Evaluation** | 30 weights in `Evaluator` — material, mobility, king safety, weak squares, trapped pieces, pawn structure… (`evaluation.h`, `eval_*.cpp`) |
 | **Transposition table** | Zobrist-keyed, depth-aware, side-to-move scores (`zobrist.cpp`) |
+| **Exact DAG values** | Finite two-player game graph with draw on infinite play, solved by `solve_graph_game` (`graph_game.h`); the DAG search refreshes its stored values with it (`refresh_graph_values` in `exploration_diag.cpp`) |
 | **Move generation** | Legal generation from the array board with bitboards for attacks, pins and checks (`movegen.cpp`, `board.cpp`, `board_fen.cpp`) |
 | **Memory management** | Preallocated pools (`NodeBuffer`, `BoardBuffer`) — no heap allocation in the search hot path (`buffer.cpp`) |
 | **GUI** | raylib analysis board: variations, evaluation graph, game tree (`gui.cpp`) |
@@ -114,16 +117,21 @@ cmake --build --preset windows-release --target opti_chess_tests opti_chess_cli
 .\build\windows-release\Release\opti_chess_cli.exe perft-suite quick
 ```
 
+### Configuration
+
+The engine has no configuration file and no UCI options. Search parameters, evaluation tuning, thread count and diagnostics are set with `OPTI_*` environment variables, set before the process starts. For example, `OPTI_SEED=42` fixes the Zobrist keys, `OPTI_THREADS=12` sets the number of search threads, `OPTI_NO_DAG=1` selects the tree search in `search` and `solve`. Every variable, with the file that reads it, its default and its effect, is listed in [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md).
+
 ---
 
 ## Controls
 
-OptiChess is driven from the keyboard once the board is open. The most useful bindings:
+OptiChess is driven from the keyboard once the board is open. The most useful bindings (key names are the ones raylib reads, which are physical QWERTY positions, so labels differ on other layouts; see `main_gui.h`):
 
 | Key | Action |
 |-----|--------|
-| `G` | Start / stop GrogrosZero analysis on the current position |
-| `P` | Play the move GrogrosZero recommends |
+| `G` (held) | GrogrosZero analysis of the current position, computed while the key is down |
+| `Ctrl` + `G` / `Ctrl` + `H` | Start / stop the automatic GrogrosZero search (background worker) |
+| `P` / `J` | Play the move GrogrosZero recommends (the most explored root move) |
 | `←` / `→` | Step backward / forward through the game tree |
 | `F` | Flip the board |
 | `V` | Load a FEN from the clipboard |
@@ -131,11 +139,12 @@ OptiChess is driven from the keyboard once the board is open. The most useful bi
 | `E` | Print the full evaluation breakdown to the console |
 | `Space` | Start / stop the clock |
 | `Ctrl` + `↑` / `↓` | Toggle GrogrosZero as the white / black player |
-| `Del` | Clear the transposition table and the DAG |
-| `I` / `O` | A/B toggle: TT in the main search / transposition DAG |
+| `Del` | Delete the GrogrosZero search tree (the position and its history are kept) |
+| `I` / `O` | A/B toggle: TT in the main search (default off) / transposition DAG (default on) |
 | `H` | Toggle arrow drawing and the on-screen controls panel |
+| `Y` / `Z` | Cycle forced exploration (round-robin on the least-visited child): off, every 1024, 256, 64, 16 refinements |
 | `T` | Run the built-in test suite (see below) |
-| `Z` | Print the Zobrist key of the current position |
+| `W` | Print the Zobrist key of the current position |
 | `Ctrl` + `T` | Locate a chessboard on screen and bind to it, reading it live (see below) |
 | `Ctrl` + `Q` | Toggle full binding: read every move of the game, not just the opponent's |
 | `Ctrl` + `A` | Enable input injection: auto-play the engine's move on the bound board (Play-Computer games only, off by default) |
@@ -180,16 +189,38 @@ input path is off by default and has to be enabled explicitly at runtime.
 
 ```text
 opti_chess_cli perft <depth> [fen...]
+opti_chess_cli perft-bulk <depth> [fen...]
 opti_chess_cli divide <depth> [fen...]
-opti_chess_cli perft-suite [quick|full]
+opti_chess_cli perft-suite [quick|full] [bulk]
 opti_chess_cli bench [iterations]
 opti_chess_cli uci
+opti_chess_cli search <iterations> [fen...]
+opti_chess_cli solve <max_iterations> <uci,uci|-> <min_value> <fen...>
+opti_chess_cli absolve <max_depth> <fen...>
 ```
 
-- `perft` counts the leaf nodes at a depth. `divide` prints the count under each root move, in UCI notation.
-- `perft-suite` checks the standard perft positions against reference counts and exits with status 1 on a mismatch.
-- `bench` runs a fixed set of positions with `OPTI_SEED=42` (unless the variable is already set) and prints nodes per second and a signature of the results.
-- `uci` is a minimal UCI loop: `uci`, `isready`, `ucinewgame`, `position startpos` or `position fen <FEN>` followed by optional `moves ...`, `go`, and `quit`. `go` accepts `nodes`, `movetime`, `wtime`/`btime`/`winc`/`binc` and `infinite`; with none of them it searches 2000 iterations. The budget takes `nodes` first, then `movetime`, then the clock, then `infinite`. `go` is synchronous, and `stop` is ignored.
+With no FEN, `perft`, `perft-bulk`, `divide` and `search` use the start position. The FEN is given as separate arguments (`... w - - 0 1`).
+
+- `perft` counts the leaf nodes at a depth (copy-make). `perft-bulk` does the same with bulk counting at depth 1. `divide` prints the count under each root move, in UCI notation.
+- `perft-suite` checks the standard perft positions against reference counts and exits with status 1 on a mismatch. `full` searches deeper than `quick` (the default); `bulk` uses bulk counting.
+- `bench` runs a fixed set of 8 positions (2000 iterations each by default) with `OPTI_SEED=42` (unless the variable is already set) and prints nodes per second and a signature of the results.
+- `search` runs the GrogrosZero search for the given number of iterations, in 10 steps, and prints one line per step (iterations, ms, boards in use, root value, best move, depth, DAG counters), then the principal variation. It uses the DAG unless `OPTI_NO_DAG` is set. Extra dumps are controlled by `OPTI_SEARCH_*` variables ([`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md)).
+- `solve` searches in chunks of 500 iterations up to `max_iterations` and reports whether the most visited root move is in the expected UCI list (`-` accepts any move) with a value of at least `min_value` (side to move's point of view) from some iteration count to the end. Exit status 0 if solved, 1 otherwise. It uses the DAG unless `OPTI_NO_DAG` is set.
+- `absolve` is an experimental classical alpha-beta with a transposition table, independent of GrogrosZero. Its evaluation is material plus pawn advancement only. It prints one line per depth up to `max_depth`.
+- `uci` is a minimal UCI loop, described below.
+
+**UCI dialogue.** Supported commands: `uci` (replies `id name OptiChess`, `id author Martin`, `uciok`), `isready`, `ucinewgame`, `position startpos` or `position fen <FEN>` followed by optional `moves ...`, `go`, `quit`. Anything else, including `stop`, is ignored. `position` with an unreadable FEN keeps the previous position and prints `info string bad fen`; an illegal move stops the move list and prints `info string illegal move <move>`.
+
+`go` is synchronous and accepts `nodes`, `movetime`, `wtime`/`btime`/`winc`/`binc` and `infinite`. The budget takes `nodes` first, then `movetime`, then the clock of the side to move (`time / 30 + inc / 2`, clamped to 50 ms to 10 s), then `infinite` (20000 nodes). `depth` is parsed and has no effect. With none of them it searches 2000 iterations. It prints one `info` line, then the move:
+
+```text
+info nodes <n> time <ms> score cp <x>
+bestmove <move>
+```
+
+`score cp` is from the side to move. A forced mate is reported as `score mate <n>`, with `n > 0` when the side to move mates (previously a mate was printed as a very large `cp` value). `bestmove 0000` is printed if the search returns no legal move. No streamed `info` during the search.
+
+There are no UCI options: the engine advertises none and `setoption` is ignored. Tuning is done only through environment variables (`OPTI_*`), listed in [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md).
 
 Example session (full FEN with clocks):
 
@@ -203,15 +234,15 @@ go nodes 200
 quit
 ```
 
-The replies include `uciok`, `readyok`, `info nodes ...` and `bestmove <move>`.
+The replies include `uciok`, `readyok`, `info nodes <n> time <ms> score cp <x>` and `bestmove <move>`.
 
-Search mode: DAG search is the default. It always uses exact values on the cyclic game graph, with repetition cycles scored as draws (`OPTI_DAG_EXACT_EVERY=<n>` sets the refresh interval). On Fine #70 it finds the only winning move, 1.Kb1, in about 1 s. `OPTI_NO_DAG=1` gives the pure tree search. See [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
+Search mode: the search used by UCI `go`, `bench` and the puzzle tests (`PuzzleRunner::run` in `puzzle.cpp`) always runs in DAG mode (`g_tt_node_dag` is forced on for the call), and `OPTI_NO_DAG` has no effect there. The GUI also starts in DAG mode (`O` toggles it). Only `search` and `solve` honour `OPTI_NO_DAG=1`, which gives the pure tree search. In DAG mode the stored values are refreshed with the exact value of the cyclic game graph, where a repetition cycle is a draw (`OPTI_DAG_EXACT_EVERY=<n>` sets the refresh interval in iterations; the refresh is skipped under the shared tree). On Fine #70 it finds the only winning move, 1.Kb1, in about 1 s. See [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
 
 ---
 
 ## Testing
 
-**Automated tests** are a GoogleTest executable, `opti_chess_tests.exe`, built from `tests/unit_test.cpp`. Run the fast set from the release build:
+**Automated tests** are a GoogleTest executable, `opti_chess_tests.exe`, built from three files in `opti_chess/tests/`: `unit_test.cpp` (FEN, perft, move generation, evaluation, search, puzzles), `rules_test.cpp` (stalemate, checkmate, fifty-move rule, threefold repetition in a game, incremental Zobrist key after castling and en passant) and `uci_test.cpp` (the `uci.h` functions: move conversion round trip, `position` handling, `go` budget precedence, `cp` and `mate` scores). Run the fast set from the release build:
 
 ```powershell
 .\build\windows-release\Release\opti_chess_tests.exe --gtest_filter="-*Debug*:*Perf*"
@@ -223,7 +254,9 @@ CI runs ctest with this exclusion regex (the long benchmarks are left out):
 ctest --test-dir build/windows-release -C Release --output-on-failure -E "Debug\.|Perf\.|LichessBenchmark|CalibratedBatch|TestsTxtBatch|TimeBudgetLadder|ScalingBenchmark|TimeBenchmark|GuiLikeBench|ParamSweep|OFFvsDAG"
 ```
 
-CI also runs `Puzzle.LichessBenchmark5000` as a GATE-500 check, which fails if fewer than 400 puzzles are solved.
+CI also runs `Puzzle.LichessBenchmark5000` as a GATE-500 check (500 puzzles, 2000 nodes each, `OPTI_SEED=42`), which fails if fewer than 400 puzzles are solved.
+
+One test is order-dependent: `Puzzle.SessionAccumulation` passes when run alone but failed once in the full CI set (a node leak reported under the DAG, seen on both `main` and the review branch). See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), Known limitations.
 
 **Perft.** Move generation is checked against reference node counts from [chessprogramming.org](https://www.chessprogramming.org/Perft_Results), not from the engine itself. `opti_chess_cli perft-suite` covers the start position, Kiwipete, positions 3 to 6 and a promotion-heavy position; it must report 7/7. `full` mode searches deeper than `quick`.
 
@@ -240,8 +273,10 @@ CI also runs `Puzzle.LichessBenchmark5000` as a GATE-500 check, which fails if f
 ├── README.md
 ├── LICENSE
 ├── CONTRIBUTING.md
-├── docs/                    # AUDIT.md, AUDIT_TODO.md, ARCHITECTURE.md
-├── scripts/                 # harness.ps1, perf_compare.ps1, Lichess download scripts
+├── TECH_DEBT.md, BUGS-audit.md  # Debt ledger, GUI bug audit
+├── docs/                    # AUDIT.md, AUDIT_TODO.md, ARCHITECTURE.md, ENVIRONMENT.md, BENCHMARKS.md
+├── scripts/                 # harness.ps1, perf_compare.ps1, gui_drive.ps1, Lichess download scripts
+├── tests/                   # Lichess puzzle and evaluation data files (lichess_*.txt)
 ├── .github/workflows/       # build.yml (CI)
 └── opti_chess/
     ├── CMakeLists.txt       # Targets, FetchContent dependencies, post-build resource copy
@@ -254,6 +289,7 @@ CI also runs `Puzzle.LichessBenchmark5000` as a GATE-500 check, which fails if f
     ├── movegen.cpp          # Legal move generation
     ├── exploration_diag.cpp # GrogrosZero search, quiescence, node tree and DAG
     ├── exploration.h        # Node, ChildLink, search globals and buffers
+    ├── graph_game.h         # GraphGame: finite two-player game graph, draw on infinite play, solve_graph_game (exact DAG values)
     ├── evaluation.cpp/h     # Evaluator weights and the Evaluation result
     ├── eval_core/king/pawn/mobility/misc.cpp  # Evaluation terms
     ├── zobrist.cpp/h        # Zobrist keys and transposition table
@@ -263,12 +299,16 @@ CI also runs `Puzzle.LichessBenchmark5000` as a GATE-500 check, which fails if f
     ├── neural_network.cpp/h # Small MLP with random weights, not used by the evaluation
     ├── puzzle.cpp/h         # PuzzleRunner: headless search driver for tests and the CLI
     ├── stockfish_adapter.cpp/h  # Subprocess client to an external Stockfish
-    ├── cli.cpp              # opti_chess_cli: perft, divide, perft-suite, bench, uci
+    ├── uci.cpp/h            # UCI helpers: move text, position, go budget, score (cp or mate)
+    ├── cli.cpp              # opti_chess_cli: perft, perft-bulk, divide, perft-suite, bench, uci, search, solve, absolve
     ├── selfplay.cpp         # opti_chess_selfplay: search parameter matches
     ├── tests.cpp/h          # Legacy in-GUI suite (perft, evaluation, puzzles)
     ├── windows_tests.cpp/h  # Win32 layer: physical memory probe, screen binding (see above)
     ├── useful_functions.cpp/h
     ├── tests/unit_test.cpp  # GoogleTest suite (opti_chess_tests)
+    ├── tests/rules_test.cpp # GoogleTest: game-end rules, incremental Zobrist keys (opti_chess_tests)
+    ├── tests/uci_test.cpp   # GoogleTest: uci.h functions (opti_chess_tests)
+    ├── tests/sizeof_test.cpp # Not listed in CMakeLists.txt, so not built
     ├── ALGORITHMS.md        # Algorithm reference
     ├── BUGFIXES.md          # Bug ledger
     ├── BENCHMARKS.md        # Benchmark notes
@@ -298,6 +338,7 @@ Benchmarks are reproducible from the repository: `perft-suite full` and `bench` 
 | File | Contents |
 |------|----------|
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Architecture: build targets, board representation, move generation, search, evaluation, memory model, tools, known limitations |
+| [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md) | Every `OPTI_*` environment variable read by the engine, the tools and the tests: file, default, effect |
 | [`opti_chess/docs/DEVELOPMENT.md`](opti_chess/docs/DEVELOPMENT.md) | Build, run, validate, troubleshoot |
 | [`opti_chess/docs/ARCHITECTURE.md`](opti_chess/docs/ARCHITECTURE.md) | Older architecture note, superseded by `docs/ARCHITECTURE.md`, kept for history |
 | [`opti_chess/ALGORITHMS.md`](opti_chess/ALGORITHMS.md) | Implementation-level reference: sign conventions, mate encoding, `Node` invariants, GrogrosZero loop, quiescence, TT semantics |
@@ -343,7 +384,7 @@ The bishop on a2 is trapped in White's camp. The evaluator returns `+506` with W
 Stated plainly, so nothing here is a surprise:
 
 - **Windows only.** The CMake file carries Linux and macOS branches, but the Win32 integration layer (`windows_tests.*`, and console setup in `main_gui.h`) is not yet abstracted, so those targets do not compile today.
-- **UCI is minimal.** `opti_chess_cli uci` covers the commands listed above and nothing more (no `stop`, no streamed search info). The engine is not rated on a public list. Engine-vs-engine matches are the `selfplay.cpp` parameter matches; the optional click-based play path is described in [Screen binding](#screen-binding-windows).
+- **UCI is minimal.** `opti_chess_cli uci` covers the commands listed above and nothing more (no `stop`, no `setoption` and no advertised options, one `info` line per `go` and no streamed search info). The engine is not rated on a public list. Engine-vs-engine matches are the `selfplay.cpp` parameter matches; the optional click-based play path is described in [Screen binding](#screen-binding-windows).
 - **Automated tests exist, but coverage is partial.** `opti_chess_tests` (GoogleTest) runs in CI on push to `main` and on pull requests, together with the GATE-500 puzzle check. The GUI itself is still checked by hand, and the in-GUI `T` suite is legacy.
 - **`board.cpp` is still the largest engine file.** Move generation was split out into `movegen.cpp`; further splits are proposed in [`docs/AUDIT.md`](docs/AUDIT.md) (section 7).
 - **Two working files are still in French**: `TODO_list.txt`, the development backlog, and the annotations in `Tests.txt`. They are personal working notes rather than documentation.
