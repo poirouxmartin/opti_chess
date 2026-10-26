@@ -133,6 +133,10 @@ struct PuzzleResult {
     double eval_score = 0.0;
 };
 
+// Fresh single-threaded search state: node and board arenas (allocated
+// once with `capacity` slots, then emptied), DAG node map and TT cleared.
+void reset_search_state(int capacity = 500000);
+
 class PuzzleRunner {
 public:
     static PuzzleResult run(const Puzzle& p, BudgetMode mode, double budget,

@@ -229,13 +229,7 @@ static int cmd_search(int argc, char** argv) {
     const int iters = atoi(argv[2]);
     const string fen = fen_from_args(argc, argv, 3);
     static Evaluator evaluator;
-    monte_node_buffer.init(500000, false);
-    monte_board_buffer.init(500000, false);
-    monte_node_buffer.reset();
-    monte_board_buffer.reset();
-    node_map.clear();
-    transposition_table.clear();
-    g_buffers_full_logged = false;
+    reset_search_state();
     g_tt_node_dag = getenv("OPTI_NO_DAG") == nullptr;
     g_tt_main_search = getenv("OPTI_TT_MAIN") != nullptr;
 
@@ -513,13 +507,7 @@ static int cmd_solve(int argc, char** argv) {
     const int min_value = atoi(argv[4]);
     const string fen = fen_from_args(argc, argv, 5);
     static Evaluator evaluator;
-    monte_node_buffer.init(500000, false);
-    monte_board_buffer.init(500000, false);
-    monte_node_buffer.reset();
-    monte_board_buffer.reset();
-    node_map.clear();
-    transposition_table.clear();
-    g_buffers_full_logged = false;
+    reset_search_state();
     g_tt_node_dag = getenv("OPTI_NO_DAG") == nullptr;
 
     Board b;

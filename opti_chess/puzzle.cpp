@@ -24,6 +24,18 @@ __declspec(dllimport) unsigned long __stdcall WaitForMultipleObjects(unsigned lo
 
 using namespace std;
 
+// Fresh single-threaded search state: node and board arenas (allocated
+// once with `capacity` slots, then emptied), DAG node map and TT cleared.
+void reset_search_state(int capacity) {
+    monte_node_buffer.init(capacity, false);
+    monte_board_buffer.init(capacity, false);
+    monte_node_buffer.reset();
+    monte_board_buffer.reset();
+    node_map.clear();
+    transposition_table.clear();
+    g_buffers_full_logged = false;
+}
+
 static double score_reward_for_move(const Puzzle& p, const Move& chosen) {
     for (const auto& rm : p.allowed_moves) {
         if (rm.move == chosen) return rm.reward;
@@ -253,13 +265,7 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
         return result;
     }
 
-    monte_node_buffer.init(500000, false);
-    monte_board_buffer.init(500000, false);
-    monte_node_buffer.reset();
-    monte_board_buffer.reset();
-    node_map.clear();
-    transposition_table.clear();
-    g_buffers_full_logged = false;
+    reset_search_state();
 
     const bool prev_dag = g_tt_node_dag;
     g_tt_node_dag = true;
