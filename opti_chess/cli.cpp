@@ -205,9 +205,8 @@ static void cmd_go(const vector<string>& tok, const string& fen) {
 
     PuzzleResult r = PuzzleRunner::run(p, ub.mode, ub.budget);
     // Searched value (actual_eval_cp is the root static eval)
-    int score = white ? r.searched_eval_cp : -r.searched_eval_cp;
     long long ms = (long long)(r.time_s * 1000.0 + 0.5);
-    cout << "info nodes " << r.total_nodes << " time " << ms << " score cp " << score << endl;
+    cout << "info nodes " << r.total_nodes << " time " << ms << " score " << uci_score(b, r.searched_eval_cp) << endl;
 
     // Chosen move must be among the legal moves, otherwise 0000
     string best = "0000";
