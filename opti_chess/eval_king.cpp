@@ -814,39 +814,8 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	return king_safety;
 }
 
-// Tells whether a piece can be captured by the enemy, for GUI display
-int Board::get_king_virtual_mobility(bool color) {
-	// FIXME: base this on the pawns only?
-
-	// The king is replaced by a queen, and the number of possible moves is counted
-	update_kings_pos();
-	const int i = color ? _white_king_pos.row : _black_king_pos.row;
-	const int j = color ? _white_king_pos.col : _black_king_pos.col;
-	
-	// Count the number of possible moves for the new queen
-	int mobility = 0;
-
-	for (uint8_t k = 0; k < 8; k++) {
-		const uint8_t mi = all_directions[k][0];
-		const uint8_t mj = all_directions[k][1];
-		uint8_t i2 = static_cast<uint8_t>(i + mi);
-		uint8_t j2 = static_cast<uint8_t>(j + mj);
-
-		while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
-			if (_array[i2][j2] != 0)
-				break;
-			mobility++;
-			i2 += mi;
-			j2 += mj;
-		}
-	}
-
-
-	return mobility;
-}
-
 // Returns the number of safe checks in the position, for both sides
-int Board::get_checks_value(const SquareMap* white_controls, const SquareMap* /*black_controls*/, bool color)
+int Board::get_checks_value(const SquareMap* /*white_controls*/, const SquareMap* /*black_controls*/, bool color)
 {
 	constexpr int initial_safe_check_value_default = 250;
 	constexpr int initial_unsafe_check_value_default = 5;
@@ -1239,50 +1208,6 @@ int Board::get_king_proximity(const EvalControls& ctx)
 	const double average_proximity = n_pawns == 0 ? 0.0f : proximity / sqrt((n_pawns / 2.0) * sqrt(n_pawns / 2.0));
 	
 	return static_cast<int>(multiplier * average_proximity * (_adv - min_advancement) / (1.0f - min_advancement));
-}
-
-
-// Computes rook activity and mobility
-int Board::get_king_escape_squares(bool color, const EvalControls& ctx) {
-
-	// Square control by the enemy pieces (threaded from the evaluate() context)
-	const SquareMap& control_map = color ? ctx.black : ctx.white;
-
-	// King position
-	update_kings_pos();
-
-	Pos king_pos = color ? _white_king_pos : _black_king_pos;
-
-	// Number of retreat squares
-	int escape_squares = 0;
-
-	// For each square around the king
-	for (int i = -1; i < 2; i++) {
-		for (int j = -1; j < 2; j++) {
-
-			// Square coordinates
-			uint8_t new_i = static_cast<uint8_t>(king_pos.row + i);
-			uint8_t new_j = static_cast<uint8_t>(king_pos.col + j);
-
-			// If the square is off the board
-			if (new_i < 0 || new_i > 7 || new_j < 0 || new_j > 7)
-				continue;
-
-			// If a friendly piece stands on the square
-			uint8_t p = _array[new_i][new_j];
-			if (p != 0 && (color ? p <= w_king : p <= b_king))
-				continue;
-
-
-			// If the square is controlled by an enemy piece
-			if (control_map._array[new_i][new_j] != 0)
-				continue;
-
-			escape_squares++;
-		}
-	}
-
-	return escape_squares;
 }
 
 // Returns a value for the pieces attacking the enemy king
@@ -2225,12 +2150,6 @@ int Board::get_king_centralization(bool color) {
 
 	// Penalty based on the distance
 	return static_cast<int>((10 - distance) * pawns_factor * max(0.0f, (_adv - begin_adv) / (1 - begin_adv)));
-}
-
-// Returns the value of the undefended pieces
-int Board::get_unprotected_pieces(bool /*color*/) const {
-	// TODO
-	return 0;
 }
 
 // Tells whether the king is inside the square of the pawn

@@ -67,12 +67,6 @@ void simulate_mouse_release()
 	return;
 }
 
-// Places the mouse at a given position
-void set_mouse_pos(const int x, const int y) {
-	SetCursorPos(x, y);
-	return;
-}
-
 // Returns the memory available on the computer
 // FIXME: this does not return the right thing
 unsigned long long get_total_system_memory()

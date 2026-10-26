@@ -434,8 +434,6 @@ inline bool is_aligned(int d_row, int d_col, Direction dir) {
 	return (d_row * dir.d_col == d_col * dir.d_row);
 }
 
-void print_controls(uint16_t controls);
-
 // Base layout of the squares around the king
 // 0   1   2   3   4
 // 5   6   7   8   9
@@ -506,9 +504,6 @@ inline int pop_lsb(uint64_t& bb) noexcept {
 	bb &= bb - 1;
 	return sq;
 }
-
-// Invalide le cache d'évaluation de tous les threads (eval_core.cpp)
-void eval_cache_clear();
 
 // Every square a piece standing on sq could attack on some board: queen lines plus knight jumps (movegen.cpp)
 uint64_t square_reach_mask(int sq) noexcept;
@@ -820,9 +815,6 @@ public:
 	// Returns the label of a move
 	string move_label(Move move, bool use_uft8 = false);
 
-	// Displays a text inside a given area
-	static void draw_text_rect(const string&, float, float, float, float, float);
-
 	// Plays the sound of a move
 	void play_move_sound(Move);
 
@@ -832,20 +824,11 @@ public:
 	// Computes and returns the value matching the safety of the kings
 	int get_king_safety(int activity_diff, float display_factor, const EvalControls& ctx);
 
-	// Returns whether a piece can be captured by the enemy (for the GUI display)
-	bool is_capturable(int, int);
-
 	// Displays the PGN
 	void display_pgn() const;
 
 	// Returns, from the evaluation, whether this is a mate or not
 	int is_eval_mate(int) const;
-
-	// Generates the opening book
-	void generate_opening_book(int nodes = 100000);
-
-	// Returns a simple and fast representation of the position
-	string simple_position() const;
 
 	// Computes the pawn structure and returns its value
 	int get_pawn_structure(float display_factor, const EvalControls& ctx);
@@ -920,9 +903,6 @@ public:
 	// Adds the controls of a piece to a map
 	bool add_piece_controls(SquareMap* map, int i, int j, int piece) const;
 
-	// Returns the virtual mobility of a king
-	int get_king_virtual_mobility(bool color);
-
 	// Returns the number of 'safe' checks in the position for both players
 	int get_checks_value(const SquareMap* white_controls, const SquareMap* black_controls, bool color);
 
@@ -947,20 +927,8 @@ public:
 	// Computes and returns the value of the pawns blocking the bishops
 	int get_bishop_pawns() const;
 
-	// Returns the value of the long-term weaknesses of the pawn shield
-	int get_pawn_shield();
-
 	// Returns the value of the weak squares
 	int get_weak_squares(bool color, bool around_king, const EvalControls& ctx);
-
-	// Converts a move into its algebraic notation
-	string algebric_notation(Move move) const;
-
-	// Converts an algebraic notation into a move
-	Move move_from_algebric_notation(string notation);
-
-	// Returns the value of the distance to a possible castle
-	int get_castling_distance() const;
 
 	// Generates the Zobrist key of the board
 	void get_zobrist_key();
@@ -995,20 +963,11 @@ public:
 	// Returns the evaluation of the trapped pieces
 	int get_trapped_pieces(const EvalControls& ctx) const;
 
-	// Adjusts the piece values (penalty/bonus), depending on the type of position
-	int get_updated_piece_values() const;
-
 	// Returns the nature of the position as a number: 0 = open, 1 = closed
 	float get_position_nature() const;
 
 	// Returns the value of the bonuses tied to the open and semi-open files on the opposing king
 	int get_open_files_on_opponent_king(bool color);
-
-	// Returns the value of the bonuses tied to the open and semi-open diagonals on the opposing king
-	int get_open_diagonals_on_opponent_king(bool color);
-
-	// Returns the number of retreat squares for the king
-	int get_king_escape_squares(bool color, const EvalControls& ctx);
 
 	// Returns a value matching the pieces attacking the opposing king
 	int get_king_attackers(bool color);
@@ -1046,17 +1005,11 @@ public:
 	// Runs the same validation several times, and displays the average, minimum and maximum time, the standard deviation...
 	void benchmark_nodes_count_at_depth(string fen, int depth, vector<long long int> expected_nodes, int iterations = 10, bool display = false, bool parallel = false);
 
-	// Test function: new piece mobility
-	int get_piece_mobility(bool display = false) const;
-
 	// Returns whether the pawn can move
 	bool pawn_can_move(uint8_t row, uint8_t col, bool color) const;
 
 	// Returns the uncertainty of the position
 	void get_uncertainty(Evaluation *eval, int material_eval, int winning_eval = 110) const;
-
-	// Swaps the colours of the players (including the side to move)
-	void switch_colors();
 
 	// Iterates over the distance map from a given position, and returns the newly controlled squares
 	// Fills out (capacity >= 8) with newly reached squares, returns the count. Stack version (no alloc).
@@ -1071,17 +1024,8 @@ public:
 	// Returns the centralization value of the king in the endgame
 	int get_king_centralization(bool color);
 
-	// Returns the value of the undefended pieces
-	int get_unprotected_pieces(bool color) const;
-
 	// Returns whether the king is inside the square of the pawn
 	bool in_king_square(Pos pos, bool color);
-
-	// Returns whether this is a pawn endgame
-	bool is_pawn_endgame() const;
-
-	// Returns whether the player still has pieces (other than the king and the pawns)
-	bool has_pieces(bool color) const;
 
 	// Returns the real value of a long-term king weakness parameter, depending on the castling options and how close they are
 	int get_long_term_king_weakness(bool player, int current_weakness, int kingside_weakness, int queenside_weakness);
@@ -1094,12 +1038,6 @@ public:
 
 	// Returns the value of the bonuses tied to the placement of the king
 	int get_king_placement_weakness(bool player);
-
-	// Returns a map of every blocked pawn
-	SquareMap get_blocked_pawns(bool color) const;
-
-	// Takes a map of blocked pawns/pieces, updates it with the newly blocked pieces, and returns whether one or more pieces were added to it
-	bool update_blocked_pieces(SquareMap& blocked_pieces, bool color, SquareMap opponent_controls) const;
 
 	// Returns the map of every blocked piece
 	SquareMap get_all_blocked_pieces(bool color, SquareMap opponent_controls) const;
@@ -1117,9 +1055,6 @@ public:
 
 	// Returns the value matching the safety of the queens of the given player
 	int get_queen_safety(bool color, const EvalControls& ctx) const;
-
-	// Returns how quiet a position is: the number of available captures, of available checks and of available promotions
-	int get_quietness();
 
 	// Assigns the flags to the possible moves
 	void assign_all_move_flags();
@@ -1148,10 +1083,6 @@ public:
 	// Returns the number of passed pawns for a given colour
 	int get_passed_pawns_count(bool color) const;
 
-	// Returns the evaluation value tied to the passed pawns
-	// TODO
-	int get_passed_pawns_value(bool color) const;
-
 	// Returns whether a move is irreversible (for the fast repetition detection)
 	// Irreversible = pawn move, capture (including en passant), promotion, or a move losing the castling rights
 	bool is_irreversible_move(const Move& move) const noexcept;
@@ -1167,23 +1098,14 @@ public:
 // Returns whether two positions (in FEN form) are the same
 bool equal_fen(const string&, const string&);
 
-// Returns whether two positions (in FEN form) are the same (for the repetitions)
-bool equal_positions(const Board&, const Board&);
-
 // Returns the time the AI should spend on the next move (in ms), given a factor k and the times left
 int time_to_play_move(int t1, int t2, float k = 0.05f);
-
-// Displays every value of a bitboard
-void print_bitboard(uint64_t bitboard);
 
 // std::map<string, int> _positions_history = {
 //     { "A", 1 },
 //     { "B", 1 },
 //     { "C", 2 }
 // };
-
-// Returns the UCT value
-float uct(float, float, int, int);
 
 // Text box
 struct TextBox {

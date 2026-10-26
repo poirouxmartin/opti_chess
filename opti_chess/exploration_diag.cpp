@@ -2420,22 +2420,6 @@ Node::~Node() {
 	//}
 }
 
-// Returns the most explored child
-Node* Node::get_most_explored_child() {
-	Move most_explored_move = get_most_explored_child_move();
-
-	if (most_explored_move.is_null_move()) {
-		return nullptr;
-	}
-
-	return _children[most_explored_move]._node;
-}
-
-// Returns the average computation speed in nodes per second
-int Node::get_avg_nps() const {
-	return static_cast<int>(_time_spent == 0 ? 0 : ((double)_nodes / (double)_time_spent * CLOCKS_PER_SEC));
-}
-
 // Returns the number of iterations per second
 int Node::get_ips() const {
 	return static_cast<int>(_time_spent == 0 ? 0 : ((double)_iterations / (double)_time_spent * CLOCKS_PER_SEC));
@@ -3673,24 +3657,6 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 	//cout << "best move: " << _board->move_label(best_move) << " | best score: " << best_score << endl;
 
 	return best_move;
-}
-
-// Returns a forecast node score, used by quiescence when the maximum evaluations are unknown
-int Node::get_previsonal_node_score(const double alpha, const double beta, const bool player) const {
-	return static_cast<int>(1E6 * get_node_score(alpha, beta, _deep_evaluation._value, _deep_evaluation._avg_score, player));
-}
-
-// Evaluates the threat by running a quiescence on the opponent's turn
-int Node::evaluate_quiescence_threat(Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network) const {
-
-	Board b(*_board);
-	b.switch_trait();
-
-	Node stand_pat_node(&b);
-
-	int stand_pat_value = stand_pat_node.minimal_quiescence(eval, depth, search_alpha, search_beta, alpha, beta, network);
-
-	return stand_pat_value;
 }
 
 // Minimal quiescence (does not store nodes)

@@ -1600,77 +1600,6 @@ int Board::get_bishop_pawns() const {
 	return static_cast<int>(eval_from_progress(static_cast<int>(bishop_pawns_value), _adv, advancement_factor));
 }
 
-// Returns the long-term weakness value of the pawn shield
-int Board::get_pawn_shield() {
-	// Prendre en compte:
-	// - pawns in front of the king: done
-	// - TODO: semi-open files in front of the king
-	// - TODO: penalties for doubled or isolated pawns in front of the king
-	// - open files/diagonals: TODO
-
-	// castled (can no longer castle): look at the 3 pawns in front of it
-	// can castle on one side only: look at pawns f, g, h or b, c, d depending on the side
-	// can castle both sides: average the f/g/h set, the b/c/d set and the 3 pawns in front of it
-
-	// Exemples:
-	// r3k2r/1ppq2pp/p1pbbpn1/8/3PP3/2N1BN1P/PP3PP1/R2Q1RK1 w kq - 3 13: h4 wrecks the king structure here. Never play it, especially with opposite castling
-
-
-	int pawn_shield_value = 0;
-
-	update_kings_pos();
-
-	// White king
-
-	// pawns f, g and h
-	int w_kingside_pawns = 25 * ((_array[1][5] == 1) + (_array[1][6] == 1) + (_array[1][7] == 1)) + 15 * ((_array[2][5] == 1) + (_array[2][6] == 1) + (_array[2][7] == 1)) + 5 * ((_array[3][5] == 1) + (_array[3][6] == 1) + (_array[3][7] == 1));
-
-	// pawns b, c and d
-	int w_queenside_pawns = 25 * ((_array[1][1] == 1) + (_array[1][2] == 1) + (_array[1][3] == 1)) + 15 * ((_array[2][1] == 1) + (_array[2][2] == 1) + (_array[2][3] == 1)) + 5 * ((_array[3][1] == 1) + (_array[3][2] == 1) + (_array[3][3] == 1));
-
-	// pawns in front of the king
-	int w_front_pawns = 25 * (_array[1][_white_king_pos.col] == 1) + 15 * (_array[2][_white_king_pos.col] == 1) + 5 * (_array[3][_white_king_pos.col] == 1);
-	if (_white_king_pos.col > 0)
-		w_front_pawns += 25 * (_array[1][_white_king_pos.col - 1] == 1) + 15 * (_array[2][_white_king_pos.col - 1] == 1) + 5 * (_array[3][_white_king_pos.col - 1] == 1);
-	if (_white_king_pos.col < 7)
-		w_front_pawns += 25 * (_array[1][_white_king_pos.col + 1] == 1) + 15 * (_array[2][_white_king_pos.col + 1] == 1) + 5 * (_array[3][_white_king_pos.col + 1] == 1);
-
-	int w_castles_count = _castling_rights.k_w + _castling_rights.q_w;
-
-	int w_pawn_shield_value = (w_front_pawns + _castling_rights.k_w * w_kingside_pawns + _castling_rights.q_w * w_queenside_pawns) / (1 + w_castles_count);
-
-
-	// Black king
-
-	// pawns f, g and h
-	int b_kingside_pawns = 25 * ((_array[6][5] == 7) + (_array[6][6] == 7) + (_array[6][7] == 7)) + 15 * ((_array[5][5] == 7) + (_array[5][6] == 7) + (_array[5][7] == 7)) + 5 * ((_array[4][5] == 7) + (_array[4][6] == 7) + (_array[4][7] == 7));
-
-	// pawns b, c and d
-	int b_queenside_pawns = 25 * ((_array[6][1] == 7) + (_array[6][2] == 7) + (_array[6][3] == 7)) + 15 * ((_array[5][1] == 7) + (_array[5][2] == 7) + (_array[5][3] == 7)) + 5 * ((_array[4][1] == 7) + (_array[4][2] == 7) + (_array[4][3] == 7));
-
-	// pawns in front of the king
-	int b_front_pawns = 25 * (_array[6][_black_king_pos.col] == 7) + 15 * (_array[5][_black_king_pos.col] == 7) + 5 * (_array[4][_black_king_pos.col] == 7);
-	if (_black_king_pos.col > 0)
-		b_front_pawns += 25 * (_array[6][_black_king_pos.col - 1] == 7) + 15 * (_array[5][_black_king_pos.col - 1] == 7) + 5 * (_array[4][_black_king_pos.col - 1] == 7);
-	if (_black_king_pos.col < 7)
-		b_front_pawns += 25 * (_array[6][_black_king_pos.col + 1] == 7) + 15 * (_array[5][_black_king_pos.col + 1] == 7) + 5 * (_array[4][_black_king_pos.col + 1] == 7);
-
-	int b_castles_count = _castling_rights.k_b + _castling_rights.q_b;
-
-	int b_pawn_shield_value = (b_front_pawns + _castling_rights.k_b * b_kingside_pawns + _castling_rights.q_b * b_queenside_pawns) / (1 + b_castles_count);
-
-	// Holes on the files
-
-
-	// Compute the pawn shield value
-	pawn_shield_value = w_pawn_shield_value - b_pawn_shield_value;
-
-	// Game progress value beyond which this stops mattering, decreasing linearly
-	float pawn_shield_advancement_threshold = 0.7f;
-
-	return static_cast<int>(eval_from_progress(pawn_shield_value, _adv, pawn_shield_advancement_threshold));
-}
-
 // Returns the value of the weak squares
 int Board::get_pawn_storm_at_col(bool color, uint8_t king_row, uint8_t king_col) const {
 	// FIXME: should there be a bonus once the pawn is past the enemy king? That effectively puts the king on an "open" file without it truly being open
@@ -2144,13 +2073,6 @@ int Board::get_passed_pawns_count(bool color) const {
 	}
 
 	return passed_pawns_count;
-}
-
-// Returns the evaluation value tied to the passed pawns
-int Board::get_passed_pawns_value(bool /*color*/) const {
-	// TODO ***
-
-	return 0;
 }
 
 

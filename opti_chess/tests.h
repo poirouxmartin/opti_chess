@@ -55,12 +55,6 @@ public:
 	bool _imported_tests_enabled = true;
 	bool _stop_imported_tests = false;
 
-	// Enable or disable imported tests
-	void set_imported_tests_enabled(bool enabled) { _imported_tests_enabled = enabled; }
-
-	// Request stop for imported tests (can be called from UI thread)
-	void stop_imported_tests() { _stop_imported_tests = true; }
-
 	// Run imported tests from a file, returns aggregate score (0..1)
 	double run_imported_tests(const string& tests_path = "Tests.txt", double time_per_puzzle = 3.0, int base_total_tests = 0, double base_total_score = 0.0);
 

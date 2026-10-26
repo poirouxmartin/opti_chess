@@ -145,27 +145,6 @@ string Board::move_label(Move move, bool use_uft8)
 	return s;
 }
 
-// Draws a text inside a given area
-void Board::draw_text_rect(const string& s, const float pos_x, const float pos_y, const float width, const float height, const float size) {
-
-	// Text splitting
-	const int sub_div = static_cast<int>((1.5f * width) / size);
-
-	if (width <= 0 || height <= 0 || sub_div <= 0)
-		return;
-
-	const Rectangle rect_text = { pos_x, pos_y, width, height };
-	DrawRectangleRec(rect_text, main_GUI._background_text_color);
-
-	const size_t string_size = s.length();
-	int i = 0;
-	while (sub_div * i <= string_size) {
-		const char* c = s.substr(i * sub_div, sub_div).c_str();
-		DrawTextEx(main_GUI._text_font, c, { pos_x, pos_y + i * size }, size, main_GUI._font_spacing * size, main_GUI._text_color);
-		i++;
-	}
-}
-
 // Plays the sound of a move
 void Board::play_move_sound(Move move) {
 	assign_move_flags(&move);
@@ -237,27 +216,6 @@ int Board::is_eval_mate(const int e) const
 	}
 	else
 		return 0;
-}
-
-// Generates the opening book
-void Board::generate_opening_book(int /*nodes*/) {
-	//// Lit le livre d'ouvertures actuel
-	//string book = LoadFileText("resources/data/opening_book.txt");
-	//cout << "Book : " << book << endl;
-
-	//// Seek to the relevant spot in the book ----> store FENs in the book and search them?
-	//to_fen();
-	//size_t pos = book.find(_fen); // What if there are several? Build an array of positions, split the book into more parts, then insert in the middle
-	//const string book_part_1;
-	//const string book_part_2;
-
-	//const string add_to_book = "()";
-
-	//// Check whether every move has been tested; otherwise test one of the remaining ones with `nodes` nodes
-
-	//const string new_book = book_part_1 + add_to_book + book_part_2;
-
-	//SaveFileText("resources/data/opening_book.txt", const_cast<char*>(new_book.c_str()));
 }
 
 int time_to_play_move(const int t1, int /*t2*/, const float k) {
@@ -353,23 +311,6 @@ void draw_text_box(const TextBox& text_box) {
 	const float text_x = text_box.x + text_box.text_size / 2;
 	const float text_y = text_box.y + text_box.text_size / 4;
 	DrawTextEx(text_box.text_font, text_box.text.c_str(), { text_x, text_y }, text_box.text_size, main_GUI._font_spacing * text_box.text_size, text_box.text_color);
-}
-
-string Board::algebric_notation(Move move) const {
-	string move_notation = main_GUI._abc8[move.start_col] + to_string(move.start_row + 1) + main_GUI._abc8[move.end_col] + to_string(move.end_row + 1);
-
-	// Promotion
-	if (move.is_promotion()) {
-		const char promo_chars[] = "qrbn";
-		move_notation += promo_chars[move.get_promo_piece()];
-	}
-
-	return move_notation;
-}
-
-// Converts an algebraic notation into a move
-Move Board::move_from_algebric_notation(string notation) {
-	return Move(notation[1] - '1', notation[0] - 'a', notation[3] - '1', notation[2] - 'a');
 }
 
 

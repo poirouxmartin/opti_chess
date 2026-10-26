@@ -154,26 +154,6 @@ void Network::reset_values() {
 			_layers[i][j] = 0.0f;
 }
 
-// Displays the weights of the network
-void Network::display_weights() {
-	for (int i = 0; i < _weights.size(); i++) {
-		for (int j = 0; j < _weights[i].size(); j++) {
-			cout << _weights[i][j] << " ";
-		}
-		cout << endl;
-	}
-}
-
-// Displays the values of the network
-void Network::display_values() {
-	for (int i = 0; i < _layers.size(); i++) {
-		for (int j = 0; j < _layers[i].size(); j++) {
-			cout << _layers[i][j] << " ";
-		}
-		cout << endl;
-	}
-}
-
 // Activation functions for the neural network computations
 
 // Linear activation function

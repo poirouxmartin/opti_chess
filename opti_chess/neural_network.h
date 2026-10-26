@@ -64,12 +64,6 @@ public:
 	// Resets every value of the network to zero
 	void reset_values();
 
-	// Displays the weights of the network
-	void display_weights();
-
-	// Displays the values of the network
-	void display_values();
-
 	// Returns an evaluation from the output (which roughly represents the winning chances, between 0 and 1)
 	int output_eval(int mate_value, float half_win_proba = 0.667f, int half_win_eval = 100);
 };

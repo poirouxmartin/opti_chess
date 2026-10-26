@@ -37,30 +37,6 @@ bool is_in(const float x, const float min, const float max) noexcept
 	return (x >= min && x <= max);
 }
 
-// Returns the maximum of two integers
-int max_int(const int a, const int b)
-{
-	return (a > b) ? a : b;
-}
-
-// Returns the minimum of two integers
-int min_int(const int a, const int b)
-{
-	return (a < b) ? a : b;
-}
-
-// Returns the maximum of two floats
-float max_float(const float a, const float b)
-{
-	return (a > b) ? a : b;
-}
-
-// Returns the minimum of two floats
-float min_float(const float a, const float b)
-{
-	return (a < b) ? a : b;
-}
-
 // Generates a seed
 unsigned long long generate_seed()
 {
@@ -68,58 +44,6 @@ unsigned long long generate_seed()
 	static unsigned long long seed = d.count();
 
 	return seed;
-}
-
-// Returns a random integer between two integers (the second one excluded)
-int rand_int(const int a, const int b)
-{
-	static unsigned long long seed = generate_seed();
-
-	static default_random_engine generator;
-	static bool generated_seed = false;
-
-	if (!generated_seed)
-		generator.seed(static_cast<unsigned int>(seed)), generated_seed = true;
-
-	uniform_int_distribution<int> distribution(a, b);
-
-	return distribution(generator);
-}
-
-// Returns a random long integer between two integers (the second one excluded)
-long long rand_long(const long long a, const long long b)
-{
-	static unsigned long long seed = generate_seed();
-
-	static default_random_engine generator;
-	static bool generated_seed = false;
-
-	if (!generated_seed)
-		generator.seed(static_cast<unsigned int>(seed)), generated_seed = true;
-
-	uniform_int_distribution<long long> distribution(a, b);
-
-	return distribution(generator);
-}
-
-double rand_double(const double a, const double b)
-{
-	static thread_local std::mt19937 generator(std::random_device{}());
-	std::uniform_real_distribution<double> distribution(a, b);
-
-	return distribution(generator);
-}
-
-// Returns the maximum value of a list of integers
-int max_value(int* l, const int n)
-{
-	int max = -INT_MAX;
-
-	for (int i = 0; i < n; i++)
-		if (l[i] > max)
-			max = l[i];
-
-	return max;
 }
 
 // Returns the minimum value of a list of integers
@@ -285,22 +209,6 @@ int max_index(const int* l, const int n, const int* l_annex, const int sign)
 	return max_i;
 }
 
-// Returns the index of the minimum value of a list of integers
-int min_index(int* l, const int n)
-{
-	int min = INT_MAX;
-	int min_i = 0;
-
-	for (int i = 0; i < n; i++)
-		if (l[i] < min)
-		{
-			min = l[i];
-			min_i = i;
-		}
-
-	return min_i;
-}
-
 // Computes the distance between two points
 float distance(const int row_1, const int col_1, const int row_2, const int col_2)
 {
@@ -452,36 +360,6 @@ bool is_in(const string& s, string string_array[], const int n)
 			return true;
 
 	return false;
-}
-
-// Weights the values of the list according to an exploration rate per value
-void nodes_weighting(double* l, const double* weights, const int size)
-{
-	for (int i = 0; i < size; i++)
-	{
-		if (l[i] * weights[i] < 0) {
-			cout << "incoming overflow: " << l[i] << " * " << weights[i] << endl;
-		}
-
-		if (l[i] < 0 || l[i] > INT_MAX) {
-			cout << "negative or big value: " << l[i] << endl;
-		}
-		if (weights[i] < 0 || weights[i] > INT_MAX) {
-			cout << "negative or big weight: " << weights[i] << endl;
-		}
-
-		l[i] *= weights[i];
-
-		if (l[i] < 0) {
-			cout << "overflow in node weighting? " << l[i] << endl;
-		}
-	}
-}
-
-// Sigmoid
-double sigmoid(double x, double alpha, double beta) {
-	double k = 1.0 / alpha * log(1.0 / beta - 1.0);
-	return 1.0 / (1.0 + exp(k * x));
 }
 
 // Returns the evaluation value as a function of the game advancement, with a multiplicative factor that also depends on it

@@ -25,34 +25,9 @@ bool is_in_fast(uint8_t x, uint8_t min, uint8_t max) noexcept;
 //}
 
 
-// Returns the maximum of two integers
-int max_int(int, int);
-
-// Returns the minimum of two integers
-int min_int(int, int);
-
-// Returns the maximum of two floats
-float max_float(float, float);
-
-// Returns the minimum of two floats
-float min_float(float, float);
-
 // Generates a seed
 unsigned long long generate_seed();
 
-// Returns a random integer between two integers (the second one excluded)
-int rand_int(int, int);
-
-// Returns a random long integer between two integers (the second one excluded)
-long long rand_long(const long long a, const long long b);
-
-// Returns a random double between two doubles
-double rand_double(double, double);
-
-// Returns the maximum value of a list of integers
-int max_value(int*, const int);
-
-// Returns the minimum value of a list of integers
 int min_value(int*, const int);
 
 // Returns the minimum value of a list of floats
@@ -91,9 +66,6 @@ int max_index(uint8_t*, const int);
 // Returns the index of the maximum value of two lists of integers (the second one breaks ties)
 int max_index(const int*, int, const int*, int);
 
-// Returns the index of the minimum value of a list of integers
-int min_index(int*, const int);
-
 // Computes the distance between two points
 float distance(int, int, int, int);
 
@@ -117,12 +89,6 @@ int float_to_int(float);
 
 // Returns whether a string is present in an array of size n
 bool is_in(const string&, string[], int);
-
-// Weights the values of the list according to an exploration rate per value
-void nodes_weighting(double*, const double*, int);
-
-// Sigmoid
-double sigmoid(double x, double alpha, double beta);
 
 // Returns the evaluation value as a function of the game advancement, with a multiplicative factor that also depends on it
 double eval_from_progress(const int eval, const float advancement, const float factor);

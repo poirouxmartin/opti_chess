@@ -406,14 +406,6 @@ bool GUI::update_date() {
 //	return true;
 //}
 
-// Removes the last move from the PGN
-bool GUI::remove_last_move_PGN()
-{
-	// TODO	
-
-	return false;
-}
-
 // Draws the arrows from the values of the Monte Carlo algorithm
 void GUI::draw_exploration_arrows()
 {
@@ -816,12 +808,6 @@ void GUI::get_window_size() {
 	_screen_height = GetScreenHeight();
 }
 
-// Returns whether the player is currently moving (so the AI stops thinking then, otherwise it lags)
-bool GUI::is_playing() const {
-	const auto [x, y] = GetMousePosition();
-	return (_selected_pos.row != -1 || x != _mouse_pos.x || y != _mouse_pos.y);
-}
-
 // Changes the arrow display mode (yes/no)
 void GUI::switch_arrow_drawing() {
 	_drawing_arrows = !_drawing_arrows;
@@ -941,12 +927,6 @@ bool GUI::draw_rectangle(const float pos_x, const float pos_y, const float width
 	return true;
 }
 
-// Draws a rectangle from floating-point coordinates, using the start and end coordinates
-bool GUI::draw_rectangle_from_pos(const float pos_x1, const float pos_y1, const float pos_x2, const float pos_y2, const Color color) {
-	DrawRectangle(float_to_int(pos_x1), float_to_int(pos_y1), float_to_int(pos_x2) - float_to_int(pos_x1), float_to_int(pos_y2) - float_to_int(pos_y1), color);
-	return true;
-}
-
 // Draws a circle from floating-point coordinates
 void GUI::draw_circle(const float pos_x, const float pos_y, const float radius, const Color color) {
 	DrawCircle(float_to_int(pos_x), float_to_int(pos_y), radius, color);
@@ -1021,16 +1001,6 @@ void GUI::remove_highlighted_tiles() {
 	for (int i = 0; i < 8; i++)
 		for (int j = 0; j < 8; j++)
 			_highlighted_array[i][j] = 0;
-}
-
-// Selects a square
-void GUI::select_tile(int a, int b) {
-	_selected_pos = Pos(a, b);
-}
-
-// Highlights a square (or un-highlights it)
-void GUI::highlight_tile(const int a, const int b) {
-	_highlighted_array[a][b] = 1 - _highlighted_array[a][b];
 }
 
 // Deselects
@@ -2618,19 +2588,6 @@ bool GUI::compare_arrows(const Move m1, const Move m2) const {
 	const int k1 = ((m1.start_row * 8 + m1.start_col) * 8 + m1.end_row) * 8 + m1.end_col;
 	const int k2 = ((m2.start_row * 8 + m2.start_col) * 8 + m2.end_row) * 8 + m2.end_col;
 	return k1 < k2;
-}
-
-// Returns the date in the 'yyyymmdd' format
-string GUI::get_date() {
-	const time_t current_time = time(nullptr);
-	tm local_time;
-	localtime_s(&local_time, &current_time);
-
-	const int year = local_time.tm_year + 1900;
-	const int month = local_time.tm_mon + 1;
-	const int day = local_time.tm_mday;
-
-	return to_string(year) + (month < 10 ? "0" : "") + to_string(month) + (day < 10 ? "0" : "") + to_string(day);
 }
 
 // Updates the bot name of GrogrosZero

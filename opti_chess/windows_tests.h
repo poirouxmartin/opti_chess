@@ -115,9 +115,6 @@ void simulate_mouse_click(int x, int y);
 // Releases the mouse click
 void simulate_mouse_release();
 
-// Places the mouse at a given position
-void set_mouse_pos(int x, int y);
-
 // Returns the total physical memory of the computer
 unsigned long long  get_total_system_memory();
 

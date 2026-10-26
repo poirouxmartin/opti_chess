@@ -558,23 +558,6 @@ bool Board::get_moves() noexcept {
 	return true;
 }
 
-// Prints the control map around the king
-void print_controls(uint16_t controls) {
-	// The grid is 3x5
-	cout << "Controls around the king:" << endl;
-
-	for (int row = 2; row >= 0; --row) {
-		for (int col = 0; col < 5; ++col) {
-			int bit_index = row * 5 + col;
-			bool controlled = (controls & (1 << bit_index)) != 0;
-			cout << (controlled ? "X " : ". ");
-		}
-		cout << endl;
-	}
-
-	cout << endl;
-}
-
 // Builds the control map around the king
 uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingside_castle_check, bool queenside_castle_check) const noexcept {
 

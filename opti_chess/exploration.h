@@ -370,12 +370,6 @@ public:
 	// Returns the depth of the principal variation
 	int get_main_depth(const double alpha, const double beta, int max_depth = 500, PositionHistory* chain = nullptr);
 
-	// Returns the most explored child
-	Node* get_most_explored_child();
-
-	// Returns the average search speed in nodes per second
-	int get_avg_nps() const;
-
 	// Returns the number of iterations per second
 	int get_ips() const;
 
@@ -408,12 +402,6 @@ public:
 	// Returns the move with the best score
 	// (path / over_move+over_eval: same per-path substitutions as backup_value)
 	Move get_best_score_move(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100, const PositionHistory* path = nullptr, const Move& over_move = Move(), const Evaluation* over_eval = nullptr, int min_dep_ply = INT_MIN);
-
-	// Returns a forecast value of the node score, when the maximum evaluations are unknown (for the quiescence)
-	int get_previsonal_node_score(const double alpha, const double beta, const bool player) const;
-
-	// Evaluates the threat using a quiescence search on the opponent's turn
-	int evaluate_quiescence_threat(Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr) const;
 
 	// Minimal quiescence (without storing the nodes)
 	int minimal_quiescence(Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr);

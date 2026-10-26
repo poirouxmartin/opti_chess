@@ -105,11 +105,6 @@ namespace {
 	thread_local std::unique_ptr<EvalCacheEntry[]> t_eval_cache;
 }
 
-// Invalide toutes les entrées (à appeler quand les paramètres d'un Evaluator changent)
-void eval_cache_clear() {
-	g_eval_cache_generation.fetch_add(1, std::memory_order_relaxed);
-}
-
 static EvalCacheEntry& eval_cache_slot(uint64_t key) {
 	if (!t_eval_cache)
 		t_eval_cache = std::make_unique<EvalCacheEntry[]>(eval_cache_size); // zéro : clé 0, génération 0 (jamais valide)
@@ -872,14 +867,6 @@ int Board::material_difference() const
 void Board::reset_eval() {
 	_displayed_components = false;
 	_advancement = false; _adv = 0;
-}
-int Board::get_updated_piece_values() const {
-	// Rook penalty based on the number of non-open files
-	// Penalty for bishops in a closed position, with the diagonals shut
-	// Same for the queen. Bonus in the opposite cases
-
-	// *** TODO ***
-	return 0;
 }
 
 // Returns the nature of the position as a number: 0 = open, 1 = closed
