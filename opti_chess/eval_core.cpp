@@ -149,8 +149,8 @@ int Board::count_material(const Evaluator* eval, float closed_factor) const
 		const int sq = pop_lsb(occ);
 		const uint8_t piece = _array[sq >> 3][sq & 7];
 		const int piece_number = (piece - 1) % 6;
-		const int piece_begin_value = (1.0f - closed_factor) * eval->_pieces_value_begin_open[piece_number] + closed_factor * eval->_pieces_value_begin_closed[piece_number];
-		const int piece_end_value = (1.0f - closed_factor) * eval->_pieces_value_end_open[piece_number] + closed_factor * eval->_pieces_value_end_closed[piece_number];
+		const int piece_begin_value = static_cast<int>((1.0f - closed_factor) * eval->_pieces_value_begin_open[piece_number] + closed_factor * eval->_pieces_value_begin_closed[piece_number]);
+		const int piece_end_value = static_cast<int>((1.0f - closed_factor) * eval->_pieces_value_end_open[piece_number] + closed_factor * eval->_pieces_value_end_closed[piece_number]);
 
 		const int value = static_cast<int>(static_cast<float>(piece_begin_value) * (1.0f - _adv) + static_cast<float>(piece_end_value) * _adv);
 
@@ -226,7 +226,7 @@ int Board::pieces_positioning(const Evaluator* eval) const
 	uint64_t occ = _occupancies[2];
 	while (occ) {
 		const int sq = pop_lsb(occ);
-		const uint8_t i = sq >> 3;
+		const uint8_t i = static_cast<uint8_t>(sq >> 3);
 		const uint8_t j = sq & 7;
 		if (const uint8_t piece = _array[i][j]) {
 			const int value = static_cast<int>(static_cast<float>(eval->_pieces_pos_begin[(piece - 1) % 6][(piece < 7) ? 7 - i : i][j]) * (1.0f - _adv) + static_cast<float>(eval->_pieces_pos_end[(piece - 1) % 6][(piece < 7) ? 7 - i : i][j]) * _adv);
@@ -292,8 +292,8 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 				main_GUI._eval_components = "CHECKMATE\n";
 
 			eval->_uncertainty = 0;
-			eval->_winnable_white = (_game_over_value == white_win) ? 1 : 0;
-			eval->_winnable_black = (_game_over_value == black_win) ? 1 : 0;
+			eval->_winnable_white = static_cast<float>((_game_over_value == white_win) ? 1 : 0);
+			eval->_winnable_black = static_cast<float>((_game_over_value == black_win) ? 1 : 0);
 			eval->get_WDL();
 			eval->get_average_score();
 
@@ -378,7 +378,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Material
 	if (evaluator->_piece_value != 0.0f) {
-		const int material = count_material(evaluator, position_nature) * evaluator->_piece_value;
+		const int material = static_cast<int>(count_material(evaluator, position_nature) * evaluator->_piece_value);
 		if (display)
 			main_GUI._eval_components += "material: " + (material >= 0 ? string("+") : string()) + to_string(material) + "\n";
 		total_material += material;
@@ -386,7 +386,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Paire de oufs
 	if (evaluator->_bishop_pair != 0.0f) {
-		const int bishop_pair = count_bishop_pairs() * evaluator->_bishop_pair * (1 - position_nature);
+		const int bishop_pair = static_cast<int>(count_bishop_pairs() * evaluator->_bishop_pair * (1 - position_nature));
 		if (display)
 			main_GUI._eval_components += "bishop pair: " + (bishop_pair >= 0 ? string("+") : string()) + to_string(bishop_pair) + "\n";
 		total_material += bishop_pair;
@@ -394,7 +394,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Doubled pieces
 	if (evaluator->_doubled_pieces != 0.0f) {
-		const int doubled_pieces = count_doubled_pieces(evaluator) * evaluator->_doubled_pieces;
+		const int doubled_pieces = static_cast<int>(count_doubled_pieces(evaluator) * evaluator->_doubled_pieces);
 		if (display)
 			main_GUI._eval_components += "doubled pieces: " + (doubled_pieces >= 0 ? string("+") : string()) + to_string(doubled_pieces) + "\n";
 		total_material += doubled_pieces;
@@ -414,7 +414,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Piece placement
 	if (evaluator->_piece_positioning != 0.0f) {
-		const int positioning = pieces_positioning(evaluator) * evaluator->_piece_positioning;
+		const int positioning = static_cast<int>(pieces_positioning(evaluator) * evaluator->_piece_positioning);
 		if (display)
 			main_GUI._eval_components += "piece positioning: " + (positioning >= 0 ? string("+") : string()) + to_string(positioning) + "\n";
 		total_positioning += positioning;
@@ -422,7 +422,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Rooks on open and semi-open files
 	if (evaluator->_open_files != 0.0f) {
-		const int rook_open = get_sliders_on_open_file() * evaluator->_open_files;
+		const int rook_open = static_cast<int>(get_sliders_on_open_file() * evaluator->_open_files);
 		if (display)
 			main_GUI._eval_components += "sliders on open/semi files: " + (rook_open >= 0 ? string("+") : string()) + to_string(rook_open) + "\n";
 		total_positioning += rook_open;
@@ -430,7 +430,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Fianchettoed bishops
 	if (evaluator->_fianchetto != 0.0f) {
-		const int fianchetto = get_fianchetto_value() * evaluator->_fianchetto * (1.0f - position_nature);
+		const int fianchetto = static_cast<int>(get_fianchetto_value() * evaluator->_fianchetto * (1.0f - position_nature));
 		if (display)
 			main_GUI._eval_components += "fianchetto bishops: " + (fianchetto >= 0 ? string("+") : string()) + to_string(fianchetto) + "\n";
 		total_positioning += fianchetto;
@@ -439,7 +439,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 	// Piece alignments (bishop-rook / queen-king)
 	if (evaluator->_alignments != 0.0f)
 	{
-		const int pieces_alignment = get_alignments() * evaluator->_alignments;
+		const int pieces_alignment = static_cast<int>(get_alignments() * evaluator->_alignments);
 		if (display)
 			main_GUI._eval_components += "pieces alignment: " + (pieces_alignment >= 0 ? string("+") : string()) + to_string(pieces_alignment) + "\n";
 		total_positioning += pieces_alignment;
@@ -447,7 +447,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Trapped pieces
 	if (evaluator->_trapped_pieces != 0.0f) {
-		const int trapped_pieces = get_trapped_pieces(eval_ctx) * evaluator->_trapped_pieces;
+		const int trapped_pieces = static_cast<int>(get_trapped_pieces(eval_ctx) * evaluator->_trapped_pieces);
 		if (display)
 			main_GUI._eval_components += "trapped pieces: " + (trapped_pieces >= 0 ? string("+") : string()) + to_string(trapped_pieces) + "\n";
 		total_positioning += trapped_pieces;
@@ -455,7 +455,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Pawn push threatening an enemy piece
 	if (evaluator->_pawn_push_threats != 0.0f) {
-		const int pawn_push_threat = get_pawn_push_threats(eval_ctx) * evaluator->_pawn_push_threats;
+		const int pawn_push_threat = static_cast<int>(get_pawn_push_threats(eval_ctx) * evaluator->_pawn_push_threats);
 		if (display)
 			main_GUI._eval_components += "pawn push threats: " + (pawn_push_threat >= 0 ? string("+") : string()) + to_string(pawn_push_threat) + "\n";
 		total_positioning += pawn_push_threat;
@@ -463,7 +463,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Queen safety
 	if (evaluator->_queen_safety != 0.0f) {
-		const int queen_safety = (get_queen_safety(true, eval_ctx) - get_queen_safety(false, eval_ctx)) * evaluator->_queen_safety;
+		const int queen_safety = static_cast<int>((get_queen_safety(true, eval_ctx) - get_queen_safety(false, eval_ctx)) * evaluator->_queen_safety);
 		if (display)
 			main_GUI._eval_components += "queen safety: " + (queen_safety >= 0 ? string("+") : string()) + to_string(queen_safety) + "\n";
 		total_positioning += queen_safety;
@@ -495,7 +495,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 	// Long-term piece mobility
 	if (evaluator->_long_term_piece_mobility != 0.0f) {
 		EVT0(mob);
-		const int long_term_mobility = get_long_term_piece_mobility(eval_ctx) * evaluator->_long_term_piece_mobility;
+		const int long_term_mobility = static_cast<int>(get_long_term_piece_mobility(eval_ctx) * evaluator->_long_term_piece_mobility);
 		EVT_ACC(mob, g_t_mobility_s);
 		if (display)
 			main_GUI._eval_components += "long-term piece mobility: " + (long_term_mobility >= 0 ? string("+") : string()) + to_string(long_term_mobility) + "\n";
@@ -519,7 +519,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 	// Piece activity
 	if (evaluator->_piece_activity != 0.0f) {
 		EVT0(mob);
-		const int piece_activity = get_piece_activity(eval_ctx) * evaluator->_piece_activity;
+		const int piece_activity = static_cast<int>(get_piece_activity(eval_ctx) * evaluator->_piece_activity);
 		EVT_ACC(mob, g_t_mobility_s);
 		if (display)
 			main_GUI._eval_components += "piece activity: " + (piece_activity >= 0 ? string("+") : string()) + to_string(piece_activity) + "\n";
@@ -530,7 +530,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 	// TODO (review): central enemy outposts (e.g. Nd5 vs unmoved knights)
 	// read light here (French: -20 white-rel); bulk sits in weak squares.
 	if (evaluator->_knight_activity != 0.0f) {
-		const int knight_activity = get_knight_activity() * evaluator->_knight_activity;
+		const int knight_activity = static_cast<int>(get_knight_activity() * evaluator->_knight_activity);
 		if (display)
 			main_GUI._eval_components += "knight activity: " + (knight_activity >= 0 ? string("+") : string()) + to_string(knight_activity) + "\n";
 		total_activity += knight_activity;
@@ -538,7 +538,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Bishop activity
 	if (evaluator->_bishop_activity != 0.0f) {
-		const int bishop_activity = get_bishop_activity() * evaluator->_bishop_activity;
+		const int bishop_activity = static_cast<int>(get_bishop_activity() * evaluator->_bishop_activity);
 		if (display)
 			main_GUI._eval_components += "bishop activity: " + (bishop_activity >= 0 ? string("+") : string()) + to_string(bishop_activity) + "\n";
 		total_activity += bishop_activity;
@@ -546,7 +546,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Rook activity
 	if (evaluator->_rook_activity != 0.0f) {
-		const int rook_activity = get_rook_activity() * evaluator->_rook_activity;
+		const int rook_activity = static_cast<int>(get_rook_activity() * evaluator->_rook_activity);
 		if (display)
 			main_GUI._eval_components += "rook activity: " + (rook_activity >= 0 ? string("+") : string()) + to_string(rook_activity) + "\n";
 		total_activity += rook_activity;
@@ -554,7 +554,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Piece attacks and defences
 	if (evaluator->_attacks != 0.0f) {
-		const int pieces_attacks_and_defenses = get_attacks_and_defenses() * evaluator->_attacks;
+		const int pieces_attacks_and_defenses = static_cast<int>(get_attacks_and_defenses() * evaluator->_attacks);
 		if (display)
 			main_GUI._eval_components += "attacks/defenses: " + (pieces_attacks_and_defenses >= 0 ? string("+") : string()) + to_string(pieces_attacks_and_defenses) + "\n";
 		total_activity += pieces_attacks_and_defenses;
@@ -562,7 +562,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Side to move
 	if (evaluator->_player_trait != 0.0f) {
-		const int player_trait = evaluator->_player_trait * get_color() * (1 - position_nature);
+		const int player_trait = static_cast<int>(evaluator->_player_trait * get_color() * (1 - position_nature));
 		//const int player_trait = eval->_player_trait * get_color() * (1 - position_nature) * (1.0f + 1.0f * _adv);
 		if (display)
 			main_GUI._eval_components += "player trait: " + (player_trait >= 0 ? string("+") : string()) + to_string(player_trait) + "\n";
@@ -614,7 +614,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Square control
 	if (evaluator->_square_controls != 0.0f) {
-		const int square_controls = get_square_controls() * evaluator->_square_controls;
+		const int square_controls = static_cast<int>(get_square_controls() * evaluator->_square_controls);
 		if (display)
 			main_GUI._eval_components += "square controls: " + (square_controls >= 0 ? string("+") : string()) + to_string(square_controls) + "\n";
 		total_pawn_structure += square_controls;
@@ -623,7 +623,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 	// Avantage d'espace
 	if (evaluator->_space_advantage != 0.0f)
 	{
-		const int space = get_space() * evaluator->_space_advantage * position_nature;
+		const int space = static_cast<int>(get_space() * evaluator->_space_advantage * position_nature);
 		if (display)
 			main_GUI._eval_components += "space: " + (space >= 0 ? string("+") : string()) + to_string(space) + "\n";
 		total_pawn_structure += space;
@@ -637,7 +637,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 			return e ? (float)atof(e) : -1.0f;
 		}();
 		const float ps_coef = pawn_struct_coef < 0.0f ? evaluator->_pawn_structure : pawn_struct_coef;
-		const int pawn_structure = get_pawn_structure(display * ps_coef, eval_ctx) * ps_coef;
+		const int pawn_structure = static_cast<int>(get_pawn_structure(display * ps_coef, eval_ctx) * ps_coef);
 		//if (display)
 		//	main_GUI._eval_components += "pawn structure: " + (pawn_structure >= 0 ? string("+") : string()) + to_string(pawn_structure) + "\n";
 		total_pawn_structure += pawn_structure;
@@ -645,7 +645,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Good and bad bishops
 	if (evaluator->_bishop_pawns != 0.0f) {
-		const int bishop_pawns = get_bishop_pawns() * evaluator->_bishop_pawns;
+		const int bishop_pawns = static_cast<int>(get_bishop_pawns() * evaluator->_bishop_pawns);
 		if (display)
 			main_GUI._eval_components += "bishop pawns: " + (bishop_pawns >= 0 ? string("+") : string()) + to_string(bishop_pawns) + "\n";
 		total_pawn_structure += bishop_pawns;
@@ -653,7 +653,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Weak squares and outposts
 	if (evaluator->_weak_squares != 0.0f) {
-		const int weak_squares = (-get_weak_squares(true, false, eval_ctx) + get_weak_squares(false, false, eval_ctx)) * evaluator->_weak_squares * (1.0f + position_nature);
+		const int weak_squares = static_cast<int>((-get_weak_squares(true, false, eval_ctx) + get_weak_squares(false, false, eval_ctx)) * evaluator->_weak_squares * (1.0f + position_nature));
 		if (display)
 			main_GUI._eval_components += "weak squares: " + (weak_squares >= 0 ? string("+") : string()) + to_string(weak_squares) + "\n";
 		total_pawn_structure += weak_squares;
@@ -678,7 +678,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 	// King safety
 	if (evaluator->_king_safety != 0.0f) {
 		EVT0(king);
-		const int king_safety = get_king_safety(total_activity, display * evaluator->_king_safety, eval_ctx) * evaluator->_king_safety;
+		const int king_safety = static_cast<int>(get_king_safety(total_activity, display * evaluator->_king_safety, eval_ctx) * evaluator->_king_safety);
 		EVT_ACC(king, g_t_king_safety_s);
 		if (display)
 			main_GUI._eval_components += "king safety: " + (king_safety >= 0 ? string("+") : string()) + to_string(king_safety) + "\n";
@@ -687,7 +687,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// Droits de roques
 	if (evaluator->_castling_rights != 0.0f) {
-		const int castling_rights = evaluator->_castling_rights * (_castling_rights.k_w + _castling_rights.q_w - _castling_rights.k_b - _castling_rights.q_b) * (1 - _adv);
+		const int castling_rights = static_cast<int>(evaluator->_castling_rights * (_castling_rights.k_w + _castling_rights.q_w - _castling_rights.k_b - _castling_rights.q_b) * (1 - _adv));
 		if (display)
 			main_GUI._eval_components += "castling rights: " + (castling_rights >= 0 ? string("+") : string()) + to_string(static_cast<int>(round(castling_rights))) + "\n";
 		total_king += castling_rights;
@@ -716,7 +716,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// King opposition
 	if (evaluator->_kings_opposition != 0.0f) {
-		const int kings_opposition = get_kings_opposition() * evaluator->_kings_opposition;
+		const int kings_opposition = static_cast<int>(get_kings_opposition() * evaluator->_kings_opposition);
 		if (display)
 			main_GUI._eval_components += "king opposition: " + (kings_opposition >= 0 ? string("+") : string()) + to_string(kings_opposition) + "\n";
 		total_endgame += kings_opposition;
@@ -724,7 +724,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// King proximity to the pawns in the endgame
 	if (evaluator->_king_proximity != 0.0f) {
-		const int king_proximity = get_king_proximity(eval_ctx) * evaluator->_king_proximity;
+		const int king_proximity = static_cast<int>(get_king_proximity(eval_ctx) * evaluator->_king_proximity);
 		if (display)
 			main_GUI._eval_components += "king proximity: " + (king_proximity >= 0 ? string("+") : string()) + to_string(king_proximity) + "\n";
 		total_endgame += king_proximity;
@@ -732,7 +732,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 
 	// King centralisation
 	if (evaluator->_king_centralization != 0.0f) {
-		const int king_centralization = (get_king_centralization(true) - get_king_centralization(false)) * evaluator->_king_centralization;
+		const int king_centralization = static_cast<int>((get_king_centralization(true) - get_king_centralization(false)) * evaluator->_king_centralization);
 		if (display)
 			main_GUI._eval_components += "king centralization: " + (king_centralization >= 0 ? string("+") : string()) + to_string(king_centralization) + "\n";
 		total_endgame += king_centralization;
@@ -753,8 +753,8 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 	// Forteresse
 	if (evaluator->_push != 0.0f) {
 		const float push = 1 - static_cast<float>(fortress_half_moves()) * evaluator->_push / max_half_moves;
-		const int fortress = 100.0f - push * 100.0f;
-		const int fortress_value = eval->_value * (push - 1);
+		const int fortress = static_cast<int>(100.0f - push * 100.0f);
+		const int fortress_value = static_cast<int>(eval->_value * (push - 1));
 		if (display)
 			main_GUI._eval_components += "fortress: " + to_string(fortress) + "% (" + (fortress_value >= 0 ? string("+") : string()) + to_string(fortress_value) + ")\n";
 		total_nature += fortress_value;

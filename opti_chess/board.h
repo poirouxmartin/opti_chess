@@ -46,10 +46,10 @@ inline constexpr uint64_t SQUARE_MASKS[64] = {
 };
 
 // Value of a checkmate
-constexpr int mate_value = 1e8;
+constexpr int mate_value = 100000000;
 
 // Value of a ply (doubled) in the mate search
-constexpr int mate_ply = 1e5;
+constexpr int mate_ply = 100000;
 
 // Possible moves for a knight
 constexpr int_fast8_t knight_directions[8][2] = { {1, 2}, {1, -2}, {-1, 2}, {-1, -2}, {2, 1}, {2, -1}, {-2, 1}, {-2, -1} };
@@ -275,7 +275,7 @@ struct Pos
 	// Returns the notation of the square
 	// TODO *** use static constants so that this is precomputed
 	string square() const {
-		return string(1, 'a' + col) + string(1, '1' + row);
+		return string(1, static_cast<char>('a' + col)) + string(1, static_cast<char>('1' + row));
 	}
 };
 
@@ -372,7 +372,7 @@ struct WDL {
 
 	// Display
 	string to_string() const {
-		return "WDL: " + int_to_round_string(1000 * win_chance) + "/" + int_to_round_string(1000 * draw_chance) + "/" + int_to_round_string(1000 * lose_chance);
+		return "WDL: " + int_to_round_string(static_cast<int>(1000 * win_chance)) + "/" + int_to_round_string(static_cast<int>(1000 * draw_chance)) + "/" + int_to_round_string(static_cast<int>(1000 * lose_chance));
 	}
 
 	void print() const {
@@ -381,7 +381,7 @@ struct WDL {
 };
 
 // Game endings
-static constexpr enum game_termination { unterminated = 0, white_win = 1, draw = 2, black_win = 3 };
+enum game_termination { unterminated = 0, white_win = 1, draw = 2, black_win = 3 };
 
 // Directions
 struct Direction {
@@ -502,7 +502,7 @@ inline constexpr void clear_bit(uint64_t& bb, const int square) noexcept {
 #include <immintrin.h>
 
 inline int pop_lsb(uint64_t& bb) noexcept {
-	int sq = _tzcnt_u64(bb);  // maps to TZCNT (AMD/Intel)
+	int sq = static_cast<int>(_tzcnt_u64(bb));  // maps to TZCNT (AMD/Intel)
 	bb &= bb - 1;
 	return sq;
 }

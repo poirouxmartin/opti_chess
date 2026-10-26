@@ -126,7 +126,7 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	uint64_t occ = _occupancies[2];
 	while (occ) {
 		const int sq = pop_lsb(occ);
-		const uint8_t row = sq >> 3;
+		const uint8_t row = static_cast<uint8_t>(sq >> 3);
 		const uint8_t col = sq & 7;
 		const uint8_t p = _array[row][col];
 
@@ -162,8 +162,8 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 		//cout << "opposite bishop" << endl;
 		//w_total_attack_potential *= 1 + (opposite_bishop_potential - 1) * w_total_attack_potential / reference_attack_potential;
 		//b_total_attack_potential *= 1 + (opposite_bishop_potential - 1) * b_total_attack_potential / reference_attack_potential;
-		w_total_defense_potential -= defense_potentials[2] * 0.5f;
-		b_total_defense_potential -= defense_potentials[2] * 0.5f;
+		w_total_defense_potential = static_cast<int>(w_total_defense_potential - (defense_potentials[2] * 0.5f));
+		b_total_defense_potential = static_cast<int>(b_total_defense_potential - (defense_potentials[2] * 0.5f));
 	}
 
 	//r1b3k1/pp3ppp/5q2/2Pr4/4p3/1NQ1K1N1/PP2B1PP/R7 b - - 1 24
@@ -220,7 +220,6 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	// 3rr1k1/2p2ppp/1bp2n2/pp6/4PB2/2PPN2q/PPQ1BP2/R4RK1 b - - 3 9: Black still has drawing potential here
 
 	// Non-linear function
-	constexpr double alpha = 2.0;
 	w_attacking_potential *= w_attacking_potential;
 	b_attacking_potential *= b_attacking_potential;
 
@@ -228,7 +227,6 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	//cout << "b_attacking_potential: " << b_attacking_potential << endl;
 
 	// Constant keeping a floor of potential
-	constexpr float min_potential = 0.0f;
 
 	// 2k5/ppp3Bp/2p4r/8/b3Pp2/3B1Pn1/PP3KP1/RQ6 b - - 0 1
 
@@ -266,8 +264,8 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	const int space = get_space();
 	KST_ACC(space, g_t_ks_misc_s);
 
-	const int w_space = space_safety_factor * space;
-	const int b_space = -space_safety_factor * space;
+	const int w_space = static_cast<int>(space_safety_factor * space);
+	const int b_space = static_cast<int>(-space_safety_factor * space);
 
 	// ---------------------------
 	// *** PIECE ACTIVITY ***
@@ -277,10 +275,10 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	constexpr float activity_attacking_factor = 1.0f;
 	constexpr float activity_protection_factor = 0.5f;
 
-	const int activity = activity_diff > 0 ? sqrt(activity_diff / 100.0) * 100 : -sqrt(-activity_diff / 100.0) * 100;
+	const int activity = static_cast<int>(activity_diff > 0 ? sqrt(activity_diff / 100.0) * 100 : -sqrt(-activity_diff / 100.0) * 100);
 
-	const int w_activity = activity > 0 ? activity * activity_protection_factor : activity * activity_attacking_factor;
-	const int b_activity = activity < 0 ? -activity * activity_protection_factor : -activity * activity_attacking_factor;
+	const int w_activity = static_cast<int>(activity > 0 ? activity * activity_protection_factor : activity * activity_attacking_factor);
+	const int b_activity = static_cast<int>(activity < 0 ? -activity * activity_protection_factor : -activity * activity_attacking_factor);
 
 	//rnbqkbnr/ppp2ppp/3p4/4p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w kq - 3 7: g8 and similar moves are wrong even with more activity
 
@@ -291,8 +289,8 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 
 	// King shielding
 	KST0(shield);
-	int w_king_protection = get_pawn_shield_protection(true, b_attacking_potential, w_space) * pawn_protection_factor;
-	int b_king_protection = get_pawn_shield_protection(false, w_attacking_potential, b_space) * pawn_protection_factor;
+	int w_king_protection = static_cast<int>(get_pawn_shield_protection(true, b_attacking_potential, w_space) * pawn_protection_factor);
+	int b_king_protection = static_cast<int>(get_pawn_shield_protection(false, w_attacking_potential, b_space) * pawn_protection_factor);
 	KST_ACC(shield, g_t_ks_power_s);
 
 	// Attaquants
@@ -307,19 +305,19 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	float w_mult_attack = 1.0f + w_attacking_power * w_attacking_potential / static_cast<float>(doubled_attack);
 	float b_mult_attack = 1.0f + b_attacking_power * b_attacking_potential/ static_cast<float>(doubled_attack);
 
-	w_attacking_power *= w_mult_attack;
-	b_attacking_power *= b_mult_attack;
+	w_attacking_power = static_cast<int>(w_attacking_power * w_mult_attack);
+	b_attacking_power = static_cast<int>(b_attacking_power * b_mult_attack);
 
-	w_attacking_power *= piece_attack_factor;
-	b_attacking_power *= piece_attack_factor;
+	w_attacking_power = static_cast<int>(w_attacking_power * piece_attack_factor);
+	b_attacking_power = static_cast<int>(b_attacking_power * piece_attack_factor);
 
 	// Defenders
 	//int w_defending_power = get_king_defenders(true) * piece_defense_factor * (1.0f + 0.5f * (1.0f - b_attacking_potential));
 	//int b_defending_power = get_king_defenders(false) * piece_defense_factor * (1.0f + 0.5f * (1.0f - w_attacking_potential));
 
 	KST0(def);
-	int w_defending_power = get_king_defenders(true) * piece_defense_factor * (1.0f + 0.35f * (1.0f - b_attacking_potential));
-	int b_defending_power = get_king_defenders(false) * piece_defense_factor * (1.0f + 0.35f * (1.0f - w_attacking_potential));
+	int w_defending_power = static_cast<int>(get_king_defenders(true) * piece_defense_factor * (1.0f + 0.35f * (1.0f - b_attacking_potential)));
+	int b_defending_power = static_cast<int>(get_king_defenders(false) * piece_defense_factor * (1.0f + 0.35f * (1.0f - w_attacking_potential)));
 	KST_ACC(def, g_t_ks_power_s);
 
 	// Defence by the king alone
@@ -373,7 +371,7 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 
 			if (controls_map._array[i][j] < 0 && p <= w_king)
 			{
-				const uint8_t distance = max(abs(i - _white_king_pos.row), abs(j - _white_king_pos.col));
+				const uint8_t distance = static_cast<uint8_t>(max(abs(i - _white_king_pos.row), abs(j - _white_king_pos.col)));
 				w_king_overloaded -= overloard_distance_dangers[distance] * controls_map._array[i][j]; // minus, because the value is negative
 				//cout << "square: " << square_name(i, j) << ", piece: " << piece_name(p) << " / distance: " << (int)distance << " / overload: " << overloard_distance_dangers[distance] * controls_map._array[i][j] << endl;
 			}
@@ -391,7 +389,7 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 
 			if (controls_map._array[i][j] > 0 && (p >= b_pawn || p == none))
 			{
-				const uint8_t distance = max(abs(i - _black_king_pos.row), abs(j - _black_king_pos.col));
+				const uint8_t distance = static_cast<uint8_t>(max(abs(i - _black_king_pos.row), abs(j - _black_king_pos.col)));
 				b_king_overloaded += overloard_distance_dangers[distance] * controls_map._array[i][j];
 				//cout << "square: " << square_name(i, j) << ", piece: " << piece_name(p) << " / distance: " << (int)distance << " / overload: " << overloard_distance_dangers[distance] * controls_map._array[i][j] << endl;
 			}
@@ -401,8 +399,8 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	const float overload_factor = 2.5f;
 	//const float overload_factor = 0.0f;
 
-	w_king_overloaded *= overload_factor * b_attacking_potential;
-	b_king_overloaded *= overload_factor * w_attacking_potential;
+	w_king_overloaded = static_cast<int>(w_king_overloaded * (overload_factor * b_attacking_potential));
+	b_king_overloaded = static_cast<int>(b_king_overloaded * (overload_factor * w_attacking_potential));
 
 	//if (display_factor != 0.0f) {
 	//	main_GUI._eval_components += "Overloaded: " + to_string(w_king_overloaded) + " / " + to_string(b_king_overloaded) + "\n";
@@ -477,10 +475,8 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	
 	// FIXME: is this actually useful? it may break more than it fixes
 	//constexpr int virtual_mobility_danger = 20;
-	constexpr int virtual_mobility_danger = 0;
 
 	// Mobility beyond which the king is in danger
-	constexpr int virtual_mobility_threshold = 3;
 
 	KST0(virt);
 	const int w_virtual_mobility = 0;
@@ -504,8 +500,8 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	// --------------------
 
 	KST0(weak);
-	const int w_weak_squares = get_weak_squares(true, true, ctx) * b_attacking_potential;
-	const int b_weak_squares = get_weak_squares(false, true, ctx) * w_attacking_potential;
+	const int w_weak_squares = static_cast<int>(get_weak_squares(true, true, ctx) * b_attacking_potential);
+	const int b_weak_squares = static_cast<int>(get_weak_squares(false, true, ctx) * w_attacking_potential);
 	KST_ACC(weak, g_t_ks_maps_s);
 
 	// ------------------
@@ -521,8 +517,8 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	constexpr float pawn_storm_danger = 1.5f;
 
 	KST0(storm);
-	int w_pawn_storm = get_pawn_storm(true) * pawn_storm_danger * w_attacking_potential;
-	int b_pawn_storm = get_pawn_storm(false) * pawn_storm_danger * b_attacking_potential;
+	int w_pawn_storm = static_cast<int>(get_pawn_storm(true) * pawn_storm_danger * w_attacking_potential);
+	int b_pawn_storm = static_cast<int>(get_pawn_storm(false) * pawn_storm_danger * b_attacking_potential);
 	KST_ACC(storm, g_t_ks_maps_s);
 
 	//if (display_factor != 0.0f) {
@@ -539,8 +535,8 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	constexpr float open_lines_danger = 2.25f;
 
 	KST0(open);
-	int w_open_lines = get_open_files_on_opponent_king(true) * open_lines_danger;
-	int b_open_lines = get_open_files_on_opponent_king(false) * open_lines_danger;
+	int w_open_lines = static_cast<int>(get_open_files_on_opponent_king(true) * open_lines_danger);
+	int b_open_lines = static_cast<int>(get_open_files_on_opponent_king(false) * open_lines_danger);
 	KST_ACC(open, g_t_ks_maps_s);
 
 	//if (display_factor != 0.0f) {
@@ -552,7 +548,6 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	// *** OPEN DIAGONALS ***
 	// ----------------------
 
-	constexpr float open_diagonals_danger = 0.0f;
 
 	// Identical-value skip: multiplied by zero below; the calls walk the
 	// board for nothing (perf).
@@ -568,8 +563,8 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	// *** CHECKS ***
 	// --------------
 
-	const int w_checks = get_checks_value(&white_controls_map, &black_controls_map, true) * w_attacking_potential;
-	const int b_checks = get_checks_value(&white_controls_map, &black_controls_map, false) * b_attacking_potential;
+	const int w_checks = static_cast<int>(get_checks_value(&white_controls_map, &black_controls_map, true) * w_attacking_potential);
+	const int b_checks = static_cast<int>(get_checks_value(&white_controls_map, &black_controls_map, false) * b_attacking_potential);
 
 	//if (display_factor != 0.0f) {
 	//	main_GUI._eval_components += "Checks: " + to_string(w_checks) + " / " + to_string(b_checks) + "\n";
@@ -623,10 +618,10 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	// Attack/Defense overload
 	int w_attacking_overload = w_attacking_power - b_defending_power;
 	if (w_attacking_overload > 0) {
-		w_attacking_overload *= piece_overload_multiplicator;
+		w_attacking_overload = static_cast<int>(w_attacking_overload * piece_overload_multiplicator);
 	}
 	else {
-		w_attacking_overload *= piece_defense_multiplicator;
+		w_attacking_overload = static_cast<int>(w_attacking_overload * piece_defense_multiplicator);
 	}
 	
 
@@ -634,7 +629,7 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	int b_long_term_weakness = w_pawn_storm + w_open_lines + w_open_diagonals - b_king_protection + b_placement_weakness + b_virtual_mobility + b_weak_squares + b_rank_weakness - b_space;
 
 	// Weakness amplified when the kings are far apart
-	b_long_term_weakness *= long_term_weakness_distance_factor;
+	b_long_term_weakness = static_cast<int>(b_long_term_weakness * long_term_weakness_distance_factor);
 
 
 	//if (b_long_term_weakness > 0) {
@@ -647,7 +642,7 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	}
 
 	if (b_long_term_weakness < 0) {
-		b_long_term_weakness *= negative_long_term_factor;
+		b_long_term_weakness = static_cast<int>(b_long_term_weakness * negative_long_term_factor);
 	}
 
 	if (display_factor != 0.0f) {
@@ -670,7 +665,7 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	int b_short_term_weakness = w_checks + w_attacking_overload + b_king_overloaded - b_activity;
 
 	// Weakness amplified when the kings are far apart
-	b_short_term_weakness *= short_term_weakness_distance_factor;
+	b_short_term_weakness = static_cast<int>(b_short_term_weakness * short_term_weakness_distance_factor);
 
 	// Short-term / long-term compensation, between 0 and 1
 	const float b_short_term_compensation_factor = w_attacking_potential <= 0.0f ? 1.0f : 1.0f - 1.0f / (1.0f + abs(b_short_term_weakness) / static_cast<float>(short_term_compensation_value) / w_attacking_potential);
@@ -678,7 +673,7 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 
 	//cout << "b short term: " << b_short_term_weakness << " / b long term: " << b_long_term_weakness << " / b factor: " << b_short_term_compensation_factor << endl;
 
-	b_short_term_weakness = max(0, b_short_term_weakness) + (b_short_term_weakness > 0 ? 0 : -1) * b_short_term_compensation_factor * max(0, b_long_term_weakness);
+	b_short_term_weakness = static_cast<int>(max(0, b_short_term_weakness) + (b_short_term_weakness > 0 ? 0 : -1) * b_short_term_compensation_factor * max(0, b_long_term_weakness));
 
 	//cout << "b final short term: " << b_short_term_weakness << endl;
 
@@ -707,17 +702,17 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	// Attack/Defense overload
 	int b_attacking_overload = b_attacking_power - w_defending_power;
 	if (b_attacking_overload > 0) {
-		b_attacking_overload *= piece_overload_multiplicator;
+		b_attacking_overload = static_cast<int>(b_attacking_overload * piece_overload_multiplicator);
 	}
 	else {
-		b_attacking_overload *= piece_defense_multiplicator;
+		b_attacking_overload = static_cast<int>(b_attacking_overload * piece_defense_multiplicator);
 	}
 
 	// Faiblesses long terme:
 	int w_long_term_weakness = b_pawn_storm + b_open_lines + b_open_diagonals - w_king_protection + w_placement_weakness + w_virtual_mobility + w_weak_squares + w_rank_weakness - w_space;
 
 	// Weakness amplified when the kings are far apart
-	w_long_term_weakness *= long_term_weakness_distance_factor;
+	w_long_term_weakness = static_cast<int>(w_long_term_weakness * long_term_weakness_distance_factor);
 
 	//if (w_long_term_weakness > 0) {
 	//	w_long_term_weakness *= b_attacking_potential;
@@ -729,7 +724,7 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	}
 
 	if (w_long_term_weakness < 0) {
-		w_long_term_weakness *= negative_long_term_factor;
+		w_long_term_weakness = static_cast<int>(w_long_term_weakness * negative_long_term_factor);
 	}
 
 	if (display_factor != 0.0f) {
@@ -752,7 +747,7 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 	int w_short_term_weakness = b_checks + b_attacking_overload + w_king_overloaded - w_activity;
 
 	// Weakness amplified when the kings are far apart
-	w_short_term_weakness *= short_term_weakness_distance_factor;
+	w_short_term_weakness = static_cast<int>(w_short_term_weakness * short_term_weakness_distance_factor);
 
 	const float w_short_term_compensation_factor = b_attacking_potential <= 0.0f ? 1.0f : 1.0f - 1.0f / (1.0f + abs(w_short_term_weakness) / static_cast<float>(short_term_compensation_value) / b_attacking_potential);
 	//short term = max(0, short_term) - factor * long_term / short_term
@@ -761,7 +756,7 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 
 	// 2k5/ppp3Bp/2p4r/8/b3Pp2/3B1Pn1/PP3KP1/RQ6 b - - 0 12 ?????
 
-	w_short_term_weakness = max(0, w_short_term_weakness) + (w_short_term_weakness > 0 ? 0 : -1) * w_short_term_compensation_factor * max(0, w_long_term_weakness);
+	w_short_term_weakness = static_cast<int>(max(0, w_short_term_weakness) + (w_short_term_weakness > 0 ? 0 : -1) * w_short_term_compensation_factor * max(0, w_long_term_weakness));
 
 	//cout << "w final short term: " << w_short_term_weakness << endl;
 
@@ -792,13 +787,13 @@ int Board::get_king_safety(int activity_diff, float display_factor, const EvalCo
 
 	if (w_king_weakness < 0) {
 		float w_overprotection = 1.0f / (1.0f - w_king_weakness / 20.0f);
-		w_king_weakness *= w_overprotection;
+		w_king_weakness = static_cast<int>(w_king_weakness * w_overprotection);
 		//w_king_weakness = 0;
 	}
 
 	if (b_king_weakness < 0) {
 		float b_overprotection = 1.0f / (1.0f - b_king_weakness / 20.0f);
-		b_king_weakness *= b_overprotection;
+		b_king_weakness = static_cast<int>(b_king_weakness * b_overprotection);
 		//b_king_weakness = 0;
 	}
 
@@ -834,8 +829,8 @@ int Board::get_king_virtual_mobility(bool color) {
 	for (uint8_t k = 0; k < 8; k++) {
 		const uint8_t mi = all_directions[k][0];
 		const uint8_t mj = all_directions[k][1];
-		uint8_t i2 = i + mi;
-		uint8_t j2 = j + mj;
+		uint8_t i2 = static_cast<uint8_t>(i + mi);
+		uint8_t j2 = static_cast<uint8_t>(j + mj);
 
 		while (i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8) {
 			if (_array[i2][j2] != 0)
@@ -851,7 +846,7 @@ int Board::get_king_virtual_mobility(bool color) {
 }
 
 // Returns the number of safe checks in the position, for both sides
-int Board::get_checks_value(const SquareMap* white_controls, const SquareMap* black_controls, bool color)
+int Board::get_checks_value(const SquareMap* white_controls, const SquareMap* /*black_controls*/, bool color)
 {
 	constexpr int initial_safe_check_value_default = 250;
 	constexpr int initial_unsafe_check_value_default = 5;
@@ -932,9 +927,6 @@ int Board::get_checks_value(const SquareMap* white_controls, const SquareMap* bl
 		if (!b.move_may_give_check(move, king_sq))
 			continue;
 
-		// Destination square of the move
-		const uint8_t i2 = move.end_row;
-		const uint8_t j2 = move.end_col;
 
 		// Control counts of the destination square, for White and for Black
 		//const uint8_t controls_ally = color ? white_controls._array[i2][j2] : black_controls._array[i2][j2];
@@ -971,8 +963,8 @@ int Board::get_checks_value(const SquareMap* white_controls, const SquareMap* bl
 				b._white_king_pos = saved_wk;
 				b._black_king_pos = saved_bk;
 				b._castling_rights = saved_castling;
-				b._en_passant_col = saved_ep;
-				b._half_moves_count = saved_half;
+				b._en_passant_col = static_cast<int_fast8_t>(saved_ep);
+				b._half_moves_count = static_cast<uint8_t>(saved_half);
 				b._moves_count = saved_moves_count;
 				memcpy(b._bitboards, saved_bitboards, sizeof(saved_bitboards));
 				memcpy(b._occupancies, saved_occupancies, sizeof(saved_occupancies));
@@ -1023,7 +1015,7 @@ int Board::get_checks_value(const SquareMap* white_controls, const SquareMap* bl
 			if (is_safe_check) {
 				// Add the safe check value
 				//cout << "color: " << color << ", king_escapes : " << king_escapes << ", piece_blocks : " << piece_blocks << ", division : " << division << ", value : " << initial_safe_check_value / division << endl;
-				const int v = max(multiplier * initial_safe_check_value / division, (float)initial_unsafe_check_value); // A safe check always beats an unsafe one
+				const int v = static_cast<int>(max(multiplier * initial_safe_check_value / division, (float)initial_unsafe_check_value)); // A safe check always beats an unsafe one
 				safe_checks_value += v;
 				safe_count++;
 				if (king_escapes == 0 && piece_blocks == 0) {
@@ -1046,8 +1038,8 @@ int Board::get_checks_value(const SquareMap* white_controls, const SquareMap* bl
 			b._white_king_pos = saved_wk;
 			b._black_king_pos = saved_bk;
 			b._castling_rights = saved_castling;
-			b._en_passant_col = saved_ep;
-			b._half_moves_count = saved_half;
+			b._en_passant_col = static_cast<int_fast8_t>(saved_ep);
+			b._half_moves_count = static_cast<uint8_t>(saved_half);
 			b._moves_count = saved_moves_count;
 			memcpy(b._bitboards, saved_bitboards, sizeof(saved_bitboards));
 			memcpy(b._occupancies, saved_occupancies, sizeof(saved_occupancies));
@@ -1078,7 +1070,7 @@ int Board::get_checks_value(const SquareMap* white_controls, const SquareMap* bl
 				+ " mate_n=" + to_string(mate_threat_count) + "\n";
 		}
 	}
-	return checks_total * (_player == color ? has_trait_multiplier : 1.0f);
+	return static_cast<int>(checks_total * (_player == color ? has_trait_multiplier : 1.0f));
 }
 
 // Returns the move generation speed
@@ -1145,8 +1137,8 @@ int Board::get_king_proximity(const EvalControls& ctx)
 				//int w_distance = max(abs(row - _white_king_pos.row), abs(col - _white_king_pos.col));
 				//int b_distance = max(abs(row - _black_king_pos.row), abs(col - _black_king_pos.col));
 
-				float w_distance = white_king_distances._array[row][col];
-				float b_distance = black_king_distances._array[row][col];
+				float w_distance = static_cast<float>(white_king_distances._array[row][col]);
+				float b_distance = static_cast<float>(black_king_distances._array[row][col]);
 
 				// Is the square reachable?
 				if (w_distance < 0) {
@@ -1198,8 +1190,8 @@ int Board::get_king_proximity(const EvalControls& ctx)
 				//int w_distance = max(abs(row - _white_king_pos.row), abs(col - _white_king_pos.col));
 				//int b_distance = max(abs(row - _black_king_pos.row), abs(col - _black_king_pos.col));
 
-				float w_distance = white_king_distances._array[row][col];
-				float b_distance = black_king_distances._array[row][col];
+				float w_distance = static_cast<float>(white_king_distances._array[row][col]);
+				float b_distance = static_cast<float>(black_king_distances._array[row][col]);
 
 				// Is the square reachable?
 				if (w_distance < 0) {
@@ -1246,7 +1238,7 @@ int Board::get_king_proximity(const EvalControls& ctx)
 	const int multiplier = 300;
 	const double average_proximity = n_pawns == 0 ? 0.0f : proximity / sqrt((n_pawns / 2.0) * sqrt(n_pawns / 2.0));
 	
-	return multiplier * average_proximity * (_adv - min_advancement) / (1.0f - min_advancement);
+	return static_cast<int>(multiplier * average_proximity * (_adv - min_advancement) / (1.0f - min_advancement));
 }
 
 
@@ -1269,8 +1261,8 @@ int Board::get_king_escape_squares(bool color, const EvalControls& ctx) {
 		for (int j = -1; j < 2; j++) {
 
 			// Square coordinates
-			uint8_t new_i = king_pos.row + i;
-			uint8_t new_j = king_pos.col + j;
+			uint8_t new_i = static_cast<uint8_t>(king_pos.row + i);
+			uint8_t new_j = static_cast<uint8_t>(king_pos.col + j);
 
 			// If the square is off the board
 			if (new_i < 0 || new_i > 7 || new_j < 0 || new_j > 7)
@@ -1350,7 +1342,7 @@ int Board::get_king_attackers(bool color) {
 	uint64_t occ = _occupancies[color ? 0 : 1];
 	while (occ) {
 		const int sq = pop_lsb(occ);
-		const uint8_t row = sq >> 3;
+		const uint8_t row = static_cast<uint8_t>(sq >> 3);
 		const uint8_t col = sq & 7;
 		const uint8_t p = _array[row][col];
 
@@ -1361,9 +1353,9 @@ int Board::get_king_attackers(bool color) {
 			if (p == (color ? w_pawn : b_pawn)) {
 
 				// Squares controlled by the pawn
-				uint8_t di = abs(row + (color ? 1 : -1) - king_pos.row);
-				uint8_t dj1 = abs(col - 1 - king_pos.col);
-				uint8_t dj2 = abs(col + 1 - king_pos.col);
+				uint8_t di = static_cast<uint8_t>(abs(row + (color ? 1 : -1) - king_pos.row));
+				uint8_t dj1 = static_cast<uint8_t>(abs(col - 1 - king_pos.col));
+				uint8_t dj2 = static_cast<uint8_t>(abs(col + 1 - king_pos.col));
 
 				uint8_t p2a = _array[row + (color ? 1 : -1)][col - 1];
 
@@ -1404,8 +1396,8 @@ int Board::get_king_attackers(bool color) {
 					if (p2 == (color ? w_pawn : b_pawn))
 						continue;
 
-					uint8_t di = abs(new_i - king_pos.row);
-					uint8_t dj = abs(new_j - king_pos.col);
+					uint8_t di = static_cast<uint8_t>(abs(new_i - king_pos.row));
+					uint8_t dj = static_cast<uint8_t>(abs(new_j - king_pos.col));
 
 					// If the knight controls a square around the king
 					if (di <= 2 && dj <= 2) {
@@ -1436,8 +1428,8 @@ int Board::get_king_attackers(bool color) {
 					while (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
 						uint8_t p2 = _array[new_i][new_j];
 
-						uint8_t di = abs(new_i - king_pos.row);
-						uint8_t dj = abs(new_j - king_pos.col);
+						uint8_t di = static_cast<uint8_t>(abs(new_i - king_pos.row));
+						uint8_t dj = static_cast<uint8_t>(abs(new_j - king_pos.col));
 
 						// The square cannot be attacked
 						if (p2 == (color ? w_pawn : b_pawn))
@@ -1485,8 +1477,8 @@ int Board::get_king_attackers(bool color) {
 					while (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
 						uint8_t p2 = _array[new_i][new_j];
 
-						uint8_t di = abs(new_i - king_pos.row);
-						uint8_t dj = abs(new_j - king_pos.col);
+						uint8_t di = static_cast<uint8_t>(abs(new_i - king_pos.row));
+						uint8_t dj = static_cast<uint8_t>(abs(new_j - king_pos.col));
 
 						// The square cannot be attacked
 						if (p2 == (color ? w_pawn : b_pawn))
@@ -1533,8 +1525,8 @@ int Board::get_king_attackers(bool color) {
 						if (p2 == (color ? w_pawn : b_pawn))
 							break;
 
-						uint8_t di = abs(new_i - king_pos.row);
-						uint8_t dj = abs(new_j - king_pos.col);
+						uint8_t di = static_cast<uint8_t>(abs(new_i - king_pos.row));
+						uint8_t dj = static_cast<uint8_t>(abs(new_j - king_pos.col));
 
 						// If the king controls a square around the king
 						if (di <= 2 && dj <= 2) {
@@ -1554,14 +1546,14 @@ int Board::get_king_attackers(bool color) {
 			}
 			else {
 				if (attacks > 0) {
-					king_attackers += attacking_value[attacks] * piece_attack_factor[(p - 1) % 6];
+					king_attackers = static_cast<int>(king_attackers + (attacking_value[attacks] * piece_attack_factor[(p - 1) % 6]));
 					//cout << "color: " << color << ", piece: " << piece_name(p) << "(" << square_name(row, col) << "), attacks : " << (int)attacks << ", value : " << attacking_value[attacks] << ", piece factor : " << piece_attack_factor[(p - 1) % 6] << ", total : " << attacking_value[attacks] * piece_attack_factor[(p - 1) % 6] << endl;
 				}
 				else if (semi_attacks > 0) {
 					// Precomputed: pow(i, 0.3) for i in [0..8]. A slider can cover
 					// up to 16 outer-ring squares -> saturate at the table end.
 					static constexpr float semi_pow_0_3[9] = { 0.0f, 1.0f, 1.23f, 1.39f, 1.52f, 1.62f, 1.71f, 1.79f, 1.87f };
-					king_attackers += semi_attack_value * piece_semi_attack_factor[(p - 1) % 6] * semi_pow_0_3[min<uint8_t>(semi_attacks, 8)];
+					king_attackers = static_cast<int>(king_attackers + (semi_attack_value * piece_semi_attack_factor[(p - 1) % 6] * semi_pow_0_3[min<uint8_t>(semi_attacks, 8)]));
 					//cout << "color: " << color << ", piece: " << piece_name(p) << "(" << square_name(row, col) << "), semi-attacks : " << (int)semi_attacks << ", value : " << semi_attack_value * piece_semi_attack_factor[(p - 1) % 6] * pow(semi_attacks, 0.3) << endl;
 				}
 			}
@@ -1605,7 +1597,7 @@ int Board::get_king_defenders(bool color) {
 	uint64_t occ = _occupancies[color ? 0 : 1];
 	while (occ) {
 		const int sq = pop_lsb(occ);
-		const uint8_t row = sq >> 3;
+		const uint8_t row = static_cast<uint8_t>(sq >> 3);
 		const uint8_t col = sq & 7;
 		const uint8_t p = _array[row][col];
 
@@ -1616,9 +1608,9 @@ int Board::get_king_defenders(bool color) {
 			if (p == (color ? w_pawn : b_pawn)) {
 
 				// Squares controlled by the pawn
-				uint8_t di = abs(row + (color ? 1 : -1) - king_pos.row);
-				uint8_t dj1 = abs(col - 1 - king_pos.col);
-				uint8_t dj2 = abs(col + 1 - king_pos.col);
+				uint8_t di = static_cast<uint8_t>(abs(row + (color ? 1 : -1) - king_pos.row));
+				uint8_t dj1 = static_cast<uint8_t>(abs(col - 1 - king_pos.col));
+				uint8_t dj2 = static_cast<uint8_t>(abs(col + 1 - king_pos.col));
 				bool front_square = color ? row >= king_pos.row : row <= king_pos.row;
 
 				// If the pawn controls a square around the king
@@ -1650,8 +1642,8 @@ int Board::get_king_defenders(bool color) {
 					if (!is_in(new_i, 0, 7) || !is_in(new_j, 0, 7))
 						continue;
 
-					uint8_t di = abs(new_i - king_pos.row);
-					uint8_t dj = abs(new_j - king_pos.col);
+					uint8_t di = static_cast<uint8_t>(abs(new_i - king_pos.row));
+					uint8_t dj = static_cast<uint8_t>(abs(new_j - king_pos.col));
 					bool front_square = color ? new_i > king_pos.row : new_i < king_pos.row;
 
 					// If the knight controls a square around the king
@@ -1679,8 +1671,8 @@ int Board::get_king_defenders(bool color) {
 					while (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
 						uint8_t p2 = _array[new_i][new_j];
 
-						uint8_t di = abs(new_i - king_pos.row);
-						uint8_t dj = abs(new_j - king_pos.col);
+						uint8_t di = static_cast<uint8_t>(abs(new_i - king_pos.row));
+						uint8_t dj = static_cast<uint8_t>(abs(new_j - king_pos.col));
 						bool front_square = color ? new_i > king_pos.row : new_i < king_pos.row;
 
 						// If the piece controls a square around the king
@@ -1718,8 +1710,8 @@ int Board::get_king_defenders(bool color) {
 					while (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
 						uint8_t p2 = _array[new_i][new_j];
 
-						uint8_t di = abs(new_i - king_pos.row);
-						uint8_t dj = abs(new_j - king_pos.col);
+						uint8_t di = static_cast<uint8_t>(abs(new_i - king_pos.row));
+						uint8_t dj = static_cast<uint8_t>(abs(new_j - king_pos.col));
 						bool front_square = color ? new_i > king_pos.row : new_i < king_pos.row;
 
 						// If the piece controls a square around the king
@@ -1756,8 +1748,8 @@ int Board::get_king_defenders(bool color) {
 						if (!is_in(new_i, 0, 7) || !is_in(new_j, 0, 7))
 							continue;
 
-						uint8_t di = abs(new_i - king_pos.row);
-						uint8_t dj = abs(new_j - king_pos.col);
+						uint8_t di = static_cast<uint8_t>(abs(new_i - king_pos.row));
+						uint8_t dj = static_cast<uint8_t>(abs(new_j - king_pos.col));
 						bool front_square = color ? new_i > king_pos.row : new_i < king_pos.row;
 
 						// If the king controls a square around the king
@@ -1778,11 +1770,11 @@ int Board::get_king_defenders(bool color) {
 			}
 			else {
 				if (defenses > 0) {
-					king_defenders += defending_value[defenses] * piece_defense_factor[(p - 1) % 6];
+					king_defenders = static_cast<int>(king_defenders + (defending_value[defenses] * piece_defense_factor[(p - 1) % 6]));
 					//cout << "color: " << color << ", piece: " << piece_name(p) << "(" << square_name(row, col) << "), defenses : " << (int)defenses << ", value : " << defending_value[defenses] << ", piece factor : " << piece_defense_factor[(p - 1) % 6] << ", total : " << defending_value[defenses] * piece_defense_factor[(p - 1) % 6] << endl;
 				}
 				else if (semi_defenses > 0) { // TODO: improve by counting the semi-defences?
-					king_defenders += semi_defense_value * piece_defense_factor[(p - 1) % 6];
+					king_defenders = static_cast<int>(king_defenders + (semi_defense_value * piece_defense_factor[(p - 1) % 6]));
 					//cout << "color: " << color << ", piece: " << piece_name(p) << "(" << square_name(row, col) << "), semi-defenses : " << (int)semi_defenses << ", value : " << semi_defense_value * piece_defense_factor[(p - 1) % 6] << endl;
 				}
 			}
@@ -1950,7 +1942,7 @@ void Board::get_uncertainty(Evaluation* eval, int material_eval, int winning_eva
 }
 
 // Stores the WDL of the position (for White)
-void Evaluation::get_WDL(int winning_eval, float beta) {
+void Evaluation::get_WDL(int winning_eval, float /*beta*/) {
 	
 	// r2r4/8/1p1q2P1/2b5/3k1pP1/pP2pP2/2Q4P/1K6 w - - 9 11: down the drawing lines this should read 0, 1000, 0, not 333, 333, 333
 
@@ -1970,12 +1962,10 @@ void Evaluation::get_WDL(int winning_eval, float beta) {
 	// Winning eval = the evaluation at which the certain winning chance equals the certain drawing chance (0.5)
 
 	bool is_eval_positive = _value > 0;
-	float eval = abs(_value);
+	float eval = static_cast<float>(abs(_value));
 
 	//cout << "eval: " << eval << ", winning_eval: " << winning_eval << ", beta: " << beta << endl;
 
-	constexpr float beta_up = 2.5f;
-	constexpr float beta_down = 1.5f;
 
 	// TEST
 	const float white_winning_eval = _winnable_white == 0.0f ? FLT_MAX : winning_eval / _winnable_white;
@@ -1997,7 +1987,6 @@ void Evaluation::get_WDL(int winning_eval, float beta) {
 	const float certain_win_chance = updated_threshold + 0.5f;
 
 	//float certain_win_chance = pow((eval / (eval + winning_eval)), beta);
-	const float certain_draw_chance = 1 - certain_win_chance;
 
 	//cout << "certain win chance: " << certain_win_chance << ", certain draw chance: " << certain_draw_chance << endl;
 
@@ -2007,7 +1996,6 @@ void Evaluation::get_WDL(int winning_eval, float beta) {
 	// Non-linear function of the uncertainty
 	//constexpr float alpha = 1 + eval / winning_eval / 25.0f;
 	// constexpr alpha=1.0 -> pow(x,1) == x, skip the pow() call entirely
-	constexpr float alpha = 1.0f;
 	const float relative_uncertainty = _uncertainty; // pow(_uncertainty, alpha) when alpha==1
 
 	//cout << "relative uncertainty: " << relative_uncertainty << endl;
@@ -2086,7 +2074,7 @@ string score_string(float avg_score) {
 }
 
 // Swaps the colours of the two sides, side to move and castling rights included
-int Board::get_next_king_squares(SquareMap& map, Pos start_pos, int distance, bool color, Pos* out) const {
+int Board::get_next_king_squares(SquareMap& map, Pos start_pos, int distance, bool /*color*/, Pos* out) const {
 
 	// Newly reached squares (at most 8 neighbours)
 	int n = 0;
@@ -2198,7 +2186,7 @@ SquareMap Board::get_king_squares_distance(bool color, const EvalControls& ctx) 
 
 
 // Returns the weakness along the king's ranks
-int Board::get_king_row_weakness(bool color) {
+int Board::get_king_row_weakness(bool /*color*/) {
 	update_kings_pos();
 
 	return 0;
@@ -2236,11 +2224,11 @@ int Board::get_king_centralization(bool color) {
 	constexpr float begin_adv = 0.65f;
 
 	// Penalty based on the distance
-	return (10 - distance) * pawns_factor * max(0.0f, (_adv - begin_adv) / (1 - begin_adv));
+	return static_cast<int>((10 - distance) * pawns_factor * max(0.0f, (_adv - begin_adv) / (1 - begin_adv)));
 }
 
 // Returns the value of the undefended pieces
-int Board::get_unprotected_pieces(bool color) const {
+int Board::get_unprotected_pieces(bool /*color*/) const {
 	// TODO
 	return 0;
 }
@@ -2295,7 +2283,7 @@ int Board::get_long_term_king_weakness(bool player, int current_weakness, int ki
 
 	uint8_t king_row = player ? 0 : 7;
 	uint8_t above_row = player ? 1 : 6;
-	uint8_t blocking_bishop = player ? w_bishop : b_bishop;
+	uint8_t blocking_bishop = static_cast<uint8_t>(player ? w_bishop : b_bishop);
 
 	// TODO: dedicated functions for the distances to castling
 
@@ -2342,8 +2330,8 @@ int Board::get_long_term_king_weakness(bool player, int current_weakness, int ki
 	double kingside_castling_factor = can_kingside_castle ? max(0.0, 1.0 - (1.5 + kingside_castle_distance) / 6.0) : 0.0;
 	double queenside_castling_factor = can_queenside_castle ? max(0.0, 1.0 - (1.5 + queenside_castle_distance) / 6.0) : 0.0;
 
-	int total_kingside_bonus = kingside_castling_bonus * kingside_castling_factor;
-	int total_queenside_bonus = queenside_castling_bonus * queenside_castling_factor;
+	int total_kingside_bonus = static_cast<int>(kingside_castling_bonus * kingside_castling_factor);
+	int total_queenside_bonus = static_cast<int>(queenside_castling_bonus * queenside_castling_factor);
 
 	int best_castle_bonus = max(total_kingside_bonus, total_queenside_bonus);
 
@@ -2443,7 +2431,7 @@ int Board::get_open_files_on_opponent_king_at_column(bool player, int king_col) 
 		// r2q1rk1/pb2bppp/1pn1p3/2p4n/4P3/2NBBN2/PPP1QPPP/2KR3R b - - 11 11
 
 		// Bonus based on proximity to the king
-		bonus *= (col == king_col ? king_file_bonus : king_adjacent_file_bonus);
+		bonus = static_cast<int>(bonus * (col == king_col ? king_file_bonus : king_adjacent_file_bonus));
 
 		total_bonus += bonus;
 	}
@@ -2451,7 +2439,7 @@ int Board::get_open_files_on_opponent_king_at_column(bool player, int king_col) 
 	// Depending on how far the game has progressed
 	constexpr float advancement_factor = 0.0f;
 
-	return eval_from_progress(max(0, total_bonus), _adv, advancement_factor);
+	return static_cast<int>(eval_from_progress(max(0, total_bonus), _adv, advancement_factor));
 }
 
 // Returns the king placement bonus, were it on a given file
@@ -2465,7 +2453,6 @@ int Board::get_king_placement_weakness_at_column(bool player, Pos king_pos) cons
 	constexpr int edge_defense = 50;
 
 	const int col_dist = min(king_pos.col, 7 - king_pos.col);
-	const int row_dist = min(king_pos.row, 7 - king_pos.row);
 
 	const int center_col_dist = min(abs(king_pos.col - 3), abs(king_pos.col - 4));
 	const int center_row_dist = min(abs(king_pos.row - 3), abs(king_pos.row - 4));
@@ -2479,7 +2466,7 @@ int Board::get_king_placement_weakness_at_column(bool player, Pos king_pos) cons
 
 	//cout << "king pos: " << (int)king_pos.row << " " << (int)king_pos.col << ", row dist: " << row_dist << ", col dist: " << col_dist << ", row factor: " << row_factor << ", placement weakness: " << placement_weakness << endl;
 
-	return placement_weakness;
+	return static_cast<int>(placement_weakness);
 }
 
 
@@ -2513,7 +2500,6 @@ int Board::get_queen_safety(bool color, const EvalControls& ctx) const {
 	int queen_safety_value = 0;
 
 	// Plural, since there can theoretically be several
-	int queens_safety = 0;
 
 	// Queen positions
 	// Theoretical maximum of 9 queens per side
@@ -2614,7 +2600,7 @@ int Board::get_queen_safety(bool color, const EvalControls& ctx) const {
 	}
 
 	// Add the term's value
-	queen_safety_value -= queens_tempo_penalty * (1 - _adv);
+	queen_safety_value = static_cast<int>(queen_safety_value - (queens_tempo_penalty * (1 - _adv)));
 
 
 	// TODO: proximity to the king should carry a penalty

@@ -947,7 +947,7 @@ inline void enforce_node_map_cap() {
 }
 
 // Explores a new move
-void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, BackupResult* out) {
+void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double /*gamma*/, int quiescence_depth, Network* network, PositionHistory *path_history, BackupResult* out) {
 
 	// Take the first unexplored move.
 	// Phase 6: in shared mode the unlocked pre-scan is skipped entirely
@@ -2433,12 +2433,12 @@ Node* Node::get_most_explored_child() {
 
 // Returns the average computation speed in nodes per second
 int Node::get_avg_nps() const {
-	return _time_spent == 0 ? 0 : ((double)_nodes / (double)_time_spent * CLOCKS_PER_SEC);
+	return static_cast<int>(_time_spent == 0 ? 0 : ((double)_nodes / (double)_time_spent * CLOCKS_PER_SEC));
 }
 
 // Returns the number of iterations per second
 int Node::get_ips() const {
-	return _time_spent == 0 ? 0 : ((double)_iterations / (double)_time_spent * CLOCKS_PER_SEC);
+	return static_cast<int>(_time_spent == 0 ? 0 : ((double)_iterations / (double)_time_spent * CLOCKS_PER_SEC));
 }
 
 // Quiescence search, integrated into the exploration
@@ -2984,11 +2984,11 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			// which decouples from value exactly in tactical positions: quiescence
 			// returned +151 here while storing the -395 of a differently-ranked
 			// sibling, freezing verdicts at garbage.
-			int color = _board->get_color();
+			int side_sign = _board->get_color();
 			long long best_value = LLONG_MIN;
 			for (auto const& [move, child_link] : _children) {
 				if (!child_link._node) continue;
-				const long long v = child_link._node->_deep_evaluation._value * color;
+				const long long v = child_link._node->_deep_evaluation._value * side_sign;
 				if (v > best_value) {
 					best_value = v;
 					best_move = move;
@@ -2996,7 +2996,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			}
 
 			bool all_moves_explored = children_count() == _board->_got_moves;
-			if (!all_moves_explored && _deep_evaluation._value * color >= best_value) {
+			if (!all_moves_explored && _deep_evaluation._value * side_sign >= best_value) {
 				best_move = Move(); // stand pat wins on value
 			}
 		}
@@ -3117,7 +3117,7 @@ static bool is_passed_push(const Board* b, const Move& move) {
 	const int8_t dir = white ? 1 : -1;
 	if (move.end_row != move.start_row + dir) return false;
 	if (b->_array[move.end_row][move.end_col] != none) return false;
-	const uint8_t en = white ? b_pawn : w_pawn;
+	const uint8_t en = static_cast<uint8_t>(white ? b_pawn : w_pawn);
 	// Cases DEVANT, apres la poussee (end_row + dir) : la case de depart
 	// contient encore le pion lui-meme, il faut partir d'au-dela.
 	int k = (int)move.end_row + dir;
@@ -3677,7 +3677,7 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 
 // Returns a forecast node score, used by quiescence when the maximum evaluations are unknown
 int Node::get_previsonal_node_score(const double alpha, const double beta, const bool player) const {
-	return 1E6 * get_node_score(alpha, beta, _deep_evaluation._value, _deep_evaluation._avg_score, player);
+	return static_cast<int>(1E6 * get_node_score(alpha, beta, _deep_evaluation._value, _deep_evaluation._avg_score, player));
 }
 
 // Evaluates the threat by running a quiescence on the opponent's turn

@@ -45,7 +45,6 @@ string Board::move_label(Move move, bool use_uft8)
 	const uint8_t end_col = move.end_col;
 
 	const uint8_t p1 = _array[start_row][start_col]; // Piece being moved
-	const uint8_t p2 = _array[end_row][end_col];
 
 	// To tell whether another similar piece can reach the same square
 	bool spec_col = false;
@@ -150,7 +149,7 @@ string Board::move_label(Move move, bool use_uft8)
 void Board::draw_text_rect(const string& s, const float pos_x, const float pos_y, const float width, const float height, const float size) {
 
 	// Text splitting
-	const int sub_div = (1.5f * width) / size;
+	const int sub_div = static_cast<int>((1.5f * width) / size);
 
 	if (width <= 0 || height <= 0 || sub_div <= 0)
 		return;
@@ -175,12 +174,10 @@ void Board::play_move_sound(Move move) {
 
 	const uint8_t i = move.start_row;
 	const uint8_t j = move.start_col;
-	const uint8_t k = move.end_row;
 	const uint8_t l = move.end_col;
 
 	// Pieces
 	const uint8_t p1 = _array[i][j];
-	const uint8_t p2 = _array[k][l];
 
 
 	// End-of-game sounds
@@ -243,7 +240,7 @@ int Board::is_eval_mate(const int e) const
 }
 
 // Generates the opening book
-void Board::generate_opening_book(int nodes) {
+void Board::generate_opening_book(int /*nodes*/) {
 	//// Lit le livre d'ouvertures actuel
 	//string book = LoadFileText("resources/data/opening_book.txt");
 	//cout << "Book : " << book << endl;
@@ -263,8 +260,8 @@ void Board::generate_opening_book(int nodes) {
 	//SaveFileText("resources/data/opening_book.txt", const_cast<char*>(new_book.c_str()));
 }
 
-int time_to_play_move(const int t1, int t2, const float k) {
-	return t1 * k;
+int time_to_play_move(const int t1, int /*t2*/, const float k) {
+	return static_cast<int>(t1 * k);
 
 	// Still to improve:
 	// Prendre en compte le temps de l'adversaire

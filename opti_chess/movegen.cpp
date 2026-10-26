@@ -77,7 +77,7 @@ namespace {
 }
 
 // Adds a move to a move list
-inline bool Board::add_move(const Move move, uint8_t &iterator, const uint8_t piece) noexcept
+inline bool Board::add_move(const Move move, uint8_t &iterator, const uint8_t /*piece*/) noexcept
 {
 	// Overflow guard: silently drop instead of overflowing _moves[] into
 	// adjacent Board members (no cout: this is a generation-hot path; the cap
@@ -98,7 +98,7 @@ inline bool Board::add_move(const Move move, uint8_t &iterator, const uint8_t pi
 inline bool Board::add_king_moves(const bool player, const Pos king_pos, const uint16_t controls_around_king, uint8_t& iterator, const bool kingside_castle_check, const bool queenside_castle_check) noexcept {
 
 	// Piece
-	const uint8_t piece = _player ? w_king : b_king;
+	const uint8_t piece = static_cast<uint8_t>(_player ? w_king : b_king);
 	const uint8_t row = king_pos.row;
 	const uint8_t col = king_pos.col;
 
@@ -141,7 +141,7 @@ inline bool Board::add_king_moves(const bool player, const Pos king_pos, const u
 inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const uint8_t col, uint8_t& iterator, const PinnedSquare& pin, const bool in_check, const uint64_t& interposition_mask) noexcept {
 
 	// Piece
-	const uint8_t piece = player ? w_pawn : b_pawn;
+	const uint8_t piece = static_cast<uint8_t>(player ? w_pawn : b_pawn);
 	const int8_t direction = player ? 1 : -1;
 
 	// A horizontally pinned pawn cannot move
@@ -162,21 +162,21 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 			// Promotion: generate all 4 under/over promotions
 			if (new_row == (player ? 7 : 0)) {
 				for (uint8_t pp = PROMO_QUEEN; pp <= PROMO_KNIGHT; pp++) {
-					Move m(row, col, new_row, col);
+					Move m(row, col, static_cast<uint8_t>(new_row), col);
 					m.set_promo_piece(pp);
-					(!in_check || is_in_interpose_mask(interposition_mask, new_row, col)) && add_move(m, iterator, piece);
+					(!in_check || is_in_interpose_mask(interposition_mask, static_cast<uint8_t>(new_row), col)) && add_move(m, iterator, piece);
 				}
 			}
 			else {
 				// While in check, the move must interpose
-				(!in_check || is_in_interpose_mask(interposition_mask, new_row, col)) && add_move(Move(row, col, new_row, col), iterator, piece);
+				(!in_check || is_in_interpose_mask(interposition_mask, static_cast<uint8_t>(new_row), col)) && add_move(Move(row, col, static_cast<uint8_t>(new_row), col), iterator, piece);
 
 				// Push by 2
 				if (row == 1 + 5 * !player) {
 					new_row += direction;
 
 					if (_array[new_row][col] == none) {
-						(!in_check || is_in_interpose_mask(interposition_mask, new_row, col)) && add_move(Move(row, col, new_row, col), iterator, piece);
+						(!in_check || is_in_interpose_mask(interposition_mask, static_cast<uint8_t>(new_row), col)) && add_move(Move(row, col, static_cast<uint8_t>(new_row), col), iterator, piece);
 					}
 				}
 			}
@@ -200,14 +200,14 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 			// Promotion on capture
 			if (new_row == (player ? 7 : 0)) {
 				for (uint8_t pp = PROMO_QUEEN; pp <= PROMO_KNIGHT; pp++) {
-					Move m(row, col, new_row, new_col);
+					Move m(row, col, static_cast<uint8_t>(new_row), static_cast<uint8_t>(new_col));
 					m.set_promo_piece(pp);
-					(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(m, iterator, piece);
+					(!in_check || is_in_interpose_mask(interposition_mask, static_cast<uint8_t>(new_row), static_cast<uint8_t>(new_col))) && add_move(m, iterator, piece);
 				}
 			}
 			else {
 				// While in check, the move must interpose
-				(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(Move(row, col, new_row, new_col), iterator, piece);
+				(!in_check || is_in_interpose_mask(interposition_mask, static_cast<uint8_t>(new_row), static_cast<uint8_t>(new_col))) && add_move(Move(row, col, static_cast<uint8_t>(new_row), static_cast<uint8_t>(new_col)), iterator, piece);
 			}
 		}
 
@@ -227,7 +227,7 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 				// squares, which en passant may capture.
 				// Test: 8/8/n1p1kp2/PpP1p2p/2K1p1pP/4P3/2P2PP1/6B1 w - b6 0 39
 				if (en_passant)
-					(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col) || (king_pos.row == row - direction && abs(king_pos.col - new_col) == 1)) && add_move(Move(row, col, new_row, new_col), iterator, piece);
+					(!in_check || is_in_interpose_mask(interposition_mask, static_cast<uint8_t>(new_row), static_cast<uint8_t>(new_col)) || (king_pos.row == row - direction && abs(king_pos.col - new_col) == 1)) && add_move(Move(row, col, static_cast<uint8_t>(new_row), static_cast<uint8_t>(new_col)), iterator, piece);
 			}
 		}
 	}
@@ -247,14 +247,14 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 			// Promotion on capture
 			if (new_row == (player ? 7 : 0)) {
 				for (uint8_t pp = PROMO_QUEEN; pp <= PROMO_KNIGHT; pp++) {
-					Move m(row, col, new_row, new_col);
+					Move m(row, col, static_cast<uint8_t>(new_row), static_cast<uint8_t>(new_col));
 					m.set_promo_piece(pp);
-					(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(m, iterator, piece);
+					(!in_check || is_in_interpose_mask(interposition_mask, static_cast<uint8_t>(new_row), static_cast<uint8_t>(new_col))) && add_move(m, iterator, piece);
 				}
 			}
 			else {
 				// While in check, the move must interpose
-				(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col)) && add_move(Move(row, col, new_row, new_col), iterator, piece);
+				(!in_check || is_in_interpose_mask(interposition_mask, static_cast<uint8_t>(new_row), static_cast<uint8_t>(new_col))) && add_move(Move(row, col, static_cast<uint8_t>(new_row), static_cast<uint8_t>(new_col)), iterator, piece);
 			}
 		}
 		// En passant availability
@@ -269,7 +269,7 @@ inline bool Board::add_pawn_moves(const bool player, const uint8_t row, const ui
 
 				// While in check, the move must interpose
 				if (en_passant)
-					(!in_check || is_in_interpose_mask(interposition_mask, new_row, new_col) || (king_pos.row == row - direction && abs(king_pos.col - new_col) == 1)) && add_move(Move(row, col, new_row, new_col), iterator, piece);
+					(!in_check || is_in_interpose_mask(interposition_mask, static_cast<uint8_t>(new_row), static_cast<uint8_t>(new_col)) || (king_pos.row == row - direction && abs(king_pos.col - new_col) == 1)) && add_move(Move(row, col, static_cast<uint8_t>(new_row), static_cast<uint8_t>(new_col)), iterator, piece);
 			}
 		}
 	}
@@ -303,7 +303,7 @@ bool Board::en_passant_exposes_king(const bool player, const uint8_t row, const 
 inline bool Board::add_knight_moves(const bool player, const uint8_t row, const uint8_t col, uint8_t& iterator, const PinnedSquare& pin, const bool in_check, const uint64_t& interposition_mask) noexcept {
 
 	// Piece
-	const uint8_t piece = player ? w_knight : b_knight;
+	const uint8_t piece = static_cast<uint8_t>(player ? w_knight : b_knight);
 	bool is_pinned = pin.pinned;
 
 	// A pinned knight cannot move
@@ -336,11 +336,9 @@ inline bool Board::add_knight_moves(const bool player, const uint8_t row, const 
 inline bool Board::add_rect_moves(const bool player, const uint8_t row, const uint8_t col, uint8_t& iterator, const PinnedSquare& pin, const bool in_check, const uint64_t& interposition_mask) noexcept {
 
 	// Piece
-	const uint8_t piece = player ? w_rook : b_rook;
+	const uint8_t piece = static_cast<uint8_t>(player ? w_rook : b_rook);
 	bool is_pinned = pin.pinned;
 	Direction pin_dir = pin.dir;
-	const uint8_t ally_min = player ? w_pawn : b_pawn;
-	const uint8_t ally_max = player ? w_king : b_king;
 
 	// Iterate over the 4 directions
 	for (uint8_t m = 0; m < 4; m++) {
@@ -387,11 +385,9 @@ inline bool Board::add_rect_moves(const bool player, const uint8_t row, const ui
 inline bool Board::add_diag_moves(const bool player, const uint8_t row, const uint8_t col, uint8_t& iterator, const PinnedSquare& pin, const bool in_check, const uint64_t& interposition_mask) noexcept {
 
 	// Piece
-	const uint8_t piece = player ? w_bishop : b_bishop;
+	const uint8_t piece = static_cast<uint8_t>(player ? w_bishop : b_bishop);
 	bool is_pinned = pin.pinned;
 	Direction pin_dir = pin.dir;
-	const uint8_t ally_min = player ? w_pawn : b_pawn;
-	const uint8_t ally_max = player ? w_king : b_king;
 
 	// Iterate over the 4 directions
 	for (uint8_t m = 0; m < 4; m++) {
@@ -525,7 +521,7 @@ bool Board::get_moves() noexcept {
 			int sq = pop_lsb(bb);  // 0..63
 
 			// Conversion en row/col
-			uint8_t row = sq >> 3;
+			uint8_t row = static_cast<uint8_t>(sq >> 3);
 			uint8_t col = sq & 7;
 
 			// Piece type: a single array read instead of scanning up to 5 bitboards
@@ -588,10 +584,10 @@ uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingsid
 	// Fill in the control map
 
 	// Action zone (the squares we care about)
-	const uint8_t min_row = max(0, king_pos.row - 1);
-	const uint8_t max_row = min(7, king_pos.row + 1);
-	const uint8_t min_col = max(0, king_pos.col - 1 - queenside_castle_check);
-	const uint8_t max_col = min(7, king_pos.col + 1 + kingside_castle_check);
+	const uint8_t min_row = static_cast<uint8_t>(max(0, king_pos.row - 1));
+	const uint8_t max_row = static_cast<uint8_t>(min(7, king_pos.row + 1));
+	const uint8_t min_col = static_cast<uint8_t>(max(0, king_pos.col - 1 - queenside_castle_check));
+	const uint8_t max_col = static_cast<uint8_t>(min(7, king_pos.col + 1 + kingside_castle_check));
 
 	// Every square attacked by an enemy piece, built from attack tables.
 	// Sliders see through the king under consideration (it cannot hide behind itself).
@@ -624,7 +620,7 @@ uint16_t Board::get_controls_around_king(Pos king_pos, bool player, bool kingsid
 	uint16_t controls = 0;
 	for (uint64_t hits = attacked & zone; hits;) {
 		const int sq = pop_lsb(hits);
-		controls |= control_bit((sq >> 3) - king_pos.row, (sq & 7) - king_pos.col);
+		controls |= control_bit(static_cast<int8_t>((sq >> 3) - king_pos.row), static_cast<int8_t>((sq & 7) - king_pos.col));
 	}
 
 	return controls;
@@ -757,8 +753,8 @@ PinsMap Board::get_pins(bool player) const noexcept {
 	// The recorded square is pinned iff the second piece found is an enemy slider matching the direction
 
 	// King position of the side concerned
-	uint8_t king_row = player ? _white_king_pos.row : _black_king_pos.row;
-	uint8_t king_col = player ? _white_king_pos.col : _black_king_pos.col;
+	uint8_t king_row = static_cast<uint8_t>(player ? _white_king_pos.row : _black_king_pos.row);
+	uint8_t king_col = static_cast<uint8_t>(player ? _white_king_pos.col : _black_king_pos.col);
 
 	// Enemy sliders able to pin along each kind of direction
 	const uint64_t* enemy = _bitboards + (player ? 6 : 0);

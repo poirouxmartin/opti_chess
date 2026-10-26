@@ -79,7 +79,7 @@ int rand_int(const int a, const int b)
 	static bool generated_seed = false;
 
 	if (!generated_seed)
-		generator.seed(seed), generated_seed = true;
+		generator.seed(static_cast<unsigned int>(seed)), generated_seed = true;
 
 	uniform_int_distribution<int> distribution(a, b);
 
@@ -95,7 +95,7 @@ long long rand_long(const long long a, const long long b)
 	static bool generated_seed = false;
 
 	if (!generated_seed)
-		generator.seed(seed), generated_seed = true;
+		generator.seed(static_cast<unsigned int>(seed)), generated_seed = true;
 
 	uniform_int_distribution<long long> distribution(a, b);
 
@@ -143,7 +143,7 @@ int min_value(float* l, const int n)
 		if (l[i] < min)
 			min = l[i];
 
-	return min;
+	return static_cast<int>(min);
 }
 
 // Prints a list of integers (array)
@@ -304,7 +304,7 @@ int min_index(int* l, const int n)
 // Computes the distance between two points
 float distance(const int row_1, const int col_1, const int row_2, const int col_2)
 {
-	return (row_1 - row_2) * (row_1 - row_2) + (col_1 - col_2) * (col_1 - col_2);
+	return static_cast<float>((row_1 - row_2) * (row_1 - row_2) + (col_1 - col_2) * (col_1 - col_2));
 }
 
 // Computes the proximity between two points (for the king safety evaluation)

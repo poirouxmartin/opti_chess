@@ -204,7 +204,7 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
     PuzzleResult result;
     result.is_eval_puzzle = p.is_eval_puzzle;
     auto t0 = chrono::steady_clock::now();
-    const clock_t t_entry = clock();
+    [[maybe_unused]] const clock_t t_entry = clock();
 
     // EMA of per-puzzle non-search overhead, seconds (init/reset/clear before
     // the search + traverse/score after). TIME budgets promise TOTAL time, so
@@ -371,15 +371,15 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
             w.alpha = alpha; w.beta = beta; w.gamma = gamma;
             w.thread_index = t; w.thread_count = n_threads;
         }
-        clock_t t_search_start = 0, t_search_end = 0;
+        clock_t t_sep_start = 0, t_sep_end = 0;
         if (mode == BudgetMode::TIME) {
-            t_search_start = clock();
+            t_sep_start = clock();
             double search_budget = budget - s_overhead_ema_s;
             const double min_search = 0.2 * budget;
             if (search_budget < min_search) search_budget = min_search;
-            g_search_deadline = t_search_start + (clock_t)(search_budget * CLOCKS_PER_SEC);
+            g_search_deadline = t_sep_start + (clock_t)(search_budget * CLOCKS_PER_SEC);
             g_search_abort = false;
-            for (auto& w : works) { w.iters = 0; w.search_budget_s = search_budget; w.t_search_start = t_search_start; }
+            for (auto& w : works) { w.iters = 0; w.search_budget_s = search_budget; w.t_search_start = t_sep_start; }
         } else {
             int iters = (int)budget;
             for (int t = 0; t < n_threads; t++)
@@ -393,7 +393,7 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
         run_search_share(&works[0]); // main thread does share 0
         for (int t = 1; t < n_threads; t++)
             WaitForSingleObject(g_pool[(size_t)(t - 1)].hDone, INFINITE);
-        if (mode == BudgetMode::TIME) { g_search_deadline = 0; t_search_end = clock(); }
+        if (mode == BudgetMode::TIME) { g_search_deadline = 0; t_sep_end = clock(); }
         g_tt_node_dag = prev_dag;
         // Merge by summed visits; avg = visit-weighted mean across workers.
         struct Agg { Move mv; long long visits = 0; double avgw = 0.0; };
@@ -415,8 +415,8 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
                 }
             }
         }
-        result.iterations = total_iters;
-        result.total_nodes = total_nodes;
+        result.iterations = static_cast<int>(total_iters);
+        result.total_nodes = static_cast<int>(total_nodes);
         result.chosen_move = Move();
         long long best_vis = -1;
         double best_avg = 0.5;
@@ -464,8 +464,8 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
         }
         auto t1 = chrono::steady_clock::now();
         result.time_s = chrono::duration<double>(t1 - t0).count();
-        if (mode == BudgetMode::TIME && t_search_end > t_search_start) {
-            double overhead = (double)(result.time_s - (t_search_end - t_search_start) / (double)CLOCKS_PER_SEC);
+        if (mode == BudgetMode::TIME && t_sep_end > t_sep_start) {
+            double overhead = (double)(result.time_s - (t_sep_end - t_sep_start) / (double)CLOCKS_PER_SEC);
             if (overhead >= 0.0 && overhead <= 3.0 * s_overhead_ema_s + 0.005)
                 s_overhead_ema_s = 0.7 * s_overhead_ema_s + 0.3 * overhead;
         }

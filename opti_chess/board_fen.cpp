@@ -185,8 +185,8 @@ void Board::from_fen(string fen)
 		const int ep = _en_passant_col;
 		const int r = _player ? 4 : 3; // rank of the double-pushed pawn
 		const int dir = _player ? 1 : -1; // towards the squares it crossed
-		const uint8_t pushed = _player ? b_pawn : w_pawn;
-		const uint8_t ours = _player ? w_pawn : b_pawn;
+		const uint8_t pushed = static_cast<uint8_t>(_player ? b_pawn : w_pawn);
+		const uint8_t ours = static_cast<uint8_t>(_player ? w_pawn : b_pawn);
 		const bool valid = _array[r][ep] == pushed && _array[r + dir][ep] == none
 			&&((ep > 0 && _array[r][ep - 1] == ours) || (ep < 7 && _array[r][ep + 1] == ours));
 		if (!valid)
@@ -199,7 +199,7 @@ void Board::from_fen(string fen)
 		iterator++;
 	}
 	if (!s.empty()) {
-		try { _half_moves_count = stoi(s); }
+		try { _half_moves_count = static_cast<uint8_t>(stoi(s)); }
 		catch (...) {}
 	}
 

@@ -38,7 +38,7 @@ int Board::get_pawn_structure(float display_factor, const EvalControls& ctx)
 	uint64_t wp = _bitboards[w_pawn];
 	while (wp) {
 		const int sq = pop_lsb(wp);
-		const uint8_t i = sq >> 3;
+		const uint8_t i = static_cast<uint8_t>(sq >> 3);
 		const uint8_t j = sq & 7;
 		s_white[j]++;
 		pawns_white[i][j] = true;
@@ -46,7 +46,7 @@ int Board::get_pawn_structure(float display_factor, const EvalControls& ctx)
 	uint64_t bp = _bitboards[b_pawn];
 	while (bp) {
 		const int sq = pop_lsb(bp);
-		const uint8_t i = sq >> 3;
+		const uint8_t i = static_cast<uint8_t>(sq >> 3);
 		const uint8_t j = sq & 7;
 		s_black[j]++;
 		pawns_black[i][j] = true;
@@ -58,7 +58,7 @@ int Board::get_pawn_structure(float display_factor, const EvalControls& ctx)
 	constexpr int isolated_pawn = -25;
 	constexpr float open_row_factor = 1.5f; // An isolated pawn on an open file is much weaker
 	constexpr float isolated_adv_factor = 1.0f; // Depending on how far the game has progressed
-	const float isolated_adv = eval_from_progress(1, _adv, isolated_adv_factor);
+	const float isolated_adv = static_cast<float>(eval_from_progress(1, _adv, isolated_adv_factor));
 	float isolated_pawns = 0.0f;
 
 	for (uint8_t col = 0; col < 8; col++) {
@@ -105,14 +105,14 @@ int Board::get_pawn_structure(float display_factor, const EvalControls& ctx)
 	if (display_factor != 0.0f)
 		main_GUI._eval_components += "isolated pawns: " + (isolated_pawns >= 0 ? string("+") : string()) + to_string(static_cast<int>(isolated_pawns * display_factor)) + "\n";
 
-	pawn_structure += isolated_pawns;
+	pawn_structure = static_cast<int>(pawn_structure + isolated_pawns);
 
 	// Doubled (or tripled) pawns
 
 	// TODO: less severe when there is activity
 	constexpr int doubled_pawn = -85;
 	constexpr float doubled_adv_factor = 1.95f; // Depending on how far the game has progressed
-	const float doubled_adv = eval_from_progress(1, _adv, doubled_adv_factor);
+	const float doubled_adv = static_cast<float>(eval_from_progress(1, _adv, doubled_adv_factor));
 	float doubled_pawns = 0.0f;
 
 	for (uint8_t i = 0; i < 8; i++) {
@@ -123,7 +123,7 @@ int Board::get_pawn_structure(float display_factor, const EvalControls& ctx)
 	if (display_factor != 0.0f)
 		main_GUI._eval_components += "doubled pawns: " + (doubled_pawns >= 0 ? string("+") : string()) + to_string(static_cast<int>(doubled_pawns * display_factor)) + "\n";
 
-	pawn_structure += doubled_pawns;
+	pawn_structure = static_cast<int>(pawn_structure + doubled_pawns);
 
 	// Backward pawns
 	// A pawn no other pawn can defend, fixed by an enemy pawn controlling the square ahead
@@ -131,7 +131,7 @@ int Board::get_pawn_structure(float display_factor, const EvalControls& ctx)
 	constexpr float backward_adv_factor = 0.5f; // Depending on how far the game has progressed
 	constexpr float backward_open_factor = 1.5f; // A backward pawn on an open file is much weaker
 	constexpr float blocked_factor = 2.0f; // If the pawn is blocked by an enemy piece, or the square ahead is controlled by an enemy pawn
-	const float backward_adv = eval_from_progress(1, _adv, backward_adv_factor);
+	const float backward_adv = static_cast<float>(eval_from_progress(1, _adv, backward_adv_factor));
 	float backward_pawns = 0.0f;
 
 	// White pawns
@@ -237,7 +237,7 @@ int Board::get_pawn_structure(float display_factor, const EvalControls& ctx)
 	if (display_factor != 0.0f)
 		main_GUI._eval_components += "backward pawns: " + (backward_pawns >= 0 ? string("+") : string()) + to_string(static_cast<int>(backward_pawns * display_factor)) + "\n";
 
-	pawn_structure += backward_pawns;
+	pawn_structure = static_cast<int>(pawn_structure + backward_pawns);
 
 	// Passed pawns
 	// r5k1/P3Rpp1/7p/8/3p4/8/2P2PPP/6K1 b - - 1 30: position to test
@@ -325,7 +325,7 @@ int Board::get_pawn_structure(float display_factor, const EvalControls& ctx)
 	// on that (pp_candidate_R); the stricter decisive-margin variant
 	// was dead code and is removed.
 	// Wing count returning the raw margin (probe use).
-	auto pp_margin = [&](int col, int row, bool white) -> int {
+	auto pp_margin = [&](int col, int /*row*/, bool white) -> int {
 		int lo = col <= 3 ? 0 : 4, hi = col <= 3 ? 3 : 7;
 		int own = 0, enemy = 0;
 		for (int c = lo; c <= hi; c++)
@@ -346,7 +346,7 @@ int Board::get_pawn_structure(float display_factor, const EvalControls& ctx)
 		if (mg < 1) return 0.0f;
 		int bcol = -1, brow = -1;
 		if (white) {
-			for (uint8_t k = row + 1; k < 7 && brow < 0; k++) {
+			for (uint8_t k = static_cast<uint8_t>(row + 1); k < 7 && brow < 0; k++) {
 				if (_array[k][col] == b_pawn) { bcol = col; brow = (int)k; }
 				else if (col > 0 && _array[k][col - 1] == b_pawn) { bcol = col - 1; brow = (int)k; }
 				else if (col < 7 && _array[k][col + 1] == b_pawn) { bcol = col + 1; brow = (int)k; }
@@ -449,7 +449,7 @@ int Board::get_pawn_structure(float display_factor, const EvalControls& ctx)
 
 
 	constexpr float passed_adv_factor = 1.0f; // Depending on how far the game has progressed
-	const float passed_adv = eval_from_progress(1, _adv, passed_adv_factor);
+	const float passed_adv = static_cast<float>(eval_from_progress(1, _adv, passed_adv_factor));
 	float passed_pawns_value = 0.0f;
 
 	// (Removed) Out-of-square pool: muted permanently (see below).
@@ -694,8 +694,6 @@ int Board::get_pawn_structure(float display_factor, const EvalControls& ctx)
 							}
 						const SquareMap& wcm = ctx.white;
 						const SquareMap& bcm = ctx.black;
-						const SquareMap& wpm = ctx.white_pawns;
-						const SquareMap& bpm = ctx.black_pawns;
 							int ownA = 0, enA = 0, ownB = 0, enB = 0;
 							int adv = (int)row + 1;
 							if (adv <= 7) {
@@ -947,8 +945,6 @@ int Board::get_pawn_structure(float display_factor, const EvalControls& ctx)
 							}
 						const SquareMap& wcm = ctx.white;
 						const SquareMap& bcm = ctx.black;
-						const SquareMap& wpm = ctx.white_pawns;
-						const SquareMap& bpm = ctx.black_pawns;
 							int ownA = 0, enA = 0, ownB = 0, enB = 0;
 							int adv = (int)row - 1;
 							if (adv >= 0) {
@@ -1096,7 +1092,7 @@ int Board::get_pawn_structure(float display_factor, const EvalControls& ctx)
 							}
 							sq_base = pp_cap(sq_base, white_controls_map._array[k][col], white_pawns_map._array[k][col], black_pawns_map._array[k][col], k, col, true);
 							if (k == row && own_hang_b) sq_base = (int)((float)sq_base / blocked_path_divisor);
-								if ((float)sq_base < worst_path) { worst_path = sq_base; worst_k = k; }
+								if ((float)sq_base < worst_path) { worst_path = static_cast<float>(sq_base); worst_k = k; }
 								{
 									static const bool sqdbg = getenv("OPTI_PP_SQDBG") != nullptr;
 									if (sqdbg)
@@ -1207,14 +1203,14 @@ int Board::get_pawn_structure(float display_factor, const EvalControls& ctx)
 
 	// Passed-passer sub-component scale (env-tunable; the ×0.2 global
 	// pawn-structure coef stays untouched).
-	pawn_structure += passed_pawns_value;
+	pawn_structure = static_cast<int>(pawn_structure + passed_pawns_value);
 
 
 	// Connected pawns
 	// A pawn is connected when a same-coloured pawn sits on an adjacent file, on the same or the lower rank
 	constexpr int connected_pawns[8] = { 0, 10, 65, 135, 150, 200, 275, 0 };
 	constexpr float connected_pawns_adv_factor = 0.2f; // Depending on how far the game has progressed
-	const float connected_pawns_adv = eval_from_progress(1, _adv, connected_pawns_adv_factor);
+	const float connected_pawns_adv = static_cast<float>(eval_from_progress(1, _adv, connected_pawns_adv_factor));
 	constexpr float column_connection_value[8] = { 0.15f, 0.25f, 0.55f, 1.25f, 1.25f, 0.55f, 0.25f, 0.15f };
 	constexpr float connected_pawns_factor = 0.85f;
 
@@ -1360,7 +1356,7 @@ int Board::get_pawn_structure(float display_factor, const EvalControls& ctx)
 	if (display_factor != 0.0f)
 		main_GUI._eval_components += "connected pawns: " + (connected_pawns_value >= 0 ? string("+") : string()) + to_string(static_cast<int>(connected_pawns_value * display_factor)) + "\n";
 
-	pawn_structure += connected_pawns_value * connected_pawns_factor;
+	pawn_structure = static_cast<int>(pawn_structure + connected_pawns_value * connected_pawns_factor);
 
 	// TODO: the per-progress multipliers should be applied at the end
 
@@ -1506,7 +1502,7 @@ int Board::get_pawn_push_threats(const EvalControls& ctx) const {
 	// Based on game progress
 	constexpr float advancement_factor = 0.25f;
 
-	return eval_from_progress(100 * (w_threats - b_threats), _adv, advancement_factor);
+	return static_cast<int>(eval_from_progress(100 * (w_threats - b_threats), _adv, advancement_factor));
 }
 
 // Computes and returns the king's proximity to the pawns
@@ -1601,7 +1597,7 @@ int Board::get_bishop_pawns() const {
 	// Multiplier based on how far the game has progressed
 	float advancement_factor = 0.8f;
 
-	return eval_from_progress(bishop_pawns_value, _adv, advancement_factor);
+	return static_cast<int>(eval_from_progress(static_cast<int>(bishop_pawns_value), _adv, advancement_factor));
 }
 
 // Returns the long-term weakness value of the pawn shield
@@ -1672,7 +1668,7 @@ int Board::get_pawn_shield() {
 	// Game progress value beyond which this stops mattering, decreasing linearly
 	float pawn_shield_advancement_threshold = 0.7f;
 
-	return eval_from_progress(pawn_shield_value, _adv, pawn_shield_advancement_threshold);
+	return static_cast<int>(eval_from_progress(pawn_shield_value, _adv, pawn_shield_advancement_threshold));
 }
 
 // Returns the value of the weak squares
@@ -1740,7 +1736,7 @@ int Board::get_pawn_storm_at_col(bool color, uint8_t king_row, uint8_t king_col)
 
 				// FIXME??
 				if (!blocked) { // In theory the index stays within [0, 7], since pawns cannot sit on the outer ranks
-					total_bonus += bonus[abs(row - king_row)] * (abs(col - king_col) < 2 ? 1.0f : semi_adjacent_bonus);
+					total_bonus = static_cast<int>(total_bonus + bonus[abs(row - king_row)] * (abs(col - king_col) < 2 ? 1.0f : semi_adjacent_bonus));
 				}
 			}
 		}
@@ -1749,7 +1745,7 @@ int Board::get_pawn_storm_at_col(bool color, uint8_t king_row, uint8_t king_col)
 	// Based on game progress
 	float pawn_storm_advancement_factor = 0.0f;
 
-	return eval_from_progress(total_bonus, _adv, pawn_storm_advancement_factor);
+	return static_cast<int>(eval_from_progress(total_bonus, _adv, pawn_storm_advancement_factor));
 }
 
 // Returns the shielding power of the king's pawn structure
@@ -1828,7 +1824,7 @@ int Board::get_knight_activity() const {
 	// Multiplier based on game progress
 	float knight_activity_advancement_factor = 0.5f;
 
-	return eval_from_progress(white_knight_bonus - black_knight_bonus, _adv, knight_activity_advancement_factor);
+	return static_cast<int>(eval_from_progress(white_knight_bonus - black_knight_bonus, _adv, knight_activity_advancement_factor));
 }
 
 // Returns the shielding power of the king's pawn structure
@@ -1930,7 +1926,7 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 
 	// Shielding level above which the king counts as safe
 	//const int king_base_protection = 600 * (1 - _adv) - 200;
-	int needed_protection = 450 * opponent_attacking_potential - 100 - (space > 0 ? space * 2 : space * 0.5);
+	int needed_protection = static_cast<int>(450 * opponent_attacking_potential - 100 - (space > 0 ? space * 2 : space * 0.5));
 
 	// r3r3/P2k2pp/1Bb5/6N1/3P4/3n4/PP3PPP/1KR5 w - - 0 28
 
@@ -1953,7 +1949,7 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 	bool open_files[5] = { false, false, false, false, false };
 
 	// For each file adjacent to the king
-	for (int_fast8_t col = king_pos.col - 2; col <= king_pos.col + 2; col++) {
+	for (int_fast8_t col = static_cast<int_fast8_t>(king_pos.col - 2); col <= king_pos.col + 2; col++) {
 		if (col < 0 || col > 7)
 			continue;
 
@@ -2049,7 +2045,7 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 				};
 				if (has_pawn_near(col - 1) || has_pawn_near(col + 1)) {
 				//if ((col > 0 && (pawns[row][col - 1] || pawns[row - dir][col - 1])) || (col < 2 && (pawns[row][col + 1] || pawns[row - dir][col + 1]))) {
-					const int connected_bonus = connected_pawns_bonus * distance_factor * adjacent_factor;
+					const int connected_bonus = static_cast<int>(connected_pawns_bonus * distance_factor * adjacent_factor);
 
 					//cout << "connected pawns on " << square_name(row, col + king_pos.col - 2) << " : " << connected_bonus << endl;
 					connected_pawns_bonus_total += connected_bonus;
@@ -2057,7 +2053,7 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 
 
 				// Adjacent or semi-adjacent file
-				const int bonus = pawn_bonus * distance_factor * adjacent_factor;
+				const int bonus = static_cast<int>(pawn_bonus * distance_factor * adjacent_factor);
 
 				//cout << "pawn bonus on " << square_name(row, col + king_pos.col - 2) << " : " << bonus << endl;
 				pawns_bonus_total += bonus;
@@ -2077,11 +2073,11 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 	for (uint8_t col = 0; col < 5; col++) {
 		if (open_files[col]) {
 			//cout << "open file on " << square_name(king_pos.row, col + king_pos.col - 2) << endl;
-			open_files_total += open_file_malus * ((col == 0 || col == 4) ? semi_adjacent_factor : 1.0f);
+			open_files_total = static_cast<int>(open_files_total + open_file_malus * ((col == 0 || col == 4) ? semi_adjacent_factor : 1.0f));
 		}
 	}
 
-	open_files_total *= opponent_attacking_potential;
+	open_files_total = static_cast<int>(open_files_total * opponent_attacking_potential);
 
 	// Shielding from the board edges
 
@@ -2091,11 +2087,11 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 	// Bord horizontal
 	constexpr int h_edge_protection = 15;
 
-	const int edge_protection = opponent_attacking_potential * (v_edge_protection * (min(king_pos.row, 7 - king_pos.row) == 0) + h_edge_protection * (min(king_pos.col, 7 - king_pos.col) == 0));
+	const int edge_protection = static_cast<int>(opponent_attacking_potential * (v_edge_protection * (min(king_pos.row, 7 - king_pos.row) == 0) + h_edge_protection * (min(king_pos.col, 7 - king_pos.col) == 0)));
 
 	//cout << "edges: " << edge_protection << endl;
 
-	int total_bonus = connected_pawns_bonus_total + pawns_bonus_total - open_files_total + edge_protection;
+	int total_bonus = static_cast<int>(connected_pawns_bonus_total + pawns_bonus_total - open_files_total + edge_protection);
 
 	//cout << "total: " << total_bonus << endl;
 
@@ -2151,7 +2147,7 @@ int Board::get_passed_pawns_count(bool color) const {
 }
 
 // Returns the evaluation value tied to the passed pawns
-int Board::get_passed_pawns_value(bool color) const {
+int Board::get_passed_pawns_value(bool /*color*/) const {
 	// TODO ***
 
 	return 0;

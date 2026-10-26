@@ -88,8 +88,8 @@ float Board::get_attacks_and_defenses() const
 			case w_pawn:
 					if (col > 0) {
 						// Up-left square of the white pawn
-						uint8_t new_row = row + 1;
-						uint8_t new_col = col - 1;
+						uint8_t new_row = static_cast<uint8_t>(row + 1);
+						uint8_t new_col = static_cast<uint8_t>(col - 1);
 						uint8_t p2 = _array[new_row][new_col];
 
 						if (is_black(p2))
@@ -99,8 +99,8 @@ float Board::get_attacks_and_defenses() const
 					}
 					if (col < 7) {
 						// Up-right square of the white pawn
-						uint8_t new_row = row + 1;
-						uint8_t new_col = col + 1;
+						uint8_t new_row = static_cast<uint8_t>(row + 1);
+						uint8_t new_col = static_cast<uint8_t>(col + 1);
 						uint8_t p2 = _array[new_row][new_col];
 
 						if (is_black(p2))
@@ -114,8 +114,8 @@ float Board::get_attacks_and_defenses() const
 				// White knight
 				case w_knight:
 					for (int k = 0; k < 8; k++) {
-						uint8_t new_row = row + knight_directions[k][0];
-						uint8_t new_col = col + knight_directions[k][1];
+						uint8_t new_row = static_cast<uint8_t>(row + knight_directions[k][0]);
+						uint8_t new_col = static_cast<uint8_t>(col + knight_directions[k][1]);
 
 						if (is_in_fast(new_row, 0, 7) && is_in_fast(new_col, 0, 7)) {
 							uint8_t p2 = _array[new_row][new_col];
@@ -134,8 +134,8 @@ float Board::get_attacks_and_defenses() const
 					for (uint8_t k = 0; k < 4; k++) {
 						const uint8_t d_row = diag_directions[k][0];
 						const uint8_t d_col = diag_directions[k][1];
-						uint8_t new_row = row + d_row;
-						uint8_t new_col = col + d_col;
+						uint8_t new_row = static_cast<uint8_t>(row + d_row);
+						uint8_t new_col = static_cast<uint8_t>(col + d_col);
 
 						while (new_row >= 0 && new_row < 8 && new_col >= 0 && new_col < 8) {
 							const uint8_t p2 = _array[new_row][new_col];
@@ -161,8 +161,8 @@ float Board::get_attacks_and_defenses() const
 					for (uint8_t k = 0; k < 4; k++) {
 						const uint8_t d_row = rect_directions[k][0];
 						const uint8_t d_col = rect_directions[k][1];
-						uint8_t new_row = row + d_row;
-						uint8_t new_col = col + d_col;
+						uint8_t new_row = static_cast<uint8_t>(row + d_row);
+						uint8_t new_col = static_cast<uint8_t>(col + d_col);
 
 						while (new_row >= 0 && new_row < 8 && new_col >= 0 && new_col < 8) {
 							const uint8_t p2 = _array[new_row][new_col];
@@ -187,8 +187,8 @@ float Board::get_attacks_and_defenses() const
 					for (uint8_t k = 0; k < 8; k++) {
 						const uint8_t d_row = all_directions[k][0];
 						const uint8_t d_col = all_directions[k][1];
-						uint8_t new_row = row + d_row;
-						uint8_t new_col = col + d_col;
+						uint8_t new_row = static_cast<uint8_t>(row + d_row);
+						uint8_t new_col = static_cast<uint8_t>(col + d_col);
 
 						while (new_row >= 0 && new_row < 8 && new_col >= 0 && new_col < 8) {
 							const uint8_t p2 = _array[new_row][new_col];
@@ -212,8 +212,8 @@ float Board::get_attacks_and_defenses() const
 				// White king
 				case w_king:
 					for (uint8_t k = 0; k < 8; k++) {
-						uint8_t new_row = row + all_directions[k][0];
-						uint8_t new_col = col + all_directions[k][1];
+						uint8_t new_row = static_cast<uint8_t>(row + all_directions[k][0]);
+						uint8_t new_col = static_cast<uint8_t>(col + all_directions[k][1]);
 
 						if (is_in_fast(new_row, 0, 7) && is_in_fast(new_col, 0, 7)) {
 							uint8_t p2 = _array[new_row][new_col];
@@ -231,8 +231,8 @@ float Board::get_attacks_and_defenses() const
 				case b_pawn:
 					if (col > 0) {
 						// Down-left square of the black pawn
-						uint8_t new_row = row - 1;
-						uint8_t new_col = col - 1;
+						uint8_t new_row = static_cast<uint8_t>(row - 1);
+						uint8_t new_col = static_cast<uint8_t>(col - 1);
 						uint8_t p2 = _array[new_row][new_col];
 
 						if (is_white(p2))
@@ -242,8 +242,8 @@ float Board::get_attacks_and_defenses() const
 					}
 					if (col < 7) {
 						// Down-right square of the black pawn
-						uint8_t new_row = row - 1;
-						uint8_t new_col = col + 1;
+						uint8_t new_row = static_cast<uint8_t>(row - 1);
+						uint8_t new_col = static_cast<uint8_t>(col + 1);
 						uint8_t p2 = _array[new_row][new_col];
 
 						if (is_white(p2))
@@ -257,8 +257,8 @@ float Board::get_attacks_and_defenses() const
 				// Black knight
 				case b_knight:
 					for (int k = 0; k < 8; k++) {
-						uint8_t new_row = row + knight_directions[k][0];
-						uint8_t new_col = col + knight_directions[k][1];
+						uint8_t new_row = static_cast<uint8_t>(row + knight_directions[k][0]);
+						uint8_t new_col = static_cast<uint8_t>(col + knight_directions[k][1]);
 
 						if (is_in_fast(new_row, 0, 7) && is_in_fast(new_col, 0, 7)) {
 							uint8_t p2 = _array[new_row][new_col];
@@ -277,8 +277,8 @@ float Board::get_attacks_and_defenses() const
 					for (uint8_t k = 0; k < 4; k++) {
 						const uint8_t d_row = diag_directions[k][0];
 						const uint8_t d_col = diag_directions[k][1];
-						uint8_t new_row = row + d_row;
-						uint8_t new_col = col + d_col;
+						uint8_t new_row = static_cast<uint8_t>(row + d_row);
+						uint8_t new_col = static_cast<uint8_t>(col + d_col);
 
 						while (new_row >= 0 && new_row < 8 && new_col >= 0 && new_col < 8) {
 							const uint8_t p2 = _array[new_row][new_col];
@@ -304,8 +304,8 @@ float Board::get_attacks_and_defenses() const
 					for (uint8_t k = 0; k < 4; k++) {
 						const uint8_t d_row = rect_directions[k][0];
 						const uint8_t d_col = rect_directions[k][1];
-						uint8_t new_row = row + d_row;
-						uint8_t new_col = col + d_col;
+						uint8_t new_row = static_cast<uint8_t>(row + d_row);
+						uint8_t new_col = static_cast<uint8_t>(col + d_col);
 
 						while (new_row >= 0 && new_row < 8 && new_col >= 0 && new_col < 8) {
 							const uint8_t p2 = _array[new_row][new_col];
@@ -331,8 +331,8 @@ float Board::get_attacks_and_defenses() const
 					for (uint8_t k = 0; k < 8; k++) {
 						const uint8_t d_row = all_directions[k][0];
 						const uint8_t d_col = all_directions[k][1];
-						uint8_t new_row = row + d_row;
-						uint8_t new_col = col + d_col;
+						uint8_t new_row = static_cast<uint8_t>(row + d_row);
+						uint8_t new_col = static_cast<uint8_t>(col + d_col);
 
 						while (new_row >= 0 && new_row < 8 && new_col >= 0 && new_col < 8) {
 							const uint8_t p2 = _array[new_row][new_col];
@@ -356,8 +356,8 @@ float Board::get_attacks_and_defenses() const
 				// Black king
 				case b_king:
 					for (uint8_t k = 0; k < 8; k++) {
-						uint8_t new_row = row + all_directions[k][0];
-						uint8_t new_col = col + all_directions[k][1];
+						uint8_t new_row = static_cast<uint8_t>(row + all_directions[k][0]);
+						uint8_t new_col = static_cast<uint8_t>(col + all_directions[k][1]);
 
 						if (is_in_fast(new_row, 0, 7) && is_in_fast(new_col, 0, 7)) {
 							uint8_t p2 = _array[new_row][new_col];
@@ -392,7 +392,7 @@ float Board::get_attacks_and_defenses() const
 	uint64_t occ2 = _occupancies[2];
 	while (occ2) {
 		const int sq = pop_lsb(occ2);
-		const uint8_t row = sq >> 3;
+		const uint8_t row = static_cast<uint8_t>(sq >> 3);
 		const uint8_t col = sq & 7;
 		const uint8_t p = _array[row][col];
 
@@ -427,7 +427,7 @@ float Board::get_attacks_and_defenses() const
 
 	//cout << "\nWhite attacks: " << white_attacks_eval << " | Black attacks: " << black_attacks_eval << endl;
 
-	return eval_from_progress(white_attacks_eval - black_attacks_eval, _adv, advancement_factor);
+	return static_cast<float>(eval_from_progress(white_attacks_eval - black_attacks_eval, _adv, advancement_factor));
 }
 
 // Computes the king opposition, in pawn endgames
@@ -622,7 +622,7 @@ int Board::get_fianchetto_value() const
 		}
 	}
 
-	return fianchetti * 25.0f * (1.0f - _adv);
+	return static_cast<int>(fianchetti * 25.0f * (1.0f - _adv));
 }
 
 // Classification des cases faibles : ne dépend que des pions (aucune lecture de pièce ni de contrôle),
@@ -1039,16 +1039,16 @@ int Board::get_weak_squares(bool color, bool around_king, const EvalControls& ct
 					// Value depending on the piece
 					float outpost_value_multiplier = is_black(p) ? outpost_values[p - 7] : 0.0f;
 
-					square_value += outpost_value * outpost_value_multiplier;
+					square_value = static_cast<int>(square_value + outpost_value * outpost_value_multiplier);
 
 					if (display)
 						cout << " | outpost: " << outpost_value << " for piece: " << piece_name(p) << " -> *= " << outpost_value_multiplier;
 				}
 
 				// Value of an enemy pawn controlling the weak square
-				square_value *= (1.00f + 0.75f * (pawn_controls > 0));
+				square_value = static_cast<int>(square_value * (1.00f + 0.75f * (pawn_controls > 0)));
 
-				square_value *= (weak ? 1.0f : safe_square_bonus);
+				square_value = static_cast<int>(square_value * (weak ? 1.0f : safe_square_bonus));
 
 				// Lower the weakness value when White controls it more
 				//int control_diff = max(0, white_controls._array[row][col] - black_controls._array[row][col]);
@@ -1057,14 +1057,14 @@ int Board::get_weak_squares(bool color, bool around_king, const EvalControls& ct
 				if (display)
 					cout << " | control diff: " << control_diff;
 
-				square_value /= (1.0f + control_diff / 1.0f);
+				square_value = static_cast<int>(square_value / (1.0f + control_diff / 1.0f));
 
 				if (display)
 					cout << " | with controls: " << square_value;
 
 				// Bonus when it blocks a pawn
 				if (_array[row - 1][col] == w_pawn)
-					square_value *= blocked_pawn_bonus;
+					square_value = static_cast<int>(square_value * blocked_pawn_bonus);
 
 				if (display)
 					cout << " | with blocked pawn: " << square_value << endl;
@@ -1138,16 +1138,16 @@ int Board::get_weak_squares(bool color, bool around_king, const EvalControls& ct
 					// Value depending on the piece
 					float outpost_value_multiplier = is_white(p) ? outpost_values[p - 1] : 0.0f;
 
-					square_value += outpost_value * outpost_value_multiplier;
+					square_value = static_cast<int>(square_value + outpost_value * outpost_value_multiplier);
 
 					if (display)
 						cout << " | outpost: " << outpost_value << " for piece: " << piece_name(p) << " -> *= " << outpost_value_multiplier;
 				}
 
 				// Value of an enemy pawn controlling the weak square
-				square_value *= (1.00f + 0.75f * (pawn_controls > 0));
+				square_value = static_cast<int>(square_value * (1.00f + 0.75f * (pawn_controls > 0)));
 
-				square_value *= (weak ? 1.0f : safe_square_bonus);
+				square_value = static_cast<int>(square_value * (weak ? 1.0f : safe_square_bonus));
 
 				// Lower the weakness value when Black controls it more
 				//int control_diff = max(0, black_controls._array[row][col] - white_controls._array[row][col]);
@@ -1156,14 +1156,14 @@ int Board::get_weak_squares(bool color, bool around_king, const EvalControls& ct
 				if (display)
 					cout << " | control diff: " << control_diff;
 
-				square_value /= (1.0f + control_diff / 1.0f);
+				square_value = static_cast<int>(square_value / (1.0f + control_diff / 1.0f));
 
 				if (display)
 					cout << " | with controls: " << square_value;
 
 				// Bonus when it blocks a pawn
 				if (_array[row + 1][col] == b_pawn)
-					square_value *= blocked_pawn_bonus;
+					square_value = static_cast<int>(square_value * blocked_pawn_bonus);
 
 				if (display)
 					cout << " | with blocked pawn: " << square_value << endl;
@@ -1203,9 +1203,9 @@ int Board::get_weak_squares(bool color, bool around_king, const EvalControls& ct
 	//2r5/3r4/p1p1pk2/PpRnR2p/3P2p1/4P3/7P/1B5K b - - 5 37: weak squares around the king, 200+?
 
 	if (display)
-		cout << "weak squares value: " << weak_squares_value << ", open files: " << open_files << ", advancement factor: " << advancement_factor << ", total: " << eval_from_progress(weak_squares_value / (open_files / 2.0f + 1), _adv, advancement_factor) << endl;
+		cout << "weak squares value: " << weak_squares_value << ", open files: " << open_files << ", advancement factor: " << advancement_factor << ", total: " << eval_from_progress(static_cast<int>(weak_squares_value / (open_files / 2.0f + 1)), _adv, advancement_factor) << endl;
 	
-	return eval_from_progress(weak_squares_value / (open_files / 2.0f + 1), _adv, advancement_factor);
+	return static_cast<int>(eval_from_progress(static_cast<int>(weak_squares_value / (open_files / 2.0f + 1)), _adv, advancement_factor));
 }
 
 // Converts a move into its algebraic notation
@@ -1297,7 +1297,7 @@ int Board::get_castling_distance() const {
 	//cout << "w_castling_distance: " << (int)w_castling_distance << endl;
 	//cout << "b_castling_distance: " << (int)b_castling_distance << endl;
 
-	return castling_distance_malus * (b_castling_distance - w_castling_distance) * (1 - _adv);
+	return static_cast<int>(castling_distance_malus * (b_castling_distance - w_castling_distance) * (1 - _adv));
 }
 
 // Generates the Zobrist key of the board (debug helper)
@@ -1545,7 +1545,6 @@ float Board::get_winnable(Evaluation* eval, bool color, float position_nature) c
 	// rnbqkb1r/4n3/p3p1p1/Pp1pPpPp/1PpP1P1P/2P5/8/RNBQKBNR b KQkq - 0 11: closed position
 
 	// Depending on the nature of the position
-	constexpr float closed_position_draw_factor = 1.0f;
 	winnable_value *= 1.0f - position_nature;
 	// FIXME: weight this even more, since it rarely reaches 0% or 100%?
 
@@ -1625,7 +1624,7 @@ int Board::get_trapped_pieces(const EvalControls& ctx) const {
 	uint64_t occ = _occupancies[2];
 	while (occ) {
 		const int sq = pop_lsb(occ);
-		const uint8_t row = sq >> 3;
+		const uint8_t row = static_cast<uint8_t>(sq >> 3);
 		const uint8_t col = sq & 7;
 		const uint8_t p = _array[row][col];
 
@@ -1690,7 +1689,6 @@ int Board::get_trapped_pieces(const EvalControls& ctx) const {
 	const float trapped_factor = 15.0f;
 
 	// Progress beyond which isolation stops counting, though trapped pieces still do
-	const float max_adv = 0.6f;
 
 	// Distance beyond which the piece counts as effectively "attacked"
 	const int attacked_distance = 10;
@@ -1709,7 +1707,7 @@ int Board::get_trapped_pieces(const EvalControls& ctx) const {
 	uint64_t occ2 = _occupancies[2];
 	while (occ2) {
 		const int sq = pop_lsb(occ2);
-		const uint8_t row = sq >> 3;
+		const uint8_t row = static_cast<uint8_t>(sq >> 3);
 		const uint8_t col = sq & 7;
 		const uint8_t p = _array[row][col];
 
@@ -1814,7 +1812,7 @@ int Board::get_trapped_pieces(const EvalControls& ctx) const {
 				bool attacked = b_controls._array[row][col] != 0;
 
 				// An isolated piece is almost equivalent to an attacked one
-				int attacked_bonus = min(attacked ? max(0.0f, base_distance * (row - 2)) : distance / (float)attacked_distance * attacked_factor / 2.0f, attacked_factor);
+				int attacked_bonus = static_cast<int>(min(attacked ? max(0.0f, base_distance * (row - 2)) : distance / (float)attacked_distance * attacked_factor / 2.0f, attacked_factor));
 
 				if (p != w_pawn) {
 					//cout << piece_name(p) << " on " << square_name(row, col) << ", safe_squares: " << safe_squares << ", trapped malus: " << trapped_malus << ", isolated_piece: " << isolated_piece << ", attacked: " << (b_controls._array[row][col] != 0) << ", distance: " << distance << ", attacked_bonus: " << attacked_bonus;
@@ -1936,7 +1934,7 @@ int Board::get_trapped_pieces(const EvalControls& ctx) const {
 				bool attacked = w_controls._array[row][col] != 0;
 
 				// An isolated piece is almost equivalent to an attacked one
-				int attacked_bonus = min(attacked ? max(0.0f, base_distance * (5 - row)) : distance / (float)attacked_distance * attacked_factor / 2.0f, attacked_factor);
+				int attacked_bonus = static_cast<int>(min(attacked ? max(0.0f, base_distance * (5 - row)) : distance / (float)attacked_distance * attacked_factor / 2.0f, attacked_factor));
 
 				if (p != b_pawn) {
 					//cout << piece_name(p) << " on " << square_name(row, col) << ", safe_squares: " << safe_squares << ", trapped malus: " << trapped_malus << ", isolated_piece: " << isolated_piece << ", attacked: " << (b_controls._array[row][col] != 0) << ", distance: " << distance << ", attacked_bonus: " << attacked_bonus;
@@ -1956,7 +1954,7 @@ int Board::get_trapped_pieces(const EvalControls& ctx) const {
 	//cout << "w_trapped_pieces: " << w_trapped_pieces << endl;
 	//cout << "b_trapped_pieces: " << b_trapped_pieces << endl;
 
-	return (b_trapped_pieces - w_trapped_pieces);
+	return static_cast<int>((b_trapped_pieces - w_trapped_pieces));
 }
 
 // Adjusts the piece values, penalty or bonus, according to the type of position
@@ -2010,7 +2008,7 @@ float Board::get_position_nature() const {
 	uint64_t wp = _bitboards[w_pawn];
 	while (wp) {
 		const int sq = pop_lsb(wp);
-		const uint8_t row = sq >> 3;
+		const uint8_t row = static_cast<uint8_t>(sq >> 3);
 		const uint8_t col = sq & 7;
 		pawns++;
 		// If the pawn is blocked by another pawn
@@ -2020,7 +2018,7 @@ float Board::get_position_nature() const {
 	uint64_t bp = _bitboards[b_pawn];
 	while (bp) {
 		const int sq = pop_lsb(bp);
-		const uint8_t row = sq >> 3;
+		const uint8_t row = static_cast<uint8_t>(sq >> 3);
 		const uint8_t col = sq & 7;
 		pawns++;
 		// If the pawn is blocked by another pawn
@@ -2030,7 +2028,7 @@ float Board::get_position_nature() const {
 
 	int range = (completely_closed - completely_open);
 
-	float total_factor = pawn_closed * pawns + blocked_pawn_closed * blocked_pawns;
+	float total_factor = static_cast<float>(pawn_closed * pawns + blocked_pawn_closed * blocked_pawns);
 
 	float nature = (total_factor - completely_open) / range;
 
@@ -2077,8 +2075,8 @@ int Board::get_open_diagonals_on_opponent_king(bool color) {
 	update_kings_pos();
 
 	// Diagonal of the enemy king
-	uint8_t king_i = color ? _black_king_pos.row : _white_king_pos.row;
-	uint8_t king_j = color ? _black_king_pos.col : _white_king_pos.col;
+	uint8_t king_i = static_cast<uint8_t>(color ? _black_king_pos.row : _white_king_pos.row);
+	uint8_t king_j = static_cast<uint8_t>(color ? _black_king_pos.col : _white_king_pos.col);
 
 	// Bonus for the player
 	int total_bonus = 0;
@@ -2094,8 +2092,8 @@ int Board::get_open_diagonals_on_opponent_king(bool color) {
 		for (int j = -1; j < 2; j += 2) {
 
 			// Square coordinates
-			uint8_t new_i = king_i + i;
-			uint8_t new_j = king_j + j;
+			uint8_t new_i = static_cast<uint8_t>(king_i + i);
+			uint8_t new_j = static_cast<uint8_t>(king_j + j);
 
 			// If the square is off the board
 			if (new_i < 0 || new_i > 7 || new_j < 0 || new_j > 7)
@@ -2119,8 +2117,8 @@ int Board::get_open_diagonals_on_opponent_king(bool color) {
 				}
 
 				// Prochaine case
-				new_i += i;
-				new_j += j;
+				new_i = static_cast<uint8_t>(new_i + i);
+				new_j = static_cast<uint8_t>(new_j + j);
 			}
 
 			//cout << "diagonal: " << (int)i << ", " << (int)j << ", open: " << open << ", semi_open: " << semi_open << endl;
@@ -2130,8 +2128,8 @@ int Board::get_open_diagonals_on_opponent_king(bool color) {
 
 			// Bonus for the pieces standing on the diagonal
 			if (open || semi_open) {
-				new_i = king_i + i;
-				new_j = king_j + j;
+				new_i = static_cast<uint8_t>(king_i + i);
+				new_j = static_cast<uint8_t>(king_j + j);
 
 				while (new_i >= 0 && new_i < 8 && new_j >= 0 && new_j < 8) {
 					uint8_t p = _array[new_i][new_j];
@@ -2141,13 +2139,13 @@ int Board::get_open_diagonals_on_opponent_king(bool color) {
 					else if (p == (color ? w_queen : b_queen))
 						bonus += queen_bonus * (1 + open);
 
-					new_i += i;
-					new_j += j;
+					new_i = static_cast<uint8_t>(new_i + i);
+					new_j = static_cast<uint8_t>(new_j + j);
 				}
 			}
 
 			// Bonus based on proximity to the king
-			bonus *= (i == 0 && j == 0 ? king_diagonal_bonus : king_adjacent_diagonal_bonus);
+			bonus = static_cast<int>(bonus * (i == 0 && j == 0 ? king_diagonal_bonus : king_adjacent_diagonal_bonus));
 
 			total_bonus += bonus;
 		}
@@ -2156,7 +2154,7 @@ int Board::get_open_diagonals_on_opponent_king(bool color) {
 	// Depending on how far the game has progressed
 	constexpr float advancement_factor = 0.0f;
 
-	return eval_from_progress(total_bonus, _adv, advancement_factor);
+	return static_cast<int>(eval_from_progress(total_bonus, _adv, advancement_factor));
 }
 
 // Returns the number of retreat squares for the king

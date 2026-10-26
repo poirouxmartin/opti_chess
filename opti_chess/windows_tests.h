@@ -21,7 +21,7 @@ public:
 };
 
 // Rectangle
-typedef struct SimpleRectangle {
+struct SimpleRectangle {
 	int x1;
 	int y1;
 	int x2;

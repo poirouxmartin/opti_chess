@@ -24,7 +24,7 @@ Network::Network() {
 }
 
 // Copy constructor
-Network::Network(Network& n) {
+Network::Network(Network& /*n*/) {
 	// Copies the weights
 }
 
@@ -108,7 +108,7 @@ void Network::input_from_fen(const string& fen) {
 //}
 
 // Generates random weights in the neural network
-void Network::generate_random_weights(const float min, const float max) {
+void Network::generate_random_weights(const float /*min*/, const float /*max*/) {
 	for (int i = 0; i < _weights.size(); i++) {
 		for (int j = 0; j < _weights[i].size(); j++) {
 			_weights[i][j] = (float)GetRandomValue(-INT_MAX / 2, INT_MAX / 2) / (INT_MAX / 2);
@@ -188,7 +188,7 @@ float sigmoid_activation(const float sum, const float alpha, const float beta) {
 }
 
 // Returns an evaluation from the output (which roughly represents the winning chances, between 0 and 1)
-int Network::output_eval(int mate_value, float half_win_proba, int half_win_eval) {
+int Network::output_eval(int /*mate_value*/, float half_win_proba, int half_win_eval) {
 	// 0 -> -mate_value
 	// 1 -> mate_value
 	// 0.5 -> 0
@@ -199,5 +199,5 @@ int Network::output_eval(int mate_value, float half_win_proba, int half_win_eval
 
 	float evaluation = ((float)half_win_eval / a) * b;
 
-	return evaluation;
+	return static_cast<int>(evaluation);
 }
