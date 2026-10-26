@@ -1,4 +1,16 @@
 #pragma once
+// Evaluator: the parameter set of the hand-written static evaluation (no neural network).
+//  - Holds the per-term float weights (_piece_value, _king_safety, _pawn_structure,
+//    _trapped_pieces, _queen_safety, ...) and the piece-square tables
+//    (_pieces_pos_begin / _pieces_pos_end, [piece][row][col], opening and endgame).
+//  - It contains no evaluation code: the terms are computed by Board::evaluate
+//    (eval_core.cpp, which calls into eval_king.cpp, eval_pawn.cpp, eval_mobility.cpp,
+//    eval_misc.cpp; evaluation.cpp has the Evaluator constructors).
+//  - Output convention: Evaluation::_value (board.h) is WHITE-positive.
+//    Search code (quiescence, alpha-beta, TT) works side-to-move and converts at the boundary.
+//  - Env vars read by the evaluation (OPTI_EVAL_CACHE, OPTI_PAWN_STRUCT, OPTI_KS_*, OPTI_PP_*,
+//    OPTI_MOB_RELIEF): see docs/ENVIRONMENT.md. They change the bench signature.
+// See also: board.h (Evaluation, Board::evaluate), eval_core.cpp, opti_chess/ALGORITHMS.md.
 //#include "board.h"
 
 // Position evaluator (heuristics)

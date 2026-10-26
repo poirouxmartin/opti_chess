@@ -1,4 +1,13 @@
 #pragma once
+// Game tree: the played game and its variations, for the GUI/PGN. Separate from the search tree
+// (exploration.h).
+//  - GameTreeNode: last Move, label, a full Board copy, _children (vector<unique_ptr>, so node
+//    addresses stay stable) and a raw _parent pointer (nullptr at the root).
+//  - GameTree: _root, _current_node and navigation (select_next_node, select_previous_node,
+//    select_first_next_node), add_child, new_tree, promote_current_variation, reset.
+//  - Ownership: children are owned through unique_ptr; the GUI keeps pointers into the tree, which
+//    is why nodes are heap-allocated.
+// See also: game_tree.cpp, gui.h (GUI owns the GameTree), main_gui.h.
 #include "board.h"
 #include <vector>
 #include <memory>

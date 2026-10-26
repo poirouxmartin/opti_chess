@@ -1,3 +1,20 @@
+// GrogrosZero search implementation (declarations and Node/ChildLink in exploration.h).
+//  - Node::grogros_zero: iteration loop. Each iteration either expands one unexplored legal move
+//    (explore_new_move: new child + bounded quiescence on the leaf) or descends into a child chosen
+//    by pick_random_child (explore_random_child), then backs the value up (backup_value).
+//  - Node::quiescence: negamax with stand-pat and alpha-beta bounds, probes/stores the TT (zobrist.h).
+//    Its alpha/beta and return value are side-to-move; Evaluation::_value is white-positive.
+//  - Repetitions are path-local: a PositionHistory is pushed/popped along the descent and passed
+//    down; a repeated position scores as a draw for that path only. BackupResult.dep tracks which
+//    shared values depend on the path.
+//  - DAG mode (g_tt_node_dag): nodes shared through node_map; refresh_graph_values periodically
+//    re-solves the reachable graph with solve_graph_game (graph_game.h), infinite play = draw.
+//  - Search feature globals (g_search_*, g_selective_deepening, g_forced_every, ...) are initialised
+//    below from OPTI_* environment variables (OPTI_VALUE_PROP, OPTI_SOLVER, OPTI_SERIALIZE, ...):
+//    full list and defaults in docs/ENVIRONMENT.md. The code defaults win over stale comments here.
+//  - prune_full_arenas / recycle_detached_node free nodes back to the pools when they are full.
+// See also: exploration.h, graph_game.h, zobrist.cpp, eval_core.cpp, opti_chess/ALGORITHMS.md.
+
 #include "exploration.h"
 #include "useful_functions.h"
 #include "zobrist.h"

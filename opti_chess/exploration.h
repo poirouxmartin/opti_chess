@@ -1,5 +1,22 @@
 #pragma once
 
+// GrogrosZero search: declarations (implementation in exploration_diag.cpp).
+//  - Node: one position of the search tree/DAG. _board points into the BoardBuffer pool;
+//    _children is a robin_map<Move, ChildLink>; selection stats (visits, in-flight) live on the
+//    edge (ChildLink), so they stay correct when several parents share a node.
+//  - Entry points: Node::grogros_zero (iterations loop), explore_new_move, explore_random_child,
+//    pick_random_child, backup_value, quiescence (bounded tactical search).
+//  - Nodes come from the thread_local monte_node_buffer (NodeBuffer), Boards from monte_board_buffer
+//    (buffer.h). When a pool is full the search refines the existing tree (prune_full_arenas).
+//  - Repetition state is path-local: a PositionHistory is threaded through the descent (stack),
+//    never stored on a Node; BackupResult carries the path dependency (dep) up the recursion.
+//  - Values: Evaluation is white-positive, quiescence/alpha-beta/TT are side-to-move.
+//  - Globals g_* below are the A/B switches (g_tt_main_search, g_tt_node_dag, g_shared_tree,
+//    g_mcts_solver, g_forced_every...). Most are set from OPTI_* environment variables in
+//    exploration_diag.cpp: see docs/ENVIRONMENT.md.
+// See also: exploration_diag.cpp, graph_game.h (exact DAG values), buffer.h, zobrist.h,
+// opti_chess/ALGORITHMS.md, docs/ARCHITECTURE.md.
+
 #include "board.h"
 #include "buffer.h"
 #include <robin_map.h>

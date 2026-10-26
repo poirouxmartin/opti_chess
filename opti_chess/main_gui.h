@@ -1,3 +1,14 @@
+// GUI application loop, included by main.cpp (header-only, inline functions).
+//  - main_ui(): raylib setup, then the per-frame loop (while !WindowShouldClose) that reads keys
+//    and mouse and triggers engine actions (analysis start/stop, play, load, ...), then gui_draw().
+//    The key list is in the README Controls section; Ctrl-modified keys use ctrl_down().
+//  - The search itself is not run here: it is driven through main_GUI (gui.h), on its worker thread.
+//  - Process boost (HIGH process priority, HIGHEST worker threads) is on by default;
+//    OPTI_BOOST=0 opts out, Ctrl+B toggles it (get_boost_mode/set_boost_mode live in gui.cpp).
+//  - OPTI_NO_BROWSER: Q logs the URL instead of opening the browser (scripts/gui_drive.ps1).
+//    See docs/ENVIRONMENT.md.
+// See also: gui.h, gui.cpp, main.cpp, tests.h (legacy in-GUI suite).
+
 #include "board.h"
 #include "useful_functions.h"
 #include "gui.h"

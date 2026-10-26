@@ -1,5 +1,18 @@
 // Legal move generation: pins and check masks first, then direct legal moves per piece.
 // Split from board.cpp (same code); the add_* helpers are only used by get_moves() here.
+//
+// Overview (Board member functions, declared in board.h):
+//  - get_moves(): entry point. Fills _moves[] for the side to move and sets _got_moves and
+//    _player_in_check. Moves are legal by construction (no make-and-test).
+//  - get_pins(): pinned pieces with their pin direction. get_square_attacker(): attackers of the
+//    king square. get_interpose_mask(): squares that block a single check.
+//    get_controls_around_king(): enemy control map around the king (king moves, castling).
+//  - add_pawn_moves / add_knight_moves / add_rect_moves / add_diag_moves / add_king_moves take
+//    the pin and the interposition mask. en_passant_exposes_king() covers the en passant pin case.
+//  - Attack tables (AttackTables in the anonymous namespace below) are constexpr; sliders use
+//    classical rays, not magic bitboards. Square index = row * 8 + col, row 0 = rank 1.
+//  - add_move() drops moves beyond max_moves = 100 (board.h).
+// See also: board.h, board.cpp (make_move), board_fen.cpp, docs/ARCHITECTURE.md (Move generation).
 
 #include "board.h"
 

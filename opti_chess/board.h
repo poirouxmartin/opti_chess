@@ -1,4 +1,19 @@
 #pragma once
+// Board representation, move type and evaluation result type.
+//  - Board: _array[8][8] (row 0 = rank 1, square = row * 8 + col; codes in piece_type: 0 empty,
+//    1-6 white P N B R Q K, 7-12 black), plus _bitboards[13], _occupancies[3], cached king squares
+//    and the Zobrist key. Move is a packed bitfield struct; the move list is _moves[max_moves].
+//  - max_moves = 100: add_move() silently drops moves beyond the cap (accepted risk, docs/AUDIT.md).
+//  - get_moves() generates strictly legal moves (pins and check masks first, movegen.cpp).
+//    make_move() is copy-make: callers copy the Board, then apply the move in place; there is no
+//    unmake. The Zobrist key is updated incrementally when add_to_history is set.
+//  - Evaluation::_value is WHITE-positive. Quiescence, alpha-beta bounds and the TT are
+//    SIDE-TO-MOVE (negamax); convert with get_color() (+1 White, -1 Black) at the boundary
+//    (opti_chess/ALGORITHMS.md). Mates are encoded with mate_value and mate_ply (a mated side
+//    scores -mate_value + moves_count * mate_ply).
+//  - Search Boards are not heap-allocated one by one: they come from the thread_local
+//    monte_board_buffer pool (buffer.h). RepetitionHistory is a key -> count map.
+// See also: movegen.cpp, board.cpp, board_fen.cpp, evaluation.h, zobrist.h, buffer.h, docs/ARCHITECTURE.md.
 #include <iostream>
 #include <vector>
 #include <execution>

@@ -1,5 +1,19 @@
 #pragma once
 
+// GUI class (raylib): rendering and state of the analysis interface. Implementation in gui.cpp;
+// the event loop and key handling are in main_gui.h.
+//  - Global instance: main_GUI (declared at the bottom). draw() renders the board, variations,
+//    evaluation bar/graph and statistics; init_buffers() sizes the main thread's arenas.
+//  - Owns the played game (_game_tree, game_tree.h) and the analysis tree (exploration.h).
+//  - Search threading: the analysis runs on a worker thread (compute_worker) created through a
+//    Windows HANDLE with a 16 MB stack (quiescence recursion). The worker publishes a TreeSnapshot
+//    under _snapshot_mutex; the UI thread copies it (refresh_snapshot) into _tree_snapshot, the
+//    only copy the draw code reads. Other shared fields remain (B-17 in docs/ARCHITECTURE.md).
+//  - Search toggles copied into the globals when an analysis starts: _tt_main_search (default off)
+//    and _tt_node_dag (default on in the GUI). Debug logging with OPTI_DEBUG=1 (debug_log).
+//  - worker_status_text() / buffer_status_text() are pure helpers for the status panels (unit-testable).
+// See also: gui.cpp, main_gui.h, game_tree.h, exploration.h, docs/ENVIRONMENT.md.
+
 #include "time.h"
 #include <string>
 #include "raylib.h"

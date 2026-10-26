@@ -1,4 +1,17 @@
 #pragma once
+// Preallocated Board pool and pool sizing.
+//  - BoardBuffer: one big Board[] with an O(1) free-index stack (is_full(), get_first_free_board(),
+//    free_index()). The search never allocates Boards individually; when the pool is full it stops
+//    expanding and refines the existing tree.
+//  - monte_board_buffer is thread_local: each thread owns its arena. The Node pool counterpart,
+//    monte_node_buffer (NodeBuffer), is declared in exploration.h.
+//  - init() allocates once and is a no-op on a live arena: call remove()/reset() before reusing it
+//    with another size.
+//  - compute_pool_sizing() derives board/node/TT lengths from the available RAM (ram_fraction,
+//    hard cap, rss_overhead_factor); g_shared_pool_sizing lets worker threads reuse the main
+//    thread's capacities.
+//  - g_board_allocs / g_node_allocs are cumulative per-thread allocation counters (work measure for NPS).
+// See also: buffer.cpp, exploration.h (NodeBuffer), docs/ARCHITECTURE.md (Memory model).
 #include "board.h"
 #include <vector>
 #include <cstddef>
