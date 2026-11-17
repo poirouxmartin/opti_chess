@@ -1,0 +1,22 @@
+﻿diff --git a/opti_chess/exploration_diag.cpp b/opti_chess/exploration_diag.cpp
+index 31a42a4..ba79d04 100644
+--- a/opti_chess/exploration_diag.cpp
++++ b/opti_chess/exploration_diag.cpp
+@@ -704,6 +704,17 @@ int refresh_graph_values(Node* root, const PositionHistory& game_history) {
+ 			}
+ 			n->_deep_evaluation.get_WDL();
+ 			n->_deep_evaluation.get_average_score();
++			// EXPERIMENT (not for commit): take the WDL/avg of the child that carries the value
++			if (getenv("OPTI_EXP_REFRESH_CHILD_WDL") != nullptr)
++				for (auto const& [move, link] : n->_children)
++					if (link._node != nullptr && link._node->_deep_evaluation._value == value[i]) {
++						e._uncertainty = link._node->_deep_evaluation._uncertainty;
++						e._winnable_white = link._node->_deep_evaluation._winnable_white;
++						e._winnable_black = link._node->_deep_evaluation._winnable_black;
++						e._wdl = link._node->_deep_evaluation._wdl;
++						e._avg_score = link._node->_deep_evaluation._avg_score;
++						break;
++					}
+ 		}
+ 		n->_has_path_value = false;
+ 	}
