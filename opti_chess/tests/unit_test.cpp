@@ -4472,17 +4472,37 @@ TEST(Puzzle, ChunkedSaturation) {
 // 90%-full-on-new-position). Prints + asserts stability.
 TEST(Puzzle, SessionAccumulation) {
 	static Evaluator evaluator;
-	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
-	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+	// Isolation: run on fresh pools of the standard size, whatever the previous tests left
+	// (an arena left by another test changed the trajectory and the result); the previous
+	// pools are given back at the end, even on a failed ASSERT.
+	struct FreshPools {
+		int prev_b, prev_n;
+		FreshPools() : prev_b(monte_board_buffer._init ? monte_board_buffer._length : 0), prev_n(monte_node_buffer._init ? monte_node_buffer._length : 0) {
+			const PoolSizing ps = compute_pool_sizing();
+			if (monte_board_buffer._init) monte_board_buffer.remove();
+			if (monte_node_buffer._init) monte_node_buffer.remove();
+			monte_board_buffer.init(ps.board_length, false);
+			monte_node_buffer.init(ps.node_length, false);
+		}
+		~FreshPools() {
+			transposition_table.clear(); node_map.clear();
+			monte_board_buffer.remove(); monte_node_buffer.remove();
+			if (prev_b) monte_board_buffer.init(prev_b, false);
+			if (prev_n) monte_node_buffer.init(prev_n, false);
+		}
+	} fresh_pools;
 	const char* fens[] = {
 		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 		"2rq1rk1/1b1nbppp/p2pp3/np4P1/3NPP1P/2N1B3/PPPQ2B1/1K1R3R w - - 3 15",
 		"2r1r1k1/4b1pp/bq1pPnP1/4n3/3NP3/1PN3Q1/1P4B1/1KBR1R2 b - - 0 13",
 		"r1r4k/q3P1pP/3p1b2/4n3/3NP3/1PN5/1P2BQ2/1KB3R1 b - - 0 23",
 	};
+	for (bool dag : { true, false }) {
+	g_tt_node_dag = dag;
+	// Each pass takes its root and board after the reset: the old end-of-pass reset freed them while the next pass still used them
 	monte_board_buffer.reset(); monte_node_buffer.reset();
 	transposition_table.clear(); node_map.clear();
-	g_buffers_full_logged = false; g_tt_main_search = false; g_tt_node_dag = true;
+	g_buffers_full_logged = false; g_tt_main_search = false;
 	g_search_abort.store(false, std::memory_order_release);
 	g_search_deadline.store((clock_t)0, std::memory_order_release);
 	Board* board = monte_board_buffer.get_first_free_board();
@@ -4491,8 +4511,6 @@ TEST(Puzzle, SessionAccumulation) {
 	ASSERT_TRUE(root != nullptr);
 	const size_t freeB0 = monte_board_buffer._free_indices.size();
 	const size_t freeN0 = monte_node_buffer._free_indices.size();
-	for (bool dag : { true, false }) {
-	g_tt_node_dag = dag;
 	for (int cycle = 0; cycle < 4; cycle++) {
 		Board b;
 		b.from_fen(fens[cycle % 4]);
@@ -4547,7 +4565,6 @@ TEST(Puzzle, SessionAccumulation) {
 	monte_board_buffer.reset(); monte_node_buffer.reset();
 	transposition_table.clear(); node_map.clear();
 	}
-	recycle_detached_node(root);
 	transposition_table.clear(); node_map.clear();
 	g_tt_node_dag = false;
 	g_search_abort.store(false, std::memory_order_release);
@@ -7052,25 +7069,27 @@ TEST(Endgame, Fine70ExactDagSolvesLadder) {
 		monte_node_buffer.init(ps.node_length);
 	}
 
+	// Fine #70 ladder (docs/BENCHMARKS.md, S1..S7): every listed winning move is accepted.
 	struct EndgamePos {
 		const char* fen;
 		const char* name;
-		const char* expected_san;
+		vector<const char*> expected_san;
 	};
 
-	EndgamePos positions[] = {
-		{ "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1",       "Kb1 (Kb1 wins)",     "Kb1" },
-		{ "8/2k5/3p4/p2P1p2/P2P1P2/8/3K4/8 w - - 10 6",    "Kd3 (Kd3 wins)",     "Kd3" },
-		{ "8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7",    "Ke3 (Ke3 wins)",     "Ke3" },
-		{ "8/2k5/3p4/p2P1p2/P2P1P2/4K3/8/8 w - - 14 8",    "Kf3 (Kf2/Kf3 wins)", "Kf3" },
-		{ "8/2k5/3p4/p2P1p2/P2P1P2/6K1/8/8 b - - 17 9",    "Black Kd4",          "Kd4" },
-		{ "8/4k3/3p4/p2P1p2/P2P1P2/6K1/8/8 w - - 18 10",   "White Kf3",          "Kf3" },
-		{ "8/8/3p1k2/p2P1p2/P2P1P1K/8/8/8 w - - 20 11",    "Rh5 wins",           "Rh5" },
+	const EndgamePos positions[] = {
+		{ "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1",       "S7 Fine #70",   { "Kb1" } },
+		{ "8/2k5/3p4/p2P1p2/P2P1P2/8/3K4/8 w - - 10 6",    "S6",            { "Kd3" } },
+		{ "8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7",    "S5",            { "Ke3", "Ke2" } },
+		{ "8/2k5/3p4/p2P1p2/P2P1P2/4K3/8/8 w - - 14 8",    "S4",            { "Kf3", "Kf2" } },
+		{ "8/4k3/3p4/p2P1p2/P2P1P2/6K1/8/8 w - - 18 10",   "S2",            { "Kh4" } },
+		{ "8/8/3p1k2/p2P1p2/P2P1P1K/8/8/8 w - - 20 11",    "S1",            { "Kh5" } },
 	};
-	const int n_pos = 7;
+	const int n_pos = (int)(sizeof(positions) / sizeof(positions[0]));
 
 	const double budgets[] = { 0.1, 1.0, 5.0 };
 	const int n_budgets = 3;
+	int passes[2] = { 0, 0 };          // per mode (0 = tree, 1 = DAG), over all budgets
+	int dag_passes_max_budget = 0;
 
 	cout << "\n=== OFF vs DAG: KingPawn Endgames (transposition positions) ===" << endl;
 
@@ -7079,10 +7098,14 @@ TEST(Endgame, Fine70ExactDagSolvesLadder) {
 
 		Board resolve_b;
 		resolve_b.from_fen(pos.fen);
-		Move expected = resolve_san(resolve_b, pos.expected_san);
-		if (expected.is_null_move()) continue;
+		vector<Move> expected;
+		for (const char* san : pos.expected_san) {
+			const Move m = resolve_san(resolve_b, san);
+			ASSERT_FALSE(m.is_null_move()) << pos.name << ": " << san << " is not legal";
+			expected.push_back(m);
+		}
 
-		cout << "\n" << pos.name << " (" << pos.expected_san << "):" << endl;
+		cout << "\n" << pos.name << " (" << pos.expected_san[0] << "):" << endl;
 
 		for (int bi = 0; bi < n_budgets; bi++) {
 			double budget = budgets[bi];
@@ -7119,8 +7142,15 @@ TEST(Endgame, Fine70ExactDagSolvesLadder) {
 					0.005, 5.0, 1.10, iters_to_do, 10);
 
 				Move chosen = root->get_most_explored_child_move();
-				bool pass = (chosen == expected);
+				bool pass = false;
+				for (const Move& e : expected) if (chosen == e) pass = true;
 				int eval = root->_deep_evaluation._value;
+				if (pass) {
+					passes[mode]++;
+					if (use_dag && bi == n_budgets - 1) dag_passes_max_budget++;
+				}
+				EXPECT_FALSE(use_dag && bi == n_budgets - 1 && !pass)
+					<< pos.name << ": DAG played " << root_board->move_label(chosen) << " at " << iters_to_do << " iterations";
 
 				cout << "  " << (use_dag ? "DAG" : "OFF")
 				     << " " << budget << "s"
@@ -7135,6 +7165,15 @@ TEST(Endgame, Fine70ExactDagSolvesLadder) {
 			}
 		}
 	}
+	cout << "\nscore: tree " << passes[0] << "/" << n_pos * n_budgets << ", DAG " << passes[1] << "/" << n_pos * n_budgets
+	     << " (DAG at the largest budget: " << dag_passes_max_budget << "/" << n_pos << ")" << endl;
+	// The exact DAG must solve the whole ladder at the largest budget and never do worse than the tree
+	EXPECT_EQ(dag_passes_max_budget, n_pos);
+	EXPECT_GE(passes[1], passes[0]);
+	monte_board_buffer.reset();
+	monte_node_buffer.reset();
+	transposition_table.clear();
+	node_map.clear();
 }
 
 // ============================================================================
