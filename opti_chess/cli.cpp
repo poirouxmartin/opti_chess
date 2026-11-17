@@ -524,6 +524,11 @@ static int cmd_solve(int argc, char** argv) {
     int done = 0;
     string best = "0000";
     int value = 0;
+    const char* trace_env = getenv("OPTI_SOLVE_TRACE");
+    const bool trace = trace_env != nullptr;
+    const bool trace_children = trace && atoi(trace_env) >= 2;
+    const char* from_env = getenv("OPTI_SOLVE_TRACE_FROM");
+    const int trace_from = from_env != nullptr ? atoi(from_env) : 0;
     while (done < max_iters) {
         const int chunk = min(500, max_iters - done);
         root.grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, chunk, 10, nullptr, nullptr, 0);
@@ -534,8 +539,53 @@ static int cmd_solve(int argc, char** argv) {
         const bool ok = is_expected(best) && value >= min_value;
         if (ok && solved_at < 0) { solved_at = done; solved_ms = (now_s() - t0) * 1000.0; }
         if (!ok) solved_at = -1;
-        if (getenv("OPTI_SOLVE_TRACE") != nullptr)
+        if (trace)
             cout << "trace " << done << " " << best << " " << root._deep_evaluation._value << endl;
+        // OPTI_SOLVE_TRACE_PATH=e3f2,c7d7: dump the edges under the node reached by these UCI moves
+        if (const char* path = getenv("OPTI_SOLVE_TRACE_PATH"); path != nullptr && trace && done >= trace_from) {
+            Node* n = &root;
+            std::stringstream ss(path);
+            string mv;
+            while (n != nullptr && std::getline(ss, mv, ',')) {
+                Node* next = nullptr;
+                for (auto const& [m, link] : n->_children)
+                    if (link._node != nullptr && move_to_uci(*n->_board, m) == mv) next = link._node;
+                n = next;
+            }
+            if (n != nullptr)
+                for (auto const& [m, link] : n->_children)
+                    if (link._node != nullptr)
+                        cout << "  path " << path << " " << move_to_uci(*n->_board, m) << " visits " << link._chosen_iterations.load()
+                             << " value " << link._node->_deep_evaluation._value << " avg " << link._node->_deep_evaluation._avg_score
+                             << " draw " << link._node->_deep_evaluation._wdl.draw_chance << " terminal " << link._node->_is_terminal << endl;
+        }
+        // OPTI_SOLVE_TRACE=2: also dump every root edge from OPTI_SOLVE_TRACE_FROM on
+        // (visits, white-POV value, WDL, avg score, proven flag, arena use)
+        if (trace_children && done >= trace_from) {
+            cout << "  boards " << (monte_board_buffer._length - (int)monte_board_buffer._free_indices.size())
+                 << " nodes " << (monte_node_buffer._length - (int)monte_node_buffer._free_indices.size()) << endl;
+            vector<pair<int, Move>> edges;
+            for (auto const& [m, link] : root._children) edges.push_back({ link._chosen_iterations.load(), m });
+            sort(edges.begin(), edges.end(), [](auto const& x, auto const& y) { return x.first > y.first; });
+            for (auto const& [visits, m] : edges) {
+                const Node* c = root._children.at(m)._node;
+                cout << "  edge " << move_to_uci(b, m) << " visits " << visits;
+                if (c != nullptr) {
+                    const Evaluation& e = c->_deep_evaluation;
+                    cout << " value " << e._value << " wdl " << e._wdl.win_chance << "/" << e._wdl.draw_chance << "/" << e._wdl.lose_chance
+                         << " avg " << e._avg_score << " iters " << c->_iterations.load() << " parents " << c->_parent_count
+                         << " proven " << (int)c->_proven;
+                }
+                cout << endl;
+                // OPTI_SOLVE_TRACE=3: one more ply (the replies) under every root edge
+                if (c != nullptr && atoi(trace_env) >= 3)
+                    for (auto const& [m2, l2] : c->_children)
+                        if (l2._node != nullptr)
+                            cout << "    reply " << move_to_uci(*c->_board, m2) << " visits " << l2._chosen_iterations.load()
+                                 << " value " << l2._node->_deep_evaluation._value << " avg " << l2._node->_deep_evaluation._avg_score
+                                 << " draw " << l2._node->_deep_evaluation._wdl.draw_chance << endl;
+            }
+        }
     }
     const double total_ms = (now_s() - t0) * 1000.0;
     if (solved_at >= 0)
