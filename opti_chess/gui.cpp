@@ -681,7 +681,7 @@ void GUI::load_resources() {
 	//_text_font.texture.sg
 
 	// Icon
-	_icon = LoadImage("resources/images/grogros_zero.png"); // TODO essayer de charger le .ico, pour que l'icone s'affiche tout le temps (pas seulement lors du build)
+	_icon = LoadImage("resources/images/grogros_zero.png"); // TODO try loading the .ico so the icon shows at all times (not only during the build)
 	SetWindowIcon(_icon);
 	UnloadImage(_icon);
 
@@ -846,7 +846,7 @@ void GUI::slider_text(const string& s, float pos_x, float pos_y, float width, fl
 	const Vector2 estimated_size = MeasureTextEx(_text_font, "A", size, _font_spacing * size);
 
 	int split_length = static_cast<int>(width / estimated_size.x);
-	int margin = split_length * 1.2f; // Pour forcer le split
+	int margin = split_length * 1.2f; // To force the split
 	string new_string;
 	int rows = 0;
 	int k = 0;
@@ -2824,7 +2824,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	//constexpr int supposed_ips = 1000;
 	//const int supposed_ips = max(750, _root_exploration_node->get_ips());
 
-	constexpr int average_nps = 5000; // Pour une position semi-complexe
+	constexpr int average_nps = 5000; // For a semi-complex position
 	constexpr float consistent_factor = 0.35f; // The larger this factor, the more constant the time used, whatever the complexity of the position
 
 	const int actual_ips = _root_exploration_node->get_ips();
@@ -3023,6 +3023,6 @@ void GUI::init_buffers() const {
 // The O(capacity) sweep was purely redundant.
 void GUI::reset_buffers() const {
 	transposition_table.clear();
-	node_map.clear(); // #11 Plan B — purge le DAG en meme temps que la TT (pas de pointeur pendant inter-recherches)
+	node_map.clear(); // #11 Plan B — purges the DAG together with the TT (no pointer kept between searches)
 }
 

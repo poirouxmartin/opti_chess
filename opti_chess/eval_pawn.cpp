@@ -1187,8 +1187,8 @@ int Board::get_pawn_structure(float display_factor, const EvalControls& ctx)
 					main_GUI._eval_components += string("RDIAG ") + (race_cands[wi].white ? "w " : "b ") + to_string(race_cands[wi].col) + " arr=" + to_string(race_cands[wi].arrival) + " mg=" + to_string(margin) + " top=" + to_string((int)topup) + '\n';
 			}
 		}
-		// RDUEL : diagnostic double-course (positions respectives des
-		// deux candidats certains). Inerte, flag OPTI_PP_RDIAG.
+		// RDUEL: double-race diagnostic (relative positions of the
+		// two certain candidates). Inert, flag OPTI_PP_RDIAG.
 		{
 			static const bool rdiag2 = getenv("OPTI_PP_RDIAG") != nullptr;
 			if (rdiag2)
@@ -1516,7 +1516,7 @@ int Board::get_bishop_pawns() const {
 
 	// Add a bonus/penalty depending on the colour of the opposing pawns too?
 	float ally_bishop_pawn_malus = 1.0f;
-	float enemy_bishop_pawn_bonus = 1.0f * (1.0f - _adv); // En fin de partie, on veut pouvoir attaquer les pions adverses
+	float enemy_bishop_pawn_bonus = 1.0f * (1.0f - _adv); // In the endgame we want to be able to attack enemy pawns
 	// r1b1k2r/1p1n1p2/p1pBp1pp/2Pp1q1n/PP1P4/4P3/3N1PPP/R2Q1RK1 w kq - 0 5
 
 	// White pawns on light squares
@@ -1606,7 +1606,7 @@ int Board::get_bishop_pawns() const {
 
 // Returns the long-term weakness value of the pawn shield
 int Board::get_pawn_shield() {
-	// Prendre en compte:
+	// Take into account:
 	// - pawns in front of the king: done
 	// - TODO: semi-open files in front of the king
 	// - TODO: penalties for doubled or isolated pawns in front of the king
@@ -2032,7 +2032,7 @@ int Board::get_pawn_shield_protection_at_column(bool color, int column, float op
 
 
 				// REVIEW: unsupported pawns attached to another are still counted as connected
-				// En fait non?
+				// Actually no?
 				// row +/- dir can leave the board at ranks 0/7: bound-check every index.
 				const int row_behind = row - dir;
 				const int row_ahead = row + dir;

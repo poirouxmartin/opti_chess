@@ -244,7 +244,7 @@ int Board::is_eval_mate(const int e) const
 
 // Generates the opening book
 void Board::generate_opening_book(int nodes) {
-	//// Lit le livre d'ouvertures actuel
+	//// Reads the current opening book
 	//string book = LoadFileText("resources/data/opening_book.txt");
 	//cout << "Book : " << book << endl;
 
@@ -267,7 +267,7 @@ int time_to_play_move(const int t1, int t2, const float k) {
 	return t1 * k;
 
 	// Still to improve:
-	// Prendre en compte le temps de l'adversaire
+	// Take the opponent's time into account
 	// account for the number of moves left in the game, or an approximation -> spend longer when mating or nearly lost
 	// account for evaluation swings, or rising moves
 	// increments are still unhandled

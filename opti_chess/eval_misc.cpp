@@ -578,7 +578,7 @@ int Board::get_fianchetto_value() const
 			// Which of the two diagonals is the bishop on?
 			bool diagonal = row == col;
 
-			// Direction de la diagonale
+			// Direction of the diagonal
 			int d_row = 1;
 			int d_col = diagonal ? 1 : -1;
 
@@ -625,9 +625,9 @@ int Board::get_fianchetto_value() const
 	return fianchetti * 25.0f * (1.0f - _adv);
 }
 
-// Classification des cases faibles : ne dépend que des pions (aucune lecture de pièce ni de contrôle),
-// elle est donc mise en cache par structure de pions (voir weak_square_masks)
-struct WeakSquareMasks { uint64_t weak; uint64_t safe; }; // safe = sûre mais pas faible
+// Weak-square classification: depends only on pawns (no piece or control reads),
+// so it is cached per pawn structure (see weak_square_masks)
+struct WeakSquareMasks { uint64_t weak; uint64_t safe; }; // safe = safe but not weak
 
 static WeakSquareMasks compute_weak_square_masks(const uint8_t (&a)[8][8], bool color) {
 	WeakSquareMasks masks{ 0, 0 };
@@ -906,12 +906,12 @@ int Board::get_weak_squares(bool color, bool around_king, const EvalControls& ct
 
 	// r1bq2rk/2n4p/3p4/pNpPnp2/P1P1pN2/2Q5/4BPPP/1R3RK1 w - - 1 25: can e5 count as a weak square for White here?
 	// rnbqkb1r/ppp2ppp/4pn2/3p4/3P4/4PN2/PPP2PPP/RNBQKB1R w KQkq - 0 4: h4 adds a lot to weak_squares; why?
-	// 2r1brk1/6bp/p2pPpp1/qppN4/8/1P3NP1/P1Q2PP1/4RBK1 b - - 1 25 : grosse case faible en d5!!
+	// 2r1brk1/6bp/p2pPpp1/qppN4/8/1P3NP1/P1Q2PP1/4RBK1 b - - 1 25 : big weak square on d5!!
 	// r1bqkbnr/pppp1ppp/8/4p3/2PnP3/7P/PP1P1PP1/RNBQKBNR w KQkq - 1 4 : d4
 	// r2qkb1r/pp1b1ppp/4p3/1PPp4/3QnP2/4P3/P1P3PP/RNB1KB1R w KQkq - 1 12 : e4 gratos...
 	// 2r1brk1/6bp/p2pPpp1/qppN4/8/1P3NP1/P1Q2PP1/4RBK1 b - - 1 25 vs 2r1brk1/6bp/p2p1pp1/qppN4/8/1P3NP1/P1Q2PP1/4RBK1 b - - 1 25
 	// 2r5/pp6/3pkp2/2p1p1p1/2P3Pp/3PPP1P/PP2K3/2R5 w - - 0 1: many weak squares, none of them usable
-	// r1bq1rk1/pp1n1ppp/2pbpn2/3p4/3P4/2NBPN2/PPP2PPP/R1BQ1RK1 w - - 4 9 : pas vraiment de case faible...
+	// r1bq1rk1/pp1n1ppp/2pbpn2/3p4/3P4/2NBPN2/PPP2PPP/R1BQ1RK1 w - - 4 9 : not really a weak square...
 
 	// r1bqkbnr/5ppp/p1np4/4p3/1p2P3/N1N5/PPP1BPPP/R1BQK2R w KQkq - 0 9: after Nd5, then after bxa3?
 
@@ -1315,7 +1315,7 @@ float Board::get_winnable(Evaluation* eval, bool color, float position_nature) c
 	// - opposite-side castling
 	
 	// Factors contributing to drawing chances:
-	// - Fermeture de la position
+	// - Closed position
 	// - symmetry of the position
 	
 	// ENDGAME:
@@ -1325,7 +1325,7 @@ float Board::get_winnable(Evaluation* eval, bool color, float position_nature) c
 	// - whether mate is possible
 	
 	// Factors contributing to drawing chances:
-	// - Finales de tours -> +0.25?
+	// - Rook endings -> +0.25?
 	// - opposite-coloured bishops -> 0.5?
 
 	// EXEMPLES:
@@ -1355,7 +1355,7 @@ float Board::get_winnable(Evaluation* eval, bool color, float position_nature) c
 	// Pawn count of the side
 	uint8_t pawns_count = 0;
 
-	// Potentiel de mat
+	// Mating potential
 	float mating_potential = 0.0f;
 
 	for (uint8_t row = 0; row < 8; row++) {
@@ -1416,7 +1416,7 @@ float Board::get_winnable(Evaluation* eval, bool color, float position_nature) c
 		cout << "- base winnable value: " << winnable_value << endl;
 	}
 
-	// 8/PK6/3k4/8/8/8/8/8 w - - 0 79 : FIXME *** a8 ne devrait pas baisser le winnable!
+	// 8/PK6/3k4/8/8/8/8/8 w - - 0 79 : FIXME *** a8 should not lower the winnable!
 	// K1k5/P7/3N4/8/8/8/8/8 b - - 2 77: Kc7 is the only move that holds
 
 
@@ -1636,7 +1636,7 @@ int Board::get_trapped_pieces(const EvalControls& ctx) const {
 
 				//cout << "i: " << i << ", j: " << j << ", weight: " << weight << endl;
 
-				// Centre de masse
+				// Center of mass
 				w_center_of_mass_i += row * weight;
 				w_center_of_mass_j += col * weight;
 				w_total_weight += weight;
@@ -1649,7 +1649,7 @@ int Board::get_trapped_pieces(const EvalControls& ctx) const {
 				
 				//cout << "i: " << i << ", j: " << j << ", weight: " << weight << endl;
 
-				// Centre de masse
+				// Center of mass
 				b_center_of_mass_i += row * weight;
 				b_center_of_mass_j += col * weight;
 				b_total_weight += weight;
@@ -1723,7 +1723,7 @@ int Board::get_trapped_pieces(const EvalControls& ctx) const {
 
 				float distance = max(0.0f, base_distance - min_distance);
 
-				// Plus gros malus quand proche du camp advserse
+				// Bigger penalty when close to the enemy side
 				distance *= row + 1;
 
 				// Penalty
@@ -1973,9 +1973,9 @@ float Board::get_position_nature() const {
 	// - pawn count
 	// - number of blocked pawns
 
-	// Facteurs rendant la position plus ouverte
+	// Factors making the position more open
 	// - Number of open files
-	// - Nombre de diagonales ouvertes
+	// - Number of open diagonals
 
 	// Impact on the other evaluation terms:
 	// Position ouverte:
@@ -2101,11 +2101,11 @@ int Board::get_open_diagonals_on_opponent_king(bool color) {
 			if (new_i < 0 || new_i > 7 || new_j < 0 || new_j > 7)
 				continue;
 
-			// Nature de la diagonale
+			// Nature of the diagonal
 			bool semi_open = true;
 			bool open = true;
 
-			// Parcours de la diagonale
+			// Traversal of the diagonal
 			while (new_i >= 0 && new_i < 8 && new_j >= 0 && new_j < 8) {
 				uint8_t p = _array[new_i][new_j];
 

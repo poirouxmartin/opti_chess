@@ -470,7 +470,7 @@ Move Node::get_first_unexplored_move(bool fully_explored) {
 // Initialises the node from its board
 void Node::init_node() {
 
-	// Lecture acquire : en arbre partagé, _initialized n'est publié qu'une fois le nœud prêt
+	// Acquire load: in a shared tree, _initialized is only published once the node is ready
 	if (std::atomic_ref<bool>(_initialized).load(std::memory_order_acquire)) {
 		return;
 	}
@@ -484,10 +484,10 @@ void Node::init_node() {
 		return;
 	}
 
-	// Le drapeau était posé AVANT le travail : un autre thread voyait le nœud initialisé
-	// pendant get_moves / sort_moves et pendant le coup d'essai de assign_move_flags (plateau
-	// modifié en place), d'où des plateaux incohérents en arbre partagé. Publié en sortie de
-	// portée (avant le déverrouillage), sur tous les chemins de retour.
+	// The flag was set BEFORE the work: another thread saw the node initialized
+	// during get_moves / sort_moves and during the trial move of assign_move_flags (board
+	// modified in place), hence inconsistent boards in a shared tree. Published at scope exit
+	// (before unlocking), on all return paths.
 	struct InitPublish {
 		bool& flag;
 		~InitPublish() { std::atomic_ref<bool>(flag).store(true, std::memory_order_release); }
@@ -2926,10 +2926,10 @@ void Node::evaluate_position(Evaluator* evaluator, bool display, Network * netwo
 	}
 }
 
-// Poussee silencieuse d'une case par un pion passe (aucun pion adverse
-// devant, colonne + adjacentes) : heuristique cheap (lecture _array, pas
-// de structure de pions) pour reperer les coups qui creent une menace de
-// promotion. Sert au prior passeurs de la selection (pick_random_child).
+// Quiet one-square push by a passed pawn (no enemy pawn in front
+// ahead, file + adjacent files): cheap heuristic (reads _array, no
+// pawn structure) to spot moves that create a threat of
+// promotion. Serves the passed-pawn prior of the selection (pick_random_child).
 static bool is_passed_push(const Board* b, const Move& move) {
 	if (move.is_capture() || move.is_promotion()) return false;
 	const bool white = b->_player;
@@ -3045,13 +3045,13 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		move_scores[m] = top[i].score * boost_table[i];
 	}
 
-	// Prior passeurs : les poussees de pions passes (is_passed_push, defini
-	// plus haut dans ce fichier) obtiennent une part d'exploration garantie,
-	// qui decroit avec les visites (comme le trust prior) pour ne pas
-	// verrouiller ensuite. Sans lui, une ligne comme ...c2 (premiere
-	// impression -2600 via g8=Q+ en quiescence) ne recoit que des miettes et
-	// n'est jamais validee. Selection seule (la PV via get_best_score_move
-	// est intacte). OFF par defaut (OPTI_PRIOR_PASSER), calibre sur probes.
+	// Passed-pawn prior: passed pawn pushes (is_passed_push, defined
+	// earlier in this file) get a guaranteed share of exploration,
+	// decreasing with visits (like the trust prior) so as not to
+	// lock in afterwards. Without it, a line like ...c2 (first
+	// impression -2600 via g8=Q+ in quiescence) only gets crumbs and
+	// is never validated. Selection only (the PV via get_best_score_move
+	// is intact). OFF by default (OPTI_PRIOR_PASSER), calibrated on probes.
 	static const double passer_prior = [] {
 		const char* e = getenv("OPTI_PRIOR_PASSER");
 		return e ? atof(e) : 5.0;
@@ -3108,9 +3108,9 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 		// Move score
 		double move_score = move_scores[move];
 
-		// Facteur d'exploration (virtual loss: les descentes en cours
-		// comptent comme visites pour etalers les threads Lazy SMP;
-		// loads explicites: pas d'arithmetique sur atomic)
+		// Exploration factor (virtual loss: descents in progress
+		// count as visits to spread the Lazy SMP threads;
+		// explicit loads: no arithmetic on atomic)
 		const int vl_visits = child_link._chosen_iterations.load(std::memory_order_relaxed)
 			+ child_link._inflight.load(std::memory_order_relaxed) * g_virtual_loss;
 		int child_iterations = max(vl_visits, (int)child->_iterations.load(std::memory_order_relaxed));
