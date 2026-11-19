@@ -3838,9 +3838,11 @@ void NodeBuffer::remove() {
 	_free_indices.clear();
 }
 
-// Global buffer reset: rebuilds only the free-index stack.
+// Global buffer reset: rebuilds the free-index stack and returns every slot
+// to the state of a freshly initialised buffer.
 // #12: do NOT re-sweep _length with reset(false) (each call cleared a
-// robin_map => O(capacity) cost). No caller since the #12 fix.
+// robin_map => O(capacity) cost). Called between whole searches (tests,
+// puzzle runner per puzzle, CLI commands), never inside a search.
 bool NodeBuffer::reset() {
 	g_buffers_full_logged = false;
 	_free_indices.clear();
@@ -3851,6 +3853,14 @@ bool NodeBuffer::reset() {
 		// children) made Node::reset's cycle collection see a phantom
 		// referrer and keep dead nodes (SessionAccumulation leak)
 		_nodes[i]._is_active = false;
+		// Drop the children's bucket array. robin_map::clear() keeps bucket_count,
+		// and the iteration order of _children (so every first-max tie-break over
+		// the children) depends on it: a search after reset() then depended on
+		// the searches run before it (Fine70ExactDagSolvesLadder passed alone,
+		// failed after other tests). An empty map does not allocate, so slots
+		// never used cost nothing here.
+		if (_nodes[i]._children.bucket_count() != 0)
+			robin_map<Move, ChildLink>().swap(_nodes[i]._children);
 	}
 
 	return true;
