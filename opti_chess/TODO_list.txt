@@ -1,264 +1,264 @@
------ TODO list (nettoyee) -----
-Derniere mise a jour: 2026-08-19
+----- TODO list (cleaned up) -----
+Last updated: 2026-08-19
 
-=== JEU ===
-  -> Promotions de tous types (pas seulement dame)
-  -> Tests de validité de FEN + rendre from_fen plus tolérant
-  -> Naviguer dans l'historique des coups
-  -> Générer un arbre d'ouvertures
-  -> Livre d'ouvertures (format arbre, charger/rechercher)
-  -> Règles de nulles/mat en dehors de l'évaluation
-  -> Découper draw en sous-fonctions
-  -> Buffer de coups plein -> gérer proprement
+=== GAME ===
+  -> Promotions of all types (not only queen)
+  -> FEN validity tests + make from_fen more tolerant
+  -> Browse move history
+  -> Generate an opening tree
+  -> Opening book (tree format, load/search)
+  -> Draw/mate rules outside the evaluation
+  -> Split draw into sub-functions
+  -> Full move buffer -> handle properly
 
 === EVALUATION ===
-  -> Finales spéciales: roi+pion, mat fou+cavalier, fous couleurs opposées, tours, pions
-  -> Winnable: asymétriques (fou vs cavalier, pièce mineure+pion vs tour)
-  -> Carré du pion en finales
-  -> Pions passés: contrôles alliés, candidats, valeurs (bloqueur, contrôle, aides)
-  -> Pions arriérés
-  -> Structure de pions: îlots, chaînes, "A" vs "V", jouer côté où structure pointe
-  -> Favoriser cavaliers en positions fermées, fous diagonales ouvertes, tours colonnes ouvertes
-  -> Faiblesses sur une couleur
-  -> Cases noires/blanches -> faiblesse
-  -> Cases faibles proches du roi = plus graves (grouper par roque)
-  -> Clouages: pression + bonus si pièce clouée non défendue
-  -> Trapped pieces: pas considerer si échange possible pièce équivalente
-  -> Pièces enfermées / bloquées / isolées
-  -> Pièces défendues / non protégées (solidité)
+  -> Special endings: king+pawn, bishop+knight mate, opposite-colored bishops, rooks, pawns
+  -> Winnable: asymmetric (bishop vs knight, minor piece+pawn vs rook)
+  -> Pawn square in endgames
+  -> Passed pawns: allied controls, candidates, values (blocker, control, helpers)
+  -> Backward pawns
+  -> Pawn structure: islands, chains, "A" vs "V", play on the side the structure points to
+  -> Favor knights in closed positions, bishops on open diagonals, rooks on open files
+  -> Weaknesses on one color
+  -> Light/dark squares -> weakness
+  -> Weak squares near the king = more serious (group by castling side)
+  -> Pins: pressure + bonus if the pinned piece is undefended
+  -> Trapped pieces: do not count if an equivalent piece exchange is possible
+  -> Enclosed / blocked / isolated pieces
+  -> Defended / unprotected pieces (solidity)
   -> Unprotected pieces
-  -> King safety: regrouper par roque (pawn storm, weak squares, diags, exposure)
-  -> King safety long terme: distances au roque pour tous les facteurs
-  -> King proximity: virer vecteurs (trop lent), carrés des pions passés adverses
-  -> King safety: quand roi safe, ok affaiblir le sien pour mater l'autre
-  -> Activité des pièces: différencier court/long terme, pièces bloquées par pions adverses
-  -> Refaire toute l'activité des pièces (le facteur le plus important)
-  -> Mobility: map des pièces bloquées, itération, court/long terme
-  -> Coordination des pièces (qui se défendent entre elles)
-  -> Pièces harmonieuses
-  -> Pression: attaques additionnelles en rayon X, doubler tours
-  -> Initiative / positions d'attaque
-  -> Bishop pawns: bonus si devant structure, malus si derrière
-  -> Mauvais fou = pion de moins (moins pire si actif)
-  -> Fous de fianchetto: faiblesse plus grave si pas contrôlé par fou
-  -> Tour derrière pion passé
-  -> Tours liées
-  -> Garder les tours pour faire nulle
-  -> Activité de la dame (milieux/fins de partie)
-  -> Queen safety: pièces de valeur inférieure seulement
-  -> Exposed queen pour éviter scandi
-  -> Développer cavaliers avant fous
-  -> Ouvrir position si avantage de développement
-  -> Analyser les bons/mauvais fous
-  -> Mating nets (même sans échec menacé)
+  -> King safety: group by castling side (pawn storm, weak squares, diagonals, exposure)
+  -> Long-term king safety: distances to castling for all factors
+  -> King proximity: drop vectors (too slow), squares of enemy passed pawns
+  -> King safety: when own king is safe, OK to weaken it to mate the other
+  -> Piece activity: distinguish short/long term, pieces blocked by enemy pawns
+  -> Redo all piece activity (the most important factor)
+  -> Mobility: map of blocked pieces, iteration, short/long term
+  -> Piece coordination (which pieces defend each other)
+  -> Harmonious pieces
+  -> Pressure: additional x-ray attacks, doubled rooks
+  -> Initiative / attacking positions
+  -> Bishop pawns: bonus if in front of the structure, malus if behind
+  -> Bad bishop = one pawn less (less bad if active)
+  -> Fianchetto bishops: weakness more serious if not controlled by the bishop
+  -> Rook behind a passed pawn
+  -> Connected rooks
+  -> Keep rooks to draw
+  -> Queen activity (middlegame/endgame)
+  -> Queen safety: lower-value pieces only
+  -> Exposed queen to avoid the Scandinavian
+  -> Develop knights before bishops
+  -> Open the position if development gives an advantage
+  -> Analyze good/bad bishops
+  -> Mating nets (even without a threatened check)
   -> Backrank
-  -> Overextended space: points d'entrée adverses
-  -> Potentiel défensif (plus gros pièces mineures)
-  -> Potentiel offensif lourds >> défensif lourds
-  -> Finales de pièces lourdes: avantage roi le moins faible
-  -> Pawn race: compter coups avant promotion
-  -> Pas de pawn_push_threat si en_passant possible
+  -> Overextended space: enemy entry points
+  -> Defensive potential (bigger minor pieces)
+  -> Offensive potential of heavy pieces >> defensive heavy pieces
+  -> Heavy-piece endgames: king advantage, the less weak king
+  -> Pawn race: count moves before promotion
+  -> No pawn_push_threat if en passant is possible
   -> Incremental evaluation
-  -> Générer coups ordonnés (captures en premier)
-  -> Augmenter poussées pions en finale (move sort / policy)
-  -> Policy pour les coups (préférences de réflexion)
-  -> Règle des 2 faiblesses
-  -> Anaconda: contrôle cases, aucun mouvement adversaire
-  -> Themes positionnels actifs/passifs (court/long terme)
-  -> Lignes/colonnes ouvertes sur le roi: grave seulement si pièce lourde peut y aller
-  -> Catégorie "Développement" séparée de King safety
-  -> Revoir pièce par pièce la valeur globale
-  -> Retirer pawn_shield/pawn_storm des éval (déjà dans king_safety)
-  -> Texel tuner pour rectifier l'évaluation
-  -> Utiliser map de contrôles dans l'évaluation
-  -> Gestion des draws: incertitude max, winning eval, beta down
-  -> Calculer l'avancement au fur et à mesure
-  -> Règle des 50 coups: variable globale
-  -> Séparer éval court terme / long terme
-  -> Confiance: 100% si plus de pièces?
-  -> Incertitude: grand roque rend positions plus incertaines
-  -> Nombre d'îlots de pions dans structure
-  -> WR ne doit diminuer quand activité augmente pour éval donnée
-  -> En finale, pions passés ou non, faut les pousser
-  -> Refaire evaluate threat plus puissant
-  -> Augmenter vitesse d'évaluation
+  -> Generate ordered moves (captures first)
+  -> Increase pawn pushes in endgames (move sort / policy)
+  -> Move policy (thinking preferences)
+  -> Two-weaknesses rule
+  -> Anaconda: controls squares, no opponent move
+  -> Active/passive positional themes (short/long term)
+  -> Open lines/files to the king: serious only if a heavy piece can get there
+  -> "Development" category separate from king safety
+  -> Review the overall value piece by piece
+  -> Remove pawn_shield/pawn_storm from eval (already in king_safety)
+  -> Texel tuner to correct the evaluation
+  -> Use the control map in the evaluation
+  -> Draw handling: max uncertainty, winning eval, beta down
+  -> Compute progress as we go
+  -> 50-move rule: global variable
+  -> Split short-term / long-term eval
+  -> Confidence: 100% if more pieces?
+  -> Uncertainty: long castling makes positions more uncertain
+  -> Number of pawn islands in the structure
+  -> WR must not decrease when activity increases for a given eval
+  -> In endgames, passed pawns or not, they must be pushed
+  -> Rework evaluate threat to be more powerful
+  -> Increase evaluation speed
 
-=== ALGORITHME ===
-  -> Algo Negamax: undo moves plutôt que copies de tableaux
+=== ALGORITHM ===
+  -> Negamax algorithm: undo moves instead of copying arrays
   -> MTD(f) <-> alphabeta with memory
-  -> Parallélisation (GPU?, std::for_each policy parallel, threads)
-  -> Paralléliser les perft tests
+  -> Parallelization (GPU?, std::for_each parallel policy, threads)
+  -> Parallelize perft tests
   -> SIMD code
-  -> Buffer de coups pour éviter stockage dans plateaux
-  -> Stocker indice plateau dans buffer plutôt que pointeur
-  -> Negamax: utiliser plateaux du buffer
-  -> Précalculer (matrices distance bords, constantes, tables d'attaque)
-  -> Utiliser librairie boost
-  -> Utiliser std::sort pour trier les coups
-  -> Transpositions: reset table après chaque coup
-  -> Mini clé Zobrist 16 bits pour répétitions
+  -> Move buffer to avoid storing on boards
+  -> Store board index in buffer instead of pointer
+  -> Negamax: use boards from the buffer
+  -> Precompute (edge distance matrices, constants, attack tables)
+  -> Use boost library
+  -> Use std::sort to sort moves
+  -> Transpositions: reset table after each move
+  -> 16-bit mini Zobrist key for repetitions
   -> Delta pruning (quiescence search)
-  -> Revoir k_add
-  -> Quiescence: shallow d'abord, profonde si intéressant
-  -> Quiescence: couper positions complètement foutues
-  -> Quiescence: réutiliser réflexion pour recherche normale
-  -> Quiescence: profondeur modulée par importance de la branche
-  -> Quiescence: autorisations standpat à revoir
-  -> Quiescence: depth < 0 à investiguer
-  -> Quiescence: tri coups (meilleures captures d'abord)
-  -> Ne plus regarder branches finies de GrogrosZero
-  -> Rechercher large au début, puis serré après
-  -> Retirer coups pourris pour augmenter capacité stockage
-  -> Prioriser coups non fully explorés
-  -> Transpositions: gérer overflows
-  -> Beta cut-off si en échec?
-  -> q_depth plus petit avec extensions
-  -> positions_history dans exploration plutôt que board
-  -> Pick_random_child en fonction de l'évaluation relative
-  -> Quand meilleur coup complètement exploré, refaire sans lui?
-  -> Utiliser améliorations/optimisations VisualStudio
-  -> GrogrosZero ralentit variantes longues -> optimiser
-  -> Recherche spécialement de mat
-  -> Raylib pour random (vérifier vitesse)
-  -> Initialiser plateau plutôt que from_fen
-  -> Undo gardent calculs GrogrosZero
-  -> Refaire get_moves (controlled squares) + perft test
-  -> Cleaning: flags coups, methods utiles, static constexpr
-  -> Refaire get_best_move pour correspondre aux vraies valeurs (WDL)
-  -> Réduire quiescence depth pour coups pourris
-  -> Gérer promotions de variantes (toute la branche + sélection bon noeud)
-  -> Implantation nouveaux passes de quiescence
+  -> Review k_add
+  -> Quiescence: shallow first, deep if interesting
+  -> Quiescence: cut positions that are completely lost
+  -> Quiescence: reuse thinking for the normal search
+  -> Quiescence: depth modulated by branch importance
+  -> Quiescence: review standpat permissions
+  -> Quiescence: depth < 0 to investigate
+  -> Quiescence: move ordering (best captures first)
+  -> Stop looking at finished branches of GrogrosZero
+  -> Search wide at first, then narrow later
+  -> Remove bad moves to increase storage capacity
+  -> Prioritize moves not fully explored
+  -> Transpositions: handle overflows
+  -> Beta cut-off if in check?
+  -> Smaller q_depth with extensions
+  -> positions_history in the search rather than board
+  -> Pick_random_child based on relative evaluation
+  -> When the best move is fully explored, redo without it?
+  -> Use Visual Studio improvements/optimizations
+  -> GrogrosZero slows long variations -> optimize
+  -> Search specifically for mate
+  -> Raylib for random (check speed)
+  -> Initialize board instead of from_fen
+  -> Undo keeps GrogrosZero calculations
+  -> Redo get_moves (controlled squares) + perft test
+  -> Cleanup: move flags, useful methods, static constexpr
+  -> Redo get_best_move to match real values (WDL)
+  -> Reduce quiescence depth for bad moves
+  -> Handle variant promotions (whole branch + selecting the right node)
+  -> Implement new quiescence passes
 
 === INTERFACE ===
-  -> Readme pour les contrôles
-  -> Sons: amélioration, maison, temps, ambiance, "soft"
-  -> Images/nouvelles textures
-  -> Options: désactivation son, menus, paramètres recherche IA
-  -> Éditeur de positions (ajouter/supprimer pièces)
-  -> Thread dédié pour l'affichage (PARALLÉLISER, lag énorme)
-  -> Undo retire coup du PGN
-  -> Textes couleurs différentes, plus de contraste
-  -> Défiler variante au survol souris
-  -> Montrer mate/pate sur échiquier
-  -> Unload images/textures pour vider RAM
-  -> Changer paramètres IA dans UI
-  -> Sauvegarder parties entières dans fichier
-  -> Analyses MC: montrer chemin meilleure éval et chemin joué
-  -> Grab slider / cliquer pour changer place
-  -> Batailles entre paramètres d'évaluation
+  -> Readme for the controls
+  -> Sounds: improvement, homemade, time, ambience, "soft"
+  -> Images/new textures
+  -> Options: disable sound, menus, AI search settings
+  -> Position editor (add/remove pieces)
+  -> Dedicated display thread (PARALLELIZE, huge lag)
+  -> Undo removes the move from the PGN
+  -> Different text colors, more contrast
+  -> Scroll variation on mouse hover
+  -> Show mate/stalemate on the board
+  -> Unload images/textures to free RAM
+  -> Change AI parameters in the UI
+  -> Save full games to a file
+  -> MC analyses: show the best-eval path and the played path
+  -> Grab slider / click to change position
+  -> Battles between evaluation parameters
   -> Import/export PGN
-  -> Afficher réflexion Grogros sur PGN
-  -> Changer nombre de noeuds / profondeur dans GUI
-  -> Smooth barre d'évaluation
-  -> Graphe d'éval en fin de partie
-  -> Échelle logarithmique barre d'éval
-  -> Fixer gestion du temps (affiché != vrai)
-  -> Clean implémentation GUI
-  -> Pre-moves depuis zéro (+ multiples)
-  -> Flèches: variante calculée, coups principaux
-  -> Montrer la menace (changer le trait)
-  -> Animations Grogros qui bouge les pièces
-  -> Désélectionner pièce après coup joué
-  -> Int overflow dans softmax
-  -> Affichage en fonction de l'arbre de jeu
-  -> Time management en fonction différence meilleur/autres coups
-  -> Naviguer dans variante: cliquer, changer, dé-surligner
-  -> From_fen -> reset l'arbre
-  -> Garder réflexions GrogrosZero en navigation
-  -> Passer variante en principale
-  -> Montrer ligne montante/descendante
-  -> Sons quand on navigue
-  -> Afficher forces/faiblesses (vert/orange/rouge)
-  -> Afficher coup courant dans variante
-  -> Variante avec détails (profondeur)
-  -> Temps + noeuds + éval dans PGN
-  -> Pièces UTF-8 visuel amélioré
-  -> Colorer cases selon bonus pièces
-  -> FEN auto-complétion si incorrect
-  -> Afficher info emergency cutoff
-  -> Mode analyse POV noirs (bug)
-  -> Afficher site de binding
-  -> Annuler bindings (CTRL+Y)
-  -> Numéro de version dans UI
-  -> Défiler variante avec flèche maintenue
-  -> Textures GPU + shaders (outline, texte non flou)
-  -> Bug UI 12 FPS -> fix
-  -> Lignes bézier/cercles non beaux -> améliorer
+  -> Show Grogros thinking on the PGN
+  -> Change node count / depth in the GUI
+  -> Smooth evaluation bar
+  -> Evaluation graph at end of game
+  -> Logarithmic scale for eval bar
+  -> Fix time management (displayed != real)
+  -> Clean GUI implementation
+  -> Pre-moves from scratch (+ multiple)
+  -> Arrows: computed variation, main moves
+  -> Show the threat (change the turn)
+  -> Grogros animations that move the pieces
+  -> Deselect piece after move played
+  -> Int overflow in softmax
+  -> Display based on the game tree
+  -> Time management based on the difference between best and other moves
+  -> Navigate variation: click, change, unhighlight
+  -> From_fen -> reset the tree
+  -> Keep GrogrosZero thinking while navigating
+  -> Promote variation to main line
+  -> Show rising/falling line
+  -> Sounds when navigating
+  -> Show strengths/weaknesses (green/orange/red)
+  -> Show current move in variation
+  -> Variation with details (depth)
+  -> Time + nodes + eval in PGN
+  -> Improved visual UTF-8 pieces
+  -> Color squares by piece bonus
+  -> FEN auto-completion if incorrect
+  -> Show emergency cutoff info
+  -> Analysis mode black POV (bug)
+  -> Show binding site
+  -> Cancel bindings (CTRL+Y)
+  -> Version number in UI
+  -> Scroll variation with held arrow
+  -> GPU textures + shaders (outline, non-blurry text)
+  -> UI bug 12 FPS -> fix
+  -> Bezier lines/circles not nice -> improve
 
 === INFRASTRUCTURE ===
-  -> Séparer board.cpp en fichiers dédiés (GUI, IA, evaluation)
-  -> Faire une classe pour les IA
-  -> Quel compilateur le plus rapide/opti
-  -> Passer commentaires en anglais + clean code
-  -> Noms de version sur Grogros
-  -> Unit tests pour les fonctions
-  -> Tests micro de l'algorithme (efficience à temps minimal)
-  -> Documentation complète + refactorisation
-  -> Parallélisation propre
-  -> Profiler pour fonctions lentes
-  -> Nettoyer code exploration
-  -> Clean global (commentaires inutiles, factoriser, opti micro)
-  -> Optimiser évaluation
-  -> Framework de test
-  -> Test vitesse évaluation
-  -> Fonction test: comparer évals Grogros vs Leela
-  -> Download positions pour tests
-  -> Tracker fuites mémoire
-  -> robin_maps au lieu de maps
-  -> Screenshots dans mauvais dossier -> fix
-  -> Crash quand on ferme la fenêtre
+  -> Split board.cpp into dedicated files (GUI, AI, evaluation)
+  -> Make a class for the AIs
+  -> Which compiler is fastest/best optimized
+  -> Switch comments to English + clean code
+  -> Version names for Grogros
+  -> Unit tests for functions
+  -> Micro tests of the algorithm (efficiency at minimal time)
+  -> Full documentation + refactoring
+  -> Clean parallelization
+  -> Profiler for slow functions
+  -> Clean up exploration code
+  -> Global cleanup (useless comments, factorize, micro-optimize)
+  -> Optimize evaluation
+  -> Test framework
+  -> Evaluation speed test
+  -> Test function: compare Grogros vs Leela evals
+  -> Download positions for tests
+  -> Track memory leaks
+  -> robin_maps instead of maps
+  -> Screenshots in wrong folder -> fix
+  -> Crash when closing the window
 
-=== RESEAUX NEURONES ===
-  -> Matches avec 0 réflexion, seulement le réseau
-  -> Symétrie dans le réseau?
-  -> Apprentissage: comment le faire?
-  -> Parties contre lui-même
-  -> Algorithme génétique (détruire faibles, mutations forts)
-  -> Bonus/malus quand il a mal évalué
-  -> Apprentissage fin de partie puis remonter
+=== NEURAL NETWORKS ===
+  -> Matches with zero thinking, network only
+  -> Symmetry in the network?
+  -> Learning: how do we do it?
+  -> Self-play games
+  -> Genetic algorithm (destroy weak ones, strong ones mutate)
+  -> Bonus/malus when it evaluated badly
+  -> End-game learning, then work back up
   -> Reinforcement learning
-  -> Paramètres au-delà des pièces (trait, roques)
-  -> Peu de valeurs négatives dans les évals: normal?
+  -> Parameters beyond pieces (turn, castling)
+  -> Few negative values in evals: normal?
 
 === BUGS ===
-  -> #1 Temps: parfois s'écoule quasi plus (itérations p.s. vs noeuds p.s.)
-  -> #2 Profondeur des variantes à vérifier
-  -> #3 Après répétition, Grogros ne joue plus
-  -> #4 Promotions de variantes à revoir
-  -> #5 Même coup 2× variantes différentes = même parent → retour arrière mauvais endroit
-  -> #6 Plusieurs eval mats → joue lentement (evals proches)
-  -> #7 Parfois game reset
-  -> #8 c3: faut prendre h8
-  -> #9 Eval = ±INT_MAX alors que pas normal
-  -> #10 Slider PGN buggé
-  -> #11 Buffer parfois full quand même
-  -> #12 Transpositions: croit win alors que nulle + clic renvoie position corrompue (6k1/8/7P/7K/8/8/8/8 w - - 3 72)
-  -> #13 Transpo n'augmente pas profondeur en endgame
-  -> #14 8/6pk/7p/8/1bQB3P/p1p3P1/5P1K/1q6 w - -: croit Df7 gagne
-  -> #15 Retour arrière crash
-  -> #16 Transpo pleine → comportement bizarre (8/2Q3pk/7p/8/1b1B3P/p1p3P1/5P1K/1q6 b - -: Ff8→0%)
-  -> #17 bxa5 pas regardé (r3k1nr/ppp2ppp/1b1p1q2/n3p3/1PB1P1b1/2P2N2/3P1PPP/RNBQ1RK1 w kq - 0 9)
-  -> #18 Transposition met -M4 temporairement sur coup sans mat (2Q5/4b1pk/7p/7P/3B4/p1p3P1/5P1K/1q6 b - -)
-  -> #19 Fa6 -M4 puis +M4 confidence 87% (r1b3k1/p4ppp/5n2/1Rp4q/4B3/2P5/P1PQ2PP/4R1K1 b - - 3 21)
+  -> #1 Time: sometimes almost runs out (iterations per s vs nodes per s)
+  -> #2 Variation depth to verify
+  -> #3 After repetition, Grogros no longer plays
+  -> #4 Variation promotions to review
+  -> #5 Same move twice in different variations = same parent -> backtracks to the wrong place
+  -> #6 Several mate evals -> plays slowly (close evals)
+  -> #7 Sometimes game reset
+  -> #8 c3: must take h8
+  -> #9 Eval = ±INT_MAX although that is not normal
+  -> #10 PGN slider buggy
+  -> #11 Buffer sometimes full anyway
+  -> #12 Transpositions: thinks it is a win when it is a draw + click returns a corrupted position (6k1/8/7P/7K/8/8/8/8 w - - 3 72)
+  -> #13 Transpositions do not increase depth in endgame
+  -> #14 8/6pk/7p/8/1bQB3P/p1p3P1/5P1K/1q6 w - -: thinks Df7 wins
+  -> #15 Backtrack crash
+  -> #16 Transposition table full -> strange behavior (8/2Q3pk/7p/8/1b1B3P/p1p3P1/5P1K/1q6 b - -: Ff8->0%)
+  -> #17 bxa5 not considered (r3k1nr/ppp2ppp/1b1p1q2/n3p3/1PB1P1b1/2P2N2/3P1PPP/RNBQ1RK1 w kq - 0 9)
+  -> #18 Transposition temporarily sets -M4 on a move with no mate (2Q5/4b1pk/7p/7P/3B4/p1p3P1/5P1K/1q6 b - -)
+  -> #19 Fa6 -M4 then +M4 confidence 87% (r1b3k1/p4ppp/5n2/1Rp4q/4B3/2P5/P1PQ2PP/4R1K1 b - - 3 21)
   -> #20 Transpositions: test (8/8/1k1p4/p2P1p2/P2P1P2/3K4/8/8 w - - 12 7)
-  -> #21 Couleur oscille bleu/magenta sur répétition
-  -> #22 Parfois crash
-  -> #23 Temps s'arrête après répétition (pas toujours)
-  -> #24 Pièce sans mouvement: grave si pour toujours
-  -> #25 Crash encore
-  -> #26 Positions évaluées plusieurs fois
-  -> #30 Quiescence: Fd3 puis Fxc3 = mauvaise quiescence
-  -> #31 Profondeur 1 partout parfois
-  -> #32 Bug from_fen après réflexion
-  -> #33 Bug planter UI
-  -> #34 is_stand_pat_eval commenté dans quiescence
-  -> #35 TODO/REVIEW/FIXME en plein milieu du code
-  -> #36 L'ordi plante quand on passe sur autre fenêtre
-  -> #37 Historique encore tout cassé
-  -> #38 Temps de réflexion incorrect
-  -> #39 Variante transposée: un seul parent mis à jour
-  -> #40 Alpha-beta pruning quiescence search à fix
-  -> #41 Quiescence regarde échecs plein de fois en fin roi+tour (hyper lent)
-  -> #42 Après jouer coups + réflexion depuis autre point ≠ résultat
-  -> #43 Repet: _can_explore false pas vérifié (pareil mats/branches pleines)
-  -> #44 12 FPS UI quand grogros inactif + sélection pièces: légaux pas affichés
+  -> #21 Color oscillates blue/magenta on repetition
+  -> #22 Sometimes crash
+  -> #23 Time stops after repetition (not always)
+  -> #24 Piece with no moves: serious if permanent
+  -> #25 Crash again
+  -> #26 Positions evaluated several times
+  -> #30 Quiescence: Fd3 then Fxc3 = bad quiescence
+  -> #31 Depth 1 everywhere sometimes
+  -> #32 from_fen bug after thinking
+  -> #33 Bug crashing the UI
+  -> #34 is_stand_pat_eval commented out in quiescence
+  -> #35 TODO/REVIEW/FIXME in the middle of the code
+  -> #36 The computer crashes when switching to another window
+  -> #37 History still totally broken
+  -> #38 Thinking time incorrect
+  -> #39 Transposed variation: only one parent updated
+  -> #40 Alpha-beta pruning in quiescence search to fix
+  -> #41 Quiescence checks many times in king+rook endings (very slow)
+  -> #42 After playing moves + thinking from another point != same result
+  -> #43 Repet: _can_explore false not checked (same for full mates/branches)
+  -> #44 12 FPS UI when grogros is idle + piece selection: legal moves not shown

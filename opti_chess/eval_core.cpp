@@ -73,11 +73,11 @@ extern const bool g_qstats_on;
 #define EVT0(tag) auto _evt_##tag = g_qstats_on ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point()
 #define EVT_ACC(tag, var) do { if (g_qstats_on) var += std::chrono::duration<double>(std::chrono::steady_clock::now() - _evt_##tag).count(); } while (0)
 
-// Cache d'évaluation : table à adressage direct, une par thread (allouée au premier appel),
-// indexée par une clé Zobrist recalculée (le _zobrist_key de la Board n'est pas tenu à jour
-// par make_move sans historique). L'évaluation heuristique est une fonction pure de la
-// position (pièces, trait, roques, en passant), du compteur de demi-coups (seulement si
-// _push != 0) et de l'Evaluator : un hit rend exactement le résultat du calcul.
+// Evaluation cache: direct-mapped table, one per thread (allocated on first call),
+// indexed by a recomputed Zobrist key (the Board's _zobrist_key is not kept up to date
+// by make_move without history). The heuristic evaluation is a pure function of the
+// position (pieces, side to move, castling, en passant), of the half-move clock (only if
+// _push != 0) and of the Evaluator: a hit returns exactly the result of the computation.
 // OPTI_EVAL_CACHE=0 le désactive (A/B sur le même binaire).
 namespace {
 	struct EvalCacheEntry {
@@ -316,7 +316,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 		return;
 	}
 
-	// Cache d'évaluation (jamais en mode affichage : les composantes doivent être recalculées)
+	// Evaluation cache (never in display mode: the components must be recomputed)
 	EvalCacheEntry* cache_slot = nullptr;
 	uint64_t cache_key = 0;
 	uint32_t cache_generation = 0;
@@ -325,7 +325,7 @@ void Board::evaluate(Evaluation* eval, Evaluator* evaluator, bool display, Netwo
 		cache_generation = g_eval_cache_generation.load(std::memory_order_relaxed);
 		cache_slot = &eval_cache_slot(cache_key);
 		if (cache_slot->key == cache_key && cache_slot->evaluator == evaluator && cache_slot->generation == cache_generation) {
-			// Mêmes effets de bord que le calcul complet (_adv est relu par sort_moves)
+			// Same side effects as the full computation (_adv is re-read by sort_moves)
 			_displayed_components = false;
 			game_advancement();
 			update_kings_pos();

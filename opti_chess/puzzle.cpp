@@ -65,8 +65,8 @@ struct ParallelWork {
     long long total_nodes = 0;
     int root_static_value = 0;
     float root_static_avg = 0.5f;
-    // win_value : valeur de mat pour le camp au trait si l'enfant est terminal et gagnant, sinon 0
-    // (même règle que Node::get_most_explored_child_move : un mat n'est jamais visité par l'UCT)
+    // win_value: mate value for the side to move if the child is terminal and winning, otherwise 0
+    // (same rule as Node::get_most_explored_child_move: a mate is never visited by the UCT)
     struct ChildStat { Move mv; long long visits = 0; float avg = 0.5f; int win_value = 0; };
     vector<ChildStat> children;
 };
@@ -433,7 +433,7 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
                 best_avg = a.visits > 0 ? a.avgw / (double)a.visits : 0.5;
             }
         }
-        // Mat trouvé par un des arbres : joué quelles que soient les visites (le plus court mat a la plus grande valeur)
+        // Mate found by one of the trees: played whatever the visits (the shortest mate has the highest value)
         if (!proven_win_move.is_null_move()) {
             for (auto& a : agg) {
                 if (a.mv == proven_win_move) {

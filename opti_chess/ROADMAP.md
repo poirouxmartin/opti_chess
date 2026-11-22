@@ -229,74 +229,74 @@ UCT starving is globally right; the Qe1 disease needs a targeted cure
 NODES-500: 401 vs 403 (χ²=0.1 n.s.). Quiet 5th-rank pushes + terminating +1
 change nothing on this subset. advancedPawn (57% fail) needs another angle.
 
-### Vrais ratés : convergence speed, pas aveuglement (2026-09-05)
-- #248 c3: Rb2+ 129 vs c3 126 à 500 iters (pile ou face) → c3 626 à 2000.
-  Le bon coup tranquille met ~4× plus d'itérations à dépasser l'échec
-  clinquant. TIME-0.1s = 320 iters médianes (amp quiescence 8.8×) → classe
-  entière hors de portée.
-- Boutons globaux tous nuls : alpha 0.01/0.02 (123/122 vs 122, bit-identique
-  à 0.02), gamma, interleave, quota, contrast, trust-v2. L'UCT est à un
-  optimum local de son architecture.
-- #1152 d6 : SF le voit dès profondeur 2 (+8→+1117 monotone). Pas un
-  problème de profondeur SF — vitesse de convergence chez nous.
-- Conséquence : il faut 4× plus d'itérations/0.1s (NPS/parallélisation,
-  Phase 6/7) ou un meilleur ordering (NN, Phase 4 last). Le whack-a-mole
-  par thème a atteint ses limites.
-- Hooks `OPTI_ALPHA` (neutre, gardé), `OPTI_GAMMA` (gardé).
+### Real misses: convergence speed, not blindness (2026-09-05)
+- #248 c3: Rb2+ 129 vs c3 126 at 500 iters (coin flip) → c3 626 at 2000.
+  The quiet correct move needs ~4× more iterations to overtake the flashy
+  failure. TIME-0.1s = 320 median iters (quiescence amplification 8.8×) → whole
+  class out of reach.
+- Global knobs all null: alpha 0.01/0.02 (123/122 vs 122, bit-identical
+  at 0.02), gamma, interleave, quota, contrast, trust-v2. The UCT is at a
+  local optimum of its architecture.
+- #1152 d6: SF sees it from depth 2 (+8→+1117 monotone). Not an
+  SF depth problem — our convergence speed.
+- Consequence: we need 4× more iterations/0.1s (NPS/parallelisation,
+  Phase 6/7) or better ordering (NN, Phase 4 last). Whack-a-mole
+  by theme has reached its limits.
+- Hooks `OPTI_ALPHA` (neutral, kept), `OPTI_GAMMA` (kept).
 
-### Plan ordonné (2026-09-05, directive utilisateur)
-1. **Nœuds quiescence** : où partent les 8.8× ? Instrumentation des sorties
+### Ordered plan (2026-09-05, user directive)
+1. **Quiescence nodes**: where do the 8.8× go? Instrument the exits
    (stand-pat, beta-cutoff, depth-out, terminal, repetition, buffer-full),
-   puis tailler le gaspillage.
-   - Census NODES-500 : 10.2M entrées — normal 39%, beta1+beta2 38%,
-     depth-out 16%, TT 5%, terminal 1%. Boucle 15.4M, prunés 34%.
-     Statics 8.5M (83% des entrées).
-   - Temps (150 puzzles, 109s) : qeval 65% (king safety 23%, mobilité 8%,
-     reste eval 34%), qinit 12%, reste 23%.
-   - King-safety cache : 11% hits, 298 clears → quasi-inutile ; map
-     prouvée pure (display = strings GUI seules) ; bypass OPTI_NOKSCACHE
-     bit-identique (150/150). Suppression du cache : à décider.
-   - BFS distance-map : vector-par-case → tableaux fixes (valeurs
-     prouvées identiques : 150/150 + mêmes nœuds). Magnitude absolue
-     masquée par throttle — structurellement supérieur, gardé.
-   - Benchmark G (post-BFS) : 3838/5000 (76.8%, +77 χ²=43) — effet vitesse
-     TIME (plus de travail/0.1s), NPS ~38.5K.
-   - Early-out potentiels≈0 : IMPOSSIBLE exact (termes placement/exposure/
-     storms non-scalés) — pas tenté.
-2. **Hotpath** : profiler (eval ? movegen ? king safety ?) et optimiser.
-3. **Parallélisation** (Phase 6) : 4× itérations/0.1s.
-4. **Ordering NN** (Phase 4, en dernier).
+   then trim the waste.
+   - Census NODES-500: 10.2M entries — normal 39%, beta1+beta2 38%,
+     depth-out 16%, TT 5%, terminal 1%. Loop 15.4M, pruned 34%.
+     Statics 8.5M (83% of entries).
+   - Time (150 puzzles, 109s): qeval 65% (king safety 23%, mobility 8%,
+     rest of eval 34%), qinit 12%, rest 23%.
+   - King-safety cache: 11% hits, 298 clears → nearly useless; map
+     proven pure (display = GUI strings only); bypass OPTI_NOKSCACHE
+     bit-identical (150/150). Removing the cache: to be decided.
+   - BFS distance-map: per-square vector → fixed arrays (values
+     proven identical: 150/150 + same nodes). Absolute magnitude
+     masked by throttle — structurally superior, kept.
+   - Benchmark G (post-BFS): 3838/5000 (76.8%, +77 χ²=43) — speed effect in
+     TIME (more work/0.1s), NPS ~38.5K.
+   - Early-out for potentials≈0: IMPOSSIBLE exactly (placement/exposure/
+     storms terms not scaled) — not attempted.
+2. **Hotpath**: profile (eval? movegen? king safety?) and optimise.
+3. **Parallelisation** (Phase 6): 4× iterations/0.1s.
+4. **NN ordering** (Phase 4, last).
 
-### Objectif 1M NPS (2026-09-06) — maths
-Actuel ~38.5K (TIME). Cible ×26. Leviers : hotpath ~2-3× (static eval 65%,
-king safety 23%), parallélisation ~10-14× (20 threads) → 38.5K×3×12 ≈ 1.4M.
-Ordre : finir hotpath structurel (BFS fait), puis Phase 6.
+### Goal 1M NPS (2026-09-06) — maths
+Current ~38.5K (TIME). Target ×26. Levers: hotpath ~2-3× (static eval 65%,
+king safety 23%), parallelisation ~10-14× (20 threads) → 38.5K×3×12 ≈ 1.4M.
+Order: finish the structural hotpath (BFS done), then Phase 6.
 
-### Phase 6 : separate-trees REJETÉ pour strength (2026-09-06, infra gardée)
-Pool persistant (_beginthreadex 16MB, thread_local arenas/TT/map/caches,
-atomics deadline/abort) : N=1 bit-identique (150/150). Bug trouvé et fixé
-en route : spawn-per-puzzle → mort par fragmentation après ~50 puzzles.
-NPS : 39K → 117K (4 threads) → 161K (8 threads), ×4.1.
-MAIS strength à wall égal : 114 → 101 (4T) → 98 (8T) à 0.1s ;
-125 → 110 à 1.0s (χ²=11.5 régression significative). Diversification gamma
-nulle (98 vs 98). Cause : 8 arbres peu profonds votants < 1 arbre profond ;
-+ contention divise le NPS/thread par 2 (20K vs 39K).
-Verdict : l'infra reste (débit selfplay futur, analyse), mais le 1M NPS
-UTILE exige un arbre partagé (Lazy SMP) : tous les threads raffinent UN
-arbre → profondeur + débit. Prochaine étape si go : arbre partagé
-(spinlock par nœud à l'expansion, _chosen_iterations atomique,
-last-writer-wins sur _deep_evaluation).
+### Phase 6: separate-trees REJECTED for strength (2026-09-06, infra kept)
+Persistent pool (_beginthreadex 16MB, thread_local arenas/TT/map/caches,
+atomics deadline/abort): N=1 bit-identical (150/150). Bug found and fixed
+along the way: spawn-per-puzzle → death by fragmentation after ~50 puzzles.
+NPS: 39K → 117K (4 threads) → 161K (8 threads), ×4.1.
+BUT strength at equal wall time: 114 → 101 (4T) → 98 (8T) at 0.1s;
+125 → 110 at 1.0s (χ²=11.5 significant regression). Gamma diversification
+null (98 vs 98). Cause: 8 shallow voting trees < 1 deep tree;
++ contention halves the NPS/thread (20K vs 39K).
+Verdict: the infra stays (future selfplay throughput, analysis), but the 1M NPS
+that is USEFUL requires a shared tree (Lazy SMP): all threads refine ONE
+tree → depth + throughput. Next step if go: shared tree
+(per-node spinlock at expansion, atomic _chosen_iterations,
+last-writer-wins on _deep_evaluation).
 
 ### Phase 3 TT audit (2026-09-05) — A4/A3 gated
 - A4 check extension: +1 → 404 vs 403 (χ²=0 n.s.). +2 → INFEASIBLE
   (tree explosion: >30 min vs 8 min for NODES-500, killed). Checks already
   get full depth via the in_check rule; extra plies don't bind. Hook kept
   (`OPTI_CHECK_EXT=N`, off).
-- A3 LMR softening (non-winning captures ×1 au lieu de ×2) : NODES-150
-  123 vs 122 (n.s.) mais wall time ×2.1 (234s vs 111s) → tuerait le mode
-  TIME (2× moins d'itérations). REJETÉ sur coût, code supprimé.
-- Restent : A1 (mono-échelle active — bénin), A2 (plafond mémoire,
-  sécurité pas strength), A5 (value-prop reste OFF).
+- A3 LMR softening (non-winning captures ×1 instead of ×2): NODES-150
+  123 vs 122 (n.s.) but wall time ×2.1 (234s vs 111s) → would kill the
+  TIME mode (2× fewer iterations). REJECTED on cost, code removed.
+- Remaining: A1 (single scale active — harmless), A2 (memory cap,
+  safety not strength), A5 (value-prop stays OFF).
 
 **Implementation**:
 - After all children are created, sort `_children` by eval

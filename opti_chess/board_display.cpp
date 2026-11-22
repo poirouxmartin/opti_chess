@@ -222,7 +222,7 @@ int time_to_play_move(const int t1, int /*t2*/, const float k) {
 	return static_cast<int>(t1 * k);
 
 	// Still to improve:
-	// Prendre en compte le temps de l'adversaire
+	// Take the opponent's time into account
 	// account for the number of moves left in the game, or an approximation -> spend longer when mating or nearly lost
 	// account for evaluation swings, or rising moves
 	// increments are still unhandled

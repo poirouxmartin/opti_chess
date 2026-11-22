@@ -798,7 +798,7 @@ public:
 	// Evaluates the position with heuristics
 	void evaluate(Evaluation* eval, Evaluator* evaluator = nullptr, bool display = false, Network* n = nullptr, bool check_game_over = false);
 
-	// Clé du cache d'évaluation : Zobrist recalculé (+ demi-coups si l'Evaluator les lit)
+	// Evaluation cache key: recomputed Zobrist (+ half-move clock if the Evaluator reads it)
 	uint64_t eval_cache_key(const Evaluator* evaluator) const;
 
 	// Loads the board from a FEN
@@ -1008,7 +1008,7 @@ public:
 	// Computes every move up to a certain depth, and returns the total node count
 	long long int count_nodes_at_depth(int depth, bool display = true, bool main = false);
 
-	// Perft avec comptage groupé à la profondeur 1 (mêmes comptes, sans jouer les feuilles)
+	// Perft with bulk counting at depth 1 (same counts, leaves not played)
 	long long int count_nodes_bulk(int depth);
 
 	// Parallelized version

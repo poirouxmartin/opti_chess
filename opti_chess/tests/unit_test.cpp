@@ -7608,7 +7608,7 @@ TEST(Perft, Position3Depth5) {
     EXPECT_EQ(b.count_nodes_at_depth(5, false), 674624);
 }
 
-// Le comptage groupé doit donner exactement les comptes de référence (chessprogramming.org)
+// Bulk counting must give exactly the reference counts (chessprogramming.org)
 TEST(Perft, BulkCountingMatchesReference) {
     struct Row { const char* fen; int depth; long long nodes; };
     const Row rows[] = {

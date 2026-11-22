@@ -533,7 +533,7 @@ bool Board::get_moves() noexcept {
 			// Fetch a square holding a friendly piece
 			int sq = pop_lsb(bb);  // 0..63
 
-			// Conversion en row/col
+			// Conversion to row/col
 			uint8_t row = static_cast<uint8_t>(sq >> 3);
 			uint8_t col = sq & 7;
 

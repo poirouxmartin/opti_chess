@@ -1,166 +1,160 @@
-# Pions passés — formalisation + roadmap Grogros
+# Passed pawns: formalisation + Grogros roadmap
 
-Document de travail (papiers de Martin formalisés + roadmap priorisée).
-Conventions : perspective Blancs (symétrique Noirs), valeurs en cp.
+Working document (Martin's papers formalised + prioritised roadmap).
+Conventions: White perspective (symmetric for Black), values in cp.
 
 ---
 
-## PARTIE A — Modèle du pion passé
+## PART A: Passed pawn model
 
-### A.1 Valeur par case `V(s)`
+### A.1 Value per square `V(s)`
 
-Soit un pion passé en `s0`, cases devant lui `s1..sk` (jusqu'à promotion).
-Contrôles ennemis `C(s)` (avec valeur des pièces), contrôles alliés `F(s)`.
-
-```
-V(s) = V_base(rang)                       si aucun contrôle ennemi
-V(s) = min(V_base,  min_{p ∈ C(s)} val(p)) si contrôles ennemis
-```
-
-- `V_base(rang)` : table par rangée, dans [400..800] (à calibrer : ex.
-  2e→400, 3e→450, 4e→550, 5e→650, 6e→750, 7e→800).
-- Logique du min : le bloqueur le moins cher fixe le plafond (on pourra
-  toujours le sacrifier contre le pion à minima).
-- Si contrôles ennemis > contrôles alliés sur `s` : division par pièce
-  (mécanisme actuel conservé).
-- Si un pion allié contrôle `s` : **la majoration saute** (V_base s'applique).
-
-### A.2 Blocage (pièce sur la route)
-
-Pion passé faible, **mais la pièce qui bloque est pénalisée aussi** :
+Let a passed pawn be on `s0`, with the squares in front of it `s1..sk` (up to promotion).
+Enemy controls `C(s)` (with the value of the pieces), allied controls `F(s)`.
 
 ```
-V_passé_bloqué = V_base × petit-facteur(bloqueur)
-malus_bloqueur = f(pièce)   // cavalier = excellent bloqueur (gros malus
-                            // pour le camp adverse = le laisser vaut cher),
-                            // dame = très mauvais bloqueur (elle ne doit
-                            // pas babysitter : malus dissuasif sur la dame)
+V(s) = V_base(rank)                       if no enemy control
+V(s) = min(V_base,  min_{p ∈ C(s)} val(p)) if enemy controls
 ```
 
-Autrement dit : le bloqueur idéal (cavalier) coûte peu à son camp pour un
-gros effet ; y coller sa dame est puni. Le malus dépend de la pièce qui
-bloque, pas du pion.
+- `V_base(rank)`: per-rank table, in [400..800] (to calibrate, e.g.
+  2nd→400, 3rd→450, 4th→550, 5th→650, 6th→750, 7th→800).
+- Logic of the min: the cheapest blocker fixes the ceiling (we can always
+  sacrifice it against the pawn at minimum).
+- If enemy controls > allied controls on `s`: division per piece
+  (current mechanism kept).
+- If an allied pawn controls `s`: **the boost is skipped** (V_base applies).
 
-### A.3 Pions passés protégés / candidats
+### A.2 Blockade (piece on the route)
 
-- **Protégé** (pion allié contrôle sa case ou la case devant) : pas de
-  majoration (A.1), bonus de connexion standard.
-- **Candidat** (à définir, ouvert) : pion qui DEVIENDRA passé si la majorité
-  avance ou si la minorité force l'échange. Piste : bonus = V_base × 0.3 si
-  la majorité de l'aile peut forcer sa création (comptage effectifs sur les
-  colonnes adjacentes), 0 sinon. À trancher ensemble.
+Weak passed pawn, **but the blocking piece is penalised too**:
 
-### A.4 Valeur globale : V0..V5
+```
+V_passed_blocked = V_base × small-factor(blocker)
+blocker_malus = f(piece)   // knight = excellent blocker (big malus
+                           // for the opposing side = letting it go is costly),
+                           // queen = very poor blocker (she must not
+                           // babysit: deterrent malus on the queen)
+```
 
-Question : `V = Vmin`, ou `V = Vmin − k·dist` ?
+In other words: the ideal blocker (knight) costs its side little for a
+big effect; sticking one's queen there is punished. The malus depends on
+the piece that blocks, not on the pawn.
+
+### A.3 Protected / candidate passed pawns
+
+- **Protected** (allied pawn controls its square or the square in front): no boost
+  (A.1), standard connection bonus.
+- **Candidate** (to define, open): pawn that WILL become passed if the majority
+  advances or if the minority forces an exchange. Lead: bonus = V_base × 0.3 if
+  the majority of the wing can force its creation (effective counts on the
+  adjacent files), 0 otherwise. To be decided together.
+
+### A.4 Global value: V0..V5
+
+Question: `V = Vmin`, or `V = Vmin − k·dist`?
 
 ```
 V = max_i ( Vi − k·i ),   k ≈ 75 (tunable)
 ```
 
-- `Vmin` pur n'a **aucun gradient** : rien n'incite à avancer le pion.
-- `Vmin − k·dist` crée l'incitation (chaque pas rapproche du max) tout en
-  gardant le maillon faible comme plafond. Recommandé.
-- Cas multi-cases protégées : on prend le **min** (weakest link).
+- A pure `Vmin` has **no gradient**: nothing encourages advancing the pawn.
+- `Vmin − k·dist` creates the incentive (each step brings it closer to the max) while
+  keeping the weakest link as the ceiling. Recommended.
+- Multi-square protected case: take the **min** (weakest link).
 
-### A.5 Chaînes de pions
+### A.5 Pawn chains
 
-- **Chaîne en A** (pointe vers l'ennemi, base derrière) : bout fort,
-  **2 faiblesses** (trous de part et d'autre de la base).
-  `score = +bonus_pointe − 2 × malus_trou_flanc`
-- **Chaîne en V** (pointe d'un côté, éventail derrière) : **1 grosse
-  faiblesse centrale**, mais si elle pète, **toute la chaîne casse des
-  deux côtés** (facteur fragilité : si la pointe est contestée, toute la
-  chaîne se dévalue).
-  `score = +bonus_fer + fragilité × malus_central`
-- **Règle du côté de jeu** : le jeu se produit où la chaîne pointe.
-  Formalisation proposée : vecteur base→pointe (ou shift du centre de
-  masse des pions), `wing_focus` = projection sur l'aile ; bonus
-  `wing_focus × (espace + activité)` de ce côté, symétrique à tester
-  sur la banque (corréler wing_focus avec le gap par aile).
+- **A-chain** (points toward the enemy, base behind): strong tip,
+  **2 weaknesses** (holes on either side of the base).
+  `score = +tip_bonus − 2 × flank_hole_malus`
+- **V-chain** (point on one side, fan behind): **1 big central weakness**, but if it breaks, **the whole chain breaks on both sides** (fragility factor: if the tip is contested, the whole
+  chain loses value).
+  `score = +iron_bonus + fragility × central_malus`
+- **Side-of-play rule**: play happens where the chain points.
+  Proposed formalisation: vector base→tip (or shift of the pawns' centre of
+  mass), `wing_focus` = projection on the wing; bonus
+  `wing_focus × (space + activity)` on that side, symmetric, to test
+  on the bank (correlate wing_focus with the gap per wing).
 
-### A.6 Majorités / minorités
+### A.6 Majorities / minorities
 
-C'est souvent ce qui décide la finale : **pousser sa majorité** (ça crée
-un passé — cf. candidats A.3). Formalisation : score de majorité par aile
-(effectifs pondérés par avancement) → bonus candidat (A.3) + bonus
-espace du côté majoritaire. Minorité : levier d'échange créant un passé
-(attaque de minorité) — même machinerie, signe inversé sur l'aile faible.
+This is often what decides the endgame: **pushing one's majority** (it creates a
+passer, cf. candidates A.3). Formalisation: majority score per wing (counts weighted by advancement) → candidate bonus (A.3) +
+space bonus for the majority side. Minority: exchange lever creating a passer
+(minority attack), same machinery, sign reversed on the weak wing.
 
 ---
 
-## PARTIE B — Roadmap Grogros (priorisée)
+## PART B: Grogros roadmap (prioritised)
 
-Légende : [FAIT] [EN COURS] [PROCHAIN] [PLUS TARD] [EXPÉRIMENTAL].
-Règle : chaque changement = benchmark avant/après (éval + NODES + McNemar).
+Legend: [DONE] [IN PROGRESS] [NEXT] [LATER] [EXPERIMENTAL].
+Rule: every change = benchmark before/after (eval + NODES + McNemar).
 
-### P0 — En cours
-- [EN COURS] **Pions passés** (ce document) : tempo + contrôles du carré,
-  extension finales mineures, puis A.1→A.6 par morceaux benchmarkés.
+### P0: In progress
+- [IN PROGRESS] **Passed pawns** (this document): tempo + square controls,
+  minor-piece endgame extension, then A.1→A.6 in benchmarked pieces.
 
-### P1 — Méthode (infra déjà en place, à exploiter)
-- [FAIT] Banques quiet + labels SF statique/dynamique, attribution par gap,
-  screen de quiétude, tuning sans rebuild (`OPTI_KS_*`, `OPTI_MOB_RELIEF`).
-- [PROCHAIN] Brancher chaque candidat A sur cette infra (slice flips pions,
-  best-slice garde-fou, NODES-500 + McNemar).
+### P1: Method (infra already in place, to exploit)
+- [DONE] Quiet banks + SF static/dynamic labels, attribution by gap,
+  quietness screen, tuning without rebuild (`OPTI_KS_*`, `OPTI_MOB_RELIEF`).
+- [NEXT] Plug each candidate A into this infra (pawn-flip slices,
+  best-slice safeguard, NODES-500 + McNemar).
 
-### P2 — Recherche : sélectivité type Lc0
-- [PROCHAIN] Énorme profondeur + sélection critique : à profondeur donnée,
-  ne pas regarder TOUS les coups ; le coup principal à ~90%. Levier force
-  le plus gros, mais design d'abord (benchmarks micro par testcase).
-- [PROCHAIN] Killer bias + détection de menace dans l'ordonnancement.
-- [PROCHAIN] Early quiescence cutoff non arbitraire : pré-éval ("−1500 →
-  cut direct") plutôt que rang ; `q_depth` main suffisant.
-- [PROCHAIN] Meilleur tri + prior (policy), testcases micro.
+### P2: Research: Lc0-style selectivity
+- [NEXT] Huge depth + critical selection: at a given depth,
+  do not look at ALL moves; the main move at ~90%. Biggest force lever,
+  but design first (micro benchmarks per testcase).
+- [NEXT] Killer bias + threat detection in move ordering.
+- [NEXT] Early quiescence cutoff that is not arbitrary: pre-eval ("−1500 →
+  direct cut") rather than rank; `q_depth` main sufficient.
+- [NEXT] Better sorting + prior (policy), micro testcases.
 
-### P3 — Transpositions + exactitude
-- [PROCHAIN] Audit transpositions : tout remettre propre + micro-benchmarks
-  (prouver que ça marche, pas juste que ça ne crash pas).
-- [PROCHAIN] Parallélisation : à réfléchir de nouveau (résultats mitigés).
-- [PROCHAIN] `game_over()` à opti (déjà mémoïsé, reste du jus ?).
+### P3: Transpositions + exactness
+- [NEXT] Transposition audit: clean everything up + micro benchmarks
+  (prove it works, not just that it does not crash).
+- [NEXT] Parallelisation: to reconsider (mixed results).
+- [NEXT] `game_over()` to optimise (already memoised, any juice left?).
 
-### P4 — Éval : finales + conditions de victoire
-- [PROCHAIN] Endgame : proximité des rois dépendant des passés, waiting
-  moves roi+pions, win conditions (potentiel de mat + passés).
-- [PROCHAIN] Contre-jeu = incertitude+ (échecs, attaques, déséquilibres,
-  activité) ; rebalance position ouverte (activité++/KS++) vs fermée
-  (positionnement++/draw++) — à benchmarker et fine-tuner.
-- [PROCHAIN] Overextension / V-structure (rien n'existe, TODO posé).
+### P4: Eval: endgames + win conditions
+- [NEXT] Endgame: king proximity depending on passers, king+pawn waiting
+  moves, win conditions (mating potential + passers).
+- [NEXT] Counterplay = uncertainty+ (checks, attacks, imbalances,
+  activity); rebalance open position (activity++/KS++) vs closed
+  (positioning++/draw++): to benchmark and fine-tune.
+- [NEXT] Overextension / V-structure (nothing exists, TODO placed).
 
-### P5 — Micro-perf (lot, quand le fonctionnel le demande)
-Cache L1>L2>L3 (structures compactes), `if` prévisibles, flags compilateur,
-`noexcept` partout, `+ > - > x > /` (opérations rapides), `constexpr` →
-`consteval`/`constinit`, `const&`, robin_hash partout, magic bitboards
-PARTOUT + BB dans l'éval, `get_moves` (séparé blancs/noirs) + sous-fonctions,
-buffers coups/nœuds (nœuds : fait), structures compactes, réutilisation de
-variables entre paramètres d'éval, évaluation incrémentale, `position_history`
-en robin_hash (plus de vecteurs), cognitive complexity (warnings), `game_over`
-opti, `opti get_moves`, `opti eval`, profiling global (hotpath surtout),
-benchmarks eval/get_moves/sort/autres. Boost : à évaluer (pas de dépendance
-sans preuve). UI async : fait (? à vérifier).
+### P5: Micro-perf (batch, when functionality demands it)
+Cache L1>L2>L3 (compact structures), predictable `if`, compiler flags,
+`noexcept` everywhere, `+ > - > x > /` (fast operations), `constexpr` →
+`consteval`/`constinit`, `const&`, robin_hash everywhere, magic bitboards
+EVERYWHERE + BB in the eval, `get_moves` (white/black separated) + sub-functions,
+move/node buffers (nodes: done), compact structures, reuse of
+variables between eval parameters, incremental evaluation, `position_history`
+in robin_hash (no more vectors), cognitive complexity (warnings), `game_over`
+opti, `opti get_moves`, `opti eval`, global profiling (hotpath mainly),
+benchmarks eval/get_moves/sort/others. Boost: to evaluate (no dependency
+without proof). Async UI: done (? to verify).
 
-### P6 — Incertitude et long terme
-- [PLUS TARD] Incertitude++ si position complexe en calcul — à évaluer.
-- [EXPÉRIMENTAL] Rollout/simulation pour le long terme.
-- [EXPÉRIMENTAL] Réseau de compensation : f(P) = delta(profonde − statique),
-  entraîné sur lui-même pour prédire en statique son évaluation profonde.
+### P6: Uncertainty and long term
+- [LATER] Uncertainty++ if the position is complex in calculation: to evaluate.
+- [EXPERIMENTAL] Rollout/simulation for the long term.
+- [EXPERIMENTAL] Compensation network: f(P) = delta(deep − static),
+  trained on itself to predict its deep evaluation statically.
 
-### P7 — Tests (continu)
-- [FAIT] Gate CI (suites rapides + GATE-500 seuil 400).
-- [EN COURS] Bug Fegatello (quiescence aveugle aux compensations à 4 plis).
-- Étendre : tout nouveau mécanisme = test de non-régression dédié.
+### P7: Tests (continuous)
+- [DONE] CI gate (quick suites + GATE-500 threshold 400).
+- [IN PROGRESS] Fegatello bug (quiescence blind to 4-ply compensations).
+- Extend: every new mechanism = a dedicated non-regression test.
 
-### P8 — Idées notées (non codées, à benchmarker)
-- [NOTÉ 2026-09-12] "Pion au trait" : si le passeur a le trait, compter son
-  chemin depuis la case devant lui (poussée vue comme acquise). Doute : la
-  poussée est déjà dans l'arbre de recherche (double-compte) ; ne créditer en
-  statique que les avancées calmes hors-horizon. Promotion EXCLUE du mécanisme
-  (prime about-to-move séparée, à spécifier). Réserve : incertain, benchmark
-  MAE + NODES avant de trancher.
-- [EN COURS 2026-09-15] Course intelligente (remplace l'oos supprimé) : v1
-  arrivées en plis (2d−1 trait, 2d sinon, sans tempo sous exclusion),
-  certain = roi hors carré avec tempo + route claire + case tenable,
-  winner-takes-all, marge 1 → moitié / ≥2 → plein vers quasi-dame (900),
-  capé à la fin. Pas de BFS (Chebyshev suffit), pas d'interception
-  lointaine (A.1, prochaine étape) ; knobs OPTI_PP_RACE / OPTI_PP_RACE_Q.
-
+### P8: Noted ideas (not coded, to benchmark)
+- [NOTED 2026-09-12] "Pawn to move": if the passer has the move, count its path from the square in front of it (push seen as acquired). Doubt: the
+  push is already in the search tree (double count); only credit in static the calm advances beyond the horizon. Promotion EXCLUDED from the mechanism
+  (separate about-to-move bonus, to specify). Caveat: uncertain, benchmark
+  MAE + NODES before deciding.
+- [IN PROGRESS 2026-09-15] Smart race (replaces the removed oos): v1
+  arrivals in plies (2d−1 to move, 2d otherwise, no tempo under exclusion),
+  certain = king outside the square with tempo + clear route + tenable square,
+  winner-takes-all, margin 1 → half / ≥2 → full towards quasi-queen (900),
+  capped at the end. No BFS (Chebyshev suffices), no distant interception
+  (A.1, next step); knobs OPTI_PP_RACE / OPTI_PP_RACE_Q.

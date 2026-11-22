@@ -340,7 +340,7 @@ int Board::get_alignments() const
 						// Final pressure = the lower of the two
 						int result_pressure = min(pressure_value, secondary_pressure);
 
-						// Seulement en pression principale?
+						// Only on main pressure?
 						result_pressure *= distance == 1;
 
 						// N1b3R1/p2kp3/1pnp4/1B6/3PP3/8/P1P2PP1/b3K3 w - - 1 18
@@ -565,7 +565,7 @@ int Board::get_rook_activity() const
 
 	// r2qk2r/pb1pbpp1/1pn4n/2p1P2p/8/2NB1N1P/PP1BQPP1/2R1R1K1 b kq - 2 13 vs r2qk2r/pb1pbpp1/1pn4n/2p1P2p/8/2NB1N1P/PP1BQPP1/3RR1K1 b kq - 2 13
 
-	// Cas de figure:
+	// Cases:
 	// 1. Rook trapped by the king: mobility < 4 -> penalty, larger still when the king cannot castle, divided by mobility
 	// 2. Activity depends mostly on vertical mobility, the distance to the nearest pawn ahead
 
@@ -1095,7 +1095,7 @@ int Board::get_long_term_piece_mobility(const EvalControls& ctx, bool display) c
 	// r1bqkb1r/pppp1ppp/2n2n2/8/4P3/4QP2/PPP3PP/RNB1KBNR b KQkq - 0 5: slightly better for Black
 	//display = true;
 	// Weight of virtual mobility, through every unblocked piece
-	static constexpr int pawn_virtual_mobility[5] = { 0, 0, 0, 0, 0 }; // 2 de base
+	static constexpr int pawn_virtual_mobility[5] = { 0, 0, 0, 0, 0 }; // 2 by default
 	static constexpr int knight_virtual_mobility[9] = { -1350, -300, -80, 70, 110, 125, 135, 143, 150 }; // 2.35
 	static constexpr int bishop_virtual_mobility[15] = { -1350, -450, 0, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180 }; // 2.1
 	static constexpr int rook_virtual_mobility[15] = { -2350, -750, 0, 20, 50, 65, 75, 85, 95, 105, 115, 125, 135, 145, 155 }; // 2.7

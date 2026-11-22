@@ -902,7 +902,7 @@ int Board::get_checks_value(const SquareMap* /*white_controls*/, const SquareMap
 		//const uint8_t controls_enemy = color ? black_controls._array[i2][j2] : white_controls._array[i2][j2];
 
 		// If the destination is uncontrolled by White, or controlled only by the white king plus at least one black piece
-		// FIXME: pas ouf
+		// FIXME: not great
 		//if (controls_enemy == 0 || (controls_enemy == 1 && controls_ally > 1 && abs(king_pos.i - i2) <= 1 && abs(king_pos.j - j2) <= 1)) {
 		if (true) {
 			// Save minimal state needed for in_check() test and loop continuation
@@ -1218,7 +1218,7 @@ int Board::get_king_attackers(bool color) {
 	// Should each piece type carry its own value?
 	// Should this be weighted by the distance to the king?
 
-	// TODO: prendre en compte distance 2??
+	// TODO: take distance 2 into account??
 
 	//8/8/8/2r2pp1/1k5p/2b4P/4K3/1Q6 b - - 81 133
 	//rnbr3k/ppp1qppB/4p2p/1P2P3/2Pn4/P4N2/2Q2PPP/RN2K2R w KQ - 3 15
@@ -1718,11 +1718,11 @@ void Board::get_uncertainty(Evaluation* eval, int material_eval, int winning_eva
 	// Contre jeu
 
 	// r2r4/8/1p1q2P1/2b5/3k1pP1/pP2pP2/2Q4P/1K6 w - - 9 11: example of a very uncertain position
-	// r2r4/4q3/1p4P1/2b5/5pPk/pP2pP2/8/1K6 w - - 0 18 : plus du tout d'incertitude !!
+	// r2r4/4q3/1p4P1/2b5/5pPk/pP2pP2/8/1K6 w - - 0 18 : no uncertainty left at all!!
 	// rnb2bnr/pppp1k1p/5q2/8/5p2/4BQ2/PPP3PP/RN3RK1 w - - 2 11 : grosse incertitude
 	// r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4 : assez peu...
 	// r1bq1b1r/ppp3pp/2n1k3/3np3/2B5/5Q2/PPPP1PPP/RNB1K2R w KQ - 2 8 : grosse incertitude
-	// 8/8/7P/1p2Kp2/3P4/P2k2P1/P7/8 b - - 0 41 : plus aucune incertitude
+	// 8/8/7P/1p2Kp2/3P4/P2k2P1/P7/8 b - - 0 41 : no uncertainty left
 
 	// rnb2bnr/pppp1k1p/5q2/8/5p2/4BQ2/PPP3PP/RN3RK1 w - - 2 11: how does uncertainty jump from 14% to 92% on Bxf4?
 	// et avg score 0.7 -> 0.42??
@@ -2070,7 +2070,7 @@ SquareMap Board::get_king_squares_distance(bool color, const EvalControls& ctx) 
 		}
 	}
 
-	// Supprime la map
+	// Removes the map
 	control_map.~SquareMap();
 
 	// King position
