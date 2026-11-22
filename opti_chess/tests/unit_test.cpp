@@ -7719,3 +7719,41 @@ TEST(GraphGame, TerminalIgnoresEdges) {
     solve_graph_game(g, v, s);
     EXPECT_EQ(v[0], 7);
 }
+
+int refresh_graph_values(Node* root, const PositionHistory& game_history); // exploration_diag.cpp
+
+// The exact DAG refresh writes the graph-game value into a stale node. Its WDL is recomputed from
+// the new value and the node's OWN uncertainty / winnable fields, not copied from the child that
+// carries the value (known inconsistency, measured in docs/fond-1911.md: adopting the carrier's
+// evaluation did not improve the Fine #70 ladder nor the puzzles). Pins the current behaviour.
+TEST(GraphGame, RefreshPropagatesExactValue) {
+    Board root_board; root_board.from_fen("4k3/8/8/8/8/8/8/R3K3 w - - 0 1");
+    Board a_board; a_board.from_fen("R3k3/8/8/8/8/8/8/4K3 b - - 1 1");
+    Board b_board; b_board.from_fen("4k3/8/8/8/8/8/R7/4K3 b - - 1 1");
+    Node root(&root_board);
+    Node a(&a_board);
+    Node b(&b_board);
+    auto set_eval = [](Evaluation& e, int value, float unc, float ww, float wb) {
+        e._value = value; e._uncertainty = unc; e._winnable_white = ww; e._winnable_black = wb;
+        e._evaluated = true; e.get_WDL(); e.get_average_score();
+    };
+    set_eval(a._deep_evaluation, 300, 0.2f, 0.6f, 0.3f);
+    set_eval(b._deep_evaluation, 100, 0.5f, 1.0f, 1.0f);
+    set_eval(root._deep_evaluation, 0, 0.9f, 1.0f, 1.0f); // stale: the children say 300
+    root.add_child(&a, Move(0, 0, 7, 0));
+    root.add_child(&b, Move(0, 0, 1, 0));
+    PositionHistory history;
+    EXPECT_EQ(refresh_graph_values(&root, history), 3);
+    EXPECT_EQ(root._deep_evaluation._value, 300);
+    Evaluation expected; set_eval(expected, 300, 0.9f, 1.0f, 1.0f); // own fields kept
+    EXPECT_FLOAT_EQ(root._deep_evaluation._uncertainty, 0.9f);
+    EXPECT_FLOAT_EQ(root._deep_evaluation._avg_score, expected._avg_score);
+    // A child whose position is on the game path counts as a draw (0): the root falls back to b
+    history[a_board._zobrist_key] = 1;
+    EXPECT_EQ(refresh_graph_values(&root, history), 3);
+    EXPECT_EQ(root._deep_evaluation._value, 100);
+    // Leaves are terminal for the graph game: untouched
+    EXPECT_EQ(a._deep_evaluation._value, 300);
+    EXPECT_EQ(b._deep_evaluation._value, 100);
+    root._children.clear(); // the children live on the stack: no recycling through the root
+}

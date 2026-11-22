@@ -1,0 +1,126 @@
+diff --git a/opti_chess/exploration_diag.cpp b/opti_chess/exploration_diag.cpp
+index 37e528b..81a0b02 100644
+--- a/opti_chess/exploration_diag.cpp
++++ b/opti_chess/exploration_diag.cpp
+@@ -632,6 +632,9 @@ int refresh_graph_values(Node* root, const PositionHistory& game_history) {
+ 	thread_local GraphGame g;
+ 	thread_local GraphGameScratch s;
+ 	thread_local vector<int> value;
++	thread_local vector<const Evaluation*> source; // evaluation carrying each changed node's new value
++	thread_local vector<uint8_t> state, is_history_draw;
++	thread_local vector<int> chain;
+ 	nodes.clear(); stack.clear(); index.clear(); g.clear();
+ 
+ 	// Walk from the root: index on first discovery
+@@ -652,6 +655,7 @@ int refresh_graph_values(Node* root, const PositionHistory& game_history) {
+ 
+ 	// Build the game graph (indices are stable: nodes[i] <-> node i)
+ 	const int reach = (int)nodes.size();
++	is_history_draw.assign(reach, 0);
+ 	for (int i = 0; i < reach; i++) {
+ 		Node* n = nodes[i];
+ 		int links = 0;
+@@ -661,6 +665,7 @@ int refresh_graph_values(Node* root, const PositionHistory& game_history) {
+ 		const bool history_draw = n != root && position_history_count(game_history, *n->_board) > 0;
+ 		const bool terminal = n->_is_terminal || links == 0 || history_draw;
+ 		if (terminal) {
++			is_history_draw[i] = history_draw;
+ 			g.add_node(n->_board->_player, true, false, history_draw ? 0 : n->_deep_evaluation._value);
+ 			continue;
+ 		}
+@@ -672,19 +677,86 @@ int refresh_graph_values(Node* root, const PositionHistory& game_history) {
+ 	}
+ 
+ 	solve_graph_game(g, value, s);
++
++	// A node whose value changes adopts the WHOLE evaluation (uncertainty, winnable chances,
++	// WDL, average score) of the option that carries its new value, as the tree backup copies
++	// its best child's evaluation. Recomputing the WDL from the new value and the node's own
++	// stale uncertainty/winnable fields gave a WDL that matched no option (Fine #70 S4: Kf2-Kd7
++	// read avg 0.883 while its best child read 0.967, and selection starved Kf2).
++	// The carrier is followed down the chain of nodes holding the same value until an
++	// unchanged node, a terminal, a stand pat or a value-0 cycle (draw on infinite play).
++	// Sources are never rewritten (terminals, stand pats, unchanged nodes, the certain draw),
++	// so the pointers stay valid while the changed nodes are updated below.
++	static const Evaluation certain_draw = [] {
++		Evaluation e;
++		e._value = 0;
++		e._evaluated = true;
++		e._uncertainty = 0.0f;
++		e._winnable_white = 0.0f;
++		e._winnable_black = 0.0f;
++		e.get_WDL();
++		e.get_average_score();
++		return e;
++	}();
++	static const Evaluation own_fields{}; // sentinel: keep the node's own fields
++	auto changed =[&](int i) { return !g.terminal[i] && nodes[i]->_deep_evaluation._value != value[i]; };
++	source.assign(reach, nullptr);
++	state.assign(reach, 0); // 0 unseen, 1 on the current chain, 2 resolved
++	for (int i = 0; i < reach; i++) {
++		if (!changed(i) || state[i] == 2) continue;
++		chain.clear();
++		const Evaluation* src = nullptr;
++		int j = i;
++		while (src == nullptr) {
++			if (state[j] == 2) { src = source[j]; break; }
++			if (state[j] == 1) { src = &certain_draw; break; } // same-value cycle: infinite play
++			if (!changed(j)) {
++				src = is_history_draw[j] ? &certain_draw : &nodes[j]->_deep_evaluation;
++				break;
++			}
++			state[j] = 1;
++			chain.push_back(j);
++			// First child holding the same value (children order = _children order, as the tree backup)
++			int next = -1;
++			for (int k = g.first[j]; k < g.first[j + 1]; k++)
++				if (value[g.child[k]] == value[j]) { next = g.child[k]; break; }
++			if (next >= 0) { j = next; continue; }
++			if (g.has_floor[j] && g.payoff[j] == value[j]) src = &nodes[j]->_static_evaluation;
++			else if (value[j] == 0) src = &certain_draw;
++			else src = &own_fields; // no carrier found (should not happen): fallback below
++		}
++		for (const int k : chain) { source[k] = src; state[k] = 2; }
++	}
++	static const int variant = getenv("OPTI_REFRESH_WDL") ? atoi(getenv("OPTI_REFRESH_WDL")) : 1; // EXPERIMENT
+ 	for (int i = 0; i < reach; i++) {
+ 		Node* n = nodes[i];
+-		if (!g.terminal[i] && n->_deep_evaluation._value != value[i]) {
++		if (changed(i)) {
+ 			Evaluation& e = n->_deep_evaluation;
+-			e._value = value[i];
+-			// A mate value is certain (same as tt_fixup_derived); other values keep their uncertainty
+-			if (10 * abs(e._value) > mate_value) {
+-				e._uncertainty = 0.0f;
+-				e._winnable_white = e._value > 0 ? 1.0f : 0.0f;
+-				e._winnable_black = e._value < 0 ? 1.0f : 0.0f;
++			if (variant == 2 && source[i] == &certain_draw) source[i] = &own_fields;
++			if (variant == 0 || variant == 3) source[i] = &own_fields;
++			if (source[i] != &own_fields) {
++				e = *source[i];
++				e._value = value[i];
++			}
++			else {
++				// Fallback, previous behaviour: recompute the WDL from the node's own fields
++				e._value = value[i];
++				if (10 * abs(e._value) > mate_value) {
++					e._uncertainty = 0.0f;
++					e._winnable_white = e._value > 0 ? 1.0f : 0.0f;
++					e._winnable_black = e._value < 0 ? 1.0f : 0.0f;
++				}
++				e.get_WDL();
++				e.get_average_score();
++				if (variant == 3)
++					for (auto const& [move, link] : n->_children)
++						if (link._node != nullptr && link._node->_deep_evaluation._value == value[i]) {
++							const Evaluation& c = link._node->_deep_evaluation;
++							e._uncertainty = c._uncertainty; e._winnable_white = c._winnable_white;
++							e._winnable_black = c._winnable_black; e._wdl = c._wdl; e._avg_score = c._avg_score;
++							break;
++						}
+ 			}
+-			n->_deep_evaluation.get_WDL();
+-			n->_deep_evaluation.get_average_score();
+ 		}
+ 		n->_has_path_value = false;
+ 	}

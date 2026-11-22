@@ -185,6 +185,11 @@ static int cmd_bench(int argc, char** argv) {
             hash *= 1099511628211ULL;
         }
     }
+    // Same source, other compiler = other search trajectory on long runs (Fine #70 S4 flips between
+    // MSVC 14.51 and 14.52) while this short bench may keep its signature: record the toolset.
+#ifdef _MSC_FULL_VER
+    cout << "compiler=MSVC " << _MSC_FULL_VER << endl;
+#endif
     cout << "total nodes=" << sum_nodes << " ms=" << fixed << setprecision(1) << sum_ms
          << " nodes/s=" << setprecision(0) << (sum_ms > 0 ? sum_nodes / (sum_ms / 1000.0) : 0.0) << endl;
     cout << "signature=" << hex << setw(16) << setfill('0') << hash << dec << setfill(' ') << endl;
