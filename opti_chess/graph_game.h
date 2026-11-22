@@ -1,4 +1,13 @@
 #pragma once
+// Exact game values for the DAG search (header-only, no engine dependency).
+//  - GraphGame: finite two-player graph in CSR form (add_node, then add_child for that node);
+//    per node: maximizer flag, terminal flag, optional stand-pat floor, integer payoff.
+//  - solve_graph_game(): two passes (Max forces payoff > 0, then Min forces payoff < 0), using
+//    GraphGameScratch buffers that are reused between calls. Infinite play is a draw (0), and
+//    nodes that join neither pass keep 0, so repetition cycles carry no self-supporting values.
+//  - Caller: refresh_graph_values in exploration_diag.cpp, in DAG mode (g_tt_node_dag).
+//    maximizer[i] = 1 means the side to move at node i maximises (see the field comments below).
+// See also: exploration_diag.cpp, opti_chess/ALGORITHMS.md s.8.6, docs/ARCHITECTURE.md.
 #include <vector>
 #include <cstdint>
 #include <algorithm>

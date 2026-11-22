@@ -24,6 +24,18 @@ __declspec(dllimport) unsigned long __stdcall WaitForMultipleObjects(unsigned lo
 
 using namespace std;
 
+// Fresh single-threaded search state: node and board arenas (allocated
+// once with `capacity` slots, then emptied), DAG node map and TT cleared.
+void reset_search_state(int capacity) {
+    monte_node_buffer.init(capacity, false);
+    monte_board_buffer.init(capacity, false);
+    monte_node_buffer.reset();
+    monte_board_buffer.reset();
+    node_map.clear();
+    transposition_table.clear();
+    g_buffers_full_logged = false;
+}
+
 static double score_reward_for_move(const Puzzle& p, const Move& chosen) {
     for (const auto& rm : p.allowed_moves) {
         if (rm.move == chosen) return rm.reward;
@@ -108,9 +120,9 @@ static void run_search_share(ParallelWork* w) {
         b.from_fen(w->fen);
     }
     if (w->iters > 0) {
-        if (getenv("SHARED_TRACE") != nullptr) { fprintf(stderr, "[SHARE] iters=%d\n", w->iters); fflush(stderr); }
+        if (g_shared_trace) { fprintf(stderr, "[SHARE] iters=%d\n", w->iters); fflush(stderr); }
         root->grogros_zero(&monte_board_buffer, w->evaluator, w->alpha, w->beta, gamma, w->iters, w->quiescence_depth, nullptr, nullptr, 0);
-        if (getenv("SHARED_TRACE") != nullptr) { fprintf(stderr, "[SHARE] done root_iters=%d\n", (int)root->_iterations); fflush(stderr); }
+        if (g_shared_trace) { fprintf(stderr, "[SHARE] done root_iters=%d\n", (int)root->_iterations); fflush(stderr); }
     } else {
         while (!g_search_abort.load(std::memory_order_relaxed)
             && (double)(clock() - w->t_search_start) / CLOCKS_PER_SEC < w->search_budget_s) {
@@ -118,7 +130,7 @@ static void run_search_share(ParallelWork* w) {
         }
     }
     if (w->shared_root != nullptr) {
-        if (getenv("SHARED_TRACE") != nullptr) { fprintf(stderr, "[SHARE] share-iters=%d descs=%lld\n", w->iters, t_dbg_descents); fflush(stderr); }
+        if (g_shared_trace) { fprintf(stderr, "[SHARE] share-iters=%d descs=%lld\n", w->iters, t_dbg_descents); fflush(stderr); }
         return; // shared tree: main collects post-join (no concurrent map walk)
     }
     w->iterations = root->_iterations;
@@ -204,7 +216,7 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
     PuzzleResult result;
     result.is_eval_puzzle = p.is_eval_puzzle;
     auto t0 = chrono::steady_clock::now();
-    const clock_t t_entry = clock();
+    [[maybe_unused]] const clock_t t_entry = clock();
 
     // EMA of per-puzzle non-search overhead, seconds (init/reset/clear before
     // the search + traverse/score after). TIME budgets promise TOTAL time, so
@@ -253,13 +265,7 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
         return result;
     }
 
-    monte_node_buffer.init(500000, false);
-    monte_board_buffer.init(500000, false);
-    monte_node_buffer.reset();
-    monte_board_buffer.reset();
-    node_map.clear();
-    transposition_table.clear();
-    g_buffers_full_logged = false;
+    reset_search_state();
 
     const bool prev_dag = g_tt_node_dag;
     g_tt_node_dag = true;
@@ -343,7 +349,7 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
         g_tt_node_dag = prev_dag;
         g_shared_tree = false;
         did_shared_search = true;
-        if (getenv("SHARED_TRACE") != nullptr) {
+        if (g_shared_trace) {
             fprintf(stderr, "SHARED-ROOT children=%d claims=%lld\n", (int)root._children.size(), (long long)g_dbg_claims);
             for (auto const& [mv2, link2] : root._children) {
                 if (!link2._node) continue;
@@ -371,15 +377,15 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
             w.alpha = alpha; w.beta = beta; w.gamma = gamma;
             w.thread_index = t; w.thread_count = n_threads;
         }
-        clock_t t_search_start = 0, t_search_end = 0;
+        clock_t t_sep_start = 0, t_sep_end = 0;
         if (mode == BudgetMode::TIME) {
-            t_search_start = clock();
+            t_sep_start = clock();
             double search_budget = budget - s_overhead_ema_s;
             const double min_search = 0.2 * budget;
             if (search_budget < min_search) search_budget = min_search;
-            g_search_deadline = t_search_start + (clock_t)(search_budget * CLOCKS_PER_SEC);
+            g_search_deadline = t_sep_start + (clock_t)(search_budget * CLOCKS_PER_SEC);
             g_search_abort = false;
-            for (auto& w : works) { w.iters = 0; w.search_budget_s = search_budget; w.t_search_start = t_search_start; }
+            for (auto& w : works) { w.iters = 0; w.search_budget_s = search_budget; w.t_search_start = t_sep_start; }
         } else {
             int iters = (int)budget;
             for (int t = 0; t < n_threads; t++)
@@ -393,7 +399,7 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
         run_search_share(&works[0]); // main thread does share 0
         for (int t = 1; t < n_threads; t++)
             WaitForSingleObject(g_pool[(size_t)(t - 1)].hDone, INFINITE);
-        if (mode == BudgetMode::TIME) { g_search_deadline = 0; t_search_end = clock(); }
+        if (mode == BudgetMode::TIME) { g_search_deadline = 0; t_sep_end = clock(); }
         g_tt_node_dag = prev_dag;
         // Merge by summed visits; avg = visit-weighted mean across workers.
         struct Agg { Move mv; long long visits = 0; double avgw = 0.0; };
@@ -415,8 +421,8 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
                 }
             }
         }
-        result.iterations = total_iters;
-        result.total_nodes = total_nodes;
+        result.iterations = static_cast<int>(total_iters);
+        result.total_nodes = static_cast<int>(total_nodes);
         result.chosen_move = Move();
         long long best_vis = -1;
         double best_avg = 0.5;
@@ -464,8 +470,8 @@ PuzzleResult PuzzleRunner::run(const Puzzle& p, BudgetMode mode, double budget,
         }
         auto t1 = chrono::steady_clock::now();
         result.time_s = chrono::duration<double>(t1 - t0).count();
-        if (mode == BudgetMode::TIME && t_search_end > t_search_start) {
-            double overhead = (double)(result.time_s - (t_search_end - t_search_start) / (double)CLOCKS_PER_SEC);
+        if (mode == BudgetMode::TIME && t_sep_end > t_sep_start) {
+            double overhead = (double)(result.time_s - (t_sep_end - t_sep_start) / (double)CLOCKS_PER_SEC);
             if (overhead >= 0.0 && overhead <= 3.0 * s_overhead_ema_s + 0.005)
                 s_overhead_ema_s = 0.7 * s_overhead_ema_s + 0.3 * overhead;
         }

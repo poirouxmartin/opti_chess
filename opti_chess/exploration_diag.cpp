@@ -1,3 +1,20 @@
+// GrogrosZero search implementation (declarations and Node/ChildLink in exploration.h).
+//  - Node::grogros_zero: iteration loop. Each iteration either expands one unexplored legal move
+//    (explore_new_move: new child + bounded quiescence on the leaf) or descends into a child chosen
+//    by pick_random_child (explore_random_child), then backs the value up (backup_value).
+//  - Node::quiescence: negamax with stand-pat and alpha-beta bounds, probes/stores the TT (zobrist.h).
+//    Its alpha/beta and return value are side-to-move; Evaluation::_value is white-positive.
+//  - Repetitions are path-local: a PositionHistory is pushed/popped along the descent and passed
+//    down; a repeated position scores as a draw for that path only. BackupResult.dep tracks which
+//    shared values depend on the path.
+//  - DAG mode (g_tt_node_dag): nodes shared through node_map; refresh_graph_values periodically
+//    re-solves the reachable graph with solve_graph_game (graph_game.h), infinite play = draw.
+//  - Search feature globals (g_search_*, g_selective_deepening, g_forced_every, ...) are initialised
+//    below from OPTI_* environment variables (OPTI_VALUE_PROP, OPTI_SOLVER, OPTI_SERIALIZE, ...):
+//    full list and defaults in docs/ENVIRONMENT.md. The code defaults win over stale comments here.
+//  - prune_full_arenas / recycle_detached_node free nodes back to the pools when they are full.
+// See also: exploration.h, graph_game.h, zobrist.cpp, eval_core.cpp, opti_chess/ALGORITHMS.md.
+
 #include "exploration.h"
 #include "useful_functions.h"
 #include "zobrist.h"
@@ -98,6 +115,8 @@ thread_local long long t_dbg_descents = 0; // TEMPORARY share accounting probe
 // Census compiled in but zero-cost when OPTI_QSTATS is unset (single
 // predictable branch per site; ~10M calls).
 const bool g_qstats_on = (getenv("OPTI_QSTATS") != nullptr);
+// SHARED_TRACE: shared-tree loop trace on stderr (read once, not per iteration)
+const bool g_shared_trace = (getenv("SHARED_TRACE") != nullptr);
 #define QCOUNT(f) do { if (g_qstats_on) g_qstats.f++; } while (0)
 // Phase 7a time split (seconds, steady_clock): static eval vs node init
 // (movegen+flags+sort) vs everything else (derived).
@@ -140,7 +159,7 @@ constexpr uint8_t display_repetition_limit = 3;
 // anchor -> depends only on D = distance to mate, which is a property of the
 // position); on probe, rebuild it using the _moves_count of the current node.
 // Mate threshold = the is_eval_mate / #1 idiom (10*|e| > mate_value), robust:
-// robuste : |stored| ~ mate_value(1e8) - D+�-+-�mate_ply + mc+�-+-�mate_ply, mc/D petits.
+// robuste : |stored| ~ mate_value(1e8) - D*mate_ply + mc*mate_ply, mc/D petits.
 inline int tt_normalize_mate(int eval, int moves_count) {
 	if (10 * abs(eval) > mate_value)
 		return eval + (eval > 0 ? 1 : -1) * moves_count * mate_ply;
@@ -805,16 +824,16 @@ void Node::grogros_zero(BoardBuffer* board_buffer, Evaluator* eval, const double
 	}
 
 	// Exploration
-	if (getenv("SHARED_TRACE") != nullptr) t_dbg_descents = 0;
+	if (g_shared_trace) t_dbg_descents = 0;
 	// DAG mode: exact refresh every exact_next iterations (outermost frame only)
 	int exact_since = 0, exact_next = g_dag_exact_every > 0 ? g_dag_exact_every : 1024;
 	while (iterations > 0) {
-		if (getenv("SHARED_TRACE") != nullptr) t_dbg_descents++;
+		if (g_shared_trace) t_dbg_descents++;
 
 		// Wall-clock budget: stop cleanly when the deadline is reached
 		// (max_time == 0 keeps the pure iteration-count behaviour).
 		// Hard deadline (TIME mode): abort flag set by quiescence sampling.
-		if (getenv("SHARED_TRACE") != nullptr && t_dbg_descents < 3) { fprintf(stderr, "[LOOP] iters=%d maxtime=%d abort=%d\n", iterations, (int)max_time, (int)g_search_abort.load()); fflush(stderr); }
+		if (g_shared_trace && t_dbg_descents < 3) { fprintf(stderr, "[LOOP] iters=%d maxtime=%d abort=%d\n", iterations, (int)max_time, (int)g_search_abort.load()); fflush(stderr); }
 		if (max_time != 0 && clock() - begin_monte_time >= max_time)
 			break;
 		if (g_search_abort)
@@ -945,7 +964,7 @@ inline void enforce_node_map_cap() {
 }
 
 // Explores a new move
-void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double gamma, int quiescence_depth, Network* network, PositionHistory *path_history, BackupResult* out) {
+void Node::explore_new_move(BoardBuffer* board_buffer, Evaluator* eval, double alpha, double beta, double /*gamma*/, int quiescence_depth, Network* network, PositionHistory *path_history, BackupResult* out) {
 
 	// Take the first unexplored move.
 	// Phase 6: in shared mode the unlocked pre-scan is skipped entirely
@@ -2418,25 +2437,9 @@ Node::~Node() {
 	//}
 }
 
-// Returns the most explored child
-Node* Node::get_most_explored_child() {
-	Move most_explored_move = get_most_explored_child_move();
-
-	if (most_explored_move.is_null_move()) {
-		return nullptr;
-	}
-
-	return _children[most_explored_move]._node;
-}
-
-// Returns the average computation speed in nodes per second
-int Node::get_avg_nps() const {
-	return _time_spent == 0 ? 0 : ((double)_nodes / (double)_time_spent * CLOCKS_PER_SEC);
-}
-
 // Returns the number of iterations per second
 int Node::get_ips() const {
-	return _time_spent == 0 ? 0 : ((double)_iterations / (double)_time_spent * CLOCKS_PER_SEC);
+	return static_cast<int>(_time_spent == 0 ? 0 : ((double)_iterations / (double)_time_spent * CLOCKS_PER_SEC));
 }
 
 // Quiescence search, integrated into the exploration
@@ -2525,7 +2528,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 	if (g_qstats_on)
 		g_t_qinit += std::chrono::duration<double>(std::chrono::steady_clock::now() - t_qinit0).count();
 
-	// #7 / B-1 +�-+-� null-safe path history (appel manuel quiescence via main_gui.h) :
+	// #7 / B-1 - null-safe path history (appel manuel quiescence via main_gui.h) :
 	// a local history owned for the WHOLE duration of the call. It must be declared
 	// at function scope (never per move, otherwise path_history dangles on the
 	// destroyed local of the previous iteration). Same idiom as grogros_zero.
@@ -2982,11 +2985,11 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			// which decouples from value exactly in tactical positions: quiescence
 			// returned +151 here while storing the -395 of a differently-ranked
 			// sibling, freezing verdicts at garbage.
-			int color = _board->get_color();
+			int side_sign = _board->get_color();
 			long long best_value = LLONG_MIN;
 			for (auto const& [move, child_link] : _children) {
 				if (!child_link._node) continue;
-				const long long v = child_link._node->_deep_evaluation._value * color;
+				const long long v = child_link._node->_deep_evaluation._value * side_sign;
 				if (v > best_value) {
 					best_value = v;
 					best_move = move;
@@ -2994,7 +2997,7 @@ int Node::quiescence(BoardBuffer* board_buffer, Evaluator* eval, int depth, doub
 			}
 
 			bool all_moves_explored = children_count() == _board->_got_moves;
-			if (!all_moves_explored && _deep_evaluation._value * color >= best_value) {
+			if (!all_moves_explored && _deep_evaluation._value * side_sign >= best_value) {
 				best_move = Move(); // stand pat wins on value
 			}
 		}
@@ -3115,7 +3118,7 @@ static bool is_passed_push(const Board* b, const Move& move) {
 	const int8_t dir = white ? 1 : -1;
 	if (move.end_row != move.start_row + dir) return false;
 	if (b->_array[move.end_row][move.end_col] != none) return false;
-	const uint8_t en = white ? b_pawn : w_pawn;
+	const uint8_t en = static_cast<uint8_t>(white ? b_pawn : w_pawn);
 	// Cases DEVANT, apres la poussee (end_row + dir) : la case de depart
 	// contient encore le pion lui-meme, il faut partir d'au-dela.
 	int k = (int)move.end_row + dir;
@@ -3279,7 +3282,7 @@ Move Node::pick_random_child(const double alpha, const double beta, const double
 	Move best_move;
 	double best_score = 0.0;
 
-	// Gamma (hoisted out of loop +�-+-� depends only on parent state)
+	// Gamma (hoisted out of loop - depends only on parent state)
 	const double new_gamma = gamma / (1.0 - _static_evaluation._uncertainty / 2.0) / (1.0 - _board->_adv / 2.0);
 
 	// Look at every move
@@ -3673,24 +3676,6 @@ Move Node::get_best_score_move(const double alpha, const double beta, const bool
 	return best_move;
 }
 
-// Returns a forecast node score, used by quiescence when the maximum evaluations are unknown
-int Node::get_previsonal_node_score(const double alpha, const double beta, const bool player) const {
-	return 1E6 * get_node_score(alpha, beta, _deep_evaluation._value, _deep_evaluation._avg_score, player);
-}
-
-// Evaluates the threat by running a quiescence on the opponent's turn
-int Node::evaluate_quiescence_threat(Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network) const {
-
-	Board b(*_board);
-	b.switch_trait();
-
-	Node stand_pat_node(&b);
-
-	int stand_pat_value = stand_pat_node.minimal_quiescence(eval, depth, search_alpha, search_beta, alpha, beta, network);
-
-	return stand_pat_value;
-}
-
 // Minimal quiescence (does not store nodes)
 int Node::minimal_quiescence(Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha, int beta, Network* network) {
 	// REVIEW: still very basic, it only judges the evaluation
@@ -3909,7 +3894,7 @@ thread_local NodeBuffer monte_node_buffer;
 // as a reset/remove frees space.
 thread_local bool g_buffers_full_logged = false;
 bool g_tt_main_search = false;
-bool g_tt_node_dag = false; // #11 Plan B +�-+-� voir exploration.h
+bool g_tt_node_dag = false; // #11 Plan B - see exploration.h
 thread_local robin_map<uint64_t, Node*> node_map; // Phase 6: per-thread trees
 std::mutex g_node_map_mutex; // Phase 6: shared-tree node_map guard
 std::atomic<long long> g_dbg_claims{ 0 }; // TEMPORARY (remove after)

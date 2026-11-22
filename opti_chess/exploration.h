@@ -1,5 +1,22 @@
 #pragma once
 
+// GrogrosZero search: declarations (implementation in exploration_diag.cpp).
+//  - Node: one position of the search tree/DAG. _board points into the BoardBuffer pool;
+//    _children is a robin_map<Move, ChildLink>; selection stats (visits, in-flight) live on the
+//    edge (ChildLink), so they stay correct when several parents share a node.
+//  - Entry points: Node::grogros_zero (iterations loop), explore_new_move, explore_random_child,
+//    pick_random_child, backup_value, quiescence (bounded tactical search).
+//  - Nodes come from the thread_local monte_node_buffer (NodeBuffer), Boards from monte_board_buffer
+//    (buffer.h). When a pool is full the search refines the existing tree (prune_full_arenas).
+//  - Repetition state is path-local: a PositionHistory is threaded through the descent (stack),
+//    never stored on a Node; BackupResult carries the path dependency (dep) up the recursion.
+//  - Values: Evaluation is white-positive, quiescence/alpha-beta/TT are side-to-move.
+//  - Globals g_* below are the A/B switches (g_tt_main_search, g_tt_node_dag, g_shared_tree,
+//    g_mcts_solver, g_forced_every...). Most are set from OPTI_* environment variables in
+//    exploration_diag.cpp: see docs/ENVIRONMENT.md.
+// See also: exploration_diag.cpp, graph_game.h (exact DAG values), buffer.h, zobrist.h,
+// opti_chess/ALGORITHMS.md, docs/ARCHITECTURE.md.
+
 #include "board.h"
 #include "buffer.h"
 #include <robin_map.h>
@@ -65,6 +82,8 @@ extern bool g_shared_tree;
 void dump_qstats();
 // Census gate (defined in exploration_diag.cpp).
 extern const bool g_qstats_on;
+// Shared-tree trace gate (SHARED_TRACE, read once at startup).
+extern const bool g_shared_trace;
 
 // Phase 7a component timers (defined in eval_core.cpp).
 extern thread_local double g_t_king_safety_s;
@@ -368,12 +387,6 @@ public:
 	// Returns the depth of the principal variation
 	int get_main_depth(const double alpha, const double beta, int max_depth = 500, PositionHistory* chain = nullptr);
 
-	// Returns the most explored child
-	Node* get_most_explored_child();
-
-	// Returns the average search speed in nodes per second
-	int get_avg_nps() const;
-
 	// Returns the number of iterations per second
 	int get_ips() const;
 
@@ -406,12 +419,6 @@ public:
 	// Returns the move with the best score
 	// (path / over_move+over_eval: same per-path substitutions as backup_value)
 	Move get_best_score_move(const double alpha, const double beta, const bool consider_standpat = false, const int qdepth = -100, const PositionHistory* path = nullptr, const Move& over_move = Move(), const Evaluation* over_eval = nullptr, int min_dep_ply = INT_MIN);
-
-	// Returns a forecast value of the node score, when the maximum evaluations are unknown (for the quiescence)
-	int get_previsonal_node_score(const double alpha, const double beta, const bool player) const;
-
-	// Evaluates the threat using a quiescence search on the opponent's turn
-	int evaluate_quiescence_threat(Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr) const;
 
 	// Minimal quiescence (without storing the nodes)
 	int minimal_quiescence(Evaluator* eval, int depth, double search_alpha, double search_beta, int alpha = -INT_MAX, int beta = INT_MAX, Network* network = nullptr);

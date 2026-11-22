@@ -27,6 +27,15 @@
 //   --openings=N      play N random openings of 8 plies (RNG seeded by --seed),
 //                     each played twice with colors swapped; games becomes 2N
 //   --seed=S          seed of the opening RNG (default 1)
+//
+// Implementation notes (build target opti_chess_selfplay, linked with engine_lib):
+//  - Each side searches with Node::grogros_zero (iterations_per_move, quiescence depth 8) on the
+//    thread_local monte_board_buffer / monte_node_buffer pools.
+//  - The per-side mode sets g_tt_node_dag before each search (tree = off, dag = on).
+//  - Other options: --new-alpha=, --old-alpha=, --new-beta=, --old-beta=, --new-gamma=,
+//    --old-gamma=, --persist (kept trees; incompatible with --modes).
+//  - main() sets OPTI_SEED=42 when unset, so matches are reproducible (docs/ENVIRONMENT.md).
+// See also: exploration.h, exploration_diag.cpp, docs/ARCHITECTURE.md (Training pipeline).
 // ---------------------------------------------------------------------------
 
 // CLI A/B disables, re-applied after every set_config() call

@@ -176,7 +176,7 @@ bool GUI::new_bind_game() {
 
 	reset_game();
 
-	if (get_board_orientation() != orientation)
+	if (static_cast<int>(get_board_orientation()) != orientation)
 		switch_orientation();
 
 	if (orientation) {
@@ -240,7 +240,7 @@ bool GUI::new_bind_analysis() {
 
 	reset_game();
 
-	if (get_board_orientation() != orientation)
+	if (static_cast<int>(get_board_orientation()) != orientation)
 		switch_orientation();
 
 	if (orientation) {
@@ -405,14 +405,6 @@ bool GUI::update_date() {
 //
 //	return true;
 //}
-
-// Removes the last move from the PGN
-bool GUI::remove_last_move_PGN()
-{
-	// TODO	
-
-	return false;
-}
 
 // Draws the arrows from the values of the Monte Carlo algorithm
 void GUI::draw_exploration_arrows()
@@ -715,7 +707,7 @@ void GUI::resize_GUI() {
 	// Pieces
 	for (int i = 0; i < 12; i++) {
 		Image piece_image = ImageCopy(_piece_images[i]);
-		ImageResize(&piece_image, _piece_size, _piece_size);
+		ImageResize(&piece_image, static_cast<int>(_piece_size), static_cast<int>(_piece_size));
 		Texture2D texture = LoadTextureFromImage(piece_image);
 		UnloadImage(piece_image);
 		//GenTextureMipmaps(&texture);
@@ -731,20 +723,20 @@ void GUI::resize_GUI() {
 	// Grogros
 	_grogros_size = _board_size / 16.0f;
 	Image grogros_copy = ImageCopy(_grogros_image);
-	ImageResize(&grogros_copy, _grogros_size, _grogros_size);
+	ImageResize(&grogros_copy, static_cast<int>(_grogros_size), static_cast<int>(_grogros_size));
 	if (_grogros_texture.id != 0) UnloadTexture(_grogros_texture);
 	_grogros_texture = LoadTextureFromImage(grogros_copy);
 	UnloadImage(grogros_copy);
 
 	// Curseur
 	Image cursor_copy = ImageCopy(_cursor_image);
-	ImageResize(&cursor_copy, _cursor_size, _cursor_size);
+	ImageResize(&cursor_copy, static_cast<int>(_cursor_size), static_cast<int>(_cursor_size));
 	if (_cursor_texture.id != 0) UnloadTexture(_cursor_texture);
 	_cursor_texture = LoadTextureFromImage(cursor_copy);
 	UnloadImage(cursor_copy);
 
 	// Mini pieces (for the count of the pieces captured during the game)
-	_mini_piece_size = _text_size / 3;
+	_mini_piece_size = static_cast<int>(_text_size / 3);
 	for (int i = 0; i < 12; i++) {
 		Image mini_piece_image = ImageCopy(_mini_piece_images[i]);
 		ImageResize(&mini_piece_image, _mini_piece_size, _mini_piece_size);
@@ -816,12 +808,6 @@ void GUI::get_window_size() {
 	_screen_height = GetScreenHeight();
 }
 
-// Returns whether the player is currently moving (so the AI stops thinking then, otherwise it lags)
-bool GUI::is_playing() const {
-	const auto [x, y] = GetMousePosition();
-	return (_selected_pos.row != -1 || x != _mouse_pos.x || y != _mouse_pos.y);
-}
-
 // Changes the arrow display mode (yes/no)
 void GUI::switch_arrow_drawing() {
 	_drawing_arrows = !_drawing_arrows;
@@ -848,7 +834,7 @@ void GUI::slider_text(const string& s, float pos_x, float pos_y, float width, fl
 	const Vector2 estimated_size = MeasureTextEx(_text_font, "A", size, _font_spacing * size);
 
 	int split_length = static_cast<int>(width / estimated_size.x);
-	int margin = split_length * 1.2f; // Pour forcer le split
+	int margin = static_cast<int>(split_length * 1.2f); // Pour forcer le split
 	string new_string;
 	int rows = 0;
 	int k = 0;
@@ -875,10 +861,10 @@ void GUI::slider_text(const string& s, float pos_x, float pos_y, float width, fl
 	if (text_height > height) {
 
 		// Number of lines to display
-		int n_lines = 1 + (height - estimated_size.y) / space_size;
+		int n_lines = static_cast<int>(1 + (height - estimated_size.y) / space_size);
 
 		// Number of the line to start from
-		int starting_line = (rows + 1 - n_lines) * *slider_value;
+		int starting_line = static_cast<int>((rows + 1 - n_lines) * *slider_value);
 
 		string final_text;
 		int current_line = 0;
@@ -896,7 +882,7 @@ void GUI::slider_text(const string& s, float pos_x, float pos_y, float width, fl
 		}
 
 		new_string = final_text;
-		slider_height = height / sqrtf(rows - n_lines + 1) / 2;
+		slider_height = height / sqrtf(static_cast<float>(rows - n_lines + 1)) / 2;
 
 		// Background
 		Rectangle slider_background_rect = { pos_x + width - slider_width, pos_y, slider_width, height };
@@ -910,7 +896,7 @@ void GUI::slider_text(const string& s, float pos_x, float pos_y, float width, fl
 
 		// With the mouse wheel
 		if (is_cursor_in_rect({ pos_x, pos_y, width, height })) {
-			*slider_value -= GetMouseWheelMove() * 3.0 / (rows - n_lines + 1);
+			*slider_value = static_cast<float>(*slider_value - GetMouseWheelMove() * 3.0 / (rows - n_lines + 1));
 			if (*slider_value < 0.0f)
 				*slider_value = 0.0f;
 			if (*slider_value > 1.0f)
@@ -941,12 +927,6 @@ bool GUI::draw_rectangle(const float pos_x, const float pos_y, const float width
 	return true;
 }
 
-// Draws a rectangle from floating-point coordinates, using the start and end coordinates
-bool GUI::draw_rectangle_from_pos(const float pos_x1, const float pos_y1, const float pos_x2, const float pos_y2, const Color color) {
-	DrawRectangle(float_to_int(pos_x1), float_to_int(pos_y1), float_to_int(pos_x2) - float_to_int(pos_x1), float_to_int(pos_y2) - float_to_int(pos_y1), color);
-	return true;
-}
-
 // Draws a circle from floating-point coordinates
 void GUI::draw_circle(const float pos_x, const float pos_y, const float radius, const Color color) {
 	DrawCircle(float_to_int(pos_x), float_to_int(pos_y), radius, color);
@@ -968,7 +948,7 @@ void GUI::draw_texture(const Texture& texture, const float pos_x, const float po
 }
 
 // Displays the evaluation bar
-void GUI::draw_eval_bar(const float eval, WDL wdl, float avg_score, const string& text_eval, const float x, const float y, const float width, const float height, const float max_eval, const Color white, const Color gray, Color black, float max_height) {
+void GUI::draw_eval_bar(const float eval, WDL wdl, float avg_score, const string& text_eval, const float x, const float y, const float width, const float height, const float /*max_eval*/, const Color white, const Color gray, Color black, float max_height) {
 	const bool is_mate = text_eval.find('M') != -1;
 
 	// Maximum size of the bar
@@ -1021,16 +1001,6 @@ void GUI::remove_highlighted_tiles() {
 	for (int i = 0; i < 8; i++)
 		for (int j = 0; j < 8; j++)
 			_highlighted_array[i][j] = 0;
-}
-
-// Selects a square
-void GUI::select_tile(int a, int b) {
-	_selected_pos = Pos(a, b);
-}
-
-// Highlights a square (or un-highlights it)
-void GUI::highlight_tile(const int a, const int b) {
-	_highlighted_array[a][b] = 1 - _highlighted_array[a][b];
 }
 
 // Deselects
@@ -1272,7 +1242,7 @@ bool GUI::play_user_move(const int start_row, const int start_col, const int end
 
 	// Legality by geometry (Move equality includes the promo piece, and a
 	// user-constructed move always carries PROMO_QUEEN)
-	Move move(start_row, start_col, end_row, end_col);
+	Move move(static_cast<uint8_t>(start_row), static_cast<uint8_t>(start_col), static_cast<uint8_t>(end_row), static_cast<uint8_t>(end_col));
 	bool legal = false;
 	for (int i = 0; i < _board->_got_moves; i++) {
 		const Move& m = _board->_moves[i];
@@ -2292,16 +2262,16 @@ void GUI::draw()
 	string black_material = (material < 0) ? ("+" + to_string(-material)) : "";
 	string white_material = (material > 0) ? ("+" + to_string(material)) : "";
 
-	int t_size = _text_size / 3.0f;
+	int t_size = static_cast<int>(_text_size / 3.0f);
 
-	int x_mini_piece = _board_padding_x + t_size * 4;
-	int y_mini_piece_black = _board_padding_y - t_size + (_board_size + 2 * t_size) * !_board_orientation;
-	int y_mini_piece_white = _board_padding_y - t_size + (_board_size + 2 * t_size) * _board_orientation;
+	int x_mini_piece = static_cast<int>(_board_padding_x + t_size * 4);
+	int y_mini_piece_black = static_cast<int>(_board_padding_y - t_size + (_board_size + 2 * t_size) * !_board_orientation);
+	int y_mini_piece_white = static_cast<int>(_board_padding_y - t_size + (_board_size + 2 * t_size) * _board_orientation);
 
 	// Noirs
 	DrawCircle(x_mini_piece - t_size * 3, y_mini_piece_black, t_size * 0.6f, _board_color_dark);
-	DrawTextEx(_text_font, _black_player.c_str(), { static_cast<float>(x_mini_piece - t_size * 2), static_cast<float>(y_mini_piece_black - t_size) }, t_size, _font_spacing* t_size, _text_color);
-	DrawTextEx(_text_font, black_material.c_str(), { static_cast<float>(x_mini_piece - t_size * 2), static_cast<float>(y_mini_piece_black + t_size / 6) }, t_size, _font_spacing* t_size, _text_color_info);
+	DrawTextEx(_text_font, _black_player.c_str(), { static_cast<float>(x_mini_piece - t_size * 2), static_cast<float>(y_mini_piece_black - t_size) }, static_cast<float>(t_size), _font_spacing* t_size, _text_color);
+	DrawTextEx(_text_font, black_material.c_str(), { static_cast<float>(x_mini_piece - t_size * 2), static_cast<float>(y_mini_piece_black + t_size / 6) }, static_cast<float>(t_size), _font_spacing* t_size, _text_color_info);
 
 	bool next = false;
 	for (int i = 1; i < 6; i++) {
@@ -2315,12 +2285,12 @@ void GUI::draw()
 		next = false;
 	}
 
-	x_mini_piece = _board_padding_x + t_size * 4;
+	x_mini_piece = static_cast<int>(_board_padding_x + t_size * 4);
 
 	// Blancs
 	DrawCircle(x_mini_piece - t_size * 3, y_mini_piece_white, t_size * 0.6f, _board_color_light);
-	DrawTextEx(_text_font, _white_player.c_str(), { static_cast<float>(x_mini_piece - t_size * 2), static_cast<float>(y_mini_piece_white - t_size) }, t_size, _font_spacing * t_size, _text_color);
-	DrawTextEx(_text_font, white_material.c_str(), { static_cast<float>(x_mini_piece - t_size * 2), static_cast<float>(y_mini_piece_white + t_size / 6) }, t_size, _font_spacing * t_size, _text_color_info);
+	DrawTextEx(_text_font, _white_player.c_str(), { static_cast<float>(x_mini_piece - t_size * 2), static_cast<float>(y_mini_piece_white - t_size) }, static_cast<float>(t_size), _font_spacing * t_size, _text_color);
+	DrawTextEx(_text_font, white_material.c_str(), { static_cast<float>(x_mini_piece - t_size * 2), static_cast<float>(y_mini_piece_white + t_size / 6) }, static_cast<float>(t_size), _font_spacing * t_size, _text_color_info);
 
 	for (int i = 1; i < 6; i++) {
 		for (int j = 0; j < _missing_b_material[i]; j++) {
@@ -2428,7 +2398,7 @@ void GUI::draw()
 		else
 			eval = to_string(best_eval);
 
-		_global_eval = best_eval;
+		_global_eval = static_cast<float>(best_eval);
 
 		stringstream stream;
 		stream << fixed << setprecision(2) << best_eval / 100.0f;
@@ -2458,8 +2428,8 @@ void GUI::draw()
 			"\nConfidence: " + to_string(100 - (int)(100 * best_evaluation._uncertainty)) + "%" +
 			"\nWinnable: " + to_string(static_cast<int>(best_evaluation._winnable_white * 100)) + "% / " + to_string(static_cast<int>(best_evaluation._winnable_black * 100)) + "%" +
 			"\n" + _wdl.to_string() + "\nScore: " + score_string(best_evaluation._avg_score) +
-			"\nTree nodes: " + int_to_round_string(_tree_snapshot.nodes) + " (" + int_to_round_string(_tree_snapshot.nps) + " N/s avg)" +
-			"\nIterations: " + int_to_round_string(_tree_snapshot.iterations) + " (" + int_to_round_string(_tree_snapshot.ips) + " I/s avg)" +
+			"\nTree nodes: " + int_to_round_string(_tree_snapshot.nodes) + " (" + int_to_round_string(static_cast<int>(_tree_snapshot.nps)) + " N/s avg)" +
+			"\nIterations: " + int_to_round_string(_tree_snapshot.iterations) + " (" + int_to_round_string(static_cast<int>(_tree_snapshot.ips)) + " I/s avg)" +
 			"\nForced: " + (g_forced_every >= (1 << 30) ? static_cast<string>("OFF (Y/Z)") : (to_string(g_forced_every) + " (Y/Z)")) +
 			"\nFired: " + to_string((long long)g_forced_fired) +
 				"\n\n" + _tree_snapshot.tt_stats +
@@ -2620,19 +2590,6 @@ bool GUI::compare_arrows(const Move m1, const Move m2) const {
 	return k1 < k2;
 }
 
-// Returns the date in the 'yyyymmdd' format
-string GUI::get_date() {
-	const time_t current_time = time(nullptr);
-	tm local_time;
-	localtime_s(&local_time, &current_time);
-
-	const int year = local_time.tm_year + 1900;
-	const int month = local_time.tm_mon + 1;
-	const int day = local_time.tm_mday;
-
-	return to_string(year) + (month < 10 ? "0" : "") + to_string(month) + (day < 10 ? "0" : "") + to_string(day);
-}
-
 // Updates the bot name of GrogrosZero
 void GUI::update_grogros_zero_name() {
 	//_grogros_zero_name = "Gr0_" + get_date();
@@ -2725,7 +2682,6 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	stop_compute(__FUNCTION__);
 
 	// For the evaluation computations
-	int color = _board->get_color();
 
 	// Most explored node
 	//Node const *most_explored_child = _root_exploration_node->get_most_explored_child();
@@ -2751,7 +2707,6 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	}
 
 	const ChildLink& most_explored_link = _root_exploration_node->_children[most_explored_move];
-	Node const* most_explored_child = most_explored_link._node;
 
 	MoveScoreList move_scores = _root_exploration_node->get_move_scores(_alpha, _beta);
 
@@ -2822,7 +2777,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 	//int time_left = _board->_player ? _time_white : _time_black;
 
 	//float move_wait_factor = min(100.0f, 1.0f + abs(most_explored_child_eval - best_eval_colored) / 50.0f * time_left / 60000.0f);
-	float move_wait_factor = 1.0f + ((best_score + 1E-6) / (most_explored_score + 1E-6) - 1.0f) * 5.0f;
+	float move_wait_factor = static_cast<float>(1.0f + ((best_score + 1E-6) / (most_explored_score + 1E-6) - 1.0f) * 5.0f);
 
 	//cout << "move wait factor : " << move_wait_factor << endl;
 
@@ -2866,7 +2821,7 @@ void GUI::play_grogros_zero_move(float time_proportion_per_move) {
 
 	const int actual_ips = _root_exploration_node->get_ips();
 
-	const int supposed_ips = average_nps + (actual_ips - average_nps) * consistent_factor;
+	const int supposed_ips = static_cast<int>(average_nps + (actual_ips - average_nps) * consistent_factor);
 
 
 

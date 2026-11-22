@@ -40,7 +40,7 @@ int Board::get_square_controls() const
 	uint64_t wp = _bitboards[w_pawn];
 	while (wp) {
 		const int sq = pop_lsb(wp);
-		const uint8_t i = sq >> 3;
+		const uint8_t i = static_cast<uint8_t>(sq >> 3);
 		const uint8_t j = sq & 7;
 		// White pawn at (i,j) controls (7-i-1, j-1) and (7-i-1, j+1) in the square_controls table
 		const uint8_t di = 7 - i - 1;
@@ -52,7 +52,7 @@ int Board::get_square_controls() const
 	uint64_t bp = _bitboards[b_pawn];
 	while (bp) {
 		const int sq = pop_lsb(bp);
-		const uint8_t i = sq >> 3;
+		const uint8_t i = static_cast<uint8_t>(sq >> 3);
 		const uint8_t j = sq & 7;
 		// Black pawn at (i,j) controls (i-1, j-1) and (i-1, j+1)
 		if (j - 1 >= 0 && i - 1 >= 0)
@@ -69,13 +69,7 @@ int Board::get_square_controls() const
 	// The weight of this term depends on game progress: space matters more the more pieces remain
 	constexpr float control_adv_factor = 0.2f; // Depending on how far the game has progressed
 
-	return eval_from_progress(total_control, _adv, control_adv_factor);
-}
-
-// Returns the UCT value
-float uct(const float win_chance, const float c, const int nodes_parent, const int nodes_child) {
-	// cout << win_chance << ", " << nodes_parent << ", " << nodes_child << " = " << win_chance + c * sqrt(log(nodes_parent) / nodes_child) << endl;
-	return win_chance + c * static_cast<float>(sqrt(log(nodes_parent) / nodes_child));
+	return static_cast<int>(eval_from_progress(total_control, _adv, control_adv_factor));
 }
 
 int Board::get_space() const
@@ -85,8 +79,8 @@ int Board::get_space() const
 
 	int w_pieces = 0; int b_pieces = 0;
 
-	w_pieces = __popcnt64(_occupancies[0] & ~_bitboards[w_pawn]);
-	b_pieces = __popcnt64(_occupancies[1] & ~_bitboards[b_pawn]);
+	w_pieces = static_cast<int>(__popcnt64(_occupancies[0] & ~_bitboards[w_pawn]));
+	b_pieces = static_cast<int>(__popcnt64(_occupancies[1] & ~_bitboards[b_pawn]));
 		
 
 	// Open file count
@@ -158,7 +152,7 @@ int Board::get_space() const
 
 	constexpr float space_adv_factor = 0.5f; // Depending on how far the game has progressed
 
-	return space_area * max(0.0f, (1 + (space_adv_factor - 1) * _adv));
+	return static_cast<int>(space_area * max(0.0f, (1 + (space_adv_factor - 1) * _adv)));
 }
 
 // Computes and returns an evaluation of the alignments
@@ -211,7 +205,7 @@ int Board::get_alignments() const
 	uint64_t all_sliders = _bitboards[w_bishop] | _bitboards[b_bishop] | _bitboards[w_rook] | _bitboards[b_rook] | _bitboards[w_queen] | _bitboards[b_queen];
 	while (all_sliders) {
 		const int sq = pop_lsb(all_sliders);
-		const uint8_t row = sq >> 3;
+		const uint8_t row = static_cast<uint8_t>(sq >> 3);
 		const uint8_t col = sq & 7;
 
 		// If the square holds a piece
@@ -274,7 +268,7 @@ int Board::get_alignments() const
 						// off-board when the ray runs along row 0/7 -> bound-check BOTH indices.
 						const int pawn_rank = current_row - pinning_int_color;
 						if (pawn_rank >= 0 && pawn_rank <= 7) {
-							const uint8_t pressuring_pawn = pinning_piece_color ? w_pawn : b_pawn;
+							const uint8_t pressuring_pawn = static_cast<uint8_t>(pinning_piece_color ? w_pawn : b_pawn);
 							if ((current_col > 0 && _array[pawn_rank][current_col - 1] == pressuring_pawn) || (current_col < 7 && _array[pawn_rank][current_col + 1] == pressuring_pawn)) {
 								pressures[i] = pressuring_values[0];
 								//cout << "pawn !" << endl;
@@ -293,7 +287,6 @@ int Board::get_alignments() const
 				int total_value = 0;
 
 				// Value of the pinning piece
-				const uint8_t pinning_piece_value = pieces_values[(pinning_piece - 1) % 6];
 
 				// Strength of the pinning piece
 				const float pinning_piece_power = is_bishop(pinning_piece) ? bishop_power : (is_rook(pinning_piece) ? rook_power : queen_power);
@@ -324,13 +317,13 @@ int Board::get_alignments() const
 						break;
 					}
 
-					const float d2 = distance * distance;
+					const float d2 = static_cast<float>(distance * distance);
 					const float division_factor = d2 * d2;
 					const int pinned_piece_value = ally_piece ? ((pinned_piece - 1) % 6 == 0 ? ally_pawn_value : ally_piece_value) : pieces_values[(pinned_piece - 1) % 6];
 					ally_blocking_factor *= ally_piece ? (1 - ally_block_values[(pinned_piece - 1) % 6]) : 1.0f;
 
 					if (!ally_piece || !is_previous_ally) {
-						const int pin_value = pinning_piece_power * pinned_piece_value * previous_piece / division_factor * ally_blocking_factor;
+						const int pin_value = static_cast<int>(pinning_piece_power * pinned_piece_value * previous_piece / division_factor * ally_blocking_factor);
 
 						// Look for a cheaper piece pressuring this pin
 						// For now only pawns are tested, otherwise it gets far too slow
@@ -355,12 +348,12 @@ int Board::get_alignments() const
 						//cout << piece_name(pinned_piece) << (pinned_piece_color ? " (white) " : " (black) ") << " pinned by " << piece_name(pinning_piece) << (pinning_piece_color ? " (white)" : " (black)") << " on " << square_name(row, col) << ", base pressure: " << pressure_value << ", secondary pressure: " << secondary_pressure << " = " << result_pressure << " * " << pressuring_factor << " * d == 1 (d = " << (int)d << ") = " << pressuring_factor * result_pressure * (d == 1) << " + pin value: " << pin_value << endl;
 
 						// FIXME: a pin should never be worth more than the pinned piece
-						total_value += pin_value + pressuring_factor * result_pressure * !ally_piece;
+						total_value = static_cast<int>(total_value + (pin_value + pressuring_factor * result_pressure * !ally_piece));
 					}
 
 					//2brr3/kpQn2p1/p4p2/5P1p/6nP/1P3B2/2P5/1K1R4 w - - 6 35 : bug??
 
-					previous_piece = pinned_piece_value;
+					previous_piece = static_cast<uint8_t>(pinned_piece_value);
 					is_previous_ally = ally_piece;
 					distance++;
 				}
@@ -382,7 +375,7 @@ int Board::get_alignments() const
 	// Depending on how far the game has progressed
 	constexpr float alignment_adv_factor = 1.0f;
 
-	return eval_from_progress(w_pins - b_pins, _adv, alignment_adv_factor);
+	return static_cast<int>(eval_from_progress(w_pins - b_pins, _adv, alignment_adv_factor));
 }
 
 // Updates the king positions
@@ -414,15 +407,15 @@ int Board::get_piece_activity(const EvalControls& ctx) const
 
 	for (uint8_t row = 0; row < 8; row++) {
 		for (uint8_t col = 0; col < 8; col++) {
-			white_activity += activity_controlled_squares[7 - row][col] * controlled_power[min(7, white_map._array[row][col])];
-			black_activity += activity_controlled_squares[row][col] * controlled_power[min(7, black_map._array[row][col])];
+			white_activity = static_cast<int>(white_activity + activity_controlled_squares[7 - row][col] * controlled_power[min(7, white_map._array[row][col])]);
+			black_activity = static_cast<int>(black_activity + activity_controlled_squares[row][col] * controlled_power[min(7, black_map._array[row][col])]);
 		}
 	}
 
 	// Multiplier based on game progress
 	float advancement_factor = 0.3f;
 
-	return eval_from_progress(white_activity - black_activity, _adv, advancement_factor);
+	return static_cast<int>(eval_from_progress(white_activity - black_activity, _adv, advancement_factor));
 }
 
 // Computes the piece-control maps of both sides into caller-owned storage.
@@ -435,7 +428,7 @@ void Board::compute_piece_controls(SquareMap& white_out, SquareMap& black_out) c
 	uint64_t occ = _occupancies[2];
 	while (occ) {
 		const int sq = pop_lsb(occ);
-		const uint8_t row = sq >> 3;
+		const uint8_t row = static_cast<uint8_t>(sq >> 3);
 		const uint8_t col = sq & 7;
 		const uint8_t piece = _array[row][col];
 		if (is_white(piece)) {
@@ -478,22 +471,22 @@ bool Board::add_piece_controls(SquareMap* map, int row, int col, int piece) cons
 	}
 
 	// Cavaliers
-	if (is_knight(piece)) {
+	if (is_knight(static_cast<uint8_t>(piece))) {
 		for (uint8_t k = 0; k < 8; k++) {
-			const uint8_t i2 = row + knight_directions[k][0];
-			const uint8_t j2 = col + knight_directions[k][1];
+			const uint8_t i2 = static_cast<uint8_t>(row + knight_directions[k][0]);
+			const uint8_t j2 = static_cast<uint8_t>(col + knight_directions[k][1]);
 			i2 >= 0 && i2 <= 7 && j2 >= 0 && j2 <= 7 && (map->_array[i2][j2]++);
 		}
 		return true;
 	}
 
 	// Fous
-	if (is_bishop(piece)) {
+	if (is_bishop(static_cast<uint8_t>(piece))) {
 		for (uint8_t k = 0; k < 4; k++) {
 			const uint8_t mi = diag_directions[k][0];
 			const uint8_t mj = diag_directions[k][1];
-			uint8_t i2 = row + mi;
-			uint8_t j2 = col + mj;
+			uint8_t i2 = static_cast<uint8_t>(row + mi);
+			uint8_t j2 = static_cast<uint8_t>(col + mj);
 			while (i2 >= 0 && i2 <= 7 && j2 >= 0 && j2 <= 7) {
 				map->_array[i2][j2]++;
 				// Stop on an occupied square, unless the piece is a friendly bishop, queen or pawn
@@ -508,12 +501,12 @@ bool Board::add_piece_controls(SquareMap* map, int row, int col, int piece) cons
 	}
 
 	// Tours
-	if (is_rook(piece)) {
+	if (is_rook(static_cast<uint8_t>(piece))) {
 		for (uint8_t k = 0; k < 4; k++) {
 			const uint8_t mi = rect_directions[k][0];
 			const uint8_t mj = rect_directions[k][1];
-			uint8_t i2 = row + mi;
-			uint8_t j2 = col + mj;
+			uint8_t i2 = static_cast<uint8_t>(row + mi);
+			uint8_t j2 = static_cast<uint8_t>(col + mj);
 			while (i2 >= 0 && i2 <= 7 && j2 >= 0 && j2 <= 7) {
 				map->_array[i2][j2]++;
 				// Stop on an occupied square, unless the piece is a friendly rook or queen
@@ -527,12 +520,12 @@ bool Board::add_piece_controls(SquareMap* map, int row, int col, int piece) cons
 	}
 
 	// Dames
-	if (is_queen(piece)) {
+	if (is_queen(static_cast<uint8_t>(piece))) {
 		for (uint8_t k = 0; k < 8; k++) {
 			const uint8_t mi = all_directions[k][0];
 			const uint8_t mj = all_directions[k][1];
-			uint8_t i2 = row + mi;
-			uint8_t j2 = col + mj;
+			uint8_t i2 = static_cast<uint8_t>(row + mi);
+			uint8_t j2 = static_cast<uint8_t>(col + mj);
 			while (i2 >= 0 && i2 <= 7 && j2 >= 0 && j2 <= 7) {
 				map->_array[i2][j2]++;
 				bool diagonal = mi != 0 && mj != 0;
@@ -548,10 +541,10 @@ bool Board::add_piece_controls(SquareMap* map, int row, int col, int piece) cons
 	}
 
 	// Kings
-	if (is_king(piece)) {
+	if (is_king(static_cast<uint8_t>(piece))) {
 		for (uint8_t k = 0; k < 8; k++) {
-			uint8_t i2 = row + all_directions[k][0];
-			uint8_t j2 = col + all_directions[k][1];
+			uint8_t i2 = static_cast<uint8_t>(row + all_directions[k][0]);
+			uint8_t j2 = static_cast<uint8_t>(col + all_directions[k][1]);
 			i2 >= 0 && i2 < 8 && j2 >= 0 && j2 < 8 && (map->_array[i2][j2]++);
 		}
 		return true;
@@ -603,7 +596,7 @@ int Board::get_rook_activity() const
 		uint64_t bb = _bitboards[w_rook];
 		while (bb) {
 			const int sq = pop_lsb(bb);
-			const uint8_t row = sq >> 3;
+			const uint8_t row = static_cast<uint8_t>(sq >> 3);
 			const uint8_t col = sq & 7;
 
 			int rook_activity = -normal_activity;
@@ -651,18 +644,18 @@ int Board::get_rook_activity() const
 			}
 
 			// Bonus for vertical mobility
-			rook_activity += vertical_mobility_bonus * v_mobility;
+			rook_activity = static_cast<int>(rook_activity + vertical_mobility_bonus * v_mobility);
 
 			// Bonus for horizontal mobility
-			rook_activity += horizontal_mobility_bonus * h_mobility;
+			rook_activity = static_cast<int>(rook_activity + horizontal_mobility_bonus * h_mobility);
 
 			// Penalty for lack of mobility
-			const int total_mobility = h_mobility + v_mobility;
+			const int total_mobility = static_cast<int>(h_mobility + v_mobility);
 
 			// FIXME: make this a more linear function?
 			if (total_mobility < bad_mobility_min) {
 				//rook_activity -= bad_mobility_malus;
-				rook_activity -= bad_mobility_malus * (bad_mobility_min - total_mobility);
+				rook_activity = static_cast<int>(rook_activity - bad_mobility_malus * (bad_mobility_min - total_mobility));
 			}
 
 			//cout << "White rook (" << square_name(row, col) << "): h_mobility = " << h_mobility << ", v_mobility = " << v_mobility << ", total_mobility = " << total_mobility << "/" << bad_mobility_min << " (-" << to_string((total_mobility < bad_mobility_min) ? bad_mobility_malus : 0) << "), activity = " << rook_activity << endl;
@@ -678,7 +671,7 @@ int Board::get_rook_activity() const
 		uint64_t bb = _bitboards[b_rook];
 		while (bb) {
 			const int sq = pop_lsb(bb);
-			const uint8_t row = sq >> 3;
+			const uint8_t row = static_cast<uint8_t>(sq >> 3);
 			const uint8_t col = sq & 7;
 
 			int rook_activity = -normal_activity;
@@ -726,18 +719,18 @@ int Board::get_rook_activity() const
 			}
 
 			// Bonus for vertical mobility
-			rook_activity += vertical_mobility_bonus * v_mobility;
+			rook_activity = static_cast<int>(rook_activity + vertical_mobility_bonus * v_mobility);
 
 			// Bonus for horizontal mobility
-			rook_activity += horizontal_mobility_bonus * h_mobility;
+			rook_activity = static_cast<int>(rook_activity + horizontal_mobility_bonus * h_mobility);
 
 			// Penalty for lack of mobility
-			const int total_mobility = h_mobility + v_mobility;
+			const int total_mobility = static_cast<int>(h_mobility + v_mobility);
 
 			// FIXME: make this a more linear function?
 			if (total_mobility < bad_mobility_min) {
 				//rook_activity -= bad_mobility_malus;
-				rook_activity -= bad_mobility_malus * (bad_mobility_min - total_mobility);
+				rook_activity = static_cast<int>(rook_activity - bad_mobility_malus * (bad_mobility_min - total_mobility));
 			}
 
 			//cout << "Black rook (" << square_name(row, col) << "): h_mobility = " << h_mobility << ", v_mobility = " << v_mobility << ", total_mobility = " << total_mobility << "/" << bad_mobility_min << " (-" << to_string((total_mobility < bad_mobility_min) ? bad_mobility_malus : 0) << "), activity = " << rook_activity << endl;
@@ -751,7 +744,7 @@ int Board::get_rook_activity() const
 
 	//cout << "Final rook activity: " << activity << ", advancement factor: " << advancement_factor << " => " << eval_from_progress(activity, _adv, advancement_factor) << endl;
 
-	return eval_from_progress(activity, _adv, advancement_factor);
+	return static_cast<int>(eval_from_progress(static_cast<int>(activity), _adv, advancement_factor));
 }
 
 
@@ -861,558 +854,7 @@ int Board::get_bishop_activity() const {
 
 	// TODO: make this non-linear?
 
-	return eval_from_progress(w_bishop_activity - b_bishop_activity, _adv, bishop_activity_advancement_factor);
-}
-
-// Tells whether a move is legal
-int Board::get_piece_mobility(bool display) const {
-	// Points to account for:
-	// - number of virtually reachable squares, counting pawns only
-	// - the squares actually reachable, given the pieces in the way
-	// - blocked pieces: blocked by pieces? by pawns? permanently? are the blocking pawns themselves blocked?
-	// - should reachable squares be valued by their location, or does that belong in piece activity?
-
-	// Cas tests:
-	//2b1r1k1/qp3ppn/1r1p1n1p/pP1Pp3/P3P1P1/1P1QP1NP/5RB1/5RK1 w - - 1 3: the rook on b6
-	//r1bqk1nr/p4ppp/2nbp3/3p4/Pp1P4/1Pp1PN2/2P1BPPP/RNBQK2R w KQkq - 0 10: rook and knight on a1 and b1
-	//8/1p4pk/1r1p1n1p/pP1Pp2P/P1R1P3/1P2P3/6K1/8 b - - 2 18: winning for White? Leela says yes, Stockfish 17 at low depth does not
-	//2Rnk3/3p2p1/3Pp2r/1b2P1Np/7P/5P1K/6P1/8 b - - 1 43: no moves for Black -> completely lost
-	//3k4/1pp5/p1n2p2/2P1p2p/P3p1pP/1P2P1B1/1KP2PP1/8 w - - 0 30: bishop on g3 trapped for good
-	//r1bq1knr/pp1p1pp1/1bnP3p/1p2P3/8/P1N2N2/1P3PPP/R1BQ1RK1 b - - 2 12: nearly winning for White
-	//rn3rk1/1b1p1ppp/p1pP4/1pP5/P7/8/3B1PPP/1R1K1B1R w - - 0 18: a5 simply wins strategically, the three black queenside pieces are stuck for good
-	//r2qk2r/1bp1ppnp/p5p1/3pP3/6P1/2N2P2/PPPB3P/R2Q1RK1 w kq - 1 14: Black is better...
-
-	//display = true;
-
-	// TODO: how should pinned pieces be handled?
-	// TODO: for a bishop, 7 versus 8 available moves barely differ any more
-
-	// Weight of virtual mobility, passing "through" pieces but not pawns
-	static constexpr int pawn_virtual_mobility[5] = { 0, 0, 0, 0, 0 };
-	static constexpr int knight_virtual_mobility[9] = { -1350, -150, 0, 65, 110, 125, 135, 143, 150 };
-	static constexpr int bishop_virtual_mobility[15] = { -1350, -500, 0, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180 };
-	static constexpr int rook_virtual_mobility[15] = { -1750, -750, 0, 35, 50, 65, 75, 85, 95, 105, 115, 125, 135, 145, 155 };
-	static constexpr int queen_virtual_mobility[29] = { -3000, -1500, 0, 65, 100, 125, 138, 145, 150, 155, 160, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250 };
-	static constexpr int king_virtual_mobility[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-
-    static const int* virtual_mobilities[6] = { pawn_virtual_mobility, knight_virtual_mobility, bishop_virtual_mobility, rook_virtual_mobility, queen_virtual_mobility, king_virtual_mobility };
-
-	// Weight of real mobility (based on actually legal moves; never passes through a piece)
-	static constexpr int pawn_real_mobility[5] = { 0, 0, 0, 0, 0 };
-	static constexpr int knight_real_mobility[9] = { -250, -100, -35, 0, 28, 37, 43, 47, 50 };
-	static constexpr int bishop_real_mobility[15] = { -350, -180, -85, -10, 15, 20, 25, 30, 35, 37, 40, 42, 45, 47, 50 };
-	static constexpr int rook_real_mobility[15] = { -135, -85, -50, 10, 15, 20, 25, 30, 35, 37, 40, 42, 45, 47, 50 };
-	static constexpr int queen_real_mobility[29] = { -300, -135, -70, -15, 10, 14, 18, 21, 24, 26, 28, 29, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30 };
-	static constexpr int king_real_mobility[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-
-
-	static const int* real_mobilities[6] = { pawn_real_mobility, knight_real_mobility, bishop_real_mobility, rook_real_mobility, queen_real_mobility, king_real_mobility };
-
-
-	// Squares controlled by enemy pawns are not counted
-	bool b_pawn_controls[8][8] = { false };
-	bool w_pawn_controls[8][8] = { false };
-
-	{
-		uint64_t bb = _bitboards[w_pawn];
-		while (bb) {
-			const int sq = pop_lsb(bb);
-			const uint8_t row = sq >> 3;
-			const uint8_t col = sq & 7;
-			(col > 0) && (w_pawn_controls[row + 1][col - 1] = true);
-			(col < 7) && (w_pawn_controls[row + 1][col + 1] = true);
-		}
-	}
-	{
-		uint64_t bb = _bitboards[b_pawn];
-		while (bb) {
-			const int sq = pop_lsb(bb);
-			const uint8_t row = sq >> 3;
-			const uint8_t col = sq & 7;
-			(col > 0) && (b_pawn_controls[row - 1][col - 1] = true);
-			(col < 7) && (b_pawn_controls[row - 1][col + 1] = true);
-		}
-	}
-
-
-	// White piece mobility
-	int white_mobility = 0;
-
-	// Black piece mobility
-	int black_mobility = 0;
-
-	// Piece mobility
-	uint64_t occ = _occupancies[2];
-	while (occ) {
-		const int sq = pop_lsb(occ);
-		const uint8_t row = sq >> 3;
-		const uint8_t col = sq & 7;
-		uint8_t piece = _array[row][col];
-
-			int virtual_mobility = 0;
-			int real_mobility = 0;
-			int blocking_pawn_moves = 0;
-
-			// White pawn
-			if (piece == w_pawn) {
-
-				// Avance de 1
-				uint8_t front_piece = _array[row + 1][col];
-
-				if (front_piece == none) {
-					virtual_mobility++;
-					real_mobility++;
-
-					// Avance de 2
-					if (row == 1) {
-						uint8_t front_piece2 = _array[row + 2][col];
-
-						if (!is_pawn(front_piece2)) {
-							virtual_mobility++;
-
-							if (front_piece2 == none) {
-								real_mobility++;
-							}
-						}
-					}
-				}
-				else if (!is_pawn(front_piece)) {
-					virtual_mobility++;
-
-					// Avance de 2
-					if (row == 1) {
-						virtual_mobility += !is_pawn(_array[row + 2][col]);
-					}
-				}
-
-				// Captures
-
-				// Capture en diagonale gauche
-				if (col > 0) {
-					uint8_t left_piece = _array[row + 1][col - 1];
-
-					if (is_black(left_piece)) {
-						virtual_mobility++;
-						real_mobility++;
-					}
-				}
-
-				// Capture en diagonale droite
-				if (col < 7) {
-					uint8_t right_piece = _array[row + 1][col + 1];
-
-					if (is_black(right_piece)) {
-						virtual_mobility++;
-						real_mobility++;
-					}
-				}
-			}
-
-			// White knight
-			if (piece == w_knight) {
-				for (uint8_t m = 0; m < 8; m++) {
-					int new_i = row + knight_directions[m][0];
-					int new_j = col + knight_directions[m][1];
-
-					if (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
-						uint8_t p = _array[new_i][new_j];
-
-						if (!b_pawn_controls[new_i][new_j]) {
-							if (p != w_pawn && p != w_king) {
-								virtual_mobility++;
-
-								if (!is_white(p)) {
-									real_mobility++;
-								}
-							}
-
-							// Friendly pawn blocking the piece
-							else {
-								// Can the pawn move?
-								if (pawn_can_move(new_i, new_j, true)) {
-									blocking_pawn_moves++;
-								}
-							}
-						}
-					}
-				}
-			}
-
-			// White straight-line slider
-			if (is_rectilinear(piece) && is_white(piece)) {
-				for (uint8_t m = 0; m < 4; m++) {
-					int mi = rect_directions[m][0];
-					int mj = rect_directions[m][1];
-
-					int new_i = row + mi;
-					int new_j = col + mj;
-
-					bool blocked = false;
-
-					while (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
-						uint8_t p = _array[new_i][new_j];
-
-						if (!b_pawn_controls[new_i][new_j]) {
-							if (p != w_pawn && p != w_king) {
-								virtual_mobility++;
-
-								if (!is_white(p) && !blocked) {
-									real_mobility++;
-								}
-							}
-							else {
-								if (pawn_can_move(new_i, new_j, true)) {
-									blocking_pawn_moves++;
-								}
-							}
-						}
-
-						// A pawn blocks the piece
-						if (is_pawn(p) || p == w_king) {
-							break;
-						}
-
-						if (p != none) {
-							blocked = true;
-						}
-
-						new_i += mi;
-						new_j += mj;
-					}
-				}
-			}
-
-			// White diagonal slider
-			if (is_diagonal(piece) && is_white(piece)) {
-				for (uint8_t m = 0; m < 4; m++) {
-					int mi = diag_directions[m][0];
-					int mj = diag_directions[m][1];
-
-					int new_i = row + mi;
-					int new_j = col + mj;
-
-					bool blocked = false;
-
-					while (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
-						uint8_t p = _array[new_i][new_j];
-
-						if (!b_pawn_controls[new_i][new_j]) {
-							if (p != w_pawn && p != w_king) {
-								virtual_mobility++;
-
-								if (!is_white(p) && !blocked) {
-									real_mobility++;
-								}
-							}
-							else {
-								if (pawn_can_move(new_i, new_j, true)) {
-									blocking_pawn_moves++;
-								}
-							}
-						}
-
-						// A pawn blocks the piece
-						if (is_pawn(p) || p == w_king) {
-							break;
-						}
-
-						if (p != none) {
-							blocked = true;
-						}
-
-						new_i += mi;
-						new_j += mj;
-					}
-				}
-			}
-
-			// White king
-			if (piece == w_king) {
-				for (uint8_t m = 0; m < 8; m++) {
-					int new_i = row + all_directions[m][0];
-					int new_j = col + all_directions[m][1];
-
-					if (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
-						uint8_t p = _array[new_i][new_j];
-
-						if (!b_pawn_controls[new_i][new_j]) {
-							if (p != w_pawn) {
-								virtual_mobility++;
-
-								if (!is_white(p)) {
-									real_mobility++;
-								}
-							}
-							else {
-								if (pawn_can_move(new_i, new_j, true)) {
-									blocking_pawn_moves++;
-								}
-							}
-						}
-					}
-				}
-			}
-
-			// Black pawn
-			if (piece == b_pawn) {
-
-				// Avance de 1
-				uint8_t front_piece = _array[row - 1][col];
-
-				if (front_piece == none) {
-					virtual_mobility++;
-					real_mobility++;
-
-					// Avance de 2
-					if (row == 6) {
-						uint8_t front_piece2 = _array[row - 2][col];
-
-						if (!is_pawn(front_piece2)) {
-							virtual_mobility++;
-
-							if (front_piece2 == none) {
-								real_mobility++;
-							}
-						}
-					}
-				}
-				else if (!is_pawn(front_piece)) {
-					virtual_mobility++;
-
-					// Avance de 2
-					if (row == 6) {
-						virtual_mobility += !is_pawn(_array[row - 2][col]);
-					}
-				}
-
-				// Captures
-
-				// Capture en diagonale gauche
-				if (col > 0) {
-					uint8_t left_piece = _array[row - 1][col - 1];
-
-					if (is_white(left_piece)) {
-						virtual_mobility++;
-						real_mobility++;
-					}
-				}
-
-				// Capture en diagonale droite
-				if (col < 7) {
-					uint8_t right_piece = _array[row - 1][col + 1];
-
-					if (is_white(right_piece)) {
-						virtual_mobility++;
-						real_mobility++;
-					}
-				}
-			}
-
-			// Black knight
-			if (piece == b_knight) {
-				for (uint8_t m = 0; m < 8; m++) {
-					int new_i = row + knight_directions[m][0];
-					int new_j = col + knight_directions[m][1];
-
-					if (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
-						uint8_t p = _array[new_i][new_j];
-
-						if (!w_pawn_controls[new_i][new_j]) {
-							if (p != b_pawn && p != b_king) {
-								virtual_mobility++;
-
-								if (!is_black(p)) {
-									real_mobility++;
-								}
-							}
-
-							// Friendly pawn blocking the piece
-							else {
-								// Can the pawn move?
-								if (pawn_can_move(new_i, new_j, false)) {
-									blocking_pawn_moves++;
-								}
-							}
-						}
-					}
-				}
-			}
-
-			// Black straight-line slider
-			if (is_rectilinear(piece) && is_black(piece)) {
-				for (uint8_t m = 0; m < 4; m++) {
-					int mi = rect_directions[m][0];
-					int mj = rect_directions[m][1];
-
-					int new_i = row + mi;
-					int new_j = col + mj;
-
-					bool blocked = false;
-
-					while (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
-						uint8_t p = _array[new_i][new_j];
-
-						if (!w_pawn_controls[new_i][new_j]) {
-							if (p != b_pawn && p != b_king) {
-								virtual_mobility++;
-
-								if (!is_black(p) && !blocked) {
-									real_mobility++;
-								}
-							}
-							else {
-								if (pawn_can_move(new_i, new_j, false)) {
-									blocking_pawn_moves++;
-								}
-							}
-						}
-
-						// A pawn blocks the piece
-						if (is_pawn(p) || p == b_king) {
-							break;
-						}
-
-						if (p != none) {
-							blocked = true;
-						}
-
-						new_i += mi;
-						new_j += mj;
-					}
-				}
-			}
-
-			// Black diagonal slider
-			if (is_diagonal(piece) && is_black(piece)) {
-				for (uint8_t m = 0; m < 4; m++) {
-					int mi = diag_directions[m][0];
-					int mj = diag_directions[m][1];
-
-					int new_i = row + mi;
-					int new_j = col + mj;
-
-					bool blocked = false;
-
-					while (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
-						uint8_t p = _array[new_i][new_j];
-
-						if (!w_pawn_controls[new_i][new_j]) {
-							if (p != b_pawn && p != b_king) {
-								virtual_mobility++;
-
-								if (!is_black(p) && !blocked) {
-									real_mobility++;
-								}
-							}
-							else {
-								if (pawn_can_move(new_i, new_j, false)) {
-									blocking_pawn_moves++;
-								}
-							}
-						}
-
-						// A pawn blocks the piece
-						if (is_pawn(p) || p == b_king) {
-							break;
-						}
-
-						if (p != none) {
-							blocked = true;
-						}
-
-						new_i += mi;
-						new_j += mj;
-					}
-				}
-			}
-
-			// Black king
-			if (piece == b_king) {
-				for (uint8_t m = 0; m < 8; m++) {
-					int new_i = row + all_directions[m][0];
-					int new_j = col + all_directions[m][1];
-
-					if (is_in(new_i, 0, 7) && is_in(new_j, 0, 7)) {
-						uint8_t p = _array[new_i][new_j];
-
-						if (!w_pawn_controls[new_i][new_j]) {
-							if (p != b_pawn && p != b_king) {
-								virtual_mobility++;
-
-								if (!is_black(p)) {
-									real_mobility++;
-								}
-							}
-							else {
-								if (pawn_can_move(new_i, new_j, false)) {
-									blocking_pawn_moves++;
-								}
-							}
-						}
-					}
-				}
-			}
-
-			if (display)
-				cout << piece_name(piece) << ", " << square_name(row, col) << ", virtual-mob : " << virtual_mobility << ", real-mob : " << real_mobility << ", pawn moves : " << blocking_pawn_moves << " | ";
-
-			// Add the mobility
-			if (is_white(piece)) {
-				int virtual_mobility_value = virtual_mobilities[piece - 1][virtual_mobility];
-
-				if (display)
-					cout << virtual_mobility_value;
-
-				if (virtual_mobility_value < 0) {
-					virtual_mobility_value /= (1 + blocking_pawn_moves) * (1 + blocking_pawn_moves);
-
-					if (display)
-						cout << " / " << (1 + blocking_pawn_moves) * (1 + blocking_pawn_moves) << " = " << virtual_mobility_value;
-				}
-
-				if (display)
-					cout << " + " << real_mobilities[piece - 1][real_mobility];
-
-				int piece_mobility = virtual_mobility_value + real_mobilities[piece - 1][real_mobility];
-
-				if (display)
-					cout << " = " << piece_mobility << endl;
-
-				white_mobility += piece_mobility;
-			}
-			else {
-				int virtual_mobility_value = virtual_mobilities[piece - 7][virtual_mobility];
-
-				if (display)
-					cout << virtual_mobility_value;
-
-				if (virtual_mobility_value < 0) {
-					virtual_mobility_value /= (1 + blocking_pawn_moves) * (1 + blocking_pawn_moves);
-
-					if (display)
-						cout << " / " << (1 + blocking_pawn_moves) * (1 + blocking_pawn_moves) << " = " << virtual_mobility_value;
-				}
-
-				if (display)
-					cout << " + " << real_mobilities[piece - 7][real_mobility];
-
-				int piece_mobility = virtual_mobility_value + real_mobilities[piece - 7][real_mobility];
-
-				if (display)
-					cout << " = " << piece_mobility << endl;
-
-				black_mobility += piece_mobility;
-			}
-	}
-
-	if (display) {
-		cout << "White mobility: " << white_mobility << ", black mobility: " << black_mobility << endl;
-	}
-
-	// Multiplier based on game progress
-	float piece_mobility_advancement_factor = 1.0f;
-
-	return eval_from_progress(white_mobility - black_mobility, _adv, piece_mobility_advancement_factor);
+	return static_cast<int>(eval_from_progress(w_bishop_activity - b_bishop_activity, _adv, bishop_activity_advancement_factor));
 }
 
 // Tells whether the pawn can move
@@ -1448,7 +890,7 @@ int Board::get_short_term_piece_mobility(const EvalControls& ctx, bool display) 
 	uint64_t occ = _occupancies[2];
 	while (occ) {
 		const int sq = pop_lsb(occ);
-		const uint8_t row = sq >> 3;
+		const uint8_t row = static_cast<uint8_t>(sq >> 3);
 		const uint8_t col = sq & 7;
 		uint8_t piece = _array[row][col];
 
@@ -1642,7 +1084,7 @@ int Board::get_short_term_piece_mobility(const EvalControls& ctx, bool display) 
 	// Depending on how far the game has progressed
 	float advancement_factor = 1.0f;
 
-	return eval_from_progress(white_mobility - black_mobility, _adv, advancement_factor);
+	return static_cast<int>(eval_from_progress(white_mobility - black_mobility, _adv, advancement_factor));
 }
 int Board::get_long_term_piece_mobility(const EvalControls& ctx, bool display) const {
 
@@ -1709,7 +1151,7 @@ int Board::get_long_term_piece_mobility(const EvalControls& ctx, bool display) c
 	uint64_t occ = _occupancies[2];
 	while (occ) {
 		const int sq = pop_lsb(occ);
-		const uint8_t row = sq >> 3;
+		const uint8_t row = static_cast<uint8_t>(sq >> 3);
 		const uint8_t col = sq & 7;
 		uint8_t piece = _array[row][col];
 
@@ -1935,7 +1377,7 @@ int Board::get_long_term_piece_mobility(const EvalControls& ctx, bool display) c
 			const int vm_limit = vm_table_size[(piece - 1) % 6] - 1;
 			const int low_bound = min<int>(static_cast<int>(piece_mobility), vm_limit);
 			const int high_bound = min<int>(low_bound + 1, vm_limit);
-			const float fractional_part = piece_mobility - low_bound;
+			const float fractional_part = static_cast<float>(piece_mobility - low_bound);
 
 
 			// Add the piece mobility
@@ -1974,6 +1416,6 @@ int Board::get_long_term_piece_mobility(const EvalControls& ctx, bool display) c
 	// Depending on how far the game has progressed
 	float advancement_factor = 1.0f;
 
-	return eval_from_progress(white_mobility - black_mobility, _adv, advancement_factor);
+	return static_cast<int>(eval_from_progress(white_mobility - black_mobility, _adv, advancement_factor));
 }
 

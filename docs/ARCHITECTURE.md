@@ -1,10 +1,10 @@
 # OptiChess architecture
 
-This document describes the code as it is in the tree (2026-10-13). Source files are named, not line numbers. For the audit findings behind the open items, see [AUDIT.md](AUDIT.md). For the algorithm conventions (score signs, mate encoding, `Node` invariants), see [ALGORITHMS.md](../opti_chess/ALGORITHMS.md).
+This document describes the code as it is in the tree (2026-10-26). Source files are named, not line numbers. For the audit findings behind the open items, see [AUDIT.md](AUDIT.md). For the algorithm conventions (score signs, mate encoding, `Node` invariants), see [ALGORITHMS.md](../opti_chess/ALGORITHMS.md).
 
 ## Overview and data flow
 
-All engine code is in one flat directory, `opti_chess/opti_chess/`. It is built as a static library, `engine_lib`, that the front ends link against.
+All engine code is in one flat directory, `opti_chess/` (relative to the repository root). It is built as a static library, `engine_lib`, that the front ends link against.
 
 ```text
 FEN / startpos + moves
@@ -29,8 +29,8 @@ FEN / startpos + moves
 Front ends that drive this flow:
 
 - `opti_chess` GUI: `main.cpp` calls into `main_gui.h` (event loop, keys, engine actions). The search runs on a worker thread and the GUI reads a snapshot for display (`gui.cpp`).
-- `opti_chess_cli`: `cli.cpp`, headless perft, bench and a minimal UCI loop. The UCI `go` path calls `PuzzleRunner::run` (`puzzle.cpp`).
-- `opti_chess_tests`: GoogleTest suite in `tests/unit_test.cpp`.
+- `opti_chess_cli`: `cli.cpp`, headless perft, bench, search tools and a minimal UCI loop. `cli.cpp` keeps the command loop; the UCI text handling (move strings, `position`, `go` budget, score) is in `uci.cpp` / `uci.h`. The UCI `go` path calls `PuzzleRunner::run` (`puzzle.cpp`).
+- `opti_chess_tests`: GoogleTest suite in `tests/unit_test.cpp`, `tests/rules_test.cpp` and `tests/uci_test.cpp`.
 - `opti_chess_selfplay`: `selfplay.cpp`, search-parameter matches.
 
 ## Build targets
@@ -39,9 +39,9 @@ Defined in `opti_chess/CMakeLists.txt` (CMake 3.24+, C++20):
 
 | Target | Sources / link | Purpose |
 |---|---|---|
-| `engine_lib` | static library, `ENGINE_SOURCES` in `CMakeLists.txt` (movegen, board display, `eval_*.cpp`, `exploration_diag.cpp`, `game_tree.cpp`, `neural_network.cpp`, `puzzle.cpp`, `stockfish_adapter.cpp`, `windows_tests.cpp` and others) | Engine core, linked by all other targets |
+| `engine_lib` | static library, `ENGINE_SOURCES` in `CMakeLists.txt` (movegen, board display, `eval_*.cpp`, `exploration_diag.cpp`, `game_tree.cpp`, `neural_network.cpp`, `puzzle.cpp`, `stockfish_adapter.cpp`, `uci.cpp`, `windows_tests.cpp` and others) | Engine core, linked by all other targets |
 | `opti_chess` | `main.cpp` + GUI sources, links raylib | Analysis GUI. A POST_BUILD step copies `resources/` next to the executable |
-| `opti_chess_tests` | `tests/unit_test.cpp`, links `engine_lib` and `GTest::gtest_main` | GoogleTest suite, registered with `gtest_discover_tests` |
+| `opti_chess_tests` | `tests/unit_test.cpp`, `tests/rules_test.cpp`, `tests/uci_test.cpp`, links `engine_lib` and `GTest::gtest_main` | GoogleTest suite, registered with `gtest_discover_tests` |
 | `opti_chess_cli` | `cli.cpp`, links `engine_lib` | Headless CLI |
 | `opti_chess_selfplay` | `selfplay.cpp`, links `engine_lib` | Search parameter matches |
 
@@ -105,13 +105,20 @@ The search is in `exploration.h` (declarations, the `Node` class, `ChildLink`, `
 
 Repetition state is path-local: one `PositionHistory` is threaded through the descent and restored by push and pop, so each iteration starts from the same state. Inside the search a position repeated twice is scored as a draw. The game itself still uses the threefold rule.
 
-Transposition modes (both are experimental and both default to off):
+Transposition modes. The three globals are declared in `exploration.h` and defined in `exploration_diag.cpp`. The definition of `g_tt_node_dag` is `false`, so the value that applies depends on the front end:
 
-- `g_tt_main_search` (`exploration.h`, defined in `exploration_diag.cpp`): use the transposition table in the main search. Toggled at runtime with `I` in the GUI.
-- `g_tt_node_dag` (same): share nodes between transpositions in a DAG (`node_map`), instead of a tree. Toggled with `O` in the GUI.
-- `g_shared_tree` (same): shared-tree mode with node locks (`NodeLock`), off by default.
+- `g_tt_main_search`: use the transposition table in the main search. Off by default everywhere. The GUI member `_tt_main_search` (toggle `I`) is copied into the global when an analysis starts. `PuzzleRunner::run` sets it on every call from `OPTI_TT_MAIN` (on only if the variable is set), and so do `search` and `solve` in `cli.cpp`.
+- `g_tt_node_dag`: share nodes between transpositions in a DAG (`node_map`, keyed by `dag_key`: the Zobrist key, plus the half-move count from 70 half-moves on, because near the 50-move rule the value depends on the clock), instead of a tree.
+  - GUI: on by default (`_tt_node_dag = true` in `gui.h`), copied into the global when an analysis starts. `O` toggles it.
+  - `PuzzleRunner::run` (used by UCI `go`, `bench` and the puzzle tests): forces it on for the length of the call and restores the previous value afterwards. `OPTI_NO_DAG` is not read there.
+  - `search` and `solve` in `cli.cpp`: on unless `OPTI_NO_DAG` is set (then the tree search).
+  - `opti_chess_selfplay`: set per match mode, tree or DAG (`selfplay.cpp`).
+  - The comment above the declaration in `exploration.h` still says "default OFF"; it predates the GUI default.
+- `g_shared_tree`: shared-tree mode with node locks (`NodeLock`). It is set only for the duration of the joint search in `PuzzleRunner::run` when `OPTI_SHARED` is set and `OPTI_THREADS` is above 1. No GUI toggle, known data race, not covered by the benchmark gates.
 
-With the DAG, `OPTI_DAG_EXACT=1` (off by default) periodically rewrites the stored values of all reachable nodes with the exact value of the game graph, where a repetition cycle is a draw (`graph_game.h`, `refresh_graph_values` in `exploration_diag.cpp`). This removes the ghost values that cycles of king shuffles can keep; details in `opti_chess/ALGORITHMS.md` §8.6.
+Exact DAG values: the DAG mode has one behaviour, the exact one (no environment variable switches it off). Every `g_dag_exact_every` iterations (`OPTI_DAG_EXACT_EVERY`, `0` = `max(1024, reachable nodes / 32)`) in the outermost `grogros_zero` call, and once more at the end of that call, `refresh_graph_values` (`exploration_diag.cpp`) recomputes the value of every node reachable from the root. It builds a `GraphGame` (`graph_game.h`): a finite two-player game graph with heuristic payoffs at terminal nodes and stand-pat floors, where infinite play is a draw. `solve_graph_game` solves it in two passes (Max forces a payoff above 0, then Min forces one below 0), and nodes that join neither keep 0. A repetition cycle is therefore a draw, and the self-supporting ghost values that cycles of king shuffles left under plain max/min backup do not appear. The refresh is single-threaded and is skipped under the shared tree. Details in `opti_chess/ALGORITHMS.md` §8.6.
+
+MCTS-Solver: `OPTI_SOLVER=1` (off by default) enables `g_mcts_solver`. Results proven at game-over leaves (`Node::_proven`) propagate up, and proven nodes below the root are no longer explored.
 
 Search time is limited by `g_search_deadline` and `g_search_abort` (atomics in `exploration.h`).
 
@@ -137,7 +144,7 @@ Pool sizes come from `compute_pool_sizing()` (`buffer.cpp`): the budget is `min(
 ## GUI
 
 - `main.cpp` selects the GUI entry point. `main_gui.h` holds the application loop, key handling and engine actions (`IsKeyPressed` checks). The key list is in the README Controls section.
-- `gui.h` and `gui.cpp`: raylib rendering of the board, variations, evaluation graph and statistics. The search runs on a worker thread. The GUI reads a snapshot (`_tree_snapshot`) for display. Part of that read is not locked (open item B-17).
+- `gui.h` and `gui.cpp`: raylib rendering of the board, variations, evaluation graph and statistics. The search runs on a worker thread. The worker publishes a snapshot under a mutex and the GUI draws from its own copy, `_tree_snapshot` (`refresh_snapshot`). Other shared accesses remain (see B-17 under Known limitations).
 - `game_tree.h` and `game_tree.cpp`: the played game and its variations, separate from the search tree. Children are owned through `unique_ptr`.
 - `board_display.cpp`: console printing and SAN labels.
 - `windows_tests.h` and `windows_tests.cpp`: the Win32 layer. It provides the physical-memory probe and the experimental screen binding (`locate_chessboard`, `click_move`).
@@ -145,20 +152,34 @@ Pool sizes come from `compute_pool_sizing()` (`buffer.cpp`): the budget is `min(
 
 ## Tools and tests
 
-Headless CLI (`cli.cpp`, built as `opti_chess_cli`):
+Headless CLI (`cli.cpp`, built as `opti_chess_cli`; the UCI helpers are in `uci.cpp` / `uci.h`, part of `engine_lib`). The usage text printed by `usage()`:
 
 ```text
 opti_chess_cli perft <depth> [fen...]
+opti_chess_cli perft-bulk <depth> [fen...]
 opti_chess_cli divide <depth> [fen...]
-opti_chess_cli perft-suite [quick|full]
+opti_chess_cli perft-suite [quick|full] [bulk]
 opti_chess_cli bench [iterations]
 opti_chess_cli uci
+opti_chess_cli search <iterations> [fen...]   (OPTI_NO_DAG=1: tree mode)
+opti_chess_cli solve <max_iterations> <uci,uci|-> <min_value> <fen...>
+opti_chess_cli absolve <max_depth> <fen...>   (experimental alpha-beta + TT)
 ```
 
-- `bench` sets `OPTI_SEED=42` unless the variable is already set, and prints nodes per second and a signature of the results.
-- `uci` is a minimal loop: `uci`, `isready`, `ucinewgame`, `position startpos|fen ... [moves ...]`, `go`, `quit`. `go` is synchronous and `stop` is ignored. Budget precedence: `nodes`, then `movetime`, then a clock-based budget (capped to 0.05-10 s), then `infinite` (20000 iterations), then the default of 2000 iterations. `depth` is parsed but does not set a budget.
+- `bench` sets `OPTI_SEED=42` unless the variable is already set (`main` does it for every command), runs 8 fixed positions through `PuzzleRunner::run` (NODES mode), and prints nodes per second and a signature of the results.
+- `search` runs `Node::grogros_zero` directly on a fresh 500 000-slot arena, in 10 steps, and prints one line per step; `OPTI_SEARCH_*` variables add dumps (see [ENVIRONMENT.md](ENVIRONMENT.md)). `solve` does the same in chunks of 500 iterations and checks the most visited move and value against an expectation. Both honour `OPTI_NO_DAG`. `absolve` is a separate alpha-beta with its own TT (`ab` namespace in `cli.cpp`), material plus pawn advancement as evaluation.
+- `uci` is a minimal loop: `uci`, `isready`, `ucinewgame`, `position startpos|fen ... [moves ...]`, `go`, `quit`; other commands, including `stop` and `setoption`, are ignored. No UCI option is advertised: tuning goes through `OPTI_*` environment variables ([ENVIRONMENT.md](ENVIRONMENT.md)). `go` is synchronous and runs `PuzzleRunner::run`, so it always searches in DAG mode. Budget precedence (`uci_go_budget`): `nodes`, then `movetime`, then a clock-based budget for the side to move (`time / 30 + inc / 2`, clamped to 0.05-10 s), then `infinite` (20000 nodes), then the default of 2000 nodes. `depth` is parsed but does not set a budget.
+- UCI output of `go`: one line `info nodes <n> time <ms> score cp <x>` or `score mate <n>`, then `bestmove <move>` (`0000` if the chosen move is not legal). The score comes from `uci_score`, from the side to move: `mate <n>` with `n > 0` when the side to move mates, `n < 0` when it is mated. Before the `uci.cpp` split a mate was printed as a very large `cp` value.
+- `position` diagnostics: `info string bad fen` (the current position is kept) and `info string illegal move <move>` (the move list stops there).
 
-GoogleTest (`tests/unit_test.cpp`, built as `opti_chess_tests`): FEN, perft, move generation, evaluation, search and puzzle tests. CI runs the set selected by the exclusion regex in `.github/workflows/build.yml`.
+GoogleTest (built as `opti_chess_tests`):
+
+- `tests/unit_test.cpp`: FEN, perft, move generation, evaluation, search, puzzle, graph-game and DAG tests.
+- `tests/rules_test.cpp`: stalemate, checkmate, fifty-move rule, threefold repetition in a game, incremental Zobrist key after castling and en passant.
+- `tests/uci_test.cpp`: the `uci.h` functions (move text round trip over all legal moves, `position`, `go` budget precedence, `cp` and `mate` scores).
+- `tests/sizeof_test.cpp` exists but is not listed in `CMakeLists.txt`.
+
+CI runs the set selected by the exclusion regex in `.github/workflows/build.yml`. Test-only variables are listed in [ENVIRONMENT.md](ENVIRONMENT.md).
 
 Scripts:
 
@@ -180,19 +201,21 @@ There is no training code in C++ and no NNUE in this tree.
 
 ## Known limitations
 
-Open items from [AUDIT.md](AUDIT.md) (section 5):
+Items B-09 to B-21 of [AUDIT.md](AUDIT.md) (section 5), checked against the code on 2026-10-26. [BUGS-audit.md](../BUGS-audit.md) holds the GUI audit (G-xx items).
 
-- B-09: move lists are capped at 100 and extra moves are dropped (accepted risk).
-- B-14, B-15: quiescence early exits and stand-pat while in check can leave children unrefined. Open, needs the McNemar gate.
-- B-16: `pick_random_child` dereferences a child without the null check used elsewhere (shared-tree mode only).
-- B-17: GUI snapshot read without the lock.
-- B-18: `neural_network.cpp` writes past its input on malformed FEN (dead module).
-- B-19: `Tests.txt` rewrite ignores stream errors (legacy harness).
-- B-20: `from_fen` writes GUI globals, so it is not safe with several search threads.
-- B-21: a static used by all threads in `zobrist.cpp`.
+- B-09: open, accepted risk. Move lists are capped at 100 (`max_moves` in `board.h`) and extra moves are dropped.
+- B-14, B-15: open, not re-verified end to end. The quiescence early exits (abort returns `alpha`, buffer-full exits) are still in `exploration_diag.cpp`. For B-15, the depth-floor stand-pat store is now skipped in check (`depth <= 0 && !in_check`); the other listed spots were not re-checked. Any change needs the McNemar gate.
+- B-16: fixed in the code. `pick_random_child` now skips children with a null `_node` (shared-tree claim placeholders) in each loop. AUDIT.md still lists it as open.
+- B-17: partly fixed. The worker publishes the snapshot under `_snapshot_mutex` and the UI thread draws from its own copy (`refresh_snapshot` in `gui.cpp`). The other points of the item (key handlers that touch the live root without stopping the worker, plain fields shared across threads) were not re-checked.
+- B-18: open. `Network::input_from_fen` can write past its 768 inputs on a malformed FEN and reads the side-to-move `b` as a black bishop (dead module).
+- B-19: open. The `Tests.txt` rewrite in `tests.cpp` calls `std::remove` and `std::rename` without checking errors (legacy harness).
+- B-20: partly fixed as G-05 of BUGS-audit.md: `Board::from_fen` no longer flips the orientation or replaces the game tree. It still writes `main_GUI._initial_fen` and `main_GUI._pgn` (`board_fen.cpp`), so it is not safe with several search threads.
+- B-21: open. `g_tt_probe_scale` in `zobrist.cpp` is a plain static shared by all threads.
 
 Other limits:
 
 - Windows is the only supported platform (the Win32 layer is not abstracted).
-- The UCI support is minimal (see above). There is no `stop` and no `info` streaming beyond one `info nodes` line.
+- The UCI support is minimal (see above). There is no `stop`, no `setoption`, no advertised option, and the only `info` line is the one printed after the search.
 - Search results depend on the order of previous searches in the same process (see the note in AUDIT.md, section 5).
+- `Puzzle.SessionAccumulation` is order-dependent. It passes when run alone, but failed once in the full CI set, on both `main` and the review branch, with a node leak reported under the DAG. The test only initialises the pools if they are not yet initialised, and `init()` is a no-op on a live arena; the working hypothesis is that earlier tests left the pools at 500 000 slots (`PuzzleRunner::run` initialises them with 500 000), which was not confirmed by a dedicated run. The root cause is not established.
+- `exploration.h` still says "default OFF" for `g_tt_node_dag` in a comment, and `exploration_diag.cpp` says `OPTI_PRIOR_PASSER` is off by default while the code default is 5.0. The code is what this document follows.

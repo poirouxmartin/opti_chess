@@ -138,7 +138,7 @@ void Board::make_move(const Move& move, const bool pgn, const bool add_to_histor
 	}
 
 	// Reset the halfmove clock on a pawn move or a capture
-	if (is_pawn(p) || p_last) {
+	if (is_pawn(static_cast<uint8_t>(p)) || p_last) {
 		_half_moves_count = 0;
 	}
 	else {
@@ -150,8 +150,8 @@ void Board::make_move(const Move& move, const bool pgn, const bool add_to_histor
 	_en_passant_col = -1;
 
 	// Pawn advancing 2 squares with an enemy pawn left or right -> en passant becomes available
-	(p == w_pawn && row2 == row1 + 2 && ((col2 > 0 && _array[row2][col2 - 1] == b_pawn) || (col2 < 7 && _array[row2][col2 + 1] == b_pawn))) && (_en_passant_col = col1);
-	(p == b_pawn && row2 == row1 - 2 && ((col2 > 0 && _array[row2][col2 - 1] == w_pawn) || (col2 < 7 && _array[row2][col2 + 1] == w_pawn))) && (_en_passant_col = col1);
+	(p == w_pawn && row2 == row1 + 2 && ((col2 > 0 && _array[row2][col2 - 1] == b_pawn) || (col2 < 7 && _array[row2][col2 + 1] == b_pawn))) && (_en_passant_col = static_cast<int_fast8_t>(col1));
+	(p == b_pawn && row2 == row1 - 2 && ((col2 > 0 && _array[row2][col2 - 1] == w_pawn) || (col2 < 7 && _array[row2][col2 + 1] == w_pawn))) && (_en_passant_col = static_cast<int_fast8_t>(col1));
 
 	// En passant
 	(p == w_pawn && col1 != col2 && p_last == none) && (_array[row2 - 1][col2] = none);
@@ -193,14 +193,14 @@ void Board::make_move(const Move& move, const bool pgn, const bool add_to_histor
 	(p_last == b_rook) && ((col2 == 0) && (row2 == 7) && (_castling_rights.q_b = false) || (col2 == 7) && (row2 == 7) && (_castling_rights.k_b = false));
 
 	// Update the destination square
-	_array[row2][col2] = p;
+	_array[row2][col2] = static_cast<uint8_t>(p);
 
 	// Promotion (uses the promotion piece from the move).
 	// Detected GEOMETRICALLY, not from move.is_promotion(): perft/recursion
 	// feeds raw get_moves() output whose flag bits are unassigned, and without
 	// this a promoting pawn landed on the last rank still AS A PAWN - an
 	// illegal position that poisoned every generated move afterwards.
-	const bool promotion_move = is_pawn(p) && row2 == (_player ? 7 : 0);
+	const bool promotion_move = is_pawn(static_cast<uint8_t>(p)) && row2 == (_player ? 7 : 0);
 	if (promotion_move)
 		_array[row2][col2] = promo_to_piece(move.get_promo_piece(), _player);
 
@@ -248,10 +248,10 @@ void Board::make_move(const Move& move, const bool pgn, const bool add_to_histor
 		const bool piece_color = !_player; // _player was already flipped; use original side
 		// Same geometric promotion detection as the array update above: the
 		// flag bit is unassigned in raw perft/recursion move lists.
-		const int promo = promotion_move ? promo_to_piece(move.get_promo_piece(), piece_color) : p;
+		const int promo_pc = promotion_move ? promo_to_piece(move.get_promo_piece(), piece_color) : p;
 
 		_zobrist_key ^= zobrist._board_keys[start_sq][p - 1];
-		_zobrist_key ^= zobrist._board_keys[end_sq][promo - 1];
+		_zobrist_key ^= zobrist._board_keys[end_sq][promo_pc - 1];
 
 		// XOR out captured piece (if any)
 		if (p_last != none)
@@ -276,7 +276,7 @@ void Board::make_move(const Move& move, const bool pgn, const bool add_to_histor
 		}
 
 		// En passant capture: XOR out the captured pawn
-		if (is_pawn(p) && col1 != col2 && p_last == none) {
+		if (is_pawn(static_cast<uint8_t>(p)) && col1 != col2 && p_last == none) {
 			int ep_pawn_row = (p == w_pawn) ? row2 - 1 : row2 + 1;
 			int ep_pawn = (p == w_pawn) ? b_pawn : w_pawn;
 			_zobrist_key ^= zobrist._board_keys[ep_pawn_row * 8 + col2][ep_pawn - 1];
@@ -329,7 +329,7 @@ int Board::game_over(int max_repetitions) {
 		
 		// Mat
 		if (in_check())
-			return _game_over_value = (_player ? black_win : white_win);
+			return _game_over_value = static_cast<int_fast8_t>(_player ? black_win : white_win);
 
 		// Pat
 		return _game_over_value = draw;
@@ -395,7 +395,7 @@ int Board::game_over(int max_repetitions) {
 
 // Returns the winner when the game is over
 int Board::is_game_over(int max_repetitions) {
-	_game_over_value = game_over(max_repetitions);
+	_game_over_value = static_cast<int_fast8_t>(game_over(max_repetitions));
 	//cout << "Game over value: " << (int)_game_over_value << endl;
 	return _game_over_value;
 }
@@ -423,19 +423,6 @@ void Board::reset_board(const bool display) {
 	return;
 }
 
-// Computes and returns the king safety value
-bool Board::is_capturable(const int row, const int col) {
-	_got_moves == -1 && get_moves();
-
-	// FIXME *** manque l'en-passant
-
-	for (int k = 0; k < _got_moves; k++)
-		if (_moves[k].end_row == row && _moves[k].end_col == col)
-			return true;
-
-	return false;
-}
-
 // Prints the PGN
 
 // Tells whether two positions, given as FENs, are the same
@@ -453,30 +440,6 @@ bool equal_fen(const string& fen_a, const string& fen_b) {
 	const string simple_fen_b = fen_b.substr(0, k);
 
 	return (simple_fen_a == simple_fen_b);
-}
-
-// Tells whether two positions, given as FENs, are the same, for repetition detection
-bool equal_positions(const Board& a, const Board& b) {
-	for (int i = 0; i < 8; i++)
-		for (int j = 0; j < 8; j++)
-			if (a._array[i][j] != b._array[i][j])
-				return false;
-
-	return (a._player == b._player && a._castling_rights == b._castling_rights && a._en_passant_col == b._en_passant_col);
-}
-
-// Returns a simple, cheap representation of the position
-string Board::simple_position() const
-{
-	string s;
-	for (int row = 0; row < 8; row++)
-		for (int col = 0; col < 8; col++)
-			s += _array[row][col];
-
-	s += _player + _castling_rights.k_b + _castling_rights.k_w + _castling_rights.q_b + _castling_rights.q_w;
-	s += _en_passant_col;
-
-	return s;
 }
 
 // Computes the pawn structure and returns its value
@@ -499,7 +462,7 @@ int Board::get_kings_opposition() {
 	// Opposition only starts to matter in the endgame
 	float adv_begin = 0.9f;
 
-	return opposition * (_adv - adv_begin) / (1.0f - adv_begin);
+	return static_cast<int>(opposition * (_adv - adv_begin) / (1.0f - adv_begin));
 }
 
 // Returns the type of the selected piece
@@ -600,14 +563,14 @@ bool Board::sort_moves() {
 		// The piece is threatened
 		int opponent_control = opponent_controls._array[move.end_row][move.end_col];
 		if (opponent_control > 0)
-			score -= min(50.0 * piece_value, sqrt(opponent_control) * 35 * piece_value);
+			score = static_cast<int>(score - min(50.0 * piece_value, sqrt(opponent_control) * 35 * piece_value));
 
 		// Castling / king
-		if (is_king(from)) {
+		if (is_king(static_cast<uint8_t>(from))) {
 			if (abs(move.end_col - move.start_col) == 2)
 				score += 4000; // Roque
 			else
-				score -= 10000 * (1.0f - _adv);
+				score = static_cast<int>(score - 10000 * (1.0f - _adv));
 		}
 
 		scored_moves[move_count++] = { i, score };
@@ -925,7 +888,7 @@ void Board::get_zobrist_key()
 }
 
 // Returns how winnable the game is, from 0 to 1, for a given colour
-long long int Board::count_nodes_at_depth(int depth, bool display, bool main) {
+long long int Board::count_nodes_at_depth(int depth, bool display, bool /*main*/) {
 
 	if (depth == 0) {
 		return 1;
@@ -987,7 +950,7 @@ long long int Board::count_nodes_bulk(int depth) {
 }
 
 // Parallelised version
-long long int Board::count_nodes_at_depth_parallelized(int depth, bool display, bool main) {
+long long int Board::count_nodes_at_depth_parallelized(int depth, bool /*display*/, bool main) {
 	if (depth == 0)
 		return 1;
 
@@ -1061,7 +1024,7 @@ bool Board::validate_nodes_count_at_depth(string fen, int depth, vector<long lon
 
 		if (display) {
 			int total_time = clock() - begin_time;
-			string speed = total_time == 0 ? "N/A" : (int_to_round_string(nodes / total_time * CLOCKS_PER_SEC) + "N / s");
+			string speed = total_time == 0 ? "N/A" : (int_to_round_string(static_cast<int>(nodes / total_time * CLOCKS_PER_SEC)) + "N / s");
 
 			cout << "Depth " << d << ", expected nodes : " << expected_nodes_at_depth << " / actual nodes : " << nodes << " | " << ((nodes == expected_nodes_at_depth) ? "OK" : "FAIL") << ", time : " << total_time << " ms, speed : " << speed << endl;
 		}
@@ -1162,257 +1125,7 @@ bool Board::pawn_can_move(uint8_t row, uint8_t col, bool color) const {
 	return false;
 }
 
-// Returns the uncertainty of the position
-void Board::switch_colors() {
-	//rnbqkbnr/pppp1ppp/8/4p3/8/8/PPPPPPPP/RNBQKBNR b KQkq - 1 2
-	//rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1
-
-	// Inversion du trait
-	_player = !_player;
-
-	// Inversion of the castling rights
-	bool b_king_castling = _castling_rights.k_b;
-	bool b_queen_castling = _castling_rights.q_b;
-	bool w_king_castling = _castling_rights.k_w;
-	bool w_queen_castling = _castling_rights.q_w;
-
-	_castling_rights.k_b = w_king_castling;
-	_castling_rights.q_b = w_queen_castling;
-	_castling_rights.k_w = b_king_castling;
-	_castling_rights.q_w = b_queen_castling;
-
-	_got_moves = -1;
-	_player_in_check = false;
-	//_moves_flags_assigned = false;
-	_sorted_moves = false;
-
-	// TODO
-
-	// King pos
-
-	// Zobrist
-
-
-	Board switched_board = *this;
-
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			const uint8_t piece = _array[row][col];
-
-			const uint8_t opposite_piece = is_white(piece) ? piece + 6 : is_black(piece) ? piece - 6 : piece;
-
-			switched_board._array[7 - row][col] = opposite_piece;
-		}
-	}
-
-	*this = switched_board;
-
-
-	// Reset the search
-	main_GUI.reset_buffers(); // #6: systematic TT/node_map clear
-	main_GUI._root_exploration_node->reset();
-}
-
-// Iterates over the distance map from a given position and returns the newly controlled squares
-bool Board::is_pawn_endgame() const {
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			uint8_t piece = _array[row][col];
-			if (piece != none && !is_pawn(piece) && !is_king(piece)) {
-				return false;
-			}
-		}
-	}
-
-	return true;
-}
-
-// Tells whether the side still has pieces, king and pawns aside
-bool Board::has_pieces(bool color) const {
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			uint8_t piece = _array[row][col];
-			if (piece != none && !is_pawn(piece) && !is_king(piece) && (is_white(piece) == color)) {
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
-
 // Returns the true value of a long-term king weakness term, from the castling options and their proximity
-
-// Returns a map of every blocked pawn
-SquareMap Board::get_blocked_pawns(bool color) const {
-
-	// The king counts as blocking, whatever moves it has
-	// FIXME: perhaps not. It makes some sense in the opening, but not in the endgame where the king is mobile
-
-	// Map initialisation
-	SquareMap blocked_pawns;
-
-	// For each pawn
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-
-			uint8_t piece = _array[row][col];
-
-			// White pawn
-			if (color && piece == w_pawn) {
-				// If the pawn is blocked, by an enemy piece or friendly pawn ahead, with no capture available
-				if ((is_black(_array[row + 1][col]) || _array[row + 1][col] == w_pawn) && !(col > 0 && is_black(_array[row + 1][col - 1])) && !(col < 7 && is_black(_array[row + 1][col + 1]))) {
-					blocked_pawns._array[row][col] = 1;
-				}
-			}
-
-			// White king
-			//else if (color && piece == w_king) {
-			//	blocked_pawns._array[row][col] = 1;
-			//}
-
-			// Black pawn
-			else if (!color && piece == b_pawn) {
-				// If the pawn is blocked
-				if ((is_white(_array[row - 1][col]) || _array[row - 1][col] == b_pawn) && !(col > 0 && is_white(_array[row - 1][col - 1])) && !(col < 7 && is_white(_array[row - 1][col + 1]))) {
-					blocked_pawns._array[row][col] = 1;
-				}
-			}
-
-			// Black king
-			//else if (!color && piece == b_king) {
-			//	blocked_pawns._array[row][col] = 1;
-			//}
-		}
-	}
-
-	return blocked_pawns;
-}
-
-
-// Takes a map of blocked pawns and pieces, updates it with the newly blocked ones, and reports whether any were added
-bool Board::update_blocked_pieces(SquareMap& blocked_pieces, bool color, SquareMap opponent_controls) const {
-
-	// rn1qkbnr/pbp1p1p1/1p1pPpPp/3P1P2/8/8/PPP4P/RNBQKBNR b KQkq - 0 10
-
-	bool new_blocked = false;
-
-	// Look at every piece
-	// A piece with at least one available move is not blocked
-
-	for (uint8_t row = 0; row < 8; row++) {
-		for (uint8_t col = 0; col < 8; col++) {
-			uint8_t piece = _array[row][col];
-
-			if (!is_white(piece) == color || piece == none || blocked_pieces._array[row][col]) {
-				continue;
-			}
-			
-			// Knight
-			if (is_knight(piece)) {
-				bool is_blocked = true;
-
-				for (uint8_t m = 0; m < 8 && is_blocked; m++) {
-					int new_row = row + knight_directions[m][0];
-					int new_col = col + knight_directions[m][1];
-
-					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && !blocked_pieces._array[new_row][new_col]) {
-						is_blocked = false;
-						break;
-					}
-				}
-
-				if (is_blocked) {
-					blocked_pieces._array[row][col] = 1;
-					new_blocked = true;
-				}
-			}
-
-			// Bishop
-			else if (is_bishop(piece)) {
-				bool is_blocked = true;
-
-				for (uint8_t m = 0; m < 4 && is_blocked; m++) {
-					int new_row = row + diag_directions[m][0];
-					int new_col = col + diag_directions[m][1];
-
-					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && !blocked_pieces._array[new_row][new_col]) {
-						is_blocked = false;
-						break;
-					}
-				}
-
-				if (is_blocked) {
-					blocked_pieces._array[row][col] = 1;
-					new_blocked = true;
-				}
-			}
-
-			// Rook
-			else if (is_rook(piece)) {
-				bool is_blocked = true;
-
-				for (uint8_t m = 0; m < 4 && is_blocked; m++) {
-					int new_row = row + rect_directions[m][0];
-					int new_col = col + rect_directions[m][1];
-
-					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && !blocked_pieces._array[new_row][new_col]) {
-						is_blocked = false;
-						break;
-					}
-				}
-
-				if (is_blocked) {
-					blocked_pieces._array[row][col] = 1;
-					new_blocked = true;
-				}
-			}
-
-			// Queen
-			else if (is_queen(piece)) {
-				bool is_blocked = true;
-
-				for (uint8_t m = 0; m < 8 && is_blocked; m++) {
-
-					int new_row = row + all_directions[m][0];
-					int new_col = col + all_directions[m][1];
-
-					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && !blocked_pieces._array[new_row][new_col]) {
-						is_blocked = false;
-						break;
-					}
-				}
-
-				if (is_blocked) {
-					blocked_pieces._array[row][col] = 1;
-					new_blocked = true;
-				}
-			}
-
-			// King
-			else if (is_king(piece)) {
-				bool is_blocked = true;
-
-				for (uint8_t m = 0; m < 8 && is_blocked; m++) {
-
-					int new_row = row + all_directions[m][0];
-					int new_col = col + all_directions[m][1];
-
-					if (is_in(new_row, 0, 7) && is_in(new_col, 0, 7) && !blocked_pieces._array[new_row][new_col] && !opponent_controls._array[new_row][new_col]) {
-						is_blocked = false;
-						break;
-					}
-				}
-				if (is_blocked) {
-					blocked_pieces._array[row][col] = 1;
-					new_blocked = true;
-				}
-			}
-		}
-	}
-
-	return new_blocked;
-}
 
 // Returns the map of every blocked piece
 SquareMap Board::get_all_blocked_pieces(bool color, SquareMap opponent_controls) const {
@@ -1624,7 +1337,7 @@ bool Board::get_blocked_and_unblocked_pieces(SquareMap& pieces_states, bool colo
 void Board::compute_pawn_controls_map(const uint8_t b[8][8], bool color, SquareMap& out) {
 	out = SquareMap();
 
-	const uint8_t player_pawn = color ? w_pawn : b_pawn;
+	const uint8_t player_pawn = static_cast<uint8_t>(color ? w_pawn : b_pawn);
 	const int pawn_direction = color ? 1 : -1;
 
 	for (uint8_t row = 1; row < 7; row++) {
@@ -1643,39 +1356,6 @@ void Board::compute_pawn_controls_map(const uint8_t b[8][8], bool color, SquareM
 // Returns the virtual piece mobility, long term
 
 // Returns the queen safety value for the given side
-
-// Reports how quiet a position is: the number of available captures, checks and promotions
-int Board::get_quietness() {
-
-	int captures = 0;
-	int checks = 0;
-	int promotions = 0;
-
-	// Look at every move
-	for (uint8_t m = 0; m < _got_moves; m++) {
-
-		Move& move = _moves[m];
-
-		// If this is a capture
-		if (move.is_capture()) {
-			captures++;
-		}
-
-		// If this is a promotion
-		else if (move.is_promotion()) {
-			promotions++;
-		}
-
-		// If this is a check
-		else if (move.is_check()) {
-			checks++;
-		}
-	}
-
-	int quietness = captures + checks + promotions;
-
-	return quietness;
-}
 
 // Assigns the flags of every possible move
 void Board::assign_all_move_flags() {
@@ -1791,13 +1471,13 @@ void Board::assign_move_flags(Move* move) {
 	_white_king_pos = saved_wk;
 	_black_king_pos = saved_bk;
 	_castling_rights = saved_castling;
-	_en_passant_col = saved_ep;
-	_half_moves_count = saved_half;
+	_en_passant_col = static_cast<int_fast8_t>(saved_ep);
+	_half_moves_count = static_cast<uint8_t>(saved_half);
 	_moves_count = saved_moves_count;
 	_got_moves = saved_got_moves;
 	_player_in_check = saved_player_in_check;
 	_game_over_checked = saved_game_over_checked;
-	_game_over_value = saved_game_over_value;
+	_game_over_value = static_cast<int_fast8_t>(saved_game_over_value);
 	memcpy(_bitboards, saved_bitboards, sizeof(saved_bitboards));
 	memcpy(_occupancies, saved_occupancies, sizeof(saved_occupancies));
 	_sorted_moves = saved_sorted_moves;
@@ -1848,18 +1528,6 @@ void Board::update_bitboards() {
 			}
 		}
 	}
-}
-
-// Prints every value of a bitboard
-void print_bitboard(uint64_t bitboard) {
-	for (int row = 7; row >= 0; row--) {
-		for (int col = 0; col < 8; col++) {
-			int square = row * 8 + col;
-			cout << ((bitboard >> square) & 1ULL) << " ";
-		}
-		cout << "\n";
-	}
-	cout << "\n";
 }
 
 // Prints every bitboard

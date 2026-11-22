@@ -1,5 +1,18 @@
 #pragma once
 
+// Zobrist hashing and the evaluation transposition table.
+//  - Zobrist: random keys for pieces, side to move, castling rights and en passant (not the
+//    move counter). shared_zobrist() is the single process-wide key set; Board::make_move
+//    updates the key incrementally from it (copy-make, no unmake).
+//  - TranspositionTable (thread_local `transposition_table`): key -> ZobristEntry
+//    {_eval, _depth, TTFlag}. Quiescence values are stored from the SIDE-TO-MOVE point of view
+//    (Evaluation::_value is white-positive: convert at the boundary).
+//  - TTFlag: TT_EXACT, TT_ALPHA (upper bound), TT_BETA (lower bound), TT_STANDPAT (static floor,
+//    consumed like TT_BETA, never an exact value).
+//  - OPTI_SEED makes the keys deterministic; OPTI_NOTT makes probe() always miss (see zobrist.cpp
+//    and docs/ENVIRONMENT.md). This table is distinct from the Node DAG map (node_map, exploration.h).
+// See also: zobrist.cpp, exploration_diag.cpp (probe/store in quiescence), opti_chess/ALGORITHMS.md.
+
 #include <cstdint>
 #include <string>
 #include <robin_map.h>

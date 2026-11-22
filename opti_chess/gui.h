@@ -1,5 +1,19 @@
 #pragma once
 
+// GUI class (raylib): rendering and state of the analysis interface. Implementation in gui.cpp;
+// the event loop and key handling are in main_gui.h.
+//  - Global instance: main_GUI (declared at the bottom). draw() renders the board, variations,
+//    evaluation bar/graph and statistics; init_buffers() sizes the main thread's arenas.
+//  - Owns the played game (_game_tree, game_tree.h) and the analysis tree (exploration.h).
+//  - Search threading: the analysis runs on a worker thread (compute_worker) created through a
+//    Windows HANDLE with a 16 MB stack (quiescence recursion). The worker publishes a TreeSnapshot
+//    under _snapshot_mutex; the UI thread copies it (refresh_snapshot) into _tree_snapshot, the
+//    only copy the draw code reads. Other shared fields remain (B-17 in docs/ARCHITECTURE.md).
+//  - Search toggles copied into the globals when an analysis starts: _tt_main_search (default off)
+//    and _tt_node_dag (default on in the GUI). Debug logging with OPTI_DEBUG=1 (debug_log).
+//  - worker_status_text() / buffer_status_text() are pure helpers for the status panels (unit-testable).
+// See also: gui.cpp, main_gui.h, game_tree.h, exploration.h, docs/ENVIRONMENT.md.
+
 #include "time.h"
 #include <string>
 #include "raylib.h"
@@ -613,9 +627,6 @@ public:
 	// Runs Grogros on a thread
 	//bool grogros_zero_threaded(Evaluator* eval, int nodes);
 
-	// Removes the last move from the PGN
-	bool remove_last_move_PGN();
-
 	// Logs the board geometry ("[geom] ...") and the live position ("[pos] <tag> fen=..."):
 	// scripts/gui_drive.ps1 maps squares and asserts on them
 	void log_geometry() const;
@@ -650,9 +661,6 @@ public:
 	// Applies the new dimensions of the window
 	void get_window_size();
 
-	// Returns whether the player is currently moving (so the AI stops thinking then, otherwise it lags)
-	bool is_playing() const;
-
 	// Changes the arrow display mode (yes/no)
 	void switch_arrow_drawing();
 
@@ -667,9 +675,6 @@ public:
 
 	// Draws a rectangle from floating-point coordinates
 	bool draw_rectangle(float, float, float, float, Color);
-
-	// Draws a rectangle from floating-point coordinates, using the start and end coordinates
-	bool draw_rectangle_from_pos(float, float, float, float, Color);
 
 	// Draws a circle from floating-point coordinates
 	void draw_circle(float, float, float, Color);
@@ -688,12 +693,6 @@ public:
 
 	// Removes the highlight from every square
 	void remove_highlighted_tiles();
-
-	// Selects a square
-	void select_tile(int, int);
-
-	// Highlights a square (or un-highlights it)
-	void highlight_tile(int, int);
 
 	// Deselects
 	void unselect();
@@ -762,9 +761,6 @@ public:
 
 	// Compares two Grogros analysis arrows
 	bool compare_arrows(const Move m1, const Move m2) const;
-
-	// Returns the date in the 'yyyymmdd' format
-	string get_date();
 
 	// Updates the bot name of GrogrosZero
 	void update_grogros_zero_name();

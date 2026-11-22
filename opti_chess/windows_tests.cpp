@@ -67,12 +67,6 @@ void simulate_mouse_release()
 	return;
 }
 
-// Places the mouse at a given position
-void set_mouse_pos(const int x, const int y) {
-	SetCursorPos(x, y);
-	return;
-}
-
 // Returns the memory available on the computer
 // FIXME: this does not return the right thing
 unsigned long long get_total_system_memory()
@@ -102,7 +96,7 @@ static HBITMAP get_screen_bmp(const HDC hdc, const int x1, const int y1, const i
 	const HDC h_capture_dc = CreateCompatibleDC(hdc);
 	const HBITMAP h_bitmap = CreateCompatibleBitmap(hdc, capture_width, capture_height);
 	const HGDIOBJ h_old = SelectObject(h_capture_dc, h_bitmap);
-	BOOL b_ok = BitBlt(h_capture_dc, 0, 0, capture_width, capture_height, hdc, x1, y1, SRCCOPY | CAPTUREBLT);
+	[[maybe_unused]] BOOL b_ok = BitBlt(h_capture_dc, 0, 0, capture_width, capture_height, hdc, x1, y1, SRCCOPY | CAPTUREBLT);
 
 	SelectObject(h_capture_dc, h_old); // always select the previously selected object once done
 	DeleteDC(h_capture_dc);
@@ -142,8 +136,8 @@ uint8_t* get_board_move(const int x1, const int y1, const int x2, const int y2, 
 	for (int i = 0; i < 8; i++) {
 		for (int j = 0; j < 8; j++) {
 			// Colour of the square
-			int x = (i + website._tile_location_on_tile.first) * tile_size;
-			int y = (j + website._tile_location_on_tile.second) * tile_size;
+			int x = static_cast<int>((i + website._tile_location_on_tile.first) * tile_size);
+			int y = static_cast<int>((j + website._tile_location_on_tile.second) * tile_size);
 			int pixel_offset = x * my_bm_info.bmiHeader.biWidth + y;
 			const BYTE* pixel_address = lp_pixels + pixel_offset * (my_bm_info.bmiHeader.biBitCount / 8);
 			auto color = SimpleColor(static_cast<int>(pixel_address[2]), static_cast<int>(pixel_address[1]),
@@ -160,8 +154,8 @@ uint8_t* get_board_move(const int x1, const int y1, const int x2, const int y2, 
 				}
 
 				// Check whether there is nothing on the square
-				x = (i + 0.3f) * tile_size;
-				y = (j + 0.5f) * tile_size;
+				x = static_cast<int>((i + 0.3f) * tile_size);
+				y = static_cast<int>((j + 0.5f) * tile_size);
 				pixel_offset = x * my_bm_info.bmiHeader.biWidth + y;
 				pixel_address = lp_pixels + pixel_offset * (my_bm_info.bmiHeader.biBitCount / 8);
 				color = SimpleColor(static_cast<int>(pixel_address[2]), static_cast<int>(pixel_address[1]), static_cast<int>(pixel_address[0]));
@@ -213,10 +207,10 @@ uint8_t* get_board_move(const int x1, const int y1, const int x2, const int y2, 
 
 	// Coordinates of the move played
 	const auto coord = new uint8_t[4];
-	coord[0] = y_begin;
-	coord[1] = x_begin;
-	coord[2] = y_end;
-	coord[3] = x_end;
+	coord[0] = static_cast<uint8_t>(y_begin);
+	coord[1] = static_cast<uint8_t>(x_begin);
+	coord[2] = static_cast<uint8_t>(y_end);
+	coord[3] = static_cast<uint8_t>(x_end);
 
 	return coord;
 }
@@ -224,7 +218,7 @@ uint8_t* get_board_move(const int x1, const int y1, const int x2, const int y2, 
 // Clicks a move according to the orientation of the board
 bool input_injection_enabled = false;
 
-void click_move(const int j1, const int i1, const int j2, const int i2, const int x1, const int y1, const int x2, int y2, const bool orientation, const bool is_promotion) {
+void click_move(const int j1, const int i1, const int j2, const int i2, const int x1, const int y1, const int x2, int /*y2*/, const bool orientation, const bool is_promotion) {
 	// Off by default: nothing reaches the mouse until it is enabled at runtime.
 	if (!input_injection_enabled)
 		return;
@@ -232,10 +226,10 @@ void click_move(const int j1, const int i1, const int j2, const int i2, const in
 	const float tile_size = static_cast<float>((x2 - x1)) / 8.0f;
 	constexpr float tile_click = 0.5f; // So that the click lands in the middle of the square
 
-	const int cx1 = x1 + (tile_click + (orientation ? i1 : 7 - i1)) * tile_size;
-	const int cy1 = y1 + (tile_click + (orientation ? 7 - j1 : j1)) * tile_size;
-	const int cx2 = x1 + (tile_click + (orientation ? i2 : 7 - i2)) * tile_size;
-	const int cy2 = y1 + (tile_click + (orientation ? 7 - j2 : j2)) * tile_size;
+	const int cx1 = static_cast<int>(x1 + (tile_click + (orientation ? i1 : 7 - i1)) * tile_size);
+	const int cy1 = static_cast<int>(y1 + (tile_click + (orientation ? 7 - j1 : j1)) * tile_size);
+	const int cx2 = static_cast<int>(x1 + (tile_click + (orientation ? i2 : 7 - i2)) * tile_size);
+	const int cy2 = static_cast<int>(y1 + (tile_click + (orientation ? 7 - j2 : j2)) * tile_size);
 
 	simulate_mouse_click(cx1, cy1);
 	simulate_mouse_click(cx2, cy2);

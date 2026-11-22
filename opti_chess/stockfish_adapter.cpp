@@ -179,7 +179,7 @@ StockfishAdapter::AnalysisResult StockfishAdapter::analyze_with_move(
     // After making the move, the side flips. Stockfish eval is from new side-to-move.
     // If original position was white to move and we made a white move, now it's black's turn
     // So flip: the eval is from opponent's perspective.
-    bool original_white = (fen.find(" w ") != std::string::npos);
+    [[maybe_unused]] bool original_white = (fen.find(" w ") != std::string::npos);
     r.eval_cp = -r.eval_cp;
     if (r.is_mate) r.mate_in = -r.mate_in;
     return r;

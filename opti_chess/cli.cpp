@@ -2,6 +2,7 @@
 #include "puzzle.h"
 #include "exploration.h"
 #include "zobrist.h"
+#include "uci.h"
 #include <chrono>
 #include <iomanip>
 #include <iostream>
@@ -14,8 +15,6 @@
 #include <cstdint>
 
 using namespace std;
-
-static const string START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 static int usage() {
     cerr << "usage: opti_chess_cli perft <depth> [fen...]\n"
@@ -41,32 +40,7 @@ static string fen_from_args(int argc, char** argv, int from) {
         if (!fen.empty()) fen += ' ';
         fen += argv[i];
     }
-    return fen.empty() ? START_FEN : fen;
-}
-
-// Square names: file a-h, rank 1-8; promotion suffix only for pawn moves to last rank
-static string move_to_uci(const Board& b, const Move& m) {
-    string s;
-    s += char('a' + m.start_col);
-    s += char('1' + m.start_row);
-    s += char('a' + m.end_col);
-    s += char('1' + m.end_row);
-    int piece = b._array[m.start_row][m.start_col];
-    if ((piece == 1 || piece == 7) && (m.end_row == 0 || m.end_row == 7))
-        s += "qrbn"[m.get_promo_piece()];
-    return s;
-}
-
-// Legal move matching a UCI string
-static bool uci_to_move(Board& b, const string& s, Move& out) {
-    b.get_moves();
-    for (int i = 0; i < b._got_moves; i++) {
-        if (move_to_uci(b, b._moves[i]) == s) {
-            out = b._moves[i];
-            return true;
-        }
-    }
-    return false;
+    return fen.empty() ? UCI_START_FEN : fen;
 }
 
 static int cmd_perft(int argc, char** argv, bool bulk) {
@@ -219,104 +193,26 @@ static int cmd_bench(int argc, char** argv) {
     return 0;
 }
 
-// Applies "position" tokens to a FEN, returns the resulting FEN
-static string apply_position(const vector<string>& tok, const string& cur) {
-    if (tok.size() < 2) return cur;
-    string fen;
-    size_t i = 2;
-    if (tok[1] == "startpos") {
-        fen = START_FEN;
-    } else if (tok[1] == "fen") {
-        for (; i < tok.size() && i < 8 && tok[i] != "moves"; i++) {
-            if (!fen.empty()) fen += ' ';
-            fen += tok[i];
-        }
-    } else {
-        return cur;
-    }
-    Board b;
-    b.from_fen(fen);
-    if (!b.fen_ok()) {
-        cout << "info string bad fen" << endl;
-        return cur;
-    }
-    if (i < tok.size() && tok[i] == "moves") {
-        for (size_t j = i + 1; j < tok.size(); j++) {
-            Move m;
-            if (!uci_to_move(b, tok[j], m)) {
-                cout << "info string illegal move " << tok[j] << endl;
-                break;
-            }
-            b.make_move(m, false, true);
-        }
-    }
-    return b.to_fen();
-}
-
 static void cmd_go(const vector<string>& tok, const string& fen) {
-    long long nodes = 0, movetime = 0, depth = 0, wtime = 0, btime = 0, winc = 0, binc = 0;
-    bool infinite = false;
-    for (size_t i = 1; i < tok.size(); i++) {
-        if (tok[i] == "infinite") { infinite = true; continue; }
-        if (i + 1 >= tok.size()) break;
-        const string& key = tok[i];
-        char* end = nullptr;
-        long long v = strtoll(tok[i + 1].c_str(), &end, 10);
-        if (end != tok[i + 1].c_str() && *end == '\0') {
-            if (key == "nodes") nodes = v;
-            else if (key == "movetime") movetime = v;
-            else if (key == "depth") depth = v;
-            else if (key == "wtime") wtime = v;
-            else if (key == "btime") btime = v;
-            else if (key == "winc") winc = v;
-            else if (key == "binc") binc = v;
-        }
-        i++;
-    }
-
     Board b;
     b.from_fen(fen);
     bool white = b._player;
-    long long mytime = white ? wtime : btime;
-    long long myinc = white ? winc : binc;
 
     Puzzle p;
     p.fen = fen;
     p.category = PuzzleCategory::TACTIC;
-    BudgetMode mode = BudgetMode::NODES;
-    double budget = 2000.0;
-    if (nodes > 0) {
-        budget = (double)nodes;
-    } else if (movetime > 0) {
-        mode = BudgetMode::TIME;
-        budget = movetime / 1000.0;
-    } else if (mytime > 0) {
-        mode = BudgetMode::TIME;
-        budget = (mytime / 30.0 + myinc / 2.0) / 1000.0;
-        if (budget < 0.05) budget = 0.05;
-        if (budget > 10.0) budget = 10.0;
-    } else if (infinite) {
-        budget = 20000.0;
-    } else if (depth > 0) {
-        budget = 2000.0;
-    }
+    UciBudget ub = uci_go_budget(tok, white);
 
-    PuzzleResult r = PuzzleRunner::run(p, mode, budget);
+    PuzzleResult r = PuzzleRunner::run(p, ub.mode, ub.budget);
     // Searched value (actual_eval_cp is the root static eval)
-    int score = white ? r.searched_eval_cp : -r.searched_eval_cp;
     long long ms = (long long)(r.time_s * 1000.0 + 0.5);
-    cout << "info nodes " << r.total_nodes << " time " << ms << " score cp " << score << endl;
+    cout << "info nodes " << r.total_nodes << " time " << ms << " score " << uci_score(b, r.searched_eval_cp) << endl;
 
     // Chosen move must be among the legal moves, otherwise 0000
     string best = "0000";
-    b.get_moves();
+    Move legal;
     string want = move_to_uci(b, r.chosen_move);
-    for (int i = 0; i < b._got_moves; i++) {
-        if (move_to_uci(b, b._moves[i]) == want) {
-            best = want;
-            break;
-        }
-    }
+    if (uci_to_move(b, want, legal)) best = want;
     cout << "bestmove " << best << endl;
 }
 
@@ -333,13 +229,7 @@ static int cmd_search(int argc, char** argv) {
     const int iters = atoi(argv[2]);
     const string fen = fen_from_args(argc, argv, 3);
     static Evaluator evaluator;
-    monte_node_buffer.init(500000, false);
-    monte_board_buffer.init(500000, false);
-    monte_node_buffer.reset();
-    monte_board_buffer.reset();
-    node_map.clear();
-    transposition_table.clear();
-    g_buffers_full_logged = false;
+    reset_search_state();
     g_tt_node_dag = getenv("OPTI_NO_DAG") == nullptr;
     g_tt_main_search = getenv("OPTI_TT_MAIN") != nullptr;
 
@@ -617,13 +507,7 @@ static int cmd_solve(int argc, char** argv) {
     const int min_value = atoi(argv[4]);
     const string fen = fen_from_args(argc, argv, 5);
     static Evaluator evaluator;
-    monte_node_buffer.init(500000, false);
-    monte_board_buffer.init(500000, false);
-    monte_node_buffer.reset();
-    monte_board_buffer.reset();
-    node_map.clear();
-    transposition_table.clear();
-    g_buffers_full_logged = false;
+    reset_search_state();
     g_tt_node_dag = getenv("OPTI_NO_DAG") == nullptr;
 
     Board b;
@@ -640,6 +524,11 @@ static int cmd_solve(int argc, char** argv) {
     int done = 0;
     string best = "0000";
     int value = 0;
+    const char* trace_env = getenv("OPTI_SOLVE_TRACE");
+    const bool trace = trace_env != nullptr;
+    const bool trace_children = trace && atoi(trace_env) >= 2;
+    const char* from_env = getenv("OPTI_SOLVE_TRACE_FROM");
+    const int trace_from = from_env != nullptr ? atoi(from_env) : 0;
     while (done < max_iters) {
         const int chunk = min(500, max_iters - done);
         root.grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, chunk, 10, nullptr, nullptr, 0);
@@ -650,8 +539,53 @@ static int cmd_solve(int argc, char** argv) {
         const bool ok = is_expected(best) && value >= min_value;
         if (ok && solved_at < 0) { solved_at = done; solved_ms = (now_s() - t0) * 1000.0; }
         if (!ok) solved_at = -1;
-        if (getenv("OPTI_SOLVE_TRACE") != nullptr)
+        if (trace)
             cout << "trace " << done << " " << best << " " << root._deep_evaluation._value << endl;
+        // OPTI_SOLVE_TRACE_PATH=e3f2,c7d7: dump the edges under the node reached by these UCI moves
+        if (const char* path = getenv("OPTI_SOLVE_TRACE_PATH"); path != nullptr && trace && done >= trace_from) {
+            Node* n = &root;
+            std::stringstream ss(path);
+            string mv;
+            while (n != nullptr && std::getline(ss, mv, ',')) {
+                Node* next = nullptr;
+                for (auto const& [m, link] : n->_children)
+                    if (link._node != nullptr && move_to_uci(*n->_board, m) == mv) next = link._node;
+                n = next;
+            }
+            if (n != nullptr)
+                for (auto const& [m, link] : n->_children)
+                    if (link._node != nullptr)
+                        cout << "  path " << path << " " << move_to_uci(*n->_board, m) << " visits " << link._chosen_iterations.load()
+                             << " value " << link._node->_deep_evaluation._value << " avg " << link._node->_deep_evaluation._avg_score
+                             << " draw " << link._node->_deep_evaluation._wdl.draw_chance << " terminal " << link._node->_is_terminal << endl;
+        }
+        // OPTI_SOLVE_TRACE=2: also dump every root edge from OPTI_SOLVE_TRACE_FROM on
+        // (visits, white-POV value, WDL, avg score, proven flag, arena use)
+        if (trace_children && done >= trace_from) {
+            cout << "  boards " << (monte_board_buffer._length - (int)monte_board_buffer._free_indices.size())
+                 << " nodes " << (monte_node_buffer._length - (int)monte_node_buffer._free_indices.size()) << endl;
+            vector<pair<int, Move>> edges;
+            for (auto const& [m, link] : root._children) edges.push_back({ link._chosen_iterations.load(), m });
+            sort(edges.begin(), edges.end(), [](auto const& x, auto const& y) { return x.first > y.first; });
+            for (auto const& [visits, m] : edges) {
+                const Node* c = root._children.at(m)._node;
+                cout << "  edge " << move_to_uci(b, m) << " visits " << visits;
+                if (c != nullptr) {
+                    const Evaluation& e = c->_deep_evaluation;
+                    cout << " value " << e._value << " wdl " << e._wdl.win_chance << "/" << e._wdl.draw_chance << "/" << e._wdl.lose_chance
+                         << " avg " << e._avg_score << " iters " << c->_iterations.load() << " parents " << c->_parent_count
+                         << " proven " << (int)c->_proven;
+                }
+                cout << endl;
+                // OPTI_SOLVE_TRACE=3: one more ply (the replies) under every root edge
+                if (c != nullptr && atoi(trace_env) >= 3)
+                    for (auto const& [m2, l2] : c->_children)
+                        if (l2._node != nullptr)
+                            cout << "    reply " << move_to_uci(*c->_board, m2) << " visits " << l2._chosen_iterations.load()
+                                 << " value " << l2._node->_deep_evaluation._value << " avg " << l2._node->_deep_evaluation._avg_score
+                                 << " draw " << l2._node->_deep_evaluation._wdl.draw_chance << endl;
+            }
+        }
     }
     const double total_ms = (now_s() - t0) * 1000.0;
     if (solved_at >= 0)
@@ -801,7 +735,7 @@ static int cmd_absolve(int argc, char** argv) {
 }
 
 static int cmd_uci() {
-    string cur = START_FEN;
+    string cur = UCI_START_FEN;
     string line;
     while (getline(cin, line)) {
         while (!line.empty() && (line.back() == '\r' || line.back() == ' ')) line.pop_back();
@@ -819,9 +753,11 @@ static int cmd_uci() {
         } else if (c == "isready") {
             cout << "readyok" << endl;
         } else if (c == "ucinewgame") {
-            cur = START_FEN;
+            cur = UCI_START_FEN;
         } else if (c == "position") {
-            cur = apply_position(tok, cur);
+            vector<string> info;
+            cur = uci_apply_position(tok, cur, &info);
+            for (const string& msg : info) cout << msg << endl;
         } else if (c == "go") {
             cmd_go(tok, cur);
         } else if (c == "quit") {
