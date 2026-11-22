@@ -162,10 +162,13 @@ static int cmd_bench(int argc, char** argv) {
         "2rq1rk1/1p2bpp1/p1n2n1p/3pNb2/2pP1P2/P1N1PBB1/1P4PP/R2Q1RK1 w - - 0 1",
     };
     const int count = (int)(sizeof(FENS) / sizeof(FENS[0]));
-    uint64_t hash = 1469598103934665603ULL; // FNV-1a 64-bit offset basis
+    // "bench <iters> reverse": same searches in reverse order, same signature expected
+    const bool reverse = argc > 3 && string(argv[3]) == "reverse";
+    string keys[sizeof(FENS) / sizeof(FENS[0])];
     long long sum_nodes = 0;
     double sum_ms = 0.0;
-    for (int i = 0; i < count; i++) {
+    for (int k = 0; k < count; k++) {
+        const int i = reverse ? count - 1 - k : k;
         Puzzle p;
         p.fen = FENS[i];
         p.category = PuzzleCategory::TACTIC;
@@ -179,12 +182,15 @@ static int cmd_bench(int argc, char** argv) {
              << " nodes=" << r.total_nodes << " ms=" << fixed << setprecision(1) << ms << endl;
         sum_nodes += r.total_nodes;
         sum_ms += ms;
-        // Hash of bestmove followed by node count, per position
-        for (char c : uci + to_string(r.total_nodes)) {
+        keys[i] = uci + to_string(r.total_nodes);
+    }
+    // Hash of bestmove followed by node count, per position, in position order
+    uint64_t hash = 1469598103934665603ULL; // FNV-1a 64-bit offset basis
+    for (int i = 0; i < count; i++)
+        for (char c : keys[i]) {
             hash ^= (unsigned char)c;
             hash *= 1099511628211ULL;
         }
-    }
     // Same source, other compiler = other search trajectory on long runs (Fine #70 S4 flips between
     // MSVC 14.51 and 14.52) while this short bench may keep its signature: record the toolset.
 #ifdef _MSC_FULL_VER

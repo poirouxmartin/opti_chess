@@ -7013,9 +7013,9 @@ TEST(Endgame, Fine70ExactDagSolvesLadder) {
 		{ "8/2k5/3p4/p2P1p2/P2P1P2/8/3K4/8 w - - 10 6", {"d2d3"}, 20000 },
 		{ "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1", {"a1b1"}, 40000 },
 	};
-	// After other searches in the same process (Search.RepetitionUnderDag, SolverProvesMateInOne)
-	// the trajectory differs (suspected: reused pool slots keep their child-map capacity, so the
-	// iteration order and the tie-breaks change); the budgets leave room for that.
+	// Each step starts from reset pools, which NodeBuffer::reset() returns to their freshly
+	// initialised state, so the result no longer depends on the tests run before this one
+	// (see Search.ResetPoolsMakeSearchHistoryIndependent).
 	auto uci = [](const Move& m) {
 		string s;
 		s += char('a' + m.start_col); s += char('1' + m.start_row);
@@ -7054,6 +7054,62 @@ TEST(Endgame, Fine70ExactDagSolvesLadder) {
 	monte_node_buffer.reset();
 	monte_board_buffer.reset();
 	node_map.clear();
+}
+
+// A search started after the pools are reset must not depend on the searches run before it.
+// Pooled nodes used to keep the bucket array of their children map across NodeBuffer::reset(),
+// so the iteration order of _children (and every tie-break over it) changed with the history
+// of the process: Fine70ExactDagSolvesLadder passed alone and failed in the full suite.
+TEST(Search, ResetPoolsMakeSearchHistoryIndependent) {
+	static Evaluator evaluator;
+	if (!monte_board_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_board_buffer.init(ps.board_length); }
+	if (!monte_node_buffer._init) { PoolSizing ps = compute_pool_sizing(); monte_node_buffer.init(ps.node_length); }
+
+	struct Restore {
+		bool dag; int every;
+		Restore() : dag(g_tt_node_dag), every(g_dag_exact_every) {}
+		~Restore() { g_tt_node_dag = dag; g_dag_exact_every = every; }
+	} restore;
+	g_tt_node_dag = true;
+	g_dag_exact_every = 0;
+
+	// Full search fingerprint: root value and iterations, then every root child's visit count
+	// and value, listed in move order so the fingerprint itself does not depend on map order.
+	auto search = [](const char* fen, int iters) {
+		monte_node_buffer.reset();
+		monte_board_buffer.reset();
+		node_map.clear();
+		transposition_table.clear();
+		Board b;
+		b.from_fen(fen);
+		Node root(&b);
+		for (int done = 0; done < iters; done += 500)
+			root.grogros_zero(&monte_board_buffer, &evaluator, 0.005, 5.0, 1.10, 500, 10, nullptr, nullptr, 0);
+		vector<string> children;
+		for (auto const& [m, link] : root._children) {
+			ostringstream os;
+			os << (int)m.start_row << (int)m.start_col << (int)m.end_row << (int)m.end_col << (int)m.flags
+			   << ':' << link._chosen_iterations;
+			if (link._node != nullptr) os << '=' << link._node->_deep_evaluation._value;
+			children.push_back(os.str());
+		}
+		sort(children.begin(), children.end());
+		ostringstream sig;
+		sig << root._deep_evaluation._value << '/' << root._iterations.load();
+		for (const string& c : children) sig << ' ' << c;
+		recycle_detached_node(&root);
+		monte_node_buffer.reset();
+		monte_board_buffer.reset();
+		node_map.clear();
+		return sig.str();
+	};
+
+	const char* probe = "8/2k5/3p4/p2P1p2/P2P1P2/4K3/8/8 w - - 14 8"; // Fine #70 ladder step S4
+	const string first = search(probe, 4000);
+	// Fill many pool slots with wide children maps (opening position, about 20 moves per node)
+	search("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 20000);
+	const string second = search(probe, 4000);
+	EXPECT_EQ(first, second);
 }
 
 	TEST(Puzzle, OFFvsDAG_Endgame) {
